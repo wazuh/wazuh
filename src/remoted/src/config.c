@@ -81,6 +81,21 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     manager_module_limits.syscollector.services = getDefine_Int_default("syscollector", "services_limit", 0, INT_MAX, 30000);
     manager_module_limits.syscollector.browser_extensions = getDefine_Int_default("syscollector", "browser_extensions_limit", 0, INT_MAX, 30000);
 
+    /* Container-inventory caps (#37532 / #37534). Default 0 = UNLIMITED, unlike
+     * the host caps above: an operator who has not thought about containers
+     * should get the behaviour they had before container inventory existed, and
+     * the separation from the host budget is the fix on its own. */
+    manager_module_limits.syscollector_containers.processes = getDefine_Int_default("syscollector_containers", "processes_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector_containers.ports = getDefine_Int_default("syscollector_containers", "ports_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector_containers.packages = getDefine_Int_default("syscollector_containers", "packages_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector_containers.users = getDefine_Int_default("syscollector_containers", "users_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector_containers.groups = getDefine_Int_default("syscollector_containers", "groups_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector_containers.os_info = getDefine_Int_default("syscollector_containers", "os_info_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector_containers.network_iface = getDefine_Int_default("syscollector_containers", "network_iface_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector_containers.network_protocol = getDefine_Int_default("syscollector_containers", "network_protocol_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector_containers.network_address = getDefine_Int_default("syscollector_containers", "network_address_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector_containers.hardware = getDefine_Int_default("syscollector_containers", "hardware_limit", 0, INT_MAX, 0);
+
     /* SCA limits */
     manager_module_limits.sca.checks = getDefine_Int_default("sca", "checks_limit", 0, INT_MAX, 30000);
 

@@ -349,6 +349,42 @@ class EXPORTED Syscollector final
         size_t getDocumentLimit(const std::string& index);
 
         /**
+         * @brief Which population of rows a document limit applies to.
+         *
+         * Host rows and container rows land in the SAME sync index, so with one
+         * budget a node running fifty containers can spend the whole
+         * `processes` cap on container processes and starve the host's own —
+         * with which rows survive decided by scan order and the promotion
+         * query's ORDER BY. They therefore get separate limits and separate
+         * counters, and every count/promote query is scoped to one of them
+         * (#37532 / #37534).
+         */
+        enum class LimitScope
+        {
+            host,      ///< container_id = '' — the agent's own rows
+            container  ///< container_id <> '' — rows attributed to a container
+        };
+
+        /**
+         * @brief SQL predicate selecting one scope's rows, to be appended to an
+         *        existing WHERE clause.
+         *
+         * @param scope Scope to filter for.
+         * @return " AND container_id=''" or " AND container_id<>''".
+         */
+        static const char* scopeFilter(LimitScope scope);
+
+        /**
+         * @brief The limits map for a scope. Caller must hold m_limitsMutex.
+         */
+        std::map<std::string, size_t>& limitsFor(LimitScope scope);
+
+        /**
+         * @brief The counts map for a scope. Caller must hold m_limitsMutex.
+         */
+        std::map<std::string, size_t>& countsFor(LimitScope scope);
+
+        /**
          * @brief Validates a JSON message against schema and logs validation errors
          *
          * This helper function encapsulates the common pattern of schema validation
@@ -400,7 +436,8 @@ class EXPORTED Syscollector final
         size_t promoteUnsyncedItems(const std::string& index,
                                     const std::string& tableName,
                                     size_t maxToPromote,
-                                    const std::string& reason);
+                                    const std::string& reason,
+                                    LimitScope scope);
 
         /**
          * @brief Promotes items after scan to fill available slots
@@ -411,6 +448,12 @@ class EXPORTED Syscollector final
          * Generates INSERT events for promoted items and marks them as sync=1.
          */
         void promoteItemsAfterScan();
+
+        /**
+         * @brief One scope's half of promoteItemsAfterScan(). Caller must hold
+         *        m_limitsMutex.
+         */
+        void promoteItemsAfterScanLocked(LimitScope scope);
 
         /**
          * @brief Gets simplified ordering fields for a table
@@ -445,6 +488,42 @@ class EXPORTED Syscollector final
         bool setDocumentLimits(const nlohmann::json& limits);
 
         /**
+         * @brief Sets the container-inventory document limits.
+         *
+         * Same short-name keys as setDocumentLimits(), applied to the container
+         * scope's own budget. Unknown keys are an error, as they are for the
+         * host — but the container scanner collects ten of the thirteen
+         * dimensions, so a manager sending `hotfixes`, `services` or
+         * `browser_extensions` here is misconfigured, not merely verbose.
+         *
+         * @param limits JSON object mapping short dimension names to limits.
+         * @return true if the limits were applied.
+         */
+        bool setContainerDocumentLimits(const nlohmann::json& limits);
+
+        /**
+         * @brief Applies one index's new limit within one scope: adjusts the
+         *        stored count, promotes unsynced rows into new space, and emits
+         *        DELETE events for rows a reduced limit no longer admits.
+         *
+         * Factored out of setDocumentLimits() so the host and container budgets
+         * run identical logic against their own rows. Caller must hold
+         * m_limitsMutex.
+         */
+        void applyDocumentLimit(const std::string& index,
+                                const std::string& tableName,
+                                size_t newLimit,
+                                LimitScope scope);
+
+        /**
+         * @brief Shared body of setDocumentLimits() and
+         *        setContainerDocumentLimits(): normalises agentd's short
+         *        dimension names to sync index names, then applies each to one
+         *        scope's budget.
+         */
+        bool applyLimitsForScope(const nlohmann::json& limits, LimitScope scope);
+
+        /**
          * @brief Fetches document limits from agentd
          *
          * Queries agentd for document limits configuration for the syscollector module.
@@ -461,6 +540,17 @@ class EXPORTED Syscollector final
          * @return Optional JSON with limits if available, empty optional otherwise
          */
         std::optional<nlohmann::json> fetchDocumentLimitsFromAgentd();
+
+        /**
+         * @brief Fetches the container-inventory document limits from agentd.
+         *
+         * Sends "getdoclimits syscollector_containers". Unlike its host
+         * counterpart this does NOT retry forever: a manager older than #37532
+         * has no such module, so an error is the expected steady state and
+         * blocking on it would stall startup. An empty optional means
+         * "unlimited", which is the pre-container-inventory behaviour.
+         */
+        std::optional<nlohmann::json> fetchContainerDocumentLimitsFromAgentd();
 
         /**
          * @brief Initializes document counts from database for all tables
@@ -536,6 +626,11 @@ class EXPORTED Syscollector final
 
         // Current document counts per index (tracks items with sync=1)
         std::map<std::string, size_t>                                            m_documentCounts;
+
+        // The same two, for rows attributed to a container. Separate budget, so
+        // container inventory cannot consume the host's — see LimitScope.
+        std::map<std::string, size_t>                                            m_containerDocumentLimits;
+        std::map<std::string, size_t>                                            m_containerDocumentCounts;
 
         // Mutex for thread-safe access to limits and counts
         std::mutex                                                               m_limitsMutex;

@@ -526,11 +526,15 @@ Syscollector::Syscollector()
         }
     });
 
-    // Initialize document limits to 0 (unlimited) for all indices
+    // Initialize document limits to 0 (unlimited) for all indices, in both
+    // scopes: a container row must find its own entry rather than fall through
+    // to the host's.
     for (const auto& [table, index] : INDEX_MAP)
     {
         m_documentLimits[index] = 0;
         m_documentCounts[index] = 0;
+        m_containerDocumentLimits[index] = 0;
+        m_containerDocumentCounts[index] = 0;
     }
 }
 
@@ -729,6 +733,19 @@ void Syscollector::start()
                 m_logFunction(LOG_ERROR, "Failed to apply document limits obtained from agentd");
                 return;
             }
+        }
+    }
+
+    // Container-inventory caps, if this manager knows about them. Fetched
+    // separately and non-blocking on purpose: a manager older than #37532 has
+    // no such agcom module, and "unlimited" is the correct answer there.
+    auto containerLimits = fetchContainerDocumentLimitsFromAgentd();
+
+    if (containerLimits.has_value() && !setContainerDocumentLimits(containerLimits.value()))
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Failed to apply container document limits obtained from agentd");
         }
     }
 
@@ -2135,7 +2152,31 @@ void Syscollector::runContainerBaselinePass()
 
     ScanGuard scanGuard(m_scanning, m_pauseCv);
 
+    // The document-limit bookkeeping scan() does around its collectors has to
+    // happen here too, and did not when this cadence was introduced
+    // (4b365c11d6). m_itemsToUpdateSync is only non-null inside scan(), so on
+    // this path checkDocumentLimit() had nowhere to record the rows it let
+    // through: they stayed sync=0 even with everything unlimited, which hid
+    // them from every sync=1 query (the counters, and VD's DataContext) and
+    // left the next host scan's promotion free to re-emit them as CREATEs it
+    // had already sent.
+    std::vector<std::pair<std::string, nlohmann::json>> itemsToUpdateSync;
+    m_itemsToUpdateSync = &itemsToUpdateSync;
+
+    std::vector<std::pair<std::string, nlohmann::json>> failedItems;
+    m_failedItems = &failedItems;
+
     scanContainerBaseline();
+
+    // Same order scan() uses: mark what passed, then fill any freed slots, then
+    // drop the pointers, then delete the rows that failed validation.
+    updateSyncFlagInDB(itemsToUpdateSync, 1);
+    promoteItemsAfterScan();
+
+    m_failedItems = nullptr;
+    m_itemsToUpdateSync = nullptr;
+
+    deleteFailedItemsFromDB(failedItems);
 }
 
 void Syscollector::scanContainerBaseline()
@@ -4151,7 +4192,218 @@ std::string Syscollector::query(const std::string& jsonQuery)
     }
 }
 
-bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
+const char* Syscollector::scopeFilter(LimitScope scope)
+{
+    // CONTAINER_ID_COLUMN is part of every table's primary key and is stamped
+    // '' for host rows (updateChanges() only fills it for container rows), so
+    // equality against the empty string is what separates the two populations.
+    return (scope == LimitScope::host) ? " AND container_id=''" : " AND container_id<>''";
+}
+
+std::map<std::string, size_t>& Syscollector::limitsFor(LimitScope scope)
+{
+    return (scope == LimitScope::host) ? m_documentLimits : m_containerDocumentLimits;
+}
+
+std::map<std::string, size_t>& Syscollector::countsFor(LimitScope scope)
+{
+    return (scope == LimitScope::host) ? m_documentCounts : m_containerDocumentCounts;
+}
+
+namespace
+{
+    /// The dbsync table backing a sync index, or "" when the index is unknown.
+    std::string TableForIndex(const std::string& index)
+    {
+        for (const auto& [table, syncIndex] : INDEX_MAP)
+        {
+            if (syncIndex == index)
+            {
+                return table;
+            }
+        }
+
+        return {};
+    }
+} // namespace
+
+void Syscollector::applyDocumentLimit(const std::string& index,
+                                      const std::string& tableName,
+                                      size_t newLimit,
+                                      LimitScope scope)
+{
+    const std::string scoped{scopeFilter(scope)};
+
+    // A SUFFIX, not spliced into the message. These strings are asserted on
+    // verbatim by syscollectorImp_test.cpp and are the kind of thing an
+    // operator greps for, so the host scope's messages stay byte-identical to
+    // what they were before container rows had a budget of their own.
+    const std::string scopeSuffix = (scope == LimitScope::host) ? "" : " [container]";
+
+    // Rows of THIS scope already counted against the manager. Every query below
+    // carries the scope predicate, so adjusting one budget never moves a row
+    // that belongs to the other.
+    size_t currentCount = 0;
+
+    if (m_spDBSync)
+    {
+        auto selectQuery = SelectQuery::builder()
+                           .table(tableName)
+                           .columnList({"COUNT(*)"})
+                           .rowFilter("WHERE sync=1" + scoped)
+                           .build();
+
+        m_spDBSync->selectRows(selectQuery.query(),
+                               [&currentCount](ReturnTypeCallback, const nlohmann::json & result)
+        {
+            if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
+            {
+                currentCount = result["COUNT(*)"].get<size_t>();
+            }
+        });
+    }
+
+    limitsFor(scope)[index] = newLimit;
+
+    if (newLimit == 0)
+    {
+        // No limit: promote ALL unsynced items of this scope.
+        if (m_persistDiffFunction)
+        {
+            std::string reason = "Document limit changed to unlimited" + scopeSuffix;
+            size_t promoted = promoteUnsyncedItems(index, tableName, INT_MAX, reason, scope);
+            countsFor(scope)[index] = currentCount + promoted;
+
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Document limit set to unlimited for index '" + index +
+                              "' (promoted " + std::to_string(promoted) + " unsynced items, total synced: " +
+                              std::to_string(currentCount + promoted) + ")" + scopeSuffix);
+            }
+        }
+
+        return;
+    }
+
+    if (newLimit < currentCount)
+    {
+        // Reduced below what is already reported: emit DELETE events for the
+        // excess and put those rows back to sync=0 so a later increase can
+        // promote them again.
+        size_t excessCount = currentCount - newLimit;
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Document limit reduced for index '" + index +
+                          "' from " + std::to_string(currentCount) + " to " + std::to_string(newLimit) +
+                          ". Resetting " + std::to_string(excessCount) + " excess records to sync=0." + scopeSuffix);
+        }
+
+        std::vector<nlohmann::json> excessRecords;
+        std::string orderFields = getFirstPrimaryKeyField(tableName);
+
+        if (orderFields.empty())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_ERROR, "Cannot determine ordering fields for table: " + tableName);
+            }
+
+            return;
+        }
+
+        // DESC: the rows a reduced cap drops are the ones at the far end of the
+        // same deterministic ordering promotion fills from, so a shrink and a
+        // regrow are inverses of each other.
+        std::string orderByClause = buildOrderByClause(orderFields, false);
+
+        auto selectQuery = SelectQuery::builder()
+                           .table(tableName)
+                           .columnList({"*"})
+                           .rowFilter("WHERE sync=1" + scoped)
+                           .orderByOpt(orderByClause)
+                           .countOpt(static_cast<uint32_t>(excessCount))
+                           .build();
+
+        m_spDBSync->selectRows(selectQuery.query(),
+                               [&excessRecords](ReturnTypeCallback, const nlohmann::json & result)
+        {
+            excessRecords.push_back(result);
+        });
+
+        if (!excessRecords.empty())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Generating DELETE events for " + std::to_string(excessRecords.size()) +
+                              " excess records from " + tableName);
+            }
+
+            for (const auto& record : excessRecords)
+            {
+                try
+                {
+                    auto [ecsDataTransformed, version] = ecsData(record, tableName);
+                    std::string statefulData = ecsDataTransformed.dump();
+                    std::string hashId = calculateHashId(record, tableName);
+
+                    m_persistDiffFunction(hashId, OPERATION_DELETE, index, statefulData, version);
+
+                    if (m_logFunction)
+                    {
+                        m_logFunction(LOG_DEBUG, "Generated DELETE event for excess record in " + tableName +
+                                      " (ID: " + hashId + ")");
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    if (m_logFunction)
+                    {
+                        m_logFunction(LOG_ERROR, "Failed to generate DELETE event for excess record in " + tableName +
+                                      ": " + std::string(e.what()));
+                    }
+                }
+            }
+
+            std::vector<std::pair<std::string, nlohmann::json>> itemsToReset;
+
+            for (const auto& record : excessRecords)
+            {
+                itemsToReset.push_back({tableName, record});
+            }
+
+            updateSyncFlagInDB(itemsToReset, 0);
+        }
+
+        countsFor(scope)[index] = newLimit;
+        return;
+    }
+
+    // newLimit >= currentCount: fill any new space from this scope's own
+    // unsynced backlog.
+    if (newLimit > currentCount && m_persistDiffFunction)
+    {
+        size_t availableSpace = newLimit - currentCount;
+        std::string reason = "Document limit increased from " + std::to_string(currentCount) +
+                             " to " + std::to_string(newLimit) + scopeSuffix;
+
+        size_t promoted = promoteUnsyncedItems(index, tableName, availableSpace, reason, scope);
+        countsFor(scope)[index] = currentCount + promoted;
+    }
+    else
+    {
+        countsFor(scope)[index] = currentCount;
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Document limit set for index '" + index + "': " +
+                          std::to_string(newLimit) +
+                          " (current synced count: " + std::to_string(currentCount) + ")" + scopeSuffix);
+        }
+    }
+}
+
+bool Syscollector::applyLimitsForScope(const nlohmann::json& limits, LimitScope scope)
 {
     try
     {
@@ -4175,7 +4427,6 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
                 return false;
             }
 
-            // Map agentd short name to full index name
             auto it = AGENTD_TO_INDEX_MAP.find(shortName);
 
             if (it == AGENTD_TO_INDEX_MAP.end())
@@ -4188,204 +4439,21 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
                 return false;
             }
 
-            // Store with full index name
             normalizedLimits[it->second] = limit;
         }
 
         std::lock_guard<std::mutex> lock(m_limitsMutex);
 
-        // Set new limits and adjust database records using normalized names
         for (auto& [index, limit] : normalizedLimits.items())
         {
-            size_t newLimit = limit.get<size_t>();
-
-            // Find table name for this index
-            std::string tableName;
-
-            for (const auto& [table, syncIndex] : INDEX_MAP)
-            {
-                if (syncIndex == index)
-                {
-                    tableName = table;
-                    break;
-                }
-            }
+            const std::string tableName = TableForIndex(index);
 
             if (tableName.empty())
             {
                 continue;
             }
 
-            // Count current records with sync=1
-            size_t currentCount = 0;
-
-            if (m_spDBSync)
-            {
-                auto selectQuery = SelectQuery::builder()
-                                   .table(tableName)
-                                   .columnList({"COUNT(*)"})
-                                   .rowFilter("WHERE sync=1")
-                                   .build();
-
-                m_spDBSync->selectRows(selectQuery.query(),
-                                       [&currentCount](ReturnTypeCallback, const nlohmann::json & result)
-                {
-                    // Result format: {"COUNT(*)": N}
-                    if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
-                    {
-                        currentCount = result["COUNT(*)"].get<size_t>();
-                    }
-                });
-            }
-
-            // Set the new limit
-            m_documentLimits[index] = newLimit;
-
-            // Reset document count based on new limit
-            if (newLimit == 0)
-            {
-                // No limit: promote ALL unsynced items
-                if (m_persistDiffFunction)
-                {
-                    std::string reason = "Document limit changed to unlimited";
-                    size_t promoted = promoteUnsyncedItems(index, tableName, INT_MAX, reason);
-                    m_documentCounts[index] = currentCount + promoted;
-
-                    if (m_logFunction)
-                    {
-                        m_logFunction(LOG_DEBUG, "Document limit set to unlimited for index '" + index +
-                                      "' (promoted " + std::to_string(promoted) + " unsynced items, total synced: " +
-                                      std::to_string(currentCount + promoted) + ")");
-                    }
-                }
-            }
-            else if (newLimit < currentCount)
-            {
-                // New limit is less than current count
-                // Need to reset sync=1 to sync=0 for excess records
-                size_t excessCount = currentCount - newLimit;
-
-                if (m_logFunction)
-                {
-                    m_logFunction(LOG_DEBUG, "Document limit reduced for index '" + index +
-                                  "' from " + std::to_string(currentCount) + " to " + std::to_string(newLimit) +
-                                  ". Resetting " + std::to_string(excessCount) + " excess records to sync=0.");
-                }
-
-                // Select excess records to reset (last records by ordering fields)
-                // Use DESC with COLLATE NOCASE for case-insensitive ordering
-                std::vector<nlohmann::json> excessRecords;
-                std::string orderFields = getFirstPrimaryKeyField(tableName);
-
-                if (orderFields.empty())
-                {
-                    if (m_logFunction)
-                    {
-                        m_logFunction(LOG_ERROR, "Cannot determine ordering fields for table: " + tableName);
-                    }
-
-                    continue;
-                }
-
-                std::string orderByClause = buildOrderByClause(orderFields, false); // DESC
-
-                auto selectQuery = SelectQuery::builder()
-                                   .table(tableName)
-                                   .columnList({"*"})
-                                   .rowFilter("WHERE sync=1")
-                                   .orderByOpt(orderByClause)
-                                   .countOpt(static_cast<uint32_t>(excessCount))
-                                   .build();
-
-                m_spDBSync->selectRows(selectQuery.query(),
-                                       [&excessRecords](ReturnTypeCallback, const nlohmann::json & result)
-                {
-                    excessRecords.push_back(result);
-                });
-
-                // Process excess records: generate DELETE events and reset sync flag
-                if (!excessRecords.empty())
-                {
-                    if (m_logFunction)
-                    {
-                        m_logFunction(LOG_DEBUG, "Generating DELETE events for " + std::to_string(excessRecords.size()) +
-                                      " excess records from " + tableName);
-                    }
-
-                    // Step 1: Generate stateful DELETE events for each excess record
-                    // This notifies the manager to remove these items from its inventory
-                    for (const auto& record : excessRecords)
-                    {
-                        try
-                        {
-                            // Transform to ECS format
-                            auto [ecsDataTransformed, version] = ecsData(record, tableName);
-                            std::string statefulData = ecsDataTransformed.dump();
-
-                            // Calculate hash ID for this record
-                            std::string hashId = calculateHashId(record, tableName);
-
-                            // Generate stateful DELETE event
-                            m_persistDiffFunction(hashId, OPERATION_DELETE, index, statefulData, version);
-
-                            if (m_logFunction)
-                            {
-                                m_logFunction(LOG_DEBUG, "Generated DELETE event for excess record in " + tableName +
-                                              " (ID: " + hashId + ")");
-                            }
-                        }
-                        catch (const std::exception& e)
-                        {
-                            if (m_logFunction)
-                            {
-                                m_logFunction(LOG_ERROR, "Failed to generate DELETE event for excess record in " + tableName +
-                                              ": " + std::string(e.what()));
-                            }
-                        }
-                    }
-
-                    // Step 2: Reset sync flag to 0 for these records
-                    std::vector<std::pair<std::string, nlohmann::json>> itemsToReset;
-
-                    for (const auto& record : excessRecords)
-                    {
-                        itemsToReset.push_back({tableName, record});
-                    }
-
-                    // Use shared method to update sync=0
-                    updateSyncFlagInDB(itemsToReset, 0);
-                }
-
-                // Update the in-memory counter to the new limit
-                m_documentCounts[index] = newLimit;
-            }
-            else
-            {
-                // New limit >= current count
-                // If there's space available (newLimit > currentCount), promote sync=0 records
-                if (newLimit > currentCount && m_persistDiffFunction)
-                {
-                    // Promote unsynced items to fill available space
-                    size_t availableSpace = newLimit - currentCount;
-                    std::string reason = "Document limit increased from " + std::to_string(currentCount) +
-                                         " to " + std::to_string(newLimit);
-
-                    size_t promoted = promoteUnsyncedItems(index, tableName, availableSpace, reason);
-                    m_documentCounts[index] = currentCount + promoted;
-                }
-                else
-                {
-                    // No space available or no persist function
-                    m_documentCounts[index] = currentCount;
-
-                    if (m_logFunction)
-                    {
-                        m_logFunction(LOG_DEBUG, "Document limit set for index '" + index + "': " +
-                                      std::to_string(newLimit) +
-                                      " (current synced count: " + std::to_string(currentCount) + ")");
-                    }
-                }
-            }
+            applyDocumentLimit(index, tableName, limit.get<size_t>(), scope);
         }
 
         return true;
@@ -4398,6 +4466,64 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
         }
 
         return false;
+    }
+}
+
+bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
+{
+    return applyLimitsForScope(limits, LimitScope::host);
+}
+
+bool Syscollector::setContainerDocumentLimits(const nlohmann::json& limits)
+{
+    return applyLimitsForScope(limits, LimitScope::container);
+}
+std::optional<nlohmann::json> Syscollector::fetchContainerDocumentLimitsFromAgentd()
+{
+    if (!m_agentdQuery)
+    {
+        return std::nullopt;
+    }
+
+    constexpr auto REQUEST_COMMAND = "getdoclimits syscollector_containers";
+
+    // ONE attempt, unlike the host limits' retry-until-success loop. An older
+    // manager answers "err Module limits not configured" forever, and blocking
+    // startup on a module that may legitimately not exist would be a hang, not
+    // a safeguard. Unlimited is the pre-container-inventory behaviour.
+    std::string response_buffer;
+    response_buffer.resize(OS_MAXSTR);
+
+    if (!m_agentdQuery(REQUEST_COMMAND, response_buffer.data(), response_buffer.size()))
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG,
+                          "No container document limits from agentd; container inventory stays unlimited.");
+        }
+
+        return std::nullopt;
+    }
+
+    try
+    {
+        auto limitsJson = nlohmann::json::parse(response_buffer);
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Container document limits received: " + limitsJson.dump());
+        }
+
+        return limitsJson;
+    }
+    catch (const nlohmann::json::exception& ex)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Failed to parse container document limits JSON: " + std::string(ex.what()));
+        }
+
+        return std::nullopt;
     }
 }
 
@@ -4500,30 +4626,36 @@ void Syscollector::initializeDocumentCounts()
 
             const std::string& index = indexIt->second;
 
-            // Count records with sync=1
-            auto selectQuery = SelectQuery::builder()
-                               .table(table)
-                               .columnList({"COUNT(*)"})
-                               .rowFilter("WHERE sync=1")
-                               .build();
-
-            size_t count = 0;
-            m_spDBSync->selectRows(selectQuery.query(),
-                                   [&count](ReturnTypeCallback, const nlohmann::json & result)
+            // Once per scope: host and container rows live in the same table and
+            // the same sync index, so one COUNT(*) would credit the host budget
+            // with every container row already reported.
+            for (const auto scope : {LimitScope::host, LimitScope::container})
             {
-                // Result format: {"COUNT(*)": N}
-                if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
+                auto selectQuery = SelectQuery::builder()
+                                   .table(table)
+                                   .columnList({"COUNT(*)"})
+                                   .rowFilter(std::string{"WHERE sync=1"} + scopeFilter(scope))
+                                   .build();
+
+                size_t count = 0;
+                m_spDBSync->selectRows(selectQuery.query(),
+                                       [&count](ReturnTypeCallback, const nlohmann::json & result)
                 {
-                    count = result["COUNT(*)"].get<size_t>();
+                    // Result format: {"COUNT(*)": N}
+                    if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
+                    {
+                        count = result["COUNT(*)"].get<size_t>();
+                    }
+                });
+
+                countsFor(scope)[index] = count;
+
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_DEBUG, "Initialized document count for index '" + index +
+                                  "': " + std::to_string(count) +
+                                  ((scope == LimitScope::host) ? "" : " [container]"));
                 }
-            });
-
-            m_documentCounts[index] = count;
-
-            if (m_logFunction)
-            {
-                m_logFunction(LOG_DEBUG, "Initialized document count for index '" + index +
-                              "': " + std::to_string(count));
             }
         }
         catch (const std::exception& ex)
@@ -4550,13 +4682,24 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
 
     const std::string& index = indexIt->second;
 
+    // Which budget this row spends. A container row carries a non-empty
+    // container_id (updateChanges() stamps it from the PK), and the two
+    // populations share this index but not a cap — otherwise fifty containers'
+    // processes can consume the whole host `processes` limit and starve the
+    // agent's own rows, with the survivors decided by scan order.
+    const bool isContainerRow = data.contains(CONTAINER_ID_COLUMN) &&
+                                data[CONTAINER_ID_COLUMN].is_string() &&
+                                !data[CONTAINER_ID_COLUMN].get<std::string>().empty();
+    const LimitScope scope = isContainerRow ? LimitScope::container : LimitScope::host;
+
     std::lock_guard<std::mutex> lock(m_limitsMutex);
 
     // Get configured limit (0 = no limit)
     size_t limit = 0;
-    auto limitIt = m_documentLimits.find(index);
+    auto& limits = limitsFor(scope);
+    auto limitIt = limits.find(index);
 
-    if (limitIt != m_documentLimits.end())
+    if (limitIt != limits.end())
     {
         limit = limitIt->second;
     }
@@ -4601,9 +4744,9 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
         if (isAlreadySynced)  // sync=1
         {
             // Decrement counter immediately to free up slot
-            if (limit > 0 && m_documentCounts[index] > 0)
+            if (limit > 0 && countsFor(scope)[index] > 0)
             {
-                m_documentCounts[index]--;
+                countsFor(scope)[index]--;
             }
 
             return true;  // Generate DELETE event
@@ -4628,19 +4771,25 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
 size_t Syscollector::promoteUnsyncedItems(const std::string& index,
                                           const std::string& tableName,
                                           size_t maxToPromote,
-                                          const std::string& reason)
+                                          const std::string& reason,
+                                          LimitScope scope)
 {
     if (maxToPromote == 0 || !m_spDBSync)
     {
         return 0;
     }
 
+    // Scoped, and it matters: without the predicate a host budget with space
+    // would promote CONTAINER rows into it, reporting them against the host's
+    // cap and leaving the container's own backlog untouched.
+    const std::string scoped{scopeFilter(scope)};
+
     // Count items with sync=0
     size_t unsyncedCount = 0;
     auto countQuery = SelectQuery::builder()
                       .table(tableName)
                       .columnList({"COUNT(*)"})
-                      .rowFilter("WHERE sync=0")
+                      .rowFilter("WHERE sync=0" + scoped)
                       .build();
 
     m_spDBSync->selectRows(countQuery.query(),
@@ -4691,7 +4840,7 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
     auto selectQuery = SelectQuery::builder()
                        .table(tableName)
                        .columnList({"*"})
-                       .rowFilter("WHERE sync=0")
+                       .rowFilter("WHERE sync=0" + scoped)
                        .orderByOpt(orderByClause)
                        .countOpt(static_cast<uint32_t>(toPromote))
                        .build();
@@ -4755,25 +4904,21 @@ void Syscollector::promoteItemsAfterScan()
 {
     std::lock_guard<std::mutex> lock(m_limitsMutex);
 
+    promoteItemsAfterScanLocked(LimitScope::host);
+    promoteItemsAfterScanLocked(LimitScope::container);
+}
+
+void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
+{
     // For each index with a limit, promote items to fill available slots
-    for (const auto& [index, limit] : m_documentLimits)
+    for (const auto& [index, limit] : limitsFor(scope))
     {
         if (limit == 0)
         {
             continue;  // No limit, skip
         }
 
-        // Find table name for this index
-        std::string tableName;
-
-        for (const auto& [table, syncIndex] : INDEX_MAP)
-        {
-            if (syncIndex == index)
-            {
-                tableName = table;
-                break;
-            }
-        }
+        const std::string tableName = TableForIndex(index);
 
         if (tableName.empty())
         {
@@ -4781,7 +4926,7 @@ void Syscollector::promoteItemsAfterScan()
         }
 
         // Current count is already updated by DELETEs during scan
-        size_t currentCount = m_documentCounts[index];
+        size_t currentCount = countsFor(scope)[index];
 
         // Calculate available space
         size_t availableSpace = (currentCount < limit) ? (limit - currentCount) : 0;
@@ -4806,17 +4951,18 @@ void Syscollector::promoteItemsAfterScan()
         }
 
         // Promote first availableSpace items with sync=0 using deterministic order
-        std::string reason = "Post-scan promotion";
-        size_t promoted = promoteUnsyncedItems(index, tableName, availableSpace, reason);
+        std::string reason = std::string{"Post-scan promotion"} +
+                             ((scope == LimitScope::host) ? "" : " [container]");
+        size_t promoted = promoteUnsyncedItems(index, tableName, availableSpace, reason, scope);
 
         // Update counter with promoted items
-        m_documentCounts[index] = currentCount + promoted;
+        countsFor(scope)[index] = currentCount + promoted;
 
         if (m_logFunction && promoted > 0)
         {
             m_logFunction(LOG_DEBUG_VERBOSE, "Successfully promoted " + std::to_string(promoted) +
                           " items for index '" + index + "' (new count: " +
-                          std::to_string(m_documentCounts[index]) + ")");
+                          std::to_string(countsFor(scope)[index]) + ")");
         }
     }
 }

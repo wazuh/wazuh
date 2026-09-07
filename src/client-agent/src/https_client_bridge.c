@@ -252,6 +252,26 @@ static bool bridge_parse_syscollector_limits(const cJSON *limits_obj, syscollect
            bridge_get_required_int(module, "browser_extensions", &syscollector->browser_extensions);
 }
 
+static bool bridge_parse_syscollector_containers_limits(const cJSON *limits_obj,
+                                                        syscollector_containers_limits_t *containers)
+{
+    cJSON *module = cJSON_GetObjectItem(limits_obj, "syscollector_containers");
+    if (!module || !cJSON_IsObject(module)) {
+        return false;
+    }
+
+    return bridge_get_required_int(module, "processes", &containers->processes) &&
+           bridge_get_required_int(module, "ports", &containers->ports) &&
+           bridge_get_required_int(module, "packages", &containers->packages) &&
+           bridge_get_required_int(module, "users", &containers->users) &&
+           bridge_get_required_int(module, "groups", &containers->groups) &&
+           bridge_get_required_int(module, "os_info", &containers->os_info) &&
+           bridge_get_required_int(module, "network_iface", &containers->network_iface) &&
+           bridge_get_required_int(module, "network_protocol", &containers->network_protocol) &&
+           bridge_get_required_int(module, "network_address", &containers->network_address) &&
+           bridge_get_required_int(module, "hardware", &containers->hardware);
+}
+
 static bool bridge_parse_sca_limits(const cJSON *limits_obj, sca_limits_t *sca)
 {
     cJSON *module = cJSON_GetObjectItem(limits_obj, "sca");
@@ -273,6 +293,14 @@ static bool bridge_parse_limits(const cJSON *root, module_limits_t *limits)
         !bridge_parse_syscollector_limits(limits_obj, &limits->syscollector) ||
         !bridge_parse_sca_limits(limits_obj, &limits->sca)) {
         return false;
+    }
+
+    /* OPTIONAL, unlike the three above: a manager older than #37532 sends no
+     * "syscollector_containers" object, and failing the whole handshake over a
+     * field it has never heard of would break every such pairing. The struct is
+     * already initialised to unlimited, which is the right answer in that case. */
+    if (!bridge_parse_syscollector_containers_limits(limits_obj, &limits->syscollector_containers)) {
+        mdebug1("Handshake carries no 'syscollector_containers' limits; container inventory stays unlimited.");
     }
 
     limits->limits_received = true;
