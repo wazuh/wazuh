@@ -3642,6 +3642,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     test_logr.https.certificate = "/etc/remoted-https/server.crt";
     test_logr.https.key = "/etc/remoted-https/server.key";
     test_logr.https.ca = "/etc/remoted-https/ca.crt";
+    test_logr.https.ca_certificate = "/etc/remoted-https/listener-ca.crt";
     test_logr.https.ciphers = "HIGH:!ADH";
     test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
     test_logr.https.max_body_size = 12345;
@@ -3705,6 +3706,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_string_equal(rm_config.certificate_path, "/etc/remoted-https/server.crt");
     assert_string_equal(rm_config.private_key_path, "/etc/remoted-https/server.key");
     assert_string_equal(rm_config.ca_path, "/etc/remoted-https/ca.crt");
+    assert_string_equal(rm_config.ca_certificate_path, "/etc/remoted-https/listener-ca.crt");
     assert_string_equal(rm_config.ciphers, "HIGH:!ADH");
     // cluster_name is populated by HandleSecure() itself, not this helper.
     assert_string_equal(rm_config.cluster_name, "");
@@ -3783,8 +3785,8 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     remoted test_logr;
     memset(&test_logr, 0, sizeof(test_logr));
     test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
-    // bind_addr/global_prefix/certificate/key/ca/ciphers left NULL, as when <https> is entirely
-    // absent. For global_prefix the empty buffer IS the compatibility contract: an upgraded conf
+    // bind_addr/global_prefix/certificate/key/ca/ca_certificate/ciphers left NULL, as when <https> is
+    // entirely absent. For global_prefix the empty buffer IS the compatibility contract: an upgraded conf
     // without the tag keeps serving unprefixed endpoints (the module resolves "" to "/").
 
     will_return(__wrap_getDefine_Int_default, 0);
@@ -3836,6 +3838,7 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     assert_string_equal(rm_config.certificate_path, "");
     assert_string_equal(rm_config.private_key_path, "");
     assert_string_equal(rm_config.ca_path, "");
+    assert_string_equal(rm_config.ca_certificate_path, "");
     assert_string_equal(rm_config.ciphers, "");
 
     assert_false(rm_config.enrollment_enabled);

@@ -192,6 +192,20 @@ Path to a CA bundle (PEM) used to verify client (agent) certificates.
 - **Note:** Only actually read when `verification_mode` is `certificate`; harmless
   if left at its default and `verification_mode` stays `none`. See the special case below.
 
+### https.ca_certificate
+
+Path to the CA certificate (PEM) that signs the listener certificate (`certificate`). It is the
+certificate the manager serves on `GET /cacerts` and the one enrollment tokens pin, so agents can
+verify the listener without an out-of-band CA copy.
+
+- **Default value:** `etc/certs/root-ca.pem` (relative to the manager's chroot; the installer
+  generates this CA and writes the option explicitly)
+- **Note:** this is **not** the client-verification CA (`ca`): `ca` verifies agent certificates,
+  `ca_certificate` is what agents use to verify the manager. An empty value is rejected at startup
+  (`(1244): Invalid configuration at '/remote/https/ca_certificate': does not satisfy 'minLength'`).
+  The file is not required to exist for the manager to start: when it is missing, `GET /cacerts`
+  answers 404.
+
 ### https.verification_mode
 
 Client-certificate verification strictness.

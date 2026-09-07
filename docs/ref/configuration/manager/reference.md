@@ -65,6 +65,7 @@ wazuh-manager-remoted listeners.
 | `https.certificate` | string | `etc/certs/remoted.pem` |  | Server certificate (PEM). |
 | `https.key` | string | `etc/certs/remoted-key.pem` |  | Server private key (PEM). Must be set together with 'certificate'. |
 | `https.ca` | string | `""` |  | CA bundle used to verify agent certificates. Empty = client certificate verification disabled. |
+| `https.ca_certificate` | string | `etc/certs/root-ca.pem` | not empty | CA certificate that signs the listener certificate; served on GET /cacerts and pinned by enrollment tokens. Not the client-verification CA ('ca'). |
 | `https.verification_mode` | enum |  | one of `none`, `certificate`, `full` | Agent certificate verification. Absent: 'certificate' when 'ca' is set, 'none' otherwise. |
 | `https.ciphers` | string |  | `^TLS_[A-Z0-9_]+(:TLS_[A-Z0-9_]+)*$` | TLS 1.3 cipher suites. Absent: library default. |
 | `https.max_body_size` | integer or string |  | >= 1; `^[0-9]+[bBkKmMgG]?$` | Maximum HTTP request body. Absent: module default. |
