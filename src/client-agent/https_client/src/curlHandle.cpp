@@ -350,17 +350,20 @@ namespace
                 }
 
                 // libcurl kept the pointer rather than copying it, so drop it
-                // before the buffer goes out of scope.
-                if (errorBufferSet)
+                // before the buffer goes out of scope. If it cannot be dropped the
+                // handle still points at a dead stack buffer, so retire the handle
+                // instead of letting a later perform() write there: libcurl rejects
+                // a null handle, so every subsequent call on it fails cleanly.
+                if (errorBufferSet &&
+                        curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, nullptr) != CURLE_OK)
                 {
-                    const auto resetResult = curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, nullptr);
-
-                    if (resetResult != CURLE_OK)
-                    {
-                        LOGFN_DEBUG1(handleLogFn(),
-                                     "Failed to reset CURLOPT_ERRORBUFFER: %s",
-                                     curl_easy_strerror(resetResult));
-                    }
+                    // LCOV_EXCL_START: setting CURLOPT_ERRORBUFFER to null cannot be made to fail.
+                    LOGFN_DEBUG1(handleLogFn(), "Could not reset CURLOPT_ERRORBUFFER, retiring handle");
+                    curl_easy_cleanup(m_handle);
+                    m_handle = nullptr;
+                    m_lastError = "CURLOPT_ERRORBUFFER could not be reset";
+                    return TransportStatus::OtherError;
+                    // LCOV_EXCL_STOP
                 }
 
                 return statusFromCurlCode(code);
