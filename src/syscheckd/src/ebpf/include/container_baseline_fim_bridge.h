@@ -43,6 +43,7 @@ void fim_report_container_baseline_result(int baselined,
  * macros clash with the C++ headers it needs), so it routes its messages
  * through these. */
 void fim_container_baseline_log_debug(const char* message);
+void fim_container_baseline_log_warn(const char* message);
 void fim_container_baseline_log_error(const char* message);
 
 /* Install-relative location of the eBPF Module's compiled BPF object, mirroring
