@@ -24,6 +24,7 @@
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
+#include "ferror_wrapper.h"
 #include "sha256_op.h"
 
 /* hc_create/hc_start/hc_destroy mocks (no pre-existing wrapper for this ABI):
