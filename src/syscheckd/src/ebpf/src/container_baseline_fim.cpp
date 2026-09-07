@@ -59,6 +59,11 @@ void LogDebug(const char* msg)
     fim_container_baseline_log_debug(msg);
 }
 
+void LogWarn(const char* msg)
+{
+    fim_container_baseline_log_warn(msg);
+}
+
 void LogError(const char* msg)
 {
     fim_container_baseline_log_error(msg);
@@ -617,6 +622,19 @@ extern "C" void fim_run_container_baseline(void)
 
 extern "C" void fim_container_events_start(void)
 {
+    // Nothing tagged "container" means nothing to subscribe to: skip the engine
+    // entirely rather than attach a BPF program whose events would all be
+    // discarded. fim_collect_container_monitored_paths() logs the reason.
+    cb_monitored_path_t* paths      = nullptr;
+    size_t               path_count = 0;
+
+    if (fim_collect_container_monitored_paths(&paths, &path_count) != 0) return;
+
+    const bool configured = paths != nullptr && path_count > 0U;
+    fim_free_container_monitored_paths(paths);
+
+    if (!configured) return;
+
     // Subscribe-first: this runs BEFORE the baseline walk, so a file changed
     // while the walk is in progress is staged and reconciled afterwards instead
     // of falling into the gap between "the walk read this file" and "monitoring
@@ -633,6 +651,20 @@ extern "C" void fim_container_events_start(void)
 
     try {
         if (!fim_container_events::ContainerEventDrain::instance().start(config, ReconcileBatch)) {
+            // A WARNING, not a debug line, and only reachable once we know the
+            // operator asked for container FIM. Without the drain there is no
+            // change detection at all: fim_run_container_baseline() is called
+            // once from main() and the only thing that re-runs it is the
+            // drain's own rebaselineAll, so container FIM degrades to a
+            // startup snapshot that never updates.
+            //
+            // This being a debug line is how the missing rt_file.bpf.o install
+            // rule survived to 1bdfb0990e unnoticed, and the object still has
+            // no supply in the packaging pipeline (see 14 §14.6), so the
+            // degradation has to be visible in ossec.log.
+            LogWarn("Container FIM: the eBPF event engine could not start, so container file "
+                    "changes will NOT be detected after the initial baseline. Container "
+                    "directories are configured, so this is a degradation, not a no-op.");
             return;
         }
     } catch (const std::exception& err) {
