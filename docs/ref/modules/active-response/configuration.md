@@ -66,13 +66,11 @@ dashboard:
    document per matching event into `wazuh-active-responses`.
 
 The manager's part is the poller in `wazuh-manager-clusterd`, described in
-[Manager-side ingestion](architecture.md#manager-side-ingestion). Its only setting is internal, in
-`framework/wazuh/core/cluster/cluster.json`, a file that is not meant for user editing and is
-replaced on upgrade:
-
-| Key | Default | Meaning |
-|---|---|---|
-| `intervals.common.active_response_polling` | `30` | Seconds between two reads of `wazuh-active-responses*`, on every node |
+[Manager-side ingestion](architecture.md#manager-side-ingestion). Its settings are internal, in
+`intervals.common` of `framework/wazuh/core/cluster/cluster.json`, a file that is not meant for user
+editing and is replaced on upgrade: `active_response_polling`, `active_response_page_size` and
+`active_response_event_grace`. Defaults and trade-offs are in
+[Settings](architecture.md#settings).
 
 Manager-side log lines are in `logs/cluster.log` under the `[Active Response]` tag; the message
 catalogue is in the same section of the architecture page.

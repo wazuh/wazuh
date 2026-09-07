@@ -30,7 +30,7 @@ sequenceDiagram
     NO->>DS: index (op_type=create)
     loop every active_response_polling seconds, on every node
         CD->>DS: search after the bookmark, sorted by [@timestamp, _id], bounded at now
-        DS-->>CD: page (up to 1000 documents)
+        DS-->>CD: page (up to active_response_page_size documents)
         CD->>CD: validate against AR_SCHEMA, discard what fails
         CD->>DS: mget the referenced events (event.index, event.doc_id)
         CD->>CD: merge event and response into the payload, resolve target agents
@@ -182,7 +182,8 @@ unusable further down.
 
 Each cycle runs one `search` on `wazuh-active-responses*`:
 
-- sorted by `[@timestamp, _id]` ascending, `search_after` the bookmark, up to 1000 documents;
+- sorted by `[@timestamp, _id]` ascending, `search_after` the bookmark, up to
+  `active_response_page_size` documents (1000 by default);
 - bounded above by the node's clock (`@timestamp <= now`), so a document stamped in the future is
   not read until its time comes and cannot move the cursor past everything created before it;
 - on the very first run of a node, bounded below by that instant (`only_events_after`), so a fresh
@@ -213,8 +214,8 @@ Two things follow, and both are deliberate:
 - **The page is held, and read again next cycle, in exactly two cases.** A Task Manager that cannot
   be reached, because nothing was decided about any document and so nothing may be skipped; and a
   referenced event that is not visible yet: the event is written to another index by another
-  pipeline, so for up to `EVENT_VISIBILITY_GRACE_SECONDS` (120) after the response's `@timestamp`
-  the cursor stops short of it. Past that age the reference is taken as broken and the document is
+  pipeline, so for up to `active_response_event_grace` seconds (120 by default) after the
+  response's `@timestamp` the cursor stops short of it. Past that age the reference is taken as broken and the document is
   discarded. While a page is held, the documents on it are dispatched again on the next cycle; the
   deterministic task id makes that harmless.
 
@@ -239,6 +240,18 @@ because the Task Manager derives the task id from `source_id` (the document's `_
 the type and `create_time`; see [Task Manager](../task_manager/README.md). The corollary is that
 every node reads every document: a document that stalls a cycle stalls it fleet-wide, at once.
 
+### Settings
+
+All three live in `intervals.common` of `framework/wazuh/core/cluster/cluster.json`, an internal
+file that is replaced on upgrade. A missing key falls back to its default with a `WARNING`, and so
+does a value out of range.
+
+| Key | Default | Meaning | Trade-off |
+|---|---|---|---|
+| `active_response_polling` | `30` | Seconds between two reads, on every node | Shorter means faster delivery and more searches per node |
+| `active_response_page_size` | `1000` | Documents per read; a positive integer | Larger means fewer round trips and a longer distance between two cursor writes, so more documents are dispatched again after a hold or a crash |
+| `active_response_event_grace` | `120` | Seconds a response may wait for its event to become visible before it is discarded; `0` disables the hold | Longer tolerates slower event ingest at the cost of delaying every response behind the held one |
+
 ### Messages
 
 All lines are in `logs/cluster.log`, tagged `[Active Response]`. Every path that loses a response
@@ -251,7 +264,7 @@ each task and each hold.
 | INFO | `Created N task(s) from M active response(s).` | tasks created this cycle, out of the responses that reached dispatch | nothing; an `M` smaller than the page means documents were discarded above it, each with its own WARNING |
 | WARNING | ``Discarding active response document `<id>` (`<index>`). Reason: <schema error>`` | the document fails `AR_SCHEMA`; terminal | fix the channel, or the client that wrote the document; the document itself is skipped |
 | WARNING | ``Active response `<id>` carries no usable event reference. Discarding it.`` | `event.index` or `event.doc_id` missing, empty or not a string; terminal | same |
-| WARNING | ``Expected event `<doc_id>` (`<index>`) not found after 120s. Discarding active response `<id>`.`` | the referenced event never became visible; terminal | check that the monitored index still holds the event; a wrong `event.index` lands here once the response is older than the grace window |
+| WARNING | ``Expected event `<doc_id>` (`<index>`) not found after <grace>s. Discarding active response `<id>`.`` | the referenced event never became visible; terminal | check that the monitored index still holds the event; a wrong `event.index` lands here once the response is older than the grace window |
 | WARNING | ``Expected event `<doc_id>` (`<index>`) not found, and the response carries no readable @timestamp. Discarding active response `<id>`.`` | same, with no age to wait on | same |
 | WARNING | `AR document <id> missing @timestamp, skipping` | no `@timestamp`; terminal | the document was not written by the notification channel |
 | ERROR | `Failed to parse @timestamp '<value>' from AR <id>: <error>` | `@timestamp` is not ISO 8601; terminal | same |
@@ -260,6 +273,8 @@ each task and each hold.
 | ERROR | ``Failed to create task for agent `<agent>`: <error>`` | the Task Manager could not be reached; transient | check `wazuh-manager-modulesd`; the page is held, see the next row |
 | WARNING | `Task Manager was unreachable for at least one active response. Holding the cursor so this page is read again on the next cycle.` | hold, transport case | resolves on its own once the Task Manager answers |
 | WARNING | ``Active response bookmark `<path>` points at <ts>, ahead of the present instant. Capping it at <now>; …`` | the cursor was ahead of this node's clock; capped and saved | check the clocks; responses stamped between the two instants were skipped |
+| WARNING | `Missing in cluster configuration (intervals.common): <keys>. Using defaults: <key=value, …>.` | `cluster.json` lacks one of the three settings; defaults apply | restore the shipped `cluster.json`, or add the keys |
+| WARNING | `<key> must be <constraint>, got <value>. Using default: <n>.` | a setting is out of range; its default applies | fix the value |
 | WARNING | `Cannot connect to Wazuh Indexer` | the indexer client could not be built or connected | transient; retried after the polling interval |
 | ERROR | `Error fetching agents: <error>` | `wazuh-db` did not answer the agent list; a `location: all` response on this page is dispatched to nobody and lost | check `wazuh-manager-db` |
 | ERROR | `Error during active response processing: <error>.` | an exception escaped the cycle; the cursor did not move | a poller defect; report it with the `_id`s on the page |
