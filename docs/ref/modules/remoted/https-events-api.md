@@ -304,8 +304,8 @@ the intermediary — see [Load balancers](load-balancers/README.md).
 
 ## Endpoints
 
-The listener exposes **nine** agent-facing routes. Every one of them except `GET /` and
-`POST /enroll` is authenticated with the bearer token above.
+The listener exposes **ten** agent-facing routes. Every one of them except `GET /`, `GET /cacerts`
+and `POST /enroll` is authenticated with the bearer token above.
 
 Every path on this page is the endpoint's **logical** path. When
 [`remote.https.global_prefix`](configuration.md#httpsglobal_prefix) is configured (freshly
@@ -322,6 +322,14 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
 
 - **`GET /`** — unauthenticated health probe. Returns `200` with
   `{"status":"ok","module":"remoted"}`.
+- **`GET /cacerts`** — unauthenticated CA distribution: the PEM configured as
+  [`remote.https.ca_certificate`](configuration.md#httpsca_certificate) (the CA that signs the
+  listener certificate), byte for byte, as `Content-Type: application/x-pem-file`, so an agent can
+  bootstrap trust in the manager before it holds any credential. Returns **`200`** with the PEM,
+  **`404`** `{"error":"not_found"}` when the file is missing, unreadable or carries no certificate,
+  or **`503`** `{"error":"ca_mismatch"}` when the configured CA does not sign the certificate this
+  listener serves — refusing to hand out a CA that would make every verifying agent fail. See
+  [CA certificate endpoint](#ca-certificate-endpoint-get-cacerts) below.
 - **`POST /stateless`** — authenticated event ingestion. Once the signature is verified, the module
   cross-checks the H line's `wazuh.agent.id` against the authenticated `agent-id` (**`400`** on a
   missing/malformed header or a mismatch); only then does it forward the H/E batch to the engine's
@@ -380,7 +388,7 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
   `{id,name,ip,key}` on success, or a mapped `4xx`/`5xx` on failure. See
   [Enrollment endpoint](#enrollment-endpoint-post-enroll) below for details.
 
-The machine-readable contract is published as OpenAPI, covering all nine routes — see the
+The machine-readable contract is published as OpenAPI, covering all ten routes — see the
 [endpoint reference](agent-api-reference.html) (source: [`agent-api.yaml`](agent-api.yaml)).
 
 ## Configuration
@@ -1360,6 +1368,50 @@ Every `503` means the same thing to the agent: not accepted, retry on the next r
 Auth failures reuse the same responses as `/stateless`. Neither route is timed in the
 `remoted.http.*.latency` histograms — they share `/stateful`'s downstream and produce no new answer of
 their own; see [Metrics](metrics.md).
+
+## CA certificate endpoint (`GET /cacerts`)
+
+The listener's certificate is signed by a manager CA (the installer provisions `etc/certs/root-ca.pem`
+and a CA-signed `remoted.pem`; the CA is configured as
+[`remote.https.ca_certificate`](configuration.md#httpsca_certificate)). `GET /cacerts` hands that
+CA out, so an agent can bootstrap trust in the manager — fetch the CA once, then verify every later
+connection against it — without an out-of-band copy of the PEM.
+
+**No authentication, no `protocol-version`, no body.** By construction the caller holds no
+credential yet. Anything sent besides the target (a body, an `Authorization` header) is ignored. The
+route is exempt from the in-flight byte budget like `GET /`, so the bootstrap is never shed under
+memory pressure, and it is served under the [global prefix](#endpoints) like every other route
+(`GET /wazuh-manager/cacerts` with the shipped configuration; the bare path answers `404`).
+
+| Outcome | HTTP | Body | Meaning |
+| --- | --- | --- | --- |
+| Served | `200` | the PEM file, byte for byte, `Content-Type: application/x-pem-file` | The CA the listener chains to. A bundle is served as a bundle |
+| No CA | `404` | `{"error":"not_found"}` | The configured file is missing, unreadable, or carries no `-----BEGIN CERTIFICATE-----` block. Same body as an unknown route; the manager log names the file |
+| Incoherent CA | `503` | `{"error":"ca_mismatch"}` | The configured CA does **not** sign the certificate this listener is serving. Refused rather than served: handing it out would make every verifying agent fail its handshake against this very manager |
+
+**What the coherence check compares.** The leaf is the certificate loaded into the TLS context when
+the listener started (constant until a restart); the CA is re-read from disk at each evaluation,
+and every `CERTIFICATE` block in the file counts — the CA is coherent when *any* of them signed the
+leaf, so a bundle carrying the signing CA plus others passes. It is a signature check, not a full
+chain validation: dates and constraints are the agent's verifier's business.
+
+**Cadence.** Evaluated once when the listener starts (before it accepts anything) and once every
+24 hours afterwards, together with the certificate's own expiry; each evaluation re-logs its findings
+(an ERROR when the CA does not sign the leaf or the leaf has expired, a WARN when the CA is unreadable
+or the leaf expires within 30 days). The file itself is read on **every request**, so a CA that goes
+missing is a `404` immediately and one that comes back is served immediately. The one case the
+cadence leaves open is a *different but valid* CA written over the file while remoted runs: it is
+served until the next evaluation or a restart. Rotate the CA and the certificate together and restart
+remoted — a rotation is exactly the moment the `503` guard exists for.
+
+**Trust on first use.** The channel the CA travels over is, by definition, not yet verified. An
+agent that already holds a CA MUST NOT replace it from this route, and a deployment that can
+distribute the CA out of band SHOULD.
+
+**Observability.** `remoted.cacerts.{served,not_found,ca_mismatch}` count the outcomes,
+`remoted.http.cacerts.responses.*` the statuses, and the two `remoted.server.tls.*` pulls publish the
+evaluation itself (`cert_expiry_days`, negative once expired, and `ca_matches_leaf`) — see
+[Metrics](metrics.md#tls-listener-certificate--remotedservertls).
 
 ## Testing
 

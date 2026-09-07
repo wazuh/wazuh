@@ -42,6 +42,7 @@
 #include "downstream/downstreamConfig.hpp"
 #include "downstream/forwarderMetrics.hpp"
 #include "endpoints/authGateway.hpp"
+#include "endpoints/cacertsEndpoint.hpp"
 #include "endpoints/configEndpoint.hpp"
 #include "endpoints/controlEndpoint.hpp"
 #include "endpoints/downloadEndpoint.hpp"
@@ -380,6 +381,31 @@ private:
                std::shared_ptr<remoted::http::IHttpResponder> responder)
             { responder->send(remoted::http::HttpResponse::json(200, R"({"status":"ok","module":"remoted"})")); },
             /*countAgainstBudget=*/false);
+
+        // /cacerts: the CA that signs this listener's certificate (remote.https.ca_certificate),
+        // served as-is so an agent can bootstrap trust in the manager (RF-27). No auth (the caller
+        // has no key yet), no body, no gateway; budget-exempt like the probe above, because a trust
+        // bootstrap must not be shed under memory pressure. The handler re-reads the file per request
+        // (404 when it is gone) and asks the transport whether that CA still signs the served leaf --
+        // evaluated at start and daily -- refusing with 503 when it does not, rather than handing out
+        // a CA agents cannot chain this very listener to. Weak server pointer: the route must not
+        // keep the server alive, and after stop() resets m_httpServer the status reads "unknown".
+        m_httpServer->addRoute(remoted::http::Method::Get,
+                               "/cacerts",
+                               remoted::endpoints::cacerts::makeHandler(
+                                   config.caCertificatePath,
+                                   [weak = std::weak_ptr<remoted::http::IHttpServer>(
+                                        m_httpServer)]() -> remoted::http::TlsCertificateSnapshot
+                                   {
+                                       if (const auto server = weak.lock())
+                                       {
+                                           return server->certificateStatus();
+                                       }
+                                       return {};
+                                   },
+                                   m_cacertsMetrics,
+                                   &m_cacertsHttpMetrics),
+                               /*countAgainstBudget=*/false);
 
         // /stateless: the gateway runs the full bearer-token validation and only calls this handler once
         // auth succeeds; makeHandler() then cross-checks the payload's claimed wazuh.agent.id against
@@ -1104,6 +1130,31 @@ private:
             [snapshot] { return snapshot().budgetRejectedTotal; },
             "Requests the byte budget refused to admit (503, before any route ran)",
             "requests");
+
+        // The served certificate's health, read from the same weak target: evaluated by the
+        // transport at start and every certificateStatusInterval (24 h). Double, not uint64: the
+        // day count is NEGATIVE once expired, the whole point of alerting on it. Both read 0 while
+        // the listener is down (the documented quiescent value), so a flat 0 on ca_matches_leaf
+        // with the listener up is the mismatch signal.
+        const auto certificateStatus = [this]() -> remoted::http::TlsCertificateSnapshot
+        {
+            std::lock_guard<std::mutex> lock {m_publicDiagMutex};
+            if (const auto server = m_publicDiagTarget.lock())
+            {
+                return server->certificateStatus();
+            }
+            return {};
+        };
+        m_metricsManager->registerPullMetricDouble(
+            remoted::endpoints::cacerts::METRIC_TLS_CERT_EXPIRY_DAYS,
+            [certificateStatus] { return static_cast<double>(certificateStatus().expiryDays.value_or(0)); },
+            "Days until the served TLS certificate expires (negative once expired; 0 while the listener is down)",
+            "days");
+        m_metricsManager->registerPullMetric(
+            remoted::endpoints::cacerts::METRIC_TLS_CA_MATCHES_LEAF,
+            [certificateStatus] { return static_cast<uint64_t>(certificateStatus().caMatchesLeaf == true ? 1 : 0); },
+            "1 when remote.https.ca_certificate signs the served certificate",
+            "flag");
         m_metricsManager->registerPullMetric(
             "remoted.forwarder.deferred.inflight",
             [limiter]
@@ -1374,6 +1425,11 @@ private:
     remoted::endpoints::download::DownloadMetrics m_downloadMetrics {
         remoted::endpoints::download::makeDownloadMetrics(*m_metricsManager)};
 
+    // GET /cacerts outcomes (remoted.cacerts.*, the WHY): copied into the handler at route
+    // registration, same rationale as m_downloadMetrics.
+    remoted::endpoints::cacerts::CacertsMetrics m_cacertsMetrics {
+        remoted::endpoints::cacerts::makeCacertsMetrics(*m_metricsManager)};
+
     // Per-endpoint HTTP outcome sets (remoted.http.<endpoint>.*). Value members for the same
     // reason as m_controlMetrics: the endpoints' handlers and forwarded targets hold RAW
     // POINTERS to these (see DownstreamTarget::httpMetrics), so their addresses must stay
@@ -1397,6 +1453,12 @@ private:
     // the same reason as the rest: one resolution against the never-reset manager.
     remoted::metrics::EndpointHttpMetrics m_enrollHttpMetrics {
         remoted::metrics::makeEndpointHttpMetrics(*m_metricsManager, "enroll", /*withLatency=*/true)};
+    // GET /cacerts (the WHAT: remoted.http.cacerts.responses.*): the one GET route, hence the
+    // explicit method label. Counted through a MeteredResponder like /enroll; referenced by
+    // pointer from the handler, so it is a value member like the four forwarded endpoints'. No
+    // latency: a file read has no tuning knob to size.
+    remoted::metrics::EndpointHttpMetrics m_cacertsHttpMetrics {
+        remoted::metrics::makeEndpointHttpMetrics(*m_metricsManager, "cacerts", /*withLatency=*/false, "GET")};
 };
 
 #endif // _REMOTED_MODULE_FACADE_HPP

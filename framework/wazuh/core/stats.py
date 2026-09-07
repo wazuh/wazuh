@@ -37,7 +37,7 @@ class _Histogram(NamedTuple):
 # ---------------------------------------------------------------------------------------------
 
 # Endpoints whose `remoted.http.<endpoint>.responses.*` family the module registers.
-_HTTP_ENDPOINTS = ('stateless', 'stateful', 'stats', 'config', 'enroll')
+_HTTP_ENDPOINTS = ('stateless', 'stateful', 'stats', 'config', 'enroll', 'cacerts')
 
 # The closed status set of that family; some cells are structurally zero for a given endpoint
 # but are kept so every endpoint reports the same vocabulary.
@@ -127,6 +127,17 @@ _REMOTED_METRIC_GROUPS = {
         'not_found': 'remoted.download.not_found',
         'open_error': 'remoted.download.open_error',
         'bytes_total': 'remoted.download.bytes.total',
+    },
+    # The listener's own certificate: days to expiry (negative once expired) and whether the CA
+    # `GET /cacerts` hands out signs it. Both pulls read 0 while the listener is down.
+    'tls': {
+        'cert_expiry_days': 'remoted.server.tls.cert_expiry_days',
+        'ca_matches_leaf': 'remoted.server.tls.ca_matches_leaf',
+    },
+    'cacerts': {
+        'served': 'remoted.cacerts.served',
+        'not_found': 'remoted.cacerts.not_found',
+        'ca_mismatch': 'remoted.cacerts.ca_mismatch',
     },
     'vd_scan': {
         'requests_total': 'remoted.scanvd.requests.total',

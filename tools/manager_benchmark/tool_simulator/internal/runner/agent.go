@@ -255,5 +255,9 @@ func (a *agent) runStep(ctx context.Context, lane string, step scenario.Step) {
 		a.runScanVD(ctx, lane, step)
 		return
 	}
+	if step.Kind == "cacerts" {
+		a.runCacerts(ctx, lane)
+		return
+	}
 	a.runSession(ctx, lane, step)
 }
