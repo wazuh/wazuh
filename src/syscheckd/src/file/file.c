@@ -786,6 +786,8 @@ void init_fim_data_entry(fim_file_data *data) {
     data->gid = NULL;
     data->owner = NULL;
     data->group = NULL;
+    data->container_id = NULL;
+    data->container_json = NULL;
     data->mtime = 0;
     data->inode = 0;
     data->hash_md5[0] = '\0';
@@ -808,6 +810,8 @@ void free_file_data(fim_file_data * data) {
     os_free(data->gid);
     os_free(data->owner);
     os_free(data->group);
+    os_free(data->container_id);
+    os_free(data->container_json);
 
     os_free(data);
 }
