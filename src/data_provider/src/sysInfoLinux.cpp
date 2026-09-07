@@ -120,9 +120,7 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
         }
     }
 
-    // process->cmd (/proc/<pid>/comm) is capped at TASK_COMM_LEN (15 chars); use the
-    // untruncated argv[0] basename instead, falling back to comm for kernel threads,
-    // which have no cmdline.
+    // comm is capped at TASK_COMM_LEN; fall back to it only for kernel threads (no cmdline).
     jsProcessInfo["name"] = commandLine.empty() ? process->cmd : std::filesystem::path(commandLine).filename().string();
     jsProcessInfo["cmd"]        = commandLine;
     jsProcessInfo["argvs"]      = commandLineArgs;
