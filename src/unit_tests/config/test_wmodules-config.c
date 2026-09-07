@@ -74,37 +74,97 @@ static void test_Test_WModule_syscollector_invalid_content_is_reported(void **st
 }
 
 /* <container_baseline_interval> gives the container-inventory pass a cadence of
- * its own (#37532). A valid value with a unit suffix must parse. */
-static void test_Test_WModule_syscollector_container_interval_is_accepted(void **state) {
-    if (write_conf("<agent_config>"
-                    "<wodle name=\"syscollector\">"
-                    "<container_baseline>yes</container_baseline>"
-                    "<container_baseline_interval>5m</container_baseline_interval>"
-                    "</wodle>"
-                    "</agent_config>") != 0) {
+ * its own (#37532). Driven through Read_WModule() with agent_cfg set, rather
+ * than Test_WModule(), so the assertion is about the parser and not about the
+ * <agent_config> plumbing around it — and so the PARSED VALUE can be checked,
+ * which a return code alone would not show. */
+static void test_Read_WModule_syscollector_container_interval_is_parsed(void **state) {
+    OS_XML xml;
+    xml_node **nodes;
+    wmodule *wmodules = NULL;
+    int agent_cfg = 1;
+
+    if (OS_ReadXMLString("<wodle name=\"syscollector\">"
+                         "<container_baseline>yes</container_baseline>"
+                         "<container_baseline_interval>5m</container_baseline_interval>"
+                         "</wodle>", &xml) != 0) {
         fail();
     }
 
-    assert_int_equal(Test_WModule(TEST_CONF_PATH), 0);
+    if (nodes = OS_GetElementsbyNode(&xml, NULL), nodes == NULL) {
+        fail();
+    }
+
+
+    assert_int_equal(Read_WModule(&xml, nodes[0], &wmodules, &agent_cfg), 0);
+
+    assert_non_null(wmodules);
+    assert_non_null(wmodules->data);
+
+    const wm_sys_t *sys = (const wm_sys_t *)wmodules->data;
+    assert_int_equal(sys->flags.container_baseline, 1);
+    assert_int_equal(sys->container_baseline_interval, 300);
+    // The host interval must be untouched by the container one.
+    assert_int_equal(sys->interval, WM_SYSCOLLECTOR_DEFAULT_INTERVAL);
+
+    wm_free(wmodules);
+    OS_ClearNode(nodes);
+    OS_ClearXML(&xml);
+}
+
+/* Absent means "follow the host interval" — the behaviour before this option
+ * existed — and must not be confused with a value of its own. */
+static void test_Read_WModule_syscollector_container_interval_defaults_to_zero(void **state) {
+    OS_XML xml;
+    xml_node **nodes;
+    wmodule *wmodules = NULL;
+    int agent_cfg = 1;
+
+    if (OS_ReadXMLString("<wodle name=\"syscollector\"><disabled>no</disabled></wodle>", &xml) != 0) {
+        fail();
+    }
+
+    if (nodes = OS_GetElementsbyNode(&xml, NULL), nodes == NULL) {
+        fail();
+    }
+
+
+    assert_int_equal(Read_WModule(&xml, nodes[0], &wmodules, &agent_cfg), 0);
+
+    const wm_sys_t *sys = (const wm_sys_t *)wmodules->data;
+    assert_int_equal(sys->container_baseline_interval, 0);
+
+    wm_free(wmodules);
+    OS_ClearNode(nodes);
+    OS_ClearXML(&xml);
 }
 
 /* A malformed value must fail the config rather than silently falling back to
  * the host interval, which would make a typo look like a working setting. */
-static void test_Test_WModule_syscollector_container_interval_invalid_is_reported(void **state) {
-    if (write_conf("<agent_config>"
-                    "<wodle name=\"syscollector\">"
-                    "<container_baseline_interval>notatime</container_baseline_interval>"
-                    "</wodle>"
-                    "</agent_config>") != 0) {
+static void test_Read_WModule_syscollector_container_interval_invalid_is_reported(void **state) {
+    OS_XML xml;
+    xml_node **nodes;
+    wmodule *wmodules = NULL;
+    int agent_cfg = 1;
+
+    if (OS_ReadXMLString("<wodle name=\"syscollector\">"
+                         "<container_baseline_interval>notatime</container_baseline_interval>"
+                         "</wodle>", &xml) != 0) {
+        fail();
+    }
+
+    if (nodes = OS_GetElementsbyNode(&xml, NULL), nodes == NULL) {
         fail();
     }
 
     expect_string(__wrap__merror, formatted_msg,
                   "Invalid container_baseline_interval at module 'syscollector'");
-    expect_string(__wrap__merror, formatted_msg, "(1202): Configuration error at 'test_wmodules-config.conf'.");
-    expect_string(__wrap__merror, formatted_msg, "(1207): WModule remote configuration in 'test_wmodules-config.conf' is corrupted.");
 
-    assert_int_equal(Test_WModule(TEST_CONF_PATH), -1);
+    assert_int_equal(Read_WModule(&xml, nodes[0], &wmodules, &agent_cfg), OS_INVALID);
+
+    wm_free(wmodules);
+    OS_ClearNode(nodes);
+    OS_ClearXML(&xml);
 }
 
 /* Same false-positive check for a standalone reader (Read_Github) that
@@ -209,9 +269,9 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_Test_WModule_syscollector_no_warning, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_syscollector_invalid_content_is_reported, teardown_conf_file),
-        cmocka_unit_test_teardown(test_Test_WModule_syscollector_container_interval_is_accepted, teardown_conf_file),
-        cmocka_unit_test_teardown(test_Test_WModule_syscollector_container_interval_invalid_is_reported,
-                                  teardown_conf_file),
+        cmocka_unit_test(test_Read_WModule_syscollector_container_interval_is_parsed),
+        cmocka_unit_test(test_Read_WModule_syscollector_container_interval_defaults_to_zero),
+        cmocka_unit_test(test_Read_WModule_syscollector_container_interval_invalid_is_reported),
         cmocka_unit_test_teardown(test_Test_WModule_github_no_warning, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_github_invalid_content_is_reported, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_sca_valid_content_is_accepted, teardown_conf_file),
