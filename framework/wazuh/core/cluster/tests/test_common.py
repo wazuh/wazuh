@@ -1852,6 +1852,21 @@ def test_end_sending_agent_information(perf_counter_mock, json_loads_mock):
             logger_error_mock.assert_called_once_with(
                 "Finished in 0.000s. Updated 10 chunks. There were 5 chunks with errors: error")
 
+        # A peer that keeps and retries the rejected chunks reports progress, not a failure.
+        with patch.object(logger, "info") as logger_info_mock:
+            with patch.object(logger, "error") as logger_error_mock:
+                json_loads_mock.return_value = {"updated_chunks": 10, "error_messages": "error",
+                                                "retrying_chunks": True}
+                assert cluster_common.end_sending_agent_information(
+                    logger,
+                    datetime.fromtimestamp(0),
+                    "response"
+                    ) == (b'ok', b'Thanks')
+                logger_info_mock.assert_called_once_with(
+                    "Finished in 0.000s. Updated 10 chunks. 5 chunks could not be applied yet and are being "
+                    "retried on the peer.")
+                logger_error_mock.assert_not_called()
+
 
 def test_error_receiving_agent_information():
     """Check the correct output message when a command

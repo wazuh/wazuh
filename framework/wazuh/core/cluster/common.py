@@ -1756,7 +1756,9 @@ def end_sending_agent_information(logger: logging.Logger, start_time: datetime.d
     """Function called when the master/worker sends the "syn_m_a_e" or "syn_w_g_e" command.
 
     This method is called once the master finishes processing the agent-info/agent-groups. It logs
-    information like the number of chunks that were updated and any error message.
+    information like the number of chunks that were updated and any error message. A response
+    carrying 'retrying_chunks' means the peer is reapplying the rejected chunks itself, so the
+    rejection is reported as a synchronization still in progress instead of a failed one.
 
     Parameters
     ----------
@@ -1778,8 +1780,18 @@ def end_sending_agent_information(logger: logging.Logger, start_time: datetime.d
     msg = f"Finished in {(utils.get_utc_now().timestamp() - start_time.timestamp()):.3f}s. " + \
     f"Updated {data['updated_chunks']} chunks."
 
-    logger.info(msg) if not data['error_messages'] else logger.error(
-        msg + f" There were {len(data['error_messages'])} chunks with errors: {data['error_messages']}")
+    if not data['error_messages']:
+        logger.info(msg)
+    elif data.get('retrying_chunks'):
+        # The peer rejected the chunks but keeps them and is reapplying them locally, so the
+        # synchronization is still in progress rather than failed. Reporting it as an error here
+        # would page for a condition that resolves itself, and the peer already reports the
+        # outcome: nothing if a retry applies them, a warning if every retry is exhausted.
+        logger.info(msg + f" {len(data['error_messages'])} chunks could not be applied yet and are being "
+                          f"retried on the peer.")
+    else:
+        logger.error(msg + f" There were {len(data['error_messages'])} chunks with errors: "
+                           f"{data['error_messages']}")
 
     return b'ok', b'Thanks'
 

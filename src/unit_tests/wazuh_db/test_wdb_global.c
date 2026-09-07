@@ -51,6 +51,7 @@ static int test_teardown(void **state){
     os_free(data->wdb->db);
     os_free(data->wdb);
     os_free(data);
+    wconfig.is_worker_node = false;
     wdb_free_conf();
     /* Cleanup compiled regex to prevent memory leaks in tests */
     wdb_global_validate_group_name_cleanup();
@@ -6767,8 +6768,6 @@ void test_wdb_global_assign_agent_group_find_error_worker(void **state) {
 
     wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, initial_priority, false);
 
-    wconfig.is_worker_node = false;
-
     assert_int_equal(result, WDBC_ERROR);
     __real_cJSON_Delete(j_groups);
 }
@@ -7671,8 +7670,6 @@ void test_wdb_global_set_agent_groups_add_modes_assign_error_worker(void **state
     }
 
     wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
-
-    wconfig.is_worker_node = false;
 
     assert_int_equal(result, WDBC_ERROR);
     __real_cJSON_Delete(j_agents_group_info);
