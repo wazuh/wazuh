@@ -69,6 +69,18 @@ struct DrainConfig
     int poll_timeout_ms{200};
     int resolver_interval_ms{5000};
 
+    /* D16's settle bound (12-blocking-decisions.md): how long a staged path is
+     * held before it is re-read, when the pid that triggered it has not exited
+     * first. RT_EV_FILE_OPEN fires BEFORE the write, so reconciling immediately
+     * stores the pre-write file (C23).
+     *
+     * 500 ms because the common case does not use it at all — the writing pid is
+     * usually already gone by the time the event is processed, which releases
+     * the path immediately — so this only has to cover a burst held open by a
+     * live writer. It is a bound, not a guarantee: a writer that outlives it is
+     * still read mid-write, which no consumer-side option can prevent. */
+    int settle_delay_ms{500};
+
     /* Resolves attempted per resolver cycle. Bounded because each one is its own
      * connect/send/recv/close against a 2-worker server. */
     std::size_t max_resolves_per_cycle{32};

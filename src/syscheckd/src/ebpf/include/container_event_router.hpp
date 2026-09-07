@@ -81,8 +81,13 @@ class ContainerEventRouter
 
         /* --- drain thread ------------------------------------------------- */
 
-        /* One file event. Returns true when it was attributed to a container. */
-        bool onEvent(std::uint64_t cgroup_id, const std::string& path)
+        /* One file event, triggered by `pid` (0 when unknown). Returns true when
+         * it was attributed to a container.
+         *
+         * The pid is not routing information — it is carried through for the
+         * staging buffer's settle (D16), which releases a path early once the
+         * writer that triggered it has exited. */
+        bool onEvent(std::uint64_t cgroup_id, const std::string& path, unsigned int pid = 0)
         {
             const auto resolution = m_map.classify(cgroup_id);
 
@@ -90,7 +95,7 @@ class ContainerEventRouter
             {
                 case CgroupClass::container:
                     bump(m_stats.routed);
-                    m_staging.onEvent(resolution.container_id, path);
+                    m_staging.onEvent(resolution.container_id, path, pid);
                     return true;
 
                 case CgroupClass::notContainer:

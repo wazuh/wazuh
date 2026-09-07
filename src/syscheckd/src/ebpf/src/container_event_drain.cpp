@@ -94,7 +94,7 @@ struct ContainerEventDrain::Impl
 {
     explicit Impl(const DrainConfig& cfg)
         : config(cfg)
-        , staging(cfg.max_paths_per_container, cfg.max_containers)
+        , staging(cfg.max_paths_per_container, cfg.max_containers, cfg.settle_delay_ms)
         , router(map, staging)
         , client(cfg.connector_socket_path)
     {
@@ -149,7 +149,9 @@ struct ContainerEventDrain::Impl
 
         if (length == 0) return;
 
-        router.onEvent(ev->cgroup_id, std::string{ev->filename, length});
+        /* ev->pid feeds the staging buffer's settle, not the routing: a path
+         * whose writer has exited can be read at once. */
+        router.onEvent(ev->cgroup_id, std::string{ev->filename, length}, ev->pid);
     }
 
     void drainLoop()
