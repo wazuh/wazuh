@@ -164,7 +164,7 @@ TEST_F(FileItemTest, getJSONWithFimCtr)
     const auto expectedValue = R"(
         {
             "table": "file_entry",
-            "data":[{"attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "device":2051, "gid":"0", "group_":"root",
+            "data":[{"attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "container_id":"", "container_json":"", "device":2051, "gid":"0", "group_":"root",
             "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
             "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810881,
             "mtime":1578075431, "path":"/etc/wgetrc", "permissions":"-rw-rw-r--", "size":4925,
@@ -181,7 +181,7 @@ TEST_F(FileItemTest, getJSONWithJSONCtr)
     const auto expectedValue = R"(
         {
             "table": "file_entry",
-            "data":[{"attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "device":2051, "gid":"0", "group_":"root",
+            "data":[{"attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "container_id":"", "container_json":"", "device":2051, "gid":"0", "group_":"root",
             "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
             "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810881,
             "mtime":1578075431, "path":"/etc/wgetrc", "permissions":"-rw-rw-r--", "size":4925,
@@ -192,13 +192,65 @@ TEST_F(FileItemTest, getJSONWithJSONCtr)
     delete file;
 }
 
+TEST_F(FileItemTest, getJSONCarriesTheContainerScopeItWasGiven)
+{
+    // The container scope has to survive the typed path, not just the raw-JSON
+    // one: container_id is part of the row's primary key, so a FileItem that
+    // dropped it would write a HOST row for a container's file.
+    fimEntryTest->file_entry.data->container_id = const_cast<char*>("abc123");
+    fimEntryTest->file_entry.data->container_json = const_cast<char*>("{\"runtime\":\"docker\"}");
+
+    auto file = new FileItem(fimEntryTest);
+    const auto row = (*file->toJSON())["data"][0];
+
+    EXPECT_EQ("abc123", row["container_id"].get<std::string>());
+    EXPECT_EQ("{\"runtime\":\"docker\"}", row["container_json"].get<std::string>());
+    delete file;
+}
+
+TEST_F(FileItemTest, getFIMEntryCarriesTheContainerScopeBack)
+{
+    fimEntryTest->file_entry.data->container_id = const_cast<char*>("abc123");
+    fimEntryTest->file_entry.data->container_json = const_cast<char*>("{}");
+
+    auto file = new FileItem(fimEntryTest);
+    const auto* entry = file->toFimEntry();
+
+    ASSERT_NE(nullptr, entry->file_entry.data->container_id);
+    EXPECT_STREQ("abc123", entry->file_entry.data->container_id);
+    EXPECT_STREQ("{}", entry->file_entry.data->container_json);
+    delete file;
+}
+
+TEST_F(FileItemTest, containerScopeIsOptionalOnTheJSONConstructor)
+{
+    // getFile()'s SELECT column list does not include the two container
+    // columns, so the read path constructs a FileItem from a JSON row that has
+    // neither. That must not throw, and must default to host scope.
+    const auto input = R"(
+        {
+            "attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "device":2051, "gid":"0", "group_":"root",
+            "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
+            "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810881,
+            "mtime":1578075431, "path":"/etc/wgetrc", "permissions":"-rw-rw-r--", "size":4925,
+            "uid":"0", "owner":"fakeUser", "version":1, "sync":0
+        }
+    )"_json;
+
+    std::unique_ptr<FileItem> file;
+    ASSERT_NO_THROW(file = std::make_unique<FileItem>(input));
+    const auto* entry = file->toFimEntry();
+    EXPECT_STREQ("", entry->file_entry.data->container_id);
+    EXPECT_STREQ("", entry->file_entry.data->container_json);
+}
+
 TEST_F(FileItemTest, fileItemReportOldData)
 {
     auto file = new FileItem(fimEntryTest, true);
     const auto expectedValue = R"(
         {
             "table": "file_entry",
-            "data":[{"attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "device":2051, "gid":"0", "group_":"root",
+            "data":[{"attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "container_id":"", "container_json":"", "device":2051, "gid":"0", "group_":"root",
             "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
             "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810881,
             "mtime":1578075431, "path":"/etc/wgetrc", "permissions":"-rw-rw-r--", "size":4925,
