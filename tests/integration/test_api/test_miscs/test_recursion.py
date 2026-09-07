@@ -42,8 +42,6 @@ from requests.adapters import HTTPAdapter, Retry
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.api import (
     WAZUH_API_PROTOCOL,
-    WAZUH_API_USER,
-    WAZUH_API_PASSWORD,
 )
 from wazuh_testing.modules.api.utils import get_base_url
 
@@ -51,6 +49,12 @@ from wazuh_testing.modules.api.utils import get_base_url
 pytestmark = pytest.mark.server
 
 daemons_handler_configuration = {"all_daemons": True}
+
+# This test drives the run_as login, which is only available to a user with `allow_run_as`. Among
+# the default users that is `wazuh-wui` alone, and every default user's shipped password is its own
+# username.
+RUN_AS_API_USER = "wazuh-wui"
+RUN_AS_API_PASSWORD = "wazuh-wui"
 
 
 @pytest.fixture
@@ -133,7 +137,7 @@ def test_json_nesting_depth(
 
     response = session.post(
         url=url,
-        auth=(WAZUH_API_USER, WAZUH_API_PASSWORD),
+        auth=(RUN_AS_API_USER, RUN_AS_API_PASSWORD),
         json=payload,
         verify=False,
         timeout=30,
