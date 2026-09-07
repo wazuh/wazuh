@@ -715,7 +715,7 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_id"] = user["uid"];
         userItem["user_full_name"] = user["description"];
         userItem["user_home"] = user["directory"];
-        userItem["user_is_remote"] = user["include_remote"];
+        userItem["user_is_remote"] = user["is_remote"];
         userItem["user_name"] = username;
         userItem["user_shell"] = user["shell"];
         userItem["user_uid_signed"] = user["uid_signed"];
