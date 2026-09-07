@@ -76,6 +76,19 @@ TEST_F(SCARecoveryUtilsTest, StringToJsonArraySerialisedJsonArrayKeepsBackslashe
     EXPECT_EQ(sca::recovery::stringToJsonArray(rules.dump()), rules);
 }
 
+// A row the decoder cannot parse must not abort the caller: synchronizeDatabaseSnapshot() builds
+// these messages after notifyDataClean() has already emptied the index, and its only handler wraps
+// the whole loop, so an escaping exception would leave wazuh-states-sca empty for the cycle.
+TEST_F(SCARecoveryUtilsTest, StringToJsonArrayNumberOverflowFallsBackInsteadOfThrowing)
+{
+    EXPECT_NO_THROW(sca::recovery::stringToJsonArray("1e999"));
+    EXPECT_EQ(sca::recovery::stringToJsonArray("1e999"), nlohmann::json::array({"1e999"}));
+
+    nlohmann::json check = {{"id", "31006"}, {"refs", "1e999"}, {"rules", "[1e999]"}};
+
+    EXPECT_NO_THROW(sca::recovery::normalizeCheckForStateful(check));
+}
+
 TEST_F(SCARecoveryUtilsTest, NormalizeCheckForStatefulSerialisedRefsAndRules)
 {
     const nlohmann::json references = nlohmann::json::array({"http://tldp.org/HOWTO/LVM-HOWTO/"});

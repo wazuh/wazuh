@@ -509,6 +509,9 @@ TEST_F(ScaPolicyLoaderTest, NormalizeDataRoundTripsRefsAndRules)
         for (const auto& element : field)
         {
             const auto value = element.get<std::string>();
+            // front() and back() below are undefined on an empty string, and the decoder preserves
+            // an empty element of a stored array rather than dropping it.
+            ASSERT_FALSE(value.empty());
             EXPECT_EQ(value.find('"'), std::string::npos) << value;
             EXPECT_NE(value.front(), '[');
             EXPECT_NE(value.back(), ']');

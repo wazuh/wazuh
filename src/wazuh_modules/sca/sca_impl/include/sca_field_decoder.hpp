@@ -80,9 +80,14 @@ namespace sca
                 return CommaSeparatedToJsonArray(parsed.get<std::string>());
             }
         }
-        catch (const nlohmann::json::parse_error&)
+        catch (const nlohmann::json::exception&)
         {
             // Not a serialised JSON value: fall through to the legacy representation.
+            // Catching the whole json hierarchy is deliberate. parse() reports malformed input as
+            // parse_error but a number it cannot represent as out_of_range, and the comma split this
+            // replaced could not throw for any input, so anything escaping here would be a new
+            // failure mode: a single unreadable row would abort the snapshot loop in
+            // synchronizeDatabaseSnapshot() after notifyDataClean() had already emptied the index.
         }
 
         return CommaSeparatedToJsonArray(input);

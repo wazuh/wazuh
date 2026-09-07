@@ -859,6 +859,17 @@ TEST_F(SCAEventHandlerTest, StringToJsonArray_SerialisedJsonString)
     EXPECT_EQ(handler->StringToJsonArray(nlohmann::json("ref1,ref2").dump()), expected);
 }
 
+// json::parse reports a number it cannot represent as out_of_range rather than parse_error. The
+// comma split this replaced could not throw for any input, so nothing may escape the decoder.
+TEST_F(SCAEventHandlerTest, StringToJsonArray_NumberOverflowFallsBackInsteadOfThrowing)
+{
+    const nlohmann::json expected = {"1e999"};
+
+    EXPECT_NO_THROW(handler->StringToJsonArray("1e999"));
+    EXPECT_EQ(handler->StringToJsonArray("1e999"), expected);
+    EXPECT_NO_THROW(handler->StringToJsonArray("[1e999]"));
+}
+
 TEST_F(SCAEventHandlerTest, NormalizeCheck_SerialisedRefsAndRules)
 {
     const nlohmann::json references = nlohmann::json::array(
