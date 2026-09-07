@@ -91,7 +91,12 @@ else()
     crypto
     dl
     agent_sync_protocol
-    schema_validator)
+    schema_validator
+    # syscollectorImp.cpp calls cbaseline_run_syscollector_dbsync() and
+    # cbaseline_list_containers() directly (#37532), so this target has needed
+    # the module since that landed — it was compiling the calls without
+    # linking anything that defines them.
+    container_baseline)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME syscollectorimp_unit_test COMMAND syscollectorimp_unit_test)

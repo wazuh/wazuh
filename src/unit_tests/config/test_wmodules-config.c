@@ -73,6 +73,40 @@ static void test_Test_WModule_syscollector_invalid_content_is_reported(void **st
     assert_int_equal(Test_WModule(TEST_CONF_PATH), -1);
 }
 
+/* <container_baseline_interval> gives the container-inventory pass a cadence of
+ * its own (#37532). A valid value with a unit suffix must parse. */
+static void test_Test_WModule_syscollector_container_interval_is_accepted(void **state) {
+    if (write_conf("<agent_config>"
+                    "<wodle name=\"syscollector\">"
+                    "<container_baseline>yes</container_baseline>"
+                    "<container_baseline_interval>5m</container_baseline_interval>"
+                    "</wodle>"
+                    "</agent_config>") != 0) {
+        fail();
+    }
+
+    assert_int_equal(Test_WModule(TEST_CONF_PATH), 0);
+}
+
+/* A malformed value must fail the config rather than silently falling back to
+ * the host interval, which would make a typo look like a working setting. */
+static void test_Test_WModule_syscollector_container_interval_invalid_is_reported(void **state) {
+    if (write_conf("<agent_config>"
+                    "<wodle name=\"syscollector\">"
+                    "<container_baseline_interval>notatime</container_baseline_interval>"
+                    "</wodle>"
+                    "</agent_config>") != 0) {
+        fail();
+    }
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid container_baseline_interval at module 'syscollector'");
+    expect_string(__wrap__merror, formatted_msg, "(1202): Configuration error at 'test_wmodules-config.conf'.");
+    expect_string(__wrap__merror, formatted_msg, "(1207): WModule remote configuration in 'test_wmodules-config.conf' is corrupted.");
+
+    assert_int_equal(Test_WModule(TEST_CONF_PATH), -1);
+}
+
 /* Same false-positive check for a standalone reader (Read_Github) that
  * received the same agent_cfg plumbing as Read_WModule, this time with a
  * complete, valid config so wm_github_read() actually runs and succeeds. */
@@ -175,6 +209,9 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_Test_WModule_syscollector_no_warning, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_syscollector_invalid_content_is_reported, teardown_conf_file),
+        cmocka_unit_test_teardown(test_Test_WModule_syscollector_container_interval_is_accepted, teardown_conf_file),
+        cmocka_unit_test_teardown(test_Test_WModule_syscollector_container_interval_invalid_is_reported,
+                                  teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_github_no_warning, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_github_invalid_content_is_reported, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_sca_valid_content_is_accepted, teardown_conf_file),

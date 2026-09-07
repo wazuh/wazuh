@@ -506,6 +506,7 @@ Syscollector::Syscollector()
     , m_services { false }
     , m_browserExtensions { false }
     , m_containerBaseline { false }
+    , m_containerBaselineInterval { 0 }
     , m_containerRowsPurged { false }
     , m_vdSyncEnabled { false }
     , m_failedItems { nullptr }
@@ -577,7 +578,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool services,
                         const bool browserExtensions,
                         const bool containerBaseline,
-                        const bool notifyOnFirstScan)
+                        const bool notifyOnFirstScan,
+                        const unsigned int containerBaselineInterval)
 {
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
@@ -604,6 +606,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_services = services;
     m_browserExtensions = browserExtensions;
     m_containerBaseline = containerBaseline;
+    m_containerBaselineInterval = containerBaselineInterval;
     m_stopping = false;
 
     m_spDBSync      = std::move(dbSync);
@@ -2107,6 +2110,34 @@ std::size_t Syscollector::sweepContainerRowsNotIn(const std::set<std::string>& k
 #endif
 }
 
+void Syscollector::runContainerBaselinePass()
+{
+    // syncLoop() dispatches the container pass on its own deadline, so it no
+    // longer borrows scan()'s stopping/paused checks or its ScanGuard.
+    //
+    // The guard lives HERE and not inside scanContainerBaseline(), because
+    // scan() still calls that directly when the two cadences are coupled
+    // (<container_baseline_interval> = 0) and scan() already holds a guard of
+    // its own. ScanGuard is a plain set/clear of one flag, so a nested second
+    // one would clear m_scanning on the inner exit and let pause() return
+    // while the rest of the scan was still writing rows.
+    if (m_stopping.load())
+    {
+        m_logFunction(LOG_DEBUG, "Syscollector is stopping, skipping container baseline.");
+        return;
+    }
+
+    if (m_paused)
+    {
+        m_logFunction(LOG_DEBUG, "Syscollector is paused, skipping container baseline.");
+        return;
+    }
+
+    ScanGuard scanGuard(m_scanning, m_pauseCv);
+
+    scanContainerBaseline();
+}
+
 void Syscollector::scanContainerBaseline()
 {
 #if defined(__linux__)
@@ -2457,13 +2488,19 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanServices);
     TRY_CATCH_TASK(scanBrowserExtensions);
 
-    // Container baseline (#37532) now runs every scan interval, same as the
-    // host scans above: it seeds a container's state the first time it's
-    // seen (kept quiet — see scanContainerBaseline()'s per-container
-    // notifyOverride) and computes real deltas against that seed on every
-    // scan after, via the same per-container scoped DBSync transactions host
-    // rows already use. No separate interval/config — it rides scan()'s own.
-    TRY_CATCH_TASK(scanContainerBaseline);
+    // Container baseline (#37532) seeds a container's state the first time it
+    // is seen (kept quiet — see scanContainerBaseline()'s per-container
+    // notifyOverride) and computes real deltas against that seed afterwards,
+    // via the same per-container scoped DBSync transactions host rows already
+    // use.
+    //
+    // It rides scan()'s interval ONLY when it has no cadence of its own. With
+    // <container_baseline_interval> set, syncLoop() dispatches it directly on
+    // that deadline, and calling it here as well would double every pass.
+    if (m_containerBaselineInterval == 0)
+    {
+        TRY_CATCH_TASK(scanContainerBaseline);
+    }
 
     // Update sync=1 flag for all items that passed document limit check (unlimited items)
     // This must be done BEFORE processVDDataContext so that DataContext queries
@@ -2502,24 +2539,97 @@ void Syscollector::scan()
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 {
+    // Coupled cadence (<container_baseline_interval> = 0, the default): the
+    // container pass runs inside scan(), exactly as before, and this loop has
+    // one deadline. That path is kept byte-for-byte rather than folded into
+    // the two-deadline one below, because the loop below cannot reproduce
+    // wait_for's relative-timeout semantics precisely and this is the path
+    // every existing deployment is on.
+    if (m_containerBaselineInterval == 0)
+    {
+        if (m_scanOnStart)
+        {
+            scan();
+        }
+
+        while (!m_cv.wait_for(scan_lock, std::chrono::seconds{m_intervalValue}, [&]()
+    {
+        return m_stopping.load();
+        }))
+        {
+            if (m_paused)
+            {
+                m_logFunction(LOG_DEBUG, "Syscollector scanning paused, skipping scan iteration");
+                continue;
+            }
+
+            scan();
+        }
+        m_cv.notify_all();
+        return;
+    }
+
+    // Independent cadence: one loop, two deadlines, waking for whichever
+    // elapses first — rather than a second thread, which would need its own
+    // share of the DBSync handle and its own pause/stop handshake.
     if (m_scanOnStart)
     {
         scan();
+        runContainerBaselinePass();
     }
 
-    while (!m_cv.wait_for(scan_lock, std::chrono::seconds{m_intervalValue}, [&]()
-{
-    return m_stopping.load();
-    }))
+    // Local, not members: their lifetime never outlives this loop.
+    auto nextHostScan = std::chrono::steady_clock::now() + std::chrono::seconds{m_intervalValue};
+    auto nextContainerScan = std::chrono::steady_clock::now() + std::chrono::seconds{m_containerBaselineInterval};
+
+    while (!m_stopping.load())
     {
+        const auto wakeAt = nextHostScan < nextContainerScan ? nextHostScan : nextContainerScan;
+
+        if (m_cv.wait_until(scan_lock, wakeAt, [&]()
+        {
+            return m_stopping.load();
+        }))
+        {
+            break;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+
         if (m_paused)
         {
             m_logFunction(LOG_DEBUG, "Syscollector scanning paused, skipping scan iteration");
+
+            // Push any elapsed deadline forward. wait_for's relative timeout
+            // gave this for free; an absolute deadline that has already passed
+            // makes wait_until return immediately, so without this the loop
+            // spins at full speed for as long as the pause lasts.
+            if (now >= nextHostScan)
+            {
+                nextHostScan = now + std::chrono::seconds{m_intervalValue};
+            }
+
+            if (now >= nextContainerScan)
+            {
+                nextContainerScan = now + std::chrono::seconds{m_containerBaselineInterval};
+            }
+
             continue;
         }
 
-        scan();
+        if (now >= nextHostScan)
+        {
+            scan();
+            nextHostScan = now + std::chrono::seconds{m_intervalValue};
+        }
+
+        if (now >= nextContainerScan)
+        {
+            runContainerBaselinePass();
+            nextContainerScan = now + std::chrono::seconds{m_containerBaselineInterval};
+        }
     }
+
     m_cv.notify_all();
 }
 

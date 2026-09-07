@@ -20,6 +20,12 @@ extern const wm_context WM_SYS_CONTEXT;     // Context
 #define WM_SYS_LOGTAG ARGV0 ":syscollector" // Tag for log messages
 #define WM_SYSCOLLECTOR_DEFAULT_INTERVAL W_HOUR_SECONDS
 
+/* 0 = run the container-inventory pass on the host <interval> above, which is
+ * what it has always done. A non-zero value gives it its own cadence, for the
+ * reason in docs/ref/modules/syscollector/configuration.md: a container's whole
+ * lifetime can be far shorter than a sensible host interval. */
+#define WM_SYSCOLLECTOR_DEFAULT_CONTAINER_INTERVAL 0
+
 typedef struct wm_sys_flags_t {
     unsigned int enabled:1;                 // Main switch
     unsigned int scan_on_start:1;           // Scan always on start
@@ -54,6 +60,7 @@ typedef struct wm_sys_db_sync_flags_t {
 
 typedef struct wm_sys_t {
     unsigned int interval;                  // Time interval between cycles (seconds)
+    unsigned int container_baseline_interval; // Container-inventory cadence (seconds); 0 = follow `interval`
     wm_sys_flags_t flags;                   // Flag bitfield
     wm_sys_state_t state;                   // Running state
     wm_sys_db_sync_flags_t sync;            // Database synchronization value

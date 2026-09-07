@@ -589,6 +589,105 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     }
 }
 
+TEST_F(SyscollectorImpTest, containerBaselineRunsOnItsOwnIntervalNotTheHostOne)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline pass is Linux-only";
+#else
+    // The point of <container_baseline_interval>: a container's whole lifetime
+    // can be shorter than a sensible host interval, so the container pass must
+    // not be bounded by it. Host interval 100 s, container interval 1 s — if
+    // the two were still coupled, the container pass would run exactly as
+    // often as the host scan (once, from scan_on_start) and never again.
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([])"_json));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
+            (nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
+            (R"({"name":"TEXT", "version_":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper,
+                browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
+
+    LogCapture logCapture;
+    std::mutex logMutex;
+    auto captureLogFunction = [&logCapture, &logMutex](modules_log_level_t level, const std::string & log)
+    {
+        std::lock_guard<std::mutex> lock(logMutex);
+        logCapture.capture(level, log);
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &captureLogFunction]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          persistFunction,
+                                          captureLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          100,    // host interval
+                                          true,   // scan_on_start
+                                          true, true, true, true, true, true, true, true, true, true, true, true,
+                                          true,   // container_baseline
+                                          false,  // notify_on_first_scan
+                                          1);     // container_baseline_interval
+
+            Syscollector::instance().start();
+        }
+    };
+
+    // 12 s and not 5: measured on this suite, the FIRST container pass takes
+    // ~4.5 s when no container_instances socket exists, because that is what
+    // the connector client's cold-start retry costs before it gives up. Every
+    // pass after it returns in ~1 ms. A shorter run therefore observes only
+    // that first pass and cannot tell a working cadence from a broken one.
+    std::this_thread::sleep_for(std::chrono::seconds{12});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    size_t hostScans = 0;
+    size_t containerPasses = 0;
+    {
+        std::lock_guard<std::mutex> lock(logMutex);
+
+        for (const auto& entry : logCapture.logs)
+        {
+            if (entry.message.find("Starting evaluation.") != std::string::npos)
+            {
+                ++hostScans;
+            }
+
+            if (entry.message.find("Starting container baseline scan") != std::string::npos)
+            {
+                ++containerPasses;
+            }
+        }
+    }
+
+    // One host scan (scan_on_start); its 100 s interval cannot elapse here.
+    EXPECT_EQ(1u, hostScans);
+    // Observed 8 (one at start, then one per second from ~4.5 s on). Asserted
+    // loosely on purpose: this test shares a CPU with the rest of the suite, so
+    // the exact count is not the property under test — "more passes than the
+    // host cadence could possibly have produced" is.
+    EXPECT_GE(containerPasses, 3u);
+#endif
+}
+
 TEST_F(SyscollectorImpTest, noScanOnStart)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};

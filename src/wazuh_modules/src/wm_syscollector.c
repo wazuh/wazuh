@@ -493,7 +493,8 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t* sys)
                               sys->flags.services,
                               sys->flags.browser_extensions,
                               sys->flags.container_baseline,
-                              sys->flags.notify_first_scan);
+                              sys->flags.notify_first_scan,
+                              sys->container_baseline_interval);
 
         syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH,
                                    integrity_interval);
@@ -670,7 +671,8 @@ void* wm_sys_main(wm_sys_t* sys)
                               sys->flags.services,
                               sys->flags.browser_extensions,
                               sys->flags.container_baseline,
-                              sys->flags.notify_first_scan);
+                              sys->flags.notify_first_scan,
+                              sys->container_baseline_interval);
 
         // Set agentd query function for communication (AFTER init, BEFORE start)
         // Syscollector will fetch document limits from agentd
@@ -882,6 +884,8 @@ cJSON* wm_sys_dump(const wm_sys_t* sys)
     else cJSON_AddStringToObject(wm_sys, "browser_extensions", "no");
     if (sys->flags.container_baseline) cJSON_AddStringToObject(wm_sys, "container_baseline", "yes");
     else cJSON_AddStringToObject(wm_sys, "container_baseline", "no");
+
+    cJSON_AddNumberToObject(wm_sys, "container_baseline_interval", sys->container_baseline_interval);
 
 #ifdef WIN32
 

@@ -75,7 +75,12 @@ class EXPORTED Syscollector final
                   const bool services = true,
                   const bool browserExtensions = true,
                   const bool containerBaseline = true,
-                  const bool notifyOnFirstScan = false);
+                  const bool notifyOnFirstScan = false,
+                  // 0 = share the host scan interval, which is what the
+                  // container pass did before it had a cadence of its own.
+                  // Defaulted so this file's ~100 test call sites keep the
+                  // behaviour they were written against.
+                  const unsigned int containerBaselineInterval = 0);
 
         /**
          * @brief Set agentd query function for agentd communication (cross-platform)
@@ -244,6 +249,12 @@ class EXPORTED Syscollector final
         /// deltas and emits stateless + stateful events exactly as for host rows.
         /// See container_baseline_scanner.hpp.
         void scanContainerBaseline();
+
+        /// @brief scanContainerBaseline() with the stopping/paused checks and
+        /// the ScanGuard that scan() would otherwise have supplied. Used only
+        /// by syncLoop(), when <container_baseline_interval> gives the
+        /// container pass a cadence of its own.
+        void runContainerBaselinePass();
 
         /// @brief Delete the rows of every container in the DB but absent from
         /// `keep`, emitting DELETED events. `keep` is the set that still
@@ -496,6 +507,11 @@ class EXPORTED Syscollector final
         // Per-container inventory baseline (Linux only). Previously ran
         // unconditionally on every Linux agent, unlike every sibling collector.
         bool                                                                     m_containerBaseline;
+        // Independent container-inventory cadence, decoupled from
+        // m_intervalValue (the host scan interval). 0 keeps the two coupled.
+        // syncLoop() wakes for whichever deadline elapses first, so the
+        // container pass is not bounded by the (possibly much longer) host one.
+        unsigned int                                                             m_containerBaselineInterval;
         // One-shot guard so a disabled container baseline purges leftover
         // container rows once, not on every scan interval.
         bool                                                                     m_containerRowsPurged;
