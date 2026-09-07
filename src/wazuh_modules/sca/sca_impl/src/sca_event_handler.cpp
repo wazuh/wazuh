@@ -1,5 +1,6 @@
 #include <sca_checksum.hpp>
 #include <sca_event_handler.hpp>
+#include <sca_field_decoder.hpp>
 #include <sca_sync_manager.hpp>
 
 #include <dbsync.hpp>
@@ -8,7 +9,6 @@
 #include <timeHelper.h>
 
 #include <array>
-#include <sstream>
 
 #include "logging_helper.hpp"
 #include "agent_sync_protocol.hpp"
@@ -821,22 +821,7 @@ void SCAEventHandler::PushStateless(const nlohmann::json& event) const
 
 nlohmann::json SCAEventHandler::StringToJsonArray(const std::string& input) const
 {
-    nlohmann::json result = nlohmann::json::array();
-    std::istringstream stream(input);
-    std::string token;
-
-    while (std::getline(stream, token, ','))
-    {
-        // Trim all whitespace characters including \n, \r, \t, \v, \f, and spaces
-        token = Utils::trim(token, " \t\n\r\v\f");
-
-        if (!token.empty())
-        {
-            result.push_back(token);
-        }
-    }
-
-    return result;
+    return sca::DecodeStringListField(input);
 }
 
 void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const

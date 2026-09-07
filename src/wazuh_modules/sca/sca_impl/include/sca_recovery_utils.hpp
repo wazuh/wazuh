@@ -14,7 +14,7 @@
 #include <dbsync.hpp>
 #include <idbsync.hpp>
 #include <json.hpp>
-#include <sstream>
+#include <sca_field_decoder.hpp>
 #include <string>
 
 #include "stringHelper.h"
@@ -25,27 +25,12 @@ namespace sca
     namespace recovery
     {
 
-        /// @brief Convert comma-separated string to JSON array
-        /// @param input Comma-separated string
-        /// @return JSON array with trimmed values (all whitespace removed from both ends)
+        /// @brief Convert a stored list column to a JSON array
+        /// @param input Serialised JSON array, or a comma-separated string for legacy rows
+        /// @return JSON array of elements
         inline nlohmann::json stringToJsonArray(const std::string& input)
         {
-            nlohmann::json result = nlohmann::json::array();
-            std::istringstream stream(input);
-            std::string token;
-
-            while (std::getline(stream, token, ','))
-            {
-                // Trim all whitespace characters including \n, \r, \t, \v, \f, and spaces
-                token = Utils::trim(token, " \t\n\r\v\f");
-
-                if (!token.empty())
-                {
-                    result.push_back(token);
-                }
-            }
-
-            return result;
+            return sca::DecodeStringListField(input);
         }
 
         /// @brief Normalize check data for stateful message format
