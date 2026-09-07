@@ -17,7 +17,9 @@
 #include <stdbool.h>
 #include "agent_sync_protocol_c_interface.h"
 
-AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, asp_logger_t logger);
+AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, asp_logger_t logger,
+                                           uint64_t flush_batch_size, uint64_t flush_interval_ms,
+                                           uint64_t wal_autocheckpoint_pages);
 
 void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
                              const char* id,

@@ -138,6 +138,7 @@ void test_read_internal(void **state)
     (void) state;
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
 
     read_internal(0);
 }
@@ -147,6 +148,7 @@ void test_read_internal_debug(void **state)
     (void) state;
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
 
     read_internal(1);
 }
@@ -184,6 +186,7 @@ void test_Start_win32_Syscheck_no_config_file(void **state) {
 
     /* Conf file not found */
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
     will_return(__wrap_File_DateofChange, -1);
     expect_string(__wrap__merror_exit, formatted_msg, "(1239): Configuration file not found: 'ossec.conf'.");
@@ -199,6 +202,7 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     syscheck.disabled = 1;
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
     will_return(__wrap_File_DateofChange, 0);
 
@@ -236,6 +240,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
     char info_msg[OS_MAXSTR];
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
 
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
     will_return(__wrap_File_DateofChange, 0);
@@ -281,6 +286,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
     char info_msg[OS_MAXSTR];
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
 
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
     will_return(__wrap_File_DateofChange, 0);
@@ -355,6 +361,7 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
     char info_msg[OS_MAXSTR];
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
 
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
     will_return(__wrap_File_DateofChange, 0);
@@ -431,6 +438,7 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
     char info_msg[OS_MAXSTR];
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
 
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
     will_return(__wrap_File_DateofChange, 0);
