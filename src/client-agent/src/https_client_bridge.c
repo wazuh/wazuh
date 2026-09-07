@@ -872,7 +872,12 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
         return;
     }
 
-    if (w_ref_parent_folder(wpk_file)) {
+    /* w_ref_parent_folder() alone only rejects ".." components: a value with a subdirectory
+     * separator (e.g. "sub/file.wpk") would pass it, reach the unlink() below, and only get caught
+     * afterwards by w_fopen_nofollow()'s internal w_is_bare_filename() check on the destination
+     * open -- by which point the unlink() has already run against that subdirectory path. Requiring
+     * a bare filename here closes that gap before the unlink(). */
+    if (!w_is_bare_filename(wpk_file)) {
         merror("https_client: remote_upgrade task %s: wpk_file '%s' is not a safe filename; aborting.",
                task_id, wpk_file);
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
@@ -941,7 +946,12 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
     }
 
     fclose(fsrc);
-    fclose(fdst);
+
+    /* A write failure that only surfaces at flush time (e.g. disk full right on close) must not
+     * be swallowed: fclose()'s return value is the only place that shows up. */
+    if (fclose(fdst) != 0) {
+        copy_ok = false;
+    }
 
     if (!copy_ok) {
         merror("https_client: remote_upgrade task %s: could not stage the WPK at '%s'; aborting.",

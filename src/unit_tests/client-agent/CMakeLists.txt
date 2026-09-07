@@ -140,6 +140,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
                                 -Wl,--wrap,vd_offset_client_clear_pending \
                                 -Wl,--wrap,restartAgent \
                                 -Wl,--wrap,OS_SendUnix -Wl,--wrap,w_ref_parent_folder \
+                                -Wl,--wrap,w_is_bare_filename \
                                 -Wl,--wrap,OS_ConnectUnixDomain \
                                 -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP \
                                 ${DEBUG_OP_WRAPPERS}")
