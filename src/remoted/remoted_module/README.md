@@ -185,7 +185,10 @@ src/http_server/
        `certificate_path`/`private_key_path` are file paths (not PEM content) opened by the
        module itself, after `remoted` has already dropped root privileges (`Privsep_SetUser()`)
        -- so both files (and `ca_path`, when configured) must be readable by the unprivileged
-       user `remoted` runs as.
+       user `remoted` runs as. `secure.c` probes the pair with `access(R_OK)`
+       (`w_remoted_check_tls_files()`) right before `remoted_module_start()` and exits with a
+       deterministic ERROR when either is missing or unreadable, so this module's own load
+       failure only fires for files that exist and are readable but unusable.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
        `max_parallel_connections` (default 512) and `max_deferred_requests` (default 256) --
        populated from the `remoted.max_inflight_bytes`/`remoted.max_parallel_connections`/
@@ -1161,8 +1164,16 @@ listeners now present the *same* identity: the install-time generation step
 to create `authd.pem`/`authd-key.pem` has been removed, and the generated `<auth>` config
 (`auth.template`, and the `<disabled>yes</disabled>` fallback written by `DisableAuthd()`) now
 points `<ssl_manager_cert>`/`<ssl_manager_key>` at `remoted.pem`/`remoted-key.pem` instead — the
-same certificate `GenerateHttpsManagerCert()` already generates for the HTTPS listener. Explicit
-`<auth>` certificate overrides in `ossec.conf` keep working unchanged — only the generated
+listener pair the operator provisions. The manager generates no certificate at all any more:
+`CheckListenerCerts()` in `init/inst-functions.sh` (and the packaging equivalents) only creates
+`etc/certs`, re-applies the pair's ownership and prints a `NOTICE` when it is missing, and the
+manager fails closed without it — `wazuh-manager-conf validate` (run by `wazuh-manager-control
+start`) rejects a missing file with `(1244) … file not found`, and remoted itself probes both paths
+with `access(R_OK)` after dropping privileges (`w_remoted_check_tls_files()` in `secure.c`, right
+before `remoted_module_start()`) and exits with a deterministic message, so this module's own
+exception on an unreadable pair is the last resort, not the first line (see
+[Certificate provisioning and fail-closed start](../../../docs/ref/modules/remoted/https-events-api.md#certificate-provisioning-and-fail-closed-start)).
+Explicit `<auth>` certificate overrides in `ossec.conf` keep working unchanged — only the generated
 defaults change. Port 1515 keeps running with the unified certificate.
 
 Two compiled-in defaults exist alongside the generated config, both now updated to match:
