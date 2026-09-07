@@ -327,7 +327,8 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
             w_remoted_json_https_string(https, "global_prefix", REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN, w_remoted_validate_global_prefix, &logr->https.global_prefix) == OS_INVALID ||
             w_remoted_json_https_string(https, "certificate", REMOTED_HTTPS_CERTIFICATE_MAX_LEN, NULL, &logr->https.certificate) == OS_INVALID ||
             w_remoted_json_https_string(https, "key", REMOTED_HTTPS_KEY_MAX_LEN, NULL, &logr->https.key) == OS_INVALID ||
-            w_remoted_json_https_string(https, "ca", REMOTED_HTTPS_CA_MAX_LEN, NULL, &logr->https.ca) == OS_INVALID) {
+            w_remoted_json_https_string(https, "ca", REMOTED_HTTPS_CA_MAX_LEN, NULL, &logr->https.ca) == OS_INVALID ||
+            w_remoted_json_https_string(https, "ca_certificate", REMOTED_HTTPS_CA_CERTIFICATE_MAX_LEN, NULL, &logr->https.ca_certificate) == OS_INVALID) {
             return (OS_INVALID);
         }
 

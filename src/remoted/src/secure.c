@@ -432,6 +432,10 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
         snprintf(rm_config->ca_path, sizeof(rm_config->ca_path), "%s", logr->https.ca);
     }
 
+    if (logr->https.ca_certificate) {
+        snprintf(rm_config->ca_certificate_path, sizeof(rm_config->ca_certificate_path), "%s", logr->https.ca_certificate);
+    }
+
     if (logr->https.ciphers) {
         snprintf(rm_config->ciphers, sizeof(rm_config->ciphers), "%s", logr->https.ciphers);
     }
