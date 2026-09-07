@@ -499,7 +499,7 @@ Collect macOS authentication logs:
   <log_format>macos</log_format>
   <query type="trace,log,activity" level="info">
     (process == "sudo") or
-    (process == "sessionlogoutd" and message contains "logout is complete.") or
+    (process == "sessionlogoutd" and eventMessage contains "logout is complete.") or
     (process == "sshd")
   </query>
 </localfile>
