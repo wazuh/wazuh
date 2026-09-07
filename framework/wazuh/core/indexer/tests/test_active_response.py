@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import jsonschema
 import pytest
 
 from contextlib import asynccontextmanager
@@ -11,6 +12,7 @@ from unittest.mock import mock_open, AsyncMock, MagicMock, patch
 from wazuh.core.exception import WazuhInternalError
 
 from wazuh.core.indexer.active_response import (
+    AR_SCHEMA,
     EVENT_VISIBILITY_GRACE_SECONDS,
     ActiveResponse,
     ActiveResponseFetchTask,
@@ -1203,8 +1205,14 @@ GOOD_AR = {
     "wazuh": {"agent": {"id": "001"}, "active_response": _channel("defined-agent", "007")},
 }
 
-# The first four pass AR_SCHEMA and used to raise out of dispatch() or get_events_by_ar(); the
-# last two fail it. Adding a shape is one line here.
+# A referenced document's shape is out of AR_SCHEMA's reach: it is only known after the mget.
+EVENT_WAZUH_IS_A_STRING = {
+    "event": {"index": "other-idx", "doc_id": "weird-1"},
+    "wazuh": {"active_response": _channel("defined-agent", "007")},
+}
+
+# V1 and V2 fail AR_SCHEMA; V3 and V5 pass it and used to raise out of dispatch() or
+# get_events_by_ar(); the last two fail it outright. Adding a shape is one line here.
 POISON_DOCS = [
     pytest.param(
         {"event": ALERT_REF, "wazuh": {"active_response": _channel("local")}},
@@ -1214,13 +1222,7 @@ POISON_DOCS = [
         {"event": ALERT_REF, "wazuh": {"agent": {"name": "x"}, "active_response": _channel("local")}},
         id="local-agent-without-id",
     ),
-    pytest.param(
-        {
-            "event": {"index": "other-idx", "doc_id": "weird-1"},
-            "wazuh": {"active_response": _channel("defined-agent", "007")},
-        },
-        id="event-wazuh-is-a-string",
-    ),
+    pytest.param(EVENT_WAZUH_IS_A_STRING, id="event-wazuh-is-a-string"),
     pytest.param(
         {
             "event": {"index": "nosource-idx", "doc_id": "x"},
@@ -1353,20 +1355,104 @@ class TestCycleSurvivesAnyDocument:
 
     @pytest.mark.asyncio
     async def test_unusable_shape_is_logged_with_its_id(self):
-        poison = {"event": ALERT_REF, "wazuh": {"active_response": _channel("local")}}
+        hits = [_hit("poison", EVENT_WAZUH_IS_A_STRING, sort=[1, "poison"])]
 
-        _, _, logger = await _run_cycle([_hit("poison", poison, sort=[1, "poison"])])
+        _, _, logger = await _run_cycle(hits)
 
         warnings = [str(call.args[0]) for call in logger.warning.call_args_list]
-        assert any("`poison`" in message and "KeyError" in message for message in warnings)
+        assert any("`poison`" in message and "TypeError" in message for message in warnings)
 
     @pytest.mark.asyncio
     async def test_transport_failure_still_holds_the_page_when_a_shape_error_also_occurred(self):
-        poison = {"event": ALERT_REF, "wazuh": {"active_response": _channel("local")}}
-        hits = [_hit("poison", poison, sort=[1, "poison"]), _hit("good", GOOD_AR, sort=[2, "good"])]
+        hits = [
+            _hit("poison", EVENT_WAZUH_IS_A_STRING, sort=[1, "poison"]),
+            _hit("good", GOOD_AR, sort=[2, "good"]),
+        ]
 
         _, bookmark, _ = await _run_cycle(
             hits, task_manager=_FakeTaskManager(fail=WazuhInternalError(2021))
         )
 
         assert bookmark.updates == []
+
+    @pytest.mark.asyncio
+    async def test_invalid_document_is_discarded_with_its_id_and_the_page_advances(self):
+        """`defined-agent` with a null `agent_id` dispatched to nobody and said nothing; now it dies
+        at validation, named, and the page still clears."""
+        poison = {"event": ALERT_REF, "wazuh": {"active_response": _channel("defined-agent", None)}}
+        hits = [_hit("poison", poison, sort=[1, "poison"]), _hit("good", GOOD_AR, sort=[2, "good"])]
+
+        task_manager, bookmark, logger = await _run_cycle(hits)
+
+        warnings = [str(call.args[0]) for call in logger.warning.call_args_list]
+        assert any("`poison`" in message and "Reason:" in message for message in warnings)
+        assert task_manager.created == [("good", "007")]
+        assert bookmark.updates == [[2, "good"]]
+
+
+# (document, substring the rejection must mention; None means accepted)
+SCHEMA_TABLE = [
+    pytest.param(
+        {"event": ALERT_REF, "wazuh": {"agent": {"id": "001"}, "active_response": _channel("local")}},
+        None,
+        id="producer-local",
+    ),
+    pytest.param(
+        {"event": ALERT_REF, "wazuh": {"active_response": _channel("defined-agent", "001")}},
+        None,
+        id="defined-agent",
+    ),
+    pytest.param(
+        {"event": ALERT_REF, "wazuh": {"active_response": _channel("all")}},
+        None,
+        id="all-without-agent-and-null-agent-id",
+    ),
+    pytest.param(
+        {"wazuh": {"active_response": _channel("defined-agent", "001")}},
+        "event",
+        id="38904-no-event",
+    ),
+    pytest.param(
+        {"event": ALERT_REF, "wazuh": {"active_response": _channel("local")}},
+        "agent",
+        id="local-without-wazuh-agent",
+    ),
+    pytest.param(
+        {"event": ALERT_REF, "wazuh": {"agent": {"name": "x"}, "active_response": _channel("local")}},
+        "id",
+        id="local-agent-without-id",
+    ),
+    pytest.param(
+        {"event": ALERT_REF, "wazuh": {"agent": {"id": ""}, "active_response": _channel("local")}},
+        "",
+        id="local-empty-agent-id",
+    ),
+    pytest.param(
+        {"event": ALERT_REF, "wazuh": {"active_response": _channel("defined-agent", None)}},
+        "",
+        id="defined-agent-null-agent-id",
+    ),
+    pytest.param(
+        {
+            "event": {"index": "wazuh-alerts", "doc_id": ""},
+            "wazuh": {"active_response": _channel("defined-agent", "001")},
+        },
+        "",
+        id="empty-doc-id",
+    ),
+]
+
+
+class TestArSchema:
+    """The schema is data, so it is tested as a table."""
+
+    @pytest.mark.parametrize("document,rejected_with", SCHEMA_TABLE)
+    def test_accepts_and_rejects(self, document, rejected_with):
+        if rejected_with is None:
+            jsonschema.validate(instance=document, schema=AR_SCHEMA)
+            return
+
+        with pytest.raises(jsonschema.ValidationError) as excinfo:
+            jsonschema.validate(instance=document, schema=AR_SCHEMA)
+
+        assert rejected_with in excinfo.value.message
