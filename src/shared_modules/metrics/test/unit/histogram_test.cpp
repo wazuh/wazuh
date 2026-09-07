@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -21,14 +22,17 @@
 using namespace wazuh::metrics;
 
 // ============================================================
-// Bucket mapping at the edges: the first three octaves (values
-// 0..7) map exactly -- one value per bucket, no averaging -- so a
-// single observation of v in that range must report p50 == v.
+// A single observation has no distribution to estimate: min and max
+// both pin the value exactly, and snapshot() clamps the percentile
+// estimates to that range, so every percentile must report v itself.
+// Below 8 the bucket mapping is exact anyway (one value per bucket);
+// from 8 up the bucket is wider than 1 and only the clamp recovers
+// the value -- unclamped, v=8 would estimate as 9, above its own max.
 // ============================================================
 
 TEST(HistogramTest, ExactSmallValuesRoundTripThroughPercentiles)
 {
-    for (uint64_t v = 0; v <= 7; ++v)
+    for (uint64_t v = 0; v <= 127; ++v)
     {
         AtomicHistogram histogram("test.histogram");
         histogram.observe(v);
@@ -45,12 +49,39 @@ TEST(HistogramTest, ExactSmallValuesRoundTripThroughPercentiles)
 }
 
 // ============================================================
+// Same property across every octave, including the magnitudes seen
+// in production latency histograms (682 us estimated as 704 before
+// the clamp) and the largest representable observation.
+// ============================================================
+
+TEST(HistogramTest, SingleObservationIsExactAtEveryMagnitude)
+{
+    const std::vector<uint64_t> values {
+        8, 9, 389, 682, 1000, 81919, 1368930, 1000000000, std::numeric_limits<uint64_t>::max()};
+
+    for (const uint64_t v : values)
+    {
+        AtomicHistogram histogram("test.histogram");
+        histogram.observe(v);
+
+        const auto snapshot = histogram.snapshot();
+        EXPECT_EQ(snapshot.min, v) << "v=" << v;
+        EXPECT_EQ(snapshot.max, v) << "v=" << v;
+        EXPECT_EQ(snapshot.p50, v) << "v=" << v;
+        EXPECT_EQ(snapshot.p90, v) << "v=" << v;
+        EXPECT_EQ(snapshot.p99, v) << "v=" << v;
+    }
+}
+
+// ============================================================
 // Known distribution: a dominant cluster plus one outlier.
 // 100 observations of 1000 and 1 of 1'000'000. Sorted, positions
 // 1..100 are all 1000 and position 101 is 1'000'000, so even p99
 // (rank = ceil(0.99*101) = 100) lands on the last "1000" sample --
-// its bucket estimate, not the raw value, so allow the ~12.5%
-// bucket-width error, but max/min/sum/count are exact.
+// its bucket estimate. That bucket's midpoint is 960, below the
+// minimum observation of 1000, so the clamp pulls all three back to
+// exactly 1000 -- inside the ~12.5% bucket-width error this test
+// allows, and here exact. max/min/sum/count are exact as always.
 // ============================================================
 
 TEST(HistogramTest, KnownDistributionClusterPlusOutlier)
@@ -74,6 +105,11 @@ TEST(HistogramTest, KnownDistributionClusterPlusOutlier)
     EXPECT_NEAR(static_cast<double>(snapshot.p50), 1000.0, 0.125 * 1000.0);
     EXPECT_NEAR(static_cast<double>(snapshot.p90), 1000.0, 0.125 * 1000.0);
     EXPECT_NEAR(static_cast<double>(snapshot.p99), 1000.0, 0.125 * 1000.0);
+
+    // Clamped to min, since the raw estimate (960) sits below it.
+    EXPECT_EQ(snapshot.p50, 1000U);
+    EXPECT_EQ(snapshot.p90, 1000U);
+    EXPECT_EQ(snapshot.p99, 1000U);
 }
 
 // ============================================================
@@ -82,7 +118,8 @@ TEST(HistogramTest, KnownDistributionClusterPlusOutlier)
 // so:
 //   p50: rank = int(0.50*100) + 1 = 51 -> value 51  -> bucket mid 52
 //   p90: rank = int(0.90*100) + 1 = 91 -> value 91  -> bucket mid 88
-//   p99: rank = int(0.99*100) + 1 = 100 -> value 100 -> bucket mid 104
+//   p99: rank = int(0.99*100) + 1 = 100 -> value 100 -> bucket mid 104,
+//        clamped to max == 100
 // Bucket widths at these magnitudes: value 51 falls in octave 5
 // (values 32..63, width 8); values 91 and 100 fall in octave 6
 // (values 64..127, width 16). These are exact consequences of
@@ -107,7 +144,74 @@ TEST(HistogramTest, PercentilesOverUniformSequence)
 
     EXPECT_EQ(snapshot.p50, 52U);
     EXPECT_EQ(snapshot.p90, 88U);
-    EXPECT_EQ(snapshot.p99, 104U);
+    EXPECT_EQ(snapshot.p99, 100U); // raw estimate 104, clamped to max
+}
+
+// ============================================================
+// The snapshot invariant: a payload must never contradict itself.
+// Percentiles are bucket estimates while min/max are exact, so the
+// estimates are clamped into [min, max]; the ranks themselves are
+// non-decreasing because the bucket walk is cumulative. Checked over
+// distributions that stress every side of the mapping: single values,
+// tight clusters, wide spreads, outliers and the upper clamp.
+// ============================================================
+
+TEST(HistogramTest, PercentilesStayOrderedWithinExactMinMax)
+{
+    const auto expectInvariant = [](const IHistogram::Snapshot& snapshot, const std::string& label)
+    {
+        ASSERT_GT(snapshot.count, 0U) << label;
+        EXPECT_LE(snapshot.min, snapshot.p50) << label;
+        EXPECT_LE(snapshot.p50, snapshot.p90) << label;
+        EXPECT_LE(snapshot.p90, snapshot.p99) << label;
+        EXPECT_LE(snapshot.p99, snapshot.max) << label;
+    };
+
+    // Single observations across every magnitude, including the first value
+    // whose bucket is wider than 1 (8) and the upper clamp.
+    const std::vector<uint64_t> singles {0, 1, 8, 682, 1368930, std::numeric_limits<uint64_t>::max()};
+
+    for (const uint64_t v : singles)
+    {
+        AtomicHistogram histogram("test.histogram");
+        histogram.observe(v);
+        expectInvariant(histogram.snapshot(), "single v=" + std::to_string(v));
+    }
+
+    // Arithmetic sequences of several strides and spans.
+    for (uint64_t step : {1ULL, 3ULL, 13ULL})
+    {
+        for (uint64_t limit : {9ULL, 100ULL, 65535ULL, 1000000ULL})
+        {
+            AtomicHistogram histogram("test.histogram");
+            for (uint64_t v = 0; v < limit; v += step)
+            {
+                histogram.observe(v);
+            }
+            expectInvariant(histogram.snapshot(),
+                            "sequence limit=" + std::to_string(limit) + " step=" + std::to_string(step));
+        }
+    }
+
+    // Tight cluster dragged by a far outlier, and the reverse.
+    {
+        AtomicHistogram histogram("test.histogram");
+        for (int i = 0; i < 500; ++i)
+        {
+            histogram.observe(137);
+        }
+        histogram.observe(std::numeric_limits<uint64_t>::max());
+        expectInvariant(histogram.snapshot(), "cluster plus high outlier");
+    }
+    {
+        AtomicHistogram histogram("test.histogram");
+        histogram.observe(1);
+        for (int i = 0; i < 500; ++i)
+        {
+            histogram.observe(999999);
+        }
+        expectInvariant(histogram.snapshot(), "cluster plus low outlier");
+    }
 }
 
 // ============================================================

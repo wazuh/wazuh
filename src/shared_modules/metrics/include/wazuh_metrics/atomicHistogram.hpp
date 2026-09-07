@@ -12,6 +12,7 @@
 #ifndef _WAZUH_METRICS_ATOMIC_HISTOGRAM_HPP
 #define _WAZUH_METRICS_ATOMIC_HISTOGRAM_HPP
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -38,8 +39,10 @@ namespace wazuh::metrics
      * them to the requested percentile ranks. The estimate it returns is the
      * midpoint of the bucket the rank lands in, so the relative error is bounded
      * by the bucket width: at 4 sub-buckets per octave, ~12.5% -- plenty for
-     * operational p50/p99. Like every read here it is best-effort under
-     * concurrent observes: consistent enough for metrics, not for accounting.
+     * operational p50/p99. The estimates are then clamped to the exact min/max
+     * of the same snapshot, so a payload never contradicts itself. Like every
+     * read here it is best-effort under concurrent observes: consistent enough
+     * for metrics, not for accounting.
      *
      * Values are unit-agnostic unsigned integers (the unit is registration
      * metadata). uint64_t on purpose: C++17 has no fetch_add for atomic<double>,
@@ -225,6 +228,21 @@ namespace wazuh::metrics
             out.p50 = percentile(0.50);
             out.p90 = percentile(0.90);
             out.p99 = percentile(0.99);
+
+            // A bucket midpoint can land outside the exact range published by
+            // this very snapshot -- a lone observation of 682 estimates as 704,
+            // above its own max. The true percentile always lies within
+            // [min, max], so clamping strictly reduces the error and keeps the
+            // payload self-consistent; for a single observation it recovers the
+            // value exactly. Guarded because a concurrent observe() bumps the
+            // bucket before the min/max CAS pair, so `total` can be non-zero
+            // while min still holds the sentinel -- std::clamp requires lo <= hi.
+            if (out.min <= out.max)
+            {
+                out.p50 = std::clamp(out.p50, out.min, out.max);
+                out.p90 = std::clamp(out.p90, out.min, out.max);
+                out.p99 = std::clamp(out.p99, out.min, out.max);
+            }
             return out;
         }
     };
