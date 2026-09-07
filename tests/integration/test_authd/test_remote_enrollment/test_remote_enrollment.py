@@ -182,7 +182,7 @@ def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configur
         ssl_socket.open()
 
         if test_metadata['node_type'] == 'worker':
-            expected_answer = 'ERROR: Cannot comunicate with master'
+            expected_answer = 'ERROR: Cannot communicate with master'
         global AGENT_ID
         ssl_socket.send(INPUT_MESSAGE.format(AGENT_NAME, AGENT_ID), size=False)
         AGENT_ID = AGENT_ID + 1

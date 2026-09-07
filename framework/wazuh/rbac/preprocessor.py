@@ -126,10 +126,15 @@ def optimize_resources(roles: list = None) -> dict:
 def get_roles(auth_context: Union[dict, str] = None, user_id: int = None) -> list:
     """Obtain the roles of a user using auth_context or user_id.
 
+    The authorization context is resolved against the rules whenever one is given, even if it is
+    empty: an empty context is granted whatever the ruleset matches on it, which is nothing for
+    every rule in the default ruleset. Only an absent context (`None`, the plain login path) falls
+    back to the user-role link, i.e. the account's static roles.
+
     Parameters
     ----------
     auth_context : dict or str
-        Authorization context of the current user.
+        Authorization context of the current user. `None` if the user did not provide one.
     user_id : int
         Username of the current user.
 
@@ -141,8 +146,9 @@ def get_roles(auth_context: Union[dict, str] = None, user_id: int = None) -> lis
     with AuthenticationManager() as am:
         user_id = am.get_user(username=user_id)['id']
     rbac = RBAChecker(auth_context=auth_context, user_id=user_id)
-    # Authorization Context method
-    if auth_context:
+    # Authorization Context method. Test for presence, not truth: an empty context is still a
+    # context to resolve, never a request to fall back to the account's static roles.
+    if auth_context is not None:
         roles = rbac.run_auth_context_roles()
     # User-role link method
     else:
@@ -154,17 +160,21 @@ def get_roles(auth_context: Union[dict, str] = None, user_id: int = None) -> lis
 def get_permissions(user_id: int = None, auth_context: Union[dict, str] = None) -> WazuhResult:
     """Obtain the permissions of a user using auth_context or user_id.
 
+    An authorization context is considered given whenever it is not `None`, even if it is empty,
+    both to resolve the roles and to enforce the `allow_run_as` check.
+
     Parameters
     ----------
     auth_context : dict or str
-        Authorization context of the current user.
+        Authorization context of the current user. `None` if the user did not provide one.
     user_id : int
         Username of the current user.
 
     Raises
     ------
     WazuhPermissionError(6004)
-        If the current user does not have authentication enabled through authorization context.
+        If the current user provided an authorization context but does not have authentication
+        enabled through authorization context.
 
     Returns
     -------
@@ -172,7 +182,7 @@ def get_permissions(user_id: int = None, auth_context: Union[dict, str] = None) 
         WazuhResult object with the user permissions.
     """
     with AuthenticationManager() as auth:
-        if not auth.user_allow_run_as(user_id) and auth_context:
+        if not auth.user_allow_run_as(user_id) and auth_context is not None:
             raise WazuhPermissionError(6004)
         elif auth.user_allow_run_as(user_id):
             roles = get_roles(auth_context=auth_context, user_id=user_id)

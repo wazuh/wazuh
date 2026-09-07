@@ -259,11 +259,10 @@ TEST(StatsEndpointTest, StoresEachModuleBodyVerbatim)
 
 /**
  * "Verbatim" is about this endpoint, NOT about what survives to the index. The `wazuh-agent-stats`
- * mapping is `dynamic: strict` with every leaf declared, so a module or a metric it does not declare
- * makes the indexer reject the WHOLE document with `strict_dynamic_mapping_exception` -- silently,
- * since the write is fire-and-forget and the agent already has its 200.
+ * mapping is `dynamic: true`: an undeclared module or metric is indexed like any other field, not
+ * rejected.
  *
- * Pinned so the asymmetry is visible here rather than discovered in production: modulesd passes an
+ * Pinned because this endpoint's contract does not depend on the mapping: modulesd passes an
  * undeclared module through untouched, and adding one is a change to the index template, not to this
  * file.
  */

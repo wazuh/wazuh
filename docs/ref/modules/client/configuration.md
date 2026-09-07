@@ -184,7 +184,10 @@ Interval between agent keep-alive notifications to the manager.
 - **Default value:** `60`
 - **Allowed values:** Positive integer (seconds)
 - **Minimum:** `10`
-- **Note:** Manager considers agent disconnected after 3x this interval
+- **Note:** This is not what decides when the agent is marked `disconnected`. The manager uses
+  `<global><agents_disconnection_time>` (default `15m`) against the last keepalive it recorded, so
+  `notify_time` only has to be comfortably below that figure — see the
+  [manager configuration reference](../../configuration/manager/reference.md#global).
 
 ### time-reconnect
 
@@ -430,6 +433,11 @@ next talks to the manager.
 agent.enrollment_retry_delta=5
 agent.enrollment_retry_max=60
 ```
+
+Both values are resolved once, when the agent starts, and the loops use the resolved value for the
+life of the process. Editing either one on a running agent has no effect until it restarts, and an
+out-of-range value refuses the start rather than terminating the agent later, at its first failed
+re-enrollment.
 
 ### Buffer Settings
 

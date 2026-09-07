@@ -10,7 +10,7 @@
 
 #include "shared.h"
 #include "manager_task_op.h"
-#include "wazuhdb_op.h"
+#include "http_op.h"
 
 #include <openssl/sha.h>
 
@@ -94,73 +94,96 @@ char* manager_task_id_random(const char *tag) {
     return manager_task_hash(input);
 }
 
+/// Response capture. The three responses a producer reads are small -- a result and an id, a
+/// count, or one row of a type whose payload is a single agent id -- and a truncated body simply
+/// fails to parse, which every caller already treats as "could not be determined".
+#define MANAGER_TASK_RESPONSE_LEN 16384
+
+/// Connect deadline for the task manager socket, in milliseconds. Separate from the caller's
+/// timeout, which bounds the whole round trip: reaching a socket on the same host either works
+/// almost immediately or is not going to, and a slow connect is really an absent consumer.
+#define MANAGER_TASK_CONNECT_TIMEOUT_MS 2000
+
 /**
- * @brief Send one `task` sub-command and return its parsed payload.
+ * @brief POST one request to the task manager and return its parsed response.
  *
- * The response is `ok <json>` with an `error` member, which wdbc_parse_result() strips down to the
- * JSON. A payload whose `error` is negative is wazuh-db reporting a failure inside the command, as
- * opposed to a malformed request, which comes back as `err`.
+ * A client per call, not a cached one. The task manager's transport answers one request per
+ * connection and closes it, so there is no connection to reuse; what a cached handle would save is
+ * a curl_easy_init, measured in microseconds, against the cost of making this function thread-safe
+ * for authd, which calls it from more than one thread.
  *
- * @return The parsed object, caller frees, or NULL on any failure.
+ * @param route Path on the task manager socket.
+ * @param parameters Request body. ALWAYS consumed, including on every early return.
+ * @param timeout Seconds for the whole round trip; 0 means no deadline.
+ * @param[out] http_status Optional: the status the server answered with, so a caller can tell
+ *                         "refused" from "unreachable". 0 when the request never got an answer.
+ * @return The parsed response object, caller frees, or NULL.
  */
-STATIC cJSON* manager_task_query(const char *command, cJSON *parameters, int timeout, int *sock) {
-    char *parameters_str = NULL;
-    char *query = NULL;
-    char response[WDBOUTPUT_SIZE] = "";
-    char *payload = NULL;
+STATIC cJSON* manager_task_request(const char *route, cJSON *parameters, int timeout, long *http_status) {
+    char response[MANAGER_TASK_RESPONSE_LEN] = "";
+    char url[512] = "";
+    uhttp_options_t options = {0};
+    uhttp_result_t result = {0};
+    uhttp_client_t *client = NULL;
+    char *body = NULL;
     cJSON *parsed = NULL;
-    cJSON *error = NULL;
-    int private_sock = -1;
-    size_t query_len;
-    int result;
+    int rc = 0;
 
-    parameters_str = cJSON_PrintUnformatted(parameters);
+    if (http_status) {
+        *http_status = 0;
+    }
 
-    if (!parameters_str) {
+    body = cJSON_PrintUnformatted(parameters);
+    cJSON_Delete(parameters);
+
+    if (!body) {
         return NULL;
     }
 
-    // Sized to fit rather than a fixed buffer: a payload near the 16 KB cap would be silently
-    // truncated by a snprintf into a smaller one, and the row would then be malformed rather than
-    // rejected.
-    query_len = strlen("task ") + strlen(command) + 1 + strlen(parameters_str) + 1;
-    os_calloc(query_len, sizeof(char), query);
-    snprintf(query, query_len, "task %s %s", command, parameters_str);
-    os_free(parameters_str);
+    /* An ABSOLUTE url, not the bare route: libcurl parses it before it consults the socket option,
+     * and a path on its own fails the transfer with no HTTP status -- indistinguishable, to the
+     * caller below, from a task manager that is not listening. */
+    snprintf(url, sizeof(url), "%s%s", WM_TASK_MODULE_URL, route);
 
-    result = wdbc_query_ex_timeout(sock ? sock : &private_sock, query, response, sizeof(response), timeout);
+    options.unix_socket_path = WM_TASK_MODULE_SOCK;
+    options.url = url;
+    options.content_type = "application/json";
+    options.connect_timeout_ms = MANAGER_TASK_CONNECT_TIMEOUT_MS;
+    options.timeout_ms = timeout > 0 ? (long)timeout * 1000 : 0;
 
-    os_free(query);
-
-    if (!sock) {
-        wdbc_close(&private_sock);
-    }
-
-    if (result != 0) {
-        mdebug1("Manager task command '%s' did not complete.", command);
+    if (client = uhttp_client_new(&options), !client) {
+        os_free(body);
         return NULL;
     }
 
-    if (wdbc_parse_result(response, &payload) != WDBC_OK) {
-        mdebug1("Manager task command '%s' was refused: %s", command, payload ? payload : "no detail");
+    uhttp_client_set_response_buffer(client, response, sizeof(response) - 1);
+
+    rc = uhttp_post(client, body, strlen(body), &result);
+
+    uhttp_client_free(client);
+    os_free(body);
+
+    if (http_status) {
+        *http_status = result.http_status;
+    }
+
+    /* A non-2xx still carries a body worth parsing: a refused creation answers with a `result`
+     * that names WHY, and discarding it here would flatten "the queue is full" into "the request
+     * failed", which is the difference between backing off and giving up. */
+    if (rc != 0 && result.http_status == 0) {
+        mdebug1("Manager task request '%s' did not reach the task manager.", route);
         return NULL;
     }
 
-    if (parsed = cJSON_Parse(payload), !parsed) {
-        mdebug1("Manager task command '%s' answered something that is not JSON.", command);
-        return NULL;
-    }
-
-    if (error = cJSON_GetObjectItem(parsed, "error"), error && cJSON_IsNumber(error) && error->valueint < 0) {
-        mdebug1("Manager task command '%s' failed inside wazuh-db.", command);
-        cJSON_Delete(parsed);
+    if (parsed = cJSON_Parse(response), !parsed) {
+        mdebug1("Manager task request '%s' answered something that is not JSON.", route);
         return NULL;
     }
 
     return parsed;
 }
 
-int manager_task_create(const manager_task_request_t *request, int timeout, int *sock, char **surviving_task_id) {
+int manager_task_create(const manager_task_request_t *request, int timeout, char **surviving_task_id) {
     cJSON *parameters = NULL;
     cJSON *response = NULL;
     cJSON *item = NULL;
@@ -189,15 +212,16 @@ int manager_task_create(const manager_task_request_t *request, int timeout, int 
         cJSON_AddNumberToObject(parameters, "next_attempt_at", (double)request->next_attempt_at);
     }
 
+    /* Sent, but only honoured for a type the task manager does not recognise. For a registered
+     * type its own descriptor decides both, so the queue's policy has one home rather than being
+     * a thing a producer could contradict. */
     cJSON_AddBoolToObject(parameters, "coalesce", request->coalesce);
 
     if (request->max_pending > 0) {
         cJSON_AddNumberToObject(parameters, "max_pending", request->max_pending);
     }
 
-    response = manager_task_query("create_manager_task", parameters, timeout, sock);
-
-    cJSON_Delete(parameters);
+    response = manager_task_request("/v1/manager-tasks", parameters, timeout, NULL);
 
     if (!response) {
         return MANAGER_TASK_CREATE_FAILED;
@@ -226,7 +250,7 @@ int manager_task_create(const manager_task_request_t *request, int timeout, int 
     return outcome;
 }
 
-int manager_task_count(const char *task_type, const char *status, int timeout, int *sock) {
+int manager_task_count(const char *task_type, const char *status, int timeout) {
     cJSON *parameters = NULL;
     cJSON *response = NULL;
     cJSON *item = NULL;
@@ -240,9 +264,7 @@ int manager_task_count(const char *task_type, const char *status, int timeout, i
     cJSON_AddStringToObject(parameters, "task_type", task_type);
     cJSON_AddStringToObject(parameters, "status", status);
 
-    response = manager_task_query("count_manager_tasks", parameters, timeout, sock);
-
-    cJSON_Delete(parameters);
+    response = manager_task_request("/v1/manager-tasks/count", parameters, timeout, NULL);
 
     if (!response) {
         return -1;
@@ -257,11 +279,12 @@ int manager_task_count(const char *task_type, const char *status, int timeout, i
     return count;
 }
 
-int manager_task_agent_status(const char *agent_id, const char *task_type, int timeout, int *sock) {
+int manager_task_agent_status(const char *agent_id, const char *task_type, int timeout) {
     cJSON *parameters = NULL;
     cJSON *response = NULL;
     cJSON *task = NULL;
     cJSON *status = NULL;
+    long http_status = 0;
     int outcome = MANAGER_TASK_STATUS_FAILED;
 
     if (!agent_id || !task_type) {
@@ -272,11 +295,17 @@ int manager_task_agent_status(const char *agent_id, const char *task_type, int t
     cJSON_AddStringToObject(parameters, "agent_id", agent_id);
     cJSON_AddStringToObject(parameters, "task_type", task_type);
 
-    response = manager_task_query("get_manager_task_by_agent", parameters, timeout, sock);
-
-    cJSON_Delete(parameters);
+    response = manager_task_request("/v1/manager-tasks/by-agent", parameters, timeout, &http_status);
 
     if (!response) {
+        return MANAGER_TASK_STATUS_FAILED;
+    }
+
+    /* Only a 200 may be read as an answer about the agent. Anything else is the request failing,
+     * and a caller that used this to decide whether an agent id may be reused must fail safe
+     * rather than conclude "nothing outstanding" from an error. */
+    if (http_status != 200) {
+        cJSON_Delete(response);
         return MANAGER_TASK_STATUS_FAILED;
     }
 
@@ -297,4 +326,3 @@ int manager_task_agent_status(const char *agent_id, const char *task_type, int t
 
     return outcome;
 }
-

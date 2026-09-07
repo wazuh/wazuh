@@ -12,6 +12,7 @@ on:
       - src/shared_modules/metrics/**
       - src/shared_modules/manager_config/**
       - src/wazuh_modules/inventory_sync_server/**
+      - src/wazuh_modules/task_manager/**
       - src/wazuh_modules/vulnerability_scanner/**
       - src/remoted/remoted_module/**
       - .github/workflows/5_codelinter_clangformat.yml
@@ -75,6 +76,17 @@ jobs:
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           path: src/wazuh_modules/inventory_sync_server
           id: inventory_sync_server
+
+      # Task Manager
+      - name: Task manager - Coding style
+        id: task_manager_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/wazuh_modules/task_manager
+          id: task_manager
 
       # Vulnerability Scanner
       - name: Vulnerability scanner - Coding style
@@ -146,6 +158,10 @@ jobs:
 
           if [ "${{ steps.inventory_sync_server_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS InventorySyncServer"
+          fi
+
+          if [ "${{ steps.task_manager_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS TaskManager"
           fi
 
           if [ "${{ steps.vulnerability_scanner_style.outcome }}" != "success" ]; then

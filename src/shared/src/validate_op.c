@@ -174,6 +174,14 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
             *tmp_buffer = '\0';
         }
 
+        /* A key written with no value is an unfinished edit, not an unset option. Left through, it
+         * reaches atoi() as 0, which the range check accepts on every option whose minimum is 0 and
+         * rejects on the rest. Refused here, before anything is allocated. */
+        if (*buf_pt == '\0') {
+            fclose(fp);
+            merror_exit(INV_DEF, high_name, low_name, buf_pt);
+        }
+
         os_strdup(buf_pt, ret);
         fclose(fp);
         return (ret);

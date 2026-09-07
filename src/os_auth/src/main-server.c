@@ -1260,7 +1260,7 @@ static size_t purge_create_rows(const purge_journal_entry_t *entries, size_t cou
         request.coalesce = false;
         request.max_pending = config.max_pending_deletes;
 
-        result = manager_task_create(&request, config.wdb_timeout, wdb_sock, NULL);
+        result = manager_task_create(&request, config.wdb_timeout, NULL);
 
         os_free(task_id);
 
@@ -1349,8 +1349,7 @@ static void purge_startup_recover(void) {
      * reporting an outage as an empty queue. */
     if (wdb_listening) {
         purge_pending_rows_update(
-            manager_task_count(MANAGER_TASK_TYPE_AGENT_DELETE, MANAGER_TASK_STATUS_PENDING, config.wdb_timeout,
-                               &wdb_sock));
+            manager_task_count(MANAGER_TASK_TYPE_AGENT_DELETE, MANAGER_TASK_STATUS_PENDING, config.wdb_timeout));
     }
 
     wdbc_close(&wdb_sock);
@@ -1562,8 +1561,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
         // every clean stop.
         if (running) {
             purge_pending_rows_update(
-                manager_task_count(MANAGER_TASK_TYPE_AGENT_DELETE, MANAGER_TASK_STATUS_PENDING, config.wdb_timeout,
-                                   &wdb_sock));
+                manager_task_count(MANAGER_TASK_TYPE_AGENT_DELETE, MANAGER_TASK_STATUS_PENDING, config.wdb_timeout));
         }
 
         gettime(&global_t1);

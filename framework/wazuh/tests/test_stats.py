@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import sys
-from unittest.mock import call, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -21,8 +21,9 @@ with patch('wazuh.core.common.wazuh_uid'):
 @patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/remote.sock')
 @patch('wazuh.core.common.WDB_SOCKET', '/var/wazuh-manager/queue/sockets/wdb.sock')
 @patch('wazuh.stats.EngineHTTPClient')
+@patch('wazuh.stats.get_remoted_daemon_stats')
 @patch('wazuh.stats.get_daemons_stats_socket')
-def test_get_daemons_stats(mock_get_daemons_stats_socket, mock_engine_client_cls):
+def test_get_daemons_stats(mock_get_daemons_stats_socket, mock_get_remoted_daemon_stats, mock_engine_client_cls):
     """Makes sure get_daemons_stats() fit with the expected."""
     mock_engine_client = MagicMock()
     mock_engine_client.get_metrics_dump.return_value = METRICS_DUMP_DATA
@@ -30,9 +31,10 @@ def test_get_daemons_stats(mock_get_daemons_stats_socket, mock_engine_client_cls
 
     response = stats.get_daemons_stats(['wazuh-manager-remoted', 'wazuh-manager-analysisd', 'wazuh-manager-db'])
 
-    # remoted and db still use the socket; analysisd goes through EngineHTTPClient
-    calls = [call('/var/wazuh-manager/queue/sockets/remote.sock'), call('/var/wazuh-manager/queue/sockets/wdb.sock')]
-    mock_get_daemons_stats_socket.assert_has_calls(calls)
+    # db still uses the socket; analysisd goes through EngineHTTPClient and remoted combines both
+    # its control socket and the HTTPS agent server's metrics
+    mock_get_daemons_stats_socket.assert_called_once_with('/var/wazuh-manager/queue/sockets/wdb.sock')
+    mock_get_remoted_daemon_stats.assert_called_once_with()
     mock_engine_client.get_metrics_dump.assert_called_once()
     mock_engine_client.close.assert_called_once()
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'

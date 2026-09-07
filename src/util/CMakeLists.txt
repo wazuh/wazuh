@@ -35,8 +35,7 @@ include_directories(
   ${SRC_FOLDER}/data_provider/include/
   ${SRC_FOLDER}/wazuh_modules/include/
   ${SRC_FOLDER}/wazuh_modules/src/
-  ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/
-  ${SRC_FOLDER}/wazuh_modules/src/task_manager/)
+  ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)

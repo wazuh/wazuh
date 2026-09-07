@@ -514,17 +514,21 @@ private:
         // arguments): since the socket unification, /offset starvation is prevented by the
         // server's route classes (offset is Liveness; scans are Control, deferred to a bounded
         // lane that never occupies a server thread), not by socket separation.
-        m_scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(vdClient, m_scanVdMetrics);
+        m_scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(vdClient,
+                                                                               m_scanVdMetrics,
+                                                                               "/queue/sockets/vd-http.sock",
+                                                                               m_config.vd_scan_read_timeout_sec,
+                                                                               m_config.vd_scan_write_timeout_sec);
 
         m_authGateway->addAuthenticatedRoute(*m_httpServer,
                                              remoted::http::Method::Post,
                                              "/scan/vd",
                                              remoted::endpoints::scanvd::makeHandler(*m_scanVdHandler));
 
-        // Deadlines fixed at compile time: nothing to reduce, so the check names only the cap.
+        // The budget also carries VdClient's fixed offset round trip, so it exceeds the two options.
         warnIfBudgetExceedsRequestTimeout("/scan/vd",
-                                          nullptr,
-                                          remoted::scanvd::ScanVdHandlerImpl::VD_SCAN_BUDGET_MS,
+                                          "vd_scan_read_timeout'/'vd_scan_write_timeout",
+                                          m_scanVdHandler->getBudgetMs(),
                                           static_cast<long long>(config.requestTimeoutSec) * 1000);
 
         // /enroll: bridges to authd's local socket (see the Agent enrollment chapter of this
@@ -1007,6 +1011,28 @@ private:
             },
             "Admin sessions classified on liveness-class routes",
             "connections");
+
+        // Why these cannot be derived from the endpoint families: TransportDiagnostics's own comment.
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.rejected.budget",
+            [snapshot] { return static_cast<uint64_t>(snapshot().rejectedBudgetExhausted); },
+            "Admin requests answered 503 because the in-flight payload budget was exhausted",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.rejected.session_cap",
+            [snapshot] { return static_cast<uint64_t>(snapshot().rejectedSessionCap); },
+            "Admin requests answered 503 because their class session cap was reached",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.rejected.shutdown",
+            [snapshot] { return static_cast<uint64_t>(snapshot().rejectedShutdown); },
+            "Admin requests answered 503 because the server was already stopping",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.rejected.no_response",
+            [snapshot] { return static_cast<uint64_t>(snapshot().rejectedNoResponse); },
+            "Admin requests answered 503 because their handler produced no response",
+            "requests");
     }
 
     /**

@@ -180,6 +180,10 @@ extern "C"
         int keepalive_throttle_sec; ///< Minimum seconds between two wazuh-db keepalive writes for the same agent;
                                     ///< notifies arriving faster are absorbed in memory (<=0 -> 60).
 
+        int vd_scan_read_timeout_sec;  ///< /scan/vd's inline round trip to VD's dispatch queue: read
+                                       ///< timeout in seconds (<=0 -> 5).
+        int vd_scan_write_timeout_sec; ///< Same round trip, write timeout in seconds (<=0 -> 5).
+
         // Enrollment (POST /enroll bridging to authd) configuration. Unlike every other group
         // above, the behavioral flags here are NOT sourced from remote.https or a dedicated
         // key of their own: they are copied verbatim from authd's own auth section, so /enroll and

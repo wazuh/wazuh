@@ -12,17 +12,13 @@
 #ifndef SCANVD_HANDLER_HPP
 #define SCANVD_HANDLER_HPP
 
+#include "common/vdClient.hpp"
 #include "endpoints/scanVdEndpoint.hpp"
 #include "scanvd/scanVdMetrics.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
-
-namespace remoted::common
-{
-    class VdClient;
-}
 
 namespace remoted::scanvd
 {
@@ -47,9 +43,16 @@ namespace remoted::scanvd
         // from VD being down, and the honest answer to the agent is the same 503 either way.
         static constexpr long VD_SCAN_READ_TIMEOUT_SECONDS = 5;
         static constexpr long VD_SCAN_WRITE_TIMEOUT_SECONDS = 5;
-        /// Total downstream budget for one scan, for the facade's startup check.
-        static constexpr long long VD_SCAN_BUDGET_MS =
-            (VD_SCAN_READ_TIMEOUT_SECONDS + VD_SCAN_WRITE_TIMEOUT_SECONDS) * 1000;
+        /// Total downstream budget for one scan at these timeouts, for the facade's startup check.
+        /// Counts VdClient's offset query: getOffset() runs synchronously before the scan POST and,
+        /// on a stale cache, pays its own two deadlines inside this request.
+        static constexpr long long budgetMsFor(long readSeconds, long writeSeconds) noexcept
+        {
+            return (static_cast<long long>(readSeconds) + writeSeconds +
+                    remoted::common::VdClient::OFFSET_READ_TIMEOUT_SECONDS +
+                    remoted::common::VdClient::OFFSET_WRITE_TIMEOUT_SECONDS) *
+                   1000;
+        }
 
         /**
          * @param vdModulesdSocketPath VD module UDS endpoint used to trigger scans, as a raw
@@ -57,11 +60,18 @@ namespace remoted::scanvd
          * vdClient.cpp for why. The same socket VdClient uses for /offset, passed separately
          * because remoted and VD are independent binaries. Defaults to the real socket;
          * overridable so tests can point this at a fake server instead.
+         * @param readTimeoutSeconds remoted.vd_scan_read_timeout (see remoted_module_config_t).
+         * @param writeTimeoutSeconds remoted.vd_scan_write_timeout (see remoted_module_config_t).
          */
         ScanVdHandlerImpl(std::shared_ptr<remoted::common::VdClient> vdClient,
                           ScanVdMetrics& metrics,
-                          std::string vdModulesdSocketPath = "/queue/sockets/vd-http.sock");
+                          std::string vdModulesdSocketPath = "/queue/sockets/vd-http.sock",
+                          long readTimeoutSeconds = VD_SCAN_READ_TIMEOUT_SECONDS,
+                          long writeTimeoutSeconds = VD_SCAN_WRITE_TIMEOUT_SECONDS);
         ~ScanVdHandlerImpl() override;
+
+        /// budgetMsFor() at the timeouts this instance was constructed with, not the defaults.
+        long long getBudgetMs() const noexcept;
 
         void handleVdScan(uint32_t agentId,
                           uint64_t requestedOffset,

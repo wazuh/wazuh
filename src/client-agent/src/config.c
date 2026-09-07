@@ -36,6 +36,11 @@ char agent_agent_groups[OS_SIZE_65536] = {0};
  * responder, which agent-info now polls periodically instead of only once at startup. */
 pthread_mutex_t agent_handshake_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/* Enrollment retry ramp, shared by the initial-enrollment loop (start_agent.c) and the
+ * re-enrollment one (https_client_bridge.c). */
+#define ENROLLMENT_RETRY_MAX_S_DEFAULT   60
+#define ENROLLMENT_RETRY_DELTA_S_DEFAULT 5
+
 /* Read the config file (for the remote client) */
 int ClientConf(const char *cfgfile)
 {
@@ -102,6 +107,15 @@ int ClientConf(const char *cfgfile)
     } else {
         remote_conf = 0;
     }
+
+    /* Before both enrollment loops (main.c and win_utils.c call this ahead of AgentdStart()), so an
+     * out-of-range value refuses the start instead of killing the agent at its first failed
+     * re-enrollment. */
+    agt->enrollment.retry_max =
+        getDefine_Int_default("agent", "enrollment_retry_max", 1, 86400, ENROLLMENT_RETRY_MAX_S_DEFAULT);
+    agt->enrollment.retry_delta =
+        getDefine_Int_default("agent", "enrollment_retry_delta", 1, 3600, ENROLLMENT_RETRY_DELTA_S_DEFAULT);
+
 #ifndef WIN32
     if (ReadConfig(ATAMPERING, cfgfile, atc, NULL) < 0) {
         return OS_INVALID;

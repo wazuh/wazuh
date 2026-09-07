@@ -1,0 +1,64 @@
+- name: NESTED_PASSWORD
+  description: A password one level down in the request body
+  configuration_parameters:
+    REQUEST_TIMEOUT: 10
+    LEVEL: info
+    FORMAT: json,plain
+  metadata:
+    body:
+      username: x
+      nested:
+        password: SuperSecret123
+    secrets:
+      - SuperSecret123
+    expected_code: 400
+
+- name: TOP_LEVEL_PASSWORD
+  description: A password at the top level of the request body, the control case
+  configuration_parameters:
+    REQUEST_TIMEOUT: 10
+    LEVEL: info
+    FORMAT: json,plain
+  metadata:
+    body:
+      username: x
+      password: ControlSecret456
+    secrets:
+      - ControlSecret456
+    expected_code: 400
+
+- name: PASSWORD_IN_A_LIST
+  description: A password inside an array of objects in the request body
+  configuration_parameters:
+    REQUEST_TIMEOUT: 10
+    LEVEL: info
+    FORMAT: json,plain
+  metadata:
+    body:
+      username: x
+      users:
+        - password: ListSecret789
+    secrets:
+      - ListSecret789
+    expected_code: 400
+
+- name: UNRELATED_SENSITIVE_NAMES
+  description: Secrets under names other than `password`, nested and at the top level
+  configuration_parameters:
+    REQUEST_TIMEOUT: 10
+    LEVEL: info
+    FORMAT: json,plain
+  metadata:
+    body:
+      username: x
+      key: AgentKeySecret001
+      wrapper:
+        api_key: ApiKeySecret002
+        client_secret: ClientSecret003
+        accessToken: TokenSecret004
+    secrets:
+      - AgentKeySecret001
+      - ApiKeySecret002
+      - ClientSecret003
+      - TokenSecret004
+    expected_code: 400

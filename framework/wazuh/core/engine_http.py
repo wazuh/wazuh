@@ -194,6 +194,38 @@ class RemotedHTTPClient:
         """Close the remoted admin HTTP client."""
         self._client.close()
 
+    def get_metrics_dump(self) -> dict:
+        """Retrieve the remoted module's metrics registry dump from its local admin socket.
+
+        Returns
+        -------
+        dict
+            The dump envelope: `name`, an ISO8601 UTC `timestamp`, and `metrics`, one entry
+            per registered metric sorted by name. Each entry carries `name`, `type`
+            (`counter`, `gauge_int`, `pull` or `histogram`), `enabled` and `value`, plus
+            `description`/`unit` when the metric declares them and a `summary` distribution
+            for histograms.
+        """
+        try:
+            response = self._client.get(
+                url=f'{self.API_URL}/metrics',
+                headers={'Content-Type': 'application/json'},
+            )
+        except httpx.TimeoutException as exc:
+            raise WazuhInternalError(2030, extra_message=str(exc))
+        except httpx.ConnectError as exc:
+            raise WazuhInternalError(2031, extra_message=str(exc))
+        except httpx.RequestError as exc:
+            raise WazuhError(2013, extra_message=str(exc))
+
+        if response.is_error:
+            raise WazuhError(2029, extra_message=response.text)
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise WazuhInternalError(2032, extra_message=f'Invalid JSON in remoted admin response: {exc}')
+
     def get_status(self) -> dict:
         """Retrieve remoted's readiness status from its local admin socket.
 

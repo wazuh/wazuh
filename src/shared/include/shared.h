@@ -8,22 +8,6 @@
  * Foundation
  */
 
-/*
- *  The stack smashing protector defeats some BoF via: gcc -fstack-protector
- *  Reference: http://gcc.gnu.org/onlinedocs/gcc-4.1.2/cpp.pdf
- */
-
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 1) && (__GNUC_PATCHLEVEL__ >= 2)) || \
-                          ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 2)) || \
-                           (__GNUC__ >= 5))
-
-/* Heuristically enable the stack protector on sensitive functions */
-#define __SSP__ 1
-
-/* FORTIFY_SOURCE is RedHat / Fedora specific */
-#define FORTIFY_SOURCE
-#endif
-
 #ifndef SHARED_H
 #define SHARED_H
 

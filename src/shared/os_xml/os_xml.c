@@ -510,11 +510,6 @@ static int _writememory(const char *str, XML_TYPE type, size_t size,
         _lxml->ck[_lxml->cur] = 1;
     }
 
-    /* Check if it is a variable */
-    if (strcasecmp(XML_VAR, str) == 0) {
-        _lxml->tp[_lxml->cur] = XML_VARIABLE_BEGIN;
-    }
-
     _lxml->cur++;
     return (0);
 

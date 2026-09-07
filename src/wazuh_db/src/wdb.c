@@ -86,74 +86,8 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected', status_code = ?, sync_status = ?, disconnection_time = STRFTIME('%s', 'NOW') where connection_status != 'disconnected' AND connection_status != 'never_connected';",
     [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > ? AND (connection_status = 'active' OR connection_status = 'pending') AND last_keepalive < ?;",
     [WDB_STMT_GLOBAL_AGENT_EXISTS] = "SELECT EXISTS(SELECT 1 FROM agent WHERE id=?);",
-    // Generic task commands
-    [WDB_STMT_TASK_CREATE] = "INSERT INTO TASKS (TASK_ID, AGENT_ID, TASK_TYPE, PAYLOAD, CREATE_TIME, STATUS) VALUES (?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_TASK_GET_PENDING] = "SELECT TASK_ID, AGENT_ID, TASK_TYPE, PAYLOAD, CREATE_TIME FROM TASKS WHERE AGENT_ID = ? AND STATUS = 'pending' ORDER BY CREATE_TIME ASC LIMIT ?;",
-    [WDB_STMT_TASK_MARK_DELIVERED] = "UPDATE TASKS SET STATUS = 'delivered', DELIVERY_TIME = ? WHERE TASK_ID = ?;",
-    [WDB_STMT_TASK_CLEANUP_EXPIRED] = "UPDATE TASKS SET STATUS = 'expired' WHERE STATUS = 'pending' AND CREATE_TIME < ?;",
-    [WDB_STMT_TASK_DELETE_OLD] = "DELETE FROM TASKS WHERE (STATUS = 'expired' AND CREATE_TIME < ?) OR (STATUS = 'delivered' AND DELIVERY_TIME < ?);",
-    // Manager task commands. TASK_TYPE is deliberately opaque here: wazuh-db never validates it
-    // against a list of known types, so registering a new manager task is a change to the Task
-    // Manager's handler registry alone and needs nothing on this side.
-    [WDB_STMT_MANAGER_TASK_FIND_PENDING_BY_AGENT] = "SELECT TASK_ID FROM MANAGER_TASKS WHERE AGENT_ID = ? AND TASK_TYPE = ? AND STATUS = 'pending' LIMIT 1;",
-    [WDB_STMT_MANAGER_TASK_COUNT_PENDING_BY_TYPE] = "SELECT COUNT(*) FROM MANAGER_TASKS WHERE TASK_TYPE = ? AND STATUS = 'pending';",
-    [WDB_STMT_MANAGER_TASK_INSERT] = "INSERT INTO MANAGER_TASKS (TASK_ID, TASK_TYPE, PAYLOAD, CREATE_TIME, AGENT_ID, STATUS, NEXT_ATTEMPT_AT, SCHEDULE_ID, SCHEDULED_RUN_AT) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?);",
-    [WDB_STMT_MANAGER_TASK_SELECT_CLAIMABLE] = "SELECT TASK_ID, TASK_TYPE, AGENT_ID, PAYLOAD, ATTEMPTS, DEFER_COUNT FROM MANAGER_TASKS WHERE TASK_TYPE = ? AND STATUS = 'pending' AND NEXT_ATTEMPT_AT <= ? ORDER BY NEXT_ATTEMPT_AT LIMIT 1;",
-    [WDB_STMT_MANAGER_TASK_CLAIM] = "UPDATE MANAGER_TASKS SET STATUS = 'claimed', OWNER = ?, CLAIM_TIME = ? WHERE TASK_ID = ?;",
-    [WDB_STMT_MANAGER_TASK_FIND_COMPETING_PENDING] = "SELECT TASK_ID, ATTEMPTS, DEFER_COUNT FROM MANAGER_TASKS WHERE AGENT_ID = ? AND TASK_TYPE = ? AND STATUS = 'pending' AND TASK_ID <> ? LIMIT 1;",
-    [WDB_STMT_MANAGER_TASK_INHERIT_COUNTERS] = "UPDATE MANAGER_TASKS SET ATTEMPTS = ?, DEFER_COUNT = ? WHERE TASK_ID = ?;",
-    [WDB_STMT_MANAGER_TASK_SUPERSEDE] = "UPDATE MANAGER_TASKS SET STATUS = 'superseded', LAST_ERROR = ?, OWNER = NULL, CLAIM_TIME = NULL, END_TIME = STRFTIME('%s', 'NOW') WHERE TASK_ID = ?;",
-    [WDB_STMT_MANAGER_TASK_REQUEUE] = "UPDATE MANAGER_TASKS SET STATUS = 'pending', NEXT_ATTEMPT_AT = ?, ATTEMPTS = ?, DEFER_COUNT = ?, LAST_ERROR = ?, OWNER = NULL, CLAIM_TIME = NULL, END_TIME = NULL WHERE TASK_ID = ?;",
-    [WDB_STMT_MANAGER_TASK_SET_RESULT] = "UPDATE MANAGER_TASKS SET STATUS = ?, LAST_ERROR = ?, ATTEMPTS = ?, DEFER_COUNT = ?, OWNER = NULL, CLAIM_TIME = NULL, END_TIME = STRFTIME('%s', 'NOW') WHERE TASK_ID = ?;",
-    [WDB_STMT_MANAGER_TASK_GET] = "SELECT TASK_ID, TASK_TYPE, AGENT_ID, PAYLOAD, CREATE_TIME, STATUS, OWNER, CLAIM_TIME, ATTEMPTS, DEFER_COUNT, LAST_ERROR, NEXT_ATTEMPT_AT, SCHEDULE_ID, SCHEDULED_RUN_AT, END_TIME FROM MANAGER_TASKS WHERE TASK_ID = ?;",
-    // Same column list and order as WDB_STMT_MANAGER_TASK_GET, so both feed wdb_manager_task_row_to_json().
-    [WDB_STMT_MANAGER_TASK_GET_BY_AGENT] = "SELECT TASK_ID, TASK_TYPE, AGENT_ID, PAYLOAD, CREATE_TIME, STATUS, OWNER, CLAIM_TIME, ATTEMPTS, DEFER_COUNT, LAST_ERROR, NEXT_ATTEMPT_AT, SCHEDULE_ID, SCHEDULED_RUN_AT, END_TIME FROM MANAGER_TASKS WHERE AGENT_ID = ? AND TASK_TYPE = ? ORDER BY CREATE_TIME DESC LIMIT 1;",
-    // Walks the pending partial index without touching the table; SQLite has no loose index scan,
-    // so this traverses every pending entry, which the creation caps bound.
-    [WDB_STMT_MANAGER_TASK_POLL_DUE] = "SELECT TASK_TYPE, MIN(NEXT_ATTEMPT_AT) FROM MANAGER_TASKS WHERE STATUS = 'pending' GROUP BY TASK_TYPE;",
-    // The ownership sweep. Both forms page on TASK_ID rather than OFFSET: rows are being written
-    // concurrently, and an offset walk would skip or repeat rows as the result set shifts.
-    [WDB_STMT_MANAGER_TASK_SELECT_CLAIMED_BY_OWNER] = "SELECT TASK_ID, TASK_TYPE, AGENT_ID, OWNER, CLAIM_TIME, ATTEMPTS, DEFER_COUNT FROM MANAGER_TASKS WHERE STATUS = 'claimed' AND OWNER = ? AND TASK_ID > ? ORDER BY TASK_ID LIMIT ?;",
-    [WDB_STMT_MANAGER_TASK_SELECT_CLAIMED_ANY] = "SELECT TASK_ID, TASK_TYPE, AGENT_ID, OWNER, CLAIM_TIME, ATTEMPTS, DEFER_COUNT FROM MANAGER_TASKS WHERE STATUS = 'claimed' AND TASK_ID > ? ORDER BY TASK_ID LIMIT ?;",
-    // A deliberately compact projection: these list a whole task type, so the full row including
-    // PAYLOAD would reach the response buffer's limit after a handful of entries.
-    [WDB_STMT_MANAGER_TASK_LIST_BY_TYPE] = "SELECT TASK_ID, AGENT_ID, STATUS, CREATE_TIME, LAST_ERROR FROM MANAGER_TASKS WHERE TASK_TYPE = ? AND TASK_ID > ? ORDER BY TASK_ID LIMIT ?;",
-    [WDB_STMT_MANAGER_TASK_LIST_BY_TYPE_STATUS] = "SELECT TASK_ID, AGENT_ID, STATUS, CREATE_TIME, LAST_ERROR FROM MANAGER_TASKS WHERE TASK_TYPE = ? AND STATUS = ? AND TASK_ID > ? ORDER BY TASK_ID LIMIT ?;",
-    [WDB_STMT_MANAGER_TASK_COUNT_BY_TYPE_STATUS] = "SELECT COUNT(*) FROM MANAGER_TASKS WHERE TASK_TYPE = ? AND STATUS = ?;",
-    // The orphaned type reaper works in two steps because only the dispatcher knows which task
-    // types are registered. It asks which types have pending rows, and fails the ones it does not
-    // recognise. Keeping the list of known types out of wazuh-db is what lets a new task type be
-    // added without touching this file.
-    [WDB_STMT_MANAGER_TASK_PENDING_TYPES] = "SELECT DISTINCT TASK_TYPE FROM MANAGER_TASKS WHERE STATUS = 'pending';",
-    [WDB_STMT_MANAGER_TASK_FAIL_BY_TYPE] = "UPDATE MANAGER_TASKS SET STATUS = 'failed', LAST_ERROR = ?, OWNER = NULL, CLAIM_TIME = NULL, END_TIME = STRFTIME('%s', 'NOW') WHERE TASK_TYPE = ? AND STATUS = 'pending';",
-    // Retention. Only terminal rows are ever removed: a pending manager task is never expired by
-    // age, or a long outage would destroy exactly the work the queue exists to survive. Note this
-    // is the opposite of TASKS's cleanup_expired, which does age out pending rows.
-    [WDB_STMT_MANAGER_TASK_DELETE_TERMINAL_OLD] = "DELETE FROM MANAGER_TASKS WHERE STATUS IN ('completed', 'failed', 'superseded') AND END_TIME < ?;",
-    [WDB_STMT_MANAGER_TASK_DELETE_DEAD_LETTER_OLD] = "DELETE FROM MANAGER_TASKS WHERE STATUS = 'dead_letter' AND END_TIME < ?;",
-    [WDB_STMT_MANAGER_TASK_SCHEDULE_IDS] = "SELECT DISTINCT SCHEDULE_ID FROM MANAGER_TASKS WHERE SCHEDULE_ID IS NOT NULL;",
-    // The per-schedule history cap deliberately excludes dead_letter: a repeatedly failing
-    // schedule produces mostly dead-letter rows, and a flat "keep the last N" would evict them
-    // long before their own, longer window expires.
-    [WDB_STMT_MANAGER_TASK_TRIM_SCHEDULE_HISTORY] = "DELETE FROM MANAGER_TASKS WHERE SCHEDULE_ID = ? AND STATUS IN ('completed', 'failed', 'superseded') AND TASK_ID NOT IN (SELECT TASK_ID FROM MANAGER_TASKS WHERE SCHEDULE_ID = ? AND STATUS IN ('completed', 'failed', 'superseded') ORDER BY SCHEDULED_RUN_AT DESC, TASK_ID DESC LIMIT ?);",
-    [WDB_STMT_MANAGER_TASK_COUNT_ALL] = "SELECT COUNT(*) FROM MANAGER_TASKS;",
-    // The hard ceiling must be able to evict everything eventually or it is not a ceiling, so
-    // dead_letter is protected by eviction order rather than by exemption: it goes last.
-    [WDB_STMT_MANAGER_TASK_EVICT] = "DELETE FROM MANAGER_TASKS WHERE TASK_ID IN (SELECT TASK_ID FROM MANAGER_TASKS WHERE STATUS IN ('completed', 'superseded', 'failed', 'dead_letter') ORDER BY CASE STATUS WHEN 'completed' THEN 0 WHEN 'superseded' THEN 1 WHEN 'failed' THEN 2 ELSE 3 END, END_TIME, TASK_ID LIMIT ?);",
-    // Schedules. TASK_TYPE, INTERVAL and NODE_SCOPE are code constants in the dispatcher's
-    // built-in table; only the mutable state lives here.
-    [WDB_STMT_MANAGER_TASK_SCHEDULE_GET] = "SELECT SCHEDULE_ID, NEXT_RUN_AT, ENABLED FROM MANAGER_TASK_SCHEDULES WHERE SCHEDULE_ID = ?;",
-    [WDB_STMT_MANAGER_TASK_SCHEDULE_INSERT] = "INSERT INTO MANAGER_TASK_SCHEDULES (SCHEDULE_ID, NEXT_RUN_AT, ENABLED) VALUES (?, ?, ?);",
-    [WDB_STMT_MANAGER_TASK_SCHEDULE_UPDATE] = "UPDATE MANAGER_TASK_SCHEDULES SET NEXT_RUN_AT = ?, ENABLED = ? WHERE SCHEDULE_ID = ?;",
-    [WDB_STMT_MANAGER_TASK_SCHEDULE_SET_NEXT_RUN] = "UPDATE MANAGER_TASK_SCHEDULES SET NEXT_RUN_AT = ? WHERE SCHEDULE_ID = ?;",
-    [WDB_STMT_MANAGER_TASK_SCHEDULE_LIST_DUE] = "SELECT SCHEDULE_ID, NEXT_RUN_AT FROM MANAGER_TASK_SCHEDULES WHERE ENABLED = 1 AND NEXT_RUN_AT <= ? ORDER BY NEXT_RUN_AT;",
-    // Overlap check: a schedule does not spawn a new instance while a previous one is still
-    // running. Served by idx_manager_tasks_schedule.
-    [WDB_STMT_MANAGER_TASK_SCHEDULE_HAS_ACTIVE] = "SELECT 1 FROM MANAGER_TASKS WHERE SCHEDULE_ID = ? AND STATUS IN ('pending', 'claimed') LIMIT 1;",
-    [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
     [WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS] = "PRAGMA foreign_keys=ON;",
     [WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL] = "PRAGMA synchronous=1;",
-    [WDB_STMT_PRAGMA_SYNCHRONOUS_FULL] = "PRAGMA synchronous=2;",
 };
 
 /**
@@ -246,6 +180,10 @@ wdb_t * wdb_open_global() {
 
         wdb_enable_foreign_keys(wdb->db);
 
+        // NORMAL rather than SQLite's FULL default, which is what this database has always used:
+        // a commit per agent keepalive makes FULL's fsync the dominant write cost, and the state
+        // it protects is re-reported by the agents on reconnect. See wdb_set_synchronous_normal()
+        // for what that trade actually costs -- this database is not in WAL.
         wdb_set_synchronous_normal(wdb);
     }
 
@@ -269,61 +207,6 @@ wdb_t * wdb_open_mitre() {
         wdb_close(wdb, false);
         wdb_pool_leave(wdb);
         return NULL;
-    }
-
-    return wdb;
-}
-
-// Opens tasks database and stores it in DB pool. It returns a locked database or NULL
-wdb_t * wdb_open_tasks() {
-    char path[PATH_MAX + 1] = "";
-    wdb_t * wdb = wdb_pool_get_or_create(WDB_TASK_NAME);
-
-    if (wdb->db == NULL) {
-        // Try to open DB
-        snprintf(path, sizeof(path), "%s/%s.db", WDB_TASK_DIR, WDB_TASK_NAME);
-
-        if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
-            mdebug1("Tasks database not found, creating.");
-            wdb_close(wdb, false);
-
-            // Creating database
-            if (OS_SUCCESS != wdb_create_file(path, schema_task_manager_sql)) {
-                merror("Couldn't create SQLite database '%s'", path);
-                wdb_pool_leave(wdb);
-                return NULL;
-            }
-
-            // Retry to open
-            if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
-                merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(wdb->db));
-                wdb_close(wdb, false);
-                wdb_pool_leave(wdb);
-                return NULL;
-            }
-        }
-
-        // Both PRAGMAs are applied on every open, not only when the database is created: an
-        // existing tasks.db from an earlier release would otherwise stay in rollback-journal
-        // mode forever. Neither may run inside a transaction, and none is open at this point.
-        wdb_set_journal_wal(wdb);
-
-        // Deliberately FULL rather than global's NORMAL. Under WAL, NORMAL lets a committed
-        // transaction be lost to a host crash until the next checkpoint, which is precisely the
-        // guarantee manager tasks are stored here to obtain.
-        wdb_set_synchronous_full(wdb);
-
-        // The schema is applied on every open, not only when the file is created, so a table
-        // added by a later release also appears in a database that already exists. Every
-        // statement in it is IF NOT EXISTS, which makes this idempotent -- and equally means it
-        // cannot alter a table that is already present. Changing the shape of an existing table
-        // needs a real upgrade path, the way wdb_upgrade_global provides one for global.db.
-        if (wdb_apply_schema(wdb->db, schema_task_manager_sql) != OS_SUCCESS) {
-            merror("Couldn't apply the schema to SQLite database '%s'", path);
-            wdb_close(wdb, false);
-            wdb_pool_leave(wdb);
-            return NULL;
-        }
     }
 
     return wdb;
@@ -1270,60 +1153,17 @@ STATIC int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_t
     return 0;
 }
 
-/**
- * @brief Apply one of the synchronous-mode PRAGMAs to a database session.
- *
- * @param[in] wdb The database structure.
- * @param[in] stmt_index Index in SQL_STMT of the PRAGMA to run.
- * @return Returns 0 on success or -1 if an error occurs.
- */
-STATIC int wdb_set_synchronous_mode(wdb_t * wdb, wdb_stmt stmt_index) {
+int wdb_set_synchronous_normal(wdb_t * wdb) {
     int returnState = 0;
     char * sqlError = NULL;
 
-    sqlite3_exec(wdb->db, SQL_STMT[stmt_index], NULL, NULL, &sqlError);
+    sqlite3_exec(wdb->db, SQL_STMT[WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL], NULL, NULL, &sqlError);
 
     if (sqlError != NULL) {
         merror("Cannot set synchronous mode: '%s'", sqlError);
         sqlite3_free(sqlError);
         returnState = -1;
     }
-
-    return returnState;
-}
-
-int wdb_set_synchronous_normal(wdb_t * wdb) {
-    return wdb_set_synchronous_mode(wdb, WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL);
-}
-
-int wdb_set_synchronous_full(wdb_t * wdb) {
-    return wdb_set_synchronous_mode(wdb, WDB_STMT_PRAGMA_SYNCHRONOUS_FULL);
-}
-
-int wdb_set_journal_wal(wdb_t * wdb) {
-    sqlite3_stmt * stmt = NULL;
-    int returnState = -1;
-
-    if (wdb_prepare(wdb->db, SQL_STMT[WDB_STMT_PRAGMA_JOURNAL_WAL], -1, &stmt, NULL) != SQLITE_OK) {
-        merror("Cannot prepare journal mode statement: '%s'", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-
-    // PRAGMA journal_mode yields the resulting mode as a single row. A refusal is reported as
-    // that row holding something other than "wal", not as an error code, so it must be read back.
-    if (wdb_step(stmt) == SQLITE_ROW) {
-        const char * mode = (const char *)sqlite3_column_text(stmt, 0);
-
-        if (mode != NULL && strcasecmp(mode, "wal") == 0) {
-            returnState = 0;
-        } else {
-            mwarn("Cannot set journal mode to WAL, database remains in '%s' mode", mode ? mode : "unknown");
-        }
-    } else {
-        merror("Cannot set journal mode to WAL: '%s'", sqlite3_errmsg(wdb->db));
-    }
-
-    sqlite3_finalize(stmt);
 
     return returnState;
 }

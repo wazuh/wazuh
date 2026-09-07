@@ -116,6 +116,32 @@ class TestConfigurator:
                 self._metadata
             )
 
+            # #38956: the agent's default verification_mode is now 'system', which
+            # RemotedSimulator's self-signed cert fails -- opt out explicitly since this
+            # suite is not testing TLS trust. <endpoint> is repeated because
+            # set_section_wazuh_conf() clears the <agent> section before repopulating it.
+            agent_conf = {
+                "section": "agent",
+                "elements": [
+                    {
+                        "manager": {
+                            "elements": [
+                                {"endpoint": {"value": "127.0.0.1:1517"}},
+                            ]
+                        }
+                    },
+                    {
+                        "ssl": {
+                            "elements": [
+                                {"verification_mode": {"value": "none"}},
+                            ]
+                        }
+                    },
+                ],
+            }
+            for config in self._test_configuration_template:
+                config["sections"].append(agent_conf)
+
     def _modify_metadata(self, parameters: list) -> None:
         """Modify raw data to add test session information.
 

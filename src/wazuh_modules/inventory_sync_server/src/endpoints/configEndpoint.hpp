@@ -47,10 +47,11 @@ namespace invsync::endpoints::config
      * is derived from `content`'s keys so the two can never drift apart. The template also declares
      * an explicit per-module sub-schema under `content` (`content.fim.syscheck.frequency`, etc.).
      *
-     * The `wazuh-agent-config` index template is `dynamic: false`: a field outside that per-module
-     * sub-schema (an unrecognized module, or a legacy/undeclared key within a known one) is still
-     * written and kept in `_source`, just not indexed for search -- so this endpoint only sanitizes
-     * the outer `{module, config}` shape, never the fields inside `config` itself.
+     * The `wazuh-agent-config` index template is `dynamic: true`: a field outside that per-module
+     * sub-schema (an unrecognized module, or a legacy/undeclared key within a known one) is indexed
+     * like any other field, with no schema check -- so this endpoint only sanitizes the outer
+     * `{module, config}` shape, never the fields inside `config` itself, and nothing downstream
+     * validates them either.
      *
      * The document is indexed under the agent id as its `_id`, via a plain upsert: each report
      * replaces the previous one for that agent, there is no separate delete step.

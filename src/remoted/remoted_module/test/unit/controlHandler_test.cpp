@@ -24,6 +24,7 @@
 #include "control/metrics.hpp"
 #include "control/taskClient.hpp"
 #include "control/wazuhDBClient.hpp"
+#include "fakeTaskServer.hpp"
 #include "fakeUdsServer.hpp"
 
 #include <wazuh_metrics/manager.hpp>
@@ -44,6 +45,7 @@
 #include <unistd.h>
 
 using namespace remoted::control;
+using remoted::test::FakeTaskServer;
 using remoted::test::FakeUdsServer;
 namespace fs = std::filesystem;
 using namespace std::chrono_literals;
@@ -197,7 +199,9 @@ namespace
         ControlMetrics metrics {makeControlMetrics(metricsManager)};
 
         std::unique_ptr<FakeUdsServer> wdbServer;
-        std::unique_ptr<FakeUdsServer> taskServer;
+        // wazuh-db still speaks the framed protocol; the Task Manager serves HTTP, so only one
+        // of these two is a FakeUdsServer any more.
+        std::unique_ptr<FakeTaskServer> taskServer;
 
         std::shared_ptr<AgentRegistry> registry;
         std::shared_ptr<WazuhDBClient> wdbClient;
@@ -216,7 +220,11 @@ namespace
                 tweakCfg(cfg);
             }
             wdbServer = std::make_unique<FakeUdsServer>(env.wdbPath, [wdb](const std::string& r) { return (*wdb)(r); });
-            taskServer = std::make_unique<FakeUdsServer>(env.taskPath, std::move(taskResp));
+            taskServer = std::make_unique<FakeTaskServer>(env.taskPath);
+            // The fixture keeps its request -> body responder signature so every case below reads the
+            // same; only the transport under it changed.
+            taskServer->setHandler([taskResp = std::move(taskResp)](const httplib::Request& req, httplib::Response& res)
+                                   { res.set_content(taskResp(req.body), "application/json"); });
 
             registry = std::make_shared<AgentRegistry>();
             wdbClient = std::make_shared<WazuhDBClient>(
@@ -238,7 +246,7 @@ namespace
 TEST(ControlHandlerTest, StartupMalformedVersionReturns400AndUpdatesStatusCode)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
     Waiter<HttpResponse> w;
     StartupData data;
@@ -277,7 +285,7 @@ TEST(ControlHandlerTest, StartupMalformedVersionReturns400AndUpdatesStatusCode)
 TEST(ControlHandlerTest, StartupHigherVersionReturns409WhenAllowHigherFalse)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
     // Agent claims v5.9.9; manager is 5.0.0 and allowHigherVersions=false.
     StartupData data;
@@ -319,7 +327,7 @@ TEST(ControlHandlerTest, StartupHappyPathReturns200WithGroupsAndClusterEnvelope)
 {
     auto wdb = std::make_shared<WdbRouter>();
     wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default,web\"}]"; });
-    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
     StartupData data;
     data.version = "5.0.0";
@@ -346,7 +354,7 @@ TEST(ControlHandlerTest, StartupPersistsAcceptedVersionWithOkStatusCode)
 {
     auto wdb = std::make_shared<WdbRouter>();
     wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
-    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
     StartupData data;
     data.version = "5.0.0";
@@ -383,7 +391,7 @@ TEST(ControlHandlerTest, StartupFallsBackToDefaultGroupOnEmptyWdbCsv)
 {
     auto wdb = std::make_shared<WdbRouter>();
     wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"\"}]"; });
-    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
     StartupData data;
     data.version = "5.0.0";
@@ -400,7 +408,7 @@ TEST(ControlHandlerTest, StartupReturns500OnWdbProtocolError)
 {
     auto wdb = std::make_shared<WdbRouter>();
     wdb->onSelectAgentGroup([](const std::string&) { return "err some failure"; });
-    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
     StartupData data;
     data.version = "5.0.0";
@@ -419,7 +427,7 @@ TEST(ControlHandlerTest, StartupReturns500OnWdbProtocolError)
 TEST(ControlHandlerTest, NotifyInvalidHostReturns400)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
     NotifyData data;
     data.version = "5.0.0";
@@ -444,7 +452,6 @@ TEST(ControlHandlerTest, NotifyReturnsGroupsSettingsHashAndTasks)
                      [](const std::string&) -> std::string
                      {
                          nlohmann::json j;
-                         j["status"] = "ok";
                          j["tasks"] = nlohmann::json::array();
                          j["tasks"].push_back(
                              {{"task_id", "T1"}, {"task_type", "upgrade"}, {"payload", {{"v", "5.1"}}}});
@@ -491,7 +498,7 @@ TEST(ControlHandlerTest, NotifyReturnsRealConfigHashWhenMergedMgExists)
 {
     auto wdb = std::make_shared<WdbRouter>();
     wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
-    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
     // Materialise the merged.mg file for group "default" so getConfigHash
     // returns a real hash rather than the "0" fallback.
@@ -526,7 +533,7 @@ TEST(ControlHandlerTest, NotifyConfigTokenIsTheFullMultigroupSelectorInWdbOrder)
     auto wdb = std::make_shared<WdbRouter>();
     // Deliberately not alphabetical: "web" before "default" proves wdb's order survives.
     wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"web,default\"}]"; });
-    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
     // sha256("web,default") = 4b323b4242e8... -> the multigroup dir is its first 8 hex chars.
     const auto mergedMg = h.env.base / "multi" / "4b323b42" / "merged.mg";
@@ -556,9 +563,7 @@ TEST(ControlHandlerTest, NotifyFirstHostMetadataBypassesKeepaliveThrottle)
     auto wdb = std::make_shared<WdbRouter>();
     wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
     HandlerFixture h(
-        wdb,
-        [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; },
-        [](Config& c) { c.keepaliveThrottleSec = 3600; });
+        wdb, [](const std::string&) { return "{\"tasks\":[]}"; }, [](Config& c) { c.keepaliveThrottleSec = 3600; });
 
     // First notify carries no host metadata (agent_info has not populated it
     // yet): a lightweight keepalive is written and stamps the throttle window.
@@ -631,7 +636,7 @@ TEST(ControlHandlerTest, NotifyFirstHostMetadataBypassesKeepaliveThrottle)
 TEST(ControlHandlerTest, ShutdownReturns200WithEmptyBodyImmediately)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
     Waiter<HttpResponse> w;
     ShutdownData data;
@@ -663,7 +668,7 @@ TEST(ControlHandlerTest, ShutdownReturns200WithEmptyBodyImmediately)
 TEST(ControlHandlerTest, ShutdownTouchesRegistryLastActivity)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
     // Before: no entry.
     EXPECT_FALSE(h.registry->get(99));
@@ -689,7 +694,7 @@ TEST(ControlHandlerTest, NotifyWithNoCachedGroupsReturns500OnWdbError)
     // authoritative, which is what every agent gets after a restart with wazuh-db down.
     auto wdb = std::make_shared<WdbRouter>();
     wdb->onSelectAgentGroup([](const std::string&) { return "err some failure"; });
-    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
     NotifyData data;
     data.version = "5.0.0";
@@ -711,9 +716,7 @@ TEST(ControlHandlerTest, NotifyServesCachedGroupsWithoutOverwritingThemOnWdbErro
     wdb->onSelectAgentGroup([&](const std::string&) -> std::string
                             { return wdbDown.load() ? "err some failure" : "ok [{\"group\":\"g1\"}]"; });
     HandlerFixture h(
-        wdb,
-        [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; },
-        [](Config& c) { c.groupsRefreshIntervalSec = 3600; });
+        wdb, [](const std::string&) { return "{\"tasks\":[]}"; }, [](Config& c) { c.groupsRefreshIntervalSec = 3600; });
 
     StartupData startup;
     startup.version = "5.0.0";
@@ -764,9 +767,7 @@ TEST(ControlHandlerTest, NotifyAfterStartupBypassesKeepaliveThrottle)
     auto wdb = std::make_shared<WdbRouter>();
     wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
     HandlerFixture h(
-        wdb,
-        [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; },
-        [](Config& c) { c.keepaliveThrottleSec = 3600; });
+        wdb, [](const std::string&) { return "{\"tasks\":[]}"; }, [](Config& c) { c.keepaliveThrottleSec = 3600; });
 
     const NotifyData data = notifyWithHost();
 

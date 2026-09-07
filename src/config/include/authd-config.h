@@ -12,9 +12,6 @@
 #ifndef AUTH_CONFIG_H
 #define AUTH_CONFIG_H
 
-#define AD_CONF_UNPARSED 3
-#define AD_CONF_UNDEFINED 2
-
 #define AUTHD_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT false    ///< Default allow_higher_versions value (false)
 
 #include <stdbool.h>

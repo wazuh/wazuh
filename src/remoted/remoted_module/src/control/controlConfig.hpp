@@ -32,7 +32,15 @@ namespace remoted::control
     inline constexpr size_t kFileHashBufferSize = 8192;
     inline constexpr size_t kInotifyBufferSize = 4096;
 
-    inline constexpr const char* kTaskSocketPath = "/queue/sockets/task.sock";
+    /// Connect deadline for the task manager, separate from kTmDeadlineMs, which bounds the whole
+    /// round trip. Reaching a socket on the same host either works almost immediately or is not
+    /// going to; a slow connect is really an absent task manager.
+    inline constexpr int kTaskConnectTimeoutMs = 2000;
+
+    inline constexpr const char* kTaskSocketPath = "/queue/sockets/task-http.sock";
+
+    /// The task manager route that hands over an agent's pending tasks and marks them delivered.
+    inline constexpr const char* kTaskPendingRoute = "/v1/tasks/pending";
     inline constexpr const char* kWdbSocketPath = "/queue/sockets/wdb.sock";
     inline constexpr const char* kSharedGroupsRoot = "/etc/shared";
     inline constexpr const char* kMultiGroupsRoot = "/var/multigroups";

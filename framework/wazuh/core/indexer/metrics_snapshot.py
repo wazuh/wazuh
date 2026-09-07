@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from jsonschema import ValidationError, validate
 
 from wazuh.core import common
+from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.indexer.indexer import get_indexer_client
 from wazuh.core.wdb_http import get_wdb_http_client
@@ -198,11 +199,16 @@ class MetricsSnapshotTasks:
             all_node_names.append(worker_name)
 
         comms_data = []
+        system_nodes = None
         for node_name in all_node_names:
             try:
                 if node_name == local_node_name:
                     result = get_daemons_stats(daemons_list=["wazuh-manager-remoted"])
                 else:
+                    # Resolved inside the try, once per cycle: get_system_nodes() opens a
+                    # LocalClient, and a failure there must cost this fan-out, not the gather.
+                    if system_nodes is None:
+                        system_nodes = await get_system_nodes()
                     result = await DistributedAPI(
                         f=get_daemons_stats,
                         f_kwargs={
@@ -213,7 +219,21 @@ class MetricsSnapshotTasks:
                         request_type="distributed_master",
                         is_async=False,
                         wait_for_complete=True,
+                        nodes=system_nodes,
                     ).distribute_function()
+
+                # distribute_function() returns its WazuhException instead of raising, and an
+                # exception has no affected_items: the getattr below would read [] and drop the node.
+                if isinstance(result, Exception):
+                    raise result
+
+                # A rejected node arrives as failed_items, which that loop cannot see either.
+                if getattr(result, "failed_items", None):
+                    self.logger.warning(
+                        "Node '%s' returned no comms stats: %s",
+                        node_name,
+                        result.failed_items,
+                    )
 
                 for item in getattr(result, "affected_items", []):
                     doc = dict(item)
@@ -237,11 +257,14 @@ class MetricsSnapshotTasks:
 
         docs = []
         loop = asyncio.get_running_loop()
+        system_nodes = None
         for node_name in all_node_names:
             try:
                 if node_name == local_node_name:
                     result = await loop.run_in_executor(None, get_engine_metrics)
                 else:
+                    if system_nodes is None:
+                        system_nodes = await get_system_nodes()
                     result = await DistributedAPI(
                         f=get_engine_metrics,
                         f_kwargs={"node_list": [node_name]},
@@ -249,7 +272,19 @@ class MetricsSnapshotTasks:
                         request_type="distributed_master",
                         is_async=False,
                         wait_for_complete=True,
+                        nodes=system_nodes,
                     ).distribute_function()
+
+                # Same two blind spots as in _collect_comms_all_nodes.
+                if isinstance(result, Exception):
+                    raise result
+
+                if getattr(result, "failed_items", None):
+                    self.logger.warning(
+                        "Node '%s' returned no Engine metrics: %s",
+                        node_name,
+                        result.failed_items,
+                    )
 
                 for item in getattr(result, "affected_items", []):
                     node_ts = item.get("timestamp", timestamp)

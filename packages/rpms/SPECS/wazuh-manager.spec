@@ -98,8 +98,6 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/generic
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/centos
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/suse
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/sles
 
 # Add SUSE initscript
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-manager-suse.init
@@ -628,6 +626,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libindexer_connector.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libinventory_sync_server.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libkeystore_server.so
+%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libtask_manager.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libvulnerability_scanner.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/librocksdb.so.8
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libremoted_module.so

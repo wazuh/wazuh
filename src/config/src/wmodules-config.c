@@ -500,6 +500,10 @@ int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
     return 0;
 }
 
+/* Agent only. There is no agent-upgrade module on a manager -- upgrades are served by the task
+ * manager, which reads their settings from the `task-manager` section of the effective document
+ * (etc/wazuh-manager.conf) rather than through any XML reader. */
+#ifdef CLIENT
 int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1) {
     wmodule **wmodules = (wmodule**)d1;
     wmodule *cur_wmodule;
@@ -554,6 +558,7 @@ int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1) {
     OS_ClearNode(children);
     return 0;
 }
+#endif
 
 
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)

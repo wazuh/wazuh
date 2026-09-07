@@ -93,13 +93,11 @@
             "key": ""
         }
     },
-    "agent-upgrade": {
-        "enabled": true
-    },
     "task-manager": {
         "task_ttl": 3600,
         "cleanup_interval": 300,
         "max_payload_bytes": 1048576,
-        "max_tasks_per_poll": 100
+        "max_tasks_per_poll": 100,
+        "upgrade_enabled": true
     }
 }

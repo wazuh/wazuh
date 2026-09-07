@@ -40,29 +40,57 @@ t_cache = TTLCache(maxsize=4500, ttl=60)
 def clean_pid_files(daemon: str) -> None:
     """Check the existence of '.pid' files for a specified daemon.
 
+    A PID file only proves that some process had that PID at the time the file was
+    written. If the PID has since been recycled by an unrelated process (or by this
+    same daemon's own new instance), killing it blindly can terminate the wrong
+    process. A process is only treated as the stale owner of the file when it was
+    already alive before the file's mtime.
+
     Parameters
     ----------
     daemon : str
         Daemon's name.
     """
+    own_pid = os.getpid()
     regex = rf'{daemon}[\w_]*-(\d+).pid'
     for pid_file in os.listdir(common.OSSEC_PIDFILE_PATH):
         if match := re.match(regex, pid_file):
+            pid = int(match.group(1))
+            full_path = path.join(common.OSSEC_PIDFILE_PATH, pid_file)
             try:
-                pid = int(match.group(1))
                 process = psutil.Process(pid)
-                command = process.cmdline()[-1]
+                command = ' '.join(process.cmdline())
+                belongs_to_daemon = daemon.replace('-', '_') in command
+                predates_file = process.create_time() <= path.getmtime(full_path)
 
-                if daemon.replace('-', '_') in command:
-                    os.kill(pid, SIGKILL)
-                    print(f"{daemon}: Orphan child process {pid} was terminated.")
-                else:
+                if pid != own_pid and belongs_to_daemon and predates_file:
+                    try:
+                        os.kill(pid, SIGKILL)
+                        print(f"{daemon}: Orphan child process {pid} was terminated.")
+                    except OSError as kill_error:
+                        print(f"{daemon}: Orphan child process {pid} was identified but could not "
+                              f"be terminated ({kill_error}), removing from {common.WAZUH_PATH}/var/run...")
+                elif pid == own_pid:
+                    print(f"{daemon}: Process {pid} is this process's own PID, recycled from a stale "
+                          f"pidfile, removing from {common.WAZUH_PATH}/var/run...")
+                elif not belongs_to_daemon:
                     print(f"{daemon}: Process {pid} does not belong to {daemon}, removing from {common.WAZUH_PATH}/var/run...")
+                else:
+                    print(f"{daemon}: Process {pid} belongs to {daemon} but was created after its stale "
+                          f"pidfile (PID recycled), removing from {common.WAZUH_PATH}/var/run...")
 
-            except (OSError, psutil.NoSuchProcess):
-                print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_PATH}/var/run...')
+            except (OSError, psutil.Error):
+                # psutil.Error also covers AccessDenied (the PID was recycled by a process
+                # owned by another user) and ZombieProcess. Neither means the file's
+                # original owner is still around, so it's still safe to drop it.
+                print(f'{daemon}: Could not identify process {pid}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
-                os.remove(path.join(common.OSSEC_PIDFILE_PATH, pid_file))
+                try:
+                    os.remove(full_path)
+                except OSError as remove_error:
+                    # The owner's exit handler or the control script may have removed it meanwhile;
+                    # a leftover pidfile is never a reason to abort the startup.
+                    print(f'{daemon}: Could not remove {full_path} ({remove_error}).')
 
 
 def process_array(array: list, search_text: str = None, complementary_search: bool = False,

@@ -343,6 +343,11 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                                     next_page = wm_read_http_header_element(response->header, GITHUB_NEXT_PAGE_REGEX);
                                     if ((next_page == NULL) || (strlen(next_page) >= OS_SIZE_8192)) {
                                         scan_finished = 1;
+                                    } else if (!wm_url_is_allowed(next_page, GITHUB_API_HOST)) {
+                                        mtwarn(WM_GITHUB_LOGTAG, "Ignoring next page URL out of '%s'.", GITHUB_API_HOST);
+                                        os_free(next_page);
+                                        scan_finished = 1;
+                                        fail = 1;
                                     } else {
                                         snprintf(url, sizeof(url), "%s", next_page);
                                         os_free(next_page);

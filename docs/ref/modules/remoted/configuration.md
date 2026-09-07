@@ -36,6 +36,10 @@ message-handler worker pool, and the fd closer thread).
   regardless, since the HTTPS `/download` endpoint also serves it to 5.x agents.
   Disabling this also causes `remote_upgrade` task creation for agents below v5.0.0 to be
   rejected at creation time, since there is no delivery path for them anymore.
+- **Read by modulesd at start-up.** The Task Manager's upgrade routes consult this value to decide
+  whether an upgrade can be delivered at all, and read it **once**, when modulesd starts. Changing it
+  therefore needs `wazuh-manager-modulesd` restarted as well as `wazuh-manager-remoted`, or upgrade
+  requests will keep applying the previous value.
 
 ### legacy.port
 
@@ -215,6 +219,12 @@ Client-certificate verification strictness.
 - **Note:** any other value is rejected as a configuration error (the config test fails), so a
   typo cannot silently leave client-certificate verification disabled.
 - **Special case:** if `<ca>` is explicitly configured in XML but `<verification_mode>` is not, the manager defaults `verification_mode` to `certificate` instead of `none`, and logs a warning explaining the override. An explicit `<verification_mode>` (including `none`) always wins over this inference.
+- **Effect on agent upgrades:** anything other than `none` (or unset) blocks upgrading an agent
+  *to* v5.0.0 or newer, because the freshly upgraded agent comes back speaking HTTPS and may not be
+  able to re-establish a connection. `PUT /agents/upgrade` can override that with `force`, accepting
+  the risk and logging it; `PUT /agents/upgrade_custom` has no `force` parameter and so cannot.
+  Like `legacy.enabled`, this is read **once at modulesd start-up**, so changing it needs modulesd
+  restarted before upgrades see the new value.
 
 ### https.ciphers
 
@@ -584,7 +594,9 @@ Seconds to wait for a full request to arrive on a connection.
   even though it never stalled, and the connection is closed without an HTTP status. This is the
   setting that bounds a large `POST /stateful` or `POST /stateless` over a slow link -- raising
   the agent's own per-request budget without raising this one changes nothing (see
-  [Connection timing tuning](timing-tuning.md#3-invariants))
+  [Connection timing tuning](timing-tuning.md#3-invariants)). The startup downstream-budget warning
+  names `remoted.http_request_timeout` instead, so that is the option usually reached for first,
+  and raising it does not widen the window an agent has to send its body
 
 #### remoted.http_write_timeout
 
@@ -596,7 +608,11 @@ Seconds to wait for a response write to complete.
   each chunk's flush, so it is the setting that aborts a WPK transfer over a slow link: measured
   5/10 aborts at the shipped 10 s below ~1 Mbit/s against 0/5 at 120 s on the same shaper. Size it
   against the slowest link that must be able to complete an upgrade
-  ([Connection timing tuning](timing-tuning.md#5-per-goal-recipes))
+  ([Connection timing tuning](timing-tuning.md#5-per-goal-recipes)). The per-chunk deadline puts a
+  floor on the usable link speed, `remoted.http_stream_chunk_size` divided by this value, about
+  6.5 KB/s at the defaults of 64 KiB and 10 s. An abort leaves no line in the manager log at any
+  level: RESTinio reports the expiry from `handle_xxx_timeout()` at trace level, and the module's
+  logger adapter strips trace at compile time
 
 #### remoted.http_request_timeout
 
@@ -758,7 +774,9 @@ Seconds to wait for the downstream service's response after the write completes.
 - **Allowed values:** Integer from `1` to `300`
 - **Note:** This is the global default. An endpoint whose handler legitimately takes much longer can
   declare its own deadline instead of forcing this value up for every endpoint (which would delay
-  detection of a genuinely hung downstream on the fast ones).
+  detection of a genuinely hung downstream on the fast ones). `/stateless` is bound by this default:
+  it must stay above the engine's real p99 ingestion latency, or a batch the engine takes longer to
+  ingest is redelivered by the agent's retry, with nothing able to recognize it as the same batch.
 
 #### remoted.downstream_stateful_response_timeout
 
@@ -860,8 +878,9 @@ database.
   warns at startup from half upward. The staleness the disconnection sweep compares against the
   threshold is the throttle plus the agent's notify interval, so any value at or above half can
   disconnect agents that are answering normally. Half rather than just below the threshold also
-  bounds detection: the sweep's period is the disconnection time itself, so detection lands anywhere
-  between one and two times it. The sweep runs as a
+  leaves room for the sweep's own granularity: the sweep polls the threshold on a quarter of it,
+  bounded to `[60 s, 300 s]`, so detection lands within the threshold plus one interval — 15 m to
+  18 m 45 s at the defaults. The sweep runs as a
   [recurring manager task](../task_manager/schedules.md), on the cluster master only.
 - **Note:** A value at or below the fleet's notify cadence suppresses nothing: the throttle can
   only drop a notify that arrives inside an open window. This is not checked at startup, because
@@ -885,6 +904,13 @@ Seconds between refreshes of the cached shared-group listing used to answer `/co
   of `3600` the two differ by about two orders of magnitude.
 - **Note:** Editing `var/multigroups/<hash>/merged.mg` by hand is not a way to reproduce this:
   `remoted.shared_reload` (default `10`) regenerates the file and reverts the edit.
+- **Note:** A refresh that fails does not mark the cached membership fresh, so while wazuh-db is
+  unreachable **every** notify retries the query: one wazuh-db round trip per notify, for the whole
+  fleet, on top of serving the membership the cache already holds. That retry is deliberate. Marking
+  the cache fresh on failure would stop it, at the cost of serving membership that can be a full
+  `control_groups_refresh_interval` stale with no sign of it, which is the worse trade for a
+  security product. The retry rate is visible as `remoted.control.wdb.*` in
+  [`GET /metrics`](metrics.md#control-plane--remotedcontrol).
 
 #### remoted.control_wdb_request_connections
 
@@ -993,6 +1019,26 @@ Concurrent connections `remoted` keeps to `authd` for enrollment.
   gains nothing. Raise it when
   [`remoted.enroll.authd.queue.depth`](metrics.md#agent-enrollment--remotedenroll) sits near
   its capacity at peak.
+
+#### remoted.vd_scan_read_timeout
+
+Seconds to wait for VD's answer to the inline `POST /scan/vd` admission relay.
+
+- **Default value:** `5`
+- **Allowed values:** Integer from `1` to `300`
+- **Note:** VD answers at admission into its bounded dispatch queue, not after running the scan,
+  so this is a local-socket round trip measured in milliseconds. A larger value does not make VD
+  queue the scan any sooner.
+
+#### remoted.vd_scan_write_timeout
+
+Seconds to wait for the write side of the same inline `POST /scan/vd` relay to VD.
+
+- **Default value:** `5`
+- **Allowed values:** Integer from `1` to `300`
+- **Note:** Same admission-only round trip as `remoted.vd_scan_read_timeout`. Both, plus the
+  fixed deadlines of the `/offset` query the scan gates on, make up the `/scan/vd` downstream
+  budget checked at startup against `http_request_timeout`.
 
 ---
 
@@ -1328,7 +1374,8 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http:
 ```
 
 The full catalog, with each metric linked back to the setting it helps size, is in
-[Metrics](metrics.md). These are separate from (and additive to) the legacy statistics below.
+[Metrics](metrics.md). The admin socket is the complete, authoritative surface; the API below
+reports most of the same figures for remote consumption.
 
 ### View Statistics
 
@@ -1337,6 +1384,17 @@ Query remoted's statistics on demand via the API:
 ```bash
 GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-manager-remoted
 ```
+
+The response carries **both** channels:
+
+- The keys directly under `metrics` — `bytes`, `tcp_sessions`, `messages`, `queues`,
+  `control_messages_queue_*` — count the **legacy** TCP/UDP channel. That channel is disabled
+  unless [`legacy.enabled`](#legacyenabled) is set, so on a default installation
+  every one of them reports `0`. In particular `metrics.bytes` and `metrics.tcp_sessions` are
+  **not** byte and session counts for HTTPS traffic — the HTTPS transport keeps neither.
+- `metrics.http_server` reports the HTTPS agent server, projected from the same registry the
+  admin socket serves. See [Metrics — API projection](metrics.md#api-projection) for the
+  mapping and its conventions.
 
 ### Enable Debug Logging
 

@@ -108,9 +108,8 @@ int get_time_interval(char *source, time_t *interval) {
 
 /* Defaults of the `auth` section, applied before reading the JSON keys. */
 static void w_authd_json_defaults(authd_config_t *config) {
-    if (config->flags.disabled == AD_CONF_UNPARSED) {
-        config->flags.disabled = AD_CONF_UNDEFINED;
-    }
+    /* flags.disabled is left alone on purpose: it is a plain 0/1 flag. The caller's authd_config_t
+     * starts zeroed (authd enabled) and only <disabled>/`disabled` ever writes it. */
     config->port = 1515;
     config->flags.use_source_ip = 0;
     config->flags.clear_removed = 0;

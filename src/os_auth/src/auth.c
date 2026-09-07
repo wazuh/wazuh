@@ -1221,7 +1221,7 @@ bool purge_is_pending(const char *agent_id) {
 
     // A private socket rather than a shared one: this runs on whichever request thread is serving
     // the insertion.
-    status = manager_task_agent_status(agent_id, MANAGER_TASK_TYPE_AGENT_DELETE, config.wdb_timeout, NULL);
+    status = manager_task_agent_status(agent_id, MANAGER_TASK_TYPE_AGENT_DELETE, config.wdb_timeout);
 
     if (status == MANAGER_TASK_STATUS_FAILED) {
         mwarn("Could not check whether agent ID '%s' still owes a deletion; treating it as pending.",

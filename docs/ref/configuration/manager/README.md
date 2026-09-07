@@ -47,7 +47,6 @@ typed by the schema: booleans are written `yes`/`no`, numbers as digits, lists a
 
 | Module | Section | Internal Options |
 |--------|---------|------------------|
-| [Agent Upgrade](../../modules/agent_upgrade/configuration.md) | `agent-upgrade` | - |
 | [Server API](../../modules/server-api/configuration.md) | - (`api.yaml`) | - |
 | [Authentication](../../modules/authd/configuration.md) | `auth` | `authd.*` |
 | [Cluster](../../modules/cluster/configuration.md) | `cluster` | `wazuh_clusterd.*` |
@@ -57,14 +56,17 @@ typed by the schema: booleans are written `yes`/`no`, numbers as digits, lists a
 | [Inventory Sync Server](../../modules/inventory-sync-server/configuration.md) | `indexer` (read-only consumer) | `wazuh_modules.inventory_sync_server_*` |
 | [Logging](../../modules/logging/configuration.md) | `logging` | - |
 | [Remoted](../../modules/remoted/configuration.md) | `remote` (`legacy`, `https`, `agents`) | `remoted.*` |
-| [Task Manager](../../modules/task_manager/configuration.md) | `task-manager`, `global` (disconnection settings only) | `wazuh_modules.manager_task_*` |
+| [Task Manager](../../modules/task_manager/configuration.md) (incl. [agent upgrades](../../modules/task_manager/agent-upgrades.md)) | `task-manager`, `global` (disconnection settings only), `remote` (delivery gates, read-only consumer) | `wazuh_modules.manager_task_*`, `wazuh_modules.upgrade_*` |
 | [Vulnerability Scanner](../../modules/vulnerability-scanner/configuration.md) | `vulnerability-detection` | `vulnerability-detection.*` |
 | [Wazuh DB](../../modules/wazuh_db/configuration.md) | `wdb` | `wazuh_db.*` |
 
 Every option, with its type, default, constraints and description, is listed in the
 [Manager Configuration Reference](reference.md), generated from the schema. The `global` section only
 holds `agents_disconnection_time`; it is read by both remoted and the Task Manager's disconnection
-sweep, so it is shared configuration rather than one module's. The manager's log-rotation and
+sweep, so it is shared configuration rather than one module's; the Task Manager reads `remote` the
+same way, for the gates that decide whether an upgrade could be delivered at all. There is no
+`agent-upgrade` section: that module is agent-only, and the manager configures the upgrades it serves
+under `task-manager`. The manager's log-rotation and
 agent-retention tunables (`wazuh_modules.manager_task_log_*`,
 `wazuh_modules.manager_task_delete_old_agents`) are internal options unrelated to `global` — see
 [Recurring manager tasks](../../modules/task_manager/schedules.md).

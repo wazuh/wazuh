@@ -145,7 +145,7 @@ static void test_local_add_clustered_transport_failure_maps_to_9016(void **state
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
     will_return(__wrap_w_request_agent_add_clustered, -2);
     will_return(__wrap_w_request_agent_add_clustered, 0); // master_error_code left untouched
-    will_return(__wrap_w_request_agent_add_clustered, "ERROR: Cannot comunicate with master");
+    will_return(__wrap_w_request_agent_add_clustered, "ERROR: Cannot communicate with master");
 
     response = local_add_clustered("agent1", "any", NULL, NULL);
     assert_non_null(response);

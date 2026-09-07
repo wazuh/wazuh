@@ -15,11 +15,18 @@
 
 static wm_docker_t *docker_conf;                               // Pointer to docker config struct
 
+// PID of the listener currently running, or 0 if none. Read by wm_docker_stop()
+// from the signal handling path, so it must stay a plain atomic value: taking a
+// lock the module thread may be holding is not an option there.
+static volatile sig_atomic_t docker_child_pid = 0;
+
 static void* wm_docker_main(wm_docker_t *docker_conf);         // Module main function. It won't return
 static void wm_docker_setup(wm_docker_t *_docker_conf);        // Setup module
 static void wm_docker_cleanup();                               // Cleanup function, doesn't overwrite wm_cleanup
 static void wm_docker_check();                                 // Check configuration, disable flag
 static void wm_docker_destroy(wm_docker_t *docker_conf);       // Destroy data
+static void wm_docker_stop(wm_docker_t *docker_conf);          // Stop module
+static void wm_docker_terminate_child(pid_t child);            // Terminate a running listener
 cJSON *wm_docker_dump(const wm_docker_t *docker_conf);         // Dump docker config to JSON
 
 // Docker module context definition
@@ -30,7 +37,7 @@ const wm_context WM_DOCKER_CONTEXT = {
     .destroy = (void(*)(void *))wm_docker_destroy,
     .dump = (cJSON * (*)(const void *))wm_docker_dump,
     .sync = NULL,
-    .stop = NULL,
+    .stop = (void(*)(void *))wm_docker_stop,
     .query = NULL,
 };
 
@@ -75,7 +82,17 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
         wm_append_handle(wfd->pinfo.hProcess);
 #else
         if (0 <= wfd->pid) {
+            // Arm the signal target before anything else, so a shutdown that
+            // arrives right now still reaches the listener.
+            docker_child_pid = wfd->pid;
             wm_append_sid(wfd->pid);
+
+            // A shutdown that started while the listener was being launched
+            // read docker_child_pid before this thread wrote it, so its
+            // stop() found nothing to signal. Cover that window here.
+            if (wm_shutdown_requested) {
+                wm_docker_terminate_child(wfd->pid);
+            }
         }
 #endif
 
@@ -100,12 +117,21 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 #ifdef WIN32
         wm_remove_handle(wfd->pinfo.hProcess);
 #else
+        // Stop treating the child as a signal target before wpclose() reaps it,
+        // so its PID can never be recycled while it is still one.
+        docker_child_pid = 0;
+
         if (0 <= wfd->pid) {
             wm_remove_sid(wfd->pid);
         }
 #endif
         status = wpclose(wfd);
         int exitcode = WEXITSTATUS(status);
+
+        if (wm_shutdown_requested) {
+            // The listener was terminated on purpose by wm_docker_stop().
+            break;
+        }
 
         switch (exitcode) {
         case 127:
@@ -147,6 +173,33 @@ cJSON *wm_docker_dump(const wm_docker_t *docker_conf) {
 
 void wm_docker_destroy(wm_docker_t *docker_conf) {
     free(docker_conf);
+}
+
+// Terminate a running listener
+
+void wm_docker_terminate_child(pid_t child) {
+    if (child <= 0) {
+        return;
+    }
+
+    // wpopenv() calls setsid() in the child, so its PGID ends up equal to its
+    // PID and the group signal also reaches anything the listener spawned.
+    // setsid() runs after fork() returns here, though, so the group may not
+    // exist yet: signal the process itself too, which always works.
+    kill(-child, SIGTERM);
+    kill(child, SIGTERM);
+}
+
+// Stop module
+
+void wm_docker_stop(__attribute__((unused)) wm_docker_t *docker_conf) {
+    // Signal only: terminating the listener makes the module thread's fgets()
+    // return, which is what lets its thread be joined. Without this the thread
+    // stays blocked until wm_kill_children() runs on exit, which is too late:
+    // the service control script has already escalated to SIGKILL by then and
+    // the listener survives as an orphan.
+
+    wm_docker_terminate_child((pid_t)docker_child_pid);
 }
 
 // Setup module

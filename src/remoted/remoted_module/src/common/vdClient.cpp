@@ -139,8 +139,8 @@ namespace remoted::common
             // Unix domain socket.
             httplib::Client client(m_socketPath);
             client.set_address_family(AF_UNIX);
-            client.set_read_timeout(1, 0);
-            client.set_write_timeout(1, 0);
+            client.set_read_timeout(OFFSET_READ_TIMEOUT_SECONDS, 0);
+            client.set_write_timeout(OFFSET_WRITE_TIMEOUT_SECONDS, 0);
 
             auto res = client.Get("/vulnerability-detector/offset");
             if (!res || res->status != 200)

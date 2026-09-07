@@ -325,18 +325,18 @@ static bool wm_control_wait_for_service_active(const char *service) {
 ```
 1. API/Framework
    └─► core_restart_agents(agent_ids, request_time)
-       └─► For each agent_id:
-           ├─► Create task message: {"action": "create_task", "agent_id": "001",
-           │                         "task_type": "agent_restart", "create_time": 1234567890,
-           │                         "payload": {}}
-           ├─► WazuhSocket(TASKS_SOCKET).send(task_message)
-           └─► Receive response: {"error": 0, "message": "Task created"}
+       └─► ONE request per chunk of up to 500 agents, not one per agent:
+           ├─► POST /v1/tasks/bulk on queue/sockets/task-http.sock (HTTP over UDS)
+           │       {"tasks": [{"agent_id": "001", "task_type": "agent_restart",
+           │                   "create_time": 1234567890, "payload": {}}, ...]}
+           └─► Receive: {"results": [{"agent_id": "001", "task_id": "...",
+                                      "created": true}, ...]}
 
-2. Task Manager (wm_task_manager)
-   └─► Stores task in database with STATUS='pending'
+2. Task Manager
+   └─► Stores every task in ONE database transaction, STATUS='pending'
 
 3. Agent (HTTPS polling)
-   └─► GET /control endpoint
+   └─► POST /control
        └─► Task Manager returns pending tasks
 
 4. wazuh-agentd (request.c, agent side)
@@ -361,18 +361,18 @@ static bool wm_control_wait_for_service_active(const char *service) {
 ```
 1. API/Framework
    └─► core_restart_agents(agent_ids, request_time)
-       └─► For each agent_id:
-           ├─► Create task message: {"action": "create_task", "agent_id": "001",
-           │                         "task_type": "agent_restart", "create_time": 1234567890,
-           │                         "payload": {}}
-           ├─► WazuhSocket(TASKS_SOCKET).send(task_message)
-           └─► Receive response: {"error": 0, "message": "Task created"}
+       └─► ONE request per chunk of up to 500 agents, not one per agent:
+           ├─► POST /v1/tasks/bulk on queue/sockets/task-http.sock (HTTP over UDS)
+           │       {"tasks": [{"agent_id": "001", "task_type": "agent_restart",
+           │                   "create_time": 1234567890, "payload": {}}, ...]}
+           └─► Receive: {"results": [{"agent_id": "001", "task_id": "...",
+                                      "created": true}, ...]}
 
-2. Task Manager (wm_task_manager)
-   └─► Stores task in database with STATUS='pending'
+2. Task Manager
+   └─► Stores every task in ONE database transaction, STATUS='pending'
 
 3. Agent (HTTPS polling)
-   └─► GET /control endpoint
+   └─► POST /control
        └─► Task Manager returns pending tasks
 
 4. wazuh-agentd (request.c, Windows)

@@ -551,27 +551,10 @@
         "hosts"
       ]
     },
-    "agent-upgrade": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Agent upgrade module (manager side).",
-      "properties": {
-        "enabled": {
-          "description": "Whether the agent-upgrade module runs (WPK upgrades requested through the API).",
-          "type": "boolean",
-          "default": true
-        },
-        "wpk_repository": {
-          "type": "string",
-          "minLength": 1,
-          "description": "WPK repository (host/path, no scheme). No default: left unset, agent-upgrade picks the repository by the target agent version."
-        }
-      }
-    },
     "task-manager": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Task manager module.",
+      "description": "Task manager module. Also serves remote agent upgrades.",
       "properties": {
         "task_ttl": {
           "type": "integer",
@@ -596,6 +579,16 @@
           "minimum": 0,
           "default": 100,
           "description": "Tasks handed out per poll."
+        },
+        "upgrade_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the manager serves remote agent upgrades (WPK upgrades requested through the API)."
+        },
+        "wpk_repository": {
+          "type": "string",
+          "minLength": 1,
+          "description": "WPK repository (host/path, no scheme). No default: left unset, the repository is picked from the target agent version."
         }
       }
     },

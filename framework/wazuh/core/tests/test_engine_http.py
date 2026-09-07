@@ -463,3 +463,82 @@ def test_remoted_http_client_init_error():
             with pytest.raises(WazuhInternalError) as exc_info:
                 RemotedHTTPClient()
             assert exc_info.value.code == 2028
+
+
+REMOTED_METRICS_RESPONSE = {
+    'name': 'remoted',
+    'timestamp': '2026-09-04T10:48:32Z',
+    'metrics': [
+        {'name': 'remoted.control.notify', 'type': 'counter', 'enabled': True, 'value': 421337},
+        {'name': 'remoted.http.stateless.latency', 'type': 'histogram', 'enabled': True, 'value': 98213,
+         'summary': {'count': 98213, 'sum': 210394821, 'min': 312, 'max': 90210,
+                     'p50': 1830, 'p90': 4110, 'p99': 9920}},
+    ],
+}
+
+
+def test_remoted_get_metrics_dump_ok():
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.return_value = REMOTED_METRICS_RESPONSE
+    client._client.get.return_value = mock_response
+
+    result = client.get_metrics_dump()
+
+    client._client.get.assert_called_once_with(
+        url='http://localhost/metrics',
+        headers={'Content-Type': 'application/json'},
+    )
+    assert result == REMOTED_METRICS_RESPONSE
+
+
+def test_remoted_get_metrics_dump_http_error():
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = True
+    mock_response.text = 'internal error'
+    client._client.get.return_value = mock_response
+
+    with pytest.raises(WazuhError) as exc_info:
+        client.get_metrics_dump()
+    assert exc_info.value.code == 2029
+
+
+def test_remoted_get_metrics_dump_invalid_json():
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.side_effect = ValueError("not valid json")
+    client._client.get.return_value = mock_response
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_metrics_dump()
+    assert exc_info.value.code == 2032
+
+
+def test_remoted_get_metrics_dump_timeout():
+    client = _make_remoted_client()
+    client._client.get.side_effect = httpx.TimeoutException("timed out", request=MagicMock())
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_metrics_dump()
+    assert exc_info.value.code == 2030
+
+
+def test_remoted_get_metrics_dump_connect_error():
+    client = _make_remoted_client()
+    client._client.get.side_effect = httpx.ConnectError("refused", request=MagicMock())
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_metrics_dump()
+    assert exc_info.value.code == 2031
+
+
+def test_remoted_get_metrics_dump_request_error():
+    client = _make_remoted_client()
+    client._client.get.side_effect = httpx.RequestError("network error", request=MagicMock())
+
+    with pytest.raises(WazuhError) as exc_info:
+        client.get_metrics_dump()
+    assert exc_info.value.code == 2013

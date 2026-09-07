@@ -926,7 +926,7 @@ def get_active_configuration(component: str, configuration: str) -> dict:
     dict
         The active configuration the manager is currently using.
     """
-    sockets_json_protocol = {'remote.sock', 'engine-api-http.sock', 'wdb.sock'}
+    sockets_json_protocol = {'remote.sock', 'wdb.sock'}
     # Only the daemons of the 5.x manager answer `getconfig`; the sections they return are the effective
     # ones of etc/wazuh-manager.conf (native booleans and integers, durations as written).
     component_socket_mapping = {'auth': 'auth.sock', 'request': 'remote.sock',

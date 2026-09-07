@@ -93,8 +93,11 @@ int Read_LogCollecSocket(XML_NODE node, void *d1, void *d2);
  * indexer_config; a NULL section or an empty host list leaves it NULL). */
 int Read_Vulnerability_Detection_JSON(const struct cJSON *vd, void *d1);
 int Read_Indexer_JSON(const struct cJSON *indexer);
-#endif
+#else
+/* Agent only. A manager has no agent-upgrade module: it serves upgrades from the task manager, and
+ * configures them in the `task-manager` section of the effective document. */
 int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1);
+#endif
 
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
 /**

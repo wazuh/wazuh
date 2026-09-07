@@ -422,6 +422,195 @@ def test_tail():
     assert len(result) == 20
 
 
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_kills_stale_orphan(mock_process, mock_kill):
+    """A pidfile whose PID predates the file and matches the daemon's cmdline is killed."""
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-123.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('123\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/wazuh-manager/api/scripts/wazuh_manager_apid.py']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) - 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_called_once_with(123, utils.SIGKILL)
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_does_not_kill_recycled_pid(mock_process, mock_kill):
+    """Regression for wazuh/wazuh#38695.
+
+    A live process whose PID matches a stale pidfile but was created after the file
+    was written recycled that PID from the kernel; it is not the process that wrote
+    the file (for example, it can be the daemon's own freshly started instance) and
+    must not be killed.
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-456.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('456\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/wazuh-manager/api/scripts/wazuh_manager_apid.py']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) + 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_does_not_kill_itself(mock_process, mock_kill):
+    """The calling process must never be treated as its own orphan child."""
+    with TemporaryDirectory() as tmp_dir:
+        own_pid = os.getpid()
+        pid_file = os.path.join(tmp_dir, f'wazuh-manager-apid_auth-{own_pid}.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write(f'{own_pid}\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/wazuh-manager/api/scripts/wazuh_manager_apid.py']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) - 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_handles_access_denied(mock_process, mock_kill):
+    """A PID recycled by a process owned by another user must not crash the daemon's startup.
+
+    psutil.AccessDenied is not an OSError subclass, so it needs its own coverage: reading
+    cmdline() for a process this daemon can't introspect must be treated the same as not
+    being able to identify it, not left to propagate and abort the caller's startup.
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-789.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('789\n')
+
+        mock_process.return_value.cmdline.side_effect = utils.psutil.AccessDenied(pid=789)
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_handles_empty_cmdline(mock_process, mock_kill):
+    """A PID recycled by a process with no argv (e.g. a kernel thread) must not crash startup.
+
+    cmdline() can legitimately return an empty list; joined into an empty string it never
+    matches the daemon name, so the process is treated as not belonging to the daemon.
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-321.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('321\n')
+
+        mock_process.return_value.cmdline.return_value = []
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) + 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_handles_kill_failure(mock_process, mock_kill, capsys):
+    """A confirmed orphan whose SIGKILL itself fails must be reported as a kill failure,
+    not folded into the generic 'could not identify' message used for identification
+    failures (psutil errors raised before the process is confirmed to be a stale owner).
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-654.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('654\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/wazuh-manager/api/scripts/wazuh_manager_apid.py']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) - 10
+        mock_kill.side_effect = OSError('No such process')
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_called_once_with(654, utils.SIGKILL)
+        assert not os.path.exists(pid_file)
+        output = capsys.readouterr().out
+        assert 'identified but could not be terminated' in output
+        assert 'Could not identify process' not in output
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_kills_stale_orphan_started_with_debug_flag(mock_process, mock_kill):
+    """A stale orphan started with '-d' (persisted debug mode) is still recognized and killed.
+
+    cmdline()'s last argument is '-d' in that case, not the script path; matching against
+    the joined cmdline instead of only its last element is what keeps this case working.
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-987.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('987\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/wazuh-manager/api/scripts/wazuh_manager_apid.py', '-d']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) - 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_called_once_with(987, utils.SIGKILL)
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_tolerates_vanished_pidfile(mock_process, mock_kill):
+    """A pidfile removed by someone else while it is being inspected must not abort the startup."""
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-manager-apid_auth-135.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('135\n')
+
+        def vanish(_path):
+            os.remove(pid_file)
+            raise FileNotFoundError(pid_file)
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/wazuh-manager/api/scripts/wazuh_manager_apid.py']
+        mock_process.return_value.create_time.return_value = 0
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir), \
+                patch('wazuh.core.utils.path.getmtime', side_effect=vanish):
+            utils.clean_pid_files('wazuh-manager-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
 @patch('wazuh.core.utils.chmod')
 def test_chmod_r(mock_chmod):
     """Tests chmod_r function."""

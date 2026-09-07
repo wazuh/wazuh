@@ -12,14 +12,14 @@
 #include "taskClient.hpp"
 #include "common/logThrottle.hpp"
 #include "controlConfig.hpp"
-#include "epollWrapper.hpp"
+#include "downstream/IDownstreamClient.hpp"
+#include "downstream/asioUdsHttpClient.hpp"
 #include "json.hpp"
 #include "loggerHelper.h"
-#include "socketClient.hpp"
-#include "socketWrapper.hpp"
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -185,60 +185,29 @@ namespace remoted::control
 
         void workerLoop()
         {
-            using SocketType = Socket<OSPrimitives, SizeHeaderProtocol>;
-            using ClientType = SocketClient<SocketType, EpollWrapper>;
+            /*
+             * A REQUEST PER CALL, not a persistent connection.
+             *
+             * The task manager serves HTTP/1.1 over its socket and answers one request per
+             * connection, closing it afterwards -- so the reconnect-on-failure loop this used to
+             * run would have fired on every single successful poll. The client below owns its own
+             * io_context and connects per request, which is what that transport actually wants.
+             *
+             * The queue, the worker thread and the six throttles are unchanged: what they bound is
+             * this module's own concurrency and log volume, neither of which the transport change
+             * affects.
+             */
+            remoted::downstream::DownstreamConfig clientConfig;
+            clientConfig.connectTimeoutMs = kTaskConnectTimeoutMs;
+            clientConfig.writeTimeoutMs = static_cast<int>(m_deadlineMs);
+            clientConfig.responseTimeoutMs = static_cast<int>(m_deadlineMs);
+            clientConfig.ioThreads = 1;
 
-            std::unique_ptr<ClientType> client;
-            std::string response;
-            std::mutex responseMutex;
-            std::condition_variable responseCv;
-            bool responseReady = false;
-            bool needsReconnect = true;
-
-            auto connectClient = [&]() -> bool
-            {
-                try
-                {
-                    client = std::make_unique<ClientType>(m_taskSocketPath);
-                    client->connect(
-                        [&](const char* body, uint32_t bodySize, const char*, uint32_t)
-                        {
-                            std::lock_guard<std::mutex> lock(responseMutex);
-                            response.assign(body, bodySize);
-                            responseReady = true;
-                            responseCv.notify_one();
-                        });
-                    LOGFN_DEBUG2(logFn(), "Connected to task manager socket at %s.", m_taskSocketPath.c_str());
-                    return true;
-                }
-                catch (...)
-                {
-                    client.reset();
-                    if (const auto throttle = connectFailThrottle().record())
-                    {
-                        LOGFN_ERROR(logFn(),
-                                    "Failed to connect to task manager socket at %s: %llu failure(s) in the last %d s.",
-                                    m_taskSocketPath.c_str(),
-                                    throttle.total,
-                                    remoted::common::LogThrottle::kDefaultWindowSeconds);
-                    }
-                    return false;
-                }
-            };
+            auto client {std::make_unique<remoted::downstream::AsioUdsHttpClient>(clientConfig)};
+            client->start();
 
             while (!m_stopping.load(std::memory_order_relaxed))
             {
-                if (needsReconnect || !client)
-                {
-                    if (!connectClient())
-                    {
-                        std::unique_lock<std::mutex> lock(m_mutex);
-                        m_cv.wait_for(lock, std::chrono::seconds(1), [this] { return m_stopping.load(); });
-                        continue;
-                    }
-                    needsReconnect = false;
-                }
-
                 std::unique_lock<std::mutex> lock(m_mutex);
                 m_cv.wait(lock, [this]() { return m_stopping || !m_queue.empty(); });
 
@@ -256,56 +225,105 @@ namespace remoted::control
                 lock.unlock();
 
                 nlohmann::json request;
-                request["action"] = "get_pending_tasks";
-                // Format agent_id with zero-padding to match database format (e.g., "001")
+                // Zero-padded to match the stored agent id format (e.g. "001").
                 std::ostringstream oss;
                 oss << std::setfill('0') << std::setw(3) << req.id;
                 request["agent_id"] = oss.str();
-                std::string requestStr = request.dump();
+                const auto requestStr {std::make_shared<const std::string>(request.dump())};
 
-                response.clear();
-                responseReady = false;
+                LOGFN_DEBUG2(logFn(), "Fetching pending tasks for agent %u.", req.id);
 
-                try
+                remoted::downstream::DownstreamRequest downstream;
+                downstream.socketPath = m_taskSocketPath;
+                downstream.method = remoted::http::Method::Post;
+                downstream.path = kTaskPendingRoute;
+                downstream.contentType = "application/json";
+                downstream.body = *requestStr;
+                downstream.responseTimeoutMs = static_cast<int>(m_deadlineMs);
+
+                // The client is async; this worker is synchronous by design, because the queue is
+                // what bounds concurrency. A promise per request keeps that shape without a second
+                // condition variable.
+                std::promise<std::pair<remoted::downstream::DownstreamError, remoted::downstream::DownstreamResponse>>
+                    promise;
+                auto future {promise.get_future()};
+
+                client->sendAsync(std::move(downstream),
+                                  requestStr,
+                                  [&promise](remoted::downstream::DownstreamError error,
+                                             remoted::downstream::DownstreamResponse response)
+                                  { promise.set_value({error, std::move(response)}); });
+
+                auto [error, response] {future.get()};
+
+                if (error == remoted::downstream::DownstreamError::ResponseTimeout ||
+                    error == remoted::downstream::DownstreamError::ConnectTimeout ||
+                    error == remoted::downstream::DownstreamError::WriteTimeout)
                 {
-                    LOGFN_DEBUG2(logFn(), "Fetching pending tasks for agent %u.", req.id);
-                    client->send(requestStr.data(), requestStr.size());
-
-                    std::unique_lock<std::mutex> respLock(responseMutex);
-                    if (!responseCv.wait_for(
-                            respLock, std::chrono::milliseconds(m_deadlineMs), [&]() { return responseReady; }))
+                    incTaskFetchError(m_metrics);
+                    if (const auto throttle = timeoutThrottle().record())
                     {
-                        incTaskFetchError(m_metrics);
-                        if (const auto throttle = timeoutThrottle().record())
-                        {
-                            LOGFN_WARN(logFn(),
-                                       "Task manager query timeout (deadline=%u ms): %llu timeout(s) in the last %d s.",
-                                       m_deadlineMs,
-                                       throttle.total,
-                                       remoted::common::LogThrottle::kDefaultWindowSeconds);
-                        }
-                        req.callback(SocketError::Timeout, {});
-                        needsReconnect = true;
-                        continue;
+                        LOGFN_WARN(logFn(),
+                                   "Task manager query timeout (deadline=%u ms): %llu timeout(s) in the last %d s.",
+                                   m_deadlineMs,
+                                   throttle.total,
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
                     }
+                    req.callback(SocketError::Timeout, {});
+                    continue;
                 }
-                catch (...)
+
+                if (error == remoted::downstream::DownstreamError::Connect)
+                {
+                    incTaskFetchError(m_metrics);
+                    if (const auto throttle = connectFailThrottle().record())
+                    {
+                        LOGFN_ERROR(logFn(),
+                                    "Failed to reach the task manager socket at %s: %llu failure(s) in the last %d s.",
+                                    m_taskSocketPath.c_str(),
+                                    throttle.total,
+                                    remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
+                    req.callback(SocketError::Io, {});
+                    continue;
+                }
+
+                if (error != remoted::downstream::DownstreamError::None)
                 {
                     incTaskFetchError(m_metrics);
                     if (const auto throttle = ioErrorThrottle().record())
                     {
                         LOGFN_WARN(logFn(),
-                                   "Task manager I/O error: %llu error(s) in the last %d s.",
+                                   "Task manager I/O error (%s): %llu error(s) in the last %d s.",
+                                   remoted::downstream::toString(error),
                                    throttle.total,
                                    remoted::common::LogThrottle::kDefaultWindowSeconds);
                     }
                     req.callback(SocketError::Io, {});
-                    needsReconnect = true;
                     continue;
                 }
 
-                deliverResponse(response, req.callback);
+                if (response.status < 200 || response.status > 299)
+                {
+                    incTaskFetchError(m_metrics);
+                    if (const auto throttle = protocolErrorThrottle().record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "Task manager answered HTTP %d: %llu error(s) in the last %d s.",
+                                   response.status,
+                                   throttle.total,
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
+                    req.callback(SocketError::ProtocolError, {});
+                    continue;
+                }
+
+                deliverResponse(response.body, req.callback);
             }
+
+            // Explicit rather than left to the destructor: stop() is what joins the client's own
+            // io_context thread, and this worker must not return while that thread is still live.
+            client->stop();
         }
 
         void deliverResponse(const std::string& response,
@@ -329,19 +347,8 @@ namespace remoted::control
                     return;
                 }
 
-                if (!json.contains("status") || json["status"] != "ok")
-                {
-                    incTaskFetchError(m_metrics);
-                    if (const auto throttle = protocolErrorThrottle().record())
-                    {
-                        LOGFN_WARN(logFn(),
-                                   "Task manager invalid status response: %llu error(s) in the last %d s.",
-                                   throttle.total,
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
-                    }
-                    callback(SocketError::ProtocolError, {});
-                    return;
-                }
+                // No "status" member to check: the HTTP status already carried that, and a
+                // non-2xx never reaches here.
 
                 std::vector<Task> tasks;
                 if (json.contains("tasks") && json["tasks"].is_array())

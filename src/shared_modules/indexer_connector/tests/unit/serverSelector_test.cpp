@@ -11,6 +11,7 @@
 
 #include "serverSelector_test.hpp"
 #include "monitoring.hpp"
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -382,4 +383,87 @@ TEST_F(ServerSelectorTest, TestRoundRobinSkipsUnhealthyServers)
     // Should alternate
     EXPECT_EQ(s1, s3);
     EXPECT_EQ(s2, s4);
+}
+
+/**
+ * @brief Test isAvailable is a pure inspection: it must not advance the round-robin cursor.
+ */
+TEST_F(ServerSelectorTest, TestIsAvailableDoesNotAdvanceTheRoundRobinCursor)
+{
+    std::vector<std::string> servers;
+    servers.emplace_back("http://localhost:9209");
+    servers.emplace_back("http://localhost:9210");
+    servers.emplace_back("http://localhost:9211");
+
+    // All servers healthy
+    setupHealthCheckMocks("green", "green", "yellow");
+
+    std::shared_ptr<TestServerSelector> selector;
+    EXPECT_NO_THROW(
+        selector = std::make_shared<TestServerSelector>(
+            servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL_INFINITE, SecureCommunication {}, m_mockHttpRequest.get()));
+
+    const std::string first {selector->getNext()};
+
+    for (int probe = 0; probe < 5; ++probe)
+    {
+        EXPECT_TRUE(selector->isAvailable());
+    }
+
+    // The sequence continues exactly where getNext() left it, unperturbed by the probes.
+    const std::string second {selector->getNext()};
+    const std::string third {selector->getNext()};
+    const std::string fourth {selector->getNext()};
+    EXPECT_NE(second, first);
+    EXPECT_NE(third, first);
+    EXPECT_NE(third, second);
+    EXPECT_EQ(fourth, first);
+}
+
+/**
+ * @brief Test every healthy host is selected the same number of times, with no skipped positions.
+ */
+TEST_F(ServerSelectorTest, TestRoundRobinDistributesUniformlyAcrossHealthyHosts)
+{
+    std::vector<std::string> servers;
+    servers.emplace_back("http://localhost:9209");
+    servers.emplace_back("http://localhost:9210");
+    servers.emplace_back("http://localhost:9211");
+
+    setupHealthCheckMocks("green", "yellow", "green");
+
+    std::shared_ptr<TestServerSelector> selector;
+    EXPECT_NO_THROW(
+        selector = std::make_shared<TestServerSelector>(
+            servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL_INFINITE, SecureCommunication {}, m_mockHttpRequest.get()));
+
+    std::map<std::string, int> hits;
+    constexpr int roundsPerHost = 4;
+    for (int i = 0; i < roundsPerHost * 3; ++i)
+    {
+        std::string server;
+        EXPECT_NO_THROW(server = selector->getNext());
+        ++hits[server];
+    }
+
+    ASSERT_EQ(hits.size(), servers.size());
+    for (const auto& server : servers)
+    {
+        EXPECT_EQ(hits[server], roundsPerHost) << "host skipped or over-selected: " << server;
+    }
+}
+
+/**
+ * @brief Test isAvailable on an empty selector answers false instead of throwing.
+ */
+TEST_F(ServerSelectorTest, TestIsAvailableWithoutServersIsFalse)
+{
+    std::vector<std::string> servers;
+
+    std::shared_ptr<TestServerSelector> selector;
+    EXPECT_NO_THROW(
+        selector = std::make_shared<TestServerSelector>(
+            servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL, SecureCommunication {}, m_mockHttpRequest.get()));
+
+    EXPECT_FALSE(selector->isAvailable());
 }

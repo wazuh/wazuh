@@ -1613,113 +1613,6 @@ void test_wdb_get_agent_group_success(void **state) {
     os_free(name);
 }
 
-/* Tests wdb_find_agent */
-
-void test_wdb_find_agent_error_invalid_parameters(void **state)
-{
-    int ret = 0;
-    char *name = NULL;
-    char *ip = NULL;
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Empty agent name or ip when trying to get agent ID.");
-
-    ret = wdb_find_agent(name, ip, NULL);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_find_agent_error_json_input(void **state)
-{
-    int ret = 0;
-    char *name = "agent1";
-    char *ip = "any";
-
-    will_return(__wrap_cJSON_CreateObject, NULL);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
-
-    ret = wdb_find_agent(name, ip, NULL);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_find_agent_error_json_output(void **state)
-{
-    int ret = 0;
-    const char *name_str = "agent1";
-    const char *ip_str = "any";
-
-    const char *json_str = strdup("{\"name\":\"agent1\",\"ip\":\"any\"}");
-
-    will_return(__wrap_cJSON_CreateObject, 1);
-    will_return_always(__wrap_cJSON_AddStringToObject, 1);
-
-    // Adding data to JSON
-    expect_string(__wrap_cJSON_AddStringToObject, name, "name");
-    expect_string(__wrap_cJSON_AddStringToObject, string, name_str);
-    expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
-    expect_string(__wrap_cJSON_AddStringToObject, string, ip_str);
-
-    // Printing JSON
-    will_return(__wrap_cJSON_PrintUnformatted, json_str);
-    expect_function_call(__wrap_cJSON_Delete);
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, NULL);
-
-    // Handling result
-    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB for agent ID.");
-
-    ret = wdb_find_agent(name_str, ip_str, NULL);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_find_agent_success(void **state)
-{
-    int ret = 0;
-    const char *name_str = "agent1";
-    const char *ip_str = "any";
-    cJSON *root = NULL;
-    cJSON *row = NULL;
-
-    const char *json_str = strdup("{\"name\":\"agent1\",\"ip\":\"any\"}");
-
-    root = __real_cJSON_CreateArray();
-    row = __real_cJSON_CreateObject();
-    __real_cJSON_AddNumberToObject(row, "id", 1);
-    __real_cJSON_AddItemToArray(root, row);
-
-    will_return(__wrap_cJSON_CreateObject, 1);
-    will_return_always(__wrap_cJSON_AddStringToObject, 1);
-
-    // Adding data to JSON
-    expect_string(__wrap_cJSON_AddStringToObject, name, "name");
-    expect_string(__wrap_cJSON_AddStringToObject, string, name_str);
-    expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
-    expect_string(__wrap_cJSON_AddStringToObject, string, ip_str);
-
-    // Printing JSON
-    will_return(__wrap_cJSON_PrintUnformatted, json_str);
-    expect_function_call(__wrap_cJSON_Delete);
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, root);
-
-    // Getting JSON data
-    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "id"));
-
-    expect_function_call(__wrap_cJSON_Delete);
-
-    ret = wdb_find_agent(name_str, ip_str, NULL);
-
-    assert_int_equal(1, ret);
-
-    __real_cJSON_Delete(root);
-}
-
 /* Tests wdb_get_all_agents_rbtree */
 
 void test_wdb_get_all_agents_rbtree_wdbc_query_error(void **state) {
@@ -3533,11 +3426,6 @@ int main()
         /* Tests wdb_get_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        /* Tests wdb_find_agent */
-        cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_invalid_parameters, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_json_input, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_json_output, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_find_agent_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_all_agents_rbtree */
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),

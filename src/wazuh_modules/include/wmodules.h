@@ -69,8 +69,11 @@ typedef enum crypto_type {
 #include "wm_sca.h"
 #include "wm_control.h"
 #include "wm_gcp.h"
-#include "wm_agent_upgrade.h"
-#include "wm_task_manager.h"
+#ifdef CLIENT
+#include "wm_agent_upgrade.h" // agent only; the manager side of that module is the task manager
+#else
+#include "wm_task_manager.h" // manager only; there is no task manager on an agent
+#endif
 #include "wm_agent_info.h"
 #include "wm_github.h"
 #include "wm_office365.h"
@@ -160,6 +163,11 @@ void wm_kill_children();
 
 // Reads an HTTP header and extracts an element from a regex
 char* wm_read_http_header_element(char *header, char *regex);
+
+/* Check that a URL is HTTPS and, when host is not NULL, that it points to that host.
+ * Returns true if the URL is allowed, false otherwise.
+ */
+bool wm_url_is_allowed(const char *url, const char *host);
 
 /* Load or save the running state
  * op: WM_IO_READ | WM_IO_WRITE

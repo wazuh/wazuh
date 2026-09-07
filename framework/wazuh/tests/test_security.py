@@ -195,3 +195,19 @@ def test_sanitize_rbac_policy(db_setup, policy_case):
                 assert all(p.islower() for p in policy[element])
             else:
                 assert all(':'.join(p.split(':')[:-1]) for p in policy[element])
+
+
+def test_rbac_catalog_getters_are_not_memoized(db_setup):
+    """The RBAC catalog getters must not cache their own result.
+
+    An `lru_cache` above `expose_resources` hands back the memoized result without evaluating the
+    permissions again, and the caller's RBAC context is not part of the key, so the first authorized
+    call would answer for everyone after it. Only `load_spec` is cached: it is the expensive part and
+    it carries no authorization.
+    """
+    security, _, core_security = db_setup
+
+    for getter in (security.get_rbac_resources, security.get_rbac_actions):
+        assert not hasattr(getter, 'cache_info'), f'{getter.__name__} memoizes its own result'
+
+    assert hasattr(core_security.load_spec, 'cache_info')

@@ -61,11 +61,8 @@ Three details worth knowing:
   own report is dropped rather than indexed next to the authoritative `wazuh.agent.id`.
 - The report is stored as it arrives. The module renames no metric and reshapes no module body, so the
   field names in the index are the ones the agent emits, and a metric the agent adds needs no change
-  here.
-- It does need one in the index template. `wazuh-agent-stats` is mapped `dynamic: strict` with every
-  leaf declared, so a module or metric it does not declare makes the indexer reject the whole document
-  with `strict_dynamic_mapping_exception`. The write is fire-and-forget and the agent already has its
-  `200`, so that rejection is invisible from here — read the document back off the indexer to see it.
+  here, nor in the index template: `wazuh-agent-stats` is mapped `dynamic: true`, so a module or
+  metric it does not declare is indexed like any other field rather than rejected.
 
 `400` when the body is not a JSON object, when `modules` is missing, is not an object, is empty, or
 holds a module whose body is not an object. The empty case is a rejection on purpose: indexing a

@@ -34,6 +34,10 @@ import pytest
 _mock_opensearchpy = MagicMock()
 _mock_opensearchpy.__path__ = []
 
+# get_system_nodes is awaited by both fan-outs, so the stand-in has to be awaitable.
+_mock_cluster_control = MagicMock()
+_mock_cluster_control.get_system_nodes = AsyncMock(return_value=["node01", "node02"])
+
 mocked_modules = {
     "opensearchpy": _mock_opensearchpy,
     "opensearchpy.exceptions": MagicMock(),
@@ -45,6 +49,7 @@ mocked_modules = {
     "wazuh.core.utils": MagicMock(),
     "wazuh.core.InputValidator": MagicMock(),
     "wazuh.core.cluster": MagicMock(),
+    "wazuh.core.cluster.control": _mock_cluster_control,
     "wazuh.core.cluster.utils": MagicMock(),
     "wazuh.core.cluster.dapi": MagicMock(),
     "wazuh.core.cluster.dapi.dapi": MagicMock(),
@@ -156,11 +161,23 @@ def _make_tasks(server=None, cluster_items=None):
     )
 
 
-def _make_dapi_result(items):
-    """Return a mock AffectedItemsWazuhResult with the given affected_items list."""
+def _make_dapi_result(items, failed=None):
+    """Return a mock AffectedItemsWazuhResult. failed_items defaults to empty, as it is on a
+    result that rejected nothing: a bare MagicMock attribute would read as truthy.
+    """
     result = MagicMock()
     result.affected_items = items
+    result.failed_items = failed or {}
     return result
+
+
+class _DapiReturnedError(Exception):
+    """Stand-in for the WazuhException DistributedAPI returns instead of raising. Real rather
+    than a MagicMock, which would answer affected_items and hide the drop under test.
+    """
+
+
+_DAPI_RETURNED_ERROR = _DapiReturnedError("cluster transport failed")
 
 
 def _agents_http_patch(items):
@@ -261,6 +278,18 @@ EXPECTED_COMMS_FIELDS_V5_ONLY = {
 
 class TestCollectCommsAllNodes:
     """Tests for MetricsSnapshotTasks._collect_comms_all_nodes."""
+
+    @pytest.fixture(autouse=True)
+    def _stub_system_nodes(self):
+        """Stub get_system_nodes, which opens a LocalClient these tests have none of. Patched
+        on the module under test: once the whole suite has imported metrics_snapshot, the
+        sys.modules mock above no longer applies and the real function stays bound.
+        """
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_system_nodes",
+            AsyncMock(return_value=["node01", "node02"]),
+        ):
+            yield
 
     @pytest.mark.asyncio
     async def test_single_master_node_injects_metadata(self):
@@ -409,6 +438,123 @@ class TestCollectCommsAllNodes:
         assert call_kwargs["f_kwargs"]["daemons_list"] == ["wazuh-manager-remoted"]
         assert call_kwargs["f_kwargs"]["node_list"] == ["node02"]
         assert call_kwargs["request_type"] == "distributed_master"
+
+    @pytest.mark.asyncio
+    async def test_dapi_returned_error_is_logged_not_swallowed(self):
+        """A DAPI error returned for a worker is reported, not read as an empty result: an
+        exception carries no affected_items, so the node was dropped with no document and no log.
+        """
+        server = _make_server(node_name="node01", workers={"node02": MagicMock()})
+        tasks = _make_tasks(server=server)
+
+        with (
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+                return_value=_make_dapi_result([dict(REMOTED_STATS)]),
+            ),
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
+                return_value=AsyncMock(
+                    distribute_function=AsyncMock(return_value=_DAPI_RETURNED_ERROR)
+                ),
+            ),
+        ):
+            docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
+
+        # The master's own document is unaffected: one failing node does not lose the rest.
+        assert [doc["wazuh"]["cluster"]["node"] for doc in docs] == ["node01"]
+        tasks.logger.exception.assert_called_once()
+        assert "node02" in tasks.logger.exception.call_args.args
+
+    @pytest.mark.asyncio
+    async def test_dapi_receives_the_cluster_node_list(self):
+        """The fan-out passes `nodes`: DistributedAPI defaults it to an empty list, which
+        forward_request seeds common.cluster_nodes from, so get_nodes_info answers 1730
+        "Node does not exist" for every worker instead of forwarding.
+        """
+        server = _make_server(node_name="node01", workers={"node02": MagicMock()})
+        tasks = _make_tasks(server=server)
+
+        with (
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+                return_value=_make_dapi_result([dict(REMOTED_STATS)]),
+            ),
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_system_nodes",
+                AsyncMock(return_value=["node01", "node02"]),
+            ) as mock_system_nodes,
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
+                return_value=AsyncMock(
+                    distribute_function=AsyncMock(
+                        return_value=_make_dapi_result([dict(REMOTED_STATS)])
+                    )
+                ),
+            ) as MockDAPI,
+        ):
+            await tasks._collect_comms_all_nodes(TIMESTAMP)
+
+        assert MockDAPI.call_args.kwargs["nodes"] == ["node01", "node02"]
+        # Resolved once per cycle, not once per worker.
+        mock_system_nodes.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_a_failing_node_lookup_costs_only_the_worker_fan_out(self):
+        """The lookup runs inside the per-node try. Out of it, _collect_and_index's gather has no
+        return_exceptions and the whole cycle's documents go with it.
+        """
+        server = _make_server(node_name="node01", workers={"node02": MagicMock()})
+        tasks = _make_tasks(server=server)
+
+        with (
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+                return_value=_make_dapi_result([dict(REMOTED_STATS)]),
+            ),
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_system_nodes",
+                AsyncMock(side_effect=RuntimeError("cluster control unavailable")),
+            ),
+        ):
+            docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
+
+        assert [doc["wazuh"]["cluster"]["node"] for doc in docs] == ["node01"]
+        tasks.logger.exception.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_failed_items_are_reported(self):
+        """A node rejected into failed_items is reported. This is the shape a refused forward
+        takes: a valid result with empty affected_items, invisible to the exception guard.
+        """
+        server = _make_server(node_name="node01", workers={"node02": MagicMock()})
+        tasks = _make_tasks(server=server)
+
+        rejected = MagicMock()
+        rejected.affected_items = []
+        rejected.failed_items = {"Node does not exist": {"node02"}}
+
+        with (
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+                return_value=_make_dapi_result([dict(REMOTED_STATS)]),
+            ),
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_system_nodes",
+                AsyncMock(return_value=["node01", "node02"]),
+            ),
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
+                return_value=AsyncMock(
+                    distribute_function=AsyncMock(return_value=rejected)
+                ),
+            ),
+        ):
+            docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
+
+        assert [doc["wazuh"]["cluster"]["node"] for doc in docs] == ["node01"]
+        tasks.logger.warning.assert_called_once()
+        assert "node02" in tasks.logger.warning.call_args.args
 
 
 # ---------------------------------------------------------------------------
@@ -2254,6 +2400,15 @@ class TestNormalizeNormalizationDoc:
 class TestCollectNormalizationAllNodes:
     """Tests for MetricsSnapshotTasks._collect_normalization_all_nodes."""
 
+    @pytest.fixture(autouse=True)
+    def _stub_system_nodes(self):
+        """Same stub as the comms fan-out; see TestCollectCommsAllNodes."""
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_system_nodes",
+            AsyncMock(return_value=["node01", "node02"]),
+        ):
+            yield
+
     @pytest.mark.asyncio
     async def test_single_master_generates_one_doc_per_metric(self):
         """Master-only cluster: one document per metric entry (global + spaces)."""
@@ -2268,6 +2423,32 @@ class TestCollectNormalizationAllNodes:
 
         # 3 global + 2 space metrics = 5 documents
         assert len(docs) == 5
+
+    @pytest.mark.asyncio
+    async def test_dapi_returned_error_is_logged_not_swallowed(self):
+        """The Engine fan-out reports a returned DAPI error instead of dropping the node."""
+        server = _make_server(node_name="node01", workers={"node02": MagicMock()})
+        tasks = _make_tasks(server=server)
+
+        with (
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+                return_value=_make_dapi_result([dict(ENGINE_DUMP)]),
+            ),
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
+                return_value=AsyncMock(
+                    distribute_function=AsyncMock(return_value=_DAPI_RETURNED_ERROR)
+                ),
+            ),
+        ):
+            docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        # Only the master's five documents survive, and the worker's failure is reported.
+        assert len(docs) == 5
+        assert {doc["wazuh"]["cluster"]["node"] for doc in docs} == {"node01"}
+        tasks.logger.exception.assert_called_once()
+        assert "node02" in tasks.logger.exception.call_args.args
 
     @pytest.mark.asyncio
     async def test_global_metrics_have_null_space_name(self):

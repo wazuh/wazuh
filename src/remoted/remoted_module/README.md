@@ -255,9 +255,10 @@ src/endpoints/
   `wazuh-agent-stats` / `wazuh-agent-config`
   (`wazuh_modules/inventory_sync_server/src/endpoints/{stats,config}Endpoint.hpp`). A malformed
   report is rejected whole, with a `400` this side maps to its own fixed message. Note the indexer
-  write there is fire-and-forget, so a `200` from here means *accepted*, not *indexed* —
-  `wazuh-agent-stats` is `dynamic: strict`, so an undeclared metric is dropped silently at the
-  indexer. Three things differ from `/stateless`:
+  write there is fire-and-forget, so a `200` from here means *accepted*, not *indexed*, and an
+  indexer-side rejection is invisible from here. `wazuh-agent-stats` is `dynamic: true`, so an
+  undeclared metric is indexed like any other field rather than rejected. Three things differ from
+  `/stateless`:
   - **They forward the authenticated agent id as an `X-Wazuh-Agent-Id` header.** Unlike an H/E batch,
     these documents do not carry the id, and modulesd is what writes it in — so it has to receive it.
     That is why `DownstreamTarget`/`DownstreamRequest` grew a `headers` field. The value comes from the
@@ -557,7 +558,7 @@ from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed 
 | `tmDeadlineMs` | 2000 ms | `remoted.control_tm_deadline` (100–30000) |
 | `tmMaxQueueSize` | 10000 | `remoted.control_tm_max_queue_size` (100–1000000) |
 | `wdbSocketPath` | `/queue/sockets/wdb.sock` | — (fixed) |
-| `taskSocketPath` | `/queue/sockets/task.sock` | — (fixed) |
+| `taskSocketPath` | `/queue/sockets/task-http.sock` | — (fixed) |
 | `registryEvictionTtlSec` | 21600 s (6 h) | — **not configurable** (compile-time constant; never assigned from the C-ABI) |
 | — eviction cadence | 300 s | — **not configurable** (`kRegistryEvictionIntervalSec`, used as a literal by the eviction thread) |
 | `keepaliveThrottleSec` | 60 s | `remoted.control_keepalive_throttle` (1–3600) |
@@ -685,9 +686,10 @@ A stateless, synchronous passthrough of VD's admission, run entirely on the HTTP
 - Rejects `agentId == 0` outright; queries `VdClient::getOffset()` and rejects with
   `VersionMismatch` unless the request's `feed_offset` matches exactly.
 - Makes **one** inline `POST /vulnerability-detector/scan` to the VD module (over the *same*
-  `vd-http.sock` UDS socket `VdClient` uses for `/offset` — see below), with a 5 s timeout: VD
-  answers at **admission** into its bounded dispatch lane (64 slots, per-agent dedup of queued
-  items), so the round trip is inline route work measured in milliseconds, never a scan.
+  `vd-http.sock` UDS socket `VdClient` uses for `/offset` — see below), with a read/write timeout
+  each configurable via `remoted.vd_scan_read_timeout`/`remoted.vd_scan_write_timeout` (default
+  5 s each): VD answers at **admission** into its bounded dispatch lane (64 slots, per-agent dedup
+  of queued items), so the round trip is inline route work measured in milliseconds, never a scan.
 - Relays the answer honestly: VD's `200` → `Accepted`; any VD refusal → `VdRejected` carrying
   VD's own error code — `indexer_unavailable` included, which keeps its own counter and is VD's
   own cause to log, exactly like `scan_queue_full`, never folded into the relay-failure window
@@ -1102,11 +1104,10 @@ otherwise — the bridge always has something to talk to as long as authd is run
 `enrollment_enabled` on the remoted side is `!disabled && remote_enrollment`; `legacy_enrollment` has
 no bearing on it whatsoever, and neither flag ever unregisters the route (see above) — only its `403`.
 
-`authd_config_t.flags.disabled` looks tri-state in its header (`AD_CONF_UNPARSED`/`AD_CONF_UNDEFINED`
-sentinels), but a repo-wide search shows nothing ever sets it to `AD_CONF_UNPARSED` — the one line
-that used to is commented out — so the tri-state switch in `os_auth/src/config.c` is dead code today.
-It behaves as a plain boolean, defaulting to enabled (`0`) unless `<disabled>yes</disabled>` is
-explicit. `secure.c` needs no special resolution logic: zero-initialize a local `authd_config_t` the
+`authd_config_t.flags.disabled` is a plain boolean, defaulting to enabled (`0`) unless
+`<disabled>yes</disabled>` is explicit. It used to look tri-state in its header
+(`AD_CONF_UNPARSED`/`AD_CONF_UNDEFINED` sentinels) with a resolution switch in `os_auth/src/config.c`,
+but nothing ever assigned those values, so both were removed. `secure.c` needs no special resolution logic: zero-initialize a local `authd_config_t` the
 normal way, call `ReadConfig(CAUTHD, OSSECCONF, &authd_cfg, NULL)`, and read `flags.disabled` directly.
 
 ### Manager certificate unification
@@ -1628,8 +1629,14 @@ forwards its format to `_log()`'s `vfprintf`, and RESTinio's builders embed clie
 
 ## Metrics catalog
 
-Everything lives on the facade's single `wazuh_metrics` registry and is observable in two
-places: `GET /metrics` on the local admin socket (below) and the debug-log dump on `stop()`.
+Everything lives on the facade's single `wazuh_metrics` registry and is observable in three
+places: `GET /metrics` on the local admin socket (below), the debug-log dump on `stop()`, and
+`GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-manager-remoted`, whose
+`metrics.http_server` object is a nested projection of this catalog built in
+`framework/wazuh/core/stats.py`. That projection hardcodes metric names with no compile-time
+link to this module, so **renaming or removing a metric below silently drops a field from the
+API response** — the mapping tables there (`_REMOTED_METRIC_GROUPS` and its neighbours) must be
+updated in the same change. `remoted.admin.server.*` is deliberately excluded from it.
 Design rules shared by every family: names are the only dimension (closed sets pre-resolved
 into structs, selected by `switch` — the hot path never formats a name); update cost is one
 relaxed atomic op (histogram `observe()` ≈ 2×, and never on a transport I/O thread); a
@@ -1656,7 +1663,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above) | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.authd.queue.{depth, capacity, rejected.total}` (pulls) | is `remoted.authd_max_queue_size`/`authd_worker_threads` sized right, and how much of `authd_unavailable` was saturation rather than an unreachable authd | `AuthdClient::queueDiagnostics()` (same lock, dump cadence only); the counter is bumped ONLY on the queue-full branch, never on shutdown |
 | `remoted.forwarder.deferred.{inflight, capacity, rejected.total}` (pulls) | is `remoted.max_deferred_requests` sized right; how much did the limiter shed | the `DeferredWorkLimiter`'s own atomics |
-| `remoted.admin.server.*` (7 pulls) | the admin transport dogfooding itself | `IUdsHttpServer::diagnostics()` |
+| `remoted.admin.server.*` (11 pulls) | the admin transport dogfooding itself: 7 levels plus the 4 `rejected.*` shed counters | `IUdsHttpServer::diagnostics()` |
 
 **Accounting boundary** (what sums to what): a request shed by the byte budget is refused on
 the transport I/O thread BEFORE any route runs — it appears ONLY in

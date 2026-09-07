@@ -324,6 +324,11 @@ namespace wazuh::uds_http
             /// the shutdown INFO so the third source of 503 (besides budget and cap) is accounted for.
             std::atomic<std::size_t> shutdownRejected {0};
 
+            /// The other transport-level 503s, counted for the reason TransportDiagnostics gives.
+            std::atomic<std::size_t> budgetRejected {0};
+            std::atomic<std::size_t> sessionCapRejected {0};
+            std::atomic<std::size_t> noResponseRejected {0};
+
             std::atomic_bool accepting {false};
 
             /// Resolved once in start() from the configured limits; see perRequestOverhead().
@@ -456,6 +461,7 @@ namespace wazuh::uds_http
                                    {
                                        return;
                                    }
+                                   self->m_state->noResponseRejected.fetch_add(1, std::memory_order_relaxed);
                                    if (const auto decision = self->m_state->abandonedThrottle.record())
                                    {
                                        LOGFN_WARN(self->m_state->log,
@@ -684,6 +690,7 @@ namespace wazuh::uds_http
 
             void reportClassSessionCap(RouteClass cls, std::size_t cap)
             {
+                m_state->sessionCapRejected.fetch_add(1, std::memory_order_relaxed);
                 if (const auto decision = m_state->classSessionCapThrottle.record())
                 {
                     LOGFN_WARN(m_state->log,
@@ -771,6 +778,7 @@ namespace wazuh::uds_http
                     auto reserved = m_state->budget->tryReserve(declared + m_state->perRequestOverhead);
                     if (!reserved)
                     {
+                        m_state->budgetRejected.fetch_add(1, std::memory_order_relaxed);
                         if (const auto decision = m_state->budgetThrottle.record())
                         {
                             const auto& hint = m_state->config.budgetOptionHint;
@@ -2163,6 +2171,10 @@ namespace wazuh::uds_http
         {
             snapshot.sessionsByClass[i] = state.classSessions[i].load(std::memory_order_relaxed);
         }
+        snapshot.rejectedBudgetExhausted = state.budgetRejected.load(std::memory_order_relaxed);
+        snapshot.rejectedSessionCap = state.sessionCapRejected.load(std::memory_order_relaxed);
+        snapshot.rejectedShutdown = state.shutdownRejected.load(std::memory_order_relaxed);
+        snapshot.rejectedNoResponse = state.noResponseRejected.load(std::memory_order_relaxed);
         return snapshot;
     }
 

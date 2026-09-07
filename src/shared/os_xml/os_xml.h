@@ -28,7 +28,7 @@ typedef struct _xml_node {
 #define XML_ERR_LENGTH  128
 #define XML_STASH_LEN   2
 #define xml_getc_fun(x,y) (x)? _xml_fgetc(x,y) : _xml_sgetc(y)
-typedef enum _XML_TYPE { XML_ATTR, XML_ELEM, XML_VARIABLE_BEGIN = '$' } XML_TYPE;
+typedef enum _XML_TYPE { XML_ATTR, XML_ELEM } XML_TYPE;
 
 /* XML structure */
 typedef struct _OS_XML {
@@ -139,9 +139,6 @@ char **OS_GetContents(OS_XML *_lxml, const char **element_name) __attribute__((n
 /* Return the value of a specific attribute of the element_name */
 char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
                              const char *attribute_name) __attribute__((nonnull(1, 2)));
-
-/* Apply the variables to the xml */
-int OS_ApplyVariables(OS_XML *_lxml) __attribute__((nonnull));
 
 /* Error from writer */
 #define XMLW_ERROR              006

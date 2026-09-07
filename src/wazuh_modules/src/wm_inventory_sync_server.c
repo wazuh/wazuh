@@ -84,12 +84,16 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
     /* Split from the line above so the two indexer families stay visually distinct in the log, the
      * same way they are in the configuration: their key names are NOT interchangeable. */
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
-             "indexer sync: max_bulk_size=%d, flush_interval_seconds=%d, max_retry_delay_seconds=%d, "
-             "request_timeout_seconds=%d",
+             "indexer sync: max_bulk_size=%d, connector_max_bulk_size=%d, flush_interval_seconds=%d, "
+             "max_retry_delay_seconds=%d, request_timeout_seconds=%d, max_retry_attempts=%d, "
+             "max_retry_duration_seconds=%d",
              config->indexer_sync_max_bulk_size,
+             config->indexer_sync_connector_max_bulk_size,
              config->indexer_sync_flush_interval_seconds,
              config->indexer_sync_max_retry_delay_seconds,
-             config->indexer_sync_request_timeout_seconds);
+             config->indexer_sync_request_timeout_seconds,
+             config->indexer_sync_max_retry_attempts,
+             config->indexer_sync_max_retry_duration_seconds);
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
              "indexer async: bulk_max_bytes=%d, flush_interval_seconds=%d, max_retry_delay_seconds=%d, "
              "max_queue_bytes=%lld, logger_queue_size=%d, logger_threads=%d, request_timeout_seconds=%d",
@@ -243,7 +247,13 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
      * silent fallback to the default. ---- */
     config->indexer_sync_max_bulk_size =
         getDefine_Int_default("wazuh_modules",
-                              "inventory_sync_server_indexer_sync_max_bulk_size", /* -> max_bulk_size */
+                              "inventory_sync_server_indexer_sync_max_bulk_size", /* pipeline group-commit threshold */
+                              4096,
+                              100 * 1024 * 1024,
+                              10 * 1024 * 1024);
+    config->indexer_sync_connector_max_bulk_size =
+        getDefine_Int_default("wazuh_modules",
+                              "inventory_sync_server_indexer_sync_connector_max_bulk_size", /* -> max_bulk_size */
                               4096,
                               100 * 1024 * 1024,
                               10 * 1024 * 1024);
@@ -326,6 +336,46 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
         1,
         3600,
         10);
+
+    /* Retry budget of the sync connector. Minimum 0, NOT 1: the connector reads 0 as "disable this
+     * bound", and getDefine_Int_default() calls merror_exit() on an out-of-range value, so a
+     * minimum of 1 would turn that documented setting into a fatal abort. 0 is forwarded verbatim
+     * and warned about below, because disabling a bound lets a persistent 429 or an unreachable
+     * indexer pin a flushing worker -- and the shard behind it -- past the caller's response
+     * window. The duration default stays below remoted's downstream response window (20 s), so a
+     * flush fails while its caller is still listening. */
+    config->indexer_sync_max_retry_attempts =
+        getDefine_Int_default("wazuh_modules",
+                              "inventory_sync_server_indexer_sync_max_retry_attempts", /* -> max_retry_attempts */
+                              0,
+                              1000,
+                              5);
+    config->indexer_sync_max_retry_duration_seconds = getDefine_Int_default(
+        "wazuh_modules",
+        "inventory_sync_server_indexer_sync_max_retry_duration_seconds", /* -> max_retry_duration_seconds */
+        0,
+        3600,
+        15);
+    if (config->indexer_sync_max_retry_attempts == 0 && config->indexer_sync_max_retry_duration_seconds == 0)
+    {
+        mtwarn(WM_INVENTORY_SYNC_SERVER_LOGTAG,
+               "Both sync retry bounds are disabled (max_retry_attempts=0, max_retry_duration_seconds=0); a "
+               "persistent indexer failure can pin a flush worker indefinitely.");
+    }
+    else if (config->indexer_sync_max_retry_attempts == 0)
+    {
+        mtwarn(WM_INVENTORY_SYNC_SERVER_LOGTAG,
+               "The sync retry attempts bound is disabled (max_retry_attempts=0); retries are limited only by "
+               "max_retry_duration_seconds=%d.",
+               config->indexer_sync_max_retry_duration_seconds);
+    }
+    else if (config->indexer_sync_max_retry_duration_seconds == 0)
+    {
+        mtwarn(WM_INVENTORY_SYNC_SERVER_LOGTAG,
+               "The sync retry duration bound is disabled (max_retry_duration_seconds=0); retries are limited only "
+               "by max_retry_attempts=%d.",
+               config->indexer_sync_max_retry_attempts);
+    }
 }
 
 void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
@@ -510,6 +560,12 @@ cJSON* wm_inventory_sync_server_dump(wm_inventory_sync_server_t* data)
         config, "indexer_async_request_timeout_seconds", data->config->indexer_async_request_timeout_seconds);
     cJSON_AddNumberToObject(
         config, "indexer_monitoring_interval_seconds", data->config->indexer_monitoring_interval_seconds);
+    cJSON_AddNumberToObject(
+        config, "indexer_sync_max_retry_attempts", data->config->indexer_sync_max_retry_attempts);
+    cJSON_AddNumberToObject(
+        config, "indexer_sync_max_retry_duration_seconds", data->config->indexer_sync_max_retry_duration_seconds);
+    cJSON_AddNumberToObject(
+        config, "indexer_sync_connector_max_bulk_size", data->config->indexer_sync_connector_max_bulk_size);
 
     cJSON_AddItemToObject(root, "inventory_sync_server", config);
     return root;

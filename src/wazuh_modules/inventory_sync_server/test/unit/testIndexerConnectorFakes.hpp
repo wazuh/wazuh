@@ -29,6 +29,7 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -71,6 +72,9 @@ namespace invsync::test
         /// m_mutex.
         std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string>> m_syncOps;
         std::atomic<int> m_syncFlushes {0}; ///< Times the sync fake's flush() ran.
+        /// What the sync fake hands out from takeBulkRequestStats(), once (taking resets them).
+        std::atomic<std::uint64_t> m_bulkStatsRequests {0};
+        std::atomic<std::uint64_t> m_bulkStatsBytes {0};
         /// Canned body the sync fake returns from executeSearchQuery(). Guarded by m_mutex.
         nlohmann::json m_searchResponse = nlohmann::json::object();
         /// When non-empty, executeSearchQuery() pops from here instead (front first) -- lets a test
@@ -170,9 +174,18 @@ namespace invsync::test
             std::lock_guard<std::mutex> lock(m_mutex);
             if (m_syncThrowOn == op)
             {
+                if (m_syncThrowCause)
+                {
+                    throw invsync::indexer::ConnectorError {std::string {"injected failure in "} + op,
+                                                            *m_syncThrowCause};
+                }
                 throw std::runtime_error {std::string {"injected failure in "} + op};
             }
         }
+
+        /// When set, throwIfInjected() throws the seam's typed ConnectorError with this cause
+        /// instead of a plain runtime_error. Guarded by m_mutex.
+        std::optional<invsync::indexer::ConnectorError::Cause> m_syncThrowCause;
 
         void closeFlushGate()
         {
@@ -350,6 +363,15 @@ namespace invsync::test
                 m_events->throwIfInjected("flush");
                 m_events->m_syncFlushes.fetch_add(1);
             }
+        }
+
+        BulkRequestStats takeBulkRequestStats() override
+        {
+            if (!m_events)
+            {
+                return {};
+            }
+            return {m_events->m_bulkStatsRequests.exchange(0), m_events->m_bulkStatsBytes.exchange(0)};
         }
 
     private:

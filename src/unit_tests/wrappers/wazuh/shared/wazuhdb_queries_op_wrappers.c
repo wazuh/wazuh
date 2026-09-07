@@ -13,13 +13,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_wdb_find_agent(const char* name, const char* ip, __attribute__((unused)) int* sock)
-{
-    check_expected(name);
-    check_expected(ip);
-    return mock();
-}
-
 int* __wrap_wdb_disconnect_agents(int keepalive, const char* sync_status, __attribute__((unused)) int* sock)
 {
     check_expected(keepalive);

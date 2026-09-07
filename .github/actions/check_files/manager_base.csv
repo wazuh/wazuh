@@ -95,6 +95,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/lib/librocksdb.so.8,root,wazuh-manager,750,file,-rwxr-x---,,
 /var/wazuh-manager/lib/libschema_validator.so,root,wazuh-manager,750,file,-rwxr-x---,,
 /var/wazuh-manager/lib/libstdc++.so.6,root,wazuh-manager,750,file,-rwxr-x---,,
+/var/wazuh-manager/lib/libtask_manager.so,root,wazuh-manager,750,file,-rwxr-x---,,
 /var/wazuh-manager/lib/libvulnerability_scanner.so,root,wazuh-manager,750,file,-rwxr-x---,,
 /var/wazuh-manager/lib/libwazuhext.so,root,wazuh-manager,750,file,-rwxr-x---,,
 /var/wazuh-manager/lib/libwazuhshared.so,root,wazuh-manager,750,file,-rwxr-x---,,

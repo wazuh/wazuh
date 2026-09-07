@@ -65,7 +65,10 @@ log_builder_t * log_builder_init(bool update) {
 #ifdef CLIENT
         g_ip_update_interval = getDefine_Int("logcollector", "ip_update_interval", 0, 3600);
 #else
-        g_ip_update_interval = getDefine_Int_default("logcollector", "ip_update_interval", 0, 3600, 60);
+        /* Nothing to read in the manager: the only path into log_builder_init() is
+         * mq_log_builder_init() <- logcollector, which is agent-only, and
+         * etc/wazuh-manager-internal-options.conf ships no logcollector.* key. The interval stays 0,
+         * so log_builder_update() never refreshes the host IP if a manager ever gets here. */
 #endif
         rwlock_init(&builder->rwlock);
     }

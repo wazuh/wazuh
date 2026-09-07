@@ -97,23 +97,22 @@ public:
     /**
      * @brief Check have a server available.
      *
+     * A pure inspection: it must not advance the round-robin cursor, or every health probe
+     * (the /stats and /config handlers call this) would silently skip a healthy host for the
+     * next real request and bias the traffic distribution.
+     *
      * @return true if have a server available, false otherwise.
      */
-    bool isAvailable()
+    bool isAvailable() const
     {
-        std::string_view initialValue {RoundRobinSelector<std::string>::getNext()};
-        auto server {initialValue};
-
-        while (!m_monitoring->isAvailable(server))
+        for (const auto& server : RoundRobinSelector<std::string>::values())
         {
-            server = RoundRobinSelector<std::string>::getNext();
-            if (server.compare(initialValue) == 0)
+            if (m_monitoring->isAvailable(server))
             {
-                return false;
+                return true;
             }
         }
-
-        return true;
+        return false;
     }
 };
 

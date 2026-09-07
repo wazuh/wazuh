@@ -421,3 +421,20 @@ answers to) lives in the module's in-tree developer README,
 | 13 | **Agent deletion is an endpoint with a visible result**, deferred to the agent's shard. | The caller can retry a failed deletion instead of losing it silently, and deletion orders correctly against the agent's in-flight sessions. |
 | 14 | **Ingress via remoted's authenticated `POST /stateful`** (per-agent `wazuh-agent+jwt` bearer), with the authenticated id cross-checked against the session's claimed identity (`403` on mismatch). | Identity is enforced at the edge AND at the application layer; the body stays opaque to remoted. |
 | 15 | **The credential keystore socket lives in its own module** (`keystore_server`). | The manager API's indexer credentials do not depend on the ingestion module's lifecycle. |
+
+### The idempotency contract
+
+Decision 3 is not a convenience — it is the load-bearing property the whole failure model stands
+on, so it is stated here as a contract: **every operation the pipeline applies must be
+idempotent.** The mechanisms that make it hold today: document ids are deterministic
+(`<cluster>_<agentId>_<documentId>`), upserts carry the agent's document version
+(`external_gte` — a replay is confirmed by `version_conflict_engine_exception`, which the bulk
+validation deliberately accepts as success), deletes address those same ids, and the by-query
+paths (cleans, whole-agent deletion, metadata/group updates) are re-runnable by construction.
+That is what makes every recovery in this module safe: a `500`/`503` answered to a whole batch, a
+partially auto-flushed session, a group commit that died halfway — in all cases the agent re-POSTs
+and the replay converges to the same indexed state
+(`ReplayingAnAppliedSessionIsANoOpNotADuplicate` enforces the replay half). The contract's flip
+side binds future work: an operation that is NOT idempotent — an increment, an append, anything
+whose replay double-applies — cannot ride this pipeline as it is; adding one requires partial
+acknowledgments or session-id deduplication first, i.e. a design change, not just a new handler.

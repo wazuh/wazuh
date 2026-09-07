@@ -8,7 +8,6 @@
  */
 
 #include "chrome.hpp"
-#include <tuple>
 #include <iostream>
 #include <fstream>
 #include <algorithm>
@@ -540,7 +539,7 @@ namespace chrome
         {
             // TODO: Improve handling this error.
             // std::cerr << "Extensions folder does not exist: " << extensionPath << std::endl;
-            return ChromeExtensionList();
+            return {};
         }
 
         std::filesystem::path preferencesFilePath = std::filesystem::path(profilePath) / PREFERENCES_FILE;
@@ -550,14 +549,14 @@ namespace chrome
         {
             // TODO: Improve handling this error.
             // std::cerr << "Preferences file does not exist: " << preferencesFilePath << std::endl;
-            return ChromeExtensionList();
+            return {};
         }
 
         if (!m_fileSystemWrapper->is_regular_file(securePreferencesFilePath))
         {
             // TODO: Improve handling this error.
             // std::cerr << "Preferences file does not exist: " << securePreferencesFilePath << std::endl;
-            return ChromeExtensionList();
+            return {};
         }
 
         std::string profileName = getProfileFromPreferences(preferencesFilePath.string(), securePreferencesFilePath.string());
@@ -689,15 +688,14 @@ namespace chrome
 
 #if defined(_WIN32) || defined(_WIN64)
 
-            for (const auto& browser : WINDOWS_PATH_LIST)
+            for (const auto& [browserType, browserPath] : WINDOWS_PATH_LIST)
 #elif defined(__APPLE__) && defined(__MACH__)
 
-            for (const auto& browser : MACOS_PATH_LIST)
+            for (const auto& [browserType, browserPath] : MACOS_PATH_LIST)
 #elif defined(__linux__)
-            for (const auto& browser : LINUX_PATH_LIST)
+            for (const auto& [browserType, browserPath] : LINUX_PATH_LIST)
 #endif
             {
-                std::string browserPath = std::get<1>(browser);
                 const std::filesystem::path profilePath = userHomePath / browserPath;
 
                 if (!m_fileSystemWrapper->is_directory(profilePath))
@@ -706,7 +704,7 @@ namespace chrome
                     continue;
                 }
 
-                m_currentBrowserType = CHROME_BROWSER_TYPES.at(std::get<0>(browser));
+                m_currentBrowserType = CHROME_BROWSER_TYPES.at(browserType);
 
                 // The profile path exists, now let's find the profile.
                 if (isValidChromeProfile(profilePath.string()))

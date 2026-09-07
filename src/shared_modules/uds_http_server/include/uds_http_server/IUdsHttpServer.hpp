@@ -328,6 +328,16 @@ namespace wazuh::uds_http
         /// Classified sessions per class, indexed by RouteClass. Sums to at most liveSessions
         /// (connections still reading their head are counted only in liveSessions).
         std::size_t sessionsByClass[ROUTE_CLASS_COUNT] {0, 0, 0};
+
+        /// Cumulative transport-level 503s since start, by cause. The consuming module's endpoint
+        /// metrics can see none of them: the request is answered here, before a handler runs, so it
+        /// never reaches the counters an endpoint keeps. Sizing the connection cap or the byte
+        /// budget from those metrics alone therefore has a blind spot exactly where it matters, and
+        /// a throttled WARN reports only the occurrences of its own window.
+        std::size_t rejectedBudgetExhausted {0}; ///< The in-flight byte budget refused a reservation.
+        std::size_t rejectedSessionCap {0};      ///< A per-class session cap was already reached.
+        std::size_t rejectedShutdown {0};        ///< Answered because the server was already stopping.
+        std::size_t rejectedNoResponse {0};      ///< A handler dropped the request without answering.
     };
 
     /**

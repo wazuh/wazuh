@@ -25,9 +25,6 @@
     #define STATIC static
 #endif
 
-#define ENROLLMENT_RETRY_TIME_MAX_DEFAULT   60
-#define ENROLLMENT_RETRY_TIME_DELTA_DEFAULT 5
-
 static void w_agentd_keys_init (void);
 STATIC void send_msg_on_startup(void);
 
@@ -77,13 +74,9 @@ static void w_agentd_keys_init (void) {
                  * used to have (a configured enrollment server, then each
                  * agt->server[rc] in turn) is gone -- see plan.md's D4/Q6. The
                  * retry ramp itself is unchanged and still shared with
-                 * bridge_reenroll_thread()'s loop via the same internal options. */
-                const int retry_max = getDefine_Int_default("agent", "enrollment_retry_max", 1, 86400,
-                                                           ENROLLMENT_RETRY_TIME_MAX_DEFAULT);
-                const int retry_delta = getDefine_Int_default("agent", "enrollment_retry_delta", 1, 3600,
-                                                             ENROLLMENT_RETRY_TIME_DELTA_DEFAULT);
-                if (delay_sleep < retry_max) {
-                    delay_sleep += retry_delta;
+                 * bridge_reenroll_thread()'s loop, both reading the values ClientConf() resolved. */
+                if (delay_sleep < agt->enrollment.retry_max) {
+                    delay_sleep += agt->enrollment.retry_delta;
                 }
                 mdebug1("Sleeping %d seconds before trying to enroll again", delay_sleep);
                 sleep(delay_sleep);

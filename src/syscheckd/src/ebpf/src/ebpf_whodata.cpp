@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <thread>
 #include <unistd.h>
+#include <vector>
 
 // clang-format off
 #include "ebpf_whodata.hpp"
@@ -35,8 +36,10 @@
 #define LSM_LIST_FILE        "/sys/kernel/security/lsm"
 
 // Global
+volatile bool event_received = false;
 static bpf_object* global_obj = nullptr;
 static bool g_bpf_lsm_active = false;
+static std::vector<struct bpf_link*> global_links;
 
 /*
  * Returns true if the running kernel has "bpf" in its active LSM list.
@@ -71,6 +74,18 @@ time_t (*w_time)(time_t*) = time;
 
 int ebpf_kernel_queue_full_reported = 0;
 fim::BoundedQueue<std::unique_ptr<dynamic_file_event>> kernelEventQueue;
+
+static void destroy_global_links()
+{
+    if (bpf_helpers && bpf_helpers->bpf_link_destroy)
+    {
+        for (auto* l : global_links)
+        {
+            bpf_helpers->bpf_link_destroy(l);
+        }
+    }
+    global_links.clear();
+}
 
 template<typename T>
 static char* num_to_str(T num)
@@ -394,6 +409,8 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
         (bpf_object__next_program_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__next_program");
     bpf_helpers->bpf_program_attach =
         (bpf_program__attach_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__attach");
+    bpf_helpers->bpf_link_destroy =
+        (bpf_link__destroy_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_link__destroy");
     bpf_helpers->bpf_object_find_map_fd_by_name = (bpf_object__find_map_fd_by_name_t)local_sym_load->getFunctionSymbol(
         bpf_helpers->module, "bpf_object__find_map_fd_by_name");
     bpf_helpers->bpf_program_set_autoload = (bpf_program__set_autoload_t)local_sym_load->getFunctionSymbol(
@@ -406,7 +423,10 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
         (bpf_program__name_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__name");
 
     /* Load all required symbols (C++17 fold expression) */
-    const auto all_loaded = [](auto... ptrs) { return (... && (ptrs != nullptr)); };
+    const auto all_loaded = [](auto... ptrs)
+    {
+        return (... && (ptrs != nullptr));
+    };
     if (!all_loaded(bpf_helpers->init_ring_buffer,
                     bpf_helpers->ebpf_pop_events,
                     bpf_helpers->init_bpfobj,
@@ -442,6 +462,8 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
 
 void close_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
 {
+    destroy_global_links();
+
     if (bpf_helpers)
     {
         if (bpf_helpers->module)
@@ -495,10 +517,8 @@ static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath)
         const bool is_walk_variant = name && strstr(name, "_walk") != nullptr;
 
         const bool keep =
-            !(use_lsm
-                ? (is_create_or_unlink_kprobe ||
-                   (is_lsm && (prefer_dpath ? is_walk_variant : is_dpath_variant)))
-                : is_lsm);
+            !(use_lsm ? (is_create_or_unlink_kprobe || (is_lsm && (prefer_dpath ? is_walk_variant : is_dpath_variant)))
+                      : is_lsm);
 
         bpf_helpers->bpf_program_set_autoload(prog, keep);
 
@@ -516,31 +536,17 @@ static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath)
     }
 }
 
-int init_bpfobj()
+static int load_and_attach(const char* bpfobj_path, bool use_lsm, bool final_attempt)
 {
     auto logFn = fimebpf::instance().m_loggingFunction;
-    auto abspathFn = fimebpf::instance().m_abspath;
-    char bpfobj_path[PATH_MAX] = {0};
-
-    if (!logFn || !abspathFn)
+    if (!logFn || !bpf_helpers)
     {
         return 1;
     }
-    abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
 
-    g_bpf_lsm_active = is_bpf_lsm_active();
-    logFn(LOG_INFO, g_bpf_lsm_active ? FIM_EBPF_LSM_ACTIVE : FIM_EBPF_LSM_INACTIVE);
-
-    /*
-     * Prefer the bpf_d_path-based LSM variants (they give namespace-aware
-     * paths). If load fails — typically because bpf_d_path is not allowed
-     * for the target LSM hook on this kernel (e.g. Amazon Linux 2 / 2023
-     * reject it for bpf_lsm_path_unlink) — close, reopen, and retry with
-     * the manual-walker variants. We only fall back once.
-     */
+    const modules_log_level_t fail_level = final_attempt ? LOG_ERROR : LOG_INFO;
     bpf_object* obj = nullptr;
-    bool prefer_dpath = g_bpf_lsm_active; /* only meaningful when LSM is active */
-    int err = 0;
+    bool prefer_dpath = use_lsm;
 
     while (true)
     {
@@ -549,39 +555,36 @@ int init_bpfobj()
         {
             char error_message[4200];
             snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_OBJ_OPEN, bpfobj_path, strerror(errno));
-            logFn(LOG_ERROR, error_message);
+            logFn(fail_level, error_message);
             return 1;
         }
 
-        select_programs(obj, g_bpf_lsm_active, prefer_dpath);
+        select_programs(obj, use_lsm, prefer_dpath);
 
-        err = bpf_helpers->bpf_object_load(obj);
-        if (!err)
+        if (!bpf_helpers->bpf_object_load(obj))
         {
             break;
         }
 
         bpf_helpers->bpf_object_close(obj);
 
-        if (g_bpf_lsm_active && prefer_dpath)
+        if (use_lsm && prefer_dpath)
         {
             logFn(LOG_INFO, FIM_EBPF_LSM_DPATH_FALLBACK);
             prefer_dpath = false;
             continue;
         }
 
-        logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_LOAD);
+        logFn(fail_level, FIM_ERROR_EBPF_OBJ_LOAD);
         return 1;
     }
 
     global_obj = obj;
 
+    std::vector<struct bpf_link*> links;
     bpf_program* prog;
     bpf_object__for_each_program(bpf_helpers, prog, obj)
     {
-        /* Skip programs we explicitly disabled in select_programs;
-         * libbpf would otherwise return -EINVAL because they were
-         * never JIT'd. */
         if (!bpf_helpers->bpf_program_autoload(prog))
         {
             continue;
@@ -599,15 +602,57 @@ int init_bpfobj()
                      name ? name : "?",
                      saved_errno,
                      strerror(saved_errno));
-            logFn(LOG_ERROR, error_message);
-            logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_ATTACH);
+            logFn(fail_level, error_message);
+            logFn(fail_level, FIM_ERROR_EBPF_OBJ_ATTACH);
+            for (struct bpf_link* installed : links)
+            {
+                if (bpf_helpers->bpf_link_destroy)
+                {
+                    bpf_helpers->bpf_link_destroy(installed);
+                }
+            }
             bpf_helpers->bpf_object_close(obj);
             global_obj = nullptr;
             return 1;
         }
+        links.push_back(link);
     }
 
+    global_links = std::move(links);
     return 0;
+}
+
+int init_bpfobj()
+{
+    auto logFn = fimebpf::instance().m_loggingFunction;
+    auto abspathFn = fimebpf::instance().m_abspath;
+    char bpfobj_path[PATH_MAX] = {0};
+
+    if (!logFn || !abspathFn || !bpf_helpers)
+    {
+        return 1;
+    }
+    abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
+
+    g_bpf_lsm_active = bpf_helpers->is_bpf_lsm_active ? bpf_helpers->is_bpf_lsm_active() : is_bpf_lsm_active();
+    logFn(LOG_INFO, g_bpf_lsm_active ? FIM_EBPF_LSM_ACTIVE : FIM_EBPF_LSM_INACTIVE);
+
+    if (load_and_attach(bpfobj_path, g_bpf_lsm_active, !g_bpf_lsm_active) == 0)
+    {
+        return 0;
+    }
+
+    if (g_bpf_lsm_active)
+    {
+        logFn(LOG_INFO, FIM_EBPF_LSM_KPROBE_FALLBACK);
+        if (load_and_attach(bpfobj_path, false, true) == 0)
+        {
+            g_bpf_lsm_active = false;
+            return 0;
+        }
+    }
+
+    return 1;
 }
 
 int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb)
@@ -622,6 +667,7 @@ int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb)
     if (rb_fd < 0)
     {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_MAP);
+        destroy_global_links();
         bpf_helpers->bpf_object_close(global_obj);
         global_obj = nullptr;
         return 1;
@@ -631,6 +677,7 @@ int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb)
     if (!*rb)
     {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_NEW);
+        destroy_global_links();
         bpf_helpers->bpf_object_close(global_obj);
         global_obj = nullptr;
         return 1;
@@ -792,6 +839,7 @@ extern "C"
 
         if (healthcheck_failed)
         {
+            destroy_global_links();
             return 1;
         }
 
@@ -824,6 +872,7 @@ extern "C"
         }
 
         bpf_helpers->ring_buffer_free(rb);
+        destroy_global_links();
         bpf_helpers->bpf_object_close(global_obj);
         global_obj = nullptr;
         w_bpf_deinit(bpf_helpers);

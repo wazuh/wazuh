@@ -90,7 +90,7 @@ public:
     void notifyObservers(T data)
     {
         std::lock_guard<std::mutex> lock(mutex);
-        for (auto observer : observers)
+        for (const auto& observer : observers)
         {
             observer->update(data);
         }

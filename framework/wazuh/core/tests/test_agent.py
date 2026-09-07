@@ -11,6 +11,11 @@ from unittest.mock import AsyncMock, patch, mock_open, call
 
 import pytest
 
+# Imported here rather than relied on from `wazuh.core.agent import *`. That module used to pull in
+# `dumps` for the upgrade socket; the upgrade path is HTTP now and no longer needs it, so this file
+# has to name its own dependency.
+from json import dumps
+
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.agent import *
