@@ -4,12 +4,13 @@
 
 import jsonschema
 import pytest
+import re
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from unittest.mock import mock_open, AsyncMock, MagicMock, patch
 
-from wazuh.core.exception import WazuhInternalError
+from wazuh.core.exception import WazuhError, WazuhInternalError
 
 from wazuh.core.indexer.active_response import (
     AR_SCHEMA,
@@ -1272,6 +1273,12 @@ GOOD_AR = {
     "wazuh": {"agent": {"id": "001"}, "active_response": _channel("defined-agent", "007")},
 }
 
+# A response whose event is not in the fake indexer.
+WAITING_AR = {
+    "event": {"index": "wazuh-alerts", "doc_id": "not-yet"},
+    "wazuh": {"active_response": _channel("defined-agent", "007")},
+}
+
 # A referenced document's shape is out of AR_SCHEMA's reach: it is only known after the mget.
 EVENT_WAZUH_IS_A_STRING = {
     "event": {"index": "other-idx", "doc_id": "weird-1"},
@@ -1561,3 +1568,142 @@ class TestSettingsReachTheCycle:
         )
 
         assert bookmark.updates == updates
+
+
+_SUMMARY = re.compile(
+    r"Created (?P<tasks>\d+) task\(s\) for (?P<dispatched>\d+) of (?P<read>\d+) active response\(s\) read\."
+    r"(?: Held: (?P<held>\d+)\.)?(?: Discarded: (?P<discarded>[^.]*)\.)?"
+)
+
+
+def _summary(logger):
+    """The cycle's one INFO summary line, parsed."""
+    lines = [str(c.args[0]) for c in logger.info.call_args_list if str(c.args[0]).startswith("Created ")]
+    assert len(lines) == 1, lines
+    match = _SUMMARY.fullmatch(lines[0])
+    assert match, lines[0]
+    discarded = dict(part.split("=") for part in match["discarded"].split(", ")) if match["discarded"] else {}
+    return {
+        "line": lines[0],
+        "tasks": int(match["tasks"]),
+        "dispatched": int(match["dispatched"]),
+        "read": int(match["read"]),
+        "held": int(match["held"] or 0),
+        "discarded": {reason: int(n) for reason, n in discarded.items()},
+    }
+
+
+class TestCycleSummary:
+    """One INFO line per cycle, and read == dispatched + held + sum(discarded) on every page."""
+
+    @pytest.mark.asyncio
+    async def test_summary_is_silent_when_nothing_was_lost(self):
+        _, _, logger = await _run_cycle([_hit("good", GOOD_AR, sort=[1, "good"])])
+
+        assert _summary(logger)["line"] == "Created 1 task(s) for 1 of 1 active response(s) read."
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "source,task_manager,all_agents,reason",
+        [
+            pytest.param(
+                {"event": ALERT_REF, "wazuh": {"active_response": _channel("defined-agent", None)}},
+                None, ("001", "007"), "invalid_schema", id="invalid_schema",
+            ),
+            pytest.param(
+                {**WAITING_AR, "@timestamp": _stamp(300)},
+                None, ("001", "007"), "event_not_visible_expired", id="event_not_visible_expired",
+            ),
+            pytest.param(
+                {**GOOD_AR, "@timestamp": "garbage"},
+                None, ("001", "007"), "unparseable_timestamp", id="unparseable_timestamp",
+            ),
+            pytest.param(
+                {**GOOD_AR, "@timestamp": None},
+                None, ("001", "007"), "unparseable_timestamp", id="missing_timestamp",
+            ),
+            pytest.param(EVENT_WAZUH_IS_A_STRING, None, ("001", "007"), "unusable_shape", id="unusable_shape"),
+            pytest.param(
+                {"event": ALERT_REF, "wazuh": {"active_response": _channel("all")}},
+                None, (), "zero_targets", id="zero_targets",
+            ),
+            pytest.param(
+                GOOD_AR, _FakeTaskManager(fail=WazuhError(2019)), ("001", "007"),
+                "task_manager_refused", id="task_manager_refused",
+            ),
+        ],
+    )
+    async def test_each_loss_path_moves_exactly_its_counter(self, source, task_manager, all_agents, reason):
+        hits = [_hit("poison", source, sort=[1, "poison"])]
+
+        _, bookmark, logger = await _run_cycle(hits, task_manager=task_manager, all_agents=all_agents)
+
+        summary = _summary(logger)
+        assert (summary["dispatched"], summary["held"], summary["discarded"]) == (0, 0, {reason: 1})
+        # Every one of these is terminal: the page clears.
+        assert bookmark.updates == [[1, "poison"]]
+
+    @pytest.mark.asyncio
+    async def test_zero_targets_is_said_out_loud(self):
+        source = {"event": ALERT_REF, "wazuh": {"active_response": _channel("all")}}
+
+        _, _, logger = await _run_cycle([_hit("nobody", source, sort=[1, "nobody"])], all_agents=())
+
+        warnings = [str(call.args[0]) for call in logger.warning.call_args_list]
+        assert any("`nobody`" in message and "no agent" in message for message in warnings)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "source,task_manager",
+        [
+            pytest.param({**WAITING_AR, "@timestamp": _stamp(10)}, None, id="event-not-visible-yet"),
+            pytest.param(GOOD_AR, _FakeTaskManager(fail=WazuhInternalError(2021)), id="task-manager-unreachable"),
+        ],
+    )
+    async def test_a_held_response_is_counted_as_held(self, source, task_manager):
+        hits = [_hit("waiting", source, sort=[1, "waiting"])]
+
+        _, bookmark, logger = await _run_cycle(hits, task_manager=task_manager)
+
+        summary = _summary(logger)
+        assert (summary["dispatched"], summary["held"], summary["discarded"]) == (0, 1, {})
+        assert bookmark.updates == []
+
+    @pytest.mark.asyncio
+    async def test_cycle_summary_reports_read_dispatched_and_discarded(self):
+        hits = [
+            _hit(
+                "schema",
+                {"event": ALERT_REF, "wazuh": {"active_response": _channel("defined-agent", None)}},
+                sort=[1, "schema"],
+            ),
+            _hit("shape", EVENT_WAZUH_IS_A_STRING, sort=[2, "shape"]),
+            _hit("expired", WAITING_AR, sort=[3, "expired"], seconds_ago=300),
+            _hit("waiting", WAITING_AR, sort=[4, "waiting"], seconds_ago=10),
+            _hit("good", GOOD_AR, sort=[5, "good"]),
+        ]
+
+        task_manager, bookmark, logger = await _run_cycle(hits)
+
+        summary = _summary(logger)
+        assert summary["read"] == summary["dispatched"] + summary["held"] + sum(summary["discarded"].values())
+        assert (summary["tasks"], summary["dispatched"], summary["read"], summary["held"]) == (1, 1, 5, 1)
+        assert summary["discarded"] == {"event_not_visible_expired": 1, "invalid_schema": 1, "unusable_shape": 1}
+        assert task_manager.created == [("good", "007")]
+        # Held short of `waiting`: the last response resolved before it.
+        assert bookmark.updates == [[2, "shape"]]
+
+    @pytest.mark.asyncio
+    @patch(
+        "wazuh.core.indexer.active_response.ActiveResponseHelpers.get_events_by_ar",
+        new_callable=AsyncMock,
+        return_value={},
+    )
+    async def test_unusable_event_reference_is_counted_when_validation_is_off(self, _):
+        """Unreachable once AR_SCHEMA has run; still a loss path for a caller that skips it."""
+        builder = ActiveResponseBuilder(logger=MagicMock(), all_agents=[], bookmark_file=MagicMock())
+        builder._ars = [_ar({"wazuh": {"active_response": _channel("all")}})]
+
+        await builder.enrich_ar_with_events_info()
+
+        assert builder.discards == {"unusable_event_reference": 1}
