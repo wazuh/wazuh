@@ -277,35 +277,25 @@ separately from the JSON API above: `getconfig auth` returns the daemon's curren
 `<auth>` configuration as JSON (`ok {"auth": {...}}`); any other section name or unrecognized
 command returns an `err <message>` response.
 
-## Certificate generation CLI
+## Manager certificate
 
-Running `wazuh-authd` with any of `-C`, `-B`, `-K`, `-X`, or `-S` switches it into a one-shot
-certificate-generation mode instead of starting the enrollment service: it generates a self-signed
-manager certificate and private key pair, writes them to disk, and exits — useful for
-(re)generating the material referenced by [`ssl_manager_cert` and `ssl_manager_key`](configuration.md#ssl_manager_cert)
-outside of the normal daemon flow. All five flags are required together; if any is given but
-another is missing, authd exits with an error naming the missing one.
-
-```
-wazuh-authd -C <days> -B <bits> -K <key_path> -X <cert_path> -S <subject>
-```
-
-- `-C <days>` — certificate validity period, in days
-- `-B <bits>` — RSA key size, in bits
-- `-K <path>` — output path for the generated private key (PEM)
-- `-X <path>` — output path for the generated certificate (PEM)
-- `-S <subject>` — certificate subject, in OpenSSL slash-delimited form, e.g. `/C=US/ST=California/CN=Wazuh/`
-
-The generated certificate is a self-signed, CA-capable (`basicConstraints CA:TRUE`) X.509v3
-certificate signed with SHA-256, valid from the current time for the given number of days. Its
-Subject Alternative Name always includes `DNS:localhost`, `IP:127.0.0.1`, and `IP:::1`, plus the
-manager's own hostname and the `CN` parsed out of `-S` (when present and not already `localhost`).
+authd has no certificate-generation mode (the `-C/-B/-K/-X/-S` flags of earlier builds are gone) and
+the manager generates no TLS material at all. The pair referenced by
+[`ssl_manager_cert` and `ssl_manager_key`](configuration.md#ssl_manager_cert) is the HTTPS agent
+listener's, provisioned by the operator with the Wazuh installation assistant's `wazuh-certs-tool`
+(see [Deploy certificates](../../getting-started/installation.md#deploy-certificates)). Without it
+the manager fails closed before authd runs (`wazuh-manager-control start` reports the validator's
+`(1244) … file not found` verdict); when the files exist but the SSL context cannot be built — most
+often because the service user cannot read them — authd logs
+`SSL context setup failed (certificate '<cert>', key '<key>'). wazuh-manager does not generate TLS
+certificates: provision them with wazuh-certs-tool (Wazuh installation assistant); see 'Deploy
+certificates' in the installation guide. Exiting.` and exits.
 
 ## Key source files
 
 | File | Purpose |
 |------|---------|
-| `src/main-server.c` | Main loop, thread management, client pool, CLI argument parsing, certificate-generation CLI mode |
+| `src/main-server.c` | Main loop, thread management, client pool, CLI argument parsing |
 | `src/auth.c` | Protocol parsing, agent validation, key generation |
 | `src/local-server.c` | Local socket enrollment handler (JSON `add`/`remove`/`get` API) |
 | `src/authcom.c` | Local socket admin commands (e.g. `getconfig`) |

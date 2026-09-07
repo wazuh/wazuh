@@ -26,6 +26,20 @@
 #define FD_LIST_INIT_VALUE 1024
 #define MAX_SHARED_PATH    200
 
+/* Preflight of the HTTPS agent listener's TLS files (w_remoted_check_tls_files() in secure.c): exactly
+ * one of the three messages is logged, with the hint appended, and remoted exits. The texts are pinned
+ * by src/unit_tests/remoted/test_secure.c and matched by the test_https_cert_missing integration test. */
+#define REMOTED_TLS_FILES_HINT " wazuh-manager does not generate TLS certificates: provision them with " \
+    "wazuh-certs-tool (Wazuh installation assistant) and install remoted.pem, remoted-key.pem and " \
+    "root-ca.pem under etc/certs, readable by the service user (see 'Deploy certificates' in the " \
+    "installation guide)."
+#define REMOTED_TLS_FILES_MISSING_BOTH "Cannot start the HTTPS agent listener: the TLS certificate '%s' and " \
+    "private key '%s' are missing or unreadable by the service user." REMOTED_TLS_FILES_HINT
+#define REMOTED_TLS_FILES_MISSING_CERT "Cannot start the HTTPS agent listener: the TLS certificate '%s' is " \
+    "missing or unreadable by the service user." REMOTED_TLS_FILES_HINT
+#define REMOTED_TLS_FILES_MISSING_KEY "Cannot start the HTTPS agent listener: the TLS private key '%s' is " \
+    "missing or unreadable by the service user." REMOTED_TLS_FILES_HINT
+
 /* Hash table for agent data */
 extern OSHash* agent_data_hash;
 
