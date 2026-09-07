@@ -24,6 +24,7 @@ link_directories(${CMAKE_BINARY_DIR}/lib/)
 set(TEST_SOURCES
     main.cpp
     test_persistent_queue_storage.cpp
+    test_in_memory_queue_storage.cpp
     test_persistent_queue.cpp
     test_agent_sync_protocol_datacontext.cpp
     test_sync_protocol_integration.cpp
