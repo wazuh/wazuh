@@ -6,3 +6,4 @@ wazuh-agent: possibly-insecure-handling-of-tmp-files-in-maintainer-script
 wazuh-agent: non-standard-dir-in-var
 wazuh-agent: file-in-unusual-dir
 wazuh-agent: binary-from-other-architecture var/ossec/lib/modern.bpf.o
+wazuh-agent: binary-from-other-architecture var/ossec/lib/rt_file.bpf.o
