@@ -417,7 +417,7 @@ if(${TARGET} STREQUAL "winagent")
                                           -Wl,--wrap,get_UTC_modification_time -Wl,--wrap,fim_sync_push_msg \
                                           -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                           -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown \
-                                          -Wl,--wrap=utf8_stat64 -Wl,--wrap=QueryDosDeviceA"
+                                          -Wl,--wrap=utf8_stat64 -Wl,--wrap=QueryDosDeviceA -Wl,--wrap=win_strerror"
                                           fimdb)
 else()
     target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \

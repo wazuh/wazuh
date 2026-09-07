@@ -31,6 +31,9 @@
 #include "../wrappers/wazuh/syscheckd/registry.h"
 #include "../wrappers/wazuh/os_crypto/md5_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#ifdef TEST_WINAGENT
+#include "../wrappers/windows/fileapi_wrappers.h"
+#endif
 
 #include "syscheck.h"
 #include "../../config/syscheck-config.h"
@@ -2555,10 +2558,18 @@ static void test_fim_checker_fim_directory(void **state) {
 
     strcpy(fim_data->entry->d_name, "test");
 
-    will_return_always(__wrap_opendir, 1);
-    will_return(__wrap_readdir, fim_data->entry);
-    will_return(__wrap_readdir, NULL);
-    will_return(__wrap_closedir, 0);
+    wchar_t w_pattern[OS_MAXSTR];
+    char pattern[OS_MAXSTR];
+    snprintf(pattern, OS_MAXSTR, "%s\\*", expanded_path);
+    MultiByteToWideChar(CP_UTF8, 0, pattern, -1, w_pattern, OS_MAXSTR);
+
+    expect_memory(wrap_FindFirstFile, lpFileName, w_pattern, (wcslen(w_pattern) + 1) * sizeof(wchar_t));
+    will_return(wrap_FindFirstFile, "test");
+    will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
+    will_return(wrap_FindFirstFile, (HANDLE)1);
+    expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
+    will_return(wrap_FindNextFile, NULL);
+    will_return(wrap_FindNextFile, (BOOL)0);
 
     snprintf(skip_directory_message, OS_MAXSTR,
         "(6347): Directory '%s' is already on the max recursion_level (0), it will not be scanned.", expanded_path_test);
@@ -2614,8 +2625,25 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     fim_checker(path, &evt_data, NULL, &txn_handle, &mock_context);
 }
 
+// fim_directory enumerates via FindFirstFileW on Windows; queue an enumeration
+// that yields no scannable entry ("." then end), equivalent to the previous
+// opendir()+readdir()==NULL setup. wpat must outlive the checked call.
+static void expect_win_empty_dir(const char *dir, wchar_t *wpat, size_t wpat_len) {
+    char pattern[OS_SIZE_1024];
+    snprintf(pattern, sizeof(pattern), "%s\\*", dir);
+    MultiByteToWideChar(CP_UTF8, 0, pattern, -1, wpat, wpat_len);
+    expect_memory(wrap_FindFirstFile, lpFileName, wpat, (wcslen(wpat) + 1) * sizeof(wchar_t));
+    will_return(wrap_FindFirstFile, ".");
+    will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_DIRECTORY);
+    will_return(wrap_FindFirstFile, (HANDLE)1);
+    expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
+    will_return(wrap_FindNextFile, NULL);
+    will_return(wrap_FindNextFile, (BOOL)0);
+}
+
 static void test_fim_scan_db_full_double_scan(void **state) {
     char test_file_path[OS_SIZE_256];
+    wchar_t w_pat[6][OS_SIZE_1024];
     struct stat directory_stat = { .st_mode = S_IFDIR };
     TXN_HANDLE mock_handle;
     char expanded_dirs[10][OS_SIZE_1024];
@@ -2659,9 +2687,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
         will_return(__wrap_HasFilesystem, 0);
 
-        will_return(__wrap_readdir, NULL);
-        will_return(__wrap_opendir, 1);
-        will_return(__wrap_closedir, 0);
+        expect_win_empty_dir(expanded_dirs[i], w_pat[i], OS_SIZE_1024);
     }
     expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0",1);
     will_return_maybe(__wrap_realtime_adddir, 0);
@@ -2680,6 +2706,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
 static void test_fim_scan_db_full_not_double_scan(void **state) {
     char expanded_dirs[10][OS_SIZE_1024];
+    wchar_t w_pat[6][OS_SIZE_1024];
     char directories[6][OS_SIZE_256] = {
         "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
         "%WINDIR%",
@@ -2721,9 +2748,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
         will_return(__wrap_HasFilesystem, 0);
 
-        will_return(__wrap_opendir, 1);
-        will_return(__wrap_readdir, NULL);
-        will_return(__wrap_closedir, 0);
+        expect_win_empty_dir(expanded_dirs[i], w_pat[i], OS_SIZE_1024);
     }
 
     expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0",1);
@@ -2742,6 +2767,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
 static void test_fim_scan_no_limit(void **state) {
     char expanded_dirs[10][OS_SIZE_1024];
+    wchar_t w_pat[6][OS_SIZE_1024];
     char directories[6][OS_SIZE_256] = {
         "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
         "%WINDIR%",
@@ -2784,9 +2810,7 @@ static void test_fim_scan_no_limit(void **state) {
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
         will_return(__wrap_HasFilesystem, 0);
 
-        will_return(__wrap_opendir, 1);
-        will_return(__wrap_readdir, NULL);
-        will_return(__wrap_closedir, 0);
+        expect_win_empty_dir(expanded_dirs[i], w_pat[i], OS_SIZE_1024);
     }
     expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0",1);
     will_return_maybe(__wrap_realtime_adddir, 0);
@@ -3106,10 +3130,20 @@ static void test_fim_directory(void **state) {
 
     strcpy(fim_data->entry->d_name, "test");
 
+#ifdef TEST_WINAGENT
+    expect_memory(wrap_FindFirstFile, lpFileName, L"test\\*", (wcslen(L"test\\*") + 1) * sizeof(wchar_t));
+    will_return(wrap_FindFirstFile, "test");
+    will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
+    will_return(wrap_FindFirstFile, (HANDLE)1);
+    expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
+    will_return(wrap_FindNextFile, NULL);
+    will_return(wrap_FindNextFile, (BOOL)0);
+#else
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
     will_return(__wrap_closedir, 0);
+#endif
 
 #ifndef TEST_WINAGENT
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test/test'");
@@ -3122,6 +3156,40 @@ static void test_fim_directory(void **state) {
     assert_int_equal(ret, 0);
 }
 
+#ifdef TEST_WINAGENT
+// Regression test for issue #34878: an entry whose name has characters outside
+// the process ANSI code page (Turkish) must be enumerated wide and reported as
+// UTF-8, lowercasing ASCII only and preserving the non-ASCII bytes.
+static void test_fim_directory_non_ascii_name(void **state) {
+    (void) state;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
+    int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_memory(wrap_FindFirstFile, lpFileName, L"test\\*", (wcslen(L"test\\*") + 1) * sizeof(wchar_t));
+    will_return(wrap_FindFirstFile, "A" "\xc4\x9e" ".txt");   // "AĞ.txt" in UTF-8 (Ğ = U+011E, uppercase)
+    will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
+    will_return(wrap_FindFirstFile, (HANDLE)1);
+    expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
+    will_return(wrap_FindNextFile, NULL);
+    will_return(wrap_FindNextFile, (BOOL)0);
+
+    // 'A' is lowercased to 'a' (ASCII); the non-ASCII uppercase 'Ğ' (0xc4 0x9e) is
+    // preserved byte for byte. A Unicode case fold (the removed LCMapStringW) would
+    // lowercase it to 'ğ', so this assertion fails if that regression returns.
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "(6319): No configuration found for (file):'test\\a" "\xc4\x9e" ".txt'");
+
+    ret = fim_directory("test", &evt_data, NULL, NULL, NULL);
+    assert_int_equal(ret, 0);
+}
+#endif
+
 static void test_fim_directory_ignore(void **state) {
     fim_data_t *fim_data = *state;
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
@@ -3129,10 +3197,20 @@ static void test_fim_directory_ignore(void **state) {
 
     strcpy(fim_data->entry->d_name, ".");
 
+#ifdef TEST_WINAGENT
+    expect_memory(wrap_FindFirstFile, lpFileName, L".\\*", (wcslen(L".\\*") + 1) * sizeof(wchar_t));
+    will_return(wrap_FindFirstFile, ".");
+    will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
+    will_return(wrap_FindFirstFile, (HANDLE)1);
+    expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
+    will_return(wrap_FindNextFile, NULL);
+    will_return(wrap_FindNextFile, (BOOL)0);
+#else
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
     will_return(__wrap_closedir, 0);
+#endif
 
     ret = fim_directory(".", &evt_data, NULL, NULL, NULL);
 
@@ -3152,7 +3230,14 @@ static void test_fim_directory_nodir(void **state) {
 static void test_fim_directory_opendir_error(void **state) {
     int ret;
 
+#ifdef TEST_WINAGENT
+    expect_memory(wrap_FindFirstFile, lpFileName, L"test\\*", (wcslen(L"test\\*") + 1) * sizeof(wchar_t));
+    will_return(wrap_FindFirstFile, NULL);
+    will_return(wrap_FindFirstFile, INVALID_HANDLE_VALUE);
+    will_return(__wrap_win_strerror, "Permission denied");
+#else
     will_return(__wrap_opendir, 0);
+#endif
 
     expect_string(__wrap__mwarn, formatted_msg, "(6922): Cannot open 'test': Permission denied");
 
@@ -4482,6 +4567,9 @@ int main(void) {
 
         /* fim_directory */
         cmocka_unit_test_setup_teardown(test_fim_directory, setup_struct_dirent, teardown_struct_dirent),
+#ifdef TEST_WINAGENT
+        cmocka_unit_test(test_fim_directory_non_ascii_name),
+#endif
         cmocka_unit_test_setup_teardown(test_fim_directory_ignore, setup_struct_dirent, teardown_struct_dirent),
         cmocka_unit_test(test_fim_directory_nodir),
         cmocka_unit_test(test_fim_directory_opendir_error),
