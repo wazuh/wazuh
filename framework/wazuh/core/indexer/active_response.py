@@ -8,6 +8,7 @@ import jsonschema
 import logging
 import os
 
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from time import perf_counter
@@ -375,7 +376,10 @@ class ActiveResponseHelpers:
 
     @staticmethod
     async def fetch_active_response_docs(
-        bookmark: ActiveResponseBookmark, validate: bool = False, max: int = DEFAULT_PAGE_SIZE
+        bookmark: ActiveResponseBookmark,
+        validate: bool = False,
+        max: int = DEFAULT_PAGE_SIZE,
+        discards: Optional[Counter] = None,
     ) -> List[Dict[str, Any]]:
         """Fetch active response documents incrementally from OpenSearch.
 
@@ -386,7 +390,9 @@ class ActiveResponseHelpers:
         validate : bool, optional
             Whether to validate documents against the JSON schema, by default False.
         max : int, optional
-            Maximum number of documents to retrieve, by default 1000.
+            Maximum number of documents to retrieve, by default DEFAULT_PAGE_SIZE.
+        discards : Optional[Counter], optional
+            Incremented under `invalid_schema` for every document validation rejects.
 
         Returns
         -------
@@ -459,6 +465,8 @@ class ActiveResponseHelpers:
                     jsonschema.validate(instance=doc["_source"], schema=AR_SCHEMA)
                 docs.append(doc)
             except jsonschema.ValidationError as e:
+                if discards is not None:
+                    discards["invalid_schema"] += 1
                 # Terminal: the document will never validate, so the page moves past it and the
                 # response is lost. Above debug level because that loss is silent otherwise.
                 ActiveResponseHelpers.logger.warning(
@@ -559,6 +567,12 @@ class ActiveResponseBuilder:
             else ActiveResponseHelpers.get_all_agents()
         )
         self._ars: List[ActiveResponse] = []
+        #: Per-cycle accounting: every response read ends in exactly one of these, so
+        #: read == dispatched + held + sum(discards.values()).
+        self.read: Optional[int] = None
+        self.dispatched = 0
+        self.held = 0
+        self.discards: Counter = Counter()
         self._bookmark_file = (
             bookmark_file if bookmark_file is not None else ActiveResponseBookmarkFile()
         )
@@ -577,8 +591,9 @@ class ActiveResponseBuilder:
             The builder instance.
         """
         docs = await ActiveResponseHelpers.fetch_active_response_docs(
-            self._bookmark_file, validate=validate, max=self._page_size
+            self._bookmark_file, validate=validate, max=self._page_size, discards=self.discards
         )
+        self.read = len(docs) + self.discards["invalid_schema"]
         self._ars = [
             ActiveResponse(
                 doc_source=doc["_source"],
@@ -645,6 +660,7 @@ class ActiveResponseBuilder:
                 self.logger.debug(
                     f"Discarding active response `{ar.doc_id}`: its event reference is unusable."
                 )
+                self.discards["unusable_event_reference"] += 1
                 continue
 
             age = _ar_age_seconds(ar.doc_source)
@@ -669,6 +685,7 @@ class ActiveResponseBuilder:
                     f"Expected event `{event_id}` (`{index_id}`) is not visible yet. "
                     f"Holding active response `{ar.doc_id}` and the rest of the page."
                 )
+                self.held += 1
                 continue
 
             reason = (
@@ -680,6 +697,7 @@ class ActiveResponseBuilder:
                 f"Expected event `{event_id}` (`{index_id}`) {reason}. "
                 f"Discarding active response `{ar.doc_id}`."
             )
+            self.discards["event_not_visible_expired"] += 1
 
         self._ars = ars_with_events
 
@@ -710,6 +728,7 @@ class ActiveResponseBuilder:
                         self.logger.warning(
                             f"AR document {ar.doc_id} missing @timestamp, skipping"
                         )
+                        self.discards["unparseable_timestamp"] += 1
                         continue
 
                     # Convert ISO8601 timestamp to Unix timestamp
@@ -720,6 +739,7 @@ class ActiveResponseBuilder:
                         self.logger.error(
                             f"Failed to parse @timestamp '{timestamp_str}' from AR {ar.doc_id}: {e}"
                         )
+                        self.discards["unparseable_timestamp"] += 1
                         continue
 
                     # Build payload (merge AR source with event if available)
@@ -731,7 +751,17 @@ class ActiveResponseBuilder:
                         payload["wazuh"] = {**event_wazuh, **wazuh}
 
                     # Dispatch to each target agent
-                    for agent_id in ar.target_agents(self._all_agents):
+                    targets = ar.target_agents(self._all_agents)
+                    if not targets:
+                        self.logger.warning(
+                            f"Active response `{ar.doc_id}` targets no agent. Discarding it."
+                        )
+                        self.discards["zero_targets"] += 1
+                        continue
+
+                    created = 0
+                    unreachable = False
+                    for agent_id in targets:
                         try:
                             self.logger.debug(
                                 f"Creating task for agent `{agent_id}` (AR {ar.doc_id})"
@@ -752,7 +782,7 @@ class ActiveResponseBuilder:
                             self.logger.debug(
                                 f"Created task {response.get('task_id')} for agent {agent_id}"
                             )
-                            msgs_sent += 1
+                            created += 1
 
                         # WazuhException, not WazuhError: the two are siblings under it, and the
                         # client raises both. Catching the narrow one let a dead Task Manager escape
@@ -781,9 +811,18 @@ class ActiveResponseBuilder:
                                 )
                             else:
                                 transport_failed = True
+                                unreachable = True
                                 self.logger.error(
                                     f"Failed to create task for agent `{agent_id}`: {e}"
                                 )
+
+                    msgs_sent += created
+                    if created:
+                        self.dispatched += 1
+                    elif unreachable:
+                        self.held += 1
+                    else:
+                        self.discards["task_manager_refused"] += 1
                 # Terminal: the document raised on its own shape, so it can never succeed and the
                 # page advances past it. Cannot mask transport_failed: the handler above does not
                 # re-raise, so nothing from create_task() reaches here.
@@ -792,10 +831,16 @@ class ActiveResponseBuilder:
                         f"Discarding active response document `{ar.doc_id}`: unusable shape "
                         f"({type(e).__name__}: {e})."
                     )
+                    self.discards["unusable_shape"] += 1
 
-        self.logger.info(
-            f"Created {msgs_sent} task(s) from {len(self._ars)} active response(s)."
-        )
+        read = self.read if self.read is not None else len(self._ars)
+        summary = f"Created {msgs_sent} task(s) for {self.dispatched} of {read} active response(s) read."
+        if self.held:
+            summary += f" Held: {self.held}."
+        if self.discards:
+            losses = ", ".join(f"{reason}={n}" for reason, n in sorted(self.discards.items()))
+            summary += f" Discarded: {losses}."
+        self.logger.info(summary)
 
         # THE CURSOR CONTRACT, in one place. The bookmark is a high-water mark of what was READ,
         # not of what was delivered, and it moves once per page rather than once per active
