@@ -1033,6 +1033,8 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(const SessionCon
     catch (const std::exception& e)
     {
         m_logger(LOG_ERROR, std::string("Exception when building the FullSession message: ") + e.what());
+        std::lock_guard<std::mutex> lock(m_syncState.mtx);
+        m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
     }
 
     return {};
@@ -1056,6 +1058,7 @@ bool AgentSyncProtocol::runSession(const SessionContent& content)
 
     if (message.empty())
     {
+        // lastSyncResult is already set (NO_GROUPS_ERROR, or the catch below).
         return false;
     }
 
@@ -1131,6 +1134,8 @@ bool AgentSyncProtocol::runSession(const SessionContent& content)
     }
 
     // All hand-off attempts failed: the local sync intake is unavailable.
+    std::lock_guard<std::mutex> lock(m_syncState.mtx);
+    m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
     return false;
 }
 
