@@ -296,17 +296,28 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
         ++baselined;
         const auto containerJson = BuildContainerContextJson(identity.container_id, identity.context);
 
-        // A walk that hit its row cap, or whose configured path doesn't exist in
-        // this image, produces a SUBSET of the container's files. Absence must
-        // not then be read as deletion, so the incompleteness is reported to the
-        // caller rather than discarded.
-        bool partial = false;
+        // A walk that hit its row cap, or whose root could not be examined,
+        // produces a SUBSET of the container's files, and absence must not then
+        // be read as deletion. A root that is simply ABSENT from the image is a
+        // different fact and is counted separately: the walk did look, so
+        // suppressing delete detection for it is C24 — a static condition that
+        // switched deletions off for that container permanently. See D17.
+        ContainerStatus status;
+        status.container_id = identity.container_id;
 
         for (const auto& mp : paths) {
             const auto walk = WalkContainerPath(pid, mp.internal_path, mp.recursion_level,
                                                  mp.max_files, mp.max_hash_bytes,
                                                  identity.context, mp.hashes, rate_limit);
-            partial = partial || walk.truncated || walk.root_missing;
+
+            if (walk.truncated) status.row_cap_hit = true;
+            if (walk.root_unreadable) status.rootfs_unreadable = true;
+
+            if (walk.root_missing) {
+                ++status.roots_missing;
+            } else if (!walk.root_unreadable) {
+                ++status.roots_scanned;
+            }
 
             for (auto row : walk.rows) {
                 ApplyIdentity(row, identity);
@@ -326,11 +337,13 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
         // exists to avoid. Reporting the scan as partial is already safe (the
         // consumer suppresses delete detection) and the next cycle completes it.
         if (!RootfsStillAddressable(pid)) {
-            partial = true;
+            status.rootfs_unreadable = true;
         }
 
+        status.partial = status.row_cap_hit || status.rootfs_unreadable || status.paths_rejected;
+
         if (status_sink) {
-            status_sink(ContainerStatus{identity.container_id, partial});
+            status_sink(status);
         }
     }
 
@@ -388,9 +401,12 @@ int RunFimDbsyncBaselineForContainerFrom(const ContainerDiscoverer&        disco
     if (rejected && status_sink) {
         // A dropped path makes the row set a subset of what was asked for —
         // exactly what `partial` exists to say — so delete detection is
-        // suppressed instead of the rejection passing unnoticed.
+        // suppressed instead of the rejection passing unnoticed. Reported as
+        // its own fact too, so a consumer can tell a rejected path apart from a
+        // capped walk (D17).
         guarded = [status_sink](const ContainerStatus& status) {
             ContainerStatus forced = status;
+            forced.paths_rejected  = true;
             forced.partial         = true;
             status_sink(forced);
         };
@@ -528,12 +544,14 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
         }
 
         if (status_sink) {
-            ContainerStatus status{identity.container_id, false};
+            ContainerStatus status;
+            status.container_id = identity.container_id;
 
             // The rootfs-backed classes (users, groups, packages, os, services)
             // all read through /proc/<pid>/root, so a PID that exited mid-scan
             // silently truncates them the same way it does the FIM walk.
-            status.partial = !RootfsStillAddressable(pid);
+            status.rootfs_unreadable = !RootfsStillAddressable(pid);
+            status.partial           = status.rootfs_unreadable;
 
             // The two network flags are reported separately rather than folded
             // into `partial` because they say precisely WHICH data classes are

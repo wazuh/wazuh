@@ -90,8 +90,14 @@ struct Batch
 {
     std::string container_id;
 
-    /* Paths to re-read, empty when `suspect` is set. */
+    /* Paths to re-read, empty when `suspect` is set or `unlinked` is used. */
     std::vector<std::string> paths;
+
+    /* Paths the KERNEL reported unlinked. Not a re-read: the file is gone and
+     * an RT_EV_FILE_UNLINK event says so, so the stored row is reported deleted
+     * and removed. A batch carries either `paths` or `unlinked`, never both, so
+     * the plan for it is unambiguous. */
+    std::vector<std::string> unlinked;
 
     /* Re-walk the whole container instead of reconciling `paths`: events were
      * lost for it (kernel ring, or this buffer's own budget), so the set of
@@ -110,6 +116,7 @@ struct StagingStats
     unsigned long long unknown_overflows{0};/* containers that did not fit at all */
     unsigned long long settle_early{0};  /* paths released early: the writer had exited */
     unsigned long long settle_expired{0};/* paths released on the settle delay instead */
+    unsigned long long unlinked{0};      /* paths the kernel reported unlinked */
 };
 
 /* Is this pid still alive? Injected so the buffer stays testable without
@@ -176,11 +183,26 @@ class ContainerEventStaging
                     return;
                 }
 
+                /* A path unlinked and then written again exists once more, so
+                 * the pending delete for it is wrong. The newer event wins in
+                 * both directions — see onUnlink() for the other one. */
+                const auto unlinked = m_unlinked.find(container_id);
+
+                if (unlinked != m_unlinked.end())
+                {
+                    unlinked->second.erase(path);
+
+                    if (unlinked->second.empty())
+                    {
+                        m_unlinked.erase(unlinked);
+                    }
+                }
+
                 auto it = m_pending.find(container_id);
 
                 if (it == m_pending.end())
                 {
-                    if (m_pending.size() >= m_max_containers)
+                    if (m_pending.size() + m_unlinked.size() >= m_max_containers)
                     {
                         /* No room to track even the container's identity. The
                          * only honest escalation is "something changed somewhere
@@ -225,6 +247,80 @@ class ContainerEventStaging
             notify();
         }
 
+        /* The kernel reported this path UNLINKED (RT_EV_FILE_UNLINK).
+         *
+         * Not staged as a re-read, and not subject to the settle: the file is
+         * gone, so waiting for it to settle and then failing to read it is
+         * exactly the inference D15 forbids. Acting on the event is not that
+         * inference — D15 is about reading a failed lookup as removal, and this
+         * is the kernel STATING the removal.
+         *
+         * Supersedes a pending re-read of the same path, because re-reading a
+         * file that has just been unlinked can only find nothing. */
+        void onUnlink(const std::string& container_id, const std::string& path)
+        {
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+
+                if (m_suspect.count(container_id) != 0)
+                {
+                    /* A re-walk sees whole directories, so it finds this
+                     * deletion by itself. */
+                    ++m_stats.deduplicated;
+                    return;
+                }
+
+                const auto pending = m_pending.find(container_id);
+
+                if (pending != m_pending.end())
+                {
+                    pending->second.erase(path);
+
+                    if (pending->second.empty())
+                    {
+                        m_pending.erase(pending);
+                    }
+                }
+
+                auto it = m_unlinked.find(container_id);
+
+                if (it == m_unlinked.end())
+                {
+                    if (m_unlinked.size() + m_pending.size() >= m_max_containers)
+                    {
+                        m_all_suspect = true;
+                        ++m_stats.unknown_overflows;
+                        notifyLocked();
+                        return;
+                    }
+
+                    it = m_unlinked.insert(std::make_pair(container_id, std::set<std::string>())).first;
+                }
+
+                if (it->second.size() >= m_max_paths)
+                {
+                    /* Same overflow rule as staged paths: Suspect supersedes,
+                     * and a re-walk finds every one of these deletions. */
+                    m_unlinked.erase(it);
+                    m_suspect.insert(container_id);
+                    ++m_stats.path_overflows;
+                    notifyLocked();
+                    return;
+                }
+
+                if (it->second.insert(path).second)
+                {
+                    ++m_stats.unlinked;
+                }
+                else
+                {
+                    ++m_stats.deduplicated;
+                }
+            }
+
+            notify();
+        }
+
         /* Events were lost for this container — a kernel-side drop attributed to
          * its cgroup. The changed-path set is no longer known to be complete, so
          * the container must be re-walked. */
@@ -239,8 +335,10 @@ class ContainerEventStaging
                 }
 
                 /* The staged paths are a subset of what changed; re-walking
-                 * covers them, so keep the memory rather than the list. */
+                 * covers them, so keep the memory rather than the list. Same
+                 * for pending unlinks: a walk finds those deletions itself. */
                 m_pending.erase(container_id);
+                m_unlinked.erase(container_id);
             }
 
             notify();
@@ -344,6 +442,9 @@ class ContainerEventStaging
 
                 if (m_released && !m_pending.empty())
                 {
+                    /* Only staged paths settle; m_unlinked and m_suspect are
+                     * always ready, so if either had work takeSettledLocked()
+                     * would already have returned it. */
                     auto step = (m_settle_delay < kSettlePoll && m_settle_delay > Duration::zero())
                                     ? m_settle_delay
                                     : kSettlePoll;
@@ -369,7 +470,7 @@ class ContainerEventStaging
         std::size_t pendingContainers() const
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            return m_pending.size() + m_suspect.size();
+            return m_pending.size() + m_unlinked.size() + m_suspect.size();
         }
 
     private:
@@ -400,7 +501,7 @@ class ContainerEventStaging
 
         bool hasWorkLocked() const
         {
-            return m_all_suspect || !m_suspect.empty() || !m_pending.empty();
+            return m_all_suspect || !m_suspect.empty() || !m_unlinked.empty() || !m_pending.empty();
         }
 
         /* True when this path may be read now: its deadline has passed (the
@@ -441,6 +542,7 @@ class ContainerEventStaging
             }
 
             out.paths.clear();
+            out.unlinked.clear();
 
             if (m_all_suspect)
             {
@@ -459,6 +561,20 @@ class ContainerEventStaging
                 out.container_id = *it;
                 out.suspect = true;
                 m_suspect.erase(it);
+                return true;
+            }
+
+            /* Unlinks before staged paths: they carry no settle, they are the
+             * cheapest batch to hand over, and serving them first means a
+             * re-read of a path that has since been unlinked is dropped rather
+             * than performed. */
+            if (!m_unlinked.empty())
+            {
+                const auto it = m_unlinked.begin();
+                out.container_id = it->first;
+                out.suspect = false;
+                out.unlinked.assign(it->second.begin(), it->second.end());
+                m_unlinked.erase(it);
                 return true;
             }
 
@@ -527,6 +643,11 @@ class ContainerEventStaging
         std::condition_variable m_cv;
 
         std::map<std::string, PathStates> m_pending;
+
+        /* Paths the kernel said were removed. No PathState: there is nothing to
+         * settle, so these need neither a pid nor a deadline. */
+        std::map<std::string, std::set<std::string>> m_unlinked;
+
         std::set<std::string> m_suspect;
 
         bool m_all_suspect{false};
