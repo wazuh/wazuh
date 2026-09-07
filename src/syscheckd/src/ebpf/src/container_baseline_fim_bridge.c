@@ -9,6 +9,7 @@
 
 #include "container_baseline_fim_bridge.h"
 
+#include "file.h"
 #include "shared.h"
 #include "syscheck.h"
 
@@ -197,6 +198,62 @@ static int fim_tags_contain_container(const char* tags)
     }
 
     return 0;
+}
+
+/* Longest-prefix match of a CONTAINER-internal path against the configured
+ * <directories> entries, restricted to the container-tagged ones.
+ *
+ * Deliberately not fim_configuration_directory(): that one searches every
+ * entry, so with
+ *
+ *     <directories tags="container">/etc</directories>
+ *     <directories>/etc/ssl</directories>          <!-- host only -->
+ *
+ * a container row for /etc/ssl/cert.pem would resolve to the host-only entry
+ * and take ITS check options and tag. A container row can only have come from a
+ * container-tagged root — fim_collect_container_monitored_paths() below is what
+ * selects them — so that is the set to resolve against.
+ *
+ * Also matches on dir_it->path rather than fim_get_real_path(dir_it), for the
+ * same reason fim_collect_container_monitored_paths() passes path->path as the
+ * internal_path: symlink resolution is a property of the HOST filesystem, and
+ * the host's resolved target means nothing inside a container's mount
+ * namespace. */
+static const directory_t* fim_container_configuration_directory(const char* path)
+{
+    char full_path[OS_SIZE_4096 + 1] = {'\0'};
+    char full_entry[OS_SIZE_4096 + 1] = {'\0'};
+    const directory_t* best = NULL;
+    int top = 0;
+    OSListNode* node_it;
+
+    if (path == NULL || *path == '\0' || syscheck.directories == NULL) {
+        return NULL;
+    }
+
+    trail_path_separator(full_path, path, sizeof(full_path));
+
+    OSList_foreach(node_it, syscheck.directories) {
+        const directory_t* dir_it = (const directory_t*)node_it->data;
+
+        if (dir_it == NULL || dir_it->path == NULL || !fim_tags_contain_container(dir_it->tag)) {
+            continue;
+        }
+
+        trail_path_separator(full_entry, dir_it->path, sizeof(full_entry));
+
+        const int match = w_compare_str(full_entry, full_path);
+
+        /* match is 0 when full_entry is not a prefix of full_path, so the
+         * full_path[match - 1] read below only happens for match >= 1. Same
+         * idiom as fim_configuration_directory(). */
+        if (top < match && full_path[match - 1] == PATH_SEP) {
+            best = dir_it;
+            top = match;
+        }
+    }
+
+    return best;
 }
 
 int fim_collect_container_monitored_paths(cb_monitored_path_t** out_paths, size_t* out_count)
@@ -440,4 +497,182 @@ void fim_persist_baseline_row(const char* id, int operation, const char* index, 
                                    1);
 
     cJSON_Delete(msg);
+}
+
+/* Host FIM's own alert vocabulary. Duplicated from file.c's static table
+ * rather than exported from it: three string literals are not worth widening
+ * that file's interface for, and the schema they name is fixed. */
+static const char* CONTAINER_FIM_EVENT_TYPE[] = {
+    "added",    /* OPERATION_CREATE */
+    "modified", /* OPERATION_MODIFY */
+    "deleted"   /* OPERATION_DELETE */
+};
+
+/* Host FIM has `notify_scan`, flipped to 1 by fim_scan.c once the first scan
+ * ends, so the first walk of a host does not alert on every file it finds
+ * unless <notify_first_scan> says otherwise. The container walk needs the same
+ * suppression and cannot borrow that flag: it runs one-shot from main() before
+ * the host's first scan has necessarily finished, so `notify_scan`'s value at
+ * that moment says nothing about whether the CONTAINER baseline is a first
+ * scan.
+ *
+ * Written on syscheckd's main thread by fim_container_events_release() — the
+ * point that already means "the baseline walk committed, the reconcile consumer
+ * is now live" — and read on that consumer thread. Not a data race, and not by
+ * luck: release() goes on to take the staging buffer's mutex, and the consumer
+ * may not touch file_entry at all until it observes that release, so the write
+ * here happens-before every read of it. */
+static int container_notify_scan = -1;
+
+static int container_should_report_events(void)
+{
+    if (container_notify_scan < 0) {
+        container_notify_scan = syscheck.notify_first_scan ? 1 : 0;
+    }
+
+    return container_notify_scan;
+}
+
+void fim_container_baseline_first_scan_done(void)
+{
+    container_notify_scan = 1;
+}
+
+/* Lifts the container_json column onto `target` as top-level container /
+ * kubernetes blocks. Same placement normalize_container_fim_row() uses for the
+ * stateful document, so an analyst reads the same field names on both sides. */
+static void add_container_context(const cJSON* row_data, cJSON* target)
+{
+    const cJSON* container_json_item = cJSON_GetObjectItem(row_data, "container_json");
+
+    if (container_json_item == NULL || !cJSON_IsString(container_json_item) ||
+        container_json_item->valuestring == NULL || container_json_item->valuestring[0] == '\0') {
+        return;
+    }
+
+    cJSON* ctx = cJSON_Parse(container_json_item->valuestring);
+    if (ctx == NULL) {
+        return;
+    }
+
+    cJSON* container_block = cJSON_DetachItemFromObject(ctx, "container");
+    if (container_block != NULL) {
+        cJSON_AddItemToObject(target, "container", container_block);
+    }
+
+    cJSON* kubernetes_block = cJSON_DetachItemFromObject(ctx, "kubernetes");
+    if (kubernetes_block != NULL) {
+        cJSON_AddItemToObject(target, "kubernetes", kubernetes_block);
+    }
+
+    cJSON_Delete(ctx);
+}
+
+void fim_send_container_stateless_event(const cJSON* row_data,
+                                        const cJSON* old_data,
+                                        int operation,
+                                        int origin)
+{
+    if (row_data == NULL || !container_should_report_events()) {
+        return;
+    }
+
+    if (operation != OPERATION_CREATE && operation != OPERATION_MODIFY && operation != OPERATION_DELETE) {
+        return;
+    }
+
+    const cJSON* path_json = cJSON_GetObjectItem(row_data, "path");
+    if (path_json == NULL || !cJSON_IsString(path_json) || path_json->valuestring == NULL) {
+        return;
+    }
+    const char* path = path_json->valuestring;
+
+    const directory_t* config = fim_container_configuration_directory(path);
+    if (config == NULL) {
+        /* The reconcile driver only ever submits paths under a configured
+         * container root, so this means the configuration changed under a
+         * reload between the walk and the callback. Nothing to attribute the
+         * alert's check options to, so there is no alert to build. */
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, "container file", path);
+        return;
+    }
+
+    cJSON* changed_attributes = NULL;
+    cJSON* old_attributes = NULL;
+
+    if (old_data != NULL) {
+        changed_attributes = cJSON_CreateArray();
+        old_attributes = cJSON_CreateObject();
+
+        fim_calculate_dbsync_difference(config, old_data, changed_attributes, old_attributes);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            /* DBSync saw the row change, but only in a column none of this
+             * entry's configured checks look at. file.c takes the same exit
+             * (FIM_EMPTY_CHANGED_ATTRIBUTES) rather than raise an alert with an
+             * empty changed_fields.
+             *
+             * Unlike file.c this does NOT also suppress the stateful document:
+             * the row really did change and the stored state should say so.
+             * Only the alert is withheld. */
+            mdebug2(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
+            cJSON_Delete(changed_attributes);
+            cJSON_Delete(old_attributes);
+            return;
+        }
+    }
+
+    cJSON* stateless_event = cJSON_CreateObject();
+    if (stateless_event == NULL) {
+        cJSON_Delete(changed_attributes); // LCOV_EXCL_LINE
+        cJSON_Delete(old_attributes);     // LCOV_EXCL_LINE
+        return;                           // LCOV_EXCL_LINE
+    }
+
+    cJSON_AddStringToObject(stateless_event, "collector", "file");
+    cJSON_AddStringToObject(stateless_event, "module", "fim");
+
+    cJSON* data = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateless_event, "data", data);
+
+    cJSON* event = cJSON_CreateObject();
+    cJSON_AddItemToObject(data, "event", event);
+
+    char iso_time[32];
+    get_iso8601_utc_time(iso_time, sizeof(iso_time));
+    cJSON_AddStringToObject(event, "created", iso_time);
+    cJSON_AddStringToObject(event, "type", CONTAINER_FIM_EVENT_TYPE[operation]);
+
+    /* A deleted file has no live attributes left to report: the row DBSync
+     * hands back is the state the file HAD, and reporting it as current would
+     * be a lie. Host FIM's handle_orphaned_delete() sends the same path/mode
+     * pair and nothing else.
+     *
+     * Container rows have no fim_file_data struct, so this always takes
+     * fim_attributes_json()'s JSON-only mode (data == NULL) — which reads the
+     * named columns and ignores container_id/container_json. */
+    cJSON* file_stateless = (operation == OPERATION_DELETE)
+        ? cJSON_CreateObject()
+        : fim_attributes_json(row_data, NULL, config);
+    cJSON_AddItemToObject(data, "file", file_stateless);
+
+    cJSON_AddStringToObject(file_stateless, "path", path);
+    cJSON_AddStringToObject(file_stateless,
+                            "mode",
+                            origin == CB_FIM_ORIGIN_EVENT ? "whodata" : "scheduled");
+
+    if (config->tag != NULL) {
+        cJSON_AddStringToObject(file_stateless, "tags", config->tag);
+    }
+
+    if (changed_attributes != NULL) {
+        cJSON_AddItemToObject(file_stateless, "previous", old_attributes);
+        cJSON_AddItemToObject(event, "changed_fields", changed_attributes);
+    }
+
+    add_container_context(row_data, data);
+
+    send_syscheck_msg(stateless_event);
+
+    cJSON_Delete(stateless_event);
 }
