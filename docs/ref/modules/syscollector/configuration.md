@@ -150,6 +150,49 @@ Collect Windows updates and hotfixes.
 - **Allowed values:** `yes`, `no`
 - **Note:** Windows only - includes KB updates and patches
 
+#### container_baseline
+
+Collect per-container inventory (processes, ports, packages, users, groups, OS,
+network interfaces/protocols/addresses, hardware) for every container the
+Container Instances module reports.
+
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+- **Note:** Linux only. Requires the `container_instances` module to be running;
+  with no containers on the host the pass is a no-op. Rows are written to the
+  same tables as the host's own, distinguished by `container_id`, and go through
+  one scoped DBSync transaction per container — so change detection and
+  deletion are per container, not per node. Setting this to `no` removes any
+  container rows already in the database, once.
+
+#### container_baseline_interval
+
+Cadence of the container-inventory pass, independent of `interval`.
+
+- **Default value:** `0`
+- **Allowed values:** `0` (follow `interval`), or a positive interval with the
+  same `d`/`h`/`m`/`s` suffixes as `interval`
+- **Note:** Linux only. A container's whole lifetime can be far shorter than a
+  sensible host `interval`: with the default 1-hour `interval`, a container that
+  starts and exits inside the hour is never inventoried at all. Setting this
+  gives the container pass its own deadline, served by the same thread — the
+  module wakes for whichever of the two deadlines comes first, so this adds no
+  thread and no second database handle.
+- **Cost:** each pass re-reads every live container's inventory. Under a short
+  interval on a node with many containers that is the dominant cost of the
+  module, so prefer the largest value that still catches the workloads you care
+  about (for example `5m` for short-lived batch pods, and the default for
+  long-running services).
+
+**Example:**
+```xml
+<wodle name="syscollector">
+    <interval>1h</interval>
+    <container_baseline>yes</container_baseline>
+    <container_baseline_interval>5m</container_baseline_interval>
+</wodle>
+```
+
 ---
 
 ## Synchronization Configuration

@@ -29,6 +29,7 @@ static const char *XML_USERS = "users";
 static const char *XML_SERVICES = "services";
 static const char *XML_BROWSER_EXTENSIONS = "browser_extensions";
 static const char *XML_CONTAINER_BASELINE = "container_baseline";
+static const char *XML_CONTAINER_BASELINE_INTERVAL = "container_baseline_interval";
 
 static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node) {
     const char *XML_DB_SYNC_ENABLED = "enabled";
@@ -111,6 +112,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
         syscollector->flags.services = 1;
         syscollector->flags.browser_extensions = 1;
         syscollector->flags.container_baseline = 1;
+        syscollector->container_baseline_interval = WM_SYSCOLLECTOR_DEFAULT_CONTAINER_INTERVAL;
 
         // Database synchronization config values
         syscollector->sync.enable_synchronization = 1;
@@ -298,6 +300,44 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                 return OS_INVALID;
             }
             syscollector->flags.container_baseline = !strcmp(node[i]->content, "yes");
+        } else if (!strcmp(node[i]->element, XML_CONTAINER_BASELINE_INTERVAL)) {
+            // Same suffix grammar as <interval> above (d/h/m/s), and the same
+            // hard failure on a malformed value: silently falling back to the
+            // host cadence would make a typo look like a working setting.
+            if (!node[i]->content || !strlen(node[i]->content)) {
+                merror("Invalid %s at module '%s'", XML_CONTAINER_BASELINE_INTERVAL, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            char *endptr;
+            unsigned long parsed = strtoul(node[i]->content, &endptr, 0);
+
+            switch (*endptr) {
+            case 'd':
+                parsed *= W_DAY_SECONDS;
+                break;
+            case 'h':
+                parsed *= W_HOUR_SECONDS;
+                break;
+            case 'm':
+                parsed *= W_MINUTE_SECONDS;
+                break;
+            case 's':
+            case '\0':
+                break;
+            default:
+                merror("Invalid %s at module '%s'", XML_CONTAINER_BASELINE_INTERVAL, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            // 0 is accepted and meaningful: it means "follow <interval>", which
+            // is the default and the behaviour before this option existed.
+            if (parsed >= UINT_MAX) {
+                merror("Invalid %s at module '%s'", XML_CONTAINER_BASELINE_INTERVAL, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            syscollector->container_baseline_interval = (unsigned int) parsed;
         } else if (!strcmp(node[i]->element, XML_BROWSER_EXTENSIONS)) {
             if (!node[i]->content || !strlen(node[i]->content) ||
                 (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no"))) {
