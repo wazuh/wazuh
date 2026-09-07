@@ -505,6 +505,12 @@ async def test_check_authenticated_rate_limit_middleware_calls_charge(mock_req):
     operation.method = "post"
     mock_req.url = MagicMock()
     mock_req.url.path = "/agents"
+    # Real dict, not an auto-vivified MagicMock chain: a MagicMock's `.get` method can be
+    # polluted at the CLASS level by an unrelated test (see test_security_controller.py's
+    # `patch(..., MagicMock)` + `m_req.get = MagicMock(...)`, a known, deliberately out-of-scope
+    # pre-existing issue), which would silently make `request.scope.get(...)` return something
+    # other than this request's own data depending on test run order.
+    mock_req.scope = {'extensions': {'connexion_context': {'user': 'wazuh', 'token_info': {}}}}
     max_requests = 300
     api_conf = {'access': {'max_request_per_minute': max_requests}}
 
@@ -525,6 +531,91 @@ async def test_check_authenticated_rate_limit_middleware_calls_charge(mock_req):
 
     assert exc_info.value.status == 429
     assert exc_info.value.ext.get('code') == 6001
+
+
+@pytest.mark.asyncio
+async def test_check_authenticated_rate_limit_middleware_uncredentialed_context_charges_unauthenticated(mock_req):
+    """Test that `CheckAuthenticatedRateLimitMiddleware` charges the UNAUTHENTICATED bucket, not
+       the authenticated one, when `connexion_context` carries no `user` -- the case of a request
+       whose path/method matched no operation at all (an unrouted 404) and so never went through
+       SecurityMiddleware in the first place. Regression test for the finding that reaching this
+       middleware does not, by itself, prove authentication succeeded."""
+    response = MagicMock()
+    dispatch_mock = AsyncMock(return_value=response)
+    middleware = CheckAuthenticatedRateLimitMiddleware(AsyncApp(__name__))
+    operation = MagicMock(name="operation")
+    operation.method = "post"
+    mock_req.url = MagicMock()
+    mock_req.url.path = "/agents"
+    mock_req.scope = {'extensions': {'connexion_context': {}}}
+    max_unauth = 10
+    api_conf = {'access': {'max_request_per_minute': 300, 'max_unauthenticated_request_per_minute': max_unauth}}
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.charge_unauthenticated_request',
+              new=AsyncMock(return_value=0)) as mock_charge_unauth, \
+        patch('api.middlewares.charge_authenticated_request',
+              new=AsyncMock(return_value=0)) as mock_charge_auth, \
+        patch('api.middlewares.configuration.api_conf', new=api_conf):
+        await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
+        mock_charge_unauth.assert_awaited_once_with(mock_req, max_unauth, 6005)
+        mock_charge_auth.assert_not_awaited()
+        dispatch_mock.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_check_authenticated_rate_limit_middleware_missing_extensions_charges_unauthenticated(mock_req):
+    """Same as above, but for the more literal unrouted-path shape: `connexion_context` never
+       populated into `scope['extensions']` at all (SecurityMiddleware never ran), not merely
+       present-but-empty. Must not raise and must still charge the unauthenticated bucket."""
+    response = MagicMock()
+    dispatch_mock = AsyncMock(return_value=response)
+    middleware = CheckAuthenticatedRateLimitMiddleware(AsyncApp(__name__))
+    operation = MagicMock(name="operation")
+    operation.method = "post"
+    mock_req.url = MagicMock()
+    mock_req.url.path = "/agents"
+    mock_req.scope = {}
+    max_unauth = 10
+    api_conf = {'access': {'max_request_per_minute': 300, 'max_unauthenticated_request_per_minute': max_unauth}}
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.charge_unauthenticated_request',
+              new=AsyncMock(return_value=0)) as mock_charge_unauth, \
+        patch('api.middlewares.charge_authenticated_request',
+              new=AsyncMock(return_value=0)) as mock_charge_auth, \
+        patch('api.middlewares.configuration.api_conf', new=api_conf):
+        await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
+        mock_charge_unauth.assert_awaited_once_with(mock_req, max_unauth, 6005)
+        mock_charge_auth.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_check_authenticated_rate_limit_middleware_authenticated_context_charges_authenticated(mock_req):
+    """Test that `CheckAuthenticatedRateLimitMiddleware` still charges the authenticated bucket,
+       not the unauthenticated one, when `connexion_context['user']` is set -- the ordinary,
+       already-shipped case of a request that genuinely authenticated. Regression guard for the
+       Finding-1 fix not breaking the already-working authenticated-caller path."""
+    response = MagicMock()
+    dispatch_mock = AsyncMock(return_value=response)
+    middleware = CheckAuthenticatedRateLimitMiddleware(AsyncApp(__name__))
+    operation = MagicMock(name="operation")
+    operation.method = "post"
+    mock_req.url = MagicMock()
+    mock_req.url.path = "/agents"
+    mock_req.scope = {'extensions': {'connexion_context': {'user': 'wazuh', 'token_info': {}}}}
+    max_requests = 300
+    api_conf = {'access': {'max_request_per_minute': max_requests, 'max_unauthenticated_request_per_minute': 10}}
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.charge_authenticated_request',
+              new=AsyncMock(return_value=0)) as mock_charge_auth, \
+        patch('api.middlewares.charge_unauthenticated_request',
+              new=AsyncMock(return_value=0)) as mock_charge_unauth, \
+        patch('api.middlewares.configuration.api_conf', new=api_conf):
+        await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
+        mock_charge_auth.assert_awaited_once_with(mock_req, max_requests, 6001)
+        mock_charge_unauth.assert_not_awaited()
 
 
 @pytest.mark.asyncio

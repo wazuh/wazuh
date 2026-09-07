@@ -499,20 +499,23 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
 
 
 class CheckAuthenticatedRateLimitMiddleware(BaseHTTPMiddleware):
-    """Rate Limits Middleware (post-authentication). Registered at BEFORE_VALIDATION, i.e.
-    immediately after connexion's SecurityMiddleware - only ever reached once authentication has
-    already succeeded. Charges and checks the authenticated bucket.
-
-    Assumes every operation reaching here required real credentials: a future spec operation
-    declared with `security: []` would land here uncharged for authentication yet still be
-    billed into the authenticated bucket - not a security regression, but a mislabeling this
-    assumption doesn't cover if that ever changes.
+    """Rate Limits Middleware (post-security). Registered at BEFORE_VALIDATION, i.e. immediately
+    after connexion's SecurityMiddleware. Charges the authenticated bucket only when the request
+    actually carries an authenticated identity; anything else that reaches here - a `security: []`
+    operation, or a request whose path/method matched no operation at all and so never went
+    through SecurityMiddleware in the first place - is charged into the smaller unauthenticated
+    bucket instead, mirroring a genuine auth failure.
     """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """Charge the authenticated bucket and enforce its ceiling."""
-        max_requests = configuration.api_conf['access']['max_request_per_minute']
-        error_code = await charge_authenticated_request(request, max_requests, 6001)
+        """Charge the bucket matching the request's actual auth outcome and enforce its ceiling."""
+        context = (request.scope.get('extensions') or {}).get('connexion_context') or {}
+        if not context.get('user'):
+            max_unauthenticated = configuration.api_conf['access']['max_unauthenticated_request_per_minute']
+            error_code = await charge_unauthenticated_request(request, max_unauthenticated, 6005)
+        else:
+            max_requests = configuration.api_conf['access']['max_request_per_minute']
+            error_code = await charge_authenticated_request(request, max_requests, 6001)
 
         if error_code:
             raise MaxRequestsException(code=error_code)

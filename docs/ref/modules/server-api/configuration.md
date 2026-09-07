@@ -295,7 +295,9 @@ failed-authentication requests draw from a separate, much smaller allowance cont
 authenticated caller shares the same address with. Setting `max_unauthenticated_request_per_minute`
 to `0` disables only this sub-limit. Unlike `max_request_per_minute`, this value does not scale
 with deployment size in the table above — it bounds abuse/probing traffic rather than legitimate
-demand, so it stays at `10` regardless of deployment size.
+demand, so it stays at `10` regardless of deployment size. A request to a path or method the API
+does not expose is always billed to this smaller allowance, regardless of any credential it
+carries, since it never reaches the authentication step in the first place.
 
 ### Response Caching
 
