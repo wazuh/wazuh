@@ -400,10 +400,15 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
 
     if (impl->handle == nullptr)
     {
-        /* Expected on any host without the capability. FIM keeps working; only
-         * the event-driven reconcile is unavailable. */
-        LogDebug("Container eBPF drain: the eBPF engine is unavailable; container FIM will rely on "
-                 "scheduled baselines only.");
+        /* Expected on any host without the capability. Host FIM keeps working.
+         * Deliberately NOT "container FIM falls back to scheduled baselines":
+         * there is no scheduled container baseline to fall back to —
+         * fim_run_container_baseline() runs once from main(), and the only
+         * thing that re-runs it is this drain's own rebaselineAll. The caller
+         * turns this into a WARNING when container directories are actually
+         * configured; the detail stays here at debug level. */
+        LogDebug("Container eBPF drain: the eBPF engine is unavailable (no rt_file.bpf.o, or the "
+                 "kernel/capabilities do not permit loading it).");
         delete impl;
         return false;
     }
