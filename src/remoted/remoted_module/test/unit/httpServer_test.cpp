@@ -212,6 +212,7 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.certificatePath, "etc/certs/remoted.pem");
     EXPECT_EQ(config.privateKeyPath, "etc/certs/remoted-key.pem");
     EXPECT_EQ(config.caPath, "etc/certs/root-ca.pem");
+    EXPECT_EQ(config.caCertificatePath, "etc/certs/root-ca.pem");
     EXPECT_EQ(config.ciphers, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256");
     EXPECT_EQ(config.verificationMode, ClientVerificationMode::None);
     // Unset, not Disabled: buildHttpServerConfig() intentionally leaves this distinct
@@ -221,6 +222,26 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     // setting the IPV6_V6ONLY socket option, so the effective behavior is still
     // IPv6-only by default -- see DualStackYesFromStructOverridesDefault and friends.
     EXPECT_EQ(config.dualStackMode, DualStackMode::Unset);
+}
+
+TEST(HttpServerConfigTest, CaCertificateDefaultsToRootCa)
+{
+    // remote.https.ca_certificate never configured (empty C-ABI buffer): the CA that signs the
+    // listener certificate defaults to the installer's root CA, independently of `ca` (the
+    // client-verification bundle), which keeps its own default.
+    const auto config = buildHttpServerConfig(zeroedConfig());
+    EXPECT_EQ(config.caCertificatePath, "etc/certs/root-ca.pem");
+    EXPECT_EQ(config.caPath, "etc/certs/root-ca.pem");
+}
+
+TEST(HttpServerConfigTest, CaCertificateOverrideFromConfig)
+{
+    auto raw = zeroedConfig();
+    std::snprintf(raw.ca_certificate_path, sizeof(raw.ca_certificate_path), "/custom/listener-ca.pem");
+    // ca_path deliberately left empty: the two fields must not leak into each other.
+    const auto config = buildHttpServerConfig(raw);
+    EXPECT_EQ(config.caCertificatePath, "/custom/listener-ca.pem");
+    EXPECT_EQ(config.caPath, "etc/certs/root-ca.pem");
 }
 
 TEST(HttpServerConfigTest, InFlightBytesStructWinsElseDefault)
