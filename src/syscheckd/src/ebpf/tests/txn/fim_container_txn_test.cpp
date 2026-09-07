@@ -53,10 +53,15 @@ int g_inserted = 0;
 int g_modified = 0;
 int g_deleted = 0;
 int g_unexpected = 0;
+/* MODIFIED payloads that arrived as {"old":...,"new":...} rather than a bare
+ * updated row. The container callback reads the changed columns out of "old",
+ * so this is the difference between an alert and silence. */
+int g_modified_wrapped = 0;
 
 void ResetCounters()
 {
     g_inserted = g_modified = g_deleted = g_unexpected = 0;
+    g_modified_wrapped = 0;
 }
 
 void LogCallback(modules_log_level_t, const char* message)
@@ -66,12 +71,21 @@ void LogCallback(modules_log_level_t, const char* message)
     std::fprintf(stderr, "[fimdb] %s\n", message);
 }
 
-void RowCallback(ReturnTypeCallback type, const cJSON*, void*)
+void RowCallback(ReturnTypeCallback type, const cJSON* payload, void*)
 {
     switch (type)
     {
         case INSERTED: ++g_inserted; break;
-        case MODIFIED: ++g_modified; break;
+        case MODIFIED:
+            ++g_modified;
+
+            if (payload != nullptr && cJSON_GetObjectItem(payload, "new") != nullptr &&
+                cJSON_GetObjectItem(payload, "old") != nullptr)
+            {
+                ++g_modified_wrapped;
+            }
+
+            break;
         case DELETED:  ++g_deleted;  break;
         default:       ++g_unexpected; break;
     }
@@ -89,6 +103,22 @@ std::string RowJson(const char* containerId, const char* path)
                   "\"size\":1,\"permissions\":\"0644\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\","
                   "\"group\":\"root\",\"inode\":1,\"device\":1,\"mtime\":1,\"hash_md5\":\"\","
                   "\"hash_sha1\":\"\",\"hash_sha256\":\"\",\"checksum\":\"cs\",\"version\":1}",
+                  path,
+                  containerId);
+    return buffer;
+}
+
+/* The same row with a different size and checksum, i.e. what re-reading a file
+ * that changed on disk produces. */
+std::string ChangedRowJson(const char* containerId, const char* path)
+{
+    char buffer[1024];
+    std::snprintf(buffer,
+                  sizeof(buffer),
+                  "{\"path\":\"%s\",\"container_id\":\"%s\",\"container_json\":\"\",\"mode\":0,"
+                  "\"size\":99,\"permissions\":\"0644\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\","
+                  "\"group\":\"root\",\"inode\":1,\"device\":1,\"mtime\":2,\"hash_md5\":\"\","
+                  "\"hash_sha1\":\"\",\"hash_sha256\":\"\",\"checksum\":\"cs-changed\",\"version\":1}",
                   path,
                   containerId);
     return buffer;
@@ -192,6 +222,61 @@ int main()
 
         std::snprintf(detail, sizeof(detail), "INSERTED=%d (want 0)", g_inserted);
         ok &= Check("another container's rows survive that sweep", g_inserted == 0, detail);
+    }
+
+    /* 5. A changed row must be reported as MODIFIED, and the payload must be
+     *    the {"old","new"} pair. fim_db_transaction_sync_row_json() has to ask
+     *    DBSync for it ("return_old_data"); without that option DBSync hands
+     *    the callback a bare updated row, container_txn_callback() finds no
+     *    "new" member and returns, and every modification to an
+     *    already-known container file is dropped. Invisibly, too: the row
+     *    still converges in file_entry, so only the missing alert shows it. */
+    {
+        ResetCounters();
+        const auto scope = TxnScope("cid-c");
+        TXN_HANDLE txn = fim_db_transaction_start(scope.c_str(), RowCallback, nullptr);
+        SyncPaths(txn, "cid-c", 0, 3);
+        fim_db_transaction_close(txn);
+
+        ResetCounters();
+        txn = fim_db_transaction_start(scope.c_str(), RowCallback, nullptr);
+
+        for (int i = 0; i < 3; ++i)
+        {
+            char path[64];
+            std::snprintf(path, sizeof(path), "/etc/a%d", i);
+            fim_db_transaction_sync_row_json(txn, "file_entry", ChangedRowJson("cid-c", path).c_str());
+        }
+
+        fim_db_transaction_close(txn);
+
+        std::snprintf(detail, sizeof(detail), "MODIFIED=%d wrapped=%d (want 3/3)", g_modified, g_modified_wrapped);
+        ok &= Check("a changed row reports MODIFIED with old+new", g_modified == 3 && g_modified_wrapped == 3, detail);
+    }
+
+    /* 6. What close() actually does to the rows this transaction did not
+     *    refresh: it DELETES them. DBSyncImplementation::closeTransaction()
+     *    runs deleteRowsByStatusField() unconditionally, so "close instead of
+     *    deleted_rows" suppresses the DELETED *callbacks* and nothing else —
+     *    the rows are gone either way. A path reconcile re-reads a handful of
+     *    named files by design (D15), so on that path this wipes the rest of
+     *    the container's FIM state and the next full baseline re-reports it
+     *    all as added. Pinned here because the behaviour is the opposite of
+     *    what a reader expects from the name. */
+    {
+        ResetCounters();
+        const auto scope = TxnScope("cid-c");
+        TXN_HANDLE txn = fim_db_transaction_start(scope.c_str(), RowCallback, nullptr);
+        SyncPaths(txn, "cid-c", 0, 1); // refresh 1 of the 3 stored rows
+        fim_db_transaction_close(txn);
+
+        ResetCounters();
+        txn = fim_db_transaction_start(scope.c_str(), RowCallback, nullptr);
+        SyncPaths(txn, "cid-c", 0, 3);
+        fim_db_transaction_close(txn);
+
+        std::snprintf(detail, sizeof(detail), "INSERTED=%d (want 2)", g_inserted);
+        ok &= Check("close() still deletes the rows it did not refresh", g_inserted == 2, detail);
     }
 
     std::printf("\n%s\n", ok ? "ALL OK" : "FAILURES");

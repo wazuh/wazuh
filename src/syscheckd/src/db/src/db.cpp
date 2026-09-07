@@ -483,6 +483,16 @@ fim_db_transaction_sync_row_json(TXN_HANDLE txn_handler, const char* table, cons
         input["table"] = table;
         input["data"] = nlohmann::json::array({row});
 
+        // MODIFIED must arrive as {"old":..., "new":...}: the container txn
+        // callback reads the changed columns out of DBSync's "old" object to
+        // build the alert's changed_fields, and without this option DBSync
+        // hands it the bare updated row instead. The callback then finds no
+        // "new" member and returns, so EVERY modification to an
+        // already-known container file is dropped -- and dropped invisibly,
+        // because the row itself still converges in file_entry. Host FIM sets
+        // the same option for the same reason (dbFileItem.cpp).
+        input["options"]["return_old_data"] = true;
+
         DBSyncTxn txn(txn_handler);
         txn.syncTxnRow(input);
         retval = FIMDB_OK;
