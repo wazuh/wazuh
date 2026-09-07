@@ -149,6 +149,17 @@ struct ContainerEventDrain::Impl
 
         if (length == 0) return;
 
+        if (ev->event_type == RT_EV_FILE_UNLINK)
+        {
+            /* The kernel names the removed file, so this is not the inference
+             * D15 forbids — see ReconcileMode::deletePaths. Staging it as an
+             * ordinary path would have the re-read find nothing and, correctly,
+             * do nothing, which is why an in-container `rm` used to go
+             * unreported until something else forced a walk. */
+            router.onUnlink(ev->cgroup_id, std::string{ev->filename, length});
+            return;
+        }
+
         /* ev->pid feeds the staging buffer's settle, not the routing: a path
          * whose writer has exited can be read at once. */
         router.onEvent(ev->cgroup_id, std::string{ev->filename, length}, ev->pid);

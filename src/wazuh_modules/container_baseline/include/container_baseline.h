@@ -22,7 +22,7 @@
  * IMPORTANT for callers — "no rows" is not "removed":
  *   A container that is known but momentarily has no live PID (stopped,
  *   restarting) is SKIPPED by the run functions and produces no rows. So is a
- *   container whose configured paths are absent from its image. Deriving
+ *   container whose configured paths could not be read. Deriving
  *   deletions from absent rows therefore emits false DELETEs on container
  *   restart. Use cbaseline_list_containers() to learn what still exists, and
  *   the per-container status callback to learn which scans were incomplete.
@@ -87,26 +87,59 @@ typedef void (*cb_dbsync_row_sink_t)(const char* container_id,
                                      const char* row_json,
                                      void*       user_data);
 
-/* Per-container outcome, invoked once per SCANNED container after all of its
+/* Per-container outcome, reported once per SCANNED container after all of its
  * rows have been emitted.
  *
- * `partial` != 0 means the scan is known to be incomplete — a row cap was hit,
- * a configured path was absent from the image, or a namespace could not be
- * read. The caller MUST NOT derive deletions from absent rows for such a
- * container; upsert what arrived and leave the rest alone.
- *
- * `netns_host_scoped` != 0 means the container shares the host's network
- * namespace, so no ports/interfaces/addresses/routes were attributed to it (the
- * ones visible there are the node's, not the container's).
- *
- * `netns_unreadable` != 0 means its network namespace could not be entered,
- * typically for lack of CAP_SYS_ADMIN — worth logging, since interface rows are
- * then absent for an environmental reason rather than a factual one. */
-typedef void (*cb_container_status_sink_t)(const char* container_id,
-                                           int         partial,
-                                           int         netns_host_scoped,
-                                           int         netns_unreadable,
-                                           void*       user_data);
+ * A struct rather than a parameter list because D17 required the reasons a scan
+ * is incomplete to be told apart, and they will keep accruing: adding a field
+ * here leaves every existing consumer compiling and reading the fields it knows. */
+typedef struct cb_container_status
+{
+    const char* container_id;
+
+    /* != 0 means the scan is known to be incomplete, so the caller MUST NOT
+     * derive deletions from absent rows for this container; upsert what arrived
+     * and leave the rest alone.
+     *
+     * The union of `row_cap_hit`, `rootfs_unreadable` and `paths_rejected` —
+     * every reason that means "we did not manage to look". Deliberately NOT
+     * including `roots_missing`: a configured root that is not in the image is
+     * a fact, not a failure, and because it is STATIC, folding it in here
+     * suppressed delete detection for that container permanently (C24). */
+    int partial;
+
+    /* A walk stopped at its row cap. The files it did not reach do exist. */
+    int row_cap_hit;
+
+    /* A configured root could not be examined at all, or the container's rootfs
+     * stopped being addressable partway through (typically its PID exited).
+     * Nothing is known about what is under it. */
+    int rootfs_unreadable;
+
+    /* A supplied path failed validation and was dropped. Only reachable through
+     * the single-container entry point, whose paths may come from kernel events
+     * rather than from agent configuration. */
+    int paths_rejected;
+
+    /* Configured roots genuinely absent from this container's image, and roots
+     * walked successfully. Together they say what any delete detection the
+     * caller then performs is actually scoped to. `roots_missing` is a
+     * diagnostic, never a reason to suppress — see `partial`. */
+    int roots_missing;
+    int roots_scanned;
+
+    /* != 0 means the container shares the host's network namespace, so no
+     * ports/interfaces/addresses/routes were attributed to it (the ones visible
+     * there are the node's, not the container's). */
+    int netns_host_scoped;
+
+    /* != 0 means its network namespace could not be entered, typically for lack
+     * of CAP_SYS_ADMIN — worth logging, since interface rows are then absent
+     * for an environmental reason rather than a factual one. */
+    int netns_unreadable;
+} cb_container_status_t;
+
+typedef void (*cb_container_status_sink_t)(const cb_container_status_t* status, void* user_data);
 
 /* Invoked once per file BEFORE it is hashed, so the caller can apply its own
  * files-per-second limit. FIM passes check_max_fps(), whose token bucket is

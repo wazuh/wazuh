@@ -114,6 +114,35 @@ class ContainerEventRouter
             }
         }
 
+        /* One UNLINK event. Returns true when it was attributed to a container.
+         *
+         * Same routing as onEvent() — the difference is entirely in what the
+         * staging buffer does with it. */
+        bool onUnlink(std::uint64_t cgroup_id, const std::string& path)
+        {
+            const auto resolution = m_map.classify(cgroup_id);
+
+            switch (resolution.klass)
+            {
+                case CgroupClass::container:
+                    bump(m_stats.routed);
+                    m_staging.onUnlink(resolution.container_id, path);
+                    return true;
+
+                case CgroupClass::notContainer:
+                    bump(m_stats.host_events);
+                    return false;
+
+                case CgroupClass::unknown:
+                default:
+                    /* Same as onEvent(): the cgroup is filed, and if it turns
+                     * out to be a container it is re-walked — which finds the
+                     * deletion. See this file's header. */
+                    bump(m_stats.unattributed);
+                    return false;
+            }
+        }
+
         /* One cgroup's dropped-event count, from rt_drain_drops(). `count` is
          * loss since the previous drain, so any non-zero value means this
          * cgroup's changed-path set is incomplete. */

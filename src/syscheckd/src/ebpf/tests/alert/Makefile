@@ -62,7 +62,10 @@ LIBS := -lsyscheckd_lib -lwazuh -lwazuhext -lpthread -ldl
 
 # Compiled as C, linked with the C++ driver: libsyscheckd_lib.a carries C++
 # objects, so the link needs libstdc++.
-container_fim_alert_test: container_fim_alert_test.c $(BRIDGE)
+# libsyscheckd_lib.a is a prerequisite, not just a -l flag: it is STATIC, so a
+# rebuilt archive changes nothing until this relinks, and a stale binary would
+# quietly keep testing the code it was first linked against.
+container_fim_alert_test: container_fim_alert_test.c $(BRIDGE) $(LIB_DIR)/libsyscheckd_lib.a
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o container_fim_alert_test.o container_fim_alert_test.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o container_baseline_fim_bridge.o $(BRIDGE)
 	$(CXX) -o $@ container_fim_alert_test.o container_baseline_fim_bridge.o \

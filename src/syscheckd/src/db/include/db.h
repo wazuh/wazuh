@@ -140,6 +140,55 @@ EXPORTED FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t c
 EXPORTED FIMDBErrorCode fim_db_file_delete(const char* file_path);
 
 /**
+ * @brief Remove ONE container-scoped file entry from the database.
+ *
+ * Unlike fim_db_file_delete(), which matches on path alone, this filters on
+ * both file_entry primary-key columns (container_id, path) so deleting a
+ * container's file can never remove a same-path row belonging to a different
+ * container or to the host (container_id="").
+ *
+ * This is what makes it safe to act on RT_EV_FILE_UNLINK: the kernel names the
+ * removed file, so deleting exactly that row is not the inference D15 forbids
+ * — D15 is about reading a failed lookup as removal, not about an event that
+ * states the removal.
+ *
+ * @param file_path The logical (in-container) path of the file to remove.
+ * @param container_id The container the row belongs to.
+ *
+ * @return FIMDB_OK on success.
+ */
+EXPORTED FIMDBErrorCode fim_db_container_file_delete(const char* file_path, const char* container_id);
+
+/**
+ * @brief Read ONE container-scoped file row and report it as DELETED, optionally
+ * removing it.
+ *
+ * The container counterpart of fim_db_get_path(..., to_delete=true), and the
+ * reason it exists rather than the caller pairing a read with
+ * fim_db_container_file_delete(): the row that is about to be removed carries
+ * the checksum and document version the stateful DELETE event needs, so it has
+ * to be read before it is gone. `callback.callback_txn` is invoked with
+ * ReturnTypeCallback::DELETED and the full row, which is exactly the shape the
+ * container reconcile callback already handles — so the alert and the stateful
+ * delete document are produced by the same code path as every other change.
+ *
+ * A path with no stored row for that container is NOT an error and produces no
+ * callback: it is the ordinary case for an unlink of a file that was never
+ * baselined.
+ *
+ * @param file_path The logical (in-container) path of the row.
+ * @param container_id The container the row belongs to.
+ * @param callback Must supply callback_txn.
+ * @param to_delete Remove the row as well as reporting it.
+ *
+ * @return FIMDB_OK when a row was found and reported.
+ */
+EXPORTED FIMDBErrorCode fim_db_container_get_path(const char* file_path,
+                                                  const char* container_id,
+                                                  callback_context_t callback,
+                                                  bool to_delete);
+
+/**
  * @brief Find entries using the inode.
  *
  * @param inode Inode.

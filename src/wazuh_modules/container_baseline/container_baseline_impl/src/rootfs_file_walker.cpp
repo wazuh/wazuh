@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
 
+#include <cerrno>
 #include <cstdio>
 #include <deque>
 #include <unordered_map>
@@ -145,7 +146,27 @@ WalkResult WalkContainerPath(pid_t                      pid,
 
     struct stat root_st{};
     if (::lstat(root_host_path.c_str(), &root_st) != 0) {
-        result.root_missing = true;
+        const int lookup_errno = errno;
+
+        // "Absent from the image" and "could not look" are different facts, and
+        // D17 turns on the difference: only the first may authorise deleting
+        // the rows stored under this root.
+        //
+        // The check that makes the distinction safe is the second lstat.
+        // /proc/<pid>/root/<path> also fails with ENOENT once the pid has
+        // exited, so errno alone would report a whole vanished container as a
+        // set of vanished directories — C15's mass false delete arriving one
+        // root at a time. If the rootfs is no longer addressable, nothing is
+        // known about this root.
+        struct stat rootfs_st{};
+        const bool rootfs_addressable = ::lstat(proc_root.c_str(), &rootfs_st) == 0;
+
+        if ((lookup_errno == ENOENT || lookup_errno == ENOTDIR) && rootfs_addressable) {
+            result.root_missing = true;
+        } else {
+            result.root_unreadable = true;
+        }
+
         return result;
     }
 

@@ -104,6 +104,36 @@ class EXPORTED DB final
         void removeFile(const std::string& path);
 
         /**
+         * @brief removeFile Remove ONE container-scoped file row.
+         *
+         * removeFile(path) alone is ambiguous now that container_id is part of
+         * file_entry's primary key (#37532): the same in-container path exists
+         * in every container that has the file, and on the host as
+         * container_id="". Filtering on both key columns is what stops deleting
+         * one container's file from removing another's, or the host's.
+         *
+         * @param path The logical (in-container) path of the row to remove.
+         * @param containerId The container the row belongs to.
+         */
+        void removeFile(const std::string& path, const std::string& containerId);
+
+        /**
+         * @brief getFile Get ONE container-scoped file row from the database.
+         *
+         * Unlike getFile(path), this filters on both file_entry primary-key
+         * columns and returns container_id/container_json with the row, so a
+         * caller can build the container-enriched event for it.
+         *
+         * @param path The logical (in-container) path of the row.
+         * @param containerId The container the row belongs to.
+         * @param callback Invoked with the row, exactly once.
+         * @throw no_entry_found when that container has no such row.
+         */
+        void getFile(const std::string& path,
+                     const std::string& containerId,
+                     std::function<void(const nlohmann::json&)> callback);
+
+        /**
          * @brief getFile Get a file from the database.
          *
          * @param path File to get.
