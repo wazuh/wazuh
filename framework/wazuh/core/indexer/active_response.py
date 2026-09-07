@@ -30,6 +30,9 @@ AR_INDEX = "wazuh-active-responses*"
 #: never appears from freezing the cursor for the whole fleet.
 EVENT_VISIBILITY_GRACE_SECONDS = 120
 
+#: Documents read per polling cycle. Also the distance between two cursor writes.
+DEFAULT_PAGE_SIZE = 1000
+
 #: `WazuhError` code TaskManagerHTTPClient raises for a non-2xx answer -- the module received the
 #: request and refused it. Distinguished from every transport failure at the dispatch handler
 #: below, because a refusal is terminal for one document while a transport failure is not.
@@ -372,7 +375,7 @@ class ActiveResponseHelpers:
 
     @staticmethod
     async def fetch_active_response_docs(
-        bookmark: ActiveResponseBookmark, validate: bool = False, max: int = 1000
+        bookmark: ActiveResponseBookmark, validate: bool = False, max: int = DEFAULT_PAGE_SIZE
     ) -> List[Dict[str, Any]]:
         """Fetch active response documents incrementally from OpenSearch.
 
@@ -526,6 +529,8 @@ class ActiveResponseBuilder:
         logger: logging.Logger,
         all_agents: Optional[List[str]] = None,
         bookmark_file: Optional[ActiveResponseBookmarkFile] = None,
+        page_size: Optional[int] = None,
+        event_grace: Optional[int] = None,
     ):
         """Initialize the AR builder.
 
@@ -537,8 +542,17 @@ class ActiveResponseBuilder:
             List of all agent IDs, by default None (retrieves automatically).
         bookmark_file : Optional[ActiveResponseBookmarkFile], optional
             Bookmark handler, by default None (creates new).
+        page_size : Optional[int], optional
+            Documents read per cycle, by default DEFAULT_PAGE_SIZE.
+        event_grace : Optional[int], optional
+            Seconds a response may wait for its event to become visible, by default
+            EVENT_VISIBILITY_GRACE_SECONDS.
         """
         self.logger = logger
+        self._page_size = page_size if page_size is not None else DEFAULT_PAGE_SIZE
+        self._event_grace = (
+            event_grace if event_grace is not None else EVENT_VISIBILITY_GRACE_SECONDS
+        )
         self._all_agents = (
             all_agents
             if all_agents is not None
@@ -563,7 +577,7 @@ class ActiveResponseBuilder:
             The builder instance.
         """
         docs = await ActiveResponseHelpers.fetch_active_response_docs(
-            self._bookmark_file, validate=validate
+            self._bookmark_file, validate=validate, max=self._page_size
         )
         self._ars = [
             ActiveResponse(
@@ -643,7 +657,7 @@ class ActiveResponseBuilder:
             # would stop delivery for the whole fleet, so that one is dropped and said out loud. A
             # negative age is a document stamped ahead of this node's clock, which the query's upper
             # bound already excludes: it is not "written moments ago" and must not hold.
-            if age is not None and 0 <= age < EVENT_VISIBILITY_GRACE_SECONDS:
+            if age is not None and 0 <= age < self._event_grace:
                 if not holding:
                     holding = True
                     # One high-water mark cannot both hold here and clear the terminal documents
@@ -658,7 +672,7 @@ class ActiveResponseBuilder:
                 continue
 
             reason = (
-                f"not found after {EVENT_VISIBILITY_GRACE_SECONDS}s"
+                f"not found after {self._event_grace}s"
                 if age is not None
                 else "not found, and the response carries no readable @timestamp"
             )
@@ -835,13 +849,39 @@ class ActiveResponseFetchTask:
         self.logger = server.logger.getChild("ar")
         self.logger.addFilter(ClusterFilter(tag=server.tag, subtag="Active Response"))
 
-        self.polling_interval: int = (
-            server.cluster_items.get("intervals", {})
-            .get("common", {})
-            .get(
-                "active_response_polling",
-                self.DEFAULT_POLLING_INTERVAL,
+        common = server.cluster_items.get("intervals", {}).get("common", {})
+        defaults = {
+            "active_response_polling": self.DEFAULT_POLLING_INTERVAL,
+            "active_response_page_size": DEFAULT_PAGE_SIZE,
+            "active_response_event_grace": EVENT_VISIBILITY_GRACE_SECONDS,
+        }
+        missing = [key for key in defaults if key not in common]
+        if missing:
+            # TODO: active_response_polling used to default silently. Decide whether all three keys
+            # warn when missing, as MetricsSnapshotTasks does, or none of them.
+            self.logger.warning(
+                f"Missing in cluster configuration (intervals.common): {', '.join(missing)}. "
+                f"Using defaults: {', '.join(f'{key}={defaults[key]}' for key in missing)}."
             )
+        settings = {**defaults, **{key: common[key] for key in defaults if key in common}}
+
+        def bounded(key: str, valid, what: str) -> int:
+            value = settings[key]
+            if valid(value):
+                return value
+            self.logger.warning(
+                f"{key} must be {what}, got {value!r}. Using default: {defaults[key]}."
+            )
+            return defaults[key]
+
+        self.polling_interval: int = settings["active_response_polling"]
+        self.page_size: int = bounded(
+            "active_response_page_size", lambda v: isinstance(v, int) and v >= 1, "a positive integer"
+        )
+        self.event_grace: int = bounded(
+            "active_response_event_grace",
+            lambda v: isinstance(v, int) and v >= 0,
+            "a non-negative integer",
         )
         ActiveResponseHelpers.logger = self.logger
 
@@ -854,7 +894,9 @@ class ActiveResponseFetchTask:
             If there is a connection issue with the indexer.
         """
         try:
-            builder = ActiveResponseBuilder(logger=self.logger)
+            builder = ActiveResponseBuilder(
+                logger=self.logger, page_size=self.page_size, event_grace=self.event_grace
+            )
             await builder.fetch_ars(validate=True)
             await builder.enrich_ar_with_events_info()
             builder.dispatch()
