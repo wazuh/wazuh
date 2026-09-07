@@ -134,6 +134,134 @@ logs — is in [Manager-side ingestion](#manager-side-ingestion).
 5. **Firewall Reversion**: Script executes firewall commands to unblock the IP
 6. **Cleanup**: Execd removes the entry from the active response list
 
+## Manager-side ingestion
+
+Everything in this section is `ActiveResponseFetchTask` and its helpers in
+[active_response.py](../../../../framework/wazuh/core/indexer/active_response.py). It runs inside
+`wazuh-manager-clusterd` on **every** node, master and workers alike, and logs to `logs/cluster.log`
+under the `[Active Response]` tag. The one-paragraph summary is flow 4 of the
+[server architecture](../../architecture.md).
+
+### The document
+
+The notification channel writes one document per matching event. It copies the event's `wazuh`
+object verbatim, so whatever the monitored index carries under `wazuh` travels with the response,
+and adds three things of its own:
+
+| Field | Written by the channel as | The manager uses it for |
+|---|---|---|
+| `@timestamp` | the instant the document was written | read order and cursor, the task's `create_time`, and the age that bounds the visibility hold |
+| `event.index`, `event.doc_id` | the monitored index and the matching document's `_id` | fetching the event whose fields are merged into the payload the agent receives |
+| `wazuh.active_response.*` | the channel configuration: `name`, `executable`, `extra_arguments`, `type` (`stateful` or `stateless`), `stateful_timeout`, `location`, `agent_id` | what to run, and on which agents |
+| `wazuh.agent.id` | copied from the event, when the event has it | the target when `location` is `local` |
+| `wazuh.agent.version` | copied from the event, when the event has it | documents whose version matches `v[0-4]\..*` are never read: an agent below 5.0 has no delivery path |
+
+`location` decides the target agents:
+
+| `location` | Target | Needs |
+|---|---|---|
+| `local` | the agent the event came from | `wazuh.agent.id` in the document, i.e. in the monitored event |
+| `defined-agent` | one fixed agent | `wazuh.active_response.agent_id` |
+| `all` | every registered agent | nothing; an empty fleet dispatches nothing |
+
+`AR_SCHEMA` is the first thing a document meets. It requires `wazuh.active_response` with
+`executable`, `extra_arguments`, `location`, `name` and `type`, typed and enumerated as above and
+with no unknown keys, plus `stateful_timeout` when `type` is `stateful` and `agent_id` when
+`location` is `defined-agent`. `event` and `wazuh.agent` are **not** in the schema: a document
+without a usable `event` reference is discarded one step later, and a `local` document without
+`wazuh.agent.id` is discarded at dispatch. Both are reported by the messages listed below.
+
+The indexer's own template (`dynamic: strict`) rejects unknown field names and nothing else: it
+cannot express that a field is required, an enum or a conditional, and the manager reads `_source`
+verbatim. Validation therefore happens here, and a document the schema accepts can still turn out
+unusable further down.
+
+### The read
+
+Each cycle runs one `search` on `wazuh-active-responses*`:
+
+- sorted by `[@timestamp, _id]` ascending, `search_after` the bookmark, up to 1000 documents;
+- bounded above by the node's clock (`@timestamp <= now`), so a document stamped in the future is
+  not read until its time comes and cannot move the cursor past everything created before it;
+- on the very first run of a node, bounded below by that instant (`only_events_after`), so a fresh
+  install does not replay the stream's history;
+- excluding documents whose `wazuh.agent.version` matches `v[0-4]\..*`.
+
+Every document on the page is validated against `AR_SCHEMA`. The survivors have their events
+fetched with one `mget` per referenced index, and the payload handed to the Task Manager is the
+event merged over the response document, except under `wazuh`, where the response's keys win.
+
+### The cursor
+
+The bookmark is a **high-water mark of what was read**, not of what was delivered. It is written
+once per page, after the page is processed, to `queue/cluster/ar_bookmark.json`:
+
+```json
+{"sort": [1788797763932, "AbCd…"], "sort_fields": ["@timestamp", "_id"], "only_events_after": 1788790000000}
+```
+
+Two things follow, and both are deliberate:
+
+- **A document that can never succeed does not stop the others.** Failing the schema, an unusable
+  `event` reference, an event still missing after the grace window, an unparseable `@timestamp`, a
+  refusal from the Task Manager, or raising on its own shape at dispatch are all terminal for that
+  one document: it is discarded, reported at `WARNING` or `ERROR` with its `_id`, and the page still
+  advances past it. A lost response is lost: delivery guarantees are the Task Manager's, not the
+  cursor's.
+- **The page is held, and read again next cycle, in exactly two cases.** A Task Manager that cannot
+  be reached, because nothing was decided about any document and so nothing may be skipped; and a
+  referenced event that is not visible yet: the event is written to another index by another
+  pipeline, so for up to `EVENT_VISIBILITY_GRACE_SECONDS` (120) after the response's `@timestamp`
+  the cursor stops short of it. Past that age the reference is taken as broken and the document is
+  discarded. While a page is held, the documents on it are dispatched again on the next cycle; the
+  deterministic task id makes that harmless.
+
+On load, a bookmark whose `@timestamp` is ahead of the node's clock is capped at the present and
+saved, with a `WARNING`: such a cursor would otherwise read zero hits until wall-clock time caught
+up.
+
+**Recovery.** Deleting `ar_bookmark.json` restarts the read from the moment of deletion: on the next
+cycle `only_events_after` is stamped anew and every document older than that instant is never read.
+Documents already in the stream that must not be dispatched are removed from the stream itself. A
+`WARNING` that repeats every cycle for the same `_id` means the page is being held, one of the two
+cases above; an `ERROR … Error during active response processing` that repeats every cycle means an
+exception escaped the poller and the cursor is not moving, which is a defect in the poller rather
+than in the data.
+
+### The cluster
+
+Every node runs the same poller against the same stream with its own bookmark. Nothing is owned:
+with stateless HTTPS an agent may talk to any node, so there is no agent-to-node assignment to
+filter by and no leader. The N tasks the N nodes create for one document collapse into one row
+because the Task Manager derives the task id from `source_id` (the document's `_id`), the agent,
+the type and `create_time`; see [Task Manager](../task_manager/README.md). The corollary is that
+every node reads every document: a document that stalls a cycle stalls it fleet-wide, at once.
+
+### Messages
+
+All lines are in `logs/cluster.log`, tagged `[Active Response]`. Every path that loses a response
+says so at `WARNING` or above; `wazuh_clusterd.debug=2` adds the query, the page size, each `mget`,
+each task and each hold.
+
+| Level | Message | Meaning | What to do |
+|---|---|---|---|
+| INFO | `Starting` / `Finished in N.NNNs.` | one polling cycle | nothing |
+| INFO | `Created N task(s) from M active response(s).` | tasks created this cycle, out of the responses that reached dispatch | nothing; an `M` smaller than the page means documents were discarded above it, each with its own WARNING |
+| WARNING | ``Discarding active response document `<id>` (`<index>`). Reason: <schema error>`` | the document fails `AR_SCHEMA`; terminal | fix the channel, or the client that wrote the document; the document itself is skipped |
+| WARNING | ``Active response `<id>` carries no usable event reference. Discarding it.`` | `event.index` or `event.doc_id` missing, empty or not a string; terminal | same |
+| WARNING | ``Expected event `<doc_id>` (`<index>`) not found after 120s. Discarding active response `<id>`.`` | the referenced event never became visible; terminal | check that the monitored index still holds the event; a wrong `event.index` lands here once the response is older than the grace window |
+| WARNING | ``Expected event `<doc_id>` (`<index>`) not found, and the response carries no readable @timestamp. Discarding active response `<id>`.`` | same, with no age to wait on | same |
+| WARNING | `AR document <id> missing @timestamp, skipping` | no `@timestamp`; terminal | the document was not written by the notification channel |
+| ERROR | `Failed to parse @timestamp '<value>' from AR <id>: <error>` | `@timestamp` is not ISO 8601; terminal | same |
+| WARNING | ``Discarding active response document `<id>`: unusable shape (<Type>: <detail>).`` | the document raised while its payload or its targets were resolved, e.g. `location: local` without `wazuh.agent.id`, or a referenced event whose `wazuh` is not an object; terminal | for `local`, the monitored index must carry `wazuh.agent.id`; otherwise use `defined-agent` or `all` |
+| ERROR | ``Task Manager refused the task for agent `<agent>`: <error>`` | the Task Manager answered with a non-2xx, e.g. a payload over the size cap or a `create_time` outside its admission window; terminal for that task | read the reason; the page still advances |
+| ERROR | ``Failed to create task for agent `<agent>`: <error>`` | the Task Manager could not be reached; transient | check `wazuh-manager-modulesd`; the page is held, see the next row |
+| WARNING | `Task Manager was unreachable for at least one active response. Holding the cursor so this page is read again on the next cycle.` | hold, transport case | resolves on its own once the Task Manager answers |
+| WARNING | ``Active response bookmark `<path>` points at <ts>, ahead of the present instant. Capping it at <now>; …`` | the cursor was ahead of this node's clock; capped and saved | check the clocks; responses stamped between the two instants were skipped |
+| WARNING | `Cannot connect to Wazuh Indexer` | the indexer client could not be built or connected | transient; retried after the polling interval |
+| ERROR | `Error fetching agents: <error>` | `wazuh-db` did not answer the agent list; a `location: all` response on this page is dispatched to nobody and lost | check `wazuh-manager-db` |
+| ERROR | `Error during active response processing: <error>.` | an exception escaped the cycle; the cursor did not move | a poller defect; report it with the `_id`s on the page |
+
 ## Deduplication System
 
 The deduplication mechanism prevents redundant executions of the same response:
@@ -496,5 +624,8 @@ IP blocking scripts implement safety measures:
 ## See Also
 
 - [Active Response README](README.md) - Module overview and usage
+- [Configuration](configuration.md) - Agent-side options and the manager's polling setting
 - [Executables Reference](executables.md) - Detailed executable inventory
+- [Server architecture, flow 4](../../architecture.md) - Where Active Response sits among the manager daemons
+- [Task Manager](../task_manager/README.md) - Agent task storage and delivery
 - [Control Module](../control/index.html) - Agent restart/reload (separated in v5.0)
