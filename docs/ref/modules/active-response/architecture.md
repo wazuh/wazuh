@@ -164,12 +164,14 @@ and adds three things of its own:
 | `defined-agent` | one fixed agent | `wazuh.active_response.agent_id` |
 | `all` | every registered agent | nothing; an empty fleet dispatches nothing |
 
-`AR_SCHEMA` is the first thing a document meets. It requires `wazuh.active_response` with
-`executable`, `extra_arguments`, `location`, `name` and `type`, typed and enumerated as above and
-with no unknown keys, plus `stateful_timeout` when `type` is `stateful` and `agent_id` when
-`location` is `defined-agent`. `event` and `wazuh.agent` are **not** in the schema: a document
-without a usable `event` reference is discarded one step later, and a `local` document without
-`wazuh.agent.id` is discarded at dispatch. Both are reported by the messages listed below.
+`AR_SCHEMA` is the first thing a document meets, and it states the contract above: `event.index`
+and `event.doc_id` as non-empty strings; `wazuh.active_response` with `executable`,
+`extra_arguments`, `location`, `name` and `type`, typed and enumerated as above and with no unknown
+keys; `stateful_timeout` when `type` is `stateful`; a non-empty `agent_id` when `location` is
+`defined-agent`; and a non-empty `wazuh.agent.id` when `location` is `local`. A document that fails
+it is discarded there, once, with its `_id` in the WARNING. What the schema cannot reach is the
+*referenced* event, whose shape is only known after the `mget`; that is why dispatch still guards
+against a document raising on its own shape.
 
 The indexer's own template (`dynamic: strict`) rejects unknown field names and nothing else: it
 cannot express that a field is required, an enum or a conditional, and the manager reads `_source`
@@ -253,7 +255,7 @@ each task and each hold.
 | WARNING | ``Expected event `<doc_id>` (`<index>`) not found, and the response carries no readable @timestamp. Discarding active response `<id>`.`` | same, with no age to wait on | same |
 | WARNING | `AR document <id> missing @timestamp, skipping` | no `@timestamp`; terminal | the document was not written by the notification channel |
 | ERROR | `Failed to parse @timestamp '<value>' from AR <id>: <error>` | `@timestamp` is not ISO 8601; terminal | same |
-| WARNING | ``Discarding active response document `<id>`: unusable shape (<Type>: <detail>).`` | the document raised while its payload or its targets were resolved, e.g. `location: local` without `wazuh.agent.id`, or a referenced event whose `wazuh` is not an object; terminal | for `local`, the monitored index must carry `wazuh.agent.id`; otherwise use `defined-agent` or `all` |
+| WARNING | ``Discarding active response document `<id>`: unusable shape (<Type>: <detail>).`` | the document raised while its payload or its targets were resolved, e.g. a referenced event whose `wazuh` is not an object; terminal | look at the document `event.index` and `event.doc_id` point to; the response itself passed the schema |
 | ERROR | ``Task Manager refused the task for agent `<agent>`: <error>`` | the Task Manager answered with a non-2xx, e.g. a payload over the size cap or a `create_time` outside its admission window; terminal for that task | read the reason; the page still advances |
 | ERROR | ``Failed to create task for agent `<agent>`: <error>`` | the Task Manager could not be reached; transient | check `wazuh-manager-modulesd`; the page is held, see the next row |
 | WARNING | `Task Manager was unreachable for at least one active response. Holding the cursor so this page is read again on the next cycle.` | hold, transport case | resolves on its own once the Task Manager answers |
