@@ -213,29 +213,41 @@ jobs:
 
       # ── Common steps ──────────────────────────────────────────────────────
 
-      - name: Generate SSL certificates
+      - name: Provision TLS certificates
         run: |
+          # The manager does not generate certificates (src/init/inst-functions.sh, CheckListenerCerts()):
+          # issue the indexer trust material and the HTTPS agent listener pair with the devcontainer copy
+          # of the installation assistant tool. The manager node's SAN carries DNS:wazuh-manager, which
+          # the integration tests assert on the listener certificate.
           sudo systemctl stop wazuh-manager 2>/dev/null || true
+          CERTS_YML="$RUNNER_TEMP/wazuh-certs.yml"
+          CERTS_OUT="$RUNNER_TEMP/wazuh-certificates"
+          cat > "$CERTS_YML" << 'EOF'
+          nodes:
+            indexer:
+              - name: wazuh-indexer
+                ip: 127.0.0.1
+            manager:
+              - name: wazuh-manager
+                ip: 127.0.0.1
+                dns:
+                  - wazuh-manager
+                  - localhost
+            dashboard:
+              - name: wazuh-dashboard
+                ip: 127.0.0.1
+          EOF
+          bash src/engine/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c "$CERTS_YML" -o "$CERTS_OUT"
           sudo mkdir -p "$INSTALLATION_DIR/etc/certs"
-          sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
-            -keyout "$INSTALLATION_DIR/etc/certs/root-ca.pem" \
-            -out "$INSTALLATION_DIR/etc/certs/root-ca.pem" \
-            -days 1 -subj "/CN=test" 2>/dev/null
-          sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
-            -keyout "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem" \
-            -out "$INSTALLATION_DIR/etc/certs/indexer-connector.pem" \
-            -days 1 -subj "/CN=test" 2>/dev/null
           # Reproduce the deployment ownership model so startup exercises the privilege-dropped read
           # (issue #38276): the indexer material is root:wazuh-manager 0640 and only group-readable,
           # so a regression that leaves it root:root would make the dropped service fail to start.
-          sudo chown root:wazuh-manager \
-            "$INSTALLATION_DIR/etc/certs/root-ca.pem" \
-            "$INSTALLATION_DIR/etc/certs/indexer-connector.pem" \
-            "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
-          sudo chmod 640 \
-            "$INSTALLATION_DIR/etc/certs/root-ca.pem" \
-            "$INSTALLATION_DIR/etc/certs/indexer-connector.pem" \
-            "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
+          # The listener pair is opened by remoted after dropping privileges, hence wazuh-manager-owned.
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/root-ca.pem" "$INSTALLATION_DIR/etc/certs/root-ca.pem"
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-indexer.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector.pem"
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-indexer-key.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
+          sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$INSTALLATION_DIR/etc/certs/remoted.pem"
+          sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$INSTALLATION_DIR/etc/certs/remoted-key.pem"
           sudo chown root:wazuh-manager "$INSTALLATION_DIR/etc/certs"
           sudo chmod 1770 "$INSTALLATION_DIR/etc/certs"
 
