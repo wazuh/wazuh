@@ -13,7 +13,9 @@
 #define _REMOTED_HTTP_SERVER_INTERFACE_HPP
 
 #include "inFlightBudget.hpp"
+#include "tlsCertificateStatus.hpp"
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -286,6 +288,10 @@ namespace remoted::http
         std::size_t maxInFlightBytes {256U * 1024U * 1024U};
         /// Max simultaneous TCP connections (bounds the read-phase peak: maxParallelConnections * maxBodySize).
         std::size_t maxParallelConnections {512};
+        /// How often the served certificate is re-evaluated (expiry, and whether caCertificatePath
+        /// signs it) after the start-time evaluation -- see IHttpServer::certificateStatus(). Not a
+        /// configuration option: buildHttpServerConfig() leaves the default, tests inject a short one.
+        std::chrono::seconds certificateStatusInterval {std::chrono::hours {24}};
     };
 
     /**
@@ -378,6 +384,22 @@ namespace remoted::http
          * Dump-cadence only -- implementations may take a lock.
          */
         virtual TransportDiagnostics diagnostics() const
+        {
+            return {};
+        }
+
+        /**
+         * @brief Latest evaluation of the served TLS certificate: days to expiry and whether
+         *        HttpServerConfig::caCertificatePath signs it (the CA `GET /cacerts` hands out).
+         *
+         * Evaluated once before the listener starts accepting and again every
+         * HttpServerConfig::certificateStatusInterval; the facade publishes it as the
+         * `remoted.server.tls.*` pulls and `/cacerts` refuses (503) to serve a CA that reads
+         * `caMatchesLeaf == false`. Callable from any thread; a default-constructed snapshot
+         * (nothing known, 0 evaluations) before start() and on implementations that never
+         * evaluate, like the test fakes.
+         */
+        virtual TlsCertificateSnapshot certificateStatus() const
         {
             return {};
         }
