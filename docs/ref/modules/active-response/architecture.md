@@ -258,10 +258,41 @@ All lines are in `logs/cluster.log`, tagged `[Active Response]`. Every path that
 says so at `WARNING` or above; `wazuh_clusterd.debug=2` adds the query, the page size, each `mget`,
 each task and each hold.
 
+Each cycle ends with one `INFO` summary. A healthy cycle is one sentence:
+
+```
+Created 3 task(s) for 2 of 2 active response(s) read.
+```
+
+A cycle that held or lost something says so, and only then:
+
+```
+Created 1 task(s) for 1 of 5 active response(s) read. Held: 1. Discarded: event_not_visible_expired=1, invalid_schema=1, unusable_shape=1.
+```
+
+Every response read has exactly one outcome, so `read = dispatched + held + Σ discarded` on every
+page. `dispatched` counts responses for which at least one task was created (a `location: all`
+response is one response, however many tasks it made); `held` counts responses the page was held
+for; the discard reasons are:
+
+| Reason | The response was | Reported by |
+|---|---|---|
+| `invalid_schema` | rejected by `AR_SCHEMA` | the `Discarding active response document … Reason:` WARNING |
+| `unusable_event_reference` | carrying an `event` reference the schema would reject; only reachable when validation is off | the `carries no usable event reference` WARNING |
+| `event_not_visible_expired` | waiting for an event that never became visible within the grace window | the `not found after <grace>s` WARNING |
+| `unparseable_timestamp` | missing its `@timestamp`, or carrying one that is not ISO 8601 | the `missing @timestamp` WARNING or the `Failed to parse @timestamp` ERROR |
+| `unusable_shape` | raising while its payload or targets were resolved | the `unusable shape` WARNING |
+| `zero_targets` | resolving to no agent at all (`location: all` on an empty fleet, or while the agent list could not be read) | the `targets no agent` WARNING |
+| `task_manager_refused` | refused by the Task Manager for every one of its targets | the `Task Manager refused` ERROR, one per task |
+
+A response refused for some targets and created for others counts as dispatched; the refused tasks
+are in their own ERROR lines. A response with no task created because the Task Manager could not be
+reached counts as held, together with the not-visible-yet case.
+
 | Level | Message | Meaning | What to do |
 |---|---|---|---|
 | INFO | `Starting` / `Finished in N.NNNs.` | one polling cycle | nothing |
-| INFO | `Created N task(s) from M active response(s).` | tasks created this cycle, out of the responses that reached dispatch | nothing; an `M` smaller than the page means documents were discarded above it, each with its own WARNING |
+| INFO | `Created T task(s) for D of R active response(s) read.` (`Held: H.`, `Discarded: reason=n, ….` only when non-zero) | the cycle summary described above | nothing when it is one sentence; otherwise the WARNING or ERROR for each discard is above it |
 | WARNING | ``Discarding active response document `<id>` (`<index>`). Reason: <schema error>`` | the document fails `AR_SCHEMA`; terminal | fix the channel, or the client that wrote the document; the document itself is skipped |
 | WARNING | ``Active response `<id>` carries no usable event reference. Discarding it.`` | `event.index` or `event.doc_id` missing, empty or not a string; terminal | same |
 | WARNING | ``Expected event `<doc_id>` (`<index>`) not found after <grace>s. Discarding active response `<id>`.`` | the referenced event never became visible; terminal | check that the monitored index still holds the event; a wrong `event.index` lands here once the response is older than the grace window |
@@ -269,6 +300,7 @@ each task and each hold.
 | WARNING | `AR document <id> missing @timestamp, skipping` | no `@timestamp`; terminal | the document was not written by the notification channel |
 | ERROR | `Failed to parse @timestamp '<value>' from AR <id>: <error>` | `@timestamp` is not ISO 8601; terminal | same |
 | WARNING | ``Discarding active response document `<id>`: unusable shape (<Type>: <detail>).`` | the document raised while its payload or its targets were resolved, e.g. a referenced event whose `wazuh` is not an object; terminal | look at the document `event.index` and `event.doc_id` point to; the response itself passed the schema |
+| WARNING | ``Active response `<id>` targets no agent. Discarding it.`` | `location: all` resolved to an empty agent list; terminal | register agents, or check `wazuh-manager-db` if `Error fetching agents` precedes it |
 | ERROR | ``Task Manager refused the task for agent `<agent>`: <error>`` | the Task Manager answered with a non-2xx, e.g. a payload over the size cap or a `create_time` outside its admission window; terminal for that task | read the reason; the page still advances |
 | ERROR | ``Failed to create task for agent `<agent>`: <error>`` | the Task Manager could not be reached; transient | check `wazuh-manager-modulesd`; the page is held, see the next row |
 | WARNING | `Task Manager was unreachable for at least one active response. Holding the cursor so this page is read again on the next cycle.` | hold, transport case | resolves on its own once the Task Manager answers |
