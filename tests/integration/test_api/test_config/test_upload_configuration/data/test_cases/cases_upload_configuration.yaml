@@ -9,6 +9,14 @@
             <port>1514</port>
           </legacy>
         </remote>
+        <cluster>
+          <key>0123456789abcdef0123456789abcdef</key>
+        </cluster>
+        <indexer>
+          <hosts>
+            <host>https://127.0.0.1:9200</host>
+          </hosts>
+        </indexer>
       </wazuh_config>
     expected_code: 200
 
@@ -32,4 +40,4 @@
           </legacy>
         </remote>
       </wazuh_config>
-    expected_code: 200
+    expected_code: 400

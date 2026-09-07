@@ -232,10 +232,11 @@ TEST(Xml, CsvAndRepeatedElementsBecomeArrays)
     const auto logging = json(csv.sectionJson("logging"));
     ASSERT_EQ(logging["log_format"].Size(), 2u);
     EXPECT_STREQ(logging["log_format"][1].GetString(), "json");
-    const auto repeated = parseOk("<wazuh_config><logging><log_format>plain</log_format>"
-                                  "<log_format>json</log_format></logging>"
-                                  "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>"
-                                  "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer></wazuh_config>");
+    const auto repeated =
+        parseOk("<wazuh_config><logging><log_format>plain</log_format>"
+                "<log_format>json</log_format></logging>"
+                "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>"
+                "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer></wazuh_config>");
     EXPECT_EQ(json(repeated.sectionJson("logging"))["log_format"].Size(), 2u);
     const auto wrapper = parseOk("<wazuh_config><indexer><hosts><host>https://a:9200</host>"
                                  "<host>https://b:9200</host></hosts></indexer>"
@@ -330,34 +331,34 @@ TEST(Semantics, CertificateWithoutKeyAndPortCollisionsAndDotSegments)
 {
     const char* indexer = "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>";
     EXPECT_EQ(parseKo(std::string("<wazuh_config><remote><https><certificate>a.pem</certificate><key></key></https>"
-                                  "</remote><cluster><key>0123456789abcdef0123456789abcdef</key></cluster>")
-                      + indexer + "</wazuh_config>")
+                                  "</remote><cluster><key>0123456789abcdef0123456789abcdef</key></cluster>") +
+                      indexer + "</wazuh_config>")
                   .pointer,
               "/remote/https/key");
     EXPECT_EQ(parseKo(std::string("<wazuh_config><remote><legacy><port>1515</port></legacy></remote>"
                                   "<auth><port>1515</port></auth>"
-                                  "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>")
-                      + indexer + "</wazuh_config>")
+                                  "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>") +
+                      indexer + "</wazuh_config>")
                   .pointer,
               "/auth/port");
     EXPECT_EQ(parseKo(std::string("<wazuh_config><cluster><key>0123456789abcdef0123456789abcdef</key>"
-                                  "<port>1517</port></cluster>")
-                      + indexer + "</wazuh_config>")
+                                  "<port>1517</port></cluster>") +
+                      indexer + "</wazuh_config>")
                   .pointer,
               "/cluster/port")
         << "collides with remote.https.port default";
     EXPECT_EQ(parseKo(std::string("<wazuh_config><remote><https><global_prefix>/a/../b/</global_prefix></https>"
-                                  "</remote><cluster><key>0123456789abcdef0123456789abcdef</key></cluster>")
-                      + indexer + "</wazuh_config>")
+                                  "</remote><cluster><key>0123456789abcdef0123456789abcdef</key></cluster>") +
+                      indexer + "</wazuh_config>")
                   .pointer,
               "/remote/https/global_prefix");
     // a disabled listener does not reserve its port
     parseOk(std::string("<wazuh_config><remote><legacy><enabled>no</enabled><port>1515</port></legacy></remote>"
-                        "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>")
-            + indexer + "</wazuh_config>");
+                        "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>") +
+            indexer + "</wazuh_config>");
     parseOk(std::string("<wazuh_config><auth><disabled>yes</disabled><port>1517</port></auth>"
-                        "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>")
-            + indexer + "</wazuh_config>");
+                        "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>") +
+            indexer + "</wazuh_config>");
 }
 
 TEST(Semantics, CheckFilesResolvesRelativeToHome)

@@ -67,6 +67,8 @@ static void test_w_mconf_load_and_section_from_xml_file(void **state) {
      * care (start-up path) -- w_mconf_validate() is the one that checks them. */
     if (write_conf("<wazuh_config>\n"
                    "  <global><agents_disconnection_time>10m</agents_disconnection_time></global>\n"
+                   "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
+                   "  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
                    "</wazuh_config>\n") != 0) {
         fail();
     }
@@ -101,6 +103,8 @@ static void test_w_mconf_validate_checks_files(void **state) {
      * accepts it, the -t validation does not. */
     if (write_conf("<wazuh_config>\n"
                    "  <global><agents_disconnection_time>10m</agents_disconnection_time></global>\n"
+                   "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
+                   "  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
                    "</wazuh_config>\n") != 0) {
         fail();
     }
@@ -120,6 +124,8 @@ static void test_w_mconf_validate_checks_files(void **state) {
                    "    <ssl_manager_cert>test_mconf-config.conf</ssl_manager_cert>\n"
                    "    <ssl_manager_key>test_mconf-config.conf</ssl_manager_key>\n"
                    "  </auth>\n"
+                   "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
+                   "  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
                    "</wazuh_config>\n") != 0) {
         fail();
     }
@@ -154,7 +160,9 @@ static void test_w_mconf_hook_provider_loads_default_file_silently(void **state)
     fputs("<wazuh_config><cluster>\n"
           "  <key>0123456789abcdef0123456789abcdef</key>\n"
           "  <node_type>worker</node_type>\n"
-          "</cluster></wazuh_config>\n",
+          "</cluster>\n"
+          "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
+          "</wazuh_config>\n",
           fp);
     fclose(fp);
 
@@ -179,6 +187,8 @@ static void test_w_mconf_load_reloads_when_the_path_changes(void **state) {
 
     if (write_conf("<wazuh_config>\n"
                    "  <global><agents_disconnection_time>10m</agents_disconnection_time></global>\n"
+                   "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
+                   "  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
                    "</wazuh_config>\n") != 0) {
         fail();
     }
@@ -186,6 +196,8 @@ static void test_w_mconf_load_reloads_when_the_path_changes(void **state) {
     assert_non_null(fp);
     fputs("<wazuh_config>\n"
           "  <global><agents_disconnection_time>20m</agents_disconnection_time></global>\n"
+          "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
+          "  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
           "</wazuh_config>\n",
           fp);
     fclose(fp);

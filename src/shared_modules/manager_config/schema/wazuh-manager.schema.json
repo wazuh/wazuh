@@ -596,7 +596,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["key"],
-      "description": "Cluster identity and transport (wazuh-manager-clusterd; name/node_name/node_type also read by the C daemons and the engine).",
+      "description": "Cluster identity and transport (wazuh-manager-clusterd; name/node_name/node_type also read by the C daemons and the engine). Mandatory: every manager is a cluster node, and cluster.key has no usable default.",
       "properties": {
         "name": {
           "type": "string",
