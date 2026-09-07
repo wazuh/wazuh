@@ -375,6 +375,13 @@ void fim_container_baseline_log_debug(const char* message)
     }
 }
 
+void fim_container_baseline_log_warn(const char* message)
+{
+    if (message != NULL) {
+        mwarn("%s", message);
+    }
+}
+
 void fim_container_baseline_log_error(const char* message)
 {
     if (message != NULL) {
