@@ -154,6 +154,90 @@ Verify the server is running:
 sudo systemctl status wazuh-manager
 ```
 
+### Change the default API passwords
+
+The manager ships two Server API users. Both are linked to the `administrator` role and both are created with a password equal to the username the first time the API starts (`framework/wazuh/rbac/default/users.yaml`):
+
+| User        | Default password | Used by                                                      |
+| ----------- | ---------------- | ------------------------------------------------------------ |
+| `wazuh`     | `wazuh`          | Operators and automation calling the Server API              |
+| `wazuh-wui` | `wazuh-wui`      | The Wazuh dashboard, to reach the Server API on port 55000   |
+
+While a user keeps its shipped password, `wazuh-manager-apid` says so on every start:
+
+```
+WARNING: The 'wazuh' API user still has its default password. Anyone able to reach the API can use it.
+Change it with '/var/wazuh-manager/bin/rbac_control change-password'
+```
+
+Change both right after the first start. A password must be 12 to 64 characters long and contain at least one uppercase letter, one lowercase letter, one digit and one non-alphanumeric character; the API rejects anything else with error `5009` (length) or `5007` (character classes).
+
+Run the following on the **master node**: authentication is always resolved there, so that is the database the API reads. Every node keeps its own `api/configuration/security/rbac.db` and the cluster does not synchronize it, so a worker still holds the shipped defaults; they stay unused while it is a worker, but they become live the moment it is promoted to master. Repeat the change on any node that may take that role.
+
+```bash
+sudo /var/wazuh-manager/bin/rbac_control change-password
+```
+
+The tool prompts for a new password for each default user and applies them in one run. Press Enter to leave a user unchanged.
+
+```
+New password for 'wazuh' (skip):
+New password for 'wazuh-wui' (skip):
+	wazuh: UPDATED
+	wazuh-wui: UPDATED
+```
+
+For unattended installs the same command reads the passwords from a file, so they never reach the process list, and exits non-zero if any change was not applied:
+
+```bash
+# One user, password read from the first line of a file ('-' reads the standard input)
+sudo /var/wazuh-manager/bin/rbac_control change-password --user wazuh-wui --password-file /root/wui.pass
+
+# Both default users in a single execution
+echo '{"wazuh": "<NEW_WAZUH_PASSWORD>", "wazuh-wui": "<NEW_WAZUH_WUI_PASSWORD>"}' \
+    | sudo /var/wazuh-manager/bin/rbac_control change-password --passwords-file -
+```
+
+The same change can be made through the API, which is the option for automation. `wazuh` has ID `1` and `wazuh-wui` has ID `2` (`GET /security/users`). Change `wazuh-wui` first: changing a user's password invalidates every token that user holds, so once `wazuh`'s own password changes the token obtained below stops working.
+
+```bash
+TOKEN=$(curl -s -k -u wazuh:wazuh -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+    -d '{"password":"<NEW_WAZUH_WUI_PASSWORD>"}' "https://localhost:55000/security/users/2"
+curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+    -d '{"password":"<NEW_WAZUH_PASSWORD>"}' "https://localhost:55000/security/users/1"
+```
+
+No manager daemon needs a restart: the new password applies to the next authentication, and the tokens of the modified user are revoked at once (`Invalid token`). Tokens held by other users are unaffected. No other manager component uses these accounts, so nothing else on the manager has to be updated.
+
+**If you changed `wazuh-wui`, update the dashboard right away.** This step applies to that user only, on the host where the Wazuh dashboard runs — changing `wazuh` needs nothing here. The dashboard keeps its own copy of the `wazuh-wui` password and cannot reach the API until it matches: every page load fails with `3002 - Request failed with status code 401`. Each of those failures counts as a login attempt on the API, and after `max_login_attempts` (50) the API blocks the dashboard's IP for `block_time` (300 seconds) — the error then becomes `403` and stays that way until the block expires, even after the password is fixed. On a host installed from packages the copy is in `/etc/wazuh-dashboard/opensearch_dashboards.yml`, read once at startup:
+
+```yaml
+wazuh_core.hosts:
+  default:
+    url: https://<MANAGER_IP>
+    port: 55000
+    username: wazuh-wui
+    password: <NEW_WAZUH_WUI_PASSWORD>
+    run_as: true
+```
+
+```bash
+sudo systemctl restart wazuh-dashboard
+```
+
+In containers the manager side is the same command through the container runtime — `docker compose exec wazuh.manager /var/wazuh-manager/bin/rbac_control change-password`, or `kubectl exec -n wazuh wazuh-manager-master-0 -- …` — and the dashboard image takes the credential from its `API_USERNAME`/`API_PASSWORD` environment variables (in Kubernetes, the `wazuh-api-cred` Secret), so update those and recreate the dashboard container or roll out the deployment. The RBAC database persists in the manager's `api/configuration` volume.
+
+The installation assistant ships `wazuh-passwords-tool.sh`, which wraps the same API call for one user per run and needs every argument of its API mode:
+
+```bash
+bash wazuh-passwords-tool.sh -A -au <API_ADMIN_USER> -ap <API_ADMIN_PASSWORD> -u wazuh-wui -p <NEW_WAZUH_WUI_PASSWORD>
+```
+
+It is not a replacement for `rbac_control change-password`: run with `-A` alone it prints its usage and exits `1`, and it changes a single user per invocation. When the user given to `-u` is `wazuh-wui` **and** a Wazuh dashboard is installed on that same host, it also rewrites the dashboard file described above; in every other case that file is left untouched. The tool requires the package layout of a host installation, so it does not apply to the container paths.
+
+See [Default users](../modules/server-api/authentication.md#default-users) for the `allow_run_as` semantics, the endpoint rules that apply to these reserved users, and [what a password change does and does not do](../modules/server-api/authentication.md#what-a-password-change-does-and-does-not-do).
+
 ### Cluster configuration
 
 The Wazuh server cluster allows you to scale horizontally by distributing the load across multiple nodes. The cluster comes enabled by default with the following configuration in `/var/wazuh-manager/etc/wazuh-manager.conf`:
