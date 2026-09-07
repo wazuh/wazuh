@@ -23,7 +23,8 @@ extern "C" {
     }
 
     AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger,
-                                         uint64_t flush_batch_size, uint64_t flush_interval_ms)
+                                        uint64_t flush_batch_size, uint64_t flush_interval_ms,
+                                        uint64_t wal_autocheckpoint_pages)
     {
         try
         {
@@ -41,8 +42,11 @@ extern "C" {
                 flush_batch_size > 0 ? std::make_optional(static_cast<std::size_t>(flush_batch_size)) : std::nullopt;
             std::optional<std::chrono::milliseconds> flushIntervalOpt =
                 flush_interval_ms > 0 ? std::make_optional(std::chrono::milliseconds(flush_interval_ms)) : std::nullopt;
+            std::optional<int32_t> walAutocheckpointPagesOpt =
+                wal_autocheckpoint_pages > 0 ? std::make_optional(static_cast<int32_t>(wal_autocheckpoint_pages)) : std::nullopt;
 
-            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, std::move(dbPathOpt), std::move(logger_wrapper), flushBatchSizeOpt, flushIntervalOpt));
+            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, std::move(dbPathOpt), std::move(logger_wrapper), flushBatchSizeOpt, flushIntervalOpt,
+                                                                                           walAutocheckpointPagesOpt));
         }
         catch (const std::exception& ex)
         {

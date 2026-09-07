@@ -24,6 +24,7 @@
 #include <chrono>
 #include <memory>
 #include <atomic>
+#include <cstdint>
 
 /// @brief Implementation of IPersistentQueue with persistent storage backend.
 ///
@@ -42,11 +43,14 @@ class PersistentQueue : public IPersistentQueue
         ///                If null, a default PersistentQueueStorage is used.
         /// @param flushBatchSize Maximum buffered events before an immediate flush. If unset, DEFAULT_FLUSH_BATCH_SIZE is used.
         /// @param flushInterval Maximum time to wait before flushing a non-full buffer. If unset, DEFAULT_FLUSH_INTERVAL is used.
+        /// @param walAutocheckpointPages Optional override for the default storage backend's WAL auto-checkpoint
+        ///                               threshold, in pages. Ignored when an explicit @p storage is given.
         explicit PersistentQueue(const std::string& dbPath,
                                  LoggerFunc logger,
                                  std::shared_ptr<IPersistentQueueStorage> storage = nullptr,
                                  std::optional<std::size_t> flushBatchSize = std::nullopt,
-                                 std::optional<std::chrono::milliseconds> flushInterval = std::nullopt);
+                                 std::optional<std::chrono::milliseconds> flushInterval = std::nullopt,
+                                 std::optional<int32_t> walAutocheckpointPages = std::nullopt);
 
         /// @brief Destructor.
         ~PersistentQueue() override;
@@ -103,8 +107,9 @@ class PersistentQueue : public IPersistentQueue
         ///        syscheck.sync_flush_interval_ms). Callers other than FIM always get this default.
         static constexpr std::chrono::milliseconds DEFAULT_FLUSH_INTERVAL{500};
 
-        /// @brief Cap on upfront buffer reservation, independent of FLUSH_BATCH_SIZE.
-        static constexpr std::size_t MAX_RESERVE_HINT = 1000;
+        /// @brief Cap on upfront buffer reservation, independent of FLUSH_BATCH_SIZE -- bounds worst-case eager
+        ///        allocation for configs up to 100000 while avoiding hot-path reallocation for real workloads (up to 500).
+        static constexpr std::size_t MAX_RESERVE_HINT = 10000;
 
         /// @brief Maximum number of buffered events before triggering an immediate flush.
         const std::size_t FLUSH_BATCH_SIZE;

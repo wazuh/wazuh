@@ -219,7 +219,10 @@ Processes a response from the manager. Accepts either a FlatBuffer-encoded `Mess
 ```c
 AgentSyncProtocolHandle* asp_create(const char* module,
                                    const char* db_path,
-                                   asp_logger_t logger)
+                                   asp_logger_t logger,
+                                   uint64_t flush_batch_size,
+                                   uint64_t flush_interval_ms,
+                                   uint64_t wal_autocheckpoint_pages)
 ```
 
 Creates a new Agent Sync Protocol instance.
@@ -228,6 +231,9 @@ Creates a new Agent Sync Protocol instance.
 - `module`: Module name string (e.g. `"fim"`, `"syscollector"`)
 - `db_path`: SQLite database file path for the persistent queue (`NULL` for in-memory only)
 - `logger`: Logging callback function
+- `flush_batch_size`: Persistent queue flush batch size override, or `0` to use the built-in default
+- `flush_interval_ms`: Persistent queue flush interval override in milliseconds, or `0` to use the built-in default
+- `wal_autocheckpoint_pages`: WAL auto-checkpoint threshold override, in pages, for this instance's own database connection, or `0` to keep SQLite's own default (1000 pages)
 
 **Returns:** Opaque handle to the protocol instance, or NULL on failure
 

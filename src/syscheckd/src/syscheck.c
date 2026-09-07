@@ -559,8 +559,10 @@ void fim_initialize() {
     notify_scan = syscheck.notify_first_scan;
 
     // Initialize sync handle early so it's available for document promotion
+    // fim_sync.db's WAL auto-checkpoint threshold is raised (tuned to FIM's 1000-files/100-EPS workload); other AgentSyncProtocol consumers keep SQLite's default.
     syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, loggingFunction,
-                                       (uint64_t)syscheck.sync_flush_batch_size, (uint64_t)syscheck.sync_flush_interval_ms);
+                                      (uint64_t)syscheck.sync_flush_batch_size, (uint64_t)syscheck.sync_flush_interval_ms,
+                                      (uint64_t)8000);
     if (!syscheck.sync_handle) {
         merror_exit("Failed to initialize AgentSyncProtocol");
     }

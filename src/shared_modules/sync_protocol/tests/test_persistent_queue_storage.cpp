@@ -312,9 +312,15 @@ class PersistentQueueStorageTest : public ::testing::Test
         }
 };
 
-TEST_F(PersistentQueueStorageTest, ConstructorConfiguresWalAutocheckpointThreshold)
+TEST_F(PersistentQueueStorageTest, ConstructorKeepsSqliteDefaultWalAutocheckpointThresholdWithoutOverride)
 {
-    EXPECT_EQ(storage->getWalAutocheckpoint(), 8000);
+    EXPECT_EQ(storage->getWalAutocheckpoint(), 1000);
+}
+
+TEST_F(PersistentQueueStorageTest, ConstructorHonorsWalAutocheckpointOverride)
+{
+    auto overriddenStorage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger, nullptr, 8000);
+    EXPECT_EQ(overriddenStorage->getWalAutocheckpoint(), 8000);
 }
 
 TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesOnlySpecifiedIndex)

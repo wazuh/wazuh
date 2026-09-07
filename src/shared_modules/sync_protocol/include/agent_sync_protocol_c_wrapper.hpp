@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cstdint>
 #include <optional>
 #include <string>
 
@@ -19,9 +20,13 @@ struct AgentSyncProtocolWrapper
     /// @param logger Logger function
     /// @param flush_batch_size Optional override for the persistent queue's flush batch size.
     /// @param flush_interval Optional override for the persistent queue's flush interval.
+    /// @param wal_autocheckpoint_pages Optional override for the persistent queue's default storage backend's
+    ///                                 WAL auto-checkpoint threshold, in pages.
     AgentSyncProtocolWrapper(const std::string& module, std::optional<std::string> db_path, LoggerFunc logger,
                              std::optional<std::size_t> flush_batch_size = std::nullopt,
-                             std::optional<std::chrono::milliseconds> flush_interval = std::nullopt)
-        : impl(std::make_unique<AgentSyncProtocol>(module, db_path, std::move(logger), nullptr, nullptr, flush_batch_size, flush_interval)) {}
+                             std::optional<std::chrono::milliseconds> flush_interval = std::nullopt,
+                             std::optional<int32_t> wal_autocheckpoint_pages = std::nullopt)
+        : impl(std::make_unique<AgentSyncProtocol>(module, db_path, std::move(logger), nullptr, nullptr, flush_batch_size, flush_interval,
+                                                   wal_autocheckpoint_pages)) {}
 };
 

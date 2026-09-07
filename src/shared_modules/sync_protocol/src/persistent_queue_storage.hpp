@@ -14,6 +14,9 @@
 #include "agent_sync_protocol_types.hpp"
 #include "ifilesystem_wrapper.hpp"
 
+#include <cstdint>
+#include <optional>
+
 /// @brief Defines the synchronization status of a persisted message.
 enum class SyncStatus : int
 {
@@ -42,7 +45,10 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @param dbPath Path to the SQLite database file. If empty, DEFAULT_DB_PATH is used.
         /// @param logger Logger function
         /// @param fileSystemWrapper Filesystem wrapper for operations (for testing). If nullptr, uses default implementation.
-        explicit PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr);
+        /// @param walAutocheckpointPages Optional override for the WAL auto-checkpoint threshold, in pages.
+        ///                               If unset, SQLite's own default (1000 pages) is used.
+        explicit PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr,
+                                        std::optional<int32_t> walAutocheckpointPages = std::nullopt);
 
         /// @brief Default destructor.
         ~PersistentQueueStorage() override = default;

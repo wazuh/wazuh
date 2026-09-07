@@ -17,6 +17,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -37,11 +38,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param syncTransport Optional carrier for whole sessions; defaults to the queue-sync socket.
         /// @param flushBatchSize Optional override for the persistent queue's flush batch size (see PersistentQueue).
         /// @param flushInterval Optional override for the persistent queue's flush interval (see PersistentQueue).
+        /// @param walAutocheckpointPages Optional override for the persistent queue's default storage backend's
+        ///                               WAL auto-checkpoint threshold, in pages (see PersistentQueue).
         explicit AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
                                    std::shared_ptr<IPersistentQueue> queue = nullptr,
                                    std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr,
                                    std::optional<std::size_t> flushBatchSize = std::nullopt,
-                                   std::optional<std::chrono::milliseconds> flushInterval = std::nullopt);
+                                   std::optional<std::chrono::milliseconds> flushInterval = std::nullopt,
+                                   std::optional<int32_t> walAutocheckpointPages = std::nullopt);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         void persistDifference(const std::string& id,

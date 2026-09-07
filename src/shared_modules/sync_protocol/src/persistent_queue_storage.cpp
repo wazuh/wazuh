@@ -11,6 +11,7 @@
 #include "filesystem_wrapper.hpp"
 #include "logging_helper.hpp"
 #include <filesystem>
+#include <string>
 
 namespace
 {
@@ -29,7 +30,8 @@ namespace
     }
 } // namespace
 
-PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
+PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper,
+                                               std::optional<int32_t> walAutocheckpointPages)
     : m_connection(createOrOpenDatabase(dbPath)),
       m_dbPath(dbPath),
       m_logger(std::move(logger)),
@@ -46,11 +48,12 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, Logger
         m_connection.execute("PRAGMA synchronous = OFF;");
         m_connection.execute("PRAGMA journal_mode = WAL;");
 
-        // Raise the WAL auto-checkpoint threshold from SQLite's default (1000 pages) to
-        // reduce how often the WAL flushes back into fim_sync.db; durability is unaffected.
-        // Hardcoded for now, tuned to this feature's 1000-files/100-EPS workload — thread it
-        // through like sync_flush_batch_size/sync_flush_interval_ms if other workloads need it.
-        m_connection.execute("PRAGMA wal_autocheckpoint = 8000;");
+        if (walAutocheckpointPages.has_value())
+        {
+            // Opt-in only: raises this connection's WAL auto-checkpoint above SQLite's 1000-page default (durability
+            // is unaffected, only checkpoint frequency); other PersistentQueueStorage consumers keep the native default.
+            m_connection.execute("PRAGMA wal_autocheckpoint = " + std::to_string(walAutocheckpointPages.value()) + ";");
+        }
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)

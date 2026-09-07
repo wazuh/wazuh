@@ -117,6 +117,7 @@ TEST(PersistentQueueTest, ConstructorHonorsCustomFlushBatchSizeOverride)
 
     // Poll instead of a fixed sleep so this doesn't flake on a slow CI runner.
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+
     while (!flushed.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < deadline)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));

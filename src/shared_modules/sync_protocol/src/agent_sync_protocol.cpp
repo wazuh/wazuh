@@ -112,7 +112,8 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optiona
                                      std::shared_ptr<IPersistentQueue> queue,
                                      std::shared_ptr<ISyncSessionTransport> syncTransport,
                                      std::optional<std::size_t> flushBatchSize,
-                                     std::optional<std::chrono::milliseconds> flushInterval)
+                                     std::optional<std::chrono::milliseconds> flushInterval,
+                                     std::optional<int32_t> walAutocheckpointPages)
     : m_moduleName(moduleName),
       m_persistentQueue(nullptr), // Ensure initialized to nullptr
       m_logger(std::move(logger)),
@@ -131,7 +132,7 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optiona
         }
         else if (dbPath.has_value())
         {
-            m_persistentQueue = std::make_shared<PersistentQueue>(dbPath.value(), m_logger, nullptr, flushBatchSize, flushInterval);
+            m_persistentQueue = std::make_shared<PersistentQueue>(dbPath.value(), m_logger, nullptr, flushBatchSize, flushInterval, walAutocheckpointPages);
         }
 
         // else: m_persistentQueue remains nullptr for in-memory-only operation
