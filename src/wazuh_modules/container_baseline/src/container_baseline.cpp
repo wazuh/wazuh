@@ -72,11 +72,22 @@ ContainerStatusSink MakeStatusSink(cb_container_status_sink_t sink, void* user_d
     if (sink == nullptr) return {};
 
     return [sink, user_data](const ContainerStatus& status) {
-        sink(status.container_id.c_str(),
-             status.partial ? 1 : 0,
-             status.netns_host_scoped ? 1 : 0,
-             status.netns_unreadable ? 1 : 0,
-             user_data);
+        cb_container_status_t out{};
+
+        out.container_id      = status.container_id.c_str();
+        out.partial           = status.partial ? 1 : 0;
+        out.row_cap_hit       = status.row_cap_hit ? 1 : 0;
+        out.rootfs_unreadable = status.rootfs_unreadable ? 1 : 0;
+        out.paths_rejected    = status.paths_rejected ? 1 : 0;
+        out.roots_missing     = status.roots_missing;
+        out.roots_scanned     = status.roots_scanned;
+        out.netns_host_scoped = status.netns_host_scoped ? 1 : 0;
+        out.netns_unreadable  = status.netns_unreadable ? 1 : 0;
+
+        /* `out` and the string it borrows both outlive the call: the sink
+         * contract is synchronous, and a consumer that keeps the pointer past
+         * it was already broken by container_id. */
+        sink(&out, user_data);
     };
 }
 
