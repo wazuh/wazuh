@@ -872,7 +872,12 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
         return;
     }
 
-    if (w_ref_parent_folder(wpk_file)) {
+    /* w_ref_parent_folder() alone only rejects ".." components: a value with a subdirectory
+     * separator (e.g. "sub/file.wpk") would pass it, reach the unlink() below, and only get caught
+     * afterwards by w_fopen_nofollow()'s internal w_is_bare_filename() check on the destination
+     * open -- by which point the unlink() has already run against that subdirectory path. Requiring
+     * a bare filename here closes that gap before the unlink(). */
+    if (!w_is_bare_filename(wpk_file)) {
         merror("https_client: remote_upgrade task %s: wpk_file '%s' is not a safe filename; aborting.",
                task_id, wpk_file);
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
@@ -886,9 +891,72 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
     snprintf(dest_path, sizeof(dest_path), "%s\\%s", INCOMING_DIR, wpk_file);
 #endif
 
-    if (w_copy_file(wpk_path, dest_path, 'b', NULL, 0) < 0) {
+    /* A prior legacy-path upgrade (delivered by wazuh-execd, running as root) can leave a
+     * same-named WPK behind in INCOMING_DIR, owned by root and not writable by the unprivileged
+     * user this process runs as. Unlinking first turns the write into a fresh file creation --
+     * which only needs write permission on the directory, not on whatever pre-existing file may
+     * already be sitting at this path -- instead of an open-for-write on a file this process may
+     * not own (#38833). */
+    if (unlink(dest_path) < 0 && errno != ENOENT) {
+        merror("https_client: remote_upgrade task %s: could not remove stale WPK at '%s': %s (%d); aborting.",
+               task_id, dest_path, strerror(errno), errno);
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        return;
+    }
+
+    FILE *fsrc = wfopen(wpk_path, "rb");
+    if (!fsrc) {
+        merror("https_client: remote_upgrade task %s: could not open downloaded WPK '%s'; aborting.",
+               task_id, wpk_path);
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        return;
+    }
+
+    /* Not w_copy_file()/fopen(dst, "wb"): a symlink left under INCOMING_DIR would be followed and
+     * its target overwritten with the WPK contents. Mirrors the hardening already applied to the
+     * legacy path's WCOM uncompress() (os_execd/src/wcom.c, #38200). */
+    FILE *fdst = w_fopen_nofollow(INCOMING_DIR, wpk_file, "wb");
+    if (!fdst) {
+        const int open_errno = errno;
+        fclose(fsrc);
+        if (open_errno == ELOOP) {
+            merror("https_client: remote_upgrade task %s: refused to stage the WPK at '%s': the path is a symbolic link; aborting.",
+                   task_id, dest_path);
+        } else {
+            merror("https_client: remote_upgrade task %s: could not stage the WPK at '%s'; aborting.",
+                   task_id, dest_path);
+        }
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        return;
+    }
+
+    char copy_buffer[4096];
+    size_t nread;
+    bool copy_ok = true;
+
+    while (nread = fread(copy_buffer, 1, sizeof(copy_buffer), fsrc), nread > 0) {
+        if (fwrite(copy_buffer, 1, nread, fdst) != nread) {
+            copy_ok = false;
+            break;
+        }
+    }
+
+    if (ferror(fsrc)) {
+        copy_ok = false;
+    }
+
+    fclose(fsrc);
+
+    /* A write failure that only surfaces at flush time (e.g. disk full right on close) must not
+     * be swallowed: fclose()'s return value is the only place that shows up. */
+    if (fclose(fdst) != 0) {
+        copy_ok = false;
+    }
+
+    if (!copy_ok) {
         merror("https_client: remote_upgrade task %s: could not stage the WPK at '%s'; aborting.",
                task_id, dest_path);
+        unlink(dest_path);
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
         return;
     }

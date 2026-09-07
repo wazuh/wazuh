@@ -127,7 +127,8 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
                                 -Wl,--wrap,w_agentd_state_update -Wl,--wrap,getDefine_Int \
                                 -Wl,--wrap,getDefine_Int_default \
                                 -Wl,--wrap,w_copy_file -Wl,--wrap,UnmergeFiles -Wl,--wrap,cldir_ex_ignore \
-                                -Wl,--wrap,wfopen \
+                                -Wl,--wrap,wfopen -Wl,--wrap,w_fopen_nofollow -Wl,--wrap,unlink \
+                                ${STDIO_OP_WRAPPERS} -Wl,--wrap,popen -Wl,--wrap,ferror \
                                 -Wl,--wrap,verifyRemoteConf -Wl,--wrap,reloadAgent \
                                 -Wl,--wrap,w_agentd_populate_metadata \
                                 -Wl,--wrap,startup_gate_release_from_https_apply \
@@ -139,6 +140,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
                                 -Wl,--wrap,vd_offset_client_clear_pending \
                                 -Wl,--wrap,restartAgent \
                                 -Wl,--wrap,OS_SendUnix -Wl,--wrap,w_ref_parent_folder \
+                                -Wl,--wrap,w_is_bare_filename \
                                 -Wl,--wrap,OS_ConnectUnixDomain \
                                 -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP \
                                 ${DEBUG_OP_WRAPPERS}")
@@ -200,6 +202,11 @@ endforeach()
 if(TARGET test_https_client_bridge)
     # https_client.h (the module's C ABI) isn't on the global include path.
     target_include_directories(test_https_client_bridge PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
+    # ferror_wrapper.c is compiled only into this target (not globbed into libwazuh_test.a
+    # like unit_tests/wrappers/**/*.c) so that -Wl,--wrap,ferror -- and the __real_ferror
+    # it requires -- stays scoped to the one test binary that needs it, instead of touching
+    # every other unit test that links the shared wrapper library.
+    target_sources(test_https_client_bridge PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ferror_wrapper.c)
 endif()
 
 if(TARGET test_enrollment)

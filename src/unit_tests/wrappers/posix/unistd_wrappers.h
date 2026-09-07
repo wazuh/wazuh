@@ -18,6 +18,7 @@
 #define _unlink wrap__unlink
 
 int __wrap_unlink(const char *file);
+void expect_unlink_errno(int err);
 #ifdef WIN32
 int wrap__unlink(const char *file);
 #endif

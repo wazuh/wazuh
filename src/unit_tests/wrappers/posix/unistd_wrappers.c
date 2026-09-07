@@ -12,14 +12,33 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <cmocka.h>
 #include <string.h>
 #include <stdio.h>
 #include "../common.h"
 
+static int unlink_errno_after_call = 0;
+static bool unlink_should_set_errno = false;
+
 int __wrap_unlink(const char *file) {
     check_expected_ptr(file);
-    return mock();
+    int ret = mock();
+    if (unlink_should_set_errno) {
+        errno = unlink_errno_after_call;
+        unlink_should_set_errno = false;
+    }
+    return ret;
+}
+
+/* Sets errno right as __wrap_unlink returns, for tests whose assertions depend on a
+ * specific errno value after the call (e.g. distinguishing ENOENT from a real removal
+ * failure). Setting errno directly in the test body before the call isn't reliable:
+ * nothing guarantees it survives the cmocka bookkeeping in check_expected()/mock() that
+ * runs first. */
+void expect_unlink_errno(int err) {
+    unlink_errno_after_call = err;
+    unlink_should_set_errno = true;
 }
 
 #ifdef WIN32
