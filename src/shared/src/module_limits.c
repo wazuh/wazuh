@@ -37,6 +37,22 @@ void syscollector_limits_init(syscollector_limits_t *syscollector) {
     syscollector->browser_extensions = DEFAULT_SYSCOLLECTOR_BROWSER_EXTENSIONS_LIMIT;
 }
 
+void syscollector_containers_limits_init(syscollector_containers_limits_t *syscollector_containers) {
+    if (!syscollector_containers) {
+        return;
+    }
+    syscollector_containers->processes = DEFAULT_SYSCOLLECTOR_CONTAINERS_PROCESSES_LIMIT;
+    syscollector_containers->ports = DEFAULT_SYSCOLLECTOR_CONTAINERS_PORTS_LIMIT;
+    syscollector_containers->packages = DEFAULT_SYSCOLLECTOR_CONTAINERS_PACKAGES_LIMIT;
+    syscollector_containers->users = DEFAULT_SYSCOLLECTOR_CONTAINERS_USERS_LIMIT;
+    syscollector_containers->groups = DEFAULT_SYSCOLLECTOR_CONTAINERS_GROUPS_LIMIT;
+    syscollector_containers->os_info = DEFAULT_SYSCOLLECTOR_CONTAINERS_OS_INFO_LIMIT;
+    syscollector_containers->network_iface = DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_IFACE_LIMIT;
+    syscollector_containers->network_protocol = DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_PROTO_LIMIT;
+    syscollector_containers->network_address = DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_ADDR_LIMIT;
+    syscollector_containers->hardware = DEFAULT_SYSCOLLECTOR_CONTAINERS_HARDWARE_LIMIT;
+}
+
 void sca_limits_init(sca_limits_t *sca) {
     if (!sca) {
         return;
@@ -50,6 +66,7 @@ void module_limits_init(module_limits_t *limits) {
     }
     fim_limits_init(&limits->fim);
     syscollector_limits_init(&limits->syscollector);
+    syscollector_containers_limits_init(&limits->syscollector_containers);
     sca_limits_init(&limits->sca);
     limits->limits_received = false;
 }
@@ -84,6 +101,20 @@ bool module_limits_changed(const module_limits_t *limits1, const module_limits_t
         limits1->syscollector.groups != limits2->syscollector.groups ||
         limits1->syscollector.services != limits2->syscollector.services ||
         limits1->syscollector.browser_extensions != limits2->syscollector.browser_extensions) {
+        return true;
+    }
+
+    // Compare Syscollector container-inventory limits
+    if (limits1->syscollector_containers.processes != limits2->syscollector_containers.processes ||
+        limits1->syscollector_containers.ports != limits2->syscollector_containers.ports ||
+        limits1->syscollector_containers.packages != limits2->syscollector_containers.packages ||
+        limits1->syscollector_containers.users != limits2->syscollector_containers.users ||
+        limits1->syscollector_containers.groups != limits2->syscollector_containers.groups ||
+        limits1->syscollector_containers.os_info != limits2->syscollector_containers.os_info ||
+        limits1->syscollector_containers.network_iface != limits2->syscollector_containers.network_iface ||
+        limits1->syscollector_containers.network_protocol != limits2->syscollector_containers.network_protocol ||
+        limits1->syscollector_containers.network_address != limits2->syscollector_containers.network_address ||
+        limits1->syscollector_containers.hardware != limits2->syscollector_containers.hardware) {
         return true;
     }
 

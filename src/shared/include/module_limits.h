@@ -32,6 +32,27 @@
 #define DEFAULT_SYSCOLLECTOR_SERVICES_LIMIT             0
 #define DEFAULT_SYSCOLLECTOR_BROWSER_EXTENSIONS_LIMIT   0
 
+/* Syscollector container-inventory default values (#37532 / #37534).
+ *
+ * Separate from the host limits above, and that separation IS the point:
+ * container rows and host rows share a sync index, so with one budget a node
+ * running fifty containers can spend the whole host processes cap on container
+ * processes, and which rows survive is decided by scan order. One cap per
+ * dimension, shared across every container on the agent (not per container).
+ *
+ * Default 0 = unlimited, so an agent that never hears these behaves exactly as
+ * before — except that container rows no longer draw down the host's counters. */
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_PROCESSES_LIMIT       0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_PORTS_LIMIT           0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_PACKAGES_LIMIT        0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_USERS_LIMIT           0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_GROUPS_LIMIT          0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_OS_INFO_LIMIT         0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_IFACE_LIMIT   0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_PROTO_LIMIT   0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_ADDR_LIMIT    0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_HARDWARE_LIMIT        0
+
 /* SCA default values */
 #define DEFAULT_SCA_CHECKS_LIMIT                        0
 
@@ -64,6 +85,28 @@ typedef struct syscollector_limits_t {
 } syscollector_limits_t;
 
 /**
+ * @brief Syscollector container-inventory module limits structure
+ * (#37532 / #37534).
+ *
+ * Per-dimension row ceiling shared across every container on the agent; 0 means
+ * unlimited, the same convention as syscollector_limits_t. No `hotfixes`,
+ * `services` or `browser_extensions`: the container scanner does not collect
+ * those, so a cap for them would be a knob with nothing behind it.
+ */
+typedef struct syscollector_containers_limits_t {
+    int processes;
+    int ports;
+    int packages;
+    int users;
+    int groups;
+    int os_info;
+    int network_iface;
+    int network_protocol;
+    int network_address;
+    int hardware;
+} syscollector_containers_limits_t;
+
+/**
  * @brief SCA module limits structure
  */
 typedef struct sca_limits_t {
@@ -76,6 +119,7 @@ typedef struct sca_limits_t {
 typedef struct module_limits_t {
     fim_limits_t fim;
     syscollector_limits_t syscollector;
+    syscollector_containers_limits_t syscollector_containers;
     sca_limits_t sca;
     bool limits_received;
 } module_limits_t;
@@ -107,6 +151,12 @@ void syscollector_limits_init(syscollector_limits_t *syscollector);
 /**
  * @brief Initialize SCA limits with defaults
  * @param sca Pointer to SCA limits structure
+ */
+void syscollector_containers_limits_init(syscollector_containers_limits_t *syscollector_containers);
+
+/**
+ * @brief Initialize SCA limits structure with default values
+ * @param sca Pointer to structure to initialize
  */
 void sca_limits_init(sca_limits_t *sca);
 
