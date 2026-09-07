@@ -95,6 +95,10 @@ namespace
         return task;
     }
 
+    /// @brief What PRAGMA journal_size_limit is set to: SQLite's default automatic checkpoint
+    ///        threshold of 1000 pages, at this database's 4 KiB page size.
+    constexpr int WAL_SIZE_LIMIT_BYTES {1000 * 4096};
+
     int clampLimit(const int limit)
     {
         if (limit <= 0)
@@ -171,14 +175,33 @@ namespace task_manager::storage
 
     SQLite3Wrapper::Statement& SqliteTaskStore::Session::stmt(const Stmt id)
     {
-        auto& slot {statements.at(static_cast<std::size_t>(id))};
+        const auto index {static_cast<std::size_t>(id)};
+        auto& slot {statements.at(index)};
         if (!slot)
         {
-            slot =
-                std::make_unique<SQLite3Wrapper::Statement>(connection, STATEMENT_SQL.at(static_cast<std::size_t>(id)));
+            slot = std::make_unique<SQLite3Wrapper::Statement>(connection, STATEMENT_SQL.at(index));
         }
         slot->reset();
+        handedOut.at(index) = true;
         return *slot;
+    }
+
+    void SqliteTaskStore::Session::releaseStatements()
+    {
+        for (std::size_t i = 0; i < STATEMENT_COUNT; ++i)
+        {
+            if (handedOut.at(i))
+            {
+                handedOut.at(i) = false;
+                if (auto& slot {statements.at(i)}; slot)
+                {
+                    // sqlite3_reset() reports the last step's error and cannot fail on its own
+                    // account, and the wrapper drops the code -- so this is safe to call from a
+                    // destructor and from an exception path.
+                    slot->reset();
+                }
+            }
+        }
     }
 
     SqliteTaskStore::SqliteTaskStore(Options options)
@@ -227,6 +250,12 @@ namespace task_manager::storage
 
         connection.execute("PRAGMA foreign_keys=OFF;");
         connection.execute("PRAGMA temp_store=MEMORY;");
+
+        // Hand the WAL's space back to the filesystem after a checkpoint instead of leaving the
+        // file at its high-water mark and reusing it in place, which is what the -1 default means.
+        // Sized at the automatic checkpoint threshold, so the steady state is a file that
+        // checkpoints and truncates rather than one that only ever grows.
+        connection.execute("PRAGMA journal_size_limit=" + std::to_string(WAL_SIZE_LIMIT_BYTES) + ";");
     }
 
     void SqliteTaskStore::applySchema() const
@@ -319,9 +348,13 @@ namespace task_manager::storage
 
         try
         {
+            // Cursors are released BEFORE the commit, not by a scope guard after it. Both halves
+            // matter: an open cursor makes the automatic checkpoint that COMMIT triggers busy, and
+            // on older libsqlite3 it makes the COMMIT itself fail with SQLITE_BUSY.
             if constexpr (std::is_void_v<Result>)
             {
                 fn(*m_session);
+                m_session->releaseStatements();
                 if (shouldCommit())
                 {
                     commitLocked();
@@ -330,6 +363,7 @@ namespace task_manager::storage
             else
             {
                 auto result = fn(*m_session);
+                m_session->releaseStatements();
                 if (shouldCommit())
                 {
                     commitLocked();
@@ -343,6 +377,9 @@ namespace task_manager::storage
             // it are re-derivable from their rows' own state -- an unwritten outcome leaves the
             // row claimed for the sweep to reclaim -- which is the same property that makes group
             // commit safe in the first place.
+            //
+            // Cursors first here too: ROLLBACK with a statement still in progress fails.
+            m_session->releaseStatements();
             rollbackLocked();
             throw;
         }
@@ -352,6 +389,10 @@ namespace task_manager::storage
     auto SqliteTaskStore::inRead(Fn&& fn) -> decltype(fn(std::declval<Session&>()))
     {
         std::lock_guard lock {m_mutex};
+
+        // Ends this read's snapshot on the way out. Nothing to commit, so a scope guard is enough
+        // -- it runs after the returned value has been read out of the statement either way.
+        const ReleaseOnExit release {*m_session};
         return fn(*m_session);
     }
 
@@ -1020,7 +1061,35 @@ namespace task_manager::storage
     void SqliteTaskStore::flushWrites()
     {
         std::lock_guard lock {m_mutex};
+        m_session->releaseStatements();
         commitLocked();
+    }
+
+    CheckpointStats SqliteTaskStore::checkpointWal()
+    {
+        std::lock_guard lock {m_mutex};
+
+        // An open batch pins the frames it wrote, and an open cursor pins everything from its
+        // snapshot on. Both would come back as `busy`, so neither is left to chance.
+        m_session->releaseStatements();
+        commitLocked();
+
+        // TRUNCATE rather than PASSIVE: the file is meant to come back to zero, not to be reused in
+        // place at whatever size it reached.
+        const auto result {
+            sqlite3_wal_checkpoint_v2(m_session->handle.get(), nullptr, SQLITE_CHECKPOINT_TRUNCATE, nullptr, nullptr)};
+
+        // Both codes mean "a snapshot still needs these frames", and which one comes back says
+        // whose snapshot it is: SQLITE_BUSY for another connection's, SQLITE_LOCKED for this
+        // connection's own open transaction or cursor. On this database only the second is
+        // possible, and it is the condition this reports rather than an error to raise.
+        if (result != SQLITE_OK && result != SQLITE_BUSY && result != SQLITE_LOCKED)
+        {
+            throw std::runtime_error(std::string {"Failed to checkpoint the tasks database WAL: "} +
+                                     sqlite3_errmsg(m_session->handle.get()));
+        }
+
+        return CheckpointStats {result != SQLITE_OK};
     }
 
     void SqliteTaskStore::vacuum()
@@ -1030,6 +1099,7 @@ namespace task_manager::storage
         // VACUUM cannot run inside a transaction, and the retention pass that shares this tick
         // will have left one open. Committing first is what the retired wazuh-db `sql` passthrough
         // failed to do, leaving a timing-dependent failure that reproduced on some hosts only.
+        m_session->releaseStatements();
         commitLocked();
 
         // Finalize every prepared statement too: VACUUM rewrites the database file, and SQLite
