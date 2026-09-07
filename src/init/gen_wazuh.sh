@@ -54,7 +54,6 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
   SECURITY_CONFIGURATION_ASSESSMENT="yes"
   ACTIVERESPONSE="yes"
   AUTHD="yes"
-  SSL_CERT="yes"
 
   if [ -r "$NEWCONFIG" ]; then
       rm "$NEWCONFIG"

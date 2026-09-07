@@ -311,11 +311,6 @@ UseSecurityConfigurationAssessment()
     setToggleVar "SECURITY_CONFIGURATION_ASSESSMENT" "${USER_ENABLE_SCA}" "yes"
 }
 
-UseSSLCert()
-{
-    setToggleVar "SSL_CERT" "${USER_CREATE_SSL_CERT}" "yes"
-}
-
 ##########
 # EnableAuthd()
 ##########
@@ -523,8 +518,6 @@ ConfigureServer()
         fi
         done
     fi
-
-    UseSSLCert
 
     # Configure auth daemon, boot behavior, logs, and write config.
     if [ "X$INSTYPE" = "Xmanager" ]; then
@@ -747,7 +740,6 @@ setDefaultConfigByInstallType()
         setDefaultIfEmpty USER_ENABLE_ROOTCHECK "n"
         setDefaultIfEmpty USER_ENABLE_SYSCOLLECTOR "n"
         setDefaultIfEmpty USER_ENABLE_SCA "n"
-        setDefaultIfEmpty USER_CREATE_SSL_CERT "y"
         return 0;
     fi
 

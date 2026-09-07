@@ -73,9 +73,7 @@ echo 'USER_DELETE_DIR="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_GENERATE_AUTHD_CERT="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
-echo 'USER_CREATE_SSL_CERT="n"' >> ./etc/preloaded-vars.conf
 ./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
 # Create directories
@@ -349,26 +347,34 @@ if [[ -d /run/systemd/system ]]; then
   rm -f %{_initrddir}/wazuh-manager
 fi
 
-# Unified certificate directory: root-owned and sticky. The server daemons self-generate
-# their certificates here and read them after dropping privileges to wazuh-manager; the
-# sticky bit keeps them from replacing the root-owned indexer trust material in the dir.
+# Unified certificate directory: root-owned and sticky. The service daemons read their
+# certificates here after dropping privileges to wazuh-manager; the sticky bit keeps them
+# from replacing the root-owned indexer trust material in the dir.
 mkdir -p %{_localstatedir}/etc/certs
 
-# Generate auto-signed certificate for the HTTPS agent server (remoted_module) if not
-# exists. Skipped when the admin supplied their own certificate/key paths through the
-# WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation variables. This is
-# the manager's ONLY self-signed cert/key pair: authd no longer generates its own (its
-# <ssl_manager_cert>/<ssl_manager_key> point here too), so both listeners present the same
-# manager identity -- required now that /enroll's mTLS mode treats this certificate as the
-# enrollment credential.
-if [ -z "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] && [ -z "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
-  if [ ! -f "%{_localstatedir}/etc/certs/remoted-key.pem" ] && [ ! -f "%{_localstatedir}/etc/certs/remoted.pem" ]; then
-    %{_localstatedir}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/certs/remoted-key.pem -X %{_localstatedir}/etc/certs/remoted.pem 2>/dev/null
-  fi
+# The manager does not generate TLS certificates. The HTTPS agent listener's certificate and
+# key are provisioned externally (e.g. with the Wazuh installation assistant, wazuh-certs-tool)
+# like the indexer trust material; authd's <ssl_manager_cert>/<ssl_manager_key> point at the
+# same pair, so both listeners present one manager identity. Custom paths supplied through the
+# WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation variables are honoured.
+# wazuh-manager-control refuses to start until the pair exists, hence the NOTICE below.
+CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}"
+KEY="${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}"
+case "${CERT}" in /*) ;; *) CERT="%{_localstatedir}/${CERT}";; esac
+case "${KEY}" in /*) ;; *) KEY="%{_localstatedir}/${KEY}";; esac
+if [ ! -f "${CERT}" ] || [ ! -f "${KEY}" ]; then
+  echo "NOTICE: no TLS certificate for the HTTPS agent listener was found"
+  echo "        (${CERT}, ${KEY})."
+  echo "        wazuh-manager does not generate certificates. Provision root-ca.pem,"
+  echo "        remoted.pem and remoted-key.pem with the Wazuh installation assistant"
+  echo "        (wazuh-certs-tool) before starting the service; wazuh-manager-control"
+  echo "        refuses to start until they exist. See 'Deploy certificates' in the"
+  echo "        installation guide (docs/ref/getting-started/installation.md)."
 fi
 
-# The server certificates each daemon self-generates are owned by wazuh-manager (the daemon
-# must write them). Re-applied unconditionally so upgrades that left them root-owned get corrected.
+# The certificates the service daemons read after dropping privileges (the provisioned listener
+# pair and the API certificate apid issues for itself) are owned by wazuh-manager. Re-applied
+# unconditionally so upgrades that left them root-owned get corrected.
 for CERT_FILE in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
   if [ -f "%{_localstatedir}/etc/certs/${CERT_FILE}" ]; then
     chown wazuh-manager:wazuh-manager %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
@@ -456,15 +462,6 @@ if [ $1 = 0 ];then
   if [ -d %{_localstatedir}/etc/shared ]; then
     find %{_localstatedir}/etc/ -type f  -name "*save" ! -name "*rpmsave" -exec rm -f {} \;
     find %{_localstatedir}/etc/ -type f ! -name "*shared*" ! -name "*rpmsave" -exec mv {} {}.save \;
-  fi
-
-  # Backup HTTPS agent server certificates (remoted.pem, remoted-key.pem) -- also authd's manager
-  # identity now (see ssl_manager_cert/ssl_manager_key in auth.template)
-  if [ -f %{_localstatedir}/etc/certs/remoted.pem ]; then
-      mv %{_localstatedir}/etc/certs/remoted.pem %{_localstatedir}/etc/certs/remoted.pem.save
-  fi
-  if [ -f %{_localstatedir}/etc/certs/remoted-key.pem ]; then
-      mv %{_localstatedir}/etc/certs/remoted-key.pem %{_localstatedir}/etc/certs/remoted-key.pem.save
   fi
 
   # Remove lingering folders and files
@@ -585,8 +582,6 @@ rm -fr %{buildroot}
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc
 %attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.conf
 %dir %attr(1770, root, wazuh-manager) %{_localstatedir}/etc/certs
-%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/certs/remoted.pem
-%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/certs/remoted-key.pem
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager.schema.json
