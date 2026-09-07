@@ -12,6 +12,7 @@
 
 #include "container_baseline.h"
 
+#include <cJSON.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -71,6 +72,48 @@ void fim_persist_baseline_row(const char* id,
                               const char* index,
                               const char* json,
                               uint64_t version);
+
+/* Where a reconciled row came from, which is what the alert's "mode" field
+ * reports.
+ *
+ * Named as an intent rather than passed as a fim_event_mode value because the
+ * C++ driver cannot include syscheck-config.h (same reason as the logging
+ * shims), and hard-coding that enum's numeric values on this side of the
+ * boundary would rot silently if it ever gained a member. The bridge does the
+ * mapping. */
+typedef enum {
+    CB_FIM_ORIGIN_SCAN  = 0, /* whole-node or per-container walk -> "scheduled" */
+    CB_FIM_ORIGIN_EVENT = 1  /* driven by an eBPF file event     -> "whodata"   */
+} cb_fim_origin_t;
+
+/* Sends the FIM *stateless* alert (the thing an analyst sees) for one row the
+ * container reconcile changed. This is the half container FIM was missing:
+ * fim_persist_baseline_row() only ever built the stateful document, so a file
+ * changing inside a container updated wazuh-states-fim-files and raised no
+ * alert at all.
+ *
+ * @param row_data  the row as DBSync reported it: the whole result for an
+ *                  INSERT/DELETE, its "new" object for a MODIFY.
+ * @param old_data  DBSync's "old" object for a MODIFY (which carries exactly
+ *                  the changed columns, and is what "changed_fields" is derived
+ *                  from), NULL otherwise.
+ * @param operation Operation_t, as fim_persist_baseline_row() takes it.
+ * @param origin    cb_fim_origin_t.
+ *
+ * No-op while the first container baseline has not finished — see
+ * fim_container_baseline_first_scan_done(). */
+void fim_send_container_stateless_event(const cJSON* row_data,
+                                        const cJSON* old_data,
+                                        int operation,
+                                        int origin);
+
+/* Latches "the initial container baseline is done", after which reconciled rows
+ * produce alerts. Mirrors host FIM's notify_scan / <notify_first_scan>: the
+ * first walk of a node inserts every file it finds, and alerting on all of them
+ * is a startup flood, not information.
+ *
+ * Call it once, after the whole-node baseline returns. */
+void fim_container_baseline_first_scan_done(void);
 
 /* Compute SHA1 of row_json and store the 40-char hex + NUL into out_sha1[41].
  * Used by container_baseline_fim.cpp to stamp a stable checksum onto each

@@ -83,6 +83,8 @@ void LogError(const char* fmt, Args... args)
 
 struct ContainerTxnCtx {
     std::string container_id;
+    /// cb_fim_origin_t: what the stateless alert reports as its "mode".
+    int origin{CB_FIM_ORIGIN_SCAN};
 };
 
 // C-compatible txn callback — called by DBSync for INSERTED / MODIFIED / DELETED.
@@ -92,6 +94,7 @@ void container_txn_callback(ReturnTypeCallback result_type, const cJSON* result_
     auto* ctx = static_cast<ContainerTxnCtx*>(user_data);
 
     const cJSON* row_data = result_json;
+    const cJSON* old_data  = nullptr;
     Operation_t op;
 
     switch (result_type) {
@@ -101,6 +104,9 @@ void container_txn_callback(ReturnTypeCallback result_type, const cJSON* result_
         case MODIFIED:
             row_data = cJSON_GetObjectItem(result_json, "new");
             if (!row_data) return;
+            // DBSync's "old" object carries exactly the columns that changed,
+            // which is what the alert's changed_fields is derived from.
+            old_data = cJSON_GetObjectItem(result_json, "old");
             op = OPERATION_MODIFY;
             break;
         case DELETED:
@@ -124,6 +130,11 @@ void container_txn_callback(ReturnTypeCallback result_type, const cJSON* result_
 
     const std::string id = ctx->container_id + ":" + cJSON_GetStringValue(path_json);
 
+    // The alert first, then the stateful document — the same order file.c uses,
+    // so a consumer reading both sees the notification no later than the state
+    // it describes.
+    fim_send_container_stateless_event(row_data, old_data, static_cast<int>(op), ctx->origin);
+
     char* row_str = cJSON_PrintUnformatted(row_data);
     if (!row_str) return;
     fim_persist_baseline_row(id.c_str(), static_cast<int>(op), "wazuh-states-fim-files", row_str, version);
@@ -139,8 +150,8 @@ void container_txn_callback(ReturnTypeCallback result_type, const cJSON* result_
 /// escaped into syscheckd's main()).
 class ScopedContainerTxn {
     public:
-        explicit ScopedContainerTxn(const std::string& container_id)
-            : m_ctx{container_id}
+        ScopedContainerTxn(const std::string& container_id, int origin)
+            : m_ctx{container_id, origin}
         {
             nlohmann::json txn_json;
             txn_json["tables"] = nlohmann::json::array({"file_entry"});
@@ -215,8 +226,12 @@ class BaselineDriver {
         /// by accident — and delete detection over a subset deletes everything
         /// else the container owns. The whole-node and per-container walks pass
         /// true and stay gated on `partial` as before.
-        explicit BaselineDriver(bool may_detect_deletions = true)
+        ///
+        /// `origin` (cb_fim_origin_t) is what this run's alerts report as their
+        /// FIM "mode": a walk is a scan, a reconcile is whodata-driven.
+        explicit BaselineDriver(bool may_detect_deletions = true, int origin = CB_FIM_ORIGIN_SCAN)
             : m_may_delete(may_detect_deletions)
+            , m_origin(origin)
         {
         }
 
@@ -310,7 +325,7 @@ class BaselineDriver {
             for (const auto& id : stale) {
                 LogDebug("Container FIM baseline: container '%s' is gone; ageing out its FIM rows.",
                         id.c_str());
-                ScopedContainerTxn txn{id};
+                ScopedContainerTxn txn{id, m_origin};
                 txn.finish(true); // no rows synced -> every stored row becomes DELETED
             }
 
@@ -333,7 +348,7 @@ class BaselineDriver {
             finishCurrent(true);
 
             m_current = container_id;
-            m_txn     = std::make_unique<ScopedContainerTxn>(container_id);
+            m_txn     = std::make_unique<ScopedContainerTxn>(container_id, m_origin);
         }
 
         void finishCurrent(bool detect_deletions)
@@ -346,6 +361,7 @@ class BaselineDriver {
         }
 
         const bool                           m_may_delete{true};
+        const int                            m_origin{CB_FIM_ORIGIN_SCAN};
         std::unique_ptr<ScopedContainerTxn> m_txn;
         std::string                          m_current;
         std::set<std::string>                m_scanned;
@@ -469,7 +485,7 @@ void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
             // A walk sees whole directories, so it can tell a deleted file from
             // an unreadable one: delete detection is allowed, still gated on the
             // scan being reported complete.
-            BaselineDriver driver{/*may_detect_deletions=*/true};
+            BaselineDriver driver{/*may_detect_deletions=*/true, CB_FIM_ORIGIN_EVENT};
 
             const int outcome = cbaseline_run_fim_dbsync_container(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
                                                                     request.container_id.c_str(),
@@ -504,7 +520,7 @@ void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
                 // D15: NEVER delete from a path reconcile. Its rows are a subset
                 // of the container's files by design, and delete detection over a
                 // subset would delete everything not named in this batch.
-                BaselineDriver driver{/*may_detect_deletions=*/false};
+                BaselineDriver driver{/*may_detect_deletions=*/false, CB_FIM_ORIGIN_EVENT};
 
                 cbaseline_run_fim_dbsync_container(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
                                                    request.container_id.c_str(),
@@ -628,6 +644,18 @@ extern "C" void fim_container_events_start(void)
 
 extern "C" void fim_container_events_release(void)
 {
+    // This IS the first-scan boundary: main() calls it once the whole-node
+    // baseline has returned, and it is what lets the reconcile consumer touch
+    // file_entry at all. Everything reconciled from here on is a real change to
+    // a file that was already accounted for, so it alerts; the baseline's own
+    // rows — every file in every container — do not. Same rule host FIM applies
+    // through notify_scan / <notify_first_scan>.
+    //
+    // Before the delegation below, not after: release() returns early when the
+    // drain never started (no eBPF engine), and the boundary has still been
+    // crossed in that case.
+    fim_container_baseline_first_scan_done();
+
     fim_container_events::ContainerEventDrain::instance().release();
 }
 
