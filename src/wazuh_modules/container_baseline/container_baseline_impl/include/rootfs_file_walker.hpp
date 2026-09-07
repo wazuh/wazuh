@@ -41,7 +41,22 @@ struct WalkResult
 {
     std::vector<FileBaselineRow> rows;
     bool                         truncated{false};  ///< true if max_files was hit.
-    bool                         root_missing{false}; ///< true if internal_path doesn't exist in the container.
+
+    /// The root is genuinely NOT THERE: the lookup failed with ENOENT/ENOTDIR
+    /// and the container's rootfs is still addressable, so this is a fact about
+    /// the image rather than a failure to look. A consumer may treat rows under
+    /// such a root as gone (D17).
+    bool root_missing{false};
+
+    /// The root could not be EXAMINED — a permission failure, a broken symlink
+    /// chain, or the rootfs itself going away mid-walk. Nothing is known about
+    /// what is under it, so absence must never be read as removal.
+    ///
+    /// Split out from root_missing deliberately: /proc/<pid>/root/<path> returns
+    /// ENOENT once the pid exits, so lumping the two together turned "the
+    /// container went away" into "this directory is gone" — C15's mass false
+    /// delete, one root at a time.
+    bool root_unreadable{false};
 };
 
 /// @brief Recursively walk `internal_path` inside a container's rootfs, via the

@@ -66,6 +66,17 @@ enum class ReconcileMode
     /* A known, complete set of paths changed in a known container. Re-read
      * exactly those. */
     rereadPaths,
+
+    /* The kernel reported these paths UNLINKED in a known container. Delete
+     * exactly those rows.
+     *
+     * This is NOT the inference D15 forbids, and the distinction is the whole
+     * point: D15 refuses to read a FAILED READ as a removal, because a failed
+     * read has three causes and two of them are wrong. RT_EV_FILE_UNLINK is the
+     * kernel stating the removal, so there is nothing to infer. Discarding it
+     * and then re-deriving "deleted" from a read that finds nothing — which is
+     * what the spike branch did — is exactly backwards. */
+    deletePaths,
 };
 
 struct ReconcileRequest
@@ -75,7 +86,8 @@ struct ReconcileRequest
     /* Empty for rebaselineAll. */
     std::string container_id;
 
-    /* Only populated for rereadPaths. */
+    /* Populated for rereadPaths (paths to re-read) and for deletePaths (rows to
+     * remove). One list, because the mode already says which it is. */
     std::vector<std::string> paths;
 
     /* Whether this action may use delete detection AT ALL. False for every
@@ -88,7 +100,7 @@ struct ReconcileRequest
      * exact inference D15 forbids. */
     bool empty() const
     {
-        return mode == ReconcileMode::rereadPaths && paths.empty();
+        return (mode == ReconcileMode::rereadPaths || mode == ReconcileMode::deletePaths) && paths.empty();
     }
 };
 
@@ -107,10 +119,23 @@ inline ReconcileRequest PlanFor(const Batch& batch)
         return request;
     }
 
-    request.mode = ReconcileMode::rereadPaths;
     request.container_id = batch.container_id;
-    request.paths = batch.paths;
+
+    /* may_detect_deletions stays FALSE for both of these. It governs whether a
+     * walk may derive deletions from ABSENT rows, which neither of them does:
+     * a re-read never deletes, and an unlink deletes one named row because an
+     * event named it. */
     request.may_detect_deletions = false;
+
+    if (!batch.unlinked.empty())
+    {
+        request.mode = ReconcileMode::deletePaths;
+        request.paths = batch.unlinked;
+        return request;
+    }
+
+    request.mode = ReconcileMode::rereadPaths;
+    request.paths = batch.paths;
     return request;
 }
 

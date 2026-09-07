@@ -45,18 +45,53 @@ using DbsyncRowSink = std::function<void(const DbsyncRow&)>;
 ///
 /// This exists because "produced no row for X" and "X is gone" are different
 /// facts, and conflating them makes a baseline emit false deletions. A scan
-/// that was capped, whose configured path is absent from the image, or whose
-/// namespace could not be entered, has produced a SUBSET of the container's
-/// true state — so the consumer must upsert what it received without treating
-/// the remainder as deleted.
+/// that was capped, or whose namespace could not be entered, has produced a
+/// SUBSET of the container's true state — so the consumer must upsert what it
+/// received without treating the remainder as deleted.
+///
+/// D17 (12-blocking-decisions.md) is why the reasons are reported SEPARATELY
+/// rather than as one `partial` bit. `partial` used to collapse three
+/// different facts, and one of them — a configured root that is simply not in
+/// this image — is STATIC, so the bit never cleared and delete detection was
+/// suppressed for that container forever (C24). An absent root is now its own
+/// fact and is deliberately NOT part of `partial`: the walk did look, and
+/// there is nothing there.
 struct ContainerStatus
 {
     std::string container_id;
 
-    /// The scan is known to be incomplete: a row cap was hit, a configured
-    /// path was missing, or a namespace could not be read. Consumers MUST NOT
-    /// derive deletions from absent rows for this container.
+    /// The scan is known to be incomplete, so consumers MUST NOT derive
+    /// deletions from absent rows for this container. The union of
+    /// `row_cap_hit`, `rootfs_unreadable` and `paths_rejected` — every reason
+    /// that means "we did not manage to look", and none that means "we looked
+    /// and it is not there".
     bool partial{false};
+
+    /// A walk stopped at its max_files cap. The files it did not reach exist;
+    /// their rows are simply absent.
+    bool row_cap_hit{false};
+
+    /// A configured root could not be examined at all, or the container's
+    /// rootfs stopped being addressable partway through (typically the PID
+    /// exited). Nothing is known about what is under it.
+    bool rootfs_unreadable{false};
+
+    /// A supplied path failed validation and was dropped, so the row set is a
+    /// subset of what was asked for. Only reachable through the
+    /// single-container entry points, whose paths may come from kernel events
+    /// rather than from agent configuration.
+    bool paths_rejected{false};
+
+    /// How many configured roots are genuinely absent from this container's
+    /// image. NOT a reason to suppress delete detection — that is C24 — but
+    /// worth reporting: a configuration that names a directory no image has is
+    /// usually a mistake, and silence about it is how C24 went unnoticed.
+    int roots_missing{0};
+
+    /// How many configured roots were walked successfully. Together with
+    /// `roots_missing` this says what the delete detection that follows is
+    /// actually scoped to.
+    int roots_scanned{0};
 
     /// The container shares the host's network namespace, so no
     /// network-namespace-scoped rows (ports, interfaces, addresses, routes)

@@ -266,11 +266,15 @@ TEST(BaselineOrchestrator, FimRowsAreContiguousAndFollowedByThatContainersStatus
     }
 }
 
-TEST(BaselineOrchestrator, MissingMonitoredPathIsReportedAsAPartialScan)
+TEST(BaselineOrchestrator, MissingMonitoredPathIsReportedAsItsOwnFactNotAsIncompleteness)
 {
-    // root_missing was previously computed and discarded, so a configured path
-    // absent from the image looked identical to "this container has no files"
-    // and its stored rows were deleted.
+    // D17 / C24. An absent configured root used to set `partial`, which
+    // suppresses delete detection — and because the condition is STATIC (the
+    // directory is simply not in the image), the suppression never lifted and
+    // that container's deletions were never reported at all.
+    //
+    // The walk DID look, so this is a fact about the container, not a failure
+    // to observe it. It is counted and reported, and `partial` stays clear.
     Recorder rec;
     const auto discover = []() -> std::vector<ContainerIdentity>
     {
@@ -287,7 +291,41 @@ TEST(BaselineOrchestrator, MissingMonitoredPathIsReportedAsAPartialScan)
 
     const auto* status = rec.statusFor("c1");
     ASSERT_NE(status, nullptr);
-    EXPECT_TRUE(status->partial) << "an absent monitored path must not look like a complete empty scan";
+    EXPECT_EQ(status->roots_missing, 1) << "an absent monitored path must be reported as absent";
+    EXPECT_EQ(status->roots_scanned, 0);
+    EXPECT_FALSE(status->partial) << "and must not suppress delete detection for the whole container (C24)";
+    EXPECT_FALSE(status->rootfs_unreadable) << "the rootfs was addressable; only the root was not there";
+    EXPECT_FALSE(status->row_cap_hit);
+}
+
+TEST(BaselineOrchestrator, AnAbsentRootDoesNotStopOtherRootsFromBeingScanned)
+{
+    // The shape C24 actually costs: one bad entry in <directories> switched
+    // deletions off for every other entry too.
+    TempTree tree;
+    tree.writeFile("real.txt", "x");
+
+    Recorder rec;
+    const auto discover = []() -> std::vector<ContainerIdentity>
+    {
+        return {MakeIdentity("c1")};
+    };
+
+    const auto pids = PidIndex::FromMap({{"c1", {::getpid()}}});
+
+    RunFimDbsyncBaselineFrom(discover,
+                             pids,
+                             {PathFor("/definitely/not/a/real/path"), PathFor(tree.path())},
+                             rec.rowSink(),
+                             rec.statusSink());
+
+    EXPECT_FALSE(rec.rows.empty()) << "the root that does exist must still be walked";
+
+    const auto* status = rec.statusFor("c1");
+    ASSERT_NE(status, nullptr);
+    EXPECT_EQ(status->roots_missing, 1);
+    EXPECT_EQ(status->roots_scanned, 1);
+    EXPECT_FALSE(status->partial);
 }
 
 TEST(BaselineOrchestrator, TruncatedWalkIsReportedAsAPartialScan)

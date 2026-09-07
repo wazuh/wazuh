@@ -2341,15 +2341,23 @@ void Syscollector::scanContainerBaseline()
         }
     };
 
-    const auto statusSink = [](const char* containerId,
-                               int partial,
-                               int netnsHostScoped,
-                               int netnsUnreadable,
-                               void* userData)
+    const auto statusSink = [](const cb_container_status_t* status, void* userData)
     {
+        if (status == nullptr)
+        {
+            return;
+        }
+
         if (auto* a = static_cast<Accumulator*>(userData))
         {
-            a->onStatus(containerId, partial != 0, netnsHostScoped != 0, netnsUnreadable != 0);
+            // The individual reasons behind `partial` (row cap, unreadable
+            // rootfs, rejected path) are reported per D17 but not consumed
+            // here: the inventory accumulator's only decision is whether
+            // absence may be read as removal, which is exactly `partial`.
+            a->onStatus(status->container_id,
+                        status->partial != 0,
+                        status->netns_host_scoped != 0,
+                        status->netns_unreadable != 0);
         }
     };
 

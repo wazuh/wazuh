@@ -200,7 +200,7 @@ class ScopedContainerTxn {
 
         /// @param detect_deletions false for an incomplete scan: the rows this
         ///        transaction did NOT refresh are missing because the walk was
-        ///        capped or a path was absent, not because the files are gone.
+        ///        capped or a path was unreadable, not because the files are gone.
         void finish(bool detect_deletions)
         {
             if (!m_txn) return;
@@ -275,23 +275,49 @@ class BaselineDriver {
             ++m_rows;
         }
 
-        void onStatus(const char* container_id, bool partial)
+        void onStatus(const cb_container_status_t& status)
         {
-            if (!container_id) return;
+            if (!status.container_id) return;
 
-            const std::string id{container_id};
+            const std::string id{status.container_id};
             m_scanned.insert(id);
 
             // A complete scan that produced no rows still needs a transaction,
             // so previously-stored rows for this container age out as DELETED.
             beginContainer(id);
 
+            const bool partial = status.partial != 0;
+
             if (partial) {
+                // D17: each reason is named, because they are not equally
+                // actionable — a row cap clears itself next cycle, an
+                // unreadable rootfs is usually a PID that exited, and a
+                // rejected path means something handed us a path we would not
+                // walk.
                 LogDebug("Container FIM baseline: incomplete scan for container '%s' "
-                        "(row cap reached, path absent, or namespace unreadable); "
+                        "(row cap: %s, rootfs unreadable: %s, path rejected: %s); "
                         "skipping delete detection to avoid false FIM deletions.",
-                        container_id);
+                        status.container_id,
+                        status.row_cap_hit ? "yes" : "no",
+                        status.rootfs_unreadable ? "yes" : "no",
+                        status.paths_rejected ? "yes" : "no");
                 ++m_partial;
+            }
+
+            if (status.roots_missing > 0) {
+                // NOT a reason to suppress: the walk looked and the root is not
+                // in this image, which is a fact about the container. Treating
+                // it as incompleteness is C24 — the condition is static, so the
+                // suppression never lifted and that container's deletions were
+                // never reported at all. Still worth saying out loud, because a
+                // configured directory no image contains is usually a mistake.
+                LogDebug("Container FIM baseline: %d of %d configured director%s absent from container "
+                         "'%s' image; delete detection proceeds over the %d that resolved.",
+                         status.roots_missing,
+                         status.roots_missing + status.roots_scanned,
+                         (status.roots_missing + status.roots_scanned) == 1 ? "y is" : "ies are",
+                         status.container_id,
+                         status.roots_scanned);
             }
 
             finishCurrent(m_may_delete && !partial);
@@ -382,21 +408,14 @@ void dbsync_sink(const char* container_id, const char* /*table*/, const char* ro
     static_cast<BaselineDriver*>(user_data)->onRow(container_id, row_json);
 }
 
-void status_sink(const char* container_id,
-                 int         partial,
-                 int         netns_host_scoped,
-                 int         netns_unreadable,
-                 void*       user_data)
+void status_sink(const cb_container_status_t* status, void* user_data)
 {
-    if (!user_data) return;
+    if (!status || !user_data) return;
 
     // FIM baselines files only, so the netns flags carry no information here;
     // they are reported by the Syscollector consumer, which does collect
     // network-namespace-scoped rows.
-    (void)netns_host_scoped;
-    (void)netns_unreadable;
-
-    static_cast<BaselineDriver*>(user_data)->onStatus(container_id, partial != 0);
+    static_cast<BaselineDriver*>(user_data)->onStatus(*status);
 }
 
 void container_id_sink(const char* container_id, void* user_data)
@@ -463,6 +482,63 @@ std::vector<cb_monitored_path_t> SelectReconcilePaths(const std::vector<std::str
     return selected;
 }
 
+/// Removes the rows for paths the kernel reported unlinked (D17).
+///
+/// Deliberately NOT a scoped transaction with delete detection: that deletes
+/// every row the transaction did not refresh, and this batch names a handful of
+/// files. fim_db_container_get_path() reads each named row, reports it through
+/// the same container_txn_callback every other change goes through — so the
+/// stateless alert and the stateful DELETE document are built by one code path,
+/// with the row's real checksum and document version — and then removes it.
+///
+/// A path with no stored row produces nothing at all, which is the ordinary
+/// case: most files unlinked inside a container were never baselined.
+void DeleteUnlinkedPaths(const fim_container_events::ReconcileRequest& request,
+                          const cb_monitored_path_t*                    configured,
+                          size_t                                        configured_count)
+{
+    // The same prefix filter a re-read applies, and for the same reason (C22):
+    // an event can carry a HOST-form path for a file inside a container's
+    // snapshot directory. Deleting on one of those would remove a row for a
+    // file that is perfectly fine.
+    size_t deleted = 0;
+    size_t skipped = 0;
+
+    ContainerTxnCtx ctx{request.container_id, CB_FIM_ORIGIN_EVENT};
+
+    callback_context_t callback{};
+    callback.callback_txn = container_txn_callback;
+    callback.context      = &ctx;
+
+    for (const auto& path : request.paths) {
+        bool under_configured_root = false;
+
+        for (size_t i = 0; i < configured_count; ++i) {
+            if (PathIsUnder(path, configured[i].internal_path)) {
+                under_configured_root = true;
+                break;
+            }
+        }
+
+        if (!under_configured_root) {
+            ++skipped;
+            continue;
+        }
+
+        if (fim_db_container_get_path(path.c_str(),
+                                      request.container_id.c_str(),
+                                      callback,
+                                      /*to_delete=*/true) == FIMDB_OK) {
+            ++deleted;
+        }
+    }
+
+    LogDebug("Container FIM reconcile: %zu unlinked path(s) for container '%s' — %zu row(s) deleted, "
+             "%zu outside a configured directory, %zu not stored.",
+             request.paths.size(), request.container_id.c_str(), deleted, skipped,
+             request.paths.size() - deleted - skipped);
+}
+
 /// Acts on one batch from the eBPF drain. Runs on the consumer thread, so
 /// nothing here may throw out of it.
 void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
@@ -484,6 +560,12 @@ void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
 
     if (fim_collect_container_monitored_paths(&paths, &path_count) != 0) return;
     if (!paths || path_count == 0U) return;
+
+    if (request.mode == ReconcileMode::deletePaths) {
+        DeleteUnlinkedPaths(request, paths, path_count);
+        fim_free_container_monitored_paths(paths);
+        return;
+    }
 
     try {
         if (request.mode == ReconcileMode::rewalkContainer) {

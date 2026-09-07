@@ -40,6 +40,23 @@ void DB::removeFile(const std::string& path)
     FIMDB::instance().removeItem(deleteQuery.query());
 }
 
+void DB::removeFile(const std::string& path, const std::string& containerId)
+{
+    std::string encodedPath = path;
+    FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
+
+    auto deleteQuery
+    {
+        DeleteQuery::builder()
+            .table(FIMDB_FILE_TABLE_NAME)
+            .data({{"path", encodedPath}, {"container_id", containerId}})
+            .rowFilter("")
+            .build()
+    };
+
+    FIMDB::instance().removeItem(deleteQuery.query());
+}
+
 void DB::getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback)
 {
     std::string encodedPath = path;
@@ -89,6 +106,66 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
     else
     {
         throw no_entry_found {"No entry found for " + path};
+    }
+}
+
+void DB::getFile(const std::string& path,
+                 const std::string& containerId,
+                 std::function<void(const nlohmann::json&)> callback)
+{
+    std::string encodedPath = path;
+    FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
+
+    /* container_id and container_json are in the column list — unlike the
+     * path-only overload — because the caller builds a container-enriched FIM
+     * event out of this row, and the container blocks come from that blob. */
+    auto selectQuery {SelectQuery::builder()
+                      .table(FIMDB_FILE_TABLE_NAME)
+                      .columnList({"path",
+                                   "container_id",
+                                   "container_json",
+                                   "checksum",
+                                   "device",
+                                   "inode",
+                                   "size",
+                                   "permissions",
+                                   "attributes",
+                                   "uid",
+                                   "gid",
+                                   "owner",
+                                   "group_",
+                                   "hash_md5",
+                                   "hash_sha1",
+                                   "hash_sha256",
+                                   "mtime",
+                                   "version",
+                                   "sync"})
+                      .rowFilter("WHERE path=? AND container_id=?")
+                      .rowFilterBindText(encodedPath)
+                      .rowFilterBindText(containerId)
+                      .orderByOpt(FILE_PRIMARY_KEY)
+                      .distinctOpt(false)
+                      .countOpt(100)
+                      .build()};
+
+    std::vector<nlohmann::json> entryFromPath;
+    const auto internalCallback {[&entryFromPath](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (ReturnTypeCallback::SELECTED == type)
+        {
+            entryFromPath.push_back(jsonResult);
+        }
+    }};
+
+    FIMDB::instance().executeQuery(selectQuery.query(), internalCallback);
+
+    if (entryFromPath.size() == 1)
+    {
+        callback(entryFromPath.front());
+    }
+    else
+    {
+        throw no_entry_found {"No entry found for " + path + " in container " + containerId};
     }
 }
 
@@ -207,6 +284,68 @@ FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t callbac
 
         // LCOV_EXCL_STOP
     }
+
+    return retVal;
+}
+
+FIMDBErrorCode fim_db_container_get_path(const char* file_path,
+                                         const char* container_id,
+                                         callback_context_t callback,
+                                         bool to_delete)
+{
+    auto retVal {FIMDB_ERR};
+
+    if (!file_path || !container_id || !callback.callback_txn)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return retVal;
+    }
+
+    const std::string containerId {container_id};
+
+    try
+    {
+        DB::instance().getFile(
+            file_path,
+            containerId,
+            [callback, to_delete, &containerId](const nlohmann::json & resultJson)
+        {
+            if (to_delete)
+            {
+                DB::instance().removeFile(resultJson.at("path").get<std::string>(), containerId);
+            }
+
+            nlohmann::json patchedJson = resultJson;
+
+            /* inode is an integer column but a string in the event schema, the
+             * same patch fim_db_get_path() applies. */
+            if (patchedJson.contains("inode") && patchedJson["inode"].is_number())
+            {
+                patchedJson["inode"] = std::to_string(patchedJson["inode"].get<uint64_t>());
+            }
+
+            const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson
+            {
+                cJSON_Parse(patchedJson.dump().c_str())};
+            callback.callback_txn(ReturnTypeCallback::DELETED, spJson.get(), callback.context);
+        });
+        retVal = FIMDB_OK;
+    }
+    catch (const no_entry_found& err)
+    {
+        /* Nothing stored for that path in that container, so there is nothing
+         * to report and certainly nothing to delete. The ordinary case for an
+         * unlink of a file that was never baselined — a temporary file, or one
+         * outside the configured roots. */
+        FIMDB::instance().logFunction(LOG_DEBUG_VERBOSE, err.what());
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    // LCOV_EXCL_STOP
 
     return retVal;
 }
@@ -337,6 +476,30 @@ FIMDBErrorCode fim_db_file_delete(const char* file_path)
         try
         {
             DB::instance().removeFile(file_path);
+            retVal = FIMDB_OK;
+        }
+        catch (const std::exception& err)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        }
+    }
+
+    return retVal;
+}
+
+FIMDBErrorCode fim_db_container_file_delete(const char* file_path, const char* container_id)
+{
+    auto retVal {FIMDB_ERR};
+
+    if (!file_path || !container_id)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+    }
+    else
+    {
+        try
+        {
+            DB::instance().removeFile(file_path, container_id);
             retVal = FIMDB_OK;
         }
         catch (const std::exception& err)
