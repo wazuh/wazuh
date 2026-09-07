@@ -32,7 +32,7 @@ The client module is responsible for:
 - **Auto-connection:** Automatically connects to configured manager
 - **Keep-alive:** Maintains persistent connection with heartbeat
 - **Auto-reconnection:** Automatically reconnects after network issues
-- **Multiple managers:** Failover support for high availability
+- **Single manager:** Only one `<manager>` block is honored; a second one replaces the first instead of adding failover
 
 ### Data Transmission
 - **Event forwarding:** Sends alerts, logs, and events to manager
@@ -61,9 +61,7 @@ Quick configuration example:
 ```xml
 <agent>
   <manager>
-    <address>manager.example.com</address>
-    <port>1517</port>
-    <protocol>tcp</protocol>
+    <endpoint>manager.example.com:1517</endpoint>
   </manager>
   <config-profile>web-servers</config-profile>
   <auto_restart>yes</auto_restart>
@@ -176,7 +174,7 @@ Common issues:
 
 If events are being dropped due to buffer overflow:
 
-1. Check the accumulator limits in `<client><batch>` (`size`, `interval`)
+1. Check the accumulator limits in `<agent><batch>` (`size`, `interval`)
 2. Verify network connectivity is stable
 
 ### Anti-Tampering Alerts
