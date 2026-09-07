@@ -4,8 +4,11 @@
 
 import pytest
 
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from unittest.mock import mock_open, AsyncMock, MagicMock, patch
+
+from wazuh.core.exception import WazuhInternalError
 
 from wazuh.core.indexer.active_response import (
     EVENT_VISIBILITY_GRACE_SECONDS,
@@ -477,6 +480,18 @@ class TestActiveResponseHelpers:
             # The query actually issued: a mocked mget hides a poisoned index or an empty id list,
             # so the call itself is what has to be asserted, not just the absence of an exception.
             client.mget.assert_awaited_once_with(index="idx", body={"ids": ["1"]})
+
+        @pytest.mark.asyncio
+        @patch("wazuh.core.indexer.active_response.get_indexer_client")
+        async def test_found_without_source_is_not_an_event(self, mock_client):
+            """An index that does not store `_source` answers `found` with nothing to merge."""
+            client = AsyncMock()
+            client.mget.return_value = {"docs": [{"_index": "idx", "_id": "1", "found": True}]}
+            mock_client.return_value.__aenter__.return_value = client
+
+            result = await ActiveResponseHelpers.get_events_by_ar([_ar(GOOD_EVENT_DOC)])
+
+            assert result == {}
 
 
 class TestActiveResponseBuilder:
@@ -1163,3 +1178,195 @@ class TestActiveResponseFetchTask:
                 await task.run()
 
             task.logger.error.assert_called_once()
+
+
+#: A `found` mget hit that carries no `_source`: an index that does not store it.
+NO_SOURCE = object()
+
+ALERT_REF = {"index": "wazuh-alerts", "doc_id": "alert-1"}
+
+
+def _channel(location, agent_id=None):
+    """The `wazuh.active_response` block the producer writes for a channel."""
+    return {
+        "agent_id": agent_id,
+        "executable": "block-ip",
+        "extra_arguments": "1.2.3.4",
+        "location": location,
+        "name": "test-ar",
+        "type": "stateless",
+    }
+
+
+GOOD_AR = {
+    "event": ALERT_REF,
+    "wazuh": {"agent": {"id": "001"}, "active_response": _channel("defined-agent", "007")},
+}
+
+# The first four pass AR_SCHEMA and used to raise out of dispatch() or get_events_by_ar(); the
+# last two fail it. Adding a shape is one line here.
+POISON_DOCS = [
+    pytest.param(
+        {"event": ALERT_REF, "wazuh": {"active_response": _channel("local")}},
+        id="local-without-wazuh-agent",
+    ),
+    pytest.param(
+        {"event": ALERT_REF, "wazuh": {"agent": {"name": "x"}, "active_response": _channel("local")}},
+        id="local-agent-without-id",
+    ),
+    pytest.param(
+        {
+            "event": {"index": "other-idx", "doc_id": "weird-1"},
+            "wazuh": {"active_response": _channel("defined-agent", "007")},
+        },
+        id="event-wazuh-is-a-string",
+    ),
+    pytest.param(
+        {
+            "event": {"index": "nosource-idx", "doc_id": "x"},
+            "wazuh": {"active_response": _channel("defined-agent", "007")},
+        },
+        id="event-found-without-source",
+    ),
+    pytest.param({}, id="empty"),
+    pytest.param({"wazuh": "x"}, id="wazuh-is-a-string"),
+]
+
+EVENTS = {
+    "wazuh-alerts": {"alert-1": {"wazuh": {"agent": {"id": "001"}}, "rule": {"id": "5710"}}},
+    "other-idx": {"weird-1": {"wazuh": "not-an-object"}},
+    "nosource-idx": {"x": NO_SOURCE},
+}
+
+
+def _hit(doc_id, source, sort, seconds_ago=300):
+    """A search hit for an AR document, stamped past the grace window so a missing event is
+    discarded rather than held: a hold would also keep the cursor still, for another reason."""
+    return {
+        "_id": doc_id,
+        "_index": ".ds-wazuh-active-responses-000001",
+        "_source": {"@timestamp": _stamp(seconds_ago), **source},
+        "sort": sort,
+    }
+
+
+class _FakeIndexer:
+    """search() answers with the page as given; mget() serves `events` as {index: {doc_id: source}}."""
+
+    def __init__(self, hits, events):
+        self.hits = hits
+        self.events = events
+
+    async def search(self, index, body):
+        return {"hits": {"hits": self.hits}}
+
+    async def mget(self, index, body):
+        docs = []
+        for doc_id in body["ids"]:
+            source = self.events.get(index, {}).get(doc_id)
+            doc = {"_index": index, "_id": doc_id, "found": source is not None}
+            if source is not None and source is not NO_SOURCE:
+                doc["_source"] = source
+            docs.append(doc)
+        return {"docs": docs}
+
+
+class _FakeTaskManager:
+    """Records create_task() calls as (source_id, agent_id), or raises `fail` when set."""
+
+    def __init__(self, fail=None):
+        self.created = []
+        self.fail = fail
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def create_task(self, agent_id, task_type, create_time, payload, source_id):
+        if self.fail:
+            raise self.fail
+        self.created.append((source_id, agent_id))
+        return {"task_id": f"t{len(self.created)}"}
+
+
+class _SpyBookmark(ActiveResponseBookmark):
+    """A real bookmark that records the cursor writes instead of persisting them."""
+
+    def __init__(self):
+        super().__init__()
+        self.updates = []
+
+    def ensure_only_events_after(self):
+        return 0
+
+    def update(self, sort):
+        self.updates.append(sort)
+        super().update(sort)
+
+
+async def _run_cycle(hits, events=EVENTS, task_manager=None, all_agents=("001", "007")):
+    """One active_response_processing() over a fake indexer and Task Manager.
+
+    Returns the Task Manager, the bookmark and the logger the cycle used."""
+    task_manager = task_manager if task_manager is not None else _FakeTaskManager()
+    bookmark = _SpyBookmark()
+    indexer = _FakeIndexer(hits, events)
+
+    @asynccontextmanager
+    async def indexer_client():
+        yield indexer
+
+    logger = MagicMock()
+    server = MagicMock()
+    server.logger.getChild.return_value = logger
+    server.cluster_items = {}
+
+    with (
+        patch("wazuh.core.indexer.active_response.get_indexer_client", indexer_client),
+        patch("wazuh.core.indexer.active_response.TaskManagerHTTPClient", lambda: task_manager),
+        patch("wazuh.core.indexer.active_response.ActiveResponseBookmarkFile", lambda: bookmark),
+        patch(
+            "wazuh.core.indexer.active_response.ActiveResponseHelpers.get_all_agents",
+            return_value=list(all_agents),
+        ),
+    ):
+        await ActiveResponseFetchTask(server).active_response_processing()
+
+    return task_manager, bookmark, logger
+
+
+class TestCycleSurvivesAnyDocument:
+    """No document the indexer accepts into the stream may abort a polling cycle: the rest of the
+    page is still dispatched and the cursor moves past all of it."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("poison", POISON_DOCS)
+    async def test_cycle_survives_arbitrary_document(self, poison):
+        hits = [_hit("poison", poison, sort=[1, "poison"]), _hit("good", GOOD_AR, sort=[2, "good"])]
+
+        task_manager, bookmark, _ = await _run_cycle(hits)
+
+        assert task_manager.created == [("good", "007")]
+        assert bookmark.updates == [[2, "good"]]
+
+    @pytest.mark.asyncio
+    async def test_unusable_shape_is_logged_with_its_id(self):
+        poison = {"event": ALERT_REF, "wazuh": {"active_response": _channel("local")}}
+
+        _, _, logger = await _run_cycle([_hit("poison", poison, sort=[1, "poison"])])
+
+        warnings = [str(call.args[0]) for call in logger.warning.call_args_list]
+        assert any("`poison`" in message and "KeyError" in message for message in warnings)
+
+    @pytest.mark.asyncio
+    async def test_transport_failure_still_holds_the_page_when_a_shape_error_also_occurred(self):
+        poison = {"event": ALERT_REF, "wazuh": {"active_response": _channel("local")}}
+        hits = [_hit("poison", poison, sort=[1, "poison"]), _hit("good", GOOD_AR, sort=[2, "good"])]
+
+        _, bookmark, _ = await _run_cycle(
+            hits, task_manager=_FakeTaskManager(fail=WazuhInternalError(2021))
+        )
+
+        assert bookmark.updates == []
