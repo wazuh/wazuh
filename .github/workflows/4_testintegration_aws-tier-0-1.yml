@@ -52,6 +52,25 @@ jobs:
           sudo aws configure set aws_access_key_id ${{ secrets.IT_AWS_KEY_ID }} --profile default
           sudo aws configure set aws_secret_access_key ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }} --profile default
           sudo aws configure set default.region ${AWS_DEFAULT_REGION} --profile default
+      # THROWAWAY DIAGNOSTIC for issue #39013 (not the real IT suite, this branch is never merged).
+      - name: DIAG - which AWS account do the static test credentials belong to?
+        run: sudo aws sts get-caller-identity
+      - name: DIAG - raw Inspector v2 API check - us-east-1
+        run: sudo aws inspector2 list-findings --region us-east-1 --max-results 5
+        continue-on-error: true
+      - name: DIAG - raw Inspector v2 API check - us-east-2
+        run: sudo aws inspector2 list-findings --region us-east-2 --max-results 5
+        continue-on-error: true
+      - name: DIAG - run patched wodle directly - us-east-1
+        working-directory: wodles/aws
+        run: sudo timeout 60 python3 aws_s3.py --service inspector --regions us-east-1 --only_logs_after 20230112 --debug 2
+        continue-on-error: true
+      - name: DIAG - run patched wodle directly - us-east-2
+        working-directory: wodles/aws
+        run: sudo timeout 60 python3 aws_s3.py --service inspector --regions us-east-2 --only_logs_after 20230112 --debug 2
+        continue-on-error: true
+      - name: DIAG - stop here, skip the rest of the suite
+        run: exit 1
       # Build wazuh server for linux.
       - name: Build wazuh server for linux
         run: |
