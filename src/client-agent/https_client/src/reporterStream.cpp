@@ -97,22 +97,14 @@ void ReporterStream::forceConfigReportNow()
         return;
     }
 
-    // #38840 follow-up: set before nextDue, not after. commitNextDue() only skips overwriting
-    // nextDue when it observes this flag true; if a runPath() already in flight ran that check
-    // in the gap between these two stores, this order guarantees it either sees the flag not
-    // set yet (and its own reschedule below is then unconditionally overwritten by this call's
-    // own nextDue store right after) or sees it already true (and leaves nextDue alone, which
-    // this call's own subsequent store sets to due-immediately regardless) -- nextDue ends up
-    // due-immediately either way. The reverse order has a real window: nextDue could be set to
-    // epoch here, read as unchanged by a concurrent commitNextDue() (whose only signal that a
-    // force happened is this flag, not yet true), get clobbered by that call's own reschedule,
-    // and only then see the flag turn true -- stranded, with nothing left to consume it.
-    m_config_.forcedSinceLastRun.store(true);
+    // #38840 follow-up: nextDue + forcedSinceLastRun under one lock -- see path.mtx's own
+    // comment in reporterStream.hpp for why store order between the two cannot substitute for
+    // this. Called from the https_client_bridge callback thread, not the reporter's own.
+    std::lock_guard<std::mutex> lock(m_config_.mtx);
     // Path::nextDue's own convention (see reporterStream.hpp): 0 (rep of epoch) => due
     // immediately, picked up by the next tick() without disturbing m_stats' own cadence.
-    // Called from the https_client_bridge callback thread, not the reporter's own -- nextDue is
-    // atomic precisely so this store is well-defined against tick()/runPath() on the other side.
-    m_config_.nextDue.store(0);
+    m_config_.nextDue = 0;
+    m_config_.forcedSinceLastRun = true;
 }
 
 std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
@@ -127,12 +119,12 @@ std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
 
     const auto now = m_clock.steadyNow();
 
-    if (m_stats.enabled && now >= fromRep(m_stats.nextDue.load()))
+    if (m_stats.enabled && now >= fromRep(loadNextDue(m_stats)))
     {
         runPath(m_stats, m_statsBackoff, waiter, m_collectors.collectStats());
     }
 
-    if (m_config_.enabled && now >= fromRep(m_config_.nextDue.load()))
+    if (m_config_.enabled && now >= fromRep(loadNextDue(m_config_)))
     {
         runPath(m_config_, m_configBackoff, waiter, m_collectors.collectConfig());
     }
@@ -143,11 +135,15 @@ std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
 void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::optional<std::string> collected)
 {
     const auto now = m_clock.steadyNow();
-    // #38840 follow-up: clear before doing any work (in particular before the possibly-blocking
-    // send below), so a forceConfigReportNow() lands as "false -> true" only if it is concurrent
-    // with (or after) this specific run -- not a stale flag left over from whatever force made
-    // this path due in the first place, which this run is already about to honor anyway.
-    path.forcedSinceLastRun.store(false);
+    {
+        // #38840 follow-up: clear before doing any work (in particular before the
+        // possibly-blocking send below), so a forceConfigReportNow() lands as "false -> true"
+        // only if it is concurrent with (or after) this specific run -- not a stale flag left
+        // over from whatever force made this path due in the first place, which this run is
+        // already about to honor anyway.
+        std::lock_guard<std::mutex> lock(path.mtx);
+        path.forcedSinceLastRun = false;
+    }
     const auto document = stampedDocument(std::move(collected));
 
     if (!document)
@@ -196,19 +192,30 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::
 
 void ReporterStream::commitNextDue(Path& path, std::chrono::steady_clock::time_point desired)
 {
-    // #38840 follow-up: a plain store() here would let this reschedule silently clobber a
-    // forceConfigReportNow() that landed while the send above was in flight (up to
-    // requestTimeoutMs) -- reintroducing the exact staleness bug this feature exists to close,
-    // just as a race instead of an always-reproducible gap. forcedSinceLastRun was cleared at
-    // the top of this same runPath() call, so seeing it true here means exactly that: a force
-    // arrived concurrently with (or after) this run, and forceConfigReportNow() has already
-    // re-armed nextDue to due-immediately itself -- leave that in place instead.
-    if (path.forcedSinceLastRun.exchange(false))
+    // #38840 follow-up: "check forcedSinceLastRun, then decide whether to overwrite nextDue" as
+    // one critical section -- see path.mtx's own comment in reporterStream.hpp for why a plain
+    // store() here (or two independent atomics in either store order) would let this reschedule
+    // race a concurrent forceConfigReportNow() and silently clobber it, reintroducing the exact
+    // staleness bug this feature exists to close. forcedSinceLastRun was cleared at the top of
+    // this same runPath() call, so seeing it true here (under the same lock forceConfigReportNow()
+    // takes) means exactly that: a force arrived concurrently with (or after) this run, and
+    // forceConfigReportNow() has already re-armed nextDue to due-immediately itself -- leave that
+    // in place instead.
+    std::lock_guard<std::mutex> lock(path.mtx);
+
+    if (path.forcedSinceLastRun)
     {
+        path.forcedSinceLastRun = false;
         return;
     }
 
-    path.nextDue.store(toRep(desired));
+    path.nextDue = toRep(desired);
+}
+
+std::chrono::steady_clock::rep ReporterStream::loadNextDue(const Path& path) const
+{
+    std::lock_guard<std::mutex> lock(path.mtx);
+    return path.nextDue;
 }
 
 std::optional<std::string> ReporterStream::stampedDocument(std::optional<std::string> collected) const
@@ -241,14 +248,14 @@ std::chrono::milliseconds ReporterStream::sleepHint() const
     {
         soonest = std::min(
                       soonest,
-                      std::chrono::duration_cast<std::chrono::milliseconds>(fromRep(m_stats.nextDue.load()) - now));
+                      std::chrono::duration_cast<std::chrono::milliseconds>(fromRep(loadNextDue(m_stats)) - now));
     }
 
     if (m_config_.enabled)
     {
         soonest = std::min(
                       soonest,
-                      std::chrono::duration_cast<std::chrono::milliseconds>(fromRep(m_config_.nextDue.load()) - now));
+                      std::chrono::duration_cast<std::chrono::milliseconds>(fromRep(loadNextDue(m_config_)) - now));
     }
 
     return std::clamp(soonest, MIN_SLEEP, MAX_SLEEP);

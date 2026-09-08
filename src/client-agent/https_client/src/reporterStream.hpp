@@ -23,8 +23,8 @@
 #include "stopToken.hpp"
 #include "sysSeams.hpp"
 
-#include <atomic>
 #include <chrono>
+#include <mutex>
 #include <optional>
 #include <string>
 
@@ -71,34 +71,48 @@ class ReporterStream final
             std::string target;
             bool enabled {false};
             std::chrono::seconds interval {0};
-            // #38840: forceConfigReportNow() writes this from the https_client_bridge callback
-            // thread while tick()/runPath() read and write it from the reporter's own thread --
-            // atomic so that cross-thread access has defined behavior instead of relying on a
-            // plain time_point read/write race that happens not to tear on common ABIs. The
-            // integral rep, not time_point itself: std::atomic<time_point> is well-defined either
-            // way, but is only lock-free if the generic trivially-copyable-T specialization
-            // happens to pick a lock-free path on this target, where atomic<integral> is
-            // guaranteed one -- matches the existing steady_clock timestamp precedent
-            // (agentcache/agentMetadataCache.hpp's lastUsed). 0 => epoch => due immediately, the
-            // convention this field relies on; toRep()/fromRep() (reporterStream.cpp) convert.
-            std::atomic<std::chrono::steady_clock::rep> nextDue {0};
 
-            /// #38840 follow-up: set by forceConfigReportNow() to flag a force that landed while
-            /// this path's send was already in flight, so commitNextDue() below knows to leave
-            /// the forced due-now in place instead of overwriting it with its own post-send
-            /// reschedule. Can't tell the two apart by nextDue's own value alone: a force's "due
-            /// immediately" is epoch, the same sentinel nextDue already holds by default before
-            /// its very first run -- exactly the case that bites hardest, since the reporter's
-            /// first ever tick is due at epoch too.
-            std::atomic<bool> forcedSinceLastRun {false};
+            // #38840 follow-up: nextDue and forcedSinceLastRun are written together by
+            // forceConfigReportNow() (the https_client_bridge callback thread) and read/written
+            // together by commitNextDue() (the reporter's own thread), and the only safe way to
+            // do that is for "observe forcedSinceLastRun, then decide whether to overwrite
+            // nextDue" to run as one indivisible step. Two independent atomics cannot give that:
+            // whichever order the two stores run in, a thread can still be preempted between its
+            // own check and its own store, and the other side's pair of writes can land whole in
+            // that gap -- reordering the stores only trades one such window for a different,
+            // narrower one (see the git history on this pair for both). A small mutex over the
+            // pair removes the window instead of narrowing it. This path runs at most once per
+            // interval (default up to 3600s) plus the occasional forced call, so the lock's cost
+            // is irrelevant -- there is no reason to keep chasing a lock-free design here.
+            //
+            // 0 => epoch => due immediately, the convention nextDue relies on; toRep()/fromRep()
+            // (reporterStream.cpp) convert to/from steady_clock::time_point at the read/write
+            // edges, same as before this field was mutex-protected instead of atomic.
+            std::chrono::steady_clock::rep nextDue {0};
+
+            /// Set by forceConfigReportNow() to flag a force that landed while this path's send
+            /// was already in flight, so commitNextDue() below knows to leave the forced due-now
+            /// in place instead of overwriting it with its own post-send reschedule. Can't tell
+            /// the two apart by nextDue's own value alone: a force's "due immediately" is epoch,
+            /// the same sentinel nextDue already holds by default before its very first run --
+            /// exactly the case that bites hardest, since the reporter's first ever tick is due
+            /// at epoch too.
+            bool forcedSinceLastRun {false};
+
+            /// Protects nextDue + forcedSinceLastRun as a single unit; see the comment above.
+            mutable std::mutex mtx;
         };
 
         void runPath(Path& path, Backoff& backoff, Waiter& waiter, std::optional<std::string> collected);
 
         /// #38840 follow-up: commits `desired` to path.nextDue unless path.forcedSinceLastRun
         /// was set (by forceConfigReportNow()) after runPath() cleared it at the start of this
-        /// run -- see the .cpp for why a plain store() here would be unsafe.
+        /// run -- see path.mtx's own comment for why this has to run under that lock.
         void commitNextDue(Path& path, std::chrono::steady_clock::time_point desired);
+
+        /// #38840 follow-up: path.nextDue under path.mtx, for the read-only call sites (tick(),
+        /// sleepHint()) that don't also need to touch forcedSinceLastRun.
+        std::chrono::steady_clock::rep loadNextDue(const Path& path) const;
 
         std::optional<std::string> stampedDocument(std::optional<std::string> collected) const;
         std::chrono::milliseconds sleepHint() const;

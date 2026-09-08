@@ -902,12 +902,12 @@ TEST_F(FacadeE2eTest, NotifyNowRaceAgainstReporterTick)
     // #38840: hc_notify_now() reaches into ReporterStream::forceConfigReportNow()
     // from the https_client_bridge callback thread, forcing the /config path's
     // nextDue while the reporter's own thread concurrently reads and rewrites it
-    // inside tick()/runPath(). tick() only touches nextDue once the control loop
-    // is REGISTERED, which is why this lives here against a real FakeManager
-    // rather than in the black-box unit tests: a dead port never registers, so
-    // tick() never gets past its early "not registered" return and the race
-    // (real as it is by construction: no mutex protects the field) never
-    // actually happens in that harness for ThreadSanitizer to observe.
+    // inside tick()/runPath()/commitNextDue() -- all serialized through the same
+    // path.mtx. tick() only touches nextDue once the control loop is REGISTERED,
+    // which is why this lives here against a real FakeManager rather than in the
+    // black-box unit tests: a dead port never registers, so tick() never gets
+    // past its early "not registered" return and this contention pattern never
+    // actually gets exercised in that harness.
     const uint16_t port = TLS_PORT + 6;
     FakeManager manager {port, KEY_HEX, /*tls=*/true};
 
@@ -941,11 +941,14 @@ TEST_F(FacadeE2eTest, NotifyNowRaceAgainstReporterTick)
         }
     });
 
-    // Not just absence of a TSAN-visible data race: every access here is a well-defined atomic
-    // op, so a logic race that reorders which one "wins" (e.g. the #38840 follow-up lost-update
-    // this fix closes) would never show up as a race to ThreadSanitizer at all. Asserting actual
-    // deliveries is what would have caught that: several forced reports landing while the
-    // notifier keeps contending, not just the reporter's own natural first send.
+    // Not just absence of a TSAN-visible data race: every access to nextDue/forcedSinceLastRun
+    // goes through path.mtx, so this is memory-safe by construction. What that alone cannot
+    // catch is a logic race -- forceConfigReportNow()'s update getting silently overwritten by a
+    // commitNextDue() that runs just before or after it, each individually well-locked (the
+    // #38840 follow-up lost-update this fix closes) -- which would never show up as a race to
+    // ThreadSanitizer at all. Asserting actual deliveries is what would have caught that: several
+    // forced reports landing while the notifier keeps contending, not just the reporter's own
+    // natural first send.
     httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
     peek.enable_server_certificate_verification(false);
     ASSERT_TRUE(waitForCount(peek, "/peek/config_count", 2, 500));
