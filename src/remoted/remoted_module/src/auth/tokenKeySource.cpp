@@ -177,10 +177,13 @@ namespace remoted::auth
                 reason = "an entry has an invalid secret";
                 return std::nullopt;
             }
-            jwt_profile::v1::SecureBytes secret {reinterpret_cast<const std::uint8_t*>(secretBytes->data()),
-                                                 secretBytes->size()};
+            // Bound by reference (operator*), not through operator->: the static analyzer models the latter
+            // as a temporary and reports its inner pointer as used after deallocation.
+            std::string& rawSecret = *secretBytes;
+            jwt_profile::v1::SecureBytes secret {reinterpret_cast<const std::uint8_t*>(rawSecret.data()),
+                                                 rawSecret.size()};
             // The decoded text is a plain std::string: wipe it before it goes out of scope.
-            OPENSSL_cleanse(secretBytes->data(), secretBytes->size());
+            OPENSSL_cleanse(rawSecret.data(), rawSecret.size());
 
             // The one HKDF construction authd replicates in C (src/shared/src/enrollment_token.c);
             // pinned by test_vectors::enroll_token on both sides.
@@ -634,7 +637,8 @@ namespace remoted::auth
                 auto replica = text ? parseStore(*text, reason) : std::nullopt;
                 if (text)
                 {
-                    OPENSSL_cleanse(text->data(), text->size()); // it carries every token's secret
+                    std::string& rawText = *text;                    // by reference, see parseStore()'s secret wipe
+                    OPENSSL_cleanse(rawText.data(), rawText.size()); // it carries every token's secret
                 }
                 else
                 {
