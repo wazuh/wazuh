@@ -845,7 +845,7 @@ paths:
     post:
       tags: [Enrollment]
       operationId: enrollAgent
-      summary: Register a new agent
+      summary: Register a new agent, or re-enroll an existing one under its id
       security:
         - WazuhEnrollAuthentication: []
         - {}
@@ -854,16 +854,24 @@ paths:
         - $ref: "#/components/parameters/ContentEncoding"
       description: |
         Lets a new agent register over the same HTTPS channel it uses for everything afterward,
-        instead of the legacy `authd` listener on port 1515. It is a **bridge, not a second
-        implementation**: `authd` keeps all enrollment business logic, reached over its local socket.
+        instead of the legacy `authd` listener on port 1515 -- and lets an enrolled agent re-enroll
+        under its existing id (new key and re-enrollment secret, nothing removed) with its
+        re-enrollment credential. It is a **bridge, not a second implementation**: `authd` keeps all
+        enrollment business logic, reached over its local socket.
 
         It does **not** use the agent's `wazuh-agent+jwt` bearer -- an enrolling agent has no key yet.
         Two credential checks apply independently, and an operator can require either, both or neither:
         a TLS client certificate (a property of the listener's `verification_mode`, validated during
-        the handshake before the request reaches this endpoint) and a password (required whenever
-        `authd`'s `use_password` is enabled, presented as the `wazuh-enroll+jwt` bearer). With neither
-        configured, no credential is needed -- matching `authd`'s own behavior on port 1515 in that
-        configuration.
+        the handshake before the request reaches this endpoint) and the `wazuh-enroll+jwt` bearer
+        (`WazuhEnrollAuthentication`). The bearer comes in **three forms**, told apart by the JOSE
+        header's `kid`: **no `kid`** -- the shared enrollment password, required whenever `authd`'s
+        `use_password` is enabled and ignored otherwise; **`kid` = an enrollment token id** (22
+        base64url characters) -- an operator-minted enrollment token, verified by the manager in every
+        mode, `use_password` or not, then consumed (one use) by `authd`; **`kid` = the agent's
+        canonical id** (`001`) -- re-enrollment, forwarded verbatim to `authd` on the master node, the
+        only place the agent's re-enrollment secret exists, which verifies it. With neither a client
+        certificate nor `use_password` configured, a request that presents no `kid` credential needs no
+        credential at all -- matching `authd`'s own behavior on port 1515 in that configuration.
 
         `protocol-version` is validated first, exactly as on every other authenticated route, and in
         every mode -- including the credential-less one, since the version is a property of the
@@ -895,7 +903,9 @@ paths:
         "200":
           description: |
             Verbatim from `authd`. The `key` is what the agent must store and use to sign every
-            subsequent request under its new numeric `id`.
+            subsequent request under its numeric `id`; the `reenroll_secret` is what it must keep --
+            and never send -- to re-enroll later under that same `id`. On a re-enrollment the `id` is
+            the one the bearer named and `key` / `reenroll_secret` are the rotated pair.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollResponse" }
@@ -906,6 +916,7 @@ paths:
                     name: web-server-01
                     ip: 10.0.0.15
                     key: 675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915
+                    reenroll_secret: 0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0
         "400":
           description: |
             A missing or unsupported `protocol-version` header (checked before anything else), a
@@ -926,13 +937,17 @@ paths:
           description: |
             Missing or invalid credential. The message is generic; the class is `error.code` and the
             `WWW-Authenticate` challenge's `error_description`: `invalid_signature` (a password
-            bearer signed with the wrong password, or a re-enrollment bearer the master could not
-            verify against the agent's secret), `unknown_agent` (re-enrollment of an id the master
-            does not know or that has no re-enrollment secret on record), `stale_token` (bearer
-            outside the accepted window), `token_unknown` / `token_expired` / `token_revoked` (the
-            enrollment token's state), `invalid_request` (no usable `Authorization` in Password
-            mode), `enrollment_key_unavailable` (Password mode, the manager's enrollment password is
-            not available on this node: a bare `Bearer` challenge, retry later).
+            bearer signed with the wrong password, an enrollment-token bearer signed with the wrong
+            secret or malformed, or a re-enrollment bearer the master could not verify against the
+            agent's secret -- `authd` 9027), `unknown_agent` (re-enrollment of an id the master does
+            not know or that has no re-enrollment secret on record -- `authd` 9026), `stale_token`
+            (bearer outside the accepted window, `authd` 9028 for a re-enrollment), `token_unknown`
+            / `token_expired` / `token_revoked` (the enrollment token's state, decided from the
+            manager's replica of the token store: an unknown id, or a correctly signed bearer whose
+            token has lapsed or was revoked), `invalid_request` (no usable `Authorization` in
+            Password mode), `enrollment_key_unavailable` (Password mode, the manager's enrollment
+            password is not available on this node: a bare `Bearer` challenge, retry later).
+            `authd`'s codes never reach the wire for these: the body `code` is always the class.
           headers:
             WWW-Authenticate:
               $ref: "#/components/headers/WWW-Authenticate"
@@ -947,13 +962,26 @@ paths:
                 unknownAgentReenrollment:
                   value: { error: { code: unknown_agent, message: "Invalid client authentication" } }
         "403":
-          description: Enrollment is administratively disabled on this manager.
+          description: |
+            Enrollment is administratively disabled on this manager (`code` 0), or `authd` refused to
+            consume a **verified** enrollment token and its numeric code is passed through: 9022
+            (not found or revoked), 9023 (expired), 9024 (uses exhausted). `403` rather than `401`
+            because the bearer did verify -- re-signing fixes nothing; a new token has to be minted.
+            9022/9023 are only reachable when the manager's replica of the token store lagged behind
+            `authd`'s (a revocation or expiry landing between the two checks, a worker copy not yet
+            synchronized); 9024 is decided by `authd` alone, which owns the use counter.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
               examples:
                 disabled:
                   value: { error: { code: 0, message: "Enrollment is disabled on this manager" } }
+                tokenNotFoundOrRevoked:
+                  value: { error: { code: 9022, message: "Enrollment token not found or revoked" } }
+                tokenExpired:
+                  value: { error: { code: 9023, message: "Enrollment token expired" } }
+                tokenExhausted:
+                  value: { error: { code: 9024, message: "Enrollment token uses exhausted" } }
         "409":
           description: "`authd` reported a duplicate ip, name or id (9007/9008/9012)."
           content:
@@ -1025,20 +1053,30 @@ components:
         Authorization: Bearer <header>.<claims>.<signature>
         ```
 
-        - header: exactly `{"alg":"HS256","typ":"wazuh-enroll+jwt"}` -- no `kid`, there is one
-          shared key
-        - claims: exactly `exp`, `iat`, `jti`, `nbf` (= `iat`) -- no `iss`/`sub`, there is no agent
-          identity yet; `exp - iat = 60`; same acceptance window and the same
-          `remoted.jwt_max_age` / `remoted.jwt_clock_skew` as the agent scheme
-        - key: `HKDF-SHA256(password, salt = 32 x 0x00, info = "WAZUH-ENROLL-JWT-KEY" || 0x01,
-          32 bytes)` derived from `authd`'s enrollment password (`etc/authd.pass`). The password
-          bytes are never used directly.
+        - header: exactly `{"alg":"HS256","typ":"wazuh-enroll+jwt"}` plus an **optional `kid`**
+          that selects the key (three forms below); a `kid` of neither shape, or any other member,
+          is not a `wazuh-enroll+jwt` at all
+        - claims: exactly `exp`, `iat`, `jti`, `nbf` (= `iat`) -- no `iss`/`sub` in any form (a
+          re-enrolling agent names itself through `kid`); `exp - iat = 60`; same acceptance window
+          and the same `remoted.jwt_max_age` / `remoted.jwt_clock_skew` as the agent scheme
+        - key: one construction, `HKDF-SHA256(IKM, salt = 32 x 0x00, info = <label> || 0x01, 32
+          bytes)`, with the input and label the `kid` selects. The secret bytes are never used
+          directly.
 
-        A token of either profile presented to the other's endpoint is rejected on its header.
-        Required only when `authd`'s `use_password` is enabled. A missing, unreadable or invalid
-        password file fails **closed**: every request is rejected, never treated as if no password
-        were required. When neither a password nor a client certificate is configured, `/enroll`
-        accepts requests with no credential at all.
+        | `kid` | Credential | IKM / `info` label | Verified by |
+        |---|---|---|---|
+        | none | the shared enrollment password | `authd`'s enrollment password (`etc/authd.pass`) / `WAZUH-ENROLL-JWT-KEY` | the manager the request reaches. Required whenever `authd`'s `use_password` is enabled; with it off, a shared-key bearer -- or none -- is ignored and the request passes |
+        | 22 base64url characters: a 16-byte enrollment token id | an enrollment token minted by the operator | the token's 16-byte secret / `WAZUH-ENROLL-TOKEN-KEY` | the manager the request reaches, in **every** mode (`use_password` or not), against its replica of `authd`'s token store; lookup, signature, expiry, revocation in that order, so the token's state is only disclosed to a holder of its secret. `authd` on the master then consumes one use (`403` 9022/9023/9024 when it will not) |
+        | the agent's canonical id (`001`) | re-enrollment: the agent's own `reenroll_secret` (returned by its enrollment) | the 32-byte secret / `WAZUH-REENROLL-KEY` | `authd` on the **master node** only -- the secret exists nowhere else -- so the manager forwards the bearer verbatim and unverified and maps `authd`'s verdict (9026/9027/9028) onto `unknown_agent` / `invalid_signature` / `stale_token`. On success the agent keeps its id and receives a new `key` and `reenroll_secret` |
+
+        A token of either profile presented to the other's endpoint is rejected on its header. A
+        missing, unreadable or invalid password file fails **closed** for the shared-key form
+        (`enrollment_key_unavailable`): every such request is rejected, never treated as if no
+        password were required. The token store fails closed too: an absent
+        `etc/enrollment_tokens.json` is an empty store (every token bearer is `token_unknown`), a
+        malformed one keeps the previously loaded tokens. When neither a password nor a client
+        certificate is configured, `/enroll` accepts a request with no credential at all; an
+        enrollment token or a re-enrollment bearer is still checked whenever presented.
 
   headers:
     WWW-Authenticate:
@@ -1315,8 +1353,11 @@ components:
       required: [name, version]
       description: |
         `force`, `id` and a raw `key` are never sent, even though `authd`'s local socket accepts all
-        three for admin/restore use: `/enroll` is exclusively for a brand-new agent self-enrolling,
-        which always gets an auto-assigned id and an `authd`-generated key.
+        three for admin/restore use: `/enroll` is for an agent self-enrolling, which always gets an
+        auto-assigned id (or, when re-enrolling, keeps the id its bearer's `kid` names) and an
+        `authd`-generated key. The identity of a re-enrollment lives in the `Authorization` header,
+        never in the body; the body's `name`/`ip` replace the record's, checked against every
+        other agent.
       properties:
         name:
           type: string
@@ -1353,12 +1394,14 @@ components:
 
     EnrollResponse:
       type: object
-      required: [id, name, ip, key]
-      description: Verbatim from `authd`.
+      required: [id, name, ip, key, reenroll_secret]
+      description: |
+        Verbatim from `authd`. On a re-enrollment `id` is the one the bearer named and `key` /
+        `reenroll_secret` are the rotated pair.
       properties:
         id:
           type: string
-          description: The agent's new numeric id, to be used in the `Authorization` header from now on.
+          description: The agent's numeric id, to be used in the `Authorization` header from now on.
           example: "001"
         name: { type: string, example: web-server-01 }
         ip: { type: string, example: 10.0.0.15 }
@@ -1366,3 +1409,16 @@ components:
           type: string
           description: The pre-shared key the agent must store and sign every subsequent request with.
           example: 675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915
+        reenroll_secret:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          minLength: 64
+          maxLength: 64
+          description: |
+            The agent's re-enrollment credential: 64 lowercase hex characters (32 bytes) generated by
+            `authd` next to the key. Keep it with the key and never send it -- it is the input of the
+            `WAZUH-REENROLL-KEY` derivation (see `WazuhEnrollAuthentication`), the only thing that lets
+            the agent re-enroll later keeping this `id` instead of appearing as a new agent. Handed
+            out once per (re-)enrollment; each successful re-enrollment replaces both `key` and
+            `reenroll_secret`. Absent only when the master node's `authd` predates this field.
+          example: 0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0

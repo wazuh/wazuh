@@ -42,7 +42,14 @@ err <message>
 global insert-agent {"id":5,"name":"ubuntu-agent","ip":"10.0.0.5","date_add":1700000000}
 global update-connection-status {"id":5,"connection_status":"active","sync_status":"synced","status_code":0}
 global get-agent-info 5
+global set-agent-credentials {"id":5,"name":"ubuntu-agent","register_ip":"10.0.0.5","internal_key":"<64 hex>","reenroll_secret":"<64 hex>"}
 ```
+
+> **Note on `set-agent-credentials`:** the query `wazuh-manager-authd` issues when an agent re-enrolls with its
+> re-enrollment secret (a `wazuh-enroll+jwt` bearer whose `kid` is its own id): the row keeps its `id` and gains
+> a new `internal_key` and a new `reenroll_secret` in place, so nothing is deleted from `global.db` and no
+> indexer purge follows. All five fields are mandatory; a missing one is rejected with `err Invalid JSON data`.
+> The daemon's statistics count it under `set-agent-credentials`, next to `insert-agent`.
 
 > **Note on `update-connection-status`:** the `status_code` field (numeric) is required in addition to `id`, `connection_status`, and `sync_status`. Omitting it causes the query to be rejected with `err Invalid JSON data`.
 
@@ -62,7 +69,7 @@ global get-agent-info 5
 
 | Table | Purpose |
 |-------|---------|
-| `agent` | One row per registered agent: identity, OS info, version, group, connection status |
+| `agent` | One row per registered agent: identity, OS info, version, group, connection status, and the `reenroll_secret` column (64 hex chars) handed to the agent at enrollment — the only place it is stored (never in `client.keys`; `NULL` for rows imported from `client.keys` by the database module, which cannot re-enroll until they enroll again). Declared in `schema_global.sql` with `user_version` still 1 — no upgrade step, so a `global.db` created by an earlier 5.0.0 development build lacks the column and must be recreated |
 | `group` | Named agent groups |
 | `belongs` | Agent-to-group assignments with priority ordering |
 | `metadata` | Key-value store for global metadata |
