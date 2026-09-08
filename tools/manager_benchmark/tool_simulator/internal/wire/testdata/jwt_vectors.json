@@ -79,5 +79,85 @@
       },
       "agent_token_note": "the top-level wazuh-agent+jwt token presented to the enroll verifier (and vice versa) must be rejected on typ"
     }
+  },
+  "enroll_token": {
+    "_comment": "Issue #38993: the two `kid` forms of wazuh-enroll+jwt (enrollment token id / canonical agent id) and the enrollment token itself. Mirror of test_vectors::enroll_token in src/shared_modules/utils/jwt/testVectors.hpp and of the C tests src/unit_tests/shared/test_enrollment_token.c; same Python-stdlib oracle. Keep all three in sync.",
+    "profile": {
+      "typ": "wazuh-enroll+jwt",
+      "alg": "HS256",
+      "header_fields": [
+        "alg",
+        "kid",
+        "typ"
+      ],
+      "claims": [
+        "exp",
+        "iat",
+        "jti",
+        "nbf"
+      ],
+      "kid_forms": {
+        "token": "16-byte token id as 22 canonical base64url chars",
+        "agent": "canonical agent id, e.g. 001"
+      }
+    },
+    "token_id_hex": "000102030405060708090a0b0c0d0e0f",
+    "token_id_b64url": "AAECAwQFBgcICQoLDA0ODw",
+    "token_secret_hex": "101112131415161718191a1b1c1d1e1f",
+    "token_secret_b64url": "EBESExQVFhcYGRobHB0eHw",
+    "token_key_field_b64url": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "hkdf_token": {
+      "ikm_hex": "101112131415161718191a1b1c1d1e1f",
+      "salt_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "info_hex": "57415a55482d454e524f4c4c2d544f4b454e2d4b455901",
+      "info_note": "\"WAZUH-ENROLL-TOKEN-KEY\" || 0x01; digest SHA-256; L = 32",
+      "key_hex": "5da72b786a15757caa8d825a74a3474c3f15b048fd1064b49863ffc715a95860"
+    },
+    "token_kid_jwt": {
+      "kid": "AAECAwQFBgcICQoLDA0ODw",
+      "header_json": "{\"alg\":\"HS256\",\"kid\":\"AAECAwQFBgcICQoLDA0ODw\",\"typ\":\"wazuh-enroll+jwt\"}",
+      "payload_json": "{\"exp\":1700000060,\"iat\":1700000000,\"jti\":\"AAECAwQFBgcICQoLDA0ODw\",\"nbf\":1700000000}",
+      "token": "eyJhbGciOiJIUzI1NiIsImtpZCI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHciLCJ0eXAiOiJ3YXp1aC1lbnJvbGwrand0In0.eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwianRpIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsIm5iZiI6MTcwMDAwMDAwMH0.7sTfFRpPNoSg7QPO1h6FWCvY2Islau-E0gQnP1PWelk",
+      "bytes": 251
+    },
+    "reenroll_secret_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "hkdf_reenroll": {
+      "ikm_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "salt_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "info_hex": "57415a55482d5245454e524f4c4c2d4b455901",
+      "info_note": "\"WAZUH-REENROLL-KEY\" || 0x01; digest SHA-256; L = 32",
+      "key_hex": "68b01ea65fc441951a17e3fd9b7e2dedc846d364f38596630ea3f69f60482ae9"
+    },
+    "agent_kid_jwt": {
+      "kid": "001",
+      "header_json": "{\"alg\":\"HS256\",\"kid\":\"001\",\"typ\":\"wazuh-enroll+jwt\"}",
+      "payload_json": "{\"exp\":1700000060,\"iat\":1700000000,\"jti\":\"AAECAwQFBgcICQoLDA0ODw\",\"nbf\":1700000000}",
+      "token": "eyJhbGciOiJIUzI1NiIsImtpZCI6IjAwMSIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ.eyJleHAiOjE3MDAwMDAwNjAsImlhdCI6MTcwMDAwMDAwMCwianRpIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsIm5iZiI6MTcwMDAwMDAwMH0.waWOzsJ3GP5kj1tOAEdpWNBzjqbjGPSqE039h8irCKc",
+      "bytes": 226,
+      "note": "same header as enroll.negative.kid_header_token, which is signed with the password key and must keep failing on the shared-key verifier"
+    },
+    "enrollment_token": {
+      "format": "base64url (unpadded) of compact JSON {\"ver\":1,\"adr\":…,\"pin\"|\"ca\":…[,\"key\":…]} in that member order; pin = base64url(SHA-256(SubjectPublicKeyInfo of the CA)); key = base64url(id || secret)",
+      "pin_hex": "6091dc3665ed5e833c8d945f93ebbf14b37020ccee77334e4497ac2ef3590aa2",
+      "pin_b64url": "YJHcNmXtXoM8jZRfk-u_FLNwIMzudzNORJesLvNZCqI",
+      "pin_note": "SPKI SHA-256 of the frozen CA (the devcontainer's root-ca.pem; src/unit_tests/shared/test_x509_op.c embeds the PEM)",
+      "tokens": [
+        {
+          "json": "{\"ver\":1,\"adr\":\"siem.example.local\",\"pin\":\"YJHcNmXtXoM8jZRfk-u_FLNwIMzudzNORJesLvNZCqI\"}",
+          "token": "eyJ2ZXIiOjEsImFkciI6InNpZW0uZXhhbXBsZS5sb2NhbCIsInBpbiI6IllKSGNObVh0WG9NOGpaUmZrLXVfRkxOd0lNenVkek5PUkplc0x2TlpDcUkifQ",
+          "chars": 118
+        },
+        {
+          "json": "{\"ver\":1,\"adr\":\"siem.example.local\",\"pin\":\"YJHcNmXtXoM8jZRfk-u_FLNwIMzudzNORJesLvNZCqI\",\"key\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\"}",
+          "token": "eyJ2ZXIiOjEsImFkciI6InNpZW0uZXhhbXBsZS5sb2NhbCIsInBpbiI6IllKSGNObVh0WG9NOGpaUmZrLXVfRkxOd0lNenVkek5PUkplc0x2TlpDcUkiLCJrZXkiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R4QVJFaE1VRlJZWEdCa2FHeHdkSGg4In0",
+          "chars": 187
+        },
+        {
+          "json": "{\"ver\":1,\"adr\":\"siem.example.local:8443/wazuh/\",\"pin\":\"YJHcNmXtXoM8jZRfk-u_FLNwIMzudzNORJesLvNZCqI\"}",
+          "token": "eyJ2ZXIiOjEsImFkciI6InNpZW0uZXhhbXBsZS5sb2NhbDo4NDQzL3dhenVoLyIsInBpbiI6IllKSGNObVh0WG9NOGpaUmZrLXVfRkxOd0lNenVkek5PUkplc0x2TlpDcUkifQ",
+          "chars": 134
+        }
+      ]
+    }
   }
 }
