@@ -28,6 +28,8 @@
 #include "sec.h"
 #include "enrollment_token.h"
 #include "enrollment_token_store.h"
+#include "reenroll_verify.h"
+#include "../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 
 #include "cJSON.h"
 
@@ -63,11 +65,16 @@ int __wrap_w_request_agent_add_clustered(char *err_response,
                                          authd_force_options_t *force_options,
                                          const char *agent_id,
                                          const char *token_id,
+                                         const char *reenroll_kid,
+                                         const char *reenroll_bearer,
                                          int *master_error_code) {
     check_expected(name);
     check_expected(ip);
     // NULL when the enrollment carried no token; the id text otherwise (#38993).
     check_expected(token_id);
+    // NULL for a first enrollment; the agent id and its bearer, verbatim, for a re-enrollment (#38993).
+    check_expected(reenroll_kid);
+    check_expected(reenroll_bearer);
 
     // Mirrors local_add_clustered()'s contract: no caller-supplied id/key/force is ever
     // forwarded on a worker, and the master's re-enrollment secret is always asked for.
@@ -99,6 +106,20 @@ int __wrap_w_request_agent_add_clustered(char *err_response,
     return result;
 }
 
+// The C++ bridge over the shared verifier (test_reenroll_verify.c drives the real one): here only its
+// verdict matters, and that the master hands it exactly the bearer, the agent id and the row's secret.
+int __wrap_w_reenroll_verify(const char *bearer,
+                             const char *agent_id,
+                             const char *secret_hex,
+                             __attribute__((unused)) long now,
+                             __attribute__((unused)) int jwt_max_age,
+                             __attribute__((unused)) int jwt_clock_skew) {
+    check_expected(bearer);
+    check_expected(agent_id);
+    check_expected(secret_hex);
+    return mock_type(int);
+}
+
 /* tests */
 
 static void test_local_add_clustered_success(void **state) {
@@ -111,12 +132,14 @@ static void test_local_add_clustered_success(void **state) {
     expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
     expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
     will_return(__wrap_w_request_agent_add_clustered, 0);
     will_return(__wrap_w_request_agent_add_clustered, "003");
     will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
     will_return(__wrap_w_request_agent_add_clustered, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
 
-    response = local_add_clustered("agent1", "any", NULL, NULL, NULL);
+    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL);
     assert_non_null(response);
 
     assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 0);
@@ -136,11 +159,13 @@ static void test_local_add_clustered_success(void **state) {
     expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
     expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
     will_return(__wrap_w_request_agent_add_clustered, 0);
     will_return(__wrap_w_request_agent_add_clustered, "004");
     will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
     will_return(__wrap_w_request_agent_add_clustered, "");
-    response = local_add_clustered("agent1", "any", NULL, NULL, NULL);
+    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL);
     assert_non_null(response);
     data = cJSON_GetObjectItem(response, "data");
     assert_string_equal(cJSON_GetObjectItem(data, "id")->valuestring, "004");
@@ -159,11 +184,13 @@ static void test_local_add_clustered_business_rejection_preserves_master_code(vo
     expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
     expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
     will_return(__wrap_w_request_agent_add_clustered, -1);
     will_return(__wrap_w_request_agent_add_clustered, 9008);
     will_return(__wrap_w_request_agent_add_clustered, "ERROR: Duplicate name");
 
-    response = local_add_clustered("agent1", "any", NULL, NULL, NULL);
+    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL);
     assert_non_null(response);
 
     // The master's own numeric code (9008, Duplicate name) must be surfaced verbatim --
@@ -184,11 +211,13 @@ static void test_local_add_clustered_transport_failure_maps_to_9016(void **state
     expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
     expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
     will_return(__wrap_w_request_agent_add_clustered, -2);
     will_return(__wrap_w_request_agent_add_clustered, 0); // master_error_code left untouched
     will_return(__wrap_w_request_agent_add_clustered, "ERROR: Cannot communicate with master");
 
-    response = local_add_clustered("agent1", "any", NULL, NULL, NULL);
+    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL);
     assert_non_null(response);
 
     // No well-formed business code came back -- transport failure and a malformed/unparseable
@@ -964,6 +993,8 @@ static void test_add_with_token_on_worker_forwards_it(void **state) {
     expect_string(__wrap_w_request_agent_add_clustered, name, "wk-agent");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
     expect_string(__wrap_w_request_agent_add_clustered, token_id, "AAECAwQFBgcICQoLDA0ODw");
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
     will_return(__wrap_w_request_agent_add_clustered, 0);
     will_return(__wrap_w_request_agent_add_clustered, "007");
     will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
@@ -975,6 +1006,254 @@ static void test_add_with_token_on_worker_forwards_it(void **state) {
     // The shape check runs on the worker too: garbage never travels to the master.
     response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"wk-agent\",\"ip\":\"any\",\"token_id\":\"nope\"}}");
     assert_int_equal(response_error(response), 9022);
+    cJSON_Delete(response);
+    config.worker_node = FALSE;
+}
+
+// ---------------------------------------------------------------- re-enrollment (#38993)
+
+#define REENROLL_BEARER "eyJhbGciOiJIUzI1NiIsImtpZCI6IjAwMSIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ.claims.signature"
+#define REENROLL_SECRET "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+
+// One first enrollment through the socket; the add reaches the keystore, so OS_AddKey()'s OS_IsValidIP() is
+// expected once. Returns the id (and the key, when asked) the answer carried.
+static void add_agent(const char *name, char *id_out, size_t id_size, char *key_out, size_t key_size) {
+    char request[256];
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    snprintf(request, sizeof(request), "{\"function\":\"add\",\"arguments\":{\"name\":\"%s\",\"ip\":\"any\"}}", name);
+    cJSON *response = dispatch(request);
+    assert_int_equal(response_error(response), 0);
+    strncpy(id_out, data_string(response, "id"), id_size - 1);
+    id_out[id_size - 1] = '\0';
+    if (key_out) {
+        strncpy(key_out, data_string(response, "key"), key_size - 1);
+        key_out[key_size - 1] = '\0';
+    }
+    cJSON_Delete(response);
+}
+
+// The get-agent-info answer wazuh-db gives for one row: an array holding the row (the caller frees it).
+static cJSON *agent_row(int id, const char *reenroll_secret) {
+    cJSON *rows = cJSON_CreateArray();
+    cJSON *row = cJSON_CreateObject();
+    cJSON_AddNumberToObject(row, "id", id);
+    cJSON_AddStringToObject(row, "name", "whatever");
+    if (reenroll_secret) {
+        cJSON_AddStringToObject(row, "reenroll_secret", reenroll_secret);
+    }
+    cJSON_AddItemToArray(rows, row);
+    return rows;
+}
+
+static cJSON *reenroll(const char *kid, const char *name) {
+    char request[1024];
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"%s\",\"ip\":\"any\",\"reenroll\":{\"kid\":\"%s\",\"bearer\":\"" REENROLL_BEARER "\"}}}",
+             name, kid);
+    return dispatch(request);
+}
+
+static void expect_verify(const char *kid, const char *secret, int verdict) {
+    expect_string(__wrap_w_reenroll_verify, bearer, REENROLL_BEARER);
+    expect_string(__wrap_w_reenroll_verify, agent_id, kid);
+    expect_string(__wrap_w_reenroll_verify, secret_hex, secret);
+    will_return(__wrap_w_reenroll_verify, verdict);
+}
+
+// The LAST node of `queue` for `id`: the group fixture keeps one queue for every case, so an agent's first
+// enrollment (an insert node) precedes its rotation in the same queue.
+static struct keynode *find_node(struct keynode *queue, const char *id) {
+    struct keynode *found = NULL;
+    for (; queue; queue = queue->next) {
+        if (strcmp(queue->id, id) == 0) {
+            found = queue;
+        }
+    }
+    return found;
+}
+
+static void test_reenroll_unknown_agent_9026(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    // No row at all: nothing to verify against, and the bearer is never looked at.
+    expect_value(__wrap_wdb_get_agent_info, id, 999);
+    will_return(__wrap_wdb_get_agent_info, NULL);
+    cJSON *response = reenroll("999", "ghost-agent");
+    assert_int_equal(response_error(response), 9026);
+    cJSON_Delete(response);
+}
+
+static void test_reenroll_without_secret_9026(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    // A row without reenroll_secret (a worker's mirror of client.keys, an agent enrolled over 1515): same
+    // answer as no row -- the caller cannot tell the two apart, by design.
+    expect_value(__wrap_wdb_get_agent_info, id, 42);
+    will_return(__wrap_wdb_get_agent_info, agent_row(42, NULL));
+    cJSON *response = reenroll("042", "legacy-agent");
+    assert_int_equal(response_error(response), 9026);
+    cJSON_Delete(response);
+}
+
+static void test_reenroll_invalid_bearer_9027(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    expect_value(__wrap_wdb_get_agent_info, id, 7);
+    will_return(__wrap_wdb_get_agent_info, agent_row(7, REENROLL_SECRET));
+    expect_verify("007", REENROLL_SECRET, W_REENROLL_INVALID);
+    cJSON *response = reenroll("007", "some-agent");
+    assert_int_equal(response_error(response), 9027);
+    cJSON_Delete(response);
+}
+
+static void test_reenroll_stale_9028(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    expect_value(__wrap_wdb_get_agent_info, id, 7);
+    will_return(__wrap_wdb_get_agent_info, agent_row(7, REENROLL_SECRET));
+    expect_verify("007", REENROLL_SECRET, W_REENROLL_STALE);
+    cJSON *response = reenroll("007", "some-agent");
+    assert_int_equal(response_error(response), 9028);
+    cJSON_Delete(response);
+}
+
+static void test_reenroll_rotates_key_and_secret_keeping_the_id(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char old_key[128];
+    add_agent("rot-agent", id, sizeof(id), old_key, sizeof(old_key));
+    const unsigned int keysize_before = keys.keysize;
+
+    // The row wazuh-db holds for it, its secret verified for real by the bridge (wrapped: verdict OK), then
+    // OS_AddNewAgent() re-adds the entry -> OS_AddKey() -> OS_IsValidIP() once more.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *response = reenroll(id, "rot-agent");
+    assert_int_equal(response_error(response), 0);
+    // Same id, a fresh key, a fresh secret -- the five fields of a first enrollment.
+    assert_string_equal(data_string(response, "id"), id);
+    assert_string_equal(data_string(response, "name"), "rot-agent");
+    const char *new_key = data_string(response, "key");
+    const char *new_secret = data_string(response, "reenroll_secret");
+    assert_true(OS_IsValidAgentKey(new_key));
+    assert_string_not_equal(new_key, old_key);
+    assert_true(OS_IsValidReenrollSecret(new_secret));
+    assert_string_not_equal(new_secret, REENROLL_SECRET);
+
+    // The keystore: the same id, now with the new key; nothing added, nothing removed.
+    int index = OS_IsAllowedID(&keys, id);
+    assert_true(index >= 0);
+    assert_string_equal(keys.keyentries[index]->raw_key, new_key);
+    assert_string_equal(keys.keyentries[index]->name, "rot-agent");
+    assert_int_equal(keys.keysize, keysize_before);
+    assert_int_equal(OS_IsAllowedName(&keys, "rot-agent"), index);
+
+    // The writer's queues: one rotation node (UPDATE, groups untouched) and no removal -- no purge.
+    struct keynode *node = find_node(queue_insert, id);
+    assert_non_null(node);
+    assert_int_equal(node->rotate, 1);
+    assert_null(node->group);
+    assert_string_equal(node->raw_key, new_key);
+    assert_string_equal(node->reenroll_secret, new_secret);
+    assert_null(find_node(queue_remove, id));
+    cJSON_Delete(response);
+}
+
+static void test_reenroll_duplicate_name_of_another_agent_9008(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    char id_a[16];
+    char key_a[128];
+    char id_b[16];
+    add_agent("dup-a", id_a, sizeof(id_a), key_a, sizeof(key_a));
+    add_agent("dup-b", id_b, sizeof(id_b), NULL, 0);
+
+    // A valid credential for dup-a asking to be called dup-b: another agent's name, refused like a first
+    // enrollment would be; dup-a keeps its key.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id_a));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id_a), REENROLL_SECRET));
+    expect_verify(id_a, REENROLL_SECRET, W_REENROLL_OK);
+    cJSON *response = reenroll(id_a, "dup-b");
+    assert_int_equal(response_error(response), 9008);
+    cJSON_Delete(response);
+    int index = OS_IsAllowedID(&keys, id_a);
+    assert_true(index >= 0);
+    assert_string_equal(keys.keyentries[index]->raw_key, key_a);
+    assert_string_equal(keys.keyentries[index]->name, "dup-a");
+}
+
+static void test_reenroll_malformed_or_with_token_id_9027(void **state) {
+    (void)state;
+    EXPECT_LOG_ERROR();
+    static const char *const requests[] = {
+        // not an object
+        "{\"function\":\"add\",\"arguments\":{\"name\":\"a\",\"ip\":\"any\",\"reenroll\":\"001\"}}",
+        // no kid
+        "{\"function\":\"add\",\"arguments\":{\"name\":\"a\",\"ip\":\"any\",\"reenroll\":{\"bearer\":\"x.y.z\"}}}",
+        // kid that is not an agent id
+        "{\"function\":\"add\",\"arguments\":{\"name\":\"a\",\"ip\":\"any\",\"reenroll\":{\"kid\":\"abc\",\"bearer\":\"x.y.z\"}}}",
+        "{\"function\":\"add\",\"arguments\":{\"name\":\"a\",\"ip\":\"any\",\"reenroll\":{\"kid\":\"\",\"bearer\":\"x.y.z\"}}}",
+        // no bearer / empty bearer / bearer of the wrong type
+        "{\"function\":\"add\",\"arguments\":{\"name\":\"a\",\"ip\":\"any\",\"reenroll\":{\"kid\":\"001\"}}}",
+        "{\"function\":\"add\",\"arguments\":{\"name\":\"a\",\"ip\":\"any\",\"reenroll\":{\"kid\":\"001\",\"bearer\":\"\"}}}",
+        "{\"function\":\"add\",\"arguments\":{\"name\":\"a\",\"ip\":\"any\",\"reenroll\":{\"kid\":\"001\",\"bearer\":5}}}",
+        // combined with another credential or a caller-chosen identity
+        "{\"function\":\"add\",\"arguments\":{\"name\":\"a\",\"ip\":\"any\",\"token_id\":\"AAECAwQFBgcICQoLDA0ODw\",\"reenroll\":{\"kid\":\"001\",\"bearer\":\"x.y.z\"}}}",
+        "{\"function\":\"add\",\"arguments\":{\"name\":\"a\",\"ip\":\"any\",\"id\":\"001\",\"reenroll\":{\"kid\":\"001\",\"bearer\":\"x.y.z\"}}}",
+        "{\"function\":\"add\",\"arguments\":{\"name\":\"a\",\"ip\":\"any\",\"key\":\"" REENROLL_SECRET "\",\"reenroll\":{\"kid\":\"001\",\"bearer\":\"x.y.z\"}}}",
+    };
+    // None of these reaches wazuh-db or the bridge: no expectations on either wrap.
+    for (size_t i = 0; i < sizeof(requests) / sizeof(requests[0]); i++) {
+        cJSON *response = dispatch(requests[i]);
+        assert_int_equal(response_error(response), 9027);
+        cJSON_Delete(response);
+    }
+    // An explicit null is "not supplied", the classic add.
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"null-reenroll\",\"ip\":\"any\",\"reenroll\":null}}");
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+}
+
+static void test_reenroll_on_worker_forwards_kid_and_bearer(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_INFO();
+    config.worker_node = TRUE;
+    // The worker verifies nothing (it has no secret to verify against): kid and bearer travel verbatim, and
+    // the master's rotated credentials come back as they are.
+    expect_string(__wrap_w_request_agent_add_clustered, name, "wk-reenroll");
+    expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
+    expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
+    expect_string(__wrap_w_request_agent_add_clustered, reenroll_kid, "001");
+    expect_string(__wrap_w_request_agent_add_clustered, reenroll_bearer, REENROLL_BEARER);
+    will_return(__wrap_w_request_agent_add_clustered, 0);
+    will_return(__wrap_w_request_agent_add_clustered, "001");
+    will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
+    will_return(__wrap_w_request_agent_add_clustered, REENROLL_SECRET);
+    cJSON *response = reenroll("001", "wk-reenroll");
+    assert_int_equal(response_error(response), 0);
+    assert_string_equal(data_string(response, "id"), "001");
+    assert_string_equal(data_string(response, "reenroll_secret"), REENROLL_SECRET);
     cJSON_Delete(response);
     config.worker_node = FALSE;
 }
@@ -1009,6 +1288,14 @@ int main(void) {
         cmocka_unit_test(test_add_with_token_on_worker_forwards_it),
         cmocka_unit_test(test_local_add_returns_and_queues_a_reenroll_secret),
         cmocka_unit_test(test_local_get_never_returns_the_secret),
+        cmocka_unit_test(test_reenroll_unknown_agent_9026),
+        cmocka_unit_test(test_reenroll_without_secret_9026),
+        cmocka_unit_test(test_reenroll_invalid_bearer_9027),
+        cmocka_unit_test(test_reenroll_stale_9028),
+        cmocka_unit_test(test_reenroll_rotates_key_and_secret_keeping_the_id),
+        cmocka_unit_test(test_reenroll_duplicate_name_of_another_agent_9008),
+        cmocka_unit_test(test_reenroll_malformed_or_with_token_id_9027),
+        cmocka_unit_test(test_reenroll_on_worker_forwards_kid_and_bearer),
     };
     int failed = cmocka_run_group_tests(tests, NULL, NULL);
     failed += cmocka_run_group_tests(token_tests, setup_token_env, teardown_token_env);

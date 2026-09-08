@@ -35,6 +35,16 @@ namespace remoted::enrollment
     constexpr auto METRIC_TOKEN_REJECTED_EXPIRED {"remoted.enroll.token.rejected_expired"};
     constexpr auto METRIC_TOKEN_REJECTED_REVOKED {"remoted.enroll.token.rejected_revoked"};
     constexpr auto METRIC_TOKEN_REJECTED_EXHAUSTED {"remoted.enroll.token.rejected_exhausted"};
+    // The re-enrollment outcomes (issue #38993): the subset of the requests above whose bearer named an
+    // agent (`kid` = agent id). remoted forwards that bearer unverified, so every one of these is authd's
+    // verdict on the master: `accepted` is a 200 that rotated the agent's credentials, the three rejections
+    // are its 9026 (unknown agent / no secret on record), 9027 (bad signature or malformed) and 9028
+    // (outside the accepted time window) -- each also lands in the remoted.auth.reject.* cell of the
+    // AuthError it maps to (unknown_agent / invalid_signature / clock_skew).
+    constexpr auto METRIC_REENROLL_ACCEPTED {"remoted.enroll.reenroll.accepted"};
+    constexpr auto METRIC_REENROLL_REJECTED_UNKNOWN {"remoted.enroll.reenroll.rejected_unknown"};
+    constexpr auto METRIC_REENROLL_REJECTED_SIGNATURE {"remoted.enroll.reenroll.rejected_signature"};
+    constexpr auto METRIC_REENROLL_REJECTED_STALE {"remoted.enroll.reenroll.rejected_stale"};
 
     struct EnrollmentMetrics
     {
@@ -49,6 +59,10 @@ namespace remoted::enrollment
         std::shared_ptr<wazuh::metrics::ICounter> tokenRejectedExpired;
         std::shared_ptr<wazuh::metrics::ICounter> tokenRejectedRevoked;
         std::shared_ptr<wazuh::metrics::ICounter> tokenRejectedExhausted;
+        std::shared_ptr<wazuh::metrics::ICounter> reenrollAccepted;
+        std::shared_ptr<wazuh::metrics::ICounter> reenrollRejectedUnknown;
+        std::shared_ptr<wazuh::metrics::ICounter> reenrollRejectedSignature;
+        std::shared_ptr<wazuh::metrics::ICounter> reenrollRejectedStale;
     };
 
     inline EnrollmentMetrics makeEnrollmentMetrics(wazuh::metrics::IManager& manager)
@@ -83,6 +97,21 @@ namespace remoted::enrollment
             manager.getOrCreateCounter(METRIC_TOKEN_REJECTED_EXHAUSTED,
                                        "Enrollment-token requests refused by authd because the token has no uses "
                                        "left (authd owns the use counter)",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_REENROLL_ACCEPTED,
+                                       "Re-enrollments authd accepted: the agent kept its id and got new credentials",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_REENROLL_REJECTED_UNKNOWN,
+                                       "Re-enrollments authd refused because the agent is unknown or has no "
+                                       "re-enrollment secret on record (9026)",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_REENROLL_REJECTED_SIGNATURE,
+                                       "Re-enrollments authd refused because the bearer did not verify against the "
+                                       "agent's re-enrollment secret (9027)",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_REENROLL_REJECTED_STALE,
+                                       "Re-enrollments authd refused because the bearer was outside the accepted "
+                                       "time window (9028)",
                                        "count")};
     }
 
@@ -123,6 +152,38 @@ namespace remoted::enrollment
         if (m.tokenRejectedExhausted)
         {
             m.tokenRejectedExhausted->add();
+        }
+    }
+
+    inline void incReenrollAccepted(EnrollmentMetrics& m)
+    {
+        if (m.reenrollAccepted)
+        {
+            m.reenrollAccepted->add();
+        }
+    }
+
+    inline void incReenrollRejectedUnknown(EnrollmentMetrics& m)
+    {
+        if (m.reenrollRejectedUnknown)
+        {
+            m.reenrollRejectedUnknown->add();
+        }
+    }
+
+    inline void incReenrollRejectedSignature(EnrollmentMetrics& m)
+    {
+        if (m.reenrollRejectedSignature)
+        {
+            m.reenrollRejectedSignature->add();
+        }
+    }
+
+    inline void incReenrollRejectedStale(EnrollmentMetrics& m)
+    {
+        if (m.reenrollRejectedStale)
+        {
+            m.reenrollRejectedStale->add();
         }
     }
 

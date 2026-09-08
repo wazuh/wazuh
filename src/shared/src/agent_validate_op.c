@@ -36,8 +36,6 @@ fpos_t fp_pos;
 /* The agent key is the agent's HS256 secret (remoted's wazuh-agent+jwt bearer profile): exactly
  * AGENT_KEY_BYTES bytes from the CSPRNG, stored in client.keys as AGENT_KEY_HEX_CHARS lowercase hex
  * chars. remoted decodes those hex chars back into the 32 raw key bytes; nothing else is accepted. */
-#define AGENT_KEY_BYTES 32
-#define AGENT_KEY_HEX_CHARS (2 * AGENT_KEY_BYTES)
 
 int OS_IsValidAgentKey(const char *key)
 {
@@ -97,6 +95,31 @@ int OS_NewReenrollSecret(char *out, size_t out_size)
     return (0);
 }
 
+int OS_NewAgentKey(char *out, size_t out_size)
+{
+    static const char HEX[] = "0123456789abcdef";
+    unsigned char rnd[AGENT_KEY_BYTES];
+    size_t i;
+
+    if (!out || out_size < AGENT_KEY_HEX_CHARS + 1) {
+        return (-1);
+    }
+    out[0] = '\0';
+
+    /* 32 bytes straight from the CSPRNG. Never fall back to a weaker generator: a key the agent
+     * will authenticate with for years is worth refusing the enrollment over. */
+    if (RAND_bytes(rnd, sizeof(rnd)) != 1) {
+        return (-1);
+    }
+    for (i = 0; i < sizeof(rnd); i++) {
+        out[2 * i] = HEX[rnd[i] >> 4];
+        out[2 * i + 1] = HEX[rnd[i] & 0x0f];
+    }
+    out[AGENT_KEY_HEX_CHARS] = '\0';
+    OPENSSL_cleanse(rnd, sizeof(rnd));
+    return (0);
+}
+
 int OS_AddNewAgent(keystore *keys,
                    const char *id,
                    const char *name,
@@ -104,9 +127,6 @@ int OS_AddNewAgent(keystore *keys,
                    const char *key,
                    unsigned int max_agents)
 {
-    static const char HEX[] = "0123456789abcdef";
-    unsigned char rnd[AGENT_KEY_BYTES];
-    size_t i;
     char _id[12] = { '\0' };
     char buffer[KEYSIZE] = { '\0' };
 
@@ -130,18 +150,10 @@ int OS_AddNewAgent(keystore *keys,
     }
 
     if (!key) {
-        /* 32 bytes straight from the CSPRNG. Never fall back to a weaker generator: a key the agent
-         * will authenticate with for years is worth refusing the enrollment over. */
-        if (RAND_bytes(rnd, sizeof(rnd)) != 1) {
+        if (OS_NewAgentKey(buffer, sizeof(buffer)) != 0) {
             merror("Unable to generate a key for agent '%s': the CSPRNG (RAND_bytes) failed.", name);
             return OS_INVALID;
         }
-        for (i = 0; i < sizeof(rnd); i++) {
-            buffer[2 * i] = HEX[rnd[i] >> 4];
-            buffer[2 * i + 1] = HEX[rnd[i] & 0x0f];
-        }
-        buffer[AGENT_KEY_HEX_CHARS] = '\0';
-        OPENSSL_cleanse(rnd, sizeof(rnd));
         key = buffer;
     }
 

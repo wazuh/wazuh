@@ -20,7 +20,8 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_bind_
 list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg \
                              -Wl,--wrap,wdb_global_insert_agent -Wl,--wrap,wdb_global_update_agent_version \
-                             -Wl,--wrap,wdb_global_update_agent_keepalive -Wl,--wrap,wdb_global_update_agent_connection_status -Wl,--wrap,wdb_global_update_agent_status_code \
+                             -Wl,--wrap,wdb_global_update_agent_keepalive -Wl,--wrap,wdb_global_set_agent_credentials \
+                             -Wl,--wrap,wdb_global_update_agent_connection_status -Wl,--wrap,wdb_global_update_agent_status_code \
                              -Wl,--wrap,wdb_global_validate_sync_status -Wl,--wrap,wdb_global_delete_agent -Wl,--wrap,wdb_global_select_agent_group \
                              -Wl,--wrap,wdb_global_delete_agent_belong -Wl,--wrap,wdb_global_find_agent -Wl,--wrap,wdb_global_find_group \
                              -Wl,--wrap,wdb_global_insert_agent_group -Wl,--wrap,wdb_global_insert_agent_belong -Wl,--wrap,wdb_global_delete_group_belong \
@@ -38,6 +39,8 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,w_inc_global_agent_update_agent_data -Wl,--wrap,w_inc_global_agent_update_agent_data_time \
                              -Wl,--wrap,w_inc_global_agent_update_keepalive \
                              -Wl,--wrap,w_inc_global_agent_update_keepalive_time \
+                             -Wl,--wrap,w_inc_global_agent_set_agent_credentials \
+                             -Wl,--wrap,w_inc_global_agent_set_agent_credentials_time \
                              -Wl,--wrap,w_inc_global_agent_update_connection_status -Wl,--wrap,w_inc_global_agent_update_connection_status_time \
                              -Wl,--wrap,w_inc_global_agent_update_status_code -Wl,--wrap,w_inc_global_agent_update_status_code_time \
                              -Wl,--wrap,w_inc_global_agent_delete_agent -Wl,--wrap,w_inc_global_agent_delete_agent_time \

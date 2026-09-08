@@ -124,6 +124,47 @@ TEST(AuthdClientTest, SuccessfulAddCarriesTheReenrollSecretWhenAuthdSendsIt)
     EXPECT_EQ(result.reenrollSecret, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
 }
 
+TEST(AuthdClientTest, ReenrollCredentialTravelsAsArgumentsReenroll)
+{
+    // Re-enrollment (issue #38993): the agent id the bearer named and the bearer itself go to authd
+    // verbatim as `reenroll` = {kid, bearer} -- the master verifies them, this client only forwards --
+    // and a re-enrollment never carries a token_id (the two credentials are exclusive on authd's side).
+    const std::string path = makeUniqueSocketPath("authd_client_reenroll");
+    std::string captured;
+    std::mutex mu;
+    FakeUdsServer server(
+        path,
+        [&](const std::string& request)
+        {
+            std::lock_guard<std::mutex> lock(mu);
+            captured = request;
+            return std::string(
+                R"({"error":0,"data":{"id":"001","name":"agent1","ip":"any","key":"k2",)"
+                R"("reenroll_secret":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}})");
+        });
+    server.setCloseAfterReply(true);
+
+    AuthdClient client(path);
+    ResultWaiter waiter;
+    auto request = makeRequest();
+    request.reenroll = AuthdAddRequest::ReenrollCredential {"001", "eyJhbGciOiJIUzI1NiJ9.claims.signature"};
+    client.addAgent(request, waiter.callback());
+
+    const auto result = waiter.wait();
+    EXPECT_EQ(result.errorCode, 0);
+    EXPECT_EQ(result.id, "001");
+    EXPECT_EQ(result.key, "k2");
+    EXPECT_EQ(result.reenrollSecret, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+
+    std::lock_guard<std::mutex> lock(mu);
+    const auto wire = nlohmann::json::parse(captured);
+    EXPECT_EQ(wire["function"], "add");
+    EXPECT_EQ(wire["arguments"]["reenroll"]["kid"], "001");
+    EXPECT_EQ(wire["arguments"]["reenroll"]["bearer"], "eyJhbGciOiJIUzI1NiJ9.claims.signature");
+    EXPECT_FALSE(wire["arguments"].contains("token_id"));
+    EXPECT_FALSE(wire["arguments"].contains("id"));
+}
+
 TEST(AuthdClientTest, BusinessRejectionPreservesCodeAndStripsPrefix)
 {
     const std::string path = makeUniqueSocketPath("authd_client_business_error");
