@@ -27,9 +27,13 @@ remoted_module/
 │   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below),
 │   │                               #   requestOutcomeMetrics.hpp (per-endpoint responses.* + latency)
 │   ├── decoding/                   # ns remoted::decoding — Content-Encoding policy (see below)
-│   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below)
+│   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below);
+│   │                               #   tlsCertificateStatus.hpp/.cpp = served-certificate expiry + CA
+│   │                               #   coherence evaluation and its daily monitor thread
 │   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below);
 │   │   │                           #   endpoint.hpp also carries the remoted.auth.reject.* catalog
+│   │   ├── cacertsEndpoint.hpp/.cpp    # GET /cacerts: serves remote.https.ca_certificate (see below)
+│   │   ├── cacertsMetrics.hpp          # remoted.cacerts.* + remoted.server.tls.* name catalog
 │   │   ├── controlEndpoint.hpp/.cpp    # POST /control JSON dispatch (see below)
 │   │   ├── downloadMetrics.hpp         # remoted.download.* catalog (POST /download)
 │   │   └── scanVdEndpoint.hpp/.cpp     # POST /scan/vd JSON dispatch (see below)
@@ -62,17 +66,34 @@ the underlying library (today RESTinio, likely `Boost.Beast + Boost.Asio` later)
 without touching any registered endpoint.
 
 Metrics: the transport's backpressure state is published as the `remoted.server.budget.*` pulls
-(via `IHttpServer::diagnostics()`) — see the [Metrics catalog](#metrics-catalog).
+(via `IHttpServer::diagnostics()`), and the served certificate's health as the
+`remoted.server.tls.*` pulls (via `IHttpServer::certificateStatus()`) — see the
+[Metrics catalog](#metrics-catalog).
 
 ```
 src/http_server/
 ├── IHttpServer.hpp          # neutral interface + types (Method/HttpRequest/HttpResponse/
 │                            #   IHttpResponder/HttpServerConfig). No transport types leak here.
 ├── inFlightBudget.hpp       # global in-flight byte budget + RAII Reservation (backpressure/503)
+├── tlsCertificateStatus.hpp/.cpp # served-leaf expiry + "does the configured CA sign it" evaluation
+│                            #   (pure functions over X509 + a PEM path) and TlsCertificateMonitor
 ├── httpServerConfig.hpp/.cpp# buildHttpServerConfig(): C-ABI struct -> HttpServerConfig (+ fallbacks)
 ├── httpServerFactory.hpp    # makeHttpServer() -> the single transport swap point
 └── RestinioHttpServer.hpp/.cpp # RESTinio + OpenSSL implementation (PImpl hides RESTinio in the .cpp)
 ```
+
+- **Certificate status (`tlsCertificateStatus.hpp`, `IHttpServer::certificateStatus()`):** when
+  `start()` builds the TLS context it evaluates the leaf it just loaded — days to `notAfter`
+  (negative once expired) and whether `HttpServerConfig::caCertificatePath` (the CA `GET /cacerts`
+  hands out; any `CERTIFICATE` block of the file counts, so a bundle works) signs it — logs the
+  result (ERROR expired / CA does not sign, WARN < 30 days / CA unreadable) and records it **before**
+  `run_async`, so no request can ever read "not evaluated yet". A `TlsCertificateMonitor` (own
+  thread parked on a `condition_variable::wait_for`, the module's canonical periodic-task shape —
+  RESTinio's `run_async()` keeps its `io_context` private, so no timer there: D45) re-evaluates and
+  re-logs every `HttpServerConfig::certificateStatusInterval` (24 h; tests inject 1 s — it is not a
+  configuration option) and is stopped in `stopAccepting()` before the worker-pool join. The leaf
+  compared is the one in the `SSL_CTX` (constant until restart); the CA is re-read from disk at every
+  tick. `certificateStatus()` is a default `{}` on the interface, so the test fakes need nothing.
 
 - **Endpoint registration:** `addRoute(Method, path, handler)` before `start()`. Paths are
   **logical**: the transport serves every route under `HttpServerConfig::globalPrefix`
@@ -164,7 +185,10 @@ src/http_server/
        `certificate_path`/`private_key_path` are file paths (not PEM content) opened by the
        module itself, after `remoted` has already dropped root privileges (`Privsep_SetUser()`)
        -- so both files (and `ca_path`, when configured) must be readable by the unprivileged
-       user `remoted` runs as.
+       user `remoted` runs as. `secure.c` probes the pair with `access(R_OK)`
+       (`w_remoted_check_tls_files()`) right before `remoted_module_start()` and exits with a
+       deterministic ERROR when either is missing or unreadable, so this module's own load
+       failure only fires for files that exist and are readable but unusable.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
        `max_parallel_connections` (default 512) and `max_deferred_requests` (default 256) --
        populated from the `remoted.max_inflight_bytes`/`remoted.max_parallel_connections`/
@@ -209,7 +233,26 @@ src/endpoints/
 ├── statsEndpoint.hpp/.cpp    # /stats policy: forwards to modulesd's inventory sync server
 └── configEndpoint.hpp/.cpp  # /config policy: near-duplicate of statsEndpoint, on purpose
 └── downloadEndpoint.hpp/.cpp  # /download policy: request grammar + resource resolution + file streaming
+└── cacertsEndpoint.hpp/.cpp   # GET /cacerts: the CA that signs the listener cert, served as-is (no auth)
 ```
+
+- **`GET /cacerts` (`cacertsEndpoint.hpp/.cpp`, ns `remoted::endpoints::cacerts`):** the one route
+  besides the health probe registered as a *raw* `addRoute()` — no `AuthGateway` (the caller holds
+  no credential yet: this is how it gets the CA to trust the manager with), `countAgainstBudget=false`
+  (a trust bootstrap is never shed under memory pressure), `Buffered`, under the global prefix like
+  every route. `makeHandler(caCertificatePath, status, CacertsMetrics, const EndpointHttpMetrics*)`
+  reads the PEM file on **every** request (tiny, cold; no cache to invalidate): unreadable or without a
+  `-----BEGIN CERTIFICATE-----` block ⇒ `404 {"error":"not_found"}` (the transport's unknown-route
+  body); `status().caMatchesLeaf == false` (the transport's evaluation says this CA does not sign the
+  served leaf) ⇒ `503 {"error":"ca_mismatch"}` — refused, because handing it out would make every
+  verifying agent fail against this very listener; `true` **or `nullopt`** (never evaluated, or the CA
+  was unreadable at the last tick and is back) ⇒ `200 Content-Type: application/x-pem-file`, the file
+  byte for byte. Body and headers (an `Authorization`, say) are ignored. One `LogThrottle` per cause.
+  The status function the facade passes locks a `weak_ptr` to the server and calls
+  `certificateStatus()`; the WHAT is counted through a `MeteredResponder` on
+  `remoted.http.cacerts.responses.*` (method label `GET`), the WHY on `remoted.cacerts.*`. Known
+  window: a *different but valid* CA written over the file is served until the next daily tick or a
+  restart (refresh-on-fingerprint is a deferred improvement).
 
 - **Endpoint handler (async):**
   `using AuthenticatedHandler = std::function<void(std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder>)>;`
@@ -1121,8 +1164,16 @@ listeners now present the *same* identity: the install-time generation step
 to create `authd.pem`/`authd-key.pem` has been removed, and the generated `<auth>` config
 (`auth.template`, and the `<disabled>yes</disabled>` fallback written by `DisableAuthd()`) now
 points `<ssl_manager_cert>`/`<ssl_manager_key>` at `remoted.pem`/`remoted-key.pem` instead — the
-same certificate `GenerateHttpsManagerCert()` already generates for the HTTPS listener. Explicit
-`<auth>` certificate overrides in `ossec.conf` keep working unchanged — only the generated
+listener pair the operator provisions. The manager generates no certificate at all any more:
+`CheckListenerCerts()` in `init/inst-functions.sh` (and the packaging equivalents) only creates
+`etc/certs`, re-applies the pair's ownership and prints a `NOTICE` when it is missing, and the
+manager fails closed without it — `wazuh-manager-conf validate` (run by `wazuh-manager-control
+start`) rejects a missing file with `(1244) … file not found`, and remoted itself probes both paths
+with `access(R_OK)` after dropping privileges (`w_remoted_check_tls_files()` in `secure.c`, right
+before `remoted_module_start()`) and exits with a deterministic message, so this module's own
+exception on an unreadable pair is the last resort, not the first line (see
+[Certificate provisioning and fail-closed start](../../../docs/ref/modules/remoted/https-events-api.md#certificate-provisioning-and-fail-closed-start)).
+Explicit `<auth>` certificate overrides in `ossec.conf` keep working unchanged — only the generated
 defaults change. Port 1515 keeps running with the unified certificate.
 
 Two compiled-in defaults exist alongside the generated config, both now updated to match:
@@ -1655,10 +1706,12 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
 | `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed}` | WHY authentication failed, pre-collapse (the wire folds credential failures into one 401) | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
 | `remoted.auth.keystore.{agents, entries_skipped, reloads.total, reload_failures.total}` (pulls) | did the client.keys hot-reload pick up re-enrolls; is the file unreadable/unstable; how many lines the load could not use | atomics maintained by `Keystore::reload()`. `agents`/`entries_skipped` are LEVELS of the adopted load (a failed load leaves both untouched); neither counts comments, blanks or removed entries |
-| `remoted.http.<stateless\|stateful\|stats\|config\|enroll>.responses.{2xx,400,403,409,413,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` is not forwarded, so it counts through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`) — one wrap covers its five inline answers AND the one authd's callback delivers on another thread |
+| `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|cacerts>.responses.{2xx,400,403,409,413,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
 | `remoted.download.{rejected, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
+| `remoted.cacerts.{served, not_found, ca_mismatch}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, or refused because the configured CA does not sign the served leaf | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch |
+| `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does `remote.https.ca_certificate` sign it (0 also when the CA is unreadable) | `IHttpServer::certificateStatus()` over the transport's `TlsCertificateMonitor` snapshot (start + every 24 h); registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
 | `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above) | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.authd.queue.{depth, capacity, rejected.total}` (pulls) | is `remoted.authd_max_queue_size`/`authd_worker_threads` sized right, and how much of `authd_unavailable` was saturation rather than an unreachable authd | `AuthdClient::queueDiagnostics()` (same lock, dump cadence only); the counter is bumped ONLY on the queue-full branch, never on shutdown |
@@ -1774,7 +1827,20 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http:
 
 Unit tests (built when `UNIT_TEST` is enabled) live in `test/unit/`: `remotedModule_test.cpp`
 (C-ABI black-box), `httpServer_test.cpp` (transport config incl. in-flight-budget/max-connections
-resolution + responder contract incl. a shared request surviving a deferred handler),
+resolution + responder contract incl. a shared request surviving a deferred handler, plus the
+certificate status: `TlsCertificateStatusTest` drives `daysUntilExpiry()`/`anyCaSignsLeaf()`/
+`evaluateCertificateStatus()` from certificates built in memory — signed by the CA, by a foreign CA,
+CA unreadable, a bundle with the signing CA not first — and `HttpServerTest` pins that the status is
+already evaluated when `start()` returns, re-evaluated on a 1 s `certificateStatusInterval`, and that
+`stopAccepting()` joins the monitor), `cacertsEndpoint_test.cpp` (the `GET /cacerts` decision table
+against a faked status: PEM served byte for byte as `application/x-pem-file`, missing/garbage file
+404, `caMatchesLeaf == false` 503, `nullopt` serves, body/`Authorization` ignored, both metric
+families counted, null metrics count nothing), `cacertsE2E_test.cpp` (a REAL TLS server with a leaf
+signed by a throwaway CA — `testTlsServer.hpp`'s `generateCaSignedCertificate()`: the PEM `/cacerts`
+serves lets a client with `verify_peer` and **only that PEM** complete the handshake against the same
+listener, while a foreign CA does not; prefixed vs bare target; a foreign CA configured as
+`caCertificatePath` is caught by the real start-time evaluation and answered 503; the CA moved away
+is a 404 without a restart),
 `inFlightBudget_test.cpp` (reserve/release accounting, exhaustion, RAII move-once, disabled mode,
 concurrency), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
 release, disabled mode, concurrency), `deferredForwarder_test.cpp` (mock client: slot-full→503,
@@ -1910,3 +1976,11 @@ python3 tools/send_scan_vd.py --all                          # every /scan/vd su
 `send_scan_vd.py --auto-offset` is the tool doing what a real agent does before ever calling
 `/scan/vd`: read the current offset off a live `/control` notify response rather than requiring you
 to already know it.
+
+### `agent-api-reference.html` (docs/ref) needs no regeneration
+
+`docs/ref/modules/remoted/agent-api-reference.html` is a 638-byte ReDoc shell that loads
+`agent-api.yaml` **in the browser** (CDN bundle `redoc@2.5.2`): editing the yaml is the whole change,
+there is no generated artifact to rebuild and no tool to install (`redocly` is not part of the
+environment). Validate the yaml (`python3 -c "import yaml; yaml.safe_load(open('docs/ref/modules/remoted/agent-api.yaml'))"`)
+and run `docs/build.sh`; that is all.

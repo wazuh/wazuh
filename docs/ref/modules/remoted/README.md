@@ -9,7 +9,7 @@ It serves two channels at once, and they share almost nothing:
 
 ## Key Features
 
-- **HTTPS agent API**: TLS 1.3 listener with per-agent JWT bearer authentication (`wazuh-agent+jwt`, HS256 with the agent's `client.keys` key), serving nine agent-facing routes (enrollment, events, state sync, control, file download, reporting)
+- **HTTPS agent API**: TLS 1.3 listener with per-agent JWT bearer authentication (`wazuh-agent+jwt`, HS256 with the agent's `client.keys` key), serving ten agent-facing routes (CA distribution, enrollment, events, state sync, control, file download, reporting)
 - **Back-pressure**: capacity bounded by an in-flight byte budget and a deferred-work limiter rather than a fixed queue, shedding excess load with `503`
 - **Group Management**: dynamic agent group assignment and centralized configuration distribution
 - **Legacy compatibility** *(opt-in)*: TCP and UDP transports, AES message decryption, keep-alive metadata extraction and event batching for 4.x agents
@@ -17,7 +17,7 @@ It serves two channels at once, and they share almost nothing:
 ## Components
 
 - [Architecture](architecture.md) - Overview of remoted's internal architecture
-- [HTTPS Agent API](https-events-api.md) - The agent-facing protocol: TLS, JWT bearer authentication, and all nine endpoints
+- [HTTPS Agent API](https-events-api.md) - The agent-facing protocol: TLS, JWT bearer authentication, and all ten endpoints
 - [Endpoint reference](agent-api-reference.html) - The same contract as OpenAPI (source: [`agent-api.yaml`](agent-api.yaml))
 - [Load balancers](load-balancers/README.md) - Deploying the HTTPS agent API behind a load balancer or reverse proxy ([NGINX](load-balancers/nginx.md), [HAProxy](load-balancers/haproxy.md))
 - [Configuration](configuration.md) - Configuration options and tuning parameters

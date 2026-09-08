@@ -115,7 +115,7 @@ Time in seconds before allowing a new connection to overtake an existing agent c
 
 **XML Section:** `<remote><https>`
 
-Configuration for the RESTinio-based HTTPS listener. All options are optional; an absent `<https>` block (or an absent individual option) falls back to the module's built-in defaults, so the listener is usable without configuring anything here. There is no `enabled` toggle: the listener always attempts to start, and self-gates on the presence of a valid certificate/key.
+Configuration for the RESTinio-based HTTPS listener. All options are optional; an absent `<https>` block (or an absent individual option) falls back to the module's built-in defaults, so the listener is usable without configuring anything here. There is no `enabled` toggle: the listener always starts, and the manager fails closed without a readable certificate/key — it does not generate them, the operator provisions them (see [Certificate provisioning and fail-closed start](https-events-api.md#certificate-provisioning-and-fail-closed-start)).
 
 ### https.port
 
@@ -175,6 +175,12 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 Path to the TLS certificate chain (PEM) presented by the server.
 
 - **Default value:** `etc/certs/remoted.pem` (relative to the manager's chroot)
+- **Note:** the manager does not generate this file. Provision it — a leaf of the CA in
+  `ca_certificate`, issued by the installation assistant's `wazuh-certs-tool` — as
+  `wazuh-manager:wazuh-manager 640` before the first start. Missing: `wazuh-manager-control start`
+  refuses with `(1244): Invalid configuration at '/remote/https/certificate': file not found: …`.
+  Present but unreadable by the service user: `wazuh-manager-remoted` exits with
+  `Cannot start the HTTPS agent listener: …`.
 - **Note:** at startup the manager warns if this certificate has expired or expires within 30 days,
   so a silent outage for verifying agents can be prevented before it happens.
 
@@ -183,6 +189,9 @@ Path to the TLS certificate chain (PEM) presented by the server.
 Path to the TLS private key (PEM) matching `certificate`.
 
 - **Default value:** `etc/certs/remoted-key.pem` (relative to the manager's chroot)
+- **Note:** provisioned together with `certificate`, same ownership and the same fail-closed
+  behaviour when missing (`(1244) … '/remote/https/key': file not found`) or unreadable by the
+  service user.
 
 ### https.ca
 
@@ -191,6 +200,21 @@ Path to a CA bundle (PEM) used to verify client (agent) certificates.
 - **Default value:** `etc/certs/root-ca.pem` (relative to the manager's chroot)
 - **Note:** Only actually read when `verification_mode` is `certificate`; harmless
   if left at its default and `verification_mode` stays `none`. See the special case below.
+
+### https.ca_certificate
+
+Path to the CA certificate (PEM) that signs the listener certificate (`certificate`). It is the
+certificate the manager serves on `GET /cacerts` and the one enrollment tokens pin, so agents can
+verify the listener without an out-of-band CA copy.
+
+- **Default value:** `etc/certs/root-ca.pem` (relative to the manager's chroot; the installer
+  writes the option explicitly — the file itself is provisioned by the operator together with the
+  listener certificate it signs, the manager generates neither)
+- **Note:** this is **not** the client-verification CA (`ca`): `ca` verifies agent certificates,
+  `ca_certificate` is what agents use to verify the manager. An empty value is rejected at startup
+  (`(1244): Invalid configuration at '/remote/https/ca_certificate': does not satisfy 'minLength'`).
+  The file is not required to exist for the manager to start: when it is missing, `GET /cacerts`
+  answers 404.
 
 ### https.verification_mode
 

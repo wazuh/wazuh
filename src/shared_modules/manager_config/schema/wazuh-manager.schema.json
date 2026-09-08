@@ -231,6 +231,16 @@
               "default": "",
               "description": "CA bundle used to verify agent certificates. Empty = client certificate verification disabled."
             },
+            "ca_certificate": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/path"
+                }
+              ],
+              "minLength": 1,
+              "default": "etc/certs/root-ca.pem",
+              "description": "CA certificate that signs the listener certificate; served on GET /cacerts and pinned by enrollment tokens. Not the client-verification CA ('ca')."
+            },
             "verification_mode": {
               "enum": [
                 "none",

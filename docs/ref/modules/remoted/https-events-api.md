@@ -10,8 +10,11 @@ The listener is built on RESTinio + OpenSSL and authenticates every request with
 **`wazuh-agent+jwt` bearer token** (HS256) the agent self-signs with its pre-shared `client.keys` key.
 
 > The listener **requires** a TLS certificate and key to be present (see
-> [Transport and TLS](#transport-and-tls)); a self-signed pair is generated automatically at
-> install time on manager packages, so this is satisfied on a default install.
+> [Transport and TLS](#transport-and-tls)). The manager does not generate them: the operator
+> provisions `etc/certs/remoted.pem`, `etc/certs/remoted-key.pem` and the CA that signs them,
+> `etc/certs/root-ca.pem`, with the Wazuh installation assistant's `wazuh-certs-tool` before the
+> first start, and the manager fails closed until they are there (see
+> [Certificate provisioning and fail-closed start](#certificate-provisioning-and-fail-closed-start)).
 
 ## Overview
 
@@ -37,9 +40,11 @@ The listener is built on RESTinio + OpenSSL and authenticates every request with
   `/var/wazuh-manager/etc/certs/root-ca.pem`. These paths are opened by the module itself,
   **after** `remoted` has already dropped root privileges (`Privsep_SetUser()`), so the private
   key (and the CA bundle, when `verification_mode` requires one) must be readable by the
-  `wazuh-manager` user `remoted` runs as. Packaging generates and owns the auto-signed pair as
-  `wazuh-manager:wazuh-manager`, mode `640`; an administrator-provided pair must match that
-  ownership, or the module fails to start (see
+  `wazuh-manager` user `remoted` runs as. The pair is provisioned by the operator (see
+  [Certificate provisioning and fail-closed start](#certificate-provisioning-and-fail-closed-start))
+  and must be owned `wazuh-manager:wazuh-manager`, mode `640` — the installer re-applies that
+  ownership to the default pair on every install; anything the service user cannot read stops
+  `remoted` at startup (see
   [Diagnosing rejections and capacity problems](#diagnosing-rejections-and-capacity-problems)).
 - **Message limits and timeouts:** max URL 2048 B, max header name 256 B, max header value 8192 B,
   max 64 header fields, and a transport body cap of 20 MiB by default (`<remote><https><max_body_size>`);
@@ -71,24 +76,80 @@ with no extra configuration). A few things to know before choosing one:
   what lets the registered-address check below compare it against the `ip` column in `client.keys`
   without either side having to handle the mapped form.
 
-A self-signed certificate/key pair is generated automatically at install time (source install,
-`.deb` and `.rpm` all wire this in) via the shared `generate_cert()` routine, invoked through
-remoted's own binary, and chowned to `wazuh-manager:wazuh-manager` afterward so the module can read
-it once `remoted` drops privileges:
+### Certificate provisioning and fail-closed start
 
-```bash
-wazuh-manager-remoted -C 365 -B 2048 \
-  -K /var/wazuh-manager/etc/certs/remoted-key.pem \
-  -X /var/wazuh-manager/etc/certs/remoted.pem \
-  -S "/C=US/ST=California/CN=Wazuh/"
-chown wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs/remoted-key.pem /var/wazuh-manager/etc/certs/remoted.pem
-chmod 640 /var/wazuh-manager/etc/certs/remoted-key.pem /var/wazuh-manager/etc/certs/remoted.pem
-```
+The manager generates no TLS material of its own — neither the package scriptlets nor
+`wazuh-manager-remoted`/`wazuh-manager-authd` have a certificate-generation mode. The listener
+pair is a leaf of the deployment's CA, issued by the Wazuh installation assistant's certificate tool
+(`wazuh-certs-tool`, the same tool that issues the indexer and dashboard certificates) as
+`<node>-remoted.pem`/`<node>-remoted-key.pem`, and deployed by the operator as
+`etc/certs/remoted.pem`/`etc/certs/remoted-key.pem` (`wazuh-manager:wazuh-manager 640`) next to the
+CA that signed it, `etc/certs/root-ca.pem` (`root:wazuh-manager 640`) — the CA served on
+[`GET /cacerts`](#ca-certificate-endpoint-get-cacerts) and pinned by agents. The exact commands are in
+[Deploy certificates](../../getting-started/installation.md#deploy-certificates). The installer only
+creates `etc/certs`, re-applies the pair's ownership when it is already there and prints a `NOTICE`
+when it is not; an existing pair is never touched, so upgrades keep theirs.
 
-Generation is skipped if a certificate/key pair already exists at those paths, so an
-administrator-provided certificate is never overwritten. To force regeneration, remove both files
-and re-run the command above (or reinstall). An administrator-provided pair must be readable by
-the `wazuh-manager` user (e.g. via the same ownership/mode) or the module fails to start.
+Without a usable pair the manager **fails closed**, in three layers, from the outside in:
+
+1. **`wazuh-manager-control start`** runs `wazuh-manager-conf validate` before any daemon; it
+   checks that `remote.https.certificate`/`key` (and authd's `ssl_manager_cert`/`ssl_manager_key`)
+   exist and refuses to start with, on the console and in `logs/wazuh-manager.log`:
+   `(1244): Invalid configuration at '/remote/https/certificate': file not found:
+   /var/wazuh-manager/etc/certs/remoted.pem (the manager does not generate certificates; provision
+   the file, e.g. with wazuh-certs-tool).`
+2. **`wazuh-manager-remoted`**, after entering its chroot and dropping privileges and right before
+   starting this module, probes both paths with `access(R_OK)` and exits with exactly one of
+   `Cannot start the HTTPS agent listener: the TLS certificate '<c>' and private key '<k>' are missing
+   or unreadable by the service user.`, `… the TLS certificate '<c>' is missing or unreadable by the
+   service user.` or `… the TLS private key '<k>' is missing or unreadable by the service user.`,
+   each followed by the hint `wazuh-manager does not generate TLS certificates: provision them with
+   wazuh-certs-tool (Wazuh installation assistant) and install remoted.pem, remoted-key.pem and
+   root-ca.pem under etc/certs, readable by the service user (see 'Deploy certificates' in the
+   installation guide).` This is the layer a present-but-root-owned pair hits: the validator runs as
+   root and cannot tell. `wazuh-manager-authd` fails the same way on the same files (`SSL context
+   setup failed (certificate '…', key '…'). wazuh-manager does not generate TLS certificates: …`).
+3. **The module itself** fails to load a pair that passed both probes but is unusable (corrupt PEM,
+   key/certificate mismatch): the ERROR names which of the two is the problem and, as with every
+   other startup failure, `remoted` does not start.
+
+`remote.https.ca_certificate` is deliberately **not** fatal: when `root-ca.pem` is missing the
+manager starts and `GET /cacerts` answers `404`.
+
+### Renewing the listener certificate
+
+Renewal is an operator task as well — nothing in the manager reissues the pair. The daily evaluation
+(see [`GET /cacerts`](#ca-certificate-endpoint-get-cacerts)) logs a WARN once `remoted.pem` is within
+30 days of `notAfter` and an ERROR once it has expired; `remoted.server.tls.cert_expiry_days` reads
+the countdown. Two cases:
+
+**Leaf renewal from the same CA** (the routine one):
+
+1. Issue a new `<node>-remoted.pem`/`<node>-remoted-key.pem` from the **same** `root-ca.pem` with the
+   installation assistant's `wazuh-certs-tool` — or any tooling that signs with that CA's key and
+   produces a leaf with `CA:FALSE`, `extendedKeyUsage serverAuth` and a SAN naming the address agents dial.
+2. Install them over `etc/certs/remoted.pem`/`etc/certs/remoted-key.pem` as `wazuh-manager:wazuh-manager 640`
+   (the `mv`/`chown`/`chmod` steps of
+   [Deploy certificates](../../getting-started/installation.md#deploy-certificates)).
+3. `systemctl restart wazuh-manager` — the leaf is loaded once, when the listener starts.
+4. Check: `openssl s_client -connect <host>:1517 -CAfile root-ca.pem </dev/null` prints
+   `Verify return code: 0 (ok)`, `GET /cacerts` answers `200`, and `cert_expiry_days` is back to the new
+   validity (the WARN is not logged again).
+
+Agents keep verifying throughout: they pin the CA, not the leaf.
+
+**CA rotation** (a new `root-ca.pem`, so every leaf it signed changes with it):
+
+1. Issue the new CA and reissue every leaf from it — the listener pair, the indexer connector pair and
+   the certificates of the other nodes the assistant issued from the old CA.
+2. Install the new `root-ca.pem` as `root:wazuh-manager 640` and the new listener pair as above, keeping
+   `remote.https.ca_certificate` pointed at the CA file (the shipped path does not change).
+3. Restart and check as above. A CA and a leaf installed out of step make `GET /cacerts` answer `503`
+   `{"error":"ca_mismatch"}` and the evaluation log an ERROR naming both subjects — the guard exists for
+   exactly this moment; the `200` returns as soon as both files agree.
+
+Agents that pinned the old CA stop verifying this manager until they receive the new anchor; how an
+agent is re-enrolled or updated with it is documented on the agent side.
 
 ## Authentication (JWT bearer)
 
@@ -304,8 +365,8 @@ the intermediary — see [Load balancers](load-balancers/README.md).
 
 ## Endpoints
 
-The listener exposes **nine** agent-facing routes. Every one of them except `GET /` and
-`POST /enroll` is authenticated with the bearer token above.
+The listener exposes **ten** agent-facing routes. Every one of them except `GET /`, `GET /cacerts`
+and `POST /enroll` is authenticated with the bearer token above.
 
 Every path on this page is the endpoint's **logical** path. When
 [`remote.https.global_prefix`](configuration.md#httpsglobal_prefix) is configured (freshly
@@ -322,6 +383,14 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
 
 - **`GET /`** — unauthenticated health probe. Returns `200` with
   `{"status":"ok","module":"remoted"}`.
+- **`GET /cacerts`** — unauthenticated CA distribution: the PEM configured as
+  [`remote.https.ca_certificate`](configuration.md#httpsca_certificate) (the CA that signs the
+  listener certificate), byte for byte, as `Content-Type: application/x-pem-file`, so an agent can
+  bootstrap trust in the manager before it holds any credential. Returns **`200`** with the PEM,
+  **`404`** `{"error":"not_found"}` when the file is missing, unreadable or carries no certificate,
+  or **`503`** `{"error":"ca_mismatch"}` when the configured CA does not sign the certificate this
+  listener serves — refusing to hand out a CA that would make every verifying agent fail. See
+  [CA certificate endpoint](#ca-certificate-endpoint-get-cacerts) below.
 - **`POST /stateless`** — authenticated event ingestion. Once the signature is verified, the module
   cross-checks the H line's `wazuh.agent.id` against the authenticated `agent-id` (**`400`** on a
   missing/malformed header or a mismatch); only then does it forward the H/E batch to the engine's
@@ -380,7 +449,7 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
   `{id,name,ip,key}` on success, or a mapped `4xx`/`5xx` on failure. See
   [Enrollment endpoint](#enrollment-endpoint-post-enroll) below for details.
 
-The machine-readable contract is published as OpenAPI, covering all nine routes — see the
+The machine-readable contract is published as OpenAPI, covering all ten routes — see the
 [endpoint reference](agent-api-reference.html) (source: [`agent-api.yaml`](agent-api.yaml)).
 
 ## Configuration
@@ -589,14 +658,17 @@ Three more that are not about tuning:
 - **`Could not derive the enrollment key from 'etc/authd.pass' (HKDF unavailable)`** (ERROR) means the
   OpenSSL KDF provider is broken: every Password-mode enrollment fails closed until it is fixed,
   distinct from an unreadable or invalid password file (see above).
-- **The HTTPS server failing to start** is an ERROR naming which of the two is the problem (the
-  certificate or the private key). There is no retry: remoted must not start without the HTTPS
-  transport up, so a missing or unreadable certificate/key is fatal to the whole daemon, not just
-  this module — the certificate is expected to already be in place by then (auto-generated at
-  install time, see [Transport and TLS](#transport-and-tls)). The module opens the configured
-  `certificate`/`key`/`ca` paths itself, after `remoted` has already dropped root privileges, so
-  "unreadable" most often means a permission/ownership mismatch against the `wazuh-manager` user,
-  not a missing file.
+- **`Cannot start the HTTPS agent listener: the TLS certificate '…' / private key '…' is missing
+  or unreadable by the service user.`** (ERROR, then `remoted` exits) is remoted's own preflight,
+  run after it has dropped privileges and right before this module starts. A missing file rarely
+  gets this far — `wazuh-manager-control start` refuses first with the validator's `(1244) … file
+  not found` verdict — so this almost always means an ownership/mode mismatch against the
+  `wazuh-manager` user (the validator runs as root and cannot tell). The manager does not generate
+  certificates; the message ends with the provisioning hint. There is no retry: remoted must not
+  start without the HTTPS transport up, so this is fatal to the whole daemon, not just this module.
+  A pair that passes the preflight but cannot be loaded (corrupt PEM, key/certificate mismatch)
+  fails inside the module with an ERROR naming which of the two is the problem. See
+  [Certificate provisioning and fail-closed start](#certificate-provisioning-and-fail-closed-start).
 
 Client-side rejections (malformed or unauthenticated requests) are logged at debug level only —
 visible with `remoted.debug=2` — because an unauthenticated peer controls how many it can trigger.
@@ -1360,6 +1432,52 @@ Every `503` means the same thing to the agent: not accepted, retry on the next r
 Auth failures reuse the same responses as `/stateless`. Neither route is timed in the
 `remoted.http.*.latency` histograms — they share `/stateful`'s downstream and produce no new answer of
 their own; see [Metrics](metrics.md).
+
+## CA certificate endpoint (`GET /cacerts`)
+
+The listener's certificate is signed by the deployment's CA: the operator provisions
+`etc/certs/root-ca.pem` and a CA-signed `remoted.pem` together, both issued by the installation
+assistant's `wazuh-certs-tool` — the manager generates neither (see
+[Certificate provisioning and fail-closed start](#certificate-provisioning-and-fail-closed-start));
+the CA is configured as [`remote.https.ca_certificate`](configuration.md#httpsca_certificate). `GET /cacerts` hands that
+CA out, so an agent can bootstrap trust in the manager — fetch the CA once, then verify every later
+connection against it — without an out-of-band copy of the PEM.
+
+**No authentication, no `protocol-version`, no body.** By construction the caller holds no
+credential yet. Anything sent besides the target (a body, an `Authorization` header) is ignored. The
+route is exempt from the in-flight byte budget like `GET /`, so the bootstrap is never shed under
+memory pressure, and it is served under the [global prefix](#endpoints) like every other route
+(`GET /wazuh-manager/cacerts` with the shipped configuration; the bare path answers `404`).
+
+| Outcome | HTTP | Body | Meaning |
+| --- | --- | --- | --- |
+| Served | `200` | the PEM file, byte for byte, `Content-Type: application/x-pem-file` | The CA the listener chains to. A bundle is served as a bundle |
+| No CA | `404` | `{"error":"not_found"}` | The configured file is missing, unreadable, or carries no `-----BEGIN CERTIFICATE-----` block. Same body as an unknown route; the manager log names the file |
+| Incoherent CA | `503` | `{"error":"ca_mismatch"}` | The configured CA does **not** sign the certificate this listener is serving. Refused rather than served: handing it out would make every verifying agent fail its handshake against this very manager |
+
+**What the coherence check compares.** The leaf is the certificate loaded into the TLS context when
+the listener started (constant until a restart); the CA is re-read from disk at each evaluation,
+and every `CERTIFICATE` block in the file counts — the CA is coherent when *any* of them signed the
+leaf, so a bundle carrying the signing CA plus others passes. It is a signature check, not a full
+chain validation: dates and constraints are the agent's verifier's business.
+
+**Cadence.** Evaluated once when the listener starts (before it accepts anything) and once every
+24 hours afterwards, together with the certificate's own expiry; each evaluation re-logs its findings
+(an ERROR when the CA does not sign the leaf or the leaf has expired, a WARN when the CA is unreadable
+or the leaf expires within 30 days). The file itself is read on **every request**, so a CA that goes
+missing is a `404` immediately and one that comes back is served immediately. The one case the
+cadence leaves open is a *different but valid* CA written over the file while remoted runs: it is
+served until the next evaluation or a restart. Rotate the CA and the certificate together and restart
+remoted — a rotation is exactly the moment the `503` guard exists for.
+
+**Trust on first use.** The channel the CA travels over is, by definition, not yet verified. An
+agent that already holds a CA MUST NOT replace it from this route, and a deployment that can
+distribute the CA out of band SHOULD.
+
+**Observability.** `remoted.cacerts.{served,not_found,ca_mismatch}` count the outcomes,
+`remoted.http.cacerts.responses.*` the statuses, and the two `remoted.server.tls.*` pulls publish the
+evaluation itself (`cert_expiry_days`, negative once expired, and `ca_matches_leaf`) — see
+[Metrics](metrics.md#tls-listener-certificate--remotedservertls).
 
 ## Testing
 

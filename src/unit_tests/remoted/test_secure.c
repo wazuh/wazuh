@@ -61,6 +61,7 @@ void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_m
 // STATIC in secure.c, which expands to nothing under WAZUH_UNIT_TESTING.
 bool discard_legacy_agent_message(const char* msg, const char* agent_id);
 void remoted_module_control_config(remoted_module_config_t *rm_config);
+void w_remoted_check_tls_files(const remoted_module_config_t *rm_config);
 
 /* Setup/teardown */
 
@@ -3642,6 +3643,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     test_logr.https.certificate = "/etc/remoted-https/server.crt";
     test_logr.https.key = "/etc/remoted-https/server.key";
     test_logr.https.ca = "/etc/remoted-https/ca.crt";
+    test_logr.https.ca_certificate = "/etc/remoted-https/listener-ca.crt";
     test_logr.https.ciphers = "HIGH:!ADH";
     test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
     test_logr.https.max_body_size = 12345;
@@ -3705,6 +3707,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_string_equal(rm_config.certificate_path, "/etc/remoted-https/server.crt");
     assert_string_equal(rm_config.private_key_path, "/etc/remoted-https/server.key");
     assert_string_equal(rm_config.ca_path, "/etc/remoted-https/ca.crt");
+    assert_string_equal(rm_config.ca_certificate_path, "/etc/remoted-https/listener-ca.crt");
     assert_string_equal(rm_config.ciphers, "HIGH:!ADH");
     // cluster_name is populated by HandleSecure() itself, not this helper.
     assert_string_equal(rm_config.cluster_name, "");
@@ -3777,14 +3780,96 @@ void test_remoted_module_control_config_silent_below_disconnection_time(void** s
     assert_int_equal(rm_config.vd_scan_write_timeout_sec, 5);
 }
 
+/* Tests w_remoted_check_tls_files: the preflight that fails closed before remoted_module_start(). The
+ * messages are pinned verbatim (the integration test test_https_cert_missing matches them in the log). */
+
+#define TLS_FILES_TEST_CERT "etc/certs/remoted.pem"
+#define TLS_FILES_TEST_KEY "etc/certs/remoted-key.pem"
+#define TLS_FILES_TEST_HINT                                                                                  \
+    " wazuh-manager does not generate TLS certificates: provision them with wazuh-certs-tool (Wazuh "     \
+    "installation assistant) and install remoted.pem, remoted-key.pem and root-ca.pem under etc/certs, "  \
+    "readable by the service user (see 'Deploy certificates' in the installation guide)."
+
+static void tls_files_config(remoted_module_config_t *rm_config)
+{
+    memset(rm_config, 0, sizeof(*rm_config));
+    snprintf(rm_config->certificate_path, sizeof(rm_config->certificate_path), "%s", TLS_FILES_TEST_CERT);
+    snprintf(rm_config->private_key_path, sizeof(rm_config->private_key_path), "%s", TLS_FILES_TEST_KEY);
+}
+
+// Both files are probed with R_OK, certificate first, whatever the outcome of the first probe.
+static void expect_tls_files_access(int certificate_result, int key_result)
+{
+    expect_string(__wrap_access, __name, TLS_FILES_TEST_CERT);
+    expect_value(__wrap_access, __type, R_OK);
+    will_return(__wrap_access, certificate_result);
+    expect_string(__wrap_access, __name, TLS_FILES_TEST_KEY);
+    expect_value(__wrap_access, __type, R_OK);
+    will_return(__wrap_access, key_result);
+}
+
+void test_w_remoted_check_tls_files_ok(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+
+    // No expect_string for __wrap__merror_exit: exiting here fails the test.
+    expect_tls_files_access(0, 0);
+
+    w_remoted_check_tls_files(&rm_config);
+}
+
+void test_w_remoted_check_tls_files_cert_missing(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+
+    expect_tls_files_access(-1, 0);
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "Cannot start the HTTPS agent listener: the TLS certificate 'etc/certs/remoted.pem' is missing or "
+                  "unreadable by the service user." TLS_FILES_TEST_HINT);
+
+    expect_assert_failure(w_remoted_check_tls_files(&rm_config));
+}
+
+void test_w_remoted_check_tls_files_key_missing(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+
+    expect_tls_files_access(0, -1);
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "Cannot start the HTTPS agent listener: the TLS private key 'etc/certs/remoted-key.pem' is missing "
+                  "or unreadable by the service user." TLS_FILES_TEST_HINT);
+
+    expect_assert_failure(w_remoted_check_tls_files(&rm_config));
+}
+
+void test_w_remoted_check_tls_files_both_missing(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+
+    expect_tls_files_access(-1, -1);
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "Cannot start the HTTPS agent listener: the TLS certificate 'etc/certs/remoted.pem' and private key "
+                  "'etc/certs/remoted-key.pem' are missing or unreadable by the service user." TLS_FILES_TEST_HINT);
+
+    expect_assert_failure(w_remoted_check_tls_files(&rm_config));
+}
+
 void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(void** state)
 {
     (void) state;
     remoted test_logr;
     memset(&test_logr, 0, sizeof(test_logr));
     test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
-    // bind_addr/global_prefix/certificate/key/ca/ciphers left NULL, as when <https> is entirely
-    // absent. For global_prefix the empty buffer IS the compatibility contract: an upgraded conf
+    // bind_addr/global_prefix/certificate/key/ca/ca_certificate/ciphers left NULL, as when <https> is
+    // entirely absent. For global_prefix the empty buffer IS the compatibility contract: an upgraded conf
     // without the tag keeps serving unprefixed endpoints (the module resolves "" to "/").
 
     will_return(__wrap_getDefine_Int_default, 0);
@@ -3836,6 +3921,7 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     assert_string_equal(rm_config.certificate_path, "");
     assert_string_equal(rm_config.private_key_path, "");
     assert_string_equal(rm_config.ca_path, "");
+    assert_string_equal(rm_config.ca_certificate_path, "");
     assert_string_equal(rm_config.ciphers, "");
 
     assert_false(rm_config.enrollment_enabled);
@@ -3920,6 +4006,11 @@ int main(void)
         cmocka_unit_test(test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty),
         // Tests remoted_module_control_config
         cmocka_unit_test(test_remoted_module_control_config_warns_when_throttle_reaches_disconnection_time),
-        cmocka_unit_test(test_remoted_module_control_config_silent_below_disconnection_time)};
+        cmocka_unit_test(test_remoted_module_control_config_silent_below_disconnection_time),
+        // Tests w_remoted_check_tls_files
+        cmocka_unit_test(test_w_remoted_check_tls_files_ok),
+        cmocka_unit_test(test_w_remoted_check_tls_files_cert_missing),
+        cmocka_unit_test(test_w_remoted_check_tls_files_key_missing),
+        cmocka_unit_test(test_w_remoted_check_tls_files_both_missing)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
