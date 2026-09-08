@@ -16,6 +16,7 @@ from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, Agen
     WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, \
     GROUP_FIELDS, GROUP_REQUIRED_FIELDS, GROUP_FILES_FIELDS, GROUP_FILES_REQUIRED_FIELDS
 from wazuh.core.agent_tasks import create_restart_tasks, create_reload_tasks, TASK_CHUNK_SIZE
+from wazuh.core import enrollment_token
 from wazuh.core.wdb_http import get_wdb_http_client
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
@@ -634,6 +635,121 @@ def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str =
     new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force)
 
     return WazuhResult({'data': {'id': new_agent.id, 'key': new_agent.key}})
+
+
+@expose_resources(actions=["enrollment_token:create"], resources=["*:*:*"], post_proc_func=None)
+def create_enrollment_token(address: str = None, port: int = None, prefix: str = None, ttl: str = None,
+                            max_uses: int = None, description: str = None, embed_ca: bool = False,
+                            no_credential: bool = False) -> WazuhResult:
+    """Mint an enrollment token (issue #38993).
+
+    The token text is returned here, once: GET /agents/enrollment-tokens never shows it again.
+
+    Parameters
+    ----------
+    address : str
+        Name (or IP) the agents connect to; must be one of the listener certificate's names.
+    port : int
+        Listener port to write into the token when it differs from the configured one.
+    prefix : str
+        URL prefix to write into the token when it differs from the configured one.
+    ttl : str
+        Lifetime (timeframe: `30d`, `12h`, `45m`, `90s`). authd's default (30 days) when omitted.
+    max_uses : int
+        Enrollments the token allows; 0 means unlimited.
+    description : str
+        Free text shown when listing.
+    embed_ca : bool
+        Carry the CA certificate instead of its pin.
+    no_credential : bool
+        Public token: address and pin only, it cannot authenticate an enrollment.
+
+    Raises
+    ------
+    WazuhError(1768)
+        authd refused the mint (address outside the certificate, loopback-only certificate, CA...).
+    WazuhError(1769)
+        This node is a worker.
+
+    Returns
+    -------
+    WazuhResult
+        `token`, `id`, `address`, `expires` and `pin_hex`.
+    """
+    return WazuhResult({'data': enrollment_token.create_token(address=address, port=port, prefix=prefix, ttl=ttl,
+                                                              max_uses=max_uses, description=description,
+                                                              embed_ca=embed_ca, no_credential=no_credential)})
+
+
+@expose_resources(actions=["enrollment_token:read"], resources=["*:*:*"], post_proc_func=None)
+def get_enrollment_tokens(offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: list = None,
+                          sort_ascending: bool = True, search_text: str = None, complementary_search: bool = False,
+                          select: list = None, q: str = None) -> AffectedItemsWazuhResult:
+    """List the enrollment tokens: id, address, dates, uses, revocation -- never the token or its credential.
+
+    Parameters
+    ----------
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return.
+    sort_by : list
+        Fields to sort by.
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order.
+    search_text : str
+        Text to search.
+    complementary_search : bool
+        Find items without the text to search.
+    select : list
+        Fields to return.
+    q : str
+        Query to filter results by.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        The tokens.
+    """
+    result = AffectedItemsWazuhResult(all_msg='All enrollment tokens were returned',
+                                      some_msg='Some enrollment tokens were not returned',
+                                      none_msg='No enrollment tokens were returned')
+    data = process_array(enrollment_token.list_tokens(), search_text=search_text,
+                         complementary_search=complementary_search, sort_by=sort_by or ['created'],
+                         sort_ascending=sort_ascending, offset=offset, limit=limit, q=q, select=select,
+                         required_fields=['id'])
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
+
+    return result
+
+
+@expose_resources(actions=["enrollment_token:delete"], resources=["*:*:*"], post_proc_func=None)
+def delete_enrollment_token(token_id: str = None) -> AffectedItemsWazuhResult:
+    """Revoke an enrollment token. A revoked token stays listed (revoked: true) and enrolls nobody.
+
+    Parameters
+    ----------
+    token_id : str
+        The token's id.
+
+    Raises
+    ------
+    WazuhResourceNotFound(1767)
+        No token has that id.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        The revoked token id.
+    """
+    result = AffectedItemsWazuhResult(all_msg='Enrollment token was revoked',
+                                      none_msg='Enrollment token was not revoked')
+    enrollment_token.revoke_token(token_id)
+    result.affected_items.append(token_id)
+    result.total_affected_items = 1
+
+    return result
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
