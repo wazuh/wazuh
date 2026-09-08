@@ -70,7 +70,7 @@ jobs:
         continue-on-error: true
       - name: DIAG - run patched wodle directly - us-east-2 (2025-SEP-15)
         working-directory: wodles/aws
-        run: sudo timeout 60 python3 aws_s3.py --service inspector --regions us-east-2 --only_logs_after 20250915 --debug 2
+        run: sudo timeout 60 python3 aws_s3.py --service inspector --regions us-east-2 --only_logs_after 2025-SEP-15 --debug 2
         continue-on-error: true
       - name: DIAG - stop here, skip the rest of the suite
         run: exit 1
