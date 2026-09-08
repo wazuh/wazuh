@@ -1135,6 +1135,7 @@ nlohmann::json Syscollector::ecsPortData(const nlohmann::json& originalData, boo
             ret[pointer] = nullptr;
         }
     }
+
     setJsonFieldArray(ret, originalData, "/source/ip", "source_ip", createFields);
     setJsonField(ret, originalData, "/source/port", "source_port", createFields);
 
