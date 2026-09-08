@@ -217,6 +217,9 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.auth.reject.body_too_large", "auth_reject_body_too_large"),
     ("remoted.auth.reject.bad_encoding", "auth_reject_bad_encoding"),
     ("remoted.auth.reject.malformed", "auth_reject_malformed"),
+    ("remoted.auth.reject.token_unknown", "auth_reject_token_unknown"),
+    ("remoted.auth.reject.token_expired", "auth_reject_token_expired"),
+    ("remoted.auth.reject.token_revoked", "auth_reject_token_revoked"),
     # Keystore health: agents and entries_skipped are levels, the totals are cumulative.
     ("remoted.auth.keystore.agents", "keystore_agents"),
     ("remoted.auth.keystore.entries_skipped", "keystore_entries_skipped"),
@@ -290,6 +293,14 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.enroll.authd.queue.depth", "enroll_authd_queue_depth"),
     ("remoted.enroll.authd.queue.capacity", "enroll_authd_queue_capacity"),
     ("remoted.enroll.authd.queue.rejected.total", "enroll_authd_queue_rejected_total"),
+    ("remoted.enroll.token.accepted", "enroll_token_accepted"),
+    ("remoted.enroll.token.rejected_unknown", "enroll_token_rejected_unknown"),
+    ("remoted.enroll.token.rejected_expired", "enroll_token_rejected_expired"),
+    ("remoted.enroll.token.rejected_revoked", "enroll_token_rejected_revoked"),
+    ("remoted.enroll.token.rejected_exhausted", "enroll_token_rejected_exhausted"),
+    ("remoted.enroll.token_store.tokens", "enroll_token_store_tokens"),
+    ("remoted.enroll.token_store.reloads.total", "enroll_token_store_reloads_total"),
+    ("remoted.enroll.token_store.reload_failures.total", "enroll_token_store_reload_failures_total"),
     # Downstream failure taxonomy ("why the 503s"): aggregate across services -- the per-endpoint
     # 503 columns above already say which path is failing.
     ("remoted.forwarder.error.connect", "forwarder_error_connect"),
