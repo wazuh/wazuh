@@ -60,8 +60,9 @@ The following changes were identified during agent startup validation after upgr
 
 | 4.X configuration element | 5.0 status | Agent log message (observed) | Required action |
 |---|---|---|---|
-| `<client>...</client>` | Renamed | — | Rename the block to `<agent>` and its inner `<server>` to `<manager>`. Only `<server><address>` is read out of a `<client>` block, so every other option in it (`<enrollment>`, `<config-profile>`, `<notify_time>`) stops taking effect until the block is renamed. |
-| `<client><server><address>` | Read as fallback | `INFO: <agent><manager><address> is not configured. Using <client><server><address> 'MANAGER_IP' with the default port 1517.` | None, to keep connecting: this is the one value a 5.0 agent still takes from a legacy block, with the port defaulted to `1517`. Move it to `<agent><manager><address>` for the supported end state. |
+| `<client>...</client>` | Renamed | `WARNING: <config-profile> inside the legacy <client> block is ignored. Configure it under <agent>.` | Rename the block to `<agent>` and its inner `<server>` to `<manager>`. Only `<server><address>` and the `<enrollment>` sub-block are read out of a `<client>` block; every other option in it (`<config-profile>`, `<notify_time>`, `<crypto_method>`) stops taking effect until the block is renamed, and each one is named in a startup warning. |
+| `<client><server><address>` | Read as fallback | `INFO: <agent><manager><endpoint> is not configured. Using <client><server><address> 'MANAGER_IP' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the <client><server> block with a single <endpoint>MANAGER_IP:1517/wazuh-manager</endpoint>` | None, to keep connecting: the port defaults to `1517` and the request path to the manager's default prefix. Move it to `<agent><manager><endpoint>` for the supported end state — the message quotes the exact line to write. |
+| `<client><enrollment>...</enrollment>` | Read | — | None. The enrollment identity — `<agent_name>`, `<groups>`, `<agent_address>`, `<authorization_pass_path>` — is read out of the legacy block, so an upgraded agent that has to re-enroll presents the same identity instead of registering again under its hostname with no group. Move it under `<agent>` when renaming the block. |
 | `<client><server><port>1514</port></server></client>` | Changed default | — | The agent talks HTTPS to the manager on `1517`. Inside `<agent><manager>`, remove the port to take the new default or set `1517` explicitly; inside a legacy `<client>` block the port is not read at all. |
 | `<client><server><protocol>...</protocol></server></client>` | Ignored | `INFO: Ignoring the 'protocol' option. Switching to TCP.` | Remove `<protocol>`. TCP is used. |
 | `<client><crypto_method>...</crypto_method></client>` | Ignored | `INFO: Ignoring the 'crypto_method' option. Switching to AES.` | Remove `<crypto_method>`. |
@@ -72,7 +73,7 @@ The following changes were identified during agent startup validation after upgr
 | `<wodle name="cis-cat">...</wodle>` | Removed in 5.0 | `INFO: The 'cis-cat' module is deprecated. Use the SCA module instead.` | Migrate to SCA, then remove the `cis-cat` wodle block. See [Migrating from CIS-CAT and OpenSCAP to SCA](ciscat-openscap-to-sca.md). |
 | `<wodle name="osquery">...</wodle>` | Removed in 5.0 | `INFO: The 'osquery' module is deprecated. Use the Syscollector module instead.` | Migrate to IT Hygiene, then remove the `osquery` wodle block. See [Migrating from OSquery to IT Hygiene](osquery-to-it-hygiene.md). |
 | `<sca><skip_nfs>...</skip_nfs></sca>` | Deprecated/Unavailable | `INFO: Detected a deprecated configuration for SCA: 'skip_nfs' is no longer available.` | Remove `<skip_nfs>` from `sca`. See [SCA policies from 4.x to 5.x](sca-policies-4x-to-5x.md). |
-| `<client><enrollment><auto_method>...</auto_method></enrollment></client>` | Invalid | `ERROR: (1230): Invalid element in the configuration: 'auto_method'.` | Remove `<auto_method>` from `<enrollment>`. The option was removed entirely; see [TLS 1.3 enrollment enforcement](#tls-13-enrollment-enforcement-wazuh-authd) below. |
+| `<client><enrollment><auto_method>...</auto_method></enrollment></client>` | Ignored | `INFO: <auto_method> under <enrollment> is no longer used: enrollment always negotiates TLS 1.3. Ignoring.` | None required. The option was removed entirely and is accepted-but-ignored so an upgraded file still starts; remove it when convenient. See [TLS 1.3 enrollment enforcement](#tls-13-enrollment-enforcement-wazuh-authd) below. |
 
 ### Additional observed parser side-effects
 
@@ -115,7 +116,7 @@ After (5.0 compatible):
 
 `<client>` is renamed to `<agent>` in 5.0 and its inner `<server>` to `<manager>`: one block under two names, never both. Options for an agent that is already on 5.0 with the old block:
 
-- **Leave it.** The agent reads `<client><server><address>` and uses port `1517`. It connects, and logs which value it inherited. Nothing else in the block is read, so options such as `<enrollment>` or `<config-profile>` stop having an effect.
+- **Leave it.** The agent reads `<client><server><address>` and uses port `1517`. It connects, and logs which value it inherited. The `<enrollment>` sub-block is read too, so the agent keeps the name, groups and password path it enrolls with. Nothing else in the block is read: options such as `<config-profile>` stop having an effect, and each one is named in a startup warning.
 - **Rename it** to `<agent><manager>`, which is what a fresh 5.0 install ships. Every option in the block is read again. Renaming only the root tag is not enough: `<agent><server>` is rejected.
 
 Recommended: rename it. The fallback exists so a remote upgrade cannot strand an agent, not as a configuration to keep.
