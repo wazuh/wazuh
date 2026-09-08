@@ -51,7 +51,7 @@ thread instead of being called inline.
 | Thread | Runs on | Role |
 |---|---|---|
 | Remote server | any node with `remote_enrollment` | TLS enrollment on port 1515 |
-| Local server | every node | `queue/sockets/auth.sock`: `add`, `remove`, `get` — for the server API and for remoted's `/enroll` |
+| Local server | every node | `queue/sockets/auth.sock`: `add`, `remove`, `get` — for the server API and for remoted's `/enroll` — plus `token_create`, `token_list`, `token_revoke` for the token CLI and the API |
 | Writer | master only | persists `client.keys`, removes Wazuh DB rows, records each deletion as a Task Manager task |
 | authpass watcher | workers with `use_password` | re-reads `etc/authd.pass` as the cluster syncs it down from the master |
 
@@ -116,6 +116,16 @@ sequenceDiagram
     CK-->>R: inotify / periodic reload
     Note over R: …but remoted only accepts it from here on
 ```
+
+`/enroll` can also carry one of two credentials the diagram folds into "credential". An **enrollment
+token** arrives as `token_id`: the use is reserved *before* `OS_AddNewAgent()` runs and released if the
+add is refused, so a token is only spent on an agent that exists. A **re-enrollment** arrives as
+`reenroll = {kid, bearer}` and skips the sequence above: the master verifies the bearer against the
+agent's `reenroll_secret` (read from wazuh-db before `mutex_keys`), then rotates the entry in place under
+the **same id** — `OS_DeleteKey(purge = 1)` + `OS_AddNewAgent()` — and the writer runs
+`global set-agent-credentials` instead of an insert. No `add_remove()` runs, so nothing in
+[Agent removal](#agent-removal) applies: the id keeps its documents. Operator view:
+[README](README.md#enrollment-tokens); function-level walk-through: the developer README.
 
 ### Validation
 
@@ -221,6 +231,13 @@ Because of that, on a worker the window between "the agent has its key" and "rem
 property of the cluster sync interval, not of authd's own speed. The `<force>` settings are ignored on
 a worker — the master decides — and a worker that cannot reach the master answers `9016`.
 
+The same sync carries `etc/enrollment_tokens.json`, with the same asymmetry: the master alone mints,
+consumes and revokes (`token_create`/`token_revoke` answer `9015` on a worker; `token_list` reads the
+replica), and `w_request_agent_add_clustered()` forwards `token_id` and `reenroll` with the `add` so the
+master consumes the use or verifies the bearer, then relays the master's `reenroll_secret` to the agent.
+remoted on a worker verifies token bearers against its own read-only replica of the file, which lags by
+the sync interval; the master's re-check on `add` is what makes a revocation immediate.
+
 ## The enrollment password
 
 With `use_password` enabled, `etc/authd.pass` holds the shared secret. The master generates one at
@@ -248,6 +265,9 @@ The local socket answers a numeric code that the server API maps onto its own, a
 | 9018 | the id still has a pending deletion | — |
 | 9019 / 9020 | invalid caller-supplied key / id (id outside `[1, 2147483647]`, or `0`) | `400` — unreachable from here in practice: self-enrollment never sends a key or an id, mapped for completeness |
 | 9021 | too many deletions are pending; the agent was NOT deleted (`1766` through the server API) | — |
+| 9022 / 9023 / 9024 | enrollment token unknown or revoked / expired / out of uses (`add` with `token_id`) | `403` — the bearer verified, authd refused the use |
+| 9025 | mint refused (`token_create`); the message carries the reason after `Enrollment token refused:` | — |
+| 9026 / 9027 / 9028 | re-enrollment: unknown agent or no secret on record / invalid credential / outside the time window | `401` (`unknown_agent` / `invalid_signature` / `stale_token`) |
 
 ## Agent removal
 
@@ -400,6 +420,10 @@ held their ids before, in the indices they do not resynchronise themselves.
 | `etc/authd.pass` | enrollment password |
 | `queue/authd/pending-purges` | deletions between phase 1 and phase 4, plus the highest id and sequence ever handed out. Normally empty |
 | `queue/rids/<id>` | per-agent anti-replay counters, removed with the agent |
+| `etc/enrollment_tokens.json` | the enrollment token store, `{"version":1,"tokens":[…]}`: per token `id`, `secret` (`null` without credential), `adr`, `pin`/`ca`, `created`, `expires`, `max_uses`, `uses`, `revoked`, `description`. Rewritten whole by the master (temporary file, `0640`, rename); a worker's copy comes from the cluster sync, and a momentarily missing file keeps the previous replica |
+
+The re-enrollment secret is in none of these files: it lives only in the `reenroll_secret` column of
+the `agent` table in `global.db` (`schema_global.sql`, `user_version` unchanged).
 
 ## Observability
 

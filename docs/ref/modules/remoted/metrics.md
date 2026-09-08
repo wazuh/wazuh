@@ -249,6 +249,9 @@ a disallowed peer address); the operator keeps the distinction here. All counter
 | `remoted.auth.reject.body_too_large` | Body over the authenticated cap, a zstd frame that did not fit the in-flight budget, or (on `/enroll`) a decoded body over that endpoint's own 16 KiB ceiling | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size); for compressed bodies also [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 | `remoted.auth.reject.bad_encoding` | Unsupported or undecodable `Content-Encoding` (zstd) | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) |
 | `remoted.auth.reject.malformed` | Missing/malformed authorization or protocol-version headers | diagnostic — agent/manager version drift or non-agent traffic |
+| `remoted.auth.reject.token_unknown` | `/enroll` only: an enrollment-token bearer whose `kid` is not in this node's replica of `etc/enrollment_tokens.json`, even after one forced re-read — never minted, minted without a credential, or not yet synchronized to this worker | diagnostic — check the token id the agent was given and, on a worker, that the cluster sync delivered the store ([`remoted.enroll.token_store.tokens`](#agent-enrollment--remotedenroll)) |
+| `remoted.auth.reject.token_expired` | `/enroll` only: a correctly signed enrollment-token bearer whose token is past its `expires`. Distinct from `clock_skew`: the credential itself has lapsed, not this request | diagnostic — mint a new token |
+| `remoted.auth.reject.token_revoked` | `/enroll` only: a correctly signed enrollment-token bearer whose token the operator revoked | diagnostic — expected after a revocation; a stream of them is an agent (or a leaked token) still trying |
 
 `clock_skew` is the one cell in this family that a timing setting can move, and it fails
 *before* any budget in the request path matters: the token profile's lifetime is a fixed 60 s,
@@ -258,22 +261,64 @@ so the whole tolerance for host clock drift is
 fails every request with a generic `401` and no other symptom
 ([timing tuning, invariant 7](timing-tuning.md#3-invariants)).
 
+`/enroll`'s re-enrollment bearers are judged by `authd` on the master, not by this module; its
+verdicts still count here under the cause they map to — 9026 (unknown agent or no re-enrollment
+credential) in `unknown_agent`, 9027 (invalid credential) in `invalid_signature`, 9028 (outside the
+time window) in `clock_skew` — alongside their own `remoted.enroll.reenroll.*` cells below.
+
 ### Agent enrollment — `remoted.enroll.*`
 
-`POST /enroll` bridges an agent that has no credentials yet to `authd`'s local socket. These
-counters say **why** each request ended the way it did; the matching **what** (HTTP status,
-latency) is the `enroll` family in [Request outcomes](#request-outcomes--remotedhttpendpointresponsescode)
-and [Request latency](#request-latency--remotedhttpendpointlatency). All are counters, unit
-`count`, except the three queue pulls at the end.
+`POST /enroll` bridges an agent that has no credentials yet — or one re-enrolling under its
+existing id — to `authd`'s local socket. These counters say **why** each request ended the way it
+did; the matching **what** (HTTP status, latency) is the `enroll` family in
+[Request outcomes](#request-outcomes--remotedhttpendpointresponsescode) and
+[Request latency](#request-latency--remotedhttpendpointlatency). All are counters, unit `count`,
+except the pulls at the end (the `authd` queue and the token store).
 
 | Metric | Meaning | Tuning |
 |---|---|---|
-| `remoted.enroll.accepted` | `authd` created the agent and the key was returned | — |
-| `remoted.enroll.rejected_auth` | The enrollment credential check failed (Password mode: the `wazuh-enroll+jwt` bearer; mTLS mode: the listener already refused the connection) | diagnostic — the per-cause split is [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject) |
+| `remoted.enroll.accepted` | `authd` created the agent (or rotated a re-enrolling agent's credentials) and the key was returned | — |
+| `remoted.enroll.rejected_auth` | The enrollment credential check failed — every `401` of the route: the shared-password `wazuh-enroll+jwt` bearer, an enrollment token this node refused (unknown, expired, revoked, bad signature), or a re-enrollment bearer `authd` refused (9026/9027/9028). mTLS failures are not here: the listener already refused the connection | diagnostic — the per-cause split is [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject); the per-credential split is `remoted.enroll.token.*` / `remoted.enroll.reenroll.*` below |
 | `remoted.enroll.rejected_validation` | Rejected locally before reaching `authd`: undecodable `Content-Encoding`, malformed/invalid body, or a version this manager does not allow | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled); version policy is `<allow_higher_versions>` |
 | `remoted.enroll.disabled` | Enrollment is administratively off, so the request was answered `403` without touching `authd` | the manager's enrollment setting (the route always exists, so this is distinguishable from a `404`) |
-| `remoted.enroll.authd_error` | `authd` answered, and refused on its own business rules (duplicate name, agent limit, cluster forwarding) | diagnostic — `authd`'s own limits; the mapped status is in the `enroll` response cells |
+| `remoted.enroll.authd_error` | `authd` answered, and refused on its own business rules (duplicate name, agent limit, cluster forwarding) — including the `403` it gives a verified enrollment token it will not consume (9022 not found or revoked, 9023 expired, 9024 uses exhausted) | diagnostic — `authd`'s own limits; the mapped status is in the `enroll` response cells |
 | `remoted.enroll.authd_unavailable` | No clean answer from `authd`: a full request queue, an unreachable socket, a timeout, or the module shutting down | see the queue metrics below to tell saturation apart from the rest |
+
+The **enrollment-token** subset — requests whose bearer's `kid` named an enrollment token — by
+what happened to the token (the [HTTPS Agent API](https-events-api.md#enrollment-endpoint-post-enroll)
+describes the credential):
+
+| Metric | Meaning | Tuning |
+|---|---|---|
+| `remoted.enroll.token.accepted` | A `200` obtained with an enrollment token: this node verified the bearer and `authd` consumed one use | — |
+| `remoted.enroll.token.rejected_unknown` | The token id is not in this node's replica of the store (never minted, minted without a credential, or not yet synchronized here) — or, rarely, `authd` answered 9022 (not found or revoked) after this node's replica had accepted it | diagnostic — the replica's size is `remoted.enroll.token_store.tokens` below; on a worker, a burst right after a mint means the cluster sync has not landed yet (the forced re-read covers a single lagging request, not a long lag) |
+| `remoted.enroll.token.rejected_expired` | The token is past its expiry: decided from the replica (a correctly signed bearer only), or by `authd`'s 9023 when the replica lagged | diagnostic — mint a new token; the agent gets `401 token_expired` from this node or `403` 9023 from `authd` |
+| `remoted.enroll.token.rejected_revoked` | The token was revoked: decided from the replica (a correctly signed bearer only) | diagnostic — expected after a revocation |
+| `remoted.enroll.token.rejected_exhausted` | `authd` refused the use because the token has no uses left (9024, a `403`) — only `authd` counts uses, so this node cannot decide it earlier | diagnostic — mint a token with more uses, or another one |
+
+The **re-enrollment** subset — requests whose bearer's `kid` named an agent id. This node
+forwards that bearer unverified (the secret it is signed with lives only in the master's
+database), so every cell is `authd`'s verdict on the master:
+
+| Metric | Meaning | Tuning |
+|---|---|---|
+| `remoted.enroll.reenroll.accepted` | `authd` verified the bearer and rotated the agent's key and re-enrollment secret in place — same id, nothing removed | — |
+| `remoted.enroll.reenroll.rejected_unknown` | 9026: the agent is unknown to the master, or has no re-enrollment secret on record (enrolled over legacy port 1515, or a database rebuilt from `client.keys`) — the agent gets `401 unknown_agent` | diagnostic — such an agent can only enroll anew |
+| `remoted.enroll.reenroll.rejected_signature` | 9027: the bearer did not verify against the agent's re-enrollment secret (or was malformed) — the agent gets `401 invalid_signature` | diagnostic — a stale secret on the agent, or probing |
+| `remoted.enroll.reenroll.rejected_stale` | 9028: correctly signed but outside the accepted time window — the agent gets `401 stale_token` | [`remoted.jwt_max_age`](configuration.md#remotedjwt_max_age), [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) (`authd` reads the same two) — but fix NTP first |
+
+The replica of the token store this node authenticates enrollment tokens against (pulls; present
+whenever enrollment is enabled, `0` otherwise):
+
+| Metric | Type | Unit | Meaning | Tuning |
+|---|---|---|---|---|
+| `remoted.enroll.token_store.tokens` | gauge (pull) | tokens | Tokens **with a credential** currently replicated from `etc/enrollment_tokens.json`; credential-less tokens are not replicated (nothing to authenticate with). `0` is the normal state of a manager that has minted no token — and of a worker that has not received the master's sync | diagnostic — a worker stuck at `0` while the master has tokens is a cluster-sync problem |
+| `remoted.enroll.token_store.reloads.total` | counter (pull) | count | Successful loads of the store (the startup load included; an absent file counts as a successful, empty load). `authd` rewrites the file on every consumed use, so this moves with enrollment traffic | [`remoted.enroll_password_refresh_interval`](configuration.md#remotedenroll_password_refresh_interval) sets the fallback poll cadence (inotify reacts first) |
+| `remoted.enroll.token_store.reload_failures.total` | counter (pull) | count | Loads that kept the **previous** replica: malformed content (the store is written by `authd` and must not be edited by hand), a read that kept changing across every retry, or an unreadable/oversized file | diagnostic — restore the file on the master; the previous replica keeps serving meanwhile, and `GET /status` reports `enrollment_tokens.last_reload_ok: false` |
+
+The three subsets above are read from the admin socket dump; the
+[API projection](#api-projection)'s `enrollment` group carries the six outcome counters and the
+`authd` queue pulls only.
 
 The queue in front of `authd` (pulls, so they read as levels):
 

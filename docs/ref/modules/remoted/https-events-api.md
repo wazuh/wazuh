@@ -156,8 +156,10 @@ agent is re-enrolled or updated with it is documented on the agent side.
 **Single exception: `POST /enroll`.** Every other endpoint on this page requires the agent<->manager
 bearer token described in this section, keyed by an agent's pre-shared `client.keys` entry. An
 enrolling agent has no such entry yet, so `/enroll` cannot use it — it authenticates with an
-independent, per-listener credential instead (a client certificate, a password-derived bearer of its
-own, or neither). See [Enrollment endpoint](#enrollment-endpoint-post-enroll) below.
+independent credential instead: a client certificate, a `wazuh-enroll+jwt` bearer of its own (keyed
+by the shared enrollment password, by an enrollment token, or — for an agent re-enrolling under its
+existing id — by that agent's re-enrollment secret), or neither. See
+[Enrollment endpoint](#enrollment-endpoint-post-enroll) below.
 
 Every other request MUST carry two headers:
 
@@ -579,13 +581,13 @@ socket), the latter a protocol constant.
 ### Enrollment bridge (`POST /enroll`)
 
 A fifth, small group of internal options tunes the `/enroll`-to-`authd` bridge
-(`AuthdClient`/`PasswordKeySource`, see [Enrollment endpoint](#enrollment-endpoint-post-enroll)
-below). Same resolution pattern: `secure.c` reads each option and passes it through the C-ABI
-struct.
+(`AuthdClient`/`PasswordKeySource`/`TokenKeySource`, see
+[Enrollment endpoint](#enrollment-endpoint-post-enroll) below). Same resolution pattern: `secure.c`
+reads each option and passes it through the C-ABI struct.
 
 | Setting                                     | Default                                                | Internal option                          |
 | -------------------------------------------- | ------------------------------------------------------ | ----------------------------------------- |
-| `etc/authd.pass` hot-reload poll interval     | `10 s`                                                  | `remoted.enroll_password_refresh_interval` |
+| `etc/authd.pass` and `etc/enrollment_tokens.json` hot-reload poll interval | `10 s`                                                  | `remoted.enroll_password_refresh_interval` |
 | `authd` local-socket connect timeout          | `2 s`                                                   | `remoted.authd_connect_timeout`            |
 | `authd` local-socket response timeout         | `5 s` on a master, `15 s` on a cluster worker           | `remoted.authd_response_timeout`           |
 | Bridge request queue high-water mark          | `256`                                                   | `remoted.authd_max_queue_size`             |
@@ -1077,10 +1079,13 @@ in the `vulnerability_scanner` module).
 ## Enrollment endpoint (`POST /enroll`)
 
 `/enroll` lets a new agent register over the same HTTPS channel (port 1517) it uses for everything
-else afterward, instead of falling back to legacy `authd` on port 1515. It is a **bridge, not a
-second implementation**: `authd` keeps 100% of enrollment business logic (name/version/group
-validation, key generation, duplicate handling, cluster forwarding on a worker); this endpoint only
-authenticates the request and relays it to `authd`'s existing local socket
+else afterward, instead of falling back to legacy `authd` on port 1515 — and lets an already
+enrolled agent **re-enroll under its existing id** (new key, new re-enrollment secret, nothing
+removed) when it presents its re-enrollment credential. It is a **bridge, not a second
+implementation**: `authd` keeps 100% of enrollment business logic (name/version/group validation,
+key generation, duplicate handling, cluster forwarding on a worker, enrollment-token use counting,
+re-enrollment verification); this endpoint only authenticates the request and relays it to `authd`'s
+existing local socket
 (`queue/sockets/auth.sock`) — the same interface `manage_agents` and the API's agent-registration
 endpoints already use. See [Authd](../authd/README.md) for what happens once a request reaches
 that socket, and [`legacy_enrollment`](../authd/configuration.md#legacy_enrollment) for how an
@@ -1098,15 +1103,16 @@ turned this off."
 Unlike every other endpoint on this page, `/enroll` cannot use the agent<->manager bearer (see
 [Authentication](#authentication-jwt-bearer) above) — an enrolling agent has no `client.keys`
 entry yet to sign with. Two credential checks apply instead, decided once at manager startup and
-**independently** of each other (an operator can require either, both, or neither — see below):
+**independently** of each other (an operator can require either, both, or neither — see below), and
+the second one — the bearer — understands **three credentials**, all `wazuh-enroll+jwt` tokens told
+apart by their header's `kid`:
 
 - **Client certificate** — purely a property of the HTTPS listener's own `verification_mode`
   (`certificate` or `full`; see [Configuration](configuration.md#https-configuration)). When
   configured, the TLS handshake validates the agent's certificate against the manager's CA
   **before the request ever reaches this endpoint** — there is nothing further for `/enroll` itself
   to check.
-- **Password** — required whenever `authd`'s [`use_password`](../authd/configuration.md#use_password)
-  is enabled. The request must carry a bearer of the sibling closed profile **`wazuh-enroll+jwt`**:
+- **Bearer** — a token of the sibling closed profile **`wazuh-enroll+jwt`**:
 
   ```text
   protocol-version: 1
@@ -1114,14 +1120,35 @@ entry yet to sign with. Two credential checks apply instead, decided once at man
   ```
 
   Same core as the agent token — HS256, compact base64url without padding, 4096-byte cap, the same
-  time rules under the SAME two internal options `remoted.jwt_max_age` / `remoted.jwt_clock_skew`
-  — with a different domain:
+  time rules under the SAME two internal options
+  [`remoted.jwt_max_age`](configuration.md#remotedjwt_max_age) /
+  [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) — with a different domain:
 
   | Part | Value |
   | --- | --- |
-  | JOSE header | exactly `{"alg":"HS256","typ":"wazuh-enroll+jwt"}` — **no `kid`**: there is one shared key |
-  | Claims | exactly four: `exp`, `iat`, `jti`, `nbf` (= `iat`) — **no `iss`/`sub`**: there is no agent identity to assert yet |
-  | Key | `HKDF-SHA256(IKM = password, salt = 32 × 0x00, info = "WAZUH-ENROLL-JWT-KEY" ‖ 0x01, L = 32)` derived from `authd`'s enrollment password (`etc/authd.pass`) — never the password bytes themselves. The `info` label separates this key from the retired AES-CMAC key of the same password |
+  | JOSE header | exactly `{"alg":"HS256","typ":"wazuh-enroll+jwt"}`, plus an **optional `kid`** that selects the key (below). A `kid` of neither shape, or any other member, is not a `wazuh-enroll+jwt` at all |
+  | Claims | exactly four: `exp`, `iat`, `jti`, `nbf` (= `iat`) — **no `iss`/`sub`** in any form: a re-enrolling agent asserts its identity through `kid`, an enrolling one has none yet |
+  | Key | one HKDF-SHA256 construction — `HKDF-SHA256(IKM, salt = 32 × 0x00, info = <label> ‖ 0x01, L = 32)` — with the input and label the `kid` selects; never the secret bytes themselves |
+
+  | Header `kid` | Credential | `IKM` / `info` label | Who verifies it | When it applies |
+  | --- | --- | --- | --- | --- |
+  | none | the **shared enrollment password** | the password (`etc/authd.pass`) / `WAZUH-ENROLL-JWT-KEY` | the manager the request reaches | required whenever `authd`'s [`use_password`](../authd/configuration.md#use_password) is enabled; with `use_password` off, a shared-key bearer (or no bearer at all) is ignored and the request passes |
+  | a 22-character base64url string — a 16-byte **enrollment token id** | an **enrollment token** minted by the operator | the token's 16-byte secret / `WAZUH-ENROLL-TOKEN-KEY` | the manager the request reaches, **in every mode** — a presented token is never ignored, `use_password` or not — against its replica of `authd`'s token store (`etc/enrollment_tokens.json`, written on the master and synchronized to every worker like `client.keys`); then `authd` on the master consumes one use of the token | whenever presented |
+  | the agent's canonical id (`001`) | **re-enrollment** — the agent's own re-enrollment secret | the 32-byte `reenroll_secret` the agent received when it enrolled / `WAZUH-REENROLL-KEY` | **`authd` on the master node only**: the secret is stored in the master's database and nowhere else, so the manager the request reaches forwards the bearer verbatim and unverified, and `authd` judges it | whenever presented, in every mode |
+
+  An **enrollment token** is checked in a fixed order — lookup, signature, expiry, revocation — so
+  the token's state (`token_expired`, `token_revoked`) is only ever disclosed to a caller that holds
+  the token's secret; an id that is not in the store (never minted, minted without a credential,
+  or not yet synchronized to this node) is `token_unknown`. Before refusing an unknown id the manager
+  re-reads the store once (rate-limited to one re-read per second), so a token minted on the master a
+  moment earlier is picked up on a worker even ahead of the periodic reload. Uses are counted by
+  `authd` alone: a token whose uses are exhausted, or that `authd` finds revoked or expired after the
+  manager's own check passed, is refused with `403` and `authd`'s code (see Error handling).
+
+  A **re-enrollment** bearer keeps the agent's id: on success `authd` rotates that agent's key and
+  re-enrollment secret in place — same `id`, no removal, no deletion task, no indexer purge — and the
+  response carries the new pair. The same `remoted.jwt_max_age` / `remoted.jwt_clock_skew` window
+  applies; `authd` reads the same two internal options.
 
   A token of either profile presented to the other's verifier is rejected on its header set before
   the signature is even considered. The request body is capped by the same
@@ -1129,18 +1156,28 @@ entry yet to sign with. Two credential checks apply instead, decided once at man
   else, in **every** mode including Open, so an oversized body is rejected with `413` before the
   credential is looked at. The body is not part of the token (TLS protects it).
 
-  A missing/unreadable/invalid password file fails **closed** — every request is rejected, never
-  silently treated as if no password were required. The password is re-derived on change
-  (`etc/authd.pass` is hot-reloaded), so rotating it invalidates every token minted from the old
-  one within seconds.
+  A missing/unreadable/invalid password file fails **closed** — every shared-key request is
+  rejected (`enrollment_key_unavailable`), never silently treated as if no password were required.
+  The password is re-derived on change (`etc/authd.pass` is hot-reloaded), so rotating it
+  invalidates every token minted from the old one within seconds. The token store fails closed the
+  same way, with one deliberate difference: an **absent** `etc/enrollment_tokens.json` is an empty
+  store (no token has been minted, or the worker has not received it yet — every token bearer is
+  `token_unknown`), while a **malformed** one keeps the previously loaded tokens in service rather
+  than revoking a fleet's enrollment over a corrupt or hand-edited file (visible as
+  [`remoted.enroll.token_store.reload_failures.total`](metrics.md#agent-enrollment--remotedenroll)
+  and `enrollment_tokens.last_reload_ok` on `GET /status`). Neither file is ever written by
+  `remoted`.
 
-Both checks failing to apply (no client-certificate requirement, no password configured) means the
-request needs no credential at all, matching `authd`'s own behavior on port 1515 in that
-configuration.
+Both gates failing to apply (no client-certificate requirement, no password configured) means a
+request that presents no `kid` credential needs no credential at all, matching `authd`'s own behavior
+on port 1515 in that configuration — an enrollment token or a re-enrollment bearer is still checked
+when presented.
 
-Every auth rejection collapses to the same generic response, so a client cannot tell which check
-failed: `401` with `{"error":{"code":0,"message":"Invalid client authentication"}}` and
-`WWW-Authenticate: Bearer`.
+Every credential rejection is a `401` with the same generic message, `Invalid client authentication`,
+and names its **class** twice: as the string `error.code` of the nested body and as the
+`error_description` of the `WWW-Authenticate` challenge — the same vocabulary every other route uses
+(see [Error responses](#error-responses)); the table under Error handling below lists the classes
+`/enroll` can produce.
 
 `/enroll` validates the `protocol-version` header first, exactly as every other authenticated route
 does, so a missing or unsupported version is rejected with its own `400` (`Missing required header:
@@ -1204,12 +1241,19 @@ invalid IP. Otherwise the body's `ip` is used if present; otherwise `any`.
   "id": "003",
   "name": "web-server-01",
   "ip": "10.0.0.15",
-  "key": "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"
+  "key": "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915",
+  "reenroll_secret": "0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0"
 }
 ```
 
-Verbatim from `authd` — the 64-hex `key` the agent must store and sign every subsequent
-`wazuh-agent+jwt` bearer with, under its new numeric `id`.
+Verbatim from `authd`, five fields: the 64-hex `key` the agent must store and sign every subsequent
+`wazuh-agent+jwt` bearer with, under its numeric `id`, and the 64-hex **`reenroll_secret`** — the
+agent's re-enrollment credential. The agent must keep it next to the key and never send it: it is the
+input of the `WAZUH-REENROLL-KEY` derivation above, the only thing that lets the agent re-enroll
+later **keeping the same `id`** (after losing its key, or to rotate it) instead of appearing as a new
+agent. It is handed out exactly once per enrollment; each successful re-enrollment replaces both
+`key` and `reenroll_secret` with a new pair under the same `id`. The field is absent only when the
+master node's `authd` predates it.
 
 ### Error handling
 
@@ -1217,7 +1261,9 @@ Verbatim from `authd` — the 64-hex `key` the agent must store and sign every s
 | --- | --- | --- |
 | Enrollment administratively disabled | `403` | Route always exists; see above. |
 | Missing or unsupported `protocol-version` | `400` | Validated FIRST, in every mode -- before the credential check and before the body-size cap, matching every other authenticated route. |
-| Missing/invalid credential | `401` | Collapsed to one generic message; see Authentication above. |
+| Missing/invalid credential | `401` | Same generic message for every class; `error.code` and the `WWW-Authenticate` challenge name the class: `invalid_request` (Password mode, no usable `Authorization`), `invalid_signature` (a bearer that does not verify with its key: wrong password, wrong token secret, a token of the agent profile, a malformed token), `stale_token` (outside the accepted time window), `token_unknown` / `token_expired` / `token_revoked` (the enrollment token's own state, decided from this manager's replica of the store), `enrollment_key_unavailable` (Password mode and the enrollment password is not available on this node — bare `Bearer` challenge, retry later). See Authentication above. |
+| Re-enrollment refused by `authd` on the master (9026 unknown agent or no re-enrollment credential on record / 9027 invalid credential / 9028 outside the accepted time window) | `401` | The bearer travels to `authd` unverified, so its verdict is an authentication failure: mapped onto the classes `unknown_agent` / `invalid_signature` / `stale_token` respectively, with the same generic message and challenge — `authd`'s code and text never reach the wire. |
+| `authd` refused the use of a **verified** enrollment token: 9022 not found or revoked, 9023 expired, 9024 uses exhausted | `403` | `{"error":{"code":9022,"message":"Enrollment token not found or revoked"}}`, `{"error":{"code":9023,"message":"Enrollment token expired"}}`, `{"error":{"code":9024,"message":"Enrollment token uses exhausted"}}`. `403` rather than `401` because the bearer did verify — re-signing fixes nothing; the operator has to mint a new token. 9022/9023 are reachable only when this manager's replica lagged behind `authd`'s store (a revocation or expiry landing between the two checks, a worker copy not yet synchronized); 9024 is decided by `authd` alone, which owns the use counter. |
 | Body exceeds `remoted.auth_max_body_size` (10 MiB default) | `413` | Checked once the protocol version is accepted, BEFORE the bearer is checked (and before a credential check, in Open mode too) -- an oversized body is rejected without ever reaching `parseAndValidateBody()`'s own smaller (16 KiB) schema check. |
 | Malformed body, missing `name`/`version`, invalid `ip` | `400` | Rejected before `authd` is ever contacted. |
 | Agent version newer than allowed | `400` | See `version` in the request table above. |
@@ -1233,7 +1279,9 @@ Every error the `/enroll` **endpoint itself** produces — every row in the tabl
 credential/body-size/validation/`authd` business and transport failures alike — has the shape
 `{"error":{"code":<code>,"message":"<text>"}}`, distinct from every other endpoint's flat
 `{"error":"<message>","code":<status>}` shape, since this one passes through `authd`'s own numeric
-codes for diagnostics (`code` is `0` for the non-`authd` rows, which carry no numeric code).
+codes for diagnostics (`code` is `0` for the non-`authd` rows that carry no numeric code, `-1` when
+`authd` gave no clean answer, and — for a `401` only — the authentication failure class as a string,
+exactly as on every other route).
 
 A few conditions never reach the endpoint's own code at all — the shared HTTP transport rejects them
 first, in the same flat shape it uses for every route, `/enroll` included: an uncaught exception

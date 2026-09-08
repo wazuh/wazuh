@@ -310,6 +310,22 @@ Raising it lets a larger fleet-wide deletion be admitted in one go, at the cost 
 the indexer is slow or unreachable. Setting it to `0` removes the bound entirely, which is only safe
 if you are certain the indexer keeps up.
 
+### remoted.jwt_max_age and remoted.jwt_clock_skew
+
+Two of **remoted's** internal options that authd reads as well, for one purpose: the time window of the
+re-enrollment credential. An agent that re-enrolls keeping its id signs a `wazuh-enroll+jwt` bearer with
+its `reenroll_secret`; remoted forwards it unverified and authd on the master judges it (see
+[Re-enrollment secret](README.md#re-enrollment-secret)) with the same window remoted applies to the
+agent's every other request. A bearer outside it is refused with `9028`.
+
+- **Default values:** `remoted.jwt_max_age=60`, `remoted.jwt_clock_skew=30` (seconds)
+- **Allowed values:** `1` to `43200` and `0` to `43200` — remoted's own bounds
+
+They are read from the `remoted.*` namespace on purpose — authd has no keys of its own for this, so the
+two daemons cannot drift apart — and the `authd.*` options above are unchanged. Reference:
+[`remoted.jwt_max_age`](../remoted/configuration.md#remotedjwt_max_age),
+[`remoted.jwt_clock_skew`](../remoted/configuration.md#remotedjwt_clock_skew).
+
 **Note:** Use `wazuh-manager-internal-options.conf` to preserve settings across upgrades.
 
 ---

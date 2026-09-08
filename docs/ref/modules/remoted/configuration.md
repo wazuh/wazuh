@@ -854,6 +854,10 @@ valid token is rejected as stale.
   usually means unsynchronized agent clocks — fix NTP before widening the window. Widening it also
   widens the replay window of a captured token (this profile has no replay store); rely on it only
   as far as the deployment's clock drift actually requires.
+- **Note:** The same window bounds every `wazuh-enroll+jwt` bearer of `POST /enroll` — the shared
+  enrollment password, an enrollment token, and the re-enrollment credential. The last one is
+  verified by `authd` on the master node, which reads this option and `remoted.jwt_clock_skew`
+  itself, so the two daemons never accept different windows.
 
 #### remoted.jwt_clock_skew
 
@@ -867,8 +871,9 @@ between the two hosts is compensated for here.
 - **Allowed values:** Integer from `0` to `43200` (12h, the profile maximum; `0` means no tolerance
   at all)
 - **Note:** Shares the `remoted.auth.reject.clock_skew` counter with `remoted.jwt_max_age` (see
-  above). Also bounds the freshness window of `POST /enroll`. Widening it also widens the replay
-  window of a captured token (this profile has no replay store).
+  above). Also bounds the freshness window of every `POST /enroll` bearer, the re-enrollment
+  credential `authd` verifies on the master included (`authd` reads the same option). Widening it
+  also widens the replay window of a captured token (this profile has no replay store).
 
 #### remoted.auth_max_body_size
 
@@ -992,13 +997,22 @@ High-water mark for queued task-manager requests.
 
 #### remoted.enroll_password_refresh_interval
 
-Seconds between polls of `etc/authd.pass` for Password-mode `POST /enroll`.
+Seconds between fallback polls of the two `authd`-written secret files `POST /enroll` authenticates
+against: `etc/authd.pass` (the shared enrollment password, Password mode) and
+`etc/enrollment_tokens.json` (the enrollment token store, every mode). Both are also watched with
+`inotify`, which normally reacts first; this interval only bounds how long a missed notification can
+go unnoticed.
 
 - **Default value:** `10`
 - **Allowed values:** Integer from `1` to `3600`
 - **Note:** Until a change is picked up, Password-mode enrollment keeps failing with the old
   key; those rejections count as `remoted.auth.reject.enrollment_key_unavailable` in
-  [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject).
+  [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject). For the token store,
+  an unknown token id additionally forces one immediate re-read (at most one per second), so a
+  token minted on the master moments earlier is accepted on a worker without waiting for this poll
+  — provided the cluster sync has already delivered the file. Successful and failed loads of the
+  store are [`remoted.enroll.token_store.reloads.total` /
+  `reload_failures.total`](metrics.md#agent-enrollment--remotedenroll).
 
 #### remoted.authd_connect_timeout
 

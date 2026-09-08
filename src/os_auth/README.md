@@ -7,7 +7,7 @@ makes sure that agent's documents leave the indexer too.
 Three documentation layers cover authd, each with its own job:
 
 - **This README** — the developer's map: the [requirements catalog](#requirements) and
-  [design decisions](#design-decisions-d1d8), how the threads divide the work, which invariants are
+  [design decisions](#design-decisions-d1d12), how the threads divide the work, which invariants are
   load-bearing, and *why* it is built this way ([threads](#threads),
   [agent removal](#agent-removal), [invariants](#invariants), [developer FAQ](#developer-faq)).
 - **[`docs/ref/modules/authd/`](../../docs/ref/modules/authd/README.md)** — the operator-facing
@@ -44,6 +44,8 @@ it would erase why.
 | RF-12 | Survive a restart without losing work the system has no other record of | kept ([the state file](#the-state-file)) |
 | RF-13 | Expose the enrollment password to workers as the cluster syncs it down | kept (the authpass watcher; fails closed until the file arrives) |
 | RF-14 | Reject an id, whether caller-supplied or auto-assigned, that would not fit the width `client.keys` and the database store it in | kept (`OS_IsValidAgentInsertID`, `OS_ADDAGENT_LIMIT_REACHED`) — D9 |
+| RF-15 | Mint, list and revoke enrollment tokens — master only, and only for an address the listener certificate names — and consume one use when an agent enrolls with one | kept ([enrollment](#enrollment); `token_cli.c`, `enrollment_token_mint.c`, `enrollment_token_store.c`) — D11. `manage_agents` has no part in it |
+| RF-16 | Hand every enrolling agent a re-enrollment secret, and let it rotate its key under the same id without a deletion | kept (`local_reenroll`, `add_rotate`, `global set-agent-credentials`) — D12 |
 
 ### Non-functional (RNF)
 
@@ -55,7 +57,7 @@ it would erase why.
 | RNF-4 | An id is never handed out twice, across restarts and across a rebuilt counter | `last_id` in the state file + in-memory reservation; invariant 4 |
 | RNF-5 | Fail towards "cleaned up later", never towards "deleted something alive" | every ordering decision in the removal path; invariant 5 |
 | RNF-6 | Deterministic shutdown: no thread can park the daemon on a network budget | there is no network call left in this daemon's deletion path; the writer's wazuh-db calls are bounded by `authd.wdb_timeout` |
-| RNF-7 | Every refusal is observable and attributable to one guard | one message per guard in `w_auth_replace_agent()`; the `9001–9021` table |
+| RNF-7 | Every refusal is observable and attributable to one guard | one message per guard in `w_auth_replace_agent()`; the `9001–9028` table |
 | RNF-8 | Unit-testable orchestration without a live indexer or manager | seams + the suites in [Tests](#tests) |
 
 ### Contract with inventory_sync_server (REQ-PURGE)
@@ -71,7 +73,7 @@ it, inventory-sync applies it — and all three depend on these:
 | REQ-PURGE-4 | The purge is **delayed** by `authd.purge_delay` so it outlives the index refresh, the cluster sync and the keepalive tolerance — whatever it misses survives forever. The delay is now the row's initial `NEXT_ATTEMPT_AT` |
 | REQ-PURGE-5 | Deletion orders FIFO against that agent's in-flight sessions; neither authd nor the dispatcher serializes it |
 
-## Design decisions (D1–D10)
+## Design decisions (D1–D12)
 
 | # | Decision | Rationale |
 |---|---|---|
@@ -85,6 +87,8 @@ it, inventory-sync applies it — and all three depend on these:
 | D8 | **The `<force>` guards are all-or-nothing and each logs its own refusal** | An operator debugging a rejected enrollment needs to know *which* guard refused; a single generic "rejected" is unactionable |
 | D9 | **An id, caller-supplied or auto-assigned, is range-checked before it can reach either store** — never after | Both `client.keys` and the database keep the id in a signed 32-bit int; an unchecked value above `INT32_MAX` wraps silently at write time, and the two stores wrapped independently, leaving one agent with two disjoint identities and no supported way to query or delete the result |
 | D10 | **A deletion is refused at the REQUEST when the backlog is full** (`9021`), not discovered later | One line past that point the agent has left the keystore and the caller has been told it succeeded, so there is nothing left to refuse and nobody to tell. The old code found the overflow in the writer and could only choose between dropping the purge silently and orphaning the documents |
+| D11 | **The token store has one writer — the master — and a use is reserved before the agent exists** | Workers receive `etc/enrollment_tokens.json` from the cluster sync and only read it, so there is nothing to reconcile; consuming after `OS_AddNewAgent()` would leave an agent to roll back when the token turns out exhausted, while reserving first costs only an `etoken_store_release()` on refusal |
+| D12 | **Re-enrollment rotates the entry in place, and the secret that authorises it lives only in `global.db`** | A delete + add under one lock keeps the id and its documents (no `add_remove()`, no purge). `client.keys` is copied to every worker and read by remoted; the secret only needs to be verifiable where a rotation can be performed — the master |
 
 ## Layout
 
@@ -93,19 +97,26 @@ it, inventory-sync applies it — and all three depend on these:
 | `src/main-server.c` | `main()`, the thread bodies (remote server, writer), the deletion's phase 3/4 and startup reconciliation |
 | `src/local-server.c` | the local Unix-socket protocol: `add`, `remove`, `get`, and their error table |
 | `src/auth.c` | shared state (`keys`, `config`, the queues), enrollment validation, force-replacement, the deletion journal and the reusable-id guard |
-| `src/config.c` | `<auth>` block plus the `authd.*` internal options |
+| `src/config.c` | `<auth>` block plus the `authd.*` internal options, and the two `remoted.jwt_*` ones the re-enrollment window is read from |
+| `src/token_cli.c` | the `--create/--list/--revoke-enrollment-token` and `--show-token` utility mode: a client of the socket verbs, run by `main()` before the daemon starts |
+| `src/enrollment_token_mint.c` | whether a token can be minted: the listener certificate's SAN, loopback and CA-signature checks, and the `adr` the token will carry |
+| `src/enrollment_token_store.c` | `etc/enrollment_tokens.json` and its in-memory replica: load, mtime-driven reload, atomic rewrite, consume/release, revoke |
+| `src/reenroll_verify.cpp` | the one C++ file: an `extern "C"` bridge over the header-only verifier in `shared_modules/utils/jwt/` |
 | `include/auth.h` | everything the two servers and the threads share |
 
 `main-server.c` is deliberately **excluded from `authd_lib`**, the static library the unit tests link
 against (see [`CMakeLists.txt`](CMakeLists.txt)). Anything that needs coverage therefore belongs in
 `auth.c` or `local-server.c`, not in `main-server.c` — that is why the deletion journal lives in
-`auth.c` even though only `main-server.c`'s writer thread drives it.
+`auth.c` even though only `main-server.c`'s writer thread drives it. Since `reenroll_verify.cpp` joined,
+`authd_lib` is a `C CXX` project linked as CXX (`cxx_std_17`); it takes from `ext_jwt_cpp` only its
+include directories and compile definitions, never the target itself, which would link a second, static
+libcrypto next to the one `libwazuhext.so` already provides.
 
 ## Threads
 
 | Thread | Role |
 |---|---|
-| Local server | serves `queue/sockets/auth.sock`: `add` / `remove` / `get`, for the server API and for remoted's `/enroll` route |
+| Local server | serves `queue/sockets/auth.sock`: `add` / `remove` / `get`, for the server API and for remoted's `/enroll` route, and the `token_*` verbs for the token CLI and the API |
 | Remote server | TLS enrollment on port 1515, when `remote_enrollment` is enabled |
 | Writer | the only thread that persists `client.keys`; also removes rows from wazuh-db and records each deletion as a Task Manager row |
 
@@ -164,6 +175,22 @@ The agent has a usable key at that point, but **remoted does not know about it y
 `client.keys` on the writer's next pass, and remoted reloads the file on its own cadence. Enrollment
 latency is therefore the writer's pass time plus remoted's reload — which is exactly why nothing slow
 may live in that pass.
+
+Two credentials `/enroll` can carry take their own route through `local_dispatch()`:
+
+- **An enrollment token** (`token_id`): on the master `etoken_store_consume()` reserves the use —
+  `9022` unknown or revoked, `9023` expired, `9024` exhausted — *before* `local_add()`, and
+  `etoken_store_release()` returns it if the add is refused (D11). Minting (`token_create`) is
+  `etoken_mint_prepare()` — the checks against the listener certificate, `9025` with the reason — then
+  `etoken_store_create()`.
+- **A re-enrollment** (`reenroll = {kid, bearer}`, `local_reenroll()`): the row's `reenroll_secret` is
+  fetched from wazuh-db *before* `mutex_keys` (invariant 2), `w_reenroll_verify()` judges the bearer
+  (`9026`/`9027`/`9028`), and under the lock `OS_DeleteKey(purge = 1)` + `OS_AddNewAgent()` with the
+  same id rotate the entry; `add_rotate()` queues it and the writer runs `wdb_set_agent_credentials()`
+  — an UPDATE, not an insert. `add_remove()` never runs, so no purge is recorded (D12).
+
+The secret is drawn in `local_add()` before the key (`OS_NewReenrollSecret`), so a CSPRNG failure
+leaves nothing to undo; the 1515 path passes `NULL`, and those agents cannot re-enroll this way.
 
 ## Agent removal
 
@@ -487,6 +514,7 @@ The ones that shape the behaviour described here:
 | `wazuh_modules.manager_task_max_pending_deletes` | `20000` | deletion rows outstanding before phase 0 refuses new deletions. The Task Manager's key, read by both halves so they cannot drift |
 | `<force>` | enabled | when an enrollment may take over an existing name or IP |
 | `<purge>` | `no` | when `yes`, removed keys are dropped from `client.keys` instead of being kept as `!name` lines |
+| `remoted.jwt_max_age` / `remoted.jwt_clock_skew` | `60` / `30` | the window `local_reenroll()` accepts a re-enrollment bearer in — remoted's own keys, read here so the two daemons judge one bearer alike |
 
 ## Logs worth knowing
 
@@ -501,6 +529,9 @@ The ones that shape the behaviour described here:
 | `Shutting down with N agent deletion(s) still being recorded` | they stay in the journal and are reconciled on the next start |
 | `Agent ID 'N' still has a pending deletion, rejecting the insertion` | the `9018` path |
 | `Unable to add agent: NAME. Agent limit (N) reached.` | also fires when `id_counter` reached `INT_MAX`; the enrollment is refused instead of wrapping to a negative id |
+| `Enrollment token 'X' consumed by agent 'N'.` / `Enrollment token 'X' revoked.` | the token paths. A refused token goes through the dispatcher's error path and logs `ERROR 902x: …`; a re-enrollment the master's verification refuses (`9026`–`9028`) logs at debug level only |
+| `Agent 'N' (id 'I') re-enrolled: key and re-enrollment secret rotated.` | a rotation in place; nothing was deleted |
+| `Could not load the enrollment tokens from '…'` | a malformed store; enrollments presenting a token are refused until it is fixed |
 
 ## Tests
 
@@ -512,7 +543,12 @@ The ones that shape the behaviour described here:
 | `unit_tests/os_auth/test_auth.c` | password handling |
 | `unit_tests/os_auth/test_auth_parse.c` | the enrollment message parser |
 | `unit_tests/os_auth/test_authd-config.c` | the `<auth>` block |
-| `unit_tests/os_auth/test_local-server.c` | the local-socket `add`/`remove`/`get` protocol: malformed key/id rejection (`9019`/`9020`), clustered forwarding |
+| `unit_tests/os_auth/test_local-server.c` | the local-socket `add`/`remove`/`get` protocol: malformed key/id rejection (`9019`/`9020`), clustered forwarding; the `token_*` verbs and `add` with `token_id`/`reenroll` (`w_mconf_section`, `wdb_get_agent_info` and `w_reenroll_verify` wrapped; the store and the X509 checks run for real on temporary files) |
+| `unit_tests/os_auth/test_enrollment_token_store.c` | the store on real temporary files: mode, atomicity, what the file never contains, consume/release/revoke, reload |
+| `unit_tests/os_auth/test_token_cli.c` | the utility mode with the three socket calls wrapped: the JSON each option sends and how the answer is read; `--show-token` on the real codec |
+| `unit_tests/os_auth/test_reenroll_verify.c` | the C bridge against the frozen vector — real verifier, real HKDF, nothing wrapped |
+| `unit_tests/os_auth/test_authd-getconfig.c` | `authd_read_config()`/`getAuthdConfig()` over the configuration document (`w_mconf_*` wrapped), including the `remoted.jwt_*` reads |
+| `tests/integration/test_authd/test_enrollment_token/` | the lifecycle on a running manager — master: mint over the socket and the CLI, the listing hides the secret, `--show-token`, consume then revoke, refusals, the IP warning; worker: `9015` on mint, `token_id` forwarded, the synced store readable |
 | `unit_tests/shared/test_agent_validate_op.c` | outside `os_auth`, but pins the id-assignment logic this module depends on: `OS_AddNewAgent()`'s key generation and `INT_MAX` counter guard, `OS_IsValidAgentInsertID()`'s range check |
 
 Two things to know before writing a case here. The log functions are wrapped, so **every** line the
@@ -537,3 +573,10 @@ would make "the row is outstanding" and "the query failed" the same case.
   pass and the edit is lost.
 - **Deleting a manager should include deleting its indexer data**, or a rebuilt manager hands out ids
   whose documents are still in the indexer.
+- **Tokens are minted on the master, by a running daemon** — the CLI is a socket client (`9015` on a
+  worker, a connection error when authd is down) — and the token text is shown once. Revoking is
+  immediate on the master, since every `add` re-checks the store; a worker's remoted keeps its replica
+  until the cluster syncs the file, but the master's answer wins.
+- **A re-enrollment is not a deletion**: same id, no purge, documents kept. Agents enrolled over port
+  1515, and rows the database module rebuilt from `client.keys`, have no secret and answer `9026`
+  until they enroll anew.

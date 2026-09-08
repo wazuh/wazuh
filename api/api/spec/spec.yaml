@@ -2465,6 +2465,9 @@ components:
                                 update-keepalive:
                                   type: integer
                                   format: int32
+                                set-agent-credentials:
+                                  type: integer
+                                  format: int32
                             belongs:
                               type: object
                               properties:
@@ -2617,6 +2620,9 @@ components:
                                   type: integer
                                   format: int32
                                 update-keepalive:
+                                  type: integer
+                                  format: int32
+                                set-agent-credentials:
                                   type: integer
                                   format: int32
                             belongs:
