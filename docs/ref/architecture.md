@@ -180,7 +180,7 @@ A manager-side module hosted by `wazuh-manager-modulesd` is three pieces, not on
 | `agent_groups`           | Manage agent group assignments                                           |
 | `agent_upgrade`          | Orchestrate agent WPK upgrades                                           |
 | `cluster_control`        | Query cluster status and node health                                     |
-| `rbac_control`           | Manage RBAC policies and role assignments                                |
+| `rbac_control`           | Change the API default users' passwords, or reset the RBAC database      |
 
 ### Data Flow
 

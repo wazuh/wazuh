@@ -205,7 +205,7 @@ For agents below v5.0.0, `remoted` streams the WPK bytes to the agent directly, 
 **Step 1: Authenticate:**
 
 ```bash
-TOKEN=$(curl -sk -u wazuh-wui:wazuh-wui -X POST \
+TOKEN=$(curl -sk -u <user>:<password> -X POST \
   "https://<manager_ip>:55000/security/user/authenticate?raw=true")
 ```
 

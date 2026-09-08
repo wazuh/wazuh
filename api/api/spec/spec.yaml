@@ -7472,7 +7472,7 @@ paths:
                     affected_items:
                       - id: 1
                         username: wazuh
-                        allow_run_as: true
+                        allow_run_as: false
                         roles:
                           - id: 1
                             name: administrator
@@ -7789,7 +7789,7 @@ paths:
                           - 5
                       - id: 1
                         username: wazuh
-                        allow_run_as: true
+                        allow_run_as: false
                         roles:
                           - 1
                       - id: 2
