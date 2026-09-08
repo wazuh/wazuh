@@ -19,6 +19,7 @@ int __wrap_wdb_global_insert_agent(__attribute__((unused)) wdb_t *wdb,
                                    char* ip,
                                    char* register_ip,
                                    char* internal_key,
+                                   char* reenroll_secret,
                                    char* group,
                                    int date_add) {
     check_expected(id);
@@ -26,6 +27,7 @@ int __wrap_wdb_global_insert_agent(__attribute__((unused)) wdb_t *wdb,
     check_expected(ip);
     check_expected(register_ip);
     check_expected(internal_key);
+    check_expected(reenroll_secret);
     check_expected(group);
     check_expected(date_add);
 

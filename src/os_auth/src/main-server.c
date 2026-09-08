@@ -25,6 +25,7 @@
 
 #include "shared.h"
 #include "auth.h"
+#include <openssl/crypto.h>
 #include "mconf-config.h"
 #include <pthread.h>
 #include <sys/wait.h>
@@ -787,7 +788,7 @@ static void process_message(struct client *client) {
         if (config.worker_node) {
             minfo("Dispatching request to master node");
             // The force registration settings are ignored for workers. The master decides.
-            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL, NULL)) {
+            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL, NULL, NULL)) {
                 client->enrollment_ok = TRUE;
             }
         }
@@ -941,7 +942,9 @@ void enqueue_pending_key(int ret, uint32_t index_client) {
                 w_mutex_lock(&mutex_keys);
                 int key_index = OS_IsAllowedID(&keys, g_client_pool[index_client]->new_id);
                 if (key_index >= 0) {
-                    add_insert(keys.keyentries[key_index], g_client_pool[index_client]->centralized_group);
+                    /* No re-enrollment secret on 1515 (#38993): its OSSEC K: line has no field for it and
+                     * a 4.x agent never re-enrolls over HTTPS, so none is generated or stored. */
+                    add_insert(keys.keyentries[key_index], g_client_pool[index_client]->centralized_group, NULL);
                     write_pending = 1;
                     w_cond_signal(&cond_pending);
                 }
@@ -1390,7 +1393,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
 
             gettime(&t0);
-            if (wdb_insert_agent(atoi(cur->id), cur->name, NULL, cur->ip, cur->raw_key, cur->group, 1, &wdb_sock)) {
+            if (wdb_insert_agent(atoi(cur->id), cur->name, NULL, cur->ip, cur->raw_key, cur->reenroll_secret, cur->group, 1, &wdb_sock)) {
                 mdebug2("The agent %s '%s' already exists in the database.", cur->id, cur->name);
             }
             gettime(&t1);
@@ -1414,6 +1417,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
             os_free(cur->ip);
             os_free(cur->group);
             os_free(cur->raw_key);
+            if (cur->reenroll_secret) {
+                OPENSSL_cleanse(cur->reenroll_secret, strlen(cur->reenroll_secret));
+            }
+            os_free(cur->reenroll_secret);
             os_free(cur);
 
             inserted_agents++;
@@ -1446,6 +1453,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             os_free(cur->ip);
             os_free(cur->group);
             os_free(cur->raw_key);
+            os_free(cur->reenroll_secret); // always NULL for removals (add_remove() sets none)
             os_free(cur);
 
             removed_agents++;

@@ -98,6 +98,30 @@ TEST(AuthdClientTest, SuccessfulAddReturnsAgentData)
     EXPECT_EQ(result.ip, "any");
     EXPECT_EQ(result.key, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
     EXPECT_TRUE(result.message.empty());
+    EXPECT_TRUE(result.reenrollSecret.empty()); // not in this answer: empty, never a default
+}
+
+TEST(AuthdClientTest, SuccessfulAddCarriesTheReenrollSecretWhenAuthdSendsIt)
+{
+    // The fifth field of authd's answer (issue #38993): parsed verbatim when present, empty when an
+    // authd that predates it answers with the four classic fields (the test above).
+    const std::string path = makeUniqueSocketPath("authd_client_reenroll_secret");
+    FakeUdsServer server(
+        path,
+        [](const std::string&)
+        {
+            return R"({"error":0,"data":{"id":"003","name":"agent1","ip":"any","key":"k",)"
+                   R"("reenroll_secret":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}})";
+        });
+    server.setCloseAfterReply(true);
+
+    AuthdClient client(path);
+    ResultWaiter waiter;
+    client.addAgent(makeRequest(), waiter.callback());
+
+    const auto result = waiter.wait();
+    EXPECT_EQ(result.errorCode, 0);
+    EXPECT_EQ(result.reenrollSecret, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
 }
 
 TEST(AuthdClientTest, BusinessRejectionPreservesCodeAndStripsPrefix)
