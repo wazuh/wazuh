@@ -80,15 +80,29 @@ manager_config/
 
 ```bash
 cmake -S $WAZUH_REPO/src -B $WAZUH_REPO/src/build -DUNIT_TEST=ON
-cmake --build $WAZUH_REPO/src/build -j --target manager_config_utest
+cmake --build $WAZUH_REPO/src/build -j --target manager_config_utest wazuh-manager-conf
+ctest --test-dir $WAZUH_REPO/src/build -L manager_config --output-on-failure
+```
+
+`-L manager_config` is the module-wide ctest label and runs the three registered tests:
+`manager_config_utest` (GTest over the library), `manager_config_cli` (the end-to-end script over
+`bin/wazuh-manager-conf` — hence the second build target above, which is not a dependency of the test
+binary) and `manager_config_parity` (registered when a `python3` is found; it imports `jsonschema`).
+`-L manager_config_utest` selects the GTest alone. To run a suite by hand:
+
+```bash
 $WAZUH_REPO/src/build/shared_modules/manager_config/tests/unit/manager_config_utest
 $TMP_PY_VENV/bin/python3 tests/parity.py schema/wazuh-manager.schema.json tests/vectors
 ```
 
-`ctest --test-dir $WAZUH_REPO/src/build -R manager_config` runs `manager_config_utest` and
-`manager_config_parity` (registered when the venv exists). `parity.py` carries its own strict
-ElementTree-based XML→dict loader with the same schema-driven typing: it is the reference for the Python
-framework and the seed of the 5.0→5.1 conversion tool.
+CI runs all three on every PR touching `src/shared_modules/manager_config/**`, `src/init/**` or
+`etc/templates/**` (the last two because the CLI suite validates the configuration the installer
+generates) via `.github/workflows/5_testunit_managerconfig.yml`: one job with the three suites plus a
+coverage report (uploaded, not gated) and an ASAN/UBSAN job that runs the GTest only — the CLI suite
+asserts exact exit codes and an empty stderr, which a sanitizer's reports would break.
+
+`parity.py` carries its own strict ElementTree-based XML→dict loader with the same schema-driven typing:
+it is the reference for the Python framework and the seed of the 5.0→5.1 conversion tool.
 
 ## Errors
 
