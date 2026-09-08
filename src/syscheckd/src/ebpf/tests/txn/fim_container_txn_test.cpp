@@ -6,8 +6,10 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * Pins the four things the container FIM consumers assume about a *scoped*
- * `file_entry` transaction, against the real libfimdb — not a test double.
+ * Pins what the container FIM consumers assume about a *scoped* `file_entry`
+ * transaction — and, in case 7, about the non-transactional upsert that
+ * replaces it on the path-reconcile path — against the real libfimdb, not a
+ * test double.
  * Every other container test in this tree stands libfimdb in with an in-memory
  * store carrying DBSync's callback shape, which by construction cannot show
  * any of these:
@@ -277,6 +279,36 @@ int main()
 
         std::snprintf(detail, sizeof(detail), "INSERTED=%d (want 2)", g_inserted);
         ok &= Check("close() still deletes the rows it did not refresh", g_inserted == 2, detail);
+    }
+
+    /* 7. D18's fix for case 6: the non-transactional per-row upsert a path
+     *    reconcile uses instead. It must report a change as MODIFIED with the
+     *    {"old","new"} pair, and — the whole point — leave the rows it did not
+     *    touch alone. Re-reporting them afterwards must produce no INSERTED,
+     *    which is exactly the assertion case 6 fails. */
+    {
+        ResetCounters();
+        const auto scope = TxnScope("cid-d");
+        TXN_HANDLE txn = fim_db_transaction_start(scope.c_str(), RowCallback, nullptr);
+        SyncPaths(txn, "cid-d", 0, 3);
+        fim_db_transaction_deleted_rows(txn, RowCallback, nullptr);
+
+        /* Change exactly one of the three, outside any transaction. */
+        ResetCounters();
+        fim_db_container_file_sync(ChangedRowJson("cid-d", "/etc/a0").c_str(), RowCallback, nullptr);
+
+        std::snprintf(detail, sizeof(detail), "MODIFIED=%d wrapped=%d (want 1/1)", g_modified, g_modified_wrapped);
+        ok &= Check("direct upsert reports MODIFIED with old+new", g_modified == 1 && g_modified_wrapped == 1, detail);
+
+        /* The other two must still be there: re-reporting all three yields no
+         * INSERTED at all. Under case 6's transaction this is 2. */
+        ResetCounters();
+        txn = fim_db_transaction_start(scope.c_str(), RowCallback, nullptr);
+        SyncPaths(txn, "cid-d", 0, 3);
+        fim_db_transaction_close(txn);
+
+        std::snprintf(detail, sizeof(detail), "INSERTED=%d (want 0)", g_inserted);
+        ok &= Check("direct upsert leaves untouched rows in place", g_inserted == 0, detail);
     }
 
     std::printf("\n%s\n", ok ? "ALL OK" : "FAILURES");
