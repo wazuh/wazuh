@@ -269,7 +269,10 @@ class LinuxPortWrapper final : public IPortWrapper
 
         int32_t pid() const override
         {
-            return {};
+            // -1 marks a socket whose owning process could not be resolved (e.g. it lives
+            // outside the collector's PID namespace); 0 is a valid-looking pid and would be
+            // indistinguishable from a real one.
+            return -1;
         }
 };
 
