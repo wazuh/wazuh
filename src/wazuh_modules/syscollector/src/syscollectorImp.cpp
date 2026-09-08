@@ -1118,7 +1118,23 @@ nlohmann::json Syscollector::ecsPortData(const nlohmann::json& originalData, boo
     setJsonField(ret, originalData, "/interface/state", "interface_state", createFields);
     setJsonField(ret, originalData, "/network/transport", "network_transport", createFields);
     setJsonField(ret, originalData, "/process/name", "process_name", createFields);
-    setJsonField(ret, originalData, "/process/pid", "process_pid", createFields);
+
+    // process_pid: -1 marks an unresolved owner (see portLinuxWrapper.h); emit null instead of
+    // a value that would look like a real pid.
+    if (createFields || originalData.contains("process_pid"))
+    {
+        const nlohmann::json::json_pointer pointer("/process/pid");
+
+        if (originalData.contains("process_pid") && originalData["process_pid"].is_number() &&
+                originalData["process_pid"].get<int32_t>() != -1)
+        {
+            ret[pointer] = originalData["process_pid"];
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
     setJsonFieldArray(ret, originalData, "/source/ip", "source_ip", createFields);
     setJsonField(ret, originalData, "/source/port", "source_port", createFields);
 
