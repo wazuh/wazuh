@@ -400,6 +400,10 @@ TEST_F(AdminServerTest, GetStatusKeystoreFailureDoesNotAffectReadyWhenPasswordMo
     EXPECT_NE(response->body.find(R"({"ready":true,"keystore":{"readable":false)"), std::string::npos)
         << response->body;
     EXPECT_EQ(response->body.find("enrollment_password"), std::string::npos) << response->body;
+    // Enrollment is enabled, so the token store replica reports too -- informational (an empty
+    // replica is the normal state of a manager that minted no token), never folded into `ready`.
+    EXPECT_NE(response->body.find(R"("enrollment_tokens":{"loaded":0,"last_reload_ok":true})"), std::string::npos)
+        << response->body;
 }
 
 // The owner's policy on a failed admin bind: WARN and CONTINUE. A regular file squatting the

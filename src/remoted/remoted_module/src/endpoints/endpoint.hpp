@@ -64,6 +64,9 @@ namespace remoted::endpoints
     constexpr auto METRIC_AUTH_REJECT_BODY_TOO_LARGE {"remoted.auth.reject.body_too_large"};
     constexpr auto METRIC_AUTH_REJECT_BAD_ENCODING {"remoted.auth.reject.bad_encoding"};
     constexpr auto METRIC_AUTH_REJECT_MALFORMED {"remoted.auth.reject.malformed"};
+    constexpr auto METRIC_AUTH_REJECT_TOKEN_UNKNOWN {"remoted.auth.reject.token_unknown"};
+    constexpr auto METRIC_AUTH_REJECT_TOKEN_EXPIRED {"remoted.auth.reject.token_expired"};
+    constexpr auto METRIC_AUTH_REJECT_TOKEN_REVOKED {"remoted.auth.reject.token_revoked"};
 
     /**
      * @brief The auth-rejection counter set, pre-resolved from one manager.
@@ -90,6 +93,10 @@ namespace remoted::endpoints
         std::shared_ptr<wazuh::metrics::ICounter> bodyTooLarge;    ///< Over the authenticated-body cap.
         std::shared_ptr<wazuh::metrics::ICounter> badEncoding;     ///< Unsupported/undecodable Content-Encoding.
         std::shared_ptr<wazuh::metrics::ICounter> malformed;       ///< Missing/malformed auth or protocol headers.
+        std::shared_ptr<wazuh::metrics::ICounter>
+            tokenUnknown; ///< /enroll: the bearer's `kid` names no credential-bearing enrollment token.
+        std::shared_ptr<wazuh::metrics::ICounter> tokenExpired; ///< /enroll: the enrollment token has lapsed.
+        std::shared_ptr<wazuh::metrics::ICounter> tokenRevoked; ///< /enroll: the enrollment token was revoked.
     };
 
     /// Resolves the remoted.auth.reject.* family on @p manager (creating it on first call;
@@ -141,6 +148,20 @@ namespace remoted::endpoints
                                        "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_MALFORMED,
                                        "Rejections: missing/malformed authorization or protocol-version headers",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_AUTH_REJECT_TOKEN_UNKNOWN,
+                                       "Rejections: POST /enroll with an enrollment-token bearer whose kid names no "
+                                       "credential-bearing token in etc/enrollment_tokens.json, even after a "
+                                       "forced re-read (never minted, minted without a credential, or not yet "
+                                       "synchronized to this node)",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_AUTH_REJECT_TOKEN_EXPIRED,
+                                       "Rejections: POST /enroll with a correctly signed enrollment-token bearer "
+                                       "whose token is past its expiry (mint a new one)",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_AUTH_REJECT_TOKEN_REVOKED,
+                                       "Rejections: POST /enroll with a correctly signed enrollment-token bearer "
+                                       "whose token was revoked by the operator",
                                        "count")};
     }
 

@@ -31,6 +31,12 @@ namespace remoted::enrollment
         std::string ip;
         std::optional<std::string> groups;
         std::optional<std::string> keyHash;
+        /// The enrollment token the request authenticated with (issue #38993): its id, exactly as the
+        /// bearer's `kid` spelled it and as EnrollmentAuthenticator verified it. Forwarded as
+        /// `token_id` so authd consumes one use of that token (and answers 9022/9023/9024 when it
+        /// disagrees with remoted's replica about the token's state). Absent for the password and
+        /// Open paths, where the wire request stays byte-identical to what it was before tokens.
+        std::optional<std::string> tokenId;
     };
 
     /**

@@ -25,6 +25,16 @@ namespace remoted::enrollment
     constexpr auto METRIC_DISABLED {"remoted.enroll.disabled"};
     constexpr auto METRIC_AUTHD_ERROR {"remoted.enroll.authd_error"};
     constexpr auto METRIC_AUTHD_UNAVAILABLE {"remoted.enroll.authd_unavailable"};
+    // The enrollment-token outcomes (issue #38993): the subset of the requests above that presented
+    // an enrollment-token bearer, by what happened to the TOKEN. `accepted` is a 200 obtained with a
+    // token; the four rejections are the token's state -- unknown/expired/revoked decided by remoted's
+    // replica of the store (and confirmed by authd's 9022/9023 when the replica lagged), exhausted
+    // decided by authd alone (9024: it owns the use counter).
+    constexpr auto METRIC_TOKEN_ACCEPTED {"remoted.enroll.token.accepted"};
+    constexpr auto METRIC_TOKEN_REJECTED_UNKNOWN {"remoted.enroll.token.rejected_unknown"};
+    constexpr auto METRIC_TOKEN_REJECTED_EXPIRED {"remoted.enroll.token.rejected_expired"};
+    constexpr auto METRIC_TOKEN_REJECTED_REVOKED {"remoted.enroll.token.rejected_revoked"};
+    constexpr auto METRIC_TOKEN_REJECTED_EXHAUSTED {"remoted.enroll.token.rejected_exhausted"};
 
     struct EnrollmentMetrics
     {
@@ -34,6 +44,11 @@ namespace remoted::enrollment
         std::shared_ptr<wazuh::metrics::ICounter> disabled;
         std::shared_ptr<wazuh::metrics::ICounter> authdError;
         std::shared_ptr<wazuh::metrics::ICounter> authdUnavailable;
+        std::shared_ptr<wazuh::metrics::ICounter> tokenAccepted;
+        std::shared_ptr<wazuh::metrics::ICounter> tokenRejectedUnknown;
+        std::shared_ptr<wazuh::metrics::ICounter> tokenRejectedExpired;
+        std::shared_ptr<wazuh::metrics::ICounter> tokenRejectedRevoked;
+        std::shared_ptr<wazuh::metrics::ICounter> tokenRejectedExhausted;
     };
 
     inline EnrollmentMetrics makeEnrollmentMetrics(wazuh::metrics::IManager& manager)
@@ -51,7 +66,64 @@ namespace remoted::enrollment
             manager.getOrCreateCounter(
                 METRIC_AUTHD_ERROR, "Enrollment requests rejected by authd's own business rules", "count"),
             manager.getOrCreateCounter(
-                METRIC_AUTHD_UNAVAILABLE, "Enrollment requests that got no clean answer from authd", "count")};
+                METRIC_AUTHD_UNAVAILABLE, "Enrollment requests that got no clean answer from authd", "count"),
+            manager.getOrCreateCounter(
+                METRIC_TOKEN_ACCEPTED, "Enrollment requests that succeeded with an enrollment token", "count"),
+            manager.getOrCreateCounter(METRIC_TOKEN_REJECTED_UNKNOWN,
+                                       "Enrollment-token requests rejected because the token id is unknown (never "
+                                       "minted, minted without a credential, not yet synchronized to this node, or "
+                                       "-- from authd -- not found or revoked)",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_TOKEN_REJECTED_EXPIRED,
+                                       "Enrollment-token requests rejected because the token is past its expiry",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_TOKEN_REJECTED_REVOKED,
+                                       "Enrollment-token requests rejected because the token was revoked",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_TOKEN_REJECTED_EXHAUSTED,
+                                       "Enrollment-token requests refused by authd because the token has no uses "
+                                       "left (authd owns the use counter)",
+                                       "count")};
+    }
+
+    inline void incTokenAccepted(EnrollmentMetrics& m)
+    {
+        if (m.tokenAccepted)
+        {
+            m.tokenAccepted->add();
+        }
+    }
+
+    inline void incTokenRejectedUnknown(EnrollmentMetrics& m)
+    {
+        if (m.tokenRejectedUnknown)
+        {
+            m.tokenRejectedUnknown->add();
+        }
+    }
+
+    inline void incTokenRejectedExpired(EnrollmentMetrics& m)
+    {
+        if (m.tokenRejectedExpired)
+        {
+            m.tokenRejectedExpired->add();
+        }
+    }
+
+    inline void incTokenRejectedRevoked(EnrollmentMetrics& m)
+    {
+        if (m.tokenRejectedRevoked)
+        {
+            m.tokenRejectedRevoked->add();
+        }
+    }
+
+    inline void incTokenRejectedExhausted(EnrollmentMetrics& m)
+    {
+        if (m.tokenRejectedExhausted)
+        {
+            m.tokenRejectedExhausted->add();
+        }
     }
 
     inline void incAccepted(EnrollmentMetrics& m)

@@ -80,6 +80,20 @@ namespace remoted::enrollment
             return remoted::http::HttpResponse::json(status, j.dump());
         }
 
+        // The enrollment-token rejections remoted decided on its own (issue #38993), in the
+        // outcome-shaped remoted.enroll.token.* family; the per-cause remoted.auth.reject.token_*
+        // cells are bumped by errorResponseFor()'s funnel like every other AuthError.
+        void countTokenRejection(remoted::auth::AuthError err, EnrollmentMetrics& metrics)
+        {
+            switch (err)
+            {
+                case remoted::auth::AuthError::TokenUnknown: incTokenRejectedUnknown(metrics); break;
+                case remoted::auth::AuthError::TokenExpired: incTokenRejectedExpired(metrics); break;
+                case remoted::auth::AuthError::TokenRevoked: incTokenRejectedRevoked(metrics); break;
+                default: break;
+            }
+        }
+
         // Bridges an EnrollmentAuthenticator rejection to /enroll's own error envelope, while
         // reusing errorResponseFor()'s shared logging discipline (throttled WARN for clock skew,
         // DEBUG2 for plain client faults) so an unauthenticated peer can't flood the log any more
@@ -318,12 +332,44 @@ namespace remoted::enrollment
                 case 9015: // worker rejection (remove/get, post cluster-forwarding fix)
                 case 9016: // clustered forward to master failed
                     return 503;
+                case 9022: // enrollment token unknown or revoked (issue #38993)
+                case 9023: // enrollment token expired
+                case 9024: // enrollment token has no uses left
+                    // 403, not 401: the bearer DID verify (remoted checked the signature against the
+                    // token's key before forwarding), so this is not an authentication failure the
+                    // agent could fix by re-signing -- authd refused the use of a valid credential.
+                    // Reachable only when remoted's replica disagrees with authd (a revocation or
+                    // expiry that landed between the two checks, a lagging worker copy), or for
+                    // 9024, which only authd can decide: it owns the use counter.
+                    return 403;
                 default: return 500;
             }
         }
 
-        remoted::http::HttpResponse mapAuthdResult(const AuthdResult& result, EnrollmentMetrics& metrics)
+        // What authd said about the enrollment token the request used (issue #38993), by counter.
+        // 9022 folds "not found" and "revoked" together on authd's side (telling them apart on the
+        // wire would let a caller probe ids), so it lands in rejected_unknown here; remoted's own
+        // replica check normally catches both earlier, in their own cells.
+        void countTokenOutcome(const AuthdResult& result, EnrollmentMetrics& metrics)
         {
+            switch (result.errorCode)
+            {
+                case 0: incTokenAccepted(metrics); break;
+                case 9022: incTokenRejectedUnknown(metrics); break;
+                case 9023: incTokenRejectedExpired(metrics); break;
+                case 9024: incTokenRejectedExhausted(metrics); break;
+                default: break; // any other outcome is not about the token
+            }
+        }
+
+        remoted::http::HttpResponse
+        mapAuthdResult(const AuthdResult& result, EnrollmentMetrics& metrics, bool usedEnrollmentToken)
+        {
+            if (usedEnrollmentToken)
+            {
+                countTokenOutcome(result, metrics);
+            }
+
             if (result.errorCode == 0)
             {
                 incAccepted(metrics);
@@ -400,16 +446,18 @@ namespace remoted::enrollment
                 remoted::decoding::parseContentEncoding(headerValue(request->headers, "content-encoding"));
 
             const auto now = static_cast<std::int64_t>(std::time(nullptr));
-            const auto authErr = authenticator.authenticate(headerValue(request->headers, "protocol-version"),
-                                                            headerValue(request->headers, "authorization"),
-                                                            request->body.size(),
-                                                            now);
-            if (authErr)
+            const auto decision = authenticator.authenticate(headerValue(request->headers, "protocol-version"),
+                                                             headerValue(request->headers, "authorization"),
+                                                             request->body.size(),
+                                                             now);
+            if (const auto* authErr = std::get_if<remoted::auth::AuthError>(&decision))
             {
                 incRejectedAuth(metrics);
+                countTokenRejection(*authErr, metrics);
                 responder->send(authErrorResponse(*authErr));
                 return;
             }
+            const auto& granted = std::get<EnrollmentGranted>(decision);
 
             // Zero-copy view into request->body, kept alive by the request itself -- same
             // technique AuthGateway uses (authGateway.cpp) for the same reason: one physical copy
@@ -455,10 +503,15 @@ namespace remoted::enrollment
             addRequest.ip = resolveIp(config.useSourceIp, request->remoteIp, parsed.ip);
             addRequest.groups = parsed.groups;
             addRequest.keyHash = parsed.keyHash;
+            // The verified enrollment token id, when one was used: authd consumes the use and is the
+            // final word on its state (9022/9023/9024 -> 403 above). Absent otherwise, so the wire
+            // request of the password and Open paths is byte-identical to what it always was.
+            addRequest.tokenId = granted.tokenId;
+            const bool usedEnrollmentToken = granted.tokenId.has_value();
 
             authdClient.addAgent(std::move(addRequest),
-                                 [responder, &metrics](AuthdResult result)
-                                 { responder->send(mapAuthdResult(result, metrics)); });
+                                 [responder, &metrics, usedEnrollmentToken](AuthdResult result)
+                                 { responder->send(mapAuthdResult(result, metrics, usedEnrollmentToken)); });
         };
     }
 
