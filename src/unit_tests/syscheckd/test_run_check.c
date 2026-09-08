@@ -474,22 +474,35 @@ static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, 
 }
 
 static void expect_fim_flush_sync_body(AgentSyncProtocolHandle* handle, bool persist_first_sync_marker) {
+    static SyncModuleResult_t sync_result;
+
     expect_string(__wrap__minfo, formatted_msg, "Starting FIM synchronization requested by agent-info.");
 
     expect_value(__wrap_asp_sync_module, handle, handle);
     expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
-    will_return(__wrap_asp_sync_module, true);
-
-    // The shared __wrap_asp_sync_module zero-fills its result, so sent_anything is false and
-    // this is the empty-cycle wording.
-    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization requested by agent-info finished: nothing to send.");
 
     if (persist_first_sync_marker) {
+        // #38899: same reasoning as expect_fim_run_integrity_sync_body -- the marker may only be
+        // persisted once a sync has proven it actually reached the manager, so this case must
+        // mock a cycle that did.
+        sync_result = (SyncModuleResult_t){0};
+        sync_result.success = true;
+        sync_result.sent_anything = true;
+        __wrap_asp_sync_module_use_full_result(true);
+        will_return(__wrap_asp_sync_module, &sync_result);
+        expect_string(__wrap__minfo, formatted_msg, "FIM synchronization requested by agent-info finished successfully.");
+
 #ifndef TEST_WINAGENT
         will_return(__wrap_time, 123456);
 #endif
         expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
         expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
+    } else {
+        will_return(__wrap_asp_sync_module, true);
+
+        // The shared __wrap_asp_sync_module zero-fills its result, so sent_anything is false and
+        // this is the empty-cycle wording.
+        expect_string(__wrap__minfo, formatted_msg, "FIM synchronization requested by agent-info finished: nothing to send.");
     }
 }
 
@@ -1387,12 +1400,7 @@ void test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_complet
     expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
     will_return(__wrap_fim_db_get_last_sync_time, 0);
     expect_fim_startup_log(false);
-    expect_fim_flush_sync_body(handle, false);
-#ifndef TEST_WINAGENT
-    will_return(__wrap_time, 123456);
-#endif
-    expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
-    expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
+    expect_fim_flush_sync_body(handle, true);
 
     call_real_fim_run_integrity();
 
@@ -1687,7 +1695,8 @@ int main(void) {
         cmocka_unit_test(test_fim_run_integrity_keeps_initial_wait_after_first_sync),
         cmocka_unit_test_teardown(test_fim_run_integrity_pause_still_waits_after_skip_is_consumed,
                                    teardown_asp_sync_module_full_result),
-        cmocka_unit_test(test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_completion),
+        cmocka_unit_test_teardown(test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_completion,
+                                   teardown_asp_sync_module_full_result),
         cmocka_unit_test_setup_teardown(test_fim_run_integrity_local_transport_unavailable_without_streak_is_not_reported_as_hard_failure,
                                         NULL, teardown_asp_sync_module_full_result),
         cmocka_unit_test_setup_teardown(test_fim_run_integrity_local_transport_unavailable_within_tolerance_stays_deferred,
