@@ -134,3 +134,70 @@ TEST(CheckConditionEvaluatorTest, NotRunSurfacesAsCheckResultNotRun)
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotRun);
     EXPECT_NE(evaluator.GetUnresolvedReason().find("timed out"), std::string::npos);
 }
+
+TEST(CheckConditionEvaluatorTest, RepeatedReasonIsKeptOnce)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("all");
+
+    const std::string reason = "File '/etc/aide/aide.conf' does not exist or is not a regular file";
+
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid, reason));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid, reason));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid, reason));
+
+    EXPECT_EQ(evaluator.GetUnresolvedReason(), reason);
+}
+
+TEST(CheckConditionEvaluatorTest, DistinctReasonsAreAllKeptInOrder)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("any");
+
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid, "Command execution failed: modprobe -n -v cramfs"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid, "Command execution failed: lsmod"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid, "Command execution failed: modprobe -n -v cramfs"));
+
+    EXPECT_EQ(evaluator.GetUnresolvedReason(),
+              "Command execution failed: modprobe -n -v cramfs\n"
+              "Command execution failed: lsmod");
+}
+
+TEST(CheckConditionEvaluatorTest, ReasonSharingAPrefixWithAnotherIsNotDroppedAsDuplicate)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("all");
+
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid, "Command execution failed: lsmod -a"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid, "Command execution failed: lsmod"));
+
+    EXPECT_EQ(evaluator.GetUnresolvedReason(),
+              "Command execution failed: lsmod -a\n"
+              "Command execution failed: lsmod");
+}
+
+TEST(CheckConditionEvaluatorTest, CheckWithNoEvaluableRulesExplainsItself)
+{
+    // The policy parser keeps a check whose every rule failed to parse, with no rules at all.
+    const auto evaluator = CheckConditionEvaluator::FromString("all");
+
+    EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotApplicable);
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+}
+
+TEST(CheckConditionEvaluatorTest, UnresolvedRuleWithoutItsOwnReasonStillGetsOne)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("all");
+
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid));
+
+    EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotApplicable);
+    EXPECT_EQ(evaluator.GetUnresolvedReason(), "Unknown reason");
+}
+
+TEST(CheckConditionEvaluatorTest, ResolvedCheckHasNoReason)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("all");
+
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found));
+
+    EXPECT_EQ(evaluator.Result(), sca::CheckResult::Passed);
+    EXPECT_TRUE(evaluator.GetUnresolvedReason().empty());
+}

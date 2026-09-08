@@ -1,6 +1,8 @@
 #include "sca_utils.hpp"
 #include <gtest/gtest.h>
 
+#include <json.hpp>
+
 #include "logging_helper.hpp"
 
 using namespace sca;
@@ -286,6 +288,56 @@ TEST(PatternMatchesTest, REG_MULTI_SZtest)
     const auto patternMatch = PatternMatches(content, pattern);
     ASSERT_TRUE(patternMatch.has_value());
     EXPECT_TRUE(*patternMatch);
+}
+
+TEST(SanitizeReasonTest, ValidTextIncludingMultibyteIsUntouched)
+{
+    const std::string reason = "File '/etc/caf\xc3\xa9.conf' does not exist or is not a regular file";
+    EXPECT_EQ(SanitizeReason(reason, 1024), reason);
+}
+
+TEST(SanitizeReasonTest, InvalidBytesFromAPathAreReplaced)
+{
+    // Filenames are arbitrary byte strings, and json::dump() throws on anything not valid UTF-8.
+    const auto sanitized = SanitizeReason("Path '/tmp/\xff\xfe' does not exist", 1024);
+
+    EXPECT_EQ(sanitized, "Path '/tmp/\?\?' does not exist");
+    EXPECT_NO_THROW(nlohmann::json({{"reason", sanitized}}).dump());
+}
+
+TEST(SanitizeReasonTest, TruncatedMultibyteSequenceIsReplaced)
+{
+    const auto sanitized = SanitizeReason("caf\xc3", 1024);
+
+    EXPECT_EQ(sanitized, "caf?");
+    EXPECT_NO_THROW(nlohmann::json({{"reason", sanitized}}).dump());
+}
+
+TEST(SanitizeReasonTest, OversizedReasonIsCutAtTheLastWholeLine)
+{
+    const std::string reason = "first reason line\nsecond reason line\nthird reason line";
+
+    EXPECT_EQ(SanitizeReason(reason, 30), "first reason line");
+}
+
+TEST(SanitizeReasonTest, OversizedSingleLineIsCutOutsideAMultibyteSequence)
+{
+    // 'é' is two bytes and straddles the cap, so the whole character goes.
+    // The literal is split so the hex escape ends: "\xa9f" would be one greedy escape, which
+    // GCC truncates with a warning and Clang rejects outright.
+    const std::string reason = "abcd\xc3\xa9" "fgh";
+
+    const auto sanitized = SanitizeReason(reason, 5);
+
+    EXPECT_EQ(sanitized, "abcd");
+    EXPECT_NO_THROW(nlohmann::json({{"reason", sanitized}}).dump());
+}
+
+TEST(SanitizeReasonTest, ReasonExactlyAtTheCapIsKept)
+{
+    const std::string reason(64, 'x');
+
+    EXPECT_EQ(SanitizeReason(reason, 64), reason);
 }
 
 // NOLINTEND(bugprone-unchecked-optional-access, modernize-raw-string-literal)

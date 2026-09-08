@@ -186,6 +186,75 @@ namespace
 
 namespace sca
 {
+    std::string SanitizeReason(const std::string& reason, const size_t maxLength)
+    {
+        // Replace whatever is not valid UTF-8, one '?' per offending byte.
+        std::string valid;
+        valid.reserve(reason.size());
+
+        for (size_t index = 0; index < reason.size();)
+        {
+            const auto lead = static_cast<unsigned char>(reason[index]);
+            size_t sequenceLength = 0;
+
+            if (lead < 0x80)
+            {
+                sequenceLength = 1;
+            }
+            else if ((lead & 0xE0) == 0xC0)
+            {
+                sequenceLength = 2;
+            }
+            else if ((lead & 0xF0) == 0xE0)
+            {
+                sequenceLength = 3;
+            }
+            else if ((lead & 0xF8) == 0xF0)
+            {
+                sequenceLength = 4;
+            }
+
+            bool complete = sequenceLength != 0 && index + sequenceLength <= reason.size();
+
+            for (size_t offset = 1; complete && offset < sequenceLength; ++offset)
+            {
+                complete = (static_cast<unsigned char>(reason[index + offset]) & 0xC0) == 0x80;
+            }
+
+            if (complete)
+            {
+                valid.append(reason, index, sequenceLength);
+                index += sequenceLength;
+            }
+            else
+            {
+                valid.push_back('?');
+                ++index;
+            }
+        }
+
+        if (valid.size() <= maxLength)
+        {
+            return valid;
+        }
+
+        const auto lastLine = valid.rfind('\n', maxLength);
+
+        if (lastLine != std::string::npos)
+        {
+            return valid.substr(0, lastLine);
+        }
+
+        size_t end = maxLength;
+
+        while (end > 0 && (static_cast<unsigned char>(valid[end]) & 0xC0) == 0x80)
+        {
+            --end;
+        }
+
+        return valid.substr(0, end);
+    }
+
     std::string CheckResultToString(const CheckResult result)
     {
         switch (result)

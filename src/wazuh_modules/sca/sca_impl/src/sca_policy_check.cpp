@@ -33,7 +33,8 @@ namespace
     RuleResult FindContentInFile(const std::unique_ptr<IFileIOUtils>& fileUtils,
                                  const std::string& filePath,
                                  const std::string& pattern,
-                                 const PolicyEvaluationContext& ctx)
+                                 const PolicyEvaluationContext& ctx,
+                                 std::string& unresolvedReason)
     {
         bool matchFound = false;
 
@@ -47,7 +48,8 @@ namespace
             }
             else
             {
-                LoggingHelper::getInstance().log(LOG_DEBUG, "Invalid pattern '" + pattern + "' for file '" + filePath + "'");
+                unresolvedReason = "Invalid pattern '" + pattern + "' for file '" + filePath + "'";
+                LoggingHelper::getInstance().log(LOG_DEBUG, unresolvedReason);
                 return RuleResult::Invalid;
             }
         }
@@ -72,9 +74,10 @@ namespace
 
     RuleResult FindContentInFile(const std::unique_ptr<IFileIOUtils>& fileUtils,
                                  const std::string& pattern,
-                                 const PolicyEvaluationContext& ctx)
+                                 const PolicyEvaluationContext& ctx,
+                                 std::string& unresolvedReason)
     {
-        return FindContentInFile(fileUtils, ctx.rule, pattern, ctx);
+        return FindContentInFile(fileUtils, ctx.rule, pattern, ctx, unresolvedReason);
     }
 } // namespace
 
@@ -129,7 +132,8 @@ RuleResult FileRuleEvaluator::CheckFileForContents()
         return RuleResult::Invalid; // Keep simple return for file not found - this is expected behavior
     }
 
-    const auto result = TryFunc([&] { return FindContentInFile(m_fileUtils, pattern, m_ctx); });
+    const auto result =
+        TryFunc([&] { return FindContentInFile(m_fileUtils, pattern, m_ctx, m_lastUnresolvedReason); });
 
     if (result.has_value())
     {
@@ -449,8 +453,11 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                         // If we have content pattern, check file contents; otherwise just return found
                         if (content.has_value())
                         {
-                            const auto result = TryFunc(
-                                                    [&] { return FindContentInFile(m_fileUtils, file.string(), content.value(), m_ctx); });
+                            const auto result = TryFunc([&]
+                            {
+                                return FindContentInFile(
+                                    m_fileUtils, file.string(), content.value(), m_ctx, m_lastUnresolvedReason);
+                            });
 
                             if (result.has_value())
                             {
@@ -487,7 +494,11 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
                 if (file.filename().string() == fileName)
                 {
-                    const auto result = TryFunc([&] { return FindContentInFile(m_fileUtils, fileName, content.value(), m_ctx); });
+                    const auto result = TryFunc([&]
+                    {
+                        return FindContentInFile(
+                            m_fileUtils, fileName, content.value(), m_ctx, m_lastUnresolvedReason);
+                    });
 
                     if (result.has_value())
                     {

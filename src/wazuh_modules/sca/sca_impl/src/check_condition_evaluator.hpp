@@ -26,6 +26,9 @@ class CheckConditionEvaluator
         std::string GetUnresolvedReason() const;
 
     private:
+        /// @brief Whether the accumulated reason already holds this exact line.
+        bool HasReason(const std::string& reason) const;
+
         ConditionType m_type;
         int m_totalRules {0};
         int m_passedRules {0};

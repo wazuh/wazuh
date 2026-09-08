@@ -77,6 +77,11 @@ namespace sca
                 check.erase("policy_id");
             }
 
+            if (check.contains("reason") && (check["reason"].is_null() || check["reason"].get<std::string>().empty()))
+            {
+                check.erase("reason");
+            }
+
             // Remove internal field not part of indexer schema
             if (check.contains("regex_type"))
             {
