@@ -248,6 +248,18 @@ class WazuhException(Exception):
                               'again once the backlog drains; check the indexer is reachable if it '
                               'does not'
                },
+        1767: {'message': 'Enrollment token not found',
+               'remediation': 'Check the token id with GET /agents/enrollment-tokens; a revoked token '
+                              'is still listed'
+               },
+        1768: {'message': 'Enrollment token refused',
+               'remediation': 'The address must be one of the names in the listener certificate '
+                              '(remote.https.certificate) and the certificate must be signed by '
+                              'remote.https.ca_certificate; see the detail'
+               },
+        1769: {'message': 'Enrollment tokens can only be managed on the master node',
+               'remediation': 'Send the request to the master node; workers only replicate the token store'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'
