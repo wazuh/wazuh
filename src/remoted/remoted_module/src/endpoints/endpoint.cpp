@@ -65,6 +65,9 @@ namespace
                 case remoted::auth::AuthError::BodyTooLarge: return m.bodyTooLarge;
                 case remoted::auth::AuthError::UnsupportedContentEncoding:
                 case remoted::auth::AuthError::MalformedContentEncoding: return m.badEncoding;
+                case remoted::auth::AuthError::TokenUnknown: return m.tokenUnknown;
+                case remoted::auth::AuthError::TokenExpired: return m.tokenExpired;
+                case remoted::auth::AuthError::TokenRevoked: return m.tokenRevoked;
                 // MissingProtocolVersion, UnsupportedProtocolVersion, MissingAuthorization,
                 // MalformedAuthorization -- and, defensively, None (errorResponseFor() is never
                 // called with it).
@@ -113,6 +116,9 @@ namespace
             // Already reported by AuthMiddleware's own throttled WARN, which names the agent id and
             // the peer address (neither reaches this funnel). Kept at DEBUG2 to avoid a second line.
             case remoted::auth::AuthError::AddressNotAllowed: return RejectionKind::ClientFault;
+            // TokenUnknown / TokenExpired / TokenRevoked: the operator-side signal is the metric cell
+            // (remoted.auth.reject.token_*, remoted.enroll.token.*); an unknown or lapsed token is a
+            // property of the credential the peer presented, and the peer controls how many it sends.
             default: return RejectionKind::ClientFault;
         }
     }

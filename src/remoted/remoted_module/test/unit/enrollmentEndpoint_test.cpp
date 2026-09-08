@@ -14,20 +14,29 @@
  * these tests all use Open mode so the handler's OWN logic is what's under test.
  */
 
+#include <algorithm>
 #include <chrono>
 #include <condition_variable>
+#include <cstdio>
+#include <ctime>
+#include <fstream>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unistd.h>
 
 #include <gtest/gtest.h>
 
 #include "auth/authTypes.hpp" // remoted::auth::kSupportedProtocolVersion
+#include "auth/tokenKeySource.hpp"
 #include "common/requestOutcomeMetrics.hpp"
 #include "decoding/iBodyDecoder.hpp"
 #include "enrollment/enrollmentEndpoint.hpp"
 #include "fakeUdsServer.hpp"
 #include "json.hpp"
+#include "jwt/enrollKeyDerivation.hpp"
+#include "jwt/jwtEnrollTokenSigner.hpp"
+#include "jwt/testVectors.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -617,6 +626,9 @@ TEST(EnrollmentEndpointTest, RequestNeverIncludesForceIdOrKey)
     EXPECT_FALSE(j["arguments"].contains("force"));
     EXPECT_FALSE(j["arguments"].contains("id"));
     EXPECT_FALSE(j["arguments"].contains("key"));
+    // And no enrollment token was used, so no token_id either: the Open/password request stays
+    // byte-identical to what authd received before tokens existed (issue #38993).
+    EXPECT_FALSE(j["arguments"].contains("token_id"));
 }
 
 // -----------------------------------------------------------------------------
@@ -681,6 +693,9 @@ INSTANTIATE_TEST_SUITE_P(AuthdCodes,
                                            AuthdErrorCase {9013, 503},
                                            AuthdErrorCase {9015, 503},
                                            AuthdErrorCase {9016, 503},
+                                           AuthdErrorCase {9022, 403},   // enrollment token unknown/revoked (#38993)
+                                           AuthdErrorCase {9023, 403},   // enrollment token expired
+                                           AuthdErrorCase {9024, 403},   // enrollment token exhausted
                                            AuthdErrorCase {9999, 500})); // unknown code -> safe default
 
 TEST(EnrollmentEndpointTest, AuthdUnreachableMapsTo503)
@@ -692,4 +707,164 @@ TEST(EnrollmentEndpointTest, AuthdUnreachableMapsTo503)
     EXPECT_EQ(response.status, 503);
     const auto j = parseBody(response);
     EXPECT_EQ(j["error"]["code"], -1);
+}
+
+// -----------------------------------------------------------------------------
+// Enrollment tokens (issue #38993): the id of a verified token travels to authd as `token_id`,
+// authd's refusals of it are 403, and both outcomes count in remoted.enroll.token.*.
+// -----------------------------------------------------------------------------
+
+namespace
+{
+    namespace tvt = jwt_profile::v1::test_vectors::enroll_token;
+
+    // A store holding the frozen vector token (id 00..0f, secret 10..1f), as authd writes it.
+    std::string writeTokenStore(const char* tag, bool revoked = false)
+    {
+        const std::string path = "/tmp/enrollmentEndpoint_test_" + std::to_string(::getpid()) + tag + ".tokens.json";
+        std::ofstream file(path);
+        file << R"({"version":1,"tokens":[{"id":")" << tvt::kIdB64Url << R"(","secret":")" << tvt::kSecretB64Url
+             << R"(","adr":"siem.example.local","pin":")" << tvt::kPinB64Url
+             << R"(","ca":null,"created":1700000000,"expires":4102444800,"max_uses":1,"uses":0,"revoked":)"
+             << (revoked ? "true" : "false") << R"(,"description":null}]})";
+        return path;
+    }
+
+    // The bearer an agent holding the pasted token mints: kid = token id, key = HKDF(secret), now.
+    std::string vectorTokenBearer(std::int64_t now)
+    {
+        jwt_profile::v1::SecureBytes secret(jwt_profile::v1::enroll::kTokenSecretBytes);
+        for (std::size_t i = 0; i < secret.size(); ++i)
+        {
+            secret.data()[i] = static_cast<std::uint8_t>(0x10 + i);
+        }
+        const auto key = jwt_profile::v1::enroll::deriveEnrollTokenKey(secret);
+        EXPECT_TRUE(key.has_value());
+        const auto token = jwt_profile::v1::enroll::JwtEnrollTokenSigner::signWithKid(
+            *key, std::chrono::system_clock::time_point {std::chrono::seconds {now}}, tvt::kIdB64Url);
+        EXPECT_TRUE(token.has_value());
+        return "Bearer " + token.value_or("");
+    }
+
+    struct TokenRun
+    {
+        HttpResponse response;
+        std::string authdRequest; // what the fake authd received ("" when it was never reached)
+        std::uint64_t enrollValue(const std::string& name) const
+        {
+            const auto metric = manager->get(name);
+            return metric ? static_cast<std::uint64_t>(metric->value()) : 0U;
+        }
+        std::shared_ptr<wazuh::metrics::Manager> manager;
+    };
+
+    // One /enroll with the vector token bearer against a fake authd answering @p authdResponse
+    // (empty: no authd at all). Open mode + the token replica: the token path is what is under test.
+    TokenRun runWithToken(const std::string& storePath, const std::string& authdResponse, const std::string& tag)
+    {
+        TokenRun out;
+        out.manager = std::make_shared<wazuh::metrics::Manager>();
+        EnrollmentMetrics metrics = makeEnrollmentMetrics(*out.manager);
+
+        auto tokenSource = std::make_shared<remoted::auth::TokenKeySource>(storePath);
+        EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr, tokenSource};
+
+        const std::string path = makeUniqueSocketPath("enrollment_endpoint_token_" + tag);
+        std::mutex mu;
+        std::unique_ptr<FakeUdsServer> authd;
+        if (!authdResponse.empty())
+        {
+            authd = std::make_unique<FakeUdsServer>(path,
+                                                    [&](const std::string& req)
+                                                    {
+                                                        std::lock_guard<std::mutex> lock(mu);
+                                                        out.authdRequest = req;
+                                                        return authdResponse;
+                                                    });
+        }
+        Config config = openModeConfig();
+        AuthdClient authdClient(path, false, 0, config.authdResponseTimeoutMs, 0);
+        auto handler = makeHandler(authenticator, authdClient, config, metrics, passthroughDecoder());
+
+        auto request = makeRequest(kValidBody);
+        request.headers.emplace("authorization", vectorTokenBearer(static_cast<std::int64_t>(std::time(nullptr))));
+        auto responder = std::make_shared<CapturingResponder>();
+        handler(std::make_shared<const HttpRequest>(request), responder);
+        out.response = responder->wait();
+        std::lock_guard<std::mutex> lock(mu);
+        return out;
+    }
+} // namespace
+
+TEST(EnrollmentEndpointTest, TokenIdIsForwardedToAuthdAndCountedAsAccepted)
+{
+    const std::string store = writeTokenStore("_forward");
+    const auto run =
+        runWithToken(store, R"({"error":0,"data":{"id":"007","name":"agent1","ip":"any","key":"k"}})", "forward");
+
+    EXPECT_EQ(run.response.status, 200);
+    const auto j = nlohmann::json::parse(run.authdRequest);
+    EXPECT_EQ(j["function"], "add");
+    EXPECT_EQ(j["arguments"]["token_id"], std::string {tvt::kIdB64Url}); // the verified kid, verbatim
+    EXPECT_EQ(run.enrollValue(METRIC_TOKEN_ACCEPTED), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_ACCEPTED), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_TOKEN_REJECTED_EXHAUSTED), 0U);
+
+    std::remove(store.c_str());
+}
+
+TEST(EnrollmentEndpointTest, TokenExhaustedByAuthdIs403AndCountsRejectedExhausted)
+{
+    // remoted's replica knows nothing about uses: only authd can refuse an exhausted token, and it
+    // does so AFTER the bearer verified -- so 403 (a valid credential authd would not honour), not 401.
+    const std::string store = writeTokenStore("_exhausted");
+    const auto run =
+        runWithToken(store, R"({"error":9024,"message":"ERROR: Enrollment token exhausted"})", "exhausted");
+
+    EXPECT_EQ(run.response.status, 403);
+    const auto body = parseBody(run.response);
+    EXPECT_EQ(body["error"]["code"], 9024);
+    EXPECT_EQ(run.enrollValue(METRIC_TOKEN_REJECTED_EXHAUSTED), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_AUTHD_ERROR), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_TOKEN_ACCEPTED), 0U);
+
+    std::remove(store.c_str());
+}
+
+TEST(EnrollmentEndpointTest, RevokedTokenIs401AndCountsItsClassWithoutReachingAuthd)
+{
+    const std::string store = writeTokenStore("_revoked", /*revoked=*/true);
+    const auto run = runWithToken(store, "", "revoked"); // no authd bound: it must never be needed
+
+    EXPECT_EQ(run.response.status, 401);
+    EXPECT_TRUE(run.authdRequest.empty());
+    EXPECT_EQ(run.enrollValue(METRIC_REJECTED_AUTH), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_TOKEN_REJECTED_REVOKED), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_TOKEN_REJECTED_UNKNOWN), 0U);
+    // The generic bearer challenge, like every credential 401 on this server.
+    const auto challenge = std::find_if(run.response.headers.begin(),
+                                        run.response.headers.end(),
+                                        [](const auto& header) { return header.first == "WWW-Authenticate"; });
+    ASSERT_NE(challenge, run.response.headers.end());
+    EXPECT_EQ(challenge->second, "Bearer");
+
+    std::remove(store.c_str());
+}
+
+TEST(EnrollmentEndpointTest, UnknownTokenIs401AndCountsRejectedUnknown)
+{
+    // An empty store: the vector token was never minted here.
+    const std::string store = "/tmp/enrollmentEndpoint_test_" + std::to_string(::getpid()) + "_empty.tokens.json";
+    {
+        std::ofstream file(store);
+        file << R"({"version":1,"tokens":[]})";
+    }
+    const auto run = runWithToken(store, "", "unknown");
+
+    EXPECT_EQ(run.response.status, 401);
+    EXPECT_TRUE(run.authdRequest.empty());
+    EXPECT_EQ(run.enrollValue(METRIC_TOKEN_REJECTED_UNKNOWN), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_REJECTED_AUTH), 1U);
+
+    std::remove(store.c_str());
 }

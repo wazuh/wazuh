@@ -292,6 +292,10 @@ namespace remoted::enrollment
             {
                 arguments["key_hash"] = *request.keyHash;
             }
+            if (request.tokenId)
+            {
+                arguments["token_id"] = *request.tokenId;
+            }
 
             nlohmann::json payload;
             payload["function"] = "add";

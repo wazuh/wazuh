@@ -76,6 +76,9 @@ namespace remoted::auth
             case AuthError::UnsupportedContentEncoding: return "unsupported_content_encoding";
             case AuthError::MalformedContentEncoding: return "malformed_content_encoding";
             case AuthError::EnrollmentKeyUnavailable: return "enrollment_key_unavailable";
+            case AuthError::TokenUnknown: return "token_unknown";
+            case AuthError::TokenExpired: return "token_expired";
+            case AuthError::TokenRevoked: return "token_revoked";
         }
         return "unknown";
     }
@@ -93,7 +96,7 @@ namespace remoted::auth
             case AuthError::None: return {200, ""};
             // MissingAuthorization, MalformedAuthorization, UnknownAgent, MissingKey,
             // AddressNotAllowed, InvalidToken, InvalidSignature, StaleToken, IdentityMismatch,
-            // EnrollmentKeyUnavailable: collapse to one
+            // EnrollmentKeyUnavailable, TokenUnknown, TokenExpired, TokenRevoked: collapse to one
             // generic 401 so the client can never distinguish the reason.
             default: return {401, "Invalid client authentication"};
         }
