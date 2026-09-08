@@ -22,8 +22,12 @@ target_link_libraries(
   ext_rapidjson
   pthread)
 
+# Every test registered here carries the module-wide `manager_config` label: CI selects tests by ctest
+# label (.github/actions/test_cpp runs `ctest -L <label>`), so `-L manager_config` is what runs the whole
+# module. The GTest keeps its target-name label as well, which is the selector the ASAN job uses to run
+# only this binary.
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
-set_tests_properties(${PROJECT_NAME} PROPERTIES LABELS ${PROJECT_NAME})
+set_tests_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME};manager_config")
 
 # End-to-end: the CLI (bin/wazuh-manager-conf) over the vectors and over the file the installer
 # generates (src/init/gen_wazuh.sh, WriteManager twin).
@@ -32,6 +36,7 @@ add_test(NAME manager_config_cli
                  $<TARGET_FILE:wazuh-manager-conf>
                  ${CMAKE_CURRENT_SOURCE_DIR}/../vectors
                  ${SRC_FOLDER}/..)
+set_tests_properties(manager_config_cli PROPERTIES LABELS manager_config)
 
 # Parity with the Python validator (jsonschema Draft4) over the same vectors, when a venv is available.
 find_program(MANAGER_CONFIG_PYTHON NAMES python3 HINTS $ENV{TMP_PY_VENV}/bin NO_DEFAULT_PATH)
@@ -40,4 +45,5 @@ if(MANAGER_CONFIG_PYTHON)
            COMMAND ${MANAGER_CONFIG_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/../parity.py
                    ${CMAKE_CURRENT_SOURCE_DIR}/../../schema/wazuh-manager.schema.json
                    ${CMAKE_CURRENT_SOURCE_DIR}/../vectors)
+  set_tests_properties(manager_config_parity PROPERTIES LABELS manager_config)
 endif()
