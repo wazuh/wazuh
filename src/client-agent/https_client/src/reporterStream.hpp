@@ -74,9 +74,24 @@ class ReporterStream final
             // non-class-type contained value indeterminate before C++20, unlike time_point's own
             // default constructor (epoch => due immediately, the convention this field relies on).
             std::atomic<std::chrono::steady_clock::time_point> nextDue {std::chrono::steady_clock::time_point {}};
+
+            /// #38840 follow-up: set by forceConfigReportNow() to flag a force that landed while
+            /// this path's send was already in flight, so commitNextDue() below knows to leave
+            /// the forced due-now in place instead of overwriting it with its own post-send
+            /// reschedule. Can't tell the two apart by nextDue's own value alone: a force's "due
+            /// immediately" is epoch, the same sentinel nextDue already holds by default before
+            /// its very first run -- exactly the case that bites hardest, since the reporter's
+            /// first ever tick is due at epoch too.
+            std::atomic<bool> forcedSinceLastRun {false};
         };
 
         void runPath(Path& path, Backoff& backoff, Waiter& waiter, std::optional<std::string> collected);
+
+        /// #38840 follow-up: commits `desired` to path.nextDue unless path.forcedSinceLastRun
+        /// was set (by forceConfigReportNow()) after runPath() cleared it at the start of this
+        /// run -- see the .cpp for why a plain store() here would be unsafe.
+        void commitNextDue(Path& path, std::chrono::steady_clock::time_point desired);
+
         std::optional<std::string> stampedDocument(std::optional<std::string> collected) const;
         std::chrono::milliseconds sleepHint() const;
 

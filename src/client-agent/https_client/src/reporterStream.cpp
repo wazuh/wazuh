@@ -79,6 +79,10 @@ void ReporterStream::forceConfigReportNow()
     // Called from the https_client_bridge callback thread, not the reporter's own -- nextDue is
     // atomic precisely so this store is well-defined against tick()/runPath() on the other side.
     m_config_.nextDue.store(std::chrono::steady_clock::time_point {});
+    // #38840 follow-up: also flag the force so commitNextDue() can tell it apart from nextDue's
+    // own default epoch if this lands while a /config send is already in flight -- see the
+    // field's own comment in reporterStream.hpp.
+    m_config_.forcedSinceLastRun.store(true);
 }
 
 std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
@@ -109,6 +113,11 @@ std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
 void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::optional<std::string> collected)
 {
     const auto now = m_clock.steadyNow();
+    // #38840 follow-up: clear before doing any work (in particular before the possibly-blocking
+    // send below), so a forceConfigReportNow() lands as "false -> true" only if it is concurrent
+    // with (or after) this specific run -- not a stale flag left over from whatever force made
+    // this path due in the first place, which this run is already about to honor anyway.
+    path.forcedSinceLastRun.store(false);
     const auto document = stampedDocument(std::move(collected));
 
     if (!document)
@@ -117,7 +126,7 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::
         // gate right after registration, before the local modules unlock. Retry on
         // the same short backoff as a send failure rather than the full interval, so
         // a clean start still gets its first snapshot within seconds, not an hour.
-        path.nextDue.store(now + backoff.next());
+        commitNextDue(path, now + backoff.next());
         return;
     }
 
@@ -138,20 +147,38 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::
     {
         LOGFN_DEBUG2(m_logFn, "%s snapshot delivered to the manager.", path.target.c_str());
         backoff.reset();
-        path.nextDue.store(now + path.interval);
+        commitNextDue(path, now + path.interval);
     }
     else if (result.outcome == OutcomeClass::BackPressure)
     {
         const auto serverDelay = std::chrono::milliseconds {result.response.retryAfterSeconds * 1000};
-        path.nextDue.store(
+        commitNextDue(
+            path,
             now + std::max(std::chrono::duration_cast<std::chrono::milliseconds>(serverDelay), backoff.next()));
     }
     else
     {
         // Retryable / auth-paused (the gate is engaged by RetrySender) / other:
         // back off and try a fresh snapshot later.
-        path.nextDue.store(now + backoff.next());
+        commitNextDue(path, now + backoff.next());
     }
+}
+
+void ReporterStream::commitNextDue(Path& path, std::chrono::steady_clock::time_point desired)
+{
+    // #38840 follow-up: a plain store() here would let this reschedule silently clobber a
+    // forceConfigReportNow() that landed while the send above was in flight (up to
+    // requestTimeoutMs) -- reintroducing the exact staleness bug this feature exists to close,
+    // just as a race instead of an always-reproducible gap. forcedSinceLastRun was cleared at
+    // the top of this same runPath() call, so seeing it true here means exactly that: a force
+    // arrived concurrently with (or after) this run, and forceConfigReportNow() has already
+    // re-armed nextDue to due-immediately itself -- leave that in place instead.
+    if (path.forcedSinceLastRun.exchange(false))
+    {
+        return;
+    }
+
+    path.nextDue.store(desired);
 }
 
 std::optional<std::string> ReporterStream::stampedDocument(std::optional<std::string> collected) const
