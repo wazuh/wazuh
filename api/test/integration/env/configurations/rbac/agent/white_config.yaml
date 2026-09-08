@@ -1,5 +1,11 @@
 ---
 - actions:
+  - enrollment_token:read
+  resources:
+  - "*:*:*"
+  effect: allow
+
+- actions:
   - agent:read
   resources:
   - agent:id:002
