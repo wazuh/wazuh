@@ -13,6 +13,7 @@ from asyncinotify import Inotify, Mask
 from api import configuration
 from api.constants import (SECURITY_PATH)
 from api.authentication import generate_keypair, _private_key_path, _public_key_path
+from api.middlewares import cleanup_general_request_stats, RATE_LIMIT_WINDOW_SECONDS
 
 logger = logging.getLogger('wazuh-api')
 
@@ -52,12 +53,22 @@ async def clean_auth_keys_cache():
                 generate_keypair.cache_clear()
 
 
+@cancel_signal_handler
+async def clean_general_request_stats():
+    """Periodically prune expired per-address entries from the rate limiter's stats dict."""
+
+    while True:
+        await asyncio.sleep(RATE_LIMIT_WINDOW_SECONDS)
+        await cleanup_general_request_stats()
+
+
 @contextlib.asynccontextmanager
 async def lifespan_handler(_: ConnexionMiddleware):
     """Logs the API startup/shutdown messages and register background tasks."""
 
     tasks: list[asyncio.Task] = []
     tasks.append(asyncio.create_task(clean_auth_keys_cache()))
+    tasks.append(asyncio.create_task(clean_general_request_stats()))
 
     # Log the initial server startup message.
     logger.info(f'Listening on {configuration.api_conf["host"]}:{configuration.api_conf["port"]}.')

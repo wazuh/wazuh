@@ -24,6 +24,7 @@ if [ "$ROLE" == "master" ]; then
     python3 /scripts/xml_parser.py /var/wazuh-manager/etc/wazuh-manager.conf /scripts/master_wazuh-manager_conf.xml
     sed -i "s:# access:access:g" /var/wazuh-manager/api/configuration/api.yaml
     sed -i "s:#  max_request_per_minute\: 300:  max_request_per_minute\: 99999:g" /var/wazuh-manager/api/configuration/api.yaml
+    sed -i "s:#  max_unauthenticated_request_per_minute\: 10:  max_unauthenticated_request_per_minute\: 99999:g" /var/wazuh-manager/api/configuration/api.yaml
 else
     python3 /scripts/xml_parser.py /var/wazuh-manager/etc/wazuh-manager.conf /scripts/worker_wazuh-manager_conf.xml
 fi
