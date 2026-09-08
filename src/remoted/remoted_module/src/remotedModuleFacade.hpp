@@ -26,6 +26,7 @@
 
 #include "auth/keystore.hpp"
 #include "auth/passwordKeySource.hpp"
+#include "auth/tokenKeySource.hpp"
 #include "common/requestOutcomeMetrics.hpp"
 #include "common/vdClient.hpp"
 #include "control/agentRegistry.hpp"
@@ -572,8 +573,10 @@ private:
         // whether it must additionally require the `wazuh-enroll+jwt` bearer; it has no notion of "mTLS
         // mode" at all, because a client certificate is never its concern -- the TLS listener
         // enforces (or doesn't) that entirely on its own, before any handler runs. PasswordKeySource
-        // (constructed only when required) is owned by m_enrollmentAuthenticator from here on -- its
-        // background watcher thread's lifetime is tied to the authenticator's.
+        // (constructed only when required) and TokenKeySource (constructed whenever enrollment is
+        // enabled at all: an enrollment-token bearer is honoured in every mode, Open included --
+        // see EnrollmentAuthenticator) are owned by m_enrollmentAuthenticator from here on -- their
+        // background watcher threads' lifetimes are tied to the authenticator's.
         const auto enrollConfig = remoted::enrollment::buildEnrollmentConfig(m_config);
 
         std::shared_ptr<remoted::auth::PasswordKeySource> enrollPasswordKeySource;
@@ -585,15 +588,31 @@ private:
                                                                    enrollConfig.isWorkerNode);
         }
 
+        // Same refresh interval as the password file: both are authd-written, cluster-synced secrets
+        // the same watcher discipline applies to, and one knob ('remoted.enroll_password_refresh_interval')
+        // is enough for the fallback poll of both.
+        std::shared_ptr<remoted::auth::TokenKeySource> enrollTokenKeySource;
+        if (enrollConfig.enrollmentEnabled)
+        {
+            enrollTokenKeySource =
+                std::make_shared<remoted::auth::TokenKeySource>(remoted::auth::TokenKeySource::kDefaultPath,
+                                                                enrollConfig.passwordRefreshIntervalSec,
+                                                                enrollConfig.isWorkerNode);
+        }
+
         m_enrollmentAuthenticator = std::make_unique<remoted::enrollment::EnrollmentAuthenticator>(
             remoted::enrollment::EnrollmentAuthConfig {
                 enrollConfig.usePassword, enrollConfig.timePolicy, enrollConfig.maxBodySize},
-            enrollPasswordKeySource);
+            enrollPasswordKeySource,
+            enrollTokenKeySource);
 
         // Reachability for GET /status on the admin server (see startAdminServer()). Null when
         // Password mode is disabled: the weak_ptr then stays permanently expired, which is exactly
         // the condition the handler uses to omit `enrollment_password` from its response.
         registerPasswordKeySourceDiagnostics(enrollPasswordKeySource);
+        // The token store's health as pull metrics (remoted.enroll.token_store.*) plus the same
+        // /status reachability; null when enrollment is disabled, omitted from /status then.
+        registerTokenKeySourceDiagnostics(enrollTokenKeySource);
 
         m_authdClient =
             std::make_shared<remoted::enrollment::AuthdClient>(remoted::enrollment::AuthdClient::kDefaultSocketPath,
@@ -766,6 +785,55 @@ private:
     }
 
     /**
+     * @brief Publish the enrollment token store replica's health (remoted.enroll.token_store.*) and
+     *        register its reachability for GET /status.
+     *
+     * Same wiring as registerAuthdQueueDiagnostics(): weak target repointed per start, pulls
+     * registered once, quiescing to 0 when the authenticator (which owns the source) is torn down.
+     * @p source is null whenever enrollment is administratively disabled -- the pulls then read 0
+     * and /status omits `enrollment_tokens`. Purely diagnostic: `tokens` answers "how many
+     * credential-bearing tokens does this node currently recognise", `reloads.total` /
+     * `reload_failures.total` whether the file authd writes (and the cluster syncs) is being picked
+     * up -- a rising failure count means a corrupt or hand-edited store, and the previous replica is
+     * what keeps serving.
+     */
+    void registerTokenKeySourceDiagnostics(const std::shared_ptr<remoted::auth::TokenKeySource>& source)
+    {
+        {
+            std::lock_guard<std::mutex> lock {m_tokenKeySourceDiagMutex};
+            m_tokenKeySourceDiagTarget = source;
+        }
+        if (m_tokenKeySourcePullsRegistered)
+        {
+            return;
+        }
+        m_tokenKeySourcePullsRegistered = true;
+
+        const auto snapshot = [this]
+        {
+            std::lock_guard<std::mutex> lock {m_tokenKeySourceDiagMutex};
+            const auto target = m_tokenKeySourceDiagTarget.lock();
+            return target ? target->diagnostics() : remoted::auth::TokenKeySource::Diagnostics {};
+        };
+
+        m_metricsManager->registerPullMetric(
+            "remoted.enroll.token_store.tokens",
+            [snapshot] { return static_cast<uint64_t>(snapshot().tokens); },
+            "Enrollment tokens with a credential currently replicated from etc/enrollment_tokens.json",
+            "tokens");
+        m_metricsManager->registerPullMetric(
+            "remoted.enroll.token_store.reloads.total",
+            [snapshot] { return snapshot().reloads; },
+            "Successful loads of the enrollment token store (the initial one included)",
+            "count");
+        m_metricsManager->registerPullMetric(
+            "remoted.enroll.token_store.reload_failures.total",
+            [snapshot] { return snapshot().reloadFailures; },
+            "Loads of the enrollment token store that kept the previous replica (malformed or torn file)",
+            "count");
+    }
+
+    /**
      * @brief Publish the agent registry's live size as a pull metric
      *        (remoted.control.registry.agents).
      *
@@ -890,6 +958,11 @@ private:
                         std::lock_guard<std::mutex> lock {m_passwordKeySourceDiagMutex};
                         passwordSource = m_passwordKeySourceDiagTarget.lock();
                     }
+                    std::shared_ptr<remoted::auth::TokenKeySource> tokenSource;
+                    {
+                        std::lock_guard<std::mutex> lock {m_tokenKeySourceDiagMutex};
+                        tokenSource = m_tokenKeySourceDiagTarget.lock();
+                    }
 
                     // enrollment_password is the ONLY gating component. With Password-mode disabled
                     // (passwordSource null), there is nothing to gate on, so `ready` is true
@@ -918,7 +991,19 @@ private:
                     // readiness claim.
                     body << R"(,"keystore":{"readable":)" << (keystore->lastLoadOk() ? "true" : "false")
                          << R"(,"agents_loaded":)" << keystore->agentsLoaded() << R"(,"entries_skipped":)"
-                         << keystore->entriesSkipped() << "}}";
+                         << keystore->entriesSkipped() << "}";
+                    // enrollment_tokens is informational ONLY too -- never folded into overallReady: an
+                    // empty replica is the normal state of a manager that minted no token (and of a
+                    // worker awaiting the sync), not a readiness failure. Present whenever enrollment
+                    // is enabled (the source exists), omitted otherwise. Placed after keystore so the
+                    // `{"ready":...,"keystore":...}` prefix every existing consumer matches on is kept.
+                    if (tokenSource)
+                    {
+                        const auto diag = tokenSource->diagnostics();
+                        body << R"(,"enrollment_tokens":{"loaded":)" << diag.tokens << R"(,"last_reload_ok":)"
+                             << (diag.lastLoadOk ? "true" : "false") << "}";
+                    }
+                    body << "}";
 
                     responder->send(wazuh::uds_http::HttpResponse::json(200, body.str()));
                 },
@@ -1371,6 +1456,11 @@ private:
     /// No pull metrics of its own -- just lets GET /status reach currentKey().has_value().
     std::mutex m_passwordKeySourceDiagMutex;
     std::weak_ptr<remoted::auth::PasswordKeySource> m_passwordKeySourceDiagTarget;
+    /// Same plumbing for the enrollment token store replica (see registerTokenKeySourceDiagnostics()):
+    /// the remoted.enroll.token_store.* pulls plus /status' `enrollment_tokens`.
+    std::mutex m_tokenKeySourceDiagMutex;
+    std::weak_ptr<remoted::auth::TokenKeySource> m_tokenKeySourceDiagTarget;
+    bool m_tokenKeySourcePullsRegistered {false};
 
     std::shared_ptr<remoted::auth::IAgentKeystore> m_keystore;      ///< Agent key lookup (client.keys).
     std::unique_ptr<remoted::endpoints::AuthGateway> m_authGateway; ///< Auth layer wired onto m_httpServer.
@@ -1404,8 +1494,9 @@ private:
 
     // /enroll lifecycle: bridges agent self-enrollment to authd's local socket. Metric struct on
     // the facade for the same reason as m_controlMetrics/m_scanVdMetrics. m_enrollmentAuthenticator
-    // owns the PasswordKeySource (Password mode only; null otherwise) constructed for it in
-    // startHttpServer() -- its background watcher thread's lifetime is tied to the authenticator's.
+    // owns the PasswordKeySource (Password mode only; null otherwise) and the TokenKeySource
+    // (whenever enrollment is enabled) constructed for it in startHttpServer() -- their background
+    // watcher threads' lifetimes are tied to the authenticator's.
     remoted::enrollment::EnrollmentMetrics m_enrollmentMetrics {
         remoted::enrollment::makeEnrollmentMetrics(*m_metricsManager)};                      ///< /enroll counters.
     std::unique_ptr<remoted::enrollment::EnrollmentAuthenticator> m_enrollmentAuthenticator; ///< /enroll auth.
