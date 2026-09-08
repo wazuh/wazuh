@@ -52,28 +52,6 @@ jobs:
           sudo aws configure set aws_access_key_id ${{ secrets.IT_AWS_KEY_ID }} --profile default
           sudo aws configure set aws_secret_access_key ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }} --profile default
           sudo aws configure set default.region ${AWS_DEFAULT_REGION} --profile default
-      # THROWAWAY DIAGNOSTIC for issue #39013 (not the real IT suite, this branch is never merged).
-      - name: DIAG - which AWS account do the static test credentials belong to?
-        run: sudo aws sts get-caller-identity
-      - name: DIAG - raw Inspector v2 API check - us-east-1
-        run: sudo aws inspector2 list-findings --region us-east-1 --max-results 5
-        continue-on-error: true
-      - name: DIAG - raw Inspector v2 API check - us-east-2
-        run: sudo aws inspector2 list-findings --region us-east-2 --max-results 5
-        continue-on-error: true
-      - name: DIAG - install pyarrow (needed by wazuh_integration import chain)
-        run: sudo pip install pyarrow
-      - name: DIAG - raw Inspector v2 API check - us-east-2 with updatedAt filter matching our code
-        run: >
-          sudo aws inspector2 list-findings --region us-east-2 --max-results 5
-          --filter-criteria '{"updatedAt":[{"startInclusive":"2025-09-15T00:00:00","endInclusive":"2026-09-08T23:59:59"}]}'
-        continue-on-error: true
-      - name: DIAG - run patched wodle directly - us-east-2 (2025-SEP-15)
-        working-directory: wodles/aws
-        run: sudo timeout 60 python3 aws_s3.py --service inspector --regions us-east-2 --only_logs_after 2025-SEP-15 --debug 2
-        continue-on-error: true
-      - name: DIAG - stop here, skip the rest of the suite
-        run: exit 1
       # Build wazuh server for linux.
       - name: Build wazuh server for linux
         run: |
@@ -112,6 +90,18 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
+      # THROWAWAY DIAGNOSTIC for issue #39013 (not the real IT suite, this branch is never merged).
+      - name: DIAG - which AWS account do the static test credentials belong to?
+        run: sudo aws sts get-caller-identity
+      - name: DIAG - install pyarrow (in case install.sh's venv lacks it)
+        run: sudo pip install pyarrow
+        continue-on-error: true
+      - name: DIAG - run patched wodle from its installed location - us-east-2 (2025-SEP-15)
+        working-directory: /var/ossec
+        run: sudo timeout 90 wodles/aws/aws-s3 --service inspector --regions us-east-2 --only_logs_after 2025-SEP-15 --debug 2
+        continue-on-error: true
+      - name: DIAG - stop here, skip the rest of the suite
+        run: exit 1
       # Run AWS integration tests.
       - name: Run Parser related tests
         if: contains(steps.get_modified_files.outputs.files, 'wodles/aws/aws_s3.py') ||
