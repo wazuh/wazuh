@@ -189,6 +189,38 @@ EXPORTED FIMDBErrorCode fim_db_container_get_path(const char* file_path,
                                                   bool to_delete);
 
 /**
+ * @brief Upsert ONE container-scoped `file_entry` row OUTSIDE any transaction.
+ *
+ * The counterpart of fim_db_file_update() for container rows, and the only way
+ * a path reconcile may persist what it re-read.
+ *
+ * A container-scoped transaction cannot be used for that: closing one runs
+ * DBSyncImplementation::closeTransaction() -> deleteRowsByStatusField()
+ * unconditionally, which DELETEs every row in the scope the transaction did not
+ * refresh. `may_detect_deletions == false` suppresses the DELETED *callbacks*
+ * and nothing else, so re-reading one named file destroyed the rest of that
+ * container's FIM state (C27). Measured on a live agent: modifying one file
+ * alerted `modified`, the next file's modification alerted `added` because its
+ * row was gone, and 1 of 5 rows survived. Non-transactional means no scope, no
+ * status field and no sweep — the row is compared against its stored self and
+ * nothing else is touched.
+ *
+ * `return_old_data` is requested, so a change arrives at the callback as
+ * {"old":..., "new":...}, the shape the container reconcile callback derives
+ * `changed_fields` from.
+ *
+ * @param row_json One row in DBSync column format, including container_id
+ *        (part of file_entry's primary key) and a non-NULL checksum.
+ * @param res_callback Invoked with INSERTED or MODIFIED for the row.
+ * @param user_data Passed through to `res_callback`.
+ *
+ * @return FIMDB_OK on success.
+ */
+EXPORTED FIMDBErrorCode fim_db_container_file_sync(const char* row_json,
+                                                   result_callback_t res_callback,
+                                                   void* user_data);
+
+/**
  * @brief Find entries using the inode.
  *
  * @param inode Inode.

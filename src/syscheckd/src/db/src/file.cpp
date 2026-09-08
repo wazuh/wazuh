@@ -511,6 +511,58 @@ FIMDBErrorCode fim_db_container_file_delete(const char* file_path, const char* c
     return retVal;
 }
 
+FIMDBErrorCode fim_db_container_file_sync(const char* row_json, result_callback_t res_callback, void* user_data)
+{
+    auto retVal {FIMDB_ERR};
+
+    if (!row_json || !res_callback)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return retVal;
+    }
+
+    const auto row = nlohmann::json::parse(row_json, nullptr, false);
+
+    if (row.is_discarded() || !row.is_object())
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "fim_db_container_file_sync: invalid row JSON");
+        return retVal;
+    }
+
+    try
+    {
+        nlohmann::json input;
+        input["table"] = FIMDB_FILE_TABLE_NAME;
+        input["data"] = nlohmann::json::array({row});
+
+        // Same reason dbFileItem.cpp sets it: the container reconcile callback
+        // reads the changed columns out of DBSync's "old" object to build
+        // changed_fields, and without this option DBSync hands it a bare
+        // updated row, whereupon it finds no "new" member and returns.
+        input["options"]["return_old_data"] = true;
+
+        DB::instance().updateFile(input,
+                                  [res_callback, user_data](int resultType, const nlohmann::json & resultJson)
+        {
+            const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson {cJSON_Parse(resultJson.dump().c_str())};
+            res_callback(static_cast<ReturnTypeCallback>(resultType), spJson.get(), user_data);
+        });
+        retVal = FIMDB_OK;
+    }
+    catch (const DbSync::max_rows_error& max_row)
+    {
+        FIMDB::instance().logFunction(
+            LOG_WARNING,
+            "Reached maximum files limit monitored, due to db_entry_limit configuration for files.");
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    return retVal;
+}
+
 FIMDBErrorCode fim_db_file_inode_search(const unsigned long long int inode,
                                         const unsigned long device,
                                         callback_context_t callback)
