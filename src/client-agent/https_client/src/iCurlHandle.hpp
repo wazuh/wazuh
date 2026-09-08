@@ -30,6 +30,8 @@ enum class CurlOption
     Post,           ///< long 1
     PostFields,     ///< ptr to the in-memory body
     PostFieldSize,  ///< long body length
+    Get,            ///< long 1: CURLOPT_HTTPGET. Also clears any prior POST state, but
+    ///< that's moot -- every handle is built fresh per request (CurlHandleFactory).
     TimeoutMs,      ///< long per-request timeout
     VerifyPeer,     ///< long 0/1
     VerifyHost,     ///< long 0/2
