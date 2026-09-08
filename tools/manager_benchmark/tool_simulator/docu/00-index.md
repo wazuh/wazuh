@@ -25,6 +25,7 @@ Requirement levels follow RFC 2119: **MUST**, **MUST NOT**, **SHOULD**, **MAY**.
 | [13-engine-event-streams.md](13-engine-event-streams.md) | `POST /stateless`: the log-event batch a lane can stream, alongside inventory |
 | [14-scan-vd.md](14-scan-vd.md) | `POST /scan/vd`: the feed-update re-scan request, and how it differs from a VDFirst session's scan |
 | [15-cacerts.md](15-cacerts.md) | `GET /cacerts`: the CA-distribution request an agent uses to bootstrap trust in the manager |
+| [16-enroll-https.md](16-enroll-https.md) | `POST /enroll` with an enrollment token: the HTTPS self-enrollment of a fresh agent, and how the token reaches the sender |
 
 Operator-facing documentation of the system under test lives in
 `docs/ref/modules/inventory-sync-server/` (architecture, API reference, schemas) and
