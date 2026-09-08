@@ -941,7 +941,14 @@ TEST_F(FacadeE2eTest, NotifyNowRaceAgainstReporterTick)
         }
     });
 
-    std::this_thread::sleep_for(std::chrono::milliseconds {500});
+    // Not just absence of a TSAN-visible data race: every access here is a well-defined atomic
+    // op, so a logic race that reorders which one "wins" (e.g. the #38840 follow-up lost-update
+    // this fix closes) would never show up as a race to ThreadSanitizer at all. Asserting actual
+    // deliveries is what would have caught that: several forced reports landing while the
+    // notifier keeps contending, not just the reporter's own natural first send.
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    ASSERT_TRUE(waitForCount(peek, "/peek/config_count", 2, 500));
 
     notifying = false;
     notifier.join();

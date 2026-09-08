@@ -1171,18 +1171,21 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
         minfo("Agent is reloading due to shared configuration changes.");
     }
 
+    /* #38840: the /config reporter's own periodic cadence (default 3600s) would otherwise leave
+     * the manager's view of this agent's configuration stale for up to an hour, so a forced
+     * report is due once the new configuration is actually running. reloadAgent() only dispatches
+     * the reload request (systemctl reload / bin/wazuh-control reload, or an async detached
+     * restart on Windows) and returns immediately -- it says nothing about whether the child
+     * processes have actually restarted with it yet. Reporting from here would race that: a
+     * forced /config send could reach still-running (pre-reload) daemons over their sockets and
+     * report the OLD configuration, stamped with a timestamp that makes it look fresh. The real
+     * "new config is live" signal is agentd.c's own reload_handler()/needs_config_reload, set only
+     * from the SIGUSR1 wazuh-control sends once the reloaded processes are up -- that is where the
+     * forced report belongs, alongside startup_gate_release_from_https_apply(). */
     if (!reloadAgent()) {
         mdebug1("Could not dispatch the reload chain; releasing "
                 "the startup gate directly instead (no restart will arrive to do it).");
         startup_gate_release_from_https_apply();
-    }
-
-    /* #38840: the agent just applied a new shared configuration (this point is only reached when
-     * it will actually run with it, unlike the auto_restart-disabled early return above), but the
-     * /config reporter's own periodic cadence (default 3600s) would otherwise leave the manager's
-     * view of it stale for up to an hour. Pull that report in now instead of waiting it out. */
-    if (handle) {
-        hc_notify_now(handle);
     }
 }
 
@@ -1950,6 +1953,18 @@ void w_https_client_stop(void)
     if (g_https_client) {
         hc_destroy(g_https_client); /* Implies stop + join. */
         g_https_client = NULL;
+    }
+}
+
+void w_https_client_notify_config_reload_completed(void)
+{
+    /* #38840: called from agentd.c's needs_config_reload handling, the point where a
+     * SIGUSR1-confirmed reload means the new shared configuration is actually running --
+     * see bridge_on_config_downloaded()'s own comment for why firing any earlier (right
+     * after reloadAgent() merely dispatches the reload request) would race the still-old
+     * daemons and risk reporting stale configuration under a falsely fresh timestamp. */
+    if (g_https_client) {
+        hc_notify_now(g_https_client);
     }
 }
 

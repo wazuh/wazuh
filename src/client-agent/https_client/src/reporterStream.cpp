@@ -28,6 +28,19 @@ namespace
     {
         60000
     };
+
+    // Path::nextDue stores steady_clock::rep (see reporterStream.hpp for why), not time_point
+    // itself; these convert at the read/write edges so the rest of this file reads in terms of
+    // time_point like every other clock use in the module.
+    std::chrono::steady_clock::rep toRep(std::chrono::steady_clock::time_point tp)
+    {
+        return tp.time_since_epoch().count();
+    }
+
+    std::chrono::steady_clock::time_point fromRep(std::chrono::steady_clock::rep rep)
+    {
+        return std::chrono::steady_clock::time_point {std::chrono::steady_clock::duration {rep}};
+    }
 } // namespace
 
 ReporterStream::ReporterStream(const ModuleConfig& config,
@@ -72,17 +85,34 @@ bool ReporterStream::anyEnabled() const
     return m_stats.enabled || m_config_.enabled;
 }
 
+bool ReporterStream::configReportEnabled() const
+{
+    return m_config_.enabled;
+}
+
 void ReporterStream::forceConfigReportNow()
 {
-    // Path::nextDue's own convention (see reporterStream.hpp): default-constructed = epoch =>
-    // due immediately, picked up by the next tick() without disturbing m_stats' own cadence.
+    if (!m_config_.enabled)
+    {
+        return;
+    }
+
+    // #38840 follow-up: set before nextDue, not after. commitNextDue() only skips overwriting
+    // nextDue when it observes this flag true; if a runPath() already in flight ran that check
+    // in the gap between these two stores, this order guarantees it either sees the flag not
+    // set yet (and its own reschedule below is then unconditionally overwritten by this call's
+    // own nextDue store right after) or sees it already true (and leaves nextDue alone, which
+    // this call's own subsequent store sets to due-immediately regardless) -- nextDue ends up
+    // due-immediately either way. The reverse order has a real window: nextDue could be set to
+    // epoch here, read as unchanged by a concurrent commitNextDue() (whose only signal that a
+    // force happened is this flag, not yet true), get clobbered by that call's own reschedule,
+    // and only then see the flag turn true -- stranded, with nothing left to consume it.
+    m_config_.forcedSinceLastRun.store(true);
+    // Path::nextDue's own convention (see reporterStream.hpp): 0 (rep of epoch) => due
+    // immediately, picked up by the next tick() without disturbing m_stats' own cadence.
     // Called from the https_client_bridge callback thread, not the reporter's own -- nextDue is
     // atomic precisely so this store is well-defined against tick()/runPath() on the other side.
-    m_config_.nextDue.store(std::chrono::steady_clock::time_point {});
-    // #38840 follow-up: also flag the force so commitNextDue() can tell it apart from nextDue's
-    // own default epoch if this lands while a /config send is already in flight -- see the
-    // field's own comment in reporterStream.hpp.
-    m_config_.forcedSinceLastRun.store(true);
+    m_config_.nextDue.store(0);
 }
 
 std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
@@ -97,12 +127,12 @@ std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
 
     const auto now = m_clock.steadyNow();
 
-    if (m_stats.enabled && now >= m_stats.nextDue.load())
+    if (m_stats.enabled && now >= fromRep(m_stats.nextDue.load()))
     {
         runPath(m_stats, m_statsBackoff, waiter, m_collectors.collectStats());
     }
 
-    if (m_config_.enabled && now >= m_config_.nextDue.load())
+    if (m_config_.enabled && now >= fromRep(m_config_.nextDue.load()))
     {
         runPath(m_config_, m_configBackoff, waiter, m_collectors.collectConfig());
     }
@@ -178,7 +208,7 @@ void ReporterStream::commitNextDue(Path& path, std::chrono::steady_clock::time_p
         return;
     }
 
-    path.nextDue.store(desired);
+    path.nextDue.store(toRep(desired));
 }
 
 std::optional<std::string> ReporterStream::stampedDocument(std::optional<std::string> collected) const
@@ -209,14 +239,16 @@ std::chrono::milliseconds ReporterStream::sleepHint() const
 
     if (m_stats.enabled)
     {
-        soonest =
-            std::min(soonest, std::chrono::duration_cast<std::chrono::milliseconds>(m_stats.nextDue.load() - now));
+        soonest = std::min(
+                      soonest,
+                      std::chrono::duration_cast<std::chrono::milliseconds>(fromRep(m_stats.nextDue.load()) - now));
     }
 
     if (m_config_.enabled)
     {
-        soonest =
-            std::min(soonest, std::chrono::duration_cast<std::chrono::milliseconds>(m_config_.nextDue.load() - now));
+        soonest = std::min(
+                      soonest,
+                      std::chrono::duration_cast<std::chrono::milliseconds>(fromRep(m_config_.nextDue.load()) - now));
     }
 
     return std::clamp(soonest, MIN_SLEEP, MAX_SLEEP);

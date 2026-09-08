@@ -151,6 +151,11 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             // bridge_on_config_downloaded() defers the gate release to here so a
             // module does not start a moment before the reload restarts it.
             startup_gate_release_from_https_apply();
+
+            // #38840: same reasoning -- the new configuration is only actually running from
+            // this point on, so this is where a forced /config report belongs too, not right
+            // after bridge_on_config_downloaded() merely dispatches the reload request.
+            w_https_client_notify_config_reload_completed();
         }
 
         /* Connect to the execd queue */

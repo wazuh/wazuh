@@ -51,13 +51,18 @@ class ReporterStream final
         /// the worker then).
         bool anyEnabled() const;
 
+        /// #38840: whether the caller should bother calling forceConfigReportNow() and waking
+        /// the reporter thread at all -- both are no-ops while this is false.
+        bool configReportEnabled() const;
+
         /// One iteration: run every due path when registered and not paused.
         /// Returns the delay until the next tick should run.
         std::chrono::milliseconds tick(Waiter& waiter, bool registered);
 
         /// #38840: make the /config path due on the next tick instead of waiting out its full
         /// interval (default 3600s) -- called when the agent applies a new shared configuration,
-        /// so the manager's view of it does not lag behind what the agent already runs.
+        /// so the manager's view of it does not lag behind what the agent already runs. A no-op
+        /// while the /config path itself is disabled.
         void forceConfigReportNow();
 
     private:
@@ -69,11 +74,14 @@ class ReporterStream final
             // #38840: forceConfigReportNow() writes this from the https_client_bridge callback
             // thread while tick()/runPath() read and write it from the reporter's own thread --
             // atomic so that cross-thread access has defined behavior instead of relying on a
-            // plain time_point read/write race that happens not to tear on common ABIs.
-            // Explicitly value-initialized: std::atomic's default constructor leaves a
-            // non-class-type contained value indeterminate before C++20, unlike time_point's own
-            // default constructor (epoch => due immediately, the convention this field relies on).
-            std::atomic<std::chrono::steady_clock::time_point> nextDue {std::chrono::steady_clock::time_point {}};
+            // plain time_point read/write race that happens not to tear on common ABIs. The
+            // integral rep, not time_point itself: std::atomic<time_point> is well-defined either
+            // way, but is only lock-free if the generic trivially-copyable-T specialization
+            // happens to pick a lock-free path on this target, where atomic<integral> is
+            // guaranteed one -- matches the existing steady_clock timestamp precedent
+            // (agentcache/agentMetadataCache.hpp's lastUsed). 0 => epoch => due immediately, the
+            // convention this field relies on; toRep()/fromRep() (reporterStream.cpp) convert.
+            std::atomic<std::chrono::steady_clock::rep> nextDue {0};
 
             /// #38840 follow-up: set by forceConfigReportNow() to flag a force that landed while
             /// this path's send was already in flight, so commitNextDue() below knows to leave
