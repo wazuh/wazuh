@@ -23,6 +23,7 @@
 | [#38157](https://github.com/wazuh/wazuh/issues/38157) | Added installation-time variables to customize the default `<remote>` configuration on source, DEB, and RPM manager installations. |
 | [#38553](https://github.com/wazuh/wazuh/issues/38553) | Added the `PUT /agents/scan/vulnerability` endpoint to trigger an on-demand vulnerability scan for one agent, a list of agents, or all agents. |
 | [#38589](https://github.com/wazuh/wazuh/issues/38589) | Added recurring manager tasks to the Task Manager: the agent disconnection sweep, the deletion of long-disconnected agents, and manager log rotation now run as durable, retried tasks inside `wazuh-manager-modulesd`. Their resolved settings are reported by `GET /manager/configuration/wmodules/wmodules`. |
+| [#38992](https://github.com/wazuh/wazuh/issues/38992) | Added the `remote.https.ca_certificate` option, naming the CA that signs the HTTPS agent listener certificate (default `etc/certs/root-ca.pem`), and the unauthenticated `GET /cacerts` endpoint that serves it: `200` with the PEM, `404` when the file is missing, `503` (`ca_mismatch`) when it does not sign the served certificate. `wazuh-manager-remoted` now evaluates its listener certificate at start and every 24 hours — a WARN under 30 days to expiry, an ERROR once expired or when the CA and the certificate diverge — and exposes `remoted.cacerts.*`, `remoted.server.tls.cert_expiry_days` and `remoted.server.tls.ca_matches_leaf`, projected by `GET /cluster/{node_id}/daemons/stats`. |
 
 #### Changed
 
@@ -49,6 +50,7 @@
 | [#36453](https://github.com/wazuh/wazuh/issues/36453) | Increased the minimum API user password length from 8 to 12 characters to align with PCI DSS. |
 | [#38589](https://github.com/wazuh/wazuh/issues/38589) | Renamed the manager's log rotation and agent monitoring internal options from `monitord.*` to `wazuh_modules.manager_task_*`. An override left under an old name is silently ignored. Agents keep `monitord.*` for their own log rotation. |
 | [#38436](https://github.com/wazuh/wazuh/issues/38436) | Standardized the manager's Unix socket names and layout: every socket ends in `.sock`, carries an `-http` marker when it speaks HTTP, and lives in `queue/sockets/`. The sockets that were under `queue/db/`, `queue/tasks/` and `queue/cluster/` moved there, leaving those directories holding only their data. An upgraded installation keeps the old socket files as dead entries until a clean install. |
+| [#38992](https://github.com/wazuh/wazuh/issues/38992) | Changed the manager to stop generating its own TLS certificates: neither `install.sh`, the DEB/RPM scriptlets, `wazuh-manager-remoted` nor `wazuh-manager-authd` create `remoted.pem`/`remoted-key.pem` any more. The listener pair and the CA that signs it (`root-ca.pem`) are provisioned externally, with the Wazuh installation assistant (`wazuh-certs-tool`), and the manager fails closed without them: `wazuh-manager-control start` stops with `(1244) … '/remote/https/certificate': file not found` and a provisioning hint, and `wazuh-manager-remoted` refuses to start when the service user cannot read the files. |
 
 #### Removed
 
@@ -64,6 +66,7 @@
 | [#38024](https://github.com/wazuh/wazuh/issues/38024) | Removed the `GET /agents/{agent_id}/stats/{component}` API endpoint. Agent statistics are read from the `wazuh-agent-stats` index. |
 | [#38589](https://github.com/wazuh/wazuh/issues/38589) | Removed the `wazuh-manager-monitord` daemon, along with the `monitor` component of the active configuration endpoints, which its socket served. |
 | [#38589](https://github.com/wazuh/wazuh/issues/38589) | Removed the `<global><agents_disconnection_alert_time>` option. A configuration that still includes it fails to start. |
+| [#38992](https://github.com/wazuh/wazuh/issues/38992) | Removed the certificate-generation mode (`-C`, `-B`, `-K`, `-X`, `-S`) of `wazuh-manager-remoted` and `wazuh-manager-authd`, and the `USER_CREATE_SSL_CERT` and `USER_GENERATE_AUTHD_CERT` installation variables. |
 
 #### Fixed
 
