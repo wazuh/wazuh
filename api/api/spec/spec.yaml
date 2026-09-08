@@ -168,6 +168,30 @@ x-rbac-catalog:
         actions: ['agent:uninstall']
         resources: [ '*:*:*' ]
         effect: "allow"
+    'enrollment_token:create':
+      description: "Mint enrollment tokens (the credential a new agent pastes to enroll over HTTPS)"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['enrollment_token:create']
+        resources: ['*:*:*']
+        effect: "allow"
+    'enrollment_token:read':
+      description: "List enrollment tokens (their id, address, dates and uses; never their credential)"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['enrollment_token:read']
+        resources: ['*:*:*']
+        effect: "allow"
+    'enrollment_token:delete':
+      description: "Revoke enrollment tokens"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['enrollment_token:delete']
+        resources: ['*:*:*']
+        effect: "allow"
     'group:create':
       description: "Create new agent groups"
       resources:
@@ -671,6 +695,32 @@ components:
               items:
                 $ref: '#/components/schemas/AgentIdKey'
 
+    AllItemsResponseEnrollmentTokens:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/EnrollmentToken'
+
+    AllItemsResponseEnrollmentTokenIDs:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/EnrollmentTokenID'
+
     AllItemsResponseRoles:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -928,6 +978,115 @@ components:
         key:
           type: string
           format: base64
+
+    EnrollmentTokenID:
+      type: string
+      description: "Enrollment token ID: 22 base64url characters"
+      pattern: '^[A-Za-z0-9_-]{22}$'
+      example: "AAECAwQFBgcICQoLDA0ODw"
+
+    EnrollmentTokenCreateBody:
+      type: object
+      required:
+        - address
+      properties:
+        address:
+          description: "Name (or IP) the agents connect to. Must be one of the names in the listener
+          certificate (`remote.https.certificate`); an address outside it is refused with error 1768"
+          type: string
+          format: alphanumeric_symbols
+        port:
+          description: "Listener port to write into the token when it differs from the configured one"
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 65535
+        prefix:
+          description: "URL prefix to write into the token when it differs from the configured one"
+          type: string
+          format: alphanumeric_symbols
+        ttl:
+          description: "Lifetime: seconds, or a number followed by `d`, `h`, `m` or `s`. Default: 30 days"
+          type: string
+          format: timeframe
+        max_uses:
+          description: "Enrollments the token allows. 0 (the default) means unlimited"
+          type: integer
+          format: int32
+          minimum: 0
+        description:
+          description: "Free text shown when listing the tokens"
+          type: string
+          format: alphanumeric_symbols
+        embed_ca:
+          description: "Carry the CA certificate inside the token instead of its pin (no `/cacerts` fetch
+          by the agent)"
+          type: boolean
+          default: false
+        no_credential:
+          description: "Token without credential: address and pin only. It can point an agent at the
+          manager but cannot authenticate its enrollment"
+          type: boolean
+          default: false
+
+    EnrollmentTokenCreated:
+      type: object
+      required:
+        - token
+        - id
+        - address
+        - expires
+      properties:
+        token:
+          description: "The token text the agent pastes. Returned here only"
+          type: string
+        id:
+          $ref: '#/components/schemas/EnrollmentTokenID'
+        address:
+          type: string
+        expires:
+          type: string
+          format: date-time
+        pin_hex:
+          description: "SHA-256 of the CA's public key the token pins, in hex (absent when the CA is embedded)"
+          type: string
+
+    EnrollmentToken:
+      type: object
+      required:
+        - id
+        - address
+        - created
+        - expires
+        - max_uses
+        - uses
+        - revoked
+        - credential
+      properties:
+        id:
+          $ref: '#/components/schemas/EnrollmentTokenID'
+        address:
+          type: string
+        created:
+          type: string
+          format: date-time
+        expires:
+          type: string
+          format: date-time
+        max_uses:
+          description: "Enrollments the token allows; 0 means unlimited"
+          type: integer
+        uses:
+          description: "Enrollments consumed so far"
+          type: integer
+        revoked:
+          type: boolean
+        credential:
+          description: "Whether the token carries a credential (a public, address-only token does not)"
+          type: boolean
+        description:
+          type: string
+          nullable: true
 
     AgentInsertBody:
       type: object
@@ -2768,6 +2927,13 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/AgentID'
+    token_id:
+      in: path
+      name: token_id
+      description: "Enrollment token ID"
+      required: true
+      schema:
+        $ref: '#/components/schemas/EnrollmentTokenID'
     agent_name:
       in: query
       name: agent_name
@@ -4549,6 +4715,173 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '403':
           $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/enrollment-tokens:
+    post:
+      tags:
+        - Agents
+      summary: "Create enrollment token"
+      description: "Mint an enrollment token: the credential a new agent pastes to enroll over the
+      HTTPS agent API (`POST /enroll` on the manager's port 1517) without the shared enrollment
+      password. The token names the manager (`address`, which must be one of the names in the
+      listener certificate, `remote.https.certificate`) and pins its CA; unless `no_credential` is set
+      it also carries a random secret the agent signs its enrollment with. The `token` text is
+      returned in this response only and never listed again. Tokens are minted on the master node"
+      operationId: api.controllers.agent_controller.create_enrollment_token
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/enrollment_token:create'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollmentTokenCreateBody'
+            example:
+              address: wazuh-manager.example.com
+              ttl: "12h"
+              max_uses: 50
+              description: "Web tier rollout"
+      responses:
+        '200':
+          description: "Enrollment token minted"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EnrollmentTokenCreated'
+              example:
+                data:
+                  token: "eyJ2ZXIiOjEsImFkciI6IndhenVoLW1hbmFnZXIuZXhhbXBsZS5jb206MTUxNyIsInBpbiI6IllKSGNObVh0WG9NOGpaUmZrLXVfRkxOd0lNenVkek5PUkplc0x2TlpDcUkiLCJrZXkiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R4QVJFaE1VRlJZWEdCa2FHeHdkSGg4In0"
+                  id: "AAECAwQFBgcICQoLDA0ODw"
+                  address: "wazuh-manager.example.com"
+                  expires: "2026-09-09T05:12:40+00:00"
+                  pin_hex: "6091dc3665ed5e833c8d945f93ebbf14b37020ccee77334e4497ac2ef3590aa2"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    get:
+      tags:
+        - Agents
+      summary: "List enrollment tokens"
+      description: "List the enrollment tokens the manager has minted: id, address, creation and expiry,
+      allowed and consumed uses, whether each is revoked and whether it carries a credential. The
+      token text and its credential are never returned"
+      operationId: api.controllers.agent_controller.get_enrollment_tokens
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/enrollment_token:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Enrollment tokens"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseEnrollmentTokens'
+              example:
+                data:
+                  affected_items:
+                    - id: "AAECAwQFBgcICQoLDA0ODw"
+                      address: "wazuh-manager.example.com"
+                      created: "2026-09-08T17:12:40+00:00"
+                      expires: "2026-09-09T05:12:40+00:00"
+                      max_uses: 50
+                      uses: 3
+                      revoked: false
+                      credential: true
+                      description: "Web tier rollout"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "All enrollment tokens were returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/enrollment-tokens/{token_id}:
+    delete:
+      tags:
+        - Agents
+      summary: "Revoke enrollment token"
+      description: "Revoke an enrollment token. A revoked token enrolls nobody from that moment on
+      (the managers refuse it with a 401 of class `token_revoked`) and stays listed with
+      `revoked: true`. Revoking an already revoked token succeeds again"
+      operationId: api.controllers.agent_controller.delete_enrollment_token
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/enrollment_token:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/token_id'
+      responses:
+        '200':
+          description: "Enrollment token revoked"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseEnrollmentTokenIDs'
+              example:
+                data:
+                  affected_items:
+                    - "AAECAwQFBgcICQoLDA0ODw"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "Enrollment token was revoked"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':

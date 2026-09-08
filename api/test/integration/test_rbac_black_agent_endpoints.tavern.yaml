@@ -1382,3 +1382,59 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_denied
+
+---
+test_name: POST /agents/enrollment-tokens
+
+stages:
+
+  - name: Mint an enrollment token (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        address: "wazuh-master"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /agents/enrollment-tokens
+
+stages:
+
+  - name: List enrollment tokens (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          total_affected_items: !anyint
+          total_failed_items: 0
+          failed_items: []
+
+---
+test_name: DELETE /agents/enrollment-tokens/{token_id}
+
+stages:
+
+  - name: Revoke an enrollment token that was never minted (Allowed, not found)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens/AAAAAAAAAAAAAAAAAAAAAA"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 404
+      json:
+        error: 1767
