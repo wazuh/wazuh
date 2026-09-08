@@ -194,6 +194,44 @@ static void test_valid_agent_key_rejects_other_shapes(void **state) {
     assert_false(OS_IsValidAgentKey("asdfASD0101asdfASD0101asdfASD0101asdfASD0101asdfASD0101asdfASD01"));
 }
 
+/* --- re-enrollment secret (#38993) --------------------------------------------------------- */
+
+static void test_new_reenroll_secret_is_64_lowercase_hex_and_fresh(void **state) {
+    (void) state;
+    char a[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
+    char b[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
+    will_return(__wrap_RAND_bytes, 1); /* pass through to the real CSPRNG */
+    will_return(__wrap_RAND_bytes, 1);
+
+    assert_int_equal(OS_NewReenrollSecret(a, sizeof(a)), 0);
+    assert_int_equal(OS_NewReenrollSecret(b, sizeof(b)), 0);
+    assert_true(is_lower_hex_64(a));
+    assert_true(is_lower_hex_64(b));
+    assert_true(OS_IsValidReenrollSecret(a));
+    assert_string_not_equal(a, b);
+
+    /* A short buffer is refused before the CSPRNG is even consulted; a CSPRNG failure leaves it empty. */
+    char tiny[8] = "xx";
+    assert_int_equal(OS_NewReenrollSecret(tiny, sizeof(tiny)), -1);
+    assert_int_equal(OS_NewReenrollSecret(NULL, 0), -1);
+    will_return(__wrap_RAND_bytes, 0);
+    will_return(__wrap_RAND_bytes, 0);
+    expect_string(__wrap__merror, formatted_msg, "Unable to generate a re-enrollment secret: the CSPRNG (RAND_bytes) failed.");
+    assert_int_equal(OS_NewReenrollSecret(a, sizeof(a)), -1);
+    assert_string_equal(a, "");
+}
+
+static void test_valid_reenroll_secret_accepts_and_rejects_shapes(void **state) {
+    (void) state;
+    assert_true(OS_IsValidReenrollSecret("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
+    assert_false(OS_IsValidReenrollSecret(NULL));
+    assert_false(OS_IsValidReenrollSecret(""));
+    assert_false(OS_IsValidReenrollSecret("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde"));   /* 63 */
+    assert_false(OS_IsValidReenrollSecret("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0")); /* 65 */
+    assert_false(OS_IsValidReenrollSecret("0123456789ABCDEF0123456789abcdef0123456789abcdef0123456789abcdef"));  /* upper */
+    assert_false(OS_IsValidReenrollSecret("0123456789abcdeg0123456789abcdef0123456789abcdef0123456789abcdef"));  /* g */
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_add_new_agent_generates_a_64_hex_key, setup_keys, teardown_keys),
@@ -206,6 +244,8 @@ int main(void) {
         cmocka_unit_test(test_valid_agent_insert_id_rejects_out_of_range_or_reserved),
         cmocka_unit_test(test_valid_agent_key_accepts_exactly_64_lowercase_hex),
         cmocka_unit_test(test_valid_agent_key_rejects_other_shapes),
+        cmocka_unit_test(test_new_reenroll_secret_is_64_lowercase_hex_and_fresh),
+        cmocka_unit_test(test_valid_reenroll_secret_accepts_and_rejects_shapes),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

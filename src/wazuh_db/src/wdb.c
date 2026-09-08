@@ -39,7 +39,7 @@ static const char *SQL_METADATA_GET_FRAGMENTATION_DATA = "SELECT key, value FROM
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
 static const char *SQL_STMT[] = {
-    [WDB_STMT_GLOBAL_INSERT_AGENT] = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?,?,?,?,?,?,?);",
+    [WDB_STMT_GLOBAL_INSERT_AGENT] = "INSERT INTO agent (id, name, ip, register_ip, internal_key, reenroll_secret, date_add, `group`) VALUES (?,?,?,?,?,?,?,?);",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, last_keepalive = STRFTIME('%s', 'NOW'), ip = ?, connection_status = ?, sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE] = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, disconnection_time = 0, status_code = 0 WHERE id = ?;",

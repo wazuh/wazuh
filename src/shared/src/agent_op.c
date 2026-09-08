@@ -10,6 +10,7 @@
 
 #include "cJSON.h"
 #include "shared.h"
+#include <openssl/crypto.h>
 #include "sha256_op.h"
 #include "os_net.h"
 #include "authd-config.h"
@@ -38,11 +39,13 @@ static int w_parse_agent_remove_response(const char* buffer,
                                          const int exit_on_error);
 #endif
 
-//Parse an agent addition response
+//Parse an agent addition response. reenroll_secret (#38993) may be NULL; when given it receives the
+//master's re-enrollment secret, or "" when the answer carries none (not an error).
 static int w_parse_agent_add_response(const char* buffer,
                                       char *err_response,
                                       char* id,
                                       char* key,
+                                      char* reenroll_secret,
                                       const int json_format,
                                       const int exit_on_error,
                                       int *error_code);
@@ -373,7 +376,7 @@ static cJSON* w_create_agent_add_payload(const char *name,
     return request;
 }
 
-static int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error, int *error_code) {
+static int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, char* reenroll_secret, const int json_format, const int exit_on_error, int *error_code) {
     int result = 0;
     cJSON* response = NULL;
     cJSON * error = NULL;
@@ -445,6 +448,17 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
                         else {
                             strncpy(key, data_key->valuestring, KEYSIZE);
                             key[KEYSIZE] = '\0';
+                        }
+                    }
+                    if (reenroll_secret && result == 0) {
+                        /* Optional (#38993): a master that predates the re-enrollment secret answers without
+                         * it, and that is not an error -- the caller then simply has none to hand back. */
+                        cJSON *data_secret = cJSON_GetObjectItem(data, "reenroll_secret");
+                        if (cJSON_IsString(data_secret) && data_secret->valuestring) {
+                            strncpy(reenroll_secret, data_secret->valuestring, AGENT_REENROLL_SECRET_HEX_CHARS);
+                            reenroll_secret[AGENT_REENROLL_SECRET_HEX_CHARS] = '\0';
+                        } else {
+                            reenroll_secret[0] = '\0';
                         }
                     }
                 }
@@ -607,6 +621,7 @@ int w_request_agent_add_clustered(char *err_response,
                                   const char *key_hash,
                                   char **id,
                                   char **key,
+                                  char **reenroll_secret,
                                   authd_force_options_t *force_options,
                                   const char *agent_id,
                                   const char *token_id,
@@ -615,6 +630,7 @@ int w_request_agent_add_clustered(char *err_response,
     char response[OS_MAXSTR + 1];
     char new_id[FILE_SIZE+1] = { '\0' };
     char new_key[KEYSIZE+1] = { '\0' };
+    char new_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = { '\0' };
 
     cJSON* message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force_options, token_id);
 
@@ -623,7 +639,7 @@ int w_request_agent_add_clustered(char *err_response,
     cJSON_Delete(payload);
 
     if (result = w_send_clustered_message("sendsync", output, response), result == 0) {
-        result = w_parse_agent_add_response(response, err_response, new_id, new_key, FALSE, FALSE, master_error_code);
+        result = w_parse_agent_add_response(response, err_response, new_id, new_key, reenroll_secret ? new_secret : NULL, FALSE, FALSE, master_error_code);
     }
     else if (err_response) {
         snprintf(err_response, 2048, "ERROR: Cannot communicate with master");
@@ -633,8 +649,13 @@ int w_request_agent_add_clustered(char *err_response,
     if (0 == result) {
         os_strdup(new_id, *id);
         os_strdup(new_key, *key);
+        if (reenroll_secret) {
+            // Empty when the master sent none (#38993): the caller treats "" as absent.
+            os_strdup(new_secret, *reenroll_secret);
+        }
     }
-
+    OPENSSL_cleanse(new_secret, sizeof(new_secret));
+    OPENSSL_cleanse(response, sizeof(response)); // the master's answer carried the key and the secret
 
     return result;
 }
@@ -696,7 +717,7 @@ int w_request_agent_add_local(int sock, char *id, const char *name, const char *
         return result;
     } else {
         response[length] = '\0';
-        result = w_parse_agent_add_response(response, NULL, id, NULL, json_format, exit_on_error, NULL);
+        result = w_parse_agent_add_response(response, NULL, id, NULL, NULL, json_format, exit_on_error, NULL);
     }
 
     return result;
