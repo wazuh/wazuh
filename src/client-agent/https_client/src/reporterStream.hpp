@@ -23,6 +23,7 @@
 #include "stopToken.hpp"
 #include "sysSeams.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <optional>
 #include <string>
@@ -65,7 +66,14 @@ class ReporterStream final
             std::string target;
             bool enabled {false};
             std::chrono::seconds interval {0};
-            std::chrono::steady_clock::time_point nextDue; // epoch => due immediately.
+            // #38840: forceConfigReportNow() writes this from the https_client_bridge callback
+            // thread while tick()/runPath() read and write it from the reporter's own thread --
+            // atomic so that cross-thread access has defined behavior instead of relying on a
+            // plain time_point read/write race that happens not to tear on common ABIs.
+            // Explicitly value-initialized: std::atomic's default constructor leaves a
+            // non-class-type contained value indeterminate before C++20, unlike time_point's own
+            // default constructor (epoch => due immediately, the convention this field relies on).
+            std::atomic<std::chrono::steady_clock::time_point> nextDue {std::chrono::steady_clock::time_point {}};
         };
 
         void runPath(Path& path, Backoff& backoff, Waiter& waiter, std::optional<std::string> collected);
