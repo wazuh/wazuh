@@ -218,7 +218,16 @@ namespace wazuh::container_instances::wire
                 }
                 data["connector"] = response.connectorName;
                 body["data"] = std::move(data);
-                if (!response.containers.empty())
+
+                // Unconditional for a `list` reply, empty array included. A
+                // client cannot distinguish "no containers" from "no connector"
+                // on a key that is absent, so omitting it made every
+                // container-free host look like a dead connector: both consumers
+                // then suppressed their stale-row sweep (correctly, given what
+                // they were told) and logged a fault that was not occurring.
+                // C28. Not emitted for a `status` reply, which shares this
+                // branch but says nothing about the container set.
+                if (response.listReply)
                 {
                     auto containers = nlohmann::json::array();
                     for (const auto& record : response.containers)

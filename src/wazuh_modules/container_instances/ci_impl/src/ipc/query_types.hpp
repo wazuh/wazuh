@@ -54,6 +54,11 @@ namespace wazuh::container_instances
         Status status {Status::error};
         ContainerRecordPtr record;           ///< resolved.
         std::vector<ContainerRecordPtr> containers; ///< list op.
+        /// This response IS a `list` reply, so `containers` must be serialised even
+        /// when empty. Omitting the key made "no containers on this host"
+        /// indistinguishable from "no connector" for every client, because the
+        /// client can only report reachability on a key it can find (C28).
+        bool listReply {false};
         std::optional<VerdictReason> reason; ///< notContainer.
         int retryAfterMs {0};                ///< pending.
         std::optional<StoreStats> stats;     ///< ok.
