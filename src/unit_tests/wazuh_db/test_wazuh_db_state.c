@@ -30,6 +30,7 @@ static int test_setup(void** state)
     wdb_state.queries_breakdown.global_breakdown.agent.insert_agent_queries = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.update_agent_data_queries = 16;
     wdb_state.queries_breakdown.global_breakdown.agent.update_keepalive_queries = 12;
+    wdb_state.queries_breakdown.global_breakdown.agent.set_agent_credentials_queries = 3;
     wdb_state.queries_breakdown.global_breakdown.agent.update_connection_status_queries = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.reset_agents_connection_queries = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.delete_agent_queries = 20;
@@ -66,6 +67,8 @@ static int test_setup(void** state)
     wdb_state.queries_breakdown.global_breakdown.agent.update_agent_data_time.tv_usec = 10020;
     wdb_state.queries_breakdown.global_breakdown.agent.update_keepalive_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.update_keepalive_time.tv_usec = 12358;
+    wdb_state.queries_breakdown.global_breakdown.agent.set_agent_credentials_time.tv_sec = 0;
+    wdb_state.queries_breakdown.global_breakdown.agent.set_agent_credentials_time.tv_usec = 4321;
     wdb_state.queries_breakdown.global_breakdown.agent.update_connection_status_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.update_connection_status_time.tv_usec = 148903;
     wdb_state.queries_breakdown.global_breakdown.agent.reset_agents_connection_time.tv_sec = 0;
@@ -169,6 +172,8 @@ void test_wazuhdb_create_state_json(void** state)
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "update-agent-data")->valueint, 16);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "update-keepalive"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "update-keepalive")->valueint, 12);
+    assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "set-agent-credentials"));
+    assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "set-agent-credentials")->valueint, 3);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "update-connection-status"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "update-connection-status")->valueint, 0);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "reset-agents-connection"));
@@ -235,12 +240,12 @@ void test_wazuhdb_create_state_json(void** state)
     cJSON* time = cJSON_GetObjectItem(metrics, "time");
 
     assert_non_null(cJSON_GetObjectItem(time, "execution"));
-    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 4847);
+    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 4851); // + the 4 ms of set-agent-credentials
 
     cJSON* execution_breakdown = cJSON_GetObjectItem(time, "execution_breakdown");
 
     assert_non_null(cJSON_GetObjectItem(execution_breakdown, "global"));
-    assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "global")->valueint, 4832);
+    assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "global")->valueint, 4836);
 
     cJSON* global_time_breakdown = cJSON_GetObjectItem(execution_breakdown, "global_breakdown");
 
@@ -265,6 +270,8 @@ void test_wazuhdb_create_state_json(void** state)
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "update-agent-data")->valueint, 10);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "update-keepalive"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "update-keepalive")->valueint, 12);
+    assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "set-agent-credentials"));
+    assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "set-agent-credentials")->valueint, 4);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "update-connection-status"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "update-connection-status")->valueint, 148);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "reset-agents-connection"));

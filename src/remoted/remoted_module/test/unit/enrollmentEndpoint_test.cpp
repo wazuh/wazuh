@@ -627,8 +627,9 @@ TEST(EnrollmentEndpointTest, RequestNeverIncludesForceIdOrKey)
     EXPECT_FALSE(j["arguments"].contains("id"));
     EXPECT_FALSE(j["arguments"].contains("key"));
     // And no enrollment token was used, so no token_id either: the Open/password request stays
-    // byte-identical to what authd received before tokens existed (issue #38993).
+    // byte-identical to what authd received before tokens existed (issue #38993). Nor a re-enrollment.
     EXPECT_FALSE(j["arguments"].contains("token_id"));
+    EXPECT_FALSE(j["arguments"].contains("reenroll"));
 }
 
 // -----------------------------------------------------------------------------
@@ -885,4 +886,149 @@ TEST(EnrollmentEndpointTest, UnknownTokenIs401AndCountsRejectedUnknown)
     EXPECT_EQ(run.enrollValue(METRIC_REJECTED_AUTH), 1U);
 
     std::remove(store.c_str());
+}
+
+// -----------------------------------------------------------------------------
+// Re-enrollment (issue #38993): the bearer whose `kid` names an agent travels to authd UNVERIFIED as
+// `arguments.reenroll` (the secret that signs it is the master's alone); authd's 9026/9027/9028 are
+// authentication failures -- the uniform 401 + WWW-Authenticate, never authd's code on the wire --
+// and every outcome counts in remoted.enroll.reenroll.*.
+// -----------------------------------------------------------------------------
+
+namespace
+{
+    struct ReenrollRun
+    {
+        HttpResponse response;
+        std::string authdRequest;
+        std::shared_ptr<wazuh::metrics::Manager> manager;
+        std::uint64_t enrollValue(const std::string& name) const
+        {
+            const auto metric = manager->get(name);
+            return metric ? static_cast<std::uint64_t>(metric->value()) : 0U;
+        }
+    };
+
+    // One /enroll with the frozen agent-kid vector (iat 1700000000: remoted must not care) against a fake
+    // authd answering @p authdResponse. requirePassword selects the mode; no password key is ever given.
+    ReenrollRun runReenroll(const std::string& authdResponse, const std::string& tag, bool requirePassword = false)
+    {
+        ReenrollRun out;
+        out.manager = std::make_shared<wazuh::metrics::Manager>();
+        EnrollmentMetrics metrics = makeEnrollmentMetrics(*out.manager);
+        EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {requirePassword}, nullptr};
+
+        const std::string path = makeUniqueSocketPath("enrollment_endpoint_reenroll_" + tag);
+        std::mutex mu;
+        FakeUdsServer authd(path,
+                            [&](const std::string& req)
+                            {
+                                std::lock_guard<std::mutex> lock(mu);
+                                out.authdRequest = req;
+                                return authdResponse;
+                            });
+        Config config = openModeConfig();
+        AuthdClient authdClient(path, false, 0, config.authdResponseTimeoutMs, 0);
+        auto handler = makeHandler(authenticator, authdClient, config, metrics, passthroughDecoder());
+
+        auto request = makeRequest(kValidBody);
+        request.headers.emplace("authorization", "Bearer " + std::string {tvt::kAgentKidJwt});
+        auto responder = std::make_shared<CapturingResponder>();
+        handler(std::make_shared<const HttpRequest>(request), responder);
+        out.response = responder->wait();
+        std::lock_guard<std::mutex> lock(mu);
+        return out;
+    }
+
+    constexpr auto kRotatedAnswer =
+        R"({"error":0,"data":{"id":"001","name":"agent1","ip":"any","key":"c0ffee",)"
+        R"("reenroll_secret":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}})";
+} // namespace
+
+TEST(EnrollmentEndpointTest, ReenrollmentBearerIsForwardedUnverifiedAndCountedAsAccepted)
+{
+    const auto run = runReenroll(kRotatedAnswer, "accepted");
+
+    EXPECT_EQ(run.response.status, 200);
+    const auto wire = nlohmann::json::parse(run.authdRequest);
+    EXPECT_EQ(wire["function"], "add");
+    EXPECT_EQ(wire["arguments"]["reenroll"]["kid"], std::string {tvt::kAgentKid});
+    EXPECT_EQ(wire["arguments"]["reenroll"]["bearer"], std::string {tvt::kAgentKidJwt}); // verbatim
+    EXPECT_FALSE(wire["arguments"].contains("token_id"));
+    // The master's rotated credentials, same id, five fields.
+    const auto body = parseBody(run.response);
+    EXPECT_EQ(body["id"], "001");
+    EXPECT_EQ(body["key"], "c0ffee");
+    EXPECT_EQ(body["reenroll_secret"], "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+    EXPECT_EQ(run.enrollValue(METRIC_REENROLL_ACCEPTED), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_ACCEPTED), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_TOKEN_ACCEPTED), 0U);
+    EXPECT_EQ(run.enrollValue(METRIC_REJECTED_AUTH), 0U);
+}
+
+TEST(EnrollmentEndpointTest, ReenrollmentInPasswordModeStillReachesAuthdWithoutThePasswordKey)
+{
+    // Password mode, no etc/authd.pass: a password bearer would be EnrollmentKeyUnavailable, the agent
+    // bearer is not a password bearer -- it goes to authd, in every mode.
+    const auto run = runReenroll(kRotatedAnswer, "password_mode", /*requirePassword=*/true);
+    EXPECT_EQ(run.response.status, 200);
+    EXPECT_EQ(nlohmann::json::parse(run.authdRequest)["arguments"]["reenroll"]["kid"], "001");
+}
+
+struct ReenrollRejectionCase
+{
+    int authdCode;
+    const char* metric;
+};
+
+class EnrollmentEndpointReenrollRejectionTest : public ::testing::TestWithParam<ReenrollRejectionCase>
+{
+};
+
+TEST_P(EnrollmentEndpointReenrollRejectionTest, IsTheUniform401AndCountsItsCell)
+{
+    const auto param = GetParam();
+    nlohmann::json answer;
+    answer["error"] = param.authdCode;
+    answer["message"] = "ERROR: whatever authd said";
+    const auto run = runReenroll(answer.dump(), "rejected_" + std::to_string(param.authdCode));
+
+    // Authentication failed on the master: the same answer every credential failure gets here --
+    // status, challenge, generic message, code 0 -- and nothing of authd's code or text on the wire.
+    EXPECT_EQ(run.response.status, 401);
+    const auto body = parseBody(run.response);
+    EXPECT_EQ(body["error"]["code"], 0);
+    EXPECT_EQ(body["error"]["message"], "Invalid client authentication");
+    EXPECT_EQ(run.response.body.find("whatever authd said"), std::string::npos);
+    EXPECT_EQ(run.response.body.find(std::to_string(param.authdCode)), std::string::npos);
+    const auto challenge = std::find_if(run.response.headers.begin(),
+                                        run.response.headers.end(),
+                                        [](const auto& header) { return header.first == "WWW-Authenticate"; });
+    ASSERT_NE(challenge, run.response.headers.end());
+    EXPECT_EQ(challenge->second, "Bearer");
+
+    // ...and distinguishable for the operator, as an auth rejection, not as an authd business error.
+    EXPECT_EQ(run.enrollValue(param.metric), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_REJECTED_AUTH), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_AUTHD_ERROR), 0U);
+    EXPECT_EQ(run.enrollValue(METRIC_REENROLL_ACCEPTED), 0U);
+    EXPECT_EQ(run.enrollValue(METRIC_ACCEPTED), 0U);
+}
+
+INSTANTIATE_TEST_SUITE_P(AuthdReenrollCodes,
+                         EnrollmentEndpointReenrollRejectionTest,
+                         ::testing::Values(ReenrollRejectionCase {9026, METRIC_REENROLL_REJECTED_UNKNOWN},
+                                           ReenrollRejectionCase {9027, METRIC_REENROLL_REJECTED_SIGNATURE},
+                                           ReenrollRejectionCase {9028, METRIC_REENROLL_REJECTED_STALE}));
+
+TEST(EnrollmentEndpointTest, ReenrollmentAuthdBusinessErrorsKeepTheirOwnMapping)
+{
+    // A duplicate name (9008) on a re-enrollment is authd's business rule, not the credential: 409 with the
+    // code, exactly as for a first enrollment; only 9026/9027/9028 are folded into the 401.
+    const auto run = runReenroll(R"({"error":9008,"message":"ERROR: Duplicate name"})", "dup_name");
+    EXPECT_EQ(run.response.status, 409);
+    EXPECT_EQ(parseBody(run.response)["error"]["code"], 9008);
+    EXPECT_EQ(run.enrollValue(METRIC_AUTHD_ERROR), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_REJECTED_AUTH), 0U);
+    EXPECT_EQ(run.enrollValue(METRIC_REENROLL_REJECTED_SIGNATURE), 0U);
 }

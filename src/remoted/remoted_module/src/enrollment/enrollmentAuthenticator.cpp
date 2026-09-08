@@ -89,9 +89,11 @@ namespace remoted::enrollment
         // classified by shape alone, before any signature work (peekKid() trusts nothing). An
         // enrollment-token bearer takes its own path in EVERY mode, Open included: a credential the
         // agent presents is never ignored, and an operator who minted a token with a credential
-        // expects it to be checked. An agent `kid` (re-enrollment) is recognised and refused until
-        // the re-enrollment secret lands. Everything else -- no header, a non-bearer scheme, a
-        // shared-key token, garbage -- is the mode's own business below, exactly as before tokens.
+        // expects it to be checked. An agent `kid` (re-enrollment) is recognised by shape and handed
+        // to the endpoint UNVERIFIED, in every mode too: the secret it is signed with is the master's
+        // alone, so authd there is the verifier (see ReenrollmentRequested). Everything else -- no
+        // header, a non-bearer scheme, a shared-key token, garbage -- is the mode's own business
+        // below, exactly as before tokens.
         if (!authorizationHeader.empty())
         {
             if (const auto token = bearerToken(authorizationHeader))
@@ -102,7 +104,8 @@ namespace remoted::enrollment
                     {
                         case JwtEnrollTokenVerifier::KidKind::Token:
                             return authenticateToken(peeked->text, *token, currentUnixTimeSeconds);
-                        case JwtEnrollTokenVerifier::KidKind::Agent: return remoted::auth::AuthError::InvalidToken;
+                        case JwtEnrollTokenVerifier::KidKind::Agent:
+                            return ReenrollmentRequested {std::string {peeked->text}, std::string {*token}};
                         case JwtEnrollTokenVerifier::KidKind::None: break;
                     }
                 }

@@ -221,6 +221,33 @@ static void test_new_reenroll_secret_is_64_lowercase_hex_and_fresh(void **state)
     assert_string_equal(a, "");
 }
 
+// OS_NewAgentKey() is the generator behind OS_AddNewAgent()'s NULL key, exposed for authd's re-enrollment
+// (#38993), which needs the key BEFORE touching the keystore. Same shape, same refusal rules as the secret.
+static void test_new_agent_key_is_64_lowercase_hex_and_fresh(void **state) {
+    (void) state;
+    char a[AGENT_KEY_HEX_CHARS + 1] = {0};
+    char b[AGENT_KEY_HEX_CHARS + 1] = {0};
+    will_return(__wrap_RAND_bytes, 1); /* pass through to the real CSPRNG */
+    will_return(__wrap_RAND_bytes, 1);
+
+    assert_int_equal(OS_NewAgentKey(a, sizeof(a)), 0);
+    assert_int_equal(OS_NewAgentKey(b, sizeof(b)), 0);
+    assert_true(is_lower_hex_64(a));
+    assert_true(is_lower_hex_64(b));
+    assert_true(OS_IsValidAgentKey(a));
+    assert_string_not_equal(a, b);
+
+    /* A short buffer is refused before the CSPRNG is consulted; a CSPRNG failure leaves it empty and logs
+     * nothing here -- OS_AddNewAgent() (and authd) name the agent in their own message. */
+    char tiny[8] = "xx";
+    assert_int_equal(OS_NewAgentKey(tiny, sizeof(tiny)), -1);
+    assert_int_equal(OS_NewAgentKey(NULL, 0), -1);
+    will_return(__wrap_RAND_bytes, 0);
+    will_return(__wrap_RAND_bytes, 0);
+    assert_int_equal(OS_NewAgentKey(a, sizeof(a)), -1);
+    assert_string_equal(a, "");
+}
+
 static void test_valid_reenroll_secret_accepts_and_rejects_shapes(void **state) {
     (void) state;
     assert_true(OS_IsValidReenrollSecret("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
@@ -245,6 +272,7 @@ int main(void) {
         cmocka_unit_test(test_valid_agent_key_accepts_exactly_64_lowercase_hex),
         cmocka_unit_test(test_valid_agent_key_rejects_other_shapes),
         cmocka_unit_test(test_new_reenroll_secret_is_64_lowercase_hex_and_fresh),
+        cmocka_unit_test(test_new_agent_key_is_64_lowercase_hex_and_fresh),
         cmocka_unit_test(test_valid_reenroll_secret_accepts_and_rejects_shapes),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

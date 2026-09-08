@@ -442,3 +442,64 @@ TEST(EnrollmentE2ETest, RevokedTokenIsRejectedWith401)
     std::remove(passwordPath.c_str());
     std::remove(storePath.c_str());
 }
+
+// -----------------------------------------------------------------------------
+// Re-enrollment (issue #38993), end to end: Password mode configured, the agent presents the bearer
+// signed with its re-enrollment key (the frozen vector: remoted never verifies it, so its 2023 iat is
+// irrelevant here), and the whole pipeline -- authenticator -> AuthdClient with `reenroll` -> authd's
+// rotated answer -- runs against the real handler.
+// -----------------------------------------------------------------------------
+
+TEST(EnrollmentE2ETest, ReenrollmentBearerReachesAuthdAndTheRotatedCredentialsComeBack)
+{
+    const std::string passwordPath = writePasswordFile("MyEnrollmentSecret123");
+    auto keySource = std::make_shared<PasswordKeySource>(passwordPath);
+    EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {true}, keySource};
+
+    const std::string authdPath = makeUniqueSocketPath("enrollment_e2e_reenroll");
+    std::string captured;
+    std::mutex mu;
+    FakeUdsServer authd(
+        authdPath,
+        [&](const std::string& request)
+        {
+            std::lock_guard<std::mutex> lock(mu);
+            captured = request;
+            // The master's answer: same id, new key, new secret.
+            return std::string(
+                R"({"error":0,"data":{"id":"001","name":"agent1","ip":"any","key":"c0ffee02",)"
+                R"("reenroll_secret":"fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"}})");
+        });
+
+    AuthdClient authdClient(authdPath, /*isWorkerNode=*/false, 0, baseConfig().authdResponseTimeoutMs, 0);
+    wazuh::metrics::Manager metricsManager;
+    EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
+    auto handler = makeHandler(authenticator, authdClient, baseConfig(), metrics, passthroughDecoder());
+
+    HttpRequest request;
+    request.method = Method::Post;
+    request.target = "/enroll";
+    request.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
+    request.body = kBody;
+    request.headers.emplace("authorization",
+                            "Bearer " + std::string {jwt_profile::v1::test_vectors::enroll_token::kAgentKidJwt});
+
+    const auto response = dispatch(handler, request);
+    EXPECT_EQ(response.status, 200);
+    const auto body = nlohmann::json::parse(response.body);
+    EXPECT_EQ(body["id"], "001");
+    EXPECT_EQ(body["key"], "c0ffee02");
+    EXPECT_EQ(body["reenroll_secret"], "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210");
+
+    std::lock_guard<std::mutex> lock(mu);
+    const auto wire = nlohmann::json::parse(captured);
+    EXPECT_EQ(wire["arguments"]["reenroll"]["kid"], "001");
+    EXPECT_EQ(wire["arguments"]["reenroll"]["bearer"],
+              std::string {jwt_profile::v1::test_vectors::enroll_token::kAgentKidJwt});
+    EXPECT_FALSE(wire["arguments"].contains("token_id"));
+    EXPECT_EQ(wire["arguments"]["name"], "agent1");
+    EXPECT_EQ(static_cast<std::uint64_t>(metricsManager.get(METRIC_REENROLL_ACCEPTED)->value()), 1U);
+    EXPECT_EQ(static_cast<std::uint64_t>(metricsManager.get(METRIC_TOKEN_ACCEPTED)->value()), 0U);
+
+    std::remove(passwordPath.c_str());
+}

@@ -788,7 +788,7 @@ static void process_message(struct client *client) {
         if (config.worker_node) {
             minfo("Dispatching request to master node");
             // The force registration settings are ignored for workers. The master decides.
-            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL, NULL, NULL)) {
+            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL, NULL, NULL, NULL, NULL)) {
                 client->enrollment_ok = TRUE;
             }
         }
@@ -1390,27 +1390,43 @@ void* run_writer(__attribute__((unused)) void *arg) {
         for (cur = copy_insert; cur; cur = next) {
             next = cur->next;
 
-            mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
+            if (cur->rotate) {
+                /* A re-enrollment (#38993): the agent already has its row, so its credentials are replaced on
+                 * it -- id, date_add and the rest untouched -- rather than inserted (which the duplicate id
+                 * would refuse). Its groups are only overridden when the request named some (below). */
+                mdebug1("[Writer] Performing credential rotation([%s] %s).", cur->id, cur->name);
 
-            gettime(&t0);
-            if (wdb_insert_agent(atoi(cur->id), cur->name, NULL, cur->ip, cur->raw_key, cur->reenroll_secret, cur->group, 1, &wdb_sock)) {
-                mdebug2("The agent %s '%s' already exists in the database.", cur->id, cur->name);
+                gettime(&t0);
+                if (wdb_set_agent_credentials(atoi(cur->id), cur->name, cur->ip, cur->raw_key, cur->reenroll_secret, &wdb_sock)) {
+                    merror("Unable to store the rotated credentials of agent %s '%s' in the database.", cur->id, cur->name);
+                }
+                gettime(&t1);
+                mdebug2("[Writer] wdb_set_agent_credentials(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+            } else {
+                mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
+
+                gettime(&t0);
+                if (wdb_insert_agent(atoi(cur->id), cur->name, NULL, cur->ip, cur->raw_key, cur->reenroll_secret, cur->group, 1, &wdb_sock)) {
+                    mdebug2("The agent %s '%s' already exists in the database.", cur->id, cur->name);
+                }
+                gettime(&t1);
+                mdebug2("[Writer] wdb_insert_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
             }
-            gettime(&t1);
-            mdebug2("[Writer] wdb_insert_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            gettime(&t0);
-            char *groups_to_set = cur->group ? cur->group : "default";
-            if (wdb_set_agent_groups_csv(atoi(cur->id),
-                                         groups_to_set,
-                                         WDB_GROUP_MODE_OVERRIDE,
-                                         w_is_single_node(NULL) ? "synced" : "syncreq",
-                                         &wdb_sock)) {
-                merror("Unable to set agent centralized group: %s (internal error)", groups_to_set);
+            if (!cur->rotate || cur->group) {
+                gettime(&t0);
+                char *groups_to_set = cur->group ? cur->group : "default";
+                if (wdb_set_agent_groups_csv(atoi(cur->id),
+                                             groups_to_set,
+                                             WDB_GROUP_MODE_OVERRIDE,
+                                             w_is_single_node(NULL) ? "synced" : "syncreq",
+                                             &wdb_sock)) {
+                    merror("Unable to set agent centralized group: %s (internal error)", groups_to_set);
+                }
+
+                gettime(&t1);
+                mdebug2("[Writer] wdb_set_agent_groups_csv(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
             }
-
-            gettime(&t1);
-            mdebug2("[Writer] wdb_set_agent_groups_csv(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             os_free(cur->id);
             os_free(cur->name);

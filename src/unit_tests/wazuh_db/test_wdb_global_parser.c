@@ -835,6 +835,153 @@ void test_wdb_parse_global_update_agent_keepalive_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+/* Tests wdb_parse_global_set_agent_credentials (re-enrollment, #38993) */
+
+#define SAC_QUERY_JSON "{\"id\":1,\"name\":\"agent1\",\"register_ip\":\"any\",\"internal_key\":\"k\",\"reenroll_secret\":\"s\"}"
+
+// The accounting every set-agent-credentials query does, before the parser's own work.
+static void expect_set_agent_credentials_accounting(bool timed)
+{
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_set_agent_credentials);
+    if (timed) {
+        will_return(__wrap_gettimeofday, NULL);
+        will_return(__wrap_gettimeofday, NULL);
+        expect_function_call(__wrap_w_inc_global_agent_set_agent_credentials_time);
+    }
+}
+
+void test_wdb_parse_global_set_agent_credentials_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-agent-credentials";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for set-agent-credentials.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: set-agent-credentials");
+
+    expect_set_agent_credentials_accounting(false);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'set-agent-credentials'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_set_agent_credentials_invalid_json(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-agent-credentials {INVALID_JSON}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials {INVALID_JSON}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when setting agent credentials.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+
+    expect_set_agent_credentials_accounting(true);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_set_agent_credentials_invalid_data(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    // A missing secret: the five fields are mandatory -- a key without its secret is refused whole.
+    char query[OS_BUFFER_SIZE] = "global set-agent-credentials {\"id\":1,\"name\":\"agent1\",\"register_ip\":\"any\",\"internal_key\":\"k\"}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials {\"id\":1,\"name\":\"agent1\",\"register_ip\":\"any\",\"internal_key\":\"k\"}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when setting agent credentials.");
+
+    expect_set_agent_credentials_accounting(true);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"name\":\"agent1\",\"registe'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_set_agent_credentials_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-agent-credentials " SAC_QUERY_JSON;
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+
+    expect_value(__wrap_wdb_global_set_agent_credentials, id, 1);
+    expect_string(__wrap_wdb_global_set_agent_credentials, name, "agent1");
+    expect_string(__wrap_wdb_global_set_agent_credentials, register_ip, "any");
+    expect_string(__wrap_wdb_global_set_agent_credentials, internal_key, "k");
+    expect_string(__wrap_wdb_global_set_agent_credentials, reenroll_secret, "s");
+    will_return(__wrap_wdb_global_set_agent_credentials, OS_INVALID);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials " SAC_QUERY_JSON);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
+
+    expect_set_agent_credentials_accounting(true);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_set_agent_credentials_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-agent-credentials " SAC_QUERY_JSON;
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+
+    expect_value(__wrap_wdb_global_set_agent_credentials, id, 1);
+    expect_string(__wrap_wdb_global_set_agent_credentials, name, "agent1");
+    expect_string(__wrap_wdb_global_set_agent_credentials, register_ip, "any");
+    expect_string(__wrap_wdb_global_set_agent_credentials, internal_key, "k");
+    expect_string(__wrap_wdb_global_set_agent_credentials, reenroll_secret, "s");
+    will_return(__wrap_wdb_global_set_agent_credentials, OS_SUCCESS);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials " SAC_QUERY_JSON);
+
+    expect_set_agent_credentials_accounting(true);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 /* Tests wdb_parse_global_update_connection_status */
 
 void test_wdb_parse_global_update_connection_status_syntax_error(void **state)
@@ -4743,6 +4890,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_keepalive_invalid_data, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_keepalive_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_keepalive_success, test_setup, test_teardown),
+        /* Tests wdb_parse_global_set_agent_credentials */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_credentials_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_credentials_invalid_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_credentials_invalid_data, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_credentials_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_credentials_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_update_connection_status */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_connection_status_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_connection_status_invalid_json, test_setup, test_teardown),

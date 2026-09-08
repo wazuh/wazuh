@@ -206,6 +206,20 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_update_keepalive_time(diff);
             }
+        } else if (strcmp(query, "set-agent-credentials") == 0) {
+            w_inc_global_agent_set_agent_credentials();
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for set-agent-credentials.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                gettimeofday(&begin, 0);
+                result = wdb_parse_global_set_agent_credentials(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_set_agent_credentials_time(diff);
+            }
         } else if (strcmp(query, "update-connection-status") == 0) {
             w_inc_global_agent_update_connection_status();
             if (!next) {
@@ -867,6 +881,53 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
             os_free(validated_sync_status);
         } else {
             mdebug1("Global DB Invalid JSON data when updating agent keepalive.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
+            cJSON_Delete(agent_data);
+            return OS_INVALID;
+        }
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+    cJSON_Delete(agent_data);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_set_agent_credentials(wdb_t * wdb, char * input, char * output) {
+    cJSON *agent_data = NULL;
+    const char *error = NULL;
+    cJSON *j_id = NULL;
+    cJSON *j_name = NULL;
+    cJSON *j_register_ip = NULL;
+    cJSON *j_internal_key = NULL;
+    cJSON *j_reenroll_secret = NULL;
+
+    agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
+    if (!agent_data) {
+        mdebug1("Global DB Invalid JSON syntax when setting agent credentials.");
+        mdebug2("Global DB JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        return OS_INVALID;
+    } else {
+        j_id = cJSON_GetObjectItem(agent_data, "id");
+        j_name = cJSON_GetObjectItem(agent_data, "name");
+        j_register_ip = cJSON_GetObjectItem(agent_data, "register_ip");
+        j_internal_key = cJSON_GetObjectItem(agent_data, "internal_key");
+        j_reenroll_secret = cJSON_GetObjectItem(agent_data, "reenroll_secret");
+
+        // The five fields are mandatory: this replaces the agent's whole credential set at once (issue
+        // #38993); a partial one would leave a key without its secret, or the other way round.
+        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_name) && cJSON_IsString(j_register_ip) &&
+            cJSON_IsString(j_internal_key) && cJSON_IsString(j_reenroll_secret)) {
+            if (OS_SUCCESS != wdb_global_set_agent_credentials(wdb, j_id->valueint, j_name->valuestring, j_register_ip->valuestring,
+                                                               j_internal_key->valuestring, j_reenroll_secret->valuestring)) {
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                cJSON_Delete(agent_data);
+                return OS_INVALID;
+            }
+        } else {
+            mdebug1("Global DB Invalid JSON data when setting agent credentials.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
             cJSON_Delete(agent_data);
             return OS_INVALID;

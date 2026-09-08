@@ -20,6 +20,7 @@ typedef enum global_db_access
     WDB_INSERT_AGENT_GROUP,
     WDB_UPDATE_AGENT_DATA,
     WDB_UPDATE_AGENT_KEEPALIVE,
+    WDB_SET_AGENT_CREDENTIALS,
     WDB_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_UPDATE_AGENT_STATUS_CODE,
     WDB_GET_ALL_AGENTS,
@@ -90,6 +91,22 @@ int wdb_update_agent_data(agent_info_data* agent_data, int* sock);
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_update_agent_keepalive(int id, const char* connection_status, const char* sync_status, int* sock);
+
+/**
+ * Rotate an agent's credentials in place (re-enrollment, issue #38993): name, registration IP, key and
+ * re-enrollment secret replaced on the existing row -- id, date_add and everything else kept. authd's
+ * writer thread calls it for a rotated key instead of wdb_insert_agent(), which would refuse the
+ * duplicate id.
+ * @param id Id of the agent.
+ * @param name The agent's (possibly new) name.
+ * @param register_ip The IP the agent re-enrolled from.
+ * @param internal_key The new key, as written to client.keys.
+ * @param reenroll_secret The new re-enrollment secret (64 hex chars).
+ * @param sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @retval OS_SUCCESS on success.
+ * @retval OS_INVALID on errors.
+ */
+int wdb_set_agent_credentials(int id, const char* name, const char* register_ip, const char* internal_key, const char* reenroll_secret, int* sock);
 
 /**
  * @brief Update agent's connection status.

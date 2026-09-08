@@ -362,12 +362,54 @@ namespace remoted::enrollment
             }
         }
 
-        remoted::http::HttpResponse
-        mapAuthdResult(const AuthdResult& result, EnrollmentMetrics& metrics, bool usedEnrollmentToken)
+        // authd's verdict on a re-enrollment bearer (issue #38993). remoted forwarded that bearer
+        // UNVERIFIED (the secret it is signed with is the master's alone), so these three codes are
+        // AUTHENTICATION failures, not business rejections: they take the same uniform 401 +
+        // WWW-Authenticate every credential failure on this server gets -- through authErrorResponse(),
+        // so they land in the remoted.auth.reject.* cell of the AuthError they map to and never name the
+        // reason on the wire -- rather than a 4xx carrying authd's code and message like the codes in
+        // httpStatusForAuthdError(). 9026 folds "no such agent" and "no secret on record" (authd's choice:
+        // telling them apart would let a caller probe ids).
+        std::optional<remoted::auth::AuthError> reenrollmentRejection(int code)
+        {
+            switch (code)
+            {
+                case 9026: return remoted::auth::AuthError::UnknownAgent;
+                case 9027: return remoted::auth::AuthError::InvalidSignature;
+                case 9028: return remoted::auth::AuthError::StaleToken;
+                default: return std::nullopt;
+            }
+        }
+
+        void countReenrollOutcome(const AuthdResult& result, EnrollmentMetrics& metrics)
+        {
+            switch (result.errorCode)
+            {
+                case 0: incReenrollAccepted(metrics); break;
+                case 9026: incReenrollRejectedUnknown(metrics); break;
+                case 9027: incReenrollRejectedSignature(metrics); break;
+                case 9028: incReenrollRejectedStale(metrics); break;
+                default: break; // any other outcome is not about the credential
+            }
+        }
+
+        remoted::http::HttpResponse mapAuthdResult(const AuthdResult& result,
+                                                   EnrollmentMetrics& metrics,
+                                                   bool usedEnrollmentToken,
+                                                   bool requestedReenrollment)
         {
             if (usedEnrollmentToken)
             {
                 countTokenOutcome(result, metrics);
+            }
+            if (requestedReenrollment)
+            {
+                countReenrollOutcome(result, metrics);
+                if (const auto rejection = reenrollmentRejection(result.errorCode))
+                {
+                    incRejectedAuth(metrics);
+                    return authErrorResponse(*rejection);
+                }
             }
 
             if (result.errorCode == 0)
@@ -463,7 +505,10 @@ namespace remoted::enrollment
                 responder->send(authErrorResponse(*authErr));
                 return;
             }
-            const auto& granted = std::get<EnrollmentGranted>(decision);
+            // Granted (with or without a token), or a re-enrollment for authd to judge: its bearer travels
+            // to the master unverified, since the secret that signs it is in the master's global.db alone.
+            const auto* granted = std::get_if<EnrollmentGranted>(&decision);
+            const auto* reenroll = std::get_if<ReenrollmentRequested>(&decision);
 
             // Zero-copy view into request->body, kept alive by the request itself -- same
             // technique AuthGateway uses (authGateway.cpp) for the same reason: one physical copy
@@ -512,12 +557,21 @@ namespace remoted::enrollment
             // The verified enrollment token id, when one was used: authd consumes the use and is the
             // final word on its state (9022/9023/9024 -> 403 above). Absent otherwise, so the wire
             // request of the password and Open paths is byte-identical to what it always was.
-            addRequest.tokenId = granted.tokenId;
-            const bool usedEnrollmentToken = granted.tokenId.has_value();
+            addRequest.tokenId = granted ? granted->tokenId : std::nullopt;
+            // The re-enrollment credential, when the bearer named an agent: verbatim, for authd on the
+            // master to verify and, when it verifies, to rotate that agent's key and secret in place
+            // (9026/9027/9028 -> the uniform 401 in mapAuthdResult()).
+            if (reenroll)
+            {
+                addRequest.reenroll = AuthdAddRequest::ReenrollCredential {reenroll->agentId, reenroll->bearer};
+            }
+            const bool usedEnrollmentToken = granted && granted->tokenId.has_value();
+            const bool requestedReenrollment = reenroll != nullptr;
 
-            authdClient.addAgent(std::move(addRequest),
-                                 [responder, &metrics, usedEnrollmentToken](AuthdResult result)
-                                 { responder->send(mapAuthdResult(result, metrics, usedEnrollmentToken)); });
+            authdClient.addAgent(
+                std::move(addRequest),
+                [responder, &metrics, usedEnrollmentToken, requestedReenrollment](AuthdResult result)
+                { responder->send(mapAuthdResult(result, metrics, usedEnrollmentToken, requestedReenrollment)); });
         };
     }
 

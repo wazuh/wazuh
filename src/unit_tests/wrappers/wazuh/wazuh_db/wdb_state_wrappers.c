@@ -92,6 +92,14 @@ void __wrap_w_inc_global_agent_update_keepalive_time(__attribute__((unused))stru
     function_called();
 }
 
+void __wrap_w_inc_global_agent_set_agent_credentials() {
+    function_called();
+}
+
+void __wrap_w_inc_global_agent_set_agent_credentials_time(__attribute__((unused))struct timeval diff) {
+    function_called();
+}
+
 void __wrap_w_inc_global_agent_update_connection_status() {
     function_called();
 }

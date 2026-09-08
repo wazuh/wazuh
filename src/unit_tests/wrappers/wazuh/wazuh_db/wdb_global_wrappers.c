@@ -73,6 +73,20 @@ int __wrap_wdb_global_update_agent_keepalive(__attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
+int __wrap_wdb_global_set_agent_credentials(__attribute__((unused)) wdb_t *wdb,
+                                            int id,
+                                            const char* name,
+                                            const char* register_ip,
+                                            const char* internal_key,
+                                            const char* reenroll_secret) {
+    check_expected(id);
+    check_expected(name);
+    check_expected(register_ip);
+    check_expected(internal_key);
+    check_expected(reenroll_secret);
+    return mock();
+}
+
 int __wrap_wdb_global_update_agent_connection_status(__attribute__((unused)) wdb_t *wdb,
                                                      int id,
                                                      char* connection_status,

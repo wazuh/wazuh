@@ -73,6 +73,13 @@ typedef struct authd_config_t {
     /// caller gets a refusal instead of a deletion that half-succeeds. Two keys would let the two
     /// halves drift.
     int max_pending_deletes;
+    /// Accepted age / clock skew, in seconds, of the `wazuh-enroll+jwt` bearer an agent RE-enrolls with
+    /// (issue #38993). Read from remoted's `remoted.jwt_max_age` / `remoted.jwt_clock_skew` internal
+    /// options on purpose: remoted forwards that bearer unverified and authd (on the master) is the one
+    /// that verifies it, so it must apply the very window the agent's other bearers get -- one knob, no
+    /// drift between the two daemons judging the same clocks. Profile defaults 60 / 30, ceiling 43200.
+    int jwt_max_age;
+    int jwt_clock_skew;
 } authd_config_t;
 
 /**

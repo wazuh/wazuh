@@ -296,6 +296,10 @@ namespace remoted::enrollment
             {
                 arguments["token_id"] = *request.tokenId;
             }
+            if (request.reenroll)
+            {
+                arguments["reenroll"] = {{"kid", request.reenroll->kid}, {"bearer", request.reenroll->bearer}};
+            }
 
             nlohmann::json payload;
             payload["function"] = "add";

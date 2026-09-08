@@ -38,6 +38,7 @@ typedef struct _global_agent_t {
     uint64_t update_connection_status_queries;
     uint64_t update_status_code_queries;
     uint64_t update_keepalive_queries;
+    uint64_t set_agent_credentials_queries;
     struct timeval delete_agent_time;
     struct timeval disconnect_agents_time;
     struct timeval find_agent_time;
@@ -58,6 +59,7 @@ typedef struct _global_agent_t {
     struct timeval update_connection_status_time;
     struct timeval update_status_code_time;
     struct timeval update_keepalive_time;
+    struct timeval set_agent_credentials_time;
 } global_agent_t;
 
 typedef struct _global_belongs_t {
@@ -198,6 +200,19 @@ void w_inc_global_agent_update_keepalive();
  * @param time Value to increment the counter.
  */
 void w_inc_global_agent_update_keepalive_time(struct timeval time);
+
+/**
+ * @brief Increment set-agent-credentials global agent queries counter
+ *
+ */
+void w_inc_global_agent_set_agent_credentials();
+
+/**
+ * @brief Increment set-agent-credentials global agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_global_agent_set_agent_credentials_time(struct timeval time);
 
 /**
  * @brief Increment update-connection-status global agent queries counter

@@ -81,6 +81,15 @@ namespace
         return std::nullopt;
     }
 
+    std::optional<ReenrollmentRequested> reenrollOf(const EnrollmentDecision& decision)
+    {
+        if (const auto* reenroll = std::get_if<ReenrollmentRequested>(&decision))
+        {
+            return *reenroll;
+        }
+        return std::nullopt;
+    }
+
     std::optional<std::string> tokenIdOf(const EnrollmentDecision& decision)
     {
         const auto* granted = std::get_if<EnrollmentGranted>(&decision);
@@ -232,11 +241,19 @@ TEST_F(PasswordFixture, AnAgentProfileTokenIsRejected)
     EXPECT_EQ(*err, AuthError::InvalidToken);
 }
 
-TEST_F(PasswordFixture, KidInTheHeaderIsRejected)
+TEST_F(PasswordFixture, KidNamingAnAgentIsAReenrollmentNotAPasswordBearer)
 {
-    const auto err = run("Bearer " + std::string {tv::kKidHeaderToken});
-    ASSERT_TRUE(err.has_value());
-    EXPECT_EQ(*err, AuthError::InvalidToken);
+    // Correct password key and signature, but the header carries `kid` = "001": that is the
+    // re-enrollment form (issue #38993), so it is NOT accepted as a password bearer (the shared-key
+    // verifier keeps refusing the extra header -- jwtEnrollSignVerify_test pins that) and not rejected
+    // here either: it goes to authd unverified, and authd, holding the agent's secret, refuses it (9027).
+    const auto decision =
+        authenticator.authenticate(kVersion, "Bearer " + std::string {tv::kKidHeaderToken}, kSmallBody, kNow);
+    EXPECT_EQ(errorOf(decision), std::nullopt);
+    EXPECT_FALSE(std::holds_alternative<EnrollmentGranted>(decision));
+    const auto reenroll = reenrollOf(decision);
+    ASSERT_TRUE(reenroll.has_value());
+    EXPECT_EQ(reenroll->agentId, "001");
 }
 
 TEST_F(PasswordFixture, TokenOlderThanTheAcceptedAgeIsStale)
@@ -524,15 +541,53 @@ TEST(EnrollmentAuthenticatorTokenTest, RevokedTokenIsTokenRevoked)
     std::remove(path.c_str());
 }
 
-TEST_F(TokenFixture, AgentKidIsInvalidTokenUntilReenrollment)
+// -----------------------------------------------------------------------------
+// Re-enrollment (issue #38993): `kid` = canonical agent id. Recognised by shape and handed back
+// UNVERIFIED in every mode -- the secret that signs it is the master's alone, so authd verifies it
+// (its 9026/9027/9028 become the endpoint's uniform 401). Nothing here looks at the signature: the
+// frozen vector (iat 1700000000) is accepted at any `now`, and so is a bearer signed with garbage.
+// -----------------------------------------------------------------------------
+
+TEST_F(TokenFixture, AgentKidIsForwardedAsReenrollmentInOpenMode)
 {
-    // The re-enrollment form (`kid` = canonical agent id) is recognised by shape and refused, in
-    // Open mode too: a presented credential is never waved through.
     EnrollmentAuthenticator open {EnrollmentAuthConfig {false}, nullptr, tokenSource};
-    const auto err =
-        errorOf(open.authenticate(kVersion, "Bearer " + std::string {tvt::kAgentKidJwt}, kSmallBody, kNow));
-    ASSERT_TRUE(err.has_value());
-    EXPECT_EQ(*err, AuthError::InvalidToken);
+    const auto reenroll =
+        reenrollOf(open.authenticate(kVersion, "Bearer " + std::string {tvt::kAgentKidJwt}, kSmallBody, kNow + 9999));
+    ASSERT_TRUE(reenroll.has_value());
+    EXPECT_EQ(reenroll->agentId, std::string {tvt::kAgentKid});
+    EXPECT_EQ(reenroll->bearer, std::string {tvt::kAgentKidJwt}); // verbatim: what authd verifies
+}
+
+TEST_F(TokenFixture, AgentKidIsForwardedAsReenrollmentInPasswordModeWithoutThePasswordKey)
+{
+    // Password mode with no password file at all: the agent bearer is not a password bearer, so
+    // neither the key nor its absence (EnrollmentKeyUnavailable) is consulted.
+    EnrollmentAuthenticator password {EnrollmentAuthConfig {true}, nullptr, tokenSource};
+    const auto reenroll =
+        reenrollOf(password.authenticate(kVersion, "Bearer " + std::string {tvt::kAgentKidJwt}, kSmallBody, kNow));
+    ASSERT_TRUE(reenroll.has_value());
+    EXPECT_EQ(reenroll->agentId, std::string {tvt::kAgentKid});
+}
+
+TEST(EnrollmentAuthenticatorTest, AgentKidIsForwardedWithoutATokenSourceAndWhateverTheSignature)
+{
+    // No token replica (it is about enrollment tokens, not agents), and a bearer whose signature is
+    // garbage: still forwarded -- remoted has no key to check it with; authd does.
+    EnrollmentAuthenticator open {EnrollmentAuthConfig {false}, nullptr};
+    const std::string vector {tvt::kAgentKidJwt};
+    const std::string garbageSignature =
+        vector.substr(0, vector.rfind('.') + 1) + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    const auto reenroll = reenrollOf(open.authenticate(kVersion, "Bearer " + garbageSignature, kSmallBody, kNow));
+    ASSERT_TRUE(reenroll.has_value());
+    EXPECT_EQ(reenroll->agentId, "001");
+    EXPECT_EQ(reenroll->bearer, garbageSignature);
+
+    // The gates that ARE remoted's still apply to it: protocol version and body cap.
+    EXPECT_EQ(errorOf(open.authenticate("", "Bearer " + vector, kSmallBody, kNow)), AuthError::MissingProtocolVersion);
+    EnrollmentAuthConfig capped;
+    capped.maxBodySize = 10;
+    EnrollmentAuthenticator small {capped, nullptr};
+    EXPECT_EQ(errorOf(small.authenticate(kVersion, "Bearer " + vector, 11, kNow)), AuthError::BodyTooLarge);
 }
 
 TEST_F(TokenFixture, NoTokenSourceRejectsTokensAsUnknown)
