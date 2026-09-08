@@ -15,6 +15,9 @@
 #include "auth.h"
 #include "os_err.h"
 #include "authd-config.h"
+#include "enrollment_token_store.h"
+#include "enrollment_token_mint.h"
+#include <time.h>
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -44,7 +47,11 @@ typedef enum auth_local_err {
     EPENDINGPURGE,
     EINVALIDKEY,
     EINVALIDID,
-    EDELETEBACKLOG // Append only: ERRORS[] below is indexed directly by these values.
+    EDELETEBACKLOG, // Append only: ERRORS[] below is indexed directly by these values.
+    ETOKENNOTFOUND,
+    ETOKENEXPIRED,
+    ETOKENEXHAUSTED,
+    EMINTREFUSED
 } auth_local_err;
 
 
@@ -83,11 +90,22 @@ static const struct {
     // remedy is to wait rather than to pick a different id. 9021 rather than 9020: both features
     // appended their code independently, and 9020 was already taken by the id check above -- the
     // framework maps the two to different API errors.
-    { 9021, "Too many agent deletions are pending" }
+    { 9021, "Too many agent deletions are pending" },
+    // Enrollment tokens (#38993). One code for "unknown" and "revoked" on purpose: ids are 128 random
+    // bits, so nothing is protected by telling them apart, and one answer keeps the callers' mapping
+    // simple. remoted's /enroll checks these too before opening this socket; authd is the side that
+    // counts uses, which is why 9024 only exists here.
+    { 9022, "Enrollment token not found or revoked" },
+    { 9023, "Enrollment token expired" },
+    { 9024, "Enrollment token uses exhausted" },
+    // A mint the running listener cannot honour. The response message carries the reason after
+    // this prefix -- "Enrollment token refused: address not in certificate SAN" -- see
+    // local_token_create(): the operator needs the reason, the code alone is not actionable.
+    { 9025, "Enrollment token refused" }
 };
 
-// Dispatch local request
-static char* local_dispatch(const char *input);
+// Dispatch local request. STATIC: the unit tests drive the token verbs and `add` through it.
+STATIC char* local_dispatch(const char *input);
 
 // Per-connection thread body: recv, dispatch, send, close. See run_local_server()'s comment on
 // why this now runs on its own detached thread instead of inline on the accept loop.
@@ -197,6 +215,13 @@ static cJSON* local_create_agent_delete_response(void);
 
 // Generates an error json response
 static cJSON* local_create_error_response(int code, const char *message);
+// Enrollment token verbs (#38993). On failure they return NULL and set *ierror to the ERRORS[] index,
+// except the 9025 refusal, which is a complete response because its message carries the detail.
+static cJSON* local_token_create(cJSON *arguments, int *ierror);
+static cJSON* local_token_list(void);
+static cJSON* local_token_revoke(cJSON *arguments, int *ierror);
+// Whether `text` has the shape of a token id: exactly ETOKEN_ID_CHARS canonical base64url chars.
+static int is_token_id(const char *text);
 
 // Services one already-accepted connection: set the recv timeout, read one request, dispatch, send
 // the reply, close. Shared by the threaded path and run_local_server()'s at-the-cap inline
@@ -406,6 +431,7 @@ char* local_dispatch(const char *input) {
             char *ip = NULL;
             char *key_hash = NULL;
             char *key = NULL;
+            char *token_id = NULL;
             // Borrowed from the parsed JSON. Kept separate from the enclosing `groups`, which owns
             // wstr_delete_repeated_groups()'s allocation and is what the fail path frees.
             char *groups_arg = NULL;
@@ -458,8 +484,17 @@ char* local_dispatch(const char *input) {
             }
 
             if (get_optional_string_arg(arguments, "key_hash", &key_hash) < 0 ||
-                get_optional_string_arg(arguments, "key", &key) < 0) {
+                get_optional_string_arg(arguments, "key", &key) < 0 ||
+                get_optional_string_arg(arguments, "token_id", &token_id) < 0) {
                 ierror = EJSON;
+                goto fail;
+            }
+
+            // A token id of the wrong shape is "not found" (9022), not a JSON error: the caller
+            // presented a credential and the answer is that no such credential exists. Checked on
+            // both roles so a worker never forwards garbage to the master.
+            if (token_id && !is_token_id(token_id)) {
+                ierror = ETOKENNOTFOUND;
                 goto fail;
             }
 
@@ -517,9 +552,37 @@ char* local_dispatch(const char *input) {
                 }
                 // Self-enrollment shape. force is ignored for workers, as on port 1515: the master
                 // assigns the ID, generates the key, and decides force-replace itself.
-                response = local_add_clustered(name, ip, groups, key_hash);
+                response = local_add_clustered(name, ip, groups, key_hash, token_id);
             } else {
+                if (token_id) {
+                    // Reserve the use BEFORE the agent exists: adding first and finding the token
+                    // exhausted would leave an agent to roll back. The reservation is undone below
+                    // when local_add() refuses, so a duplicate name never burns a use.
+                    etoken_store_reload_if_changed();
+                    switch (etoken_store_consume(token_id, time(NULL))) {
+                    case ETOKEN_USE_OK:
+                        break;
+                    case ETOKEN_USE_EXPIRED:
+                        ierror = ETOKENEXPIRED;
+                        goto fail;
+                    case ETOKEN_USE_EXHAUSTED:
+                        ierror = ETOKENEXHAUSTED;
+                        goto fail;
+                    case ETOKEN_USE_NOT_FOUND:
+                    default:
+                        ierror = ETOKENNOTFOUND;
+                        goto fail;
+                    }
+                }
                 response = local_add(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options);
+                if (token_id && response) {
+                    cJSON *err = cJSON_GetObjectItem(response, "error");
+                    if (cJSON_IsNumber(err) && err->valueint == 0) {
+                        minfo("Enrollment token '%s' consumed by agent '%s'.", token_id, name);
+                    } else {
+                        etoken_store_release(token_id);
+                    }
+                }
             }
 
             os_free(groups);
@@ -566,8 +629,41 @@ char* local_dispatch(const char *input) {
             }
 
             response = local_get(item->valuestring);
+        } else if (!strcmp(function->valuestring, "token_create")) {
+            // Minting writes the store, and only the master writes it (T8): a worker answers the
+            // same 9015 as every other write it cannot perform. Checked before parsing the
+            // arguments so a worker never reads the listener certificate for nothing.
+            if (config.worker_node) {
+                ierror = ENOMASTER;
+                goto fail;
+            }
+            if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
+                ierror = ENOARGUMENT;
+                goto fail;
+            }
+            etoken_store_reload_if_changed();
+            if (response = local_token_create(arguments, &ierror), !response) {
+                goto fail;
+            }
+        } else if (!strcmp(function->valuestring, "token_list")) {
+            // Read-only, so any node answers from its replica (a worker sees what the cluster synced).
+            etoken_store_reload_if_changed();
+            response = local_token_list();
+        } else if (!strcmp(function->valuestring, "token_revoke")) {
+            if (config.worker_node) {
+                ierror = ENOMASTER;
+                goto fail;
+            }
+            if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
+                ierror = ENOARGUMENT;
+                goto fail;
+            }
+            etoken_store_reload_if_changed();
+            if (response = local_token_revoke(arguments, &ierror), !response) {
+                goto fail;
+            }
         } else {
-            // A valid string, but none of the three above. Without this branch no handler ran and
+            // A valid string, but none of the verbs above. Without this branch no handler ran and
             // the !response check below reported 9001 "Internal error" -- blaming the manager for
             // the caller's typo.
             ierror = ENOFUNCTION;
@@ -778,7 +874,7 @@ fail:
 }
 
 // Forward an "add" request to the master node over the cluster (worker nodes only)
-cJSON* local_add_clustered(const char *name, const char *ip, const char *groups, const char *key_hash) {
+cJSON* local_add_clustered(const char *name, const char *ip, const char *groups, const char *key_hash, const char *token_id) {
     char *new_id = NULL;
     char *new_key = NULL;
     char err_response[OS_SIZE_2048] = {0};
@@ -790,7 +886,7 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
     minfo("Dispatching enrollment request to master node");
 
     result = w_request_agent_add_clustered(err_response, name, ip, groups, key_hash,
-                                            &new_id, &new_key, NULL, NULL, &master_error_code);
+                                            &new_id, &new_key, NULL, NULL, token_id, &master_error_code);
 
     if (result == 0) {
         response = local_create_agent_response(new_id, name, ip, new_key);
@@ -870,6 +966,168 @@ cJSON* local_get(const char *id) {
     }
 
     w_mutex_unlock(&mutex_keys);
+    return response;
+}
+
+// ---------------------------------------------------------------- enrollment tokens (#38993)
+
+static int is_token_id(const char *text) {
+    uint8_t *raw = NULL;
+    size_t raw_len = 0;
+    int ok;
+
+    if (text == NULL || strlen(text) != ETOKEN_ID_CHARS) {
+        return 0;
+    }
+
+    ok = (w_b64url_decode(text, &raw, &raw_len) == 0 && raw_len == W_ETOKEN_ID_BYTES);
+    free(raw);
+
+    return ok;
+}
+
+// Optional non-negative integer argument. 0 = absent, 1 = present (*out set), -1 = wrong type/negative.
+static int get_optional_long_arg(cJSON *arguments, const char *key, long *out) {
+    cJSON *item = cJSON_GetObjectItem(arguments, key);
+
+    if (item == NULL || cJSON_IsNull(item)) {
+        return 0;
+    }
+
+    if (!cJSON_IsNumber(item) || item->valuedouble < 0 || item->valuedouble > (double)LONG_MAX) {
+        return -1;
+    }
+
+    *out = (long)item->valuedouble;
+
+    return 1;
+}
+
+// Optional boolean argument. 0 = absent, 1 = present (*out set), -1 = wrong type.
+static int get_optional_bool_arg(cJSON *arguments, const char *key, int *out) {
+    cJSON *item = cJSON_GetObjectItem(arguments, key);
+
+    if (item == NULL || cJSON_IsNull(item)) {
+        return 0;
+    }
+
+    if (!cJSON_IsBool(item)) {
+        return -1;
+    }
+
+    *out = cJSON_IsTrue(item) ? 1 : 0;
+
+    return 1;
+}
+
+static cJSON* local_token_create(cJSON *arguments, int *ierror) {
+    etoken_mint_request_t req = {0};
+    etoken_mint_t mint = {0};
+    char detail[OS_SIZE_256] = {0};
+    char *prefix = NULL;
+    char *description = NULL;
+    cJSON *item = NULL;
+    cJSON *data = NULL;
+    cJSON *response = NULL;
+    long port = 0;
+    long ttl = 0;
+    long max_uses = 0;
+    int embed_ca = 0;
+    int no_credential = 0;
+    int rc;
+
+    // `address` is the one mandatory argument: the host the agents will connect to.
+    if (item = cJSON_GetObjectItem(arguments, "address"), !cJSON_IsString(item) || item->valuestring[0] == '\0') {
+        *ierror = ENOARGUMENT;
+        return NULL;
+    }
+    req.address = item->valuestring;
+
+    if (get_optional_string_arg(arguments, "prefix", &prefix) < 0 ||
+        get_optional_string_arg(arguments, "description", &description) < 0 ||
+        get_optional_long_arg(arguments, "port", &port) < 0 ||
+        get_optional_long_arg(arguments, "ttl", &ttl) < 0 ||
+        get_optional_long_arg(arguments, "max_uses", &max_uses) < 0 ||
+        get_optional_bool_arg(arguments, "embed_ca", &embed_ca) < 0 ||
+        get_optional_bool_arg(arguments, "no_credential", &no_credential) < 0) {
+        *ierror = EJSON;
+        return NULL;
+    }
+
+    if (max_uses > UINT_MAX) {
+        *ierror = EJSON;
+        return NULL;
+    }
+
+    req.port = port;
+    req.prefix = prefix;
+    req.ttl = ttl;
+    req.max_uses = (unsigned int)max_uses;
+    req.embed_ca = embed_ca;
+    req.no_credential = no_credential;
+    req.description = description;
+
+    rc = etoken_mint_prepare(&req, &mint, detail, sizeof(detail));
+
+    if (rc == -1) {
+        // The one error whose message is built at runtime: the code says "refused", the detail
+        // says why, and the operator fixes the address or the certificates accordingly.
+        char message[OS_SIZE_512];
+
+        snprintf(message, sizeof(message), "%s: %s", ERRORS[EMINTREFUSED].message, detail);
+        mwarn("%s (address '%s').", message, req.address);
+        return local_create_error_response(ERRORS[EMINTREFUSED].code, message);
+    }
+
+    if (rc != 0) {
+        merror("Cannot prepare an enrollment token: %s.", detail);
+        *ierror = EINTERNAL;
+        return NULL;
+    }
+
+    if (etoken_store_create(&mint, time(NULL), &data) != 0) {
+        etoken_mint_free(&mint);
+        *ierror = EINTERNAL;
+        return NULL;
+    }
+
+    etoken_mint_free(&mint);
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddItemToObject(response, "data", data);
+
+    return response;
+}
+
+static cJSON* local_token_list(void) {
+    cJSON *response = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddItemToObject(response, "data", etoken_store_list());
+
+    return response;
+}
+
+static cJSON* local_token_revoke(cJSON *arguments, int *ierror) {
+    cJSON *item = NULL;
+    cJSON *response = NULL;
+
+    if (item = cJSON_GetObjectItem(arguments, "id"), !cJSON_IsString(item)) {
+        *ierror = ENOARGUMENT;
+        return NULL;
+    }
+
+    // Wrong shape or unknown: the same 9022, see ERRORS[].
+    if (!is_token_id(item->valuestring) || etoken_store_revoke(item->valuestring) != 0) {
+        *ierror = ETOKENNOTFOUND;
+        return NULL;
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddItemToObject(response, "data", cJSON_CreateObject());
+
     return response;
 }
 

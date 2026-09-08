@@ -36,7 +36,7 @@
 
 /* redefinitons/wrapping */
 
-extern cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char *groups, const char *key_hash, const char *key, const char *id, authd_force_options_t *force_options);
+extern cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char *groups, const char *key_hash, const char *key, const char *id, authd_force_options_t *force_options, const char *token_id);
 extern cJSON* w_create_agent_remove_payload(const char *id, const int purge);
 extern cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 extern int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error, int *error_code);
@@ -65,7 +65,7 @@ static void test_create_agent_add_payload(void **state) {
     force_options.key_mismatch = false;
     force_options.after_registration_time = 0;
 
-    payload = w_create_agent_add_payload(agent, ip, groups, key_hash, key, id, &force_options);
+    payload = w_create_agent_add_payload(agent, ip, groups, key_hash, key, id, &force_options, NULL);
 
     assert_non_null(payload);
     cJSON* function = cJSON_GetObjectItem(payload, "function");
@@ -98,11 +98,30 @@ static void test_create_agent_add_payload(void **state) {
     char* str_force = cJSON_PrintUnformatted(j_force);
     assert_string_equal(str_force, expected_force_payload);
 
+    // No enrollment token was presented: the member must be absent, not null.
+    assert_null(cJSON_GetObjectItem(arguments, "token_id"));
+
     cJSON_Delete(payload);
     os_free(str_force);
 }
 
 #ifndef WIN32
+// An enrollment presented with a token (#38993): the worker forwards the token id so the master can
+// count the use; the master's local_dispatch reads it back as `arguments.token_id`.
+static void test_create_agent_add_payload_carries_token_id(void **state) {
+    (void)state;
+    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, "AAECAwQFBgcICQoLDA0ODw");
+    assert_non_null(payload);
+    cJSON* arguments = cJSON_GetObjectItem(payload, "arguments");
+    assert_non_null(arguments);
+    cJSON* token_id = cJSON_GetObjectItem(arguments, "token_id");
+    assert_non_null(token_id);
+    assert_string_equal(token_id->valuestring, "AAECAwQFBgcICQoLDA0ODw");
+    assert_null(cJSON_GetObjectItem(arguments, "groups"));
+    assert_null(cJSON_GetObjectItem(arguments, "id"));
+    cJSON_Delete(payload);
+}
+
 static void test_create_agent_remove_payload(void **state) {
     char* id = "001";
     int purge = 1;
@@ -885,6 +904,7 @@ static void test_getPrimaryIP_sysinfo_network_iface_valid_gateway_multiple_addre
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_create_agent_add_payload),
+        cmocka_unit_test(test_create_agent_add_payload_carries_token_id),
         cmocka_unit_test(test_parse_agent_add_response),
         cmocka_unit_test(test_os_write_agent_info_success),
         #ifndef WIN32

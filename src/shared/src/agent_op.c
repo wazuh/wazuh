@@ -54,7 +54,8 @@ static cJSON* w_create_agent_add_payload(const char *name,
                                          const char *key_hash,
                                          const char *key,
                                          const char *id,
-                                         authd_force_options_t *force_options);
+                                         authd_force_options_t *force_options,
+                                         const char *token_id);
 
 
 /* Read the agent name for the current agent
@@ -333,7 +334,8 @@ static cJSON* w_create_agent_add_payload(const char *name,
                                          const char *key_hash,
                                          const char *key,
                                          const char *id,
-                                         authd_force_options_t *force_options) {
+                                         authd_force_options_t *force_options,
+                                         const char *token_id) {
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
 
@@ -356,6 +358,11 @@ static cJSON* w_create_agent_add_payload(const char *name,
 
     if (id) {
         cJSON_AddStringToObject(arguments, "id", id);
+    }
+
+    // Enrollment token (#38993): only the id travels; the master resolves and counts it.
+    if (token_id) {
+        cJSON_AddStringToObject(arguments, "token_id", token_id);
     }
 
     cJSON* j_force = w_force_options_to_json(force_options);
@@ -602,13 +609,14 @@ int w_request_agent_add_clustered(char *err_response,
                                   char **key,
                                   authd_force_options_t *force_options,
                                   const char *agent_id,
+                                  const char *token_id,
                                   int *master_error_code) {
     int result;
     char response[OS_MAXSTR + 1];
     char new_id[FILE_SIZE+1] = { '\0' };
     char new_key[KEYSIZE+1] = { '\0' };
 
-    cJSON* message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force_options);
+    cJSON* message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force_options, token_id);
 
     cJSON* payload = w_create_sendsync_payload("authd", message);
     char* output = cJSON_PrintUnformatted(payload);
@@ -658,7 +666,7 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
 int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, authd_force_options_t *force_options, const int json_format, const char *agent_id, int exit_on_error) {
     int result;
 
-    cJSON* payload = w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force_options);
+    cJSON* payload = w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force_options, NULL);
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
 

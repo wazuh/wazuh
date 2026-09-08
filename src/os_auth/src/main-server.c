@@ -34,6 +34,7 @@
 #include "os_err.h"
 #include <sys/epoll.h>
 #include "manager_task_op.h"
+#include "enrollment_token_store.h"
 
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
@@ -391,6 +392,20 @@ int main(int argc, char **argv)
         break;
     }
 
+    /* Enrollment tokens (#38993): the master mints them over auth.sock and the workers hold the copy
+     * the cluster synchronises next to authd.pass. Loaded once here; every token verb and every
+     * enrollment that presents a token re-checks the file's mtime (etoken_store_reload_if_changed),
+     * so a freshly synchronised copy is seen at once and no extra thread is needed. An absent file
+     * just means "no tokens"; a malformed one is reported and leaves token enrollments rejected. */
+    etoken_store_init(ENROLLMENT_TOKENS_FILE);
+    if (etoken_store_load() == 0) {
+        if (etoken_store_count() > 0) {
+            minfo("%d enrollment token(s) loaded from '%s'.", etoken_store_count(), ENROLLMENT_TOKENS_FILE);
+        }
+    } else {
+        mwarn("Could not load the enrollment tokens from '%s'; enrollments presenting a token will be rejected until the file is fixed.", ENROLLMENT_TOKENS_FILE);
+    }
+
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
@@ -734,7 +749,7 @@ static void process_message(struct client *client) {
         if (config.worker_node) {
             minfo("Dispatching request to master node");
             // The force registration settings are ignored for workers. The master decides.
-            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL)) {
+            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL, NULL)) {
                 client->enrollment_ok = TRUE;
             }
         }
@@ -1478,6 +1493,7 @@ void handler(int signum) {
 
 /* Exit handler */
 void cleanup() {
+    etoken_store_free();
     DeletePID(ARGV0);
 }
 
