@@ -227,26 +227,38 @@ namespace remoted::endpoints
     {
         const auto pe = remoted::auth::publicErrorFor(err);
 
-        // Log AND count the PRE-collapse reason. publicErrorFor() deliberately folds every
-        // distinct credential failure into one generic 401 so a client cannot tell which check
-        // failed -- but that also destroyed the distinction for the operator, since nothing
-        // logged it. This is the single funnel every client-visible auth rejection passes
-        // through, so one call here covers all of them.
+        // Log AND count the FINE reason. The wire names the public class publicErrorFor() maps it to
+        // (issue #38993) -- coarser on purpose: several reasons share `invalid_signature` -- so the
+        // full distinction only exists for the operator, here. This is the single funnel every
+        // client-visible auth rejection passes through, so one call covers all of them.
         logRejection(err, pe.status, agentContext);
         countRejection(err);
 
+        // Body: {"error":"<message>","code":<status>}, except that a 401's `code` is its class
+        // (string): the same value the challenge's error_description carries, so a client that reads
+        // only the body and one that reads only the header learn the same thing.
         std::string body {R"({"error":")"};
         body += pe.message; // static, quote/backslash-free messages
         body += R"(","code":)";
-        body += std::to_string(pe.status);
+        if (pe.code != nullptr)
+        {
+            body += '"';
+            body += pe.code; // static, [a-z_] only
+            body += '"';
+        }
+        else
+        {
+            body += std::to_string(pe.status);
+        }
         body += "}";
         auto response = remoted::http::HttpResponse::json(pe.status, std::move(body));
-        if (pe.status == 401)
+        if (pe.challenge != nullptr)
         {
-            // RFC 6750 §3: a 401 to a bearer-protected resource carries the challenge. Uniform for
-            // every credential failure (it names the scheme, never the reason) and absent from the
+            // RFC 6750 §3: a 401 to a bearer-protected resource carries the challenge, and since
+            // #38993 the challenge names the class (`error="invalid_token", error_description=...`,
+            // or `error="invalid_request"` when no usable credential was presented). Absent from the
             // non-credential 400/413/415, which are not authentication failures.
-            response.headers.emplace_back("WWW-Authenticate", "Bearer");
+            response.headers.emplace_back("WWW-Authenticate", pe.challenge);
         }
         return response;
     }
