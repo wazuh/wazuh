@@ -21,14 +21,7 @@
 #include <pthread.h>
 #endif
 
-/**
- * @brief Condition variable whose waits are immune to system-clock jumps.
- *
- * std::condition_variable::wait_for is monotonic only when libstdc++ was built
- * with _GLIBCXX_USE_PTHREAD_COND_CLOCKWAIT (glibc >= 2.30). The agent's
- * toolchain predates it, so its deadlines land on CLOCK_REALTIME and a
- * backward clock jump of N seconds extends every pending wait by N seconds.
- */
+/// Condition variable whose waits are immune to system-clock jumps (see PR description for the libstdc++/glibc rationale).
 #if defined(__linux__)
 
 class MonotonicCondition final
@@ -81,6 +74,19 @@ public:
         pthread_cond_broadcast(&m_cond);
     }
 
+    void notifyOne()
+    {
+        pthread_cond_signal(&m_cond);
+    }
+
+    /// The clock this instance's waits are actually bound to; CLOCK_REALTIME
+    /// means pthread_condattr_setclock(CLOCK_MONOTONIC) failed and waits fell
+    /// back to wall-clock semantics.
+    clockid_t clockId() const
+    {
+        return m_clock;
+    }
+
 private:
     std::chrono::nanoseconds now() const
     {
@@ -115,6 +121,11 @@ public:
     void notifyAll()
     {
         m_cv.notify_all();
+    }
+
+    void notifyOne()
+    {
+        m_cv.notify_one();
     }
 
 private:

@@ -42,7 +42,7 @@ PersistentQueue::~PersistentQueue()
         std::lock_guard<std::mutex> lock(m_mutex);
         m_stop = true;
     }
-    m_cv.notify_one();
+    m_cv.notifyOne();
 
     if (m_flushThread.joinable())
     {
@@ -66,7 +66,7 @@ void PersistentQueue::submit(const std::string& id,
 
     if (shouldNotify)
     {
-        m_cv.notify_one();
+        m_cv.notifyOne();
     }
 }
 
@@ -79,7 +79,7 @@ void PersistentQueue::flushLoop()
 
         {
             std::unique_lock<std::mutex> lock(m_mutex);
-            m_cv.wait_for(lock, FLUSH_INTERVAL, [this]
+            m_cv.waitFor(lock, FLUSH_INTERVAL, [this]
             {
                 return m_buffers[m_currentIdx].size() >= FLUSH_BATCH_SIZE || m_stop.load();
             });
