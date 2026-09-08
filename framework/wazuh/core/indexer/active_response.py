@@ -469,8 +469,14 @@ class ActiveResponseHelpers:
                     discards["invalid_schema"] += 1
                 # Terminal: the document will never validate, so the page moves past it and the
                 # response is lost. Above debug level because that loss is silent otherwise.
+                # One line: the exception itself carries the whole schema and instance, up to 63
+                # lines for a failure at the root, and json_path is what names the field.
                 ActiveResponseHelpers.logger.warning(
-                    f"Discarding active response document `{doc['_id']}` (`{doc['_index']}`). Reason: {e})"
+                    f"Discarding active response document `{doc['_id']}` (`{doc['_index']}`). "
+                    f"Reason: {e.json_path}: {e.message}"
+                )
+                ActiveResponseHelpers.logger.debug(
+                    f"Validation report for `{doc['_id']}` (`{doc['_index']}`): {e}"
                 )
 
         return docs
@@ -915,7 +921,9 @@ class ActiveResponseFetchTask:
             )
             return defaults[key]
 
-        self.polling_interval: int = settings["active_response_polling"]
+        self.polling_interval: int = bounded(
+            "active_response_polling", lambda v: isinstance(v, int) and v >= 1, "a positive integer"
+        )
         self.page_size: int = bounded(
             "active_response_page_size", lambda v: isinstance(v, int) and v >= 1, "a positive integer"
         )

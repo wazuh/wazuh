@@ -248,7 +248,7 @@ does a value out of range.
 
 | Key | Default | Meaning | Trade-off |
 |---|---|---|---|
-| `active_response_polling` | `30` | Seconds between two reads, on every node | Shorter means faster delivery and more searches per node |
+| `active_response_polling` | `30` | Seconds between two reads, on every node; a positive integer | Shorter means faster delivery and more searches per node |
 | `active_response_page_size` | `1000` | Documents per read; a positive integer | Larger means fewer round trips and a longer distance between two cursor writes, so more documents are dispatched again after a hold or a crash |
 | `active_response_event_grace` | `120` | Seconds a response may wait for its event to become visible before it is discarded; `0` disables the hold | Longer tolerates slower event ingest at the cost of delaying every response behind the held one |
 

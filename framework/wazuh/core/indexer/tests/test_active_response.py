@@ -1133,6 +1133,9 @@ class TestActiveResponseFetchTask:
         @pytest.mark.parametrize(
             "key,value",
             [
+                ("active_response_polling", 0),
+                ("active_response_polling", -30),
+                ("active_response_polling", "30"),
                 ("active_response_page_size", 0),
                 ("active_response_page_size", "1000"),
                 ("active_response_event_grace", -1),
@@ -1144,7 +1147,11 @@ class TestActiveResponseFetchTask:
 
             task = ActiveResponseFetchTask(server)
 
-            assert (task.page_size, task.event_grace) == (DEFAULT_PAGE_SIZE, EVENT_VISIBILITY_GRACE_SECONDS)
+            assert (task.polling_interval, task.page_size, task.event_grace) == (
+                task.DEFAULT_POLLING_INTERVAL,
+                DEFAULT_PAGE_SIZE,
+                EVENT_VISIBILITY_GRACE_SECONDS,
+            )
             task.logger.warning.assert_called_once()
             assert key in str(task.logger.warning.call_args)
 
@@ -1462,7 +1469,12 @@ class TestCycleSurvivesAnyDocument:
         task_manager, bookmark, logger = await _run_cycle(hits)
 
         warnings = [str(call.args[0]) for call in logger.warning.call_args_list]
-        assert any("`poison`" in message and "Reason:" in message for message in warnings)
+        discard = next(message for message in warnings if "`poison`" in message)
+        assert "Reason:" in discard
+        # One line, and it names the field: the exception's own text is the whole schema and
+        # instance, which floods cluster.log at a page size of 1000.
+        assert "\n" not in discard
+        assert "$.wazuh.active_response.agent_id" in discard
         assert task_manager.created == [("good", "007")]
         assert bookmark.updates == [[2, "good"]]
 
