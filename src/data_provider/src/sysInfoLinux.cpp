@@ -120,8 +120,9 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
         }
     }
 
-    // comm is capped at TASK_COMM_LEN; fall back to it only for kernel threads (no cmdline).
-    jsProcessInfo["name"] = commandLine.empty() ? process->cmd : std::filesystem::path(commandLine).filename().string();
+    // comm is capped at TASK_COMM_LEN; fall back to it whenever cmdline can't give a name.
+    const std::string baseName{commandLine.empty() ? std::string{} : std::filesystem::path(commandLine).filename().string()};
+    jsProcessInfo["name"] = baseName.empty() ? process->cmd : baseName;
     jsProcessInfo["cmd"]        = commandLine;
     jsProcessInfo["argvs"]      = commandLineArgs;
     jsProcessInfo["euser"]      = process->euser;
