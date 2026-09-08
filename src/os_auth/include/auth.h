@@ -206,7 +206,8 @@ cJSON* local_add(const char *id,
 cJSON* local_add_clustered(const char *name,
                            const char *ip,
                            const char *groups,
-                           const char *key_hash);
+                           const char *key_hash,
+                           const char *token_id);
 
 /**
  * @brief Returns a MD5 hash of some random data collected from different sources.
