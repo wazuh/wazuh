@@ -74,6 +74,27 @@ else()
 list(APPEND shared_tests_flags "${STRING_OP_BASE_FLAGS}")
 endif()
 
+# Enrollment token primitives. b64url_op.c is pure C and ships in every target, so its test
+# follows test_string_op; x509_op.c and enrollment_token.c need OpenSSL, which only the
+# manager target links (through WAZUHEXT), so they follow test_ssl_op.
+list(APPEND shared_tests_names "test_b64url_op")
+set(B64URL_OP_BASE_FLAGS "${DEBUG_OP_WRAPPERS} -Wl,--wrap,syscom_dispatch")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "${B64URL_OP_BASE_FLAGS} -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=fim_db_teardown")
+else()
+list(APPEND shared_tests_flags "${B64URL_OP_BASE_FLAGS}")
+endif()
+
+if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_x509_op")
+list(APPEND shared_tests_flags " ")
+
+list(APPEND shared_tests_names "test_enrollment_token")
+list(APPEND shared_tests_flags " ")
+endif()
+
 list(APPEND shared_tests_names "test_expression")
 set(EXPRESSION_BASE_FLAGS "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,OSRegex_Compile \
                            -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile")
