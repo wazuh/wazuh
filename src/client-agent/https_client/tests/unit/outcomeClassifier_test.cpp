@@ -94,7 +94,9 @@ INSTANTIATE_TEST_SUITE_P(
         ClassifierCase {TransportStatus::Ok, 415, OutcomeClass::CompressionRejected},
         // Permanent for this payload.
         ClassifierCase {TransportStatus::Ok, 400, OutcomeClass::Permanent},
-        ClassifierCase {TransportStatus::Ok, 404, OutcomeClass::Permanent}));
+        // 404 is NOT Permanent: nothing at the target says nothing about the
+        // payload, so the two classes get opposite treatment downstream.
+        ClassifierCase {TransportStatus::Ok, 404, OutcomeClass::RouteNotFound}));
 
 TEST(OutcomeClassifierTest, AbortedIsInterruptedNeverOk)
 {
@@ -114,6 +116,9 @@ TEST(OutcomeClassifierTest, HcResultMapping)
     EXPECT_EQ(HC_RESULT_BACKPRESSURE, toHcResult(OutcomeClass::BackPressure));
     EXPECT_EQ(HC_RESULT_AUTH_FAIL, toHcResult(OutcomeClass::AuthFail));
     EXPECT_EQ(HC_RESULT_PERMANENT, toHcResult(OutcomeClass::Permanent));
+    // Split from Permanent inside the module only: both are terminal for the
+    // request as sent, so the C ABI sees no change.
+    EXPECT_EQ(HC_RESULT_PERMANENT, toHcResult(OutcomeClass::RouteNotFound));
     EXPECT_EQ(HC_RESULT_PERMANENT, toHcResult(OutcomeClass::VersionRejected));
     EXPECT_EQ(HC_RESULT_PERMANENT, toHcResult(OutcomeClass::CompressionRejected));
     EXPECT_EQ(HC_RESULT_ERROR, toHcResult(OutcomeClass::Interrupted));

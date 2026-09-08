@@ -13,6 +13,7 @@
 
 #include "digest.hpp"
 #include "loggerHelper.h"
+#include "requestTarget.hpp"
 #include "taskBatch.hpp"
 
 #include "external/nlohmann/json.hpp"
@@ -608,6 +609,18 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
     {
         m_undeliverableStreak = 0;
 
+        // Pairs with the 404 error below, which is otherwise a one-shot line an
+        // operator cannot date: without a matching recovery the log never says
+        // whether the route is still broken or was fixed weeks ago. Clearing the
+        // latch here also means a route that breaks again is reported again.
+        if (m_routeNotFoundReported)
+        {
+            m_routeNotFoundReported = false;
+            const std::string target = prefixedTarget(m_config.serverEndpoint, "/control");
+            LOGFN_INFO(m_logFn, "The request target '%s' is being served again; the HTTP 404 "
+                       "condition is cleared.", target.c_str());
+        }
+
         if (m_producersPaused)
         {
             m_producersPaused = false;
@@ -620,19 +633,34 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
         return;
     }
 
+    // /control is only ever sent to the one target, so a 404 here can only mean the
+    // configured path and the manager's global prefix disagree -- the one failure the
+    // log had no trace of at any verbosity. Reported before the pause bookkeeping
+    // below and independently of it, so it is emitted even while a pause armed by
+    // some other cause is still latched.
+    if (outcome == OutcomeClass::RouteNotFound && !m_routeNotFoundReported)
+    {
+        m_routeNotFoundReported = true;
+        const std::string target = prefixedTarget(m_config.serverEndpoint, "/control");
+        LOGFN_ERROR(m_logFn, "The manager answered HTTP 404 to the request target '%s': it "
+                    "serves no such route. The path in <endpoint> must match the global "
+                    "prefix the manager serves.", target.c_str());
+    }
+
     // Undeliverable with nothing already in motion to change it. AuthFail only
     // surfaces once the timestamp-corrected retry has also failed, so the key is
     // genuinely bad and only re-enrollment can recover it; VersionRejected needs
-    // one side upgraded. Excluded: answers that clear on their own (5xx,
-    // 429/503, 413) and a plain 400.
+    // one side upgraded. Excluded: answers that clear on their own (5xx, 429/503,
+    // 413), a plain 400, and a 404 -- which does not clear on its own but is left
+    // to the buffer's own cap rather than the producer lock.
     const bool blocksDelivery = outcome == OutcomeClass::Unreachable ||
                                 outcome == OutcomeClass::AuthFail ||
                                 outcome == OutcomeClass::VersionRejected;
 
     if (!blocksDelivery)
     {
-        // Clears on its own, so it breaks the run. It does not lift an existing
-        // pause: only a success does.
+        // Not a pause condition, so it breaks the run. It does not lift an
+        // existing pause: only a success does.
         m_undeliverableStreak = 0;
         return;
     }
@@ -645,7 +673,7 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
         return;
     }
 
-    // Only Unreachable has a transport reason behind it: the other two mean the
+    // Only Unreachable has a transport reason behind it: the others mean the
     // manager answered, so a stored curl error there is from an earlier and
     // unrelated incident -- and the auth-gate path reaches here having sent
     // nothing at all.
