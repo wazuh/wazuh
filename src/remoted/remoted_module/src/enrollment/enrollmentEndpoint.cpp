@@ -80,6 +80,16 @@ namespace remoted::enrollment
             return remoted::http::HttpResponse::json(status, j.dump());
         }
 
+        // The 401 shape: `code` is the authentication failure class (string), the same value the
+        // WWW-Authenticate challenge carries as error_description -- see PublicError (issue #38993).
+        remoted::http::HttpResponse errorResponse(int status, std::string_view code, std::string_view message)
+        {
+            nlohmann::json j;
+            j["error"]["code"] = std::string(code);
+            j["error"]["message"] = std::string(message);
+            return remoted::http::HttpResponse::json(status, j.dump());
+        }
+
         // The enrollment-token rejections remoted decided on its own (issue #38993), in the
         // outcome-shaped remoted.enroll.token.* family; the per-cause remoted.auth.reject.token_*
         // cells are bumped by errorResponseFor()'s funnel like every other AuthError.
@@ -97,14 +107,19 @@ namespace remoted::enrollment
         // Bridges an EnrollmentAuthenticator rejection to /enroll's own error envelope, while
         // reusing errorResponseFor()'s shared logging discipline (throttled WARN for clock skew,
         // DEBUG2 for plain client faults) so an unauthenticated peer can't flood the log any more
-        // here than it could against any other endpoint. code is always 0: none of the AuthError
-        // values EnrollmentAuthenticator can return carry a numeric authd code.
+        // here than it could against any other endpoint. `code` is the public class of the 401
+        // (never an authd numeric code: none of the AuthError values reaching here carries one) --
+        // the same class every other route puts in its flat envelope, so the agent reads one
+        // vocabulary whichever endpoint refused it. A non-401 AuthError (the body cap's 413, a bad
+        // Content-Encoding) keeps a numeric 0, as before.
         remoted::http::HttpResponse authErrorResponse(remoted::auth::AuthError err)
         {
             const auto logged = remoted::endpoints::errorResponseFor(err);
-            auto response = errorResponse(logged.status, 0, remoted::auth::publicErrorFor(err).message);
-            // Keep the RFC 6750 challenge errorResponseFor() attaches to every credential 401
-            // (`WWW-Authenticate: Bearer`): /enroll swaps the body envelope, not the auth contract.
+            const auto pe = remoted::auth::publicErrorFor(err);
+            auto response = pe.code != nullptr ? errorResponse(logged.status, std::string_view {pe.code}, pe.message)
+                                               : errorResponse(logged.status, 0, pe.message);
+            // Keep the RFC 6750 challenge errorResponseFor() attaches to every credential 401 (the
+            // class-naming `WWW-Authenticate`): /enroll swaps the body envelope, not the auth contract.
             for (const auto& [name, value] : logged.headers)
             {
                 if (name == "WWW-Authenticate")
@@ -364,12 +379,13 @@ namespace remoted::enrollment
 
         // authd's verdict on a re-enrollment bearer (issue #38993). remoted forwarded that bearer
         // UNVERIFIED (the secret it is signed with is the master's alone), so these three codes are
-        // AUTHENTICATION failures, not business rejections: they take the same uniform 401 +
-        // WWW-Authenticate every credential failure on this server gets -- through authErrorResponse(),
-        // so they land in the remoted.auth.reject.* cell of the AuthError they map to and never name the
-        // reason on the wire -- rather than a 4xx carrying authd's code and message like the codes in
-        // httpStatusForAuthdError(). 9026 folds "no such agent" and "no secret on record" (authd's choice:
-        // telling them apart would let a caller probe ids).
+        // AUTHENTICATION failures, not business rejections: they take the 401 every credential
+        // failure on this server gets -- through authErrorResponse(), so they land in the
+        // remoted.auth.reject.* cell of the AuthError they map to and the wire names that AuthError's
+        // public class (`unknown_agent` / `invalid_signature` / `stale_token`), never authd's code or
+        // text -- rather than a 4xx carrying authd's code and message like the codes in
+        // httpStatusForAuthdError(). 9026 folds "no such agent" and "no secret on record" (authd's
+        // choice: telling them apart would let a caller probe ids).
         std::optional<remoted::auth::AuthError> reenrollmentRejection(int code)
         {
             switch (code)

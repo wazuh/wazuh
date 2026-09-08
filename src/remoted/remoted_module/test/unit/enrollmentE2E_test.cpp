@@ -208,13 +208,15 @@ TEST(EnrollmentE2ETest, PasswordModeWrongSignatureIsRejected)
 
     const auto response = dispatch(handler, request);
     EXPECT_EQ(response.status, 401);
-    // RFC 6750 §3: /enroll's 401 carries the same bearer challenge every other route's does
-    // (regression: its own error envelope used to drop the header errorResponseFor() attaches).
+    // RFC 6750 §3: /enroll's 401 carries the same class-naming bearer challenge every other route's
+    // does (regression: its own error envelope used to drop the header errorResponseFor() attaches),
+    // and the body's `code` is that class (issue #38993).
     const auto challenge = std::find_if(response.headers.begin(),
                                         response.headers.end(),
                                         [](const auto& header) { return header.first == "WWW-Authenticate"; });
     ASSERT_NE(challenge, response.headers.end());
-    EXPECT_EQ(challenge->second, "Bearer");
+    EXPECT_EQ(challenge->second, R"(Bearer error="invalid_token", error_description="invalid_signature")");
+    EXPECT_EQ(nlohmann::json::parse(response.body)["error"]["code"], "invalid_signature");
 
     std::remove(passwordPath.c_str());
 }
@@ -429,14 +431,17 @@ TEST(EnrollmentE2ETest, RevokedTokenIsRejectedWith401)
 
     const auto response = dispatch(handler, request);
     EXPECT_EQ(response.status, 401);
-    // Generic on the wire (the distinguishable classes are a later stage of #38993)...
-    EXPECT_EQ(nlohmann::json::parse(response.body)["error"]["message"], "Invalid client authentication");
+    // The generic message, and the class on the wire (issue #38993): the agent learns the token was
+    // revoked (ask the operator for a new one), never anything finer...
+    const auto body = nlohmann::json::parse(response.body);
+    EXPECT_EQ(body["error"]["message"], "Invalid client authentication");
+    EXPECT_EQ(body["error"]["code"], "token_revoked");
     const auto challenge = std::find_if(response.headers.begin(),
                                         response.headers.end(),
                                         [](const auto& header) { return header.first == "WWW-Authenticate"; });
     ASSERT_NE(challenge, response.headers.end());
-    EXPECT_EQ(challenge->second, "Bearer");
-    // ...and distinguishable for the operator.
+    EXPECT_EQ(challenge->second, R"(Bearer error="invalid_token", error_description="token_revoked")");
+    // ...and the operator keeps the cell.
     EXPECT_EQ(static_cast<std::uint64_t>(metricsManager.get(METRIC_TOKEN_REJECTED_REVOKED)->value()), 1U);
 
     std::remove(passwordPath.c_str());
@@ -502,4 +507,38 @@ TEST(EnrollmentE2ETest, ReenrollmentBearerReachesAuthdAndTheRotatedCredentialsCo
     EXPECT_EQ(static_cast<std::uint64_t>(metricsManager.get(METRIC_TOKEN_ACCEPTED)->value()), 0U);
 
     std::remove(passwordPath.c_str());
+}
+
+// Password mode with no etc/authd.pass at all (not yet synced to a worker, deleted, unreadable): the
+// server cannot judge the credential, so the challenge is a bare `Bearer` -- RFC 6750 has no error
+// code for "I could not check", and `invalid_token` would blame the agent -- while the body's `code`
+// names the condition for the operator reading the agent's log (issue #38993).
+TEST(EnrollmentE2ETest, MissingPasswordFileIsEnrollmentKeyUnavailableWithABareChallenge)
+{
+    auto keySource = std::make_shared<PasswordKeySource>("/nonexistent/enrollmentE2E_test/authd.pass");
+    EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {true}, keySource};
+    AuthdClient authdClient(makeUniqueSocketPath("enrollment_e2e_no_password_file")); // never reached
+    wazuh::metrics::Manager metricsManager;
+    EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
+    auto handler = makeHandler(authenticator, authdClient, baseConfig(), metrics, passthroughDecoder());
+
+    HttpRequest request;
+    request.method = Method::Post;
+    request.target = "/enroll";
+    request.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
+    request.body = kBody;
+    request.headers.emplace("authorization",
+                            "Bearer " + std::string {jwt_profile::v1::test_vectors::enroll::kWrongPasswordToken});
+
+    const auto response = dispatch(handler, request);
+    EXPECT_EQ(response.status, 401);
+    const auto body = nlohmann::json::parse(response.body);
+    EXPECT_EQ(body["error"]["code"], "enrollment_key_unavailable");
+    EXPECT_EQ(body["error"]["message"], "Invalid client authentication");
+    const auto challenge = std::find_if(response.headers.begin(),
+                                        response.headers.end(),
+                                        [](const auto& header) { return header.first == "WWW-Authenticate"; });
+    ASSERT_NE(challenge, response.headers.end());
+    EXPECT_EQ(challenge->second, "Bearer");
+    EXPECT_EQ(static_cast<std::uint64_t>(metricsManager.get(METRIC_REJECTED_AUTH)->value()), 1U);
 }
