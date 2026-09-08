@@ -864,7 +864,7 @@ LUA_LIB = ${EXTERNAL_LUA}liblua.a
 LIBBPF_LIB = $(EXTERNAL_LIBBPF)build/modern.bpf.o
 DBUS_LIB = $(EXTERNAL_DBUS)lib/libdbus-1.a
 
-EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
+EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB) $(LIB_DB)
 
 # Adding libcurl only on Windows, Linux and MacOS
 ifeq (${TARGET},winagent)
