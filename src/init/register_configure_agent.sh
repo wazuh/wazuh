@@ -533,7 +533,7 @@ set_agent_ssl_ca() {
         echo "    </ssl>"
     } > "${TMP_SERVER}"
     # "agent" only, never the default agent|client: a pure 4.x-shaped <client> block is
-    # read by Read_Legacy_Client_Address(), which never looks at <ssl> -- same reasoning
+    # read by Read_Legacy_Client(), which never looks at <ssl> -- same reasoning
     # as pin_ca()'s <client>-rejection in pkg_installer.sh/do_upgrade.ps1. Pinning here
     # would report success while the CA stays inert.
     if ! insert_into_agent_block "${TMP_SERVER}" "agent"; then

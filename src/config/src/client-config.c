@@ -51,8 +51,8 @@ int Read_Agent_Enrollment(XML_NODE node, agent *logr);
  * @brief Read the <agent> block, the 5.x name of what 4.x spelled <client> (#38103).
  *
  * The legacy name is not a second spelling of this block: an upgrade never rewrites
- * ossec.conf, so a file left by 4.x is read for one value only, by
- * Read_Legacy_Client_Address().
+ * ossec.conf, so a file left by 4.x is read for the manager address and the enrollment
+ * identity only, by Read_Legacy_Client().
  */
 int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -175,6 +175,10 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
                     return (OS_INVALID);
                 }
 
+                /* Recorded so a legacy <client> spelling of this block listed after
+                 * this one is skipped rather than merged into it. */
+                logr->enrollment.set_under_agent = true;
+
                 OS_ClearNode(chld_node);
             }
         } else if (strcmp(node[i]->element, xml_notify_time) == 0) {
@@ -242,7 +246,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             logr->server[logr->server_count].port = 0;
             // os_realloc() does not zero new memory; this old <server-ip>/<server-hostname>
             // syntax never had an <endpoint> concept, so default it the same way a WPK-upgraded
-            // 4.x <client><server> config does (see Read_Legacy_Client_Address()).
+            // 4.x <client><server> config does (see Read_Legacy_Client()).
             os_strdup(DEFAULT_AGENT_ENDPOINT_PREFIX, logr->server[logr->server_count].endpoint);
             // Since these are new options we will only leave a default for legacy configurations
             logr->server[logr->server_count].max_retries = DEFAULT_MAX_RETRIES;
@@ -262,34 +266,103 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     return (0);
 }
 
+/* Direct children of a 4.x <client> block that 5.x reads under <agent> instead. */
+static const char * LEGACY_CLIENT_MOVED_OPTIONS[] = {
+    "config-profile", "notify_time", "auto_restart", "disable-active-response",
+    "ip_update_interval", NULL
+};
+
 /**
- * @brief Read the one value still wanted from a 4.x <client> block: <server><address>.
+ * @brief Report a <client> child that is read from neither <server> nor <enrollment>.
+ *
+ * A warning rather than info: on an upgraded agent this is a setting that used to apply
+ * and silently stopped. The message never advises renaming the block, because <server>
+ * and a bare <port> are rejected under <agent> - that advice would leave a configuration
+ * that no longer starts.
+ */
+static void w_warn_legacy_client_option(const char *option)
+{
+    for (int i = 0; LEGACY_CLIENT_MOVED_OPTIONS[i]; i++) {
+        if (strcmp(option, LEGACY_CLIENT_MOVED_OPTIONS[i]) == 0) {
+            mwarn("<%s> inside the legacy <client> block is ignored. Configure it under <agent>.", option);
+            return;
+        }
+    }
+
+    mwarn("<%s> inside the legacy <client> block is ignored: only <server> and <enrollment> "
+          "are read from it.", option);
+}
+
+/**
+ * @brief Read the two things still wanted from a 4.x <client> block: the manager
+ *        address under <server>, and the whole <enrollment> sub-block.
  *
  * A WPK upgrade never rewrites ossec.conf, so a 5.x agent can start against a file that
- * only has <client> (#38103). The address is taken when <agent> did not already provide
- * one - so <agent> wins whichever block comes first - and everything else under <client>
- * is ignored rather than rejected, since the block is 4.x's and its options are not.
+ * only has <client>. The address is taken when <agent> did not already provide one - so
+ * <agent> wins whichever block comes first - and <enrollment> is read because it carries
+ * the agent's identity, which has no 5.x replacement inside the legacy block: dropping it
+ * makes the agent re-register under its hostname with no groups. Every other direct child
+ * is ignored, and says so, since the block is 4.x's and its options are not. <server>'s
+ * own children stay silent: neither <port> nor <protocol> is read, and the message printed
+ * for the address already names the port in use and a copy-pasteable replacement for the
+ * whole block.
  *
  * Repeated addresses resolve the same way as under <agent>: the last one prevails
  */
-int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     const char *xml_client_server = "server";
     const char *xml_client_addr = "address";
     const char *xml_client_endpoint = "endpoint";
+    const char *xml_client_enrollment = "enrollment";
     char * address = NULL;
     char * endpoint_value = NULL;
 
     agent * logr = (agent *)d1;
 
-    if (logr->server) {
-        return (0);
-    }
+    /* Captured once rather than returned on, so the block is still walked for its
+     * <enrollment> child. <server> is then skipped whole instead of parsed and
+     * discarded, so a malformed legacy <endpoint> cannot fail a configuration that
+     * is not using it. */
+    const bool address_taken = (logr->server != NULL);
 
     for (int i = 0; node[i]; i++) {
         XML_NODE chld_node = NULL;
 
-        if (!node[i]->element || strcmp(node[i]->element, xml_client_server) != 0) {
+        if (!node[i]->element) {
+            continue;
+        }
+
+        if (strcmp(node[i]->element, xml_client_enrollment) == 0) {
+            /* Skipped, rather than merged, once <agent> supplied this block: the two
+             * are one block under two names, and an identity assembled from both is
+             * not one an operator wrote. A legacy block listed first still stands for
+             * whatever an <agent> one below it leaves unset, the same way repeated
+             * <agent><enrollment> blocks resolve. */
+            if (logr->enrollment.set_under_agent) {
+                continue;
+            }
+
+            if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
+                if (Read_Agent_Enrollment(chld_node, logr) < 0) {
+                    OS_ClearNode(chld_node);
+                    os_free(address);
+                    os_free(endpoint_value);
+                    return (OS_INVALID);
+                }
+
+                OS_ClearNode(chld_node);
+            }
+
+            continue;
+        }
+
+        if (strcmp(node[i]->element, xml_client_server) != 0) {
+            w_warn_legacy_client_option(node[i]->element);
+            continue;
+        }
+
+        if (address_taken) {
             continue;
         }
 
@@ -840,7 +913,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
          * using the previous spelling, keeps working -- an upgrade never rewrites
          * ossec.conf. No released package emitted them: <agent><manager> itself landed
          * after v5.0.0-beta4. A real 4.x file spells this <client><server><address>,
-         * which Read_Legacy_Client_Address() handles. */
+         * which Read_Legacy_Client() handles. */
         else if (strcmp(node[j]->element, xml_agent_addr) == 0) {
             if (OS_IsValidIP(node[j]->content, NULL) == 1) {
                 legacy_rip = node[j]->content;
@@ -1375,6 +1448,10 @@ int Read_Agent_Enrollment(XML_NODE node, agent * logr){
     const char *xml_agent_certif_path = "agent_certificate_path";
     const char *xml_agent_key_path = "agent_key_path";
 
+    /* Ignored for a different reason than the group above: enrollment always negotiates
+     * TLS 1.3, so there is no protocol left for this one to pick. */
+    const char *xml_auto_method = "auto_method";
+
     int j;
 
     for (j = 0; node[j]; j++) {
@@ -1443,6 +1520,9 @@ int Read_Agent_Enrollment(XML_NODE node, agent * logr){
                    strcmp(node[j]->element, xml_agent_key_path) == 0) {
             minfo("<%s> under <enrollment> is no longer used: enrollment reuses "
                   "<agent><manager>/<agent><ssl>. Ignoring.", node[j]->element);
+        } else if (strcmp(node[j]->element, xml_auto_method) == 0) {
+            minfo("<%s> under <enrollment> is no longer used: enrollment always negotiates "
+                  "TLS 1.3. Ignoring.", node[j]->element);
         } else {
             merror(XML_INVELEM, node[j]->element);
             return (OS_INVALID);

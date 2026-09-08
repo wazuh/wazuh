@@ -430,8 +430,8 @@ pin_ca() {
     else
         # Only <agent>, never <client>: an unmigrated 4.x-shaped ossec.conf (a WPK
         # upgrade never rewrites the file, so this is a live shape, not hypothetical,
-        # #38103) is read by Read_Legacy_Client_Address(), which only looks at
-        # <server><address>/<endpoint> and never <ssl> -- pinning under <client> would
+        # #38103) is read by Read_Legacy_Client(), which looks at
+        # <server><address>/<endpoint> and <enrollment>, never <ssl> -- pinning under <client> would
         # report success here while leaving the real parser's certificate_authorities
         # unset. Fail the same way a malformed <ssl> block does, so the caller aborts
         # instead of believing a CA it can't actually use is now pinned.

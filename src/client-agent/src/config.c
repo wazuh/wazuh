@@ -96,6 +96,7 @@ int ClientConf(const char *cfgfile)
     agt->enrollment.use_source_ip = false;
     os_strdup(AUTHD_PASS, agt->enrollment.authorization_pass_path);
     agt->enrollment.delay_after_enrollment = 20;
+    agt->enrollment.set_under_agent = false;
 
     if (ReadConfig(modules, cfgfile, agt, NULL) < 0) {
         return (OS_INVALID);

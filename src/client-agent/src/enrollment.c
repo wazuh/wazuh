@@ -54,6 +54,14 @@ int w_enrollment_build_request(w_enroll_request_t *out) {
     if (agt->enrollment.groups) {
         cJSON_AddStringToObject(body, "groups", agt->enrollment.groups);
     }
+
+    /* Names the identity at the moment it is presented: an agent left without
+     * <agent_name> registers under its hostname whenever something triggers a
+     * re-enrollment, unattended and long after any startup warning. */
+    minfo("Enrolling as '%s'%s. Groups: %s.", agent_name,
+          agt->enrollment.agent_name ? "" : " (the local hostname, since <agent_name> is not configured)",
+          agt->enrollment.groups ? agt->enrollment.groups : "none");
+
     if (ip_value) {
         cJSON_AddStringToObject(body, "ip", ip_value);
     }

@@ -18,7 +18,7 @@ For module overview and architecture, see [Client Module](index.html).
 
 Configures the agent's connection to the Wazuh manager.
 
-`<client>` is the 4.X name of this block and is renamed to `<agent>` in 5.0; the inner block is `<manager>`. A configuration left by a 4.X agent still starts: `<client><server><address>` is read and the port defaults to `1517`. No other option inside `<client>` is read, so rename the block to `<agent><manager>` to keep them all.
+`<client>` is the 4.X name of this block and is renamed to `<agent>` in 5.0; the inner block is `<manager>`. A configuration left by a 4.X agent still starts, and two things are read out of the legacy block: `<client><server><address>`, with the port defaulting to `1517`, and the whole `<client><enrollment>` sub-block, so an upgraded agent keeps the identity it enrolls with. Every other option inside `<client>` is ignored and warned about at startup, so rename the block to `<agent><manager>` to keep them all.
 
 ### manager
 
@@ -285,7 +285,8 @@ The following options are **no longer used**: `manager_address`, `port`,
 IPv6 manager is now the zone id inside `<endpoint>`, e.g.
 `<endpoint>[fe80::1%25eth0]:1517</endpoint>`) and `ssl_cipher`,
 `server_ca_path`, `agent_certificate_path`, `agent_key_path` (superseded by
-`<agent><ssl>`). A configuration carrying them — e.g. left over from a 4.x
+`<agent><ssl>`), and `auto_method` (removed outright: enrollment always negotiates
+TLS 1.3). A configuration carrying them — e.g. left over from a 4.x
 `ossec.conf`, which an in-place upgrade does not rewrite — still starts the
 agent normally: each is recognized and logged at `INFO`, not rejected.
 
