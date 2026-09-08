@@ -21,6 +21,8 @@ func snapshotBucket(b *bucket) CountersSnapshot {
 		Scan503: load(&src.Scan503), ScanOther: load(&src.ScanOther),
 		CacertsSent: load(&src.CacertsSent), Cacerts200: load(&src.Cacerts200), Cacerts404: load(&src.Cacerts404),
 		Cacerts503: load(&src.Cacerts503), CacertsOther: load(&src.CacertsOther),
+		EnrollHTTPSSent: load(&src.EnrollHTTPSSent), EnrollHTTPS200: load(&src.EnrollHTTPS200), EnrollHTTPS401: load(&src.EnrollHTTPS401),
+		EnrollHTTPS403: load(&src.EnrollHTTPS403), EnrollHTTPS409: load(&src.EnrollHTTPS409), EnrollHTTPSOther: load(&src.EnrollHTTPSOther),
 		RetriesFeed: load(&src.RetriesFeed), Retries503: load(&src.Retries503),
 		RetriesExhausted: load(&src.RetriesExhausted), TransportErrors: load(&src.TransportErrors),
 		BytesSent: load(&src.BytesSent), DocumentsSent: load(&src.DocumentsSent),

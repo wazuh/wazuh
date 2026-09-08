@@ -21,13 +21,15 @@ sessions_sent,sessions_ok,sessions_noop,sessions_409,sessions_400,sessions_401,s
 stateless_sent,stateless_202,stateless_400,stateless_413,stateless_503,stateless_other,events_sent,
 scan_sent,scan_200,scan_409,scan_503,scan_other,
 cacerts_sent,cacerts_200,cacerts_404,cacerts_503,cacerts_other,
+enroll_https_sent,enroll_https_200,enroll_https_401,enroll_https_403,enroll_https_409,enroll_https_other,
 retries_feed,retries_503,retries_exhausted,transport_errors,
 bytes_sent,documents_sent,
 control_startup_ok,control_startup_err,control_notify_ok,control_notify_err,control_shutdown_ok,control_shutdown_err,
 deletes_ok,deletes_err,
 session_latency_ms_p50,session_latency_ms_p99,notify_latency_ms_p50,notify_latency_ms_p99,stateless_latency_ms_p50,stateless_latency_ms_p99,
 scan_latency_ms_p50,scan_latency_ms_p99,
-cacerts_latency_ms_p50,cacerts_latency_ms_p99
+cacerts_latency_ms_p50,cacerts_latency_ms_p99,
+enroll_https_latency_ms_p50,enroll_https_latency_ms_p99
 ```
 
 - `timestamp` is ISO-8601 UTC with a `Z`; `elapsed_s` is seconds since the run started.
@@ -56,6 +58,15 @@ cacerts_latency_ms_p50,cacerts_latency_ms_p99
   the manager's contract outcomes; `cacerts_other` holds what invalidates the run (a `200` without a
   PEM body, a status the contract does not name). `cacerts_latency_ms_*` is the cost of the cheapest
   route on the listener — TLS plus a file read, no downstream. A `cacerts` step never retries.
+- `enroll_https_*` are the `POST /enroll` counters of an `enroll_https` step ([16](16-enroll-https.md)):
+  one fresh agent enrolled per request with the enrollment token's bearer. `enroll_https_200` counts
+  agents created; `enroll_https_401` (the manager refused the bearer: unknown, expired or revoked
+  token, or a clock/key problem), `enroll_https_403` (authd refused the use of a bearer remoted had
+  verified — no uses left, or revoked/expired between the two checks) and `enroll_https_409` (a
+  duplicate name) are the manager's contract outcomes; `enroll_https_other` holds what invalidates
+  the run (a `200` without the agent record, a status the contract does not name).
+  `enroll_https_latency_ms_*` spans remoted's verification, the hop to `authd` and `authd`'s
+  `client.keys` write — a fleet's first-contact cost. The step never retries.
 - `sessions_401` has its own column rather than living in `sessions_other`: a `401` means remoted has
   not loaded that fleet's keys yet, so those requests measured nothing. It also **invalidates the
   run** — a run full of unauthenticated requests must never read as a result.
@@ -95,6 +106,7 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
                    "events_sent": 1500000 },
     "scan": { "sent": 100, "s200": 100, "s409": 0, "s503": 0, "other": 0 },
     "cacerts": { "sent": 100, "s200": 100, "s404": 0, "s503": 0, "other": 0 },
+    "enroll_https": { "sent": 100, "s200": 100, "s401": 0, "s403": 0, "s409": 0, "other": 0 },
     "control": { "startup_ok": 100, "startup_err": 0, "notify_ok": 1500, "notify_err": 0,
                  "shutdown_ok": 100, "shutdown_err": 0 },
     "deletes": { "ok": 0, "err": 0 }
@@ -108,7 +120,8 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
     "notify":    { "count": 1500,   "p50": 1.2, "p90": 2.0, "p95": 3.0,  "p99": 5.5,  "max": 18.0,  "avg": 1.5 },
     "startup":   { "count": 100,    "p50": 2.0, "p90": 3.1, "p95": 4.0,  "p99": 6.0,  "max": 9.0,   "avg": 2.2 },
     "scan":      { "count": 100,    "p50": 1.0, "p90": 1.8, "p95": 2.2,  "p99": 3.0,  "max": 5.0,   "avg": 1.1 },
-    "cacerts":   { "count": 100,    "p50": 0.8, "p90": 1.2, "p95": 1.5,  "p99": 2.0,  "max": 4.0,   "avg": 0.9 }
+    "cacerts":   { "count": 100,    "p50": 0.8, "p90": 1.2, "p95": 1.5,  "p99": 2.0,  "max": 4.0,   "avg": 0.9 },
+    "enroll_https": { "count": 100, "p50": 6.0, "p90": 9.0, "p95": 11.0, "p99": 15.0, "max": 30.0,  "avg": 6.5 }
   },
   "by_fleet": {
     "windows": { "sessions": { "sent": 120000, "ok": 119940, "s503": 60, "...": 0 },

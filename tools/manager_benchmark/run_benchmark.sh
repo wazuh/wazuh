@@ -30,6 +30,11 @@ set -euo pipefail
 # Agent mode needs the manager configured for open enrollment first:
 #   sudo ./prepare_manager.sh
 #
+# --enroll-token-file FILE (agent mode only): the enrollment token an `enroll_https` step
+# presents (scenarios/enroll_https.json), as minted on the manager under test with
+# `wazuh-manager-authd --create-enrollment-token --address <manager>` and saved to FILE
+# (the sender also honours WAZUH_ENROLLMENT_TOKEN). Scenarios without that step need neither.
+#
 # --keep-agents (agent mode only): skip the pre-run cleanup of bench-* agents, so a
 # previous run's agents AND their indexed documents survive -- e.g. to inspect a
 # real_* scenario's data in the indexer's dashboard afterward. Mutually exclusive
@@ -53,6 +58,7 @@ REG_PORT=1515
 SEED=""
 CLUSTER=""
 GLOBAL_PREFIX=""
+ENROLL_TOKEN_FILE=""
 MANAGER_CONF="/var/wazuh-manager/etc/wazuh-manager.conf"
 ENROLL_SETTLE=""
 DO_METRICS=true
@@ -103,6 +109,7 @@ while [[ $# -gt 0 ]]; do
         --seed)         SEED="$2"; shift 2 ;;
         --cluster)      CLUSTER="$2"; shift 2 ;;
         --global-prefix) GLOBAL_PREFIX="$2"; shift 2 ;;
+        --enroll-token-file) ENROLL_TOKEN_FILE="$2"; shift 2 ;;
         --conf)         MANAGER_CONF="$2"; shift 2 ;;
         --enroll-settle) ENROLL_SETTLE="$2"; shift 2 ;;
         --metrics-interval) METRICS_INTERVAL="$2"; shift 2 ;;
@@ -279,6 +286,7 @@ GO_ARGS=(
 [[ -n "$SEED" ]] && GO_ARGS+=( --seed "$SEED" )
 [[ -n "$CLUSTER" ]] && GO_ARGS+=( --cluster "$CLUSTER" )
 [[ -n "$GLOBAL_PREFIX" ]] && GO_ARGS+=( --global-prefix "$GLOBAL_PREFIX" )
+[[ -n "$ENROLL_TOKEN_FILE" ]] && GO_ARGS+=( --enroll-token-file "$ENROLL_TOKEN_FILE" )
 [[ -n "$ENROLL_SETTLE" ]] && GO_ARGS+=( --enroll-settle "$ENROLL_SETTLE" )
 SENDER_RC=0
 "$GO_BIN" "${GO_ARGS[@]}" || SENDER_RC=$?

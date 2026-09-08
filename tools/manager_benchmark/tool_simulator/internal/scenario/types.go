@@ -239,6 +239,7 @@ type Expected struct {
 	Deletes          map[string]Assertion `json:"deletes"`
 	Scan             map[string]Assertion `json:"scan"`
 	Cacerts          map[string]Assertion `json:"cacerts"`
+	EnrollHTTPS      map[string]Assertion `json:"enroll_https"`
 	TransportErrors  Assertion            `json:"transport_errors"`
 	RetriesExhausted Assertion            `json:"retries_exhausted"`
 }

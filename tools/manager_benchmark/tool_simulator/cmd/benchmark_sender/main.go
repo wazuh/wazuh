@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -50,9 +51,12 @@ func run() int {
 			"mean no prefix. Never applied in uds mode: the module socket is not published under the prefix")
 		compression = flag.String("compression", "",
 			"session-body Content-Encoding: zstd | none (overrides the scenario's defaults.compression; agent mode only)")
-		noReuse      = flag.Bool("no-reuse", false, "disable HTTP keep-alive (agent mode)")
-		seed         = flag.Uint64("seed", 0, "deterministic document seed (0 = random, recorded in meta)")
-		validate     = flag.Bool("validate", false, "load and validate the scenario, then exit (no traffic)")
+		noReuse         = flag.Bool("no-reuse", false, "disable HTTP keep-alive (agent mode)")
+		seed            = flag.Uint64("seed", 0, "deterministic document seed (0 = random, recorded in meta)")
+		validate        = flag.Bool("validate", false, "load and validate the scenario, then exit (no traffic)")
+		enrollTokenFile = flag.String("enroll-token-file", "",
+			"agent mode: file holding the enrollment token an enroll_https step presents "+
+				"(minted with `wazuh-manager-authd --create-enrollment-token`); WAZUH_ENROLLMENT_TOKEN is the fallback")
 		vdFeedOffset = flag.Uint64("vd-feed-offset", 0, "VDFirst/VDSync sessions declare this Start.feed_offset "+
 			"unless a step overrides it; a mismatch against the target's real current offset answers 409 "+
 			"version_mismatch instead of scanning. In uds mode this is the ONLY way to set it correctly (there is "+
@@ -118,12 +122,25 @@ func run() int {
 		usedSeed = uint64(rand.Int63()) | 1
 	}
 
+	// The enrollment token is a credential minted on the manager under test, so it is
+	// environment config (a file, or the environment), never part of a scenario. Read here,
+	// checked by the runner only if the scenario actually carries an enroll_https step.
+	enrollToken := os.Getenv("WAZUH_ENROLLMENT_TOKEN")
+	if *enrollTokenFile != "" {
+		data, err := os.ReadFile(*enrollTokenFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: --enroll-token-file: %v\n", err)
+			return 2
+		}
+		enrollToken = strings.TrimSpace(string(data))
+	}
+
 	rn := runner.New(runner.Config{
 		Scenario: scn, ScenarioPath: absPath(*scenarioPath), Mode: scn.Mode,
 		Manager: *manager, Port: *port, RegPort: *regPort, Socket: *socket,
 		FeedTimeout: *feedTimeout, DrainTimeout: *drainTimeout, Timeout: *timeout, EnrollSettle: *enrollSettle, Cluster: *cluster,
 		Compression: *compression, Reuse: !*noReuse, Seed: usedSeed, SenderVer: senderVersion, VDFeedOffset: *vdFeedOffset,
-		GlobalPrefix: prefix,
+		GlobalPrefix: prefix, EnrollToken: enrollToken,
 	})
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

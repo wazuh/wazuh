@@ -15,13 +15,15 @@ const csvHeader = "timestamp,elapsed_s,mode,agents_active," +
 	"stateless_sent,stateless_202,stateless_400,stateless_413,stateless_503,stateless_other,events_sent," +
 	"scan_sent,scan_200,scan_409,scan_503,scan_other," +
 	"cacerts_sent,cacerts_200,cacerts_404,cacerts_503,cacerts_other," +
+	"enroll_https_sent,enroll_https_200,enroll_https_401,enroll_https_403,enroll_https_409,enroll_https_other," +
 	"retries_feed,retries_503,retries_exhausted,transport_errors," +
 	"bytes_sent,documents_sent," +
 	"control_startup_ok,control_startup_err,control_notify_ok,control_notify_err,control_shutdown_ok,control_shutdown_err," +
 	"deletes_ok,deletes_err," +
 	"session_latency_ms_p50,session_latency_ms_p99,notify_latency_ms_p50,notify_latency_ms_p99,stateless_latency_ms_p50,stateless_latency_ms_p99," +
 	"scan_latency_ms_p50,scan_latency_ms_p99," +
-	"cacerts_latency_ms_p50,cacerts_latency_ms_p99"
+	"cacerts_latency_ms_p50,cacerts_latency_ms_p99," +
+	"enroll_https_latency_ms_p50,enroll_https_latency_ms_p99"
 
 // CSVWriter appends one bench.csv row per wall-clock second.
 type CSVWriter struct {
@@ -95,6 +97,7 @@ func (w *CSVWriter) writeRow() {
 		u(c.StatelessSent), u(c.St202), u(c.StBad400), u(c.StBad413), u(c.St503), u(c.StOther), u(c.EventsSent),
 		u(c.ScanSent), u(c.Scan200), u(c.Scan409), u(c.Scan503), u(c.ScanOther),
 		u(c.CacertsSent), u(c.Cacerts200), u(c.Cacerts404), u(c.Cacerts503), u(c.CacertsOther),
+		u(c.EnrollHTTPSSent), u(c.EnrollHTTPS200), u(c.EnrollHTTPS401), u(c.EnrollHTTPS403), u(c.EnrollHTTPS409), u(c.EnrollHTTPSOther),
 		u(c.RetriesFeed), u(c.Retries503), u(c.RetriesExhausted), u(c.TransportErrors),
 		u(c.BytesSent), u(c.DocumentsSent),
 		u(c.StartupOK), u(c.StartupErr), u(c.NotifyOK), u(c.NotifyErr), u(c.ShutdownOK), u(c.ShutdownErr),
@@ -104,6 +107,7 @@ func (w *CSVWriter) writeRow() {
 		f1(ms("stateless", p50)), f1(ms("stateless", p99)),
 		f1(ms("scan", p50)), f1(ms("scan", p99)),
 		f1(ms("cacerts", p50)), f1(ms("cacerts", p99)),
+		f1(ms("enroll_https", p50)), f1(ms("enroll_https", p99)),
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()

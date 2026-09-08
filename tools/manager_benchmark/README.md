@@ -237,6 +237,12 @@ The same scenarios over two transports, so the difference isolates the relay:
   the `POST /stateful` sessions. A `cacerts` step adds the unauthenticated `GET /cacerts` (the CA that
   signs the listener certificate) — the trust bootstrap a real agent does first, and the floor of the
   listener's fixed per-request cost since nothing sits downstream of it (`scenarios/cacerts.json`).
+  An `enroll_https` step adds `POST /enroll` with an **enrollment token** (`scenarios/enroll_https.json`):
+  each repetition enrolls a fresh `bench-…-tk-N` agent over HTTPS with the `wazuh-enroll+jwt` bearer
+  minted from the token you pass with `--enroll-token-file` (or `WAZUH_ENROLLMENT_TOKEN`) — the
+  first-contact path of a 5.x agent handed a token instead of the shared password, end to end through
+  `authd`. Mint the token on the manager under test (`wazuh-manager-authd --create-enrollment-token
+  --address <manager>`), and run `cleanup_agents.sh` afterwards.
 
 Per run it produces `bench.csv` (per-second cumulative counters and latency percentiles),
 `sender_summary.json` (metadata, totals, per-kind histograms — plus the `expected` verdict when the
