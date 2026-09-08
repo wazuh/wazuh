@@ -1274,7 +1274,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             atomic_int_set(&fim_flush_result, result);
             atomic_int_set(&fim_flush_in_progress, 0);
 
-            // #38899: success alone does not prove the manager received anything -- an empty
+            // success alone does not prove the manager received anything -- an empty
             // queue takes the same early-success path as a delivered one. sent_anything is
             // this durable marker's only valid proof of a round trip (see its own doc comment
             // in agent_sync_protocol_types.hpp).
