@@ -166,3 +166,4 @@
 | [#38766](https://github.com/wazuh/wazuh/issues/38766) | Fixed `wazuh-agentd` crashing with `SIGSEGV` on every service stop, which also cut the shutdown drain short before the `/control` shutdown notification was sent. |
 | [#38850](https://github.com/wazuh/wazuh/issues/38850) | Fixed missing `<manager>` block on Debian 10 unattended DEB installs. |
 | [#38975](https://github.com/wazuh/wazuh/pull/38975) | Fixed SCA PCI-DSS compliance mappings, updated from v3.2.1 to v4.0 numbering. |
+| [#38840](https://github.com/wazuh/wazuh/issues/38840) | Fixed the agent's reported `/config` snapshot staying stale for up to an hour after a group's shared configuration (e.g. `agent.conf`) changed; the manager now sees the update as soon as the agent's reload actually completes, instead of waiting out the periodic report's regular cadence. |

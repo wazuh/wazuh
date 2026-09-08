@@ -1962,10 +1962,20 @@ void w_https_client_notify_config_reload_completed(void)
      * SIGUSR1-confirmed reload means the new shared configuration is actually running --
      * see bridge_on_config_downloaded()'s own comment for why firing any earlier (right
      * after reloadAgent() merely dispatches the reload request) would race the still-old
-     * daemons and risk reporting stale configuration under a falsely fresh timestamp. */
-    if (g_https_client) {
+     * daemons and risk reporting stale configuration under a falsely fresh timestamp.
+     *
+     * Hold the lock across the read+call, same as w_https_client_submit_event(): without it,
+     * w_https_client_stop() (which can run on another thread, e.g. via atexit() during a fatal
+     * error elsewhere) could set g_https_client_stopping, unlock, and call hc_destroy() between
+     * our read of g_https_client and the hc_notify_now() call below, handing that call a handle
+     * mid-destruction or already freed. */
+    w_mutex_lock(&g_https_client_lock);
+
+    if (g_https_client != NULL && !g_https_client_stopping) {
         hc_notify_now(g_https_client);
     }
+
+    w_mutex_unlock(&g_https_client_lock);
 }
 
 int w_https_client_submit_event(const char *frame, size_t length)
