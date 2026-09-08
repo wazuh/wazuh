@@ -347,6 +347,7 @@ void test_wdb_parse_global_insert_agent_query_error(void **state)
     expect_value(__wrap_wdb_global_insert_agent, ip, NULL);
     expect_value(__wrap_wdb_global_insert_agent, register_ip, NULL);
     expect_value(__wrap_wdb_global_insert_agent, internal_key, NULL);
+    expect_value(__wrap_wdb_global_insert_agent, reenroll_secret, NULL);
     expect_value(__wrap_wdb_global_insert_agent, group, NULL);
     expect_value(__wrap_wdb_global_insert_agent, date_add, 123);
     will_return(__wrap_wdb_global_insert_agent, OS_INVALID);
@@ -389,6 +390,50 @@ void test_wdb_parse_global_insert_agent_success(void **state)
     expect_string(__wrap_wdb_global_insert_agent, ip, "0.0.0.0");
     expect_string(__wrap_wdb_global_insert_agent, register_ip, "1.1.1.1");
     expect_string(__wrap_wdb_global_insert_agent, internal_key, "test_key");
+    expect_value(__wrap_wdb_global_insert_agent, reenroll_secret, NULL); // absent from the request: NULL column
+    expect_string(__wrap_wdb_global_insert_agent, group, "test_group");
+    expect_value(__wrap_wdb_global_insert_agent, date_add, 123);
+    will_return(__wrap_wdb_global_insert_agent, OS_SUCCESS);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_insert_agent);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_agent_insert_agent_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_insert_agent_success_with_reenroll_secret(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    // The record authd's writer sends for an agent enrolled through the local socket (#38993): the
+    // re-enrollment secret rides next to the key and lands in its own column.
+    char query[OS_BUFFER_SIZE] = "global insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":123,\
+    \"ip\":\"0.0.0.0\",\"register_ip\":\"1.1.1.1\",\"internal_key\":\"test_key\",\
+    \"reenroll_secret\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\"group\":\"test_group\"}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":123,\
+    \"ip\":\"0.0.0.0\",\"register_ip\":\"1.1.1.1\",\"internal_key\":\"test_key\",\
+    \"reenroll_secret\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\"group\":\"test_group\"}");
+
+    expect_value(__wrap_wdb_global_insert_agent, id, 1);
+    expect_string(__wrap_wdb_global_insert_agent, name, "test_name");
+    expect_string(__wrap_wdb_global_insert_agent, ip, "0.0.0.0");
+    expect_string(__wrap_wdb_global_insert_agent, register_ip, "1.1.1.1");
+    expect_string(__wrap_wdb_global_insert_agent, internal_key, "test_key");
+    expect_string(__wrap_wdb_global_insert_agent, reenroll_secret, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
     expect_string(__wrap_wdb_global_insert_agent, group, "test_group");
     expect_value(__wrap_wdb_global_insert_agent, date_add, 123);
     will_return(__wrap_wdb_global_insert_agent, OS_SUCCESS);
@@ -4685,6 +4730,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_compliant_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_success_with_reenroll_secret, test_setup, test_teardown),
         /* Tests wdb_parse_global_update_agent_data */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_data_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_data_invalid_json, test_setup, test_teardown),

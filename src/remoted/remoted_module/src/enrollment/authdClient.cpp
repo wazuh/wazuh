@@ -490,6 +490,7 @@ namespace remoted::enrollment
                     result.name = data.value("name", "");
                     result.ip = data.value("ip", "");
                     result.key = data.value("key", "");
+                    result.reenrollSecret = data.value("reenroll_secret", "");
                 }
                 else
                 {

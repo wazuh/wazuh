@@ -44,6 +44,8 @@ typedef enum global_db_access
  * @param[in] ip The agent ip address.
  * @param[in] register_ip The agent register IP.
  * @param[in] internal_key The client key of the agent.
+ * @param[in] reenroll_secret The agent's re-enrollment secret (issue #38993), or NULL when the caller has none
+ * (client.keys mirroring, legacy 1515): the field is then left out of the request and the column stays NULL.
  * @param[in] group The agent group.
  * @param[in] keep_date If 1, the addition date will be taken from agents-timestamp. If 0, the addition date is the
  * current time.
@@ -55,6 +57,7 @@ int wdb_insert_agent(int id,
                      const char* ip,
                      const char* register_ip,
                      const char* internal_key,
+                     const char* reenroll_secret,
                      const char* group,
                      int keep_date,
                      int* sock);

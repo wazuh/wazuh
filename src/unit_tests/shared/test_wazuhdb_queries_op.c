@@ -134,7 +134,7 @@ void test_wdb_insert_agent_error_json(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -193,7 +193,7 @@ void test_wdb_insert_agent_error_socket(void **state)
 \"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -252,7 +252,7 @@ void test_wdb_insert_agent_error_sql_execution(void **state)
 \"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -310,7 +310,7 @@ void test_wdb_insert_agent_error_result(void **state)
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -367,7 +367,70 @@ void test_wdb_insert_agent_success(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
+void test_wdb_insert_agent_success_with_reenroll_secret(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    const char *name = "agent1";
+    const char *ip = "192.168.0.101";
+    const char *register_ip = "any";
+    const char *internal_key = "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301";
+    // What authd's writer sends for an agent enrolled through the local socket (#38993).
+    const char *reenroll_secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const char *group = "default";
+    int keep_date = 0;
+
+    const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\
+\"reenroll_secret\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\"group\":\"default\",\"date_add\":1}");
+    const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\
+\"reenroll_secret\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\"group\":\"default\",\"date_add\":1}";
+    const char *response = "ok";
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON: the secret rides right after the key, before the group
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "name");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agent1");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "192.168.0.101");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "register_ip");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "any");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "internal_key");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "reenroll_secret");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "group");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "default");
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "date_add");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, reenroll_secret, group, keep_date, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
 }
@@ -449,7 +512,7 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
 }
@@ -3388,6 +3451,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_success_with_reenroll_secret, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_success_keep_date, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_update_agent_data */
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_invalid_data, setup_wdb_global_helpers, teardown_wdb_global_helpers),

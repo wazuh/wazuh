@@ -378,6 +378,12 @@ namespace remoted::enrollment
                 j["name"] = result.name;
                 j["ip"] = result.ip;
                 j["key"] = result.key;
+                // Verbatim from authd like the four fields above (issue #38993): the credential the agent
+                // will re-enroll with. Omitted, not empty, when authd sent none.
+                if (!result.reenrollSecret.empty())
+                {
+                    j["reenroll_secret"] = result.reenrollSecret;
+                }
                 return remoted::http::HttpResponse::json(200, j.dump());
             }
 

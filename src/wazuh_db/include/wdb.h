@@ -883,11 +883,13 @@ int wdb_enable_foreign_keys(sqlite3 *db);
  * @param [in] ip The agent IP address
  * @param [in] register_ip The agent registration IP address
  * @param [in] internal_key The agent key
+ * @param [in] reenroll_secret The agent's re-enrollment secret (64 hex chars, issue #38993), or NULL when
+ *             the record comes from a path that has none (client.keys mirroring, legacy 1515).
  * @param [in] group The agent group
  * @param [in] date_add The agent addition date.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add);
+int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* reenroll_secret, char* group, int date_add);
 
 /**
  * @brief Function to update an agent version data.

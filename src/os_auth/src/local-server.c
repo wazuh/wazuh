@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include "auth.h"
+#include <openssl/crypto.h>
 #include "os_err.h"
 #include "authd-config.h"
 #include "enrollment_token_store.h"
@@ -208,7 +209,9 @@ static cJSON* local_remove(const char *id, int purge);
 static cJSON* local_get(const char *id);
 
 // Generates an agent info json response
-static cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key);
+// reenroll_secret may be NULL: the field is then absent (local_get(), and a clustered add whose master
+// predates the secret). Only `add` ever carries it (#38993).
+static cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key, const char *reenroll_secret);
 
 // Generates an agent deleted response
 static cJSON* local_create_agent_delete_response(void);
@@ -710,6 +713,7 @@ cJSON* local_add(const char *id,
     int ierror;
     char* str_result = NULL;
     char _ip[IPSIZE + 1] = {0};
+    char reenroll_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
     bool warn = false;
 
     mdebug2("add(%s)", name);
@@ -843,6 +847,15 @@ cJSON* local_add(const char *id,
         }
     }
 
+    /* The per-agent re-enrollment secret (#38993), generated BEFORE the key so a CSPRNG failure leaves
+     * nothing to undo: it never goes to client.keys -- the writer persists it in global.db and this one
+     * answer hands it to the agent -- and an agent without one could never re-enroll, so the enrollment
+     * is refused the same way a failed key generation is (no weaker generator to fall back to). */
+    if (OS_NewReenrollSecret(reenroll_secret, sizeof(reenroll_secret)) != 0) {
+        ierror = EKEY;
+        goto fail;
+    }
+
     index = OS_AddNewAgent(&keys, id, name, _ip, key, config.max_agents);
     if (index == OS_ADDAGENT_LIMIT_REACHED) {
         merror("Unable to add agent: %s. Agent limit (%u) reached.", name, config.max_agents);
@@ -855,12 +868,13 @@ cJSON* local_add(const char *id,
     }
 
     /* Add pending key to write */
-    add_insert(keys.keyentries[index],groups);
+    add_insert(keys.keyentries[index], groups, reenroll_secret);
     write_pending = 1;
     w_cond_signal(&cond_pending);
 
-    response = local_create_agent_response(keys.keyentries[index]->id, name, _ip, keys.keyentries[index]->raw_key);
+    response = local_create_agent_response(keys.keyentries[index]->id, name, _ip, keys.keyentries[index]->raw_key, reenroll_secret);
     w_mutex_unlock(&mutex_keys);
+    OPENSSL_cleanse(reenroll_secret, sizeof(reenroll_secret));
 
     minfo("Agent key generated for agent '%s' (requested locally)", name);
     os_free(str_result);
@@ -868,6 +882,7 @@ cJSON* local_add(const char *id,
 
 fail:
     w_mutex_unlock(&mutex_keys);
+    OPENSSL_cleanse(reenroll_secret, sizeof(reenroll_secret));
     response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
     os_free(str_result);
     return response;
@@ -877,6 +892,7 @@ fail:
 cJSON* local_add_clustered(const char *name, const char *ip, const char *groups, const char *key_hash, const char *token_id) {
     char *new_id = NULL;
     char *new_key = NULL;
+    char *new_secret = NULL;
     char err_response[OS_SIZE_2048] = {0};
     int master_error_code = 0;
     int result;
@@ -886,10 +902,12 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
     minfo("Dispatching enrollment request to master node");
 
     result = w_request_agent_add_clustered(err_response, name, ip, groups, key_hash,
-                                            &new_id, &new_key, NULL, NULL, token_id, &master_error_code);
+                                            &new_id, &new_key, &new_secret, NULL, NULL, token_id, &master_error_code);
 
     if (result == 0) {
-        response = local_create_agent_response(new_id, name, ip, new_key);
+        // The master's re-enrollment secret travels through untouched (#38993); a master that predates
+        // it hands back none, and this node then answers without the field, as before.
+        response = local_create_agent_response(new_id, name, ip, new_key, new_secret && *new_secret ? new_secret : NULL);
     } else if (master_error_code > 0) {
         // A well-formed business rejection: surface the master's exact code so the bridge can map
         // it precisely. Drop the "ERROR: " prefix w_parse_agent_add_response() always adds -- the
@@ -909,6 +927,10 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
 
     os_free(new_id);
     os_free(new_key);
+    if (new_secret) {
+        OPENSSL_cleanse(new_secret, strlen(new_secret));
+    }
+    os_free(new_secret);
     return response;
 }
 
@@ -962,7 +984,9 @@ cJSON* local_get(const char *id) {
         response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
     }
     else {
-        response = local_create_agent_response(id, keys.keyentries[index]->name, keys.keyentries[index]->ip->ip, keys.keyentries[index]->raw_key);
+        // Never the re-enrollment secret: `get` serves manage_agents/the API, and the secret is the
+        // agent's alone (the writer only ever holds it until global.db has it).
+        response = local_create_agent_response(id, keys.keyentries[index]->name, keys.keyentries[index]->ip->ip, keys.keyentries[index]->raw_key, NULL);
     }
 
     w_mutex_unlock(&mutex_keys);
@@ -1132,7 +1156,7 @@ static cJSON* local_token_revoke(cJSON *arguments, int *ierror) {
 }
 
 // Generates an agent info json response
-cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key) {
+cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key, const char *reenroll_secret) {
     cJSON *response = NULL;
     cJSON *data = NULL;
 
@@ -1143,6 +1167,9 @@ cJSON* local_create_agent_response(const char *id, const char *name, const char 
     cJSON_AddStringToObject(data, "name", name);
     cJSON_AddStringToObject(data, "ip", ip);
     cJSON_AddStringToObject(data, "key", key);
+    if (reenroll_secret) {
+        cJSON_AddStringToObject(data, "reenroll_secret", reenroll_secret);
+    }
 
     return response;
 }

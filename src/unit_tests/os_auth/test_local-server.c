@@ -59,6 +59,7 @@ int __wrap_w_request_agent_add_clustered(char *err_response,
                                          __attribute__((unused)) const char *key_hash,
                                          char **id,
                                          char **key,
+                                         char **reenroll_secret,
                                          authd_force_options_t *force_options,
                                          const char *agent_id,
                                          const char *token_id,
@@ -69,17 +70,21 @@ int __wrap_w_request_agent_add_clustered(char *err_response,
     check_expected(token_id);
 
     // Mirrors local_add_clustered()'s contract: no caller-supplied id/key/force is ever
-    // forwarded on a worker.
+    // forwarded on a worker, and the master's re-enrollment secret is always asked for.
     assert_null(force_options);
     assert_null(agent_id);
+    assert_non_null(reenroll_secret);
 
     int result = mock_type(int);
 
     if (result == 0) {
         const char *mock_id = mock_ptr_type(const char *);
         const char *mock_key = mock_ptr_type(const char *);
+        // "" = a master that sent none (the real function os_strdup()s the empty buffer then).
+        const char *mock_secret = mock_ptr_type(const char *);
         os_strdup(mock_id, *id);
         os_strdup(mock_key, *key);
+        os_strdup(mock_secret, *reenroll_secret);
     } else {
         int code = mock_type(int);
         if (code > 0) {
@@ -109,6 +114,7 @@ static void test_local_add_clustered_success(void **state) {
     will_return(__wrap_w_request_agent_add_clustered, 0);
     will_return(__wrap_w_request_agent_add_clustered, "003");
     will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
+    will_return(__wrap_w_request_agent_add_clustered, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
 
     response = local_add_clustered("agent1", "any", NULL, NULL, NULL);
     assert_non_null(response);
@@ -121,7 +127,24 @@ static void test_local_add_clustered_success(void **state) {
     assert_string_equal(cJSON_GetObjectItem(data, "ip")->valuestring, "any");
     assert_string_equal(cJSON_GetObjectItem(data, "key")->valuestring,
                         "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
+    // The master's re-enrollment secret (#38993) is handed through verbatim...
+    assert_string_equal(cJSON_GetObjectItem(data, "reenroll_secret")->valuestring,
+                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+    cJSON_Delete(response);
 
+    // ...and a master that sent none (an older master) leaves the field out, as before.
+    expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
+    expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
+    expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
+    will_return(__wrap_w_request_agent_add_clustered, 0);
+    will_return(__wrap_w_request_agent_add_clustered, "004");
+    will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
+    will_return(__wrap_w_request_agent_add_clustered, "");
+    response = local_add_clustered("agent1", "any", NULL, NULL, NULL);
+    assert_non_null(response);
+    data = cJSON_GetObjectItem(response, "data");
+    assert_string_equal(cJSON_GetObjectItem(data, "id")->valuestring, "004");
+    assert_null(cJSON_GetObjectItem(data, "reenroll_secret"));
     cJSON_Delete(response);
 }
 
@@ -443,6 +466,7 @@ static void free_keynode_queue(struct keynode **queue) {
         free(node->ip);
         free(node->raw_key);
         free(node->group);
+        free(node->reenroll_secret);
         free(node);
         node = next;
     }
@@ -879,6 +903,58 @@ static void test_add_with_revoked_or_expired_token(void **state) {
     assert_int_equal(OS_IsAllowedName(&keys, "exp-agent"), -1);
 }
 
+static void test_local_add_returns_and_queues_a_reenroll_secret(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    // The only add that reaches the keystore: OS_AddKey() validates the ip through OS_IsValidIP().
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"rs-agent\",\"ip\":\"any\"}}");
+    assert_int_equal(response_error(response), 0);
+    const char *secret = data_string(response, "reenroll_secret");
+    // 64 lowercase hex chars (#38993), generated next to the key...
+    assert_true(OS_IsValidReenrollSecret(secret));
+    assert_string_not_equal(secret, data_string(response, "key"));
+    // ...and queued for the writer, which is the only way it reaches global.db (never client.keys).
+    // The group fixture keeps one queue for every case, so look for this add's node, not the head.
+    struct keynode *node = queue_insert;
+    while (node && strcmp(node->name, "rs-agent") != 0) {
+        node = node->next;
+    }
+    assert_non_null(node);
+    assert_non_null(node->reenroll_secret);
+    assert_string_equal(node->reenroll_secret, secret);
+    cJSON_Delete(response);
+}
+
+static void test_local_get_never_returns_the_secret(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"get-agent\",\"ip\":\"any\"}}");
+    assert_int_equal(response_error(response), 0);
+    char id[16];
+    strncpy(id, data_string(response, "id"), sizeof(id) - 1);
+    id[sizeof(id) - 1] = '\0';
+    cJSON_Delete(response);
+
+    // `get` serves manage_agents and the API: the key, yes; the agent's re-enrollment secret, never.
+    char request[128];
+    snprintf(request, sizeof(request), "{\"function\":\"get\",\"arguments\":{\"id\":\"%s\"}}", id);
+    response = dispatch(request);
+    assert_int_equal(response_error(response), 0);
+    assert_string_equal(data_string(response, "name"), "get-agent");
+    assert_non_null(cJSON_GetObjectItem(cJSON_GetObjectItem(response, "data"), "key"));
+    assert_null(cJSON_GetObjectItem(cJSON_GetObjectItem(response, "data"), "reenroll_secret"));
+    cJSON_Delete(response);
+}
+
 static void test_add_with_token_on_worker_forwards_it(void **state) {
     (void)state;
     EXPECT_LOG_DEBUG2();
@@ -891,6 +967,7 @@ static void test_add_with_token_on_worker_forwards_it(void **state) {
     will_return(__wrap_w_request_agent_add_clustered, 0);
     will_return(__wrap_w_request_agent_add_clustered, "007");
     will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
+    will_return(__wrap_w_request_agent_add_clustered, "");
     cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"wk-agent\",\"ip\":\"any\",\"token_id\":\"AAECAwQFBgcICQoLDA0ODw\"}}");
     assert_int_equal(response_error(response), 0);
     assert_string_equal(data_string(response, "id"), "007");
@@ -930,6 +1007,8 @@ int main(void) {
         cmocka_unit_test(test_add_with_token_consumes_and_releases),
         cmocka_unit_test(test_add_with_revoked_or_expired_token),
         cmocka_unit_test(test_add_with_token_on_worker_forwards_it),
+        cmocka_unit_test(test_local_add_returns_and_queues_a_reenroll_secret),
+        cmocka_unit_test(test_local_get_never_returns_the_secret),
     };
     int failed = cmocka_run_group_tests(tests, NULL, NULL);
     failed += cmocka_run_group_tests(token_tests, setup_token_env, teardown_token_env);

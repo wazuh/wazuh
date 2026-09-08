@@ -39,7 +39,7 @@
 extern cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char *groups, const char *key_hash, const char *key, const char *id, authd_force_options_t *force_options, const char *token_id);
 extern cJSON* w_create_agent_remove_payload(const char *id, const int purge);
 extern cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
-extern int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error, int *error_code);
+extern int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, char* reenroll_secret, const int json_format, const int exit_on_error, int *error_code);
 extern int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error);
 
 #ifndef WIN32
@@ -565,56 +565,74 @@ static void test_parse_agent_add_response(void **state) {
     expect_any_always(__wrap__mwarn, formatted_msg);
 
     /* Success parse */
-    err = w_parse_agent_add_response(success_response, err_response, new_id, new_key, FALSE, FALSE, NULL);
+    err = w_parse_agent_add_response(success_response, err_response, new_id, new_key, NULL, FALSE, FALSE, NULL);
     assert_int_equal(err, 0);
     assert_string_equal(new_id, "001");
     assert_string_equal(new_key, "347e2dc688148aec8544c9777ff291b8868b885");
 
-    err = w_parse_agent_add_response(success_response, err_response, new_id, NULL, FALSE, FALSE, NULL);
+    err = w_parse_agent_add_response(success_response, err_response, new_id, NULL, NULL, FALSE, FALSE, NULL);
     assert_int_equal(err, 0);
     assert_string_equal(new_id, "001");
 
-    err = w_parse_agent_add_response(success_response, err_response, NULL, new_key, FALSE, FALSE, NULL);
+    err = w_parse_agent_add_response(success_response, err_response, NULL, new_key, NULL, FALSE, FALSE, NULL);
     assert_int_equal(err, 0);
     assert_string_equal(new_key, "347e2dc688148aec8544c9777ff291b8868b885");
 
     /* Error parse */
-    err = w_parse_agent_add_response(error_response, err_response, new_id, new_key, FALSE, FALSE, NULL);
+    err = w_parse_agent_add_response(error_response, err_response, new_id, new_key, NULL, FALSE, FALSE, NULL);
     assert_int_equal(err, -1);
     assert_string_equal(err_response, "ERROR: ERROR_MESSAGE");
 
     /* Error parse: the master's own numeric code is captured when the caller asks for it */
     error_code = 0;
-    err = w_parse_agent_add_response(error_response, err_response, new_id, new_key, FALSE, FALSE, &error_code);
+    err = w_parse_agent_add_response(error_response, err_response, new_id, new_key, NULL, FALSE, FALSE, &error_code);
     assert_int_equal(err, -1);
     assert_int_equal(error_code, 9009);
     assert_string_equal(err_response, "ERROR: ERROR_MESSAGE");
 
     /* Unknown parse */
-    err = w_parse_agent_add_response(unknown_response, err_response, new_id, new_key, FALSE, FALSE, NULL);
+    err = w_parse_agent_add_response(unknown_response, err_response, new_id, new_key, NULL, FALSE, FALSE, NULL);
     assert_int_equal(err, -2);
     assert_string_equal(err_response, "ERROR: Invalid message format");
 
     /* Unknown parse: error_code must stay untouched on a non-business failure */
     error_code = 0;
-    err = w_parse_agent_add_response(unknown_response, err_response, new_id, new_key, FALSE, FALSE, &error_code);
+    err = w_parse_agent_add_response(unknown_response, err_response, new_id, new_key, NULL, FALSE, FALSE, &error_code);
     assert_int_equal(err, -2);
     assert_int_equal(error_code, 0);
 
     /* Missing Data parse */
-    err = w_parse_agent_add_response(missingdata_response, err_response, new_id, new_key, FALSE, FALSE, NULL);
+    err = w_parse_agent_add_response(missingdata_response, err_response, new_id, new_key, NULL, FALSE, FALSE, NULL);
     assert_int_equal(err, -2);
     assert_string_equal(err_response, "ERROR: Invalid message format");
 
     /* Missing ID parse */
-    err = w_parse_agent_add_response(missingid_response, err_response, new_id, new_key, FALSE, FALSE, NULL);
+    err = w_parse_agent_add_response(missingid_response, err_response, new_id, new_key, NULL, FALSE, FALSE, NULL);
     assert_int_equal(err, -2);
     assert_string_equal(err_response, "ERROR: Invalid message format");
 
     /* Missing key parse */
-    err = w_parse_agent_add_response(missingkey_response, err_response, new_id, new_key, FALSE, FALSE, NULL);
+    err = w_parse_agent_add_response(missingkey_response, err_response, new_id, new_key, NULL, FALSE, FALSE, NULL);
     assert_int_equal(err, -2);
     assert_string_equal(err_response, "ERROR: Invalid message format");
+
+    /* Re-enrollment secret (#38993): copied when the master sends it, empty (not an error) when it does not */
+    char* secret_response = "{\"error\":0,\"data\":{\"id\":\"001\",\"name\":\"agent1\",\"ip\":\"any\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\",\
+\"reenroll_secret\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"}}";
+    char new_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = "stale";
+    err = w_parse_agent_add_response(secret_response, err_response, new_id, new_key, new_secret, FALSE, FALSE, NULL);
+    assert_int_equal(err, 0);
+    assert_string_equal(new_secret, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+    assert_string_equal(new_key, "347e2dc688148aec8544c9777ff291b8868b885");
+
+    strcpy(new_secret, "stale");
+    err = w_parse_agent_add_response(success_response, err_response, new_id, new_key, new_secret, FALSE, FALSE, NULL);
+    assert_int_equal(err, 0);
+    assert_string_equal(new_secret, "");
+
+    /* A caller that does not ask for it (NULL) is unaffected either way */
+    err = w_parse_agent_add_response(secret_response, err_response, new_id, new_key, NULL, FALSE, FALSE, NULL);
+    assert_int_equal(err, 0);
 }
 static void test_os_write_agent_info_success(void **state) {
     FILE *fp = (FILE*)0x1234;

@@ -646,6 +646,24 @@ TEST(EnrollmentEndpointTest, SuccessReturns200WithAgentData)
     EXPECT_EQ(j["id"], "003");
     EXPECT_EQ(j["name"], "agent1");
     EXPECT_EQ(j["key"], "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
+    // authd sent no re-enrollment secret: the 200 has no such field (omitted, never empty).
+    EXPECT_FALSE(j.contains("reenroll_secret"));
+}
+
+TEST(EnrollmentEndpointTest, SuccessCarriesTheReenrollSecretWhenAuthdSendsIt)
+{
+    // The fifth field of a 200 (issue #38993): authd's re-enrollment secret, verbatim like the other
+    // four -- the agent stores it and re-enrolls with it later.
+    auto stub = fixedAuthdServer(
+        R"({"error":0,"data":{"id":"003","name":"agent1","ip":"any","key":"675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915",)"
+        R"("reenroll_secret":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}})");
+    const auto response = run(openModeConfig(), kValidBody, stub.path);
+
+    EXPECT_EQ(response.status, 200);
+    const auto j = parseBody(response);
+    EXPECT_EQ(j["id"], "003");
+    EXPECT_EQ(j["key"], "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
+    EXPECT_EQ(j["reenroll_secret"], "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
 }
 
 struct AuthdErrorCase
