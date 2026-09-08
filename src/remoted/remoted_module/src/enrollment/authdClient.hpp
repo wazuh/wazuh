@@ -37,6 +37,16 @@ namespace remoted::enrollment
         /// disagrees with remoted's replica about the token's state). Absent for the password and
         /// Open paths, where the wire request stays byte-identical to what it was before tokens.
         std::optional<std::string> tokenId;
+        /// Re-enrollment (issue #38993): the agent id the bearer named (`kid`) and the bearer itself, both
+        /// verbatim and UNVERIFIED -- forwarded as `reenroll` = {kid, bearer} for authd on the master to
+        /// verify against that agent's re-enrollment secret (which only its global.db holds) and, when it
+        /// verifies, to rotate the agent's key and secret in place. Never together with tokenId.
+        struct ReenrollCredential
+        {
+            std::string kid;
+            std::string bearer;
+        };
+        std::optional<ReenrollCredential> reenroll;
     };
 
     /**

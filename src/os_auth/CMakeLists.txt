@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-project(wazuh-authd C)
+project(wazuh-authd C CXX)
 
 if(NOT DEFINED WAZUH_MAIN_PROJECT)
   get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
@@ -56,11 +56,36 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 
 # Collect source files
 file(GLOB AUTHD_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
+# The re-enrollment bridge (issue #38993) is authd's one C++ file: a thin extern "C" wrapper over the
+# header-only verifier in shared_modules/utils/jwt/, so authd judges the agent's `wazuh-enroll+jwt`
+# bearer with the very code remoted and the agent use. Listed explicitly: the GLOB above is *.c on
+# purpose, and a second GLOB would silently pick up any future .cpp.
+list(APPEND AUTHD_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/reenroll_verify.cpp")
 
 # Build static library (without main-server.c) for unit tests
 list(REMOVE_ITEM AUTHD_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/main-server.c")
 add_library(authd_lib STATIC ${AUTHD_SRC})
-set_target_properties(authd_lib PROPERTIES LINKER_LANGUAGE C)
+# CXX, not C, since reenroll_verify.cpp joined: a consumer that links this archive needs the C++
+# runtime (the daemon below already links as CXX; the cmocka tests add -lstdc++ themselves).
+set_target_properties(authd_lib PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_features(authd_lib PRIVATE cxx_std_17)
+# shared_modules/utils/jwt/*.hpp and their header-only dependencies (jwt-cpp, rapidjson). The jwt-cpp
+# headers are taken from ext_jwt_cpp's usage requirements WITHOUT linking that target: it also carries
+# the static libcrypto.a, and linking it here would put a second OpenSSL inside authd next to the one
+# libwazuhext.so already provides (the HMAC/HKDF calls resolve to wazuhext's, like the rest of authd).
+target_include_directories(authd_lib PRIVATE ${SRC_FOLDER}/shared_modules/utils)
+if(TARGET ext_jwt_cpp)
+  target_include_directories(authd_lib SYSTEM PRIVATE
+                             $<TARGET_PROPERTY:ext_jwt_cpp,INTERFACE_INCLUDE_DIRECTORIES>)
+  target_compile_definitions(authd_lib PRIVATE $<TARGET_PROPERTY:ext_jwt_cpp,INTERFACE_COMPILE_DEFINITIONS>)
+  target_link_libraries(authd_lib PUBLIC ext_rapidjson)
+else()
+  # Standalone configure of this directory (no external/): the same headers by path.
+  target_include_directories(authd_lib SYSTEM PRIVATE ${SRC_FOLDER}/external/jwt-cpp/include
+                                                     ${SRC_FOLDER}/external
+                                                     ${SRC_FOLDER}/external/rapidjson/include)
+  target_compile_definitions(authd_lib PRIVATE JWT_DISABLE_PICOJSON)
+endif()
 
 # Enable WAZUH_UNIT_TESTING to export static functions for unit tests
 if(UNIT_TEST)
