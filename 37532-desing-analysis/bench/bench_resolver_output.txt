@@ -1,0 +1,11 @@
+host processes visible        : 68
+one full /proc sweep          : 0.47 ms  (0.0069 ms/proc)
+one-sweep shared index        : 0.20 ms  (built ONCE for all containers)
+
+-- extrapolated to 100 containers, 3 sweeps/container (current design) --
+current design  : 300 sweeps  => 141.6 ms  (0.14 s)
+shared index    : 1 sweep      => 0.2 ms   (speedup 726x)
+
+NOTE: this host has only 68 procs. A real node with 100 containers
+      typically shows 1500-2500 procs, scaling the current-design cost
+      by a further ~29x  =>  ~4.2 s per baseline cycle.
