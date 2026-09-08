@@ -65,6 +65,7 @@ namespace wazuh::container_instances
                 QueryResponse response;
                 response.status = QueryResponse::Status::ok;
                 response.containers = m_store.listContainers();
+                response.listReply = true;
                 response.connectorName = m_connectorName;
                 return response;
             }
