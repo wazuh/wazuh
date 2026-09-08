@@ -97,8 +97,7 @@ jobs:
         run: sudo pip install pyarrow
         continue-on-error: true
       - name: DIAG - run patched wodle from its installed location - us-east-2 (2025-SEP-15)
-        working-directory: /var/ossec
-        run: sudo timeout 90 wodles/aws/aws-s3 --service inspector --regions us-east-2 --only_logs_after 2025-SEP-15 --debug 2
+        run: sudo bash -c 'cd /var/ossec && timeout 90 wodles/aws/aws-s3 --service inspector --regions us-east-2 --only_logs_after 2025-SEP-15 --debug 2'
         continue-on-error: true
       - name: DIAG - stop here, skip the rest of the suite
         run: exit 1
