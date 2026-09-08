@@ -228,9 +228,12 @@ the agents are being served. Both are observed at the auth gateway or later, whi
 
 ### Authentication rejections — `remoted.auth.reject.*`
 
-*Why* agents fail authentication, counted with the pre-collapse cause: on the wire the
-credential failures deliberately fold into one generic 401 (so a client cannot probe which
-check failed), but the operator keeps the distinction here. All counters, unit `count`.
+*Why* agents fail authentication, counted with the fine cause: on the wire a 401 names only its
+agent-actionable **class** (`unknown_agent`, `stale_token`, `invalid_signature`, `invalid_request`,
+the `token_*` and `enrollment_key_unavailable` of `/enroll` — see the
+[HTTPS Agent API](https-events-api.md#error-responses)), which folds several causes together
+(`invalid_signature` covers a bad MAC, a malformed token, an identity mismatch, an unusable key and
+a disallowed peer address); the operator keeps the distinction here. All counters, unit `count`.
 
 | Metric | Meaning | Tuning |
 |---|---|---|
@@ -524,9 +527,9 @@ These rules say what sums to what — read them before comparing families:
   `remoted.enroll.rejected_auth`.
 - **Auth-gateway rejections** (401s, 413 at authentication, bad encoding) happen before any
   endpoint handler and appear only in `remoted.auth.reject.*`. A rejection by registered
-  address is deliberately indistinguishable on the wire — it collapses into the same generic
-  401 as every credential failure, so a caller cannot learn that the agent id exists — which
-  makes `remoted.auth.reject.address_not_allowed` the only place it can be told apart. An endpoint's own pre-forward
+  address is not told apart on the wire — it shares the `invalid_signature` class with a bad
+  MAC, a malformed token, an identity mismatch and an unusable key, since none of them is fixed
+  by re-enrolling — which makes `remoted.auth.reject.address_not_allowed` the only place it can be told apart. An endpoint's own pre-forward
   rejection (empty body, payload identity) counts in its `responses.*` (the *what*) and, when
   it is an authentication error, in `remoted.auth.reject.*` too (the *why*).
 - `remoted.http.<endpoint>.responses.*` therefore reads as "every response this endpoint

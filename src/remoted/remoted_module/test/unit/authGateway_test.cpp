@@ -591,9 +591,11 @@ namespace
     }
 } // namespace
 
-// RFC 6750 §3: every 401 carries `WWW-Authenticate: Bearer`, uniformly -- it names the scheme, never
-// the reason -- while the non-credential rejections (400/413/415) carry no challenge at all.
-TEST(AuthGatewayTest, Every401CarriesTheBearerChallengeAndNothingElseDoes)
+// RFC 6750 §3: every 401 carries a `WWW-Authenticate: Bearer` challenge that names the failure CLASS
+// (issue #38993: `error="invalid_request"` when no usable credential was presented,
+// `error="invalid_token", error_description="<class>"` when one was judged and failed), with the same
+// class as the body's `code`; the non-credential rejections (400/413/415) carry no challenge at all.
+TEST(AuthGatewayTest, Every401CarriesItsClassInTheChallengeAndNothingElseDoes)
 {
     FakeHttpServer server;
     auto gateway = makeGateway();
@@ -612,28 +614,35 @@ TEST(AuthGatewayTest, Every401CarriesTheBearerChallengeAndNothingElseDoes)
         return responder->captured.value_or(HttpResponse {});
     };
 
-    // Missing Authorization.
+    const std::optional<std::string> invalidRequest {R"(Bearer error="invalid_request")"};
+    const std::optional<std::string> invalidSignature {
+        R"(Bearer error="invalid_token", error_description="invalid_signature")"};
+
+    // Missing Authorization: nothing to judge.
     HttpRequest missing;
     missing.method = Method::Post;
     missing.target = "/stateless";
     missing.headers.emplace("protocol-version", "1");
     auto response = dispatch(missing);
     EXPECT_EQ(response.status, 401);
-    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), std::optional<std::string> {"Bearer"});
+    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), invalidRequest);
+    EXPECT_EQ(response.body, R"({"error":"Invalid client authentication","code":"invalid_request"})");
 
-    // A retired-scheme credential, and a well-formed token with a corrupted signature.
+    // A retired-scheme credential (not a bearer at all), and a well-formed token with a corrupted
+    // signature (judged, and it does not work for that identity).
     auto legacy = signedRequest("body");
     legacy.headers["authorization"] = "Wazuh 001:1784238000:00112233445566778899aabbccddeeff";
     response = dispatch(legacy);
     EXPECT_EQ(response.status, 401);
-    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), std::optional<std::string> {"Bearer"});
+    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), invalidRequest);
 
     auto tampered = signedRequest("body");
     auto& authorization = tampered.headers["authorization"];
     authorization[authorization.size() - 2] = authorization[authorization.size() - 2] == 'A' ? 'B' : 'A';
     response = dispatch(tampered);
     EXPECT_EQ(response.status, 401);
-    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), std::optional<std::string> {"Bearer"});
+    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), invalidSignature);
+    EXPECT_EQ(response.body, R"({"error":"Invalid client authentication","code":"invalid_signature"})");
 
     // Missing protocol-version is a 400 about the protocol, not a credential failure: no challenge.
     auto noVersion = signedRequest("body");
@@ -644,6 +653,62 @@ TEST(AuthGatewayTest, Every401CarriesTheBearerChallengeAndNothingElseDoes)
 
     // The success path never carries one either.
     response = dispatch(signedRequest("body"));
+    EXPECT_EQ(response.status, 200);
+    EXPECT_FALSE(headerOf(response, "WWW-Authenticate").has_value());
+}
+
+// The two classes the agent acts on differently (issue #38993, §2.10 of the document): an id the
+// keystore does not know tells it to re-enroll; a token outside the accepted window tells it to fix
+// its clock and retry. Both were the same anonymous 401 before.
+TEST(AuthGatewayTest, UnknownAgentAndStaleTokenAreDistinguishableOnTheWire)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [](std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder> responder)
+        { responder->send(HttpResponse {200, "", {}}); });
+
+    const auto dispatchBearer = [&server](const std::string& bearer) -> HttpResponse
+    {
+        HttpRequest request;
+        request.method = Method::Post;
+        request.target = "/stateless";
+        request.headers.emplace("protocol-version", "1");
+        request.headers.emplace("authorization", bearer);
+        request.body = "body";
+        auto responder = std::make_shared<CapturingResponder>();
+        server.dispatch(Method::Post, "/stateless", request, responder);
+        EXPECT_TRUE(responder->captured.has_value());
+        return responder->captured.value_or(HttpResponse {});
+    };
+    const auto bearerFor = [](const char* agentId, std::chrono::system_clock::time_point at)
+    {
+        const std::vector<std::uint8_t> key(32, 0x0A); // FakeKeystore's key for 001; 002 has none
+        const jwt_profile::v1::SecureBytes secret {key.data(), key.size()};
+        const auto token = jwt_profile::v1::JwtRequestTokenSigner::sign(
+            *jwt_profile::v1::CanonicalAgentId::parse(agentId), secret, at);
+        return "Bearer " + (token ? *token : std::string {});
+    };
+
+    // Agent 002 is not in the keystore: unknown_agent.
+    auto response = dispatchBearer(bearerFor("002", std::chrono::system_clock::now()));
+    EXPECT_EQ(response.status, 401);
+    EXPECT_EQ(headerOf(response, "WWW-Authenticate"),
+              std::optional<std::string> {R"(Bearer error="invalid_token", error_description="unknown_agent")"});
+    EXPECT_EQ(response.body, R"({"error":"Invalid client authentication","code":"unknown_agent"})");
+
+    // Agent 001 with a token issued ten minutes ago: stale_token.
+    response = dispatchBearer(bearerFor("001", std::chrono::system_clock::now() - std::chrono::minutes(10)));
+    EXPECT_EQ(response.status, 401);
+    EXPECT_EQ(headerOf(response, "WWW-Authenticate"),
+              std::optional<std::string> {R"(Bearer error="invalid_token", error_description="stale_token")"});
+    EXPECT_EQ(response.body, R"({"error":"Invalid client authentication","code":"stale_token"})");
+
+    // And the same request at the right time is a 200 with no challenge.
+    response = dispatchBearer(bearerFor("001", std::chrono::system_clock::now()));
     EXPECT_EQ(response.status, 200);
     EXPECT_FALSE(headerOf(response, "WWW-Authenticate").has_value());
 }

@@ -210,13 +210,19 @@ namespace
         EXPECT_EQ(errorOf(result), AuthError::AddressNotAllowed);
     }
 
-    TEST(MiddlewareAddress, RejectionIsIndistinguishableFromAnUnknownAgent)
+    TEST(MiddlewareAddress, RejectionIsReportedAsInvalidSignatureNotUnknownAgent)
     {
+        // Same status and message as every credential failure; the public class (issue #38993) is
+        // `invalid_signature` -- the agent must not re-enroll over an address rule -- and never
+        // `unknown_agent`, which would tell it to.
         const auto denied = publicErrorFor(AuthError::AddressNotAllowed);
         const auto unknown = publicErrorFor(AuthError::UnknownAgent);
         EXPECT_EQ(denied.status, 401);
         EXPECT_EQ(denied.status, unknown.status);
         EXPECT_STREQ(denied.message, unknown.message);
+        EXPECT_STREQ(denied.code, "invalid_signature");
+        EXPECT_STREQ(unknown.code, "unknown_agent");
+        EXPECT_STRNE(denied.challenge, unknown.challenge);
     }
 
     TEST(MiddlewareAddress, ErrorHasItsOwnLogTag)
@@ -428,27 +434,72 @@ namespace
 
     // --- public mapping ----------------------------------------------------------------------------
 
-    TEST(Middleware, EveryCredentialFailureCollapsesToTheSameGeneric401)
+    // Issue #38993 (T10): every credential failure is a 401 with the same generic message, and the
+    // wire names its public CLASS -- the body's `code` and the RFC 6750 challenge's
+    // error_description -- which is coarser than AuthError: the agent-actionable answer, not the
+    // diagnosis (that stays in the log and in remoted.auth.reject.*).
+    TEST(Middleware, EveryCredentialFailureMapsToItsPublicClass)
     {
+        struct Case
+        {
+            AuthError err;
+            const char* code;
+            const char* challenge;
+        };
+        constexpr const char* kInvalidToken = R"(Bearer error="invalid_token", error_description=")";
+        const std::string invalidSignature = std::string {kInvalidToken} + "invalid_signature\"";
+        const Case cases[] = {
+            {AuthError::MissingAuthorization, "invalid_request", R"(Bearer error="invalid_request")"},
+            {AuthError::MalformedAuthorization, "invalid_request", R"(Bearer error="invalid_request")"},
+            {AuthError::UnknownAgent,
+             "unknown_agent",
+             R"(Bearer error="invalid_token", error_description="unknown_agent")"},
+            {AuthError::StaleToken, "stale_token", R"(Bearer error="invalid_token", error_description="stale_token")"},
+            {AuthError::InvalidSignature, "invalid_signature", invalidSignature.c_str()},
+            {AuthError::InvalidToken, "invalid_signature", invalidSignature.c_str()},
+            {AuthError::IdentityMismatch, "invalid_signature", invalidSignature.c_str()},
+            {AuthError::AddressNotAllowed, "invalid_signature", invalidSignature.c_str()},
+            {AuthError::MissingKey, "invalid_signature", invalidSignature.c_str()},
+            // The server could not judge the credential: a bare challenge, the class only in the body.
+            {AuthError::EnrollmentKeyUnavailable, "enrollment_key_unavailable", "Bearer"},
+            {AuthError::TokenUnknown,
+             "token_unknown",
+             R"(Bearer error="invalid_token", error_description="token_unknown")"},
+            {AuthError::TokenExpired,
+             "token_expired",
+             R"(Bearer error="invalid_token", error_description="token_expired")"},
+            {AuthError::TokenRevoked,
+             "token_revoked",
+             R"(Bearer error="invalid_token", error_description="token_revoked")"},
+        };
         const auto reference = publicErrorFor(AuthError::UnknownAgent);
-        EXPECT_EQ(reference.status, 401);
-        for (const auto err : {AuthError::MissingAuthorization,
-                               AuthError::MalformedAuthorization,
-                               AuthError::UnknownAgent,
-                               AuthError::MissingKey,
-                               AuthError::AddressNotAllowed,
-                               AuthError::InvalidToken,
-                               AuthError::InvalidSignature,
-                               AuthError::StaleToken,
-                               AuthError::IdentityMismatch,
-                               AuthError::EnrollmentKeyUnavailable})
+        for (const auto& c : cases)
+        {
+            const auto pub = publicErrorFor(c.err);
+            EXPECT_EQ(pub.status, 401) << toString(c.err);
+            EXPECT_STREQ(pub.message, reference.message) << toString(c.err);
+            ASSERT_NE(pub.code, nullptr) << toString(c.err);
+            EXPECT_STREQ(pub.code, c.code) << toString(c.err);
+            ASSERT_NE(pub.challenge, nullptr) << toString(c.err);
+            EXPECT_STREQ(pub.challenge, c.challenge) << toString(c.err);
+        }
+
+        // The non-credential rejections: their own status and message, no class, no challenge.
+        for (const auto err : {AuthError::MissingProtocolVersion,
+                               AuthError::UnsupportedProtocolVersion,
+                               AuthError::PayloadAgentMismatch,
+                               AuthError::BodyTooLarge,
+                               AuthError::MalformedContentEncoding,
+                               AuthError::UnsupportedContentEncoding})
         {
             const auto pub = publicErrorFor(err);
-            EXPECT_EQ(pub.status, 401) << toString(err);
-            EXPECT_STREQ(pub.message, reference.message) << toString(err);
+            EXPECT_NE(pub.status, 401) << toString(err);
+            EXPECT_EQ(pub.code, nullptr) << toString(err);
+            EXPECT_EQ(pub.challenge, nullptr) << toString(err);
         }
         EXPECT_EQ(publicErrorFor(AuthError::MissingProtocolVersion).status, 400);
         EXPECT_EQ(publicErrorFor(AuthError::UnsupportedProtocolVersion).status, 400);
+        EXPECT_EQ(publicErrorFor(AuthError::BodyTooLarge).status, 413);
     }
 
     TEST(AuthErrorToString, CoversEveryEnumerator)
