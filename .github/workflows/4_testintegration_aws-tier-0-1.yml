@@ -61,13 +61,16 @@ jobs:
       - name: DIAG - raw Inspector v2 API check - us-east-2
         run: sudo aws inspector2 list-findings --region us-east-2 --max-results 5
         continue-on-error: true
-      - name: DIAG - run patched wodle directly - us-east-1
-        working-directory: wodles/aws
-        run: sudo timeout 60 python3 aws_s3.py --service inspector --regions us-east-1 --only_logs_after 20230112 --debug 2
+      - name: DIAG - install pyarrow (needed by wazuh_integration import chain)
+        run: sudo pip install pyarrow
+      - name: DIAG - raw Inspector v2 API check - us-east-2 with updatedAt filter matching our code
+        run: >
+          sudo aws inspector2 list-findings --region us-east-2 --max-results 5
+          --filter-criteria '{"updatedAt":[{"startInclusive":"2025-09-15T00:00:00","endInclusive":"2026-09-08T23:59:59"}]}'
         continue-on-error: true
-      - name: DIAG - run patched wodle directly - us-east-2
+      - name: DIAG - run patched wodle directly - us-east-2 (2025-SEP-15)
         working-directory: wodles/aws
-        run: sudo timeout 60 python3 aws_s3.py --service inspector --regions us-east-2 --only_logs_after 20230112 --debug 2
+        run: sudo timeout 60 python3 aws_s3.py --service inspector --regions us-east-2 --only_logs_after 20250915 --debug 2
         continue-on-error: true
       - name: DIAG - stop here, skip the rest of the suite
         run: exit 1
