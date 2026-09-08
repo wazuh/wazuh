@@ -26,7 +26,7 @@ sequenceDiagram
     participant AG as agent<br/>wazuh-execd
 
     AL->>NO: matching event (index, document id)
-    NO->>NO: copy the event's `wazuh` object; add `wazuh.active_response` from the channel, `event`, `@timestamp`
+    NO->>NO: copy the event's `wazuh` object add `wazuh.active_response` from the channel, `event`, `@timestamp`
     NO->>DS: index (op_type=create)
     loop every active_response_polling seconds, on every node
         CD->>DS: search after the bookmark, sorted by [@timestamp, _id], bounded at now

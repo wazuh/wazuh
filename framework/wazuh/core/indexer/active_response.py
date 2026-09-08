@@ -521,8 +521,6 @@ class ActiveResponseHelpers:
                 for event in resp.get("docs", []):
                     # `found` without `_source` is an index that does not store it: the reference
                     # then reads as not visible and expires with the grace window.
-                    # TODO: this case is terminal; decide whether to discard it here instead of
-                    # holding the page for the grace window first.
                     if event.get("found") and "_source" in event:
                         idx = event["_index"]
                         doc_id = event["_id"]
@@ -902,8 +900,6 @@ class ActiveResponseFetchTask:
         }
         missing = [key for key in defaults if key not in common]
         if missing:
-            # TODO: active_response_polling used to default silently. Decide whether all three keys
-            # warn when missing, as MetricsSnapshotTasks does, or none of them.
             self.logger.warning(
                 f"Missing in cluster configuration (intervals.common): {', '.join(missing)}. "
                 f"Using defaults: {', '.join(f'{key}={defaults[key]}' for key in missing)}."
