@@ -246,3 +246,166 @@ TEST(EnrollVerifier, ProfilesNeverCrossOver)
     EXPECT_FALSE(JwtRequestTokenVerifier::verify(*enrollToken, key, TimePolicy {}, at(kNow)).ok());
     EXPECT_FALSE(JwtRequestTokenVerifier::peekKid(*enrollToken).has_value());
 }
+
+// ---------------------------------------------------------------------------- `kid` forms (issue #38993)
+// The shared-key surface above is untouched: a `kid` is still InvalidToken for verify(). The two
+// `kid` forms -- enrollment token id (22 base64url chars) and canonical agent id -- are classified
+// by shape with peekKid() and verified with verifyWithKid() against the key the caller resolved.
+
+namespace
+{
+    namespace tt = jwt_profile::v1::test_vectors::enroll_token;
+    using KidKind = JwtEnrollTokenVerifier::KidKind;
+
+    SecureBytes fromHex(std::string_view hex)
+    {
+        SecureBytes out(hex.size() / 2);
+        for (std::size_t i = 0; i < out.size(); ++i)
+        {
+            out.data()[i] = static_cast<std::uint8_t>(std::stoul(std::string {hex.substr(2 * i, 2)}, nullptr, 16));
+        }
+        return out;
+    }
+
+    SecureBytes tokenKey()
+    {
+        auto key = enroll::deriveEnrollTokenKey(fromHex(tt::kSecretHex));
+        EXPECT_TRUE(key.has_value());
+        return std::move(*key);
+    }
+
+    SecureBytes reenrollKey()
+    {
+        auto key = enroll::deriveReenrollKey(fromHex(tt::kReenrollSecretHex));
+        EXPECT_TRUE(key.has_value());
+        return std::move(*key);
+    }
+
+    VerifyError verifyKidAt(std::string_view token,
+                            std::string_view kid,
+                            const SecureBytes& key,
+                            std::int64_t now = kNow,
+                            const TimePolicy& policy = TimePolicy {})
+    {
+        return JwtEnrollTokenVerifier::verifyWithKid(token, kid, key, policy, at(now));
+    }
+} // namespace
+
+TEST(EnrollSigner, ReproducesTheTokenKidVectorByteForByte)
+{
+    const auto token = JwtEnrollTokenSigner::signWithKid(tokenKey(), at(tv::kIat), tt::kIdB64Url, tv::kJti);
+    ASSERT_TRUE(token.has_value());
+    EXPECT_EQ(*token, tt::kTokenKidJwt);
+    EXPECT_EQ(token->size(), 251U);
+    EXPECT_EQ(JwtEnrollTokenSigner::headerJson(tt::kIdB64Url), tt::kTokenKidHeaderJson);
+}
+
+TEST(EnrollSigner, ReproducesTheAgentKidVectorAndRefusesOtherKids)
+{
+    const auto token = JwtEnrollTokenSigner::signWithKid(reenrollKey(), at(tv::kIat), tt::kAgentKid, tv::kJti);
+    ASSERT_TRUE(token.has_value());
+    EXPECT_EQ(*token, tt::kAgentKidJwt);
+    EXPECT_EQ(token->size(), 226U);
+    EXPECT_EQ(JwtEnrollTokenSigner::headerJson(tt::kAgentKid), tt::kAgentKidHeaderJson);
+
+    // Neither shape: a non-canonical agent id, 21 chars, padding, non-zero trailing bits, empty.
+    const auto key = tokenKey();
+    EXPECT_FALSE(JwtEnrollTokenSigner::signWithKid(key, at(kNow), "1", tv::kJti).has_value());
+    EXPECT_FALSE(JwtEnrollTokenSigner::signWithKid(key, at(kNow), "AAECAwQFBgcICQoLDA0OD", tv::kJti).has_value());
+    EXPECT_FALSE(JwtEnrollTokenSigner::signWithKid(key, at(kNow), "AAECAwQFBgcICQoLDA0ODw==", tv::kJti).has_value());
+    EXPECT_FALSE(JwtEnrollTokenSigner::signWithKid(key, at(kNow), "AAECAwQFBgcICQoLDA0ODx", tv::kJti).has_value());
+    EXPECT_FALSE(JwtEnrollTokenSigner::signWithKid(key, at(kNow), "", tv::kJti).has_value());
+    // The shared-key rules still apply underneath.
+    EXPECT_FALSE(JwtEnrollTokenSigner::signWithKid(SecureBytes(16), at(kNow), tt::kIdB64Url).has_value());
+    EXPECT_FALSE(JwtEnrollTokenSigner::signWithKid(key, at(kNow), tt::kIdB64Url, "short").has_value());
+}
+
+TEST(EnrollVerifier, PeekKidTellsTokenAgentOrNone)
+{
+    const auto none = JwtEnrollTokenVerifier::peekKid(tv::kToken);
+    ASSERT_TRUE(none.has_value());
+    EXPECT_EQ(none->kind, KidKind::None);
+    EXPECT_TRUE(none->text.empty());
+
+    const auto token = JwtEnrollTokenVerifier::peekKid(tt::kTokenKidJwt);
+    ASSERT_TRUE(token.has_value());
+    EXPECT_EQ(token->kind, KidKind::Token);
+    EXPECT_EQ(token->text, tt::kIdB64Url);
+
+    const auto agent = JwtEnrollTokenVerifier::peekKid(tt::kAgentKidJwt);
+    ASSERT_TRUE(agent.has_value());
+    EXPECT_EQ(agent->kind, KidKind::Agent);
+    EXPECT_EQ(agent->text, tt::kAgentKid);
+
+    // Pre-signature: the password-signed kid header of the negative vector still peeks as Agent
+    // "001" -- peekKid() only names the candidate key, verifyWithKid() decides.
+    const auto unsigned_ = JwtEnrollTokenVerifier::peekKid(tv::kKidHeaderToken);
+    ASSERT_TRUE(unsigned_.has_value());
+    EXPECT_EQ(unsigned_->kind, KidKind::Agent);
+
+    // Not this profile at all: a kid of neither shape, an extra member, another typ, garbage.
+    EXPECT_FALSE(
+        JwtEnrollTokenVerifier::peekKid(mint(R"({"alg":"HS256","kid":"1","typ":"wazuh-enroll+jwt"})", tv::kPayloadJson))
+            .has_value());
+    EXPECT_FALSE(
+        JwtEnrollTokenVerifier::peekKid(
+            mint(R"({"alg":"HS256","kid":"AAECAwQFBgcICQoLDA0ODw==","typ":"wazuh-enroll+jwt"})", tv::kPayloadJson))
+            .has_value());
+    EXPECT_FALSE(JwtEnrollTokenVerifier::peekKid(
+                     mint(R"({"alg":"HS256","typ":"wazuh-enroll+jwt","cty":"JWT"})", tv::kPayloadJson))
+                     .has_value());
+    EXPECT_FALSE(
+        JwtEnrollTokenVerifier::peekKid(
+            mint(R"({"alg":"HS256","kid":"AAECAwQFBgcICQoLDA0ODw","typ":"wazuh-agent+jwt"})", tv::kPayloadJson))
+            .has_value());
+    EXPECT_FALSE(JwtEnrollTokenVerifier::peekKid("").has_value());
+    EXPECT_FALSE(JwtEnrollTokenVerifier::peekKid("a.b").has_value());
+}
+
+TEST(EnrollVerifier, VerifyWithKidAcceptsItsVectorAndRejectsTheRest)
+{
+    EXPECT_EQ(verifyKidAt(tt::kTokenKidJwt, tt::kIdB64Url, tokenKey()), VerifyError::None);
+    EXPECT_EQ(verifyKidAt(tt::kAgentKidJwt, tt::kAgentKid, reenrollKey()), VerifyError::None);
+
+    // Right header, wrong key (the shared password key): a signature failure, nothing else leaks.
+    EXPECT_EQ(verifyKidAt(tt::kTokenKidJwt, tt::kIdB64Url, vectorKey()), VerifyError::InvalidSignature);
+    // Token names another key than the one resolved: rejected before any HMAC.
+    EXPECT_EQ(verifyKidAt(tt::kTokenKidJwt, tt::kAgentKid, tokenKey()), VerifyError::InvalidToken);
+    // A shared-key token (no kid) never verifies through the kid path.
+    EXPECT_EQ(verifyKidAt(tv::kToken, tt::kIdB64Url, tokenKey()), VerifyError::InvalidToken);
+    // A kid of neither shape is rejected even if the caller asks for it verbatim.
+    EXPECT_EQ(
+        verifyKidAt(mint(R"({"alg":"HS256","kid":"1","typ":"wazuh-enroll+jwt"})", tv::kPayloadJson), "1", vectorKey()),
+        VerifyError::InvalidToken);
+    // Time rules are the shared ones (60 s lifetime + 30 s skew).
+    EXPECT_EQ(verifyKidAt(tt::kTokenKidJwt, tt::kIdB64Url, tokenKey(), tv::kIat + 90), VerifyError::None);
+    EXPECT_EQ(verifyKidAt(tt::kTokenKidJwt, tt::kIdB64Url, tokenKey(), tv::kIat + 91), VerifyError::StaleToken);
+    // Fresh tokens of both forms round-trip.
+    const auto fresh = JwtEnrollTokenSigner::signWithKid(tokenKey(), at(kNow), tt::kIdB64Url);
+    ASSERT_TRUE(fresh.has_value());
+    EXPECT_EQ(verifyKidAt(*fresh, tt::kIdB64Url, tokenKey()), VerifyError::None);
+}
+
+TEST(EnrollVerifier, SharedKeyVerifierStillRejectsAnyKid)
+{
+    EXPECT_EQ(verifyAt(tv::kKidHeaderToken), VerifyError::InvalidToken);
+    EXPECT_EQ(JwtEnrollTokenVerifier::verify(tt::kTokenKidJwt, tokenKey(), TimePolicy {}, at(kNow)),
+              VerifyError::InvalidToken);
+    EXPECT_EQ(JwtEnrollTokenVerifier::verify(tt::kAgentKidJwt, reenrollKey(), TimePolicy {}, at(kNow)),
+              VerifyError::InvalidToken);
+}
+
+TEST(EnrollVerifier, KidFormsAreDisjointAndCrossKeysFail)
+{
+    // Shapes never collide: no canonical 22-char base64url string is a digit string, and no
+    // canonical agent id has 22 chars.
+    EXPECT_TRUE(JwtEnrollTokenSigner::isValidKid(tt::kIdB64Url));
+    EXPECT_TRUE(JwtEnrollTokenSigner::isValidKid("001"));
+    EXPECT_TRUE(JwtEnrollTokenSigner::isValidKid("4294967295"));
+    EXPECT_FALSE(JwtEnrollTokenSigner::isValidKid("0000000000000000000000")); // 22 digits: neither shape
+    EXPECT_FALSE(JwtEnrollTokenSigner::isValidKid("01"));
+    EXPECT_FALSE(JwtEnrollTokenSigner::isValidKid("AAECAwQFBgcICQoLDA0ODwA")); // 23 chars
+    // A token of one form verified with the other form's key is a plain signature failure.
+    EXPECT_EQ(verifyKidAt(tt::kAgentKidJwt, tt::kAgentKid, tokenKey()), VerifyError::InvalidSignature);
+    EXPECT_EQ(verifyKidAt(tt::kTokenKidJwt, tt::kIdB64Url, reenrollKey()), VerifyError::InvalidSignature);
+}

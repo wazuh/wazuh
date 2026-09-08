@@ -220,6 +220,7 @@ extern const char *__local_name;
 #include "agent_validate_op.h"
 #include "read-agents.h"
 #include "string_op.h"
+#include "b64url_op.h"
 #include "randombytes.h"
 #include "labels_op.h"
 #include "time_op.h"
