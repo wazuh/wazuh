@@ -218,7 +218,8 @@ from it, while `any` — what `authd` writes when no address was requested — a
 
 The address is checked after the key is resolved and **before** the token's signature is verified, so a peer
 that cannot use that identity never costs an HMAC computation. On a mismatch the request is rejected
-with the same generic `401` as any other credential failure.
+with a `401` of class `invalid_signature` (see [Error responses](#error-responses)): the agent must
+not re-enroll over it — the operator fixes the column.
 
 Accepted forms in the column:
 
@@ -321,16 +322,32 @@ two test matrices for a codec that is dominated on this workload.
 
 ### Error responses
 
-On rejection the body is `{"error":"<message>","code":<status>}`. Credential-related failures all
-collapse to a **single generic `401`** so a client cannot tell which specific check failed; every such
-`401` carries `WWW-Authenticate: Bearer` ([RFC 6750 §3](https://www.rfc-editor.org/rfc/rfc6750#section-3))
-— it names the scheme, never the reason.
+On rejection the body is `{"error":"<message>","code":<status>}`, except for a `401`, whose `code`
+is the **authentication failure class** (a string) and whose `WWW-Authenticate` challenge names the
+same class ([RFC 6750 §3](https://www.rfc-editor.org/rfc/rfc6750#section-3)). Every credential
+failure keeps the same generic message — the class is the machine-readable part, and it is
+deliberately coarser than the manager's own diagnosis (which stays in its log and in the
+`remoted.auth.reject.*` metrics): it tells the agent **what to do**, not what failed.
+
+| `code` / `error_description` | `WWW-Authenticate` | Meaning | The agent should |
+|---|---|---|---|
+| `unknown_agent` | `Bearer error="invalid_token", error_description="unknown_agent"` | the `kid` is not in `client.keys` (never enrolled, removed, or `#`/`!`-marked) | re-enroll |
+| `stale_token` | `Bearer error="invalid_token", error_description="stale_token"` | the token is outside the accepted window (expired, older than `jwt_max_age + jwt_clock_skew`, or issued more than `jwt_clock_skew` s in the future) | correct its clock (the `Date` header is the manager's) and retry |
+| `invalid_signature` | `Bearer error="invalid_token", error_description="invalid_signature"` | the credential does not work for that identity: bad MAC, not a `wazuh-agent+jwt` (grammar, header or claims), `sub`/`iss` naming another agent, peer address outside the entry's `ip` column, or an entry whose key does not decode | **not** re-enroll; keep the credential and report |
+| `invalid_request` | `Bearer error="invalid_request"` | no usable credential was presented: `Authorization` missing, not `Bearer`, or malformed | send a credential |
+| `token_unknown` / `token_expired` / `token_revoked` | `Bearer error="invalid_token", error_description="token_…"` | `POST /enroll` only: the enrollment token's own state | obtain a new token from the operator |
+| `enrollment_key_unavailable` | `Bearer` (no error code: the server could not judge the credential) | `POST /enroll` only, Password mode: the manager's enrollment password is not available on this node | retry later; nothing to fix on the agent |
+
+Everything below the `401` rows keeps a numeric `code` equal to the HTTP status.
 
 | Condition                                                                                                                                                                               | HTTP  | `error` message                             |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ------------------------------------------- |
 | Missing `protocol-version` header                                                                                                                                                       | `400` | `Missing required header: protocol-version` |
 | Unsupported `protocol-version`                                                                                                                                                          | `400` | `Unsupported protocol-version`              |
-| Missing / malformed `Authorization`, unknown agent, unusable key, peer address not allowed by the agent's `ip` column, invalid token (grammar, header or claims), bad signature, stale token (expired, older than the accepted age, or issued in the future), identity mismatch | `401` | `Invalid client authentication`             |
+| Missing / malformed `Authorization` (class `invalid_request`)                                                                                                                           | `401` | `Invalid client authentication`             |
+| Unknown agent (class `unknown_agent`)                                                                                                                                                   | `401` | `Invalid client authentication`             |
+| Stale token: expired, older than the accepted age, or issued in the future (class `stale_token`)                                                                                        | `401` | `Invalid client authentication`             |
+| Bad signature, invalid token (grammar, header or claims), identity mismatch, peer address not allowed by the agent's `ip` column, unusable key (class `invalid_signature`)               | `401` | `Invalid client authentication`             |
 | Body exceeds the auth body limit (10 MiB) -- or, for `Content-Encoding: zstd`, the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large`              |
 | `Content-Encoding` present but not (case-insensitively) `zstd`                                                                                                                          | `415` | `Unsupported Content-Encoding`              |
 | `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame                                                                                                                | `400` | `Malformed compressed body`                 |
