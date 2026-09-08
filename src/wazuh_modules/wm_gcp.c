@@ -327,13 +327,13 @@ static void wm_gcp_parse_output(char *output, char *tag, int exit_status){
     char *line;
     char * parsing_output = output;
     int debug_level = isDebug();
-    // Set once anything in the output matched a visible, tokenized log line. It is a global
-    // flag, not per-segment: if the wodle logs something benign early and then crashes later
-    // with an unformatted traceback, this stays true and the crash is not surfaced. That gap
-    // is currently closed by wodles/gcloud/gcloud.py's own top-level `except Exception` handler
-    // always being the last thing it logs before exiting, tokenized and visible at any debug
-    // level -- if that Python-side invariant ever changes (e.g. logging something in a
-    // `finally:` after it), this flag needs revisiting.
+    // Set only when a line explains *why* the wodle failed (CRITICAL/ERROR), not merely that
+    // something got printed. DEBUG/INFO/WARNING lines don't mean the cause is on record: if one
+    // of those is emitted and the process then dies without going through gcloud.py's own
+    // exception handler (OOM kill, a segfault inside a native extension, abort()), whatever
+    // unformatted output follows still needs to be surfaced. Every gcloud.py path that logs
+    // CRITICAL/ERROR does so from its top-level handler immediately before exiting, so there's
+    // nothing meaningful left to lose once that fires.
     int logged_anything = 0;
 
     for (line = strstr(parsing_output, WM_GCP_LOGGING_TOKEN); line; line = strstr(parsing_output, WM_GCP_LOGGING_TOKEN)) {
@@ -357,14 +357,12 @@ static void wm_gcp_parse_output(char *output, char *tag, int exit_status){
             if ((p_line = strstr(tokenized_line, "- DEBUG - "))) {
                 p_line += 10;
                 mtdebug1(tag, "%s", p_line);
-                logged_anything = 1;
             }
         }
         if (debug_level >= 1) {
             if ((p_line = strstr(tokenized_line, "- INFO - "))) {
                 p_line += 9;
                 mtinfo(tag, "%s", p_line);
-                logged_anything = 1;
             }
         }
         if (debug_level >= 0) {
@@ -381,7 +379,6 @@ static void wm_gcp_parse_output(char *output, char *tag, int exit_status){
             if ((p_line = strstr(tokenized_line, "- WARNING - "))) {
                 p_line += 12;
                 mtwarn(tag, "%s", p_line);
-                logged_anything = 1;
             }
         }
 
@@ -389,15 +386,20 @@ static void wm_gcp_parse_output(char *output, char *tag, int exit_status){
         os_free(tokenized_line);
     }
 
-    // The wodle exited non-zero but nothing in its output ended up as a visible log line --
-    // either none of it carried the wodle's own logging token at all (e.g. it crashed at
-    // import time, before its logger existed), or it did log something but only at a debug
-    // level below the configured one, and whatever caused the failure (e.g. a raw traceback
-    // after a partial run) never matched a recognized level marker either way. Surface the raw
-    // output so ossec.log names the real cause instead of just the exit code already reported
-    // by the caller.
+    // The wodle exited non-zero but no line ever explained why (no CRITICAL/ERROR was logged) --
+    // whether because none of the output carried the wodle's own logging token at all (e.g. it
+    // crashed at import time, before its logger existed), or it only logged DEBUG/INFO/WARNING
+    // (or CRITICAL/ERROR hidden below the configured debug level) before dying some other way
+    // (a crash outside its own exception handling, a raw traceback with no recognized marker).
+    // Surface the raw output so ossec.log names the real cause instead of just the exit code
+    // already reported by the caller. Capped well below OS_MAXSTR (a single, unescaped line in
+    // the plain log sink) -- keeping the tail rather than the head when it doesn't fit, since a
+    // Python traceback's most diagnostic line (the exception type and message) is the last one,
+    // not the first.
     if (!logged_anything && exit_status != 0 && output && *output) {
-        mterror(tag, "%.*s", OS_MAXSTR - 1, output);
+        size_t output_len = strlen(output);
+        const char *to_log = output_len > OS_SIZE_6144 - 1 ? output + (output_len - (OS_SIZE_6144 - 1)) : output;
+        mterror(tag, "%s", to_log);
     }
 }
 

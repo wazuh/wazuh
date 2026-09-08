@@ -730,6 +730,118 @@ static void test_wm_gcp_pubsub_run_surfaces_raw_traceback_after_hidden_debug_lin
     wm_gcp_pubsub_run(gcp_config);
 }
 
+static void test_wm_gcp_pubsub_run_surfaces_raw_crash_after_visible_debug_line(void **state) {
+    wm_gcp_pubsub *gcp_config = *state;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+    will_return(__wrap_isDebug, 2);
+    will_return(__wrap_isDebug, 2);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 2");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 2");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    // A visible, actually-processed DEBUG line (debug_level=2, so it's not hidden by the filter)
+    // is emitted first, followed by a second token whose own segment carries no recognized level
+    // marker at all -- e.g. a native crash message printed directly to stderr, bypassing the
+    // wodle's own logger entirely. With the pre-fix behavior (DEBUG counted as "explained"), this
+    // second segment was silently dropped and the fallback never fired. It must still surface.
+    will_return(__wrap_wm_exec,
+        ":gcloud_wodle: - DEBUG - Starting run\n"
+        ":gcloud_wodle:\n"
+        "Fatal Python error: Segmentation fault\n"
+        "\n"
+        "Current thread 0x00007f (most recent call first):\n"
+        "  File \"/var/ossec/wodles/gcloud/pubsub/subscriber.py\", line 64 in check_permissions");
+    will_return(__wrap_wm_exec, 1);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Starting run");
+
+    expect_string(__wrap__mtwarn, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 1");
+
+    will_return(__wrap_isDebug, 2);
+
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg,
+        ":gcloud_wodle: - DEBUG - Starting run\n"
+        ":gcloud_wodle:\n"
+        "Fatal Python error: Segmentation fault\n"
+        "\n"
+        "Current thread 0x00007f (most recent call first):\n"
+        "  File \"/var/ossec/wodles/gcloud/pubsub/subscriber.py\", line 64 in check_permissions");
+
+    wm_gcp_pubsub_run(gcp_config);
+}
+
+static void test_wm_gcp_pubsub_run_surfaces_tail_of_oversized_crash(void **state) {
+    wm_gcp_pubsub *gcp_config = *state;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    // No token anywhere, output larger than the fallback's cap (OS_SIZE_6144): a long filler
+    // prefix followed by the single most diagnostic line a real traceback would end with.
+    // Confirms the fallback keeps the tail (where that line lives), not the head.
+    static char big_output[8000];
+    memset(big_output, 'A', sizeof(big_output) - 1);
+    big_output[sizeof(big_output) - 1] = '\0';
+    const char *tail_marker = "\nValueError: this is the actual diagnostic line";
+    size_t tail_marker_len = strlen(tail_marker);
+    memcpy(big_output + sizeof(big_output) - 1 - tail_marker_len, tail_marker, tail_marker_len);
+
+    will_return(__wrap_wm_exec, big_output);
+    will_return(__wrap_wm_exec, 1);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__mtwarn, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 1");
+
+    will_return(__wrap_isDebug, 0);
+
+    size_t big_output_len = strlen(big_output);
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, big_output + (big_output_len - (OS_SIZE_6144 - 1)));
+
+    wm_gcp_pubsub_run(gcp_config);
+}
+
 static void test_wm_gcp_pubsub_run_no_output_on_success_is_not_logged(void **state) {
     wm_gcp_pubsub *gcp_config = *state;
 
@@ -1543,6 +1655,43 @@ static void test_wm_gcp_bucket_run_success(void **state) {
     expect_value(__wrap_wm_exec, add_path, NULL);
 
     will_return(__wrap_wm_exec, "Test output");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_isDebug, 0);
+
+    wm_gcp_bucket_run(cur_bucket);
+}
+
+static void test_wm_gcp_bucket_run_no_output_on_success_is_not_logged(void **state) {
+    wm_gcp_bucket_base *gcp_config = *state;
+    wm_gcp_bucket *cur_bucket = gcp_config->buckets;
+
+    snprintf(cur_bucket->bucket, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(cur_bucket->type, OS_SIZE_1024, "access_logs");
+    snprintf(cur_bucket->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+    snprintf(cur_bucket->prefix, OS_SIZE_1024, "access_logs/");
+    snprintf(cur_bucket->only_logs_after, OS_SIZE_1024, "2021-JAN-01");
+
+    cur_bucket->remove_from_bucket = 1; // enabled
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name wazuh-gcp-test "
+        "--credentials_file /wazuh/credentials/test.json --prefix access_logs/ --only_logs_after 2021-JAN-01 --remove");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name wazuh-gcp-test "
+        "--credentials_file /wazuh/credentials/test.json --prefix access_logs/ --only_logs_after 2021-JAN-01 --remove");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    // No token and exit code 0 (success): nothing should be logged as an error. Bucket-side
+    // mirror of the pubsub regression test above.
+    will_return(__wrap_wm_exec, "Some benign, unformatted stdout noise");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 0);
@@ -2715,6 +2864,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_generic_error_no_description, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_surfaces_raw_traceback_on_crash, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_surfaces_raw_traceback_after_hidden_debug_line, setup_group_pubsub, teardown_group_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_surfaces_raw_crash_after_visible_debug_line, setup_group_pubsub, teardown_group_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_surfaces_tail_of_oversized_crash, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_no_output_on_success_is_not_logged, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logged_error_on_failure_is_not_duplicated, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_warning_message_warning, setup_group_pubsub, teardown_group_pubsub),
@@ -2745,6 +2896,7 @@ int main(void) {
 
         /* wm_gcp_bucket_run */
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_success, setup_group_bucket, teardown_group_bucket),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_no_output_on_success_is_not_logged, setup_group_bucket, teardown_group_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_error_running_command, setup_group_bucket, teardown_group_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_error, setup_group_bucket, teardown_group_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_error_no_description, setup_group_bucket, teardown_group_bucket),
