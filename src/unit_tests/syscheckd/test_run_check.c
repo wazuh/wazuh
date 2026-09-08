@@ -412,16 +412,31 @@ static void expect_fim_startup_log(bool first_sync_completed) {
 }
 
 static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, uint32_t sync_interval, bool persist_first_sync_marker, bool expect_recovery_pass) {
+    static SyncModuleResult_t sync_result;
+
     expect_string(__wrap__minfo, formatted_msg, "Starting FIM synchronization.");
 
     expect_value(__wrap_asp_sync_module, handle, handle);
     expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
-    will_return(__wrap_asp_sync_module, true);
 
-    /* The shared asp_sync_module wrapper zero-fills its result, so sent_anything is false and
-     * run_check reports the empty-cycle wording. That distinction is the point of the field:
-     * "successfully" would claim the manager took data it never received. */
-    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization finished: nothing to send.");
+    if (persist_first_sync_marker) {
+        /* #38899: the marker may only be persisted once a sync has proven it actually reached
+         * the manager, so this case must mock a cycle that did -- an empty-queue "success" with
+         * sent_anything left false must never be enough (that's exactly the bug being tested
+         * against elsewhere; see the sent_anything doc comment in agent_sync_protocol_types.hpp). */
+        sync_result = (SyncModuleResult_t){0};
+        sync_result.success = true;
+        sync_result.sent_anything = true;
+        __wrap_asp_sync_module_use_full_result(true);
+        will_return(__wrap_asp_sync_module, &sync_result);
+        expect_string(__wrap__minfo, formatted_msg, "FIM synchronization finished successfully.");
+    } else {
+        /* The shared asp_sync_module wrapper zero-fills its result, so sent_anything is false and
+         * run_check reports the empty-cycle wording. That distinction is the point of the field:
+         * "successfully" would claim the manager took data it never received. */
+        will_return(__wrap_asp_sync_module, true);
+        expect_string(__wrap__minfo, formatted_msg, "FIM synchronization finished: nothing to send.");
+    }
 
     if (persist_first_sync_marker) {
 #ifndef TEST_WINAGENT
@@ -1667,9 +1682,11 @@ int main(void) {
         cmocka_unit_test(test_log_realtime_status),
         cmocka_unit_test_setup_teardown(test_check_max_fps_no_sleep, setup_max_fps, teardown_max_fps),
         cmocka_unit_test_setup_teardown(test_check_max_fps_sleep, setup_max_fps, teardown_max_fps),
-        cmocka_unit_test(test_fim_run_integrity_skips_initial_wait_for_pending_first_sync),
+        cmocka_unit_test_teardown(test_fim_run_integrity_skips_initial_wait_for_pending_first_sync,
+                                   teardown_asp_sync_module_full_result),
         cmocka_unit_test(test_fim_run_integrity_keeps_initial_wait_after_first_sync),
-        cmocka_unit_test(test_fim_run_integrity_pause_still_waits_after_skip_is_consumed),
+        cmocka_unit_test_teardown(test_fim_run_integrity_pause_still_waits_after_skip_is_consumed,
+                                   teardown_asp_sync_module_full_result),
         cmocka_unit_test(test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_completion),
         cmocka_unit_test_setup_teardown(test_fim_run_integrity_local_transport_unavailable_without_streak_is_not_reported_as_hard_failure,
                                         NULL, teardown_asp_sync_module_full_result),
