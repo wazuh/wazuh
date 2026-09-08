@@ -35,6 +35,10 @@ list(APPEND os_auth_names "test_enrollment_token_store")
 # Real files in a temporary directory: the store's file IS its contract (mode, atomicity, and what
 # it never contains), so nothing about the I/O is stubbed away here.
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
+# The token CLI is a client of auth.sock: the three socket calls are wrapped so the JSON it sends and the
+# answer it reads are both under test; --show-token runs the real codec.
+list(APPEND os_auth_names "test_token_cli")
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
 
 list(LENGTH os_auth_names count)
 math(EXPR count "${count} - 1")
