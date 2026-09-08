@@ -34,10 +34,12 @@
 #include <gtest/gtest.h>
 
 #include "auth/authTypes.hpp" // remoted::auth::kSupportedProtocolVersion
+#include "auth/tokenKeySource.hpp"
 #include "decoding/iBodyDecoder.hpp"
 #include "enrollment/enrollmentEndpoint.hpp"
 #include "fakeUdsServer.hpp"
 #include "json.hpp"
+#include "jwt/enrollKeyDerivation.hpp"
 #include "jwt/jwtEnrollTokenSigner.hpp"
 #include "jwt/testVectors.hpp"
 
@@ -45,6 +47,7 @@
 
 using namespace remoted::enrollment;
 using remoted::auth::PasswordKeySource;
+using remoted::auth::TokenKeySource;
 using remoted::decoding::ContentEncoding;
 using remoted::decoding::IBodyDecoder;
 using remoted::http::HttpRequest;
@@ -316,4 +319,126 @@ TEST(EnrollmentE2ETest, ReplayedSignedRequestWithinWindowIsNotStoppedByRemotedIt
     EXPECT_EQ(nlohmann::json::parse(second.body)["error"]["code"], 9008);
 
     std::remove(passwordPath.c_str());
+}
+
+// -----------------------------------------------------------------------------
+// Enrollment tokens (issue #38993), end to end: Password mode stays configured (the password key
+// is present and valid), the agent presents a token bearer instead, and the whole pipeline --
+// TokenKeySource replica -> verifyWithKid -> token state -> AuthdClient with token_id -> authd's
+// answer -- runs against the real handler.
+// -----------------------------------------------------------------------------
+
+namespace
+{
+    namespace tvt = jwt_profile::v1::test_vectors::enroll_token;
+
+    std::string writeTokenStore(bool revoked)
+    {
+        const std::string path =
+            "/tmp/enrollmentE2E_test_" + std::to_string(::getpid()) + (revoked ? "_revoked" : "_live") + ".tokens.json";
+        std::ofstream file(path);
+        file << R"({"version":1,"tokens":[{"id":")" << tvt::kIdB64Url << R"(","secret":")" << tvt::kSecretB64Url
+             << R"(","adr":"siem.example.local","pin":")" << tvt::kPinB64Url
+             << R"(","ca":null,"created":1700000000,"expires":4102444800,"max_uses":1,"uses":0,"revoked":)"
+             << (revoked ? "true" : "false") << R"(,"description":null}]})";
+        return path;
+    }
+
+    std::string tokenBearerFor(std::int64_t ts)
+    {
+        jwt_profile::v1::SecureBytes secret(jwt_profile::v1::enroll::kTokenSecretBytes);
+        for (std::size_t i = 0; i < secret.size(); ++i)
+        {
+            secret.data()[i] = static_cast<std::uint8_t>(0x10 + i);
+        }
+        const auto key = jwt_profile::v1::enroll::deriveEnrollTokenKey(secret);
+        EXPECT_TRUE(key.has_value());
+        const auto token = jwt_profile::v1::enroll::JwtEnrollTokenSigner::signWithKid(
+            *key, std::chrono::system_clock::time_point {std::chrono::seconds {ts}}, tvt::kIdB64Url);
+        EXPECT_TRUE(token.has_value());
+        return "Bearer " + token.value_or("");
+    }
+} // namespace
+
+TEST(EnrollmentE2ETest, TokenModeSignedRequestEnrollsAndForwardsTheTokenId)
+{
+    const std::string passwordPath = writePasswordFile("MyEnrollmentSecret123");
+    const std::string storePath = writeTokenStore(/*revoked=*/false);
+    auto keySource = std::make_shared<PasswordKeySource>(passwordPath);
+    auto tokenSource = std::make_shared<TokenKeySource>(storePath);
+    EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {true}, keySource, tokenSource};
+
+    const std::string authdPath = makeUniqueSocketPath("enrollment_e2e_token");
+    std::string captured;
+    std::mutex mu;
+    FakeUdsServer authd(authdPath,
+                        [&](const std::string& request)
+                        {
+                            std::lock_guard<std::mutex> lock(mu);
+                            captured = request;
+                            return std::string(
+                                R"({"error":0,"data":{"id":"005","name":"agent1","ip":"any","key":"c0ffee"}})");
+                        });
+
+    AuthdClient authdClient(authdPath, /*isWorkerNode=*/false, 0, baseConfig().authdResponseTimeoutMs, 0);
+    wazuh::metrics::Manager metricsManager;
+    EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
+    auto handler = makeHandler(authenticator, authdClient, baseConfig(), metrics, passthroughDecoder());
+
+    HttpRequest request;
+    request.method = Method::Post;
+    request.target = "/enroll";
+    request.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
+    request.body = kBody;
+    request.headers.emplace("authorization", tokenBearerFor(nowTs()));
+
+    const auto response = dispatch(handler, request);
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(nlohmann::json::parse(response.body)["id"], "005");
+
+    std::lock_guard<std::mutex> lock(mu);
+    const auto wire = nlohmann::json::parse(captured);
+    EXPECT_EQ(wire["arguments"]["token_id"], std::string {tvt::kIdB64Url});
+    EXPECT_EQ(wire["arguments"]["name"], "agent1");
+    EXPECT_EQ(static_cast<std::uint64_t>(metricsManager.get(METRIC_TOKEN_ACCEPTED)->value()), 1U);
+
+    std::remove(passwordPath.c_str());
+    std::remove(storePath.c_str());
+}
+
+TEST(EnrollmentE2ETest, RevokedTokenIsRejectedWith401)
+{
+    const std::string passwordPath = writePasswordFile("MyEnrollmentSecret123");
+    const std::string storePath = writeTokenStore(/*revoked=*/true);
+    auto keySource = std::make_shared<PasswordKeySource>(passwordPath);
+    auto tokenSource = std::make_shared<TokenKeySource>(storePath);
+    EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {true}, keySource, tokenSource};
+
+    // authd must never be reached -- rejection happens at the auth layer.
+    AuthdClient authdClient(makeUniqueSocketPath("enrollment_e2e_token_revoked"));
+    wazuh::metrics::Manager metricsManager;
+    EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
+    auto handler = makeHandler(authenticator, authdClient, baseConfig(), metrics, passthroughDecoder());
+
+    HttpRequest request;
+    request.method = Method::Post;
+    request.target = "/enroll";
+    request.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
+    request.body = kBody;
+    request.headers.emplace("authorization", tokenBearerFor(nowTs()));
+
+    const auto response = dispatch(handler, request);
+    EXPECT_EQ(response.status, 401);
+    // Generic on the wire (the distinguishable classes are a later stage of #38993)...
+    EXPECT_EQ(nlohmann::json::parse(response.body)["error"]["message"], "Invalid client authentication");
+    const auto challenge = std::find_if(response.headers.begin(),
+                                        response.headers.end(),
+                                        [](const auto& header) { return header.first == "WWW-Authenticate"; });
+    ASSERT_NE(challenge, response.headers.end());
+    EXPECT_EQ(challenge->second, "Bearer");
+    // ...and distinguishable for the operator.
+    EXPECT_EQ(static_cast<std::uint64_t>(metricsManager.get(METRIC_TOKEN_REJECTED_REVOKED)->value()), 1U);
+
+    std::remove(passwordPath.c_str());
+    std::remove(storePath.c_str());
 }

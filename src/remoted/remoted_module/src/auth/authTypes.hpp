@@ -157,6 +157,18 @@ namespace remoted::auth
                                     ///< logRejection() tell an operator to "re-enroll the affected
                                     ///< agent(s)" for a condition where no agent, and no client.keys
                                     ///< entry, exists yet at all.
+        TokenUnknown,               ///< Raised ONLY by EnrollmentAuthenticator's enrollment-token path
+                                    ///< (issue #38993): the bearer's `kid` names a token id that is not in
+                                    ///< the replicated store (etc/enrollment_tokens.json) even after a
+                                    ///< forced re-read -- never minted, minted without a credential, or
+                                    ///< not yet synchronized to this node.
+        TokenExpired,               ///< Same path: a correctly signed token bearer whose token is past
+                                    ///< its `expires`. Distinct from StaleToken (the JWT's own iat/exp
+                                    ///< window): the credential itself has lapsed, not this request.
+        TokenRevoked,               ///< Same path: a correctly signed token bearer whose token the
+                                    ///< operator revoked. Like the two above it collapses to the generic
+                                    ///< 401 on the wire (until the distinguishable classes of #38993 land),
+                                    ///< but counts in its own remoted.auth.reject.token_* cell.
     };
 
     /**
