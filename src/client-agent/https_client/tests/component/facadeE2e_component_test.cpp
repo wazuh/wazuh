@@ -957,13 +957,13 @@ TEST_F(FacadeE2eTest, NotifyNowRaceAgainstReporterTick)
     std::thread notifier(
         [&]
     {
-        // No iteration cap and no per-call delay: only notifying.load() bounds
-        // this, so it keeps contending with the reporter thread for the whole
-        // run instead of racing through a fixed count in a few microseconds
-        // and then sitting idle.
+        // No iteration cap, just a short sleep: keeps contending with the reporter
+        // thread for the whole run, but a spin loop with no sleep at all can starve
+        // it of path.mtx entirely under Valgrind's serialized scheduling.
         while (notifying.load())
         {
             hc_notify_now(handle);
+            std::this_thread::sleep_for(std::chrono::milliseconds {1});
         }
     });
     // Stopped/joined (before the handle above is destroyed) even if an assertion below
