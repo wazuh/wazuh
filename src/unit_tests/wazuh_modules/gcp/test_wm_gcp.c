@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/wm_gcp.h"
@@ -768,14 +769,16 @@ static void test_wm_gcp_pubsub_run_surfaces_raw_crash_after_visible_debug_line(v
         "\n"
         "Current thread 0x00007f (most recent call first):\n"
         "  File \"/var/ossec/wodles/gcloud/pubsub/subscriber.py\", line 64 in check_permissions");
-    will_return(__wrap_wm_exec, 1);
+    // 128 + SIGSEGV: what wm_exec() now reports for a process killed by that signal
+    // (see wm_exec_exit_code() in wm_exec.c) -- the realistic exit status for this scenario.
+    will_return(__wrap_wm_exec, 128 + SIGSEGV);
     will_return(__wrap_wm_exec, 0);
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Starting run");
 
     expect_string(__wrap__mtwarn, tag, WM_GCP_PUBSUB_LOGTAG);
-    expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 1");
+    expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 139");
 
     will_return(__wrap_isDebug, 2);
 
