@@ -3471,6 +3471,121 @@ void test_wdb_global_update_agent_keepalive_success(void **state)
     assert_int_equal(result, OS_SUCCESS);
 }
 
+/* Tests wdb_global_set_agent_credentials (re-enrollment, #38993) */
+
+#define SAC_NAME   "agent1"
+#define SAC_IP     "any"
+#define SAC_KEY    "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"
+#define SAC_SECRET "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+
+// The four text binds in order (name, register_ip, internal_key, reenroll_secret), the first `ok` of them
+// succeeding; `failing` is the 1-based position that fails, or 0 for none.
+static void expect_set_agent_credentials_text_binds(int failing)
+{
+    const char *values[] = { SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET };
+    for (int pos = 1; pos <= 4; pos++) {
+        expect_value(__wrap_sqlite3_bind_text, pos, pos);
+        expect_string(__wrap_sqlite3_bind_text, buffer, values[pos - 1]);
+        will_return(__wrap_sqlite3_bind_text, pos == failing ? SQLITE_ERROR : SQLITE_OK);
+        if (pos == failing) {
+            return;
+        }
+    }
+}
+
+void test_wdb_global_set_agent_credentials_transaction_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+
+    assert_int_equal(wdb_global_set_agent_credentials(data->wdb, 1, SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET), OS_INVALID);
+}
+
+void test_wdb_global_set_agent_credentials_cache_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    assert_int_equal(wdb_global_set_agent_credentials(data->wdb, 1, SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET), OS_INVALID);
+}
+
+void test_wdb_global_set_agent_credentials_bind1_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_set_agent_credentials_text_binds(1);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+
+    assert_int_equal(wdb_global_set_agent_credentials(data->wdb, 1, SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET), OS_INVALID);
+}
+
+void test_wdb_global_set_agent_credentials_bind4_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_set_agent_credentials_text_binds(4);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+
+    assert_int_equal(wdb_global_set_agent_credentials(data->wdb, 1, SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET), OS_INVALID);
+}
+
+void test_wdb_global_set_agent_credentials_bind5_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_set_agent_credentials_text_binds(0);
+    expect_value(__wrap_sqlite3_bind_int, index, 5);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+
+    assert_int_equal(wdb_global_set_agent_credentials(data->wdb, 1, SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET), OS_INVALID);
+}
+
+void test_wdb_global_set_agent_credentials_step_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_set_agent_credentials_text_binds(0);
+    expect_value(__wrap_sqlite3_bind_int, index, 5);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
+
+    assert_int_equal(wdb_global_set_agent_credentials(data->wdb, 1, SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET), OS_INVALID);
+}
+
+void test_wdb_global_set_agent_credentials_success(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_set_agent_credentials_text_binds(0);
+    expect_value(__wrap_sqlite3_bind_int, index, 5);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    assert_int_equal(wdb_global_set_agent_credentials(data->wdb, 1, SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET), OS_SUCCESS);
+}
+
 /* Tests wdb_global_update_agent_connection_status */
 
 void test_wdb_global_update_agent_connection_status_transaction_fail(void **state)
@@ -8658,6 +8773,14 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_keepalive_bind3_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_keepalive_step_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_keepalive_success, test_setup, test_teardown),
+        /* Tests wdb_global_set_agent_credentials */
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_credentials_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_credentials_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_credentials_bind1_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_credentials_bind4_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_credentials_bind5_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_credentials_step_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_credentials_success, test_setup, test_teardown),
         /* Tests wdb_global_update_agent_connection_status */
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_connection_status_transaction_fail,
                                         test_setup,

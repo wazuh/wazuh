@@ -56,6 +56,10 @@ void __wrap_w_inc_global_agent_update_keepalive();
 
 void __wrap_w_inc_global_agent_update_keepalive_time(__attribute__((unused)) struct timeval diff);
 
+void __wrap_w_inc_global_agent_set_agent_credentials();
+
+void __wrap_w_inc_global_agent_set_agent_credentials_time(__attribute__((unused)) struct timeval diff);
+
 void __wrap_w_inc_global_agent_update_connection_status();
 
 void __wrap_w_inc_global_agent_update_connection_status_time(__attribute__((unused)) struct timeval diff);

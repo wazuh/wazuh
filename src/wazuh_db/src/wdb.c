@@ -43,6 +43,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, last_keepalive = STRFTIME('%s', 'NOW'), ip = ?, connection_status = ?, sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE] = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, disconnection_time = 0, status_code = 0 WHERE id = ?;",
+    [WDB_STMT_GLOBAL_SET_AGENT_CREDENTIALS] = "UPDATE agent SET name = ?, register_ip = ?, internal_key = ?, reenroll_secret = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS] = "UPDATE agent SET connection_status = ?, sync_status = ?, disconnection_time = ?, status_code = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE] = "UPDATE agent SET status_code = ?, version = ?, sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE_KEEPALIVE] = "UPDATE agent SET status_code = ?, version = ?, sync_status = ?, connection_status = ?, last_keepalive = STRFTIME('%s', 'NOW'), disconnection_time = 0 WHERE id = ?;",

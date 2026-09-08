@@ -12,6 +12,7 @@
 #include "wazuhdb_queries_op.h"
 #include "defs.h"
 #include "wazuhdb_op.h"
+#include <openssl/crypto.h>
 
 #ifndef WIN32
 
@@ -20,6 +21,7 @@ static const char *global_db_commands[] = {
     [WDB_INSERT_AGENT_GROUP] = "global insert-agent-group %s",
     [WDB_UPDATE_AGENT_DATA] = "global update-agent-data %s",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
+    [WDB_SET_AGENT_CREDENTIALS] = "global set-agent-credentials %s",
     [WDB_UPDATE_AGENT_CONNECTION_STATUS] = "global update-connection-status %s",
     [WDB_UPDATE_AGENT_STATUS_CODE] = "global update-status-code %s",
     [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %d",
@@ -269,6 +271,69 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
         wdbc_close(&aux_sock);
     }
 
+    cJSON_Delete(data_in);
+    os_free(data_in_str);
+    os_free(wdbquery);
+    os_free(wdboutput);
+
+    return result;
+}
+
+int wdb_set_agent_credentials(int id, const char *name, const char *register_ip, const char *internal_key, const char *reenroll_secret, int *sock) {
+    int result = 0;
+    cJSON *data_in = NULL;
+    char *data_in_str = NULL;
+    char *wdbquery = NULL;
+    char *wdboutput = NULL;
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddStringToObject(data_in, "name", name);
+    cJSON_AddStringToObject(data_in, "register_ip", register_ip);
+    cJSON_AddStringToObject(data_in, "internal_key", internal_key);
+    cJSON_AddStringToObject(data_in, "reenroll_secret", reenroll_secret);
+    data_in_str = cJSON_PrintUnformatted(data_in);
+
+    os_malloc(WDBQUERY_SIZE, wdbquery);
+    snprintf(wdbquery, WDBQUERY_SIZE, global_db_commands[WDB_SET_AGENT_CREDENTIALS], data_in_str);
+
+    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            break;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            result = OS_INVALID;
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    // The key and the secret went through these buffers: wiped, not just freed (issue #38993).
+    OPENSSL_cleanse(wdbquery, WDBQUERY_SIZE);
+    if (data_in_str) {
+        OPENSSL_cleanse(data_in_str, strlen(data_in_str));
+    }
     cJSON_Delete(data_in);
     os_free(data_in_str);
     os_free(wdbquery);

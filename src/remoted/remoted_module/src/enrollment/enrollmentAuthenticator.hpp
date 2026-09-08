@@ -74,8 +74,21 @@ namespace remoted::enrollment
         std::optional<std::string> tokenId;
     };
 
-    /// Granted (with what credential) or rejected (why).
-    using EnrollmentDecision = std::variant<EnrollmentGranted, remoted::auth::AuthError>;
+    /**
+     * @brief The re-enrollment form (issue #38993): the bearer's `kid` names an agent that already has an
+     *        identity, and the bearer is signed with the key derived from that agent's re-enrollment
+     *        secret. remoted does NOT verify it -- the secret lives in the master's global.db and nowhere
+     *        else -- so the bearer travels to authd verbatim (`arguments.reenroll`) and the master is the
+     *        one that judges it (9026/9027/9028, mapped back to the uniform 401 by the endpoint).
+     */
+    struct ReenrollmentRequested
+    {
+        std::string agentId; ///< The bearer's `kid`: a canonical agent id, exactly as spelled.
+        std::string bearer;  ///< The compact JWT, exactly as presented (what authd verifies).
+    };
+
+    /// Granted (with what credential), a re-enrollment for authd to judge, or rejected (why).
+    using EnrollmentDecision = std::variant<EnrollmentGranted, ReenrollmentRequested, remoted::auth::AuthError>;
 
     /**
      * @brief Authenticates POST /enroll requests.
@@ -96,8 +109,10 @@ namespace remoted::enrollment
      *     token's secret learns anything about its status (ids are 128-bit random values, so an
      *     "unknown" answer for a guessed id leaks nothing either). On success the token id travels
      *     to authd (EnrollmentGranted::tokenId), which consumes one use.
-     *   - `kid` = canonical agent id (re-enrollment): recognised by shape and rejected as
-     *     InvalidToken until the re-enrollment secret lands (issue #38993, later stage).
+     *   - `kid` = canonical agent id (re-enrollment, issue #38993): recognised by shape and handed
+     *     back as ReenrollmentRequested in EVERY mode, unverified -- the secret that signs it is in the
+     *     master's global.db, so authd on the master is the only place it can be verified. Only the
+     *     protocol version and the body cap are checked here for it, like for every other request.
      *
      * Failures collapse through the same remoted::auth::AuthError taxonomy -- and the same
      * publicErrorFor()/errorResponseFor() uniform 401 -- as every other endpoint; the token-specific
