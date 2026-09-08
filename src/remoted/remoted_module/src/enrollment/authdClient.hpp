@@ -59,6 +59,10 @@ namespace remoted::enrollment
         std::string name;
         std::string ip;
         std::string key;
+        /// The agent's re-enrollment secret (issue #38993): 64 hex chars authd generated next to the key
+        /// and stored in global.db, handed to the agent once, here. Empty when authd sent none (an authd
+        /// that predates the secret, or a master behind a worker that does) -- the 200 then omits it.
+        std::string reenrollSecret;
     };
 
     /**

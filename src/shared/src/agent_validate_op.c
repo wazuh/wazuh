@@ -55,6 +55,48 @@ int OS_IsValidAgentKey(const char *key)
     return (1);
 }
 
+int OS_IsValidReenrollSecret(const char *secret)
+{
+    size_t i;
+
+    if (!secret || strlen(secret) != AGENT_REENROLL_SECRET_HEX_CHARS) {
+        return (0);
+    }
+    for (i = 0; i < AGENT_REENROLL_SECRET_HEX_CHARS; i++) {
+        const char c = secret[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) {
+            return (0);
+        }
+    }
+    return (1);
+}
+
+int OS_NewReenrollSecret(char *out, size_t out_size)
+{
+    static const char HEX[] = "0123456789abcdef";
+    unsigned char rnd[AGENT_REENROLL_SECRET_BYTES];
+    size_t i;
+
+    if (!out || out_size < AGENT_REENROLL_SECRET_HEX_CHARS + 1) {
+        return (-1);
+    }
+    out[0] = '\0';
+
+    /* Straight from the CSPRNG, like the agent key above: a secret the agent will re-enroll with for
+     * years is worth refusing the enrollment over. */
+    if (RAND_bytes(rnd, sizeof(rnd)) != 1) {
+        merror("Unable to generate a re-enrollment secret: the CSPRNG (RAND_bytes) failed.");
+        return (-1);
+    }
+    for (i = 0; i < sizeof(rnd); i++) {
+        out[2 * i] = HEX[rnd[i] >> 4];
+        out[2 * i + 1] = HEX[rnd[i] & 0x0f];
+    }
+    out[AGENT_REENROLL_SECRET_HEX_CHARS] = '\0';
+    OPENSSL_cleanse(rnd, sizeof(rnd));
+    return (0);
+}
+
 int OS_AddNewAgent(keystore *keys,
                    const char *id,
                    const char *name,

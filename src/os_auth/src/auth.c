@@ -177,7 +177,7 @@ static bool w_auth_group_regex_compiled = false;
 static pthread_mutex_t w_auth_group_regex_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Append key to insertion queue
-void add_insert(const keyentry *entry,const char *group) {
+void add_insert(const keyentry *entry, const char *group, const char *reenroll_secret) {
     struct keynode *node;
 
     os_calloc(1, sizeof(struct keynode), node);
@@ -186,6 +186,7 @@ void add_insert(const keyentry *entry,const char *group) {
     node->ip = strdup(entry->ip->ip);
     node->raw_key = strdup(entry->raw_key);
     node->group = group ? strdup(group) : NULL;
+    node->reenroll_secret = reenroll_secret ? strdup(reenroll_secret) : NULL;
 
     (*insert_tail) = node;
     insert_tail = &node->next;

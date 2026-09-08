@@ -693,6 +693,7 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
     cJSON *j_ip = NULL;
     cJSON *j_register_ip = NULL;
     cJSON *j_internal_key = NULL;
+    cJSON *j_reenroll_secret = NULL;
     cJSON *j_group = NULL;
     cJSON *j_date_add = NULL;
 
@@ -708,6 +709,7 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
         j_ip = cJSON_GetObjectItem(agent_data, "ip");
         j_register_ip = cJSON_GetObjectItem(agent_data, "register_ip");
         j_internal_key = cJSON_GetObjectItem(agent_data, "internal_key");
+        j_reenroll_secret = cJSON_GetObjectItem(agent_data, "reenroll_secret");
         j_group = cJSON_GetObjectItem(agent_data, "group");
         j_date_add = cJSON_GetObjectItem(agent_data, "date_add");
 
@@ -722,10 +724,12 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
             char* ip = cJSON_IsString(j_ip) ? j_ip->valuestring : NULL;
             char* register_ip = cJSON_IsString(j_register_ip) ? j_register_ip->valuestring : NULL;
             char* internal_key = cJSON_IsString(j_internal_key) ? j_internal_key->valuestring : NULL;
+            // Optional (#38993): absent or null for every record that carries no re-enrollment secret.
+            char* reenroll_secret = cJSON_IsString(j_reenroll_secret) ? j_reenroll_secret->valuestring : NULL;
             char* group = cJSON_IsString(j_group) ? j_group->valuestring : NULL;
             int date_add = j_date_add->valueint;
 
-            if (OS_SUCCESS != wdb_global_insert_agent(wdb, id, name, ip, register_ip, internal_key, group, date_add)) {
+            if (OS_SUCCESS != wdb_global_insert_agent(wdb, id, name, ip, register_ip, internal_key, reenroll_secret, group, date_add)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
