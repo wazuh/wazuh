@@ -427,7 +427,7 @@ char* local_dispatch(const char *input) {
     cJSON *arguments;
     cJSON *response = NULL;
     char *output = NULL;
-    int ierror;
+    int ierror = EINTERNAL; // every `goto fail` sets its own code; the default only closes the analyzer's path
     char *groups = NULL;
 
     if (input[0] == '{') {
@@ -955,7 +955,7 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
     if (agent_info) {
         j_secret = cJSON_GetObjectItem(agent_info->child, "reenroll_secret");
     }
-    if (!cJSON_IsString(j_secret) || !OS_IsValidReenrollSecret(j_secret->valuestring)) {
+    if (j_secret == NULL || !cJSON_IsString(j_secret) || !OS_IsValidReenrollSecret(j_secret->valuestring)) {
         cJSON_Delete(agent_info);
         mdebug1("Re-enrollment of agent '%s' refused: unknown agent or no re-enrollment credential on record.", kid);
         return local_create_error_response(ERRORS[EREENROLLUNKNOWN].code, ERRORS[EREENROLLUNKNOWN].message);

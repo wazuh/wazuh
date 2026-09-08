@@ -106,9 +106,9 @@ static void test_create_agent_add_payload(void **state) {
     os_free(str_force);
 }
 
-#ifndef WIN32
 // An enrollment presented with a token (#38993): the worker forwards the token id so the master can
-// count the use; the master's local_dispatch reads it back as `arguments.token_id`.
+// count the use; the master's local_dispatch reads it back as `arguments.token_id`. Built on every
+// target, like test_create_agent_add_payload: the payload builder is plain cJSON.
 static void test_create_agent_add_payload_carries_token_id(void **state) {
     (void)state;
     cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, "AAECAwQFBgcICQoLDA0ODw", NULL, NULL);
@@ -145,6 +145,7 @@ static void test_create_agent_add_payload_carries_reenroll_credential(void **sta
     cJSON_Delete(payload);
 }
 
+#ifndef WIN32
 static void test_create_agent_remove_payload(void **state) {
     char* id = "001";
     int purge = 1;

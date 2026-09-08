@@ -1052,16 +1052,9 @@ components:
           type: string
 
     EnrollmentToken:
+      # No `required` list, like every other list-item schema: `select` strips fields and the API
+      # validates its own responses against this schema in the integration environment.
       type: object
-      required:
-        - id
-        - address
-        - created
-        - expires
-        - max_uses
-        - uses
-        - revoked
-        - credential
       properties:
         id:
           $ref: '#/components/schemas/EnrollmentTokenID'
