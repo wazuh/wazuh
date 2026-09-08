@@ -41,6 +41,7 @@ int wdb_insert_agent(int id,
                      const char *ip,
                      const char *register_ip,
                      const char *internal_key,
+                     const char *reenroll_secret,
                      const char *group,
                      int keep_date,
                      int *sock) {
@@ -71,6 +72,9 @@ int wdb_insert_agent(int id,
     cJSON_AddStringToObject(data_in, "ip", ip);
     cJSON_AddStringToObject(data_in, "register_ip", register_ip);
     cJSON_AddStringToObject(data_in, "internal_key", internal_key);
+    if (reenroll_secret) {
+        cJSON_AddStringToObject(data_in, "reenroll_secret", reenroll_secret);
+    }
     cJSON_AddStringToObject(data_in, "group", group);
     cJSON_AddNumberToObject(data_in, "date_add", date_add);
 
