@@ -36,6 +36,24 @@ opensearch_security.readonly_mode.roles:
 uiSettings.overrides.defaultRoute: /app/wz-home
 
 # -----------------------
+# Overwatch SIEM branding
+# Images are served from the dashboard's built-in /ui/ static path.
+# Place the files in: <dashboard-install>/src/core/server/core_app/assets/
+# -----------------------
+opensearchDashboards.branding:
+  applicationTitle: 'Overwatch SIEM'
+  logo:
+    defaultUrl: '/ui/overwatch-logo-light.svg'
+    darkModeUrl: '/ui/overwatch-logo-dark.svg'
+  loadingLogo:
+    defaultUrl: '/ui/overwatch-icon.svg'
+    darkModeUrl: '/ui/overwatch-icon.svg'
+  mark:
+    defaultUrl: '/ui/overwatch-icon.svg'
+    darkModeUrl: '/ui/overwatch-icon.svg'
+  faviconUrl: '/ui/overwatch-icon.svg'
+
+# -----------------------
 # Session settings
 # -----------------------
 opensearch_security.cookie.ttl: 900000
@@ -47,8 +65,8 @@ opensearch_security.session.keepalive: true
 # -----------------------
 wazuh_core.hosts:
   default:
-    url: https://wazuh.manager
+    url: https://host-gateway
     port: 55000
     username: wazuh-wui
     password: wazuh-wui
-    run_as: true
+    run_as: false

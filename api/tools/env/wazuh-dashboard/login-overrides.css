@@ -1,0 +1,30 @@
+/* ── Overwatch SIEM login page branding overrides ── */
+
+/* Hide the hardcoded "wazuh." wordmark rendered as text/SVG on the login page */
+.wazuh-login-logo,
+[class*="loginLogo"],
+[class*="login-logo"],
+[class*="loginBrand"],
+[data-test-subj="loginLogo"] {
+  display: none !important;
+}
+
+/* Inject Overwatch logo above the login card via ::before on the wrapper */
+[class*="loginWrapper"]::before,
+[class*="login-wrapper"]::before,
+.euiFlexGroup.euiFlexGroup--directionColumn::before {
+  content: '';
+  display: block;
+  width: 220px;
+  height: 56px;
+  margin: 0 auto 24px;
+  background: url('/ui/overwatch-logo-light.svg') no-repeat center/contain;
+}
+
+/* Hide "The Open Source Security Platform" subtitle */
+[class*="loginSubtitle"],
+[class*="login-subtitle"],
+[class*="loginGreeting"],
+[data-test-subj="loginGreeting"] {
+  display: none !important;
+}

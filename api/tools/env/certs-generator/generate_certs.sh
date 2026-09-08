@@ -7,7 +7,8 @@ echo "=== CERTIFICATE GENERATION START ==="
 
 if [ -f "${CERTS_DIR}/root-ca.pem" ]; then
     echo "Certificates already exist in ${CERTS_DIR}. Cleaning up."
-    rm /certificates/*
+    rm -f /certificates/*
+    rm -rf /tmp/wazuh-certificates
 fi
 
 cd /tmp

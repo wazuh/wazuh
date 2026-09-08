@@ -28,9 +28,10 @@ else
     python3 /scripts/xml_parser.py /var/wazuh-manager/etc/wazuh-manager.conf /scripts/worker_wazuh-manager_conf.xml
 fi
 
-echo "wazuh_db.debug=2" >> /var/wazuh-manager/etc/wazuh-manager-internal-options.conf
-echo "authd.debug=2" >> /var/wazuh-manager/etc/wazuh-manager-internal-options.conf
-echo "remoted.debug=2" >> /var/wazuh-manager/etc/wazuh-manager-internal-options.conf
+# Substitute per-deployment cluster key (avoids committing a static shared secret)
+if [ -n "${CLUSTER_KEY:-}" ]; then
+    sed -i "s/CLUSTER_KEY_PLACEHOLDER/${CLUSTER_KEY}/g" /var/wazuh-manager/etc/wazuh-manager.conf
+fi
 
 # Set proper permissions
 chmod 500 /var/wazuh-manager/etc/certs

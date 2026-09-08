@@ -37,7 +37,7 @@ services:
             - wazuh-certs:/etc/wazuh-indexer/certs
             - ./wazuh-indexer/wazuh.indexer.yml:/usr/share/wazuh-indexer/config/opensearch.yml:ro
         environment:
-            - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+            - "OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS:--Xms2g -Xmx2g}"
         depends_on:
             certs.generator:
                 condition: service_completed_successfully
@@ -66,8 +66,8 @@ services:
             - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
             - ${WAZUH_LOCAL_PATH}/api/api:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
         environment:
-            OPENDISTRO_SECURITY_ENABLED: "false"
             NODE_NAME: "wazuh.manager"
+            CLUSTER_KEY: "${CLUSTER_KEY}"
         entrypoint:
             - /scripts/entrypoint.sh
             - wazuh.manager
@@ -98,6 +98,7 @@ services:
                 condition: service_started
         environment:
             NODE_NAME: "wazuh.worker1"
+            CLUSTER_KEY: "${CLUSTER_KEY}"
         ports:
             - "55051:55000"
         entrypoint:
@@ -124,6 +125,7 @@ services:
                 condition: service_started
         environment:
             NODE_NAME: "wazuh.worker2"
+            CLUSTER_KEY: "${CLUSTER_KEY}"
         ports:
             - "55052:55000"
         entrypoint:
@@ -139,6 +141,7 @@ services:
         restart: on-failure:5
         ports:
             - "1514:1514"
+            - "1515:1515"
         networks:
             wazuh.net:
                 aliases:
@@ -169,9 +172,14 @@ services:
                 condition: service_started
 
     wazuh.dashboard:
-        image: public.ecr.aws/wazuh-cicd/wazuh/wazuh-dashboard:5.0.0-latest
+        build:
+            context: ./wazuh-dashboard
+        pull_policy: never
+        image: overwatch-dashboard
         container_name: wazuh.dashboard
         hostname: wazuh.dashboard
+        extra_hosts:
+            - "host-gateway:host-gateway"
         networks:
             - wazuh.net
         ports:
