@@ -183,13 +183,15 @@ namespace remoted::endpoints
      *
      * Single source of truth for that response shape, shared by AuthGateway (auth-protocol
      * failures) and any endpoint that raises an AuthError of its own after authentication
-     * succeeds (e.g. stateless::validatePayloadIdentity()'s PayloadAgentMismatch).
+     * succeeds (e.g. stateless::validatePayloadIdentity()'s PayloadAgentMismatch). A 401's `code`
+     * is the public class (string) and its `WWW-Authenticate` challenge names the same class
+     * (PublicError, issue #38993); every other status keeps the numeric status as `code`.
      *
-     * Also the single place every client-visible rejection is logged, with the reason BEFORE
-     * publicErrorFor() collapses it (see endpoint.cpp): operator-actionable causes -- clock skew,
-     * body-cap, unusable key, agent-id mismatch -- become throttled warnings naming the relevant
-     * setting, while client-fault rejections stay at debug so an unauthenticated peer cannot flood
-     * wazuh-manager.log.
+     * Also the single place every client-visible rejection is logged and counted, with the FINE
+     * reason -- finer than the class the wire names (see endpoint.cpp): operator-actionable causes
+     * -- clock skew, body-cap, unusable key, agent-id mismatch -- become throttled warnings naming
+     * the relevant setting, while client-fault rejections stay at debug so an unauthenticated peer
+     * cannot flood wazuh-manager.log.
      *
      * @param err          The rejection reason.
      * @param agentContext Optional authenticated agent id, included in the agent-id-mismatch

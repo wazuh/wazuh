@@ -939,8 +939,9 @@ unconditionally — in Open mode too — so an unauthenticated peer can never ma
 an arbitrarily large body before being rejected; the token itself is verified from the header
 alone. Reuses the shared `JwtEnrollTokenVerifier`, `toAuthError()` and the `AuthError` taxonomy
 from `auth/authTypes.hpp`, so a bad signature, a stale token, a malformed token and an oversized
-body all collapse through the same `publicErrorFor()` → `401`/`413` path every other route already
-uses — `401`s carry `WWW-Authenticate: Bearer` here too. Because `AuthGateway` bakes the `client.keys`
+body all go through the same `publicErrorFor()` → `401`/`413` path every other route already
+uses — `401`s carry the class-naming `WWW-Authenticate` challenge here too, and `/enroll`'s nested
+envelope puts the same class in `error.code` (see [401 classes](#401-classes)). Because `AuthGateway` bakes the `client.keys`
 `Keystore` into its middleware with no per-route key-source hook, `/enroll` does **not** go through
 `AuthGateway` at all — it registers directly on `IHttpServer::addRoute` (the same pattern the
 unauthenticated `GET /` liveness probe already uses) and drives this authenticator itself, with
@@ -1068,7 +1069,7 @@ that value.
 | 9015 | worker rejection (`remove`/`get`, or an `add` that supplied a caller-chosen `id`/`key` -- see below) | 503 |
 | 9016 (new) | clustered forward to master failed (transport leg of `w_request_agent_add_clustered`) | 503 |
 | transport failure (authd unreachable) | — | 503 |
-| bad/missing/stale credential | — | 401 |
+| bad/missing/stale credential | — | 401, `error.code` = the class (`invalid_signature`, `invalid_request`, `stale_token`, `unknown_agent`, `token_*`, `enrollment_key_unavailable`) |
 | local schema or version validation failure | — | 400 |
 | enrollment administratively disabled | — | 403 |
 
@@ -1535,7 +1536,29 @@ implementation. It knows nothing about RESTinio or sockets -- the `AuthGateway` 
 is the only adapter between it and our transport. The token does **not** cover the body: the
 middleware authenticates from the headers alone, the gateway applies the body cap directly, and the
 body is exposed as a zero-copy `Payload` view that the `AuthGateway` attaches from the transport's
-single request buffer. Every credential `401` carries `WWW-Authenticate: Bearer`.
+single request buffer. Every credential `401` carries a `WWW-Authenticate` challenge naming its class.
+
+### 401 classes
+
+Issue #38993 (T10 of its plan): a credential failure is still a `401` with the same generic message,
+but the wire names its **class** twice — as the body's `code` (a string, where every other status
+keeps the numeric status) and as the RFC 6750 challenge's `error_description`. `PublicError`
+(`auth/authTypes.hpp`) carries both as static literals and `publicErrorFor()` (`auth/authMiddleware.cpp`)
+is the one table; `errorResponseFor()` (flat envelope) and `/enroll`'s `authErrorResponse()` (nested
+envelope) render them. The class is deliberately **coarser** than `AuthError`: it is the answer the
+agent acts on, while the fine cause stays in the log and in `remoted.auth.reject.*`.
+
+| Class (`code`) | `WWW-Authenticate` | `AuthError`s | The agent |
+|---|---|---|---|
+| `unknown_agent` | `Bearer error="invalid_token", error_description="unknown_agent"` | `UnknownAgent` | re-enrolls |
+| `stale_token` | `… error_description="stale_token"` | `StaleToken` | fixes its clock (`Date` header) and retries |
+| `invalid_signature` | `… error_description="invalid_signature"` | `InvalidSignature`, `InvalidToken`, `IdentityMismatch`, `AddressNotAllowed`, `MissingKey` | does **not** re-enroll: a new identity fixes none of these |
+| `invalid_request` | `Bearer error="invalid_request"` | `MissingAuthorization`, `MalformedAuthorization` | sends a credential |
+| `token_unknown` / `token_expired` / `token_revoked` | `… error_description="token_…"` | the `/enroll` token states | asks the operator for a token |
+| `enrollment_key_unavailable` | `Bearer` (bare: the server could not judge the credential) | `EnrollmentKeyUnavailable` | retries later |
+
+The 5.x agent classifies a `401` by status alone today (`client-agent/https_client/src/outcomeClassifier.cpp`)
+and corrects its clock from the `Date` header; acting on the class is the agent's follow-up.
 
 `AuthConfig`'s tunables (`timePolicy` -- accepted token age and clock skew -- and `maxBodySize`) are
 populated from the matching C-ABI fields (`jwt_max_age`, `jwt_clock_skew`,
@@ -1580,8 +1603,8 @@ lets a `client.keys` migrated from 4.x authorize the same agents it did there. A
 does not parse is skipped with a warning, like any other malformed line, rather than being loaded
 without a restriction. The peer address is **not** part of the token, so a NAT rewrite
 between agent and manager does not invalidate it. A mismatch resolves to
-`AuthError::AddressNotAllowed`, which `publicErrorFor()` folds into the same generic 401 as the other
-credential failures; `AuthMiddleware` reports it with a throttled warning naming the agent id and the
+`AuthError::AddressNotAllowed`, which `publicErrorFor()` reports as the `invalid_signature` class (the
+agent must not re-enroll over it); `AuthMiddleware` reports it with a throttled warning naming the agent id and the
 peer address, and `endpoints/endpoint.cpp` keeps it at DEBUG2 in its own rejection funnel so the line
 is not emitted twice.
 
@@ -1651,8 +1674,8 @@ to change (`"…Consider increasing the value of 'max_deferred_requests'."`). Th
   decision unit-testable on its own.
 
 `endpoints/endpoint.cpp`'s `errorResponseFor()` is the single funnel for all auth rejections: it logs
-the reason **before** `publicErrorFor()` collapses seven distinct credential failures into one
-generic 401. Downstream failures are logged in `deferredForwarder.cpp`'s completion callback, where
+the fine reason, finer than the class `publicErrorFor()` puts on the wire (five distinct credential
+failures share `invalid_signature`). Downstream failures are logged in `deferredForwarder.cpp`'s completion callback, where
 the raw `DownstreamError` is still available — `stateless::postProcess` turns them all into one 503,
 so by the time the agent is answered the cause is gone.
 
@@ -1704,7 +1727,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.control.*` (6 counters + `rejected` + `wdb.latency` histogram) | control-plane health, wazuh-db sizing | `controlHandler`/`controlEndpoint`/`wazuhDBClient`/`taskClient` (see the /control section) |
 | `remoted.control.registry.agents` (pull) | how many agents this node currently tracks — diagnostic only: the registry TTL (6 h) and eviction cadence (5 min) are compile-time constants, not settings | `AgentRegistry::size()` |
 | `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
-| `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed}` | WHY authentication failed, pre-collapse (the wire folds credential failures into one 401) | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
+| `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed}` | WHY authentication failed, finer than the class the wire names (see [401 classes](#401-classes)) | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
 | `remoted.auth.keystore.{agents, entries_skipped, reloads.total, reload_failures.total}` (pulls) | did the client.keys hot-reload pick up re-enrolls; is the file unreadable/unstable; how many lines the load could not use | atomics maintained by `Keystore::reload()`. `agents`/`entries_skipped` are LEVELS of the adopted load (a failed load leaves both untouched); neither counts comments, blanks or removed entries |
 | `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|cacerts>.responses.{2xx,400,403,409,413,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |

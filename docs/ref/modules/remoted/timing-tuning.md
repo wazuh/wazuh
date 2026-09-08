@@ -78,7 +78,7 @@ Check these before changing anything. Each one has a measured failure mode.
 | 4 | `agent.https_stateful_attempts × agent.https_stateful_timeout` + backoffs < 15 min | that ceiling is the agent's fixed session safety net (§4); past it, sessions overlap, duplicate and head-of-line block. Defaults sit at ≈8 min (5 × 90 s + ≤15 s of ladder) — do not raise both together |
 | 5 | proxy response timeout ≥ [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout) (30 s), proxy body limit ≥ `<remote><https><max_body_size>` (20 MiB) | the proxy cuts requests the manager would have completed, and — if it retries them on another manager — the same session is processed twice. See [load balancers §4.5](load-balancers/README.md#45-align-the-timeouts) |
 | 6 | `connect + write + response` ≤ [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout) | the HTTP server tears the request down before the downstream deadline can fire, so the log names the wrong culprit. remoted warns at startup when the sum cannot be honored |
-| 7 | [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) ≥ real agent/manager clock drift | every request fails `401` with no other symptom. Fix NTP rather than widening the window: widening it widens the replay window of a captured token |
+| 7 | [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) ≥ real agent/manager clock drift | every request fails `401` of class `stale_token` (the agent corrects its clock from the `Date` header and retries). Fix NTP rather than widening the window: widening it widens the replay window of a captured token |
 | 8 | `wazuh_modules.inventory_sync_server_session_query_batch_size` ≤ the indexer's `max_result_window` (10000) | integrity checks fail permanently with `500`. The option refuses values outside `0 \| 100–10000` at startup |
 | 9 | `remoted.control_keepalive_throttle` > the fleet's `<client><notify_time>` | a throttle at or below the notify interval suppresses nothing: it can only drop a notify that arrives inside an already-open window |
 
@@ -179,7 +179,7 @@ Answer these once per deployment; they decide which of the knobs above you will 
 | Integrity check returns `500` forever | the session query page is larger than the indexer accepts | the indexer's `index.max_result_window` against the configured batch size (values above 10000 are already refused at startup, so this means the indexer's window was lowered) |
 | `503` with `Retry-After` on `/stateful` | VD feed not ready (CVE content not loaded) | content-updater log |
 | `503` without `Retry-After` | downstream timeout **or** an in-flight budget shed — indistinguishable to the agent | `remoted.server.budget.*` vs `remoted.forwarder.*`; budget sheds are not in endpoint metrics |
-| Every request `401`, no other symptom | clock drift past the token window (invariant 7) | `remoted.auth.reject.clock_skew` |
+| Every request `401` of class `stale_token` | clock drift past the token window (invariant 7) | `remoted.auth.reject.clock_skew` |
 | Agent reports synced but the indexer is missing data | immediate sessions report success while the indexer is unreachable; the queue is not persistent | `Indexer node ... is no longer available` in the manager log |
 
 ## 8. Verifying a change

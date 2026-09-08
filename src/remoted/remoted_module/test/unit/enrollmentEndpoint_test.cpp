@@ -860,12 +860,16 @@ TEST(EnrollmentEndpointTest, RevokedTokenIs401AndCountsItsClassWithoutReachingAu
     EXPECT_EQ(run.enrollValue(METRIC_REJECTED_AUTH), 1U);
     EXPECT_EQ(run.enrollValue(METRIC_TOKEN_REJECTED_REVOKED), 1U);
     EXPECT_EQ(run.enrollValue(METRIC_TOKEN_REJECTED_UNKNOWN), 0U);
-    // The generic bearer challenge, like every credential 401 on this server.
+    // The class-naming bearer challenge, like every credential 401 on this server (issue #38993), and
+    // the same class as the body's `code`.
     const auto challenge = std::find_if(run.response.headers.begin(),
                                         run.response.headers.end(),
                                         [](const auto& header) { return header.first == "WWW-Authenticate"; });
     ASSERT_NE(challenge, run.response.headers.end());
-    EXPECT_EQ(challenge->second, "Bearer");
+    EXPECT_EQ(challenge->second, R"(Bearer error="invalid_token", error_description="token_revoked")");
+    const auto body = parseBody(run.response);
+    EXPECT_EQ(body["error"]["code"], "token_revoked");
+    EXPECT_EQ(body["error"]["message"], "Invalid client authentication");
 
     std::remove(store.c_str());
 }
@@ -884,6 +888,7 @@ TEST(EnrollmentEndpointTest, UnknownTokenIs401AndCountsRejectedUnknown)
     EXPECT_TRUE(run.authdRequest.empty());
     EXPECT_EQ(run.enrollValue(METRIC_TOKEN_REJECTED_UNKNOWN), 1U);
     EXPECT_EQ(run.enrollValue(METRIC_REJECTED_AUTH), 1U);
+    EXPECT_EQ(parseBody(run.response)["error"]["code"], "token_unknown");
 
     std::remove(store.c_str());
 }
@@ -979,6 +984,7 @@ struct ReenrollRejectionCase
 {
     int authdCode;
     const char* metric;
+    const char* publicClass; // what the wire names (issue #38993, T10)
 };
 
 class EnrollmentEndpointReenrollRejectionTest : public ::testing::TestWithParam<ReenrollRejectionCase>
@@ -993,11 +999,12 @@ TEST_P(EnrollmentEndpointReenrollRejectionTest, IsTheUniform401AndCountsItsCell)
     answer["message"] = "ERROR: whatever authd said";
     const auto run = runReenroll(answer.dump(), "rejected_" + std::to_string(param.authdCode));
 
-    // Authentication failed on the master: the same answer every credential failure gets here --
-    // status, challenge, generic message, code 0 -- and nothing of authd's code or text on the wire.
+    // Authentication failed on the master: the answer every credential failure gets here -- status,
+    // generic message, the public class as `code` and in the challenge -- and nothing of authd's code
+    // or text on the wire.
     EXPECT_EQ(run.response.status, 401);
     const auto body = parseBody(run.response);
-    EXPECT_EQ(body["error"]["code"], 0);
+    EXPECT_EQ(body["error"]["code"], param.publicClass);
     EXPECT_EQ(body["error"]["message"], "Invalid client authentication");
     EXPECT_EQ(run.response.body.find("whatever authd said"), std::string::npos);
     EXPECT_EQ(run.response.body.find(std::to_string(param.authdCode)), std::string::npos);
@@ -1005,7 +1012,8 @@ TEST_P(EnrollmentEndpointReenrollRejectionTest, IsTheUniform401AndCountsItsCell)
                                         run.response.headers.end(),
                                         [](const auto& header) { return header.first == "WWW-Authenticate"; });
     ASSERT_NE(challenge, run.response.headers.end());
-    EXPECT_EQ(challenge->second, "Bearer");
+    EXPECT_EQ(challenge->second,
+              std::string {R"(Bearer error="invalid_token", error_description=")"} + param.publicClass + "\"");
 
     // ...and distinguishable for the operator, as an auth rejection, not as an authd business error.
     EXPECT_EQ(run.enrollValue(param.metric), 1U);
@@ -1015,11 +1023,12 @@ TEST_P(EnrollmentEndpointReenrollRejectionTest, IsTheUniform401AndCountsItsCell)
     EXPECT_EQ(run.enrollValue(METRIC_ACCEPTED), 0U);
 }
 
-INSTANTIATE_TEST_SUITE_P(AuthdReenrollCodes,
-                         EnrollmentEndpointReenrollRejectionTest,
-                         ::testing::Values(ReenrollRejectionCase {9026, METRIC_REENROLL_REJECTED_UNKNOWN},
-                                           ReenrollRejectionCase {9027, METRIC_REENROLL_REJECTED_SIGNATURE},
-                                           ReenrollRejectionCase {9028, METRIC_REENROLL_REJECTED_STALE}));
+INSTANTIATE_TEST_SUITE_P(
+    AuthdReenrollCodes,
+    EnrollmentEndpointReenrollRejectionTest,
+    ::testing::Values(ReenrollRejectionCase {9026, METRIC_REENROLL_REJECTED_UNKNOWN, "unknown_agent"},
+                      ReenrollRejectionCase {9027, METRIC_REENROLL_REJECTED_SIGNATURE, "invalid_signature"},
+                      ReenrollRejectionCase {9028, METRIC_REENROLL_REJECTED_STALE, "stale_token"}));
 
 TEST(EnrollmentEndpointTest, ReenrollmentAuthdBusinessErrorsKeepTheirOwnMapping)
 {

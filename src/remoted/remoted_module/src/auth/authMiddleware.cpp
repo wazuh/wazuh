@@ -83,23 +83,79 @@ namespace remoted::auth
         return "unknown";
     }
 
+    namespace
+    {
+        // The 401 classes and their RFC 6750 §3 challenges (issue #38993, T10). One literal per class:
+        // errorResponseFor() renders them on every rejected request and must stay allocation-free.
+        constexpr const char* kAuthMessage = "Invalid client authentication";
+        constexpr const char* kUnknownAgent = "unknown_agent";
+        constexpr const char* kStaleToken = "stale_token";
+        constexpr const char* kInvalidSignature = "invalid_signature";
+        constexpr const char* kInvalidRequest = "invalid_request";
+        constexpr const char* kEnrollmentKeyUnavailable = "enrollment_key_unavailable";
+        constexpr const char* kTokenUnknown = "token_unknown";
+        constexpr const char* kTokenExpired = "token_expired";
+        constexpr const char* kTokenRevoked = "token_revoked";
+        constexpr const char* kChallengeUnknownAgent =
+            R"(Bearer error="invalid_token", error_description="unknown_agent")";
+        constexpr const char* kChallengeStaleToken = R"(Bearer error="invalid_token", error_description="stale_token")";
+        constexpr const char* kChallengeInvalidSignature =
+            R"(Bearer error="invalid_token", error_description="invalid_signature")";
+        constexpr const char* kChallengeInvalidRequest = R"(Bearer error="invalid_request")";
+        // The server could not judge the credential at all (no enrollment key to judge it with): RFC
+        // 6750 §3.1 has no error code for that and `invalid_token` would be a lie about the agent's
+        // credential, so the challenge is bare and only the body's `code` names the condition.
+        constexpr const char* kChallengeBare = "Bearer";
+        constexpr const char* kChallengeTokenUnknown =
+            R"(Bearer error="invalid_token", error_description="token_unknown")";
+        constexpr const char* kChallengeTokenExpired =
+            R"(Bearer error="invalid_token", error_description="token_expired")";
+        constexpr const char* kChallengeTokenRevoked =
+            R"(Bearer error="invalid_token", error_description="token_revoked")";
+    } // namespace
+
     PublicError publicErrorFor(AuthError err)
     {
+        // Exhaustive on purpose (no default, like toString()): a reason added to AuthError must pick
+        // its public class here, or the build says so.
         switch (err)
         {
-            case AuthError::MissingProtocolVersion: return {400, "Missing required header: protocol-version"};
-            case AuthError::UnsupportedProtocolVersion: return {400, "Unsupported protocol-version"};
-            case AuthError::PayloadAgentMismatch: return {400, "Invalid event batch"};
-            case AuthError::BodyTooLarge: return {413, "Request payload is too large"};
-            case AuthError::MalformedContentEncoding: return {400, "Malformed compressed body"};
-            case AuthError::UnsupportedContentEncoding: return {415, "Unsupported Content-Encoding"};
-            case AuthError::None: return {200, ""};
-            // MissingAuthorization, MalformedAuthorization, UnknownAgent, MissingKey,
-            // AddressNotAllowed, InvalidToken, InvalidSignature, StaleToken, IdentityMismatch,
-            // EnrollmentKeyUnavailable, TokenUnknown, TokenExpired, TokenRevoked: collapse to one
-            // generic 401 so the client can never distinguish the reason.
-            default: return {401, "Invalid client authentication"};
+            case AuthError::None: return {200, "", nullptr, nullptr};
+            case AuthError::MissingProtocolVersion:
+                return {400, "Missing required header: protocol-version", nullptr, nullptr};
+            case AuthError::UnsupportedProtocolVersion: return {400, "Unsupported protocol-version", nullptr, nullptr};
+            case AuthError::PayloadAgentMismatch: return {400, "Invalid event batch", nullptr, nullptr};
+            case AuthError::BodyTooLarge: return {413, "Request payload is too large", nullptr, nullptr};
+            case AuthError::MalformedContentEncoding: return {400, "Malformed compressed body", nullptr, nullptr};
+            case AuthError::UnsupportedContentEncoding: return {415, "Unsupported Content-Encoding", nullptr, nullptr};
+
+            // No usable credential was presented: nothing was judged.
+            case AuthError::MissingAuthorization:
+            case AuthError::MalformedAuthorization:
+                return {401, kAuthMessage, kInvalidRequest, kChallengeInvalidRequest};
+
+            // The three agent-actionable classes of the document's §2.10.
+            case AuthError::UnknownAgent: return {401, kAuthMessage, kUnknownAgent, kChallengeUnknownAgent};
+            case AuthError::StaleToken: return {401, kAuthMessage, kStaleToken, kChallengeStaleToken};
+            // Everything that says "this credential does not work for this identity": a bad MAC, a
+            // token that is not a wazuh-agent+jwt, a `sub`/`iss` naming another agent, a peer address
+            // the entry does not allow, an entry whose key does not decode. None of them is fixed by
+            // re-enrolling, so they share the class that tells the agent not to (T10).
+            case AuthError::InvalidSignature:
+            case AuthError::InvalidToken:
+            case AuthError::IdentityMismatch:
+            case AuthError::AddressNotAllowed:
+            case AuthError::MissingKey: return {401, kAuthMessage, kInvalidSignature, kChallengeInvalidSignature};
+
+            case AuthError::EnrollmentKeyUnavailable:
+                return {401, kAuthMessage, kEnrollmentKeyUnavailable, kChallengeBare};
+
+            // /enroll's enrollment-token states (issue #38993).
+            case AuthError::TokenUnknown: return {401, kAuthMessage, kTokenUnknown, kChallengeTokenUnknown};
+            case AuthError::TokenExpired: return {401, kAuthMessage, kTokenExpired, kChallengeTokenExpired};
+            case AuthError::TokenRevoked: return {401, kAuthMessage, kTokenRevoked, kChallengeTokenRevoked};
         }
+        return {401, kAuthMessage, kInvalidSignature, kChallengeInvalidSignature};
     }
 
     AuthMiddleware::AuthMiddleware(AuthConfig config, std::shared_ptr<IAgentKeystore> keystore)

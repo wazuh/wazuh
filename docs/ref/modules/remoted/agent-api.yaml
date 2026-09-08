@@ -257,17 +257,26 @@ paths:
                   value: { error: "Malformed compressed body", code: 400 }
         "401":
           description: |
-            Client authentication failed. Deliberately generic: a missing/malformed `Authorization`
-            header, an unknown agent, an unusable key, a peer address outside the one authorized for
-            the agent in `client.keys` (third column: an IP, a CIDR/netmask, or `any`), an
-            out-of-window timestamp and an invalid MAC all return the same response so the specific
-            reason is not exposed.
+            Client authentication failed. The message is generic; the failure CLASS is the body's
+            `code` and the `WWW-Authenticate` challenge's `error_description`: `unknown_agent` (the
+            `kid` is not in `client.keys`: re-enroll), `stale_token` (outside the accepted window:
+            fix the clock and retry), `invalid_signature` (bad MAC, not a `wazuh-agent+jwt`,
+            identity mismatch, peer address outside the one authorized for the agent in
+            `client.keys` -- third column: an IP, a CIDR/netmask, or `any` -- or an unusable key: do
+            NOT re-enroll), `invalid_request` (no usable `Authorization` at all).
+          headers:
+            WWW-Authenticate:
+              $ref: "#/components/headers/WWW-Authenticate"
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
               examples:
-                invalidAuthentication:
-                  value: { error: "Invalid client authentication", code: 401 }
+                unknownAgent:
+                  value: { error: "Invalid client authentication", code: unknown_agent }
+                staleToken:
+                  value: { error: "Invalid client authentication", code: stale_token }
+                invalidSignature:
+                  value: { error: "Invalid client authentication", code: invalid_signature }
         "413":
           description: |
             The request body exceeds the configured auth body limit (10 MiB). For
@@ -915,14 +924,28 @@ paths:
                   value: { error: { code: 0, message: "Unsupported protocol-version" } }
         "401":
           description: |
-            Missing or invalid credential. Collapsed to one generic message so a client cannot tell
-            which check failed.
+            Missing or invalid credential. The message is generic; the class is `error.code` and the
+            `WWW-Authenticate` challenge's `error_description`: `invalid_signature` (a password
+            bearer signed with the wrong password, or a re-enrollment bearer the master could not
+            verify against the agent's secret), `unknown_agent` (re-enrollment of an id the master
+            does not know or that has no re-enrollment secret on record), `stale_token` (bearer
+            outside the accepted window), `token_unknown` / `token_expired` / `token_revoked` (the
+            enrollment token's state), `invalid_request` (no usable `Authorization` in Password
+            mode), `enrollment_key_unavailable` (Password mode, the manager's enrollment password is
+            not available on this node: a bare `Bearer` challenge, retry later).
+          headers:
+            WWW-Authenticate:
+              $ref: "#/components/headers/WWW-Authenticate"
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
               examples:
-                invalidAuthentication:
-                  value: { error: { code: 0, message: "Invalid client authentication" } }
+                wrongPassword:
+                  value: { error: { code: invalid_signature, message: "Invalid client authentication" } }
+                revokedToken:
+                  value: { error: { code: token_revoked, message: "Invalid client authentication" } }
+                unknownAgentReenrollment:
+                  value: { error: { code: unknown_agent, message: "Invalid client authentication" } }
         "403":
           description: Enrollment is administratively disabled on this manager.
           content:
@@ -986,8 +1009,9 @@ components:
         - the JSON text of header and claims is ASCII; any non-ASCII byte is an invalid token
 
         The token authenticates identity and freshness only: method, target and body are not signed
-        (TLS protects them). Every credential failure is the same `401` with
-        `WWW-Authenticate: Bearer`.
+        (TLS protects them). Every credential failure is a `401` with the same generic message whose
+        `WWW-Authenticate` challenge and body `code` name the failure class (`unknown_agent`,
+        `stale_token`, `invalid_signature`, `invalid_request`) -- see the `401` responses.
 
     WazuhEnrollAuthentication:
       type: http
@@ -1016,19 +1040,40 @@ components:
         were required. When neither a password nor a client certificate is configured, `/enroll`
         accepts requests with no credential at all.
 
+  headers:
+    WWW-Authenticate:
+      description: |
+        RFC 6750 §3 challenge, on every `401`. `Bearer error="invalid_token", error_description="<class>"`
+        when a credential was judged and failed (`<class>` = the body's `code`: `unknown_agent`,
+        `stale_token`, `invalid_signature`, `token_unknown`, `token_expired`, `token_revoked`);
+        `Bearer error="invalid_request"` when no usable credential was presented; a bare `Bearer` when the
+        server could not judge it (`enrollment_key_unavailable`).
+      schema:
+        type: string
+        example: 'Bearer error="invalid_token", error_description="unknown_agent"'
+
   responses:
     Unauthorized:
       description: |
-        Client authentication failed. Deliberately generic: a missing/malformed `Authorization`
-        header, an unknown agent, an unusable key, a peer address outside the one authorized for the
-        agent in `client.keys`, a malformed token, a stale token and an invalid signature all return
-        the same response (with `WWW-Authenticate: Bearer`), so the specific reason is not exposed.
+        Client authentication failed. The message is generic; the class is the body's `code` and
+        the `WWW-Authenticate` challenge's `error_description`: `unknown_agent` (the `kid` is not in
+        `client.keys`: re-enroll), `stale_token` (outside the accepted window: fix the clock and
+        retry), `invalid_signature` (bad MAC, malformed token, identity mismatch, peer address
+        outside the one authorized for the agent in `client.keys`, unusable key: do NOT re-enroll),
+        `invalid_request` (missing/malformed `Authorization`).
+      headers:
+        WWW-Authenticate:
+          $ref: "#/components/headers/WWW-Authenticate"
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorResponse" }
           examples:
-            invalidAuthentication:
-              value: { error: "Invalid client authentication", code: 401 }
+            unknownAgent:
+              value: { error: "Invalid client authentication", code: unknown_agent }
+            staleToken:
+              value: { error: "Invalid client authentication", code: stale_token }
+            invalidSignature:
+              value: { error: "Invalid client authentication", code: invalid_signature }
 
     PayloadTooLarge:
       description: |
@@ -1101,12 +1146,36 @@ components:
           description: Human-readable error message.
           example: "Invalid client authentication"
         code:
-          type: integer
-          format: int32
-          minimum: 400
-          maximum: 599
-          description: HTTP status code.
-          example: 401
+          description: |
+            The HTTP status code for every non-authentication error; for a `401`, the authentication
+            failure class (the same value the `WWW-Authenticate` challenge carries as
+            `error_description`).
+          oneOf:
+            - type: integer
+              format: int32
+              minimum: 400
+              maximum: 599
+            - $ref: "#/components/schemas/AuthFailureClass"
+          example: unknown_agent
+
+    AuthFailureClass:
+      type: string
+      description: |
+        Why a `401` was refused, in agent-actionable terms: `unknown_agent` -> re-enroll;
+        `stale_token` -> fix the clock (the `Date` header is the manager's) and retry;
+        `invalid_signature` -> do NOT re-enroll, the credential does not work for that identity;
+        `invalid_request` -> no usable credential was presented; `token_unknown` / `token_expired` /
+        `token_revoked` -> the enrollment token's own state (`POST /enroll`); `enrollment_key_unavailable`
+        -> the manager could not judge the credential (`POST /enroll`, Password mode): retry later.
+      enum:
+        - unknown_agent
+        - stale_token
+        - invalid_signature
+        - invalid_request
+        - token_unknown
+        - token_expired
+        - token_revoked
+        - enrollment_key_unavailable
 
     EnrollErrorResponse:
       type: object
@@ -1122,11 +1191,15 @@ components:
           required: [code, message]
           properties:
             code:
-              type: integer
-              format: int32
               description: |
-                `authd`'s own numeric code when the failure came from `authd`, `0` for failures
-                `/enroll` produced itself, `-1` when `authd` could not be reached or understood.
+                `authd`'s own numeric code when the failure came from `authd`, `0` for non-authentication
+                failures `/enroll` produced itself, `-1` when `authd` could not be reached or understood;
+                for a `401`, the authentication failure class (string) -- the same value the
+                `WWW-Authenticate` challenge carries as `error_description`.
+              oneOf:
+                - type: integer
+                  format: int32
+                - $ref: "#/components/schemas/AuthFailureClass"
               example: 0
             message:
               type: string
