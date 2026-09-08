@@ -225,6 +225,36 @@ namespace
             hc_handle* m_handle;
     };
 
+    /// Stops and joins a background thread however the test body leaves. A bare
+    /// ASSERT_ before a manual join would otherwise destroy a still-joinable
+    /// std::thread, calling std::terminate() and aborting the whole binary.
+    class ThreadStopper final
+    {
+        public:
+            ThreadStopper(std::atomic<bool>& running, std::thread& thread)
+                : m_running(running)
+                , m_thread(thread)
+            {
+            }
+
+            ~ThreadStopper()
+            {
+                m_running = false;
+
+                if (m_thread.joinable())
+                {
+                    m_thread.join();
+                }
+            }
+
+            ThreadStopper(const ThreadStopper&) = delete;
+            ThreadStopper& operator=(const ThreadStopper&) = delete;
+
+        private:
+            std::atomic<bool>& m_running;
+            std::thread& m_thread;
+    };
+
     /// The manager runs in a forked process, so everything the test wants to
     /// know about what it received comes back through a /peek endpoint.
     int peekCount(httplib::Client& peek, const char* target)
@@ -899,15 +929,10 @@ TEST_F(FacadeE2eTest, ReporterPostsStampedStatsAndConfig)
 
 TEST_F(FacadeE2eTest, NotifyNowRaceAgainstReporterTick)
 {
-    // #38840: hc_notify_now() reaches into ReporterStream::forceConfigReportNow()
-    // from the https_client_bridge callback thread, forcing the /config path's
-    // nextDue while the reporter's own thread concurrently reads and rewrites it
-    // inside tick()/runPath()/commitNextDue() -- all serialized through the same
-    // path.mtx. tick() only touches nextDue once the control loop is REGISTERED,
-    // which is why this lives here against a real FakeManager rather than in the
-    // black-box unit tests: a dead port never registers, so tick() never gets
-    // past its early "not registered" return and this contention pattern never
-    // actually gets exercised in that harness.
+    // hc_notify_now() forces the /config path's nextDue (via forceConfigReportNow())
+    // while the reporter thread concurrently reads/writes it in tick()/runPath(),
+    // both serialized through path.mtx. Needs a REGISTERED control loop, so this
+    // lives here against a real FakeManager rather than in the unit tests.
     const uint16_t port = TLS_PORT + 6;
     FakeManager manager {port, KEY_HEX, /*tls=*/true};
 
@@ -925,6 +950,7 @@ TEST_F(FacadeE2eTest, NotifyNowRaceAgainstReporterTick)
     hc_handle* handle = hc_create(&config, &callbacks);
     ASSERT_NE(nullptr, handle);
     ASSERT_TRUE(hc_start(handle));
+    const HandleGuard guard {handle}; // Torn down even if an assertion below returns early.
     ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000));
 
     std::atomic<bool> notifying {true};
@@ -940,22 +966,16 @@ TEST_F(FacadeE2eTest, NotifyNowRaceAgainstReporterTick)
             hc_notify_now(handle);
         }
     });
+    // Stopped/joined (before the handle above is destroyed) even if an assertion below
+    // returns early.
+    const ThreadStopper notifierStopper {notifying, notifier};
 
-    // Not just absence of a TSAN-visible data race: every access to nextDue/forcedSinceLastRun
-    // goes through path.mtx, so this is memory-safe by construction. What that alone cannot
-    // catch is a logic race -- forceConfigReportNow()'s update getting silently overwritten by a
-    // commitNextDue() that runs just before or after it, each individually well-locked (the
-    // #38840 follow-up lost-update this fix closes) -- which would never show up as a race to
-    // ThreadSanitizer at all. Asserting actual deliveries is what would have caught that: several
-    // forced reports landing while the notifier keeps contending, not just the reporter's own
-    // natural first send.
+    // Absence of a TSAN-visible race doesn't prove correctness here: a logic race (a forced
+    // update silently overwritten by a well-locked commitNextDue()) wouldn't show up to
+    // ThreadSanitizer either. Asserting actual delivery counts is what catches that.
     httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
     peek.enable_server_certificate_verification(false);
-    ASSERT_TRUE(waitForCount(peek, "/peek/config_count", 2, 500));
-
-    notifying = false;
-    notifier.join();
-    hc_destroy(handle);
+    ASSERT_TRUE(waitForCount(peek, "/peek/config_count", 2, 3000));
 }
 
 TEST_F(FacadeE2eTest, SettingsChangeRefreshesStartupWithoutLeavingRegistered)
