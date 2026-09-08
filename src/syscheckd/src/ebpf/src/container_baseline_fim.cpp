@@ -244,9 +244,6 @@ class BaselineDriver {
         {
             if (!container_id || !row_json) return;
 
-            beginContainer(container_id);
-            if (!m_txn || !m_txn->valid()) return;
-
             auto row = nlohmann::json::parse(row_json, nullptr, false);
             if (row.is_discarded()) {
                 LogDebug("Container FIM baseline: discarded a malformed row for container '%s'.",
@@ -257,9 +254,9 @@ class BaselineDriver {
 
             // Stable checksum so DBSync can detect row-level changes between runs.
             //
-            // The container-scope columns are excluded deliberately: container_id
-            // is part of the row's key (the transaction is already scoped to it),
-            // and container_json is a copy of the container's metadata blob. With
+            // The container-scope columns are excluded deliberately:
+            // container_id is part of the row's primary key already, and
+            // container_json is a copy of the container's metadata blob. With
             // the blob inside the digest, editing one label changed the checksum
             // of every file row of that container and re-emitted the whole file
             // set as MODIFIED — a metadata edit reported as file changes.
@@ -271,6 +268,23 @@ class BaselineDriver {
             fim_compute_row_checksum(dump.c_str(), sha1);
             row["checksum"] = std::string(sha1);
 
+            if (!m_may_delete) {
+                // A path reconcile persists row by row, outside any
+                // transaction. It must not open a container-scoped one: closing
+                // that runs deleteRowsByStatusField() unconditionally, so
+                // re-reading one named file DELETED every other row of the
+                // container -- C27. may_detect_deletions == false suppresses the
+                // DELETED callbacks and nothing else. Measured on a live agent:
+                // modifying f1 alerted "modified", modifying f2 then alerted
+                // "added" because f1's reconcile had removed f2's row, and 1 of
+                // 5 rows survived three single-file changes (D18).
+                syncRowDirect(container_id, row);
+                return;
+            }
+
+            beginContainer(container_id);
+            if (!m_txn || !m_txn->valid()) return;
+
             m_txn->syncRow(row.dump());
             ++m_rows;
         }
@@ -281,6 +295,14 @@ class BaselineDriver {
 
             const std::string id{status.container_id};
             m_scanned.insert(id);
+
+            if (!m_may_delete) {
+                // Nothing to close: a path reconcile never opened a
+                // transaction, and it has no ageing-out to do -- its rows are a
+                // subset of the container's files by design (D15), so "not
+                // refreshed" carries no information about the rest.
+                return;
+            }
 
             // A complete scan that produced no rows still needs a transaction,
             // so previously-stored rows for this container age out as DELETED.
@@ -370,6 +392,22 @@ class BaselineDriver {
         [[nodiscard]] size_t malformedRows() const { return m_malformed_rows; }
 
     private:
+        /// One row, no transaction, no scope, no status field: the row is
+        /// compared against its stored self and nothing else is touched.
+        void syncRowDirect(const std::string& container_id, const nlohmann::json& row)
+        {
+            m_direct_ctx.container_id = container_id;
+            m_direct_ctx.origin       = m_origin;
+
+            if (fim_db_container_file_sync(row.dump().c_str(), container_txn_callback, &m_direct_ctx) != FIMDB_OK) {
+                LogDebug("Container FIM reconcile: failed to persist a row for container '%s'.",
+                        container_id.c_str());
+                return;
+            }
+
+            ++m_rows;
+        }
+
         void beginContainer(const std::string& container_id)
         {
             if (m_txn && m_current == container_id) return;
@@ -393,6 +431,7 @@ class BaselineDriver {
 
         const bool                           m_may_delete{true};
         const int                            m_origin{CB_FIM_ORIGIN_SCAN};
+        ContainerTxnCtx                      m_direct_ctx{};
         std::unique_ptr<ScopedContainerTxn> m_txn;
         std::string                          m_current;
         std::set<std::string>                m_scanned;
