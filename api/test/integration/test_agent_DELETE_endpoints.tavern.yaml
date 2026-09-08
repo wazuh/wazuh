@@ -760,3 +760,109 @@ stages:
         data:
           affected_items: !anything
           total_affected_items: !anyint
+
+---
+test_name: DELETE /agents/enrollment-tokens/{token_id}
+
+stages:
+
+    # POST /agents/enrollment-tokens
+  - name: Mint an enrollment token to revoke
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        address: "wazuh-master"
+        description: "tavern-delete"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          token: !anystr
+          id: !anystr
+          address: "wazuh-master"
+          expires: !anystr
+          pin_hex: !anystr
+      save:
+        json:
+          revoked_token_id: data.id
+
+    # DELETE /agents/enrollment-tokens/{token_id}
+  - name: Revoke the token
+    request: &enrollment_token_delete
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens/{revoked_token_id}"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "{revoked_token_id}"
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+    # GET /agents/enrollment-tokens?q=id=...
+  - name: A revoked token stays listed, revoked
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        q: "id={revoked_token_id}"
+        select: "id,revoked"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{revoked_token_id}"
+              revoked: true
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+    # DELETE /agents/enrollment-tokens/{token_id}
+  - name: Revoking it again succeeds (idempotent)
+    request:
+      verify: False
+      <<: *enrollment_token_delete
+    response:
+      status_code: 200
+      json:
+        error: 0
+
+    # DELETE /agents/enrollment-tokens/{token_id}
+  - name: Try to revoke a token that was never minted
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens/AAAAAAAAAAAAAAAAAAAAAA"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 404
+      json:
+        error: 1767
+
+    # DELETE /agents/enrollment-tokens/{token_id}
+  - name: Try to revoke a token with an id that is not a token id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens/not-a-token-id"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400

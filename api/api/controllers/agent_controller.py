@@ -14,6 +14,7 @@ from api.controllers.util import JSON_CONTENT_TYPE, json_response
 from api.models.agent_added_model import AgentAddedModel
 from api.models.agent_group_added_model import GroupAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel
+from api.models.enrollment_token_model import EnrollmentTokenCreateModel
 from api.models.base_model_ import Body
 from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
 from wazuh import agent, vulnerability_scan
@@ -1305,6 +1306,123 @@ async def insert_agent(pretty: bool = False, wait_for_complete: bool = False) ->
     f_kwargs = await AgentInsertedModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=agent.add_agent,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
+async def create_enrollment_token(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+    """Mint an enrollment token (issue #38993). The token text is in this answer and nowhere else.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
+    f_kwargs = await EnrollmentTokenCreateModel.get_kwargs(request)
+
+    dapi = DistributedAPI(f=agent.create_enrollment_token,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
+async def get_enrollment_tokens(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+                                limit: int = DATABASE_LIMIT, sort: str = None, search: str = None, select: str = None,
+                                q: str = None) -> ConnexionResponse:
+    """List the enrollment tokens (never their credential or text).
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return. Default: DATABASE_LIMIT
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    select : str
+        Select which fields to return (separated by comma).
+    q : str
+        Query to filter results by. For example q="address=wazuh-manager".
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['created'],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'select': select,
+                'q': q}
+
+    dapi = DistributedAPI(f=agent.get_enrollment_tokens,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
+async def delete_enrollment_token(token_id: str, pretty: bool = False,
+                                  wait_for_complete: bool = False) -> ConnexionResponse:
+    """Revoke an enrollment token.
+
+    Parameters
+    ----------
+    token_id : str
+        The token's id.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'token_id': token_id}
+
+    dapi = DistributedAPI(f=agent.delete_enrollment_token,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

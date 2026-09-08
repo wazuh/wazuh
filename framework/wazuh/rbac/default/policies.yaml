@@ -9,6 +9,9 @@ default_policies:
           - agent:create
           - group:create
           - agent:uninstall
+          - enrollment_token:create
+          - enrollment_token:read
+          - enrollment_token:delete
         resources:
           - '*:*:*'
         effect: allow

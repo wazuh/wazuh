@@ -182,6 +182,42 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - PUT /agents/scan/vulnerability
+      enrollment_token:create:
+        description: Mint enrollment tokens (the credential a new agent pastes to enroll over HTTPS)
+        example:
+          actions:
+            - enrollment_token:create
+          resources:
+            - "*:*:*"
+          effect: allow
+        resources:
+          - "*:*"
+        related_endpoints:
+          - POST /agents/enrollment-tokens
+      enrollment_token:read:
+        description: List enrollment tokens (their id, address, dates and uses; never their credential)
+        example:
+          actions:
+            - enrollment_token:read
+          resources:
+            - "*:*:*"
+          effect: allow
+        resources:
+          - "*:*"
+        related_endpoints:
+          - GET /agents/enrollment-tokens
+      enrollment_token:delete:
+        description: Revoke enrollment tokens
+        example:
+          actions:
+            - enrollment_token:delete
+          resources:
+            - "*:*:*"
+          effect: allow
+        resources:
+          - "*:*"
+        related_endpoints:
+          - DELETE /agents/enrollment-tokens/{token_id}
       agent:uninstall:
         description: Check user's permission to uninstall agents
         example:
