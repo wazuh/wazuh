@@ -274,9 +274,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WIN32
 #define KEYS_FILE  "etc/client.keys"
 #define AUTHD_PASS "etc/authd.pass"
+#define ENROLLMENT_TOKENS_FILE "etc/enrollment_tokens.json"
 #else
 #define KEYS_FILE  "client.keys"
 #define AUTHD_PASS "authd.pass"
+#define ENROLLMENT_TOKENS_FILE "enrollment_tokens.json"
 #endif
 
 /* Timestamp file */

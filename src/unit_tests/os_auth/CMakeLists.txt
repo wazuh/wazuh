@@ -28,7 +28,13 @@ list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND os_auth_names "test_authd-getconfig")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,getDefine_Int_default -Wl,--wrap,w_mconf_load -Wl,--wrap,w_mconf_section")
 list(APPEND os_auth_names "test_local-server")
-list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,w_request_agent_add_clustered")
+# The mint reads the `remote` section through w_mconf_section (wrapped: the test hands it the JSON that points
+# at its own certificate files); the store and the X509 checks run for real on temporary files.
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,w_request_agent_add_clustered -Wl,--wrap,w_mconf_section -Wl,--wrap,OS_IsValidIP")
+list(APPEND os_auth_names "test_enrollment_token_store")
+# Real files in a temporary directory: the store's file IS its contract (mode, atomicity, and what
+# it never contains), so nothing about the I/O is stubbed away here.
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
 
 list(LENGTH os_auth_names count)
 math(EXPR count "${count} - 1")
