@@ -47,6 +47,12 @@ type Config struct {
 	// in main(). "" means unprefixed. Agent mode only: NewUDSClient takes no prefix, so
 	// a uds run ignores it by construction.
 	GlobalPrefix string
+	// EnrollToken is the enrollment token text an `enroll_https` step presents
+	// (issue #38993), as the operator pasted it -- from --enroll-token-file or
+	// WAZUH_ENROLLMENT_TOKEN. Environment config like Cluster: a credential minted
+	// on the manager under test, never a scenario field. "" is fine for scenarios
+	// without the step; a scenario WITH it and no token is refused before any traffic.
+	EnrollToken string
 	// VDFeedOffset overrides Start.feed_offset for every VDFirst/VDSync step
 	// that doesn't set its own (environment config, like Cluster). 0 means "no
 	// override" -- defer to the step, then to what agent mode's keepalive loop
@@ -80,6 +86,11 @@ type Runner struct {
 
 	enrolled int
 	failed   int
+
+	// The decoded enrollment token and its HS256 key, resolved once by
+	// prepareEnrollToken(); nil when the scenario has no enroll_https step.
+	enrollToken *wire.EnrollmentToken
+	enrollKey   []byte
 }
 
 // New builds a runner and its metric registry from the scenario's fleets/lanes.
@@ -123,6 +134,11 @@ func (r *Runner) Run(ctx context.Context) int {
 	r.start = time.Now()
 	ctx, r.cancel = context.WithCancel(ctx)
 	defer r.cancel()
+
+	if err := r.prepareEnrollToken(); err != nil {
+		fmt.Fprintf(os.Stderr, "setup: %v\n", err)
+		return 2
+	}
 
 	agents, err := r.buildAgents(ctx)
 	if err != nil {
@@ -221,6 +237,11 @@ func (r *Runner) buildAgents(ctx context.Context) ([]*agent, error) {
 				}
 				ag.id = ident.ID
 				ag.client = wire.NewAgentClient(ident, r.cfg.Manager, r.cfg.Port, r.cfg.Timeout, r.cfg.Reuse, r.cfg.GlobalPrefix)
+				if r.enrollToken != nil {
+					// One identity-less client per agent, like the authenticated one: an
+					// enroll_https lane's connections stay this agent's own (docu/08).
+					ag.enroll = wire.NewEnrollClient(r.cfg.Manager, r.cfg.Port, r.cfg.Timeout, r.cfg.Reuse, r.cfg.GlobalPrefix)
+				}
 				r.enrolled++
 			} else {
 				ag.client = wire.NewUDSClient(ag.id, r.cfg.Socket, r.cfg.Timeout)

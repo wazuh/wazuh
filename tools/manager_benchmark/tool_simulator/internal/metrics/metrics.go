@@ -29,6 +29,15 @@ type Counters struct {
 	// the run (a 200 without a PEM body, an unexpected status).
 	CacertsSent, Cacerts200, Cacerts404, Cacerts503, CacertsOther uint64
 
+	// EnrollHTTPS* are the POST /enroll (enrollment-token self-enrollment)
+	// counters (docu/16-enroll-https.md). EnrollHTTPS200 is an agent created;
+	// EnrollHTTPS401 the manager refusing the bearer (unknown, expired or revoked
+	// token, or a clock/key problem); EnrollHTTPS403 authd refusing the use of a
+	// bearer remoted had verified (no uses left, or revoked/expired between the
+	// two checks); EnrollHTTPS409 a duplicate name. EnrollHTTPSOther collects what
+	// invalidates the run (a 200 without the agent record, an unexpected status).
+	EnrollHTTPSSent, EnrollHTTPS200, EnrollHTTPS401, EnrollHTTPS403, EnrollHTTPS409, EnrollHTTPSOther uint64
+
 	// RetriesFeed counts feed-not-ready (503+Retry-After) re-sends; Retries503
 	// counts bare-503 (backpressure) re-sends; RetriesExhausted counts sessions
 	// whose retry budget ran out while the server was still answering 503.
@@ -49,12 +58,13 @@ type bucket struct {
 
 func newBucket() *bucket {
 	return &bucket{hists: map[string]*Histogram{
-		"session":   NewHistogram(),
-		"stateless": NewHistogram(),
-		"notify":    NewHistogram(),
-		"startup":   NewHistogram(),
-		"scan":      NewHistogram(),
-		"cacerts":   NewHistogram(),
+		"session":      NewHistogram(),
+		"stateless":    NewHistogram(),
+		"notify":       NewHistogram(),
+		"startup":      NewHistogram(),
+		"scan":         NewHistogram(),
+		"cacerts":      NewHistogram(),
+		"enroll_https": NewHistogram(),
 	}}
 }
 
@@ -214,6 +224,30 @@ func (r *Registry) RecordCacerts(fleet, lane string, status int, latencyUS uint6
 		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.Cacerts503 }, 1)
 	default:
 		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.CacertsOther }, 1)
+	}
+}
+
+// RecordEnrollHTTPS classifies a POST /enroll (enrollment token) outcome and
+// records its latency.
+//
+// 200 (agent created), 401 (bearer refused), 403 (authd refused the use of a
+// verified token) and 409 (duplicate name) are the contract outcomes; anything
+// else lands in EnrollHTTPSOther, which the caller pairs with invalidating the
+// run (docu/16-enroll-https.md).
+func (r *Registry) RecordEnrollHTTPS(fleet, lane string, status int, latencyUS uint64) {
+	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EnrollHTTPSSent }, 1)
+	r.observe(fleet, lane, "enroll_https", latencyUS)
+	switch status {
+	case 200:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EnrollHTTPS200 }, 1)
+	case 401:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EnrollHTTPS401 }, 1)
+	case 403:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EnrollHTTPS403 }, 1)
+	case 409:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EnrollHTTPS409 }, 1)
+	default:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EnrollHTTPSOther }, 1)
 	}
 }
 

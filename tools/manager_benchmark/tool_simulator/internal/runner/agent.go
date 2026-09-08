@@ -21,6 +21,12 @@ type agent struct {
 	client  *wire.Client
 	seqBase uint64 // namespaces this agent's generated document ids
 
+	// enroll is the identity-less HTTPS client an `enroll_https` step uses (nil
+	// unless the run carries an enrollment token); enrollSeq numbers the fresh
+	// agent names it enrolls (`<name>-tk-<n>`).
+	enroll    *wire.Client
+	enrollSeq atomic.Uint64
+
 	// vdFeedOffset is the last vd_feed_offset a notify reported (agent mode
 	// only; stays 0 in uds mode, which has no /control to learn it from).
 	// Written by keepaliveLoop, read by the lane goroutines building
@@ -257,6 +263,10 @@ func (a *agent) runStep(ctx context.Context, lane string, step scenario.Step) {
 	}
 	if step.Kind == "cacerts" {
 		a.runCacerts(ctx, lane)
+		return
+	}
+	if step.Kind == "enroll_https" {
+		a.runEnrollHTTPS(ctx, lane)
 		return
 	}
 	a.runSession(ctx, lane, step)

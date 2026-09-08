@@ -1,0 +1,22 @@
+{
+  "name": "enroll_https",
+  "description": "Contract test for POST /enroll with an enrollment token (issue #38993): a fleet of 20 agents each enrolls 5 FRESH agent names over the HTTPS listener, presenting the wazuh-enroll+jwt bearer minted from the token given on the command line (--enroll-token-file or WAZUH_ENROLLMENT_TOKEN; mint it with `wazuh-manager-authd --create-enrollment-token --address <manager>` and NO --max-uses, so 100 uses fit). Every request must be answered 200 with the new agent's {id,name,ip,key} record, none 401 (the token is known, unexpired, unrevoked and its key verifies), none 403 (authd honoured every use) and none 409 (names are unique), with no transport errors. Measures the whole path: remoted's replica of the token store -> signature -> authd consuming a use -> client.keys write. The fleet itself still bootstraps through legacy 1515 like every agent-mode run; the 100 enrolled names carry the bench- prefix so cleanup_agents.sh removes them.",
+  "mode": "agent",
+  "defaults": {
+    "module": "syscollector",
+    "option": "Sync",
+    "cluster_name": "cluster01",
+    "retry": { "enabled": false }
+  },
+  "lanes": {
+    "enroll": [
+      { "kind": "enroll_https", "repeat_count": 5, "repeat_delay": "200ms" }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 20, "first_id": 28000, "lanes": ["enroll"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "30s" },
+  "expected": { "enroll_https": { "sent": { "eq": 100 }, "s200": { "eq": 100 }, "s401": { "eq": 0 }, "s403": { "eq": 0 }, "s409": { "eq": 0 }, "other": { "eq": 0 } }, "transport_errors": { "eq": 0 } }
+}
