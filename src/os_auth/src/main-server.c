@@ -35,6 +35,8 @@
 #include <sys/epoll.h>
 #include "manager_task_op.h"
 #include "enrollment_token_store.h"
+#include "token_cli.h"
+#include <getopt.h>
 
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
@@ -89,6 +91,8 @@ static void help_authd(char * home_path)
 {
     print_header();
     print_out("  %s: -[VhdtfP] [-u user] [-g group] [-D dir] [-p port] [-c ciphersuites] [-v path [-s]] [-x path] [-k path]", ARGV0);
+    print_out("  %s: --create-enrollment-token --address <host> [--port N] [--prefix P] [--ttl 30d] [--max-uses N] [--description S] [--embed-ca] [--no-credential]", ARGV0);
+    print_out("  %s: --list-enrollment-tokens | --revoke-enrollment-token <id> | --show-token[=<token>] [--token-file <path>]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
@@ -104,6 +108,20 @@ static void help_authd(char * home_path)
     print_out("    -s          Used with -v, enable source host verification.");
     print_out("    -x <path>   Full path to server certificate. Default: %s.", CERTFILE);
     print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
+    print_out(" ");
+    print_out("  Enrollment tokens (the daemon must be running; mint and revoke only on the master node):");
+    print_out("    --create-enrollment-token   Mint a token for --address <host>; prints the token on stdout.");
+    print_out("      --address <host>          Name (or IP) the agents connect to; must be in the listener certificate's SAN.");
+    print_out("      --port <N>                Listener port to write into the token when it differs from the configured one.");
+    print_out("      --prefix <P>              URL prefix to write into the token when it differs from the configured one.");
+    print_out("      --ttl <30d|12h|45m|90s>   Lifetime. Default: 30 days.");
+    print_out("      --max-uses <N>            Enrollments the token allows. Default: unlimited.");
+    print_out("      --description <text>      Free text shown by --list-enrollment-tokens.");
+    print_out("      --embed-ca                Carry the CA certificate instead of its pin (no /cacerts fetch).");
+    print_out("      --no-credential           Token without credential (public: address and pin only).");
+    print_out("    --list-enrollment-tokens    List the tokens (never their credential).");
+    print_out("    --revoke-enrollment-token <id>");
+    print_out("    --show-token[=<token>]      Decode a token (from the argument, --token-file <path> or stdin) without its credential.");
     print_out(" ");
     os_free(home_path);
     exit(1);
@@ -207,8 +225,10 @@ int main(int argc, char **argv)
         const char *server_cert = NULL;
         const char *server_key = NULL;
         unsigned short port = 0;
+        /* Enrollment token utility mode (#38993): parsed here, run right after the loop. */
+        token_cli_opts_t token_opts = {0};
 
-        while (c = getopt(argc, argv, "Vdhtfu:g:D:p:c:v:sx:k:P"), c != -1) {
+        while (c = getopt_long(argc, argv, "Vdhtfu:g:D:p:c:v:sx:k:P", token_cli_long_opts, NULL), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -303,10 +323,28 @@ int main(int argc, char **argv)
                     server_key = optarg;
                     break;
 
-                default:
-                    help_authd(home_path);
+                default: {
+                    /* The long options belong to the token CLI; anything else is unknown. */
+                    int consumed = w_token_cli_parse_opt(&token_opts, c, optarg, stderr);
+
+                    if (consumed < 0) {
+                        exit(1);
+                    }
+
+                    if (consumed == 0) {
+                        help_authd(home_path);
+                    }
                     break;
+                }
             }
+        }
+
+        /* Enrollment token utility mode: a client of the running daemon over auth.sock (or, for
+         * --show-token, a local decode) that exits before the daemon reads its configuration or
+         * drops privileges. Access to the socket is what authorises the caller, and the cwd is
+         * already the manager home (chdir above), so the relative socket path resolves. */
+        if (token_opts.requested) {
+            exit(w_token_cli_run(&token_opts, stdin, stdout, stderr));
         }
 
         /* Set the Debug level */
