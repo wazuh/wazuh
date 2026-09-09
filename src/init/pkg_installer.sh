@@ -567,6 +567,20 @@ fi
 # install.
 DEFAULT_CA_FILE="./etc/certs/root-ca.pem"
 
+# Same path as AGENT_ANCHOR_CA (src/shared/include/defs.h), which the agent now reads
+# directly: since #39025 a present, readable file here IS the verification state, so the
+# resolution this gate mirrors above is no longer the one the upgraded binary will apply.
+# Three rows diverge: an unset <verification_mode>, which this gate resolves to 'system' and
+# the new binary resolves to 'full' with the anchor present or 'none' without it; a config
+# with no readable <certificate_authorities>, which this gate aborts on and the new binary
+# starts with; and an explicit 'none', which this gate treats as nothing to check and the new
+# binary overrides when the anchor is present. Reconciling them is #38949 question 6; no
+# verdict below was changed for it.
+
+if [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - A trust anchor is present at ${DEFAULT_CA_FILE}. Since #39025 the upgraded agent treats it as the verification state, so it may verify with 'full' against that file whatever <ssl><verification_mode> says below; an explicit 'certificate' or 'system' still wins." >> ./logs/upgrade.log
+fi
+
 case "${SSL_VERIFICATION_MODE}" in
     full|certificate)
         if [ -z "${SSL_CA}" ] || [ ! -f "${SSL_CA}" ] || [ ! -r "${SSL_CA}" ]; then
@@ -614,7 +628,8 @@ case "${SSL_VERIFICATION_MODE}" in
         fi
         ;;
     none)
-        # Explicitly disabled -- nothing for this gate to check.
+        # Nothing for this gate to check: 'none' needs no CA and reaches no trust store. It is
+        # also the row the anchor overrides outright, which the log above covers.
         ;;
     *)
         # Neither ReadConfig() nor this gate's own default-resolution above can produce
