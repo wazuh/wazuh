@@ -444,7 +444,7 @@ TEST(CApi, LoadSectionDocumentValidateFree)
     std::filesystem::remove_all(home);
 }
 
-TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtySixLeaves)
+TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtySevenLeaves)
 {
     const auto schema = json(std::string {manager_config::schemaJson()});
     std::size_t leaves = 0;
@@ -468,5 +468,7 @@ TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtySixLeaves)
         }
     };
     walk(schema);
-    EXPECT_EQ(leaves, 66u);
+    // Bump this deliberately, never to make the test pass: it is the guard that a schema option was
+    // added or removed on purpose. Last changed by remote.legacy.ca_delivery (66 -> 67).
+    EXPECT_EQ(leaves, 67u);
 }

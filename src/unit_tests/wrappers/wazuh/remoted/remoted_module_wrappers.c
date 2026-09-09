@@ -21,3 +21,7 @@ void __wrap_remoted_module_start(__attribute__((unused)) const logging_callback_
 void __wrap_remoted_module_stop(void) {
     // Mock implementation - does nothing in tests
 }
+
+int __wrap_remoted_module_tls_ca_matches_leaf(void) {
+    return mock_type(int);
+}

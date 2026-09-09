@@ -21,6 +21,12 @@
  * task to the agent using the same six-step wire protocol (lock_restart / open / write / close /
  * sha1 / upgrade) the agent-side handlers in wm_agent_upgrade_com.c already understand.
  *
+ * Between the WPK's `sha1` and the `upgrade` command it also pushes the manager's own CA
+ * certificate, through a second open/write/close/sha1 cycle over the same channel -- so that an
+ * agent upgraded to 5.x has a trust anchor for the HTTPS listener it is about to start using. See
+ * legacy_task_deliver_ca(), which explains the position, the failure policy (never fails the
+ * upgrade) and the configuration gate.
+ *
  * `get_pending_tasks` marks everything it returns `delivered` unconditionally, for every task
  * type -- so the version check must run strictly before calling it for a given agent, or a
  * >= v5.0.0 agent's tasks would be permanently stranded.
@@ -64,6 +70,7 @@
 
 #include "shared.h"
 #include "remoted.h"
+#include "remoted_module.h"
 #include "agent_metadata_db.h"
 #include "wazuhdb_queries_op.h"
 #include "version_op.h"
@@ -71,6 +78,7 @@
 #include "legacy_task_delivery.h"
 #include "queue_linked_op.h"
 #include "http_op.h"
+#include "sha1_op.h"
 
 #include <limits.h>
 
@@ -99,6 +107,50 @@
  * Duplicated as a plain constant here rather than pulled in from that module's header: this
  * poller only ever consumes a task's payload, it never touches task creation. */
 #define LEGACY_TASK_WPK_DEFAULT_PATH "var/upgrade/"
+
+/* --- Manager CA delivery (see legacy_task_deliver_ca()) ---------------------------------------
+ *
+ * A 5.0 manager is always a fresh install, so a 4.x fleet reaches 5.0 by remote upgrade. The
+ * upgraded agent then speaks HTTPS on 1517 but holds no trust anchor, and cannot enrol again to
+ * get one: it already has a client.keys identity, so it never sees an enrollment token. This
+ * channel is the one way in. It is also a good one -- it is encrypted and integrity-protected
+ * with the agent's own key, so the 4.x symmetric-key channel bootstraps the 5.0 asymmetric
+ * anchor with no unauthenticated moment and no trust-on-first-use window.
+ *
+ * The name is the SAME at both ends: the manager reads etc/certs/root-ca.pem and the agent's
+ * installer looks for the drop-in at its own etc/certs/root-ca.pem (pkg_installer.sh's
+ * DEFAULT_CA_FILE; certs\root-ca.pem on Windows). Keeping it means the agent-side step is a copy
+ * rather than a rename, and a hand-staged anchor and a delivered one produce identical layouts. */
+#define LEGACY_TASK_CA_FILE_NAME "root-ca.pem"
+
+/* Fallback when remote.https.ca_certificate is unset. The C side leaves it NULL in that case --
+ * the default is applied by the C++ module (httpServerConfig.cpp, DEFAULT_CA_CERTIFICATE_PATH), so
+ * this poller has to apply the same one rather than read a NULL. Keep the two in sync: they must
+ * name the same file, or an agent bootstrapped by upgrade and one bootstrapped from GET /cacerts
+ * would end up trusting different anchors. */
+#define LEGACY_TASK_CA_DEFAULT_PATH "etc/certs/root-ca.pem"
+
+/* Bound on how large a file this poller will read and push as a CA. A root CA PEM is 1-2 KiB and a
+ * bundle of a handful still fits easily; anything at this size is not a CA file and is far more
+ * likely to be a misconfiguration pointing at something else entirely. Refused rather than
+ * streamed, since the cost lands on the agent's disk and on this thread's sweep of every other
+ * agent. */
+#define LEGACY_TASK_CA_MAX_BYTES 65536
+
+/* In-cycle push attempts for the CA, deliberately LOWER than LEGACY_TASK_MAX_PUSH_ATTEMPTS.
+ *
+ * A failed WPK push loses the task -- get_pending_tasks already marked it delivered, so nothing
+ * offers it again -- which is what buys that path five attempts. A failed CA push loses nothing:
+ * the upgrade proceeds regardless (see the failure policy in legacy_task_deliver_ca()), and the
+ * next upgrade attempt sends the CA again. Three is enough to ride out a transient hiccup without
+ * spending this cycle's budget on an agent that is not answering. */
+#define LEGACY_TASK_CA_MAX_ATTEMPTS 3
+
+/* Target version at or above which the agent will speak HTTPS after the upgrade, and therefore the
+ * version at or above which it needs an anchor. Below it -- a 4.13 agent being stepped up to
+ * 4.14.x on its way to 5.0 -- there is nothing on the agent that would ever read the file, and
+ * nothing that would clean it out of var/incoming either. */
+#define LEGACY_TASK_CA_MIN_TARGET_VERSION "v5.0.0"
 
 /* Delay before the very first poll cycle after a remoted (re)start, giving reconnecting agents
  * time to report their version before the poller starts deciding eligibility from stale/absent
@@ -206,6 +258,12 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
 STATIC legacy_task_push_result_t legacy_task_attempt_delivery(const char *agent_id, const char *task_id, const cJSON *payload_json, bool *out_no_response) __attribute__((nonnull));
 STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message, bool *out_malformed, bool *out_no_response, bool is_last_attempt) __attribute__((nonnull(1, 2, 3)));
 STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *command_name, cJSON *params, char **out_data, bool *out_malformed, bool *out_no_response, bool is_last_attempt) __attribute__((nonnull(1, 2, 3)));
+STATIC bool legacy_task_ca_target_speaks_https(const char *wpk_version);
+STATIC const char *legacy_task_ca_path(void);
+STATIC char *legacy_task_ca_read(const char *path, unsigned int *out_length) __attribute__((nonnull));
+STATIC void legacy_task_ca_truncate(const char *agent_id) __attribute__((nonnull));
+STATIC bool legacy_task_ca_push(const char *agent_id, const char *pem, unsigned int length, const char *expected_sha1, bool is_last_attempt, bool *out_no_response) __attribute__((nonnull(1, 2, 4, 6)));
+STATIC void legacy_task_deliver_ca(const char *agent_id, const char *task_id, const char *wpk_version) __attribute__((nonnull(1, 2)));
 STATIC void legacy_upgrade_poll_cycle(void);
 STATIC void legacy_task_send_clear_upgrade_result(const char *agent_id) __attribute__((nonnull));
 STATIC void legacy_task_drain_clear_upgrade_replies(void);
@@ -520,6 +578,355 @@ STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *comm
 }
 
 /**
+ * @brief Whether the version this upgrade installs will speak HTTPS, and therefore needs an anchor.
+ *
+ * compare_wazuh_versions() cannot answer this alone: it runs every input through atoi(), so a
+ * non-version string silently becomes 0.0.0 and compares BELOW v5.0.0 -- which would skip the CA
+ * for exactly the case that most needs it, the custom-WPK path, where the task carries no version
+ * at all. So the shape is checked here first and anything unrecognized is treated as "assume 5.x".
+ *
+ * That is the same conservatism the task manager already applies to a custom upload: it runs the
+ * HTTPS delivery gate against v5.0.0 unconditionally, on the grounds that a custom file's NAME
+ * cannot be trusted to say what it installs.
+ *
+ * @param wpk_version The task payload's `wpk_version`; NULL or empty on the custom-WPK path.
+ * @return true when the target is >= v5.0.0, or when it cannot be determined.
+ */
+STATIC bool legacy_task_ca_target_speaks_https(const char *wpk_version) {
+    if (!wpk_version || !*wpk_version) {
+        return true;
+    }
+
+    // "v5.0.0" or "5.0.0": one optional 'v', then a digit. Anything else is not a version string
+    // this can reason about, and unknown means send.
+    const char *digits = (*wpk_version == 'v' || *wpk_version == 'V') ? wpk_version + 1 : wpk_version;
+
+    if (!isdigit((unsigned char) *digits)) {
+        return true;
+    }
+
+    return compare_wazuh_versions(wpk_version, LEGACY_TASK_CA_MIN_TARGET_VERSION, true) >= 0;
+}
+
+/**
+ * @brief The CA file this manager sends: `remote.https.ca_certificate`, or the built-in default.
+ *
+ * Split from legacy_task_ca_read() so the caller holds a value it can prove is non-NULL without
+ * reasoning through an out-parameter: every failure log below names this path, and _merror()
+ * carries __attribute__((nonnull)) over its variadic arguments.
+ *
+ * @return Never NULL.
+ */
+STATIC const char *legacy_task_ca_path(void) {
+    return (logr.https.ca_certificate != NULL && *logr.https.ca_certificate != '\0')
+           ? logr.https.ca_certificate
+           : LEGACY_TASK_CA_DEFAULT_PATH;
+}
+
+/**
+ * @brief Read the CA file and confirm it is something an agent could actually trust.
+ *
+ * Rejects a file that is missing, unreadable, over LEGACY_TASK_CA_MAX_BYTES, or that does not
+ * carry a complete PEM certificate block -- an empty file, a private key, a path pointing at
+ * something else entirely, or a truncated read.
+ *
+ * @param path File to read, from legacy_task_ca_path().
+ * @param out_length On success, the byte length pushed to the agent.
+ * @return Caller-owned file contents (free with os_free), or NULL. Does not log: the caller wants
+ * one message naming the agent as well as the file.
+ */
+STATIC char *legacy_task_ca_read(const char *path, unsigned int *out_length) {
+    // wfopen/fread/fclose rather than w_get_file_content(): that helper sizes the file through
+    // get_fp_size(), and this is the same trio the WPK step a few lines below already uses.
+    FILE *file = wfopen(path, "rb");
+
+    if (!file) {
+        return NULL;
+    }
+
+    // One byte PAST the cap is requested on purpose: reading exactly the cap cannot distinguish a
+    // file that just fits from one that is larger, whereas getting cap+1 bytes back proves it is
+    // larger. The buffer carries one more byte again, for the NUL terminator.
+    char *pem;
+    os_calloc(LEGACY_TASK_CA_MAX_BYTES + 2, sizeof(char), pem);
+
+    size_t length = fread(pem, 1, LEGACY_TASK_CA_MAX_BYTES + 1, file);
+    fclose(file);
+
+    if (length > LEGACY_TASK_CA_MAX_BYTES) {
+        os_free(pem);
+        return NULL;
+    }
+
+    pem[length] = '\0';
+
+    // BOTH markers, where GET /cacerts checks only the opening one. The difference is deliberate:
+    // that route hands the bytes to an agent that parses them immediately and can reject them,
+    // while these bytes are written to the agent's disk and read much later by an installer that
+    // pins whatever it finds. A short read here -- and fread() is free to return one -- would
+    // otherwise ship a certificate with no END line, which is exactly the truncated anchor this
+    // whole path is careful never to leave behind.
+    //
+    // strstr() stops at the first NUL, so a file with an embedded one fails these tests too. That
+    // is correct: it is not a PEM.
+    if (length == 0 || !strstr(pem, "-----BEGIN CERTIFICATE-----") ||
+        !strstr(pem, "-----END CERTIFICATE-----")) {
+        os_free(pem);
+        return NULL;
+    }
+
+    *out_length = (unsigned int) length;
+
+    return pem;
+}
+
+/**
+ * @brief Leave a zero-byte file where a partially-written CA would otherwise sit.
+ *
+ * The 4.x `upgrade` command set has no delete primitive, but `open` in "wb" mode truncates -- so an
+ * open/close pair with nothing between it is the cleanup. This matters: a CA cycle that failed
+ * after some writes leaves a TRUNCATED PEM, and an installer that pinned one would produce an
+ * agent that fails every handshake -- worse than an agent with no anchor at all, which is the very
+ * outcome this feature exists to avoid.
+ *
+ * Best-effort by construction. If the agent is unreachable, these two steps fail too; but then the
+ * partial file cannot have been written by a reachable agent either, and the agent-side reader
+ * treats a file with no certificate block as absent regardless (see #39071).
+ */
+STATIC void legacy_task_ca_truncate(const char *agent_id) {
+    cJSON *open_params = cJSON_CreateObject();
+    cJSON_AddStringToObject(open_params, "mode", "wb");
+    cJSON_AddStringToObject(open_params, "file", LEGACY_TASK_CA_FILE_NAME);
+
+    // is_last_attempt=true so a failure here logs at its plain severity rather than debug: there is
+    // no further attempt this is making way for.
+    if (!legacy_task_send_upgrade_step(agent_id, "open", open_params, NULL, NULL, NULL, true)) {
+        mdebug1("legacy_task_delivery: agent '%s': could not truncate a partial '%s' after a failed CA "
+                "transfer; the agent-side installer ignores a file with no certificate block",
+                agent_id, LEGACY_TASK_CA_FILE_NAME);
+        return;
+    }
+
+    cJSON *close_params = cJSON_CreateObject();
+    cJSON_AddStringToObject(close_params, "file", LEGACY_TASK_CA_FILE_NAME);
+    (void) legacy_task_send_upgrade_step(agent_id, "close", close_params, NULL, NULL, NULL, true);
+}
+
+/**
+ * @brief One open/write/close/sha1 cycle for the CA.
+ *
+ * Chunked with the same LEGACY_TASK_WPK_CHUNK_SIZE the WPK uses -- not because a CA needs it (a
+ * root CA PEM is one chunk many times over) but because the agent-side 'write' handler accepts one
+ * buffer per call whatever the payload, so the loop is a property of the wire protocol rather than
+ * of the file.
+ *
+ * @param pem File contents to push.
+ * @param length Byte length of @p pem.
+ * @param expected_sha1 Digest of @p pem, compared against what the agent reports back.
+ * @param is_last_attempt Controls the severity of failures logged by the steps themselves.
+ * @param out_no_response Set to true when a step got no answer at all. Always set.
+ * @return true when every step acked and the digests matched.
+ */
+STATIC bool legacy_task_ca_push(const char *agent_id, const char *pem, unsigned int length, const char *expected_sha1, bool is_last_attempt, bool *out_no_response) {
+    *out_no_response = false;
+
+    {
+        cJSON *params = cJSON_CreateObject();
+        cJSON_AddStringToObject(params, "mode", "wb");
+        cJSON_AddStringToObject(params, "file", LEGACY_TASK_CA_FILE_NAME);
+
+        if (!legacy_task_send_upgrade_step(agent_id, "open", params, NULL, NULL, out_no_response, is_last_attempt)) {
+            return false;
+        }
+    }
+
+    for (unsigned int offset = 0; offset < length; ) {
+        unsigned int chunk = length - offset;
+
+        if (chunk > LEGACY_TASK_WPK_CHUNK_SIZE) {
+            chunk = LEGACY_TASK_WPK_CHUNK_SIZE;
+        }
+
+        char *base64 = encode_base64((int) chunk, pem + offset);
+
+        if (!base64) {
+            merror("legacy_task_delivery: agent '%s': base64 encoding failed writing the CA", agent_id);
+            return false;
+        }
+
+        cJSON *params = cJSON_CreateObject();
+        cJSON_AddStringToObject(params, "buffer", base64);
+        cJSON_AddNumberToObject(params, "length", (double) chunk);
+        cJSON_AddStringToObject(params, "file", LEGACY_TASK_CA_FILE_NAME);
+        os_free(base64);
+
+        if (!legacy_task_send_upgrade_step(agent_id, "write", params, NULL, NULL, out_no_response, is_last_attempt)) {
+            return false;
+        }
+
+        offset += chunk;
+    }
+
+    {
+        cJSON *params = cJSON_CreateObject();
+        cJSON_AddStringToObject(params, "file", LEGACY_TASK_CA_FILE_NAME);
+
+        if (!legacy_task_send_upgrade_step(agent_id, "close", params, NULL, NULL, out_no_response, is_last_attempt)) {
+            return false;
+        }
+    }
+
+    {
+        cJSON *params = cJSON_CreateObject();
+        cJSON_AddStringToObject(params, "file", LEGACY_TASK_CA_FILE_NAME);
+
+        char *reported_sha1 = NULL;
+        bool ok = legacy_task_send_upgrade_step(agent_id, "sha1", params, &reported_sha1, NULL, out_no_response, is_last_attempt);
+
+        if (!ok) {
+            os_free(reported_sha1);
+            return false;
+        }
+
+        if (!reported_sha1 || strcmp(reported_sha1, expected_sha1) != 0) {
+            if (is_last_attempt) {
+                mwarn("legacy_task_delivery: agent '%s': CA sha1 mismatch after transfer (expected '%s', got '%s')",
+                      agent_id, expected_sha1, reported_sha1 ? reported_sha1 : "(none)");
+            } else {
+                mdebug1("legacy_task_delivery: agent '%s': CA sha1 mismatch after transfer (expected '%s', got '%s')",
+                        agent_id, expected_sha1, reported_sha1 ? reported_sha1 : "(none)");
+            }
+            os_free(reported_sha1);
+            return false;
+        }
+
+        os_free(reported_sha1);
+    }
+
+    return true;
+}
+
+/**
+ * @brief Push the manager's CA to a pre-v5.0.0 agent, ahead of the `upgrade` command.
+ *
+ * NEVER fails the upgrade. Every refusal and every failure below logs and returns; the caller sends
+ * `upgrade` regardless. An agent off the air is worse than an agent without an anchor, and the
+ * agent-side installer makes its own decision from what it finds on disk -- it is the only party
+ * that knows the address this agent dials and whether the OS trust store already covers it.
+ *
+ * That also means this function's outcome is deliberately not folded into
+ * legacy_task_push_result_t: a CA hiccup must never re-classify the task as RETRYABLE, which would
+ * re-stream the whole WPK (tens of megabytes) to fix a two-kilobyte transfer.
+ *
+ * @param agent_id Target agent identifier.
+ * @param task_id Task identifier, for the log lines only.
+ * @param wpk_version The task payload's `wpk_version`; may be NULL.
+ */
+STATIC void legacy_task_deliver_ca(const char *agent_id, const char *task_id, const char *wpk_version) {
+    if (!logr.legacy_ca_delivery) {
+        // Before any file read and any wire step: with the option off, this push is byte-for-byte
+        // what it was before CA delivery existed.
+        mdebug1("legacy_task_delivery: agent '%s': CA delivery is disabled "
+                "(<remote><legacy><ca_delivery>), not sending the manager CA for task '%s'",
+                agent_id, task_id);
+        return;
+    }
+
+    // The NULL test is repeated here rather than left to the callee, even though
+    // legacy_task_ca_target_speaks_https(NULL) already returns true and this branch is therefore
+    // unreachable with a NULL version. _mdebug1() carries __attribute__((nonnull)), which covers
+    // its variadic arguments too, so the log below must be provably safe WITHOUT reasoning across
+    // a function boundary -- for scan-build, and for the next reader.
+    if (wpk_version != NULL && !legacy_task_ca_target_speaks_https(wpk_version)) {
+        mdebug1("legacy_task_delivery: agent '%s': task '%s' targets '%s', below %s, so no CA is sent "
+                "(nothing on that version would read it)",
+                agent_id, task_id, wpk_version, LEGACY_TASK_CA_MIN_TARGET_VERSION);
+        return;
+    }
+
+    const char *ca_path = legacy_task_ca_path();
+    unsigned int ca_length = 0;
+    char *pem = legacy_task_ca_read(ca_path, &ca_length);
+
+    if (!pem) {
+        merror("legacy_task_delivery: agent '%s': the configured CA '%s' is missing, unreadable, larger "
+               "than %d bytes, or carries no certificate; continuing the upgrade without it, so the "
+               "agent will come back unverified",
+               agent_id, ca_path, LEGACY_TASK_CA_MAX_BYTES);
+        return;
+    }
+
+    // Read AFTER the file, so a CA that cannot be read is reported as such rather than as a
+    // mismatch. Only an explicit "does not sign" refuses -- unknown (-1: the listener is down, or
+    // the file was unreadable at the last evaluation) proceeds, exactly as GET /cacerts does.
+    // Refusing on unknown would turn one transient read failure into a fleet-wide loss of the
+    // trust bootstrap.
+    if (remoted_module_tls_ca_matches_leaf() == 0) {
+        merror("legacy_task_delivery: agent '%s': the configured CA '%s' does not sign the certificate "
+               "this manager serves on the HTTPS listener, so it is not sent -- an agent that pinned it "
+               "would fail every connection afterwards. Continuing the upgrade without it; fix the CA "
+               "and the certificate so they match, then upgrade again",
+               agent_id, ca_path);
+        os_free(pem);
+        return;
+    }
+
+    /* Over the BUFFER being pushed, not over the file on disk: hashing the path again would leave a
+     * window in which a rotation between the read and the hash produces a digest for bytes the
+     * agent never receives, and the sha1 step would then fail for a reason no log could explain.
+     *
+     * Comparable with what the agent reports: its `sha1` handler runs OS_SHA1_File(..., OS_BINARY),
+     * and both are a plain SHA-1 over the raw bytes rendered as lowercase hex. */
+    os_sha1 expected_sha1;
+    OS_SHA1_Str(pem, (ssize_t) ca_length, expected_sha1);
+
+    mdebug1("legacy_task_delivery: agent '%s': sending the manager CA '%s' (%u bytes, sha1 '%s') as '%s' "
+            "for task '%s'", agent_id, ca_path, ca_length, expected_sha1, LEGACY_TASK_CA_FILE_NAME, task_id);
+
+    bool delivered = false;
+    bool no_response = false;
+    int attempts = 0;
+
+    while (attempts < LEGACY_TASK_CA_MAX_ATTEMPTS && !delivered) {
+        attempts++;
+        delivered = legacy_task_ca_push(agent_id, pem, ca_length, expected_sha1,
+                                        attempts == LEGACY_TASK_CA_MAX_ATTEMPTS, &no_response);
+
+        if (no_response) {
+            // Same economics as the WPK loop: a rejection costs milliseconds, a no-response costs a
+            // full response_timeout per attempt, and this thread still has every other agent to
+            // sweep. One is enough to learn the agent is not answering.
+            break;
+        }
+    }
+
+    os_free(pem);
+
+    if (delivered) {
+        minfo("legacy_task_delivery: agent '%s': delivered the manager CA as '%s' for task '%s'; the "
+              "agent can verify this manager after the upgrade", agent_id, LEGACY_TASK_CA_FILE_NAME, task_id);
+        return;
+    }
+
+    // `attempts`, not the cap: a no-response breaks the loop after one try, and reporting three
+    // there would send an operator looking for two retries that never happened.
+    //
+    // Distinct from any WPK failure, and never reported as one -- the upgrade itself is going ahead
+    // on the very next step.
+    mwarn("legacy_task_delivery: agent '%s': could not deliver the manager CA for task '%s' after %d "
+          "attempt(s); continuing the upgrade, so the agent will come back unverified",
+          agent_id, task_id, attempts);
+
+    // Whatever bytes reached the agent must not be left where the installer would read them --
+    // except when the agent stopped answering, where the truncate steps would only time out too and
+    // cost this cycle another two response_timeouts it owes to every other agent in the sweep. An
+    // agent that is not answering is also not about to run its installer.
+    if (!no_response) {
+        legacy_task_ca_truncate(agent_id);
+    }
+}
+
+/**
  * @brief Run the six-step WPK push (lock_restart / open / write / close / sha1 / upgrade)
  * against one agent for one remote_upgrade task.
  *
@@ -547,6 +954,7 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
     cJSON *wpk_file_obj = cJSON_GetObjectItem(payload_obj, "wpk_file");
     cJSON *wpk_sha1_obj = cJSON_GetObjectItem(payload_obj, "wpk_sha1");
     cJSON *installer_obj = cJSON_GetObjectItem(payload_obj, "installer");
+    cJSON *wpk_version_obj = cJSON_GetObjectItem(payload_obj, "wpk_version");
 
     if (!cJSON_IsString(wpk_file_obj) || !cJSON_IsString(wpk_sha1_obj) || !cJSON_IsString(installer_obj)) {
         merror("legacy_task_delivery: agent '%s': invalid or incomplete remote_upgrade payload, not delivered", agent_id);
@@ -557,6 +965,11 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
     const char *wpk_file = wpk_file_obj->valuestring;
     const char *wpk_sha1 = wpk_sha1_obj->valuestring;
     const char *installer = installer_obj->valuestring;
+    /* NOT part of the validity check above: this field is only consulted to decide whether to send
+     * the manager CA, and its absence is a meaningful value there ("unknown, assume 5.x") rather
+     * than a malformed payload. The task manager leaves it empty on the custom-WPK path by design,
+     * and a task written before this field existed simply has none. */
+    const char *wpk_version = cJSON_IsString(wpk_version_obj) ? wpk_version_obj->valuestring : NULL;
 
     // wpk_file is always a bare filename (both the repo-resolved and custom-WPK task-creation
     // paths in wm_agent_upgrade_commands.c only ever emit a basename), so the wire "file" field to
@@ -731,6 +1144,18 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
 
         os_free(reported_sha1);
     }
+
+    // Step 5b: the manager CA.
+    //
+    // HERE, and not before the WPK, for two reasons. A CA failure must not re-classify the task as
+    // RETRYABLE -- the caller retries the WHOLE push from lock_restart, so a two-kilobyte hiccup
+    // sitting earlier in the sequence would re-stream the entire package. And the agent tracks
+    // exactly one open file (a static path in wm_agent_upgrade_com.c), so going second bounds how
+    // long a partially-written CA can sit on disk to the gap before the very next step.
+    //
+    // Its outcome is deliberately discarded: whatever happened, `upgrade` is issued below. See
+    // legacy_task_deliver_ca() for why an agent off the air is worse than an unverified one.
+    legacy_task_deliver_ca(agent_id, task_id, wpk_version);
 
     // Step 6: upgrade
     {

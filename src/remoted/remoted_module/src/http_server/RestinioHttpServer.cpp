@@ -624,6 +624,22 @@ namespace
         const auto initialStatus = remoted::http::evaluateCertificateStatus(leaf.get(), config.caCertificatePath);
         logCertificateStatus(initialStatus, config.certificatePath, config.caCertificatePath);
 
+        // Deliberately NOT part of logCertificateStatus(), which also runs on every monitor tick.
+        // The CA is re-read each tick because it can be rotated under a running listener; the leaf
+        // is the one loaded into this SSL_CTX and cannot change until the next start(), so its SANs
+        // are evaluated exactly once here. Putting this in the shared function would repeat an
+        // identical line daily for a condition that cannot have changed.
+        if (!remoted::http::leafHasUsableSan(leaf.get()))
+        {
+            LOGFN_WARN(logFn(),
+                       "The TLS certificate '%s' carries no subjectAltName entry an agent could dial (no DNS or IP "
+                       "name beyond loopback and this host's own name); no agent can verify this manager with "
+                       "<verification_mode>full</verification_mode>, whatever address it connects to. Reissue it with "
+                       "every address agents actually use -- including the cluster VIP, each node's address and any "
+                       "NAT address -- among its SANs.",
+                       config.certificatePath.c_str());
+        }
+
         if (SSL_CTX_check_private_key(context.native_handle()) != 1)
         {
             throw std::runtime_error("The configured TLS private key does not match the certificate");
