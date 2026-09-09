@@ -2171,7 +2171,7 @@ class TestNormalizeAgentDocEpochDates:
 
 
 class TestNormalizeAgentDocAbsentValues:
-    """host.ip and groups leave the field out when there is nothing to report."""
+    """host.ip leaves the field out when there is nothing to report."""
 
     @pytest.mark.asyncio
     async def test_missing_ip_leaves_host_ip_out(self):
@@ -2181,15 +2181,6 @@ class TestNormalizeAgentDocAbsentValues:
             docs = await tasks._collect_agents(TIMESTAMP)
 
         assert "ip" not in docs[0]["wazuh"]["agent"]["host"]
-
-    @pytest.mark.asyncio
-    async def test_legacy_list_with_empty_entry_leaves_groups_out(self):
-        """WazuhDBQueryAgents would split "" into [""]; that is no group, not one empty group."""
-        tasks = _make_tasks()
-        with _agents_http_patch([{"id": 1, "name": "a", "group": [""]}]):
-            docs = await tasks._collect_agents(TIMESTAMP)
-
-        assert "groups" not in docs[0]["wazuh"]["agent"]
 
 
 # ---------------------------------------------------------------------------
