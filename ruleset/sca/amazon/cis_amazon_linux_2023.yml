@@ -7982,7 +7982,7 @@ checks:
 
   # 5.6.6 Ensure root password is set. (Automated)
   - id: 31170
-    name: "Ensure default group for the root account is GID 0."
+    name: "Ensure root password is set."
     description: "There are a number of methods to access the root account directly. Without a password set any user would be able to gain access and thus control over the entire system."
     rationale: "Access to root should be secured at all times."
     remediation: "Set the root password with: # passwd root."
@@ -8086,56 +8086,7 @@ checks:
     rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/passwd -> r:0 root 0 root && r:644|640|604|600|400|500'
 
-  # 6.1.2 Ensure permissions on /etc/passwd are configured. (Automated)
-  - id: 31172
-    name: "Ensure permissions on /etc/passwd are configured."
-    description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
-    rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
-    remediation: "Run the following commands to remove excess permissions, set owner, and set group on /etc/passwd: # chmod u-x,go-wx /etc/passwd # chown root:root /etc/passwd."
-    compliance:
-      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
-      fedramp: ["AC-5", "AC-6"]
-      gdpr: ["IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4", "IV_25.1", "IV_25.2", "IV_25.3", "IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5"]
-      hipaa: ["164.312(a)(1)", "164.308(a)(8)"]
-      iso_27001: ["A.8.2.3", "A.8.3.1", "A.8.3.2", "A.10.1.1", "A.13.2.1", "A.18.1.4"]
-      nis2: ["21.2.g", "21.2.j", "21.2.i"]
-      nist_800_171: ["3.1.1", "3.1.2", "3.1.5", "3.1.3", "3.8.2"]
-      nist_800_53: ["AC-5", "AC-6"]
-      pci_dss: ["1.3.1", "7.1"]
-      tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
-    mitre:
-      tactic:
-        id:
-          - "TA0009"
-          - "TA0010"
-        name:
-          - "Collection"
-          - "Exfiltration"
-      technique:
-        id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-        name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-      subtechnique:
-        id:
-          - "T1048.003"
-          - "T1552.001"
-        name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
-    condition: all
-    rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/passwd -> r:0 root 0 root && r:644|640|604|600|400|500'
-
-  # 6.1.3 Ensure permissions on /etc/passwd- are configured. (Automated)
+  # 6.1.2 Ensure permissions on /etc/passwd- are configured. (Automated)
   - id: 31173
     name: "Ensure permissions on /etc/passwd- are configured."
     description: "The /etc/passwd- file contains backup user account information."
@@ -8184,7 +8135,7 @@ checks:
     rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/passwd- -> r:0 root 0 root && r:644|640|604|600|400|500'
 
-  # 6.1.4 Ensure permissions on /etc/group are configured. (Automated)
+  # 6.1.3 Ensure permissions on /etc/group are configured. (Automated)
   - id: 31174
     name: "Ensure permissions on /etc/group are configured."
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
@@ -8233,7 +8184,7 @@ checks:
     rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/group -> r:0 root 0 root && r:644|640|604|600|400|500'
 
-  # 6.1.5 Ensure permissions on /etc/group- are configured. (Automated)
+  # 6.1.4 Ensure permissions on /etc/group- are configured. (Automated)
   - id: 31175
     name: "Ensure permissions on /etc/group- are configured."
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
@@ -8282,7 +8233,7 @@ checks:
     rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/group- -> r:0 root 0 root && r:644|640|604|600|400|500'
 
-  # 6.1.6 Ensure permissions on /etc/shadow are configured. (Automated)
+  # 6.1.5 Ensure permissions on /etc/shadow are configured. (Automated)
   - id: 31176
     name: "Ensure permissions on /etc/shadow are configured."
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
@@ -8331,7 +8282,7 @@ checks:
     rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow -> r:^\s*/etc/shadow\s*\t*0\s*t\*0/root\s*\t*0/root$|^\s*/etc/shadow\s*0\s*0\s*root\s*0\s*root$'
 
-  # 6.1.7 Ensure permissions on /etc/shadow- are configured. (Automated)
+  # 6.1.6 Ensure permissions on /etc/shadow- are configured. (Automated)
   - id: 31177
     name: "Ensure permissions on /etc/shadow- are configured."
     description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
@@ -8380,7 +8331,7 @@ checks:
     rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow- -> r:^\s*/etc/shadow-\s*\t*0\s*\t*0/root\s*\t*0/root$|^\s*/etc/shadow-\s*0\s*0\s*root\s*0\s*root$'
 
-  # 6.1.8 Ensure permissions on /etc/gshadow are configured. (Automated)
+  # 6.1.7 Ensure permissions on /etc/gshadow are configured. (Automated)
   - id: 31178
     name: "Ensure permissions on /etc/gshadow are configured."
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
@@ -8429,7 +8380,7 @@ checks:
     rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow -> r:^\s*/etc/gshadow\s*\t*0\s*\t*0/root\s*\t*0/root$|^\s*/etc/gshadow\s*0\s*0\s*root\s*0\s*root$'
 
-  # 6.1.9 Ensure permissions on /etc/gshadow- are configured. (Automated)
+  # 6.1.8 Ensure permissions on /etc/gshadow- are configured. (Automated)
   - id: 31179
     name: "Ensure permissions on /etc/gshadow- are configured."
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
@@ -8478,11 +8429,11 @@ checks:
     rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow- -> r:^\s*/etc/gshadow-\s*\t*0\s*\t*0/root\s*\t*0/root$|^\s*/etc/gshadow-\s*0\s*0\s*root\s*0\s*root$'
 
-  # 6.1.10 Ensure no world writable files exist. (Automated) - Not Implemented
-  # 6.1.11 Ensure no unowned files or directories exist. (Automated) - Not Implemented
-  # 6.1.12 Ensure no ungrouped files or directories exist. (Automated) - Not Implemented
+  # 6.1.9 Ensure no world writable files exist. (Automated) - Not Implemented
+  # 6.1.10 Ensure no unowned files or directories exist. (Automated) - Not Implemented
+  # 6.1.11 Ensure no ungrouped files or directories exist. (Automated) - Not Implemented
 
-  # 6.1.13 Ensure sticky bit is set on all world-writable directories. (Automated)
+  # 6.1.12 Ensure sticky bit is set on all world-writable directories. (Automated)
   - id: 31180
     name: "Ensure sticky bit is set on all world-writable directories."
     description: "Setting the sticky bit on world writable directories prevents users from deleting or renaming files in that directory that are not owned by them."
@@ -8531,9 +8482,9 @@ checks:
     rules:
       - 'not c:sh -c "df --local -P 2> /dev/null | awk ''{if (NR!=1) print $6}'' | xargs -I ''{}'' find ''{}'' -xdev -type d \\( -perm -0002 -a ! -perm -1000 \\) 2>/dev/null" -> r:^/'
 
-  # 6.1.14 Audit SUID executables. (Manual)
-  # 6.1.15 Audit SGID executables. (Manual)
-  # 6.1.16 Audit system file permissions. (Manual)
+  # 6.1.13 Audit SUID executables. (Manual)
+  # 6.1.14 Audit SGID executables. (Manual)
+  # 6.1.15 Audit system file permissions. (Manual)
 
   ####################################################
   # 6.2 User and Group Settings
