@@ -46,6 +46,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 - Fixed multiple checks with deprecated commands in Apple macOS 26.0 SCA file. ([#38669](https://github.com/wazuh/wazuh/pull/38669))
+- Fixed false-pass on the CIS Amazon Linux 2023 minimum password-days check. ([#39047](https://github.com/wazuh/wazuh/pull/39047))
 
 ## [v4.14.8]
 
