@@ -231,11 +231,20 @@ cJSON* local_add_clustered(const char *name,
                            const char *reenroll_kid,
                            const char *reenroll_bearer);
 
+/* The shared enrollment password's size: 32 CSPRNG bytes, stored in etc/authd.pass as 64
+ * lowercase hex chars. Same shape and same discipline as the agent key (AGENT_KEY_BYTES). */
+#define AUTHD_PASS_BYTES     32
+#define AUTHD_PASS_HEX_CHARS 64
+
 /**
- * @brief Returns a MD5 hash of some random data collected from different sources.
+ * @brief Generates a shared enrollment password: AUTHD_PASS_BYTES bytes straight from the
+ *        CSPRNG, hex-encoded to AUTHD_PASS_HEX_CHARS lowercase characters. No digest step:
+ *        an MD5 over the noise would cap the result at 128 bits however much entropy went in.
  *        The result must be freed by the caller.
  *
- * @return const char* The resulting hash or NULL on error.
+ * @return char* The password, or NULL when RAND_bytes fails -- the caller must then refuse to
+ *         write etc/authd.pass rather than fall back to a weaker generator (same rule as
+ *         OS_AddNewAgent()'s key).
  */
 char *w_generate_random_pass();
 
