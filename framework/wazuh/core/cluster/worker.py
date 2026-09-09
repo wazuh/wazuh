@@ -12,7 +12,7 @@ import shutil
 from collections import defaultdict
 from datetime import datetime, timezone
 from time import perf_counter
-from typing import Awaitable, Any, Tuple, Dict, Callable, List
+from typing import Awaitable, Any, Tuple, Dict, Callable, List, Set
 from typing import Union
 
 from wazuh.core import cluster as metadata, common, exception, utils
@@ -164,6 +164,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         self.integrity_sync_status = {'date_start': 0.0}
         self.agent_groups_mismatch_counter = 0
         self.agent_groups_mismatch_limit = self.cluster_items['intervals']['worker']['agent_groups_mismatch_limit']
+        # Incremented on every agent-groups reception and used to stamp 'agent_groups_generation_by_agent'.
+        self.agent_groups_recv_generation = 0
+        # Generation that last carried data for each agent, so a pending retry only aborts when a newer
+        # reception carries data for one of its own agents, not on every unrelated agent-groups push.
+        self.agent_groups_generation_by_agent: Dict[int, int] = {}
+        # Handle on the most recent detached agent-groups retry task, if any.
+        self.agent_groups_retry_task = None
 
         # Maximum zip size allowed when syncing Integrity files.
         self.current_zip_limit = self.cluster_items['intervals']['communication']['max_zip_size']
@@ -497,16 +504,130 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         logger.info('Starting.')
         start_time = datetime.now(timezone.utc)
+        self.agent_groups_recv_generation += 1
+        generation = self.agent_groups_recv_generation
         data = await super().get_chunks_in_task_id(task_id, error_command)
-        result = await super().update_chunks_wdb(data, info_type, logger, error_command, timeout)
-        response = await self.send_request(command=command, data=json.dumps(result).encode())
+        self._mark_agent_groups_generation(data, generation)
+        result = await super().update_chunks_wdb(data, info_type, logger, error_command, timeout,
+                                                 chunk_errors_as_debug=True)
+        # 'retrying_chunks' tells the master the rejected chunks are kept and reapplied here, so it
+        # reports them as a synchronization in progress instead of logging an error for a condition
+        # this node recovers on its own.
+        payload = {**result, 'retrying_chunks': True} if result['error_messages'] else result
+        response = await self.send_request(command=command, data=json.dumps(payload).encode())
         await self.check_agent_groups_checksums(data, logger)
 
         end_time = datetime.now(timezone.utc)
         logger.info(f'Finished in {(end_time - start_time).total_seconds():.3f}s. '
                     f'Updated {result["updated_chunks"]} chunks.')
 
+        if result['error_messages']:
+            # Run detached: the master already got 'response' above, and retrying can take up to
+            # agent_groups_mismatch_limit * sync_integrity seconds, well past this reception's own lifetime.
+            # The handle is kept so the task is observable instead of fire-and-forget.
+            self.agent_groups_retry_task = asyncio.create_task(self.log_exceptions(
+                self.retry_agent_groups_chunks(data, info_type, logger, error_command, timeout, generation, result)))
+
         return response
+
+    @staticmethod
+    def _agent_groups_chunk_agent_ids(data: dict) -> Set[int]:
+        """Collect the IDs of every agent referenced in an agent-groups chunk list.
+
+        Parameters
+        ----------
+        data : dict
+            Dict containing the list of chunks received from the master node.
+
+        Returns
+        -------
+        Set[int]
+            Agent IDs present in 'data'.
+        """
+        agent_ids = set()
+        for chunk in data.get('chunks', []):
+            try:
+                agent_ids.update(agent['id'] for agent in json.loads(chunk)[0]['data'])
+            except (KeyError, IndexError, TypeError, ValueError):
+                continue
+
+        return agent_ids
+
+    def _mark_agent_groups_generation(self, data: dict, generation: int):
+        """Record 'generation' as the last reception that carried data for every agent in 'data'.
+
+        Parameters
+        ----------
+        data : dict
+            Dict containing the list of chunks received from the master node.
+        generation : int
+            Value of 'agent_groups_recv_generation' for this reception.
+        """
+        for agent_id in self._agent_groups_chunk_agent_ids(data):
+            self.agent_groups_generation_by_agent[agent_id] = generation
+
+    async def retry_agent_groups_chunks(self, data: dict, info_type: str, logger: logging.Logger,
+                                        error_command: bytes, timeout: int, generation: int, result: dict) -> dict:
+        """Retry updating the agent-groups chunks that wazuh-manager-db rejected.
+
+        On worker nodes, the agent-groups information sent by the master node can reference a group
+        whose files have not arrived through the integrity synchronization yet, making
+        wazuh-manager-db reject the chunk. Since the chunks are already available locally, they are
+        retried periodically instead of waiting for the checksum mismatch limit to trigger a full
+        resync. Chunk errors themselves stay at debug level: they name neither the agents nor the
+        cause, and the condition is recovered either by a retry or by the checksum comparison. Only
+        exhausting every retry is reported, as a warning naming the agents that stayed unapplied.
+
+        Parameters
+        ----------
+        data : dict
+            Dict containing command and list of chunks to be sent to wazuh-manager-db.
+        info_type : str
+            Information type handled.
+        logger : logging.Logger
+            Logger used to print the function messages.
+        error_command : bytes
+            Command that will be sent to the master node in case of error.
+        timeout : int
+            Maximum time to send the information to the database.
+        generation : int
+            Value of 'agent_groups_recv_generation' when the chunks were received. Retries stop as soon
+            as a newer reception carries data for one of these same agents.
+        result : dict
+            Result of the first attempt, returned unchanged if no retry is performed.
+
+        Returns
+        -------
+        result : dict
+            Result of the last attempt performed.
+        """
+        retry_interval = self.cluster_items['intervals']['worker']['sync_integrity']
+        agent_ids = self._agent_groups_chunk_agent_ids(data)
+        logger.info(f'wazuh-manager-db could not apply {len(result["error_messages"])} chunk(s), possibly due to '
+                    f'groups not synchronized yet. Retrying every {retry_interval}s up to '
+                    f'{self.agent_groups_mismatch_limit} times.')
+
+        for attempt in range(1, self.agent_groups_mismatch_limit + 1):
+            await asyncio.sleep(retry_interval)
+            if any(self.agent_groups_generation_by_agent.get(agent_id, generation) > generation
+                   for agent_id in agent_ids):
+                logger.info('More recent agent-groups information was received for one of these agents. '
+                            'Stopping retries.')
+                break
+            result = await super().update_chunks_wdb(data, info_type, logger, error_command, timeout,
+                                                     chunk_errors_as_debug=True)
+            if not result['error_messages']:
+                logger.info(f'Agent-groups information was successfully applied on retry {attempt}.')
+                break
+        else:
+            agents = ', '.join(f'{agent_id:03d}' for agent_id in sorted(agent_ids)) or 'unknown'
+            logger.warning(f'wazuh-manager-db still rejects {len(result["error_messages"])} agent-groups chunk(s) for '
+                           f'agent(s) {agents} after {self.agent_groups_mismatch_limit} retries over '
+                           f'{self.agent_groups_mismatch_limit * retry_interval}s. Their groups are still missing '
+                           f'locally, so the checksum comparison will request the entire agent-groups database from '
+                           f'the master node to recover them.')
+
+        return result
 
     async def sync_integrity(self):
         """Obtain files status and send it to the master.

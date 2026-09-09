@@ -1092,7 +1092,11 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
                     result = WDBC_ERROR;
                 }
             } else {
-                mwarn("Unable to find the id of the group '%s'", group_name);
+                if (wconfig.is_worker_node) {
+                    mdebug1("Unable to find the id of the group '%s'. It may not have been synchronized from the master node yet.", group_name);
+                } else {
+                    mwarn("Unable to find the id of the group '%s'", group_name);
+                }
                 result = WDBC_ERROR;
             }
             cJSON_Delete(j_find_response);
@@ -1312,7 +1316,11 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
 
                     if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority, agent_name)) {
                         ret = WDBC_ERROR;
-                        merror("There was an error assigning the groups to agent '%03d'", agent_id);
+                        if (wconfig.is_worker_node) {
+                            mdebug1("There was an error assigning the groups to agent '%03d'. The agent-groups synchronization will retry it.", agent_id);
+                        } else {
+                            merror("There was an error assigning the groups to agent '%03d'", agent_id);
+                        }
                     }
                 } else {
                     ret = WDBC_ERROR;
