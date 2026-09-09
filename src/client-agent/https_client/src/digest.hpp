@@ -16,6 +16,12 @@
 #include <optional>
 #include <string>
 
+/// Lowercase-hex rendering of a byte range. Shared with spkiPin.cpp, which
+/// needs the same 64-character form for an SPKI digest it computes itself
+/// (--show-token diagnostics), so the conversion lives in one place rather
+/// than once per digest producer.
+std::string toHexLower(const void* bytes, size_t length);
+
 /// SHA-256 of a byte range as lowercase hex: the settings_hash recipe.
 /// Empty on an (unreproducible) EVP failure.
 std::string sha256Hex(const void* data, size_t length);
