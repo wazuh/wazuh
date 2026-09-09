@@ -470,7 +470,8 @@ def test_inspector_regions(
 
     table_name = 'aws_services'
 
-    if expected_results:
+    # Validate DB for cases with expected results (including inspector with expected_results_min)
+    if expected_results or expected_results_min:
         assert table_exists_or_has_values(table_name=table_name, db_path=AWS_SERVICES_DB_PATH)
         for row in get_multiple_service_db_row(table_name=table_name):
             assert (getattr(row, 'region', None) or getattr(row, 'aws_region')) in regions_list
