@@ -53,6 +53,12 @@ The flag on its own does not grant the shipped mappings, which is easy to miss. 
 
 Both users are created with **the password shipped in `rbac/default/users.yaml`**, which is the username itself. They are reserved IDs (`<= MAX_ID_RESERVED`), so only another reserved user can change their password — `update_user` needs a `current_user` naming who is asking, which the API takes from the token's `sub`.
 
+The `administrator` role these two users carry is also the only one that receives `secrets_read`,
+the policy behind `cluster:read_secrets`. An `rbac.db` seeded **before** that policy existed does not
+gain it — the defaults are only re-inserted when the ORM version changes — so on such an installation
+even `wazuh` sees the enrollment password and the cluster key masked until the database is recreated
+or the policy is added by hand.
+
 `wazuh-manager-apid` logs a warning on every start for each of these users whose password is still the shipped one. It does not refuse to serve: the defaults are documented, and some deployments configure the credentials only after the first start.
 
 Change them with `bin/rbac_control change-password`, which prompts for each password when run without options (an empty answer leaves that one unchanged) and can also be driven from a file so that installers and password tools can use it:
@@ -79,6 +85,16 @@ RBAC is enforced **before** any core logic is executed.
 - Two RBAC modes: **white** (deny by default) and **black** (allow by default)
 - A `403 Forbidden` usually indicates RBAC blocking, not auth failure
 - Current user, RBAC mode, and cluster context are stored in `contextvars` for request-scoped access
+
+### Sensitive configuration values
+
+`GET /cluster/local/config` and the two node-configuration endpoints answer with the enrollment
+password (`authd.pass`) and the cluster key in them. Those two values come back masked as `*****`
+unless the caller holds **`cluster:read_secrets`**, an action of its own: being allowed to change the
+configuration does not entitle anyone to read the secrets inside it. It is granted by the default
+policy `secrets_read`, which only the `administrator` role carries, and every disclosure is recorded
+in `logs/api.log` as a `secret_read` line naming the user and the fields, never the value. If the
+masking itself fails, the request fails: a response nobody could mask is not served.
 
 ### RBAC Components
 

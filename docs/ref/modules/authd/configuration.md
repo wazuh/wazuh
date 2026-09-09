@@ -231,6 +231,11 @@ Accept enrollment from agents running a newer Wazuh version than the manager.
 
 ## Internal Options
 
+The enrollment token store's two limits — 5000 tokens and 7 MiB of file — are constants, not
+options: they are sized against what the managers' read-only replica accepts, so raising one on a
+single node would only move the failure elsewhere. Room is made by purging
+(`--purge-enrollment-tokens`), which is what the refusal tells the operator to do.
+
 Additional authd settings can be configured in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`:
 
 ```ini
