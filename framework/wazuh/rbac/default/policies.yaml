@@ -41,6 +41,12 @@ default_policies:
   agents_read:
     description: Grant read access to all agents related functionalities.
     policies:
+      resourceless:
+        actions:
+          - enrollment_token:read
+        resources:
+          - '*:*:*'
+        effect: allow
       agents:
         actions:
           - agent:read
@@ -138,6 +144,17 @@ default_policies:
           - cluster:read
           - cluster:restart
           - cluster:update_config
+        resources:
+          - node:id:*
+        effect: allow
+
+  secrets_read:
+    description: Allow reading the sensitive configuration values (the enrollment password and the
+      cluster key) in clear instead of masked.
+    policies:
+      nodes:
+        actions:
+          - cluster:read_secrets
         resources:
           - node:id:*
         effect: allow

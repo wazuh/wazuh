@@ -350,6 +350,21 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /cluster/api/config
+      cluster:read_secrets:
+        description: Read the sensitive configuration values -- the enrollment password and the cluster
+          key -- in clear instead of masked
+        example:
+          actions:
+            - cluster:read_secrets
+          resources:
+            - node:id:master-node
+          effect: allow
+        resources:
+          - node:id
+        related_endpoints:
+          - GET /cluster/local/config
+          - GET /cluster/{node_id}/configuration
+          - GET /cluster/{node_id}/configuration/{component}/{configuration}
       cluster:update_config:
         description: Change the Wazuh's cluster node configuration
         resources:

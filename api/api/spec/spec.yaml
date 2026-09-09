@@ -232,6 +232,14 @@ x-rbac-catalog:
         actions: ['cluster:read']
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
+    'cluster:read_secrets':
+      description: "Read the sensitive configuration values -- the enrollment password and the cluster key -- in clear instead of masked"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/node:id'
+      example:
+        actions: ['cluster:read_secrets']
+        resources: ['node:id:master-node']
+        effect: "allow"
     'cluster:update_config':
       description: "Change the Wazuh's cluster node configuration"
       resources:
@@ -6033,6 +6041,7 @@ paths:
       operationId: api.controllers.cluster_controller.get_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_secrets'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6596,6 +6605,7 @@ paths:
       operationId: api.controllers.cluster_controller.get_configuration_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_secrets'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7183,6 +7193,7 @@ paths:
       operationId: api.controllers.cluster_controller.get_node_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_secrets'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
