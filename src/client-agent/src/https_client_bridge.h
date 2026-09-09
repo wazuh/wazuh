@@ -28,11 +28,9 @@ void w_https_client_start(void);
 void w_https_client_stop(void);
 
 /**
- * @brief Pull the /config reporter's next send in now (#38840), instead of waiting out its
- *        periodic cadence (default 3600s). Call this once a shared-configuration reload has
- *        actually completed -- e.g. from agentd.c's needs_config_reload handling, alongside
- *        startup_gate_release_from_https_apply() -- not right after dispatching the reload
- *        request, which says nothing about whether the reloaded processes are up yet.
+ * @brief Pull the /config reporter's next send in now, instead of waiting out its periodic
+ *        cadence. Call once a shared-configuration reload has actually completed (e.g. from
+ *        agentd.c's needs_config_reload handling), not right after dispatching the reload.
  */
 void w_https_client_notify_config_reload_completed(void);
 
