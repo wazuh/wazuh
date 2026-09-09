@@ -34,13 +34,11 @@
  * CompressionGate/AuthGate -- the C caller owns backoff/retry one layer up,
  * exactly like hc_enroll()'s contract.
  *
- * ASSUMPTION, not a confirmed design decision: /cacerts is modeled here as
- * prefix-INDEPENDENT -- the target is the literal "/cacerts", never joined
- * with ModuleConfig::serverEndpoint via prefixedTarget() the way every other
- * endpoint (/enroll, /stateless, ...) is. Rationale: an agent bootstrapping
- * trust cannot yet know a manager's reverse-proxy prefix. This has not been
- * confirmed as final and should be revisited before this code leaves
- * prototype status.
+ * Decided: /cacerts is prefix-INDEPENDENT -- the target is the literal "/cacerts",
+ * never joined with ModuleConfig::serverEndpoint via prefixedTarget() the way every
+ * other endpoint (/enroll, /stateless, ...) is. Rationale: an agent bootstrapping
+ * trust cannot yet know a manager's reverse-proxy prefix. Whether this is the final
+ * design is the manager side's call (the token/minting spec), not this client's.
  */
 class CacertsClient
 {

@@ -32,7 +32,7 @@ HttpResponse CacertsClient::fetch()
     }
 
     HttpRequestSpec spec;
-    // Literal, unprefixed target: see the class doc comment's "ASSUMPTION"
+    // Literal, unprefixed target: see the class doc comment's "Decided"
     // paragraph on why this does not go through prefixedTarget() like every
     // other endpoint.
     spec.target = "/cacerts";

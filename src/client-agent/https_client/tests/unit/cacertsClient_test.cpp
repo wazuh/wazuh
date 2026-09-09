@@ -69,9 +69,9 @@ TEST(CacertsClientTest, SendsAGetWithNoBodyToTheLiteralCacertsTarget)
     EXPECT_EQ("-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----\n", response.body);
 }
 
-// ASSUMPTION under test, not a confirmed decision (see cacertsClient.hpp's doc
-// comment): /cacerts stays "/cacerts" even when a reverse-proxy prefix is
-// configured, unlike every prefixed endpoint (EnrollClientTest's
+// Decided behavior under test (see cacertsClient.hpp's doc comment): /cacerts
+// stays "/cacerts" even when a reverse-proxy prefix is configured, unlike
+// every prefixed endpoint (EnrollClientTest's
 // ConfiguredEndpointIsFoldedIntoTheTarget pins the opposite behavior for
 // /enroll).
 TEST(CacertsClientTest, ConfiguredEndpointPrefixIsNotFoldedIntoTheTarget)
