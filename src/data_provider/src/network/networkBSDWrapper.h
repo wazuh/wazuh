@@ -32,6 +32,7 @@
 static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
 {
     { std::make_pair(IFT_ETHER, IFT_ETHER),                     "ethernet"       },
+    { std::make_pair(IFT_LOOP, IFT_LOOP),                       "loopback"       },
     { std::make_pair(IFT_ISO88023, IFT_ISO88023),               "CSMA/CD"        },
     { std::make_pair(IFT_ISO88024, IFT_ISO88025),               "token ring"     },
     { std::make_pair(IFT_FDDI, IFT_FDDI),                       "FDDI"           },

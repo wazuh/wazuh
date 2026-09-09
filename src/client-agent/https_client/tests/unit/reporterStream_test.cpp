@@ -19,7 +19,9 @@
 #include <gtest/gtest.h>
 
 #include <cstring>
+#include <future>
 #include <string>
+#include <thread>
 #include <vector>
 
 using ::testing::_;
@@ -273,4 +275,49 @@ TEST_F(ReporterStreamTest, StampFollowsTheSignerIdentityAfterAReenroll)
     reporter.tick(m_waiter, true);
     EXPECT_NE(std::string::npos, body.find(R"("agent_id":"002")"));
     EXPECT_EQ(std::string::npos, body.find(R"("agent_id":"001")"));
+}
+
+TEST_F(ReporterStreamTest, ForceConfigReportNowDuringInFlightSendIsNotLost)
+{
+    // #38840 follow-up: forceConfigReportNow() landing while runPath() is already blocked in
+    // perform() for a periodic /config send must survive that send's own post-send reschedule
+    // (now + the full interval, 3600 s here) once it returns -- a plain store() there would
+    // silently clobber it, reintroducing the exact staleness bug this feature exists to close,
+    // just as a race instead of an always-reproducible gap.
+    const auto config = makeConfig(false, true);
+    ReporterStream reporter
+    {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
+
+    std::promise<void> insideSend;
+    std::promise<void> proceed;
+    auto insideSendFuture = insideSend.get_future();
+    auto proceedFuture = proceed.get_future();
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec&)
+    {
+        insideSend.set_value();
+        proceedFuture.wait(); // Held open until the test below has forced a concurrent notify.
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    std::thread sender([&] { reporter.tick(m_waiter, true); }); // Due immediately at epoch.
+    insideSendFuture.wait();
+
+    // The concurrent notify this test exists to protect: lands while runPath() is still
+    // blocked above, mid-send.
+    reporter.forceConfigReportNow();
+    proceed.set_value();
+    sender.join();
+
+    EXPECT_EQ(1, m_collectors.m_configCalls);
+
+    // Nowhere near the 3600 s interval: the next tick only collects again if the forced
+    // due-now survived the post-send reschedule instead of being overwritten by it.
+    m_clock.advance(std::chrono::milliseconds {1});
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 200)));
+    reporter.tick(m_waiter, true);
+    EXPECT_EQ(2, m_collectors.m_configCalls);
 }

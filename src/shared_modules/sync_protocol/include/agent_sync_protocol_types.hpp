@@ -75,10 +75,25 @@ struct SyncModuleResult
     /// cycle is not a failure -- so this field carries the distinction instead, letting a module
     /// log "nothing to send" rather than "finished successfully".
     ///
-    /// It must NOT be used to gate durable state. A marker that records "the manager has this
-    /// agent's data" has to be gated on something that proves a round trip, such as
-    /// @ref IAgentSyncProtocol::notifyDataClean; gating it on a sync result instead is what lets
-    /// an untransmitted cycle be recorded as a completed one.
+    /// Not a general license to gate durable state on this field alone: a marker that records
+    /// "the manager has this agent's data" should normally be gated on something that proves a
+    /// round trip, such as @ref IAgentSyncProtocol::notifyDataClean -- gating it on a bare sync
+    /// result instead is what lets an untransmitted cycle be recorded as a completed one (#38899).
+    ///
+    /// FIM's and syscollector's own first-sync-completed markers are a deliberately accepted,
+    /// narrower exception: they gate on `success && sentAnything` together, not on this field
+    /// alone. `success` covers the whole DELTA session for the cycle (it turns false the moment
+    /// any block fails), so the pair proves "every block this cycle sent actually round-tripped",
+    /// closing the exact #38899 symptom (an empty-queue cycle no longer masquerades as a
+    /// completed sync). It is still not the same claim as "the manager has the agent's complete
+    /// current state": a first sync bigger than AgentSyncProtocol's own
+    /// `FULLSESSION_MAX_BLOCKS_PER_SYNC` (10 blocks) leaves items queued for a later cycle, and
+    /// this cycle's `success && sentAnything` is already true by the time that happens. Accepted
+    /// for these two markers specifically (see run_check.c and
+    /// syscollectorImp.cpp) because the alternative -- notifyDataClean(), an ad hoc
+    /// index-clearing call, not something wired into the periodic DELTA path -- would need a
+    /// separate mechanism entirely; any other consumer wanting a true round-trip proof should
+    /// still reach for that, not this field.
     ///
     /// Distinct from @ref sessionSkipped: that one means no session ran at all because another
     /// was already in flight, while this one is about whether the session that did run carried

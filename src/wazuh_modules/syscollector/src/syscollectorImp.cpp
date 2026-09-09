@@ -1118,7 +1118,24 @@ nlohmann::json Syscollector::ecsPortData(const nlohmann::json& originalData, boo
     setJsonField(ret, originalData, "/interface/state", "interface_state", createFields);
     setJsonField(ret, originalData, "/network/transport", "network_transport", createFields);
     setJsonField(ret, originalData, "/process/name", "process_name", createFields);
-    setJsonField(ret, originalData, "/process/pid", "process_pid", createFields);
+
+    // process_pid: -1 marks an unresolved owner (see portLinuxWrapper.h); emit null instead of
+    // a value that would look like a real pid.
+    if (createFields || originalData.contains("process_pid"))
+    {
+        const nlohmann::json::json_pointer pointer("/process/pid");
+
+        if (originalData.contains("process_pid") && originalData["process_pid"].is_number() &&
+                originalData["process_pid"].get<int32_t>() != -1)
+        {
+            ret[pointer] = originalData["process_pid"];
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonFieldArray(ret, originalData, "/source/ip", "source_ip", createFields);
     setJsonField(ret, originalData, "/source/port", "source_port", createFields);
 
@@ -2822,8 +2839,10 @@ SyncModuleResult Syscollector::synchronizeVDTables(const Mode mode)
 
     // Not for a call that ran no session at all: a flush landing on top of the periodic cycle
     // is reported as a success, and recording a VD first sync for it would tell agent-info a
-    // full scan has covered this agent when nothing was sent.
-    persistVDFirstSyncIfNeeded(vdResult.success && !vdResult.sessionSkipped, firstSyncDone);
+    // full scan has covered this agent when nothing was sent. #38899: an empty queue takes the
+    // same early-success path (sentAnything false), so it must be excluded here too -- success
+    // alone does not prove the manager received this agent's first snapshot.
+    persistVDFirstSyncIfNeeded(vdResult.success && vdResult.sentAnything && !vdResult.sessionSkipped, firstSyncDone);
 
     return vdResult;
 }

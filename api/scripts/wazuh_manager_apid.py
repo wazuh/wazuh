@@ -94,6 +94,24 @@ def configure_ssl(params):
             raise exc from exc
 
 
+def warn_about_default_passwords():
+    """Log a warning for each default API user that still has the password shipped with the package.
+
+    The API is started either way: the default credentials are documented, and refusing to serve
+    would break the deployments that configure them after the first start.
+    """
+    try:
+        users = get_users_with_default_password()
+    except Exception as exc:
+        logger.debug(f'Could not check whether the default API users keep their default password: {exc}')
+        return
+
+    for username in users:
+        logger.warning(f"The '{username}' API user still has its default password. Anyone able to reach the API "
+                       f"can use it. Change it with "
+                       f"'{os.path.join(common.WAZUH_PATH, 'bin', 'rbac_control')} change-password'")
+
+
 def start(params: dict):
     """Run the Wazuh API.
 
@@ -111,6 +129,8 @@ def start(params: dict):
         check_database_integrity()
     except Exception as db_integrity_exc:
         raise APIError(2012, details=str(db_integrity_exc)) from db_integrity_exc
+
+    warn_about_default_passwords()
 
     pools = common.mp_pools.get()
 
@@ -314,6 +334,7 @@ if __name__ == '__main__':
     from content_size_limit_asgi.errors import ContentSizeExceeded
     from starlette.middleware.cors import CORSMiddleware
     from wazuh.core import common, pyDaemonModule, utils
+    from wazuh.core.security import get_users_with_default_password
     from wazuh.rbac.orm import check_database_integrity
 
     from api import __path__ as api_path

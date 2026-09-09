@@ -18,7 +18,7 @@ stages:
           affected_items:
             - id: 1
               username: wazuh
-              allow_run_as: true
+              allow_run_as: false
               roles:
                 - 1
             - id: 2
@@ -104,7 +104,7 @@ stages:
           affected_items:
             - id: 1
               username: wazuh
-              allow_run_as: true
+              allow_run_as: false
               roles:
                 - 1
             - id: 102
@@ -153,7 +153,7 @@ stages:
           affected_items:
             - id: 1
               username: wazuh
-              allow_run_as: true
+              allow_run_as: false
               roles:
                 - 1
             - id: 102

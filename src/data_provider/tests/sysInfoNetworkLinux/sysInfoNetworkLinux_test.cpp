@@ -8,10 +8,16 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <arpa/inet.h>
 #include <ifaddrs.h>
+#include <memory>
+#include <netinet/in.h>
+#include <net/if.h>
+#include <net/if_arp.h>
 #include "sysInfoNetworkLinux_test.h"
 #include "network/networkInterfaceLinux.h"
 #include "network/networkFamilyDataAFactory.h"
+#include "network/networkLinuxWrapper.h"
 
 void SysInfoNetworkLinuxTest::SetUp() {};
 
@@ -183,4 +189,264 @@ TEST_F(SysInfoNetworkLinuxTest, Test_Gateway_7546)
     EXPECT_EQ(6, ifaddr.at("host_network_ingress_drops").get<int32_t>());
     EXPECT_EQ(1500, ifaddr.at("interface_mtu").get<int32_t>());
     EXPECT_EQ("A12BA8C0", ifaddr.at("network_gateway").get_ref<const std::string&>());
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_LOOPBACK_INTERFACE_TYPE)
+{
+    EXPECT_EQ("loopback",
+              Utils::NetworkHelper::getNetworkTypeStringCode(ARPHRD_LOOPBACK, NETWORK_INTERFACE_TYPE));
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_ETHERNET_INTERFACE_TYPE_UNCHANGED)
+{
+    EXPECT_EQ("ethernet",
+              Utils::NetworkHelper::getNetworkTypeStringCode(ARPHRD_ETHER, NETWORK_INTERFACE_TYPE));
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_LOOPBACK_STATE_IS_UP)
+{
+    // The loopback driver has no carrier detection, so the kernel reports "unknown" as its
+    // operational state. An administratively up interface in that condition is up.
+    char ifaceName[] { "lo" };
+    ifaddrs iface {};
+    iface.ifa_name = ifaceName;
+    iface.ifa_flags = IFF_UP;
+
+    EXPECT_EQ("up", NetworkLinuxInterface(&iface).state());
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_LOOPBACK_STATE_WITHOUT_ADMIN_FLAG_IS_DOWN)
+{
+    // Same "unknown" operational state, but the interface is administratively down.
+    char ifaceName[] { "lo" };
+    ifaddrs iface {};
+    iface.ifa_name = ifaceName;
+    iface.ifa_flags = 0;
+
+    EXPECT_EQ("down", NetworkLinuxInterface(&iface).state());
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_STATE_KEEPS_PLACEHOLDER_WHEN_OPERSTATE_UNREADABLE)
+{
+    // An interface with no /sys entry keeps the placeholder rather than being forced to "down".
+    char ifaceName[] { "wazuh-test-iface" };
+    ifaddrs iface {};
+    iface.ifa_name = ifaceName;
+    iface.ifa_flags = IFF_UP;
+
+    EXPECT_EQ(UNKNOWN_VALUE, NetworkLinuxInterface(&iface).state());
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_ACCESSORS_FALL_BACK_WHEN_THE_INTERFACE_HAS_NO_SYS_ENTRY)
+{
+    // The same interface with no /sys entry: every accessor that reads a file returns its
+    // documented fallback instead of failing.
+    char ifaceName[] { "wazuh-test-iface" };
+    ifaddrs iface {};
+    iface.ifa_name = ifaceName;
+    iface.ifa_flags = IFF_UP;
+
+    const NetworkLinuxInterface wrapper(&iface);
+
+    EXPECT_EQ(UNKNOWN_VALUE, wrapper.type());
+    EXPECT_EQ(UNKNOWN_VALUE, wrapper.MAC());
+    EXPECT_EQ(0u, wrapper.mtu());
+    EXPECT_EQ(0u, wrapper.dhcp());
+
+    const auto stats { wrapper.stats() };
+    EXPECT_EQ(0u, stats.rxBytes);
+    EXPECT_EQ(0u, stats.txBytes);
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_CONSTRUCTOR_REJECTS_A_NULL_INTERFACE)
+{
+    EXPECT_THROW(NetworkLinuxInterface(nullptr), std::runtime_error);
+}
+
+// The cases below drive NetworkLinuxInterface over the host's real interfaces. The wrapper reads
+// /sys/class/net and /proc/net through compile-time paths that cannot be redirected, so real
+// interfaces are the only way to exercise it. Assertions are limited to invariants that hold on
+// any host.
+
+class RealInterfaces
+{
+        ifaddrs* m_list { nullptr };
+
+    public:
+        RealInterfaces()
+        {
+            if (0 != getifaddrs(&m_list))
+            {
+                m_list = nullptr;
+            }
+        }
+        ~RealInterfaces()
+        {
+            if (m_list)
+            {
+                freeifaddrs(m_list);
+            }
+        }
+        ifaddrs* get() const
+        {
+            return m_list;
+        }
+};
+
+TEST_F(SysInfoNetworkLinuxTest, Test_REAL_INTERFACES_EXPOSE_CONSISTENT_VALUES)
+{
+    const RealInterfaces interfaces;
+    ASSERT_NE(nullptr, interfaces.get()) << "the host exposes no network interfaces";
+
+    auto visited { 0u };
+
+    for (auto* entry = interfaces.get(); entry; entry = entry->ifa_next)
+    {
+        if (!entry->ifa_name)
+        {
+            continue;
+        }
+
+        ++visited;
+        NetworkLinuxInterface iface(entry);
+
+        EXPECT_FALSE(iface.name().empty());
+        EXPECT_TRUE(iface.adapter().empty());
+        EXPECT_TRUE(iface.metricsV6().empty());
+
+        const auto family { iface.family() };
+        EXPECT_TRUE(AF_INET == family || AF_INET6 == family || AF_PACKET == family);
+
+        // Every interface reported by getifaddrs has a /sys entry, so the state is always
+        // resolved to one of the two values the field is meant to carry.
+        const auto state { iface.state() };
+        EXPECT_TRUE("up" == state || "down" == state) << iface.name() << " reported " << state;
+
+        EXPECT_GT(iface.mtu(), 0u);
+
+        const auto mac { iface.MAC() };
+        EXPECT_FALSE(mac.empty());
+
+        // The remaining accessors have no host-independent value; assert only that they are
+        // reachable and do not throw.
+        EXPECT_NO_THROW(iface.type());
+        EXPECT_NO_THROW(iface.stats());
+        EXPECT_NO_THROW(iface.gateway());
+        EXPECT_NO_THROW(iface.metrics());
+        EXPECT_NO_THROW(iface.dhcp());
+
+        // The address accessors interpret the socket address according to the family, so each
+        // one is only meaningful for the family the factory dispatches it to.
+        if (AF_INET == family)
+        {
+            EXPECT_FALSE(iface.address().empty());
+            EXPECT_FALSE(iface.netmask().empty());
+            EXPECT_NO_THROW(iface.broadcast());
+        }
+        else if (AF_INET6 == family)
+        {
+            EXPECT_FALSE(iface.addressV6().empty());
+            EXPECT_FALSE(iface.netmaskV6().empty());
+            EXPECT_NO_THROW(iface.broadcastV6());
+        }
+    }
+
+    EXPECT_GT(visited, 0u);
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_LOOPBACK_IS_REPORTED_AS_A_LOOPBACK_INTERFACE)
+{
+    const RealInterfaces interfaces;
+    ASSERT_NE(nullptr, interfaces.get());
+
+    auto found { false };
+
+    for (auto* entry = interfaces.get(); entry; entry = entry->ifa_next)
+    {
+        if (!entry->ifa_name || std::string("lo") != entry->ifa_name)
+        {
+            continue;
+        }
+
+        found = true;
+        NetworkLinuxInterface iface(entry);
+
+        EXPECT_EQ("loopback", iface.type());
+        EXPECT_EQ("up", iface.state());
+        EXPECT_EQ("00:00:00:00:00:00", iface.MAC());
+        EXPECT_GT(iface.mtu(), 0u);
+    }
+
+    ASSERT_TRUE(found) << "the host exposes no loopback interface";
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_STATS_ARE_READ_FOR_THE_LOOPBACK_INTERFACE)
+{
+    const RealInterfaces interfaces;
+    ASSERT_NE(nullptr, interfaces.get());
+
+    for (auto* entry = interfaces.get(); entry; entry = entry->ifa_next)
+    {
+        if (!entry->ifa_name || std::string("lo") != entry->ifa_name)
+        {
+            continue;
+        }
+
+        // Loopback sends exactly what it receives, which makes the counters self-checking.
+        const auto stats { NetworkLinuxInterface(entry).stats() };
+        EXPECT_EQ(stats.rxBytes, stats.txBytes);
+        EXPECT_EQ(stats.rxPackets, stats.txPackets);
+        EXPECT_EQ(0u, stats.rxErrors);
+        EXPECT_EQ(0u, stats.txErrors);
+        break;
+    }
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_BROADCAST_IS_DERIVED_WHEN_THE_INTERFACE_HAS_NONE)
+{
+    // An interface that carries no broadcast address has one computed from its address and mask.
+    char ifaceName[] { "wazuh-test-iface" };
+    sockaddr_in address {};
+    sockaddr_in netmask {};
+    address.sin_family = AF_INET;
+    netmask.sin_family = AF_INET;
+    ASSERT_EQ(1, inet_pton(AF_INET, "192.168.1.10", &address.sin_addr));
+    ASSERT_EQ(1, inet_pton(AF_INET, "255.255.255.0", &netmask.sin_addr));
+
+    ifaddrs iface {};
+    iface.ifa_name = ifaceName;
+    iface.ifa_addr = reinterpret_cast<sockaddr*>(&address);
+    iface.ifa_netmask = reinterpret_cast<sockaddr*>(&netmask);
+    iface.ifa_ifu.ifu_broadaddr = nullptr;
+
+    EXPECT_EQ("192.168.1.255", NetworkLinuxInterface(&iface).broadcast());
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_IPV6_ACCESSORS_READ_THE_SOCKET_ADDRESS)
+{
+    // Built explicitly rather than taken from the host, so the IPv6 accessors are exercised even
+    // where the runner has no IPv6 interface.
+    char ifaceName[] { "wazuh-test-iface" };
+    sockaddr_in6 address {};
+    sockaddr_in6 netmask {};
+    sockaddr_in6 broadcast {};
+    address.sin6_family = AF_INET6;
+    netmask.sin6_family = AF_INET6;
+    broadcast.sin6_family = AF_INET6;
+    ASSERT_EQ(1, inet_pton(AF_INET6, "fe80::250:56ff:fec0:8", &address.sin6_addr));
+    ASSERT_EQ(1, inet_pton(AF_INET6, "ffff:ffff:ffff:ffff::", &netmask.sin6_addr));
+    ASSERT_EQ(1, inet_pton(AF_INET6, "fe80::ffff:ffff:ffff:ffff", &broadcast.sin6_addr));
+
+    ifaddrs iface {};
+    iface.ifa_name = ifaceName;
+    iface.ifa_addr = reinterpret_cast<sockaddr*>(&address);
+    iface.ifa_netmask = reinterpret_cast<sockaddr*>(&netmask);
+    iface.ifa_ifu.ifu_broadaddr = reinterpret_cast<sockaddr*>(&broadcast);
+
+    const NetworkLinuxInterface wrapper(&iface);
+
+    EXPECT_EQ(AF_INET6, wrapper.family());
+    EXPECT_EQ("fe80::250:56ff:fec0:8", wrapper.addressV6());
+    EXPECT_EQ("ffff:ffff:ffff:ffff::", wrapper.netmaskV6());
+    EXPECT_EQ("fe80::ffff:ffff:ffff:ffff", wrapper.broadcastV6());
 }

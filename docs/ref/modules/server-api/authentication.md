@@ -38,6 +38,37 @@ sequenceDiagram
 
 ---
 
+## Default Users
+
+A fresh installation seeds `rbac.db` from `rbac/default/*.yaml` with exactly two users, both linked to the `administrator` role:
+
+| ID | User | `allow_run_as` | Used by |
+|----|------|----------------|---------|
+| 1 | `wazuh` | No | Operators and scripts calling the API directly |
+| 2 | `wazuh-wui` | Yes | The Wazuh dashboard |
+
+Only `wazuh-wui` can authenticate with an authorization context, because resolving one into roles is the dashboard's mechanism for mapping the indexer user who logged in onto a Wazuh role (see the rules in `rbac/default/rules.yaml`). `wazuh` has no use for it, so the flag is off: `POST /security/user/authenticate/run_as` as `wazuh` answers `403` with error `6004`. Either flag can be changed with `PUT /security/users/{user_id}/run_as`.
+
+The flag on its own does not grant the shipped mappings, which is easy to miss. `RBAChecker.get_user_roles` evaluates a rule holding a reserved ID — the five in `rules.yaml` get IDs `1..5`, while rules created through the API start at `100` — only when the caller is user ID 2. Enabling `allow_run_as` on any other account therefore lets it resolve **custom rules only**, and a context that matches one grants that role whatever the account's own role links say.
+
+Both users are created with **the password shipped in `rbac/default/users.yaml`**, which is the username itself. They are reserved IDs (`<= MAX_ID_RESERVED`), so only another reserved user can change their password — `update_user` needs a `current_user` naming who is asking, which the API takes from the token's `sub`.
+
+`wazuh-manager-apid` logs a warning on every start for each of these users whose password is still the shipped one. It does not refuse to serve: the defaults are documented, and some deployments configure the credentials only after the first start.
+
+Change them with `bin/rbac_control change-password`, which prompts for each password when run without options (an empty answer leaves that one unchanged) and can also be driven from a file so that installers and password tools can use it:
+
+```bash
+# One user, password read from the first line of a file (use '-' for the standard input)
+bin/rbac_control change-password --user wazuh-wui --password-file /root/wui.pass
+
+# Every default user in a single execution
+echo '{"wazuh": "...", "wazuh-wui": "..."}' | bin/rbac_control change-password --passwords-file -
+```
+
+Passwords are never accepted as a command-line argument, so they do not reach the process list. The command exits non-zero if any requested change was not applied. A new password must satisfy the policy enforced by `framework/wazuh/security.py`: 12 to 64 characters, with a lowercase letter, an uppercase letter, a digit and a symbol. Changing `wazuh-wui`'s password requires updating the dashboard configuration to match.
+
+---
+
 ## RBAC Enforcement
 
 RBAC is enforced **before** any core logic is executed.

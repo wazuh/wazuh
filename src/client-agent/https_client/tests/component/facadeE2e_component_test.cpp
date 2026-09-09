@@ -225,6 +225,36 @@ namespace
             hc_handle* m_handle;
     };
 
+    /// Stops and joins a background thread however the test body leaves. A bare
+    /// ASSERT_ before a manual join would otherwise destroy a still-joinable
+    /// std::thread, calling std::terminate() and aborting the whole binary.
+    class ThreadStopper final
+    {
+        public:
+            ThreadStopper(std::atomic<bool>& running, std::thread& thread)
+                : m_running(running)
+                , m_thread(thread)
+            {
+            }
+
+            ~ThreadStopper()
+            {
+                m_running = false;
+
+                if (m_thread.joinable())
+                {
+                    m_thread.join();
+                }
+            }
+
+            ThreadStopper(const ThreadStopper&) = delete;
+            ThreadStopper& operator=(const ThreadStopper&) = delete;
+
+        private:
+            std::atomic<bool>& m_running;
+            std::thread& m_thread;
+    };
+
     /// The manager runs in a forked process, so everything the test wants to
     /// know about what it received comes back through a /peek endpoint.
     int peekCount(httplib::Client& peek, const char* target)
@@ -895,6 +925,57 @@ TEST_F(FacadeE2eTest, ReporterPostsStampedStatsAndConfig)
     EXPECT_NE(std::string::npos, stats.find(R"("cluster":{"name":"fake"})"));
     EXPECT_NE(std::string::npos, cfg.find(R"("notify_time":10)"));
     EXPECT_NE(std::string::npos, cfg.find(R"("agent_id":"001")"));
+}
+
+TEST_F(FacadeE2eTest, NotifyNowRaceAgainstReporterTick)
+{
+    // hc_notify_now() forces the /config path's nextDue (via forceConfigReportNow())
+    // while the reporter thread concurrently reads/writes it in tick()/runPath(),
+    // both serialized through path.mtx. Needs a REGISTERED control loop, so this
+    // lives here against a real FakeManager rather than in the unit tests.
+    const uint16_t port = TLS_PORT + 6;
+    FakeManager manager {port, KEY_HEX, /*tls=*/true};
+
+    Recorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    config.config_report_enabled = true;
+    config.config_report_interval_s = 1;
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = onStartup;
+    callbacks.on_state_change = onState;
+    callbacks.collect_config = collectConfigStub;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    const HandleGuard guard {handle}; // Torn down even if an assertion below returns early.
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000));
+
+    std::atomic<bool> notifying {true};
+    std::thread notifier(
+        [&]
+    {
+        // No iteration cap, just a short sleep: keeps contending with the reporter
+        // thread for the whole run, but a spin loop with no sleep at all can starve
+        // it of path.mtx entirely under Valgrind's serialized scheduling.
+        while (notifying.load())
+        {
+            hc_notify_now(handle);
+            std::this_thread::sleep_for(std::chrono::milliseconds {1});
+        }
+    });
+    // Stopped/joined (before the handle above is destroyed) even if an assertion below
+    // returns early.
+    const ThreadStopper notifierStopper {notifying, notifier};
+
+    // Absence of a TSAN-visible race doesn't prove correctness here: a logic race (a forced
+    // update silently overwritten by a well-locked commitNextDue()) wouldn't show up to
+    // ThreadSanitizer either. Asserting actual delivery counts is what catches that.
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    ASSERT_TRUE(waitForCount(peek, "/peek/config_count", 2, 3000));
 }
 
 TEST_F(FacadeE2eTest, SettingsChangeRefreshesStartupWithoutLeavingRegistered)

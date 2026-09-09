@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import json
 import sys
 from unittest.mock import patch, MagicMock, AsyncMock
 
@@ -9,9 +10,12 @@ import pytest
 
 
 class Arguments:
-    def __init__(self, reset_force=False, func=None):
+    def __init__(self, reset_force=False, func=None, user=None, password_file=None, passwords_file=None):
         self.reset_force = reset_force
         self.func = func
+        self.user = user
+        self.password_file = password_file
+        self.passwords_file = passwords_file
 
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -50,7 +54,10 @@ async def test_restore_default_passwords(forward_mock: AsyncMock, safe_load_mock
     with patch("getpass.getpass", return_value=user_input):
         await rbac_control.restore_default_passwords(Arguments())
         if user_input != "":
-            forward_mock.assert_called_with(security.update_user, f_kwargs={'user_id': '1', 'password': user_input},
+            # `current_user` is required for the default users, whose IDs are reserved ones.
+            forward_mock.assert_called_with(security.update_user,
+                                            f_kwargs={'user_id': '1', 'password': user_input,
+                                                      'current_user': 'testing_user'},
                                             request_type="local_master")
             assert "testing_user" in print_mock.call_args[0][0]
             assert "UPDATED" in print_mock.call_args[0][0]
@@ -61,14 +68,86 @@ async def test_restore_default_passwords(forward_mock: AsyncMock, safe_load_mock
 
 @pytest.mark.asyncio
 @patch("builtins.print")
+@patch("yaml.safe_load", return_value={"default_users": ["testing_user", "other_user"]})
+@patch("scripts.rbac_control.cluster_utils.forward_function")
+async def test_restore_default_passwords_from_file(forward_mock: AsyncMock, safe_load_mock, print_mock, tmp_path,
+                                                   db_setup):
+    """Check that `restore_default_passwords` applies every password of a passwords file."""
+    security, _, _ = db_setup
+    passwords_file = tmp_path / 'passwords.json'
+    passwords_file.write_text(json.dumps({'other_user': 'NewPassword1!', 'testing_user': 'NewPassword2!'}))
+
+    await rbac_control.restore_default_passwords(Arguments(passwords_file=str(passwords_file)))
+
+    # Each user is updated with its own password and ID, which is its position in the defaults file.
+    assert [call.kwargs['f_kwargs'] for call in forward_mock.call_args_list] == [
+        {'user_id': '2', 'password': 'NewPassword1!', 'current_user': 'other_user'},
+        {'user_id': '1', 'password': 'NewPassword2!', 'current_user': 'testing_user'},
+    ]
+    assert all(call.args[0] == security.update_user for call in forward_mock.call_args_list)
+
+
+@pytest.mark.asyncio
+@patch("builtins.print")
+@patch("yaml.safe_load", return_value={"default_users": ["testing_user", "other_user"]})
+@patch("scripts.rbac_control.cluster_utils.forward_function")
+async def test_restore_default_passwords_single_user(forward_mock: AsyncMock, safe_load_mock, print_mock, tmp_path,
+                                                     db_setup):
+    """Check that `restore_default_passwords` only updates the requested user from a password file."""
+    security, _, _ = db_setup
+    password_file = tmp_path / 'password.txt'
+    # The trailing newline of a text file is not part of the password.
+    password_file.write_text('NewPassword1!\n')
+
+    await rbac_control.restore_default_passwords(Arguments(user='other_user', password_file=str(password_file)))
+
+    forward_mock.assert_called_once_with(security.update_user,
+                                         f_kwargs={'user_id': '2', 'password': 'NewPassword1!',
+                                                   'current_user': 'other_user'},
+                                         request_type="local_master")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("arguments, expected_error", [
+    ({'user': 'not_a_default_user'}, "is not an RBAC default user"),
+    ({'password_file': 'password.txt'}, "needs the user it applies to"),
+    ({'user': 'testing_user', 'passwords_file': 'passwords.json'}, "cannot be combined"),
+])
+@patch("builtins.print")
+@patch("yaml.safe_load", return_value={"default_users": ["testing_user"]})
+@patch("scripts.rbac_control.cluster_utils.forward_function")
+async def test_restore_default_passwords_invalid_arguments(forward_mock: AsyncMock, safe_load_mock, print_mock,
+                                                           arguments, expected_error, db_setup):
+    """Check that `restore_default_passwords` rejects invalid argument combinations without updating anything.
+
+    Parameters
+    ----------
+    arguments : dict
+        Arguments given to the script.
+    expected_error : str
+        Fragment expected in the printed error.
+    """
+    with pytest.raises(SystemExit) as exit_error:
+        await rbac_control.restore_default_passwords(Arguments(**arguments))
+
+    assert exit_error.value.code == 1
+    assert expected_error in print_mock.call_args[0][0]
+    forward_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch("builtins.print")
 @patch("getpass.getpass", return_value="NewPassword1!")
 @patch("yaml.safe_load", return_value={"default_users": ["testing_user"]})
 async def test_restore_default_passwords_exceptions(safe_load_mock, getpass_mock, print_mock):
     """Check the `restore_default_passwords` function behaviour when receiving exceptions."""
     exception_message = "Random exception message"
     with patch("scripts.rbac_control.cluster_utils.forward_function", return_value=Exception(exception_message)):
-        await rbac_control.restore_default_passwords(Arguments())
+        # A failed update must be reported through the exit status, not only printed.
+        with pytest.raises(SystemExit) as exit_error:
+            await rbac_control.restore_default_passwords(Arguments())
 
+        assert exit_error.value.code == 1
         assert "testing_user" in print_mock.call_args[0][0]
         assert exception_message in print_mock.call_args[0][0]
 
