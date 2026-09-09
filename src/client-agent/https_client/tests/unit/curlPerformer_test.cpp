@@ -156,6 +156,36 @@ TEST(CurlPerformerTest, NoContentTypeWhenUnset)
     performer.perform(spec);
 }
 
+// A GET spec must map to CURLOPT_HTTPGET and carry no body at all -- neither
+// Post nor PostFields/PostFieldSize -- unlike every pre-existing spec, which
+// defaults to Post (MemoryBodyMapsToExactOptions above already pins that
+// default).
+TEST(CurlPerformerTest, GetMethodMapsToHttpGetAndSendsNoBody)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+    const auto config = makeConfig(HC_VERIFY_NONE);
+
+    HttpRequestSpec spec;
+    spec.target = "/cacerts";
+    spec.method = HttpMethod::Get;
+    spec.timeoutMs = 5000;
+
+    EXPECT_CALL(*handle, setOptionString(CurlOption::Url, "https://127.0.0.1:27840/cacerts"));
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::Get, 1L));
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::Post, _)).Times(0);
+    EXPECT_CALL(*handle, setOptionPtr(CurlOption::PostFields, _)).Times(0);
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::PostFieldSize, _)).Times(0);
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+    EXPECT_CALL(*handle, responseCode()).WillOnce(Return(200));
+
+    auto performer = makePerformer(config, std::move(mock));
+    const auto response = performer.perform(spec);
+    EXPECT_EQ(TransportStatus::Ok, response.status);
+    EXPECT_EQ(200, response.httpCode);
+}
+
 TEST(CurlPerformerTest, ResponseBodyAndRetryAfterFlowBack)
 {
     auto mock = std::make_unique<NiceMock<MockCurlHandle>>();

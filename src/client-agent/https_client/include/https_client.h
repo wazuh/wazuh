@@ -545,6 +545,54 @@ typedef struct hc_enroll_result_t
 HC_EXPORTED bool hc_enroll(const hc_config_t* config, const hc_enroll_request_t* request,
                            hc_enroll_result_t* result);
 
+/* ---- GET /cacerts (unverified bootstrap fetch) ---- */
+
+/// Sized for a small chain (leaf + one intermediate) of PEM certificates;
+/// generous compared to HC_MAX_ENROLL_BODY (4096) since a CA bundle is
+/// larger than an /enroll JSON reply.
+#define HC_MAX_CACERTS_BODY 8192
+
+/**
+ * @brief One GET /cacerts request, built entirely by the C caller.
+ *        Handle-less, exactly like hc_enroll_request_t: this fetch step runs
+ *        before any hc_handle exists (the same first-boot bootstrap moment
+ *        /enroll runs at).
+ */
+typedef struct hc_cacerts_request_t
+{
+    full_log_fnc_t log; ///< This call's log sink; may run before hc_create() ever does.
+} hc_cacerts_request_t;
+
+/** @brief Result of one GET /cacerts attempt. */
+typedef struct hc_cacerts_result_t
+{
+    long http_code;                     ///< 0 = no HTTP response at all (transport/config
+    ///< failure -- see hc_fetch_cacerts()'s return value).
+    char body[HC_MAX_CACERTS_BODY];     ///< Raw response body (the CA bundle on 200).
+    /// Same contract as hc_enroll_result_t::transport_error.
+    char transport_error[HC_MAX_TRANSPORT_ERROR];
+} hc_cacerts_result_t;
+
+/**
+ * @brief Perform exactly one GET /cacerts HTTP request, UNVERIFIED: the
+ *        whole point of this call is to fetch a trust anchor the agent does
+ *        not have yet, so there is nothing to verify the connection against.
+ *        This function forces the transport's TLS verification off for this
+ *        one request regardless of what `config->verify_mode` carries --
+ *        callers must treat the returned body as untrusted input until a
+ *        separate pin-compare step (not part of this function) validates it
+ *        against the enrollment token's pin.
+ * @param config Only the transport half is read (host, port, timeout,
+ *        compression toggle); verify_mode/ca_path/client_cert/client_key are
+ *        ignored, since this call always fetches unverified.
+ * @return true once a request was actually sent and answered, whatever the
+ *         HTTP status. false when nothing was ever sent (an invalid
+ *         transport config -- e.g. a mismatched client cert/key pair -- or a
+ *         NULL argument); result->http_code stays 0 in that case.
+ */
+HC_EXPORTED bool hc_fetch_cacerts(const hc_config_t* config, const hc_cacerts_request_t* request,
+                                  hc_cacerts_result_t* result);
+
 #ifdef __cplusplus
 }
 #endif

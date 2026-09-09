@@ -24,6 +24,7 @@
 #include "external/nlohmann/json.hpp"
 
 #include <openssl/evp.h>
+#include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <zstd.h>
 
@@ -761,6 +762,44 @@ class FakeManager final
                 response.status = 200;
                 response.set_content(*lastEnrollBody, "text/plain");
             });
+
+            // GET /cacerts: the unverified-fetch leg of the enrollment-token bootstrap.
+            // Serves a freshly generated, PEM-encoded self-signed certificate that is
+            // deliberately NOT the TLS listener's own certificate (a separate
+            // makeSelfSigned() call in runServer(), kept in-memory there): a test
+            // asserting on this body proves the client received exactly the bytes this
+            // route served, not something it could have derived from the handshake it
+            // rode in on.
+            //
+            // Decided (see cacertsClient.hpp's matching doc comment): registered
+            // unconditionally, with no prefix handling at all -- unlike every other
+            // route above, none of which this fake manager prefixes either, so this
+            // is not itself new proof of prefix-independence, only a mock built
+            // consistently with that same decision.
+            EVP_PKEY* cacertsPkey = nullptr;
+            X509* cacertsCert = nullptr;
+            makeSelfSigned(&cacertsPkey, &cacertsCert);
+            const std::string cacertsPem = pemEncodeCert(cacertsCert);
+            X509_free(cacertsCert);
+            EVP_PKEY_free(cacertsPkey);
+
+            server.Get("/cacerts",
+                       [cacertsPem](const httplib::Request&, httplib::Response & response)
+            {
+                response.status = 200;
+                response.set_content(cacertsPem, "application/x-pem-file");
+            });
+        }
+
+        static std::string pemEncodeCert(X509* cert)
+        {
+            BIO* bio = BIO_new(BIO_s_mem());
+            PEM_write_bio_X509(bio, cert);
+            char* data = nullptr;
+            const long len = BIO_get_mem_data(bio, &data);
+            std::string pem(data, static_cast<size_t>(len));
+            BIO_free(bio);
+            return pem;
         }
 
         // Self-signed cert + key generated in-process (no CLI, no files). The

@@ -20,6 +20,7 @@
 #include "httpsClientFacade.hpp"
 #include "syncIntake.hpp"
 
+#include "cacertsClient.hpp"
 #include "curlHandle.hpp"
 #include "curlPerformer.hpp"
 #include "enrollClient.hpp"
@@ -328,6 +329,49 @@ extern "C"
 
             result->http_code = response.httpCode;
             result->retry_after_seconds = response.retryAfterSeconds;
+            std::strncpy(result->body, response.body.c_str(), sizeof(result->body) - 1);
+            std::strncpy(result->transport_error, response.curlError.c_str(),
+                         sizeof(result->transport_error) - 1);
+
+            return response.httpCode != 0;
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
+    bool hc_fetch_cacerts(const hc_config_t* config, const hc_cacerts_request_t* request,
+                          hc_cacerts_result_t* result)
+    {
+        if (config == nullptr || request == nullptr || result == nullptr)
+        {
+            return false;
+        }
+
+        // Zeroed before anything that could throw -- same contract as hc_enroll().
+        *result = {};
+
+        try
+        {
+            // hc_fetch_cacerts() may run before hc_create() ever does (same
+            // first-boot bootstrap moment as hc_enroll()), so it assigns its
+            // own log sink rather than relying on one already being set.
+            assignModuleLogSink(request->log);
+
+            auto typedConfig = ModuleConfig::fromC(*config);
+            // Forced regardless of what the caller's config carries: GET /cacerts is the
+            // unverified bootstrap leg by definition -- there is no trust anchor yet to
+            // verify against.
+            typedConfig.verifyMode = HC_VERIFY_NONE;
+
+            FsProbe fsProbe;
+            CurlPerformer performer(typedConfig, defaultCurlHandleFactory(), fsProbe);
+            CacertsClient client(typedConfig, performer, fsProbe, HTTPS_CLIENT_LOGTAG);
+
+            const HttpResponse response = client.fetch();
+
+            result->http_code = response.httpCode;
             std::strncpy(result->body, response.body.c_str(), sizeof(result->body) - 1);
             std::strncpy(result->transport_error, response.curlError.c_str(),
                          sizeof(result->transport_error) - 1);

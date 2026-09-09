@@ -19,6 +19,10 @@
                          "It is unused while <verification_mode> is 'none'; enabling verification " \
                          "would stop the agent from starting."
 
+#define AG_SSL_ANCHOR_IGNORES_CA "(4123): <ssl><certificate_authorities> '%s' is ignored. The trust anchor " \
+                                 "'%s' overrode <verification_mode> 'none', and verification uses the anchor " \
+                                 "instead. Set <verification_mode> explicitly to keep using your own CA."
+
 /* File integrity monitoring warning messages*/
 #define FIM_WARN_ACCESS                         "(6900): Accessing  '%s': [(%d) - (%s)]"
 #define FIM_WARN_DELETE                         "(6901): Could not delete from filesystem '%s'"

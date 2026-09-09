@@ -63,6 +63,7 @@ namespace
             {CurlOption::Post, CURLOPT_POST},
             {CurlOption::PostFields, CURLOPT_POSTFIELDS},
             {CurlOption::PostFieldSize, CURLOPT_POSTFIELDSIZE},
+            {CurlOption::Get, CURLOPT_HTTPGET},
             {CurlOption::TimeoutMs, CURLOPT_TIMEOUT_MS},
             {CurlOption::VerifyPeer, CURLOPT_SSL_VERIFYPEER},
             {CurlOption::VerifyHost, CURLOPT_SSL_VERIFYHOST},
