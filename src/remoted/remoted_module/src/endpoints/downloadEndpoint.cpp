@@ -285,6 +285,15 @@ namespace remoted::endpoints::download
         return remoted::http::HttpResponse::json(400, R"({"error":"Invalid request format","code":400})");
     }
 
+    /// The answer to every authorization failure, whatever its cause: the agent asked for a
+    /// selector that is not its own, its id is unknown to the group source, or no source is wired.
+    /// One shape for all three on purpose -- a caller must not be able to tell "not yours" from
+    /// "does not exist", which is what removes the 200-vs-404 group enumeration oracle.
+    remoted::http::HttpResponse forbiddenResponse()
+    {
+        return remoted::http::HttpResponse::json(403, R"({"error":"Forbidden","code":403})");
+    }
+
     remoted::http::HttpResponse errorResponseFor(LocateError error)
     {
         if (error == LocateError::Internal)
@@ -511,11 +520,12 @@ namespace remoted::endpoints::download
     // Handler
     // -----------------------------------------------------------------------
 
-    remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths, DownloadMetrics metrics)
+    remoted::endpoints::AuthenticatedHandler
+    makeHandler(ResourcePaths paths, DownloadMetrics metrics, std::shared_ptr<const IAgentGroupSource> groups)
     {
-        return [paths = std::move(paths),
-                metrics = std::move(metrics)](std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
-                                              std::shared_ptr<remoted::http::IHttpResponder> responder)
+        return [paths = std::move(paths), metrics = std::move(metrics), groups = std::move(groups)](
+                   std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
+                   std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
             const auto parsed = parseRequest(request->payload.bytes());
 
@@ -530,6 +540,30 @@ namespace remoted::endpoints::download
 
             const auto& downloadRequest = std::get<DownloadRequest>(parsed);
             const std::string agentId = request->agentId;
+
+            // Authorization, before ANY filesystem access. Config downloads are served only for the
+            // selector this agent's own groups produce -- the very string /control handed it as
+            // config_token, so the legitimate flow matches exactly and needs no extra round trip.
+            // WPK requests are deliberately not authorized here: their authority is the agent's
+            // pending upgrade task, which /control does not carry (see the header's note).
+            if (downloadRequest.type == ResourceType::Config)
+            {
+                const auto expected = (groups != nullptr) ? groups->expectedSelectorFor(agentId) : std::nullopt;
+
+                if (!expected.has_value() || *expected != downloadRequest.resourceId)
+                {
+                    // Debug only, like the parse rejection above: any enrolled agent can trigger
+                    // this at will, so a per-request warning would be a log-flood vector. The
+                    // operator-facing signal is remoted.download.denied.
+                    LOGFN_DEBUG2(logFn(),
+                                 "Denied a /download request from agent '%s' for resource '%s': not its own.",
+                                 agentId.c_str(),
+                                 downloadRequest.resourceId.c_str());
+                    incDenied(metrics);
+                    responder->send(forbiddenResponse());
+                    return;
+                }
+            }
 
             const auto located = locateResource(downloadRequest, paths);
 

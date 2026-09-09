@@ -34,6 +34,7 @@
 #include "control/controlHandler.hpp"
 #include "control/hashCache.hpp"
 #include "control/metrics.hpp"
+#include "control/registryAgentGroupSource.hpp"
 #include "control/taskClient.hpp"
 #include "control/wazuhDBClient.hpp"
 #include "decoding/bodyDecoder.hpp"
@@ -457,14 +458,27 @@ private:
         // ResponseMode::Streamable because the transport fixes a response's output mode when the
         // request is dispatched -- a Buffered registration would make every download answer 500.
         //
-        // resource_id is the group (or WPK filename) the agent requests and the manager serves
-        // exactly that; there is no group lookup and no membership check (protocol decision on
-        // #38022). Containment therefore rests on the resource-id grammars plus O_NOFOLLOW.
-        m_authGateway->addAuthenticatedRoute(*m_httpServer,
-                                             remoted::http::Method::Post,
-                                             "/download",
-                                             remoted::endpoints::download::makeHandler({}, m_downloadMetrics),
-                                             remoted::http::ResponseMode::Streamable);
+        // Created here, ahead of the routes, because /download authorizes against it as well as
+        // /control filling it. Held in a local (not passed inline) so the registry-size pull metric
+        // can weak-point at it; the ControlHandler owns it, so the weak_ptr expires when stop()
+        // phase 1b resets the handler.
+        auto agentRegistry = std::make_shared<remoted::control::AgentRegistry>();
+
+        // resource_id is what the agent requests, but it is no longer taken on trust: a config
+        // download is served only when it equals the selector this agent's own groups produce --
+        // the same string /control handed it as config_token -- and anything else is 403. The
+        // groups come from the registry /control already maintains, so there is no wazuh-db round
+        // trip on this path. An agent with no registry entry is DENIED, not served (#38683).
+        // WPK requests are NOT authorized here: their authority is the pending upgrade task, which
+        // /control does not carry. What contains those remains the resource-id grammars plus
+        // O_NOFOLLOW, and the packages are signature-verified by the agent against wpk_root.pem.
+        m_authGateway->addAuthenticatedRoute(
+            *m_httpServer,
+            remoted::http::Method::Post,
+            "/download",
+            remoted::endpoints::download::makeHandler(
+                {}, m_downloadMetrics, std::make_shared<remoted::control::RegistryAgentGroupSource>(agentRegistry)),
+            remoted::http::ResponseMode::Streamable);
 
         // /stateless takes the client's default response deadline (its target leaves the override
         // at 0), so that is what gets checked against the transport's request cap.
@@ -532,10 +546,6 @@ private:
         // carry over too -- desirable for observability.
         const auto controlConfig = remoted::control::buildControlConfig(m_config);
         auto vdClient = std::make_shared<remoted::common::VdClient>();
-        // Held in a local (not passed inline) so the registry-size pull metric can weak-point at
-        // it; the ControlHandler owns it, so the weak_ptr expires when stop() phase 1b resets
-        // the handler.
-        auto agentRegistry = std::make_shared<remoted::control::AgentRegistry>();
         m_controlHandler = std::make_unique<remoted::control::ControlHandler>(
             agentRegistry,
             std::make_shared<remoted::control::WazuhDBClient>(controlConfig.wdbSocketPath,
