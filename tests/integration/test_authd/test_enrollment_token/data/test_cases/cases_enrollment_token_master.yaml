@@ -39,3 +39,15 @@
   configuration_parameters:
   metadata:
     action: 'ip_address_warns'
+
+- name: 'purge_drops_the_unusable'
+  description: 'A purge removes the revoked token and leaves the live one in the store'
+  configuration_parameters:
+  metadata:
+    action: 'purge_drops_the_unusable'
+
+- name: 'purge_all_empties_the_store'
+  description: 'Purging with --all --force leaves a valid, empty store the manager still reads'
+  configuration_parameters:
+  metadata:
+    action: 'purge_all_empties_the_store'

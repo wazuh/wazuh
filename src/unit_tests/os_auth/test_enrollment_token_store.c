@@ -105,6 +105,7 @@ static int teardown_group(void **state) {
 #define expect_any_mdebug2() expect_any_always(__wrap__mdebug2, formatted_msg)
 #define expect_any_minfo()   expect_any_always(__wrap__minfo, formatted_msg)
 #define expect_any_mwarn()   expect_any_always(__wrap__mwarn, formatted_msg)
+#define expect_any_merror()  expect_any_always(__wrap__merror, formatted_msg)
 
 static int setup_store(void **state) {
     (void)state;
@@ -625,6 +626,243 @@ static void test_reload_if_changed_picks_up_external_write(void **state) {
     os_free(external_pin);
 }
 
+/* --- Purge, cap and byte ceiling (issue #38994) ------------------------------------------------- */
+
+/**
+ * @brief Write a store file of @p count synthetic tokens and load it.
+ *
+ * Composing the file instead of minting is what makes the cap cases affordable: 5000 mints would be
+ * 5000 rewrites of a growing file. @p expires_in is added to now (negative for an expired token),
+ * @p uses / @p max_uses drive the exhausted case and @p ca_filler, when non-zero, gives every entry
+ * a `ca` of that many characters so the document crosses the byte ceiling instead of the count one.
+ */
+static void write_store_of(int count, long expires_in, unsigned int uses, unsigned int max_uses,
+                           int revoked, size_t ca_filler) {
+    cJSON *root = cJSON_CreateObject();
+    cJSON *array = NULL;
+    char *filler = NULL;
+    char *pin = NULL;
+    uint8_t pin_bytes[W_ETOKEN_PIN_BYTES];
+    int i;
+
+    memset(pin_bytes, TEST_PIN_BYTE, sizeof(pin_bytes));
+    pin = w_b64url_encode(pin_bytes, sizeof(pin_bytes));
+    assert_non_null(pin);
+
+    if (ca_filler > 0) {
+        os_calloc(ca_filler + 1, sizeof(char), filler);
+        memset(filler, 'C', ca_filler);
+    }
+
+    cJSON_AddNumberToObject(root, "version", 1);
+    array = cJSON_AddArrayToObject(root, "tokens");
+
+    for (i = 0; i < count; i++) {
+        cJSON *item = cJSON_CreateObject();
+        uint8_t id_bytes[W_ETOKEN_ID_BYTES];
+        char *id = NULL;
+
+        /* Ids only have to be distinct and well formed: the counter is enough and keeps the file
+         * reproducible from one run to the next */
+        memset(id_bytes, 0, sizeof(id_bytes));
+        memcpy(id_bytes, &i, sizeof(i) < sizeof(id_bytes) ? sizeof(i) : sizeof(id_bytes));
+        id = w_b64url_encode(id_bytes, sizeof(id_bytes));
+        assert_non_null(id);
+
+        cJSON_AddStringToObject(item, "id", id);
+        cJSON_AddNullToObject(item, "secret");
+        cJSON_AddStringToObject(item, "adr", "wazuh-full");
+
+        if (filler != NULL) {
+            cJSON_AddNullToObject(item, "pin");
+            cJSON_AddStringToObject(item, "ca", filler);
+        } else {
+            cJSON_AddStringToObject(item, "pin", pin);
+            cJSON_AddNullToObject(item, "ca");
+        }
+
+        cJSON_AddNumberToObject(item, "created", (double)(time(NULL) - 10));
+        cJSON_AddNumberToObject(item, "expires", (double)(time(NULL) + expires_in));
+        cJSON_AddNumberToObject(item, "max_uses", (double)max_uses);
+        cJSON_AddNumberToObject(item, "uses", (double)uses);
+        cJSON_AddBoolToObject(item, "revoked", revoked);
+        cJSON_AddNullToObject(item, "description");
+        cJSON_AddItemToArray(array, item);
+        os_free(id);
+    }
+
+    assert_int_equal(json_fwrite(STORE_PATH, root), 0);
+    cJSON_Delete(root);
+    os_free(filler);
+    os_free(pin);
+
+    assert_int_equal(etoken_store_load(), 0);
+    assert_int_equal(etoken_store_count(), count);
+}
+
+/// The inode of the store file: a rewrite goes through rename(), so a new inode proves it happened.
+static ino_t store_inode(void) {
+    struct stat info;
+
+    assert_int_equal(stat(STORE_PATH, &info), 0);
+
+    return info.st_ino;
+}
+
+static void test_purge_dead_removes_only_the_unusable(void **state) {
+    (void)state;
+    cJSON *ids = NULL;
+    char alive[ETOKEN_ID_CHARS + 1] = {0};
+    cJSON *data = NULL;
+
+    expect_any_mdebug1();
+    expect_any_mdebug2();
+    expect_any_minfo();
+
+    /* One of each kind the purge is meant to reach, plus one it must not touch */
+    data = mint_token("wazuh-alive", 3600, 0, NULL, 0);
+    copy_string(alive, sizeof(alive), data, "id");
+    cJSON_Delete(data);
+
+    cJSON_Delete(mint_token("wazuh-expired", 1, 0, NULL, 0));
+    data = mint_token("wazuh-revoked", 3600, 0, NULL, 0);
+    {
+        char revoked_id[ETOKEN_ID_CHARS + 1] = {0};
+
+        copy_string(revoked_id, sizeof(revoked_id), data, "id");
+        assert_int_equal(etoken_store_revoke(revoked_id), 0);
+    }
+    cJSON_Delete(data);
+
+    data = mint_token("wazuh-exhausted", 3600, 1, NULL, 0);
+    {
+        char used_id[ETOKEN_ID_CHARS + 1] = {0};
+
+        copy_string(used_id, sizeof(used_id), data, "id");
+        assert_int_equal(etoken_store_consume(used_id, time(NULL)), ETOKEN_USE_OK);
+    }
+    cJSON_Delete(data);
+
+    assert_int_equal(etoken_store_count(), 4);
+    sleep(2); /* the one minted with ttl 1 is now past its expiry */
+
+    assert_int_equal(etoken_store_purge(ETOKEN_PURGE_DEAD, time(NULL), &ids), 3);
+    assert_int_equal(cJSON_GetArraySize(ids), 3);
+    assert_int_equal(etoken_store_count(), 1);
+    cJSON_Delete(ids);
+
+    /* The survivor is the live one, and it survives a reload: the file was rewritten, not just the
+     * memory */
+    assert_int_equal(etoken_store_load(), 0);
+    assert_int_equal(etoken_store_count(), 1);
+    assert_int_equal(etoken_store_consume(alive, time(NULL)), ETOKEN_USE_OK);
+}
+
+static void test_purge_without_victims_leaves_the_file_alone(void **state) {
+    (void)state;
+    ino_t before;
+    cJSON *ids = NULL;
+
+    expect_any_mdebug1();
+    expect_any_minfo();
+
+    cJSON_Delete(mint_token("wazuh-alive", 3600, 0, NULL, 0));
+    before = store_inode();
+
+    assert_int_equal(etoken_store_purge(ETOKEN_PURGE_DEAD, time(NULL), &ids), 0);
+    assert_int_equal(cJSON_GetArraySize(ids), 0);
+    cJSON_Delete(ids);
+
+    /* Not rewritten: every node that watches this file (remoted's replica, the cluster sync) would
+     * otherwise reload a file that says exactly what it said before */
+    assert_int_equal(etoken_store_count(), 1);
+    assert_int_equal(store_inode(), before);
+}
+
+static void test_purge_all_empties_the_store(void **state) {
+    (void)state;
+    cJSON *root = NULL;
+    cJSON *array = NULL;
+
+    expect_any_mdebug1();
+    expect_any_minfo();
+
+    cJSON_Delete(mint_token("wazuh-1", 3600, 0, NULL, 0));
+    cJSON_Delete(mint_token("wazuh-2", 3600, 0, NULL, 0));
+
+    assert_int_equal(etoken_store_purge(ETOKEN_PURGE_ALL, time(NULL), NULL), 2);
+    assert_int_equal(etoken_store_count(), 0);
+
+    /* A valid, empty store: the next mint appends to it and every reader parses it */
+    array = read_store_file(&root);
+    assert_int_equal(cJSON_GetArraySize(array), 0);
+    assert_int_equal(cJSON_GetObjectItem(root, "version")->valueint, 1);
+    cJSON_Delete(root);
+
+    assert_int_equal(etoken_store_load(), 0);
+    assert_int_equal(etoken_store_count(), 0);
+}
+
+static void test_mint_is_refused_when_the_store_is_full_of_live_tokens(void **state) {
+    (void)state;
+    etoken_mint_t mint;
+    cJSON *data = NULL;
+
+    expect_any_mdebug1();
+
+    write_store_of(ETOKEN_MAX_TOKENS, 3600, 0, 0, 0, 0);
+
+    build_mint(&mint, "wazuh-one-too-many", 3600, 0, NULL, 0);
+    assert_int_equal(etoken_store_create(&mint, time(NULL), &data), ETOKEN_CREATE_FULL);
+    etoken_mint_free(&mint);
+
+    assert_null(data);
+    assert_int_equal(etoken_store_count(), ETOKEN_MAX_TOKENS);
+}
+
+static void test_mint_purges_the_dead_to_make_room(void **state) {
+    (void)state;
+    etoken_mint_t mint;
+    cJSON *data = NULL;
+
+    expect_any_mdebug1();
+    expect_any_minfo();
+
+    /* Full, but of tokens that expired an hour ago: the store is dirty, not full */
+    write_store_of(ETOKEN_MAX_TOKENS, -3600, 0, 0, 0, 0);
+
+    build_mint(&mint, "wazuh-after-the-purge", 3600, 0, NULL, 0);
+    assert_int_equal(etoken_store_create(&mint, time(NULL), &data), 0);
+    etoken_mint_free(&mint);
+
+    assert_non_null(data);
+    cJSON_Delete(data);
+    assert_int_equal(etoken_store_count(), 1);
+}
+
+static void test_mint_is_refused_when_the_store_would_be_too_big(void **state) {
+    (void)state;
+    etoken_mint_t mint;
+    cJSON *data = NULL;
+    ino_t before;
+
+    expect_any_mdebug1();
+    expect_any_merror();
+
+    /* Few tokens, each carrying a CA far larger than a real one: the count cap is nowhere near, and
+     * the only thing standing between this store and a replica that stops updating is the ceiling */
+    write_store_of(200, 3600, 0, 0, 0, 40000);
+    before = store_inode();
+
+    build_mint(&mint, "wazuh-over-the-ceiling", 3600, 0, NULL, 0);
+    assert_int_equal(etoken_store_create(&mint, time(NULL), &data), ETOKEN_CREATE_TOOBIG);
+    etoken_mint_free(&mint);
+
+    assert_null(data);
+    assert_int_equal(etoken_store_count(), 200);
+    assert_int_equal(store_inode(), before);
+}
+
 /* --- The endpoint the token carries ------------------------------------------------------------ */
 
 static void test_adr_build_drops_the_defaults(void **state) {
@@ -677,6 +915,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_release_undoes_a_reserved_use, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_revoke_unknown_and_idempotent, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_reload_if_changed_picks_up_external_write, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_purge_dead_removes_only_the_unusable, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_purge_without_victims_leaves_the_file_alone, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_purge_all_empties_the_store, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_mint_is_refused_when_the_store_is_full_of_live_tokens, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_mint_purges_the_dead_to_make_room, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_mint_is_refused_when_the_store_would_be_too_big, setup_store, teardown_store),
         cmocka_unit_test(test_adr_build_drops_the_defaults),
     };
 

@@ -544,8 +544,8 @@ The ones that shape the behaviour described here:
 | `unit_tests/os_auth/test_auth_parse.c` | the enrollment message parser |
 | `unit_tests/os_auth/test_authd-config.c` | the `<auth>` block |
 | `unit_tests/os_auth/test_local-server.c` | the local-socket `add`/`remove`/`get` protocol: malformed key/id rejection (`9019`/`9020`), clustered forwarding; the `token_*` verbs and `add` with `token_id`/`reenroll` (`w_mconf_section`, `wdb_get_agent_info` and `w_reenroll_verify` wrapped; the store and the X509 checks run for real on temporary files) |
-| `unit_tests/os_auth/test_enrollment_token_store.c` | the store on real temporary files: mode, atomicity, what the file never contains, consume/release/revoke, reload |
-| `unit_tests/os_auth/test_token_cli.c` | the utility mode with the three socket calls wrapped: the JSON each option sends and how the answer is read; `--show-token` on the real codec |
+| `unit_tests/os_auth/test_enrollment_token_store.c` | the store on real temporary files: mode, atomicity, what the file never contains, consume/release/revoke, reload, the purge (what it removes, what it leaves and the file it does not rewrite when there is nothing to remove) and both limits: the cap of 5000 with its automatic purge, and the byte ceiling that undoes the entry instead of writing a store remoted would refuse |
+| `unit_tests/os_auth/test_token_cli.c` | the utility mode with the three socket calls wrapped: the JSON each option sends and how the answer is read; `--show-token` on the real codec, and the confirmation `--all` asks for unless `--force` is given |
 | `unit_tests/os_auth/test_reenroll_verify.c` | the C bridge against the frozen vector — real verifier, real HKDF, nothing wrapped |
 | `unit_tests/os_auth/test_authd-getconfig.c` | `authd_read_config()`/`getAuthdConfig()` over the configuration document (`w_mconf_*` wrapped), including the `remoted.jwt_*` reads |
 | `tests/integration/test_authd/test_enrollment_token/` | the lifecycle on a running manager — master: mint over the socket and the CLI, the listing hides the secret, `--show-token`, consume then revoke, refusals, the IP warning; worker: `9015` on mint, `token_id` forwarded, the synced store readable |
@@ -573,6 +573,13 @@ would make "the row is outstanding" and "the query failed" the same case.
   pass and the edit is lost.
 - **Deleting a manager should include deleting its indexer data**, or a rebuilt manager hands out ids
   whose documents are still in the indexer.
+- **Revoking and purging are different operations.** A revoked token stays in the store, listed and
+  auditable; `--purge-enrollment-tokens` removes entries. The default scope only takes what can no
+  longer authorise an enrollment, `--all` empties the store, and neither is available on a worker.
+- **The store is bounded** at 5000 tokens and 7 MiB, whichever binds first — the ceiling sits one MiB
+  under what remoted's replica accepts, because a store above that leaves every node enrolling against
+  the previous copy with nothing but a reload-failure counter to say so. A mint into a full store
+  purges the dead entries by itself and only refuses (`9025`) when the tokens are genuinely in use.
 - **Tokens are minted on the master, by a running daemon** — the CLI is a socket client (`9015` on a
   worker, a connection error when authd is down) — and the token text is shown once. Revoking is
   immediate on the master, since every `add` re-checks the store; a worker's remoted keeps its replica

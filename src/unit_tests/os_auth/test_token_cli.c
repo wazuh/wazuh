@@ -349,6 +349,63 @@ static void test_revoke_ok_and_unknown(void **state) {
     streams_free(&s);
 }
 
+/* ------------------------------------------------------------------ purge */
+
+static void test_purge_dead_is_the_default(void **state) {
+    (void)state;
+    token_cli_opts_t opts;
+    streams_t s;
+    char *argv[] = {"authd", "--purge-enrollment-tokens"};
+    const char *request = "{\"arguments\":{\"scope\":\"dead\"},\"function\":\"token_purge\"}";
+
+    streams_open(&s);
+    assert_int_equal(parse_argv(&opts, s.err, 2, argv), 1);
+    expect_exchange(request, "{\"error\":0,\"data\":{\"removed\":3,\"remaining\":7,\"ids\":[]}}");
+    // No --all, so nothing is asked: dropping tokens that can no longer enrol anybody is not a
+    // decision an operator needs to confirm.
+    assert_int_equal(w_token_cli_run(&opts, stdin, s.out, s.err), 0);
+    streams_close(&s);
+    assert_string_equal(s.out_buf, "Removed 3 enrollment token(s); 7 left.\n");
+    streams_free(&s);
+}
+
+static void test_purge_all_asks_before_emptying_the_store(void **state) {
+    (void)state;
+    token_cli_opts_t opts;
+    streams_t s;
+    char *argv[] = {"authd", "--purge-enrollment-tokens", "--all"};
+    FILE *answer = NULL;
+
+    // stdin is not a terminal here, so the confirmation cannot be given: the CLI refuses instead of
+    // taking silence for a yes, and says which flag a script should use.
+    streams_open(&s);
+    assert_int_equal(parse_argv(&opts, s.err, 3, argv), 1);
+    answer = fmemopen((void *)"y\n", 2, "r");
+    assert_non_null(answer);
+    assert_int_equal(w_token_cli_run(&opts, answer, s.out, s.err), 1);
+    fclose(answer);
+    streams_close(&s);
+    assert_non_null(strstr(s.err_buf, "--force"));
+    assert_string_equal(s.out_buf, "");
+    streams_free(&s);
+}
+
+static void test_purge_all_with_force_sends_the_wider_scope(void **state) {
+    (void)state;
+    token_cli_opts_t opts;
+    streams_t s;
+    char *argv[] = {"authd", "--purge-enrollment-tokens", "--all", "--force"};
+    const char *request = "{\"arguments\":{\"scope\":\"all\"},\"function\":\"token_purge\"}";
+
+    streams_open(&s);
+    assert_int_equal(parse_argv(&opts, s.err, 4, argv), 1);
+    expect_exchange(request, "{\"error\":0,\"data\":{\"removed\":10,\"remaining\":0,\"ids\":[]}}");
+    assert_int_equal(w_token_cli_run(&opts, stdin, s.out, s.err), 0);
+    streams_close(&s);
+    assert_string_equal(s.out_buf, "Removed 10 enrollment token(s); 0 left.\n");
+    streams_free(&s);
+}
+
 /* ------------------------------------------------------------------ show */
 
 static void assert_frozen_description(const char *text) {
@@ -449,6 +506,9 @@ int main(void) {
         cmocka_unit_test(test_connect_failure_is_explained),
         cmocka_unit_test(test_list_prints_the_table_and_never_the_secret),
         cmocka_unit_test(test_revoke_ok_and_unknown),
+        cmocka_unit_test(test_purge_dead_is_the_default),
+        cmocka_unit_test(test_purge_all_asks_before_emptying_the_store),
+        cmocka_unit_test(test_purge_all_with_force_sends_the_wider_scope),
         cmocka_unit_test(test_show_token_from_arg_file_and_stdin),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

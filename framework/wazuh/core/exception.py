@@ -260,6 +260,9 @@ class WazuhException(Exception):
         1769: {'message': 'Enrollment tokens can only be managed on the master node',
                'remediation': 'Send the request to the master node; workers only replicate the token store'
                },
+        1770: {'message': 'Invalid enrollment token purge scope',
+               'remediation': 'Valid scopes are `dead` (revoked, expired or exhausted tokens) and `all`'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'

@@ -28,7 +28,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.agent import add_agent, assign_agents_to_group, create_group, create_enrollment_token, \
-            delete_agents, delete_enrollment_token, delete_groups, get_enrollment_tokens, \
+            delete_agents, delete_enrollment_token, delete_enrollment_tokens, delete_groups, get_enrollment_tokens, \
             get_agent_conf, get_agent_groups, get_agents, get_agents_in_group, get_agents_keys, \
             get_agents_summary, get_agents_summary_os, get_agents_summary_status, \
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
@@ -1621,3 +1621,25 @@ def test_delete_enrollment_token_not_found(mock_revoke):
     """An unknown id is a 1767 (the API answers 404), not a failed item."""
     with pytest.raises(WazuhResourceNotFound, match='.* 1767 .*'):
         delete_enrollment_token(token_id='AAAAAAAAAAAAAAAAAAAAAA')
+
+
+@patch('wazuh.agent.enrollment_token.purge_tokens', return_value=[TOKEN_ID, 'B' * 22])
+def test_delete_enrollment_tokens(mock_purge):
+    """delete_enrollment_tokens() purges through the core and reports every id removed."""
+    result = delete_enrollment_tokens(scope='all')
+
+    mock_purge.assert_called_once_with('all')
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items == [TOKEN_ID, 'B' * 22]
+    assert result.total_affected_items == 2
+    assert result.total_failed_items == 0
+
+
+@patch('wazuh.agent.enrollment_token.purge_tokens', return_value=[])
+def test_delete_enrollment_tokens_defaults_to_dead(mock_purge):
+    """Without a scope the purge only removes what can no longer authorise an enrollment."""
+    result = delete_enrollment_tokens()
+
+    mock_purge.assert_called_once_with('dead')
+    assert result.affected_items == []
+    assert result.total_affected_items == 0

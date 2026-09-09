@@ -350,6 +350,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | POST | `/agents/enrollment-tokens` | Mint an enrollment token (the `token` is returned once) |
 | GET | `/agents/enrollment-tokens` | List enrollment tokens (never their credential) |
 | DELETE | `/agents/enrollment-tokens/{token_id}` | Revoke an enrollment token |
+| DELETE | `/agents/enrollment-tokens` | Purge enrollment tokens: `status=dead` (default) removes the ones that can no longer enrol anybody, `status=all` empties the store |
 | PUT | `/agents/{agent_id}/restart` | Restart agent (v5.0.0+) |
 | PUT | `/agents/{agent_id}/reload` | Reload agent config (v5.0.0+) |
 | GET | `/agents/{agent_id}/key` | Get agent key |

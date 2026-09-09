@@ -219,6 +219,7 @@ accepts its id as a bearer `kid`.
 wazuh-manager-authd --create-enrollment-token --address <host> [--port N] [--prefix P] [--ttl 30d] \
     [--max-uses N] [--description S] [--embed-ca] [--no-credential]
 wazuh-manager-authd --list-enrollment-tokens | --revoke-enrollment-token <id> | --show-token[=<token>]
+wazuh-manager-authd --purge-enrollment-tokens [--all] [--force]
 ```
 
 The CLI (root, or the `wazuh-manager` group) prints the token alone on stdout and its id, endpoint,
@@ -242,6 +243,23 @@ state — `9022` unknown or revoked, `9023` expired, `9024` out of uses — and 
 creating the agent, releasing it if the `add` is refused. Revocation is idempotent, the token stays
 listed with `revoked: true`, and because the master re-checks on every `add` it takes effect at once,
 even through a worker whose replica the cluster has not refreshed yet.
+
+**Purging is not revoking.** A revoked token stays in the store, listed and auditable; a purged one is
+removed from the file. `--purge-enrollment-tokens` (`DELETE /agents/enrollment-tokens?status=dead`)
+removes only what can no longer authorise an enrollment — revoked, expired, or out of uses — and never
+a token that is merely unused: one minted this morning and not handed out yet is a live token, not a
+leftover. `--all` (`status=all`) empties the store instead, and asks for confirmation unless `--force`
+is given or there is no terminal to ask from. A purge that finds nothing to remove does not rewrite the
+file, so it does not make every node reload a store that has not changed. Like minting and revoking,
+purging is master-only (`9015` on a worker); the workers receive the pruned file through the cluster.
+
+**The store is bounded.** authd refuses to mint beyond 5000 tokens, and refuses before the file would
+grow past 7 MiB — one MiB under the 8 MiB above which remoted's replica stops accepting it, which would
+otherwise leave every node quietly enrolling against a stale set of tokens. Reaching either limit
+answers `9025` naming the purge. The count is about *usable* tokens: a mint that finds the store full
+purges the dead entries by itself and only refuses when 5000 tokens are genuinely in use, and a warning
+is logged from 80% of the cap onwards. A token measures about 240 bytes in the file, or 1.4 KB when it
+embeds the CA, so the byte ceiling is the one that binds a fleet minting `--embed-ca` tokens.
 
 ## Re-enrollment secret
 
@@ -325,6 +343,10 @@ A request is a single-line JSON object:
   "max_uses", "uses", "revoked", "credential", "description"}, …]}` — never the secret
 - **`token_revoke`** — arguments: `id` (required). Answers `{"error": 0, "data": {}}`; an unknown id
   answers `9022`
+- **`token_purge`** — arguments (all optional): `scope`, either `dead` (the default, and what a
+  request with no `arguments` at all asks for) or `all`. Answers
+  `{"error": 0, "data": {"removed": <n>, "remaining": <n>, "ids": ["<id>", …]}}`; any other scope
+  answers `9002`, and a worker `9015`
 
 A successful `add` responds with:
 

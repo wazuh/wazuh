@@ -336,6 +336,59 @@ def _case_ip_address_warns(sock, test_metadata, created_agents):
         f'authd minted a token for an IP address without warning about it ({IP_ADDRESS_WARNING})'
 
 
+def _case_purge_drops_the_unusable(sock, test_metadata, created_agents):
+    """A purge removes the tokens that can no longer enrol anybody, and only those.
+
+    Revoking and purging are different acts and this is where the difference shows on a running
+    manager: after a revoke the token is still in the file, marked; after a purge it is not in the
+    file at all, and the live token minted alongside it still is.
+    """
+    keep_text, _ = _mint_over_cli('--description', 'purge-keeps-me')
+    drop_text, _ = _mint_over_cli('--description', 'purge-takes-me')
+    keep_id, _ = utils.token_key_halves(utils.decode_token(keep_text))
+    drop_id, _ = utils.token_key_halves(utils.decode_token(drop_text))
+
+    assert utils.run_authd_cli(['--revoke-enrollment-token', drop_id]).returncode == 0
+
+    stored = {token['id'] for token in utils.read_store()['tokens']}
+    assert {keep_id, drop_id} <= stored, 'The store does not hold both tokens before the purge'
+
+    result = utils.run_authd_cli(['--purge-enrollment-tokens'])
+
+    assert result.returncode == 0, f'The CLI could not purge: {result.stderr}'
+    assert 'Removed' in result.stdout, f'The purge said nothing about what it removed: {result.stdout!r}'
+
+    stored = {token['id'] for token in utils.read_store()['tokens']}
+    assert drop_id not in stored, 'The revoked token survived the purge'
+    assert keep_id in stored, 'The purge took a token that was still usable'
+
+
+def _case_purge_all_empties_the_store(sock, test_metadata, created_agents):
+    """'--purge-enrollment-tokens --all --force' leaves an empty store the manager still reads.
+
+    The file has to stay valid: remoted reloads it as soon as it changes, and an empty store is a
+    manager that refuses every token, not one that fails to parse its own file.
+    """
+    _mint_over_cli('--description', 'purge-all-1')
+    _mint_over_cli('--description', 'purge-all-2')
+
+    assert len(utils.read_store()['tokens']) >= 2
+
+    # Without --force the CLI would ask, and there is no terminal here: that refusal is the point
+    # of the flag, and the case would hang without it.
+    result = utils.run_authd_cli(['--purge-enrollment-tokens', '--all', '--force'])
+
+    assert result.returncode == 0, f'The CLI could not empty the store: {result.stderr}'
+
+    store = utils.read_store()
+    assert store['tokens'] == [], f'The store is not empty after --all: {store}'
+    assert store['version'] == 1, 'The purge broke the store format'
+
+    # And the manager still answers on the socket with the file it just wrote.
+    listing = utils.authd_socket_request({'function': 'token_list'})
+    assert listing['error'] == 0 and listing['data'] == [], f'The listing does not match the store: {listing}'
+
+
 # One entry per case of cases_enrollment_token_master.yaml, keyed by its 'action'.
 CASES = {
     'socket_mint': _case_socket_mint,
@@ -345,6 +398,8 @@ CASES = {
     'add_consumes_then_revoke_blocks': _case_add_consumes_then_revoke_blocks,
     'refusals': _case_refusals,
     'ip_address_warns': _case_ip_address_warns,
+    'purge_drops_the_unusable': _case_purge_drops_the_unusable,
+    'purge_all_empties_the_store': _case_purge_all_empties_the_store,
 }
 
 
