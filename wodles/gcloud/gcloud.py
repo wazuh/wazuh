@@ -12,8 +12,6 @@ import tools
 import exceptions
 from sys import exit
 from os import cpu_count
-from buckets.access_logs import GCSAccessLogs
-from pubsub.subscriber import WazuhGCloudSubscriber
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -29,6 +27,8 @@ def main():
         num_processed_messages = 0
 
         if arguments.integration_type == "pubsub":
+            from pubsub.subscriber import WazuhGCloudSubscriber
+
             logger.info("Working with Google Cloud Pub/Sub")
             if arguments.subscription_id is None:
                 raise exceptions.GCloudError(1200)
@@ -76,6 +76,8 @@ def main():
             num_processed_messages = sum([future.result() for future in futures])
 
         elif arguments.integration_type == "access_logs":
+            from buckets.access_logs import GCSAccessLogs
+
             logger.info("Working with Google Cloud Access Logs")
             if not arguments.bucket_name:
                 raise exceptions.GCloudError(1103)

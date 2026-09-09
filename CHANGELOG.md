@@ -42,6 +42,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the `disable-account` active response returning success when the account command was missing or the system was not supported. ([#38645](https://github.com/wazuh/wazuh/pull/38645))
 - Fixed the gcloud wodle masking missing-dependency errors as an unrelated `AttributeError`. ([#38856](https://github.com/wazuh/wazuh/pull/38856))
 - Fixed process names truncated to fifteen characters in the syscollector inventory. ([#38969](https://github.com/wazuh/wazuh/pull/38969))
+- Fixed the gcloud wodle's Pub/Sub integration failing to start whenever the bucket integration's dependencies (e.g. `google-cloud-storage`) were broken, by deferring each integration's imports so a failure in one no longer blocks the other. ([#38868](https://github.com/wazuh/wazuh/pull/38868))
 
 ### Ruleset
 
