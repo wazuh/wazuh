@@ -77,7 +77,9 @@
         },
 
         "common":{
-            "active_response_polling": 30
+            "active_response_polling": 30,
+            "active_response_page_size": 1000,
+            "active_response_event_grace": 120
         },
         "communication":{
             "timeout_cluster_request": 20,

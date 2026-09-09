@@ -574,10 +574,12 @@ A new `intervals.common` block is introduced:
 
 ```json
 "common": {
-    "active_response_polling": 30
+    "active_response_polling": 30,
+    "active_response_page_size": 1000,
+    "active_response_event_grace": 120
 }
 ```
 
-This controls the polling interval (in seconds) for active-response status checks, shared across master and worker nodes.
+`active_response_polling` is how often, in seconds, every node reads new documents from `wazuh-active-responses*` to turn them into agent tasks; `active_response_page_size` is how many it reads at once, and `active_response_event_grace` how long a response may wait for its event to become visible. See [Active Response → Settings](../../ref/modules/active-response/architecture.md#settings).
 
 ---

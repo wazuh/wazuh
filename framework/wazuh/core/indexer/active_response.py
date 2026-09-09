@@ -8,6 +8,7 @@ import jsonschema
 import logging
 import os
 
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from time import perf_counter
@@ -30,14 +31,28 @@ AR_INDEX = "wazuh-active-responses*"
 #: never appears from freezing the cursor for the whole fleet.
 EVENT_VISIBILITY_GRACE_SECONDS = 120
 
+#: Documents read per polling cycle. Also the distance between two cursor writes.
+DEFAULT_PAGE_SIZE = 1000
+
 #: `WazuhError` code TaskManagerHTTPClient raises for a non-2xx answer -- the module received the
 #: request and refused it. Distinguished from every transport failure at the dispatch handler
 #: below, because a refusal is terminal for one document while a transport failure is not.
 HTTP_REJECTED_CODE = 2019
+
+#: The document contract, as the code depends on it. The readable version is the "Manager-side
+#: ingestion" section of docs/ref/modules/active-response/architecture.md; keep the two aligned.
 AR_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "properties": {
+        "event": {
+            "type": "object",
+            "properties": {
+                "index": {"type": "string", "minLength": 1},
+                "doc_id": {"type": "string", "minLength": 1},
+            },
+            "required": ["index", "doc_id"],
+        },
         "wazuh": {
             "type": "object",
             "properties": {
@@ -75,7 +90,10 @@ AR_SCHEMA = {
                             "if": {
                                 "properties": {"location": {"const": "defined-agent"}}
                             },
-                            "then": {"required": ["agent_id"]},
+                            "then": {
+                                "required": ["agent_id"],
+                                "properties": {"agent_id": {"type": "string", "minLength": 1}},
+                            },
                         },
                     ],
                 }
@@ -84,8 +102,42 @@ AR_SCHEMA = {
             "additionalProperties": True,
         }
     },
-    "required": ["wazuh"],
+    "required": ["event", "wazuh"],
     "additionalProperties": True,
+    # An absent key satisfies a `properties` clause, so the `if` states its own `required` at every
+    # level instead of relying on the ones above.
+    "allOf": [
+        {
+            "if": {
+                "required": ["wazuh"],
+                "properties": {
+                    "wazuh": {
+                        "required": ["active_response"],
+                        "properties": {
+                            "active_response": {
+                                "required": ["location"],
+                                "properties": {"location": {"const": "local"}},
+                            }
+                        },
+                    }
+                },
+            },
+            "then": {
+                "properties": {
+                    "wazuh": {
+                        "required": ["agent"],
+                        "properties": {
+                            "agent": {
+                                "type": "object",
+                                "required": ["id"],
+                                "properties": {"id": {"type": "string", "minLength": 1}},
+                            }
+                        },
+                    }
+                }
+            },
+        }
+    ],
 }
 
 
@@ -324,7 +376,10 @@ class ActiveResponseHelpers:
 
     @staticmethod
     async def fetch_active_response_docs(
-        bookmark: ActiveResponseBookmark, validate: bool = False, max: int = 1000
+        bookmark: ActiveResponseBookmark,
+        validate: bool = False,
+        max: int = DEFAULT_PAGE_SIZE,
+        discards: Optional[Counter] = None,
     ) -> List[Dict[str, Any]]:
         """Fetch active response documents incrementally from OpenSearch.
 
@@ -335,7 +390,9 @@ class ActiveResponseHelpers:
         validate : bool, optional
             Whether to validate documents against the JSON schema, by default False.
         max : int, optional
-            Maximum number of documents to retrieve, by default 1000.
+            Maximum number of documents to retrieve, by default DEFAULT_PAGE_SIZE.
+        discards : Optional[Counter], optional
+            Incremented under `invalid_schema` for every document validation rejects.
 
         Returns
         -------
@@ -408,10 +465,18 @@ class ActiveResponseHelpers:
                     jsonschema.validate(instance=doc["_source"], schema=AR_SCHEMA)
                 docs.append(doc)
             except jsonschema.ValidationError as e:
+                if discards is not None:
+                    discards["invalid_schema"] += 1
                 # Terminal: the document will never validate, so the page moves past it and the
                 # response is lost. Above debug level because that loss is silent otherwise.
+                # One line: the exception itself carries the whole schema and instance, up to 63
+                # lines for a failure at the root, and json_path is what names the field.
                 ActiveResponseHelpers.logger.warning(
-                    f"Discarding active response document `{doc['_id']}` (`{doc['_index']}`). Reason: {e})"
+                    f"Discarding active response document `{doc['_id']}` (`{doc['_index']}`). "
+                    f"Reason: {e.json_path}: {e.message}"
+                )
+                ActiveResponseHelpers.logger.debug(
+                    f"Validation report for `{doc['_id']}` (`{doc['_index']}`): {e}"
                 )
 
         return docs
@@ -460,7 +525,9 @@ class ActiveResponseHelpers:
             for index, doc_ids in docs_by_index.items():
                 resp = await client.mget(index=index, body={"ids": list(doc_ids)})
                 for event in resp.get("docs", []):
-                    if event.get("found"):
+                    # `found` without `_source` is an index that does not store it: the reference
+                    # then reads as not visible and expires with the grace window.
+                    if event.get("found") and "_source" in event:
                         idx = event["_index"]
                         doc_id = event["_id"]
                         events.setdefault(idx, {})[doc_id] = event["_source"]
@@ -474,6 +541,8 @@ class ActiveResponseBuilder:
         logger: logging.Logger,
         all_agents: Optional[List[str]] = None,
         bookmark_file: Optional[ActiveResponseBookmarkFile] = None,
+        page_size: Optional[int] = None,
+        event_grace: Optional[int] = None,
     ):
         """Initialize the AR builder.
 
@@ -485,14 +554,29 @@ class ActiveResponseBuilder:
             List of all agent IDs, by default None (retrieves automatically).
         bookmark_file : Optional[ActiveResponseBookmarkFile], optional
             Bookmark handler, by default None (creates new).
+        page_size : Optional[int], optional
+            Documents read per cycle, by default DEFAULT_PAGE_SIZE.
+        event_grace : Optional[int], optional
+            Seconds a response may wait for its event to become visible, by default
+            EVENT_VISIBILITY_GRACE_SECONDS.
         """
         self.logger = logger
+        self._page_size = page_size if page_size is not None else DEFAULT_PAGE_SIZE
+        self._event_grace = (
+            event_grace if event_grace is not None else EVENT_VISIBILITY_GRACE_SECONDS
+        )
         self._all_agents = (
             all_agents
             if all_agents is not None
             else ActiveResponseHelpers.get_all_agents()
         )
         self._ars: List[ActiveResponse] = []
+        #: Per-cycle accounting: every response read ends in exactly one of these, so
+        #: read == dispatched + held + sum(discards.values()).
+        self.read: Optional[int] = None
+        self.dispatched = 0
+        self.held = 0
+        self.discards: Counter = Counter()
         self._bookmark_file = (
             bookmark_file if bookmark_file is not None else ActiveResponseBookmarkFile()
         )
@@ -511,8 +595,9 @@ class ActiveResponseBuilder:
             The builder instance.
         """
         docs = await ActiveResponseHelpers.fetch_active_response_docs(
-            self._bookmark_file, validate=validate
+            self._bookmark_file, validate=validate, max=self._page_size, discards=self.discards
         )
+        self.read = len(docs) + self.discards["invalid_schema"]
         self._ars = [
             ActiveResponse(
                 doc_source=doc["_source"],
@@ -579,6 +664,7 @@ class ActiveResponseBuilder:
                 self.logger.debug(
                     f"Discarding active response `{ar.doc_id}`: its event reference is unusable."
                 )
+                self.discards["unusable_event_reference"] += 1
                 continue
 
             age = _ar_age_seconds(ar.doc_source)
@@ -591,7 +677,7 @@ class ActiveResponseBuilder:
             # would stop delivery for the whole fleet, so that one is dropped and said out loud. A
             # negative age is a document stamped ahead of this node's clock, which the query's upper
             # bound already excludes: it is not "written moments ago" and must not hold.
-            if age is not None and 0 <= age < EVENT_VISIBILITY_GRACE_SECONDS:
+            if age is not None and 0 <= age < self._event_grace:
                 if not holding:
                     holding = True
                     # One high-water mark cannot both hold here and clear the terminal documents
@@ -603,10 +689,11 @@ class ActiveResponseBuilder:
                     f"Expected event `{event_id}` (`{index_id}`) is not visible yet. "
                     f"Holding active response `{ar.doc_id}` and the rest of the page."
                 )
+                self.held += 1
                 continue
 
             reason = (
-                f"not found after {EVENT_VISIBILITY_GRACE_SECONDS}s"
+                f"not found after {self._event_grace}s"
                 if age is not None
                 else "not found, and the response carries no readable @timestamp"
             )
@@ -614,6 +701,7 @@ class ActiveResponseBuilder:
                 f"Expected event `{event_id}` (`{index_id}`) {reason}. "
                 f"Discarding active response `{ar.doc_id}`."
             )
+            self.discards["event_not_visible_expired"] += 1
 
         self._ars = ars_with_events
 
@@ -637,90 +725,126 @@ class ActiveResponseBuilder:
         # transport it holds, are built once instead of once per agent.
         with TaskManagerHTTPClient() as task_client:
             for ar in self._ars:
-                # Extract timestamp from AR document (for deterministic task ID)
-                timestamp_str = ar.doc_source.get("@timestamp")
-                if not timestamp_str:
-                    self.logger.warning(
-                        f"AR document {ar.doc_id} missing @timestamp, skipping"
-                    )
-                    continue
-
-                # Convert ISO8601 timestamp to Unix timestamp
                 try:
-                    dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-                    create_time = int(dt.timestamp())
-                except (ValueError, AttributeError) as e:
-                    self.logger.error(
-                        f"Failed to parse @timestamp '{timestamp_str}' from AR {ar.doc_id}: {e}"
-                    )
-                    continue
+                    # Extract timestamp from AR document (for deterministic task ID)
+                    timestamp_str = ar.doc_source.get("@timestamp")
+                    if not timestamp_str:
+                        self.logger.warning(
+                            f"AR document {ar.doc_id} missing @timestamp, skipping"
+                        )
+                        self.discards["unparseable_timestamp"] += 1
+                        continue
 
-                # Build payload (merge AR source with event if available)
-                payload = dict(ar.doc_source)
-                if ar.event:
-                    wazuh = ar.doc_source.get("wazuh", {}).copy()
-                    event_wazuh = ar.event.get("wazuh", {})
-                    payload = {**ar.doc_source, **ar.event}
-                    payload["wazuh"] = {**event_wazuh, **wazuh}
-
-                # Dispatch to each target agent
-                for agent_id in ar.target_agents(self._all_agents):
+                    # Convert ISO8601 timestamp to Unix timestamp
                     try:
-                        self.logger.debug(
-                            f"Creating task for agent `{agent_id}` (AR {ar.doc_id})"
+                        dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                        create_time = int(dt.timestamp())
+                    except (ValueError, AttributeError) as e:
+                        self.logger.error(
+                            f"Failed to parse @timestamp '{timestamp_str}' from AR {ar.doc_id}: {e}"
                         )
+                        self.discards["unparseable_timestamp"] += 1
+                        continue
 
-                        # The Task Manager answers 2xx with a task id and raises on anything else, so
-                        # there is no status member to inspect: reaching the next line means the row
-                        # exists. source_id is the AR document id, mixed into the deterministic task id
-                        # so the same alert produces the same task on any cluster node.
-                        response = task_client.create_task(
-                            agent_id=agent_id,
-                            task_type="active_response",
-                            create_time=create_time,
-                            payload=payload,
-                            source_id=ar.doc_id,
+                    # Build payload (merge AR source with event if available)
+                    payload = dict(ar.doc_source)
+                    if ar.event:
+                        wazuh = ar.doc_source.get("wazuh", {}).copy()
+                        event_wazuh = ar.event.get("wazuh", {})
+                        payload = {**ar.doc_source, **ar.event}
+                        payload["wazuh"] = {**event_wazuh, **wazuh}
+
+                    # Dispatch to each target agent
+                    targets = ar.target_agents(self._all_agents)
+                    if not targets:
+                        self.logger.warning(
+                            f"Active response `{ar.doc_id}` targets no agent. Discarding it."
                         )
+                        self.discards["zero_targets"] += 1
+                        continue
 
-                        self.logger.debug(
-                            f"Created task {response.get('task_id')} for agent {agent_id}"
-                        )
-                        msgs_sent += 1
-
-                    # WazuhException, not WazuhError: the two are siblings under it, and the
-                    # client raises both. Catching the narrow one let a dead Task Manager escape
-                    # the whole loop, which aborted the cycle from that response on.
-                    #
-                    # THE SPLIT BELOW IS THE CURSOR CONTRACT'S HALF OF THE WORK, and it had to be
-                    # rewritten when this stopped being a framed socket. WazuhSocketJSON with
-                    # receive(raw=True) never raised for a task the module REFUSED -- that arrived
-                    # as `status != "ok"` in the body -- so everything reaching the handler was
-                    # transport and a blanket `transport_failed = True` was right.
-                    # TaskManagerHTTPClient raises on a non-2xx instead, so a permanently invalid
-                    # document (a payload over the cap, a timestamp outside the admission window)
-                    # now lands here too. Holding the page for one of those would freeze the cursor
-                    # on it for as long as the document exists -- the exact failure the contract
-                    # below says was already fixed once.
-                    #
-                    # So: 2019 is the module answering and refusing, which is terminal for THIS
-                    # document and must let the page advance past it. Everything else -- every
-                    # WazuhInternalError (2018 construct, 2020 timeout, 2021 connect, 2022
-                    # unparseable) and WazuhError 2013 (send failed) -- says nothing about this
-                    # response and will resolve on its own, so the page is held and read again.
-                    except WazuhException as e:
-                        if isinstance(e, WazuhError) and e.code == HTTP_REJECTED_CODE:
-                            self.logger.error(
-                                f"Task Manager refused the task for agent `{agent_id}`: {e}"
-                            )
-                        else:
-                            transport_failed = True
-                            self.logger.error(
-                                f"Failed to create task for agent `{agent_id}`: {e}"
+                    created = 0
+                    unreachable = False
+                    for agent_id in targets:
+                        try:
+                            self.logger.debug(
+                                f"Creating task for agent `{agent_id}` (AR {ar.doc_id})"
                             )
 
-        self.logger.info(
-            f"Created {msgs_sent} task(s) from {len(self._ars)} active response(s)."
-        )
+                            # The Task Manager answers 2xx with a task id and raises on anything else, so
+                            # there is no status member to inspect: reaching the next line means the row
+                            # exists. source_id is the AR document id, mixed into the deterministic task id
+                            # so the same alert produces the same task on any cluster node.
+                            response = task_client.create_task(
+                                agent_id=agent_id,
+                                task_type="active_response",
+                                create_time=create_time,
+                                payload=payload,
+                                source_id=ar.doc_id,
+                            )
+
+                            self.logger.debug(
+                                f"Created task {response.get('task_id')} for agent {agent_id}"
+                            )
+                            created += 1
+
+                        # WazuhException, not WazuhError: the two are siblings under it, and the
+                        # client raises both. Catching the narrow one let a dead Task Manager escape
+                        # the whole loop, which aborted the cycle from that response on.
+                        #
+                        # THE SPLIT BELOW IS THE CURSOR CONTRACT'S HALF OF THE WORK, and it had to be
+                        # rewritten when this stopped being a framed socket. WazuhSocketJSON with
+                        # receive(raw=True) never raised for a task the module REFUSED -- that arrived
+                        # as `status != "ok"` in the body -- so everything reaching the handler was
+                        # transport and a blanket `transport_failed = True` was right.
+                        # TaskManagerHTTPClient raises on a non-2xx instead, so a permanently invalid
+                        # document (a payload over the cap, a timestamp outside the admission window)
+                        # now lands here too. Holding the page for one of those would freeze the cursor
+                        # on it for as long as the document exists -- the exact failure the contract
+                        # below says was already fixed once.
+                        #
+                        # So: 2019 is the module answering and refusing, which is terminal for THIS
+                        # document and must let the page advance past it. Everything else -- every
+                        # WazuhInternalError (2018 construct, 2020 timeout, 2021 connect, 2022
+                        # unparseable) and WazuhError 2013 (send failed) -- says nothing about this
+                        # response and will resolve on its own, so the page is held and read again.
+                        except WazuhException as e:
+                            if isinstance(e, WazuhError) and e.code == HTTP_REJECTED_CODE:
+                                self.logger.error(
+                                    f"Task Manager refused the task for agent `{agent_id}`: {e}"
+                                )
+                            else:
+                                transport_failed = True
+                                unreachable = True
+                                self.logger.error(
+                                    f"Failed to create task for agent `{agent_id}`: {e}"
+                                )
+
+                    msgs_sent += created
+                    if created:
+                        self.dispatched += 1
+                    elif unreachable:
+                        self.held += 1
+                    else:
+                        self.discards["task_manager_refused"] += 1
+                # Terminal: the document raised on its own shape, so it can never succeed and the
+                # page advances past it. Cannot mask transport_failed: the handler above does not
+                # re-raise, so nothing from create_task() reaches here.
+                except Exception as e:
+                    self.logger.warning(
+                        f"Discarding active response document `{ar.doc_id}`: unusable shape "
+                        f"({type(e).__name__}: {e})."
+                    )
+                    self.discards["unusable_shape"] += 1
+
+        read = self.read if self.read is not None else len(self._ars)
+        summary = f"Created {msgs_sent} task(s) for {self.dispatched} of {read} active response(s) read."
+        if self.held:
+            summary += f" Held: {self.held}."
+        if self.discards:
+            losses = ", ".join(f"{reason}={n}" for reason, n in sorted(self.discards.items()))
+            summary += f" Discarded: {losses}."
+        self.logger.info(summary)
 
         # THE CURSOR CONTRACT, in one place. The bookmark is a high-water mark of what was READ,
         # not of what was delivered, and it moves once per page rather than once per active
@@ -774,13 +898,39 @@ class ActiveResponseFetchTask:
         self.logger = server.logger.getChild("ar")
         self.logger.addFilter(ClusterFilter(tag=server.tag, subtag="Active Response"))
 
-        self.polling_interval: int = (
-            server.cluster_items.get("intervals", {})
-            .get("common", {})
-            .get(
-                "active_response_polling",
-                self.DEFAULT_POLLING_INTERVAL,
+        common = server.cluster_items.get("intervals", {}).get("common", {})
+        defaults = {
+            "active_response_polling": self.DEFAULT_POLLING_INTERVAL,
+            "active_response_page_size": DEFAULT_PAGE_SIZE,
+            "active_response_event_grace": EVENT_VISIBILITY_GRACE_SECONDS,
+        }
+        missing = [key for key in defaults if key not in common]
+        if missing:
+            self.logger.warning(
+                f"Missing in cluster configuration (intervals.common): {', '.join(missing)}. "
+                f"Using defaults: {', '.join(f'{key}={defaults[key]}' for key in missing)}."
             )
+        settings = {**defaults, **{key: common[key] for key in defaults if key in common}}
+
+        def bounded(key: str, valid, what: str) -> int:
+            value = settings[key]
+            if valid(value):
+                return value
+            self.logger.warning(
+                f"{key} must be {what}, got {value!r}. Using default: {defaults[key]}."
+            )
+            return defaults[key]
+
+        self.polling_interval: int = bounded(
+            "active_response_polling", lambda v: isinstance(v, int) and v >= 1, "a positive integer"
+        )
+        self.page_size: int = bounded(
+            "active_response_page_size", lambda v: isinstance(v, int) and v >= 1, "a positive integer"
+        )
+        self.event_grace: int = bounded(
+            "active_response_event_grace",
+            lambda v: isinstance(v, int) and v >= 0,
+            "a non-negative integer",
         )
         ActiveResponseHelpers.logger = self.logger
 
@@ -793,7 +943,9 @@ class ActiveResponseFetchTask:
             If there is a connection issue with the indexer.
         """
         try:
-            builder = ActiveResponseBuilder(logger=self.logger)
+            builder = ActiveResponseBuilder(
+                logger=self.logger, page_size=self.page_size, event_grace=self.event_grace
+            )
             await builder.fetch_ars(validate=True)
             await builder.enrich_ar_with_events_info()
             builder.dispatch()
