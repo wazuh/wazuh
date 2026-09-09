@@ -276,9 +276,9 @@ static void test_ssl_absent_keeps_the_default_the_caller_set(void **state) {
 
     /* The parser never invents a verification mode -- with no <ssl> block, the
      * value the caller came in with is still there afterwards. This is what lets
-     * ClientConf() own the actual default (resolved from AGENT_VERIFY_UNSET to
-     * system or certificate once parsing finishes) instead of the parser guessing
-     * one on its own. */
+     * ClientConf() own the actual default (w_agent_resolve_ssl_posture() settles
+     * AGENT_VERIFY_UNSET once parsing finishes, reading the trust anchor on disk as
+     * well as the block) instead of the parser guessing one on its own. */
     const char *xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>";
 
     memset(&cfg, 0, sizeof(cfg));

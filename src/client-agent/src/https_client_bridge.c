@@ -1603,7 +1603,7 @@ static int bridge_map_verify_mode(int agent_verify_mode)
     case AGENT_VERIFY_SYSTEM:
         return HC_VERIFY_SYSTEM;
     case AGENT_VERIFY_UNSET:
-        // ClientConf() always resolves this to system or certificate before returning;
+        // ClientConf() always resolves this to full, certificate or system before returning;
         // reaching here means some other path built agt->ssl without going through that
         // resolution step. Fail closed the same as an unrecognized value would, but say
         // so loudly instead of silently blending into the FULL default below.

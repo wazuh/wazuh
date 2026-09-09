@@ -711,6 +711,17 @@ if ([string]::IsNullOrEmpty($ssl_verification_mode)) {
 # to hand-edit ossec.conf.
 $default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
 
+# Same path as AGENT_ANCHOR_CA (src/shared/include/defs.h), which the agent now reads
+# directly: since #39025 a present, readable file here IS the verification state, so the
+# resolution this gate mirrors above is no longer the one the upgraded binary will apply:
+# an unset <verification_mode> resolves to 'full' with the anchor present and 'none' without
+# it, never to this gate's 'system'. Reconciling them is #38949 question 6; no verdict below
+# was changed for it.
+
+if (Test-Path -PathType Leaf $default_ca_file) {
+    write-output "$(Get-Date -format u) - A trust anchor is present at $($default_ca_file). Since #39025 the upgraded agent treats it as the verification state, so it may verify with 'full' against that file whatever <ssl><verification_mode> says below; an explicit 'certificate' or 'system' still wins." >> .\upgrade\upgrade.log
+}
+
 if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certificate") {
     if ([string]::IsNullOrEmpty($ssl_ca) -or -Not (Test-Path -PathType Leaf $ssl_ca)) {
         write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is '$($ssl_verification_mode)' but <certificate_authorities> ('$($ssl_ca)') is missing or unreadable, interrupting upgrade." >> .\upgrade\upgrade.log
@@ -755,7 +766,8 @@ if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certific
         abort_upgrade "2"
     }
 } elseif ($ssl_verification_mode -ceq "none") {
-    # Explicitly disabled -- nothing for this gate to check.
+    # Nothing for this gate to check: 'none' needs no CA and reaches no trust store. It is
+    # also the row the anchor overrides outright, which the log above covers.
 } else {
     # Neither ReadConfig() nor this gate's own default-resolution above can produce
     # anything but full/certificate/system/none, so getting here means ossec.conf carries

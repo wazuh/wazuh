@@ -35,10 +35,17 @@ typedef struct agent_server {
  * FULL/CERT/NONE/SYSTEM mirror the module ABI's hc_verify_mode_t (bridge_map_verify_mode()
  * translates between them explicitly, so the two enums are free to diverge). UNSET is
  * agent-config-only: it never reaches the bridge, and only ever exists between ClientConf()
- * setting it and ClientConf() resolving it once <ssl> has been parsed -- to
+ * setting it and w_agent_resolve_ssl_posture() resolving it once <ssl> has been parsed -- to
  * AGENT_VERIFY_CERT when <certificate_authorities> was configured without an explicit
- * <verification_mode> (mirrors the manager's own inference, remote-config.c), otherwise to
- * AGENT_VERIFY_SYSTEM, so a default install verifies without requiring any <ssl> block. */
+ * <verification_mode> (mirrors the manager's own inference, remote-config.c), to
+ * AGENT_VERIFY_FULL when the trust anchor AGENT_ANCHOR_CA is on disk, otherwise to
+ * AGENT_VERIFY_NONE -- an install given no trust material has nothing to verify against, and
+ * AGENT_VERIFY_SYSTEM would only refuse to connect to a manager holding its own root-ca.pem.
+ * AGENT_VERIFY_SYSTEM is reached only when <ssl> asks for it by name.
+ *
+ * That resolver also makes one transition that does not start from UNSET, and it is the only
+ * place an explicit operator choice is overridden: AGENT_VERIFY_NONE becomes
+ * AGENT_VERIFY_FULL when the anchor is present (#38940 requirement 13, logged as (4122)). */
 typedef enum agent_verify_mode_t {
     AGENT_VERIFY_FULL = 0,   ///< Verify peer against the CA and check the hostname.
     AGENT_VERIFY_CERT = 1,   ///< Verify peer against the CA only.
@@ -52,7 +59,11 @@ typedef struct agent_ssl {
     char * certificate;             ///< <certificate>: optional client (mTLS) certificate.
     char * key;                     ///< <key>: optional client (mTLS) private key.
     char * certificate_authorities; ///< <certificate_authorities>: CA bundle used to verify the manager.
-    int verification_mode;          ///< <verification_mode>: agent_verify_mode_t; default SYSTEM.
+                                    ///< Written by w_agent_resolve_ssl_posture() too, which defaults it
+                                    ///< to AGENT_ANCHOR_CA for a verifying mode that configured no CA.
+    int verification_mode;          ///< <verification_mode>: agent_verify_mode_t. Resolved by
+                                    ///< w_agent_resolve_ssl_posture(): SYSTEM with nothing else
+                                    ///< configured, FULL when a trust anchor is present.
     char * ciphers;                 ///< <ciphers>: optional cipher list.
 } agent_ssl;
 

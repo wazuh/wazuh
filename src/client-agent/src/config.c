@@ -56,11 +56,9 @@ int ClientConf(const char *cfgfile)
     agt->main_ip_update_interval = 0;
     agt->server_count = 0;
 
-    /* Resolved after parsing, once we know whether <certificate_authorities> was set:
-     * SYSTEM by default (verifies without requiring any <ssl> block, e.g. against
-     * cloud.wazuh.com's publicly-trusted certificate), or CERT when a CA was pinned
-     * without an explicit <verification_mode>. Never left UNSET past this function
-     * returning -- see the resolution below, after both ReadConfig() calls. */
+    /* Left UNSET so w_agent_resolve_ssl_posture() can tell "the operator said nothing" from
+     * "the operator said none", which decide different things. Never left UNSET past this
+     * function returning -- see the call at the end. */
     agt->ssl.verification_mode = AGENT_VERIFY_UNSET;
 
     /* <config_report> ships enabled: the manager needs the periodic /config snapshot
@@ -122,28 +120,117 @@ int ClientConf(const char *cfgfile)
     }
 #endif
 
-    /* verification_mode is still UNSET whenever ossec.conf didn't set it explicitly --
-     * the shared remote config never reaches this point at all: Read_Agent_Shared()
-     * (dispatched above for AGENTCONFIG) only recognizes <batch>/force_reconnect_interval
-     * under <agent> and rejects everything else, <ssl> included, so a centrally-managed
-     * fleet cannot set verification_mode/certificate_authorities via shared config today.
-     * Mirrors the manager's own inference (remote-config.c): a pinned CA without an
-     * explicit mode means the operator wants it verified, not silently unused. */
-    if (agt->ssl.verification_mode == AGENT_VERIFY_UNSET) {
-        /* A present-but-empty <certificate_authorities/> (or <certificate_authorities>
-         * </certificate_authorities>) is not a real CA -- w_agent_validate_ssl_ca() will
-         * still fail closed on it either way, but resolving to 'certificate' here would
-         * warn that a CA is "configured" when none actually was. */
-        if (agt->ssl.certificate_authorities != NULL && *agt->ssl.certificate_authorities != '\0') {
-            mwarn("The '<ssl><certificate_authorities>' option is configured but "
-                  "'<verification_mode>' is not; defaulting '<verification_mode>' to 'certificate'.");
-            agt->ssl.verification_mode = AGENT_VERIFY_CERT;
-        } else {
-            agt->ssl.verification_mode = AGENT_VERIFY_SYSTEM;
-        }
-    }
+    /* Last, so it sees everything ossec.conf had to say about <ssl>. Deliberately below the
+     * ATAMPERING read above rather than beside the CCLIENT one: a resolver that ran before a
+     * path which can still return OS_INVALID would leave "resolved" and "ClientConf
+     * succeeded" as separate facts, and the only net under that mistake is
+     * bridge_map_verify_mode()'s UNSET guard. */
+    w_agent_resolve_ssl_posture(agt);
 
     return (1);
+}
+
+/* Settles what the agent will actually do about TLS, from two inputs: what <ssl> said, and
+ * whether a usable trust anchor is on disk (#38940 requirements 4 and 13). There is no
+ * single default any more -- it is a ladder, and 'none' is only its last rung:
+ *
+ *     explicit <verification_mode>                 -> honoured
+ *     explicit <certificate_authorities>, no mode  -> certificate (mirrors remote-config.c)
+ *     anchor file present, no mode                 -> full, the anchor is the CA
+ *     nothing at all                               -> none, nothing to verify against
+ *
+ * That last rung is 'none' rather than 'system' because on a stock install there is nothing
+ * for the OS trust store to succeed against: the manager's certificate is signed by its own
+ * root-ca.pem, which is in no OS store, so 'system' could only ever refuse to connect -- and
+ * on a Linux host with no OS bundle at all it refuses to even start, (4121). An install that
+ * has been given no trust material verifies nothing and says so, per #38940 requirement 5
+ * and section 3.1 of the solution document; an install that has been given the anchor takes
+ * the rung above and verifies. 'system' stays available, as an explicit choice for a fleet
+ * whose manager is fronted by a publicly trusted certificate.
+ *
+ * The anchor also overrides an explicit 'none': a configuration-management template that
+ * writes none -- which is what every current Ansible and Puppet role does -- must not be
+ * able to turn verification off on a host that holds an anchor and can therefore verify.
+ * That override logs at error level and never refuses to start: taking a host off the air
+ * is the wrong answer to a careless template, and the security property is the same either
+ * way. An explicit 'certificate' or 'system' still wins, so a corporate-PKI fleet is not
+ * forced onto the anchor.
+ *
+ * Shared configuration cannot reach any of this: Read_Agent_Shared() recognizes only
+ * <batch>/force_reconnect_interval under <agent> and rejects <ssl> outright, so the manager
+ * cannot push a verification posture. That restriction is intentional and is preserved.
+ *
+ * Runs once, here. An anchor written afterwards -- by a bootstrap that fetched it from the
+ * manager, say -- is invisible until reloadAgent() re-runs ClientConf() from scratch, so a
+ * future caller must either sequence its write before this point or call this again
+ * (#39026, #39027). Idempotent, so calling it twice is safe. */
+void w_agent_resolve_ssl_posture(agent *cfg)
+{
+    /* Probed once, up front, and reused: every branch below needs the same answer, and one
+     * discarded open on the 'system' path is cheaper than reasoning about how many times
+     * this ran. w_is_file() is an openability check -- the same probe
+     * w_agent_validate_ssl_ca() already applies to a configured CA -- so "usable" here means
+     * no more than "present and readable by whoever is running". A malformed, truncated or
+     * expired anchor still counts as present and is caught later, by the transport module's
+     * own validation and then by the handshake; detecting it here is #38949 question 10.
+     * Note the euid difference that comes with that: this runs as root, before the privilege
+     * drop, while the module opens the same file as the wazuh user on every request, so an
+     * anchor readable here is not necessarily readable there (#38949 questions 4 and 8). */
+    const bool anchor = w_is_file(AGENT_ANCHOR_CA) != 0;
+
+    /* A present-but-empty <certificate_authorities/> (or <certificate_authorities>
+     * </certificate_authorities>) is not a real CA -- w_agent_validate_ssl_ca() will still
+     * fail closed on it either way, but treating it as configured here would warn that a CA
+     * is set when none actually was, and would block the anchor from filling the gap. */
+    bool ca_set = cfg->ssl.certificate_authorities != NULL && *cfg->ssl.certificate_authorities != '\0';
+
+    if (cfg->ssl.verification_mode == AGENT_VERIFY_UNSET) {
+        if (ca_set) {
+            mwarn("The '<ssl><certificate_authorities>' option is configured but "
+                  "'<verification_mode>' is not; defaulting '<verification_mode>' to 'certificate'.");
+            cfg->ssl.verification_mode = AGENT_VERIFY_CERT;
+        } else if (anchor) {
+            cfg->ssl.verification_mode = AGENT_VERIFY_FULL;
+        } else {
+            cfg->ssl.verification_mode = AGENT_VERIFY_NONE;
+        }
+    } else if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE && anchor) {
+        merror(AG_SSL_ANCHOR_OVERRIDES_NONE, AGENT_ANCHOR_CA);
+        cfg->ssl.verification_mode = AGENT_VERIFY_FULL;
+
+        /* Whatever path 'none' was carrying is dropped in favour of the anchor, readable or
+         * not. Under 'none' it was never going to be read, so nothing has ever proved it
+         * usable -- and keeping it would turn this override into a (4118) refusal to start,
+         * which is precisely the outcome requirement 13 rules out. That is also why this row
+         * and its verifying-mode counterpart end differently: an unreadable CA under 'full'
+         * still refuses, because there requirement 13 does not apply and a named (4118) beats
+         * silently verifying against a CA the operator never asked for.
+         *
+         * Say so when a path is actually being discarded: otherwise the agent reports 'full'
+         * plus a CA nobody configured, and the operator's own path leaves no trace. */
+        if (ca_set) {
+            mwarn(AG_SSL_ANCHOR_IGNORES_CA, cfg->ssl.certificate_authorities, AGENT_ANCHOR_CA);
+        }
+
+        ca_set = false;
+    }
+
+    /* The anchor is the default <certificate_authorities>: one rule, rather than a special
+     * case per mode. An explicit path wins in every verifying mode -- but not under 'none',
+     * which dropped its own path above rather than refuse to start. 'system' is excluded on
+     * purpose -- it
+     * trusts the OS store instead of a file, and a CA set alongside it is a hard (4120)
+     * refusal, so injecting here would refuse to start every agent that holds an anchor.
+     * 'none' cannot reach this either: with an anchor it became 'full' above, and without
+     * one there is nothing to inject. */
+    if ((cfg->ssl.verification_mode == AGENT_VERIFY_FULL || cfg->ssl.verification_mode == AGENT_VERIFY_CERT)
+            && !ca_set && anchor) {
+        /* os_free() first: os_strdup() overwrites the pointer without releasing it, and an
+         * empty <certificate_authorities/> left a real allocation behind. Heap, never the
+         * constant itself -- Free_Agent() frees this field. */
+        os_free(cfg->ssl.certificate_authorities);
+        os_strdup(AGENT_ANCHOR_CA, cfg->ssl.certificate_authorities);
+    }
 }
 
 /* Both agentd and the Windows agent gate startup on this, at the point where each can
@@ -171,10 +258,11 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
      * known OS bundle is found (moduleConfig.cpp's validateTls), mirroring this same check
      * one layer up so a bad config is caught before the module ever spins up threads. */
     if (cfg->ssl.verification_mode == AGENT_VERIFY_SYSTEM) {
-        /* A present-but-empty <certificate_authorities/> is not a real CA -- ClientConf()'s
-         * own UNSET-resolution above already treats it that way (resolving to 'system'
-         * instead of 'certificate'), so this check has to agree, or that exact shape
-         * resolves to 'system' and then refuses to start over a CA that isn't really set. */
+        /* A present-but-empty <certificate_authorities/> is not a real CA --
+         * w_agent_resolve_ssl_posture() already treats it that way (it does not infer
+         * 'certificate' from it), so this check has to agree, or an operator who reaches
+         * 'system' with that exact shape is refused a start over a CA that isn't really
+         * set. */
         if (ca && *ca != '\0') {
             merror(AG_SSL_CA_FORBIDDEN_SYSTEM, ca);
             return false;

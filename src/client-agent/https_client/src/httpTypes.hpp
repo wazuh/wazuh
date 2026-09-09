@@ -142,12 +142,22 @@ inline int toHcResult(OutcomeClass outcome)
     }
 }
 
+/// HTTP verb for one HttpRequestSpec. Every endpoint so far has been a POST,
+/// so this stays a minimal two-value switch rather than a full verb set.
+enum class HttpMethod
+{
+    Post, ///< The long-standing default: a fixed-size or streamed body.
+    Get   ///< No body; CurlPerformer sends CURLOPT_HTTPGET instead.
+};
+
 /// One signed HTTP attempt, as handed to the performer. TLS settings and the
 /// base URL are the performer's own configuration; the spec carries only the
 /// per-request data.
 struct HttpRequestSpec
 {
     std::string target;                ///< e.g. "/stateless" (also the MAC'd target).
+    HttpMethod method {HttpMethod::Post}; ///< Defaults to POST so every pre-existing caller
+    ///< (which never sets this) keeps behaving unchanged.
     std::string contentType;           ///< Emitted as Content-Type when non-empty; empty
     ///< leaves libcurl's default (non-JSON endpoints).
     std::vector<std::string> headers;  ///< Extra headers (auth headers included).

@@ -149,6 +149,14 @@ bool CurlPerformer::configureBody(ICurlHandle& handle, const HttpRequestSpec& sp
 {
     *fileOut = nullptr;
 
+    if (spec.method == HttpMethod::Get)
+    {
+        // No body on GET, by contract: callers must not set bodyFilePath/body for a GET
+        // spec -- this layer does not validate that.
+        handle.setOptionLong(CurlOption::Get, 1L);
+        return true;
+    }
+
     if (spec.bodyFilePath.empty())
     {
         // In-memory body: a fixed-size POST.
