@@ -201,7 +201,9 @@ static void test_no_ssl_block_with_anchor_resolves_to_full(void **state) {
     assert_string_equal(agt->ssl.certificate_authorities, AGENT_ANCHOR_CA);
 }
 
-static void test_explicit_none_with_anchor_is_overridden_to_full(void **state) {
+/* A real anchor on disk and an explicit 'none' in ossec.conf: the file is not an override,
+ * so disabling verification needs no second step. */
+static void test_explicit_none_with_anchor_is_kept(void **state) {
     (void) state;
 
     write_conf(
@@ -210,8 +212,8 @@ static void test_explicit_none_with_anchor_is_overridden_to_full(void **state) {
     );
 
     assert_int_equal(ClientConf(test_conf_path), 1);
-    assert_int_equal(agt->ssl.verification_mode, AGENT_VERIFY_FULL);
-    assert_string_equal(agt->ssl.certificate_authorities, AGENT_ANCHOR_CA);
+    assert_int_equal(agt->ssl.verification_mode, AGENT_VERIFY_NONE);
+    assert_null(agt->ssl.certificate_authorities);
 }
 
 /* Also the guard against injecting the constant itself: teardown's Free_Agent() would
@@ -257,7 +259,7 @@ int main(void) {
          * inside one cannot leave it behind for a test that expects it gone. */
         cmocka_unit_test_setup_teardown(test_no_ssl_block_with_anchor_resolves_to_full,
                                         setup_agent_with_anchor, teardown_agent_with_anchor),
-        cmocka_unit_test_setup_teardown(test_explicit_none_with_anchor_is_overridden_to_full,
+        cmocka_unit_test_setup_teardown(test_explicit_none_with_anchor_is_kept,
                                         setup_agent_with_anchor, teardown_agent_with_anchor),
         cmocka_unit_test_setup_teardown(test_explicit_full_without_ca_gets_the_anchor,
                                         setup_agent_with_anchor, teardown_agent_with_anchor),

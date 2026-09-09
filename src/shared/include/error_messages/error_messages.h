@@ -296,8 +296,6 @@
 #define AG_INV_SSL_CA      "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> is missing or unreadable: '%s'."
 #define AG_SSL_CA_FORBIDDEN_SYSTEM "(4120): <ssl><verification_mode> is 'system' but <certificate_authorities> is set: '%s'. Remove it, or choose a different verification_mode; the OS trust store is used instead."
 #define AG_SSL_SYSTEM_NO_BUNDLE    "(4121): <ssl><verification_mode> is 'system' but no OS CA bundle was found on this host."
-#define AG_SSL_ANCHOR_OVERRIDES_NONE "(4122): <ssl><verification_mode> is 'none' but the trust anchor '%s' is present and readable: " \
-                                     "verifying with 'full' against it instead. Remove the anchor file to disable verification."
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."
