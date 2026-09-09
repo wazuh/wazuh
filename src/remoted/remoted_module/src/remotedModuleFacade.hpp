@@ -184,6 +184,38 @@ public:
         m_running = true;
     }
 
+    /**
+     * @brief Whether `remote.https.ca_certificate` signs the certificate the listener serves.
+     *
+     * Reads the SAME snapshot `GET /cacerts` consults, rather than re-deriving the answer: the
+     * certificate monitor already re-evaluates it on a timer, so a rotated CA is picked up here
+     * too, and the two consumers can never disagree about the same file.
+     *
+     * Exported to C (remoted_module_tls_ca_matches_leaf()) for remoted's legacy task poller, which
+     * must not hand a pre-v5.0.0 agent an anchor that cannot chain to this listener -- an agent
+     * that pins one fails every handshake afterwards, which is worse than having no anchor.
+     *
+     * @return 1 signs it, 0 explicitly does not, -1 unknown (listener down, never evaluated, or the
+     *         CA file was unreadable at the last tick). Callers must treat -1 as "proceed", the same
+     *         way the /cacerts route does: refusing on unknown turns one transient read failure into
+     *         a fleet-wide loss of the trust bootstrap.
+     */
+    int tlsCaMatchesLeaf()
+    {
+        std::lock_guard<std::mutex> lock {m_publicDiagMutex};
+        const auto server = m_publicDiagTarget.lock();
+        if (!server)
+        {
+            return -1;
+        }
+        const auto status = server->certificateStatus();
+        if (!status.caMatchesLeaf.has_value())
+        {
+            return -1;
+        }
+        return *status.caMatchesLeaf ? 1 : 0;
+    }
+
     void stop()
     {
         std::thread workerToJoin;

@@ -117,6 +117,11 @@
               "default": true,
               "description": "Start the legacy listener."
             },
+            "ca_delivery": {
+              "type": "boolean",
+              "default": true,
+              "description": "Send the manager's CA certificate to a pre-v5.0.0 agent over the WPK transfer channel during a remote upgrade, so the upgraded agent has a trust anchor. Disable when a corporate PKI or a configuration-management tool distributes the anchor instead."
+            },
             "port": {
               "allOf": [
                 {

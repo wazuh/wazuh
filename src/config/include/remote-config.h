@@ -98,6 +98,16 @@ typedef struct _remoted {
 
     bool allow_higher_versions;
     bool legacy_enabled; ///< Whether remote.legacy.enabled is true
+    /**
+     * @brief Whether remote.legacy.ca_delivery is true (default) -- send the manager's CA to a
+     *        pre-v5.0.0 agent over the WPK transfer channel, ahead of the `upgrade` command.
+     *
+     * Read by remoted's own legacy task poller and by nothing else, so a change takes effect on a
+     * remoted restart alone. `legacy_enabled` and `https.verification_mode` are NOT like that:
+     * modulesd caches them at start for the upgrade delivery gates (wm_task_manager_read_remoted()),
+     * so those two need both daemons restarted. Worth keeping straight -- they sit in the same block.
+     */
+    bool legacy_ca_delivery;
 
     int tcp_sock;       ///< This socket is used to receive requests over TCP
     int udp_sock;       ///< This socket is used to receive requests over UDP

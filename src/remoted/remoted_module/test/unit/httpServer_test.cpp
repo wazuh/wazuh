@@ -49,6 +49,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <vector>
 
 using namespace remoted::http;
 
@@ -714,6 +715,104 @@ TEST(TlsCertificateStatusTest, CaSignsLeafUnreadable)
     }
     EXPECT_TRUE(loadCertificates(garbage).empty());
     EXPECT_FALSE(evaluateCertificateStatus(pki.leaf.get(), garbage).caMatchesLeaf.has_value());
+}
+
+// ---------------------------------------------------------------------------
+// leafHasUsableSan(): the one certificate question the manager can settle on its own.
+//
+// Not "does the leaf cover the address this agent dials" -- behind NAT, a load balancer or a
+// worker, the manager does not know that address, and the agent checks it for real at upgrade
+// time. This is the weaker, decidable question: is there ANY name here a remote agent could match.
+// The subtracted set is passed explicitly so the table does not depend on what the build machine
+// happens to be called.
+// ---------------------------------------------------------------------------
+namespace
+{
+    const std::vector<std::string> kLocalNames {
+        "localhost", "localhost.localdomain", "build-host.example.net", "build-host"};
+
+    bool usableSan(const char* subjectAltName)
+    {
+        const auto key = makeTestKey();
+        const auto cert = makeCertificate("leaf", 0, 10 * kDay, key.get(), key.get(), nullptr, subjectAltName);
+        return remoted::http::leafHasUsableSan(cert.get(), kLocalNames);
+    }
+} // namespace
+
+TEST(LeafHasUsableSanTest, NoSanExtensionAtAllIsUnusable)
+{
+    // RFC 6125 has clients ignore the subject CN, so a certificate with no SAN identifies no host
+    // to anyone -- however good its CN looks.
+    EXPECT_FALSE(usableSan(nullptr));
+    EXPECT_FALSE(remoted::http::leafHasUsableSan(nullptr, kLocalNames));
+}
+
+TEST(LeafHasUsableSanTest, LoopbackOnlyIsUnusable)
+{
+    EXPECT_FALSE(usableSan("IP:127.0.0.1"));
+    EXPECT_FALSE(usableSan("IP:127.0.0.53")); // the whole 127.0.0.0/8, not just .1
+    EXPECT_FALSE(usableSan("IP:::1"));
+    EXPECT_FALSE(usableSan("IP:127.0.0.1,IP:::1"));
+}
+
+TEST(LeafHasUsableSanTest, LocalNamesOnlyAreUnusable)
+{
+    // The shape a self-signed quickstart certificate has. Catching it is the whole reason the test
+    // is "no USABLE SAN" rather than the simpler "no SAN at all".
+    EXPECT_FALSE(usableSan("DNS:localhost"));
+    EXPECT_FALSE(usableSan("DNS:localhost.localdomain"));
+    EXPECT_FALSE(usableSan("DNS:build-host"));
+    EXPECT_FALSE(usableSan("DNS:build-host.example.net"));
+    EXPECT_FALSE(usableSan("DNS:localhost,IP:127.0.0.1,DNS:build-host"));
+}
+
+TEST(LeafHasUsableSanTest, LocalNameComparisonIsCaseInsensitive)
+{
+    // DNS names are case-insensitive, so a certificate that spells the local host in capitals is
+    // exactly as useless as one that does not -- and must not slip through as "some other name".
+    EXPECT_FALSE(usableSan("DNS:LocalHost"));
+    EXPECT_FALSE(usableSan("DNS:BUILD-HOST.EXAMPLE.NET"));
+}
+
+TEST(LeafHasUsableSanTest, OneRoutableEntryIsEnough)
+{
+    EXPECT_TRUE(usableSan("IP:203.0.113.5"));
+    EXPECT_TRUE(usableSan("IP:2001:db8::1"));
+    EXPECT_TRUE(usableSan("DNS:manager.example.com"));
+    EXPECT_TRUE(usableSan("DNS:*.example.com"));
+    // Loopback plus something real: the filter subtracts, it does not disqualify the whole set.
+    EXPECT_TRUE(usableSan("DNS:localhost,IP:127.0.0.1,IP:203.0.113.5"));
+    EXPECT_TRUE(usableSan("IP:127.0.0.1,DNS:manager.example.com"));
+}
+
+TEST(LeafHasUsableSanTest, ShortLocalNameDoesNotSubtractAnFqdn)
+{
+    // localHostNames() only ever REDUCES a hostname to its short form, never expands a short one to
+    // a guessed FQDN. "build-host.other.example" is a name this code has no business claiming
+    // describes only the local host, so it counts -- warning is the loud action, and being
+    // conservative about NOT warning is the right direction.
+    EXPECT_TRUE(usableSan("DNS:build-host.other.example"));
+}
+
+TEST(LeafHasUsableSanTest, NonIdentityEntryTypesNeitherCountNorDisqualify)
+{
+    // A TLS client never matches a server identity against a URI or an email address.
+    EXPECT_FALSE(usableSan("URI:https://manager.example.com/"));
+    EXPECT_FALSE(usableSan("email:admin@example.com"));
+    EXPECT_TRUE(usableSan("URI:https://manager.example.com/,DNS:manager.example.com"));
+}
+
+TEST(LeafHasUsableSanTest, LocalHostNamesAlwaysCarriesTheLoopbackNames)
+{
+    const auto names = remoted::http::localHostNames();
+    EXPECT_NE(std::find(names.begin(), names.end(), "localhost"), names.end());
+    EXPECT_NE(std::find(names.begin(), names.end(), "localhost.localdomain"), names.end());
+    // gethostname() may fail in a restricted sandbox, so the only guarantee beyond the two literals
+    // is that nothing empty is ever added -- an empty entry would subtract every empty dNSName.
+    for (const auto& name : names)
+    {
+        EXPECT_FALSE(name.empty());
+    }
 }
 
 TEST(TlsCertificateStatusTest, BundleWithTheSigningCaMatches)

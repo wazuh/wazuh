@@ -16,7 +16,13 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
+#include <unistd.h>
+
+#include <algorithm>
+#include <cctype>
+#include <cstring>
 #include <utility>
 
 namespace remoted::http
@@ -37,6 +43,46 @@ namespace remoted::http
             const char* oneline = X509_NAME_oneline(X509_get_subject_name(certificate), buffer, sizeof(buffer));
             return oneline != nullptr ? std::string {oneline} : std::string {};
         }
+
+        bool equalsIgnoreCase(const std::string& a, const std::string& b)
+        {
+            return a.size() == b.size() &&
+                   std::equal(a.begin(),
+                              a.end(),
+                              b.begin(),
+                              [](unsigned char x, unsigned char y) { return std::tolower(x) == std::tolower(y); });
+        }
+
+        /// 127.0.0.0/8 or ::1, read straight off the SAN's octets -- OpenSSL stores an iPAddress as
+        /// 4 or 16 raw bytes, so there is nothing to parse. Any other length is not an address this
+        /// code understands, and is treated as usable rather than silently dropped.
+        bool isLoopbackAddress(const unsigned char* octets, int length)
+        {
+            if (octets == nullptr)
+            {
+                return false;
+            }
+            if (length == 4)
+            {
+                return octets[0] == 127;
+            }
+            if (length == 16)
+            {
+                static const unsigned char IPV6_LOOPBACK[16] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+                return std::memcmp(octets, IPV6_LOOPBACK, sizeof(IPV6_LOOPBACK)) == 0;
+            }
+            return false;
+        }
+
+        /// A dNSName that only ever names this host to itself.
+        bool isLocalName(const std::string& name, const std::vector<std::string>& localNames)
+        {
+            return std::any_of(localNames.begin(),
+                               localNames.end(),
+                               [&name](const std::string& local) { return equalsIgnoreCase(name, local); });
+        }
+
+        using GeneralNamesPtr = std::unique_ptr<GENERAL_NAMES, decltype(&GENERAL_NAMES_free)>;
     } // namespace
 
     void X509Deleter::operator()(X509* certificate) const noexcept
@@ -119,6 +165,91 @@ namespace remoted::http
         }
         ERR_clear_error(); // a failed X509_verify queues a signature error
         return false;
+    }
+
+    std::vector<std::string> localHostNames()
+    {
+        std::vector<std::string> names {"localhost", "localhost.localdomain"};
+
+        // POSIX allows gethostname() to truncate WITHOUT NUL-terminating, so the buffer is one byte
+        // longer than the name it can hold and that byte is pre-zeroed.
+        char hostname[257] {};
+        if (::gethostname(hostname, sizeof(hostname) - 1) == 0 && hostname[0] != '\0')
+        {
+            std::string full {hostname};
+            names.push_back(full);
+
+            // Only ever REDUCED to the short form, never expanded to a guessed FQDN: subtracting
+            // "foo.example.com" because this host is called "foo" would silence the warning for a
+            // certificate that is, as far as anything here can tell, perfectly routable.
+            const auto dot = full.find('.');
+            if (dot != std::string::npos && dot > 0)
+            {
+                names.push_back(full.substr(0, dot));
+            }
+        }
+        return names;
+    }
+
+    bool leafHasUsableSan(const X509* leaf, const std::vector<std::string>& localNames)
+    {
+        if (leaf == nullptr)
+        {
+            return false;
+        }
+
+        // X509_get_ext_d2i takes a non-const X509*; it only decodes an extension already parsed
+        // into the certificate, and does not modify it observably.
+        GeneralNamesPtr names {static_cast<GENERAL_NAMES*>(
+                                   X509_get_ext_d2i(const_cast<X509*>(leaf), NID_subject_alt_name, nullptr, nullptr)),
+                               &GENERAL_NAMES_free};
+        if (!names)
+        {
+            // No SAN extension at all. RFC 6125 has clients ignore the subject CN, so this
+            // certificate identifies no host to anyone.
+            ERR_clear_error();
+            return false;
+        }
+
+        const int count = sk_GENERAL_NAME_num(names.get());
+        for (int index = 0; index < count; ++index)
+        {
+            const GENERAL_NAME* entry = sk_GENERAL_NAME_value(names.get(), index);
+            if (entry == nullptr)
+            {
+                continue;
+            }
+
+            if (entry->type == GEN_IPADD)
+            {
+                if (!isLoopbackAddress(ASN1_STRING_get0_data(entry->d.iPAddress),
+                                       ASN1_STRING_length(entry->d.iPAddress)))
+                {
+                    return true;
+                }
+            }
+            else if (entry->type == GEN_DNS)
+            {
+                // Length-delimited, not treated as a C string: a dNSName is an IA5String and may
+                // legally carry an embedded NUL, which is exactly how a name is smuggled past a
+                // strlen-based comparison.
+                const std::string name {reinterpret_cast<const char*>(ASN1_STRING_get0_data(entry->d.dNSName)),
+                                        static_cast<std::size_t>(std::max(0, ASN1_STRING_length(entry->d.dNSName)))};
+                if (!name.empty() && !isLocalName(name, localNames))
+                {
+                    return true;
+                }
+            }
+            // Every other type (URI, email, directoryName, ...) is not something a TLS client ever
+            // matches a server identity against, so it neither counts nor disqualifies.
+        }
+
+        return false;
+    }
+
+    bool leafHasUsableSan(const X509* leaf)
+    {
+        return leafHasUsableSan(leaf, localHostNames());
     }
 
     TlsCertificateSnapshot evaluateCertificateStatus(const X509* leaf, const std::string& caPath)
