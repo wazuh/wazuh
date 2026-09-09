@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.10.6]
 
+### Agent
+
+#### Fixed
+
+- Fixed AWS Inspector wodle not collecting findings after AWS retired the Classic API. ([#39017](https://github.com/wazuh/wazuh/pull/39017))
 
 ## [v4.10.5]
 
