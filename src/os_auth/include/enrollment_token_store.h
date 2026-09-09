@@ -24,6 +24,22 @@
 /* Default lifetime of a token when the caller gives none: 30 days */
 #define ETOKEN_DEFAULT_TTL 2592000L
 
+/* Most tokens the store will hold. A mint that would cross it purges the dead entries first and is
+ * only refused when that many tokens are still alive. Sized against the file remoted will accept:
+ * an entry measures ~240 bytes, or ~1.4 KB when the operator embeds the CA, so 5000 of the widest
+ * kind stay under W_ETOKEN_STORE_MAX_BYTES with room to spare (issue #38994) */
+#define ETOKEN_MAX_TOKENS 5000
+
+/* What etoken_store_purge() removes */
+typedef enum {
+    ETOKEN_PURGE_DEAD = 0,  /**< Revoked, expired or out of uses: whatever can no longer authorise an enrollment */
+    ETOKEN_PURGE_ALL        /**< Every token, live ones included */
+} etoken_purge_t;
+
+/* etoken_store_create() failures the caller reports differently from a plain error */
+#define ETOKEN_CREATE_FULL   (-2)  /**< ETOKEN_MAX_TOKENS live tokens: purge before minting again */
+#define ETOKEN_CREATE_TOOBIG (-3)  /**< The store would cross W_ETOKEN_STORE_MAX_BYTES */
+
 /**
  * @brief One enrollment token as authd keeps it (issue #38993).
  *
@@ -110,9 +126,27 @@ int etoken_store_reload_if_changed(void);
  * @param now Mint time; expires = now + mint->ttl.
  * @param data Receives {"token", "id", "adr", "expires"[, "pin_hex"]} on success (caller cJSON_Delete()s).
  *             `token` is the only place the secret ever leaves authd.
- * @return 0 on success; -1 when the file could not be written (nothing is kept in memory either).
+ * @return 0 on success; ETOKEN_CREATE_FULL when the store already holds ETOKEN_MAX_TOKENS live
+ *         tokens (the dead ones are purged first, so this means the cap is genuinely in use);
+ *         ETOKEN_CREATE_TOOBIG when the resulting file would cross W_ETOKEN_STORE_MAX_BYTES;
+ *         -1 on any other failure. Nothing is kept in memory unless the file was written.
  */
 int etoken_store_create(const etoken_mint_t *mint, time_t now, cJSON **data);
+
+/**
+ * @brief Remove tokens from the store and persist the file.
+ *
+ * Revoking and purging are different acts: a revoked token stays listed, a purged one is gone. The
+ * file is only rewritten when something was actually removed, so a purge with no victims does not
+ * wake the watchers that replicate it.
+ *
+ * @param scope What to remove (ETOKEN_PURGE_DEAD or ETOKEN_PURGE_ALL).
+ * @param now Reference time for the expiry check.
+ * @param ids Optional; receives a JSON array with the ids removed (caller cJSON_Delete()s).
+ * @return Number of tokens removed, or -1 when the file could not be written (the store keeps its
+ *         previous content in memory too).
+ */
+int etoken_store_purge(etoken_purge_t scope, time_t now, cJSON **ids);
 
 /**
  * @brief The tokens as the operator may see them: no secret, no token text.

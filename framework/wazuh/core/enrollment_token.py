@@ -29,6 +29,9 @@ _REFUSED_PREFIX = 'Enrollment token refused: '
 # alone turns anything with a stray unit letter into 0, which authd would silently replace by its default.
 _TIMEFRAME = re.compile(r'^\d+[dhms]?$')
 
+# What purge_tokens() accepts, mirroring authd's own scopes (etoken_purge_t)
+_PURGE_SCOPES = ('dead', 'all')
+
 
 def _authd_request(function: str, arguments: dict = None):
     """Send one token verb to authd's local socket and return its `data`.
@@ -36,7 +39,7 @@ def _authd_request(function: str, arguments: dict = None):
     Parameters
     ----------
     function : str
-        `token_create`, `token_list` or `token_revoke`.
+        `token_create`, `token_list`, `token_revoke` or `token_purge`.
     arguments : dict
         The verb's arguments, or None for the argument-less `token_list`.
 
@@ -180,3 +183,35 @@ def revoke_token(token_id: str) -> None:
         No token has that id.
     """
     _authd_request('token_revoke', {'id': token_id})
+
+
+def purge_tokens(scope: str = 'dead') -> list:
+    """Remove enrollment tokens from the store, instead of marking them revoked.
+
+    Revoking and purging are different acts: a revoked token stays listed, revoked, and a purged one
+    is gone. `dead` removes what can no longer authorise an enrollment (revoked, expired or out of
+    uses) and leaves every usable token alone; `all` empties the store.
+
+    Parameters
+    ----------
+    scope : str
+        `dead` (default) or `all`.
+
+    Raises
+    ------
+    WazuhError(1770)
+        The scope is neither `dead` nor `all`.
+    WazuhError(1769)
+        This node is a cluster worker: the store is written on the master.
+
+    Returns
+    -------
+    list
+        The ids removed, in the order authd removed them.
+    """
+    if scope not in _PURGE_SCOPES:
+        raise WazuhError(1770, extra_message=str(scope))
+
+    data = _authd_request('token_purge', {'scope': scope})
+
+    return data.get('ids', []) if isinstance(data, dict) else []

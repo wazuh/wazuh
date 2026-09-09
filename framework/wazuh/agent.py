@@ -752,6 +752,37 @@ def delete_enrollment_token(token_id: str = None) -> AffectedItemsWazuhResult:
     return result
 
 
+@expose_resources(actions=["enrollment_token:delete"], resources=["*:*:*"], post_proc_func=None)
+def delete_enrollment_tokens(scope: str = 'dead') -> AffectedItemsWazuhResult:
+    """Purge enrollment tokens: remove them from the store instead of marking them revoked.
+
+    Parameters
+    ----------
+    scope : str
+        `dead` (default) removes the tokens that can no longer authorise an enrollment: revoked,
+        expired or out of uses. `all` empties the store, the tokens still in use included.
+
+    Raises
+    ------
+    WazuhError(1770)
+        The scope is neither `dead` nor `all`.
+    WazuhError(1769)
+        This node is a cluster worker.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        The ids removed from the store.
+    """
+    result = AffectedItemsWazuhResult(all_msg='Enrollment tokens were purged',
+                                      none_msg='No enrollment token was purged')
+    removed = enrollment_token.purge_tokens(scope)
+    result.affected_items.extend(removed)
+    result.total_affected_items = len(removed)
+
+    return result
+
+
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
                   post_proc_kwargs={'exclude_codes': [1710]})
 def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None, sort_by: list = None,

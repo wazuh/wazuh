@@ -35,6 +35,7 @@ typedef enum {
     TOKEN_CLI_CREATE,
     TOKEN_CLI_LIST,
     TOKEN_CLI_REVOKE,
+    TOKEN_CLI_PURGE,
     TOKEN_CLI_SHOW
 } token_cli_action_t;
 
@@ -52,6 +53,9 @@ typedef struct {
     int no_credential;
     /* --revoke-enrollment-token */
     const char *revoke_id;
+    /* --purge-enrollment-tokens */
+    int purge_all;                 /**< --all: empty the store instead of dropping the unusable tokens */
+    int force;                     /**< --force: do not ask for confirmation on a terminal */
     /* --show-token */
     const char *token_text;        /**< --show-token=<token> */
     const char *token_file;        /**< --token-file <path>; when neither is given, stdin */

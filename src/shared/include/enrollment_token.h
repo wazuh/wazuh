@@ -23,6 +23,16 @@
 #define W_ETOKEN_DEFAULT_PORT   1517
 #define W_ETOKEN_DEFAULT_PREFIX "wazuh-manager"
 
+/* Largest enrollment token store authd will ever write, in bytes of serialized JSON.
+ *
+ * remoted's read-only replica refuses any store above 8 MiB (TokenKeySource::kMaxStoreBytes) and,
+ * when it does, keeps the previous replica and only counts a reload failure -- so a store that grew
+ * past that ceiling would leave every node silently enrolling against a stale set of tokens. authd
+ * refuses to write one MiB before that point, which is the only place the two limits can be kept
+ * consistent: the mint is what makes the file grow. The entry count (ETOKEN_MAX_TOKENS) bounds the
+ * usual case; this bounds the one where every token embeds a CA. */
+#define W_ETOKEN_STORE_MAX_BYTES (7 * 1024 * 1024)
+
 /**
  * @brief Why a token could not be decoded.
  */

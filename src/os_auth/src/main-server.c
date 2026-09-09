@@ -93,7 +93,7 @@ static void help_authd(char * home_path)
     print_header();
     print_out("  %s: -[VhdtfP] [-u user] [-g group] [-D dir] [-p port] [-c ciphersuites] [-v path [-s]] [-x path] [-k path]", ARGV0);
     print_out("  %s: --create-enrollment-token --address <host> [--port N] [--prefix P] [--ttl 30d] [--max-uses N] [--description S] [--embed-ca] [--no-credential]", ARGV0);
-    print_out("  %s: --list-enrollment-tokens | --revoke-enrollment-token <id> | --show-token[=<token>] [--token-file <path>]", ARGV0);
+    print_out("  %s: --list-enrollment-tokens | --revoke-enrollment-token <id> | --purge-enrollment-tokens [--all] [--force] | --show-token[=<token>] [--token-file <path>]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
@@ -122,6 +122,9 @@ static void help_authd(char * home_path)
     print_out("      --no-credential           Token without credential (public: address and pin only).");
     print_out("    --list-enrollment-tokens    List the tokens (never their credential).");
     print_out("    --revoke-enrollment-token <id>");
+    print_out("    --purge-enrollment-tokens   Remove the tokens that can no longer authorise an enrollment (revoked, expired or out of uses).");
+    print_out("      --all                     Remove every token instead, the ones still in use included.");
+    print_out("      --force                   Do not ask for confirmation (needed for --all without a terminal).");
     print_out("    --show-token[=<token>]      Decode a token (from the argument, --token-file <path> or stdin) without its credential.");
     print_out(" ");
     os_free(home_path);

@@ -113,3 +113,45 @@ def test_revoke_unknown_token_names_the_id(mock_socket):
         enrollment_token.revoke_token('AAAAAAAAAAAAAAAAAAAAAA')
 
     assert 'AAAAAAAAAAAAAAAAAAAAAA' in exc.value.message
+
+
+@pytest.mark.parametrize('scope', ['dead', 'all'])
+@patch('wazuh.core.enrollment_token.WazuhSocketJSON')
+def test_purge_tokens(mock_socket, scope):
+    """purge_tokens() sends `token_purge` with the scope and returns the ids authd removed."""
+    mock_socket.return_value.receive.return_value = {'removed': 2, 'remaining': 3, 'ids': [TOKEN_ID, 'B' * 22]}
+
+    assert enrollment_token.purge_tokens(scope) == [TOKEN_ID, 'B' * 22]
+
+    mock_socket.return_value.send.assert_called_once_with({'function': 'token_purge',
+                                                           'arguments': {'scope': scope}})
+
+
+@patch('wazuh.core.enrollment_token.WazuhSocketJSON')
+def test_purge_tokens_defaults_to_dead(mock_socket):
+    """Called with no scope, the purge is the one that only removes what cannot enrol anybody."""
+    mock_socket.return_value.receive.return_value = {'removed': 0, 'remaining': 4, 'ids': []}
+
+    assert enrollment_token.purge_tokens() == []
+
+    mock_socket.return_value.send.assert_called_once_with({'function': 'token_purge',
+                                                           'arguments': {'scope': 'dead'}})
+
+
+@pytest.mark.parametrize('scope', ['expired', 'ALL', '', None])
+@patch('wazuh.core.enrollment_token.WazuhSocketJSON')
+def test_purge_tokens_rejects_an_unknown_scope(mock_socket, scope):
+    """A scope authd would not understand is refused here, before anything is removed."""
+    with pytest.raises(WazuhError, match='.*1770.*'):
+        enrollment_token.purge_tokens(scope)
+
+    mock_socket.return_value.send.assert_not_called()
+
+
+@patch('wazuh.core.enrollment_token.WazuhSocketJSON')
+def test_purge_tokens_on_a_worker(mock_socket):
+    """The store is written on the master: a worker answers 9015 and the caller sees 1769."""
+    mock_socket.return_value.receive.side_effect = WazuhException(9015, 'Cannot execute this request on a worker node')
+
+    with pytest.raises(WazuhError, match='.*1769.*'):
+        enrollment_token.purge_tokens('all')

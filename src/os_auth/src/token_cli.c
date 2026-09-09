@@ -32,6 +32,9 @@ enum {
     OPT_CREATE = 256,
     OPT_LIST,
     OPT_REVOKE,
+    OPT_PURGE,
+    OPT_ALL,
+    OPT_FORCE,
     OPT_SHOW,
     OPT_ADDRESS,
     OPT_PORT,
@@ -51,6 +54,9 @@ const struct option token_cli_long_opts[] = {
     {"create-enrollment-token", no_argument, NULL, OPT_CREATE},
     {"list-enrollment-tokens", no_argument, NULL, OPT_LIST},
     {"revoke-enrollment-token", required_argument, NULL, OPT_REVOKE},
+    {"purge-enrollment-tokens", no_argument, NULL, OPT_PURGE},
+    {"all", no_argument, NULL, OPT_ALL},
+    {"force", no_argument, NULL, OPT_FORCE},
     {"show-token", optional_argument, NULL, OPT_SHOW},
     {"address", required_argument, NULL, OPT_ADDRESS},
     {"port", required_argument, NULL, OPT_PORT},
@@ -127,6 +133,16 @@ int w_token_cli_parse_opt(token_cli_opts_t *opts, int c, const char *arg, FILE *
     case OPT_REVOKE:
         opts->revoke_id = arg;
         return cli_set_action(opts, TOKEN_CLI_REVOKE, err);
+    case OPT_PURGE:
+        return cli_set_action(opts, TOKEN_CLI_PURGE, err);
+    case OPT_ALL:
+        opts->purge_all = 1;
+        opts->requested = 1;
+        return 1;
+    case OPT_FORCE:
+        opts->force = 1;
+        opts->requested = 1;
+        return 1;
     case OPT_SHOW:
         opts->token_text = arg; /* NULL unless written --show-token=<token> */
         return cli_set_action(opts, TOKEN_CLI_SHOW, err);
@@ -465,6 +481,64 @@ static int cli_revoke(const token_cli_opts_t *opts, FILE *out, FILE *err)
     return result;
 }
 
+static int cli_purge(const token_cli_opts_t *opts, FILE *in, FILE *out, FILE *err)
+{
+    cJSON *request = NULL;
+    cJSON *arguments = NULL;
+    cJSON *response = NULL;
+    cJSON *data = NULL;
+    cJSON *removed = NULL;
+    cJSON *remaining = NULL;
+    int result = 1;
+
+    /* Emptying the store invalidates every credential an operator handed out, and unlike a revoke
+     * it leaves no record of what was there. Ask, unless the caller is a script (--force) or has no
+     * terminal to answer from -- in which case refusing is the safe reading of the silence. */
+    if (opts->purge_all && !opts->force) {
+        char answer[8] = {0};
+
+        if (!isatty(fileno(in))) {
+            fprintf(err, "ERROR: --purge-enrollment-tokens --all removes every enrollment token. "
+                         "Add --force to confirm it without a terminal\n");
+            return 1;
+        }
+
+        fprintf(out, "This removes EVERY enrollment token, including the ones still in use. Continue? [y/N] ");
+        fflush(out);
+
+        if (fgets(answer, sizeof(answer), in) == NULL || (answer[0] != 'y' && answer[0] != 'Y')) {
+            fprintf(out, "Aborted.\n");
+            return 1;
+        }
+    }
+
+    request = cJSON_CreateObject();
+    arguments = cJSON_AddObjectToObject(request, "arguments");
+    cJSON_AddStringToObject(request, "function", "token_purge");
+    cJSON_AddStringToObject(arguments, "scope", opts->purge_all ? "all" : "dead");
+    response = cli_request(request, err);
+    cJSON_Delete(request);
+
+    if (response == NULL) {
+        return 1;
+    }
+
+    if (cli_check_error(response, err) == 0) {
+        data = cJSON_GetObjectItem(response, "data");
+        removed = cJSON_GetObjectItem(data, "removed");
+        remaining = cJSON_GetObjectItem(data, "remaining");
+
+        fprintf(out, "Removed %d enrollment token(s); %d left.\n",
+                cJSON_IsNumber(removed) ? removed->valueint : 0,
+                cJSON_IsNumber(remaining) ? remaining->valueint : 0);
+        result = 0;
+    }
+
+    cJSON_Delete(response);
+
+    return result;
+}
+
 /* First non-blank line of a stream, trimmed: the token as an operator pastes or pipes it */
 static char *cli_read_token(FILE *stream)
 {
@@ -559,6 +633,8 @@ int w_token_cli_run(const token_cli_opts_t *opts, FILE *in, FILE *out, FILE *err
         return cli_list(out, err);
     case TOKEN_CLI_REVOKE:
         return cli_revoke(opts, out, err);
+    case TOKEN_CLI_PURGE:
+        return cli_purge(opts, in, out, err);
     case TOKEN_CLI_SHOW:
         return cli_show(opts, in, out, err);
     case TOKEN_CLI_NONE:

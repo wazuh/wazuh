@@ -266,7 +266,7 @@ The local socket answers a numeric code that the server API maps onto its own, a
 | 9019 / 9020 | invalid caller-supplied key / id (id outside `[1, 2147483647]`, or `0`) | `400` — unreachable from here in practice: self-enrollment never sends a key or an id, mapped for completeness |
 | 9021 | too many deletions are pending; the agent was NOT deleted (`1766` through the server API) | — |
 | 9022 / 9023 / 9024 | enrollment token unknown or revoked / expired / out of uses (`add` with `token_id`) | `403` — the bearer verified, authd refused the use |
-| 9025 | mint refused (`token_create`); the message carries the reason after `Enrollment token refused:` | — |
+| 9025 | mint refused (`token_create`); the message carries the reason after `Enrollment token refused:` — the address checks against the listener certificate, or the store being full (5000 tokens) or about to cross its 7 MiB ceiling | — |
 | 9026 / 9027 / 9028 | re-enrollment: unknown agent or no secret on record / invalid credential / outside the time window | `401` (`unknown_agent` / `invalid_signature` / `stale_token`) |
 
 ## Agent removal
@@ -420,7 +420,7 @@ held their ids before, in the indices they do not resynchronise themselves.
 | `etc/authd.pass` | enrollment password |
 | `queue/authd/pending-purges` | deletions between phase 1 and phase 4, plus the highest id and sequence ever handed out. Normally empty |
 | `queue/rids/<id>` | per-agent anti-replay counters, removed with the agent |
-| `etc/enrollment_tokens.json` | the enrollment token store, `{"version":1,"tokens":[…]}`: per token `id`, `secret` (`null` without credential), `adr`, `pin`/`ca`, `created`, `expires`, `max_uses`, `uses`, `revoked`, `description`. Rewritten whole by the master (temporary file, `0640`, rename); a worker's copy comes from the cluster sync, and a momentarily missing file keeps the previous replica |
+| `etc/enrollment_tokens.json` | the enrollment token store, `{"version":1,"tokens":[…]}`: per token `id`, `secret` (`null` without credential), `adr`, `pin`/`ca`, `created`, `expires`, `max_uses`, `uses`, `revoked`, `description`. Rewritten whole by the master (temporary file, `0640`, rename); a worker's copy comes from the cluster sync, and a momentarily missing file keeps the previous replica. Bounded at 5000 tokens and 7 MiB (one MiB below what remoted's replica accepts), and pruned by `token_purge` — which removes entries, unlike `token_revoke`, and is what a mint into a full store runs by itself before refusing |
 
 The re-enrollment secret is in none of these files: it lives only in the `reenroll_secret` column of
 the `agent` table in `global.db` (`schema_global.sql`, `user_version` unchanged).

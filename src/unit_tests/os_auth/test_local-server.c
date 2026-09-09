@@ -784,6 +784,106 @@ static void test_token_verbs_on_worker_9015(void **state) {
     config.worker_node = FALSE;
 }
 
+/* The store outlives a case: these three read what is there first and assert on the change, not on
+ * absolute counts -- the suite mints tokens all the way through and the fixture keeps the file. */
+static int token_list_size(void) {
+    cJSON *response = dispatch("{\"function\":\"token_list\"}");
+    int size = cJSON_GetArraySize(cJSON_GetObjectItem(response, "data"));
+
+    cJSON_Delete(response);
+
+    return size;
+}
+
+static void test_token_purge_removes_and_reports(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    // Two tokens, one of them revoked: the purge takes the revoked one and leaves the other.
+    cJSON *keep = mint("{\"address\":\"wazuh-1\",\"description\":\"stays\"}");
+    cJSON *drop = mint("{\"address\":\"wazuh-1\",\"description\":\"goes\"}");
+    char keep_id[ETOKEN_ID_CHARS + 1];
+    char drop_id[ETOKEN_ID_CHARS + 1];
+    char request[256];
+
+    snprintf(keep_id, sizeof(keep_id), "%s", data_string(keep, "id"));
+    snprintf(drop_id, sizeof(drop_id), "%s", data_string(drop, "id"));
+    cJSON_Delete(keep);
+    cJSON_Delete(drop);
+
+    snprintf(request, sizeof(request), "{\"function\":\"token_revoke\",\"arguments\":{\"id\":\"%s\"}}", drop_id);
+    cJSON_Delete(dispatch(request));
+
+    cJSON *response = dispatch("{\"function\":\"token_purge\",\"arguments\":{\"scope\":\"dead\"}}");
+    assert_int_equal(response_error(response), 0);
+    cJSON *data = cJSON_GetObjectItem(response, "data");
+    char *ids = cJSON_PrintUnformatted(cJSON_GetObjectItem(data, "ids"));
+
+    // At least the one this case revoked; earlier cases may have left dead tokens of their own.
+    assert_true(cJSON_GetObjectItem(data, "removed")->valueint >= 1);
+    assert_non_null(strstr(ids, drop_id));
+    assert_null(strstr(ids, keep_id));
+    free(ids);
+    cJSON_Delete(response);
+
+    // What the operator sees afterwards: the revoked one is gone, not marked -- that is the whole
+    // difference between revoking and purging -- and the live one is untouched.
+    response = dispatch("{\"function\":\"token_list\"}");
+    char *printed = cJSON_PrintUnformatted(cJSON_GetObjectItem(response, "data"));
+    assert_null(strstr(printed, drop_id));
+    assert_non_null(strstr(printed, keep_id));
+    free(printed);
+    cJSON_Delete(response);
+}
+
+static void test_token_purge_all_and_default_scope(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    cJSON_Delete(mint("{\"address\":\"wazuh-1\"}"));
+
+    // No arguments at all: the harmless scope, so a caller can never empty the store by omission.
+    // Nothing here is dead (the previous case purged), so the store must come out untouched.
+    int before = token_list_size();
+    cJSON *response = dispatch("{\"function\":\"token_purge\"}");
+    assert_int_equal(response_error(response), 0);
+    assert_int_equal(cJSON_GetObjectItem(cJSON_GetObjectItem(response, "data"), "removed")->valueint, 0);
+    assert_int_equal(cJSON_GetObjectItem(cJSON_GetObjectItem(response, "data"), "remaining")->valueint, before);
+    cJSON_Delete(response);
+
+    response = dispatch("{\"function\":\"token_purge\",\"arguments\":{\"scope\":\"all\"}}");
+    assert_int_equal(response_error(response), 0);
+    assert_int_equal(cJSON_GetObjectItem(cJSON_GetObjectItem(response, "data"), "removed")->valueint, before);
+    assert_int_equal(cJSON_GetObjectItem(cJSON_GetObjectItem(response, "data"), "remaining")->valueint, 0);
+    cJSON_Delete(response);
+}
+
+static void test_token_purge_unknown_scope_is_refused(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_ERROR();
+    cJSON_Delete(mint("{\"address\":\"wazuh-1\"}"));
+
+    int before = token_list_size();
+
+    // "expired" is a scope somebody could reasonably expect: answering it as "dead" would purge more
+    // than they asked for, so it is an error and the store is left alone.
+    cJSON *response = dispatch("{\"function\":\"token_purge\",\"arguments\":{\"scope\":\"expired\"}}");
+    // 9002: the same "the arguments do not make sense" the rest of the verbs answer with.
+    assert_int_equal(response_error(response), 9002);
+    cJSON_Delete(response);
+
+    assert_int_equal(token_list_size(), before);
+}
+
+static void test_token_purge_on_worker_9015(void **state) {
+    (void)state;
+    EXPECT_LOG_ERROR();
+    config.worker_node = TRUE;
+    cJSON *response = dispatch("{\"function\":\"token_purge\",\"arguments\":{\"scope\":\"all\"}}");
+    assert_int_equal(response_error(response), 9015);
+    cJSON_Delete(response);
+    config.worker_node = FALSE;
+}
+
 static void test_token_list_and_revoke(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -1283,6 +1383,10 @@ int main(void) {
         cmocka_unit_test(test_token_create_bad_arguments),
         cmocka_unit_test(test_token_verbs_on_worker_9015),
         cmocka_unit_test(test_token_list_and_revoke),
+        cmocka_unit_test(test_token_purge_removes_and_reports),
+        cmocka_unit_test(test_token_purge_all_and_default_scope),
+        cmocka_unit_test(test_token_purge_unknown_scope_is_refused),
+        cmocka_unit_test(test_token_purge_on_worker_9015),
         cmocka_unit_test(test_add_with_token_consumes_and_releases),
         cmocka_unit_test(test_add_with_revoked_or_expired_token),
         cmocka_unit_test(test_add_with_token_on_worker_forwards_it),

@@ -1435,6 +1435,40 @@ async def delete_enrollment_token(token_id: str, pretty: bool = False,
     return json_response(data, pretty=pretty)
 
 
+async def delete_enrollment_tokens(pretty: bool = False, wait_for_complete: bool = False,
+                                   status: str = 'dead') -> ConnexionResponse:
+    """Purge enrollment tokens.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    status : str
+        `dead` (default) removes the tokens that can no longer authorise an enrollment; `all` empties
+        the store.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'scope': status}
+
+    dapi = DistributedAPI(f=agent.delete_enrollment_tokens,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
 async def get_agent_no_group(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                              limit: int = DATABASE_LIMIT, select=None, sort=None, search=None, q=None) -> ConnexionResponse:
     """Get agents without group.

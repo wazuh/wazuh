@@ -217,6 +217,7 @@ get_rbac_actions:
         resources:
           - "*:*"
         related_endpoints:
+          - DELETE /agents/enrollment-tokens
           - DELETE /agents/enrollment-tokens/{token_id}
       agent:uninstall:
         description: Check user's permission to uninstall agents
