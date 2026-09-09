@@ -8,7 +8,7 @@ The API exposes endpoints for agent management, security configuration, cluster 
 
 - **REST API**: Full management interface over HTTPS
 - **JWT Authentication**: Short-lived EC-signed tokens
-- **RBAC**: Fine-grained permission control per endpoint and resource
+- **RBAC**: Fine-grained permission control per endpoint and resource, including a separate action for reading the configuration secrets in clear (see [Authentication](authentication.md#sensitive-configuration-values))
 - **Distributed API (DAPI)**: Transparent request routing across cluster nodes
 - **WQL**: Server-side query language for filtering large datasets
 - **OpenAPI 3.0**: Fully specified API contract (`spec/spec.yaml`)
