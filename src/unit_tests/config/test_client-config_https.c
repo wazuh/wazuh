@@ -1079,6 +1079,10 @@ static void test_agent_enrollment_wins_over_a_legacy_one(void **state) {
                                  "<enrollment><agent_name>from-agent</agent_name></enrollment>",
                                  &agent_xml, &agent_nodes, &cfg), 0);
 
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<enrollment> inside the legacy <client> block is ignored: <agent> already "
+                  "supplies it. Keep the identity in one of the two blocks.");
+
     assert_int_equal(parse_legacy_client("<enrollment>"
                                          "<agent_name>from-client</agent_name>"
                                          "<groups>leaked</groups>"
@@ -1093,7 +1097,9 @@ static void test_agent_enrollment_wins_over_a_legacy_one(void **state) {
     cleanup(&agent_xml, agent_nodes, &cfg);
 }
 
-/* Read the other way round, an <agent> block still wins every field it sets. */
+/* Read the other way round, an <agent> block still wins every field it sets -- but only
+ * those: the legacy block was already applied, so what <agent> leaves out stays. This is
+ * the one order in which the two do combine, asserted rather than left to chance. */
 static void test_agent_enrollment_overrides_a_legacy_one_read_first(void **state) {
     OS_XML agent_xml = {0};
     OS_XML legacy_xml = {0};
@@ -1103,7 +1109,10 @@ static void test_agent_enrollment_overrides_a_legacy_one_read_first(void **state
 
     memset(&cfg, 0, sizeof(cfg));
 
-    assert_int_equal(parse_legacy_client("<enrollment><agent_name>from-client</agent_name></enrollment>",
+    assert_int_equal(parse_legacy_client("<enrollment>"
+                                         "<agent_name>from-client</agent_name>"
+                                         "<groups>from-client-too</groups>"
+                                         "</enrollment>",
                                          &legacy_xml, &legacy_nodes, &cfg), 0);
 
     assert_int_equal(parse_agent_into("<manager><endpoint>10.0.0.5:1600</endpoint></manager>"
@@ -1111,10 +1120,67 @@ static void test_agent_enrollment_overrides_a_legacy_one_read_first(void **state
                                       &agent_xml, &agent_nodes, &cfg), 0);
 
     assert_string_equal(cfg.enrollment.agent_name, "from-agent");
+    assert_string_equal(cfg.enrollment.groups, "from-client-too");
 
     OS_ClearNode(legacy_nodes);
     OS_ClearXML(&legacy_xml);
     cleanup(&agent_xml, agent_nodes, &cfg);
+}
+
+/* An empty 5.x block still claims the identity: it is how an operator says the
+ * enrollment settings live nowhere, and OS_GetElementsbyNode() hands back NULL for it,
+ * so nothing inside the block's own branch can be what records it. */
+static void test_an_empty_agent_enrollment_still_wins(void **state) {
+    OS_XML agent_xml = {0};
+    OS_XML legacy_xml = {0};
+    xml_node **agent_nodes;
+    xml_node **legacy_nodes;
+    agent cfg;
+
+    assert_int_equal(parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>"
+                                 "<enrollment></enrollment>",
+                                 &agent_xml, &agent_nodes, &cfg), 0);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<enrollment> inside the legacy <client> block is ignored: <agent> already "
+                  "supplies it. Keep the identity in one of the two blocks.");
+
+    assert_int_equal(parse_legacy_client("<enrollment><agent_name>from-client</agent_name></enrollment>",
+                                         &legacy_xml, &legacy_nodes, &cfg), 0);
+
+    assert_null(cfg.enrollment.agent_name);
+
+    OS_ClearNode(legacy_nodes);
+    OS_ClearXML(&legacy_xml);
+    cleanup(&agent_xml, agent_nodes, &cfg);
+}
+
+/* Contradictory addressing is settled against the file, not on every enrollment attempt:
+ * the explicit address stands and the source-IP request is dropped. */
+static void test_enrollment_agent_address_beats_use_source_ip(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+        "<enrollment>"
+        "<agent_address>10.0.0.15</agent_address>"
+        "<use_source_ip>yes</use_source_ip>"
+        "</enrollment>";
+
+    expect_valid_ip("10.0.0.15");
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<use_source_ip> under <enrollment> is ignored: <agent_address> already "
+                  "forces the address '10.0.0.15'. Configure only one of the two.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+
+    assert_string_equal(cfg.enrollment.agent_address, "10.0.0.15");
+    assert_false(cfg.enrollment.use_source_ip);
+
+    cleanup(&xml, nodes, &cfg);
 }
 
 /* The 4.x-only options inside a legacy <enrollment> must not stop the agent: an
@@ -2074,6 +2140,8 @@ int main(void) {
         cmocka_unit_test(test_legacy_client_enrollment_is_read_once_agent_set_the_address),
         cmocka_unit_test(test_agent_enrollment_wins_over_a_legacy_one),
         cmocka_unit_test(test_agent_enrollment_overrides_a_legacy_one_read_first),
+        cmocka_unit_test(test_an_empty_agent_enrollment_still_wins),
+        cmocka_unit_test(test_enrollment_agent_address_beats_use_source_ip),
         cmocka_unit_test(test_legacy_client_enrollment_ignores_the_4x_only_options),
         cmocka_unit_test(test_legacy_client_enrollment_unknown_option_is_rejected),
         cmocka_unit_test(test_legacy_client_warns_for_every_ignored_option),

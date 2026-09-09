@@ -324,6 +324,21 @@ static void test_process_response_403_is_disabled_not_an_error(void **state) {
     assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_DISABLED);
 }
 
+/* A prefix mismatch is reported here or nowhere: on a fresh install the /control
+ * stream that reports it for every other endpoint never runs. */
+static void test_process_response_404_names_the_configured_path(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    result.http_code = 404;
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager: it serves no /enroll route under the "
+                  "configured path '/'. The path in <endpoint> must match the global prefix "
+                  "the manager serves.");
+
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
+}
+
 static void test_process_response_409_is_duplicate(void **state) {
     (void)state;
     hc_enroll_result_t result = {0};
@@ -383,6 +398,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_400_is_invalid_request, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_401_is_auth_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_is_disabled_not_an_error, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_404_names_the_configured_path, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_409_is_duplicate, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_unrecognized_status_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_with_malformed_json_is_server_error, setup_test, teardown_test),
