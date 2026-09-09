@@ -719,7 +719,7 @@ _MANAGER_CONF_WITH_CLUSTER_KEY = """\
 </wazuh_config>"""
 
 
-@patch('wazuh.rbac.decorators._has_update_permissions', return_value=False)
+@patch('wazuh.rbac.decorators._can_read_secrets', return_value=False)
 @patch('builtins.open', new_callable=mock_open, read_data=_MANAGER_CONF_WITH_CLUSTER_KEY)
 def test_read_manager_conf_raw_masks_cluster_key_for_readonly(mock_file, mock_perms):
     """read_manager_conf(raw=True) hides cluster.key for users without update_config (readonly role)."""
@@ -730,7 +730,7 @@ def test_read_manager_conf_raw_masks_cluster_key_for_readonly(mock_file, mock_pe
     assert '<key>*****</key>' in result
 
 
-@patch('wazuh.rbac.decorators._has_update_permissions', return_value=True)
+@patch('wazuh.rbac.decorators._can_read_secrets', return_value=True)
 @patch('builtins.open', new_callable=mock_open, read_data=_MANAGER_CONF_WITH_CLUSTER_KEY)
 def test_read_manager_conf_raw_no_masking_for_admin(mock_file, mock_perms):
     """read_manager_conf(raw=True) returns the real cluster key for admin users with update_config."""
@@ -740,7 +740,7 @@ def test_read_manager_conf_raw_no_masking_for_admin(mock_file, mock_perms):
     assert 'REAL_CLUSTER_SECRET' in result
 
 
-@patch('wazuh.rbac.decorators._has_update_permissions', return_value=False)
+@patch('wazuh.rbac.decorators._can_read_secrets', return_value=False)
 @patch('builtins.open', new_callable=mock_open, read_data=_MANAGER_CONF_WITH_CLUSTER_KEY)
 def test_read_manager_conf_raw_masking_does_not_corrupt_other_fields(mock_file, mock_perms):
     """Masking cluster.key must not corrupt other fields in the configuration."""

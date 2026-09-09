@@ -157,6 +157,7 @@ async def test_get_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
                                           wait_for_complete=False,
                                           logger=ANY,
                                           rbac_permissions=mock_request.context['token_info']['rbac_policies'],
+                                          current_user=mock_request.context['token_info'].get('sub', ''),
                                           nodes=mock_exc.return_value
                                           )
         mock_exc.assert_has_calls([call(mock_snodes.return_value),
@@ -245,6 +246,7 @@ async def test_get_configuration_node(mock_exc, mock_dapi, mock_remove, mock_dfu
                                               wait_for_complete=False,
                                               logger=ANY,
                                               rbac_permissions=mock_request.context['token_info']['rbac_policies'],
+                                              current_user=mock_request.context['token_info'].get('sub', ''),
                                               nodes=mock_exc.return_value
                                               )
             mock_exc.assert_has_calls([call(mock_snodes.return_value),
@@ -490,6 +492,7 @@ async def test_get_node_config(mock_check_pair, mock_exc, mock_dapi, mock_remove
                                           wait_for_complete=False,
                                           logger=ANY,
                                           rbac_permissions=mock_request.context['token_info']['rbac_policies'],
+                                          current_user=mock_request.context['token_info'].get('sub', ''),
                                           nodes=mock_exc.return_value
                                           )
         mock_exc.assert_has_calls([call(mock_snodes.return_value),
