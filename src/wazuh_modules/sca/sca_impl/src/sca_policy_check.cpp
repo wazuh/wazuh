@@ -108,6 +108,9 @@ FileRuleEvaluator::FileRuleEvaluator(PolicyEvaluationContext ctx,
 
 RuleResult FileRuleEvaluator::Evaluate()
 {
+    // A previous evaluation of this rule must not explain this one
+    m_lastUnresolvedReason.clear();
+
     if (m_ctx.pattern)
     {
         return CheckFileForContents();
@@ -239,6 +242,9 @@ CommandRuleEvaluator::CommandRuleEvaluator(PolicyEvaluationContext ctx,
 
 RuleResult CommandRuleEvaluator::Evaluate()
 {
+    // A previous evaluation of this rule must not explain this one
+    m_lastUnresolvedReason.clear();
+
     LoggingHelper::getInstance().log(LOG_DEBUG, "Processing command rule: '" + m_ctx.rule + "'");
 
     if (!m_ctx.commandsEnabled)
@@ -325,6 +331,9 @@ DirRuleEvaluator::DirRuleEvaluator(PolicyEvaluationContext ctx,
 
 RuleResult DirRuleEvaluator::Evaluate()
 {
+    // A previous evaluation of this rule must not explain this one
+    m_lastUnresolvedReason.clear();
+
     if (m_ctx.pattern)
     {
         return CheckDirectoryForContents();
@@ -469,7 +478,9 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                                     return m_ctx.isNegated ? RuleResult::NotFound : RuleResult::Found;
                                 }
 
-                                // If content doesn't match, continue to check other files
+                                // If content doesn't match, continue to check other files.
+                                // This file's reason must not explain a later one.
+                                m_lastUnresolvedReason.clear();
                             }
                             else
                             {
@@ -605,6 +616,9 @@ ProcessRuleEvaluator::ProcessRuleEvaluator(PolicyEvaluationContext ctx,
 
 RuleResult ProcessRuleEvaluator::Evaluate()
 {
+    // A previous evaluation of this rule must not explain this one
+    m_lastUnresolvedReason.clear();
+
     LoggingHelper::getInstance().log(LOG_DEBUG, "Processing process rule: '" + m_ctx.rule + "'");
 
     auto result = RuleResult::NotFound;
