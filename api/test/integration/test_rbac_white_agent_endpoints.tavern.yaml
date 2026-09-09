@@ -1671,3 +1671,15 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_denied
+
+  - name: Purge the enrollment tokens (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        status: "dead"
+    response:
+      <<: *permission_denied

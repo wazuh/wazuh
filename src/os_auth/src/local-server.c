@@ -242,6 +242,7 @@ static cJSON* local_create_error_response(int code, const char *message);
 static cJSON* local_token_create(cJSON *arguments, int *ierror);
 static cJSON* local_token_list(void);
 static cJSON* local_token_revoke(cJSON *arguments, int *ierror);
+static cJSON* local_token_purge(cJSON *arguments, int *ierror);
 // Whether `text` has the shape of a token id: exactly ETOKEN_ID_CHARS canonical base64url chars.
 static int is_token_id(const char *text);
 
@@ -705,6 +706,20 @@ char* local_dispatch(const char *input) {
             }
             etoken_store_reload_if_changed();
             if (response = local_token_revoke(arguments, &ierror), !response) {
+                goto fail;
+            }
+        } else if (!strcmp(function->valuestring, "token_purge")) {
+            // Writes the store like the other two, so the same 9015 on a worker; the workers get
+            // the pruned file from the cluster sync. `arguments` is optional here: without it the
+            // purge is the harmless one (dead tokens), and emptying the store always takes an
+            // explicit scope.
+            if (config.worker_node) {
+                ierror = ENOMASTER;
+                goto fail;
+            }
+            arguments = cJSON_GetObjectItem(request, "arguments");
+            etoken_store_reload_if_changed();
+            if (response = local_token_purge(arguments, &ierror), !response) {
                 goto fail;
             }
         } else {
@@ -1288,13 +1303,30 @@ static cJSON* local_token_create(cJSON *arguments, int *ierror) {
         return NULL;
     }
 
-    if (etoken_store_create(&mint, time(NULL), &data) != 0) {
-        etoken_mint_free(&mint);
+    rc = etoken_store_create(&mint, time(NULL), &data);
+    etoken_mint_free(&mint);
+
+    // Both limits answer with the 9025 the operator already knows, and the detail says which one
+    // was hit and what to do about it: the store is a file, and the fix is always a purge.
+    if (rc == ETOKEN_CREATE_FULL || rc == ETOKEN_CREATE_TOOBIG) {
+        char message[OS_SIZE_512];
+
+        if (rc == ETOKEN_CREATE_FULL) {
+            snprintf(message, sizeof(message), "%s: the enrollment token store is full (%d tokens in "
+                     "use); purge it before minting again", ERRORS[EMINTREFUSED].message, ETOKEN_MAX_TOKENS);
+        } else {
+            snprintf(message, sizeof(message), "%s: the enrollment token store would grow past the size "
+                     "the manager replicates; purge it before minting again", ERRORS[EMINTREFUSED].message);
+        }
+
+        mwarn("%s.", message);
+        return local_create_error_response(ERRORS[EMINTREFUSED].code, message);
+    }
+
+    if (rc != 0) {
         *ierror = EINTERNAL;
         return NULL;
     }
-
-    etoken_mint_free(&mint);
 
     response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", 0);
@@ -1330,6 +1362,50 @@ static cJSON* local_token_revoke(cJSON *arguments, int *ierror) {
     response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", 0);
     cJSON_AddItemToObject(response, "data", cJSON_CreateObject());
+
+    return response;
+}
+
+// Removes tokens instead of marking them: `scope` "dead" (the default, and the only thing a caller
+// that sends no arguments can ask for) drops what can no longer authorise an enrollment, "all"
+// empties the store. Revoking and purging are deliberately different: a revoked token stays listed.
+static cJSON* local_token_purge(cJSON *arguments, int *ierror) {
+    cJSON *item = NULL;
+    cJSON *ids = NULL;
+    cJSON *data = NULL;
+    cJSON *response = NULL;
+    etoken_purge_t scope = ETOKEN_PURGE_DEAD;
+    int removed;
+
+    if (item = cJSON_GetObjectItem(arguments, "scope"), item != NULL) {
+        if (!cJSON_IsString(item)) {
+            *ierror = EJSON;
+            return NULL;
+        }
+
+        if (!strcmp(item->valuestring, "all")) {
+            scope = ETOKEN_PURGE_ALL;
+        } else if (strcmp(item->valuestring, "dead")) {
+            // Naming a scope authd does not know must never be read as the safe one: an operator
+            // who typed "expired" expecting a purge deserves the error, not a silent partial run.
+            *ierror = EJSON;
+            return NULL;
+        }
+    }
+
+    if (removed = etoken_store_purge(scope, time(NULL), &ids), removed < 0) {
+        *ierror = EINTERNAL;
+        return NULL;
+    }
+
+    data = cJSON_CreateObject();
+    cJSON_AddNumberToObject(data, "removed", removed);
+    cJSON_AddNumberToObject(data, "remaining", etoken_store_count());
+    cJSON_AddItemToObject(data, "ids", ids);
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddItemToObject(response, "data", data);
 
     return response;
 }

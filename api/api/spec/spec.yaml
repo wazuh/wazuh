@@ -4836,6 +4836,57 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
+    delete:
+      tags:
+        - Agents
+      summary: "Purge enrollment tokens"
+      description: "Remove enrollment tokens from the manager's store. This is not the same as revoking
+      one: a revoked token stays listed with `revoked: true`, a purged one is gone. `status=dead`, the
+      default, removes only the tokens that can no longer authorise an enrollment (revoked, expired or
+      out of uses) and never touches a usable one; `status=all` empties the store, the tokens still in
+      use included. The store is written on the master node"
+      operationId: api.controllers.agent_controller.delete_enrollment_tokens
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/enrollment_token:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - name: status
+          in: query
+          description: "Which tokens to remove"
+          schema:
+            type: string
+            enum:
+              - dead
+              - all
+            default: dead
+          required: false
+      responses:
+        '200':
+          description: "Tokens purged"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllItemsResponseEnrollmentTokenIDs'
+              example:
+                data:
+                  affected_items:
+                    - "9-hPuHF4TgWl2WBjPP0lqQ"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "Enrollment tokens were purged"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents/enrollment-tokens/{token_id}:
     delete:

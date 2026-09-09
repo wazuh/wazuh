@@ -15,7 +15,7 @@ with patch('wazuh.common.wazuh_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from api.controllers.agent_controller import (
-            add_agent, create_enrollment_token, delete_agents, delete_enrollment_token, delete_groups,
+            add_agent, create_enrollment_token, delete_agents, delete_enrollment_token, delete_enrollment_tokens, delete_groups,
             delete_multiple_agent_single_group,
             delete_single_agent_multiple_groups,
             delete_single_agent_single_group,
@@ -1037,6 +1037,30 @@ async def test_delete_enrollment_token(mock_exc, mock_dapi, mock_remove, mock_df
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies'])
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with({'token_id': 'AAECAwQFBgcICQoLDA0ODw'})
+    assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scope", ["dead", "all"])
+@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
+@patch('api.configuration.api_conf')
+@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.agent_controller.remove_nones_to_dict')
+@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_delete_enrollment_tokens(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request, scope):
+    """Verify 'delete_enrollment_tokens' endpoint is working as expected."""
+    result = await delete_enrollment_tokens(status=scope)
+    mock_dapi.assert_called_once_with(f=agent.delete_enrollment_tokens,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='local_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies'])
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    # The query parameter reaches the framework as the scope of the purge.
+    mock_remove.assert_called_once_with({'scope': scope})
     assert isinstance(result, ConnexionResponse)
 
 
