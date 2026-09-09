@@ -94,6 +94,56 @@ static void etoken_clear_locked(void) {
 }
 
 /**
+ * @brief Whether an entry can no longer authorise an enrollment. Caller holds the mutex.
+ *
+ * The same three conditions etoken_store_consume() refuses on, in the same order: revoked, expired,
+ * out of uses. A token with `uses == 0` and time left is alive however long it has sat unused --
+ * that is a token an operator minted and has not handed out yet, not a leftover.
+ */
+static int etoken_is_dead_locked(const etoken_entry_t *entry, time_t now) {
+    return entry->revoked || now >= entry->expires ||
+           (entry->max_uses != 0 && entry->uses >= entry->max_uses);
+}
+
+/**
+ * @brief Remove the entries the scope names, keeping the order of the survivors. Caller holds the
+ *        mutex and persists afterwards.
+ *
+ * @param ids Optional; every removed id is appended to it.
+ * @return Number of entries removed.
+ */
+static int etoken_purge_locked(etoken_purge_t scope, time_t now, cJSON *ids) {
+    int kept = 0;
+    int removed = 0;
+    int i;
+
+    for (i = 0; i < etoken_tokens_size; i++) {
+        if (scope == ETOKEN_PURGE_ALL || etoken_is_dead_locked(&etoken_tokens[i], now)) {
+            if (ids != NULL) {
+                cJSON_AddItemToArray(ids, cJSON_CreateString(etoken_tokens[i].id));
+            }
+
+            etoken_entry_free(&etoken_tokens[i]);
+            removed++;
+        } else {
+            if (kept != i) {
+                etoken_tokens[kept] = etoken_tokens[i];
+            }
+
+            kept++;
+        }
+    }
+
+    etoken_tokens_size = kept;
+
+    if (kept == 0) {
+        os_free(etoken_tokens);
+    }
+
+    return removed;
+}
+
+/**
  * @brief Index of the entry with that id, or -1. Caller holds the mutex.
  */
 static int etoken_find_locked(const char *id) {
@@ -544,6 +594,19 @@ static int etoken_store_save_locked(void) {
         return -1;
     }
 
+    /* Measured on the document that would be written, not estimated from the entry count: a store
+     * of tokens that embed the CA is six times heavier than one of tokens that only pin it. Above
+     * this, remoted's replica would refuse the file and keep serving the previous one without
+     * saying so, so the write is refused instead and the caller undoes whatever it was adding */
+    if (strlen(text) > W_ETOKEN_STORE_MAX_BYTES) {
+        merror("The enrollment token store would take %zu bytes, over the %d byte limit. Purge the "
+               "tokens that are no longer usable (--purge-enrollment-tokens).",
+               strlen(text), W_ETOKEN_STORE_MAX_BYTES);
+        OPENSSL_cleanse(text, strlen(text));
+        os_free(text);
+        return -2;
+    }
+
     /* TempFile() creates the temporary file 0600 and, when the destination exists, copies its mode
      * onto it; the umask covers the remaining case (a first write) the same way
      * w_authd_load_password() does, and the explicit chmod() below settles both. Nothing is ever
@@ -663,6 +726,7 @@ int etoken_store_create(const etoken_mint_t *mint, time_t now, cJSON **data) {
     char *id = NULL;
     int attempt;
     int index;
+    int saved;
 
     if (data == NULL) {
         return -1;
@@ -682,6 +746,29 @@ int etoken_store_create(const etoken_mint_t *mint, time_t now, cJSON **data) {
     memset(&entry, 0, sizeof(entry));
 
     w_mutex_lock(&etoken_mutex);
+
+    /* The cap counts live tokens: a store full of revoked, expired or exhausted ones is not full,
+     * it is dirty. Clean it here -- the same purge the operator can run by hand -- and refuse only
+     * when that many tokens are genuinely usable. The cleanup is persisted at once so memory and
+     * file never disagree, whatever happens to the mint afterwards */
+    if (etoken_tokens_size >= ETOKEN_MAX_TOKENS) {
+        int freed = etoken_purge_locked(ETOKEN_PURGE_DEAD, now, NULL);
+
+        if (freed > 0) {
+            minfo("Purged %d enrollment token(s) that could no longer authorise an enrollment to "
+                  "make room in the store.", freed);
+
+            if (etoken_store_save_locked() < 0) {
+                w_mutex_unlock(&etoken_mutex);
+                return -1;
+            }
+        }
+
+        if (etoken_tokens_size >= ETOKEN_MAX_TOKENS) {
+            w_mutex_unlock(&etoken_mutex);
+            return ETOKEN_CREATE_FULL;
+        }
+    }
 
     for (attempt = 0; attempt < ETOKEN_ID_ATTEMPTS; attempt++) {
         if (RAND_bytes(id_bytes, sizeof(id_bytes)) != 1) {
@@ -769,15 +856,24 @@ int etoken_store_create(const etoken_mint_t *mint, time_t now, cJSON **data) {
     etoken_tokens[index] = entry;
     etoken_tokens_size++;
 
-    if (etoken_store_save_locked() < 0) {
+    if (saved = etoken_store_save_locked(), saved < 0) {
         /* Nothing is kept in memory either: a token authd cannot persist is a token a restart or a
-         * worker would not honour, and handing one out would be worse than refusing the request */
+         * worker would not honour, and handing one out would be worse than refusing the request.
+         * This is also what enforces the byte ceiling: the entry is undone and the caller learns
+         * which of the two limits stopped it */
         etoken_entry_free(&etoken_tokens[index]);
         etoken_tokens_size--;
         w_mutex_unlock(&etoken_mutex);
         OPENSSL_cleanse(text, strlen(text));
         os_free(text);
-        return -1;
+        return saved == -2 ? ETOKEN_CREATE_TOOBIG : -1;
+    }
+
+    /* Loud before it hurts: the operator still has room, but not much, and the fix (a purge) takes
+     * one command */
+    if (etoken_tokens_size * 5 >= ETOKEN_MAX_TOKENS * 4) {
+        mwarn("The enrollment token store holds %d of the %d tokens it accepts. Purge the ones that "
+              "are no longer usable (--purge-enrollment-tokens).", etoken_tokens_size, ETOKEN_MAX_TOKENS);
     }
 
     *data = cJSON_CreateObject();
@@ -885,6 +981,46 @@ int etoken_store_revoke(const char *id) {
     }
 
     return ret;
+}
+
+int etoken_store_purge(etoken_purge_t scope, time_t now, cJSON **ids) {
+    cJSON *removed_ids = cJSON_CreateArray();
+    int removed;
+
+    w_mutex_lock(&etoken_mutex);
+
+    removed = etoken_purge_locked(scope, now, removed_ids);
+
+    /* An empty purge leaves the file alone on purpose: rewriting it would change its mtime and make
+     * every node that watches it (remoted's replica, the cluster sync) reload a file that says
+     * exactly what it said before */
+    if (removed > 0 && etoken_store_save_locked() < 0) {
+        w_mutex_unlock(&etoken_mutex);
+        cJSON_Delete(removed_ids);
+
+        /* The tokens are gone from memory but not from the file. Reading it back is what puts the
+         * two in agreement again, and it is cheaper to be wrong in the safe direction: until the
+         * reload, this authd simply refuses tokens it would have accepted */
+        merror("Could not persist the enrollment token purge; reloading the store from disk.");
+        etoken_store_load();
+
+        return -1;
+    }
+
+    w_mutex_unlock(&etoken_mutex);
+
+    if (removed > 0) {
+        minfo("Purged %d enrollment token(s) (%s).", removed,
+              scope == ETOKEN_PURGE_ALL ? "all" : "no longer usable");
+    }
+
+    if (ids != NULL) {
+        *ids = removed_ids;
+    } else {
+        cJSON_Delete(removed_ids);
+    }
+
+    return removed;
 }
 
 etoken_use_t etoken_store_consume(const char *id, time_t now) {

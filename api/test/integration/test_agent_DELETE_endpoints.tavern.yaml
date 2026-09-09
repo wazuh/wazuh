@@ -866,3 +866,51 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
+
+    # DELETE /agents/enrollment-tokens?status=dead
+  - name: Purge the tokens that can no longer enrol anybody
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        status: "dead"
+    response:
+      status_code: 200
+      json:
+        error: 0
+
+    # GET /agents/enrollment-tokens?q=id=...
+  - name: The revoked token is gone, not just revoked
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        q: "id={revoked_token_id}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+          failed_items: []
+
+    # DELETE /agents/enrollment-tokens?status=nonsense
+  - name: Try to purge with a scope the API does not define
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        status: "expired"
+    response:
+      status_code: 400

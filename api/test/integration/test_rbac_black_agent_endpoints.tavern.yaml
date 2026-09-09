@@ -1438,3 +1438,17 @@ stages:
       status_code: 404
       json:
         error: 1767
+
+  - name: Purge the enrollment tokens (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        status: "dead"
+    response:
+      status_code: 200
+      json:
+        error: 0
