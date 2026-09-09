@@ -212,6 +212,7 @@ async def get_config(pretty: bool = False, wait_for_complete: bool = False) -> C
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
+                          current_user=request.context['token_info'].get('sub', ''),
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -334,6 +335,7 @@ async def get_configuration_node(node_id: str, pretty: bool = False, wait_for_co
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
+                          current_user=request.context['token_info'].get('sub', ''),
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -713,6 +715,7 @@ async def get_node_config(node_id: str, component: str, wait_for_complete: bool 
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
+                          current_user=request.context['token_info'].get('sub', ''),
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
