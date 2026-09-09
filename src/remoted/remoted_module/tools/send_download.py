@@ -332,13 +332,19 @@ class ProcWatcher:
 # 400 but with distinct messages; anything that does not resolve to a readable regular
 # file is 404.
 #
-# Note what is deliberately NOT covered: "a group this agent does not belong to". The
-# endpoint performs no membership check (protocol decision on #38022), so a request for
-# another group that DOES exist is served with 200 by design. The 404 below is about a
-# group that does not exist at all -- naming it otherwise would imply an authorization
-# property the endpoint does not have, and it would keep passing for the wrong reason.
+# Authorization (#38683): a `config` request is served only when resource_id equals the
+# selector /control handed THIS agent as config_token. Anything else is 403, decided before
+# the path is resolved -- so a group the agent is not in answers the same whether or not it
+# exists on the manager, which is the property the two denial scenarios below pin together.
+# 404 therefore now means "your own group's merged.mg is not on disk", not "no such group".
+#
+# One case this script cannot stage by itself: an agent with no registry entry at all (it
+# never sent /control/startup, or its entry was evicted). Reproduce it by restarting remoted
+# and running send_download.py BEFORE send_control.py -- the answer must be 403, not 200.
+# `wpk` requests are deliberately NOT authorized (their authority is the pending upgrade
+# task, which /control does not carry), which is why valid_wpk below still expects 200.
 
-def build_scenarios(group, unknown_group, wpk_name):
+def build_scenarios(group, unknown_group, other_group, wpk_name):
     return [
         ("valid_config", 200, request_body("config", group)),
         ("malformed_not_json", 400, b"not json at all"),
@@ -359,7 +365,8 @@ def build_scenarios(group, unknown_group, wpk_name):
         ("multigroup_selector_traversal_entry", 400, request_body("config", "web-servers,..")),
         ("wpk_without_extension", 400, request_body("wpk", "package")),
         ("wpk_traversal", 400, request_body("wpk", "../../etc/shadow.wpk")),
-        ("unknown_group_is_404", 404, request_body("config", unknown_group)),
+        ("group_that_does_not_exist_is_denied", 403, request_body("config", unknown_group)),
+        ("group_the_agent_is_not_in_is_denied", 403, request_body("config", other_group)),
         ("missing_wpk_is_404", 404, request_body("wpk", "definitely-not-staged.wpk")),
         ("valid_wpk", 200, request_body("wpk", wpk_name)),
     ]
@@ -503,7 +510,11 @@ def main():
     parser.add_argument("--watch-rss", action="store_true",
                         help="Sample wazuh-manager-remoted's RSS during the transfers.")
     parser.add_argument("--unknown-group", default="a-group-that-does-not-exist",
-                        help="Group used by the 404 scenario; must not exist on the manager.")
+                        help="Group that must NOT exist on the manager; the denial scenario proves "
+                             "it answers 403, not 404.")
+    parser.add_argument("--other-group", default="databases",
+                        help="Group that DOES exist but this agent is not in; must answer 403 "
+                             "identically to --unknown-group (no enumeration oracle).")
     parser.add_argument("--wpk", default=None, help="WPK filename staged under var/upgrade.")
     args = parser.parse_args()
     global GLOBAL_PREFIX
@@ -538,7 +549,8 @@ def main():
             if os.path.isdir(paths.wpk_dir) else "none-staged.wpk"
         print(f"agent {args.agent_id}: config selector={default_group}, wpk={wpk}\n")
         return 0 if run_scenarios(args.url, args.agent_id, agent_key,
-                                  build_scenarios(default_group, args.unknown_group, wpk)) else 1
+                                  build_scenarios(default_group, args.unknown_group,
+                                                  args.other_group, wpk)) else 1
 
     resource_id = args.resource_id or ("default" if args.resource_type == "config" else "")
     if not resource_id:
