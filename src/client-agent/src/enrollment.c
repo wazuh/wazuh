@@ -189,6 +189,18 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
                    manager_message ? " " : "", manager_message ? manager_message : "");
             status = W_ENROLL_ERR_DUPLICATE;
             break;
+        case 404:
+            /* The first request an agent ever sends, so a path the manager does not
+             * serve is reported here or nowhere: the /control stream that reports it
+             * for every other endpoint only runs once a key exists. */
+            merror("Enrollment rejected by the manager: it serves no /enroll route under the "
+                   "configured path '/%s'. The path in <endpoint> must match the global prefix "
+                   "the manager serves.%s%s",
+                   (agt->server && agt->server_count > 0 && agt->server[0].endpoint)
+                       ? agt->server[0].endpoint : "",
+                   manager_message ? " " : "", manager_message ? manager_message : "");
+            status = W_ENROLL_ERR_SERVER;
+            break;
         default:
             merror("Enrollment failed with unexpected HTTP status %ld.%s%s", result->http_code,
                    manager_message ? " " : "", manager_message ? manager_message : "");

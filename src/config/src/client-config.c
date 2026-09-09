@@ -169,15 +169,17 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
                 OS_ClearNode(chld_node);
             }
         } else if (strcmp(node[i]->element, xml_agent_enrollment) == 0) {
+            /* Recorded on the tag, not inside the branch below: OS_GetElementsbyNode()
+             * returns NULL for an element with no children, so an empty block here --
+             * the natural way to say the identity lives nowhere else -- would otherwise
+             * let a legacy <client> spelling of it apply. */
+            logr->enrollment.set_under_agent = true;
+
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 if (Read_Agent_Enrollment(chld_node, logr) < 0) {
                     OS_ClearNode(chld_node);
                     return (OS_INVALID);
                 }
-
-                /* Recorded so a legacy <client> spelling of this block listed after
-                 * this one is skipped rather than merged into it. */
-                logr->enrollment.set_under_agent = true;
 
                 OS_ClearNode(chld_node);
             }
@@ -340,6 +342,8 @@ int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__
              * whatever an <agent> one below it leaves unset, the same way repeated
              * <agent><enrollment> blocks resolve. */
             if (logr->enrollment.set_under_agent) {
+                mwarn("<enrollment> inside the legacy <client> block is ignored: <agent> "
+                      "already supplies it. Keep the identity in one of the two blocks.");
                 continue;
             }
 
@@ -1528,6 +1532,19 @@ int Read_Agent_Enrollment(XML_NODE node, agent * logr){
             return (OS_INVALID);
         }
     }
+
+    /* Settled here rather than left to every enrollment attempt: the request builder
+     * refuses the pair, and its loop retries forever, so a configuration carrying both
+     * would repeat the same error for the life of the agent instead of being reported
+     * once against the file that causes it. The explicit address is the more specific
+     * of the two, so it is the one kept. */
+    if (logr->enrollment.agent_address && logr->enrollment.use_source_ip) {
+        mwarn("<use_source_ip> under <enrollment> is ignored: <agent_address> already "
+              "forces the address '%s'. Configure only one of the two.",
+              logr->enrollment.agent_address);
+        logr->enrollment.use_source_ip = false;
+    }
+
     return 0;
 }
 int Read_AntiTampering(XML_NODE node, void *d1) {

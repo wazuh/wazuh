@@ -62,7 +62,7 @@ The following changes were identified during agent startup validation after upgr
 |---|---|---|---|
 | `<client>...</client>` | Renamed | `WARNING: <config-profile> inside the legacy <client> block is ignored. Configure it under <agent>.` | Rename the block to `<agent>` and its inner `<server>` to `<manager>`. Only `<server><address>` and the `<enrollment>` sub-block are read out of a `<client>` block; every other option in it (`<config-profile>`, `<notify_time>`, `<crypto_method>`) stops taking effect until the block is renamed, and each one is named in a startup warning. |
 | `<client><server><address>` | Read as fallback | `INFO: <agent><manager><endpoint> is not configured. Using <client><server><address> 'MANAGER_IP' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the <client><server> block with a single <endpoint>MANAGER_IP:1517/wazuh-manager</endpoint>` | None, to keep connecting: the port defaults to `1517` and the request path to the manager's default prefix. Move it to `<agent><manager><endpoint>` for the supported end state — the message quotes the exact line to write. |
-| `<client><enrollment>...</enrollment>` | Read | — | None. The enrollment identity — `<agent_name>`, `<groups>`, `<agent_address>`, `<authorization_pass_path>` — is read out of the legacy block, so an upgraded agent that has to re-enroll presents the same identity instead of registering again under its hostname with no group. Move it under `<agent>` when renaming the block. |
+| `<client><enrollment>...</enrollment>` | Read | — | None, if the groups it names exist on the manager the agent enrolls against — see the note below. The enrollment identity — `<agent_name>`, `<groups>`, `<agent_address>`, `<authorization_pass_path>` — is read out of the legacy block, so an upgraded agent that has to re-enroll presents the same identity instead of registering again under its hostname with no group. Move it under `<agent>` when renaming the block. |
 | `<client><server><port>1514</port></server></client>` | Changed default | — | The agent talks HTTPS to the manager on `1517`. Inside `<agent><manager>`, remove the port to take the new default or set `1517` explicitly; inside a legacy `<client>` block the port is not read at all. |
 | `<client><server><protocol>...</protocol></server></client>` | Ignored | `INFO: Ignoring the 'protocol' option. Switching to TCP.` | Remove `<protocol>`. TCP is used. |
 | `<client><crypto_method>...</crypto_method></client>` | Ignored | `INFO: Ignoring the 'crypto_method' option. Switching to AES.` | Remove `<crypto_method>`. |
@@ -120,6 +120,25 @@ After (5.0 compatible):
 - **Rename it** to `<agent><manager>`, which is what a fresh 5.0 install ships. Every option in the block is read again. Renaming only the root tag is not enough: `<agent><server>` is rejected.
 
 Recommended: rename it. The fallback exists so a remote upgrade cannot strand an agent, not as a configuration to keep.
+
+#### The groups in the block must exist on the manager
+
+An upgraded agent asks for the groups its `<enrollment>` block names. The manager refuses an enrollment that names a group it does not have, and it refuses the whole request: one unknown group in the list is enough, and the groups that do exist are not applied either. The agent then retries indefinitely without registering, reporting the manager's reason on every attempt:
+
+```console
+INFO: Enrolling as 'agent-01'. Groups: web,db,cache.
+ERROR: Enrollment rejected by the manager: invalid request. Invalid Group(s) Name(s)
+```
+
+with the manager naming the first one it could not find:
+
+```console
+wazuh-manager-authd: ERROR: Invalid group: web
+```
+
+4.X validates groups the same way, so this is not a change in what a manager accepts. It matters when an agent is upgraded *and* pointed at a different manager than the one it was installed against: a rebuilt manager, a migration, or a group since deleted.
+
+Create the groups on the target manager before upgrading, with `agent_groups -a -g <group>`, or remove `<groups>` from the block to let the agent fall back to `default`. An agent that asks for no groups is always accepted.
 
 ### Removed modules
 
