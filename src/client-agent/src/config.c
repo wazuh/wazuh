@@ -148,13 +148,14 @@ int ClientConf(const char *cfgfile)
  * the rung above and verifies. 'system' stays available, as an explicit choice for a fleet
  * whose manager is fronted by a publicly trusted certificate.
  *
- * The anchor also overrides an explicit 'none': a configuration-management template that
- * writes none -- which is what every current Ansible and Puppet role does -- must not be
- * able to turn verification off on a host that holds an anchor and can therefore verify.
- * That override logs at error level and never refuses to start: taking a host off the air
- * is the wrong answer to a careless template, and the security property is the same either
- * way. An explicit 'certificate' or 'system' still wins, so a corporate-PKI fleet is not
- * forced onto the anchor.
+ * An explicit <verification_mode> is honoured without exception, 'none' included. The anchor
+ * decides only what <ssl> left unsaid: it is the default for an unset mode and the default
+ * <certificate_authorities>, never an override. So turning verification off is one edit to
+ * ossec.conf and does not also require deleting a file on disk -- the file staying put is
+ * what lets the same host verify again by removing that one line. An agent that reaches
+ * 'none' with an anchor present logs (4122) at warning level, because it is giving up a
+ * verification it was equipped to perform; the transport's own "TLS verification is
+ * DISABLED" warning still follows it.
  *
  * Shared configuration cannot reach any of this: Read_Agent_Shared() recognizes only
  * <batch>/force_reconnect_interval under <agent> and rejects <ssl> outright, so the manager
@@ -195,34 +196,23 @@ void w_agent_resolve_ssl_posture(agent *cfg)
             cfg->ssl.verification_mode = AGENT_VERIFY_NONE;
         }
     } else if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE && anchor) {
-        merror(AG_SSL_ANCHOR_OVERRIDES_NONE, AGENT_ANCHOR_CA);
-        cfg->ssl.verification_mode = AGENT_VERIFY_FULL;
-
-        /* Whatever path 'none' was carrying is dropped in favour of the anchor, readable or
-         * not. Under 'none' it was never going to be read, so nothing has ever proved it
-         * usable -- and keeping it would turn this override into a (4118) refusal to start,
-         * which is precisely the outcome requirement 13 rules out. That is also why this row
-         * and its verifying-mode counterpart end differently: an unreadable CA under 'full'
-         * still refuses, because there requirement 13 does not apply and a named (4118) beats
-         * silently verifying against a CA the operator never asked for.
-         *
-         * Say so when a path is actually being discarded: otherwise the agent reports 'full'
-         * plus a CA nobody configured, and the operator's own path leaves no trace. */
-        if (ca_set) {
-            mwarn(AG_SSL_ANCHOR_IGNORES_CA, cfg->ssl.certificate_authorities, AGENT_ANCHOR_CA);
-        }
-
-        ca_set = false;
+        /* Nothing to change: 'none' is what the operator asked for and it stands. Worth a
+         * warning all the same -- an anchor on disk means this host could verify and has been
+         * told not to, which is the one combination an operator is most likely to have
+         * arrived at by accident. Any <certificate_authorities> alongside it is left exactly
+         * as configured: under 'none' it is never read, and the validator does not probe it
+         * either, so an inert value stays silent instead of producing a warning about
+         * something that has no effect. */
+        mwarn(AG_SSL_NONE_IGNORES_ANCHOR, AGENT_ANCHOR_CA);
     }
 
     /* The anchor is the default <certificate_authorities>: one rule, rather than a special
-     * case per mode. An explicit path wins in every verifying mode -- but not under 'none',
-     * which dropped its own path above rather than refuse to start. 'system' is excluded on
-     * purpose -- it
-     * trusts the OS store instead of a file, and a CA set alongside it is a hard (4120)
-     * refusal, so injecting here would refuse to start every agent that holds an anchor.
-     * 'none' cannot reach this either: with an anchor it became 'full' above, and without
-     * one there is nothing to inject. */
+     * case per mode, and an explicit path always wins. Only the two modes that verify against
+     * a file are eligible. 'system' is excluded on purpose -- it trusts the OS store instead
+     * of a file, and a CA set alongside it is a hard (4120) refusal, so injecting here would
+     * refuse to start every agent that holds an anchor. 'none' is excluded because it reads
+     * no CA at all: injecting one would put a path the agent never opens into the config
+     * report, and would turn a later switch to 'full' into a silent change of trust. */
     if ((cfg->ssl.verification_mode == AGENT_VERIFY_FULL || cfg->ssl.verification_mode == AGENT_VERIFY_CERT)
             && !ca_set && anchor) {
         /* os_free() first: os_strdup() overwrites the pointer without releasing it, and an
@@ -240,14 +230,12 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
 {
     const char *ca = cfg->ssl.certificate_authorities;
 
-    /* Under 'none' the CA is never read, so a wrong path stays invisible until someone
-     * enables verification -- and then the agent refuses to start. Warn while it is
-     * still harmless rather than accepting it in silence. */
+    /* 'none' reads no CA at all, so <certificate_authorities> is inert here and is not even
+     * probed: warning that an ignored value is unreadable is noise about something that has
+     * no effect, and it invited the reading that the path was doing something. A wrong path
+     * surfaces the moment verification is actually turned on, as (4118), which is the point
+     * at which it starts to matter. */
     if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE) {
-        if (ca && !w_is_file(ca)) {
-            mwarn(AG_UNUSED_SSL_CA, ca);
-        }
-
         return true;
     }
 

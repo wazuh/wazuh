@@ -712,14 +712,17 @@ if ([string]::IsNullOrEmpty($ssl_verification_mode)) {
 $default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
 
 # Same path as AGENT_ANCHOR_CA (src/shared/include/defs.h), which the agent now reads
-# directly: since #39025 a present, readable file here IS the verification state, so the
-# resolution this gate mirrors above is no longer the one the upgraded binary will apply:
-# an unset <verification_mode> resolves to 'full' with the anchor present and 'none' without
-# it, never to this gate's 'system'. Reconciling them is #38949 question 6; no verdict below
-# was changed for it.
+# directly: since #39025 a present, readable file here supplies the verification state for
+# anything <ssl> left unsaid, so the resolution this gate mirrors above is no longer the one
+# the upgraded binary will apply: an unset <verification_mode> resolves to 'full' with the
+# anchor present and 'none' without it, never to this gate's 'system'. An explicit mode is
+# honoured unchanged, 'none' included, so the divergence is in the unset and no-readable-CA
+# rows only. Reconciling the rest is #38949 question 6; no verdict below was changed for it,
+# but the state that drives the divergence is now recorded, so an upgrade log is enough to
+# explain a posture this gate did not predict.
 
 if (Test-Path -PathType Leaf $default_ca_file) {
-    write-output "$(Get-Date -format u) - A trust anchor is present at $($default_ca_file). Since #39025 the upgraded agent treats it as the verification state, so it may verify with 'full' against that file whatever <ssl><verification_mode> says below; an explicit 'certificate' or 'system' still wins." >> .\upgrade\upgrade.log
+    write-output "$(Get-Date -format u) - A trust anchor is present at $($default_ca_file). Since #39025 the upgraded agent verifies with 'full' against that file when <ssl> names no <verification_mode>, and uses it as the default <certificate_authorities>. An explicit <verification_mode> is honoured unchanged." >> .\upgrade\upgrade.log
 }
 
 if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certificate") {
@@ -766,8 +769,8 @@ if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certific
         abort_upgrade "2"
     }
 } elseif ($ssl_verification_mode -ceq "none") {
-    # Nothing for this gate to check: 'none' needs no CA and reaches no trust store. It is
-    # also the row the anchor overrides outright, which the log above covers.
+    # Nothing for this gate to check: 'none' needs no CA and reaches no trust store, and the
+    # upgraded binary honours it whether or not an anchor is on disk.
 } else {
     # Neither ReadConfig() nor this gate's own default-resolution above can produce
     # anything but full/certificate/system/none, so getting here means ossec.conf carries

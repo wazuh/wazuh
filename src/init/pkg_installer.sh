@@ -568,17 +568,19 @@ fi
 DEFAULT_CA_FILE="./etc/certs/root-ca.pem"
 
 # Same path as AGENT_ANCHOR_CA (src/shared/include/defs.h), which the agent now reads
-# directly: since #39025 a present, readable file here IS the verification state, so the
-# resolution this gate mirrors above is no longer the one the upgraded binary will apply.
-# Three rows diverge: an unset <verification_mode>, which this gate resolves to 'system' and
-# the new binary resolves to 'full' with the anchor present or 'none' without it; a config
-# with no readable <certificate_authorities>, which this gate aborts on and the new binary
-# starts with; and an explicit 'none', which this gate treats as nothing to check and the new
-# binary overrides when the anchor is present. Reconciling them is #38949 question 6; no
-# verdict below was changed for it.
+# directly: since #39025 a present, readable file here supplies the verification state for
+# anything <ssl> left unsaid, so the resolution this gate mirrors above is no longer the one
+# the upgraded binary will apply. Two rows diverge: an unset <verification_mode>, which this
+# gate resolves to 'system' and the new binary resolves to 'full' with the anchor present or
+# 'none' without it; and a config with no readable <certificate_authorities>, which this gate
+# aborts on and the new binary starts with. An explicit mode is not one of them -- the binary
+# honours 'none', 'certificate' and 'system' exactly as written. Reconciling the rest is
+# #38949 question 6; no verdict below was changed for it, but the state that drives the
+# divergence is now recorded, so an upgrade log is enough to explain a posture this gate did
+# not predict.
 
 if [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; then
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - A trust anchor is present at ${DEFAULT_CA_FILE}. Since #39025 the upgraded agent treats it as the verification state, so it may verify with 'full' against that file whatever <ssl><verification_mode> says below; an explicit 'certificate' or 'system' still wins." >> ./logs/upgrade.log
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - A trust anchor is present at ${DEFAULT_CA_FILE}. Since #39025 the upgraded agent verifies with 'full' against that file when <ssl> names no <verification_mode>, and uses it as the default <certificate_authorities>. An explicit <verification_mode> is honoured unchanged." >> ./logs/upgrade.log
 fi
 
 case "${SSL_VERIFICATION_MODE}" in
@@ -628,8 +630,8 @@ case "${SSL_VERIFICATION_MODE}" in
         fi
         ;;
     none)
-        # Nothing for this gate to check: 'none' needs no CA and reaches no trust store. It is
-        # also the row the anchor overrides outright, which the log above covers.
+        # Nothing for this gate to check: 'none' needs no CA and reaches no trust store, and
+        # the upgraded binary honours it whether or not an anchor is on disk.
         ;;
     *)
         # Neither ReadConfig() nor this gate's own default-resolution above can produce

@@ -72,23 +72,14 @@ static void expect_anchor(int present)
     will_return(__wrap_w_is_file, present);
 }
 
-static void expect_anchor_overrides_none(void)
-{
-    expect_string(__wrap__merror, formatted_msg,
-                  "(4122): <ssl><verification_mode> is 'none' but the trust anchor '" AGENT_ANCHOR_CA
-                  "' is present and readable: verifying with 'full' against it instead. "
-                  "Remove the anchor file to disable verification.");
-}
-
-/* Literal, like the expectations above it: expect_string() keeps the pointer it is given
+/* Literal, like the expectations around it: expect_string() keeps the pointer it is given
  * rather than a copy, so a formatted buffer has to outlive the call and a local one does not. */
-static void expect_anchor_ignores_ca(void)
+static void expect_none_ignores_anchor(void)
 {
     expect_string(__wrap__mwarn, formatted_msg,
-                  "(4123): <ssl><certificate_authorities> 'etc/operator-ca.pem' is ignored. "
-                  "The trust anchor '" AGENT_ANCHOR_CA "' overrode <verification_mode> 'none', "
-                  "and verification uses the anchor instead. Set <verification_mode> explicitly "
-                  "to keep using your own CA.");
+                  "(4122): <ssl><verification_mode> is 'none' and the trust anchor '" AGENT_ANCHOR_CA
+                  "' is present: TLS verification stays disabled, as configured, and the anchor is "
+                  "not used. Remove <verification_mode>none</verification_mode> to verify against it.");
 }
 
 static void expect_inferred_certificate(void)
@@ -108,28 +99,23 @@ static void test_none_without_ca_starts_quietly(void **state)
     assert_true(w_agent_validate_ssl_ca(&cfg));
 }
 
-static void test_none_with_readable_ca_starts_quietly(void **state)
+/* Queues no expectation on purpose: under 'none' the path is inert, so the validator must not
+ * probe it. cmocka fails on an unexpected call to a wrapped symbol, which is what pins that. */
+static void test_none_with_readable_ca_is_not_probed(void **state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, "etc/operator-ca.pem");
 
-    expect_ca_readable("etc/operator-ca.pem", 1);
-
     assert_true(w_agent_validate_ssl_ca(&cfg));
 }
 
-/* The case the shipped template used to create: a CA path that parses cleanly,
- * is never read, and so goes unnoticed until verification is turned on. */
-static void test_none_with_unreadable_ca_warns_and_starts(void **state)
+/* The case the shipped template creates: a CA path that parses cleanly and is never read.
+ * It stays silent, because 'none' means the value has no effect -- it becomes a (4118)
+ * refusal the moment someone turns verification on, and not before. */
+static void test_none_with_unreadable_ca_is_not_probed_either(void **state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, "PATH");
-
-    expect_ca_readable("PATH", 0);
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "(4119): <ssl><certificate_authorities> is not a readable file: 'PATH'. "
-                  "It is unused while <verification_mode> is 'none'; enabling verification "
-                  "would stop the agent from starting.");
 
     assert_true(w_agent_validate_ssl_ca(&cfg));
 }
@@ -411,7 +397,7 @@ static void test_resolve_system_never_takes_the_anchor(void **state)
     free_config(&cfg);
 }
 
-/* --- the latch: an anchor outranks a local request to stop verifying --- */
+/* --- an explicit 'none' with an anchor on disk: honoured, and said out loud --- */
 
 static void test_resolve_none_without_anchor_is_kept(void **state)
 {
@@ -427,39 +413,39 @@ static void test_resolve_none_without_anchor_is_kept(void **state)
     free_config(&cfg);
 }
 
-static void test_resolve_none_with_anchor_is_overridden_to_full(void **state)
+/* The anchor is a default, not an override: an operator who asks for 'none' gets 'none',
+ * without also having to delete the file. (4122) records that the host could have verified. */
+static void test_resolve_none_with_anchor_is_still_none(void **state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_NONE, NULL);
 
     expect_anchor(1);
-    expect_anchor_overrides_none();
+    expect_none_ignores_anchor();
 
     w_agent_resolve_ssl_posture(&cfg);
 
-    assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_FULL);
-    assert_string_equal(cfg.ssl.certificate_authorities, AGENT_ANCHOR_CA);
+    assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_NONE);
+    assert_null(cfg.ssl.certificate_authorities);
     free_config(&cfg);
 }
 
 /* The shape a configuration-management default actually leaves behind: 'none' next to a CA
- * path nobody maintains, because under 'none' it was never read. The path goes, readable or
- * not -- the resolver never probes it, so it cannot tell a stale one from a maintained one,
- * and keeping it would turn the override into a (4118) refusal to start. (4123) is what
- * stops that being silent. */
-static void test_resolve_none_with_anchor_drops_the_configured_ca(void **state)
+ * path nobody maintains, because under 'none' it was never read. Both survive untouched --
+ * the resolver injects nothing into a mode that opens no CA, so a later switch to 'full'
+ * verifies against the operator's own path and not against something put there for them. */
+static void test_resolve_none_with_anchor_keeps_the_configured_ca(void **state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_NONE, "etc/operator-ca.pem");
 
     expect_anchor(1);
-    expect_anchor_overrides_none();
-    expect_anchor_ignores_ca();
+    expect_none_ignores_anchor();
 
     w_agent_resolve_ssl_posture(&cfg);
 
-    assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_FULL);
-    assert_string_equal(cfg.ssl.certificate_authorities, AGENT_ANCHOR_CA);
+    assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_NONE);
+    assert_string_equal(cfg.ssl.certificate_authorities, "etc/operator-ca.pem");
     free_config(&cfg);
 }
 
@@ -537,29 +523,28 @@ static void test_system_with_anchor_still_needs_an_os_bundle(void **state)
     free_config(&cfg);
 }
 
-/* The half of requirement 13 that is easy to get wrong: the override must leave the agent
- * running, not fail closed on the way in. */
-static void test_none_with_anchor_starts_verifying(void **state)
+/* An anchor on disk must not become a reason to refuse, in either direction: the agent
+ * starts, and it starts with verification off, because that is what was configured. */
+static void test_none_with_anchor_starts_without_verifying(void **state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_NONE, NULL);
 
     expect_anchor(1);
-    expect_anchor_overrides_none();
+    expect_none_ignores_anchor();
     w_agent_resolve_ssl_posture(&cfg);
 
-    expect_anchor(1);
     assert_true(w_agent_validate_ssl_ca(&cfg));
 
-    assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_FULL);
+    assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_NONE);
+    assert_null(cfg.ssl.certificate_authorities);
     free_config(&cfg);
 }
 
-/* The counterpart to test_none_with_anchor_starts_verifying(), and the one row where the
- * anchor deliberately does not keep the agent on the air: an explicit verifying mode names a
- * CA that cannot be opened. Requirement 13 only forbids refusing on the 'none' override, so
- * here the named (4118) wins -- silently verifying against an anchor the operator never
- * pointed at would hide the broken path instead of reporting it. */
+/* The one row where the anchor deliberately does not keep the agent on the air: an explicit
+ * verifying mode names a CA that cannot be opened. The named (4118) wins -- silently
+ * verifying against an anchor the operator never pointed at would hide the broken path
+ * instead of reporting it. */
 static void test_full_with_unreadable_ca_still_refuses_with_an_anchor(void **state)
 {
     (void)state;
@@ -583,8 +568,8 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_none_without_ca_starts_quietly),
-        cmocka_unit_test(test_none_with_readable_ca_starts_quietly),
-        cmocka_unit_test(test_none_with_unreadable_ca_warns_and_starts),
+        cmocka_unit_test(test_none_with_readable_ca_is_not_probed),
+        cmocka_unit_test(test_none_with_unreadable_ca_is_not_probed_either),
         cmocka_unit_test(test_full_with_readable_ca_starts),
         cmocka_unit_test(test_full_with_unreadable_ca_fails),
         cmocka_unit_test(test_full_without_ca_fails),
@@ -610,15 +595,15 @@ int main(void)
         cmocka_unit_test(test_resolve_certificate_with_ca_is_untouched),
         cmocka_unit_test(test_resolve_system_never_takes_the_anchor),
         cmocka_unit_test(test_resolve_none_without_anchor_is_kept),
-        cmocka_unit_test(test_resolve_none_with_anchor_is_overridden_to_full),
-        cmocka_unit_test(test_resolve_none_with_anchor_drops_the_configured_ca),
+        cmocka_unit_test(test_resolve_none_with_anchor_is_still_none),
+        cmocka_unit_test(test_resolve_none_with_anchor_keeps_the_configured_ca),
         cmocka_unit_test(test_resolve_is_idempotent),
 
         /* Resolver and validator composed. */
         cmocka_unit_test(test_anchor_default_posture_starts),
         cmocka_unit_test(test_full_without_ca_without_anchor_refuses_to_start),
         cmocka_unit_test(test_system_with_anchor_still_needs_an_os_bundle),
-        cmocka_unit_test(test_none_with_anchor_starts_verifying),
+        cmocka_unit_test(test_none_with_anchor_starts_without_verifying),
         cmocka_unit_test(test_full_with_unreadable_ca_still_refuses_with_an_anchor),
     };
 
