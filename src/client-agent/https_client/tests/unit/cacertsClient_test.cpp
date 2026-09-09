@@ -69,12 +69,10 @@ TEST(CacertsClientTest, SendsAGetWithNoBodyToTheLiteralCacertsTarget)
     EXPECT_EQ("-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----\n", response.body);
 }
 
-// Decided behavior under test (see cacertsClient.hpp's doc comment): /cacerts
-// stays "/cacerts" even when a reverse-proxy prefix is configured, unlike
-// every prefixed endpoint (EnrollClientTest's
-// ConfiguredEndpointIsFoldedIntoTheTarget pins the opposite behavior for
-// /enroll).
-TEST(CacertsClientTest, ConfiguredEndpointPrefixIsNotFoldedIntoTheTarget)
+// Decided behavior under test (see cacertsClient.hpp's doc comment): /cacerts is
+// folded through the configured prefix same as every other endpoint (EnrollClientTest's
+// ConfiguredEndpointIsFoldedIntoTheTarget pins the identical behavior for /enroll).
+TEST(CacertsClientTest, ConfiguredEndpointPrefixIsFoldedIntoTheTarget)
 {
     NiceMock<MockFsProbe> fsProbe;
     NiceMock<MockHttpPerformer> performer;
@@ -86,7 +84,7 @@ TEST(CacertsClientTest, ConfiguredEndpointPrefixIsNotFoldedIntoTheTarget)
     .WillOnce(Invoke(
                   [&](const HttpRequestSpec & spec)
     {
-        EXPECT_EQ("/cacerts", spec.target);
+        EXPECT_EQ("/wazuh-manager/cacerts", spec.target);
         return okResponse("cert-body");
     }));
 

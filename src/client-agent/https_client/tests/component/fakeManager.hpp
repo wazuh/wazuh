@@ -796,11 +796,9 @@ class FakeManager final
             // this body proves the client received exactly the bytes this route served,
             // not something it could have derived from the handshake it rode in on.
             //
-            // Decided (see cacertsClient.hpp's matching doc comment): registered
-            // unconditionally, with no prefix handling at all -- unlike every other
-            // route above, none of which this fake manager prefixes either, so this
-            // is not itself new proof of prefix-independence, only a mock built
-            // consistently with that same decision.
+            // This fake manager never models global_prefix for any route; prefix-folding
+            // is the client's job (prefixedTarget(), see cacertsClient.hpp), covered at
+            // the unit level, not here.
             server.Get("/cacerts",
                        [pem = m_cacertsPem](const httplib::Request&, httplib::Response & response)
             {

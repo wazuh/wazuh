@@ -11,6 +11,8 @@
 
 #include "cacertsClient.hpp"
 
+#include "requestTarget.hpp"
+
 #include <utility>
 
 CacertsClient::CacertsClient(const ModuleConfig& config, IHttpPerformer& performer, const IFsProbe& fsProbe,
@@ -32,10 +34,7 @@ HttpResponse CacertsClient::fetch()
     }
 
     HttpRequestSpec spec;
-    // Literal, unprefixed target: see the class doc comment's "Decided"
-    // paragraph on why this does not go through prefixedTarget() like every
-    // other endpoint.
-    spec.target = "/cacerts";
+    spec.target = prefixedTarget(m_config.serverEndpoint, "/cacerts");
     spec.method = HttpMethod::Get;
     spec.timeoutMs = m_config.requestTimeoutMs;
 
