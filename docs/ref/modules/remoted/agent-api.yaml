@@ -584,8 +584,17 @@ paths:
         fetch its **effective** configuration, and needs no database lookup because the directory
         name is the first 8 hex characters of the SHA-256 of the selector verbatim.
 
-        **There is no group-membership check.** Any authenticated agent can fetch any group's or
-        multigroup's merged configuration.
+        **A `config` download is authorized against the requesting agent's own groups.**
+        `resource_id` must equal the selector `/control` handed that agent as `config_token` -- the
+        same string `config_hash` was computed over -- and anything else is `403`. The selector is
+        resolved from the agent registry `/control` maintains, so no wazuh-db round trip is added
+        here; an agent whose membership was never established (no `/control/startup`, or an evicted
+        entry) is denied rather than served. The comparison is exact, multigroup order included.
+
+        **`wpk` downloads are not authorized this way.** A package's authority is the agent's
+        pending upgrade task, which `/control` does not carry, so any authenticated agent may still
+        fetch a staged package; stock packages are signature-verified by the agent against
+        `wpk_root.pem` before installing.
 
         A failed transfer is a truncation, never a short success: the terminating chunk is withheld
         so the agent retries rather than installing an incomplete file. The descriptor is re-`fstat`ed
@@ -625,6 +634,27 @@ paths:
                   summary: Fails the grammar for its type
                   value: { error: "Invalid resource identifier", code: 400 }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: |
+            Two different producers answer `403` on this route, with the same flat shape:
+
+            - **this endpoint**, when `resource_type` is `config` and `resource_id` is not the
+              requesting agent's own selector, or the manager has no established group membership
+              for it. Decided before the path is resolved, so it is indistinguishable from a request
+              for a group that does not exist -- there is no oracle for enumerating group names.
+            - **the shared transport**, in mTLS mode, when the client certificate does not match the
+              connecting peer's address (see the note on `POST /enroll`). That one rejects the whole
+              connection, every route included.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                notTheAgentsOwnResource:
+                  summary: The requested selector is not this agent's
+                  value: { error: "Forbidden", code: 403 }
+                peerAddressMismatch:
+                  summary: mTLS only -- rejected by the transport, before any route
+                  value: { error: "Client certificate does not match the peer address", code: 403 }
         "404":
           description: |
             Absent, not a regular file, or `O_NOFOLLOW` refused a symlink -- deliberately
