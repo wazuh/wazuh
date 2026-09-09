@@ -14,6 +14,10 @@ TMP_ENROLLMENT="${INSTALLDIR}/tmp/enrollment-configuration"
 TMP_SERVER="${INSTALLDIR}/tmp/server-configuration"
 TMP_INSERT="${INSTALLDIR}/tmp/insert-output"
 WAZUH_REGISTRATION_PASSWORD_PATH="etc/authd.pass"
+# Where WAZUH_ENROLLMENT_TOKEN is left for the agent to finish the bootstrap with at its
+# first start. Root-only, unlike authd.pass: the agent reads it before dropping privileges,
+# so the wazuh user never needs it.
+WAZUH_ENROLLMENT_TOKEN_PATH="etc/enrollment_token"
 WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
 
 
@@ -178,241 +182,6 @@ parse_manager_endpoint() {
         else
             MEP_ENDPOINT="/${mep_path}/"
         fi
-    fi
-
-    return 0
-
-}
-
-##########
-# WAZUH_ENROLLMENT_TOKEN parsing: decodes and validates the token only -- fetch/pin-compare/
-# persist come later. Self-contained shell/awk, not a sourced library or the existing C++
-# base64url decoder (base64Url.hpp), because this script ships standalone inside packages
-# and cannot source a sibling file or call into C++ at install time (see ParseManagerEndpoint()
-# in inst-functions.sh for the same precedent).
-
-# Strict unpadded base64url (RFC 4648 section 5 / RFC 7515 section 2) decode: base64(1)
-# -d alone accepts a length that can't represent whole bytes, so alphabet and remainder
-# are checked first. Translates to standard base64 rather than reimplementing sextet
-# math, matching this file's existing parsers. Does not enforce base64Url.hpp's
-# "canonical padding bits are zero" rule (RFC 8725 section 3.12).
-wet_b64url_decode() {
-
-    wet_b64_input="$1"
-
-    if [ -z "${wet_b64_input}" ]; then
-        return 1
-    fi
-
-    case "${wet_b64_input}" in
-        *[!A-Za-z0-9_-]*) return 1 ;;
-    esac
-
-    wet_b64_rem=$(( ${#wet_b64_input} % 4 ))
-    if [ "${wet_b64_rem}" -eq 1 ]; then
-        return 1
-    fi
-
-    wet_b64_std="$(printf '%s' "${wet_b64_input}" | tr -- '-_' '+/')"
-    case "${wet_b64_rem}" in
-        2) wet_b64_std="${wet_b64_std}==" ;;
-        3) wet_b64_std="${wet_b64_std}=" ;;
-    esac
-
-    printf '%s' "${wet_b64_std}" | base64 -d 2>/dev/null
-
-}
-
-# Minimal JSON tokenizer for a flat object of string/number/true/false/null values
-# only -- no nesting, no string escapes -- matching the token's schema exactly;
-# anything else is rejected rather than mis-parsed (e.g. a non-scalar 'ver' fails here,
-# not at a later type check). Prints "key<TAB>value" per field in order; a duplicate
-# key's last line wins, same convention as agent_option_value().
-wet_json_parse() {
-
-    printf '%s' "$1" | awk '
-        {
-            if (buf == "") { buf = $0 } else { buf = buf "\n" $0 }
-        }
-        END {
-            n = length(buf)
-            i = 1
-            state = "START"
-            nfields = 0
-            while (i <= n) {
-                c = substr(buf, i, 1)
-                if (c == " " || c == "\t" || c == "\n" || c == "\r") { i++; continue }
-
-                if (state == "START") {
-                    if (c != "{") { exit 1 }
-                    state = "KEY_OR_END"
-                    i++
-                    continue
-                }
-
-                if (state == "KEY_OR_END" || state == "KEY_ONLY") {
-                    if (c == "}" && state == "KEY_OR_END") {
-                        state = "DONE"
-                        i++
-                        continue
-                    }
-                    if (c != "\"") { exit 1 }
-                    start = i + 1
-                    j = index(substr(buf, start), "\"")
-                    if (j == 0) { exit 1 }
-                    key = substr(buf, start, j - 1)
-                    if (index(key, "\n") > 0 || index(key, "\t") > 0) { exit 1 }
-                    i = start + j
-                    state = "COLON"
-                    continue
-                }
-
-                if (state == "COLON") {
-                    if (c != ":") { exit 1 }
-                    state = "VALUE"
-                    i++
-                    continue
-                }
-
-                if (state == "VALUE") {
-                    if (c == "\"") {
-                        start = i + 1
-                        j = index(substr(buf, start), "\"")
-                        if (j == 0) { exit 1 }
-                        val = substr(buf, start, j - 1)
-                        if (index(val, "\n") > 0 || index(val, "\t") > 0) { exit 1 }
-                        i = start + j
-                    } else if (c == "-" || (c >= "0" && c <= "9")) {
-                        start = i
-                        i++
-                        while (i <= n) {
-                            cc = substr(buf, i, 1)
-                            if ((cc >= "0" && cc <= "9") || cc == ".") { i++ } else { break }
-                        }
-                        val = substr(buf, start, i - start)
-                        if (val !~ /^-?[0-9]+(\.[0-9]+)?$/) { exit 1 }
-                    } else if (substr(buf, i, 4) == "true") {
-                        val = "true"; i += 4
-                    } else if (substr(buf, i, 5) == "false") {
-                        val = "false"; i += 5
-                    } else if (substr(buf, i, 4) == "null") {
-                        val = "null"; i += 4
-                    } else {
-                        exit 1
-                    }
-                    nfields++
-                    keys[nfields] = key
-                    values[nfields] = val
-                    state = "COMMA_OR_END"
-                    continue
-                }
-
-                if (state == "COMMA_OR_END") {
-                    if (c == ",") { state = "KEY_ONLY"; i++; continue }
-                    if (c == "}") { state = "DONE"; i++; continue }
-                    exit 1
-                }
-
-                if (state == "DONE") { exit 1 }
-            }
-
-            if (state != "DONE") { exit 1 }
-
-            for (k = 1; k <= nfields; k++) {
-                printf "%s\t%s\n", keys[k], values[k]
-            }
-        }
-    '
-
-}
-
-# Named, distinct error codes for wet_parse_enrollment_token(), one per malformed-input
-# category the token's spec calls out: bad base64, bad JSON, a missing required field,
-# and the two ways the trust anchor can be wrong (both pin and ca present, or neither).
-WET_ERR_BAD_BASE64="ERR_BAD_BASE64"
-WET_ERR_BAD_JSON="ERR_BAD_JSON"
-WET_ERR_MISSING_FIELD="ERR_MISSING_FIELD"
-WET_ERR_ANCHOR_BOTH="ERR_ANCHOR_BOTH"
-WET_ERR_ANCHOR_NEITHER="ERR_ANCHOR_NEITHER"
-
-# Receives and parses WAZUH_ENROLLMENT_TOKEN: unpadded base64url of a flat JSON object
-# with fields ver/adr/pin/key/ca. ver and adr are always required; key is always
-# optional; exactly one of pin/ca must be present as the trust anchor -- neither is a
-# token with nothing to verify the manager against, both is ambiguous about which one
-# wins, so both are rejected rather than one silently taking priority.
-#
-# 'ca' is the alternative trust anchor for the embed-ca minting mode: the full
-# certificate instead of a pin, for environments that won't accept any unauthenticated
-# fetch. Still treated here as an opaque, unvalidated string -- real validation
-# (confirming it parses as a PEM/DER certificate) is follow-up work.
-#
-# On success, sets WET_VER/WET_ADR/WET_PIN/WET_KEY/WET_CA (the unset one of pin/ca is
-# left empty) and returns 0. On failure, sets WET_ERROR_CODE and WET_ERROR_MESSAGE and
-# returns 1 -- none of the WET_* fields are meaningful in that case.
-wet_parse_enrollment_token() {
-
-    wet_token="$1"
-    WET_ERROR_CODE=""
-    WET_ERROR_MESSAGE=""
-    WET_VER=""
-    WET_ADR=""
-    WET_PIN=""
-    WET_KEY=""
-    WET_CA=""
-
-    wet_json="$(wet_b64url_decode "${wet_token}")"
-    if [ "$?" -ne 0 ]; then
-        WET_ERROR_CODE="${WET_ERR_BAD_BASE64}"
-        WET_ERROR_MESSAGE="WAZUH_ENROLLMENT_TOKEN is not valid unpadded base64url."
-        return 1
-    fi
-
-    wet_fields="$(wet_json_parse "${wet_json}")"
-    if [ "$?" -ne 0 ]; then
-        WET_ERROR_CODE="${WET_ERR_BAD_JSON}"
-        WET_ERROR_MESSAGE="WAZUH_ENROLLMENT_TOKEN's decoded payload is not valid JSON (or uses a shape this parser does not support)."
-        return 1
-    fi
-
-    while IFS=$'\t' read -r wet_key wet_val; do
-        case "${wet_key}" in
-            ver) WET_VER="${wet_val}" ;;
-            adr) WET_ADR="${wet_val}" ;;
-            pin) WET_PIN="${wet_val}" ;;
-            key) WET_KEY="${wet_val}" ;;
-            ca)  WET_CA="${wet_val}" ;;
-        esac
-    done <<< "${wet_fields}"
-
-    case "${WET_VER}" in
-        ""|*[!0-9]*)
-            WET_ERROR_CODE="${WET_ERR_MISSING_FIELD}"
-            WET_ERROR_MESSAGE="WAZUH_ENROLLMENT_TOKEN is missing a valid integer 'ver' field."
-            return 1
-            ;;
-    esac
-
-    if [ -z "${WET_ADR}" ] || [ "${WET_ADR}" = "null" ]; then
-        WET_ERROR_CODE="${WET_ERR_MISSING_FIELD}"
-        WET_ERROR_MESSAGE="WAZUH_ENROLLMENT_TOKEN is missing a non-empty 'adr' field."
-        return 1
-    fi
-
-    wet_has_pin="no"
-    wet_has_ca="no"
-    [ -n "${WET_PIN}" ] && [ "${WET_PIN}" != "null" ] && wet_has_pin="yes"
-    [ -n "${WET_CA}" ] && [ "${WET_CA}" != "null" ] && wet_has_ca="yes"
-
-    if [ "${wet_has_pin}" = "yes" ] && [ "${wet_has_ca}" = "yes" ]; then
-        WET_ERROR_CODE="${WET_ERR_ANCHOR_BOTH}"
-        WET_ERROR_MESSAGE="WAZUH_ENROLLMENT_TOKEN carries both 'pin' and 'ca'; exactly one trust anchor is required, not both."
-        return 1
-    fi
-
-    if [ "${wet_has_pin}" = "no" ] && [ "${wet_has_ca}" = "no" ]; then
-        WET_ERROR_CODE="${WET_ERR_ANCHOR_NEITHER}"
-        WET_ERROR_MESSAGE="WAZUH_ENROLLMENT_TOKEN carries neither 'pin' nor 'ca'; a trust anchor is required to verify the manager."
-        return 1
     fi
 
     return 0
@@ -846,6 +615,81 @@ delete_auto_enrollment_tag() {
 
 }
 
+# WAZUH_ENROLLMENT_TOKEN: take the manager address out of the token and leave the token
+# itself for the agent, which finishes the bootstrap at its first start by fetching the CA,
+# checking it against the token's pin and writing the trust anchor.
+#
+# Decoding is delegated to the agent's own --show-token rather than done in shell: the token
+# is base64url of a JSON object, and reusing w_etoken_decode() means a token accepted at
+# install time is exactly a token the bootstrap will accept. It goes in on stdin, never as an
+# argument -- the credential would otherwise reach ps output and the shell history. What
+# comes back never contains the credential.
+#
+# 'adr' is written into <endpoint> unchanged, since it is the same grammar that tag takes.
+# That is what lets an operator supply a token and nothing else.
+set_agent_enrollment_token() {
+
+    token_path="${INSTALLDIR}/${WAZUH_ENROLLMENT_TOKEN_PATH}"
+
+    token_description="$(printf '%s' "${WAZUH_ENROLLMENT_TOKEN}" | "${INSTALLDIR}/bin/wazuh-agentd" --show-token)"
+    token_status="$?"
+
+    # A rejected token and a decoder that never ran are different problems and send an
+    # operator to different places, so they are reported apart rather than both as a bad
+    # token. Only the decoder's own exit code says which: a missing binary or an unresolved
+    # shared library exits 127, well away from the status it uses for a token it read and
+    # refused. The reason for a refusal is already on stderr, so only the consequence is
+    # added here.
+    if [ "${token_status}" -eq 2 ]; then
+        echo "wazuh-agent: WAZUH_ENROLLMENT_TOKEN was refused; no manager was configured from it and no token was stored." >&2
+        echo "$(date '+%Y/%m/%d %H:%M:%S') WAZUH_ENROLLMENT_TOKEN was refused by the token decoder; no trust anchor will be bootstrapped." >> "${INSTALLDIR}/logs/ossec.log"
+        return 1
+    elif [ "${token_status}" -ne 0 ]; then
+        echo "wazuh-agent: could not run '${INSTALLDIR}/bin/wazuh-agentd --show-token' (exit ${token_status}); the enrollment token was left unread and no token was stored." >&2
+        echo "$(date '+%Y/%m/%d %H:%M:%S') Could not run the enrollment token decoder (exit ${token_status}); the token was not read and no trust anchor will be bootstrapped." >> "${INSTALLDIR}/logs/ossec.log"
+        return 1
+    fi
+
+    token_adr="$(printf '%s\n' "${token_description}" | sed -n 's/^adr: //p')"
+
+    if [ -z "${token_adr}" ]; then
+        echo "wazuh-agent: WAZUH_ENROLLMENT_TOKEN carries no address; no token was stored." >&2
+        return 1
+    fi
+
+    # Refused on presence, not on value. A token's address is normalised when it is minted --
+    # the default port and prefix are dropped -- while the variable holds whatever was typed,
+    # so 'mgr.example.com' and 'mgr.example.com:1517/wazuh-manager' name one endpoint and would
+    # still compare unequal. Passing both is never useful in any case: either they agree and one
+    # is redundant, or they disagree and the token pins the certificate authority of a manager
+    # the agent will not be talking to.
+    if [ -n "${WAZUH_MANAGER_ENDPOINT+x}" ]; then
+        echo "wazuh-agent: WAZUH_ENROLLMENT_TOKEN already carries the manager address '${token_adr}'; WAZUH_MANAGER_ENDPOINT cannot be set alongside it. Pass one or the other." >&2
+        return 1
+    fi
+
+    # The legacy WAZUH_MANAGER/WAZUH_MANAGER_PORT pair is tolerated rather than refused: it is
+    # what every 4.x-era install command and dashboard snippet still carries, and an operator
+    # pasting one of those together with a token should not have the install fail. The token's
+    # address wins, so the pin and the host the agent dials always name the same manager.
+    if [ -n "${WAZUH_MANAGER}" ]; then
+        echo "$(date '+%Y/%m/%d %H:%M:%S') The enrollment token's address '${token_adr}' takes precedence over WAZUH_MANAGER; the token pins the certificate authority of the manager it names." >> "${INSTALLDIR}/logs/ossec.log"
+    fi
+
+    FINAL_ENDPOINT="${token_adr}"
+    add_adress_block
+
+    # Created and locked down before the token is written into it, so the credential is never
+    # briefly readable -- a reinstall would otherwise keep whatever mode the old file had.
+    : > "${token_path}"
+    chmod 600 "${token_path}"
+    chown root:root "${token_path}"
+    printf '%s' "${WAZUH_ENROLLMENT_TOKEN}" > "${token_path}"
+
+    echo "$(date '+%Y/%m/%d %H:%M:%S') Enrollment token stored; the manager was set to '${token_adr}' and the trust anchor will be bootstrapped at the first agent start." >> "${INSTALLDIR}/logs/ossec.log"
+
+}
+
 # Change address block of the wazuh configuration file
 add_adress_block() {
 
@@ -1190,16 +1034,8 @@ main () {
     set_agent_option "notify_time" "${WAZUH_KEEP_ALIVE_INTERVAL}"
     edit_value_tag "time-reconnect" "${WAZUH_TIME_RECONNECT}"
 
-    # A parsed token is only logged (fetch/pin-compare/persist are not implemented
-    # yet); a malformed one logs its error code and does not abort the install,
-    # matching every other malformed-input case in this file (e.g. mep_error()).
     if [ -n "${WAZUH_ENROLLMENT_TOKEN}" ]; then
-        if wet_parse_enrollment_token "${WAZUH_ENROLLMENT_TOKEN}"; then
-            echo "$(date '+%Y/%m/%d %H:%M:%S') WAZUH_ENROLLMENT_TOKEN parsed successfully (ver=${WET_VER}, adr=${WET_ADR}); bootstrap (fetch/pin-compare/persist) is not implemented yet, so no trust anchor was written." >> "${INSTALLDIR}/logs/ossec.log"
-        else
-            echo "$(date '+%Y/%m/%d %H:%M:%S') Invalid WAZUH_ENROLLMENT_TOKEN [${WET_ERROR_CODE}]: ${WET_ERROR_MESSAGE}" >> "${INSTALLDIR}/logs/ossec.log"
-            echo "wazuh-agent: invalid WAZUH_ENROLLMENT_TOKEN [${WET_ERROR_CODE}]: ${WET_ERROR_MESSAGE}" >&2
-        fi
+        set_agent_enrollment_token
     fi
 
     unset_vars
