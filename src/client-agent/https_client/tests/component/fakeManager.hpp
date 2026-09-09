@@ -771,11 +771,11 @@ class FakeManager final
             // route served, not something it could have derived from the handshake it
             // rode in on.
             //
-            // ASSUMPTION, not a confirmed decision (see cacertsClient.hpp's matching doc
-            // comment): registered unconditionally, with no prefix handling at all --
-            // unlike every other route above, none of which this fake manager prefixes
-            // either, so this is not itself new proof of prefix-independence, only a mock
-            // built consistently with that same assumption.
+            // Decided (see cacertsClient.hpp's matching doc comment): registered
+            // unconditionally, with no prefix handling at all -- unlike every other
+            // route above, none of which this fake manager prefixes either, so this
+            // is not itself new proof of prefix-independence, only a mock built
+            // consistently with that same decision.
             EVP_PKEY* cacertsPkey = nullptr;
             X509* cacertsCert = nullptr;
             makeSelfSigned(&cacertsPkey, &cacertsCert);
