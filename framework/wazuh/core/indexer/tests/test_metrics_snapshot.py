@@ -2119,6 +2119,80 @@ class TestNormalizeAgentDocGroups:
 
 
 # ---------------------------------------------------------------------------
+# Agent dates from /agents/all (regression: the endpoint returns epoch seconds as
+# digit strings, and the index maps these leaves as `date` with no format, so a raw
+# digit string is read as epoch milliseconds and lands in 1970; "0" means never)
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeAgentDocEpochDates:
+    """registered_at, last_seen and disconnected_at must be ISO 8601 or absent."""
+
+    @pytest.mark.asyncio
+    async def test_epoch_string_becomes_iso(self):
+        """A digit-string epoch (the /agents/all shape) is converted to UTC ISO 8601."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": 1, "name": "a", "lastKeepAlive": "1787603534"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert docs[0]["wazuh"]["agent"]["last_seen"] == "2026-08-24T20:32:14Z"
+
+    @pytest.mark.asyncio
+    async def test_epoch_int_becomes_iso(self):
+        """An int epoch is converted the same way."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": 1, "name": "a", "dateAdd": 1787603534}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert docs[0]["wazuh"]["agent"]["registered_at"] == "2026-08-24T20:32:14Z"
+
+    @pytest.mark.asyncio
+    async def test_zero_epoch_string_leaves_the_field_out(self):
+        """disconnection_time "0" is wazuh-db's "never" and must not be indexed as a date."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": 1, "name": "a", "disconnection_time": "0"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert "disconnected_at" not in docs[0]["wazuh"]["agent"]
+
+    @pytest.mark.asyncio
+    async def test_iso_string_is_kept(self):
+        """A value that is already ISO 8601 passes through unchanged."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": 1, "name": "a", "lastKeepAlive": "2026-03-17T10:00:00Z"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert docs[0]["wazuh"]["agent"]["last_seen"] == "2026-03-17T10:00:00Z"
+
+
+# ---------------------------------------------------------------------------
+# Absence is expressed one way: a missing field, never an empty array
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeAgentDocAbsentValues:
+    """host.ip and groups leave the field out when there is nothing to report."""
+
+    @pytest.mark.asyncio
+    async def test_missing_ip_leaves_host_ip_out(self):
+        """No ip in the raw doc means no wazuh.agent.host.ip, not an empty array."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": 1, "name": "a", "os.name": "Ubuntu"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert "ip" not in docs[0]["wazuh"]["agent"]["host"]
+
+    @pytest.mark.asyncio
+    async def test_legacy_list_with_empty_entry_leaves_groups_out(self):
+        """WazuhDBQueryAgents would split "" into [""]; that is no group, not one empty group."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": 1, "name": "a", "group": [""]}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert "groups" not in docs[0]["wazuh"]["agent"]
+
+
+# ---------------------------------------------------------------------------
 # _normalize_comms_doc – zero value preservation (FR-2 fix)
 # ---------------------------------------------------------------------------
 
