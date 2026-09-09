@@ -279,11 +279,8 @@ TEST_F(ReporterStreamTest, StampFollowsTheSignerIdentityAfterAReenroll)
 
 TEST_F(ReporterStreamTest, ForceConfigReportNowDuringInFlightSendIsNotLost)
 {
-    // #38840 follow-up: forceConfigReportNow() landing while runPath() is already blocked in
-    // perform() for a periodic /config send must survive that send's own post-send reschedule
-    // (now + the full interval, 3600 s here) once it returns -- a plain store() there would
-    // silently clobber it, reintroducing the exact staleness bug this feature exists to close,
-    // just as a race instead of an always-reproducible gap.
+    // A force landing while runPath() is blocked in perform() must survive that send's own
+    // post-send reschedule once it returns, not get silently clobbered by it.
     const auto config = makeConfig(false, true);
     ReporterStream reporter
     {

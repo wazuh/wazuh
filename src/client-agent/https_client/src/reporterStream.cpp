@@ -97,12 +97,10 @@ void ReporterStream::forceConfigReportNow()
         return;
     }
 
-    // #38840 follow-up: nextDue + forcedSinceLastRun under one lock -- see path.mtx's own
-    // comment in reporterStream.hpp for why store order between the two cannot substitute for
-    // this. Called from the https_client_bridge callback thread, not the reporter's own.
+    // Called from the https_client_bridge callback thread, not the reporter's own; see
+    // path.mtx's comment in the header for why both fields need one lock, not two atomics.
     std::lock_guard<std::mutex> lock(m_config_.mtx);
-    // Path::nextDue's own convention (see reporterStream.hpp): 0 (rep of epoch) => due
-    // immediately, picked up by the next tick() without disturbing m_stats' own cadence.
+    // 0 (rep of epoch) => due immediately, picked up by the next tick().
     m_config_.nextDue = 0;
     m_config_.forcedSinceLastRun = true;
 }
@@ -136,11 +134,8 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::
 {
     const auto now = m_clock.steadyNow();
     {
-        // #38840 follow-up: clear before doing any work (in particular before the
-        // possibly-blocking send below), so a forceConfigReportNow() lands as "false -> true"
-        // only if it is concurrent with (or after) this specific run -- not a stale flag left
-        // over from whatever force made this path due in the first place, which this run is
-        // already about to honor anyway.
+        // Clear before the possibly-blocking send below, so a concurrent force only counts
+        // as "landed during this run", not a stale flag from whatever made it due already.
         std::lock_guard<std::mutex> lock(path.mtx);
         path.forcedSinceLastRun = false;
     }
@@ -192,15 +187,8 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::
 
 void ReporterStream::commitNextDue(Path& path, std::chrono::steady_clock::time_point desired)
 {
-    // #38840 follow-up: "check forcedSinceLastRun, then decide whether to overwrite nextDue" as
-    // one critical section -- see path.mtx's own comment in reporterStream.hpp for why a plain
-    // store() here (or two independent atomics in either store order) would let this reschedule
-    // race a concurrent forceConfigReportNow() and silently clobber it, reintroducing the exact
-    // staleness bug this feature exists to close. forcedSinceLastRun was cleared at the top of
-    // this same runPath() call, so seeing it true here (under the same lock forceConfigReportNow()
-    // takes) means exactly that: a force arrived concurrently with (or after) this run, and
-    // forceConfigReportNow() has already re-armed nextDue to due-immediately itself -- leave that
-    // in place instead.
+    // forcedSinceLastRun was cleared at the top of this run, so seeing it true here means a
+    // force landed concurrently and already re-armed nextDue -- leave that in place instead.
     std::lock_guard<std::mutex> lock(path.mtx);
 
     if (path.forcedSinceLastRun)
