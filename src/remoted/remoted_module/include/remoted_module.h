@@ -234,6 +234,27 @@ extern "C"
      */
     EXPORTED void remoted_module_stop(void);
 
+    /**
+     * @brief Whether `remote.https.ca_certificate` signs the certificate the HTTPS listener serves.
+     *
+     * The same judgement `GET /cacerts` makes before handing that CA to a v5.0.0+ agent, read off
+     * the same periodically-refreshed snapshot rather than recomputed -- so a rotated CA is seen
+     * here too, and the two paths can never disagree about the same file.
+     *
+     * Exists for remoted's legacy task poller, which sends the CA to a pre-v5.0.0 agent over the
+     * WPK transfer channel during an upgrade: an agent that pins an anchor which cannot chain to
+     * this listener fails every handshake afterwards, which is worse than having no anchor at all.
+     *
+     * @return 1 the CA signs the served certificate, 0 it explicitly does not, -1 unknown (the
+     *         listener is down, no evaluation has run yet, or the CA file was unreadable at the
+     *         last one).
+     *
+     * @note -1 means PROCEED, not refuse -- matching the /cacerts route, which serves on unknown
+     *       and refuses only on an explicit 0. Refusing on unknown would turn one transient read
+     *       failure into a fleet-wide loss of the trust bootstrap.
+     */
+    EXPORTED int remoted_module_tls_ca_matches_leaf(void);
+
 #ifdef __cplusplus
 }
 #endif
@@ -241,5 +262,6 @@ extern "C"
 // Function-pointer typedefs, useful if the module is ever loaded via dlopen/dlsym.
 typedef void (*remoted_module_start_func)(full_log_fnc_t callbackLog, const remoted_module_config_t* configuration);
 typedef void (*remoted_module_stop_func)(void);
+typedef int (*remoted_module_tls_ca_matches_leaf_func)(void);
 
 #endif // _REMOTED_MODULE_H

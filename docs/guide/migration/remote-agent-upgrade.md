@@ -17,6 +17,7 @@ The remote agent upgrade mechanism is preserved in 5.x. The same `PUT /agents/up
 | WPK delivery to the agent                    | Manager pushes the WPK to the agent through Remoted (open/write/close/sha1/upgrade commands) | Manager stores a `remote_upgrade` task in the Task Manager. `remoted`'s own task-polling thread delivers it to agents confirmed below v5.0.0 by pushing the WPK over the agent's existing session, using the same open/write/close/sha1/upgrade commands as 4.x. |
 | Upgrade result reporting                     | Agent reported success/failure back to the manager                                           | The agent's ack (`upgrade_update_status`) is logged by `remoted` (at `WARNING` when the agent reports a genuine failure: the delivery itself succeeded, so this is not the manager's own error, but it must stay visible to severity-filtered monitoring) and replied to with `clear_upgrade_result` — it is not forwarded to the Engine's event pipeline. A push failure the manager itself detects is handled two ways depending on cost: a rejection (the agent answered, just not with success) is retried in-memory up to 5 times within the same poll cycle; a true no-response (nothing came back at all) is deferred, after a single attempt, to a small in-memory retry list that a later poll cycle picks back up, instead of blocking that cycle's sweep of every other agent. Either way, once every avenue is exhausted (or the failure can't be retried at all, or the entry ages out of the retry list), the task is simply logged and dropped — the manager never reports a task's outcome back to the Task Manager, so `tasks.db` has no way to distinguish that failure from a successful delivery; both stay `delivered`. Neither case is sent to the Engine. Upgrade progress is observable through the reported agent version, the agent-side log, and `remoted`'s own log (`WARNING` on a genuine failure) — not through the tasks table, which no longer carries a `failed` status |
 | HTTPS `verification_mode` vs. upgrade target  | Not applicable (no HTTPS transport in 4.x)                                                    | Upgrading to v5.0.0+ while `remoted`'s `<remote><https><verification_mode>` is not `none` is rejected (repo-based path: unless `force_upgrade` is set; custom-WPK path: unconditionally)       |
+| Manager trust anchor on the agent            | Not applicable (no TLS between agent and manager in 4.x)                                     | An agent upgraded to 5.x has no enrollment token to take an anchor from, so `remoted` pushes the manager's CA over the same upgrade channel, to `var/incoming/root-ca.pem`, before issuing `upgrade`. Controlled by `<remote><legacy><ca_delivery>` (default `yes`); never fails the upgrade. See [Trust anchor delivery](#trust-anchor-delivery-to-legacy-agents) |
 | Custom WPK location                          | `file_path` could be any absolute path on the manager; the manager pushed that file directly | `file_path` must resolve **inside** `/var/wazuh-manager/var/upgrade/` (symlinks followed). Anything else is rejected with `The WPK file does not exist`. The agent now fetches the file by name from that directory, so a path outside it named a file the delivery side would never find |
 | When `<remote>` changes take effect for upgrades | Read per request                                                                          | Read once when `wazuh-manager-modulesd` starts. Changing `<remote><legacy>` or `<remote><https><verification_mode>` needs modulesd restarted as well as remoted, or upgrade requests keep applying the previous value |
 | Manager-side upgrade configuration | `<agent-upgrade>` section, with `<enabled>` and `<wpk_repository>` | Moved into `<task-manager>` as `<upgrade_enabled>` and `<wpk_repository>`. **`<agent-upgrade>` is no longer a valid manager section and the schema rejects it** — a manager configuration still carrying one is refused with `Invalid configuration at '/agent-upgrade'` and the manager will not start. See [Configuration changes](#configuration-changes) below |
@@ -181,13 +182,14 @@ API request or agent_upgrade binary
                                             └─► Agent validates SHA1 and executes the installer
 ```
 
-The agent-facing task payload contains three fields:
+The agent-facing task payload contains four fields:
 
-| Field       | Purpose                                                                                 |
-| ----------- | --------------------------------------------------------------------------------------- |
-| `wpk_file`  | WPK filename the agent must download from the manager                                   |
-| `wpk_sha1`  | SHA-1 the agent must reproduce before running the installer                             |
-| `installer` | Installer script inside the WPK (`upgrade.sh` on Linux/macOS, `upgrade.bat` on Windows) |
+| Field         | Purpose                                                                                 |
+| ------------- | --------------------------------------------------------------------------------------- |
+| `wpk_file`    | WPK filename the agent must download from the manager                                   |
+| `wpk_sha1`    | SHA-1 the agent must reproduce before running the installer                             |
+| `installer`   | Installer script inside the WPK (`upgrade.sh` on Linux/macOS, `upgrade.bat` on Windows) |
+| `wpk_version` | Version the WPK installs. Consulted only by the legacy delivery path, to decide whether to send the manager's CA (see [Trust anchor delivery](#trust-anchor-delivery-to-legacy-agents)). Empty on the custom-WPK path, where the file name is not authoritative about what it installs |
 
 For agents below v5.0.0, `remoted` streams the WPK bytes to the agent directly, the same way it always has (see [`remoted.legacy_task_polling_interval`](../../ref/modules/remoted/configuration.md)). Wire-level hiccups are handled two ways depending on how they cost: a rejection (the agent answered, just not with success — a lost step acknowledgment counts here too when the agent still replies to a later step) is retried in-memory up to 5 times, all within the same poll cycle; a true no-response (nothing came back from the agent at all) is deferred, after a single attempt, to a small in-memory retry list that a later poll cycle picks back up, so one unresponsive agent never blocks that cycle's sweep of every other agent. Failures a retry can't fix at all (a missing local WPK file, the agent's installer already ran and reported failure) are never retried, in either cycle. Each retried attempt is logged at `debug` level except the last one, which logs a `warning`; a task that exhausts every retry avenue, or ages out of the retry list, is simply logged at `warning`/`error` and dropped — this poller never reports a task's outcome back to the Task Manager, so nothing in `tasks.db` is ever sent to the Engine either way. Progress is observable through:
 
@@ -195,6 +197,82 @@ For agents below v5.0.0, `remoted` streams the WPK bytes to the agent directly, 
 - The agent's own upgrade result, forwarded to the Engine's event pipeline like any other agent event (`upgrade_update_status`, one of "Upgrade was successful" / "Upgrade failed due missing dependency" / "Upgrade failed"). `remoted` replies to the agent with `clear_upgrade_result` within a few seconds of receiving a well-formed acknowledgment, regardless of whether it reports success or failure — this is what stops the agent's own retry loop (an agent resends the same acknowledgment on a growing backoff until it gets this reply back). The reply is handled by `remoted`'s own background poller rather than inline on receipt, so a burst of acknowledgments never competes with other agents' traffic for processing.
 - The agent version reported by `GET /agents/<id>` once the upgrade completes and the agent reconnects.
 - The agent-side upgrade log (`/var/ossec/logs/ossec.log`).
+
+---
+
+## Trust anchor delivery to legacy agents
+
+A 5.x agent verifies the manager's HTTPS listener against a CA it received in its enrollment token.
+An agent that reaches 5.x by *upgrade* never sees one: it already holds a `client.keys` identity
+from its original enrolment, so it does not enrol again, and re-enrolling would cost its identity
+continuity. Without an anchor, that agent cannot verify the manager it is about to start talking
+to over HTTPS.
+
+The manager closes that gap over the upgrade channel itself. Between verifying the WPK's SHA-1 and
+issuing the `upgrade` command, `remoted` pushes its own CA certificate to the agent with a second
+`open`/`write`/`close`/`sha1` cycle, landing it at `var/incoming/root-ca.pem` (`incoming\root-ca.pem`
+on Windows). The agent's installer reads it from there.
+
+The security property is worth stating plainly: the 4.x channel is encrypted and integrity-protected
+with the agent's own key from `client.keys`, so an attacker without that key cannot inject a message
+the agent will accept. The symmetric-key channel is what bootstraps the asymmetric anchor — there is
+no unauthenticated moment and no trust-on-first-use window.
+
+Details that matter in practice:
+
+- **`var/incoming/`, not `var/upgrade/`.** The `com` file-transfer commands are jailed to
+  `var/incoming/`, and the `upgrade` command clears `var/upgrade/` before unpacking the WPK into it
+  — a CA staged there would be deleted by the very command meant to consume it.
+- **The file is named `root-ca.pem`**, the same name it has on the manager and the same name the
+  agent's installer already looks for as its drop-in. Nothing renames it anywhere along the path,
+  so a hand-staged anchor and a delivered one produce identical layouts.
+- **5.x targets only.** An agent being stepped up to an intermediate 4.14.x release receives no CA.
+- **No 4.x agent change is required.** This uses only `com` behaviour already shipped in 4.x,
+  verified against v4.14.0 — the oldest version from which a direct upgrade to 5.0 is permitted.
+- **The WPK signature chain is untouched.** The CA is a separate file, never inside the signed
+  package, and is still verified against `wpk_root.pem` exactly as before.
+- **Both upgrade paths behave identically**, repository and custom WPK, from master and worker
+  nodes alike.
+
+### When the CA cannot be delivered
+
+The upgrade always proceeds. A failure is logged as its own step — never as a generic upgrade
+failure — at `error` when the manager refuses to send (see below) and at `warning` when the transfer
+itself did not complete. An agent off the air is worse than an agent without an anchor.
+
+The manager refuses to send the CA, and logs an actionable error, when:
+
+- the configured `remote.https.ca_certificate` is missing, unreadable, or is not a complete PEM
+  certificate; or
+- that CA does not sign the certificate the manager's own HTTPS listener serves. An agent that
+  pinned such an anchor would fail every connection afterwards, which is worse than sending nothing.
+
+Delivery status is visible in the manager log only. As with WPK delivery itself, `tasks.db` records
+no per-task outcome — see the "Upgrade result reporting" row in [Breaking changes at a
+glance](#breaking-changes-at-a-glance).
+
+### Certificate requirements
+
+The manager cannot check that its certificate covers the address a given agent dials — behind NAT, a
+load balancer, or in a cluster it does not know that address. Certificates are also not synchronized
+between cluster nodes, and the CA sent is the one configured on whichever node holds the agent's
+session. Two requirements are therefore yours to meet before upgrading a fleet:
+
+1. Every node's agent-facing certificate is issued by the CA being distributed.
+2. That certificate carries every address agents actually dial among its subjectAltName entries —
+   the cluster VIP, each node's own address, and any NAT address.
+
+`remoted` warns at start-up if its certificate carries no usable SAN at all (no DNS or IP entry
+beyond loopback and the host's own name), but it cannot detect a SAN list that is merely missing the
+right address.
+
+### Disabling it
+
+Set `<remote><legacy><ca_delivery>no</ca_delivery></remote>` when a corporate PKI or a
+configuration-management tool distributes the anchor by its own means. With it off, the upgrade push
+is byte-for-byte what it was before this feature existed. Unlike `<remote><legacy><enabled>` and
+`<remote><https><verification_mode>`, this option is read by `remoted` alone, so changing it does not
+also require restarting `wazuh-manager-modulesd`.
 
 ---
 
@@ -380,5 +458,9 @@ After triggering the upgrade, confirm all conditions below are met before declar
 - Agent version reported in `GET /agents/<id>` matches `5.0.0`.
 - Agent connection status is `active`.
 - `ossec.log` on the agent contains no errors related to the upgrade (`grep -i "upgrade" /var/ossec/logs/ossec.log`).
+- The manager log records the CA step for each upgraded agent, and no warning or error against it
+  (`grep "legacy_task_delivery.*CA" /var/wazuh-manager/logs/ossec.log`). An agent whose CA delivery
+  failed is still upgraded and connected, but verifies nothing — worth catching before the migration
+  is declared complete.
 
 ---

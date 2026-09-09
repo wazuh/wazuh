@@ -367,9 +367,21 @@ namespace task_manager::upgrade
             row.agentId = agentId;
             row.taskType = REMOTE_UPGRADE_TASK_TYPE;
             row.createTime = createTime;
+            // wpk_version rides along so the DELIVERY side can tell a 5.x target from a 4.14.x
+            // intermediate hop without re-parsing the file name. remoted's legacy poller sends the
+            // manager's CA to a pre-v5.0.0 agent only when the target is 5.x -- an agent being
+            // stepped up to 4.14.x has nothing that would ever read the anchor, and nothing that
+            // would clean it out of var/incoming afterwards either.
+            //
+            // EMPTY on the custom-WPK path, and that is not a gap: VersionVerdict::wpkVersion is
+            // empty there by design ("the file itself decides and its name is not authoritative"),
+            // and the poller reads an empty value as "assume 5.x and send it". That matches the
+            // gate this module already applies to custom uploads, which passes FIVE_X_MINIMUM_VERSION
+            // unconditionally on the grounds that a custom file might be 5.x.
             row.payload = nlohmann::json {{"wpk_file", candidate.wpkFile},
                                           {"wpk_sha1", candidate.wpkSha1},
-                                          {"installer", candidate.installer}}
+                                          {"installer", candidate.installer},
+                                          {"wpk_version", candidate.wpkVersion}}
                               .dump();
 
             rows.push_back(std::move(row));

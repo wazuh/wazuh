@@ -41,6 +41,49 @@ message-handler worker pool, and the fd closer thread).
   therefore needs `wazuh-manager-modulesd` restarted as well as `wazuh-manager-remoted`, or upgrade
   requests will keep applying the previous value.
 
+### legacy.ca_delivery
+
+Send the manager's CA certificate to a pre-v5.0.0 agent during a remote upgrade, so the upgraded
+agent has a trust anchor for the HTTPS listener it is about to start using.
+
+A 5.0 manager is always a fresh install, so a 4.x fleet reaches 5.0 by remote upgrade. Once
+upgraded, those agents speak HTTPS on 1517 but hold no anchor on disk, and they cannot enrol again
+to obtain one — they already carry a `client.keys` identity, so they never see an enrollment token.
+With this enabled, remoted pushes `remote.https.ca_certificate` to the agent's `var/incoming/` as
+`root-ca.pem` over the same encrypted, integrity-protected channel it uses for the WPK, immediately
+before issuing the `upgrade` command. The agent's installer picks it up from there.
+
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+- **Note:** Disable when a corporate PKI or a configuration-management tool distributes the anchor
+  by its own means. With `no`, the upgrade push is byte-for-byte what it was before this option
+  existed — no file is read and no additional command is sent.
+- **Note:** The CA is only sent when the upgrade targets v5.0.0 or later. An agent being stepped up
+  to an intermediate 4.14.x release does not receive it: nothing on that version would read it.
+- **Read by remoted only.** Unlike `legacy.enabled` and `https.verification_mode` below, this value
+  is not cached by modulesd, so a change takes effect after restarting `wazuh-manager-remoted`
+  alone.
+- **Never fails an upgrade.** If the CA cannot be sent, the upgrade proceeds and the manager logs a
+  warning naming the CA step specifically. An agent off the air is worse than an agent without an
+  anchor.
+
+The manager refuses to send a CA that does not sign the certificate its own HTTPS listener serves,
+and logs an error instead — an agent that pinned such an anchor would fail every connection
+afterwards, which is worse than sending nothing. This is the same check `GET /cacerts` applies
+before handing the CA to a 5.x agent, so the two paths can never disagree.
+
+**Certificate requirements.** The manager cannot verify that its certificate covers the address a
+given agent dials: behind NAT, a load balancer, or in a cluster, it does not know that address. Two
+requirements are therefore the operator's to meet:
+
+- Every node's agent-facing certificate must be issued by the CA being distributed. Certificates
+  are not synchronized across cluster nodes, and the poller sends the CA configured on whichever
+  node holds the agent's session — so a worker distributes its own `remote.https.ca_certificate`.
+- That certificate must carry every address agents actually dial among its subjectAltName entries:
+  the cluster VIP, each node's own address, and any NAT address. remoted logs a warning at start-up
+  if the certificate carries no usable SAN at all — meaning no DNS or IP entry beyond loopback and
+  the host's own name — but it cannot detect a SAN list that is merely missing the right address.
+
 ### legacy.port
 
 Listening port for agent connections.
