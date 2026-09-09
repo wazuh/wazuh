@@ -39,7 +39,34 @@ checks:
     description: "The squashfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A squashfs image can be used without having to first decompress the image."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
     impact: 'As Snap packages utilizes squashfs as a compressed filesystem, disabling squashfs will cause Snap packages to fail. Snap application packages of software are self-contained and work across a range of Linux distributions. This is unlike traditional Linux package management approaches, like APT or RPM, which require specifically adapted packages per Linux distribution on an application update and delay therefore application deployment from developers to their software''s end-user. Snaps themselves have no dependency on any external store ("App store"), can be obtained from any source and can be therefore used for upstream software deployment.'
-    remediation: "Run the following script to disable squashfs: #!/usr/bin/env bash { l_mname=\"squashfs\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h+Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then # Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\b$l_mname)\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \/bin\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \"$l_mname\" to be not loadable\" echo -e \"install $l_mname \/bin\/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi # Remediate loaded if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \"$l_mname\"\" modprobe -r \"$l_mname\" fi # Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mname\b\"; then echo -e \" - deny listing \"$l_mname\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/ $l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \"$l_mname\" doesn't exist on the system\" fi}."
+    remediation: |-
+      # Run the following script to disable squashfs:
+      #!/usr/bin/env bash
+      {
+          l_mname="squashfs" # set module name
+          # Check if the module exists on the system
+          if [ -z "$(modprobe -n -v "$l_mname" 2>&1 | grep -Pi -- "\h*modprobe:\h+FATAL:\h+Module\h+$l_mname\h+not\h+found\h+in\h+directory")" ]; then
+              # Remediate loadable
+              l_loadable="$(modprobe -n -v "$l_mname")"
+              [ "$(wc -l <<< "$l_loadable")" -gt "1" ] && l_loadable="$(grep -P -- "(^\h*install|\b$l_mname)\b" <<< "$l_loadable")"
+              if ! grep -Pq -- '^\h*install /bin/(true|false)' <<< "$l_loadable"; then
+                  echo -e " - setting module: "$l_mname" to be not loadable"
+                  echo -e "install $l_mname /bin/false" >> /etc/modprobe.d/"$l_mname".conf
+              fi
+              # Remediate loaded
+              if lsmod | grep "$l_mname" > /dev/null 2>&1; then
+                  echo -e " - unloading module "$l_mname""
+                  modprobe -r "$l_mname"
+              fi
+              # Remediate deny list
+              if ! modprobe --showconfig | grep -Pq -- "^\h*blacklist\h+$l_mname\b"; then
+                  echo -e " - deny listing "$l_mname""
+                  echo -e "blacklist $l_mname" >> /etc/modprobe.d/"$l_mname".conf
+              fi
+          else
+              echo -e " - Nothing to remediate\n - Module "$l_mname" doesn't exist on the system"
+          fi
+      }
     compliance:
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
@@ -76,7 +103,34 @@ checks:
     description: "The udf filesystem type is the universal disk format used to implement ISO/IEC 13346 and ECMA-167 specifications. This is an open vendor filesystem type for data storage on a broad range of media. This filesystem type is necessary to support writing DVDs and newer optical disc formats."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
     impact: "Microsoft Azure requires the usage of udf. udf should not be disabled on systems run on Microsoft Azure."
-    remediation: "Run the following script to disable the udf filesystem: #!/usr/bin/env bash { l_mname=\"udf\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h +Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then \\# Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\b$l_mname)\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \/bin\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \"$l_mname\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> \/etc\/modprobe.d\/\"$l_mname\".conf fi \\# Remediate loaded if lsmod | grep \"$l_mname\" > \/dev\/null 2>&1; then echo -e \" - unloading module \"$l_mname\"\" modprobe -r \"$l_mname\" fi \\# Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mname\b\"; then echo -e \" - deny listing \"$l_mname\"\" echo -e \"blacklist $l_mname\" >> \/etc/modprobe.d\/\"$l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \"$l_mname\" doesn't exist on the system\" fi }."
+    remediation: |-
+      # Run the following script to disable the udf filesystem:
+      #!/usr/bin/env bash
+      {
+          l_mname="udf" # set module name
+          # Check if the module exists on the system
+          if [ -z "$(modprobe -n -v "$l_mname" 2>&1 | grep -Pi -- "\h*modprobe:\h+FATAL:\h+Module\h+$l_mname\h+not\h+found\h+in\h+directory")" ]; then
+              # Remediate loadable
+              l_loadable="$(modprobe -n -v "$l_mname")"
+              [ "$(wc -l <<< "$l_loadable")" -gt "1" ] && l_loadable="$(grep -P -- "(^\h*install|\b$l_mname)\b" <<< "$l_loadable")"
+              if ! grep -Pq -- '^\h*install /bin/(true|false)' <<< "$l_loadable"; then
+                  echo -e " - setting module: "$l_mname" to be not loadable"
+                  echo -e "install $l_mname /bin/false" >> /etc/modprobe.d/"$l_mname".conf
+              fi
+              # Remediate loaded
+              if lsmod | grep "$l_mname" > /dev/null 2>&1; then
+                  echo -e " - unloading module "$l_mname""
+                  modprobe -r "$l_mname"
+              fi
+              # Remediate deny list
+              if ! modprobe --showconfig | grep -Pq -- "^\h*blacklist\h+$l_mname\b"; then
+                  echo -e " - deny listing "$l_mname""
+                  echo -e "blacklist $l_mname" >> /etc/modprobe.d/"$l_mname".conf
+              fi
+          else
+              echo -e " - Nothing to remediate\n - Module "$l_mname" doesn't exist on the system"
+          fi
+      }
     compliance:
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
@@ -6307,7 +6361,20 @@ checks:
     name: "Ensure cron is restricted to authorized users."
     description: "If cron is installed in the system, configure /etc/cron.allow to allow specific users to use these services. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in those files is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Note: Even though a given user is not listed in cron.allow, cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
     rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: 'Run the following script to remove /etc/cron.deny, create /etc/cron.allow, and set the file mode on /etc/cron.allow: #!/usr/bin/env bash { if rpm -q cronie >/dev/null; then [ -e /etc/cron.deny ] && rm -f /etc/cron.deny [ ! -e /etc/cron.allow ] && touch /etc/cron.allow chown root:root /etc/cron.allow chmod u-x,go-rwx /etc/cron.allow else echo "cron is not installed on the system" fi } OR Run the following command to remove cron: # dnf remove cronie.'
+    remediation: |-
+      # Run the following script to remove /etc/cron.deny, create /etc/cron.allow, and set the file mode on /etc/cron.allow:
+      #!/usr/bin/env bash
+      {
+          if rpm -q cronie >/dev/null; then
+              [ -e /etc/cron.deny ] && rm -f /etc/cron.deny
+              [ ! -e /etc/cron.allow ] && touch /etc/cron.allow
+              chown root:root /etc/cron.allow
+              chmod u-x,go-rwx /etc/cron.allow
+          else
+              echo "cron is not installed on the system"
+          fi
+      }
+      # OR Run the following command to remove cron: # dnf remove cronie.
     compliance:
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
@@ -6358,7 +6425,20 @@ checks:
     name: "Ensure at is restricted to authorized users."
     description: "If at is installed in the system, configure /etc/at.allow to allow specific users to use these services. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not specifically defined in those files is allowed to use at. By removing the file, only users in /etc/at.allow are allowed to use at. Note: Even though a given user is not listed in at.allow, at jobs can still be run as that user. The at.allow file only controls administrative access to the at command for scheduling and modifying at jobs."
     rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: 'Run the following script to remove /etc/at.deny, create /etc/at.allow, and set the file mode for /etc/at.allow: #!/usr/bin/env bash { if rpm -q at >/dev/null; then [ -e /etc/at.deny ] && rm -f /etc/at.deny [ ! -e /etc/at.allow ] && touch /etc/at.allow chown root:root /etc/at.allow chmod u-x,go-rwx /etc/at.allow else echo "at is not installed on the system" fi } OR Run the following command to remove at: # dnf remove at.'
+    remediation: |-
+      # Run the following script to remove /etc/at.deny, create /etc/at.allow, and set the file mode for /etc/at.allow:
+      #!/usr/bin/env bash
+      {
+          if rpm -q at >/dev/null; then
+              [ -e /etc/at.deny ] && rm -f /etc/at.deny
+              [ ! -e /etc/at.allow ] && touch /etc/at.allow
+              chown root:root /etc/at.allow
+              chmod u-x,go-rwx /etc/at.allow
+          else
+              echo "at is not installed on the system"
+          fi
+      }
+      # OR Run the following command to remove at: # dnf remove at.
     compliance:
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
@@ -7579,7 +7659,21 @@ checks:
     name: "Ensure password creation requirements are configured."
     description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options. - try_first_pass - retrieve the password from a previous stacked PAM module. If not available, then prompt the user for a password. - retry=3 - Allow 3 tries before sending back a failure. - minlen=14 - password must be 14 characters or more ** Either of the following can be used to enforce complex passwords:** - minclass=4 - provide at least four classes of characters for the new password OR - dcredit=-1 - provide at least one digit - ucredit=-1 - provide at least one uppercase character - ocredit=-1 - provide at least one special character - lcredit=-1 - provide at least one lowercase character The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies."
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
-    remediation: "Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy minclass = 4 OR dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1 Run the following script to update the system-auth and password-auth files #!/usr/bin/env bash for fn in system-auth password-auth; do file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/$fn\" if ! grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+.*enforce_for_r oot\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 enforce_for_root/' \"$file\" fi if grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+retry=([4-9]|[1-9][0-9]+)\\b.*$' \"$file\"; then sed -ri '/pwquality/s/retry=\\S+/retry=3/' \"$file\" elif ! grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+retry=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 retry=3/' \"$file\" fi done authselect apply-changes."
+    remediation: |-
+      # Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy minclass = 4 OR dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1 Run the following script to update the system-auth and password-auth files
+      #!/usr/bin/env bash
+      for fn in system-auth password-auth; do
+          file="/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/$fn"
+          if ! grep -Pq -- '^\h*password\h+requisite\h+pam_pwquality.so(\h+[^#\n\r]+)?\h+.*enforce_for_root\b.*$' "$file"; then
+              sed -ri 's/^\s*(password\s+requisite\s+pam_pwquality.so\s+)(.*)$/\1\2 enforce_for_root/' "$file"
+          fi
+          if grep -Pq -- '^\h*password\h+requisite\h+pam_pwquality.so(\h+[^#\n\r]+)?\h+retry=([4-9]|[1-9][0-9]+)\b.*$' "$file"; then
+              sed -ri '/pwquality/s/retry=\S+/retry=3/' "$file"
+          elif ! grep -Pq -- '^\h*password\h+requisite\h+pam_pwquality.so(\h+[^#\n\r]+)?\h+retry=\d+\b.*$' "$file"; then
+              sed -ri 's/^\s*(password\s+requisite\s+pam_pwquality.so\s+)(.*)$/\1\2 retry=3/' "$file"
+          fi
+      done
+      authselect apply-changes
     compliance:
       cmmc: ["IA.L2-3.5.7"]
       fedramp: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
@@ -7633,7 +7727,23 @@ checks:
     name: "Ensure lockout for failed password attempts is configured."
     description: "Lock out users after n unsuccessful consecutive login attempts. - deny=<n> - Number of attempts before the account is locked - unlock_time=<n> - Time in seconds before the account is unlocked Note: The maximum configurable value for unlock_time is 604800."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
-    remediation: "Set password lockouts and unlock times to conform to site policy. deny should be not greater than 5 and unlock_time should be 0 (never), or 900 seconds or greater. Depending on the version you are running, follow one of the two methods bellow. Versions 8.2 and later: Edit /etc/security/faillock.conf and update or add the following lines: deny = 5 unlock_time = 900 Versions 8.0 and 8.1: Run the following script to update the system-auth and password-auth files. This script will update/add the deny=5 and unlock_time=900 options. This script should be modified as needed to follow local site policy. #!/usr/bin/env bash for fn in system-auth password-auth; do file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/$fn\" if grep -Pq -- '^\\h*auth\\h+required\\h+pam_faillock\\.so(\\h+[^#\\n\\r]+)?\\h+deny=(0|[6-9]|[1-9][0-9]+)\\b.*$' \"$file\"; then sed -ri '/pam_faillock.so/s/deny=\\S+/deny=5/g' \"$file\" elif ! grep -Pq -- '^\\h*auth\\h+required\\h+pam_faillock\\.so(\\h+[^#\\n\\r]+)?\\h+deny=\\d*\\b.*$' \"$file\"; then sed -r 's/^\\s*(auth\\s+required\\s+pam_faillock\\.so\\s+)([^{}#\\n\\r]+)?\\s*(\\{.*\\})?(.*)$ /\\1\\2\\3 deny=5 \\4/' $file fi if grep -P -- '^\\h*(auth\\h+required\\h+pam_faillock\\.so\\h+)([^#\\n\\r]+)?\\h+unlock_time=([1-9]|[1-9][0-9]|[1-8][0-9][0-9])\\b.*$' \"$file\"; then sed -ri '/pam_faillock.so/s/unlock_time=\\S+/unlock_time=900/g' \"$file\" elif ! grep -Pq -- '^\\h*auth\\h+required\\h+pam_faillock\\.so(\\h+[^#\\n\\r]+)?\\h+unlock_time=\\d*\\b.*$ ' \"$file\"; then sed -ri 's/^\\s*(auth\\s+required\\s+pam_faillock\\.so\\s+)([^{}#\\n\\r]+)?\\s*(\\{.*\\})?(.*)$ /\\1\\2\\3 unlock_time=900 \\4/' \"$file\" fi done authselect apply-changes."
+    remediation: |-
+      # Set password lockouts and unlock times to conform to site policy. deny should be not greater than 5 and unlock_time should be 0 (never), or 900 seconds or greater. Depending on the version you are running, follow one of the two methods bellow. Versions 8.2 and later: Edit /etc/security/faillock.conf and update or add the following lines: deny = 5 unlock_time = 900 Versions 8.0 and 8.1: Run the following script to update the system-auth and password-auth files. This script will update/add the deny=5 and unlock_time=900 options. This script should be modified as needed to follow local site policy.
+      #!/usr/bin/env bash
+      for fn in system-auth password-auth; do
+          file="/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/$fn"
+          if grep -Pq -- '^\h*auth\h+required\h+pam_faillock\.so(\h+[^#\n\r]+)?\h+deny=(0|[6-9]|[1-9][0-9]+)\b.*$' "$file"; then
+              sed -ri '/pam_faillock.so/s/deny=\S+/deny=5/g' "$file"
+          elif ! grep -Pq -- '^\h*auth\h+required\h+pam_faillock\.so(\h+[^#\n\r]+)?\h+deny=\d*\b.*$' "$file"; then
+              sed -r 's/^\s*(auth\s+required\s+pam_faillock\.so\s+)([^{}#\n\r]+)?\s*(\{.*\})?(.*)$/\1\2\3 deny=5 \4/' $file
+          fi
+          if grep -P -- '^\h*(auth\h+required\h+pam_faillock\.so\h+)([^#\n\r]+)?\h+unlock_time=([1-9]|[1-9][0-9]|[1-8][0-9][0-9])\b.*$' "$file"; then
+              sed -ri '/pam_faillock.so/s/unlock_time=\S+/unlock_time=900/g' "$file"
+          elif ! grep -Pq -- '^\h*auth\h+required\h+pam_faillock\.so(\h+[^#\n\r]+)?\h+unlock_time=\d*\b.*$' "$file"; then
+              sed -ri 's/^\s*(auth\s+required\s+pam_faillock\.so\s+)([^{}#\n\r]+)?\s*(\{.*\})?(.*)$/\1\2\3 unlock_time=900 \4/' "$file"
+          fi
+      done
+      authselect apply-changes
     compliance:
       cmmc: ["AC.L2-3.1.1"]
       fedramp: ["AC-2"]
@@ -7674,7 +7784,29 @@ checks:
     name: "Ensure password reuse is limited."
     description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords. - remember=<5> - Number of old passwords to remember."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password. Note: These change only apply to accounts configured on the local system."
-    remediation: "Set remembered password history to conform to site policy. Run the following script to add or modify the pam_pwhistory.so and pam_unix.so lines to include the remember option: #!/usr/bin/env bash { file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/system-auth\" if ! grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\ r]+\\h+)?remember=([5-9]|[1-9][0-9]+)\\b.*$' \"$file\"; then if grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\ r]+\\h+)?remember=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+(requisite|required|sufficient)\\s+pam_pwhistory\\.so\\s+([^# \\n\\r]+\\s+)?)(remember=\\S+\\s*)(\\s+.*)?$/\\1 remember=5 \\5/' $file elif grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\ r]+\\h+)?.*$' \"$file\"; then sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_pwhistory\\.so/ s/$/ remember=5/' $file else sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so/i password required pam_pwhistory.so remember=5 use_authtok' $file fi fi if ! grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so\\h+([^#\\n\\r]+\\h +)?remember=([5-9]|[1-9][0-9]+)\\b.*$' \"$file\"; then if grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so\\h+([^#\\n\\r]+\\h +)?remember=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so\\s+([^#\\n\\r] +\\s+)?)(remember=\\S+\\s*)(\\s+.*)?$/\\1 remember=5 \\5/' $file else sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so/ s/$/ remember=5/' $file fi fi authselect apply-changes }."
+    remediation: |-
+      # Set remembered password history to conform to site policy. Run the following script to add or modify the pam_pwhistory.so and pam_unix.so lines to include the remember option:
+      #!/usr/bin/env bash
+      {
+          file="/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/system-auth"
+          if ! grep -Pq -- '^\h*password\h+(requisite|required|sufficient)\h+pam_pwhistory\.so\h+([^#\n\r]+\h+)?remember=([5-9]|[1-9][0-9]+)\b.*$' "$file"; then
+              if grep -Pq -- '^\h*password\h+(requisite|required|sufficient)\h+pam_pwhistory\.so\h+([^#\n\r]+\h+)?remember=\d+\b.*$' "$file"; then
+                  sed -ri 's/^\s*(password\s+(requisite|required|sufficient)\s+pam_pwhistory\.so\s+([^#\n\r]+\s+)?)(remember=\S+\s*)(\s+.*)?$/\1 remember=5 \5/' $file
+              elif grep -Pq -- '^\h*password\h+(requisite|required|sufficient)\h+pam_pwhistory\.so\h+([^#\n\r]+\h+)?.*$' "$file"; then
+                  sed -ri '/^\s*password\s+(requisite|required|sufficient)\s+pam_pwhistory\.so/ s/$/ remember=5/' $file
+              else
+                  sed -ri '/^\s*password\s+(requisite|required|sufficient)\s+pam_unix\.so/i password required pam_pwhistory.so remember=5 use_authtok' $file
+              fi
+          fi
+          if ! grep -Pq -- '^\h*password\h+(requisite|required|sufficient)\h+pam_unix\.so\h+([^#\n\r]+\h+)?remember=([5-9]|[1-9][0-9]+)\b.*$' "$file"; then
+              if grep -Pq -- '^\h*password\h+(requisite|required|sufficient)\h+pam_unix\.so\h+([^#\n\r]+\h+)?remember=\d+\b.*$' "$file"; then
+                  sed -ri 's/^\s*(password\s+(requisite|required|sufficient)\s+pam_unix\.so\s+([^#\n\r]+\s+)?)(remember=\S+\s*)(\s+.*)?$/\1 remember=5 \5/' $file
+              else
+                  sed -ri '/^\s*password\s+(requisite|required|sufficient)\s+pam_unix\.so/ s/$/ remember=5/' $file
+              fi
+          fi
+          authselect apply-changes
+      }
     compliance:
       cmmc: ["IA.L2-3.5.7"]
       fedramp: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
@@ -7726,7 +7858,21 @@ checks:
     name: "Ensure password hashing algorithm is SHA-512."
     description: "A cryptographic hash function converts an arbitrary-length input into a fixed length output. Password hashing performs a one-way transformation of a password, turning the password into another string, called the hashed password."
     rationale: "The SHA-512 algorithm provides stronger hashing than other hashing algorithms used for password hashing with Linux, providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note: These changes only apply to accounts configured on the local system."
-    remediation: "Set password hashing algorithm to sha512. Edit /etc/libuser.conf and edit of add the following line: crypt_style = sha512 Edit /etc/login.defs and edit or add the following line: ENCRYPT_METHOD SHA512 Run the following script to configure pam_unix.so to use the sha512 hashing algorithm: #!/usr/bin/env bash for fn in system-auth password-auth; do file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/$fn\" if ! grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so(\\h+[^#\\n\\r]+)? \\h+sha512\\b.*$' \"$file\"; then if grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so(\\h+[^#\\n\\r]+)? \\h+(md5|blowfish|bigcrypt|sha256)\\b.*$' \"$file\"; then sed -ri 's/(md5|blowfish|bigcrypt|sha256)/sha512/' \"$file\" else sed -ri 's/(^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix.so\\s+)(.*)$/\\1s ha512 \\3/' $file fi fi done authselect apply-changes Note: This only effects local users and passwords created after updating the files to use sha512. If it is determined that the password algorithm being used is not SHA-512, once it is changed, it is recommended that all user ID's be immediately expired and forced to change their passwords on next login."
+    remediation: |-
+      # Set password hashing algorithm to sha512. Edit /etc/libuser.conf and edit of add the following line: crypt_style = sha512 Edit /etc/login.defs and edit or add the following line: ENCRYPT_METHOD SHA512 Run the following script to configure pam_unix.so to use the sha512 hashing algorithm:
+      #!/usr/bin/env bash
+      for fn in system-auth password-auth; do
+          file="/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/$fn"
+          if ! grep -Pq -- '^\h*password\h+(requisite|required|sufficient)\h+pam_unix\.so(\h+[^#\n\r]+)?\h+sha512\b.*$' "$file"; then
+              if grep -Pq -- '^\h*password\h+(requisite|required|sufficient)\h+pam_unix\.so(\h+[^#\n\r]+)?\h+(md5|blowfish|bigcrypt|sha256)\b.*$' "$file"; then
+                  sed -ri 's/(md5|blowfish|bigcrypt|sha256)/sha512/' "$file"
+              else
+                  sed -ri 's/(^\s*password\s+(requisite|required|sufficient)\s+pam_unix.so\s+)(.*)$/\1sha512 \3/' $file
+              fi
+          fi
+      done
+      authselect apply-changes
+      # Note: This only effects local users and passwords created after updating the files to use sha512. If it is determined that the password algorithm being used is not SHA-512, once it is changed, it is recommended that all user ID's be immediately expired and forced to change their passwords on next login.
     compliance:
       cmmc: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
       fedramp: ["MP-4", "MP-5", "MP-6", "SC-8", "SC-13", "SC-28"]
