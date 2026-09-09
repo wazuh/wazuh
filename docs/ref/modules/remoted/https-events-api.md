@@ -116,6 +116,41 @@ Without a usable pair the manager **fails closed**, in three layers, from the ou
 `remote.https.ca_certificate` is deliberately **not** fatal: when `root-ca.pem` is missing the
 manager starts and `GET /cacerts` answers `404`.
 
+### Renewing the listener certificate
+
+Renewal is an operator task as well — nothing in the manager reissues the pair. The daily evaluation
+(see [`GET /cacerts`](#ca-certificate-endpoint-get-cacerts)) logs a WARN once `remoted.pem` is within
+30 days of `notAfter` and an ERROR once it has expired; `remoted.server.tls.cert_expiry_days` reads
+the countdown. Two cases:
+
+**Leaf renewal from the same CA** (the routine one):
+
+1. Issue a new `<node>-remoted.pem`/`<node>-remoted-key.pem` from the **same** `root-ca.pem` with the
+   installation assistant's `wazuh-certs-tool` — or any tooling that signs with that CA's key and
+   produces a leaf with `CA:FALSE`, `extendedKeyUsage serverAuth` and a SAN naming the address agents dial.
+2. Install them over `etc/certs/remoted.pem`/`etc/certs/remoted-key.pem` as `wazuh-manager:wazuh-manager 640`
+   (the `mv`/`chown`/`chmod` steps of
+   [Deploy certificates](../../getting-started/installation.md#deploy-certificates)).
+3. `systemctl restart wazuh-manager` — the leaf is loaded once, when the listener starts.
+4. Check: `openssl s_client -connect <host>:1517 -CAfile root-ca.pem </dev/null` prints
+   `Verify return code: 0 (ok)`, `GET /cacerts` answers `200`, and `cert_expiry_days` is back to the new
+   validity (the WARN is not logged again).
+
+Agents keep verifying throughout: they pin the CA, not the leaf.
+
+**CA rotation** (a new `root-ca.pem`, so every leaf it signed changes with it):
+
+1. Issue the new CA and reissue every leaf from it — the listener pair, the indexer connector pair and
+   the certificates of the other nodes the assistant issued from the old CA.
+2. Install the new `root-ca.pem` as `root:wazuh-manager 640` and the new listener pair as above, keeping
+   `remote.https.ca_certificate` pointed at the CA file (the shipped path does not change).
+3. Restart and check as above. A CA and a leaf installed out of step make `GET /cacerts` answer `503`
+   `{"error":"ca_mismatch"}` and the evaluation log an ERROR naming both subjects — the guard exists for
+   exactly this moment; the `200` returns as soon as both files agree.
+
+Agents that pinned the old CA stop verifying this manager until they receive the new anchor; how an
+agent is re-enrolled or updated with it is documented on the agent side.
+
 ## Authentication (JWT bearer)
 
 **Single exception: `POST /enroll`.** Every other endpoint on this page requires the agent<->manager
