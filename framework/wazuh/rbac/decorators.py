@@ -2,20 +2,25 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import logging
 import re
 from collections import defaultdict
 from functools import wraps
 from typing import Awaitable, Any
 
 from wazuh.core.agent import get_agents_info, get_groups, expand_group
-from wazuh.core.common import rbac, broadcast, cluster_nodes
-from wazuh.core.exception import WazuhPermissionError
+from wazuh.core.common import rbac, broadcast, cluster_nodes, current_user
+from wazuh.core.exception import WazuhInternalError, WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 
 SENSITIVE_FIELD_PATHS = ("authd.pass", "cluster.key")
 
 MASK_DEFAULT = "*****"
+
+# The API's logger, as wazuh.rbac.orm already does: an audit line about something served over the API
+# belongs in the API log, next to the request line that carries the endpoint and the caller's address.
+logger = logging.getLogger("wazuh-api")
 
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
@@ -502,20 +507,77 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
     return decorator
 
 
-def _has_update_permissions() -> bool:
-    """Check if current user holds update-config permissions.
+def _can_read_secrets() -> bool:
+    """Check whether the current user may read the sensitive configuration values in clear.
+
+    A separate action from the update ones on purpose: being allowed to WRITE the configuration used
+    to be enough to read the enrollment password and the cluster key out of it, which made the
+    disclosure a side effect of an unrelated permission.
 
     Returns
     -------
     bool
-        True if user has 'manager:update_config' or 'cluster:update_config', False otherwise.
+        True if user has 'manager:read_secrets' or 'cluster:read_secrets', False otherwise.
     """
     perms = rbac.get() or {}
-    for action in ("manager:update_config", "cluster:update_config"):
+    for action in ("manager:read_secrets", "cluster:read_secrets"):
         action_map = perms.get(action)
         if isinstance(action_map, dict) and any(effect == 'allow' for effect in action_map.values()):
             return True
     return False
+
+
+def _sensitive_paths_in(payload, dotted_path: str) -> bool:
+    """Whether ``dotted_path`` resolves to something inside ``payload``. Read-only twin of
+    `_mask_paths_in_object`, kept next to it so the two cannot drift apart.
+    """
+    if isinstance(payload, str):
+        return _build_xml_mask_pattern(dotted_path).search(payload) is not None
+    if isinstance(payload, AffectedItemsWazuhResult):
+        return any(_sensitive_paths_in(item, dotted_path) for item in payload.affected_items)
+    if isinstance(payload, list):
+        return any(_sensitive_paths_in(element, dotted_path) for element in payload)
+    if not isinstance(payload, dict):
+        return False
+    if dotted_path in payload:
+        return True
+
+    head, *tail = dotted_path.split('.', 1)
+
+    return head in payload and bool(tail) and _sensitive_paths_in(payload[head], tail[0])
+
+
+def _bare_key_in(payload) -> bool:
+    """Whether the payload carries the literal ``key`` member `_mask_payload` masks on its own.
+
+    Not a dotted path and easy to miss: `GET /cluster/local/config` answers the cluster section as a
+    flat object whose `key` IS the cluster key, so this is the only rule that catches the disclosure
+    the audit line has to record.
+    """
+    if isinstance(payload, AffectedItemsWazuhResult):
+        return any(_bare_key_in(item) for item in payload.affected_items)
+    if isinstance(payload, list):
+        return any(_bare_key_in(element) for element in payload)
+
+    return isinstance(payload, dict) and "key" in payload
+
+
+def _audit_secret_read(payload):
+    """Record that sensitive values were served in clear, naming the fields and never their value.
+
+    Best effort by design: the caller is entitled to the answer, so a failure here must not turn a
+    permitted read into an error. It does have to be visible, hence the warning.
+    """
+    try:
+        disclosed = [path for path in SENSITIVE_FIELD_PATHS if _sensitive_paths_in(payload, path)]
+
+        if _bare_key_in(payload) and "cluster.key" not in disclosed:
+            disclosed.append("cluster.key")
+
+        if disclosed:
+            logger.info(f"secret_read: user='{current_user.get()}' served in clear: {', '.join(disclosed)}")
+    except Exception as exception:  # pragma: no cover - defensive
+        logger.warning(f"Could not audit a read of sensitive configuration values: {exception}")
 
 
 def _build_xml_mask_pattern(path: str) -> re.Pattern:
@@ -670,12 +732,13 @@ def _mask_payload(payload, mask_text: str = MASK_DEFAULT):
 
 def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
     """
-    Decorator to mask sensitive fields in config responses for users without update permissions.
+    Decorator to mask sensitive fields in config responses for users without the read-secrets action.
 
     The decorator post‑processes the return value of the wrapped function.
-    - If the user lacks update‑config permissions, sensitive fields are masked **in‑place**
-      (or for XML strings, a masked copy is created).
-    - If an exception occurs during masking, it is silently swallowed to avoid breaking the endpoint.
+    - If the user lacks 'manager:read_secrets' / 'cluster:read_secrets', sensitive fields are masked
+      **in‑place** (or for XML strings, a masked copy is created).
+    - If the user holds it, the values are served in clear and the disclosure is audited.
+    - If masking fails, the request fails: a response nobody could mask cannot be claimed to be clean.
 
     Parameters
     ----------
@@ -691,18 +754,26 @@ def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
         @wraps(func)
         def wrapper(*args, **kwargs):
             result = func(*args, **kwargs)
+
+            # Only the read-secrets action lifts the mask; holding update-config no longer does.
+            if _can_read_secrets():
+                _audit_secret_read(result)
+                return result
+
             try:
-                # Only mask if user LACKS update-config permissions
-                if not _has_update_permissions():
-                    if isinstance(result, str):
-                        string_wrapper = [result]
-                        _mask_payload(string_wrapper, mask_text=mask_text)
-                        result = string_wrapper[0]
-                    else:
-                        _mask_payload(result, mask_text=mask_text)
-            except Exception:
-                # Never break the endpoint if masking fails for any reason
-                pass
+                if isinstance(result, str):
+                    string_wrapper = [result]
+                    _mask_payload(string_wrapper, mask_text=mask_text)
+                    result = string_wrapper[0]
+                else:
+                    _mask_payload(result, mask_text=mask_text)
+            except Exception as exception:
+                # Fail closed. Swallowing this used to hand the caller the unmasked payload, which is
+                # the one outcome the masking exists to prevent.
+                logger.error(f"Could not mask the sensitive configuration values: {exception}")
+                raise WazuhInternalError(
+                    1000, extra_message='the sensitive configuration values could not be masked') from exception
+
             return result
 
         return wrapper
