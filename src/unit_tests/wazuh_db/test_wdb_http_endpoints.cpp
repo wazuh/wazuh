@@ -310,10 +310,11 @@ TEST_F(WdbHttpEndpointsTest, GetAllAgentsSerializesGroupCsv)
     EXPECT_NE(response.body.find(R"("group":"default,qa-group")"), std::string::npos) << response.body;
 }
 
-// An agent with no groups leaves the column NULL, which the wrapper reads as an
-// empty string and reflectiveJson's NOEMPTY default omits. The consumer relies on
-// the key being absent rather than empty: an empty array would assert the agent
-// belongs to no group, which no other source asserts.
+// An empty `group` value is omitted by reflectiveJson's NOEMPTY default rather than
+// serialized as "". (The real wrapper turns a NULL column into that empty string;
+// this mock feeds the empty string directly, so only the serializer's side is
+// covered here.) The consumer relies on the key being absent: an empty array would
+// assert the agent belongs to no group, which no other source asserts.
 TEST_F(WdbHttpEndpointsTest, GetAllAgentsOmitsEmptyGroup)
 {
     MockStatement::s_rowsToReturn = {agentRow("")};

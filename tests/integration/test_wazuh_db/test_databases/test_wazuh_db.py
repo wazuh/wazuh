@@ -121,6 +121,8 @@ def test_wazuh_db_messages_global(test_metadata, daemons_handler_module,
                                   clean_databases, clean_registered_agents):
     '''
     description: Verify every `global ...` message sent to the wazuh-manager-db socket returns the expected response.
+                 The module-level autouse fixture `disable_agent_disconnection_sweep` keeps the task manager's
+                 scheduled disconnection sweep from rewriting the rows these cases assert on.
 
     wazuh_min_version: 5.0.0
 
@@ -130,9 +132,6 @@ def test_wazuh_db_messages_global(test_metadata, daemons_handler_module,
         - test_metadata:
             type: dict
             brief: Test case metadata.
-        - disable_agent_disconnection_sweep:
-            type: fixture
-            brief: Autouse fixture that disables the task manager's scheduled agent disconnection sweep.
         - daemons_handler_module:
             type: fixture
             brief: Handler of Wazuh daemons.
