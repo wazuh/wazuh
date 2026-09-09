@@ -341,10 +341,10 @@ WET_ERR_ANCHOR_NEITHER="ERR_ANCHOR_NEITHER"
 # token with nothing to verify the manager against, both is ambiguous about which one
 # wins, so both are rejected rather than one silently taking priority.
 #
-# 'ca' is an alternative trust anchor added here but not confirmed by any existing spec
-# in this repo (only ver/adr/pin/key are documented) -- treated as an opaque,
-# unvalidated string alternative to 'pin' so the "exactly one anchor" rule is testable;
-# whether 'ca' is the right field name/shape is an open question, not settled design.
+# 'ca' is the alternative trust anchor for the embed-ca minting mode: the full
+# certificate instead of a pin, for environments that won't accept any unauthenticated
+# fetch. Still treated here as an opaque, unvalidated string -- real validation
+# (confirming it parses as a PEM/DER certificate) is follow-up work.
 #
 # On success, sets WET_VER/WET_ADR/WET_PIN/WET_KEY/WET_CA (the unset one of pin/ca is
 # left empty) and returns 0. On failure, sets WET_ERROR_CODE and WET_ERROR_MESSAGE and
