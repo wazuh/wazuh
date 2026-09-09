@@ -67,6 +67,16 @@ namespace
         return doc;
     }
 
+    // The two schema-mandatory sections, spelled out once for tests that only care about some other part
+    // of the document.
+    const char* const CLUSTER_SECTION = "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>";
+    const char* const INDEXER_SECTION = "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>";
+
+    std::string wrap(const std::string& body)
+    {
+        return "<wazuh_config>" + body + CLUSTER_SECTION + INDEXER_SECTION + "</wazuh_config>";
+    }
+
 } // namespace
 
 // ---------------------------------------------------------------------------------------------------
@@ -104,9 +114,6 @@ TEST(Load, EffectiveDefaultsFromMinimalDocument)
     EXPECT_EQ(rapidjson::Pointer("/vulnerability-detection/pageSize").Get(effective)->GetInt(), 100);
     EXPECT_EQ(rapidjson::Pointer("/indexer/hosts").Get(effective)->Size(), 1u);
     EXPECT_STREQ(rapidjson::Pointer("/indexer/hosts/0").Get(effective)->GetString(), "https://127.0.0.1:9200");
-    EXPECT_EQ(rapidjson::Pointer("/agent-upgrade/wpk_repository").Get(effective), nullptr)
-        << "no default: the module picks the repository by target agent version";
-    EXPECT_TRUE(rapidjson::Pointer("/agent-upgrade/enabled").Get(effective)->GetBool());
     EXPECT_EQ(rapidjson::Pointer("/task-manager/task_ttl").Get(effective)->GetInt(), 3600);
     // Agent upgrades are the task manager's on a manager; there is no `agent-upgrade` section.
     EXPECT_FALSE(effective.HasMember("agent-upgrade"));
@@ -119,9 +126,7 @@ TEST(Load, EffectiveDefaultsFromMinimalDocument)
 
 TEST(Load, PresentLegacyBlockIsEnabledByDefault)
 {
-    const auto doc = parseOk("<wazuh_config><remote><legacy><port>1514</port></legacy></remote>"
-                             "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>"
-                             "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer></wazuh_config>");
+    const auto doc = parseOk(wrap("<remote><legacy><port>1514</port></legacy></remote>"));
     const auto remote = json(doc.sectionJson("remote"));
     EXPECT_TRUE(rapidjson::Pointer("/legacy/enabled").Get(remote)->GetBool());
     EXPECT_STREQ(rapidjson::Pointer("/legacy/protocol/0").Get(remote)->GetString(), "tcp");
@@ -164,8 +169,7 @@ TEST(Load, DurationsAcceptIntegersAndStrings)
 
 TEST(Load, UnknownSectionQueryIsEmpty)
 {
-    const auto doc = parseOk("<wazuh_config><cluster><key>0123456789abcdef0123456789abcdef</key></cluster>"
-                             "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer></wazuh_config>");
+    const auto doc = parseOk(wrap(""));
     EXPECT_TRUE(doc.sectionJson("syscheck").empty());
     EXPECT_FALSE(doc.hasSection("wodle"));
     EXPECT_TRUE(doc.hasSection("cluster"));
@@ -203,11 +207,9 @@ TEST(Schema, EveryInvalidVectorFailsWithTheExpectedPointerAndKeyword)
 
 TEST(Schema, YesNoIsBooleanAndTrueFalseIsRejected)
 {
-    const auto doc = parseOk("<wazuh_config><auth><use_password>yes</use_password></auth>"
-                             "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>"
-                             "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer></wazuh_config>");
+    const auto doc = parseOk(wrap("<auth><use_password>yes</use_password></auth>"));
     EXPECT_TRUE(json(doc.sectionJson("auth"))["use_password"].GetBool());
-    const auto error = parseKo("<wazuh_config><auth><use_password>true</use_password></auth></wazuh_config>");
+    const auto error = parseKo(wrap("<auth><use_password>true</use_password></auth>"));
     EXPECT_EQ(error.pointer, "/auth/use_password");
     EXPECT_NE(error.message.find("type"), std::string::npos) << error.what();
     EXPECT_NE(error.message.find("booleans are yes/no"), std::string::npos) << error.what();
@@ -226,21 +228,16 @@ TEST(Schema, RejectsUnknownKeyPointingAtTheKey)
 
 TEST(Xml, CsvAndRepeatedElementsBecomeArrays)
 {
-    const auto csv = parseOk("<wazuh_config><logging><log_format>plain, json</log_format></logging>"
-                             "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>"
-                             "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer></wazuh_config>");
+    const auto csv = parseOk(wrap("<logging><log_format>plain, json</log_format></logging>"));
     const auto logging = json(csv.sectionJson("logging"));
     ASSERT_EQ(logging["log_format"].Size(), 2u);
     EXPECT_STREQ(logging["log_format"][1].GetString(), "json");
     const auto repeated =
-        parseOk("<wazuh_config><logging><log_format>plain</log_format>"
-                "<log_format>json</log_format></logging>"
-                "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>"
-                "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer></wazuh_config>");
+        parseOk(wrap("<logging><log_format>plain</log_format><log_format>json</log_format></logging>"));
     EXPECT_EQ(json(repeated.sectionJson("logging"))["log_format"].Size(), 2u);
-    const auto wrapper = parseOk("<wazuh_config><indexer><hosts><host>https://a:9200</host>"
-                                 "<host>https://b:9200</host></hosts></indexer>"
-                                 "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster></wazuh_config>");
+    const auto wrapper = parseOk(std::string("<wazuh_config><indexer><hosts><host>https://a:9200</host>"
+                                             "<host>https://b:9200</host></hosts></indexer>") +
+                                 CLUSTER_SECTION + "</wazuh_config>");
     const auto indexer = json(wrapper.sectionJson("indexer"));
     ASSERT_EQ(indexer["hosts"].Size(), 2u);
     EXPECT_STREQ(indexer["hosts"][1].GetString(), "https://b:9200");
@@ -248,12 +245,10 @@ TEST(Xml, CsvAndRepeatedElementsBecomeArrays)
 
 TEST(Xml, AttributeFormsBecomeNestedObjects)
 {
-    const auto doc = parseOk("<wazuh_config><wdb><backup database=\"global\"><enabled>no</enabled>"
-                             "<interval>1d</interval><max_files>3</max_files></backup></wdb>"
-                             "<auth><force><disconnected_time enabled=\"yes\">1h</disconnected_time>"
-                             "</force></auth>"
-                             "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>"
-                             "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer></wazuh_config>");
+    const auto doc = parseOk(wrap("<wdb><backup database=\"global\"><enabled>no</enabled>"
+                                  "<interval>1d</interval><max_files>3</max_files></backup></wdb>"
+                                  "<auth><force><disconnected_time enabled=\"yes\">1h</disconnected_time>"
+                                  "</force></auth>"));
     const auto wdb = json(doc.sectionJson("wdb"));
     EXPECT_FALSE(rapidjson::Pointer("/backup/global/enabled").Get(wdb)->GetBool());
     EXPECT_STREQ(rapidjson::Pointer("/backup/global/interval").Get(wdb)->GetString(), "1d");
@@ -264,11 +259,11 @@ TEST(Xml, AttributeFormsBecomeNestedObjects)
 
 TEST(Xml, EntitiesAreDecodedAndEnumsNormalized)
 {
-    const auto doc = parseOk("<wazuh_config><cluster><name>a&amp;b</name>"
-                             "<key>0123456789abcdef0123456789abcdef</key></cluster>"
-                             "<remote><legacy><protocol>TCP,UDP</protocol></legacy>"
-                             "<https><verification_mode>Full</verification_mode></https></remote>"
-                             "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer></wazuh_config>");
+    const auto doc = parseOk(std::string("<wazuh_config><cluster><name>a&amp;b</name>"
+                                         "<key>0123456789abcdef0123456789abcdef</key></cluster>"
+                                         "<remote><legacy><protocol>TCP,UDP</protocol></legacy>"
+                                         "<https><verification_mode>Full</verification_mode></https></remote>") +
+                             INDEXER_SECTION + "</wazuh_config>");
     EXPECT_STREQ(json(doc.sectionJson("cluster"))["name"].GetString(), "a&b");
     const auto remote = json(doc.sectionJson("remote"));
     EXPECT_STREQ(rapidjson::Pointer("/legacy/protocol/0").Get(remote)->GetString(), "tcp");
@@ -290,6 +285,26 @@ TEST(Xml, RejectsRawAmpersandSecondRootLegacyCommentAndWrongRoot)
     EXPECT_NE(parseKo("<wazuh_config><!-- a -- b --></wazuh_config>").message.find("'--'"), std::string::npos);
     EXPECT_NE(parseKo("<ossec_config></ossec_config>").message.find("must be <wazuh_config>"), std::string::npos);
     EXPECT_NE(parseKo("").message.find("invalid XML"), std::string::npos) << "an empty file has no root";
+}
+
+TEST(Xml, EveryDocumentLevelRejectionIsMarkedAsInvalidXml)
+{
+    // A document-level rejection has no JSON pointer, so the "invalid XML" prefix is the only thing that
+    // tells a consumer it is a syntax problem and not a schema violation: the framework reports the former
+    // as 1131 and the latter as 1130, whose remediation names a pointer these errors do not have.
+    for (const char* document : {"<wazuh_config><cluster><name>a & b</name></cluster></wazuh_config>",
+                                 "<wazuh_config><!-- a -- b --></wazuh_config>",
+                                 "<wazuh_config></wazuh_config>\n<wazuh_config></wazuh_config>",
+                                 "<ossec_config></ossec_config>",
+                                 "<wazuh_config version=\"5.0\"></wazuh_config>",
+                                 "<!-- only a comment -->",
+                                 "not xml at all",
+                                 ""})
+    {
+        const auto error = parseKo(document);
+        EXPECT_TRUE(error.pointer.empty()) << document << ": " << error.what();
+        EXPECT_EQ(error.message.rfind("invalid XML: ", 0), 0u) << document << ": " << error.what();
+    }
 }
 
 TEST(Xml, RejectsDuplicatesStrayTextAndWrongListItems)
@@ -329,36 +344,22 @@ TEST(Xml, RejectsOversizeAndDepth)
 
 TEST(Semantics, CertificateWithoutKeyAndPortCollisionsAndDotSegments)
 {
-    const char* indexer = "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>";
-    EXPECT_EQ(parseKo(std::string("<wazuh_config><remote><https><certificate>a.pem</certificate><key></key></https>"
-                                  "</remote><cluster><key>0123456789abcdef0123456789abcdef</key></cluster>") +
-                      indexer + "</wazuh_config>")
-                  .pointer,
+    EXPECT_EQ(parseKo(wrap("<remote><https><certificate>a.pem</certificate><key></key></https></remote>")).pointer,
               "/remote/https/key");
-    EXPECT_EQ(parseKo(std::string("<wazuh_config><remote><legacy><port>1515</port></legacy></remote>"
-                                  "<auth><port>1515</port></auth>"
-                                  "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>") +
-                      indexer + "</wazuh_config>")
-                  .pointer,
-              "/auth/port");
+    EXPECT_EQ(
+        parseKo(wrap("<remote><legacy><port>1515</port></legacy></remote><auth><port>1515</port></auth>")).pointer,
+        "/auth/port");
     EXPECT_EQ(parseKo(std::string("<wazuh_config><cluster><key>0123456789abcdef0123456789abcdef</key>"
                                   "<port>1517</port></cluster>") +
-                      indexer + "</wazuh_config>")
+                      INDEXER_SECTION + "</wazuh_config>")
                   .pointer,
               "/cluster/port")
         << "collides with remote.https.port default";
-    EXPECT_EQ(parseKo(std::string("<wazuh_config><remote><https><global_prefix>/a/../b/</global_prefix></https>"
-                                  "</remote><cluster><key>0123456789abcdef0123456789abcdef</key></cluster>") +
-                      indexer + "</wazuh_config>")
-                  .pointer,
+    EXPECT_EQ(parseKo(wrap("<remote><https><global_prefix>/a/../b/</global_prefix></https></remote>")).pointer,
               "/remote/https/global_prefix");
     // a disabled listener does not reserve its port
-    parseOk(std::string("<wazuh_config><remote><legacy><enabled>no</enabled><port>1515</port></legacy></remote>"
-                        "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>") +
-            indexer + "</wazuh_config>");
-    parseOk(std::string("<wazuh_config><auth><disabled>yes</disabled><port>1517</port></auth>"
-                        "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>") +
-            indexer + "</wazuh_config>");
+    parseOk(wrap("<remote><legacy><enabled>no</enabled><port>1515</port></legacy></remote>"));
+    parseOk(wrap("<auth><disabled>yes</disabled><port>1517</port></auth>"));
 }
 
 TEST(Semantics, CheckFilesResolvesRelativeToHome)
@@ -371,27 +372,21 @@ TEST(Semantics, CheckFilesResolvesRelativeToHome)
     }
     manager_config::LoadOptions options;
     options.home = dir;
-    auto ok = manager_config::Document::parse(
-        "<wazuh_config><cluster><key>0123456789abcdef0123456789abcdef</key></cluster>"
-        "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer></wazuh_config>",
-        options);
+    auto ok = manager_config::Document::parse(wrap(""), options);
     EXPECT_TRUE(std::holds_alternative<manager_config::Document>(ok)) << std::get<manager_config::Error>(ok).what();
-    auto ko = manager_config::Document::parse("<wazuh_config><remote><https>"
-                                              "<certificate>etc/certs/missing.pem</certificate>"
-                                              "<key>etc/certs/remoted-key.pem</key></https></remote>"
-                                              "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>"
-                                              "<indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>"
-                                              "</wazuh_config>",
+    auto ko = manager_config::Document::parse(wrap("<remote><https>"
+                                                   "<certificate>etc/certs/missing.pem</certificate>"
+                                                   "<key>etc/certs/remoted-key.pem</key></https></remote>"),
                                               options);
     ASSERT_TRUE(std::holds_alternative<manager_config::Error>(ko));
     EXPECT_EQ(std::get<manager_config::Error>(ko).pointer, "/remote/https/certificate");
     // indexer.ssl.* is never checked: the installer does not create those files.
-    auto indexerOk = manager_config::Document::parse("<wazuh_config><indexer><hosts><host>https://h:9200</host></hosts>"
-                                                     "<ssl><certificate>etc/certs/missing.pem</certificate></ssl>"
-                                                     "</indexer>"
-                                                     "<cluster><key>0123456789abcdef0123456789abcdef</key></cluster>"
-                                                     "</wazuh_config>",
-                                                     options);
+    auto indexerOk =
+        manager_config::Document::parse(std::string("<wazuh_config><indexer><hosts><host>https://h:9200</host></hosts>"
+                                                    "<ssl><certificate>etc/certs/missing.pem</certificate></ssl>"
+                                                    "</indexer>") +
+                                            CLUSTER_SECTION + "</wazuh_config>",
+                                        options);
     EXPECT_TRUE(std::holds_alternative<manager_config::Document>(indexerOk))
         << std::get<manager_config::Error>(indexerOk).what();
     std::filesystem::remove_all(dir);

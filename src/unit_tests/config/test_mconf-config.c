@@ -137,7 +137,10 @@ static void test_w_mconf_load_invalid_logs_1244(void **state) {
     const char prefix[] = "(1244): Invalid configuration at 'test_mconf-config.conf': /auth/disabled";
 
     /* Booleans are yes/no in the XML dialect: true is a plain string and fails the schema type. */
-    if (write_conf("<wazuh_config><auth><disabled>true</disabled></auth></wazuh_config>\n") != 0) {
+    if (write_conf("<wazuh_config><auth><disabled>true</disabled></auth>\n"
+                   "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
+                   "  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
+                   "</wazuh_config>\n") != 0) {
         fail();
     }
 

@@ -1416,6 +1416,10 @@ InstallCommon()
             fi
             ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/wazuh.mc ${INSTALLDIR}/etc/${WAZUH_CONF}
         else
+            if [ "X${INSTYPE}" = "Xmanager" ]; then
+                echo "ERROR: unable to generate ${WAZUH_CONF}; ${WAZUH_CONF_SRC} is a template, not an installable configuration."
+                exit 1
+            fi
             echo "WARNING: unable to generate ${WAZUH_CONF} with desired configurations, using default configurations from ${WAZUH_CONF_SRC}"
             ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${WAZUH_CONF_SRC} ${INSTALLDIR}/etc/${WAZUH_CONF}
         fi

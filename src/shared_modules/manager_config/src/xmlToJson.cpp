@@ -52,6 +52,15 @@ namespace manager_config::detail
             return " (line " + std::to_string(lineOf(text, offset)) + ")";
         }
 
+        /// Rejection of the document itself: not well-formed, or not shaped like a configuration file.
+        /// These carry no JSON pointer, so consumers tell them apart from a schema violation by this
+        /// prefix alone (the framework maps it to "XML syntax error" and everything else to a schema
+        /// error, whose remediation names the offending option as a pointer these errors cannot offer).
+        Error xmlError(std::string message)
+        {
+            return Error {"", "invalid XML: " + std::move(message)};
+        }
+
         /// pugixml tolerates two things strict XML forbids: an unescaped '&' that is not a valid reference
         /// (left as-is by parse_escapes) and "--" inside a comment. Scan the raw text for both, skipping
         /// CDATA sections, processing instructions and DOCTYPE (whose content legally carries them).
@@ -75,9 +84,8 @@ namespace manager_config::detail
                         {
                             if (t.compare(j, 2, "--") == 0)
                             {
-                                return Error {"",
-                                              "the sequence '--' is not allowed inside a comment" +
-                                                  atLine(t, static_cast<std::ptrdiff_t>(j))};
+                                return xmlError("the sequence '--' is not allowed inside a comment" +
+                                                atLine(t, static_cast<std::ptrdiff_t>(j)));
                             }
                             ++j;
                         }
@@ -127,8 +135,8 @@ namespace manager_config::detail
                     std::smatch match;
                     if (!std::regex_search(window, match, ENTITY))
                     {
-                        return Error {"",
-                                      "raw '&' must be escaped as '&amp;'" + atLine(t, static_cast<std::ptrdiff_t>(i))};
+                        return xmlError("raw '&' must be escaped as '&amp;'" +
+                                        atLine(t, static_cast<std::ptrdiff_t>(i)));
                     }
                     i += static_cast<std::size_t>(match[0].length());
                     continue;
@@ -649,7 +657,7 @@ namespace manager_config::detail
         const pugi::xml_parse_result result = document.load_buffer(xmlText.data(), xmlText.size());
         if (result.status != pugi::status_ok)
         {
-            return Error {"", std::string {"invalid XML: "} + result.description() + atLine(xmlText, result.offset)};
+            return xmlError(std::string {result.description()} + atLine(xmlText, result.offset));
         }
         if (auto error = scanRawText(xmlText))
         {
@@ -664,24 +672,23 @@ namespace manager_config::detail
             }
             if (root)
             {
-                return Error {
-                    "", "exactly one <wazuh_config> root element is expected" + atLine(xmlText, child.offset_debug())};
+                return xmlError("exactly one <wazuh_config> root element is expected" +
+                                atLine(xmlText, child.offset_debug()));
             }
             root = child;
         }
         if (!root)
         {
-            return Error {"", "no root element; expected <wazuh_config>"};
+            return xmlError("no root element; expected <wazuh_config>");
         }
         if (std::strcmp(root.name(), "wazuh_config") != 0)
         {
-            return Error {"",
-                          "the root element must be <wazuh_config>, found <" + std::string {root.name()} + ">" +
-                              atLine(xmlText, root.offset_debug())};
+            return xmlError("the root element must be <wazuh_config>, found <" + std::string {root.name()} + ">" +
+                            atLine(xmlText, root.offset_debug()));
         }
         if (root.first_attribute() != nullptr)
         {
-            return Error {"", "the <wazuh_config> root element takes no attributes"};
+            return xmlError("the <wazuh_config> root element takes no attributes");
         }
         return childrenToObject(root, allowedAt(&schemaDocument()), out, out.GetAllocator(), "", 1);
     }

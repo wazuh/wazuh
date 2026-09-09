@@ -817,7 +817,7 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
 
     try:
         if not any(n.nodeType == n.ELEMENT_NODE for n in xml.documentElement.childNodes):
-            raise WazuhError(1113, 'Configuration must contain at least one element')
+            raise WazuhError(1114, 'Configuration must contain at least one element')
 
         # check Wazuh xml format
         try:

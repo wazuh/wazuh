@@ -57,12 +57,7 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 
 
 # Marks
-pytestmark = [
-    pytest.mark.server,
-    pytest.mark.skip(
-        reason='Configuration upload success path depends on manager execd/wcom socket removed in manager-agent separation'
-    )
-]
+pytestmark = pytest.mark.server
 
 # Variables
 # Used by add_configuration to select the target configuration file
@@ -136,6 +131,7 @@ def test_upload_configuration(test_configuration, test_metadata, backup_wazuh_co
         - r'200' ('OK' HTTP status code)
     """
     expected_code = test_metadata['expected_code']
+    expected_error_code = test_metadata['expected_error_code']
     body = test_metadata['body']
 
     url = get_base_url() + '/cluster/node01/configuration'
@@ -146,3 +142,10 @@ def test_upload_configuration(test_configuration, test_metadata, backup_wazuh_co
                              data=body)
     assert response.status_code == expected_code, f"Expected status code {expected_code}, but " \
                                                   f"{response.status_code} was returned: {response.json()}"
+    response_json = response.json()
+    if expected_error_code == 0:
+        assert response_json['data']['total_failed_items'] == 0, f"Expected success, but got: {response_json}"
+    else:
+        error_code = response_json['data']['failed_items'][0]['error']['code']
+        assert error_code == expected_error_code, \
+            f"Expected error code {expected_error_code}, but got: {response_json}"

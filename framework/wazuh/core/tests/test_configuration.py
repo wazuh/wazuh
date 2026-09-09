@@ -354,8 +354,11 @@ def test_upload_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
                 with pytest.raises(WazuhError, match=".* 1113 .*"):
                     configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>")
             with patch('builtins.open'):
-                with pytest.raises(WazuhError, match=".* 1113 .*"):
+                with pytest.raises(WazuhError, match=".* 1114 .*"):
                     configuration.upload_group_configuration('default', "this is not a wazuh configuration")
+            with patch('builtins.open'):
+                with pytest.raises(WazuhError, match=".* 1114 .*"):
+                    configuration.upload_group_configuration('default', "<!-- just a comment -->")
             with patch('builtins.open'):
                 with patch('wazuh.core.configuration.subprocess.check_output', return_value=True):
                     with patch('wazuh.core.utils.chown', side_effect=None):
