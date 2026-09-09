@@ -235,7 +235,8 @@ src/endpoints/
 ├── statefulEndpoint.hpp/.cpp # /stateful policy: opaque inventory-sync sessions, contract passthrough
 ├── statsEndpoint.hpp/.cpp    # /stats policy: forwards to modulesd's inventory sync server
 └── configEndpoint.hpp/.cpp  # /config policy: near-duplicate of statsEndpoint, on purpose
-└── downloadEndpoint.hpp/.cpp  # /download policy: request grammar + resource resolution + file streaming
+├── downloadEndpoint.hpp/.cpp  # /download policy: request grammar + resource resolution + file streaming
+└── iAgentGroupSource.hpp     # interface: the selector an authenticated agent may download
 └── cacertsEndpoint.hpp/.cpp   # GET /cacerts: the CA that signs the listener cert, certificates only (no auth)
 ```
 
@@ -361,6 +362,10 @@ src/control/
 ├── metrics.hpp               # ControlMetrics (remoted.control.* registry handles + wdb latency histogram)
 ├── controlHandler.hpp/.cpp   # ControlHandler: core business logic for all three message types
 ├── agentRegistry.hpp/.cpp    # AgentRegistry: thread-safe sharded map (agent metadata cache + eviction)
+├── groupSelector.hpp         # toGroupsCsv()/makeConfigToken(): the group selector /control hands the
+│                             #   agent as config_token, shared so /download resolves the same string
+├── registryAgentGroupSource.hpp/.cpp # RegistryAgentGroupSource: IAgentGroupSource over the registry
+│                             #   (answers "which selector may this agent download?", nullopt = deny)
 ├── wazuhDBClient.hpp/.cpp    # WazuhDBClient: async UDS client to wazuh-db (agent status/data updates)
 ├── taskClient.hpp/.cpp       # TaskClient: async UDS client to task-manager (pending task fetch)
 ├── mergedMgWatcher.hpp/.cpp  # MergedMgWatcher: inotify + poll watcher for var/multigroups/*.mg changes
