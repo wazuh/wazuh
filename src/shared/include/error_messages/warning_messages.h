@@ -15,13 +15,10 @@
 #define AR_SERVER_AGENT "(1306): Invalid agent ID. Use location=server to run AR on the manager."
 
 /* Agent */
-#define AG_UNUSED_SSL_CA "(4119): <ssl><certificate_authorities> is not a readable file: '%s'. " \
-                         "It is unused while <verification_mode> is 'none'; enabling verification " \
-                         "would stop the agent from starting."
-
-#define AG_SSL_ANCHOR_IGNORES_CA "(4123): <ssl><certificate_authorities> '%s' is ignored. The trust anchor " \
-                                 "'%s' overrode <verification_mode> 'none', and verification uses the anchor " \
-                                 "instead. Set <verification_mode> explicitly to keep using your own CA."
+#define AG_SSL_NONE_IGNORES_ANCHOR "(4122): <ssl><verification_mode> is 'none' and the trust anchor '%s' is " \
+                                   "present: TLS verification stays disabled, as configured, and the anchor is " \
+                                   "not used. Remove <verification_mode>none</verification_mode> to verify " \
+                                   "against it."
 
 /* File integrity monitoring warning messages*/
 #define FIM_WARN_ACCESS                         "(6900): Accessing  '%s': [(%d) - (%s)]"

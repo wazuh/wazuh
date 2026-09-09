@@ -43,9 +43,8 @@ typedef struct agent_server {
  * AGENT_VERIFY_SYSTEM would only refuse to connect to a manager holding its own root-ca.pem.
  * AGENT_VERIFY_SYSTEM is reached only when <ssl> asks for it by name.
  *
- * That resolver also makes one transition that does not start from UNSET, and it is the only
- * place an explicit operator choice is overridden: AGENT_VERIFY_NONE becomes
- * AGENT_VERIFY_FULL when the anchor is present (#38940 requirement 13, logged as (4122)). */
+ * No other transition exists: an explicit <verification_mode> is carried through untouched,
+ * 'none' included, so the resolver never overrides an operator's choice. */
 typedef enum agent_verify_mode_t {
     AGENT_VERIFY_FULL = 0,   ///< Verify peer against the CA and check the hostname.
     AGENT_VERIFY_CERT = 1,   ///< Verify peer against the CA only.
