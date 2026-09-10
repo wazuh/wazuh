@@ -1,0 +1,27 @@
+[
+    {
+        "index_name": "wazuh-states-inventory-groups-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "004",
+                    "name": "test-agent",
+                    "version": "v4.10.1"
+                },
+                "group": {
+                    "description": "group description",
+                    "id": 400,
+                    "id_signed": -400,
+                    "is_hidden": false,
+                    "name": "preseeded",
+                    "uuid": "S-1-5-32-400"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]
