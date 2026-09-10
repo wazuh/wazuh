@@ -116,7 +116,8 @@ int try_enroll_to_server(void) {
     }
 
     hc_enroll_result_t result;
-    w_https_client_enroll(request.body_json, request.password, &result);
+    w_https_client_enroll(request.body_json, request.password, request.enroll_kid, request.enroll_key_hex,
+                          &result);
     w_enroll_request_destroy(&request);
 
     if (w_enrollment_process_response(&result) != W_ENROLL_OK) {

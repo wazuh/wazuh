@@ -95,9 +95,43 @@ namespace
     }
 
     // A fixed token-kid credential: 16 bytes of id -> 22 canonical base64url chars, and a
-    // 32-byte key as the 64-hex form hc_enroll_request_t::token_key_hex carries.
+    // 32-byte key as the 64-hex form hc_enroll_request_t::enroll_key_hex carries.
     const std::string TOKEN_KID = jwt_profile::v1::base64UrlEncode(std::string(16, '\x01'));
     const std::string TOKEN_KEY_HEX = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+
+    // #39064: the other keyed credential. The `kid` is a canonical AGENT id, not a 22-character
+    // token id, and the key is derived under WAZUH-REENROLL-KEY -- both frozen in
+    // jwt/testVectors.hpp, which is what authd verifies against.
+    const std::string REENROLL_KID = "001";
+    const std::string REENROLL_KEY_HEX = "68b01ea65fc441951a17e3fd9b7e2dedc846d364f38596630ea3f69f60482ae9";
+
+    // Verifies the `Authorization: Bearer <wazuh-enroll+jwt>` header against the given `kid` and
+    // key, the way the manager's own JwtEnrollTokenVerifier::verifyWithKid() does.
+    jwt_profile::v1::VerifyError verifyKeyedBearer(const std::vector<std::string>& headers,
+                                                   const std::string& kid,
+                                                   const std::string& keyHex,
+                                                   std::time_t at)
+    {
+        const std::string prefix = "Authorization: Bearer ";
+        const auto bearer =
+            std::find_if(headers.begin(), headers.end(), [&](const std::string & h)
+        {
+            return h.rfind(prefix, 0) == 0;
+        });
+        const auto key = jwt_profile::v1::JwtKeyDecoder::decode(keyHex);
+
+        if (bearer == headers.end() || !key)
+        {
+            return jwt_profile::v1::VerifyError::InvalidToken;
+        }
+
+        return jwt_profile::v1::enroll::JwtEnrollTokenVerifier::verifyWithKid(
+                   bearer->substr(prefix.size()),
+                   kid,
+                   *key,
+                   jwt_profile::v1::TimePolicy {},
+                   std::chrono::system_clock::time_point {std::chrono::seconds {at}});
+    }
 
     // Verifies the `Authorization: Bearer <wazuh-enroll+jwt>` header against the token-kid
     // shared verifier, the same way verifyBearer() above does for the password form.
@@ -468,6 +502,96 @@ TEST(EnrollClientTest, TokenKidTakesPriorityOverAConfiguredPassword)
     }));
 
     client.enroll(BODY, "s3cr3t", TOKEN_KID, TOKEN_KEY_HEX);
+}
+
+// Re-enrollment (#39064): the same two fields carry an agent's own credential. The `kid` is a
+// canonical agent id, so this proves the client is generic over the `kid`'s shape -- it neither
+// validates it as a token id nor re-derives the key.
+
+TEST(EnrollClientTest, AnAgentKidBearerIsAcceptedByTheSharedVerifier)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    NiceMock<MockHttpPerformer> performer;
+    FakeClock clock;
+    clock.setWall(1700000000);
+    EnrollClient client {openModeConfig(), performer, fsProbe, clock, TEST_LOG};
+
+    EXPECT_CALL(performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_TRUE(hasHeader(spec.headers, "protocol-version: 1"));
+        EXPECT_EQ(jwt_profile::v1::VerifyError::None,
+                  verifyKeyedBearer(spec.headers, REENROLL_KID, REENROLL_KEY_HEX, 1700000000));
+        return okResponse();
+    }));
+
+    client.enroll(BODY, "", REENROLL_KID, REENROLL_KEY_HEX);
+}
+
+TEST(EnrollClientTest, AnAgentKidTakesPriorityOverAConfiguredPassword)
+{
+    // Same rule as the token credential: an agent that holds its own secret must not also sign
+    // with the fleet-wide authd.pass, or the audit trail would misreport what authenticated it.
+    NiceMock<MockFsProbe> fsProbe;
+    NiceMock<MockHttpPerformer> performer;
+    FakeClock clock;
+    clock.setWall(1700000000);
+    EnrollClient client {openModeConfig(), performer, fsProbe, clock, TEST_LOG};
+
+    EXPECT_CALL(performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_EQ(jwt_profile::v1::VerifyError::None,
+                  verifyKeyedBearer(spec.headers, REENROLL_KID, REENROLL_KEY_HEX, 1700000000));
+        EXPECT_EQ(jwt_profile::v1::VerifyError::InvalidToken, verifyBearer(spec.headers, "s3cr3t", 1700000000));
+        return okResponse();
+    }));
+
+    client.enroll(BODY, "s3cr3t", REENROLL_KID, REENROLL_KEY_HEX);
+}
+
+// The two keyed credentials are disjoint by construction: a bearer minted for one `kid` must not
+// verify under the other's key. This is the property that lets one pair of ABI fields carry both.
+TEST(EnrollClientTest, AnAgentKidBearerDoesNotVerifyAsATokenBearer)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    NiceMock<MockHttpPerformer> performer;
+    FakeClock clock;
+    clock.setWall(1700000000);
+    EnrollClient client {openModeConfig(), performer, fsProbe, clock, TEST_LOG};
+
+    EXPECT_CALL(performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_NE(jwt_profile::v1::VerifyError::None, verifyTokenBearer(spec.headers, 1700000000));
+        return okResponse();
+    }));
+
+    client.enroll(BODY, "", REENROLL_KID, REENROLL_KEY_HEX);
+}
+
+// Half a credential is no credential: the module must fall back to the password rather than mint
+// a bearer it cannot sign, so the bridge's own "both or neither" rule has a counterpart here.
+TEST(EnrollClientTest, AKidWithNoKeyFallsBackToThePassword)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    NiceMock<MockHttpPerformer> performer;
+    FakeClock clock;
+    clock.setWall(1700000000);
+    EnrollClient client {openModeConfig(), performer, fsProbe, clock, TEST_LOG};
+
+    EXPECT_CALL(performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_EQ(jwt_profile::v1::VerifyError::None, verifyBearer(spec.headers, "s3cr3t", 1700000000));
+        return okResponse();
+    }));
+
+    client.enroll(BODY, "s3cr3t", REENROLL_KID, "");
 }
 
 TEST(EnrollClientTest, RetriesOnceOn401InTokenKidModeAndCorrectsSkew)

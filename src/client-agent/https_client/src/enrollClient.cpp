@@ -41,7 +41,7 @@ EnrollClient::EnrollClient(
 }
 
 HttpResponse EnrollClient::enroll(const std::string& bodyJson, const std::string& password,
-                                  const std::string& tokenKid, const std::string& tokenKeyHex)
+                                  const std::string& enrollKid, const std::string& enrollKeyHex)
 {
     if (!m_config.validateTransport(m_fsProbe, m_logFn))
     {
@@ -50,13 +50,13 @@ HttpResponse EnrollClient::enroll(const std::string& bodyJson, const std::string
         return response;
     }
 
-    // A signed request either signs with the token-kid credential or with the password --
+    // A signed request either signs with the keyed credential or with the password --
     // never neither-but-still-retriable: an open-mode 401 has nothing to correct (see the
     // retry condition below).
-    const bool hasCredential = !password.empty() || (!tokenKid.empty() && !tokenKeyHex.empty());
+    const bool hasCredential = !password.empty() || (!enrollKid.empty() && !enrollKeyHex.empty());
 
     bool allowCompression = m_config.httpsCompressionEnabled;
-    HttpResponse response = performOnce(bodyJson, password, tokenKid, tokenKeyHex, allowCompression);
+    HttpResponse response = performOnce(bodyJson, password, enrollKid, enrollKeyHex, allowCompression);
 
     bool compressionRetried = false;
     bool authRetried = false;
@@ -77,12 +77,12 @@ HttpResponse EnrollClient::enroll(const std::string& bodyJson, const std::string
         {
             compressionRetried = true;
             allowCompression = false;
-            response = performOnce(bodyJson, password, tokenKid, tokenKeyHex, allowCompression);
+            response = performOnce(bodyJson, password, enrollKid, enrollKeyHex, allowCompression);
             continue;
         }
 
         // One-shot 401 grace-retry (#38440's self-correction, extended here):
-        // a 401 in a signed mode (password or token-kid) can be a genuinely
+        // a 401 in a signed mode (password or keyed) can be a genuinely
         // dead credential, or a clock-skewed agent whose timestamp the
         // manager rejects as too far from its own -- the response alone
         // cannot tell them apart. Correct for measurable skew (if the
@@ -95,7 +95,7 @@ HttpResponse EnrollClient::enroll(const std::string& bodyJson, const std::string
         {
             authRetried = true;
             correctClockIfSkewed(response);
-            response = performOnce(bodyJson, password, tokenKid, tokenKeyHex, allowCompression);
+            response = performOnce(bodyJson, password, enrollKid, enrollKeyHex, allowCompression);
             continue;
         }
 
@@ -131,7 +131,7 @@ void EnrollClient::correctClockIfSkewed(const HttpResponse& response)
 }
 
 HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::string& password,
-                                       const std::string& tokenKid, const std::string& tokenKeyHex,
+                                       const std::string& enrollKid, const std::string& enrollKeyHex,
                                        bool allowCompression)
 {
     const auto* bodyPtr = reinterpret_cast<const uint8_t*>(bodyJson.data());
@@ -160,21 +160,25 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
     // bearer below does not bind the target, same as RetrySender::attemptOnce.
     const std::string target = prefixedTarget(m_config.serverEndpoint, "/enroll");
 
-    // Token-kid mode takes priority over password mode: a token-based
-    // enrollment must not also sign with a possibly-unrelated configured
-    // authd.pass. mTLS presents its credential at the TLS layer
+    // Keyed (`kid`) mode takes priority over password mode: an enrollment that
+    // presents a credential of its own must not also sign with a possibly-
+    // unrelated configured authd.pass. Which credential it is -- an enrollment
+    // token or a re-enrolling agent's own secret -- is not this layer's
+    // business: signWithKid() is generic over the `kid`, the profile tells the
+    // two apart by its shape, and the key arrived already derived under the
+    // matching label. mTLS presents its credential at the TLS layer
     // (CurlPerformer::applyClientCertificate, already wired through m_config)
     // in every mode; open mode sends nothing else. The `wazuh-enroll+jwt`
     // bearer binds time and a fresh jti, not the body: compressed or not, the
     // wire bytes travel under TLS and the same token accompanies them.
-    if (!tokenKid.empty() && !tokenKeyHex.empty())
+    if (!enrollKid.empty() && !enrollKeyHex.empty())
     {
-        const auto key = jwt_profile::v1::JwtKeyDecoder::decode(tokenKeyHex);
+        const auto key = jwt_profile::v1::JwtKeyDecoder::decode(enrollKeyHex);
 
         if (key)
         {
             const auto token = jwt_profile::v1::enroll::JwtEnrollTokenSigner::signWithKid(
-                                   *key, std::chrono::system_clock::time_point {std::chrono::seconds {m_clock.wallSeconds()}}, tokenKid);
+                                   *key, std::chrono::system_clock::time_point {std::chrono::seconds {m_clock.wallSeconds()}}, enrollKid);
 
             if (token)
             {
@@ -182,12 +186,12 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
             }
             else
             {
-                LOGFN_ERROR(m_logFn, "https_client: enrollment token bearer could not be minted.");
+                LOGFN_ERROR(m_logFn, "https_client: keyed enrollment bearer could not be minted.");
             }
         }
         else
         {
-            LOGFN_ERROR(m_logFn, "https_client: enrollment token key is not valid hex.");
+            LOGFN_ERROR(m_logFn, "https_client: enrollment credential key is not valid hex.");
         }
     }
     else if (!password.empty())

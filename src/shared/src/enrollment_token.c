@@ -37,11 +37,22 @@
 /* Info label of the HKDF that derives the key of a token credential */
 #define W_ETOKEN_HKDF_LABEL "WAZUH-ENROLL-TOKEN-KEY"
 
+/* Info label of the HKDF that derives the key an agent re-enrolls with, from its own
+ * re-enrollment secret. Same construction, different domain: the two labels are what keep a
+ * token credential and an agent credential from ever deriving the same key. */
+#define W_REENROLL_HKDF_LABEL "WAZUH-REENROLL-KEY"
+
 /* Version byte appended to the info label */
 #define W_ETOKEN_HKDF_VERSION 0x01
 
 /* Salt of the HKDF: that many zero bytes */
 #define W_ETOKEN_HKDF_SALT_BYTES 32
+
+/* The re-enrollment secret is generated and validated by agent_validate_op.h; its size is spelled
+ * again in enrollment_token.h so that header stays free of wdb.h. If the two ever diverge, an
+ * agent would derive its bearer from a different number of bytes than the manager stored. */
+_Static_assert(W_REENROLL_SECRET_BYTES == AGENT_REENROLL_SECRET_BYTES,
+               "the re-enrollment secret's size must match the one agent_validate_op.h defines");
 
 /* Growable text buffer, only used to assemble the output of w_etoken_describe() */
 typedef struct {
@@ -728,27 +739,35 @@ error:
     return NULL;
 }
 
-int w_etoken_derive_key(const uint8_t secret[W_ETOKEN_SECRET_BYTES],
-                        uint8_t out[W_ETOKEN_KEY_BYTES])
+/* The one HKDF of the `wazuh-enroll+jwt` family: SHA-256, extract-and-expand, a salt of
+ * W_ETOKEN_HKDF_SALT_BYTES zero bytes, info = label || version byte, 32 bytes out. Byte for byte
+ * the construction of shared_modules/utils/jwt/enrollKeyDerivation.hpp's deriveHkdf(), which the
+ * manager verifies with -- so only the label and the IKM vary between the credential kinds, and
+ * nothing else can drift.
+ *
+ * `ikm` is copied into a local buffer that is wiped on every exit path: OpenSSL takes a pointer,
+ * and the caller's secret must not be the thing left in a parameter block. */
+static int etoken_derive_hkdf(const uint8_t *ikm_in, size_t ikm_len, const char *label, size_t label_len,
+                              uint8_t out[W_ETOKEN_KEY_BYTES])
 {
-    static const char label[] = W_ETOKEN_HKDF_LABEL;
     EVP_KDF *kdf = NULL;
     EVP_KDF_CTX *ctx = NULL;
     OSSL_PARAM params[6];
-    uint8_t ikm[W_ETOKEN_SECRET_BYTES];
-    uint8_t info[sizeof(label)];
+    uint8_t ikm[W_ETOKEN_KEY_BYTES];
+    uint8_t info[64];
     uint8_t salt[W_ETOKEN_HKDF_SALT_BYTES];
     char digest[] = "SHA2-256";
     int mode = EVP_KDF_HKDF_MODE_EXTRACT_AND_EXPAND;
     int result = -1;
 
-    if (secret == NULL || out == NULL) {
+    if (ikm_in == NULL || out == NULL || label == NULL || ikm_len == 0 || ikm_len > sizeof(ikm) ||
+        label_len + 1 > sizeof(info)) {
         return -1;
     }
 
-    memcpy(ikm, secret, sizeof(ikm));
-    memcpy(info, label, sizeof(label) - 1);
-    info[sizeof(label) - 1] = W_ETOKEN_HKDF_VERSION;
+    memcpy(ikm, ikm_in, ikm_len);
+    memcpy(info, label, label_len);
+    info[label_len] = W_ETOKEN_HKDF_VERSION;
     memset(salt, 0, sizeof(salt));
 
     if ((kdf = EVP_KDF_fetch(NULL, "HKDF", NULL)) == NULL) {
@@ -760,9 +779,9 @@ int w_etoken_derive_key(const uint8_t secret[W_ETOKEN_SECRET_BYTES],
     }
 
     params[0] = OSSL_PARAM_construct_utf8_string(OSSL_KDF_PARAM_DIGEST, digest, 0);
-    params[1] = OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_KEY, ikm, sizeof(ikm));
+    params[1] = OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_KEY, ikm, ikm_len);
     params[2] = OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_SALT, salt, sizeof(salt));
-    params[3] = OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_INFO, info, sizeof(info));
+    params[3] = OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_INFO, info, label_len + 1);
     params[4] = OSSL_PARAM_construct_int(OSSL_KDF_PARAM_MODE, &mode);
     params[5] = OSSL_PARAM_construct_end();
 
@@ -776,6 +795,30 @@ end:
     OPENSSL_cleanse(ikm, sizeof(ikm));
 
     return result;
+}
+
+int w_etoken_derive_key(const uint8_t secret[W_ETOKEN_SECRET_BYTES],
+                        uint8_t out[W_ETOKEN_KEY_BYTES])
+{
+    static const char label[] = W_ETOKEN_HKDF_LABEL;
+
+    if (secret == NULL) {
+        return -1;
+    }
+
+    return etoken_derive_hkdf(secret, W_ETOKEN_SECRET_BYTES, label, sizeof(label) - 1, out);
+}
+
+int w_reenroll_derive_key(const uint8_t secret[W_REENROLL_SECRET_BYTES],
+                          uint8_t out[W_ETOKEN_KEY_BYTES])
+{
+    static const char label[] = W_REENROLL_HKDF_LABEL;
+
+    if (secret == NULL) {
+        return -1;
+    }
+
+    return etoken_derive_hkdf(secret, W_REENROLL_SECRET_BYTES, label, sizeof(label) - 1, out);
 }
 
 const char *w_etoken_strerror(w_etoken_error_t err)

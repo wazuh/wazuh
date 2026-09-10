@@ -2000,7 +2000,8 @@ int w_https_client_submit_event(const char *frame, size_t length)
  * whether the full client is running (re-enroll, from bridge_reenroll_thread())
  * or does not exist yet (first boot, from start_agent.c, before
  * w_https_client_start() ever runs). */
-bool w_https_client_enroll(const char *body_json, const char *password, hc_enroll_result_t *result)
+bool w_https_client_enroll(const char *body_json, const char *password, const char *enroll_kid,
+                           const char *enroll_key_hex, hc_enroll_result_t *result)
 {
     hc_config_t config;
     bridge_build_transport_config(&config);
@@ -2014,6 +2015,14 @@ bool w_https_client_enroll(const char *body_json, const char *password, hc_enrol
     if (password) {
         strncpy(request.password, password, sizeof(request.password) - 1);
     }
+
+    /* Both or neither: the module mints the keyed bearer only when it has a `kid` AND a key, and
+     * half a credential would silently fall through to the password instead (#39064). */
+    if (enroll_kid && enroll_key_hex) {
+        strncpy(request.enroll_kid, enroll_kid, sizeof(request.enroll_kid) - 1);
+        strncpy(request.enroll_key_hex, enroll_key_hex, sizeof(request.enroll_key_hex) - 1);
+    }
+
     request.log = mtLoggingFunctionsWrapper;
 
     return hc_enroll(&config, &request, result);

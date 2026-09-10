@@ -51,6 +51,12 @@
 #define SEC_B64URL  "EBESExQVFhcYGRobHB0eHw"
 #define KEY_B64URL  "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
 #define DERIVED_HEX "5da72b786a15757caa8d825a74a3474c3f15b048fd1064b49863ffc715a95860"
+/* Re-enrollment (#39064), frozen alongside the C++ side: secret bytes 0x00..0x1f, and the key
+ * HKDF-SHA256 derives from them under the label "WAZUH-REENROLL-KEY". Copied verbatim from
+ * shared_modules/utils/jwt/testVectors.hpp (kReenrollSecretHex / kReenrollKeyHex), which is what
+ * authd verifies with -- if the two ever disagree, an agent signs a bearer the manager cannot
+ * check, and one of these two assertions is what says so. */
+#define REENROLL_DERIVED_HEX "68b01ea65fc441951a17e3fd9b7e2dedc846d364f38596630ea3f69f60482ae9"
 
 #define TOKEN_PIN_ONLY \
     "eyJ2ZXIiOjEsImFkciI6InNpZW0uZXhhbXBsZS5sb2NhbCIsInBpbiI6IllKSGNObVh0WG9NOGpaUmZrLXVf" \
@@ -521,6 +527,49 @@ void test_derive_key_matches_the_cpp_vector(void **state)
     assert_int_equal(w_etoken_derive_key(secret, NULL), -1);
 }
 
+/* w_reenroll_derive_key */
+
+void test_reenroll_derive_key_matches_the_cpp_vector(void **state)
+{
+    uint8_t secret[W_REENROLL_SECRET_BYTES];
+    uint8_t key[W_ETOKEN_KEY_BYTES];
+    char hex[W_ETOKEN_KEY_BYTES * 2 + 1];
+    int i;
+
+    (void) state;
+
+    for (i = 0; i < W_REENROLL_SECRET_BYTES; i++) {
+        secret[i] = (uint8_t) i;
+    }
+
+    assert_int_equal(w_reenroll_derive_key(secret, key), 0);
+    hex_of(key, sizeof(key), hex);
+    assert_string_equal(hex, REENROLL_DERIVED_HEX);
+
+    assert_int_equal(w_reenroll_derive_key(NULL, key), -1);
+    assert_int_equal(w_reenroll_derive_key(secret, NULL), -1);
+}
+
+/* The label is the entire domain separation between the two credentials. Feeding the same bytes
+ * to both derivations must give unrelated keys, or a token credential and an agent credential
+ * could be used interchangeably against the manager. */
+void test_the_two_derivations_are_domain_separated(void **state)
+{
+    uint8_t shared_bytes[W_REENROLL_SECRET_BYTES];
+    uint8_t token_key[W_ETOKEN_KEY_BYTES];
+    uint8_t reenroll_key[W_ETOKEN_KEY_BYTES];
+
+    (void) state;
+
+    memset(shared_bytes, 0xAB, sizeof(shared_bytes));
+
+    /* w_etoken_derive_key() reads only its first W_ETOKEN_SECRET_BYTES, so both see the same
+     * leading bytes -- which is exactly the overlap that must NOT produce the same key. */
+    assert_int_equal(w_etoken_derive_key(shared_bytes, token_key), 0);
+    assert_int_equal(w_reenroll_derive_key(shared_bytes, reenroll_key), 0);
+    assert_memory_not_equal(token_key, reenroll_key, sizeof(token_key));
+}
+
 /* w_etoken_strerror */
 
 void test_strerror_covers_every_code(void **state)
@@ -551,6 +600,8 @@ int main(void)
         cmocka_unit_test(test_free_zeroes_the_secret),
         cmocka_unit_test(test_describe_never_prints_the_key),
         cmocka_unit_test(test_derive_key_matches_the_cpp_vector),
+        cmocka_unit_test(test_reenroll_derive_key_matches_the_cpp_vector),
+        cmocka_unit_test(test_the_two_derivations_are_domain_separated),
         cmocka_unit_test(test_strerror_covers_every_code)
     };
 

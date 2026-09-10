@@ -48,19 +48,23 @@ class EnrollClient
          *        server team): the cert authenticates the connection, the
          *        password authenticates/signs the request -- no precedence
          *        between them, no "choose a mode" logic.
-         * @param tokenKid The enrollment token's id, as 22 canonical base64url
-         *        characters -- empty means no token-kid bearer. Must be set
-         *        together with `tokenKeyHex`, or not at all.
-         * @param tokenKeyHex The token credential's HKDF-derived 32-byte key, as
-         *        64 lowercase hex characters. When both `tokenKid` and this are
-         *        non-empty, the token-kid bearer is minted and takes priority
-         *        over `password` -- a token-based enrollment must not also sign
-         *        with a possibly-unrelated configured authd.pass.
+         * @param enrollKid The `kid` of a keyed `wazuh-enroll+jwt` -- an
+         *        enrollment token's id (22 canonical base64url characters) or a
+         *        re-enrolling agent's own canonical id ("001"). Empty means no
+         *        keyed bearer. Must be set together with `enrollKeyHex`, or not
+         *        at all. This class does not care which of the two it is: the
+         *        profile distinguishes them by the `kid`'s shape, and the key
+         *        below was already derived under the matching label.
+         * @param enrollKeyHex The credential's HKDF-derived 32-byte key, as 64
+         *        lowercase hex characters. When both `enrollKid` and this are
+         *        non-empty, the keyed bearer is minted and takes priority over
+         *        `password` -- a keyed enrollment must not also sign with a
+         *        possibly-unrelated configured authd.pass.
          * @return The raw HTTP response for the caller (enrollment.c's
          *         w_enrollment_process_response()) to interpret. When the
          *         transport config itself is invalid (fail-closed TLS policy),
          *         status is TlsFail and httpCode stays 0 -- nothing was ever
-         *         sent. A 401 in password or token-kid mode gets one grace-retry:
+         *         sent. A 401 in password or keyed mode gets one grace-retry:
          *         if the response carried the manager's Date and it disagrees
          *         with `clock` by more than a noise floor, the clock is
          *         corrected and the request is re-signed and resent once
@@ -68,11 +72,11 @@ class EnrollClient
          *         that survives that retry reaches the caller.
          */
         HttpResponse enroll(const std::string& bodyJson, const std::string& password,
-                            const std::string& tokenKid = std::string(), const std::string& tokenKeyHex = std::string());
+                            const std::string& enrollKid = std::string(), const std::string& enrollKeyHex = std::string());
 
     private:
         HttpResponse performOnce(const std::string& bodyJson, const std::string& password,
-                                 const std::string& tokenKid, const std::string& tokenKeyHex, bool allowCompression);
+                                 const std::string& enrollKid, const std::string& enrollKeyHex, bool allowCompression);
 
         /// Mirrors RetrySender::correctClockIfSkewed(): a no-op unless the
         /// response carried a Date and the gap against `m_clock.wallSeconds()`

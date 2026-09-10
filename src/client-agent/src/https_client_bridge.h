@@ -62,6 +62,7 @@ int w_https_client_submit_event(const char *frame, size_t length);
  *         status (the caller interprets 200 vs. 4xx/5xx); false when nothing
  *         was ever sent.
  */
-bool w_https_client_enroll(const char *body_json, const char *password, hc_enroll_result_t *result);
+bool w_https_client_enroll(const char *body_json, const char *password, const char *enroll_kid,
+                           const char *enroll_key_hex, hc_enroll_result_t *result);
 
 #endif // _HTTPS_CLIENT_BRIDGE_H

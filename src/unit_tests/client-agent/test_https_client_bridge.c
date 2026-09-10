@@ -657,7 +657,7 @@ static void test_enroll_reuses_transport_config_not_identity(void **state)
     will_return(__wrap_hc_enroll, true);
 
     hc_enroll_result_t result;
-    w_https_client_enroll("{}", "", &result);
+    w_https_client_enroll("{}", "", NULL, NULL, &result);
 
     assert_true(g_captured_enroll_valid);
     assert_string_equal(g_captured_enroll_config.server_host, "10.0.0.1");
@@ -684,7 +684,7 @@ static void test_enroll_reuses_the_configured_endpoint(void **state)
     will_return(__wrap_hc_enroll, true);
 
     hc_enroll_result_t result;
-    w_https_client_enroll("{}", "", &result);
+    w_https_client_enroll("{}", "", NULL, NULL, &result);
 
     assert_true(g_captured_enroll_valid);
     assert_string_equal(g_captured_enroll_config.server_endpoint, "wazuh-manager");
@@ -698,12 +698,55 @@ static void test_enroll_passes_body_and_password_through(void **state)
     will_return(__wrap_hc_enroll, true);
 
     hc_enroll_result_t result;
-    const bool sent = w_https_client_enroll("{\"name\":\"agent01\"}", "s3cr3t", &result);
+    const bool sent = w_https_client_enroll("{\"name\":\"agent01\"}", "s3cr3t", NULL, NULL, &result);
 
     assert_true(sent);
     assert_int_equal(result.http_code, 200);
     assert_string_equal(g_captured_enroll_request.body_json, "{\"name\":\"agent01\"}");
     assert_string_equal(g_captured_enroll_request.password, "s3cr3t");
+    /* No keyed credential passed: the module must see empty fields, not stale bytes, or it would
+     * try to mint a bearer from them (#39064). */
+    assert_string_equal(g_captured_enroll_request.enroll_kid, "");
+    assert_string_equal(g_captured_enroll_request.enroll_key_hex, "");
+}
+
+/* #39064: a re-enrollment credential reaches the module as a `kid` + derived key, and the module
+ * is what gives it priority over the password. The bridge's only job is to pass both through. */
+static void test_enroll_passes_the_keyed_credential_through(void **state)
+{
+    (void)state;
+    static const char *const KEY_HEX =
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+    expect_any(__wrap_hc_enroll, config);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, true);
+
+    hc_enroll_result_t result;
+    const bool sent = w_https_client_enroll("{\"name\":\"agent01\"}", "s3cr3t", "001", KEY_HEX, &result);
+
+    assert_true(sent);
+    assert_string_equal(g_captured_enroll_request.enroll_kid, "001");
+    assert_string_equal(g_captured_enroll_request.enroll_key_hex, KEY_HEX);
+    /* The password still travels: the precedence decision belongs to the module, which owns the
+     * signing, not to the bridge -- so the bridge must not silently drop one of them. */
+    assert_string_equal(g_captured_enroll_request.password, "s3cr3t");
+}
+
+/* Half a credential is no credential: a `kid` with no key (or the reverse) must arrive empty, so
+ * the module falls back to the password instead of minting a bearer it cannot sign. */
+static void test_enroll_ignores_a_half_keyed_credential(void **state)
+{
+    (void)state;
+    expect_any(__wrap_hc_enroll, config);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, true);
+
+    hc_enroll_result_t result;
+    w_https_client_enroll("{}", "s3cr3t", "001", NULL, &result);
+
+    assert_string_equal(g_captured_enroll_request.enroll_kid, "");
+    assert_string_equal(g_captured_enroll_request.enroll_key_hex, "");
 }
 
 static void test_config_checksum_is_sha256_of_local_merged_file(void **state)
@@ -2730,6 +2773,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_enroll_reuses_transport_config_not_identity, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_reuses_the_configured_endpoint, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_passes_body_and_password_through, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_passes_the_keyed_credential_through, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_ignores_a_half_keyed_credential, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_sha256_of_local_merged_file, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_empty_when_local_file_unreadable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_missing_key_refuses_to_start, setup_test, teardown_test),

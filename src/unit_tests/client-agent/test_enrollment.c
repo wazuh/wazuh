@@ -390,6 +390,26 @@ static int teardown_200_test(void **state) {
     return teardown_test(state);
 }
 
+/* The key HKDF-SHA256 derives from VALID_SECRET under the label WAZUH-REENROLL-KEY. Frozen: it
+ * must equal what deriveReenrollKey() produces on the manager side. */
+#define DERIVED_FROM_VALID_SECRET "c0e0fa3373094b56e0465367044a0126c4bd82329868053b8f063b9badd20b1e"
+
+static void write_text_file(const char *path, const char *contents) {
+    FILE *fp = fopen(path, "w");
+    assert_non_null(fp);
+    fputs(contents, fp);
+    fclose(fp);
+}
+
+static void set_key_entry(const char *id, const char *name, const char *raw_key) {
+    os_calloc(1, sizeof(keyentry *), keys.keyentries);
+    os_calloc(1, sizeof(keyentry), keys.keyentries[0]);
+    os_strdup(id, keys.keyentries[0]->id);
+    os_strdup(name, keys.keyentries[0]->name);
+    os_strdup(raw_key, keys.keyentries[0]->raw_key);
+    keys.keysize = 1;
+}
+
 static void set_body(hc_enroll_result_t *result, const char *body) {
     result->http_code = 200;
     strncpy(result->body, body, sizeof(result->body) - 1);
@@ -403,6 +423,75 @@ static char *read_file_line(const char *path) {
     assert_non_null(fgets(buffer, sizeof(buffer), fp));
     fclose(fp);
     return buffer;
+}
+
+/* ---- build_request: the credential it chooses (#39064) ---- */
+
+/* The agent's own secret beats the fleet-wide password. Both are on disk here, and the request
+ * must carry the keyed credential and no password at all -- signing with both would misreport to
+ * the manager, and to any audit trail, what actually authenticated the request. */
+static void test_build_request_prefers_the_reenroll_secret_over_the_password(void **state) {
+    (void)state;
+    w_enroll_request_t request;
+
+    ignore_debug_lines();
+    assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
+    os_strdup("etc/authd.pass", agt->enrollment.authorization_pass_path);
+    write_text_file("etc/authd.pass", "fleet-secret\n");
+
+    expect_string(__wrap__minfo, formatted_msg, "Re-enrolling with this agent's own re-enrollment secret.");
+
+    assert_int_equal(w_enrollment_build_request(&request), 0);
+    assert_null(request.password);
+    assert_string_equal(request.enroll_kid, "001");
+    /* The frozen vector: HKDF of the stored secret under WAZUH-REENROLL-KEY. Asserted as a value,
+     * not just as non-empty, because this is the one place the agent's derivation has to agree
+     * with authd's -- jwt/testVectors.hpp holds the same pair. */
+    assert_string_equal(request.enroll_key_hex, DERIVED_FROM_VALID_SECRET);
+
+    w_enroll_request_destroy(&request);
+    unlink("etc/authd.pass");
+}
+
+/* With no secret stored, nothing changes: the password path is exactly as it was. */
+static void test_build_request_without_a_secret_uses_the_password(void **state) {
+    (void)state;
+    w_enroll_request_t request;
+
+    os_strdup("etc/authd.pass", agt->enrollment.authorization_pass_path);
+    write_text_file("etc/authd.pass", "fleet-secret\n");
+
+    expect_string(__wrap__minfo, formatted_msg, "Using password specified on file: etc/authd.pass");
+
+    assert_int_equal(w_enrollment_build_request(&request), 0);
+    assert_string_equal(request.password, "fleet-secret");
+    assert_null(request.enroll_kid);
+    assert_null(request.enroll_key_hex);
+
+    w_enroll_request_destroy(&request);
+    unlink("etc/authd.pass");
+}
+
+/* The `kid` comes from the STORE, not from client.keys: the store is what the manager verifies
+ * the secret against, and the case this credential exists for is the one where client.keys is
+ * gone or stale. A disagreement is a warning, not a reason to present the other id. */
+static void test_build_request_kid_comes_from_the_store_not_client_keys(void **state) {
+    (void)state;
+    w_enroll_request_t request;
+
+    ignore_debug_lines();
+    assert_int_equal(w_reenroll_secret_store("007", VALID_SECRET), 0);
+    set_key_entry("001", "agent01", "abc123");
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The re-enrollment secret is stored for agent '007' but client.keys holds '001'; "
+                  "re-enrolling as '007', which is the id the manager verifies the secret against.");
+    expect_string(__wrap__minfo, formatted_msg, "Re-enrolling with this agent's own re-enrollment secret.");
+
+    assert_int_equal(w_enrollment_build_request(&request), 0);
+    assert_string_equal(request.enroll_kid, "007");
+
+    w_enroll_request_destroy(&request);
 }
 
 static void test_process_response_200_stores_the_reenroll_secret(void **state) {
@@ -548,6 +637,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_unrecognized_status_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_with_malformed_json_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_missing_field_is_server_error, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_build_request_prefers_the_reenroll_secret_over_the_password, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_build_request_without_a_secret_uses_the_password, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_build_request_kid_comes_from_the_store_not_client_keys, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_stores_the_reenroll_secret, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_without_a_secret_still_enrolls, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_malformed_secret_is_server_error, setup_200_test, teardown_200_test),
