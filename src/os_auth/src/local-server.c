@@ -626,7 +626,9 @@ char* local_dispatch(const char *input) {
                     // Every path closes the reservation: committed when the agent was created, given
                     // back otherwise -- including the one where local_add() produces no response at
                     // all, which used to burn the use and leave the caller nothing to retry with.
-                    if (cJSON_IsNumber(err) && err->valueint == 0) {
+                    // The NULL check is redundant with cJSON_IsNumber(), which refuses NULL: it is
+                    // there because the static analyzer does not model that (same as `j_secret` below).
+                    if (err != NULL && cJSON_IsNumber(err) && err->valueint == 0) {
                         etoken_store_commit(token_id);
                         minfo("Enrollment token '%s' consumed by agent '%s'.", token_id, name);
                     } else {
