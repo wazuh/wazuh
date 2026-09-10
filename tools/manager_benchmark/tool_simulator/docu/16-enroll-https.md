@@ -17,10 +17,10 @@ forwards the id as `token_id` so `authd` consumes one use.
 | | `POST /enroll` (enrollment token) |
 |---|---|
 | What it carries | `{"name": "<fresh agent name>", "version": "<agent version>"}` and `Authorization: Bearer <wazuh-enroll+jwt with kid = token id>`, `protocol-version: 1` |
-| What it returns | `200 {"id","name","ip","key"}` — the new agent's record, verbatim from `authd` |
+| What it returns | `200 {"id","name","ip","key","reenroll_secret"}` — the new agent's record, verbatim from `authd` |
 | Manager-side path | `EnrollmentAuthenticator` (token path: `TokenKeySource` replica of `etc/enrollment_tokens.json` → `verifyWithKid` → expiry/revocation) → `AuthdClient` with `token_id` → `authd` `add` (consumes a use, writes `client.keys`) — `src/remoted/remoted_module/src/enrollment/`, `src/os_auth/src/local-server.c` |
 | When a real agent does it | Once, on first contact, when the operator handed it a token instead of the shared password |
-| Sender step | `kind: "enroll_https"` |
+| Sender step | `kind: "enroll_https"` (measured), and the fleet's own bootstrap (`--bootstrap enroll-token`, setup) |
 
 Source of truth: [remoted's `agent-api.yaml`](../../../../docs/ref/modules/remoted/agent-api.yaml)
 (`/enroll`) and the enrollment chapter of `src/remoted/remoted_module/README.md`.
@@ -36,26 +36,54 @@ Source of truth: [remoted's `agent-api.yaml`](../../../../docs/ref/modules/remot
    socket, the id assignment, the key generation and the `client.keys` write. `enroll_https` is what
    a fleet's first contact costs the manager, per agent — the number a rollout plan needs.
 
-The fleet the sender runs **still bootstraps through 1515** (`wire.Enroll`, docu/04): an
-`enroll_https` step does not replace that; each repetition enrolls a NEW name
-(`<agent name>-tk-<n>`, so `bench-linux-28000-tk-1`…) and records the answer without adopting the
-identity it minted. Keeping the `bench-` prefix is what lets `cleanup_agents.sh` remove them.
+## The bootstrap and the measured step are the same route, counted apart
+
+This route is how the fleet itself comes into being. `--bootstrap enroll-token` (the DEFAULT, issue
+#39054) enrolls every simulated agent here before the run starts and **adopts** the `200` record —
+`id`, `key` and `reenroll_secret` — as that agent's identity for the rest of the scenario. That is
+what lets the harness run against a manager whose `<use_password>` is the installed default: the
+token bearer is verified in every mode, so no `<auth>` flip is needed and `prepare_manager.sh`
+changes no policy. `--bootstrap 1515` selects the legacy authd listener instead (`wire.Enroll`,
+docu/04), which carries no credential and therefore needs `prepare_manager.sh --open-1515`; it is
+kept for comparing the two first-contact paths on one manager, and each run records which it used in
+`meta.bootstrap`.
+
+An `enroll_https` STEP is the same request under load, and is counted separately: each repetition
+enrolls a NEW name (`<agent name>-tk-<n>`, so `bench-linux-28000-tk-1`…) and records the answer
+without adopting the identity it minted — the agent keeps running under the one its bootstrap gave
+it. The bootstrap's own requests are **never** recorded in `enroll_https_*`: they are setup, they
+happen before the measurement clock starts, and folding one request per agent into those counters
+would corrupt both the numbers and any `expected` block over them. Both paths keep the `bench-`
+prefix, which is what lets `cleanup_agents.sh` remove everything a run created.
+
+A bootstrap answered anything but `200` fails the run as a setup error (exit 2) naming the remedy:
+`401` a token that is unknown, expired or revoked (or a clock outside the window), `403` a token out
+of uses, `409` a previous run's agents still registered — `./cleanup_agents.sh`.
 
 ## The token is environment config, not scenario content
 
 The token is a credential minted on the manager under test, so it never lives in a committed
-scenario file. It reaches the sender through **`--enroll-token-file <file>`** (the wrapper passes it
-through) or the **`WAZUH_ENROLLMENT_TOKEN`** environment variable. A scenario carrying an
-`enroll_https` step with neither is refused **before any traffic** (`setup:` error, exit 2), and a
-token minted without a credential (`--no-credential`: it can pin the CA but cannot authenticate) is
-refused the same way. Mint it with enough uses for the run: `scenarios/enroll_https.json` needs 100,
-so leave `--max-uses` unset (unlimited). The token's own `adr` is informational here; the sender
-targets `--manager`/`--port` like every other route, and skips TLS verification (docu/04).
+scenario file. `prepare_manager.sh` mints one for the fleet and writes it to `.enrollment_token`
+(gitignored) next to itself, which `run_benchmark.sh` reads by default; **`--enroll-token-file
+<file>`** and the **`WAZUH_ENROLLMENT_TOKEN`** environment variable override that, in that order. A
+run that needs a token and has none is refused **before any traffic** (`setup:` error, exit 2), and
+so is a token minted without a credential (`--no-credential`: it can pin the CA but cannot
+authenticate).
+
+Mint it with enough uses for the run — leave `--max-uses` unset (unlimited), which is what
+`prepare_manager.sh` does: the bootstrap consumes one use per agent and
+`scenarios/enroll_https.json` another 100 on top. `--address` must be a SAN of the listener
+certificate (authd `9025`), but the token's own `adr` is informational to the sender, which targets
+`--manager`/`--port` like every other route and skips TLS verification (docu/04).
 
 ```bash
-sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address 127.0.0.1 --ttl 2h > /tmp/tok.txt
-./run_benchmark.sh --scenario scenarios/enroll_https.json --label enroll_https --enroll-token-file /tmp/tok.txt
+sudo ./prepare_manager.sh                     # mints it; run_benchmark.sh finds it
+./run_benchmark.sh --scenario scenarios/enroll_https.json --label enroll_https
 ./cleanup_agents.sh
+
+# or bring your own
+sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address wazuh-manager --ttl 2h > /tmp/tok.txt
+./run_benchmark.sh --scenario scenarios/enroll_https.json --label enroll_https --enroll-token-file /tmp/tok.txt
 ```
 
 ## Request
@@ -80,7 +108,7 @@ time. The step takes **only** the timing fields; anything describing a payload i
 
 | Outcome | Status | Recorded as | Fails the run? |
 |---|---|---|---|
-| Agent created | `200 {"id","name","ip","key"}` | `enroll_https_200` | no |
+| Agent created | `200 {"id","name","ip","key","reenroll_secret"}` | `enroll_https_200` | no |
 | The manager refused the bearer: unknown, expired or revoked token; wrong key; clock outside the window | `401` (generic body, `WWW-Authenticate: Bearer`) | `enroll_https_401` | no |
 | `authd` refused the use of a bearer remoted had verified: no uses left (`9024`), or revoked/expired between remoted's check and `authd`'s (`9022`/`9023`) | `403 {"error":{"code":902x,…}}` | `enroll_https_403` | no |
 | Duplicate name (`9008`) | `409` | `enroll_https_409` | no |

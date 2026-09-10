@@ -22,7 +22,7 @@ Two timing rules the transitions depend on, both learned against a real manager:
 ```mermaid
 stateDiagram-v2
     [*] --> Created
-    Created --> Enrolled: agent mode, enroll via authd 1515
+    Created --> Enrolled: agent mode, POST /enroll with an enrollment token (or authd 1515)
     Created --> Active: uds mode, synthetic id, skip control
     Enrolled --> Active: startup, POST /control
 
