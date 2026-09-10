@@ -35,7 +35,8 @@ static const char *global_db_commands[] = {
     [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
     [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s",
-    [WDB_GET_DISTINCT_AGENT_GROUP] = "global get-distinct-groups %s"
+    [WDB_GET_DISTINCT_AGENT_GROUP] = "global get-distinct-groups %s",
+    [WDB_COMMIT] = "global commit"
 };
 
 int wdb_insert_agent(int id,
@@ -341,6 +342,41 @@ int wdb_set_agent_credentials(int id, const char *name, const char *register_ip,
     os_free(data_in_str);
     os_free(wdbquery);
     os_free(wdboutput);
+
+    return result;
+}
+
+int wdb_commit_global(int *sock) {
+    int result = 0;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    snprintf(wdbquery, sizeof(wdbquery), "%s", global_db_commands[WDB_COMMIT]);
+
+    result = wdbc_query_ex(sock ? sock : &aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    switch (result) {
+    case OS_SUCCESS:
+        if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+            mdebug1("Global DB Error reported in the result of the query");
+            result = OS_INVALID;
+        }
+        break;
+    case OS_INVALID:
+        mdebug1("Global DB Error in the response from socket");
+        mdebug2("Global DB SQL query: %s", wdbquery);
+        break;
+    default:
+        mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+        mdebug2("Global DB SQL query: %s", wdbquery);
+        result = OS_INVALID;
+    }
 
     return result;
 }

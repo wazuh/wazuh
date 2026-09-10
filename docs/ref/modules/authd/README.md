@@ -248,8 +248,20 @@ even through a worker whose replica the cluster has not refreshed yet.
 when the new credentials are stored. Two requests with the same bearer therefore produce **one** credential: the second is answered `9030` — *Re-enrollment already
 in progress* — which remoted turns into **409** and counts as `remoted.enroll.reenroll.rejected_in_progress`. It means «retry», as opposed to the `9027`/401 a bearer
 gets once the rotation has landed and its secret is the previous generation's. If the database write fails, the reservation is deliberately kept: the row still names
-the old secret, so releasing it would let that secret authorise another rotation. The agent cannot re-enroll again on that manager until the transition is written,
-and the log says so.
+the old secret, so releasing it would let that secret authorise another rotation. The agent cannot re-enroll again on that manager until the transition is written —
+which the journal below makes sure happens.
+
+**A credential is written down before it is handed out.** Every enrollment and every re-enrollment records the agent, the key and the re-enrollment secret in
+`queue/authd/pending-identities` (mode 0640) *before* the answer is built, and the entry is removed only once the database write has been **committed** — not when
+wazuh-db answers `ok`, which comes from inside a transaction it commits on its own clock. What this buys is the case that used to lose credentials outright: with
+wazuh-db down, or after a crash between the answer and the write, the manager finishes the job by itself. The writer retries on its own timer while anything is
+owed (a second, doubling to a minute), and at startup each line is judged against `client.keys`: the same key means the transition is still owed, a different key
+means a later one replaced it, and an agent that is no longer there means nothing is owed. Recovery is local to the node: no coordination, no two-phase commit.
+
+If the transition **cannot** be recorded — the directory is unwritable, or 5000 transitions are already waiting — the operation is refused with `9031`
+(*Identity transition could not be recorded*, remoted's **503**, the API's `1772`) and **no credential is handed out**. Performing it anyway is what left agents
+holding a key and a secret nothing else knew about: they can talk to remoted, and they can never re-enroll. The refusal means «come back», and nothing is left
+half-done — the agent is not created and a rotation leaves the previous credentials in place.
 
 **A revoke that cannot be written says so.** If the store file cannot be rewritten, the token is refused
 from that moment on this manager, but the answer is `9029` — *Enrollment token store write failed*, the

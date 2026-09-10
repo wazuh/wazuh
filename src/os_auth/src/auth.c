@@ -294,7 +294,7 @@ static bool w_auth_group_regex_compiled = false;
 static pthread_mutex_t w_auth_group_regex_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Append key to insertion queue
-void add_insert(const keyentry *entry, const char *group, const char *reenroll_secret) {
+void add_insert(const keyentry *entry, const char *group, const char *reenroll_secret, long long journal_seq) {
     struct keynode *node;
 
     os_calloc(1, sizeof(struct keynode), node);
@@ -304,13 +304,14 @@ void add_insert(const keyentry *entry, const char *group, const char *reenroll_s
     node->raw_key = strdup(entry->raw_key);
     node->group = group ? strdup(group) : NULL;
     node->reenroll_secret = reenroll_secret ? strdup(reenroll_secret) : NULL;
+    node->journal_seq = journal_seq;
 
     (*insert_tail) = node;
     insert_tail = &node->next;
 }
 
 // Append a rotated key to the insertion queue (re-enrollment, #38993)
-void add_rotate(const keyentry *entry, const char *group, const char *reenroll_secret) {
+void add_rotate(const keyentry *entry, const char *group, const char *reenroll_secret, long long journal_seq) {
     struct keynode *node;
 
     os_calloc(1, sizeof(struct keynode), node);
@@ -320,6 +321,7 @@ void add_rotate(const keyentry *entry, const char *group, const char *reenroll_s
     node->raw_key = strdup(entry->raw_key);
     node->group = group ? strdup(group) : NULL;
     node->reenroll_secret = strdup(reenroll_secret);
+    node->journal_seq = journal_seq;
     node->rotate = 1;
 
     (*insert_tail) = node;

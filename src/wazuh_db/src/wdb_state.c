@@ -412,6 +412,18 @@ void w_inc_global_vacuum_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
+void w_inc_global_commit() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.global_breakdown.commit_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_global_commit_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.global_breakdown.commit_time, &time, &wdb_state.queries_breakdown.global_breakdown.commit_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
 void w_inc_global_get_fragmentation() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.global_breakdown.get_fragmentation_queries++;
@@ -491,6 +503,7 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_global_db, "backup", wdb_state_cpy.queries_breakdown.global_breakdown.backup_queries);
     cJSON_AddNumberToObject(_global_db, "sql", wdb_state_cpy.queries_breakdown.global_breakdown.sql_queries);
     cJSON_AddNumberToObject(_global_db, "vacuum", wdb_state_cpy.queries_breakdown.global_breakdown.vacuum_queries);
+    cJSON_AddNumberToObject(_global_db, "commit", wdb_state_cpy.queries_breakdown.global_breakdown.commit_queries);
     cJSON_AddNumberToObject(_global_db, "get_fragmentation", wdb_state_cpy.queries_breakdown.global_breakdown.get_fragmentation_queries);
     cJSON_AddNumberToObject(_global_db, "sleep", wdb_state_cpy.queries_breakdown.global_breakdown.sleep_queries);
 
@@ -566,6 +579,7 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_global_db_t, "backup", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.backup_time));
     cJSON_AddNumberToObject(_global_db_t, "sql", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.sql_time));
     cJSON_AddNumberToObject(_global_db_t, "vacuum", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.vacuum_time));
+    cJSON_AddNumberToObject(_global_db_t, "commit", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.commit_time));
     cJSON_AddNumberToObject(_global_db_t, "get_fragmentation", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.get_fragmentation_time));
     cJSON_AddNumberToObject(_global_db_t, "sleep", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.sleep_time));
 
@@ -631,6 +645,7 @@ STATIC uint64_t get_global_time(wdb_state_t *state){
     timeradd(&state->queries_breakdown.global_breakdown.sql_time, &state->queries_breakdown.global_breakdown.backup_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.open_calls_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.vacuum_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.commit_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.get_fragmentation_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.sleep_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.insert_agent_time, &task_time);

@@ -712,6 +712,10 @@ INSTANTIATE_TEST_SUITE_P(AuthdCodes,
                                            AuthdErrorCase {9013, 503},
                                            AuthdErrorCase {9015, 503},
                                            AuthdErrorCase {9016, 503},
+                                           // The credential could not be journaled, so none was
+                                           // handed out (issue #39078, H03): a "come back", like
+                                           // the two above, not a fault of the request.
+                                           AuthdErrorCase {9031, 503},
                                            AuthdErrorCase {9022, 403},   // enrollment token unknown/revoked (#38993)
                                            AuthdErrorCase {9023, 403},   // enrollment token expired
                                            AuthdErrorCase {9024, 403},   // enrollment token exhausted

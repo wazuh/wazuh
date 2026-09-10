@@ -4306,6 +4306,77 @@ void test_wdb_parse_global_restore_backup_success_pre_restore_missing(void **sta
 
 /* wdb_parse_global_vacuum */
 
+/* The `commit` verb (issue #39078, H03): authd needs to know when a write is durable, and
+ * wazuh-db's `ok` is not that -- it comes from inside a deferred transaction. */
+void test_wdb_parse_global_commit_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char *query = NULL;
+
+    os_strdup("global commit", query);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+
+    expect_function_call(__wrap_w_inc_global_commit);
+    will_return(__wrap_gettimeofday, NULL);
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: commit");
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
+
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_commit_time);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(result, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_wdb_parse_global_commit_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_SUCCESS;
+    char *query = NULL;
+
+    os_strdup("global commit", query);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+
+    expect_function_call(__wrap_w_inc_global_commit);
+    will_return(__wrap_gettimeofday, NULL);
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: commit");
+    will_return(__wrap_wdb_commit2, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot end transaction.");
+
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_commit_time);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    result = wdb_parse(query, data->output, 0);
+
+    // The caller has to be able to tell: on this answer authd keeps the transition journaled.
+    assert_string_equal(data->output, "err Cannot end transaction");
+    assert_int_equal(result, OS_INVALID);
+
+    os_free(query);
+}
+
 void test_wdb_parse_global_vacuum_commit_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int result = OS_INVALID;
@@ -5022,6 +5093,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_success_pre_restore_false, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_success_pre_restore_missing, test_setup, test_teardown),
         /* Tests wdb_parse_global_vacuum */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_commit_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_commit_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_commit_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_vacuum_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_success_get_db_state_error, test_setup, test_teardown),

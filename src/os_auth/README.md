@@ -184,6 +184,22 @@ invalidating the first. A caller that finds the reservation taken gets `9030` (*
 before anything is handed out releases the reservation at once; a **failed** database write does not, because the row still holds the old secret and letting it
 authorise another rotation is the hole itself. Until that transition is resolved the agent cannot rotate on this manager, and the writer says so in the log.
 
+**The credential is on the record before it is handed out** (issue #39078, H03). `local_add()` and `local_reenroll()` append the agent, the key and the
+re-enrollment secret to `queue/authd/pending-identities` (0640, one JSON line, appended without rewriting the file) **before** they answer, and only the writer
+removes the line — after `global commit`, never on wazuh-db's `ok`, which comes from inside a deferred transaction. The rules that follow from that:
+
+- **An unrecordable transition is refused**, `9031` (remoted's **503**, the API's `1772`), and no credential is handed out: an enrollment is undone in the keystore
+  and a rotation never touches it. The deletion journal is allowed to lose a line because its entries can be rebuilt from `client.keys`; a secret exists nowhere
+  else, so the same rule here would mean an agent that can never re-enroll.
+- **The writer retries on its own clock** while anything is owed — one second, doubling to a minute — instead of waiting for the next enrollment to wake it, and a
+  retry cycle does not rewrite `client.keys`. Each owed entry reads the row first: already this credential means drop it, a row with another one (including the
+  NULL secret `sync_keys_with_wdb()` leaves when it mirrors `client.keys`) means `set-agent-credentials`, no row means `insert-agent`.
+- **At startup the judge is `client.keys`**, by generation and not by existence of the id — both generations of a rotation share it. The same key means the
+  transition is still owed; a different key means a later one replaced it; an agent no longer listed means nothing is owed. wazuh-db is not consulted there: its
+  socket does not exist yet when authd starts.
+- **The bound is the admission**: 5000 transitions in flight, past which new ones are refused rather than older ones dropped, and a file above 8 MiB is not loaded
+  at all. There is no `fsync`: what this recovers is a crashed process and an unreachable database, not a power cut.
+
 **What the store promises when it cannot write** (issue #39078):
 
 - **A revoke is either written or reported as failed.** The flag goes on in memory at once — this authd stops honouring the token immediately — but the answer is

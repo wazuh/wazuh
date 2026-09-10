@@ -587,6 +587,23 @@ int wdb_parse(char * input, char * output, int peer) {
             gettimeofday(&end, 0);
             timersub(&end, &begin, &diff);
             w_inc_global_vacuum_time(diff);
+        } else if (strcmp(query, "commit") == 0) {
+            /* End the deferred transaction NOW instead of when wdb_commit_old() gets to it. The
+             * caller is authd, which may only forget a journaled identity transition once the
+             * write is durable, and an `ok` from insert-agent is not that (issue #39078, H03). */
+            w_inc_global_commit();
+            gettimeofday(&begin, 0);
+            if (wdb_commit2(wdb) < 0) {
+                mdebug1("Global DB Cannot end transaction.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
+                result = OS_INVALID;
+            } else {
+                snprintf(output, OS_MAXSTR + 1, "ok ");
+                result = OS_SUCCESS;
+            }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_commit_time(diff);
         } else if (strcmp(query, "get_fragmentation") == 0) {
             w_inc_global_get_fragmentation();
             gettimeofday(&begin, 0);
