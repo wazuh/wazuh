@@ -117,6 +117,17 @@ list(APPEND client-agent_flags " ")
 list(APPEND client-agent_names "test_enrollment")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS}")
 
+# w_agent_token_bootstrap(): mocks only the https_client module boundary it calls
+# through (hc_fetch_cacerts/hc_enroll/hc_spki_pin_matches), the same
+# convention test_https_client_bridge uses for that boundary below -- everything else
+# (IsFile/TempFile/OS_MoveFile/w_etoken_*, w_enrollment_build_request/process_response) runs
+# for real against temp files relative to the working directory, same style as
+# test_client_conf_ssl_resolution above.
+list(APPEND client-agent_names "test_token_bootstrap")
+list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll \
+                                -Wl,--wrap,hc_spki_pin_matches -Wl,--wrap,OS_IsValidIP \
+                                ${DEBUG_OP_WRAPPERS}")
+
 list(APPEND client-agent_names "test_https_client_bridge")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
                                 -Wl,--wrap,hc_create -Wl,--wrap,hc_start -Wl,--wrap,hc_destroy \
@@ -213,6 +224,12 @@ if(TARGET test_enrollment)
     # enrollment.h pulls in https_client.h (hc_enroll_result_t), same as
     # test_https_client_bridge above.
     target_include_directories(test_enrollment PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
+endif()
+
+if(TARGET test_token_bootstrap)
+    # token_bootstrap.c pulls in https_client.h directly (hc_config_t, hc_cacerts_*,
+    # hc_enroll_*), same as test_enrollment/test_https_client_bridge above.
+    target_include_directories(test_token_bootstrap PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
 endif()
 
 # Component test for the durable dedup + IPC round-trip: wires the

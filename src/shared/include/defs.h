@@ -300,6 +300,16 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AGENT_ANCHOR_CA "certs/root-ca.pem"
 #endif
 
+/* Enrollment-token bootstrap: the one-shot file src/init/register_configure_agent.sh's
+ * WAZUH_ENROLLMENT_TOKEN_PATH writes at install time. w_agent_token_bootstrap() reads it once,
+ * before AGENT_ANCHOR_CA exists, and deletes it on either a committed success or a permanent
+ * failure -- see token_bootstrap.c. Relative, same convention as AGENT_ANCHOR_CA above. */
+#ifndef WIN32
+#define AGENT_ENROLLMENT_TOKEN_FILE "etc/enrollment_token"
+#else
+#define AGENT_ENROLLMENT_TOKEN_FILE "enrollment_token"
+#endif
+
 /* Timestamp file */
 #define TIMESTAMP_FILE "queue/agents-timestamp"
 
