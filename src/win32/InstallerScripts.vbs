@@ -396,11 +396,25 @@ public function config()
                 strText = Replace(strText, "    </enrollment>", "      <port>" & WAZUH_REGISTRATION_PORT & "</port>"& vbCrLf &"    </enrollment>")
             End If
 
+            ' WAZUH_REGISTRATION_PASSWORD is the fleet-wide enrollment secret: one value that
+            ' enrolls any endpoint, left at rest on every one of them. Deprecated by #39064 in
+            ' favour of WAZUH_ENROLLMENT_TOKEN (single-use, per-endpoint), but still written --
+            ' it stays supported for a full release, and on Windows it is currently the ONLY
+            ' credential path, since the enrollment-token bootstrap is not wired here yet
+            ' (w_agent_token_bootstrap() is a stub on Windows; that is #39063's scope).
+            '
+            ' The agent removes this file by itself once the manager issues it a per-agent
+            ' re-enrollment secret (enrollment.c), so the fleet secret leaves each endpoint as
+            ' soon as that endpoint has something better.
+            '
+            ' <authorization_pass_path> is no longer emitted: "authd.pass" is exactly the compiled
+            ' default the agent uses when the tag is absent (AUTHD_PASS, defs.h), so writing it
+            ' changed nothing except to put the fleet secret's path into ossec.conf and to make the
+            ' tag look required. An operator who sets it by hand still has it honoured.
             If WAZUH_REGISTRATION_PASSWORD <> "" Then
                 Set objFile = objFSO.CreateTextFile(home_dir & "authd.pass", ForWriting)
                 objFile.WriteLine WAZUH_REGISTRATION_PASSWORD
                 objFile.Close
-                strText = Replace(strText, "    </enrollment>", "      <authorization_pass_path>authd.pass</authorization_pass_path>"& vbCrLf &"    </enrollment>")
             End If
 
             If WAZUH_REGISTRATION_CA <> "" Then
@@ -875,7 +889,8 @@ Public Function SetWazuhPermissions()
         grantAuthenticatedUsersPermFolder = "icacls """ & install_dir & """ /grant *S-1-5-11:RX"
         WshShell.run grantAuthenticatedUsersPermFolder, 0, True
 
-        ' Remove Authenticated Users group for ossec.conf, last-ossec.conf, client.keys and authd.pass
+        ' Remove Authenticated Users group for ossec.conf, last-ossec.conf, client.keys,
+        ' authd.pass and reenroll.secret
         remAuthenticatedUsersPermsConf = "icacls """ & home_dir & "*ossec.conf" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsConf, 0, True
 
@@ -884,6 +899,14 @@ Public Function SetWazuhPermissions()
 
         remAuthenticatedUsersPermsAuthd = "icacls """ & home_dir & "authd.pass" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsAuthd, 0, True
+
+        ' The per-agent re-enrollment secret (#39064) gets client.keys's treatment, because it has
+        ' client.keys's power: it rotates the key of that one agent id. Written by the agent at
+        ' enrollment time rather than by this installer, so this only runs against an existing file
+        ' on a reinstall or upgrade -- icacls on a missing path is a harmless no-op, and the ACL is
+        ' inherited from the (already hardened) install directory when the agent creates it later.
+        remAuthenticatedUsersPermsReenroll = "icacls """ & home_dir & "reenroll.secret" & """ /remove *S-1-5-11 /q"
+        WshShell.run remAuthenticatedUsersPermsReenroll, 0, True
 
         ' Remove the Authenticated Users group from the tmp directory to avoid
         ' inherited permissions on client.keys and ossec.conf when using win32ui.

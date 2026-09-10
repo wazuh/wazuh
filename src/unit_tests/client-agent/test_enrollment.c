@@ -471,7 +471,7 @@ static void remove_200_paths(void) {
     unlink(KEYS_FILE);
     unlink(AGENT_REENROLL_SECRET);
     unlink(AGENT_ENROLLMENT_TOKEN_FILE);
-    unlink("etc/authd.pass");
+    unlink(AUTHD_PASS);
 }
 
 static int setup_200_test(void **state) {
@@ -541,8 +541,8 @@ static void test_build_request_prefers_the_reenroll_secret_over_the_password(voi
 
     ignore_debug_lines();
     assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
-    os_strdup("etc/authd.pass", agt->enrollment.authorization_pass_path);
-    write_text_file("etc/authd.pass", "fleet-secret\n");
+    os_strdup(AUTHD_PASS, agt->enrollment.authorization_pass_path);
+    write_text_file(AUTHD_PASS, "fleet-secret\n");
 
     expect_string(__wrap__minfo, formatted_msg, "Re-enrolling with this agent's own re-enrollment secret.");
 
@@ -555,7 +555,7 @@ static void test_build_request_prefers_the_reenroll_secret_over_the_password(voi
     assert_string_equal(request.enroll_key_hex, DERIVED_FROM_VALID_SECRET);
 
     w_enroll_request_destroy(&request);
-    unlink("etc/authd.pass");
+    unlink(AUTHD_PASS);
 }
 
 /* With no secret stored, nothing changes: the password path is exactly as it was. */
@@ -563,8 +563,8 @@ static void test_build_request_without_a_secret_uses_the_password(void **state) 
     (void)state;
     w_enroll_request_t request;
 
-    os_strdup("etc/authd.pass", agt->enrollment.authorization_pass_path);
-    write_text_file("etc/authd.pass", "fleet-secret\n");
+    os_strdup(AUTHD_PASS, agt->enrollment.authorization_pass_path);
+    write_text_file(AUTHD_PASS, "fleet-secret\n");
 
     expect_string(__wrap__minfo, formatted_msg, "Using password specified on file: etc/authd.pass");
 
@@ -574,7 +574,7 @@ static void test_build_request_without_a_secret_uses_the_password(void **state) 
     assert_null(request.enroll_key_hex);
 
     w_enroll_request_destroy(&request);
-    unlink("etc/authd.pass");
+    unlink(AUTHD_PASS);
 }
 
 /* The `kid` comes from the STORE, not from client.keys: the store is what the manager verifies
@@ -721,6 +721,71 @@ static void test_process_response_200_rotates_the_stored_secret(void **state) {
     assert_string_equal(secret, rotated);
 }
 
+/* ---- the fleet password is dropped once this endpoint has its own credential (#39064) ---- */
+
+/* The mechanism that makes the upgrade policy self-healing: a package upgrade leaves authd.pass
+ * alone, and the agent removes it the first time a manager issues a re-enrollment secret. */
+static void test_process_response_200_shreds_the_default_fleet_password(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+
+    ignore_debug_lines();
+    os_strdup(AUTHD_PASS, agt->enrollment.authorization_pass_path);
+    write_text_file(AUTHD_PASS, "fleet-secret\n");
+
+    set_body(&result,
+             "{\"id\":\"001\",\"name\":\"agent01\",\"ip\":\"10.0.0.1\",\"key\":\"abc123\","
+             "\"reenroll_secret\":\"" VALID_SECRET "\"}");
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "The fleet-wide enrollment password at '" AUTHD_PASS "' has been removed: this "
+                  "agent now holds its own re-enrollment secret.");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_OK);
+    assert_int_equal(IsFile(AUTHD_PASS), -1);
+}
+
+/* No secret in the response means no replacement credential, so removing the only one the
+ * endpoint has would leave it with nothing to recover with. */
+static void test_process_response_200_without_a_secret_keeps_the_fleet_password(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+
+    ignore_debug_lines();
+    os_strdup(AUTHD_PASS, agt->enrollment.authorization_pass_path);
+    write_text_file(AUTHD_PASS, "fleet-secret\n");
+
+    set_body(&result, "{\"id\":\"001\",\"name\":\"agent01\",\"ip\":\"10.0.0.1\",\"key\":\"abc123\"}");
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_OK);
+    assert_int_equal(IsFile(AUTHD_PASS), 0);
+}
+
+/* An explicitly configured path is operator-owned -- a shared mount, a templated file, one kept
+ * deliberately for re-imaging -- and must never be removed by the agent. */
+static void test_process_response_200_never_shreds_an_operator_configured_password(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+
+    ignore_debug_lines();
+    os_strdup("etc/operator.pass", agt->enrollment.authorization_pass_path);
+    write_text_file("etc/operator.pass", "fleet-secret\n");
+
+    set_body(&result,
+             "{\"id\":\"001\",\"name\":\"agent01\",\"ip\":\"10.0.0.1\",\"key\":\"abc123\","
+             "\"reenroll_secret\":\"" VALID_SECRET "\"}");
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_OK);
+    assert_int_equal(IsFile("etc/operator.pass"), 0);
+
+    unlink("etc/operator.pass");
+}
+
 /* ---- w_enrollment_apply_policy: the decision itself (#39064) ---- */
 
 /* Everything that is or may be transient keeps the loop going. DISABLED is in this list on
@@ -753,8 +818,8 @@ static void test_policy_clears_the_dead_secret_and_falls_back_to_the_password(vo
 
     ignore_debug_lines();
     assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
-    os_strdup("etc/authd.pass", agt->enrollment.authorization_pass_path);
-    write_text_file("etc/authd.pass", "fleet-secret\n");
+    os_strdup(AUTHD_PASS, agt->enrollment.authorization_pass_path);
+    write_text_file(AUTHD_PASS, "fleet-secret\n");
 
     expect_string(__wrap__minfo, formatted_msg,
                   "The re-enrollment secret was rejected by the manager and has been removed.");
@@ -765,7 +830,7 @@ static void test_policy_clears_the_dead_secret_and_falls_back_to_the_password(vo
     assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
     assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 0);
 
-    unlink("etc/authd.pass");
+    unlink(AUTHD_PASS);
 }
 
 /* A still-unconsumed enrollment token is also a fallback: the bootstrap has not used it, so the
@@ -809,15 +874,15 @@ static void test_policy_treats_an_empty_password_file_as_no_credential(void **st
 
     ignore_debug_lines();
     assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
-    os_strdup("etc/authd.pass", agt->enrollment.authorization_pass_path);
-    write_text_file("etc/authd.pass", "");
+    os_strdup(AUTHD_PASS, agt->enrollment.authorization_pass_path);
+    write_text_file(AUTHD_PASS, "");
 
     expect_any(__wrap__minfo, formatted_msg); /* secret removed */
     expect_any(__wrap__merror, formatted_msg); /* operator action required */
 
     assert_int_equal(w_enrollment_apply_policy(W_ENROLL_ERR_IDENTITY_GONE), W_ENROLL_ACTION_STOP);
 
-    unlink("etc/authd.pass");
+    unlink(AUTHD_PASS);
 }
 
 int main(void) {
@@ -855,6 +920,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_200_non_string_secret_is_server_error, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_refusal_leaves_the_previous_secret_usable, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_rotates_the_stored_secret, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_process_response_200_shreds_the_default_fleet_password, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_process_response_200_without_a_secret_keeps_the_fleet_password, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_process_response_200_never_shreds_an_operator_configured_password, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_policy_retries_every_transient_status, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_policy_stops_on_a_fatal_rejection, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_policy_clears_the_dead_secret_and_falls_back_to_the_password, setup_200_test, teardown_200_test),

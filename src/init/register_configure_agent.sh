@@ -884,7 +884,6 @@ add_auto_enrollment () {
             echo "      <server_ca_path>/path/to/server_ca</server_ca_path>"
             echo "      <agent_certificate_path>/path/to/agent.cert</agent_certificate_path>"
             echo "      <agent_key_path>/path/to/agent.key</agent_key_path>"
-            echo "      <authorization_pass_path>/path/to/authd.pass</authorization_pass_path>"
             echo "      <delay_after_enrollment>20</delay_after_enrollment>"
         } > "${TMP_ENROLLMENT}"
     fi
@@ -1015,7 +1014,16 @@ main () {
         set_agent_ssl_ca "${WAZUH_REGISTRATION_CA}"
         set_auto_enrollment_tag_value "agent_certificate_path" "${WAZUH_REGISTRATION_CERTIFICATE}"
         set_auto_enrollment_tag_value "agent_key_path" "${WAZUH_REGISTRATION_KEY}"
-        set_auto_enrollment_tag_value "authorization_pass_path" "${WAZUH_REGISTRATION_PASSWORD_PATH}"
+        # <authorization_pass_path> is deliberately NOT written any more (#39064). It only ever
+        # named etc/authd.pass, which is the compiled default the agent already uses when the tag
+        # is absent (config.c), so writing it changed nothing except to put the fleet secret's path
+        # in a file every configuration-management run templates -- and to make the tag look
+        # required. It was also written whenever an enrollment block was created at all, even with
+        # no password supplied, pointing at a file that did not exist.
+        #
+        # Not deleted either, on the reuse path above: an operator who configured the tag by hand
+        # owns it, and set_auto_enrollment_tag_value "" would remove it. Deleting a value named in
+        # someone's template is how a converge becomes an outage.
         set_auto_enrollment_tag_value "agent_name" "${WAZUH_AGENT_NAME}"
         set_auto_enrollment_tag_value "groups" "${WAZUH_AGENT_GROUP}"
         set_auto_enrollment_tag_value "delay_after_enrollment" "${ENROLLMENT_DELAY}"
@@ -1024,10 +1032,25 @@ main () {
     fi
 
 
+    # WAZUH_REGISTRATION_PASSWORD is the fleet-wide enrollment secret: one value that enrolls any
+    # endpoint, left at rest on every one of them. #39064 replaces it with a per-agent
+    # re-enrollment secret the manager issues on /enroll and rotates on every enrollment, and
+    # WAZUH_ENROLLMENT_TOKEN as the way an endpoint gets its first credential.
+    #
+    # It still WORKS, and still gets written here, because §2.8 keeps it supported for a full
+    # release and because a credential-less enrollment token plus a separately injected password is
+    # the designed golden-image path -- there is no replacement for that combination yet. What
+    # changes is that the agent now shreds this file the first time it receives a re-enrollment
+    # secret of its own (enrollment.c), so the fleet secret leaves each endpoint as soon as that
+    # endpoint has something better. Warned about once, here, so an operator learns it from the
+    # install rather than from a security review.
     if [ -n "${WAZUH_REGISTRATION_PASSWORD}" ]; then
         echo "${WAZUH_REGISTRATION_PASSWORD}" > "${INSTALLDIR}/${WAZUH_REGISTRATION_PASSWORD_PATH}"
         chmod 640 "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
         chown root:wazuh "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
+
+        echo "wazuh-agent: WAZUH_REGISTRATION_PASSWORD is deprecated: it stores one fleet-wide enrollment secret on this endpoint. Prefer WAZUH_ENROLLMENT_TOKEN, which is single-use and per-endpoint. The file is removed automatically once this agent holds a re-enrollment secret of its own." >&2
+        echo "$(date '+%Y/%m/%d %H:%M:%S') WAZUH_REGISTRATION_PASSWORD stored at ${WAZUH_REGISTRATION_PASSWORD_PATH}; this is a fleet-wide secret at rest and is deprecated in favour of WAZUH_ENROLLMENT_TOKEN. It will be removed from this endpoint once the manager issues a per-agent re-enrollment secret." >> "${INSTALLDIR}/logs/ossec.log"
     fi
 
     # Options to be modified in wazuh configuration file

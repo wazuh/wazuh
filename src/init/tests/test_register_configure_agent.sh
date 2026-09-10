@@ -42,6 +42,25 @@ run_target() {
 
 }
 
+# Same as run_target, but leaves the tree in place and echoes its path: the #39064 cases below
+# assert on files BESIDE ossec.conf (etc/authd.pass, logs/ossec.log), which run_target deletes.
+# The caller is responsible for removing what it gets back.
+run_target_keep() {
+
+    local conf_body="$1"
+    local installdir
+
+    installdir="$(mktemp -d)"
+    mkdir -p "${installdir}/etc" "${installdir}/tmp" "${installdir}/logs"
+    printf '%s' "${conf_body}" > "${installdir}/etc/ossec.conf"
+    touch "${installdir}/logs/ossec.log"
+
+    bash "${TARGET}" "${installdir}" >/dev/null 2>&1
+
+    printf '%s' "${installdir}"
+
+}
+
 check() {
 
     local name="$1" expected="$2" actual="$3"
@@ -311,6 +330,63 @@ check "an empty WAZUH_MANAGER_ENDPOINT does not fall back to WAZUH_MANAGER" \
       '<manager><address>MANAGER_IP</address></manager>' \
       "$(manager_block "$(run_target "${NO_ENROLLMENT_CONF}")")"
 unset WAZUH_MANAGER WAZUH_MANAGER_ENDPOINT
+
+# ---- #39064: the fleet-wide enrollment password ----
+#
+# The write itself stays (the password is supported for one more release, and on Windows it is
+# still the only credential path). What changed is that <authorization_pass_path> is no longer
+# emitted -- it only ever named the compiled default -- and that an operator is told once what the
+# file is.
+
+export WAZUH_REGISTRATION_SERVER="10.0.0.2"
+export WAZUH_REGISTRATION_PASSWORD="fleet-secret"
+
+installdir="$(run_target_keep "${NO_ENROLLMENT_CONF}")"
+
+check "the enrollment password is still written" \
+      "fleet-secret" "$(cat "${installdir}/etc/authd.pass" 2>/dev/null)"
+check "the enrollment password file is not world-readable" \
+      "640" "$(stat -c '%a' "${installdir}/etc/authd.pass" 2>/dev/null)"
+check "<authorization_pass_path> is not written into ossec.conf" \
+      "0" "$(grep -c 'authorization_pass_path' "${installdir}/etc/ossec.conf")"
+check "the deprecation is recorded in the agent log" \
+      "1" "$(grep -c 'deprecated in favour of WAZUH_ENROLLMENT_TOKEN' "${installdir}/logs/ossec.log")"
+
+rm -rf "${installdir}"
+unset WAZUH_REGISTRATION_PASSWORD
+
+# The template placeholder went with the write: an enrollment block created without a password
+# must not be left holding "/path/to/authd.pass", which is what would happen if the placeholder
+# stayed behind once nothing filled it in.
+installdir="$(run_target_keep "${NO_ENROLLMENT_CONF}")"
+check "no password: no authorization_pass_path placeholder is left behind" \
+      "0" "$(grep -c 'authorization_pass_path' "${installdir}/etc/ossec.conf")"
+check "no password: no authd.pass is created" \
+      "absent" "$([ -e "${installdir}/etc/authd.pass" ] && echo present || echo absent)"
+rm -rf "${installdir}"
+
+unset WAZUH_REGISTRATION_SERVER
+
+# An operator who configured the tag by hand owns it: the run must honour their value, not delete
+# it. Deleting a value named in someone else's template is how a converge becomes an outage.
+OPERATOR_PASS_CONF='<ossec_config>
+  <agent>
+    <manager>
+      <address>MANAGER_IP</address>
+    </manager>
+    <enrollment>
+      <enabled>yes</enabled>
+      <authorization_pass_path>/shared/mount/authd.pass</authorization_pass_path>
+    </enrollment>
+  </agent>
+</ossec_config>
+'
+
+export WAZUH_REGISTRATION_SERVER="10.0.0.2"
+actual="$(run_target "${OPERATOR_PASS_CONF}")"
+check "an explicitly configured authorization_pass_path survives the run" \
+      "1" "$(printf '%s\n' "${actual}" | grep -c '<authorization_pass_path>/shared/mount/authd.pass</authorization_pass_path>')"
+unset WAZUH_REGISTRATION_SERVER
 
 echo
 echo "${checks} checks, ${failures} failed"

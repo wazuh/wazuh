@@ -248,10 +248,46 @@ Comma-separated list of groups to assign during enrollment.
 
 Path to file containing enrollment authorization password.
 
-- **Default value:** None
+- **Default value:** `etc/authd.pass` (`authd.pass` on Windows)
 - **Allowed values:** Valid file path
 - **Note:** Password must match manager's authd password. Re-read on every
   enrollment attempt, so rotating the file does not require an agent restart.
+- **Deprecated.** This is a *fleet-wide* secret: one value that enrolls any
+  endpoint, stored at rest on every endpoint that has it. Prefer an enrollment
+  token (`WAZUH_ENROLLMENT_TOKEN` at install time), which is single-use and
+  per-endpoint. The password remains supported for one full release.
+- The agent **deletes the default file by itself** once the manager issues it a
+  per-agent re-enrollment secret (see *Re-enrollment* below), so the fleet
+  secret leaves each endpoint as soon as that endpoint has a narrower
+  credential of its own. A path configured **explicitly** here is treated as
+  operator-owned and is never removed, so a shared or templated file keeps
+  working.
+
+#### Re-enrollment
+
+An agent that enrolls against a 5.0 manager receives a **per-agent
+re-enrollment secret** in the `/enroll` response and stores it at
+`etc/reenroll.secret` (`reenroll.secret` on Windows), as `<id> <secret>`. It is
+rotated on every subsequent enrollment.
+
+The secret is what the agent re-enrolls with when the manager reports that its
+key is no longer known, and it replaces the fleet password as the endpoint's
+unattended recovery capability:
+
+- It is **narrower**: it rotates the key of that one agent id and cannot mint a
+  new identity. A stolen secret is worth one endpoint, not the fleet.
+- It gets `client.keys`'s protection (mode `0640`, same owner), because it has
+  `client.keys`'s power. A process that can rewrite the key already owns the
+  agent.
+- It must stay writable by the unprivileged agent user: every rotation is
+  performed by the running daemon, after the privilege drop.
+
+The agent only discards an identity when the manager explicitly says it is
+unknown. Any other authentication failure — a clock outside the manager's
+accepted window, an enrollment key that has not synced to the node serving the
+request, or a response whose failure class cannot be read — is retried with the
+existing credential. A credential the manager has judged and refused stops the
+retry loop instead of repeating for ever.
 
 #### agent_address
 
@@ -501,7 +537,6 @@ Automatic agent registration:
     <enabled>yes</enabled>
     <agent_name>web-server-prod-01</agent_name>
     <groups>webservers,production</groups>
-    <authorization_pass_path>/var/ossec/etc/authd.pass</authorization_pass_path>
   </enrollment>
   <manager>
     <endpoint>manager.example.com:1517</endpoint>
