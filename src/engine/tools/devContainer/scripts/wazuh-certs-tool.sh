@@ -59,7 +59,7 @@ output_dir="${PWD}/wazuh-certificates"
 force=""
 readonly cert_tool_script_name=".*certs.*\.sh"
 
-# ------------ certFunctions.sh ------------ 
+# ------------ certFunctions.sh ------------
 function cert_validatePath() {
     local path="$1"
     local path_type="${2:-file}"
@@ -1065,7 +1065,7 @@ function cert_moveToOutput() {
 
 }
 
-# ------------ certMain.sh ------------ 
+# ------------ certMain.sh ------------
 function getHelp() {
 
     echo -e ""
@@ -1388,7 +1388,7 @@ function main() {
     fi
 
 }
-# ------------ certVariables.sh ------------ 
+# ------------ certVariables.sh ------------
 
 function common_checkAptLock() {
 

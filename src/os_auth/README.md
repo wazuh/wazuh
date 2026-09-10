@@ -626,4 +626,11 @@ would make "the row is outstanding" and "the query failed" the same case.
   until the cluster syncs the file, but the master's answer wins.
 - **A re-enrollment is not a deletion**: same id, no purge, documents kept. Agents enrolled over port
   1515, and rows the database module rebuilt from `client.keys`, have no secret and answer `9026`
-  until they enroll anew.
+  until they enroll anew. Rebuilding those rows is not a recovery of the secret and never can be:
+  `client.keys` does not carry it, and neither does a `global.db` from a build older than the column
+  — that database is recreated, not migrated.
+- **Re-enrollment supports agent ids of up to eight digits.** `OS_IsValidID()` caps the `kid` there
+  and the agent applies the same rule to the answer, so an agent holding a nine- or ten-digit id
+  cannot rotate its credentials. Administrative insertion still accepts the full range on purpose:
+  restricting it would not close the gap, because the id counter follows the highest id in
+  `client.keys` and would hand out a long id again on the next self-enrollment.
