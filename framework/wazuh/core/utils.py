@@ -889,7 +889,7 @@ def get_timeframe_in_seconds(timeframe: str) -> int:
         Time in seconds.
     """
     if not timeframe.isdigit():
-        if 'h' not in timeframe and 'd' not in timeframe and 'm' not in timeframe and 's' not in timeframe:
+        if not (re.fullmatch(r'^(\d+[dhms])+$', timeframe)):
             raise WazuhError(1411, timeframe)
 
         regex, seconds = re.compile(r'(\d+)(\w)'), 0
