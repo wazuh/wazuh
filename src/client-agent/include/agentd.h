@@ -17,6 +17,7 @@
 #include "client-config.h"
 #include "state.h"
 #include "module_limits.h"
+#include "enrollment_status.h" /* w_enroll_status_t; NOT enrollment.h -- see that header */
 
 /* Decode the enrollment token on stdin and print what it carries, without its credential.
  * Shared by both agent entry points so Linux and Windows accept exactly the same tokens.
@@ -66,9 +67,11 @@ void w_agentd_populate_metadata(void);
  *        endpoint uses (agt->server[0], agt->ssl -- there is no per-attempt
  *        server selection any more), and parse the response. On success,
  *        reloads the in-memory `keys` and sets the crypto method.
- * @return 0 on success, -1 on error (the caller retries with backoff).
+ * @return W_ENROLL_OK on success, otherwise the reason it failed (#39064). The caller must feed
+ *         that status to w_enrollment_apply_policy() rather than assume every failure is worth
+ *         another attempt -- a credential the manager judged and refused never becomes valid.
  * */
-int try_enroll_to_server(void);
+w_enroll_status_t try_enroll_to_server(void);
 
 /**
  * Function that makes the request to the API for the request of uninstallation permissions.
