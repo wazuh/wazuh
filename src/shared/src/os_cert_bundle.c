@@ -30,6 +30,7 @@ const char* os_ca_bundle_candidates[] = {
     "/usr/share/ssl/certs/ca-bundle.crt",       // RedHat
     "/usr/local/share/certs/ca-root-nss.crt",   // FreeBSD
     "/etc/ssl/cert.pem",                        // OpenBSD, FreeBSD, MacOS
+    "/etc/ssl/ca-bundle.pem",                   // SUSE (SLES, openSUSE)
     NULL
 };
 
