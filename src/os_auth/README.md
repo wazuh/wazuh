@@ -100,7 +100,7 @@ it, inventory-sync applies it — and all three depend on these:
 | `src/config.c` | `<auth>` block plus the `authd.*` internal options, and the two `remoted.jwt_*` ones the re-enrollment window is read from |
 | `src/token_cli.c` | the `--create/--list/--revoke-enrollment-token` and `--show-token` utility mode: a client of the socket verbs, run by `main()` before the daemon starts |
 | `src/enrollment_token_mint.c` | whether a token can be minted: the listener certificate's SAN, loopback and CA-signature checks, and the `adr` the token will carry |
-| `src/enrollment_token_store.c` | `etc/enrollment_tokens.json` and its in-memory replica: load, mtime-driven reload, atomic rewrite, consume/release, revoke |
+| `src/enrollment_token_store.c` | `etc/enrollment_tokens.json` and its in-memory replica: load (refused above either limit), mtime-driven reload, atomic rewrite, consume/release, revoke with its pending-write retry |
 | `src/reenroll_verify.cpp` | the one C++ file: an `extern "C"` bridge over the header-only verifier in `shared_modules/utils/jwt/` |
 | `include/auth.h` | everything the two servers and the threads share |
 
@@ -175,6 +175,20 @@ The agent has a usable key at that point, but **remoted does not know about it y
 `client.keys` on the writer's next pass, and remoted reloads the file on its own cadence. Enrollment
 latency is therefore the writer's pass time plus remoted's reload — which is exactly why nothing slow
 may live in that pass.
+
+**What the store promises when it cannot write** (issue #39078):
+
+- **A revoke is either written or reported as failed.** The flag goes on in memory at once — this authd stops honouring the token immediately — but the answer is
+  `9029` («Enrollment token store write failed», the API's `1771`, HTTP 500), never the `9022` of an id that does not exist, and never a success. The id is kept in a
+  pending list that survives a reload (the array is replaced by what the file says; the file is precisely what does not know), so the next verb retries the write and
+  the token cannot come back after a restart.
+- **A consumed use is best effort, and that is a contract, not an oversight.** `etoken_store_consume()` counts the use in memory and lets the enrollment through even
+  if the file could not be written: failing it over a disk hiccup would deny a legitimate agent. The price is explicit — a restart before the next successful write
+  reloads the older counter, so a single-use token may admit another enrollment, and repeated failures may allow more than one. It does not even take a lost disk: a
+  store already at its serialized ceiling fails to save on the growth of the counter itself. **Expiry and revocation are the durable properties**; revoking is the
+  reliable way to stop a token.
+- **A store above either limit is not loaded.** More than 5000 tokens, or a file over `W_ETOKEN_STORE_MAX_BYTES`, is refused with a warning and whatever was already
+  loaded is kept: accepting it would leave authd holding a store it could never write back.
 
 Two credentials `/enroll` can carry take their own route through `local_dispatch()`:
 

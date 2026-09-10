@@ -10,7 +10,7 @@ import pytest
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core import enrollment_token
-        from wazuh.core.exception import WazuhError, WazuhException, WazuhResourceNotFound
+        from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 
 TOKEN_ID = 'AAECAwQFBgcICQoLDA0ODw'
 # What authd's `token_create` answers (os_auth/src/enrollment_token_store.c, etoken_store_create()).
@@ -85,6 +85,9 @@ def test_revoke_token(mock_socket):
      "address 'evil' is not in the listener certificate"),
     (9004, 'No such argument', WazuhError, 1768, 'the address is required'),
     (9015, 'Cannot execute this request on a worker node', WazuhError, 1769, None),
+    # A storage failure is the manager's problem, not the caller's: internal, and worth retrying
+    # (issue #39078, H04). Told apart from 9022 on purpose -- the token does exist.
+    (9029, 'Enrollment token store write failed', WazuhInternalError, 1771, None),
     # Anything else is authd's own error, untouched.
     (9001, 'Internal error', WazuhException, 9001, None),
 ])

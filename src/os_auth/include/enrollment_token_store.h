@@ -156,10 +156,19 @@ int etoken_store_purge(etoken_purge_t scope, time_t now, cJSON **ids);
  */
 cJSON *etoken_store_list(void);
 
+/* etoken_store_revoke() failures the caller reports differently from an unknown id */
+#define ETOKEN_STORE_FAILED (-2)  /**< Revoked in memory, but the store could not be written */
+
 /**
- * @brief Mark a token revoked and persist the file. Idempotent on an already revoked token.
+ * @brief Mark a token revoked and persist the file.
  *
- * @return 0 on success, -1 when the id is unknown or the file could not be written.
+ * Idempotent on a token that is already revoked **and already written**: that answers 0 without
+ * rewriting the file. A revocation that could not be persisted is remembered instead, so this
+ * authd stops honouring the token at once and every later call -- this one included -- retries the
+ * write until it lands. Success therefore always means "the file says so" (issue #39078, H04).
+ *
+ * @return 0 on success, -1 when the id is unknown, ETOKEN_STORE_FAILED when it is revoked in
+ *         memory but the file could not be written.
  */
 int etoken_store_revoke(const char *id);
 

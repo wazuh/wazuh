@@ -85,6 +85,20 @@ typedef struct {
 static etoken_inflight_t *etoken_inflight = NULL;
 static int etoken_inflight_size = 0;
 
+/* Revocations this authd applied in memory but could not write yet.
+ *
+ * Kept aside for the same reason the reservations are: a reload replaces the token array with what
+ * the file says, and the file is precisely what does NOT know about these. Without this list a
+ * revoke whose save failed would be silently undone by the next reload -- including the reload
+ * etoken_store_purge() does to recover from its own failed save -- and the token would go on
+ * enrolling agents until someone revoked it again (issue #39078, H04).
+ *
+ * Entries leave the list only when a save succeeds (the file then carries the flag) or when a
+ * reload shows the id is no longer in the store at all.
+ */
+static char (*etoken_pending_revoked)[ETOKEN_ID_CHARS + 1] = NULL;
+static int etoken_pending_revoked_size = 0;
+
 /**
  * @brief Wipe and release one entry. The struct itself is left zeroed.
  */
@@ -176,6 +190,44 @@ static void etoken_inflight_drop_locked(const char *id) {
 
         return;
     }
+}
+
+/**
+ * @brief Whether that id has a revocation waiting to be written. Caller holds the mutex.
+ */
+static int etoken_pending_held_locked(const char *id) {
+    int i;
+
+    for (i = 0; i < etoken_pending_revoked_size; i++) {
+        if (!strcmp(etoken_pending_revoked[i], id)) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Remember that this id is revoked in memory and not yet on disk. Caller holds the mutex.
+ */
+static void etoken_pending_add_locked(const char *id) {
+    if (etoken_pending_held_locked(id)) {
+        return;
+    }
+
+    os_realloc(etoken_pending_revoked, sizeof(*etoken_pending_revoked) * (etoken_pending_revoked_size + 1),
+               etoken_pending_revoked);
+    memset(etoken_pending_revoked[etoken_pending_revoked_size], 0, ETOKEN_ID_CHARS + 1);
+    strncpy(etoken_pending_revoked[etoken_pending_revoked_size], id, ETOKEN_ID_CHARS);
+    etoken_pending_revoked_size++;
+}
+
+/**
+ * @brief Forget every pending revocation: the file now carries them. Caller holds the mutex.
+ */
+static void etoken_pending_clear_locked(void) {
+    os_free(etoken_pending_revoked);
+    etoken_pending_revoked_size = 0;
 }
 
 /**
@@ -519,6 +571,15 @@ static int etoken_store_load_locked(void) {
         return -1;
     }
 
+    if (statbuf.st_size > (off_t) W_ETOKEN_STORE_MAX_BYTES) {
+        /* Checked before parsing: a file this size is one this authd could never write back, and
+         * reading it into memory first would be the expensive way to find that out (issue #39078) */
+        mwarn("The enrollment token store '%s' is %lld bytes, above the %d supported: it is not loaded. "
+              "The tokens already loaded are kept.",
+              etoken_path, (long long) statbuf.st_size, W_ETOKEN_STORE_MAX_BYTES);
+        return -1;
+    }
+
     if (root = json_fread(etoken_path, 0), root == NULL) {
         mwarn("The enrollment token store '%s' is not valid JSON. The tokens already loaded are kept.",
               etoken_path);
@@ -574,12 +635,58 @@ static int etoken_store_load_locked(void) {
 
     cJSON_Delete(root);
 
+    if (loaded_size > ETOKEN_MAX_TOKENS) {
+        /* A store above the cap cannot be written back, so accepting it would leave this authd
+         * unable to persist anything it does afterwards. Refusing keeps whatever was loaded before
+         * and tells the operator what to fix (issue #39078, H08) */
+        mwarn("The enrollment token store '%s' holds %d tokens, above the %d supported: it is not loaded. "
+              "Purge it on the master (wazuh-manager-authd --purge-enrollment-tokens) and let it synchronise. "
+              "The tokens already loaded are kept.",
+              etoken_path, loaded_size, ETOKEN_MAX_TOKENS);
+
+        for (index = 0; index < loaded_size; index++) {
+            etoken_entry_free(&loaded[index]);
+        }
+
+        os_free(loaded);
+        return -1;
+    }
+
     etoken_clear_locked();
     etoken_tokens = loaded;
     etoken_tokens_size = loaded_size;
     /* The time taken BEFORE the read, so a write that raced with it is seen again by the next
      * reload_if_changed() instead of being missed for good */
     etoken_mtime = statbuf.st_mtime;
+
+    /* The file knows nothing about a revocation this authd could not write: re-apply those, and
+     * drop the ones whose token is no longer in the store at all (issue #39078, H04) */
+    if (etoken_pending_revoked_size > 0) {
+        int pending = 0;
+        int kept = 0;
+
+        for (pending = 0; pending < etoken_pending_revoked_size; pending++) {
+            const int found = etoken_find_locked(etoken_pending_revoked[pending]);
+
+            if (found < 0) {
+                continue;
+            }
+
+            etoken_tokens[found].revoked = 1;
+
+            if (kept != pending) {
+                memcpy(etoken_pending_revoked[kept], etoken_pending_revoked[pending], ETOKEN_ID_CHARS + 1);
+            }
+
+            kept++;
+        }
+
+        etoken_pending_revoked_size = kept;
+
+        if (kept == 0) {
+            os_free(etoken_pending_revoked);
+        }
+    }
 
     mdebug1("Loaded %d enrollment token(s) from '%s'.", etoken_tokens_size, etoken_path);
 
@@ -804,6 +911,15 @@ int etoken_store_reload_if_changed(void) {
         etoken_mtime = (etoken_tokens_size > 0) ? etoken_mtime : 0;
     } else if (mtime != etoken_mtime) {
         ret = (etoken_store_load_locked() == 0) ? 1 : -1;
+    }
+
+    /* Every verb calls this before doing anything, which makes it the one place where a revocation
+     * that could not be written gets another chance -- without every caller having to remember
+     * (issue #39078, H04). A save that succeeds carries all of them at once */
+    if (etoken_pending_revoked_size > 0 && etoken_store_save_locked() == 0) {
+        mdebug1("Persisted %d enrollment token revocation(s) that a previous write could not.",
+                etoken_pending_revoked_size);
+        etoken_pending_clear_locked();
     }
 
     w_mutex_unlock(&etoken_mutex);
@@ -1053,8 +1169,9 @@ int etoken_store_revoke(const char *id) {
         return -1;
     }
 
-    if (etoken_tokens[index].revoked) {
-        /* Idempotent and free: rewriting the file would make the cluster ship an identical store */
+    if (etoken_tokens[index].revoked && !etoken_pending_held_locked(id)) {
+        /* Idempotent and free: the file already says it, and rewriting it would make the cluster
+         * ship an identical store */
         w_mutex_unlock(&etoken_mutex);
         mdebug1("The enrollment token '%s' was already revoked.", id);
         return 0;
@@ -1062,10 +1179,15 @@ int etoken_store_revoke(const char *id) {
 
     etoken_tokens[index].revoked = 1;
 
-    /* The flag stays set in memory even when the file could not be written: this authd must not
-     * keep honouring a token an operator has revoked, and the next successful write persists it */
+    /* The flag stays set in memory even when the file cannot be written -- this authd must not keep
+     * honouring a token an operator revoked -- but the caller is told, and the id is remembered so
+     * a reload does not undo it and the next verb tries again. Answering success here is what let a
+     * revoked token come back after a restart (issue #39078, H04) */
     if (etoken_store_save_locked() < 0) {
-        ret = -1;
+        etoken_pending_add_locked(id);
+        ret = ETOKEN_STORE_FAILED;
+    } else {
+        etoken_pending_clear_locked();
     }
 
     w_mutex_unlock(&etoken_mutex);
@@ -1148,10 +1270,19 @@ etoken_use_t etoken_store_consume(const char *id, time_t now) {
     switch (ret) {
     case ETOKEN_USE_OK:
         if (!saved) {
-            /* Best effort on purpose: the use is counted in memory and the enrollment goes ahead.
-             * Failing it over a disk hiccup would deny a legitimate agent, and the worst a lost
-             * counter can do is grant one extra use of a token that is still bounded by its expiry */
-            merror("Could not persist the use of the enrollment token '%s'; the enrollment continues.", id);
+            /* Best effort on purpose: the use is counted in memory and the enrollment goes ahead,
+             * because failing it over a disk hiccup would deny a legitimate agent.
+             *
+             * The price, stated plainly (issue #39078, H07): a limited token's use count is NOT a
+             * durable guarantee. A restart before the next successful write reloads the older
+             * counter, so a single-use token can admit another enrollment -- and if writes keep
+             * failing, more than one. Nor does this need a lost disk: a store already at its
+             * serialized ceiling fails to save on the very growth of the counter. What does hold
+             * across a restart is the token's expiry and its revocation. Revoking is the reliable
+             * way to stop a token; the use count is an accounting aid */
+            merror("Could not persist the use of the enrollment token '%s'; the enrollment continues. "
+                   "The use count is not durable: a restart before the next successful write may "
+                   "admit another enrollment with this token.", id);
         }
 
         mdebug2("Enrollment token '%s' consumed.", id);
@@ -1225,10 +1356,11 @@ void etoken_store_free(void) {
     w_mutex_lock(&etoken_mutex);
 
     etoken_clear_locked();
-    /* Reservations do not survive dropping the tokens they reserve: this is the teardown, not a
-     * reload */
+    /* Reservations and pending revocations do not survive dropping the tokens they refer to: this
+     * is the teardown, not a reload */
     os_free(etoken_inflight);
     etoken_inflight_size = 0;
+    etoken_pending_clear_locked();
     /* The path survives: this function drops the tokens, it does not un-initialise the module, so
      * a caller (and every test fixture) can load the store again right afterwards */
     etoken_mtime = 0;
