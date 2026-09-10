@@ -36,6 +36,7 @@ STATIC int w_enrollment_load_reenroll_credential(w_enroll_request_t *out);
 STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_class,
                                                             const char *manager_message);
 STATIC int w_enrollment_fallback_credential_exists(void);
+STATIC void w_enrollment_shred_fleet_password(void);
 
 int w_enrollment_build_request(w_enroll_request_t *out) {
     assert(out != NULL);
@@ -271,6 +272,14 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
             return W_ENROLL_ERR_SERVER;
         }
 
+        /* #39064, the second half: this endpoint now holds a credential of its own, so the
+         * fleet-wide one has no reason to stay on disk. Only after the secret was actually stored
+         * -- shredding the password on a response that carried none would leave an endpoint with
+         * no recovery credential at all. */
+        if (reenroll_secret != NULL) {
+            w_enrollment_shred_fleet_password();
+        }
+
         minfo("Valid key received");
         return W_ENROLL_OK;
     }
@@ -401,6 +410,60 @@ STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_cla
      * same token comes back as the 403 handled above, and THAT is the one that stops the loop. */
     minfo("Enrollment rejected by the manager: %s%s%s. Retrying.", auth_class, detail_sep, detail);
     return W_ENROLL_ERR_AUTH_RETRY;
+}
+
+/**
+ * @brief Removes the fleet-wide enrollment password, now that this agent has its own credential.
+ *
+ * This is what makes #39064's upgrade policy self-healing rather than a silent capability
+ * removal: a package upgrade leaves etc/authd.pass exactly as it was, and each endpoint drops it
+ * by itself the first time a 5.0 manager issues it a re-enrollment secret. An endpoint that never
+ * reaches such a manager keeps working exactly as it does today.
+ *
+ * ONLY the compiled default path. An explicitly configured <authorization_pass_path> is
+ * operator-owned -- it may be a shared mount, a file a configuration-management run templates, or
+ * one deliberately kept for re-imaging -- and deleting a file someone named in their own template
+ * is how a converge becomes an outage. Those keep working and are left alone.
+ *
+ * Best-effort throughout: the enrollment has already succeeded, and none of this is worth failing
+ * it over. The overwrite pass removes the obvious plaintext copy and is not an erasure guarantee
+ * (same caveat as w_reenroll_secret_clear()).
+ */
+STATIC void w_enrollment_shred_fleet_password(void) {
+    const char *path = agt->enrollment.authorization_pass_path;
+    FILE *fp;
+    off_t size;
+
+    if (path == NULL || strcmp(path, AUTHD_PASS) != 0) {
+        return; /* Unset, or operator-owned: not ours to remove. */
+    }
+
+    if ((size = FileSize(path)) <= 0) {
+        return; /* Absent or empty: nothing to do, and the normal case from here on. */
+    }
+
+    if ((fp = wfopen(path, "r+")) != NULL) {
+        off_t written;
+
+        for (written = 0; written < size; written++) {
+            if (fputc('0', fp) == EOF) {
+                break;
+            }
+        }
+
+        fflush(fp);
+        fclose(fp);
+    }
+
+    if (unlink(path) != 0) {
+        mwarn("This agent now holds its own re-enrollment secret, but the fleet-wide enrollment "
+              "password at '%s' could not be removed: %s (%d). It is no longer needed and should "
+              "be deleted.", path, strerror(errno), errno);
+        return;
+    }
+
+    minfo("The fleet-wide enrollment password at '%s' has been removed: this agent now holds its "
+          "own re-enrollment secret.", path);
 }
 
 w_enroll_action_t w_enrollment_apply_policy(w_enroll_status_t status) {
