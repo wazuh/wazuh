@@ -507,6 +507,16 @@ typedef struct hc_enroll_request_t
     ///< (mTLS/open enrollment): a client cert (if `config` carries one) and
     ///< a password may both be set; there is no precedence between them,
     ///< each authenticates independently (confirmed with the server team).
+    /// Enrollment-token `kid` bearer: 22 canonical base64url characters (the token's
+    /// id) + NUL, or empty for password/open mode. Both this and token_key_hex must
+    /// be non-empty for the token-kid bearer to be minted; it then takes priority
+    /// over `password` (a token-based enrollment must not also sign with a possibly-
+    /// unrelated configured authd.pass).
+    char token_kid[24];
+    /// The token credential's HKDF-derived 32-byte key, as 64 lowercase hex characters
+    /// + NUL -- same hex convention as hc_config_t::agent_key. Empty means no token-kid
+    /// bearer (see token_kid above).
+    char token_key_hex[65];
     full_log_fnc_t log; ///< This call's log sink. hc_enroll() may run before
     ///< hc_create() ever does (first-boot enrollment has no handle yet), so
     ///< it cannot rely on a sink already being assigned.
@@ -592,6 +602,21 @@ typedef struct hc_cacerts_result_t
  */
 HC_EXPORTED bool hc_fetch_cacerts(const hc_config_t* config, const hc_cacerts_request_t* request,
                                   hc_cacerts_result_t* result);
+
+/**
+ * @brief Whether any certificate in a /cacerts PEM bundle matches an enrollment token's SPKI
+ *        pin (hc_fetch_cacerts() above fetches unverified; this validates the result against
+ *        the token's pin before it is ever trusted).
+ * @param cacerts_body The raw /cacerts response body (hc_cacerts_result_t::body).
+ * @param body_len Its length. Must be built with strnlen(body, HC_MAX_CACERTS_BODY), never
+ *        strlen(): the buffer is a fixed char[] with no length field of its own.
+ * @param pin_b64url The token's pin, as 43 canonical unpadded base64url characters.
+ * @return true when at least one certificate in the bundle's SPKI hashes to `pin_b64url`
+ *         (standard SPKI-pinning practice: any certificate in the chain may match, not just
+ *         the first). false on no match, a malformed pin, an unparseable bundle, or a NULL
+ *         argument -- fail closed in every case.
+ */
+HC_EXPORTED bool hc_spki_pin_matches(const char* cacerts_body, size_t body_len, const char* pin_b64url);
 
 #ifdef __cplusplus
 }
