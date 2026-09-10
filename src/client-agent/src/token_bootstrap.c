@@ -190,9 +190,17 @@ int w_agent_token_bootstrap(int uid, int gid) {
         fetched = hc_fetch_cacerts(&fetch_config, &fetch_request, &fetch_result);
 
         if (!fetched || fetch_result.http_code != 200) {
-            merror("Token bootstrap: fetching /cacerts from the manager failed%s%s.",
-                   fetch_result.transport_error[0] != '\0' ? ": " : "",
-                   fetch_result.transport_error[0] != '\0' ? fetch_result.transport_error : "");
+            if (fetch_result.http_code != 0) {
+                merror("Token bootstrap: fetching /cacerts from the manager failed: manager "
+                       "returned HTTP %ld instead of 200%s%s.", fetch_result.http_code,
+                       fetch_result.transport_error[0] != '\0' ? ": " : "",
+                       fetch_result.transport_error[0] != '\0' ? fetch_result.transport_error : "");
+            } else {
+                merror("Token bootstrap: fetching /cacerts from the manager failed%s%s.",
+                       fetch_result.transport_error[0] != '\0' ? ": " : "",
+                       fetch_result.transport_error[0] != '\0' ? fetch_result.transport_error : "");
+            }
+
             w_etoken_free(&token);
             return -1;
         }
@@ -271,7 +279,14 @@ int w_agent_token_bootstrap(int uid, int gid) {
     strncpy(enroll_request.body_json, built_request.body_json, sizeof(enroll_request.body_json) - 1);
     enroll_request.log = mtLoggingFunctionsWrapper;
     /* Never the configured authd.pass here: a token-based enrollment must not sign with a
-     * possibly-unrelated password (built_request.password is discarded below, unused). */
+     * possibly-unrelated password (built_request.password is discarded below, unused).
+     *
+     * DIVERGENCE FROM #38993: a credential-less token (token.has_key == false) does NOT fall
+     * back to WAZUH_REGISTRATION_PASSWORD/authd.pass either -- enrollment goes out with no
+     * credential at all. #38993's wire contract has no stated fallback order for this case;
+     * silently reusing whatever password happens to be configured would let a credential-less
+     * token piggyback on an unrelated secret, which is worse than sending none. Flagged here
+     * for #38993 to confirm or override, not silently accommodated. */
 
     if (token.has_key) {
         uint8_t derived_key[W_ETOKEN_KEY_BYTES];
