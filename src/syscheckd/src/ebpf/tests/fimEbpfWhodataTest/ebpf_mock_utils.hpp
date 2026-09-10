@@ -101,7 +101,15 @@ void mock_bpf_link_destroy([[maybe_unused]] struct bpf_link* link) {}
 int mock_bpf_program_set_autoload([[maybe_unused]] void* prog, [[maybe_unused]] bool autoload) { return 0; }
 bool mock_bpf_program_autoload_true([[maybe_unused]] const void* prog) { return true; }
 bool mock_bpf_program_autoload_false([[maybe_unused]] const void* prog) { return false; }
-const char* mock_bpf_program_section_name_kprobe([[maybe_unused]] const void* prog) { return "kprobe/security_inode_setattr"; }
+
+/* section_name distinguishes the setattr argument variants + other kprobes. */
+const char* mock_bpf_program_section_name([[maybe_unused]] const void* prog)
+{
+    /* Mock provides one fixed section; tests aren't variant-aware, OK. */
+    return "kprobe/security_inode_setattr";
+}
+
+/* Mock program name for the test harness (doesn't care about variant names). */
 const char* mock_bpf_program_name_default([[maybe_unused]] const void* prog) { return "mock_prog"; }
 int mock_bpf_object_find_map_fd_by_name_success([[maybe_unused]] void* obj, [[maybe_unused]] const char* name) { return 1; }
 int mock_bpf_object_find_map_fd_by_name_failure([[maybe_unused]] void* obj, [[maybe_unused]] const char* name) { return -1; }
