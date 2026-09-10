@@ -351,6 +351,10 @@ namespace remoted::enrollment
                            // since it never sends an id of its own.
                 case 9015: // worker rejection (remove/get, post cluster-forwarding fix)
                 case 9016: // clustered forward to master failed
+                case 9031: // authd could not journal the credential it was about to hand out
+                           // (issue #39078, H03), so it handed out none. Nothing is wrong with the
+                           // request: this manager cannot record the transition right now, and the
+                           // agent should come back -- the same shape as the two above.
                     return 503;
                 case 9022: // enrollment token unknown or revoked (issue #38993)
                 case 9023: // enrollment token expired

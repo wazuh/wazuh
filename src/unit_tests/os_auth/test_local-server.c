@@ -475,6 +475,7 @@ static const char LOOPBACK_PEM[] =
 
 #define TOKEN_PIN_HEX "6091dc3665ed5e833c8d945f93ebbf14b37020ccee77334e4497ac2ef3590aa2"
 #define TOKENS_FILE "etc/enrollment_tokens.json"
+#define IDENTITY_JOURNAL_PATH "queue/authd/pending-identities"
 #define LEAF_FILE "etc/certs/remoted.pem"
 #define CA_FILE "etc/certs/root-ca.pem"
 #define LOOPBACK_FILE "etc/certs/loopback.pem"
@@ -535,6 +536,11 @@ static int setup_token_env(void **state) {
     assert_int_equal(chdir(token_env_dir), 0);
     assert_int_equal(mkdir("etc", 0770), 0);
     assert_int_equal(mkdir("etc/certs", 0770), 0);
+    // Every add and every rotation journals its credential before answering (issue #39078, H03),
+    // so without this directory the whole suite would answer 9031.
+    assert_int_equal(mkdir("queue", 0770), 0);
+    assert_int_equal(mkdir("queue/authd", 0750), 0);
+    identity_journal_init(IDENTITY_JOURNAL_PATH);
     write_file(LEAF_FILE, LEAF_PEM);
     write_file(CA_FILE, CA_PEM);
     write_file(LOOPBACK_FILE, LOOPBACK_PEM);
@@ -563,6 +569,10 @@ static int teardown_token_env(void **state) {
     free_keynode_queue(&queue_remove);
     insert_tail = &queue_insert;
     remove_tail = &queue_remove;
+    identity_journal_init(NULL);
+    unlink(IDENTITY_JOURNAL_PATH);
+    rmdir("queue/authd");
+    rmdir("queue");
     unlink(TOKENS_FILE);
     unlink(LEAF_FILE);
     unlink(CA_FILE);
@@ -1393,6 +1403,99 @@ static void test_reenroll_rotates_key_and_secret_keeping_the_id(void **state) {
     cJSON_Delete(response);
 }
 
+/* --- The credential is written down before it is handed out (issue #39078, H03) -------------- */
+
+static void test_an_accepted_enrollment_is_journaled_with_its_credential(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"journaled-agent\",\"ip\":\"any\"}}");
+    assert_int_equal(response_error(response), 0);
+
+    // The same key and the same secret the caller was just given: what the journal holds is what
+    // the database owes, and it is the credential itself -- a digest would restore nothing.
+    size_t count = 0;
+    identity_journal_entry_t *entries = identity_journal_snapshot(0, &count);
+    identity_journal_entry_t *mine = NULL;
+    for (size_t i = 0; i < count; i++) {
+        if (!strcmp(entries[i].id, data_string(response, "id"))) {
+            mine = &entries[i];
+        }
+    }
+    assert_non_null(mine);
+    assert_string_equal(mine->key, data_string(response, "key"));
+    assert_string_equal(mine->secret, data_string(response, "reenroll_secret"));
+    assert_false(mine->rotate);
+    identity_journal_free(entries, count);
+    cJSON_Delete(response);
+}
+
+static void test_an_enrollment_that_cannot_be_journaled_is_refused(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_ERROR();
+    const unsigned int keysize_before = keys.keysize;
+    identity_journal_init("queue/no-such-directory/pending-identities");
+
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"unrecorded-agent\",\"ip\":\"any\"}}");
+    // No credential is handed out: an agent whose secret nothing durable holds could never
+    // re-enroll, and nobody would ever know it had one.
+    assert_int_equal(response_error(response), 9031);
+    assert_null(cJSON_GetObjectItem(cJSON_GetObjectItem(response, "data"), "key"));
+    // And the addition is undone rather than left half-done.
+    assert_int_equal(keys.keysize, keysize_before);
+    assert_int_equal(OS_IsAllowedName(&keys, "unrecorded-agent"), -1);
+    cJSON_Delete(response);
+
+    identity_journal_init(IDENTITY_JOURNAL_PATH);
+}
+
+static void test_a_rotation_that_cannot_be_journaled_is_refused_and_frees_the_reservation(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_ERROR();
+    char id[16];
+    char old_key[128];
+    add_agent("unrecorded-rot", id, sizeof(id), old_key, sizeof(old_key));
+
+    identity_journal_init("queue/no-such-directory/pending-identities");
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+
+    cJSON *response = reenroll(id, "unrecorded-rot");
+    assert_int_equal(response_error(response), 9031);
+    // The keystore is untouched: the entry still holds the key the agent already has.
+    int index = OS_IsAllowedID(&keys, id);
+    assert_true(index >= 0);
+    assert_string_equal(keys.keyentries[index]->raw_key, old_key);
+    cJSON_Delete(response);
+
+    // And the reservation was released, so the very next attempt goes through -- 9031 is a
+    // "come back", not a state that locks the agent out.
+    identity_journal_init(IDENTITY_JOURNAL_PATH);
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    response = reenroll(id, "unrecorded-rot");
+    assert_int_equal(response_error(response), 0);
+    assert_string_not_equal(data_string(response, "key"), old_key);
+    cJSON_Delete(response);
+}
+
 static void test_reenroll_twice_with_the_same_bearer_rotates_once(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -1633,6 +1736,9 @@ int main(void) {
         cmocka_unit_test(test_reenroll_invalid_bearer_9027),
         cmocka_unit_test(test_reenroll_stale_9028),
         cmocka_unit_test(test_reenroll_rotates_key_and_secret_keeping_the_id),
+        cmocka_unit_test(test_an_accepted_enrollment_is_journaled_with_its_credential),
+        cmocka_unit_test(test_an_enrollment_that_cannot_be_journaled_is_refused),
+        cmocka_unit_test(test_a_rotation_that_cannot_be_journaled_is_refused_and_frees_the_reservation),
         cmocka_unit_test(test_reenroll_twice_with_the_same_bearer_rotates_once),
         cmocka_unit_test(test_reenroll_reservation_is_released_when_the_request_is_rejected),
         cmocka_unit_test(test_reenroll_after_the_writer_persists_needs_the_new_secret),

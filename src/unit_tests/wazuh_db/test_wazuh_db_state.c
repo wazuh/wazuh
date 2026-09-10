@@ -26,6 +26,7 @@ static int test_setup(void** state)
     wdb_state.queries_breakdown.global_breakdown.sql_queries = 8;
     wdb_state.queries_breakdown.global_breakdown.backup_queries = 6;
     wdb_state.queries_breakdown.global_breakdown.vacuum_queries = 3;
+    wdb_state.queries_breakdown.global_breakdown.commit_queries = 4;
     wdb_state.queries_breakdown.global_breakdown.get_fragmentation_queries = 5;
     wdb_state.queries_breakdown.global_breakdown.agent.insert_agent_queries = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.update_agent_data_queries = 16;
@@ -59,6 +60,8 @@ static int test_setup(void** state)
     wdb_state.queries_breakdown.global_breakdown.backup_time.tv_usec = 145452;
     wdb_state.queries_breakdown.global_breakdown.vacuum_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.vacuum_time.tv_usec = 11111;
+    wdb_state.queries_breakdown.global_breakdown.commit_time.tv_sec = 0;
+    wdb_state.queries_breakdown.global_breakdown.commit_time.tv_usec = 12222;
     wdb_state.queries_breakdown.global_breakdown.get_fragmentation_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.get_fragmentation_time.tv_usec = 22222;
     wdb_state.queries_breakdown.global_breakdown.agent.insert_agent_time.tv_sec = 0;
@@ -160,6 +163,8 @@ void test_wazuhdb_create_state_json(void** state)
     assert_int_equal(cJSON_GetObjectItem(global_queries_db, "backup")->valueint, 6);
     assert_non_null(cJSON_GetObjectItem(global_queries_db, "vacuum"));
     assert_int_equal(cJSON_GetObjectItem(global_queries_db, "vacuum")->valueint, 3);
+    assert_non_null(cJSON_GetObjectItem(global_queries_db, "commit"));
+    assert_int_equal(cJSON_GetObjectItem(global_queries_db, "commit")->valueint, 4);
     assert_non_null(cJSON_GetObjectItem(global_queries_db, "get_fragmentation"));
     assert_int_equal(cJSON_GetObjectItem(global_queries_db, "get_fragmentation")->valueint, 5);
 
@@ -240,12 +245,12 @@ void test_wazuhdb_create_state_json(void** state)
     cJSON* time = cJSON_GetObjectItem(metrics, "time");
 
     assert_non_null(cJSON_GetObjectItem(time, "execution"));
-    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 4851); // + the 4 ms of set-agent-credentials
+    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 4864); // + the 4 ms of set-agent-credentials and the 12 of commit
 
     cJSON* execution_breakdown = cJSON_GetObjectItem(time, "execution_breakdown");
 
     assert_non_null(cJSON_GetObjectItem(execution_breakdown, "global"));
-    assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "global")->valueint, 4836);
+    assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "global")->valueint, 4849); // + the 12 ms of commit
 
     cJSON* global_time_breakdown = cJSON_GetObjectItem(execution_breakdown, "global_breakdown");
 
@@ -258,6 +263,8 @@ void test_wazuhdb_create_state_json(void** state)
     assert_int_equal(cJSON_GetObjectItem(global_time_db, "backup")->valueint, 1145);
     assert_non_null(cJSON_GetObjectItem(global_time_db, "vacuum"));
     assert_int_equal(cJSON_GetObjectItem(global_time_db, "vacuum")->valueint, 11);
+    assert_non_null(cJSON_GetObjectItem(global_time_db, "commit"));
+    assert_int_equal(cJSON_GetObjectItem(global_time_db, "commit")->valueint, 12);
     assert_non_null(cJSON_GetObjectItem(global_time_db, "get_fragmentation"));
     assert_int_equal(cJSON_GetObjectItem(global_time_db, "get_fragmentation")->valueint, 22);
 

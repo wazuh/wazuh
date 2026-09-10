@@ -965,6 +965,8 @@ class Agent:
             If the ID is not a positive integer no greater than 2147483647, or is 0.
         WazuhError(1766)
             If too many agent deletions are still pending in the indexer.
+        WazuhInternalError(1772)
+            If the manager could not record the credentials it was about to hand out.
 
         Returns
         -------
@@ -1013,6 +1015,10 @@ class Agent:
                 raise WazuhError(1765, extra_message=id)
             elif e.code == 9021:
                 raise WazuhError(1766, extra_message=id)
+            elif e.code == 9031:
+                # authd refused the enrollment instead of handing out credentials it could not
+                # journal (issue #39078, H03): nothing was created, and retrying is the remedy.
+                raise WazuhInternalError(1772)
             raise e
 
         self.id = data["id"]

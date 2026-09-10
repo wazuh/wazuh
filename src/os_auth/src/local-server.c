@@ -63,7 +63,8 @@ typedef enum auth_local_err {
     EREENROLLINVALID,
     EREENROLLSTALE,
     ETOKENSTOREFAILED,
-    EREENROLLINPROGRESS
+    EREENROLLINPROGRESS,
+    EIDENTITYUNRECORDED
 } auth_local_err;
 
 
@@ -127,7 +128,12 @@ static const struct {
     // A rotation for that agent is accepted and not yet persisted (#39078, H02). Not an
     // authentication failure -- the bearer verified, or never got the chance -- so remoted answers
     // 409 rather than the uniform 401 of 9026-9028: the caller has to wait, not re-sign.
-    { 9030, "Re-enrollment already in progress" }
+    { 9030, "Re-enrollment already in progress" },
+    // The credential could not be journaled, so it is not handed out (#39078, H03). The operation
+    // is not wrong and the caller is not at fault: this manager cannot record it right now --
+    // no room in queue/authd, or the file is unwritable -- so remoted answers 503 and the agent
+    // retries. Performing it anyway is what left agents holding credentials nothing else knew.
+    { 9031, "Identity transition could not be recorded" }
 };
 
 // Dispatch local request. STATIC: the unit tests drive the token verbs and `add` through it.
@@ -787,6 +793,7 @@ cJSON* local_add(const char *id,
     char* str_result = NULL;
     char _ip[IPSIZE + 1] = {0};
     char reenroll_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
+    long long journal_seq = 0;
     bool warn = false;
 
     mdebug2("add(%s)", name);
@@ -940,8 +947,24 @@ cJSON* local_add(const char *id,
         goto fail;
     }
 
+    /* The credential goes on the record BEFORE it is handed out (issue #39078, H03). The id is not
+     * known any earlier -- OS_AddNewAgent() assigns it when the request brings none -- so this is
+     * the first point at which the entry can be written. A failure undoes the addition in memory,
+     * exactly as the 1515 path does when its answer never reaches the agent (main-server.c), and
+     * the caller is told: an agent whose secret nothing durable holds could never re-enroll. */
+    char assigned_id[16] = {0};
+    strncpy(assigned_id, keys.keyentries[index]->id, sizeof(assigned_id) - 1);
+
+    if (!identity_journal_append(assigned_id, name, _ip, keys.keyentries[index]->raw_key,
+                                 reenroll_secret, false, &journal_seq)) {
+        // Its own copy of the id: OS_DeleteKey() frees the entry this would otherwise point into.
+        OS_DeleteKey(&keys, assigned_id, 1);
+        ierror = EIDENTITYUNRECORDED;
+        goto fail;
+    }
+
     /* Add pending key to write */
-    add_insert(keys.keyentries[index], groups, reenroll_secret);
+    add_insert(keys.keyentries[index], groups, reenroll_secret, journal_seq);
     write_pending = 1;
     w_cond_signal(&cond_pending);
 
@@ -975,6 +998,7 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
     char new_key[AGENT_KEY_HEX_CHARS + 1] = {0};
     char new_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
     unsigned int generation = 0;
+    long long journal_seq = 0;
 
     mdebug2("reenroll(%s)", kid);
 
@@ -1080,6 +1104,15 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
         goto fail;
     }
 
+    /* On the record BEFORE the keystore is touched (issue #39078, H03), which is what makes a failure here a
+     * plain rejection: nothing has been mutated and nothing has been answered, so the agent keeps the credentials
+     * it already had and may try again. The entry carries the NEW credential -- the one the answer is about to
+     * hand out -- because that is what the database will owe if the writer cannot reach it. */
+    if (!identity_journal_append(kid, name, _ip, new_key, new_secret, true, &journal_seq)) {
+        ierror = EIDENTITYUNRECORDED;
+        goto fail;
+    }
+
     /* The rotation itself: delete + add under the same lock, so no reader ever sees the id missing. purge = 1:
      * no `!id` removal marker is kept (the id is not being retired), and add_remove() is not called -- no
      * wdb_remove_agent(), no deletion task, no indexer purge. The writer persists this as an UPDATE of the
@@ -1101,7 +1134,7 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
     /* The reservation stays taken from here on: it is the writer that releases it, and only when the
      * new credentials are in the database. Until then the agent's row still names the previous secret,
      * so anything that verified against it must not be allowed to rotate again */
-    add_rotate(keys.keyentries[index], groups, new_secret);
+    add_rotate(keys.keyentries[index], groups, new_secret, journal_seq);
     write_pending = 1;
     w_cond_signal(&cond_pending);
 
@@ -1115,6 +1148,11 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
 
 fail:
     w_mutex_unlock(&mutex_keys);
+    /* Only the two "not reachable" keystore failures can get here with the transition already journaled, and
+     * leaving the entry would make the writer apply a credential the agent was never told. */
+    if (journal_seq > 0) {
+        identity_journal_drop(&journal_seq, 1);
+    }
     /* Nothing was handed out on this path, so the agent is free to try again at once */
     w_reenroll_abandon(kid);
     OPENSSL_cleanse(new_key, sizeof(new_key));

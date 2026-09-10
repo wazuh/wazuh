@@ -268,6 +268,12 @@ class WazuhException(Exception):
                               'store file is writable again; check the disk and the permissions of '
                               'etc/enrollment_tokens.json, then retry'
                },
+        1772: {'message': 'The agent credentials could not be recorded',
+               'remediation': 'The manager refused the enrollment instead of handing out credentials it '
+                              'could not write down; check the disk and the permissions of '
+                              'queue/authd, and whether too many enrollments are still waiting for '
+                              'wazuh-db, then retry'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'

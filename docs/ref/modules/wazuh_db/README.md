@@ -43,6 +43,7 @@ global insert-agent {"id":5,"name":"ubuntu-agent","ip":"10.0.0.5","date_add":170
 global update-connection-status {"id":5,"connection_status":"active","sync_status":"synced","status_code":0}
 global get-agent-info 5
 global set-agent-credentials {"id":5,"name":"ubuntu-agent","register_ip":"10.0.0.5","internal_key":"<64 hex>","reenroll_secret":"<64 hex>"}
+global commit
 ```
 
 > **Note on `set-agent-credentials`:** the query `wazuh-manager-authd` issues when an agent re-enrolls with its
@@ -50,6 +51,13 @@ global set-agent-credentials {"id":5,"name":"ubuntu-agent","register_ip":"10.0.0
 > a new `internal_key` and a new `reenroll_secret` in place, so nothing is deleted from `global.db` and no
 > indexer purge follows. All five fields are mandatory; a missing one is rejected with `err Invalid JSON data`.
 > The daemon's statistics count it under `set-agent-credentials`, next to `insert-agent`.
+
+> **Note on `commit`:** `global commit` ends the open transaction of `global.db` immediately and
+> answers `ok` (or `err Cannot end transaction`). Every other write answers `ok` from inside a
+> DEFERRED transaction that this daemon commits later on its own clock (`commit_time_min` /
+> `commit_time_max`), so that `ok` is not a durability acknowledgement. `wazuh-manager-authd` is the
+> only caller: it may forget a journaled identity transition only once the write is committed
+> (issue #39078). The daemon's statistics count it under `commit`, next to `vacuum`.
 
 > **Note on `update-connection-status`:** the `status_code` field (numeric) is required in addition to `id`, `connection_status`, and `sync_status`. Omitting it causes the query to be rejected with `err Invalid JSON data`.
 

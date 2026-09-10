@@ -22,6 +22,10 @@ list(APPEND os_auth_names "test_purge_journal")
 # its ANSWERS are interpreted, and a real socket would make "outstanding" and "the query failed" the
 # same case.
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,manager_task_agent_status")
+list(APPEND os_auth_names "test_identity_journal")
+# Real files in a temporary tree, nothing wrapped but the logs: the journal's file is what an agent's
+# credential survives on, so its mode, its append-only writes and what a torn line does are the test.
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND os_auth_names "test_authd-config")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
 # authd_read_config()/getAuthdConfig() over the YAML document (w_mconf_* wrapped, Read_Authd_JSON real)

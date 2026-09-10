@@ -1731,6 +1731,62 @@ void test_wdb_remove_agent_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
+/* Tests wdb_commit_global */
+
+void test_wdb_commit_global_success(void **state)
+{
+    // What authd waits for before it forgets a journaled identity transition (issue #39078, H03).
+    char *query_str = "global commit";
+    const char *response = "ok";
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    assert_int_equal(OS_SUCCESS, wdb_commit_global(NULL));
+}
+
+void test_wdb_commit_global_error_result(void **state)
+{
+    // `err` here means the transaction is NOT committed, so the caller must keep its journal.
+    char *query_str = "global commit";
+    const char *response = "err Cannot end transaction";
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
+
+    assert_int_equal(OS_INVALID, wdb_commit_global(NULL));
+}
+
+void test_wdb_commit_global_error_socket(void **state)
+{
+    char *query_str = "global commit";
+    const char *response = "err";
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global commit");
+
+    assert_int_equal(OS_INVALID, wdb_commit_global(NULL));
+}
+
 /* Tests wdb_get_agent_group */
 
 void test_wdb_get_agent_group_error_no_json_response(void **state) {
@@ -3593,6 +3649,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        /* Tests wdb_commit_global */
+        cmocka_unit_test_setup_teardown(test_wdb_commit_global_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_commit_global_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_commit_global_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),

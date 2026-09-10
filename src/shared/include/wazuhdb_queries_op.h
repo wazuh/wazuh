@@ -34,7 +34,8 @@ typedef enum global_db_access
     WDB_RESET_AGENTS_CONNECTION,
     WDB_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_DISCONNECT_AGENTS,
-    WDB_GET_DISTINCT_AGENT_GROUP
+    WDB_GET_DISTINCT_AGENT_GROUP,
+    WDB_COMMIT
 } global_db_access;
 
 /**
@@ -107,6 +108,19 @@ int wdb_update_agent_keepalive(int id, const char* connection_status, const char
  * @retval OS_INVALID on errors.
  */
 int wdb_set_agent_credentials(int id, const char* name, const char* register_ip, const char* internal_key, const char* reenroll_secret, int* sock);
+
+/**
+ * @brief Commit the open transaction of global.db.
+ *
+ * wazuh-db answers `ok` to a write as soon as the statement stepped, inside a DEFERRED transaction
+ * it commits later on its own clock (wdb_commit_old(), governed by commit_time_min/max), so an `ok`
+ * followed by a crash loses the write. authd needs the difference to decide when a journaled
+ * identity transition may be forgotten (issue #39078, H03); nothing else should need it.
+ *
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_commit_global(int* sock);
 
 /**
  * @brief Update agent's connection status.
