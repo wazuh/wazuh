@@ -97,6 +97,42 @@ bool __wrap_hc_spki_pin_matches(const char *cacerts_body, size_t body_len, const
     return (bool) mock();
 }
 
+/* The bootstrap asks for an anchor owned by root, which an unprivileged process cannot do:
+ * running these for real would pass under sudo and fail for everyone else. Wrapped so the
+ * outcome is the same either way, and so the ownership the bootstrap asks for can be asserted
+ * rather than assumed. The last call of each is recorded for that. */
+static uid_t g_anchor_chown_uid = (uid_t) -1;
+static gid_t g_anchor_chown_gid = (gid_t) -1;
+
+/* Recorded per target rather than "last call wins": the bootstrap chowns the anchor's
+ * directory, then the anchor, then client.keys -- and client.keys goes to the runtime user
+ * on purpose, so the final call says nothing about the anchor. */
+static bool is_anchor_path(const char *path) {
+    const char *suffix = "root-ca.pem";
+    const size_t path_len = path ? strlen(path) : 0;
+    const size_t suffix_len = strlen(suffix);
+
+    return path_len >= suffix_len && strcmp(path + path_len - suffix_len, suffix) == 0;
+}
+
+int __wrap_chown(const char *path, uid_t owner, gid_t group) {
+    if (is_anchor_path(path)) {
+        g_anchor_chown_uid = owner;
+        g_anchor_chown_gid = group;
+    }
+
+    return 0;
+}
+
+/* Not recorded: the mode is set on the temporary file, before the rename gives it the
+ * anchor's name, so there is nothing here to match it against. Wrapped only so an
+ * unprivileged run behaves like a privileged one. */
+int __wrap_chmod(const char *path, mode_t mode) {
+    (void) path;
+    (void) mode;
+    return 0;
+}
+
 /* ---- fixtures ---- */
 
 static void remove_test_paths(void) {
@@ -127,6 +163,8 @@ static int setup_test(void **state) {
     g_fetch_call_count = 0;
     g_enroll_call_count = 0;
     g_spki_call_count = 0;
+    g_anchor_chown_uid = (uid_t) -1;
+    g_anchor_chown_gid = (gid_t) -1;
 
     return 0;
 }
@@ -383,6 +421,12 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_string_equal(g_enroll_request.password, "");
     assert_int_equal((int) strlen(g_enroll_request.token_kid), 22);
     assert_int_equal((int) strlen(g_enroll_request.token_key_hex), 64);
+
+    /* The anchor is handed to root and only shares its group, so the user the agent drops to
+     * can read the certificate authority it verifies against without being able to replace
+     * it. */
+    assert_int_equal(g_anchor_chown_uid, 0);
+    assert_int_equal(g_anchor_chown_gid, getgid());
 }
 
 /* #39028's DoD: "a credential-less token enrolls when the simulator requires no credential,
