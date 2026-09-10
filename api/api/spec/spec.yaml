@@ -4875,7 +4875,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AllItemsResponseEnrollmentTokenIDs'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseEnrollmentTokenIDs'
               example:
                 data:
                   affected_items:
