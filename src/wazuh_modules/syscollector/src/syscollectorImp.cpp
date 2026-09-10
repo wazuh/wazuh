@@ -202,21 +202,68 @@ static std::string getItemChecksum(const nlohmann::json& item)
     return Utils::asciiToHex(hash.hash());
 }
 
-// Monotonic counters excluded from dbsync's diff
-// NOTE: dbsync's "ignore" only suppresses the diff/callback when ignored fields
-// are the *only* thing that changed; it also skips persisting their new value in
-// that case (see SQLiteDBEngine::syncTableRowData). These fields will hold whatever
-// value they had at the last scan that also changed a non-ignored field.
-static const std::vector<std::string> HW_IGNORED_FIELDS { "memory_free", "memory_used", "checksum" };
-static const std::vector<std::string> PROCESSES_IGNORED_FIELDS { "utime", "stime", "checksum" };
-static const std::vector<std::string> NET_IFACE_IGNORED_FIELDS
+// Runtime counters that move on their own between scans. They are part of the inventory state, so
+// they are stored and synchronized like any other column, but a scan where only these moved is not
+// a change worth reporting: it is muted on the stateless path. They are also left out of the item
+// checksum, so integrity stays stable while the state document keeps carrying current values.
+static const std::map<std::string, std::vector<std::string>> VOLATILE_FIELDS_BY_TABLE
 {
-    "host_network_egress_packages", "host_network_ingress_packages",
-    "host_network_egress_errors",   "host_network_ingress_errors",
-    "host_network_egress_bytes",    "host_network_ingress_bytes",
-    "host_network_egress_drops",    "host_network_ingress_drops",
-    "checksum"
+    {HW_TABLE, {"memory_free", "memory_used"}},
+    {PROCESSES_TABLE, {"utime", "stime"}},
+    {
+        NET_IFACE_TABLE,
+        {
+            "host_network_egress_packages", "host_network_ingress_packages",
+            "host_network_egress_errors",   "host_network_ingress_errors",
+            "host_network_egress_bytes",    "host_network_ingress_bytes",
+            "host_network_egress_drops",    "host_network_ingress_drops"
+        }
+    }
 };
+
+static void eraseVolatileFields(nlohmann::json& item, const std::string& table)
+{
+    for (const auto& field : VOLATILE_FIELDS_BY_TABLE.at(table))
+    {
+        item.erase(field);
+    }
+}
+
+// True when the only columns that moved are the table's volatile counters. dbsync reports "version"
+// as changed on every update and carries "sync" and the primary keys along unchanged, so none of
+// those count as a change here.
+static bool onlyVolatileFieldsChanged(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
+{
+    const auto itTable {VOLATILE_FIELDS_BY_TABLE.find(table)};
+
+    if (MODIFIED != result || VOLATILE_FIELDS_BY_TABLE.end() == itTable
+            || !data.contains("old") || !data.contains("new"))
+    {
+        return false;
+    }
+
+    const auto& oldData {data.at("old")};
+    const auto& newData {data.at("new")};
+    const auto& volatileFields {itTable->second};
+    bool anyVolatileChange {false};
+
+    for (const auto& [key, oldValue] : oldData.items())
+    {
+        if ("version" == key || "sync" == key || !newData.contains(key) || newData.at(key) == oldValue)
+        {
+            continue;
+        }
+
+        if (std::find(volatileFields.begin(), volatileFields.end(), key) == volatileFields.end())
+        {
+            return false;
+        }
+
+        anyVolatileChange = true;
+    }
+
+    return anyVolatileChange;
+}
 
 static std::string getItemId(const nlohmann::json& item, const std::vector<std::string>& idFields)
 {
@@ -361,7 +408,10 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
         newData.erase("state");
     }
 
-    if (m_notify)
+    // The state document above is refreshed on every scan so the inventory stays current, but a
+    // scan where only the volatile counters moved is not reported as a change: that noise is what
+    // makes these fields unusable on the stateless path.
+    if (m_notify && !onlyVolatileFieldsChanged(result, data, table))
     {
         nlohmann::json stateless;
 
@@ -409,15 +459,6 @@ void Syscollector::updateChanges(const std::string& table,
     input["table"] = table;
     input["data"] = values;
     input["options"]["return_old_data"] = true;
-
-    if (table == HW_TABLE)
-    {
-        input["options"]["ignore"] = HW_IGNORED_FIELDS;
-    }
-    else if (table == NET_IFACE_TABLE)
-    {
-        input["options"]["ignore"] = NET_IFACE_IGNORED_FIELDS;
-    }
 
     txn.syncTxnRow(input);
     txn.getDeletedRows(callback);
@@ -1487,8 +1528,7 @@ nlohmann::json Syscollector::getHardwareData()
     sanitizeJsonValue(ret[0]);
 
     auto checksumInput = ret[0];
-    checksumInput.erase("memory_free");
-    checksumInput.erase("memory_used");
+    eraseVolatileFields(checksumInput, HW_TABLE);
     ret[0]["checksum"] = getItemChecksum(checksumInput);
     return ret;
 }
@@ -1567,12 +1607,7 @@ nlohmann::json Syscollector::getNetworkData()
                 ifaceTableData["host_network_ingress_drops"]    = item.at("host_network_ingress_drops");
 
                 auto ifaceChecksumInput = ifaceTableData;
-
-                for (const auto& field : NET_IFACE_IGNORED_FIELDS)
-                {
-                    ifaceChecksumInput.erase(field);
-                }
-
+                eraseVolatileFields(ifaceChecksumInput, NET_IFACE_TABLE);
                 ifaceTableData["checksum"] = getItemChecksum(ifaceChecksumInput);
                 ifaceTableDataList.push_back(std::move(ifaceTableData));
 
@@ -1849,14 +1884,12 @@ void Syscollector::scanProcesses()
             sanitizeJsonValue(rawData);
 
             auto checksumInput = rawData;
-            checksumInput.erase("utime");
-            checksumInput.erase("stime");
+            eraseVolatileFields(checksumInput, PROCESSES_TABLE);
             rawData["checksum"] = getItemChecksum(checksumInput);
 
             input["table"] = PROCESSES_TABLE;
             input["data"] = nlohmann::json::array( { rawData } );
             input["options"]["return_old_data"] = true;
-            input["options"]["ignore"] = PROCESSES_IGNORED_FIELDS;
 
             txn.syncTxnRow(input);
         });
