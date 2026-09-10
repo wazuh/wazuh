@@ -190,13 +190,17 @@ removes the line — after `global commit`, never on wazuh-db's `ok`, which come
 
 - **An unrecordable transition is refused**, `9031` (remoted's **503**, the API's `1772`), and no credential is handed out: an enrollment is undone in the keystore
   and a rotation never touches it. The deletion journal is allowed to lose a line because its entries can be rebuilt from `client.keys`; a secret exists nowhere
-  else, so the same rule here would mean an agent that can never re-enroll.
+  else, so the same rule here would mean an agent that can never re-enroll. The room is checked **before** the request mutates anything, because a duplicate name
+  or IP resolved by `<force>` deletes the previous agent while the request is validated — the same reason the deletion path asks `purge_backlog_full()` at phase 0.
 - **The writer retries on its own clock** while anything is owed — one second, doubling to a minute — instead of waiting for the next enrollment to wake it, and a
-  retry cycle does not rewrite `client.keys`. Each owed entry reads the row first: already this credential means drop it, a row with another one (including the
+  retry cycle does not rewrite `client.keys`. It skips the pass when wazuh-db's socket is not even there and abandons it at the first entry that cannot reach the
+  database: otherwise every entry would pay the client's five-attempt connect ladder, and one pass could hold the only keystore writer for hours. Each owed entry reads the row first: already this credential means drop it, a row with another one (including the
   NULL secret `sync_keys_with_wdb()` leaves when it mirrors `client.keys`) means `set-agent-credentials`, no row means `insert-agent`.
-- **At startup the judge is `client.keys`**, by generation and not by existence of the id — both generations of a rotation share it. The same key means the
-  transition is still owed; a different key means a later one replaced it; an agent no longer listed means nothing is owed. wazuh-db is not consulted there: its
-  socket does not exist yet when authd starts.
+- **At startup the judge is the journal's own order**, not `client.keys`: an id no longer listed there owes nothing (the agent was deleted, or its first key write
+  never landed, and it will enroll again), a **later entry for the same agent** supersedes an earlier one, and anything else is still owed — even when
+  `client.keys` names another key, which is precisely the crash this exists for. Writing it lets the agent re-enroll with the secret it already holds and heal
+  itself. Every rotation kept this way takes its reservation back before the listeners start, so the previous secret cannot authorise a second one meanwhile.
+  wazuh-db is not consulted there: its socket does not exist yet when authd starts.
 - **The bound is the admission**: 5000 transitions in flight, past which new ones are refused rather than older ones dropped, and a file above 8 MiB is not loaded
   at all. There is no `fsync`: what this recovers is a crashed process and an unreachable database, not a power cut.
 

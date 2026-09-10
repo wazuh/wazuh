@@ -260,10 +260,15 @@ which the journal below makes sure happens.
 `queue/authd/pending-identities` (mode 0640) *before* the answer is built, and the entry is removed only once the database write has been **committed** — not when
 wazuh-db answers `ok`, which comes from inside a transaction it commits on its own clock. What this buys is the case that used to lose credentials outright: with
 wazuh-db down, or after a crash between the answer and the write, the manager finishes the job by itself. The writer retries on its own timer while anything is
-owed (a second, doubling to a minute), and at startup each line is judged against `client.keys`: the same key means the transition is still owed, a different key
-means a later one replaced it, and an agent that is no longer there means nothing is owed. Recovery is local to the node: no coordination, no two-phase commit.
+owed (a second, doubling to a minute) and abandons the batch as soon as wazuh-db stops answering, so an outage never holds the keystore writer. At startup each
+line is judged by the journal's own order: an agent no longer in `client.keys` owes nothing, a **later line for the same agent** supersedes an earlier one, and
+anything else is still owed — including a rotation whose key never reached `client.keys`, which is exactly the crash this record exists for. Such a rotation
+takes its reservation back before the listeners start, so the previous secret cannot authorise a second one while the recovery is pending. Recovery is local to
+the node: no coordination, no two-phase commit.
 
-If the transition **cannot** be recorded — the directory is unwritable, or 5000 transitions are already waiting — the operation is refused with `9031`
+If the transition **cannot** be recorded — the directory is unwritable, or 5000 transitions are already waiting — the operation is refused with `9031`, and the
+room is checked before the request changes anything (an enrollment that resolves a duplicate with `<force>` deletes the previous agent as it validates, so a late
+refusal would cost that agent for nothing)
 (*Identity transition could not be recorded*, remoted's **503**, the API's `1772`) and **no credential is handed out**. Performing it anyway is what left agents
 holding a key and a secret nothing else knew about: they can talk to remoted, and they can never re-enroll. The refusal means «come back», and nothing is left
 half-done — the agent is not created and a rotation leaves the previous credentials in place.

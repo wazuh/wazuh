@@ -203,6 +203,25 @@ static bool identity_file_compact_locked(void) {
     return true;
 }
 
+/// Whether the file's last byte is something other than a newline, i.e. an append that was cut
+/// short. The stream is opened for append, so its position is already the end of the file.
+static bool identity_file_needs_newline(FILE *fp) {
+    int last;
+
+    if (fseek(fp, 0, SEEK_END) != 0 || ftell(fp) <= 0) {
+        return false;
+    }
+
+    if (fseek(fp, -1, SEEK_END) != 0) {
+        return false;
+    }
+
+    last = fgetc(fp);
+    fseek(fp, 0, SEEK_END);
+
+    return last != '\n';
+}
+
 bool identity_journal_append(const char *id,
                              const char *name,
                              const char *ip,
@@ -255,10 +274,16 @@ bool identity_journal_append(const char *id,
     /* 0640 from the first byte: the file carries credentials, so there must be no window in which
      * it exists with the process umask. Append, never rewrite -- this runs in front of the answer. */
     old_umask = umask(0137);
-    fp = wfopen(identity_file(), "a");
+    /* "a+" and not "a": the fragment check below has to READ the last byte, and a stream opened
+     * write-only answers EOF to it. Writes still always land at the end. */
+    fp = wfopen(identity_file(), "a+");
     umask(old_umask);
 
-    written = fp && fprintf(fp, "%s\n", line) >= 0 && fflush(fp) == 0;
+    /* A write cut short by a full disk or a crash leaves a line with no newline. Starting the new
+     * entry with one keeps that fragment a line of its own -- ignored on load, as any malformed
+     * line is -- instead of gluing the two together and losing BOTH on the next start. */
+    written = fp && fprintf(fp, "%s%s\n", identity_file_needs_newline(fp) ? "\n" : "", line) >= 0 &&
+              fflush(fp) == 0;
 
     if (fp) {
         fclose(fp);
@@ -305,6 +330,16 @@ bool identity_journal_full(void) {
     return full;
 }
 
+long long identity_journal_last_seq(void) {
+    long long seq;
+
+    w_mutex_lock(&mutex_identity);
+    seq = identity_last_seq;
+    w_mutex_unlock(&mutex_identity);
+
+    return seq;
+}
+
 size_t identity_journal_pending(void) {
     size_t size;
 
@@ -315,7 +350,7 @@ size_t identity_journal_pending(void) {
     return size;
 }
 
-identity_journal_entry_t* identity_journal_snapshot(size_t max, size_t *count) {
+identity_journal_entry_t* identity_journal_snapshot(size_t max, long long upto_seq, size_t *count) {
     identity_journal_entry_t *entries = NULL;
     identity_node_t *node;
     size_t i = 0;
@@ -331,7 +366,16 @@ identity_journal_entry_t* identity_journal_snapshot(size_t max, size_t *count) {
 
         os_calloc(wanted, sizeof(identity_journal_entry_t), entries);
 
-        for (node = identity_journal; node && i < wanted; node = node->next, i++) {
+        for (node = identity_journal; node && i < wanted; node = node->next) {
+            /* Entries newer than the caller's mark are skipped: they were appended while the
+             * writer was already working, so their keys have not reached client.keys yet and
+             * their own queue nodes have not been processed. Applying and forgetting one here
+             * would leave a credential the next start could not recover (issue #39078, review
+             * round). Zero means "everything". */
+            if (upto_seq > 0 && node->entry.seq > upto_seq) {
+                continue;
+            }
+
             entries[i].seq = node->entry.seq;
             entries[i].rotate = node->entry.rotate;
             entries[i].requested_at = node->entry.requested_at;
@@ -340,6 +384,7 @@ identity_journal_entry_t* identity_journal_snapshot(size_t max, size_t *count) {
             os_strdup(node->entry.ip, entries[i].ip);
             os_strdup(node->entry.key, entries[i].key);
             os_strdup(node->entry.secret, entries[i].secret);
+            i++;
         }
     }
 
