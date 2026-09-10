@@ -1401,7 +1401,15 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
                 gettime(&t0);
                 if (wdb_set_agent_credentials(atoi(cur->id), cur->name, cur->ip, cur->raw_key, cur->reenroll_secret, &wdb_sock)) {
-                    merror("Unable to store the rotated credentials of agent %s '%s' in the database.", cur->id, cur->name);
+                    /* The reservation taken when the rotation was accepted STAYS: the row still holds the
+                     * previous secret, so releasing here would let that secret authorise another rotation
+                     * (issue #39078, H02). The agent cannot rotate again on this manager until the
+                     * transition is resolved -- which is what the journal of H03 will do */
+                    merror("Unable to store the rotated credentials of agent %s '%s' in the database. The agent "
+                           "keeps the credentials it was given and cannot re-enroll again until this is written.",
+                           cur->id, cur->name);
+                } else {
+                    w_reenroll_complete(cur->id);
                 }
                 gettime(&t1);
                 mdebug2("[Writer] wdb_set_agent_credentials(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));

@@ -62,7 +62,8 @@ typedef enum auth_local_err {
     EREENROLLUNKNOWN,
     EREENROLLINVALID,
     EREENROLLSTALE,
-    ETOKENSTOREFAILED
+    ETOKENSTOREFAILED,
+    EREENROLLINPROGRESS
 } auth_local_err;
 
 
@@ -122,7 +123,11 @@ static const struct {
     // A storage failure, told apart from 9022 on purpose (#39078): the id exists and the operator's
     // intent stands -- this authd already refuses the token -- but the file could not be written, so
     // the answer is "retry", not "no such token". Every later verb retries the write on its own.
-    { 9029, "Enrollment token store write failed" }
+    { 9029, "Enrollment token store write failed" },
+    // A rotation for that agent is accepted and not yet persisted (#39078, H02). Not an
+    // authentication failure -- the bearer verified, or never got the chance -- so remoted answers
+    // 409 rather than the uniform 401 of 9026-9028: the caller has to wait, not re-sign.
+    { 9030, "Re-enrollment already in progress" }
 };
 
 // Dispatch local request. STATIC: the unit tests drive the token verbs and `add` through it.
@@ -969,8 +974,18 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
     char _ip[IPSIZE + 1] = {0};
     char new_key[AGENT_KEY_HEX_CHARS + 1] = {0};
     char new_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
+    unsigned int generation = 0;
 
     mdebug2("reenroll(%s)", kid);
+
+    /* Before the database is even asked (issue #39078, H02). The row keeps saying the old secret until the
+     * writer replaces it, so two requests carrying the same bearer would both verify and both rotate: two
+     * valid answers for one agent, the first invalidated by the second. Reserving here means the second
+     * request never gets to read that row. From this point every exit must release the reservation. */
+    if (!w_reenroll_reserve(kid, &generation)) {
+        mdebug1("Re-enrollment of agent '%s' refused: another rotation is already in flight.", kid);
+        return local_create_error_response(ERRORS[EREENROLLINPROGRESS].code, ERRORS[EREENROLLINPROGRESS].message);
+    }
 
     /* The credential first, and BEFORE mutex_keys for the reason purge_is_pending() runs there: this is a
      * wazuh-db round trip on the request thread, and the keystore lock is the one every enrollment and the
@@ -983,6 +998,7 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
     }
     if (j_secret == NULL || !cJSON_IsString(j_secret) || !OS_IsValidReenrollSecret(j_secret->valuestring)) {
         cJSON_Delete(agent_info);
+        w_reenroll_abandon(kid);
         mdebug1("Re-enrollment of agent '%s' refused: unknown agent or no re-enrollment credential on record.", kid);
         return local_create_error_response(ERRORS[EREENROLLUNKNOWN].code, ERRORS[EREENROLLUNKNOWN].message);
     }
@@ -994,6 +1010,7 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
     if (verdict != W_REENROLL_OK) {
         /* Debug, not warn: remoted forwards these bearers unverified, so anyone who can reach /enroll can make
          * this line fire at will. remoted's remoted.enroll.reenroll.* counters are the operator's view. */
+        w_reenroll_abandon(kid);
         mdebug1("Re-enrollment of agent '%s' refused: %s.", kid,
                 verdict == W_REENROLL_STALE ? "credential outside the accepted time window" : "invalid credential");
         ierror = verdict == W_REENROLL_STALE ? EREENROLLSTALE : EREENROLLINVALID;
@@ -1001,6 +1018,15 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
     }
 
     w_mutex_lock(&mutex_keys);
+
+    /* Belt and braces for the case the reservation alone does not cover: another rotation that was
+     * ALREADY accepted when this request started may have completed while this one was verifying, which
+     * makes the secret it verified against the previous generation's. The reservation would have been
+     * free by then, so only the counter tells (issue #39078, H02). */
+    if (w_reenroll_generation(kid) != generation) {
+        ierror = EREENROLLINPROGRESS;
+        goto fail;
+    }
 
     /* The row said yes; the keystore has the last word (the agent may have been deleted since, or the row
      * may be wazuh-db's alone). */
@@ -1072,6 +1098,9 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
         goto fail;
     }
 
+    /* The reservation stays taken from here on: it is the writer that releases it, and only when the
+     * new credentials are in the database. Until then the agent's row still names the previous secret,
+     * so anything that verified against it must not be allowed to rotate again */
     add_rotate(keys.keyentries[index], groups, new_secret);
     write_pending = 1;
     w_cond_signal(&cond_pending);
@@ -1086,6 +1115,8 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
 
 fail:
     w_mutex_unlock(&mutex_keys);
+    /* Nothing was handed out on this path, so the agent is free to try again at once */
+    w_reenroll_abandon(kid);
     OPENSSL_cleanse(new_key, sizeof(new_key));
     OPENSSL_cleanse(new_secret, sizeof(new_secret));
     return local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);

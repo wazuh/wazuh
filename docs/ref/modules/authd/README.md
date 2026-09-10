@@ -244,6 +244,13 @@ creating the agent, releasing it if the `add` is refused. Revocation is idempote
 listed with `revoked: true`, and because the master re-checks on every `add` it takes effect at once,
 even through a worker whose replica the cluster has not refreshed yet.
 
+**Only one rotation at a time per agent.** A re-enrollment takes a reservation on the agent *before* reading its secret from the database, and the writer releases it
+when the new credentials are stored. Two requests with the same bearer therefore produce **one** credential: the second is answered `9030` — *Re-enrollment already
+in progress* — which remoted turns into **409** and counts as `remoted.enroll.reenroll.rejected_in_progress`. It means «retry», as opposed to the `9027`/401 a bearer
+gets once the rotation has landed and its secret is the previous generation's. If the database write fails, the reservation is deliberately kept: the row still names
+the old secret, so releasing it would let that secret authorise another rotation. The agent cannot re-enroll again on that manager until the transition is written,
+and the log says so.
+
 **A revoke that cannot be written says so.** If the store file cannot be rewritten, the token is refused
 from that moment on this manager, but the answer is `9029` — *Enrollment token store write failed*, the
 API's error `1771` with HTTP 500 — and not the `9022` of a token that does not exist: the id is real and

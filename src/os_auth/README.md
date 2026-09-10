@@ -176,6 +176,14 @@ The agent has a usable key at that point, but **remoted does not know about it y
 latency is therefore the writer's pass time plus remoted's reload — which is exactly why nothing slow
 may live in that pass.
 
+**One rotation at a time, per agent** (issue #39078, H02). A re-enrollment reserves the agent **before** the request reads its `reenroll_secret` from wazuh-db, and
+the reservation is released by the **writer**, once the new credentials are in the database. That placement is the whole fix: the row keeps naming the old secret
+until the writer replaces it, so two requests carrying the same bearer used to verify and rotate one after the other, handing out two credentials for one agent and
+invalidating the first. A caller that finds the reservation taken gets `9030` (*Re-enrollment already in progress*, remoted's **409**, counter
+`remoted.enroll.reenroll.rejected_in_progress`) — a wait, not a credential problem: `9027` is what a stale bearer gets once the rotation has landed. A rejection
+before anything is handed out releases the reservation at once; a **failed** database write does not, because the row still holds the old secret and letting it
+authorise another rotation is the hole itself. Until that transition is resolved the agent cannot rotate on this manager, and the writer says so in the log.
+
 **What the store promises when it cannot write** (issue #39078):
 
 - **A revoke is either written or reported as failed.** The flag goes on in memory at once — this authd stops honouring the token immediately — but the answer is

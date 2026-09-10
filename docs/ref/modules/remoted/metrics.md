@@ -307,6 +307,7 @@ database), so every cell is `authd`'s verdict on the master:
 | `remoted.enroll.reenroll.rejected_unknown` | 9026: the agent is unknown to the master, or has no re-enrollment secret on record (enrolled over legacy port 1515, or a database rebuilt from `client.keys`) — the agent gets `401 unknown_agent` | diagnostic — such an agent can only enroll anew |
 | `remoted.enroll.reenroll.rejected_signature` | 9027: the bearer did not verify against the agent's re-enrollment secret (or was malformed) — the agent gets `401 invalid_signature` | diagnostic — a stale secret on the agent, or probing |
 | `remoted.enroll.reenroll.rejected_stale` | 9028: correctly signed but outside the accepted time window — the agent gets `401 stale_token` | [`remoted.jwt_max_age`](configuration.md#remotedjwt_max_age), [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) (`authd` reads the same two) — but fix NTP first |
+| `remoted.enroll.reenroll.rejected_in_progress` | 9030: a rotation for that agent is already accepted and not yet persisted — the agent gets `409` and retries, its bearer was fine | — (transient; a sustained count means the writer is not draining, look at wazuh-db) |
 
 The replica of the token store this node authenticates enrollment tokens against (pulls; present
 whenever enrollment is enabled, `0` otherwise):

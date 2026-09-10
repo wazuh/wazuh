@@ -340,7 +340,12 @@ namespace remoted::enrollment
                     return 400;
                 case 9007:
                 case 9008:
-                case 9012: return 409;
+                case 9012:
+                case 9030: // a rotation for that agent is already accepted and not yet persisted
+                           // (issue #39078, H02): the caller's bearer was fine, so this is not an
+                           // authentication failure -- it is the same "that state is taken" 409 the
+                           // duplicate name and ip get, and the agent may retry once it lands.
+                    return 409;
                 case 9013: // max_agents reached -- also authd's id-assignment counter exhaustion,
                            // which shares this sentinel; reachable from ordinary self-enrollment
                            // since it never sends an id of its own.
@@ -403,6 +408,7 @@ namespace remoted::enrollment
             {
                 case 0: incReenrollAccepted(metrics); break;
                 case 9026: incReenrollRejectedUnknown(metrics); break;
+                case 9030: incReenrollRejectedInProgress(metrics); break;
                 case 9027: incReenrollRejectedSignature(metrics); break;
                 case 9028: incReenrollRejectedStale(metrics); break;
                 default: break; // any other outcome is not about the credential

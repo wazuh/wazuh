@@ -1393,6 +1393,117 @@ static void test_reenroll_rotates_key_and_secret_keeping_the_id(void **state) {
     cJSON_Delete(response);
 }
 
+static void test_reenroll_twice_with_the_same_bearer_rotates_once(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char old_key[128];
+    add_agent("twice-agent", id, sizeof(id), old_key, sizeof(old_key));
+
+    // First rotation: accepted, queued, and NOT yet persisted -- the writer does not run in these
+    // tests, which is exactly the window the finding is about (issue #39078, H02).
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *first = reenroll(id, "twice-agent");
+    assert_int_equal(response_error(first), 0);
+    const char *first_key = data_string(first, "key");
+    assert_string_not_equal(first_key, old_key);
+
+    // The same bearer again. The row still says the old secret -- that is the point -- so before
+    // this the request verified again and handed out a SECOND credential for one agent. No
+    // wdb_get_agent_info() is expected now: the reservation refuses it before the database is asked.
+    cJSON *second = reenroll(id, "twice-agent");
+    assert_int_equal(response_error(second), 9030);
+
+    // One key, and it is the first answer's: the second caller got nothing to remember.
+    int index = OS_IsAllowedID(&keys, id);
+    assert_true(index >= 0);
+    assert_string_equal(keys.keyentries[index]->raw_key, first_key);
+
+    // One rotation node queued, not two.
+    struct keynode *node = find_node(queue_insert, id);
+    assert_non_null(node);
+    assert_string_equal(node->raw_key, first_key);
+    assert_null(find_node(node->next, id));
+
+    cJSON_Delete(first);
+    cJSON_Delete(second);
+}
+
+static void test_reenroll_reservation_is_released_when_the_request_is_rejected(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char old_key[128];
+    add_agent("released-agent", id, sizeof(id), old_key, sizeof(old_key));
+
+    // A bearer that does not verify: nothing was handed out, so the agent must be free to try again
+    // at once -- a reservation left behind here would lock it out until authd restarts.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_INVALID);
+
+    cJSON *rejected = reenroll(id, "released-agent");
+    assert_int_equal(response_error(rejected), 9027);
+    cJSON_Delete(rejected);
+
+    // And now a good one goes through.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *accepted = reenroll(id, "released-agent");
+    assert_int_equal(response_error(accepted), 0);
+    cJSON_Delete(accepted);
+}
+
+static void test_reenroll_after_the_writer_persists_needs_the_new_secret(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char old_key[128];
+    add_agent("persisted-agent", id, sizeof(id), old_key, sizeof(old_key));
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *first = reenroll(id, "persisted-agent");
+    assert_int_equal(response_error(first), 0);
+    cJSON_Delete(first);
+
+    // What the writer does when the credentials reach the database: the reservation is released and
+    // the generation moves on.
+    w_reenroll_complete(id);
+
+    // The old bearer now meets the NEW secret in the row, so it is a plain signature failure (9027)
+    // -- not "already in progress": there is nothing in flight any more.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_INVALID);
+
+    cJSON *second = reenroll(id, "persisted-agent");
+    assert_int_equal(response_error(second), 9027);
+    cJSON_Delete(second);
+}
+
 static void test_reenroll_duplicate_name_of_another_agent_9008(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -1522,6 +1633,9 @@ int main(void) {
         cmocka_unit_test(test_reenroll_invalid_bearer_9027),
         cmocka_unit_test(test_reenroll_stale_9028),
         cmocka_unit_test(test_reenroll_rotates_key_and_secret_keeping_the_id),
+        cmocka_unit_test(test_reenroll_twice_with_the_same_bearer_rotates_once),
+        cmocka_unit_test(test_reenroll_reservation_is_released_when_the_request_is_rejected),
+        cmocka_unit_test(test_reenroll_after_the_writer_persists_needs_the_new_secret),
         cmocka_unit_test(test_reenroll_duplicate_name_of_another_agent_9008),
         cmocka_unit_test(test_reenroll_malformed_or_with_token_id_9027),
         cmocka_unit_test(test_reenroll_on_worker_forwards_kid_and_bearer),
