@@ -24,6 +24,7 @@
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 #include "../wrappers/wazuh/remoted/agent_metadata_wrappers.h"
+#include "../wrappers/wazuh/remoted/remoted_module_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 
 /* Prototypes of the STATIC (test-exported under WAZUH_UNIT_TESTING) functions under test,
@@ -47,6 +48,15 @@ void legacy_task_retry_list_purge_expired(void);
 
 /* Must match LEGACY_TASK_MAX_PUSH_ATTEMPTS in legacy_task_delivery.c. */
 #define LEGACY_TASK_MAX_PUSH_ATTEMPTS 5
+
+/* Must match the CA-delivery constants in legacy_task_delivery.c. */
+#define LEGACY_TASK_CA_FILE_NAME "root-ca.pem"
+#define LEGACY_TASK_CA_DEFAULT_PATH "etc/certs/root-ca.pem"
+#define LEGACY_TASK_CA_MAX_ATTEMPTS 3
+
+/* A minimal but STRUCTURALLY VALID PEM: legacy_task_ca_read() requires both the BEGIN and the END
+ * marker, so a fixture missing either is rejected before any wire step. */
+#define TEST_CA_PEM "-----BEGIN CERTIFICATE-----\nZmFrZQ==\n-----END CERTIFICATE-----\n"
 
 /* Must match LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC in legacy_task_delivery.c. */
 #define LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC 15
@@ -77,6 +87,11 @@ void __wrap_key_unlock(void) { }
 static int test_setup(void **state) {
     (void) state;
     test_mode = 1;
+    // Set EXPLICITLY rather than relying on `logr` being zero-initialised BSS: false is not the
+    // production default, and a test suite whose baseline silently differs from what ships would
+    // pass while proving nothing about the shipped path.
+    logr.legacy_ca_delivery = true;
+    logr.https.ca_certificate = NULL; // -> LEGACY_TASK_CA_DEFAULT_PATH
     // Fresh, empty pending-replies queue for every test: this is file-local static state in
     // legacy_task_delivery.c that would otherwise leak/persist across test invocations.
     legacy_task_delivery_teardown();
@@ -89,6 +104,8 @@ static int test_teardown(void **state) {
     test_mode = 0;
     keys.keyentries = NULL;
     keys.keysize = 0;
+    logr.legacy_ca_delivery = false;
+    logr.https.ca_certificate = NULL;
     // Free anything a test left un-drained (checked under ASan/LeakSanitizer).
     legacy_task_delivery_teardown();
     return 0;
@@ -132,8 +149,65 @@ static cJSON *build_payload(const char *wpk_file, const char *sha1, const char *
     return payload;
 }
 
-/* Queues a full lock_restart/open/write(single chunk)/close/sha1/upgrade success sequence. */
+/* Same, plus the wpk_version the CA step gates on. NULL omits the key entirely, which is what a
+ * custom-WPK task looks like on the wire. */
+static cJSON *build_payload_versioned(const char *wpk_file, const char *sha1, const char *installer, const char *wpk_version) {
+    cJSON *payload = build_payload(wpk_file, sha1, installer);
+    if (wpk_version) {
+        cJSON_AddStringToObject(payload, "wpk_version", wpk_version);
+    }
+    return payload;
+}
+
+/* Queues the manager-side read of the CA file: one wfopen, one fread (legacy_task_ca_read() issues
+ * a single bounded read, not a loop) and one fclose. */
+static void expect_ca_file_read(FILE *fake_ca, const char *path, const char *pem) {
+    expect_string(__wrap_wfopen, path, path);
+    expect_string(__wrap_wfopen, mode, "rb");
+    will_return(__wrap_wfopen, fake_ca);
+
+    expect_fread((char *) pem, strlen(pem));
+    expect_fclose(fake_ca, 0);
+}
+
+/* The digest the agent must echo back for TEST_CA_PEM. Computed rather than hard-coded so the
+ * fixture and the assertion cannot drift apart. */
+static const char *test_ca_sha1(void) {
+    static os_sha1 digest;
+    OS_SHA1_Str(TEST_CA_PEM, (ssize_t) strlen(TEST_CA_PEM), digest);
+    return digest;
+}
+
+/* Queues a complete, successful CA cycle: file read, CA-signs-leaf check, then the four wire steps
+ * against LEGACY_TASK_CA_FILE_NAME. */
+static void expect_ca_delivery_success(FILE *fake_ca) {
+    expect_ca_file_read(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+
+    will_return(__wrap_remoted_module_tls_ca_matches_leaf, 1);
+
+    expect_any(__wrap__mdebug1, formatted_msg); // "sending the manager CA ..."
+
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // CA open
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // CA write
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // CA close
+
+    /* static: must outlive this helper -- the mock queue is consumed much later. */
+    static char ca_sha1_response[128];
+    snprintf(ca_sha1_response, sizeof(ca_sha1_response), "{\"error\":0,\"message\":\"%s\"}", test_ca_sha1());
+    expect_req_step(ca_sha1_response, 0);                        // CA sha1
+
+    expect_any(__wrap__minfo, formatted_msg); // "delivered the manager CA ..."
+}
+
+/* Queues a full lock_restart/open/write(single chunk)/close/sha1 + CA cycle + upgrade sequence.
+ *
+ * The CA steps sit between the WPK's sha1 and the upgrade command, and the mock queue is strictly
+ * ordered -- so this helper is itself the ordering assertion: moving the CA cycle to either side of
+ * that boundary would leave a queued response unmatched and fail every test that uses it. */
 static void expect_full_successful_push(FILE *fake_file, const char *sha1) {
+    FILE *fake_ca = tmpfile();
+    assert_non_null(fake_ca);
+
     expect_any(__wrap__minfo, formatted_msg); // "delivering remote_upgrade task..."
     expect_any(__wrap__minfo, formatted_msg); // "successfully delivered..."
 
@@ -158,6 +232,8 @@ static void expect_full_successful_push(FILE *fake_file, const char *sha1) {
     static char sha1_response[128];
     snprintf(sha1_response, sizeof(sha1_response), "{\"error\":0,\"message\":\"%s\"}", sha1);
     expect_req_step(sha1_response, 0);                           // sha1
+
+    expect_ca_delivery_success(fake_ca);                         // step 5b
 
     expect_req_step("{\"error\":0,\"message\":\"0\"}", 0);       // upgrade
 }
@@ -301,6 +377,11 @@ static void test_deliver_write_step_chunks_large_file(void **state) {
 
     expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);           // close
     expect_req_step("{\"error\":0,\"message\":\"abc123\"}", 0);      // sha1
+
+    FILE *fake_ca = tmpfile();
+    assert_non_null(fake_ca);
+    expect_ca_delivery_success(fake_ca);                              // step 5b
+
     expect_req_step("{\"error\":0,\"message\":\"0\"}", 0);           // upgrade
 
     cJSON *payload = build_payload("big.wpk", "abc123", "upgrade.sh");
@@ -526,6 +607,11 @@ static void test_deliver_fails_on_upgrade_exit_nonzero(void **state) {
 
     expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);            // close
     expect_req_step("{\"error\":0,\"message\":\"abc123\"}", 0);       // sha1, matches
+
+    FILE *fake_ca = tmpfile();
+    assert_non_null(fake_ca);
+    expect_ca_delivery_success(fake_ca);                               // step 5b
+
     expect_req_step("{\"error\":0,\"message\":\"1\"}", 0);            // upgrade: non-zero exit status
 
     expect_any(__wrap__merror, formatted_msg); // "installer script failed (exit status: 1)"
@@ -608,6 +694,10 @@ static void test_deliver_fails_on_upgrade_step_no_ack_is_permanent_not_retryable
     expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);           // close
     expect_req_step("{\"error\":0,\"message\":\"abc123\"}", 0);      // sha1, matches
 
+    FILE *fake_ca = tmpfile();
+    assert_non_null(fake_ca);
+    expect_ca_delivery_success(fake_ca);                              // step 5b
+
     expect_req_step(NULL, -1);                  // upgrade: no ack at all
     expect_any(__wrap__mwarn, formatted_msg);    // "no response for step targeting 'upgrade'"
     expect_any(__wrap__merror, formatted_msg);   // "'upgrade' step failed"
@@ -618,6 +708,349 @@ static void test_deliver_fails_on_upgrade_step_no_ack_is_permanent_not_retryable
     // Critical invariant: the 'upgrade' step's lost ack must NEVER be reported as a no-response --
     // out_no_response is passed as NULL internally for this one step specifically, precisely so it
     // can never be redirected to legacy_task_retry_list (retrying risks a double install).
+    assert_false(no_response);
+    cJSON_Delete(payload);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Manager CA delivery (step 5b)                                           */
+/* ---------------------------------------------------------------------- */
+
+/* Everything up to and including the WPK's sha1 step, which every CA test needs before step 5b is
+ * reached. Leaves the caller to queue whatever the CA step should see next. */
+static void expect_wpk_transfer_up_to_sha1(FILE *fake_file) {
+    expect_any(__wrap__minfo, formatted_msg); // "delivering remote_upgrade task..."
+
+    expect_req_step("ok ", 0);                                  // lock_restart
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // open
+
+    expect_string(__wrap_wfopen, path, "var/upgrade/wazuh_agent.wpk");
+    expect_string(__wrap_wfopen, mode, "rb");
+    will_return(__wrap_wfopen, fake_file);
+
+    expect_fread("hello", 5);
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // write
+    expect_fread("", 0);
+    expect_fclose(fake_file, 0);
+
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // close
+    expect_req_step("{\"error\":0,\"message\":\"abc123\"}", 0);  // sha1
+}
+
+/* Both terminal log lines of a push that reached and passed the 'upgrade' step. */
+static void expect_upgrade_step_and_success(void) {
+    expect_req_step("{\"error\":0,\"message\":\"0\"}", 0);       // upgrade
+    expect_any(__wrap__minfo, formatted_msg);                    // "successfully delivered..."
+}
+
+/* THE byte-for-byte guarantee: with ca_delivery off, not one extra wire step, and not one extra
+ * file read. The mock queue holds exactly the six original steps, so any additional call would
+ * exhaust it and fail here. */
+static void test_ca_disabled_emits_no_extra_steps(void **state) {
+    (void) state;
+    logr.legacy_ca_delivery = false;
+
+    FILE *fake_file = tmpfile();
+    assert_non_null(fake_file);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+    expect_any(__wrap__mdebug1, formatted_msg); // "CA delivery is disabled ..."
+    expect_upgrade_step_and_success();
+
+    cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "v5.0.0");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("040", "t-040", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    cJSON_Delete(payload);
+}
+
+/* A 4.13 agent being stepped up to 4.14.x gets no CA: nothing on that version would read it, and
+ * nothing would clean it out of var/incoming afterwards either. */
+static void test_ca_skipped_when_target_below_5x(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    assert_non_null(fake_file);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+    expect_any(__wrap__mdebug1, formatted_msg); // "targets 'v4.14.5', below v5.0.0 ..."
+    expect_upgrade_step_and_success();
+
+    cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "v4.14.5");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("041", "t-041", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    cJSON_Delete(payload);
+}
+
+/* The custom-WPK path: the task manager leaves wpk_version empty because a custom file's name is
+ * not authoritative about what it installs. Unknown must mean SEND -- compare_wazuh_versions()
+ * alone would run "" through atoi(), read it as 0.0.0 and skip, which is the wrong direction. */
+static void test_ca_sent_when_target_version_absent(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    FILE *fake_ca = tmpfile();
+    assert_non_null(fake_file);
+    assert_non_null(fake_ca);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+    expect_ca_delivery_success(fake_ca);
+    expect_upgrade_step_and_success();
+
+    cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh"); // no wpk_version key
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("042", "t-042", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    cJSON_Delete(payload);
+}
+
+/* Same rule for a version string that is present but not a version at all. */
+static void test_ca_sent_when_target_version_unparseable(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    FILE *fake_ca = tmpfile();
+    assert_non_null(fake_file);
+    assert_non_null(fake_ca);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+    expect_ca_delivery_success(fake_ca);
+    expect_upgrade_step_and_success();
+
+    cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "nightly-build");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("043", "t-043", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    cJSON_Delete(payload);
+}
+
+/* An operator-set remote.https.ca_certificate is honoured over the built-in default. */
+static void test_ca_reads_the_configured_path(void **state) {
+    (void) state;
+    /* A writable buffer, not a string literal: logr.https.ca_certificate is a plain char* that the
+     * real config reader os_strdup()s into. */
+    static char configured_ca[] = "etc/certs/corporate-ca.pem";
+    logr.https.ca_certificate = configured_ca;
+
+    FILE *fake_file = tmpfile();
+    FILE *fake_ca = tmpfile();
+    assert_non_null(fake_file);
+    assert_non_null(fake_ca);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+
+    expect_ca_file_read(fake_ca, "etc/certs/corporate-ca.pem", TEST_CA_PEM);
+    will_return(__wrap_remoted_module_tls_ca_matches_leaf, 1);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // CA open
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // CA write
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // CA close
+    static char ca_sha1_response[128];
+    snprintf(ca_sha1_response, sizeof(ca_sha1_response), "{\"error\":0,\"message\":\"%s\"}", test_ca_sha1());
+    expect_req_step(ca_sha1_response, 0);                        // CA sha1
+    expect_any(__wrap__minfo, formatted_msg);
+
+    expect_upgrade_step_and_success();
+
+    cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "v5.0.0");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("044", "t-044", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    cJSON_Delete(payload);
+}
+
+/* A CA file that cannot be opened: logged as an error, no wire step attempted, upgrade proceeds. */
+static void test_ca_file_missing_continues_the_upgrade(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    assert_non_null(fake_file);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+
+    expect_string(__wrap_wfopen, path, LEGACY_TASK_CA_DEFAULT_PATH);
+    expect_string(__wrap_wfopen, mode, "rb");
+    will_return(__wrap_wfopen, NULL);
+
+    expect_any(__wrap__merror, formatted_msg); // "is missing, unreadable, larger than ..."
+    expect_upgrade_step_and_success();
+
+    cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "v5.0.0");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("045", "t-045", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    cJSON_Delete(payload);
+}
+
+/* A readable file that is not a certificate -- a private key, an empty file, a stray path. The
+ * CA-signs-leaf accessor is never reached, so no mock is queued for it. */
+static void test_ca_file_without_certificate_block_is_refused(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    FILE *fake_ca = tmpfile();
+    assert_non_null(fake_file);
+    assert_non_null(fake_ca);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+    expect_ca_file_read(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH,
+                        "-----BEGIN PRIVATE KEY-----\nZmFrZQ==\n-----END PRIVATE KEY-----\n");
+
+    expect_any(__wrap__merror, formatted_msg);
+    expect_upgrade_step_and_success();
+
+    cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "v5.0.0");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("046", "t-046", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    cJSON_Delete(payload);
+}
+
+/* A PEM with a BEGIN line but no END line -- what a short read leaves behind. Refused here rather
+ * than shipped, because nothing re-validates these bytes between the agent's disk and the installer
+ * that pins them. GET /cacerts checks only the BEGIN marker; this path deliberately checks both. */
+static void test_ca_file_truncated_pem_is_refused(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    FILE *fake_ca = tmpfile();
+    assert_non_null(fake_file);
+    assert_non_null(fake_ca);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+    expect_ca_file_read(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, "-----BEGIN CERTIFICATE-----\nZmFrZQ==\n");
+
+    expect_any(__wrap__merror, formatted_msg);
+    expect_upgrade_step_and_success();
+
+    cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "v5.0.0");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("047", "t-047", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    cJSON_Delete(payload);
+}
+
+/* The refusal that matters most: a CA that does not sign the served leaf is NOT sent. An agent
+ * that pinned it would fail every handshake afterwards -- worse than having no anchor at all. */
+static void test_ca_not_sent_when_it_does_not_sign_the_leaf(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    FILE *fake_ca = tmpfile();
+    assert_non_null(fake_file);
+    assert_non_null(fake_ca);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+    expect_ca_file_read(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+
+    will_return(__wrap_remoted_module_tls_ca_matches_leaf, 0); // explicit mismatch
+
+    expect_any(__wrap__merror, formatted_msg); // "does not sign the certificate this manager serves"
+    expect_upgrade_step_and_success();
+
+    cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "v5.0.0");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("048", "t-048", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    cJSON_Delete(payload);
+}
+
+/* Unknown (-1) must PROCEED, matching GET /cacerts: refusing there would turn one transient read
+ * failure, or a listener that has not evaluated yet, into a fleet-wide loss of the bootstrap. */
+static void test_ca_sent_when_signing_status_is_unknown(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    FILE *fake_ca = tmpfile();
+    assert_non_null(fake_file);
+    assert_non_null(fake_ca);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+    expect_ca_file_read(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+
+    will_return(__wrap_remoted_module_tls_ca_matches_leaf, -1); // unknown
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // CA open
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // CA write
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // CA close
+    static char ca_sha1_response[128];
+    snprintf(ca_sha1_response, sizeof(ca_sha1_response), "{\"error\":0,\"message\":\"%s\"}", test_ca_sha1());
+    expect_req_step(ca_sha1_response, 0);                        // CA sha1
+    expect_any(__wrap__minfo, formatted_msg);
+
+    expect_upgrade_step_and_success();
+
+    cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "v5.0.0");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("049", "t-049", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    cJSON_Delete(payload);
+}
+
+/* A digest mismatch is retried up to LEGACY_TASK_CA_MAX_ATTEMPTS, and the exhausted cycle then
+ * TRUNCATES the file (open+close, nothing between) so the installer cannot pin a partial anchor.
+ * The WPK is never re-sent: the file is read once and the retries are confined to the CA. */
+static void test_ca_sha1_mismatch_retries_then_truncates(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    FILE *fake_ca = tmpfile();
+    assert_non_null(fake_file);
+    assert_non_null(fake_ca);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+    expect_ca_file_read(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+    will_return(__wrap_remoted_module_tls_ca_matches_leaf, 1);
+    expect_any(__wrap__mdebug1, formatted_msg); // "sending the manager CA ..."
+
+    for (int attempt = 1; attempt <= LEGACY_TASK_CA_MAX_ATTEMPTS; attempt++) {
+        expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);          // open
+        expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);          // write
+        expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);          // close
+        expect_req_step("{\"error\":0,\"message\":\"deadbeef\"}", 0);    // sha1: wrong digest
+        // debug1 while attempts remain, warning on the last -- the same ladder the WPK path uses.
+        if (attempt == LEGACY_TASK_CA_MAX_ATTEMPTS) {
+            expect_any(__wrap__mwarn, formatted_msg);
+        } else {
+            expect_any(__wrap__mdebug1, formatted_msg);
+        }
+    }
+
+    expect_any(__wrap__mwarn, formatted_msg); // "could not deliver the manager CA ... after 3 attempt(s)"
+
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // truncate: open
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // truncate: close
+
+    expect_upgrade_step_and_success();
+
+    cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "v5.0.0");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("050", "t-050", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    // The CA's own failure must never leak into the task's result -- a RETRYABLE here would make the
+    // caller re-stream the whole WPK to fix a two-kilobyte transfer.
+    assert_false(no_response);
+    cJSON_Delete(payload);
+}
+
+/* A no-response cuts the CA loop after ONE attempt and skips the truncate: both would only time out
+ * again, and this thread still owes a sweep to every other connected agent. Exactly one CA 'open'
+ * is queued, so a second attempt (or a truncate) would exhaust the mock queue and fail here. */
+static void test_ca_no_response_breaks_early_and_skips_truncate(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    FILE *fake_ca = tmpfile();
+    assert_non_null(fake_file);
+    assert_non_null(fake_ca);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+    expect_ca_file_read(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+    will_return(__wrap_remoted_module_tls_ca_matches_leaf, 1);
+    expect_any(__wrap__mdebug1, formatted_msg); // "sending the manager CA ..."
+
+    expect_req_step(NULL, -1);                  // CA open: no ack at all
+    expect_any(__wrap__mdebug1, formatted_msg); // "no response for step targeting 'upgrade'"
+    expect_any(__wrap__mwarn, formatted_msg);   // "could not deliver ... after 1 attempt(s)"
+
+    expect_upgrade_step_and_success();
+
+    cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "v5.0.0");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("051", "t-051", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    // The CA's no-response must NOT propagate: doing so would defer the task to
+    // legacy_task_retry_list and re-deliver an upgrade the agent has already been told to run.
     assert_false(no_response);
     cJSON_Delete(payload);
 }
@@ -1619,6 +2052,18 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_invalid_payload_is_permanent, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_local_wpk_file_missing_is_permanent, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_upgrade_step_no_ack_is_permanent_not_retryable, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ca_disabled_emits_no_extra_steps, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ca_skipped_when_target_below_5x, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ca_sent_when_target_version_absent, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ca_sent_when_target_version_unparseable, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ca_reads_the_configured_path, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ca_file_missing_continues_the_upgrade, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ca_file_without_certificate_block_is_refused, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ca_file_truncated_pem_is_refused, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ca_not_sent_when_it_does_not_sign_the_leaf, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ca_sent_when_signing_status_is_unknown, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ca_sha1_mismatch_retries_then_truncates, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ca_no_response_breaks_early_and_skips_truncate, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_retry_recovers_within_same_cycle, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_retry_exhausts_cap_and_gives_up, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_permanent_failure_short_circuits_no_retry, test_setup, test_teardown),

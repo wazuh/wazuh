@@ -81,6 +81,46 @@ namespace remoted::http
     bool anyCaSignsLeaf(const X509* leaf, const std::vector<X509Ptr>& cas);
 
     /**
+     * @brief The names that describe this host to itself, and to nobody else.
+     *
+     * `localhost`, `localhost.localdomain`, whatever `gethostname()` returns, and -- when that is
+     * fully qualified -- its short form as well. Used by leafHasUsableSan() as the set to subtract.
+     *
+     * Split out from leafHasUsableSan() so the filter table can be unit-tested against a fixed list
+     * instead of against whatever the build machine happens to be called.
+     */
+    std::vector<std::string> localHostNames();
+
+    /**
+     * @brief Whether @p leaf carries a subjectAltName entry some remote agent could plausibly dial.
+     *
+     * Answers the one certificate question this module can settle on its own. The one it CANNOT is
+     * "does the leaf cover the address this agent will dial": behind NAT, a load balancer, or when
+     * an agent is pinned to a worker, the manager does not know that address, and the agent checks
+     * it for real at upgrade time (pkg_installer.sh probes its own configured server with
+     * verification on). So this is deliberately the weaker, decidable question.
+     *
+     * A SAN entry counts as usable unless it is one of:
+     *   - an iPAddress in 127.0.0.0/8 or ::1;
+     *   - a dNSName in @p localNames (case-insensitive).
+     * Entries of any other type (URI, email, ...) are ignored: none of them is something a TLS
+     * client matches a server against.
+     *
+     * False for a certificate with no SAN extension at all, and false for one whose only entries are
+     * loopback and the local hostname -- the shape a self-signed quickstart certificate has. Both
+     * mean no agent can ever verify this manager at verification_mode `full`, whatever it dials.
+     *
+     * Never a reason to refuse anything: an operator whose agents reach the manager by a name that
+     * is genuinely absent from the certificate is already broken in a way this cannot see, and one
+     * whose SANs merely look unusual here must not have upgrades blocked over a heuristic.
+     */
+    bool leafHasUsableSan(const X509* leaf, const std::vector<std::string>& localNames);
+
+    /// @copydoc leafHasUsableSan(const X509*, const std::vector<std::string>&)
+    /// Uses localHostNames() as the subtracted set.
+    bool leafHasUsableSan(const X509* leaf);
+
+    /**
      * @brief Point-in-time result of one certificate evaluation.
      *
      * Published two ways: by the facade as the `remoted.server.tls.*` pull metrics, and to

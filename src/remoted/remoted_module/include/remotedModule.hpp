@@ -52,6 +52,14 @@ public:
      * @brief Stop the module.
      */
     void stop() const;
+
+    /**
+     * @brief Whether the configured CA signs the certificate the HTTPS listener serves.
+     *
+     * @return 1 signs it, 0 explicitly does not, -1 unknown. See RemotedModuleFacade::tlsCaMatchesLeaf()
+     *         for why -1 must be treated as "proceed" rather than as a refusal.
+     */
+    int tlsCaMatchesLeaf() const;
 };
 
 #endif // _REMOTED_MODULE_HPP

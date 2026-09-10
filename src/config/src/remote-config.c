@@ -228,9 +228,14 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
     /* legacy: the effective document always carries the block; `enabled: false` is how the schema
      * represents a disabled legacy listener. */
     logr->legacy_enabled = false;
+    /* Defaulted OUTSIDE the block, not just inside it: an absent `legacy` mapping leaves the
+     * listener disabled, and the poller that reads this never runs -- but a caller that reads the
+     * struct anyway (the unit tests do) must not see an uninitialised bool. */
+    logr->legacy_ca_delivery = true;
 
     if (cJSON_IsObject(legacy)) {
         logr->legacy_enabled = w_mconf_json_bool(cJSON_GetObjectItem(legacy, "enabled"), 1) != 0;
+        logr->legacy_ca_delivery = w_mconf_json_bool(cJSON_GetObjectItem(legacy, "ca_delivery"), 1) != 0;
         os_free(logr->lip);
         logr->rids_closing_time = REMOTED_RIDS_CLOSING_TIME_DEFAULT;
 
