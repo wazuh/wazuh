@@ -232,7 +232,9 @@ A mint is checked against the listener as it is on disk, and a failed check answ
 reason (`Enrollment token refused: address not in certificate SAN`): `--address` must be a subject
 alternative name of `remote.https.certificate` (a DNS name without partial wildcards and never the
 subject; an IP literal only against `iPAddress` entries, and accepted with a warning), the certificate
-must name something other than loopback, and `remote.https.ca_certificate` must have signed it.
+must name something **other than loopback only** — a certificate whose entire SAN set is loopback (or
+that carries no SAN extension at all) is refused, while `--address localhost` against a certificate that
+also names something reachable is minted normally — and `remote.https.ca_certificate` must have signed it.
 `--port`/`--prefix` default to the running `remote.https` values, `--ttl` to 30 days (`N[d|h|m|s]`),
 `--max-uses` to unlimited.
 
@@ -242,7 +244,10 @@ against its read-only replica of the store and forwards `add` with `token_id`; a
 state — `9022` unknown or revoked, `9023` expired, `9024` out of uses — and reserves the use **before**
 creating the agent, releasing it if the `add` is refused. Revocation is idempotent, the token stays
 listed with `revoked: true`, and because the master re-checks on every `add` it takes effect at once,
-even through a worker whose replica the cluster has not refreshed yet.
+even through a worker whose replica the cluster has not refreshed yet. **Which rejection an agent sees
+depends on who notices first**: remoted answers its uniform `401` when its own replica already knows the
+token is gone, and `403` carrying authd's `9022` when the master is the one that catches it. Both are
+correct and an operator should expect either.
 
 **Only one rotation at a time per agent.** A re-enrollment takes a reservation on the agent *before* reading its secret from the database, and the writer releases it
 when the new credentials are stored. Two requests with the same bearer therefore produce **one** credential: the second is answered `9030` — *Re-enrollment already
@@ -307,6 +312,22 @@ groups are kept unless the request named some, and the `<force>` guards play no 
 (no such agent, or a row without a secret — enrolled over 1515, or a `global.db` rebuilt from
 `client.keys`), `9027` (malformed, another `kid`, bad signature, or combined with `token_id`, `id` or
 `key`), `9028` (outside the window); a name or IP owned by *another* agent still answers `9008`/`9007`.
+
+**Agent ids of up to eight digits.** The `kid` is validated with `OS_IsValidID()`, which accepts at most
+eight characters, and the agent applies the same rule to the answer, so an agent whose id has **nine or
+ten digits cannot re-enroll**: its bearer is refused as malformed. Administrative insertion is
+deliberately *not* restricted to match — `POST /agents` and `manage_agents` still accept ids up to
+2147483647 — because restricting it would not remove the mismatch: the automatic id counter follows the
+highest id present in `client.keys`, so the next self-enrollment would hand out a long id again, and the
+agent would reject that too. Eight digits is what re-enrollment supports; widening the range is a change
+to the agent, the id assigner and the deletion recovery together.
+
+**There is no upgrade path for `global.db`.** A database created by a 5.0.0 build from before the
+`agent.reenroll_secret` column is recreated, not migrated. And rebuilding the agent rows from
+`client.keys` — what `wazuh-manager-modulesd` does when it finds rows missing — does **not** bring the
+secrets back: `client.keys` never held them, so those rows get a NULL secret and their agents answer
+`9026` until they enroll again. The identity journal (see above) does not change this either: it only
+covers the transitions this manager actually handed out.
 
 ## Local socket enrollment protocol
 
