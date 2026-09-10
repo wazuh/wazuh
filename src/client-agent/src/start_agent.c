@@ -68,7 +68,22 @@ static void w_agentd_keys_init (void) {
         /* Check if we can auto-enroll */
         if (agt->enrollment.enabled) {
             int delay_sleep = 0;
-            while (try_enroll_to_server() != 0) {
+            w_enroll_status_t status;
+
+            while ((status = try_enroll_to_server()) != W_ENROLL_OK) {
+                /* #39064: not every rejection is worth another attempt. A credential the manager
+                 * judged and refused will be refused again, for ever, at the top of the ramp --
+                 * which is the lab loop this issue exists to remove. w_enrollment_apply_policy()
+                 * owns that decision (and shreds a dead re-enrollment secret on the way), so this
+                 * loop and bridge_reenroll_thread()'s cannot drift apart on it. */
+                if (w_enrollment_apply_policy(status) == W_ENROLL_ACTION_STOP) {
+                    /* No key, and no prospect of getting one without an operator. Exiting is the
+                     * honest end -- the same one AG_NOKEYS_EXIT below reports for an agent that
+                     * cannot enroll at all -- rather than a daemon that stays up doing nothing. */
+                    merror_exit("Enrollment cannot succeed as configured; the agent has no key and "
+                                "is stopping. See the error above for what has to change.");
+                }
+
                 /* #38465: a single unconditional target now (agt->server[0] via
                  * the shared transport config), so the dual-target loop this
                  * used to have (a configured enrollment server, then each
@@ -109,10 +124,13 @@ static void w_agentd_keys_init (void) {
  * uses (agt->server[] beyond index 0 has had no real failover behavior since
  * the HTTPS migration -- confirmed against main.c's own startup validation
  * and bridge_build_transport_config(), both of which only ever look at [0]). */
-int try_enroll_to_server(void) {
+w_enroll_status_t try_enroll_to_server(void) {
     w_enroll_request_t request = {0};
     if (w_enrollment_build_request(&request) != 0) {
-        return -1;
+        /* A local validation failure (an invalid configured name or address): nothing was sent, and
+         * no manager is going to change its mind about it. Reported as fatal so the caller stops
+         * instead of re-building the same rejected request for ever. */
+        return W_ENROLL_ERR_AUTH_FATAL;
     }
 
     hc_enroll_result_t result;
@@ -120,8 +138,10 @@ int try_enroll_to_server(void) {
                           &result);
     w_enroll_request_destroy(&request);
 
-    if (w_enrollment_process_response(&result) != W_ENROLL_OK) {
-        return -1;
+    const w_enroll_status_t status = w_enrollment_process_response(&result);
+
+    if (status != W_ENROLL_OK) {
+        return status;
     }
 
     /* Wait for key update on agent side */
@@ -131,7 +151,7 @@ int try_enroll_to_server(void) {
     OS_UpdateKeys(&keys);
     /* Set the crypto method for the agent */
     os_set_agent_crypto_method(&keys, W_METH_AES);
-    return 0;
+    return W_ENROLL_OK;
 }
 
 /* Attempts, and the pause between them, for reading the record that is about to be replaced.

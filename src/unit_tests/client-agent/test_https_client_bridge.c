@@ -82,9 +82,11 @@ bool __wrap_hc_submit_event(hc_handle *handle, const uint8_t *frame, size_t leng
     return mock();
 }
 
-int __wrap_try_enroll_to_server(void)
+/* Returns a w_enroll_status_t since #39064: the loops no longer treat every non-zero the same,
+ * so a test has to say WHICH failure it is scripting. */
+w_enroll_status_t __wrap_try_enroll_to_server(void)
 {
-    return mock();
+    return (w_enroll_status_t)mock();
 }
 
 /* hc_enroll mock (#38465): captures the transport config and the request
@@ -1008,7 +1010,7 @@ static void test_reenroll_thread_succeeds_on_first_attempt(void **state)
     (void)state;
     enable_enrollment();
 
-    will_return(__wrap_try_enroll_to_server, 0);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_OK);
     expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
     expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
     expect_string(__wrap_hc_set_agent_identity, key_hex, keys.keyentries[0]->raw_key);
@@ -1024,6 +1026,27 @@ static void test_reenroll_thread_succeeds_on_first_attempt(void **state)
     assert_int_equal(g_populate_metadata_calls, 1);
 }
 
+/* #39064: the loop used to run for ever on any failure. A credential the manager judged and
+ * refused must stop it instead -- the agent keeps the key it has, the AuthGate keeps traffic
+ * paused, and an operator has something to see. Deliberately no hc_set_agent_identity and no gate
+ * release: nothing has changed that would make the paused traffic succeed. */
+static void test_reenroll_thread_stops_on_a_fatal_rejection(void **state)
+{
+    (void)state;
+    enable_enrollment();
+
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_ERR_AUTH_FATAL);
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: re-enrollment cannot succeed; giving up until the agent is "
+                  "restarted or an operator intervenes. Traffic stays paused.");
+
+    bridge_reenroll_thread(FAKE_HANDLE);
+
+    /* No retry: no sleep was requested and the identity was never reloaded. Both are scripted
+     * expectations elsewhere, so an unexpected call fails the test on its own. */
+    assert_int_equal(g_populate_metadata_calls, 0);
+}
+
 static void test_reenroll_thread_retries_with_backoff_then_succeeds(void **state)
 {
     (void)state;
@@ -1032,14 +1055,14 @@ static void test_reenroll_thread_retries_with_backoff_then_succeeds(void **state
     /* First pass fails (#38465: a single unconditional target now --
      * agt->server[0] via the shared transport config -- so one failure is
      * one whole pass, unlike the old dual-target loop). */
-    will_return(__wrap_try_enroll_to_server, -1);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_ERR_TRANSPORT);
 
     expect_string(__wrap__mdebug1, formatted_msg,
                   "https_client: re-enrollment attempt failed; retrying in 5 seconds.");
     expect_value(__wrap_sleep, seconds, 5); /* first back-off step */
 
     /* Second pass succeeds. */
-    will_return(__wrap_try_enroll_to_server, 0);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_OK);
 
     expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
     expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
@@ -1062,23 +1085,23 @@ static void test_reenroll_thread_backoff_follows_the_resolved_ramp(void **state)
     agt->enrollment.retry_delta = 7;
     agt->enrollment.retry_max = 14;
 
-    will_return(__wrap_try_enroll_to_server, -1);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_ERR_TRANSPORT);
     expect_string(__wrap__mdebug1, formatted_msg,
                   "https_client: re-enrollment attempt failed; retrying in 7 seconds.");
     expect_value(__wrap_sleep, seconds, 7);
 
-    will_return(__wrap_try_enroll_to_server, -1);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_ERR_TRANSPORT);
     expect_string(__wrap__mdebug1, formatted_msg,
                   "https_client: re-enrollment attempt failed; retrying in 14 seconds.");
     expect_value(__wrap_sleep, seconds, 14);
 
     /* At the ceiling the delay stops growing rather than being clamped afterwards. */
-    will_return(__wrap_try_enroll_to_server, -1);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_ERR_TRANSPORT);
     expect_string(__wrap__mdebug1, formatted_msg,
                   "https_client: re-enrollment attempt failed; retrying in 14 seconds.");
     expect_value(__wrap_sleep, seconds, 14);
 
-    will_return(__wrap_try_enroll_to_server, 0);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_OK);
     expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
     expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
     expect_string(__wrap_hc_set_agent_identity, key_hex, keys.keyentries[0]->raw_key);
@@ -1108,7 +1131,7 @@ static void test_reenroll_thread_logs_error_when_new_key_fails_validation(void *
     (void)state;
     enable_enrollment();
 
-    will_return(__wrap_try_enroll_to_server, 0);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_OK);
     expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
     expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
     expect_string(__wrap_hc_set_agent_identity, key_hex, keys.keyentries[0]->raw_key);
@@ -2789,6 +2812,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_reenroll_callback_disabled_enrollment_logs_error_only, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_callback_enabled_enrollment_only_warns, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_succeeds_on_first_attempt, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reenroll_thread_stops_on_a_fatal_rejection, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_retries_with_backoff_then_succeeds, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_backoff_follows_the_resolved_ramp, setup_test,
                                         teardown_test),

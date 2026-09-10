@@ -80,6 +80,15 @@ static void expect_valid_ip(const char *ip) {
     will_return(__wrap_OS_IsValidIP, 1);
 }
 
+/* /enroll's error envelope: {"error":{"code":<code>,"message":"<msg>"}}. `code` is passed already
+ * rendered, since it is a JSON string on a 401 and a number everywhere else. */
+static void set_error_body(hc_enroll_result_t *result, long http_code, const char *code,
+                           const char *message) {
+    result->http_code = http_code;
+    snprintf(result->body, sizeof(result->body), "{\"error\":{\"code\":%s,\"message\":\"%s\"}}",
+             code, message);
+}
+
 static void expect_invalid_ip(const char *ip) {
     expect_string(__wrap_OS_IsValidIP, ip_address, ip);
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
@@ -290,17 +299,111 @@ static void test_process_response_400_is_invalid_request(void **state) {
     assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_INVALID_REQUEST);
 }
 
-static void test_process_response_401_is_auth_error(void **state) {
+/* A 401 with no readable class is the fail-safe case: retry, never touch the credential
+ * (design §2.9 rule 3). This is also what an older manager sends. */
+static void test_process_response_401_without_a_class_is_retryable(void **state) {
     (void)state;
     hc_enroll_result_t result = {0};
     result.http_code = 401;
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Enrollment rejected by the manager: invalid or missing authentication.");
+                  "Enrollment rejected by the manager: invalid or missing authentication, with no "
+                  "failure class named. Retrying without changing the credential.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_AUTH);
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_AUTH_RETRY);
 }
 
+/* #39064: /enroll nests its error envelope, so the class is at error.code -- NOT the top-level
+ * `code` every other route uses. A parser that read the flat shape here would find nothing and
+ * treat every classified 401 as unclassified. */
+static void test_process_response_401_reads_the_class_from_the_nested_envelope(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    set_error_body(&result, 401, "\"unknown_agent\"", "no such agent");
+
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_IDENTITY_GONE);
+
+    /* The flat shape the other endpoints use must NOT be read here: it is not what /enroll sends,
+     * and accepting it would mean trusting a body this endpoint never produces. */
+    hc_enroll_result_t flat = {0};
+    flat.http_code = 401;
+    strncpy(flat.body, "{\"error\":\"nope\",\"code\":\"unknown_agent\"}", sizeof(flat.body) - 1);
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&flat), W_ENROLL_ERR_AUTH_RETRY);
+}
+
+/* unknown_agent is the ONLY class that may cost an identity, and on /enroll it can only come from
+ * authd's 9026 -- which only a re-enrollment bearer can provoke. */
+static void test_process_response_401_unknown_agent_is_identity_gone(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    set_error_body(&result, 401, "\"unknown_agent\"", "agent not found");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "The manager does not know the agent this re-enrollment was signed for: agent not "
+                  "found. The stored re-enrollment secret is no longer usable.");
+
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_IDENTITY_GONE);
+}
+
+/* invalid_signature is the one 401 worth giving up on: nothing a retry changes -- the signature,
+ * the token's shape, the claimed identity, the peer address -- is fixed by a new identity. */
+static void test_process_response_401_invalid_signature_is_fatal(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    set_error_body(&result, 401, "\"invalid_signature\"", "bad signature");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager: the credential's signature was refused: bad "
+                  "signature. Retrying will not help; the credential itself has to be corrected.");
+
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_AUTH_FATAL);
+}
+
+/* Every other class retries. token_expired and token_revoked included: as a 401 they come from
+ * remoted's replica of the token store, which can lag the master. authd's authoritative refusal
+ * of the same token arrives as a 403 instead, and that is what stops the loop. */
+static void test_process_response_401_other_classes_are_retryable(void **state) {
+    (void)state;
+    static const char *const classes[] = {"stale_token", "token_unknown", "token_expired",
+                                          "token_revoked", "enrollment_key_unavailable",
+                                          "invalid_request", "a_class_from_the_future"};
+    size_t i;
+
+    for (i = 0; i < sizeof(classes) / sizeof(classes[0]); i++) {
+        hc_enroll_result_t result = {0};
+        char quoted[64];
+
+        snprintf(quoted, sizeof(quoted), "\"%s\"", classes[i]);
+        set_error_body(&result, 401, quoted, "refused");
+
+        expect_any(__wrap__minfo, formatted_msg);
+        assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_AUTH_RETRY);
+    }
+}
+
+/* A 403 carrying authd's own verdict on an enrollment token: the signature already verified, so
+ * this is an authoritative "no" about the credential and only a new token fixes it. */
+static void test_process_response_403_with_an_authd_code_is_fatal(void **state) {
+    (void)state;
+    static const int codes[] = {9022, 9023, 9024};
+    size_t i;
+
+    for (i = 0; i < sizeof(codes) / sizeof(codes[0]); i++) {
+        hc_enroll_result_t result = {0};
+        char code[16];
+
+        snprintf(code, sizeof(code), "%d", codes[i]);
+        set_error_body(&result, 403, code, "token refused");
+
+        expect_any(__wrap__merror, formatted_msg);
+        assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_AUTH_FATAL);
+    }
+}
+
+/* The other 403: enrollment administratively disabled, which authd marks with code 0. Still its
+ * own status and still retryable -- an operator can re-enable it. */
 static void test_process_response_403_is_disabled_not_an_error(void **state) {
     (void)state;
     hc_enroll_result_t result = {0};
@@ -367,6 +470,8 @@ static void test_process_response_200_missing_field_is_server_error(void **state
 static void remove_200_paths(void) {
     unlink(KEYS_FILE);
     unlink(AGENT_REENROLL_SECRET);
+    unlink(AGENT_ENROLLMENT_TOKEN_FILE);
+    unlink("etc/authd.pass");
 }
 
 static int setup_200_test(void **state) {
@@ -616,6 +721,105 @@ static void test_process_response_200_rotates_the_stored_secret(void **state) {
     assert_string_equal(secret, rotated);
 }
 
+/* ---- w_enrollment_apply_policy: the decision itself (#39064) ---- */
+
+/* Everything that is or may be transient keeps the loop going. DISABLED is in this list on
+ * purpose: an operator can re-enable enrollment, so waiting is the right answer. */
+static void test_policy_retries_every_transient_status(void **state) {
+    (void)state;
+    static const w_enroll_status_t retryable[] = {
+        W_ENROLL_ERR_TRANSPORT, W_ENROLL_ERR_INVALID_REQUEST, W_ENROLL_ERR_AUTH_RETRY,
+        W_ENROLL_ERR_DISABLED, W_ENROLL_ERR_DUPLICATE, W_ENROLL_ERR_SERVER};
+    size_t i;
+
+    for (i = 0; i < sizeof(retryable) / sizeof(retryable[0]); i++) {
+        assert_int_equal(w_enrollment_apply_policy(retryable[i]), W_ENROLL_ACTION_RETRY);
+    }
+}
+
+/* A credential the manager judged and refused: stop. This is the lab loop #39064 removes -- the
+ * old code retried this for ever at the top of the ramp. */
+static void test_policy_stops_on_a_fatal_rejection(void **state) {
+    (void)state;
+    assert_int_equal(w_enrollment_apply_policy(W_ENROLL_ERR_AUTH_FATAL), W_ENROLL_ACTION_STOP);
+}
+
+/* IDENTITY_GONE shreds the dead secret -- while it is on disk, build_request keeps preferring it
+ * over the credential that still works -- and then continues, because a password is configured. */
+static void test_policy_clears_the_dead_secret_and_falls_back_to_the_password(void **state) {
+    (void)state;
+    char id[W_REENROLL_ID_SIZE];
+    char secret[W_REENROLL_SECRET_SIZE];
+
+    ignore_debug_lines();
+    assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
+    os_strdup("etc/authd.pass", agt->enrollment.authorization_pass_path);
+    write_text_file("etc/authd.pass", "fleet-secret\n");
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "The re-enrollment secret was rejected by the manager and has been removed.");
+    expect_string(__wrap__minfo, formatted_msg, "Falling back to the configured enrollment credential.");
+
+    assert_int_equal(w_enrollment_apply_policy(W_ENROLL_ERR_IDENTITY_GONE), W_ENROLL_ACTION_RETRY);
+
+    assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
+    assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 0);
+
+    unlink("etc/authd.pass");
+}
+
+/* A still-unconsumed enrollment token is also a fallback: the bootstrap has not used it, so the
+ * next start can. */
+static void test_policy_falls_back_to_an_unconsumed_enrollment_token(void **state) {
+    (void)state;
+
+    ignore_debug_lines();
+    assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
+    write_text_file(AGENT_ENROLLMENT_TOKEN_FILE, "some-token-text\n");
+
+    expect_any(__wrap__minfo, formatted_msg); /* secret removed */
+    expect_string(__wrap__minfo, formatted_msg, "Falling back to the configured enrollment credential.");
+
+    assert_int_equal(w_enrollment_apply_policy(W_ENROLL_ERR_IDENTITY_GONE), W_ENROLL_ACTION_RETRY);
+
+    unlink(AGENT_ENROLLMENT_TOKEN_FILE);
+}
+
+/* Nothing left to enroll with: stop, and say what the operator has to do. Looping here is what
+ * the DoD forbids -- the agent would ask for an identity nobody can give it, for ever. */
+static void test_policy_stops_when_no_fallback_credential_exists(void **state) {
+    (void)state;
+
+    ignore_debug_lines();
+    assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
+
+    expect_any(__wrap__minfo, formatted_msg); /* secret removed */
+    expect_string(__wrap__merror, formatted_msg,
+                  "This agent has no enrollment credential left to fall back on. Operator action is "
+                  "required: re-enroll it with an enrollment token, or provide the enrollment "
+                  "password, and start the agent again.");
+
+    assert_int_equal(w_enrollment_apply_policy(W_ENROLL_ERR_IDENTITY_GONE), W_ENROLL_ACTION_STOP);
+}
+
+/* An empty authd.pass is not a credential: a zero-byte file left behind by a failed install must
+ * not make the agent think it has something to fall back on. */
+static void test_policy_treats_an_empty_password_file_as_no_credential(void **state) {
+    (void)state;
+
+    ignore_debug_lines();
+    assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
+    os_strdup("etc/authd.pass", agt->enrollment.authorization_pass_path);
+    write_text_file("etc/authd.pass", "");
+
+    expect_any(__wrap__minfo, formatted_msg); /* secret removed */
+    expect_any(__wrap__merror, formatted_msg); /* operator action required */
+
+    assert_int_equal(w_enrollment_apply_policy(W_ENROLL_ERR_IDENTITY_GONE), W_ENROLL_ACTION_STOP);
+
+    unlink("etc/authd.pass");
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_build_request_minimal_body, setup_test, teardown_test),
@@ -631,7 +835,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_no_http_status_is_transport_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_transport_error_names_the_cause, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_400_is_invalid_request, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_process_response_401_is_auth_error, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_401_without_a_class_is_retryable, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_401_reads_the_class_from_the_nested_envelope, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_401_unknown_agent_is_identity_gone, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_401_invalid_signature_is_fatal, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_401_other_classes_are_retryable, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_403_with_an_authd_code_is_fatal, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_is_disabled_not_an_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_409_is_duplicate, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_unrecognized_status_is_server_error, setup_test, teardown_test),
@@ -646,6 +855,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_200_non_string_secret_is_server_error, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_refusal_leaves_the_previous_secret_usable, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_rotates_the_stored_secret, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_policy_retries_every_transient_status, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_policy_stops_on_a_fatal_rejection, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_policy_clears_the_dead_secret_and_falls_back_to_the_password, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_policy_falls_back_to_an_unconsumed_enrollment_token, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_policy_stops_when_no_fallback_credential_exists, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_policy_treats_an_empty_password_file_as_no_credential, setup_200_test, teardown_200_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

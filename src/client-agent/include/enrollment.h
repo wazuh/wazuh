@@ -21,7 +21,8 @@
 #ifndef ENROLLMENT_H
 #define ENROLLMENT_H
 
-#include "https_client.h" /* hc_enroll_result_t */
+#include "enrollment_status.h" /* w_enroll_status_t, w_enroll_action_t */
+#include "https_client.h"  /* hc_enroll_result_t */
 
 /** @brief One built /enroll request, ready for w_https_client_enroll(). */
 typedef struct w_enroll_request_t {
@@ -37,20 +38,6 @@ typedef struct w_enroll_request_t {
     char *enroll_kid;
     char *enroll_key_hex;
 } w_enroll_request_t;
-
-/** @brief Outcome of parsing an /enroll response (#38465 R12). */
-typedef enum {
-    W_ENROLL_OK = 0,              /**< 200: keys parsed and written to client.keys. */
-    W_ENROLL_ERR_TRANSPORT,       /**< No HTTP response at all (invalid transport
-                                    *   config, connect/TLS failure). */
-    W_ENROLL_ERR_INVALID_REQUEST, /**< 400: malformed request. */
-    W_ENROLL_ERR_AUTH,            /**< 401: invalid or missing credential. */
-    W_ENROLL_ERR_DISABLED,        /**< 403: enrollment administratively disabled
-                                    *   on the manager -- distinct from a transport
-                                    *   error, do not blind-retry the same way. */
-    W_ENROLL_ERR_DUPLICATE,       /**< 409: duplicate agent. */
-    W_ENROLL_ERR_SERVER           /**< 500/503, or any other/malformed response. */
-} w_enroll_status_t;
 
 /**
  * @brief Validates the local enrollment config and builds the /enroll JSON
