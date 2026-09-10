@@ -289,6 +289,22 @@ bool identity_journal_append(const char *id,
     return true;
 }
 
+bool identity_journal_full(void) {
+    bool full;
+
+    w_mutex_lock(&mutex_identity);
+    full = identity_journal_size >= IDENTITY_JOURNAL_MAX_ENTRIES;
+    w_mutex_unlock(&mutex_identity);
+
+    if (full) {
+        mwarn("Refusing the operation: %d identity transitions are still waiting to reach the "
+              "database, which is the limit. Retry once the backlog drains.",
+              IDENTITY_JOURNAL_MAX_ENTRIES);
+    }
+
+    return full;
+}
+
 size_t identity_journal_pending(void) {
     size_t size;
 
@@ -472,40 +488,78 @@ void identity_journal_load(void) {
     }
 }
 
+/// Whether a later entry in the journal names the same agent. mutex_identity held.
+///
+/// The entries are appended in order, so "later in the list" is "higher seq" -- the only durable
+/// ordering there is, and the one that decides which generation of an agent's credentials is the
+/// live one.
+static bool identity_superseded_locked(const identity_node_t *node) {
+    const identity_node_t *later;
+
+    for (later = node->next; later; later = later->next) {
+        if (!strcmp(later->entry.id, node->entry.id)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 size_t identity_journal_reconcile(void) {
     identity_node_t **prev;
     identity_node_t *node;
     size_t kept = 0;
     unsigned int gone = 0;
     unsigned int superseded = 0;
+    unsigned int reserved = 0;
     bool changed = false;
 
     w_mutex_lock(&mutex_identity);
 
     for (prev = &identity_journal; (node = *prev) != NULL;) {
-        const int index = OS_IsAllowedID(&keys, node->entry.id);
         bool drop;
 
-        /* By GENERATION, not by existence of the id: both generations of a rotation share it, so
-         * the rule the deletion journal uses ("still listed means it never happened") says nothing
-         * here. The durable generation marker is the key in client.keys, written before the
-         * database and read back a moment ago:
+        /* What the journal owes is decided by the JOURNAL's own order, not by client.keys.
          *
-         *   - the id is gone       -> the agent was deleted, or its key write never landed;
-         *   - the key MATCHES      -> this is the live generation, and the database owes it;
-         *   - the key is different -> a later transition replaced this one. */
-        if (index < 0) {
+         * The earlier rule -- keep the entry only when its key is the one client.keys names -- was
+         * wrong in exactly the case this file exists for: authd answers a rotation, and the crash
+         * lands before the writer rewrites client.keys. The file then still holds the previous key,
+         * the entry holds the credentials the agent is already using, and calling that "superseded"
+         * deleted the only durable copy of them. The agent could then neither connect (its key is
+         * not in client.keys) nor re-enroll (its secret is not in the database): stuck until
+         * someone registered it again by hand.
+         *
+         *   - the id is gone from client.keys -> nothing is owed. The agent was deleted, or its
+         *     very first key write never landed; either way, restoring a row for an agent no
+         *     manager knows would resurrect what the operator removed, and an agent whose
+         *     enrollment was lost simply enrolls again.
+         *   - a LATER entry names the same agent -> this one is the previous generation.
+         *   - otherwise -> it is the live generation and the database owes it, whatever
+         *     client.keys says. Writing it means the agent can re-enroll with the secret it
+         *     already holds, and the next rotation puts its key back in client.keys: it heals
+         *     itself instead of needing a human. */
+        if (OS_IsAllowedID(&keys, node->entry.id) < 0) {
             drop = true;
             gone++;
-        } else if (keys.keyentries[index]->raw_key && !strcmp(keys.keyentries[index]->raw_key, node->entry.key)) {
-            drop = false;
-        } else {
+        } else if (identity_superseded_locked(node)) {
             drop = true;
             superseded++;
+        } else {
+            drop = false;
         }
 
         if (!drop) {
             kept++;
+
+            /* The reservation of a rotation does not survive the process, and until this entry is
+             * committed the database still names the PREVIOUS secret -- which is exactly what
+             * would authorise another rotation. Taking it back before any thread starts keeps the
+             * "one effective rotation per agent" guarantee across a restart; the writer releases
+             * it when the recovery commits, like any other rotation. */
+            if (node->entry.rotate && w_reenroll_reserve(node->entry.id, NULL)) {
+                reserved++;
+            }
+
             prev = &node->next;
             continue;
         }
@@ -533,7 +587,8 @@ size_t identity_journal_reconcile(void) {
 
     if (kept > 0) {
         minfo("%zu identity transition(s) are still owed to the database; the writer applies them "
-              "as soon as it is reachable.", kept);
+              "as soon as it is reachable. %u agent(s) cannot rotate until theirs is written.",
+              kept, reserved);
     }
 
     return kept;

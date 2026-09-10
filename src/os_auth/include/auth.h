@@ -370,8 +370,14 @@ unsigned int w_reenroll_generation(const char *agent_id);
  */
 void w_reenroll_complete(const char *agent_id);
 
-/// Release a reservation whose request was rejected before anything was handed out.
+/// Release a reservation whose request was rejected before anything was handed out. The agent's
+/// slot is dropped when it has no completed rotation to remember, so the refusals cannot grow the
+/// registry: the id comes from the request and is reserved before the agent is known to exist.
 void w_reenroll_abandon(const char *agent_id);
+
+/// How many agents the rotation registry is holding. For the tests: what they assert is that a
+/// refused request leaves nothing behind.
+unsigned int w_reenroll_slots(void);
 
 /// The memory-only half of purge_is_pending(): whether the id is journaled or reserved here, which
 /// is what authd knows without asking anyone. Never blocks, so it is the one that may be called
@@ -447,6 +453,14 @@ bool identity_journal_append(const char *id,
                              bool rotate,
                              long long *seq);
 
+/// Whether the journal cannot admit another transition right now.
+///
+/// Phase 0, and it exists because of WHERE a refusal can still be free: an enrollment that
+/// resolves a duplicate name or IP with <force> deletes the previous agent while it validates, so
+/// a caller told "no room" after that point would lose that agent for nothing. Asked before
+/// anything is mutated, exactly like purge_backlog_full() on the deletion path.
+bool identity_journal_full(void);
+
 /// How many transitions are still owed to the database. The writer's timed wake depends on it.
 size_t identity_journal_pending(void);
 
@@ -468,10 +482,12 @@ size_t identity_journal_drop(const long long *seqs, size_t count);
 /// starts, like purge_file_load().
 void identity_journal_load(void);
 
-/// Startup reconciliation, against the client.keys already read. By GENERATION and not by
-/// existence of the id -- the two generations of a rotation share it -- with the key in
-/// client.keys as the durable generation marker: absent means the agent is gone, a different key
-/// means a later transition replaced this one, and only an exact match is still owed.
+/// Startup reconciliation, against the client.keys already read. The generation is decided by the
+/// JOURNAL's own order, not by the key in client.keys, which the writer may never have got to:
+/// an id absent from client.keys owes nothing, an entry with a later one for the same agent is the
+/// previous generation, and anything else is still owed -- even when client.keys names another
+/// key, which is precisely the crash this journal exists for. Retained rotations get their
+/// reservation back before any thread starts.
 ///
 /// @return How many transitions survived.
 size_t identity_journal_reconcile(void);

@@ -317,26 +317,70 @@ static void test_reconciliation_keeps_the_live_generation(void **state) {
     keys_with("001", KEY_A);
     assert_true(identity_journal_append("001", "one", "any", KEY_A, SECRET_A, true, NULL));
 
-    // The key in client.keys is the durable generation marker, and it matches: the database is
-    // the one that is behind.
+    // Nothing later names this agent, so the database is the one that is behind.
     assert_int_equal(identity_journal_reconcile(), 1);
     assert_int_equal(identity_journal_pending(), 1);
+
+    // And the rotation is reserved again: until the recovery commits, the database still names the
+    // previous secret, which is exactly what must not authorise a second rotation.
+    assert_false(w_reenroll_reserve("001", NULL));
+    w_reenroll_complete("001");
 
     keys_clear();
 }
 
-static void test_reconciliation_discards_a_superseded_rotation(void **state) {
+static void test_reconciliation_keeps_a_rotation_client_keys_never_received(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
 
-    // Both generations of a rotation share the id, so "the id is still there" decides nothing --
-    // this is the case that rules out the deletion journal's rule.
-    keys_with("001", KEY_B);
-    assert_true(identity_journal_append("001", "one", "any", KEY_A, SECRET_A, true, NULL));
+    // The crash this journal exists for: the answer went out, and authd died before the writer
+    // rewrote client.keys. The file still names the OLD key; the entry names what the agent holds.
+    keys_with("002", KEY_A);
+    assert_true(identity_journal_append("002", "two", "any", KEY_B, SECRET_B, true, NULL));
 
-    assert_int_equal(identity_journal_reconcile(), 0);
-    assert_int_equal(identity_journal_pending(), 0);
-    assert_int_equal(file_lines(), 0);
+    // Judging by client.keys would call this "superseded" and delete the only durable copy of the
+    // credentials the agent is already using, leaving it unable to connect OR to re-enroll.
+    assert_int_equal(identity_journal_reconcile(), 1);
+    assert_int_equal(identity_journal_pending(), 1);
+
+    size_t count = 0;
+    identity_journal_entry_t *entries = identity_journal_snapshot(0, &count);
+    assert_int_equal(count, 1);
+    assert_string_equal(entries[0].secret, SECRET_B);
+    identity_journal_free(entries, count);
+
+    assert_false(w_reenroll_reserve("002", NULL));
+    w_reenroll_complete("002");
+
+    keys_clear();
+}
+
+/* Replaces an earlier case that asserted the opposite: that an entry whose key differs from
+ * client.keys is superseded. That rule discarded the live credentials of a rotation the writer had
+ * not got to yet (issue #39078, review round), so what supersedes an entry is now a LATER entry for
+ * the same agent -- which is what this case fixes. */
+static void test_reconciliation_keeps_only_the_newest_entry_of_an_agent(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+
+    // Two rotations of one agent survived a restart -- possible only across a crash, since the
+    // reservation forbids it while the process lives. The journal's own order says which is live.
+    keys_with("003", KEY_B);
+    assert_true(identity_journal_append("003", "three", "any", KEY_A, SECRET_A, true, NULL));
+    assert_true(identity_journal_append("003", "three", "any", KEY_B, SECRET_B, true, NULL));
+
+    assert_int_equal(identity_journal_reconcile(), 1);
+
+    size_t count = 0;
+    identity_journal_entry_t *entries = identity_journal_snapshot(0, &count);
+    assert_int_equal(count, 1);
+    // The newest one: writing the older secret back would hand the agent's identity to a bearer it
+    // has already replaced.
+    assert_string_equal(entries[0].secret, SECRET_B);
+    identity_journal_free(entries, count);
+
+    assert_false(w_reenroll_reserve("003", NULL));
+    w_reenroll_complete("003");
 
     keys_clear();
 }
@@ -368,7 +412,8 @@ int main(void) {
         cmocka_unit_test_setup(test_dropping_an_entry_shortens_the_file, setup_case),
         cmocka_unit_test_setup(test_a_snapshot_is_bounded_by_the_batch, setup_case),
         cmocka_unit_test_setup(test_reconciliation_keeps_the_live_generation, setup_case),
-        cmocka_unit_test_setup(test_reconciliation_discards_a_superseded_rotation, setup_case),
+        cmocka_unit_test_setup(test_reconciliation_keeps_a_rotation_client_keys_never_received, setup_case),
+        cmocka_unit_test_setup(test_reconciliation_keeps_only_the_newest_entry_of_an_agent, setup_case),
         cmocka_unit_test_setup(test_reconciliation_discards_a_transition_whose_agent_is_gone, setup_case),
     };
 

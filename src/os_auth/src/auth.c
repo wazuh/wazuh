@@ -123,8 +123,8 @@ typedef struct reenroll_slot {
 static reenroll_slot_t *reenroll_slots = NULL;
 static pthread_mutex_t mutex_reenroll = PTHREAD_MUTEX_INITIALIZER;
 
-/// The slot for that id, creating it if this is the first time the agent is seen. mutex_reenroll held.
-static reenroll_slot_t *reenroll_slot_locked(const char *agent_id) {
+/// The slot for that id, or NULL when the agent has never been seen. mutex_reenroll held.
+static reenroll_slot_t *reenroll_slot_find_locked(const char *agent_id) {
     reenroll_slot_t *slot;
 
     for (slot = reenroll_slots; slot; slot = slot->next) {
@@ -133,12 +133,44 @@ static reenroll_slot_t *reenroll_slot_locked(const char *agent_id) {
         }
     }
 
+    return NULL;
+}
+
+/// The slot for that id, creating it if this is the first time the agent is seen. mutex_reenroll held.
+static reenroll_slot_t *reenroll_slot_locked(const char *agent_id) {
+    reenroll_slot_t *slot = reenroll_slot_find_locked(agent_id);
+
+    if (slot != NULL) {
+        return slot;
+    }
+
     os_calloc(1, sizeof(reenroll_slot_t), slot);
     os_strdup(agent_id, slot->id);
     slot->next = reenroll_slots;
     reenroll_slots = slot;
 
     return slot;
+}
+
+/// Drop a slot that holds nothing worth remembering. mutex_reenroll held.
+///
+/// The list must not grow with the requests it REFUSES: the id comes from the caller, is only
+/// checked against the eight-digit id rule, and the reservation is taken before the agent is known
+/// to exist -- so a caller that reaches POST /enroll can otherwise seed a slot per invented id,
+/// costing memory that never comes back and a longer linear search under this mutex for every
+/// legitimate rotation after it (issue #39078, review round).
+static void reenroll_slot_discard_locked(reenroll_slot_t *victim) {
+    reenroll_slot_t **prev;
+    reenroll_slot_t *slot;
+
+    for (prev = &reenroll_slots; (slot = *prev) != NULL; prev = &slot->next) {
+        if (slot == victim) {
+            *prev = slot->next;
+            os_free(slot->id);
+            os_free(slot);
+            return;
+        }
+    }
 }
 
 bool w_reenroll_reserve(const char *agent_id, unsigned int *generation) {
@@ -176,8 +208,10 @@ unsigned int w_reenroll_generation(const char *agent_id) {
     }
 
     w_mutex_lock(&mutex_reenroll);
-    slot = reenroll_slot_locked(agent_id);
-    generation = slot->generation;
+    slot = reenroll_slot_find_locked(agent_id);
+    /* An agent with no slot has completed no rotation, which is what generation 0 means: this must
+     * not create one, or a read would grow the list the same way a refused request used to. */
+    generation = slot != NULL ? slot->generation : 0;
     w_mutex_unlock(&mutex_reenroll);
 
     return generation;
@@ -207,11 +241,35 @@ void w_reenroll_abandon(const char *agent_id) {
     }
 
     w_mutex_lock(&mutex_reenroll);
-    slot = reenroll_slot_locked(agent_id);
-    /* Nothing was handed out, so the generation stands: this is the rejection path (unknown agent,
-     * a bearer that did not verify, a keystore that says no) */
-    slot->in_flight = false;
+    slot = reenroll_slot_find_locked(agent_id);
+
+    if (slot != NULL) {
+        /* Nothing was handed out, so the generation stands: this is the rejection path (unknown
+         * agent, a bearer that did not verify, a keystore that says no) */
+        slot->in_flight = false;
+
+        /* And a slot with no generation to preserve holds nothing at all -- which is every slot a
+         * rejected request created. What stays is one slot per agent that actually rotated, bounded
+         * by the fleet. */
+        if (slot->generation == 0) {
+            reenroll_slot_discard_locked(slot);
+        }
+    }
+
     w_mutex_unlock(&mutex_reenroll);
+}
+
+unsigned int w_reenroll_slots(void) {
+    unsigned int count = 0;
+    reenroll_slot_t *slot;
+
+    w_mutex_lock(&mutex_reenroll);
+    for (slot = reenroll_slots; slot; slot = slot->next) {
+        count++;
+    }
+    w_mutex_unlock(&mutex_reenroll);
+
+    return count;
 }
 
 /// Reserve an id at removal time. Idempotent: an id cannot leave the keystore twice without the
