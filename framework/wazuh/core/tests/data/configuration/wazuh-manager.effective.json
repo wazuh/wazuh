@@ -22,6 +22,7 @@
     "remote": {
         "legacy": {
             "enabled": false,
+            "ca_delivery": true,
             "port": 1514,
             "protocol": [
                 "tcp"
