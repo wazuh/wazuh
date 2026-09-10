@@ -46,6 +46,16 @@ namespace
         return value;
     }
 
+    /// A 401 that names its failure class, as remoted renders it. Since #39064 only
+    /// `unknown_agent` latches the AuthGate, so a test about the latch has to say which 401 it
+    /// means -- a classless 401 is deliberately retried without ever touching the identity.
+    HttpResponse authFail(const std::string& code = "unknown_agent")
+    {
+        return response(TransportStatus::Ok,
+                        401,
+                        R"({"error":"Invalid client authentication","code":")" + code + R"("})");
+    }
+
     std::string bodyOf(const HttpRequestSpec& spec)
     {
         return std::string {reinterpret_cast<const char*>(spec.body), spec.bodyLength};
@@ -263,14 +273,19 @@ TEST_F(ControlStreamTest, PersistentAuthFailureGoesAuthError)
 
     EXPECT_FALSE(m_stream.step(m_waiter));
     EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
+    // Deliberately a CLASSLESS 401 (no body): the state still reports what was observed, but the
+    // gate must not latch and no re-enrollment may be asked for (#39064). AUTH_ERROR is a
+    // description of the last attempt; only `unknown_agent` is an instruction to throw the
+    // identity away.
+    EXPECT_FALSE(m_authGate.paused());
 }
 
 TEST_F(ControlStreamTest, PausedGateSkipsHttpAndReleaseResumesWithAFreshStartup)
 {
     // First step: 401 startup engages the gate (via RetrySender) -> AUTH_ERROR.
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(response(TransportStatus::Ok, 401))) // Startup -> 401.
-    .WillOnce(Return(response(TransportStatus::Ok, 401))) // One-shot auth retry -> 401 -> pause.
+    .WillOnce(Return(authFail()))                        // Startup -> 401 unknown_agent.
+    .WillOnce(Return(authFail()))                        // One-shot auth retry -> 401 -> pause.
     .WillOnce(Invoke(                                     // Post-release startup.
                   [&](const HttpRequestSpec & spec)
     {
@@ -1249,7 +1264,7 @@ TEST_F(ControlStreamTest, LatchedAuthFailurePausesProducersAcrossGatedCycles)
     // as AuthFail so the condition keeps being counted while it lasts.
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
-    .WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
+    .WillRepeatedly(Return(authFail()));
     // Counted so the assertions below can pin the pause to the GATED cycle. That
     // is the whole claim: without counting gated cycles the streak would freeze
     // at 1 and never arm, and a total of one would not distinguish the two.
@@ -1284,8 +1299,8 @@ TEST_F(ControlStreamTest, ANewKeyClearsTheAuthPauseAndResumesProducers)
     // the second escalates, which is what latches the gate.
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
-    .WillOnce(Return(response(TransportStatus::Ok, 401)))
-    .WillOnce(Return(response(TransportStatus::Ok, 401)))
+    .WillOnce(Return(authFail()))
+    .WillOnce(Return(authFail()))
     .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
 
     int resumes = 0;

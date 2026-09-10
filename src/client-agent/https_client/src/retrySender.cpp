@@ -11,6 +11,7 @@
 
 #include "retrySender.hpp"
 
+#include "authFailureClass.hpp"
 #include "bodyCompressor.hpp"
 #include "requestTarget.hpp"
 
@@ -122,12 +123,30 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
     {
         m_backoff.reset();
     }
-    else if (result.outcome == OutcomeClass::AuthFail && m_authGate != nullptr)
+    else if (result.outcome == OutcomeClass::AuthFail)
     {
-        // A 401 that survived the one-shot fresh-timestamp retry above: treat it
-        // as a dead credential. Pause everything and ask for re-enrollment (once
-        // per incident). #37828.
-        m_authGate->reportAuthFailure();
+        // A 401 that survived the one-shot fresh-timestamp retry above. Which of the three answers
+        // it deserves is the manager's to name, not ours to guess (#39064): only `unknown_agent`
+        // means the identity itself is gone, and only that pauses traffic and asks for
+        // re-enrollment. Every other class -- including Unclassified, the fail-safe reading -- is
+        // returned to the caller unescalated; the streams already keep the batch and retry on the
+        // next tick (statelessStream.cpp), so nothing storms and no second pause mechanism exists.
+        const auto authClass = parseAuthFailClass(result.response.body);
+
+        if (authClass == AuthFailClass::UnknownAgent)
+        {
+            if (m_authGate != nullptr)
+            {
+                m_authGate->reportAuthFailure(); // Once per incident. #37828.
+            }
+        }
+        else
+        {
+            LOGFN_ERROR(m_logFn,
+                        "https_client: the manager refused this request's credential (401, %s); "
+                        "keeping the current identity and retrying.",
+                        authFailClassName(authClass));
+        }
     }
 
     return result;

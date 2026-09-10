@@ -52,8 +52,11 @@ class RetrySender final
         /// agent): a 415 reports here and disables compression for all six
         /// send paths for the rest of this run; send() retries once,
         /// uncompressed, on the same 415.
-        /// authGate (optional): a 401 from any send reports here, pausing all
-        /// traffic and surfacing re-enrollment once (#37828).
+        /// authGate (optional): a 401 whose body names the class `unknown_agent`
+        /// reports here, pausing all traffic and surfacing re-enrollment once
+        /// (#37828). Since #39064 the other seven classes -- and a 401 carrying no
+        /// readable class -- are logged and returned unescalated instead: only a
+        /// manager that says the identity is gone may cost us the identity.
         /// serverEndpoint (#38492/#38491, optional): the configured reverse-proxy
         /// path segment, already normalized (no leading/trailing '/'). When
         /// non-empty, attemptOnce() folds it into HttpRequestSpec::target

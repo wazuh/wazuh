@@ -53,6 +53,16 @@ namespace
         return value;
     }
 
+    /// A 401 carrying a failure class, spelled as remoted renders it (#39064). Since only
+    /// `unknown_agent` escalates to the AuthGate, a test about escalation has to say which 401 it
+    /// means -- a classless 401 is deliberately not one of them.
+    HttpResponse authFail(const std::string& code)
+    {
+        HttpResponse value = response(TransportStatus::Ok, 401);
+        value.body = R"({"error":"Invalid client authentication","code":")" + code + R"("})";
+        return value;
+    }
+
     std::string writeTempFile(const std::string& name, const std::string& contents)
     {
         const std::string path = ::testing::TempDir() + name;
@@ -374,16 +384,98 @@ TEST_F(RetrySenderTest, AuthGateEscalatesOnlyAfterTheRetryAlsoFails)
 
     // First send: a 401 then a 200 on the retry -> recovered, no pause.
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(response(TransportStatus::Ok, 401)))
+    .WillOnce(Return(authFail("unknown_agent")))
     .WillOnce(Return(response(TransportStatus::Ok, 200)))
     // Second send: two 401s -> escalate.
-    .WillOnce(Return(response(TransportStatus::Ok, 401)))
-    .WillOnce(Return(response(TransportStatus::Ok, 401)));
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")));
 
     guarded.send(makeSpec(), m_waiter, 1);
     EXPECT_FALSE(gate.paused()); // Retry recovered: no pause.
     guarded.send(makeSpec(), m_waiter, 1);
     EXPECT_TRUE(gate.paused()); // Retry also 401: paused.
+}
+
+/// #39064's whole point: a surviving 401 that is not `unknown_agent` keeps the identity. The
+/// outcome still reaches the caller as AuthFail (the request did fail to authenticate, and the
+/// streams keep the batch for the next tick), but nothing pauses and nothing re-enrolls.
+TEST_F(RetrySenderTest, OnlyUnknownAgentEscalatesToTheAuthGate)
+{
+    for (const auto* code : {"stale_token",
+                             "invalid_signature",
+                             "invalid_request",
+                             "enrollment_key_unavailable",
+                             "token_unknown",
+                             "token_expired",
+                             "token_revoked"})
+    {
+        ::testing::NiceMock<MockCallbackSink> sink;
+        bool reenrollRequested = false;
+        AuthGate gate {sink, [&reenrollRequested] {
+            reenrollRequested = true;
+        }};
+        RetrySender guarded {m_performer, m_signer, m_clock, m_backoff, false, nullptr, &gate};
+
+        EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(authFail(code))).WillOnce(Return(authFail(code)));
+
+        const auto result = guarded.send(makeSpec(), m_waiter, 1);
+        EXPECT_EQ(OutcomeClass::AuthFail, result.outcome) << code;
+        EXPECT_FALSE(gate.paused()) << code;
+        EXPECT_FALSE(reenrollRequested) << code;
+        ::testing::Mock::VerifyAndClearExpectations(&m_performer);
+    }
+}
+
+/// The fail-safe reading (D3): a 401 the agent cannot classify -- no body, a numeric `code`, an
+/// intermediary's error page -- must retry and never discard the identity. An ambiguous answer
+/// must not cost an agent its key.
+TEST_F(RetrySenderTest, AnUnclassifiedAuthFailureNeverReenrolls)
+{
+    for (const auto& body : {std::string {},
+                             std::string {R"({"error":"Invalid client authentication","code":401})"},
+                             std::string {"<html>401 Unauthorized</html>"}})
+    {
+        ::testing::NiceMock<MockCallbackSink> sink;
+        bool reenrollRequested = false;
+        AuthGate gate {sink, [&reenrollRequested] {
+            reenrollRequested = true;
+        }};
+        RetrySender guarded {m_performer, m_signer, m_clock, m_backoff, false, nullptr, &gate};
+
+        auto unclassified = response(TransportStatus::Ok, 401);
+        unclassified.body = body;
+
+        EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(unclassified)).WillOnce(Return(unclassified));
+
+        const auto result = guarded.send(makeSpec(), m_waiter, 1);
+        EXPECT_EQ(OutcomeClass::AuthFail, result.outcome) << body;
+        EXPECT_FALSE(gate.paused()) << body;
+        EXPECT_FALSE(reenrollRequested) << body;
+        ::testing::Mock::VerifyAndClearExpectations(&m_performer);
+    }
+}
+
+/// `stale_token` keeps the behaviour that already fixes the common case within one call: the
+/// one-shot skew correction runs before the grace retry, exactly as it did when every 401 was
+/// treated alike. The class only decides what happens to a 401 that SURVIVES that retry.
+TEST_F(RetrySenderTest, StaleTokenStillGetsTheSkewCorrectedGraceRetry)
+{
+    ::testing::NiceMock<MockCallbackSink> sink;
+    AuthGate gate {sink, [] {
+        }};
+    RetrySender guarded {m_performer, m_signer, m_clock, m_backoff, false, nullptr, &gate};
+
+    m_clock.setWall(1700000000); // Agent an hour behind the manager.
+    auto stale = authFail("stale_token");
+    stale.serverDateSeconds = 1700003600;
+
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(stale)).WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    const auto result = guarded.send(makeSpec(), m_waiter, 1);
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_EQ(3600, m_clock.appliedOffsetSeconds());
+    EXPECT_EQ(1700003600, m_clock.wallSeconds()); // Corrected, so the retry signed with the right time.
+    EXPECT_FALSE(gate.paused());
 }
 
 TEST_F(RetrySenderTest, VersionRejectionReturnsImmediately)
