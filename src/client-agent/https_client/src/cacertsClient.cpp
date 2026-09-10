@@ -26,7 +26,7 @@ CacertsClient::CacertsClient(const ModuleConfig& config, IHttpPerformer& perform
 
 HttpResponse CacertsClient::fetch()
 {
-    if (!m_config.validateTransport(m_fsProbe, m_logFn))
+    if (!m_config.validateTransport(m_fsProbe, m_logFn, /*unverifiedByDesign=*/true))
     {
         HttpResponse response;
         response.status = TransportStatus::TlsFail;
