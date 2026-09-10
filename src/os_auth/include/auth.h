@@ -340,6 +340,35 @@ purge_journal_entry_t* purge_journal_reconcile(size_t *count);
 /// BLOCKS for up to authd.wdb_timeout, so it must not be called with mutex_keys held.
 bool purge_is_pending(const char *agent_id);
 
+/**
+ * @brief Reserve the right to rotate this agent's credentials.
+ *
+ * Taken BEFORE the request reads the agent's re-enrollment secret: the database keeps saying the
+ * old secret until the writer updates it, so a second request that got that far would verify the
+ * same bearer and hand out a second credential for one agent (issue #39078, H02).
+ *
+ * @param agent_id Agent to reserve.
+ * @param generation Receives the rotations completed for this agent so far; re-check it under
+ *                   mutex_keys before mutating, since a rotation may have completed while this
+ *                   request was verifying.
+ * @return true when the reservation was taken, false when another rotation already holds it.
+ */
+bool w_reenroll_reserve(const char *agent_id, unsigned int *generation);
+
+/// Rotations completed for this agent so far.
+unsigned int w_reenroll_generation(const char *agent_id);
+
+/**
+ * @brief Release a reservation whose transition was persisted, and count the rotation.
+ *
+ * Called by the writer on a successful credential update, and only then: a failed write leaves the
+ * old secret in the database, so releasing there would let that secret authorise another rotation.
+ */
+void w_reenroll_complete(const char *agent_id);
+
+/// Release a reservation whose request was rejected before anything was handed out.
+void w_reenroll_abandon(const char *agent_id);
+
 /// The memory-only half of purge_is_pending(): whether the id is journaled or reserved here, which
 /// is what authd knows without asking anyone. Never blocks, so it is the one that may be called
 /// under mutex_keys -- as a re-check, after purge_is_pending() has already answered outside it.

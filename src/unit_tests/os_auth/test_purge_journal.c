@@ -688,6 +688,52 @@ static void test_a_missing_file_is_not_an_error(void **state) {
     assert_false(purge_is_pending_locally("001"));
 }
 
+/* --- Rotations in flight (issue #39078, H02) --------------------------------------------------- */
+
+static void test_a_rotation_reservation_excludes_a_second_one(void **state) {
+    (void)state;
+    unsigned int first = 99;
+    unsigned int second = 99;
+
+    assert_true(w_reenroll_reserve("001", &first));
+    assert_int_equal(first, 0);
+
+    /* While one rotation is accepted and unpersisted, nobody else may start: this is what stops a
+     * second request from reading the old secret out of the database and rotating again */
+    assert_false(w_reenroll_reserve("001", &second));
+    assert_int_equal(second, 99); // untouched
+
+    /* Another agent is unaffected */
+    assert_true(w_reenroll_reserve("002", NULL));
+}
+
+static void test_completing_a_rotation_moves_the_generation_and_abandoning_does_not(void **state) {
+    (void)state;
+    unsigned int generation = 0;
+
+    assert_true(w_reenroll_reserve("010", &generation));
+    assert_int_equal(generation, 0);
+
+    /* The writer persisted it: the slot is free again and the counter says one rotation happened,
+     * which is how a request that captured the previous value learns its secret is stale */
+    w_reenroll_complete("010");
+    assert_int_equal(w_reenroll_generation("010"), 1);
+
+    assert_true(w_reenroll_reserve("010", &generation));
+    assert_int_equal(generation, 1);
+
+    /* A rejection hands nothing out, so the generation stands */
+    w_reenroll_abandon("010");
+    assert_int_equal(w_reenroll_generation("010"), 1);
+    assert_true(w_reenroll_reserve("010", &generation));
+    assert_int_equal(generation, 1);
+    w_reenroll_abandon("010");
+
+    /* A null id is not a slot */
+    assert_false(w_reenroll_reserve(NULL, &generation));
+    assert_int_equal(w_reenroll_generation(NULL), 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Phases 1 and 4
@@ -734,6 +780,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_a_clock_that_went_backwards_restamps_every_entry,
                                         setup_journal, teardown_journal),
         cmocka_unit_test_setup_teardown(test_a_missing_file_is_not_an_error, setup_journal, teardown_journal),
+        cmocka_unit_test(test_a_rotation_reservation_excludes_a_second_one),
+        cmocka_unit_test(test_completing_a_rotation_moves_the_generation_and_abandoning_does_not),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

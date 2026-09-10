@@ -344,12 +344,13 @@ TEST(EnrollmentMetricsTest, MakeRegistersFamilyAtZero)
                              remoted::enrollment::METRIC_REENROLL_ACCEPTED,
                              remoted::enrollment::METRIC_REENROLL_REJECTED_UNKNOWN,
                              remoted::enrollment::METRIC_REENROLL_REJECTED_SIGNATURE,
-                             remoted::enrollment::METRIC_REENROLL_REJECTED_STALE})
+                             remoted::enrollment::METRIC_REENROLL_REJECTED_STALE,
+                             remoted::enrollment::METRIC_REENROLL_REJECTED_IN_PROGRESS})
     {
         EXPECT_TRUE(manager.exists(name)) << name;
         EXPECT_EQ(static_cast<uint64_t>(manager.get(name)->value()), 0U) << name;
     }
-    EXPECT_EQ(manager.count(), 15U);
+    EXPECT_EQ(manager.count(), 16U);
 
     // Each token inc helper touches exactly its own cell.
     remoted::enrollment::incTokenAccepted(m);
@@ -389,6 +390,10 @@ TEST(EnrollmentMetricsTest, MakeRegistersFamilyAtZero)
     EXPECT_EQ(m.reenrollRejectedUnknown->get(), 2U);
     EXPECT_EQ(m.reenrollRejectedSignature->get(), 3U);
     EXPECT_EQ(m.reenrollRejectedStale->get(), 4U);
+
+    // 9030: a rotation already in flight (issue #39078, H02)
+    remoted::enrollment::incReenrollRejectedInProgress(m);
+    EXPECT_EQ(m.reenrollRejectedInProgress->get(), 1U);
     EXPECT_EQ(m.tokenAccepted->get(), 1U); // and the token cells are untouched by them
     EXPECT_EQ(m.accepted->get(), 0U);
 }
