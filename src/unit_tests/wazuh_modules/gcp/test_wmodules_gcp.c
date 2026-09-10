@@ -772,17 +772,21 @@ static void test_wm_gcp_pubsub_read_credentials_file_tag_file_not_found(void **s
 
 static void test_wm_gcp_pubsub_read_no_credentials_file_tag(void **state) {
     group_data_t *data = *state;
+    wm_gcp_pubsub *gcp;
     int ret;
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
     expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_PUBSUB_WM_NAME);
     will_return(__wrap_sched_scan_read, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "No value defined for tag 'credentials_file' in module 'gcp-pubsub'");
-
     ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
-    assert_int_equal(ret, OS_INVALID);
+    assert_int_equal(ret, 0);
+
+    gcp = data->module->data;
+
+    assert_non_null(gcp);
+    assert_null(gcp->credentials_file);
 }
 
 static void test_wm_gcp_pubsub_read_max_messages_tag_empty(void **state) {
@@ -1311,11 +1315,13 @@ static void test_wm_gcp_bucket_read_no_credentials_file_tag(void **state) {
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "No value defined for tag 'credentials_file' in module 'gcp-bucket'.");
+    expect_value(__wrap_sched_scan_read, nodes, data->nodes);
+    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_BUCKET_WM_NAME);
+    will_return(__wrap_sched_scan_read, 0);
 
     ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
 
-    assert_int_equal(ret, OS_INVALID);
+    assert_int_equal(ret, 0);
 }
 
 static void test_wm_gcp_bucket_read_run_on_start_tag_invalid(void **state) {

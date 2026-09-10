@@ -49,7 +49,8 @@ def get_script_arguments():
                         help='Subscription name')
 
     parser.add_argument('-c', '--credentials_file', dest='credentials_file',
-                        help='Path to credentials file', required=True)
+                        help='Path to credentials file. If not provided, Application Default Credentials will be used',
+                        required=False, default=None)
 
     parser.add_argument('-m', '--max_messages', dest='max_messages', type=int,
                         help='Number of maximum messages pulled in each iteration', default=100)
