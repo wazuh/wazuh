@@ -138,8 +138,10 @@ int w_agent_token_bootstrap(int uid, int gid) {
         return 0;
     }
 
-    if (IsFile(KEYS_FILE) == 0) {
-        /* Already enrolled: nothing left for the token to do. */
+    if (FileSize(KEYS_FILE) > 0) {
+        /* Already enrolled: nothing left to do. IsFile() alone can't tell this apart from
+         * the empty placeholder client.keys the package installs by default -- only a
+         * non-empty file means a real ID/NAME/IP/KEY entry exists. */
         return 0;
     }
 

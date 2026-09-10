@@ -253,6 +253,41 @@ static void test_already_enrolled_is_noop(void **state) {
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
 }
 
+/* Regression test: client.keys can exist as an empty 0-byte placeholder (the package's own
+ * conffile default) that no prior test here modeled -- every existing test either unlinked
+ * the file or wrote a real, non-empty entry. */
+static void test_empty_placeholder_keys_file_is_not_already_enrolled(void **state) {
+    (void) state;
+    write_file("etc/client.keys", "");
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pin_matches, 1);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    /* Only AGENT_ANCHOR_CA hits TempFile()'s benign FSTAT_ERROR mdebug1 here -- KEYS_FILE
+     * already exists (the placeholder), so fstat() on it succeeds and that debug line
+     * doesn't fire twice. */
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_fetch_call_count, 1);
+    assert_int_equal(g_spki_call_count, 1);
+    assert_int_equal(g_enroll_call_count, 1);
+    assert_int_equal(IsFile("etc/certs/root-ca.pem"), 0);
+}
+
 static void test_malformed_token_logs_named_error_and_writes_nothing(void **state) {
     (void) state;
     write_file("etc/enrollment_token", "not-a-valid-token!!!");
@@ -436,6 +471,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_no_token_file_is_noop, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_anchor_already_present_is_noop, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_already_enrolled_is_noop, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_empty_placeholder_keys_file_is_not_already_enrolled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_malformed_token_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_failure_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_pin_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
