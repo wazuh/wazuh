@@ -467,6 +467,75 @@ pin_ca() {
     return ${PIN_OK}
 }
 
+# Adopts a CA the manager delivered into var/incoming/ during this upgrade, before
+# DEFAULT_CA_FILE is read below. Validates PEM markers and size like the manager's own
+# check, and never aborts the upgrade -- a bad or missing delivery just leaves
+# DEFAULT_CA_FILE as it was. Always removes the incoming file, so a later cycle can't
+# mistake it for a fresh one.
+adopt_incoming_ca() {
+    INCOMING_CA_FILE="./var/incoming/root-ca.pem"
+    TARGET_CA_FILE="${1}"
+
+    if [ ! -e "${INCOMING_CA_FILE}" ] && [ ! -L "${INCOMING_CA_FILE}" ]; then
+        return 0
+    fi
+
+    # var/incoming is written by com's own transfer, but is not exclusively Wazuh-controlled
+    # (see w_fopen_nofollow()'s read-side counterpart for this same directory) -- reject a
+    # symlink outright rather than read or copy through it.
+    if [ -L "${INCOMING_CA_FILE}" ]; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - A CA arrived at ${INCOMING_CA_FILE} as a symlink; refusing to follow it, discarding it and continuing the upgrade unverified." >> ./logs/upgrade.log
+        rm -f "${INCOMING_CA_FILE}"
+        return 0
+    fi
+
+    if [ ! -f "${INCOMING_CA_FILE}" ]; then
+        return 0
+    fi
+
+    if [ ! -r "${INCOMING_CA_FILE}" ]; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - A CA arrived at ${INCOMING_CA_FILE} but is not readable; ignoring it and continuing the upgrade." >> ./logs/upgrade.log
+        rm -f "${INCOMING_CA_FILE}"
+        return 0
+    fi
+
+    # Same criterion as legacy_task_ca_read() on the manager side: both PEM markers present, and
+    # small enough to plausibly be a CA rather than something else delivered under this name by
+    # mistake or corruption in transit.
+    CA_BYTES=$(wc -c < "${INCOMING_CA_FILE}" 2>/dev/null)
+    CA_BYTES=${CA_BYTES:-0}
+    if [ "${CA_BYTES}" -eq 0 ] || [ "${CA_BYTES}" -gt 65536 ] \
+        || ! grep -q -- "-----BEGIN CERTIFICATE-----" "${INCOMING_CA_FILE}" \
+        || ! grep -q -- "-----END CERTIFICATE-----" "${INCOMING_CA_FILE}"; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - The CA delivered at ${INCOMING_CA_FILE} does not look like a valid PEM certificate (empty, oversized, or missing BEGIN/END markers); discarding it and continuing the upgrade unverified." >> ./logs/upgrade.log
+        rm -f "${INCOMING_CA_FILE}"
+        return 0
+    fi
+
+    if [ -f "${TARGET_CA_FILE}" ]; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Replacing the existing anchor at ${TARGET_CA_FILE} with the CA delivered over the upgrade channel; the manager is authoritative for its own CA." >> ./logs/upgrade.log
+    else
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Installing the CA delivered over the upgrade channel as ${TARGET_CA_FILE}." >> ./logs/upgrade.log
+    fi
+
+    TARGET_CA_DIR="$(dirname "${TARGET_CA_FILE}")"
+    mkdir -p "${TARGET_CA_DIR}" 2>/dev/null
+    # mkdir -p's mode is whatever the umask leaves it (0755 observed under the installer's own
+    # umask) -- looser than the rest of etc/, which is 0770 root:wazuh. Match that convention
+    # explicitly rather than let a first-ever delivery leave a world-traversable certs directory.
+    chown root:wazuh "${TARGET_CA_DIR}" 2>/dev/null
+    chmod 750 "${TARGET_CA_DIR}" 2>/dev/null
+    CA_TMP="${TARGET_CA_DIR}/.root-ca.pem.$$"
+    if cp "${INCOMING_CA_FILE}" "${CA_TMP}" 2>/dev/null && mv -f "${CA_TMP}" "${TARGET_CA_FILE}" 2>/dev/null; then
+        chown root:wazuh "${TARGET_CA_FILE}" 2>/dev/null
+        chmod 640 "${TARGET_CA_FILE}" 2>/dev/null
+        rm -f "${INCOMING_CA_FILE}"
+    else
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Could not install the delivered CA at ${TARGET_CA_FILE} (write failure); leaving any existing anchor untouched and continuing the upgrade." >> ./logs/upgrade.log
+        rm -f "${CA_TMP}" "${INCOMING_CA_FILE}" 2>/dev/null
+    fi
+}
+
 # A WPK upgrade never rewrites ossec.conf, so this script meets two config shapes and has
 # to read both (#38624):
 #
@@ -567,6 +636,10 @@ fi
 # install.
 DEFAULT_CA_FILE="./etc/certs/root-ca.pem"
 
+# Adopt any CA delivered with this upgrade before DEFAULT_CA_FILE is read below, so the
+# checks and the new binary see it, not a stale one from a prior cycle.
+adopt_incoming_ca "${DEFAULT_CA_FILE}"
+
 # Same path as AGENT_ANCHOR_CA (src/shared/include/defs.h), which the agent now reads
 # directly: since #39025 a present, readable file here supplies the verification state for
 # anything <ssl> left unsaid, so the resolution this gate mirrors above is no longer the one
@@ -617,16 +690,20 @@ case "${SSL_VERIFICATION_MODE}" in
             # there is nothing this script can safely fix on the operator's behalf.
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}. Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> ./logs/upgrade.log
             abort_upgrade "2"
-        elif [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; then
-            if pin_ca "${DEFAULT_CA_FILE}"; then
-                echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate; pinned ${DEFAULT_CA_FILE} as <certificate_authorities> instead." >> ./logs/upgrade.log
-            else
-                echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Found a CA at ${DEFAULT_CA_FILE} but could not pin it into <ssl><certificate_authorities> (no <agent> block found, or an existing <ssl> block was not in the expected format), interrupting upgrade." >> ./logs/upgrade.log
-                abort_upgrade "2"
-            fi
         else
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, and no CA was found at ${DEFAULT_CA_FILE}. Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade." >> ./logs/upgrade.log
-            abort_upgrade "2"
+            # Implicit system default (no <ssl> block at all, the shape every migrated
+            # 4.x agent has). The anchor's presence or absence -- not ossec.conf -- governs
+            # the new binary's verification mode, so this must never abort.
+            #
+            # Previously called pin_ca() to write the anchor into
+            # <ssl><certificate_authorities> and aborted if that failed -- pin_ca() parses an
+            # <agent> block whose shape varies by release, and that abort broke real
+            # upgrades (confirmed live). Now log-only.
+            if [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; then
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - A trust anchor is present at ${DEFAULT_CA_FILE}; the upgraded agent verifies with 'full' against it. No changes made to ossec.conf." >> ./logs/upgrade.log
+            else
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - WARNING: no trust anchor found at ${DEFAULT_CA_FILE} and the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}. The upgraded agent will start unverified. Enable CA delivery on the manager (<remote><legacy><ca_delivery>), or place a CA at ${DEFAULT_CA_FILE} and retry, to fix this." >> ./logs/upgrade.log
+            fi
         fi
         ;;
     none)

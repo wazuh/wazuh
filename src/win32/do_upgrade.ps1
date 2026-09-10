@@ -518,6 +518,67 @@ function pin_ca($ca_path) {
     return $true
 }
 
+# Adopts a CA the manager delivered into incoming\ during this upgrade (mirrored on
+# Linux/macOS as var/incoming/root-ca.pem in pkg_installer.sh), before $default_ca_file
+# is read below. Validates PEM markers and size like the manager's own check, and never
+# aborts the upgrade -- a bad or missing delivery just leaves $target_path as it was.
+# Always removes the incoming file, so a later cycle can't mistake it for a fresh one.
+function adopt_incoming_ca($incoming_path, $target_path) {
+    if (-Not (Test-Path -PathType Leaf $incoming_path)) {
+        return
+    }
+
+    # incoming\ is written by com's own transfer, but is not exclusively Wazuh-controlled --
+    # reject a reparse point (symlink/junction) outright rather than read through it.
+    $incoming_item = Get-Item -Force -ErrorAction SilentlyContinue $incoming_path
+    if ($incoming_item -and $incoming_item.LinkType) {
+        write-output "$(Get-Date -format u) - A CA arrived at $($incoming_path) as a $($incoming_item.LinkType); refusing to follow it, discarding it and continuing the upgrade unverified." >> .\upgrade\upgrade.log
+        Remove-Item -Force -ErrorAction SilentlyContinue $incoming_path
+        return
+    }
+
+    $content = $null
+    try {
+        $content = Get-Content -Raw -ErrorAction Stop $incoming_path
+    } catch {
+        write-output "$(Get-Date -format u) - A CA arrived at $($incoming_path) but could not be read; ignoring it and continuing the upgrade." >> .\upgrade\upgrade.log
+        Remove-Item -Force -ErrorAction SilentlyContinue $incoming_path
+        return
+    }
+
+    # Same criterion as legacy_task_ca_read() on the manager side: both PEM markers present, and
+    # small enough to plausibly be a CA rather than something else delivered under this name by
+    # mistake or corruption in transit.
+    if ([string]::IsNullOrEmpty($content) -or $content.Length -gt 65536 `
+        -or $content -notmatch '-----BEGIN CERTIFICATE-----' `
+        -or $content -notmatch '-----END CERTIFICATE-----') {
+        write-output "$(Get-Date -format u) - The CA delivered at $($incoming_path) does not look like a valid PEM certificate (empty, oversized, or missing BEGIN/END markers); discarding it and continuing the upgrade unverified." >> .\upgrade\upgrade.log
+        Remove-Item -Force -ErrorAction SilentlyContinue $incoming_path
+        return
+    }
+
+    if (Test-Path -PathType Leaf $target_path) {
+        write-output "$(Get-Date -format u) - Replacing the existing anchor at $($target_path) with the CA delivered over the upgrade channel; the manager is authoritative for its own CA." >> .\upgrade\upgrade.log
+    } else {
+        write-output "$(Get-Date -format u) - Installing the CA delivered over the upgrade channel as $($target_path)." >> .\upgrade\upgrade.log
+    }
+
+    $target_dir = Split-Path -Parent $target_path
+    if (-Not (Test-Path -PathType Container $target_dir)) {
+        New-Item -ItemType Directory -Force -Path $target_dir | Out-Null
+    }
+
+    $tmp_path = "$($target_path).tmp"
+    try {
+        Set-Content -Path $tmp_path -Value $content -NoNewline -ErrorAction Stop
+        Move-Item -Force -Path $tmp_path -Destination $target_path -ErrorAction Stop
+        Remove-Item -Force -ErrorAction SilentlyContinue $incoming_path
+    } catch {
+        write-output "$(Get-Date -format u) - Could not install the delivered CA at $($target_path) (write failure); leaving any existing anchor untouched and continuing the upgrade." >> .\upgrade\upgrade.log
+        Remove-Item -Force -ErrorAction SilentlyContinue $tmp_path, $incoming_path
+    }
+}
+
 # Defaults for the components an <endpoint> value leaves out, matching the agent's own
 # (DEFAULT_HTTPS_REMOTE_PORT and the manager's default global_prefix, #38491).
 $MEP_DEFAULT_PORT = "1517"
@@ -711,6 +772,11 @@ if ([string]::IsNullOrEmpty($ssl_verification_mode)) {
 # to hand-edit ossec.conf.
 $default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
 
+# Adopt any CA delivered with this upgrade before $default_ca_file is read below, so the
+# checks and the new binary see it, not a stale one from a prior cycle.
+$incoming_ca_file = Join-Path $wazuhDir "incoming\root-ca.pem"
+adopt_incoming_ca $incoming_ca_file $default_ca_file
+
 # Same path as AGENT_ANCHOR_CA (src/shared/include/defs.h), which the agent now reads
 # directly: since #39025 a present, readable file here supplies the verification state for
 # anything <ssl> left unsaid, so the resolution this gate mirrors above is no longer the one
@@ -757,16 +823,20 @@ if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certific
         # script can safely fix on the operator's behalf.
         write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at $($server_address):$($server_port). Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> .\upgrade\upgrade.log
         abort_upgrade "2"
-    } elseif (Test-Path -PathType Leaf $default_ca_file) {
-        if (pin_ca $default_ca_file) {
-            write-output "$(Get-Date -format u) - The system trust store does not verify the manager's certificate; pinned $($default_ca_file) as <certificate_authorities> instead." >> .\upgrade\upgrade.log
-        } else {
-            write-output "$(Get-Date -format u) - Upgrade failed: found a CA at $($default_ca_file) but could not pin it into <ssl><certificate_authorities> (no <agent> block found, or an existing <ssl> block was not in the expected format), interrupting upgrade." >> .\upgrade\upgrade.log
-            abort_upgrade "2"
-        }
     } else {
-        write-output "$(Get-Date -format u) - Upgrade failed: the system trust store does not verify the manager's certificate at $($server_address):$($server_port), and no CA was found at $($default_ca_file). Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade." >> .\upgrade\upgrade.log
-        abort_upgrade "2"
+        # Implicit system default (no <ssl> block at all, the shape every migrated 4.x
+        # agent has). The anchor's presence or absence -- not ossec.conf -- governs the
+        # new binary's verification mode, so this must never abort.
+        #
+        # Previously called pin_ca() to write $default_ca_file into
+        # <ssl><certificate_authorities> and aborted if that failed -- pin_ca() parses an
+        # <agent> block whose shape varies by release, and that abort broke real
+        # upgrades (confirmed live). Now log-only.
+        if (Test-Path -PathType Leaf $default_ca_file) {
+            write-output "$(Get-Date -format u) - A trust anchor is present at $($default_ca_file); the upgraded agent verifies with 'full' against it. No changes made to ossec.conf." >> .\upgrade\upgrade.log
+        } else {
+            write-output "$(Get-Date -format u) - WARNING: no trust anchor found at $($default_ca_file) and the system trust store does not verify the manager's certificate at $($server_address):$($server_port). The upgraded agent will start unverified. Enable CA delivery on the manager (<remote><legacy><ca_delivery>), or place a CA at $($default_ca_file) and retry, to fix this." >> .\upgrade\upgrade.log
+        }
     }
 } elseif ($ssl_verification_mode -ceq "none") {
     # Nothing for this gate to check: 'none' needs no CA and reaches no trust store, and the
