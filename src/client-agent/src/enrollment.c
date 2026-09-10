@@ -10,6 +10,7 @@
 #include "shared.h"
 #include "agentd.h"
 #include "enrollment.h"
+#include "reenroll_secret.h"
 #include "sec.h"
 #include "cJSON.h"
 
@@ -127,11 +128,36 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
         cJSON *name = cJSON_GetObjectItem(response, "name");
         cJSON *ip = cJSON_GetObjectItem(response, "ip");
         cJSON *key = cJSON_GetObjectItem(response, "key");
+        /* Optional fifth field (#38993): omitted, not empty, when the manager issues none -- an
+         * older manager, or a path that does not mint one. */
+        cJSON *reenroll_secret = cJSON_GetObjectItem(response, "reenroll_secret");
 
         if (!cJSON_IsString(id) || !cJSON_IsString(name) || !cJSON_IsString(ip) || !cJSON_IsString(key) ||
                 !OS_IsValidID(id->valuestring) || !OS_IsValidName(name->valuestring) ||
                 !OS_IsValidIP(ip->valuestring, NULL) || !OS_IsValidName(key->valuestring)) {
             merror("Enrollment response has a missing or invalid field.");
+            cJSON_Delete(response);
+            return W_ENROLL_ERR_SERVER;
+        }
+
+        /* A field that is present but unusable is refused outright, unlike an absent one:
+         * accepting the key while dropping the secret is exactly how an agent ends up enrolled
+         * but unrecoverable, and the manager has already rotated its own copy by the time it
+         * answers, so a secret we cannot store is one nobody holds any more. */
+        if (reenroll_secret != NULL &&
+                (!cJSON_IsString(reenroll_secret) || !OS_IsValidReenrollSecret(reenroll_secret->valuestring))) {
+            merror("Enrollment response carries a malformed re-enrollment secret.");
+            cJSON_Delete(response);
+            return W_ENROLL_ERR_SERVER;
+        }
+
+        /* Before client.keys, never after (#39064). The manager rotated both when it answered, so
+         * the only crash window that leaves the agent recoverable is one where the secret landed
+         * and the key did not: it re-enrolls with the secret and gets a fresh key. The reverse
+         * leaves a usable key and a dead secret, and the next recovery needs an operator. */
+        if (reenroll_secret != NULL &&
+                w_reenroll_secret_store(id->valuestring, reenroll_secret->valuestring) != 0) {
+            /* w_reenroll_secret_store() logged the reason. */
             cJSON_Delete(response);
             return W_ENROLL_ERR_SERVER;
         }
