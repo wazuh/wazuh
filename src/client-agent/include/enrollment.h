@@ -28,6 +28,14 @@ typedef struct w_enroll_request_t {
     char *body_json; /**< Heap-allocated JSON body. Freed by w_enroll_request_destroy(). */
     char *password;  /**< Heap-allocated password, or NULL for mTLS/open mode
                        *   (no bearer token). Freed by w_enroll_request_destroy(). */
+    /** Re-enrollment credential (#39064), both NULL unless this agent holds a
+     *  re-enrollment secret: the `kid` is the agent's own canonical id and the key is
+     *  the HKDF (label WAZUH-REENROLL-KEY) of the stored secret, as 64 hex characters.
+     *  When set they take priority over `password` inside the transport module, which
+     *  is where every bearer is minted. Freed -- and the key wiped -- by
+     *  w_enroll_request_destroy(). */
+    char *enroll_kid;
+    char *enroll_key_hex;
 } w_enroll_request_t;
 
 /** @brief Outcome of parsing an /enroll response (#38465 R12). */
@@ -55,6 +63,13 @@ typedef enum {
  * omitted entirely (default -- the manager decides). "key_hash" is the SHA1
  * of the current client.keys entry (w_get_key_hash()), present only when one
  * exists (absent on first enrollment).
+ *
+ * Credentials, in the order they are preferred (#39064): this agent's own
+ * re-enrollment secret if it holds one, otherwise the configured
+ * authorization_pass_path. The narrow, per-agent credential beats the
+ * fleet-wide one; the enrollment token's own credential is not read here at
+ * all, because that path (token_bootstrap.c) only ever runs when no
+ * client.keys and no secret exist yet.
  *
  * @param out Filled on success; the caller owns it via w_enroll_request_destroy().
  * @return 0 on success; -1 on a local validation failure (e.g. an invalid

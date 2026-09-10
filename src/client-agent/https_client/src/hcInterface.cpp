@@ -327,9 +327,9 @@ extern "C"
 
             const std::string bodyJson = boundedField(request->body_json, sizeof(request->body_json));
             const std::string password = boundedField(request->password, sizeof(request->password));
-            const std::string tokenKid = boundedField(request->token_kid, sizeof(request->token_kid));
-            const std::string tokenKeyHex = boundedField(request->token_key_hex, sizeof(request->token_key_hex));
-            const HttpResponse response = client.enroll(bodyJson, password, tokenKid, tokenKeyHex);
+            const std::string enrollKid = boundedField(request->enroll_kid, sizeof(request->enroll_kid));
+            const std::string enrollKeyHex = boundedField(request->enroll_key_hex, sizeof(request->enroll_key_hex));
+            const HttpResponse response = client.enroll(bodyJson, password, enrollKid, enrollKeyHex);
 
             result->http_code = response.httpCode;
             result->retry_after_seconds = response.retryAfterSeconds;
