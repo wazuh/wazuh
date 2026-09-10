@@ -63,6 +63,11 @@ typedef struct agent_ssl {
     int verification_mode;          ///< <verification_mode>: agent_verify_mode_t. Resolved by
                                     ///< w_agent_resolve_ssl_posture(): SYSTEM with nothing else
                                     ///< configured, FULL when a trust anchor is present.
+    bool verification_mode_explicit; ///< Whether <verification_mode> was written in the config,
+                                    ///< as opposed to resolved. Once resolution has run, 'none'
+                                    ///< means either, and only this tells them apart -- which
+                                    ///< decides whether an anchor appearing afterwards may be
+                                    ///< adopted or must be left unused.
     char * ciphers;                 ///< <ciphers>: optional cipher list.
 } agent_ssl;
 

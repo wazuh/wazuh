@@ -48,7 +48,22 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
      * just below. Log-and-continue on failure or when no token was configured: the legacy
      * password/mTLS enrollment loop (start_agent_prepare(), further down) must still get its
      * normal chance either way. */
+    const bool anchor_before = (IsFile(AGENT_ANCHOR_CA) == 0);
+
     w_agent_token_bootstrap(uid, gid);
+
+    /* Only when this boot is the one that created the anchor. ClientConf() resolved the TLS
+     * posture back in main(), before the bootstrap ran and so before the anchor existed,
+     * settling on 'none'; the bootstrap's own enrollment is unaffected, since it builds a
+     * verified configuration of its own, but everything sent afterwards reads agt->ssl through
+     * bridge_build_transport_config() and would spend the rest of the boot unverified against
+     * an anchor already on disk. Resolving again closes that window. Conditional rather than
+     * unconditional so a boot that had nothing to bootstrap does not re-run a resolution that
+     * can only reach the same answer -- and, when the operator has asked for 'none' outright,
+     * log its warning about that a second time. */
+    if (!anchor_before && IsFile(AGENT_ANCHOR_CA) == 0) {
+        w_agent_resolve_ssl_posture(agt);
+    }
 
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {

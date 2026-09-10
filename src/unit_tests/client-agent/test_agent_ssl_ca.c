@@ -47,6 +47,10 @@ static agent make_config_heap(int verification_mode, const char *ca)
     agent cfg = {0};
 
     cfg.ssl.verification_mode = verification_mode;
+    /* A mode handed in by name is one the configuration named; only AGENT_VERIFY_UNSET models
+     * a config that said nothing. The resolver needs the difference for 'none', where a value
+     * it produced itself and one an operator wrote are otherwise indistinguishable. */
+    cfg.ssl.verification_mode_explicit = (verification_mode != AGENT_VERIFY_UNSET);
     if (ca != NULL) {
         os_strdup(ca, cfg.ssl.certificate_authorities);
     }
@@ -430,6 +434,27 @@ static void test_resolve_none_with_anchor_is_still_none(void **state)
     free_config(&cfg);
 }
 
+/* The enrollment-token bootstrap's boot: an earlier pass resolved 'none' because there was no
+ * trust material yet, the bootstrap then wrote the anchor, and this pass runs against it. The
+ * 'none' here is this function's own earlier answer rather than anybody's choice, so the
+ * anchor is adopted -- otherwise the rest of that first boot talks to the manager unverified
+ * with the anchor already on disk, and only a restart notices. */
+static void test_resolve_resolved_none_with_anchor_adopts_it(void **state)
+{
+    (void)state;
+    agent cfg = make_config_heap(AGENT_VERIFY_NONE, NULL);
+
+    cfg.ssl.verification_mode_explicit = false;
+
+    expect_anchor(1);
+
+    w_agent_resolve_ssl_posture(&cfg);
+
+    assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_FULL);
+    assert_string_equal(cfg.ssl.certificate_authorities, AGENT_ANCHOR_CA);
+    free_config(&cfg);
+}
+
 /* The shape a configuration-management default actually leaves behind: 'none' next to a CA
  * path nobody maintains, because under 'none' it was never read. Both survive untouched --
  * the resolver injects nothing into a mode that opens no CA, so a later switch to 'full'
@@ -596,6 +621,7 @@ int main(void)
         cmocka_unit_test(test_resolve_system_never_takes_the_anchor),
         cmocka_unit_test(test_resolve_none_without_anchor_is_kept),
         cmocka_unit_test(test_resolve_none_with_anchor_is_still_none),
+        cmocka_unit_test(test_resolve_resolved_none_with_anchor_adopts_it),
         cmocka_unit_test(test_resolve_none_with_anchor_keeps_the_configured_ca),
         cmocka_unit_test(test_resolve_is_idempotent),
 

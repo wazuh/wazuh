@@ -195,6 +195,15 @@ void w_agent_resolve_ssl_posture(agent *cfg)
         } else {
             cfg->ssl.verification_mode = AGENT_VERIFY_NONE;
         }
+    } else if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE && anchor
+               && !cfg->ssl.verification_mode_explicit) {
+        /* A 'none' nobody asked for: this function resolved it that way on an earlier pass,
+         * when there was no trust material to work with, and an anchor has appeared since --
+         * written by the enrollment-token bootstrap, which runs after ClientConf() has already
+         * resolved once. Treated exactly as an unset mode with an anchor would be on a later
+         * boot, so the first boot verifies from here on instead of waiting for a restart to
+         * notice the file. */
+        cfg->ssl.verification_mode = AGENT_VERIFY_FULL;
     } else if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE && anchor) {
         /* Nothing to change: 'none' is what the operator asked for and it stands. Worth a
          * warning all the same -- an anchor on disk means this host could verify and has been

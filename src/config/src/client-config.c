@@ -1092,6 +1092,11 @@ int Read_Agent_SSL(XML_NODE node, agent * logr)
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);
             }
+
+            /* Recorded because the resolved value cannot answer this on its own: an unset mode
+             * with no trust material resolves to the same 'none' an operator can ask for by
+             * name, and the two have to be told apart once an anchor appears later. */
+            logr->ssl.verification_mode_explicit = true;
         } else if (strcmp(node[j]->element, xml_ciphers) == 0) {
             if (w_client_validate_tls13_ciphers(node[j]->content) == OS_INVALID) {
                 return (OS_INVALID);
