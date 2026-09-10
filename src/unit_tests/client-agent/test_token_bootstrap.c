@@ -276,7 +276,8 @@ static void test_fetch_failure_logs_named_error_and_writes_nothing(void **state)
     will_return(__wrap_hc_fetch_cacerts, 1);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: fetching /cacerts from the manager failed.");
+                  "Token bootstrap: fetching /cacerts from the manager failed: manager returned "
+                  "HTTP 503 instead of 200.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), -1);
     assert_int_equal(g_fetch_call_count, 1);
@@ -349,6 +350,55 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal((int) strlen(g_enroll_request.token_key_hex), 64);
 }
 
+/* #39028's DoD: "a credential-less token enrolls when the simulator requires no credential,
+ * and is not treated as an error." has_key=false must not short-circuit into an error path --
+ * enrollment still runs, just with no token_kid/token_key_hex on the wire (and, per the
+ * DIVERGENCE FROM #38993 comment in token_bootstrap.c, no fallback to a configured password
+ * either -- g_enroll_request.password stays empty exactly as it does on the keyed happy path). */
+static void test_credential_less_token_enrolls_without_error(void **state) {
+    (void) state;
+    write_token_file(true, false, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pin_matches, 1);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    /* Same benign TempFile() FSTAT_ERROR mdebug1 as the other happy-path tests, once for
+     * AGENT_ANCHOR_CA and once for KEYS_FILE. */
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_fetch_call_count, 1);
+    assert_int_equal(g_spki_call_count, 1);
+    assert_int_equal(g_enroll_call_count, 1);
+
+    assert_int_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_string_equal(read_file("etc/certs/root-ca.pem"), "FAKE-CA-BODY");
+    assert_int_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+
+    assert_int_equal(g_enroll_config.verify_mode, HC_VERIFY_FULL);
+    assert_true(strlen(g_enroll_config.ca_path) > 0);
+    /* No key on the token: no kid, no derived key, and no fallback to a configured password
+     * either -- the request goes out with no credential at all (see the DIVERGENCE FROM #38993
+     * comment next to this branch in token_bootstrap.c). */
+    assert_string_equal(g_enroll_request.password, "");
+    assert_int_equal((int) strlen(g_enroll_request.token_kid), 0);
+    assert_int_equal((int) strlen(g_enroll_request.token_key_hex), 0);
+}
+
 static void test_full_happy_path_via_ca_pem(void **state) {
     (void) state;
     write_token_file(false, true, "FAKE-EMBEDDED-CA");
@@ -390,6 +440,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fetch_failure_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_pin_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_pin, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_credential_less_token_enrolls_without_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_ca_pem, setup_test, teardown_test),
     };
 
