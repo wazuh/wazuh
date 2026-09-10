@@ -393,15 +393,15 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | GET | `/cluster/nodes` | List nodes |
 | GET | `/cluster/healthcheck` | Healthcheck |
 | GET | `/cluster/local/info` | Local node info |
-| GET | `/cluster/local/config` | Local node config. The cluster key comes back masked unless the caller holds `cluster:read_secrets` |
+| GET | `/cluster/local/config` | Local node config. The cluster key comes back masked unless the caller holds `cluster:read_secrets` over this node |
 | GET | `/cluster/api/config` | API config |
 | PUT | `/cluster/restart` | Restart cluster |
 | GET | `/cluster/configuration/validation` | Validate config |
 | GET | `/cluster/{node_id}/status` | Node status |
 | GET | `/cluster/{node_id}/info` | Node info |
-| GET | `/cluster/{node_id}/configuration` | Node config. Sensitive values are masked unless the caller holds `cluster:read_secrets` |
+| GET | `/cluster/{node_id}/configuration` | Node config. Sensitive values are masked unless the caller holds `cluster:read_secrets` over that node |
 | PUT | `/cluster/{node_id}/configuration` | Update node config |
-| GET | `/cluster/{node_id}/configuration/{component}/{configuration}` | Active config. `auth/auth` carries the enrollment password, masked unless the caller holds `cluster:read_secrets`; serving it in clear is logged as `secret_read` |
+| GET | `/cluster/{node_id}/configuration/{component}/{configuration}` | Active config. `auth/auth` carries the enrollment password, masked unless the caller holds `cluster:read_secrets` over that node; serving it in clear is logged as `secret_read` in that node's `cluster.log` |
 | GET | `/cluster/{node_id}/daemons/stats` | Daemon stats |
 | GET | `/cluster/{node_id}/logs` | Node logs |
 | GET | `/cluster/{node_id}/logs/summary` | Log summary |

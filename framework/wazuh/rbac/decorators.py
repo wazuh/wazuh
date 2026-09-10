@@ -22,6 +22,14 @@ MASK_DEFAULT = "*****"
 # belongs in the API log, next to the request line that carries the endpoint and the caller's address.
 logger = logging.getLogger("wazuh-api")
 
+# ... except that this module also runs inside wazuh-manager-clusterd, which configures 'wazuh' and
+# not 'wazuh-api': see _audit_logger().
+framework_logger = logging.getLogger("wazuh")
+
+# Node this process answers for, resolved once on first use. Deliberately lazy: wazuh.core.cluster
+# reads the configuration, and the RBAC decorators are imported long before that is wanted.
+_node_id = None
+
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
 
@@ -507,24 +515,84 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
     return decorator
 
 
+def _local_node_id():
+    """Name of the node this process answers for.
+
+    The same value `wazuh.manager` and `wazuh.cluster` put in their `@expose_resources`, read the
+    same way: the configuration of the node running the code, never the `node_id` of the request,
+    which the master strips before forwarding.
+
+    Returns
+    -------
+    str or None
+        Node name, or None when the cluster configuration cannot be read -- in which case there is
+        no node to check a permission against and the caller masks.
+    """
+    global _node_id
+
+    if _node_id is None:
+        try:
+            from wazuh.core.cluster.cluster import get_node
+            _node_id = get_node().get('node')
+        except Exception as exception:  # pragma: no cover - defensive
+            # Not cached: the next read may well succeed, and until it does the values stay masked
+            # rather than turning a configuration read into an error.
+            _audit_logger().warning(f"Could not resolve the node name to check the read-secrets "
+                                    f"permission against: {exception}")
+            return None
+
+    return _node_id
+
+
+def _audit_logger() -> logging.Logger:
+    """Logger that actually writes in the process the caller landed in.
+
+    `GET /cluster/local/config` is served by the API, but the two node-configuration endpoints are
+    `distributed_master`: they run inside the target node's `wazuh-manager-clusterd`, where
+    'wazuh-api' has no handlers and an INFO record is dropped before reaching a file. An audit line
+    nobody writes is not an audit line, so the disclosure is recorded in `api.log` when the read is
+    local and in `cluster.log` when it was forwarded.
+
+    Returns
+    -------
+    logging.Logger
+        'wazuh-api' in the API, 'wazuh' anywhere else.
+    """
+    return logger if logger.hasHandlers() else framework_logger
+
+
 def _can_read_secrets() -> bool:
-    """Check whether the current user may read the sensitive configuration values in clear.
+    """Check whether the current user may read the sensitive configuration values of THIS node in clear.
 
     A separate action from the update ones on purpose: being allowed to WRITE the configuration used
     to be enough to read the enrollment password and the cluster key out of it, which made the
     disclosure a side effect of an unrelated permission.
 
+    Resolved with the same matcher the decorator itself uses, against the node being served, so the
+    answer respects what the rest of RBAC respects: the resource the action was granted on, a later
+    deny over it, and the RBAC mode. Anything else would let a grant on one node uncover the secrets
+    of every other node the caller can reach -- and these endpoints run on the node they answer for.
+
     Returns
     -------
     bool
-        True if user has 'manager:read_secrets' or 'cluster:read_secrets', False otherwise.
+        True when the caller holds 'cluster:read_secrets' over this node, False otherwise.
     """
-    perms = rbac.get() or {}
-    for action in ("manager:read_secrets", "cluster:read_secrets"):
-        action_map = perms.get(action)
-        if isinstance(action_map, dict) and any(effect == 'allow' for effect in action_map.values()):
-            return True
-    return False
+    permissions = rbac.get()
+
+    # A context that is not a permission map, or an action that is not a resource->effect one, is a
+    # malformed token: fail closed here rather than raise from inside the matcher.
+    if not isinstance(permissions, dict) or not isinstance(permissions.get('cluster:read_secrets', {}), dict):
+        return False
+
+    node = _local_node_id()
+
+    if node is None:
+        return False
+
+    required = {'cluster:read_secrets': [f'node:id:{node}']}
+
+    return node in _match_permissions(required, permissions.get('rbac_mode', 'black'))['node:id']
 
 
 def _sensitive_paths_in(payload, dotted_path: str) -> bool:
@@ -575,9 +643,10 @@ def _audit_secret_read(payload):
             disclosed.append("cluster.key")
 
         if disclosed:
-            logger.info(f"secret_read: user='{current_user.get()}' served in clear: {', '.join(disclosed)}")
+            _audit_logger().info(
+                f"secret_read: user='{current_user.get()}' served in clear: {', '.join(disclosed)}")
     except Exception as exception:  # pragma: no cover - defensive
-        logger.warning(f"Could not audit a read of sensitive configuration values: {exception}")
+        _audit_logger().warning(f"Could not audit a read of sensitive configuration values: {exception}")
 
 
 def _build_xml_mask_pattern(path: str) -> re.Pattern:
@@ -735,7 +804,7 @@ def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
     Decorator to mask sensitive fields in config responses for users without the read-secrets action.
 
     The decorator post‑processes the return value of the wrapped function.
-    - If the user lacks 'manager:read_secrets' / 'cluster:read_secrets', sensitive fields are masked
+    - If the user lacks 'cluster:read_secrets' over the node being served, sensitive fields are masked
       **in‑place** (or for XML strings, a masked copy is created).
     - If the user holds it, the values are served in clear and the disclosure is audited.
     - If masking fails, the request fails: a response nobody could mask cannot be claimed to be clean.
@@ -755,7 +824,7 @@ def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
         def wrapper(*args, **kwargs):
             result = func(*args, **kwargs)
 
-            # Only the read-secrets action lifts the mask; holding update-config no longer does.
+            # Only the read-secrets action over THIS node lifts the mask; update-config no longer does.
             if _can_read_secrets():
                 _audit_secret_read(result)
                 return result
@@ -770,7 +839,7 @@ def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
             except Exception as exception:
                 # Fail closed. Swallowing this used to hand the caller the unmasked payload, which is
                 # the one outcome the masking exists to prevent.
-                logger.error(f"Could not mask the sensitive configuration values: {exception}")
+                _audit_logger().error(f"Could not mask the sensitive configuration values: {exception}")
                 raise WazuhInternalError(
                     1000, extra_message='the sensitive configuration values could not be masked') from exception
 

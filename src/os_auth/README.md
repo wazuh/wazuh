@@ -87,7 +87,7 @@ it, inventory-sync applies it — and all three depend on these:
 | D8 | **The `<force>` guards are all-or-nothing and each logs its own refusal** | An operator debugging a rejected enrollment needs to know *which* guard refused; a single generic "rejected" is unactionable |
 | D9 | **An id, caller-supplied or auto-assigned, is range-checked before it can reach either store** — never after | Both `client.keys` and the database keep the id in a signed 32-bit int; an unchecked value above `INT32_MAX` wraps silently at write time, and the two stores wrapped independently, leaving one agent with two disjoint identities and no supported way to query or delete the result |
 | D10 | **A deletion is refused at the REQUEST when the backlog is full** (`9021`), not discovered later | One line past that point the agent has left the keystore and the caller has been told it succeeded, so there is nothing left to refuse and nobody to tell. The old code found the overflow in the writer and could only choose between dropping the purge silently and orphaning the documents |
-| D11 | **The token store has one writer — the master — and a use is reserved before the agent exists** | Workers receive `etc/enrollment_tokens.json` from the cluster sync and only read it, so there is nothing to reconcile; consuming after `OS_AddNewAgent()` would leave an agent to roll back when the token turns out exhausted, while reserving first costs only an `etoken_store_release()` on refusal |
+| D11 | **The token store has one writer — the master — and a use is reserved before the agent exists** | Workers receive `etc/enrollment_tokens.json` from the cluster sync and only read it, so there is nothing to reconcile; consuming after `OS_AddNewAgent()` would leave an agent to roll back when the token turns out exhausted, while reserving first costs only an `etoken_store_release()` on refusal. The reservation is held for the whole add (the store mutex is not), and a `dead` purge skips a token that holds one: it may still get its use back, and an entry taken away in the meantime could not receive it. `--all` takes it anyway — emptying the store is an order, not a cleanup |
 | D12 | **Re-enrollment rotates the entry in place, and the secret that authorises it lives only in `global.db`** | A delete + add under one lock keeps the id and its documents (no `add_remove()`, no purge). `client.keys` is copied to every worker and read by remoted; the secret only needs to be verifiable where a rotation can be performed — the master |
 
 ## Layout
@@ -179,8 +179,10 @@ may live in that pass.
 Two credentials `/enroll` can carry take their own route through `local_dispatch()`:
 
 - **An enrollment token** (`token_id`): on the master `etoken_store_consume()` reserves the use —
-  `9022` unknown or revoked, `9023` expired, `9024` exhausted — *before* `local_add()`, and
-  `etoken_store_release()` returns it if the add is refused (D11). Minting (`token_create`) is
+  `9022` unknown or revoked, `9023` expired, `9024` exhausted — *before* `local_add()`, and the
+  reservation is then closed exactly once: `etoken_store_commit()` when the agent was created,
+  `etoken_store_release()` when it was not, the add that produced no response at all included (D11).
+  Minting (`token_create`) is
   `etoken_mint_prepare()` — the checks against the listener certificate, `9025` with the reason — then
   `etoken_store_create()`.
 - **A re-enrollment** (`reenroll = {kid, bearer}`, `local_reenroll()`): the row's `reenroll_secret` is
