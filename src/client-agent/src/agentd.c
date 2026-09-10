@@ -45,12 +45,23 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
     /* Enrollment-token bootstrap: must run while still root, since it writes AGENT_ANCHOR_CA
      * and (on success) client.keys and needs to fix their ownership before the privilege drop
-     * just below. Log-and-continue on failure or when no token was configured: the legacy
-     * password/mTLS enrollment loop (start_agent_prepare(), further down) must still get its
-     * normal chance either way. */
+     * just below.
+     *
+     * A configured token that could not be honoured ends the start, and deliberately so.
+     * Carrying on would reach start_agent_prepare(), which enrolls over whatever posture is
+     * left -- 'none', because no anchor was written -- so a CA the agent had just refused
+     * would be followed by an unverified enrollment against that same manager. Failing here
+     * is what #38940 means by attempting no enrollment, and the service manager's restart
+     * policy covers the causes that are merely transient.
+     *
+     * Only a token that was present and failed does this. An install with no token at all
+     * returns 0 from the gate, so the legacy password/mTLS enrollment loop still gets its
+     * normal chance -- as do an agent already holding an anchor and one already enrolled. */
     const bool anchor_before = (IsFile(AGENT_ANCHOR_CA) == 0);
 
-    w_agent_token_bootstrap(uid, gid);
+    if (w_agent_token_bootstrap(uid, gid) != 0) {
+        merror_exit("Enrollment-token bootstrap failed; refusing to enroll unverified.");
+    }
 
     /* Only when this boot is the one that created the anchor. ClientConf() resolved the TLS
      * posture back in main(), before the bootstrap ran and so before the anchor existed,
