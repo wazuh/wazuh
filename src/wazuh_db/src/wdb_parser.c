@@ -108,7 +108,15 @@ int wdb_parse(char * input, char * output, int peer) {
 
         w_inc_global();
 
-        mdebug2("Global query: %s", query);
+        // The arguments of these two commands are the agent's key and re-enrollment secret, and this
+        // log is readable through GET /cluster/<node>/logs with ordinary read permission: only the verb goes
+        // in (issue #39078, H05). Every other global command logs whole, as before.
+        if (!strncmp(query, "insert-agent ", 13) || !strncmp(query, "set-agent-credentials ", 22)) {
+            mdebug2("Global query: %.*s (arguments not logged: they carry credentials)",
+                    (int)strcspn(query, " "), query);
+        } else {
+            mdebug2("Global query: %s", query);
+        }
 
         gettimeofday(&begin, 0);
         if (wdb = wdb_open_global(), !wdb) {
@@ -714,7 +722,10 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
         mdebug1("Global DB Invalid JSON syntax when inserting agent.");
-        mdebug2("Global DB JSON error near: %s", error);
+        // The offset, not the tail: `error` points into the payload, which carries internal_key and
+        // reenroll_secret, and this log is readable through the API (issue #39078, H05).
+        mdebug2("Global DB JSON syntax error at offset %ld when inserting agent.",
+                error != NULL ? (long)(error - input) : -1L);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
         return OS_INVALID;
     } else {
@@ -905,7 +916,9 @@ int wdb_parse_global_set_agent_credentials(wdb_t * wdb, char * input, char * out
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
         mdebug1("Global DB Invalid JSON syntax when setting agent credentials.");
-        mdebug2("Global DB JSON error near: %s", error);
+        // Same rule as inserting an agent: the payload is the whole credential set (issue #39078, H05).
+        mdebug2("Global DB JSON syntax error at offset %ld when setting agent credentials.",
+                error != NULL ? (long)(error - input) : -1L);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
         return OS_INVALID;
     } else {

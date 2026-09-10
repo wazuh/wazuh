@@ -100,11 +100,13 @@ int wdb_insert_agent(int id,
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
+            // Never the query: its payload carries internal_key and reenroll_secret, and this log is
+            // readable through GET /cluster/<node>/logs with ordinary read permission (issue #39078, H05).
+            mdebug2("Global DB SQL query: global insert-agent for agent '%03d'", id);
             break;
         default:
             mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
+            mdebug2("Global DB SQL query: global insert-agent for agent '%03d'", id);
             result = OS_INVALID;
     }
 
@@ -317,11 +319,12 @@ int wdb_set_agent_credentials(int id, const char *name, const char *register_ip,
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
+            // Same rule as insert-agent: the payload is the agent's whole credential set (issue #39078, H05).
+            mdebug2("Global DB SQL query: global set-agent-credentials for agent '%03d'", id);
             break;
         default:
             mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
+            mdebug2("Global DB SQL query: global set-agent-credentials for agent '%03d'", id);
             result = OS_INVALID;
     }
 
