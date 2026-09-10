@@ -670,7 +670,8 @@ Public Function SetWazuhPermissions()
         grantAuthenticatedUsersPermFolder = "icacls """ & install_dir & """ /grant *S-1-5-11:RX"
         WshShell.run grantAuthenticatedUsersPermFolder, 0, True
 
-        ' Remove Authenticated Users group for ossec.conf, last-ossec.conf, client.keys and authd.pass
+        ' Remove Authenticated Users group for ossec.conf, last-ossec.conf, client.keys,
+        ' authd.pass and reenroll.secret
         remAuthenticatedUsersPermsConf = "icacls """ & home_dir & "*ossec.conf" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsConf, 0, True
 
@@ -691,6 +692,14 @@ Public Function SetWazuhPermissions()
         ' a machine where the service never starts it stays there.
         remAuthenticatedUsersPermsToken = "icacls """ & home_dir & "enrollment_token" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsToken, 0, True
+
+        ' The per-agent re-enrollment secret (#39064) gets client.keys's treatment, because it has
+        ' client.keys's power: it rotates the key of that one agent id. Written by the agent at
+        ' enrollment time rather than by this installer, so this only runs against an existing file
+        ' on a reinstall or upgrade -- icacls on a missing path is a harmless no-op, and the ACL is
+        ' inherited from the (already hardened) install directory when the agent creates it later.
+        remAuthenticatedUsersPermsReenroll = "icacls """ & home_dir & "reenroll.secret" & """ /remove *S-1-5-11 /q"
+        WshShell.run remAuthenticatedUsersPermsReenroll, 0, True
 
         ' Remove the Authenticated Users group from the tmp directory to avoid
         ' inherited permissions on client.keys and ossec.conf when using win32ui.
