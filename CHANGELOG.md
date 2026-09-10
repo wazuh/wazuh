@@ -43,6 +43,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the gcloud wodle masking missing-dependency errors as an unrelated `AttributeError`. ([#38856](https://github.com/wazuh/wazuh/pull/38856))
 - Fixed process names truncated to fifteen characters in the syscollector inventory. ([#38969](https://github.com/wazuh/wazuh/pull/38969))
 - Fixed the gcloud wodle's Pub/Sub integration failing to start whenever the bucket integration's dependencies (e.g. `google-cloud-storage`) were broken, by deferring each integration's imports so a failure in one no longer blocks the other. ([#38868](https://github.com/wazuh/wazuh/pull/38868))
+- Fixed the default agent nodiff list not protecting /etc/shadow and real key paths. ([#39124](https://github.com/wazuh/wazuh/pull/39124))
 
 ### Ruleset
 
