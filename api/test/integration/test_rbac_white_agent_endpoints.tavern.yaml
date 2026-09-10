@@ -143,6 +143,16 @@ stages:
    response:
       <<: *permission_denied
 
+ - name: Try get key agent 012, which has agent:read but not agent:read_key (Denied)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/012/key"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+   response:
+      <<: *permission_denied
+
  - name: Get agent key for 006 (Allowed)
    request:
      verify: False

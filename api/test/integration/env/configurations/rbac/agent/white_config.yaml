@@ -1,7 +1,6 @@
 ---
 - actions:
   - agent:read
-  - agent:read_key
   resources:
   - agent:id:002
   - agent:id:004
@@ -9,6 +8,17 @@
   - agent:id:008
   - agent:id:010
   - agent:id:012
+  effect: allow
+
+# 012 holds agent:read and not agent:read_key: GET /agents/012/key must be denied.
+- actions:
+  - agent:read_key
+  resources:
+  - agent:id:002
+  - agent:id:004
+  - agent:id:006
+  - agent:id:008
+  - agent:id:010
   effect: allow
 
 - actions:
