@@ -39,7 +39,7 @@ int w_agent_token_bootstrap(int uid, int gid) {
 
 STATIC char *w_token_bootstrap_read_token(const char *path);
 STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out);
-STATIC void w_token_bootstrap_ensure_parent_dir(const char *path);
+STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid);
 
 /**
  * @brief Reads the one-shot enrollment token file, mirroring
@@ -100,8 +100,16 @@ STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out) {
  *        AGENT_ANCHOR_CA's directory (etc/certs) is created only by the manager's own installer,
  *        never the agent's (see its own doc comment in defs.h): a stock agent install has no
  *        such directory yet, and TempFile()'s mkstemp() needs it to already exist.
+ *
+ *        Left 0750 root:@p gid. mkdir_ex() creates it 0770 owned by whoever is running, which
+ *        here is root -- and a root:root directory cannot be searched by the unprivileged user
+ *        after the privilege drop, so the anchor inside becomes unopenable however permissive
+ *        its own mode is, and the agent refuses to start on the next boot over a CA file that
+ *        is sitting right there. Group-read rather than group-write for the same reason the
+ *        anchor itself is not writable by the runtime user: nothing that runs as that user has
+ *        any business replacing the certificate authority it verifies its manager against.
  */
-STATIC void w_token_bootstrap_ensure_parent_dir(const char *path) {
+STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
     char dir[OS_FLSIZE + 1];
     char *slash;
 
@@ -111,6 +119,16 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path) {
     if ((slash = strrchr(dir, '/')) != NULL) {
         *slash = '\0';
         mkdir_ex(dir);
+
+        if (chown(dir, 0, gid) != 0) {
+            merror("Token bootstrap: could not set ownership of '%s': %s (%d).", dir,
+                   strerror(errno), errno);
+        }
+
+        if (chmod(dir, 0750) == -1) {
+            merror("Token bootstrap: could not set permissions on '%s': %s (%d).", dir,
+                   strerror(errno), errno);
+        }
     }
 }
 
@@ -231,7 +249,7 @@ int w_agent_token_bootstrap(int uid, int gid) {
     }
 
     /* etc/certs doesn't exist on a stock install; see w_token_bootstrap_ensure_parent_dir(). */
-    w_token_bootstrap_ensure_parent_dir(AGENT_ANCHOR_CA);
+    w_token_bootstrap_ensure_parent_dir(AGENT_ANCHOR_CA, gid);
 
     if (TempFile(&anchor_file, AGENT_ANCHOR_CA, 0) < 0) {
         merror("Token bootstrap: could not create a temporary file for the trust anchor: %s (%d).",
@@ -240,7 +258,11 @@ int w_agent_token_bootstrap(int uid, int gid) {
         return -1;
     }
 
-    if (chmod(anchor_file.name, 0644) == -1) {
+    /* 0640, not 0644: the anchor is world-readable in neither sense that matters, and the
+     * group bit is the whole access the runtime user gets -- read, never write. TempFile()
+     * leaves 0600 behind its own umask, so this widens it exactly as far as the drop below
+     * needs and no further. */
+    if (chmod(anchor_file.name, 0640) == -1) {
         merror("Token bootstrap: could not set permissions on '%s': %s (%d).", anchor_file.name,
                strerror(errno), errno);
         fclose(anchor_file.fp);
@@ -350,8 +372,15 @@ int w_agent_token_bootstrap(int uid, int gid) {
      * Privsep_SetUser() in AgentdStart()): without this, they are unreadable by the
      * unprivileged user once the process drops privileges, silently breaking the very first
      * restart after a successful bootstrap. Logged, not fatal: the anchor and the enrollment
-     * already succeeded. */
-    if (chown(AGENT_ANCHOR_CA, uid, gid) != 0) {
+     * already succeeded.
+     *
+     * The anchor keeps root as its owner and only hands the group across, so the user the
+     * agent runs as can read the certificate authority it verifies the manager against but
+     * cannot rewrite it -- otherwise anything that took over that user could point the agent
+     * at a manager of its own choosing. client.keys is deliberately different: it is the
+     * agent's own credential, the runtime user rewrites it on every re-enrollment, and the
+     * installer already creates it owned by that user. */
+    if (chown(AGENT_ANCHOR_CA, 0, gid) != 0) {
         merror("Token bootstrap: could not change ownership of '%s': %s (%d).", AGENT_ANCHOR_CA,
                strerror(errno), errno);
     }
