@@ -13,6 +13,9 @@
 #include "reenroll_secret.h"
 #include "sec.h"
 #include "cJSON.h"
+#include "enrollment_token.h"
+
+#include <openssl/crypto.h>
 
 #ifdef WAZUH_UNIT_TESTING
     // Remove static qualifier when unit testing
@@ -29,11 +32,14 @@ STATIC char *w_enrollment_extract_agent_name(void);
 STATIC int w_enrollment_resolve_ip(const char **ip_value);
 STATIC char *w_enrollment_load_password(const char *path);
 STATIC int w_enrollment_store_key_entry(const char *line);
+STATIC int w_enrollment_load_reenroll_credential(w_enroll_request_t *out);
 
 int w_enrollment_build_request(w_enroll_request_t *out) {
     assert(out != NULL);
     out->body_json = NULL;
     out->password = NULL;
+    out->enroll_kid = NULL;
+    out->enroll_key_hex = NULL;
 
     char *agent_name = w_enrollment_extract_agent_name();
     if (!agent_name) {
@@ -85,6 +91,13 @@ int w_enrollment_build_request(w_enroll_request_t *out) {
 
     out->body_json = json_str;
 
+    /* This agent's own credential first (#39064). Re-read per attempt like the password below,
+     * and for the same reason: a rotation replaces the file while the daemon is running. */
+    if (w_enrollment_load_reenroll_credential(out) == 1) {
+        minfo("Re-enrolling with this agent's own re-enrollment secret.");
+        return 0;
+    }
+
     /* Re-read on every attempt (#38465 D6), never cached: rotating
      * etc/authd.pass this way doesn't need an agent restart. */
     out->password = w_enrollment_load_password(agt->enrollment.authorization_pass_path);
@@ -97,12 +110,96 @@ int w_enrollment_build_request(w_enroll_request_t *out) {
     return 0;
 }
 
+/**
+ * @brief Loads the re-enrollment secret and turns it into the `kid` + derived key the transport
+ *        mints the bearer from.
+ *
+ * The `kid` is the agent's own canonical id, taken from the SECRET STORE and not from
+ * client.keys: the store is what the manager verifies against, and the case this credential
+ * exists for is precisely the one where client.keys is gone. When both exist and disagree, the
+ * store wins and the disagreement is logged -- presenting the other id would only ever be
+ * refused as `unknown_agent`.
+ *
+ * Deriving here rather than in the module keeps the label with the credential that chose it: the
+ * transport is handed a finished key and a `kid`, and has no notion of which of the two
+ * `wazuh-enroll+jwt` credential kinds it is carrying.
+ *
+ * @param out Receives enroll_kid/enroll_key_hex on success.
+ * @return 1 when a credential was loaded, 0 when this agent holds none (never an error: the
+ *         normal state of a first enrollment, a legacy install, or a manager that issues none).
+ */
+STATIC int w_enrollment_load_reenroll_credential(w_enroll_request_t *out) {
+    char id[W_REENROLL_ID_SIZE];
+    char secret_hex[W_REENROLL_SECRET_SIZE];
+    uint8_t secret[W_REENROLL_SECRET_BYTES];
+    uint8_t key[W_ETOKEN_KEY_BYTES];
+    char key_hex[W_ETOKEN_KEY_BYTES * 2 + 1];
+    int result = 0;
+    size_t i;
+
+    if (!w_reenroll_secret_load(id, sizeof(id), secret_hex, sizeof(secret_hex))) {
+        return 0;
+    }
+
+    if (keys.keysize > 0 && keys.keyentries && keys.keyentries[0] && keys.keyentries[0]->id &&
+            strcmp(keys.keyentries[0]->id, id) != 0) {
+        mwarn("The re-enrollment secret is stored for agent '%s' but client.keys holds '%s'; "
+              "re-enrolling as '%s', which is the id the manager verifies the secret against.",
+              id, keys.keyentries[0]->id, id);
+    }
+
+    /* The store validated the shape on the way out, so this only fails on a hex digit the
+     * validator accepts and the decoder does not -- which cannot happen, but is not worth
+     * assuming. */
+    for (i = 0; i < sizeof(secret); i++) {
+        unsigned int byte;
+
+        if (sscanf(secret_hex + (i * 2), "%2x", &byte) != 1) {
+            merror("Could not decode the stored re-enrollment secret.");
+            goto end;
+        }
+
+        secret[i] = (uint8_t)byte;
+    }
+
+    if (w_reenroll_derive_key(secret, key) != 0) {
+        merror("Could not derive the re-enrollment signing key.");
+        goto end;
+    }
+
+    for (i = 0; i < sizeof(key); i++) {
+        snprintf(key_hex + (i * 2), 3, "%02x", key[i]);
+    }
+
+    os_strdup(id, out->enroll_kid);
+    os_strdup(key_hex, out->enroll_key_hex);
+    result = 1;
+
+end:
+    OPENSSL_cleanse(secret_hex, sizeof(secret_hex));
+    OPENSSL_cleanse(secret, sizeof(secret));
+    OPENSSL_cleanse(key, sizeof(key));
+    OPENSSL_cleanse(key_hex, sizeof(key_hex));
+
+    return result;
+}
+
 void w_enroll_request_destroy(w_enroll_request_t *request) {
     if (!request) {
         return;
     }
     os_free(request->body_json);
     os_free(request->password);
+
+    /* Wiped before it is freed: unlike the password (which the agent keeps on disk anyway while
+     * it is configured), this is a derived signing key that exists only for the length of one
+     * attempt, and leaving it in a freed heap block would outlive the reason it was created. */
+    if (request->enroll_key_hex) {
+        OPENSSL_cleanse(request->enroll_key_hex, strlen(request->enroll_key_hex));
+    }
+
+    os_free(request->enroll_kid);
+    os_free(request->enroll_key_hex);
 }
 
 w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result) {

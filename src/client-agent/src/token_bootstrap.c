@@ -505,7 +505,11 @@ int w_agent_token_bootstrap(int uid, int gid) {
     strncpy(enroll_request.body_json, built_request.body_json, sizeof(enroll_request.body_json) - 1);
     enroll_request.log = mtLoggingFunctionsWrapper;
     /* Never the configured authd.pass here: a token-based enrollment must not sign with a
-     * possibly-unrelated password (built_request.password is discarded below, unused).
+     * possibly-unrelated password. Nor any credential w_enrollment_build_request() resolved for
+     * itself -- its password AND the re-enrollment credential it may have loaded (#39064) are
+     * both discarded, and only body_json is taken from it. The token is the only thing that may
+     * authenticate this request: it is the one credential the operator handed to this endpoint
+     * for this purpose.
      *
      * A credential-less token (token.has_key == false) does NOT fall back to
      * WAZUH_REGISTRATION_PASSWORD/authd.pass either -- enrollment goes out with no credential
@@ -523,7 +527,7 @@ int w_agent_token_bootstrap(int uid, int gid) {
         bool credential_ready = false;
 
         /* A credential the token carries but the agent cannot prepare aborts the bootstrap. It
-         * used to log and carry on, which left token_kid and token_key_hex empty and enrolled
+         * used to log and carry on, which left enroll_kid and enroll_key_hex empty and enrolled
          * anonymously instead -- and against a manager that does not require a password that
          * succeeds, so the agent would be enrolled without the credential the operator issued
          * it, with only a log line to say so. */
@@ -532,9 +536,9 @@ int w_agent_token_bootstrap(int uid, int gid) {
         } else if ((kid = w_b64url_encode(token.id, W_ETOKEN_ID_BYTES)) == NULL) {
             merror("Token bootstrap: could not encode the enrollment token's identifier.");
         } else {
-            strncpy(enroll_request.token_kid, kid, sizeof(enroll_request.token_kid) - 1);
+            strncpy(enroll_request.enroll_kid, kid, sizeof(enroll_request.enroll_kid) - 1);
             os_free(kid);
-            w_token_bootstrap_hex(derived_key, sizeof(derived_key), enroll_request.token_key_hex);
+            w_token_bootstrap_hex(derived_key, sizeof(derived_key), enroll_request.enroll_key_hex);
             credential_ready = true;
         }
 

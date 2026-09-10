@@ -19,6 +19,12 @@
 #define W_ETOKEN_SECRET_BYTES 16
 #define W_ETOKEN_KEY_BYTES    32
 
+/* Bytes of an agent's own re-enrollment secret, the IKM of the other derivation below. Must stay
+ * equal to AGENT_REENROLL_SECRET_BYTES (shared/include/agent_validate_op.h), which is what
+ * generates and validates the value; spelled here so this header does not have to pull that one
+ * in. The two are tied together by a _Static_assert in enrollment_token.c. */
+#define W_REENROLL_SECRET_BYTES 32
+
 /* Defaults that the `adr` field omits when a token is encoded */
 #define W_ETOKEN_DEFAULT_PORT   1517
 #define W_ETOKEN_DEFAULT_PREFIX "wazuh-manager"
@@ -122,6 +128,24 @@ char *w_etoken_describe(const w_etoken_t *token);
  */
 int w_etoken_derive_key(const uint8_t secret[W_ETOKEN_SECRET_BYTES],
                         uint8_t out[W_ETOKEN_KEY_BYTES]);
+
+/**
+ * @brief Derive the HS256 key an agent re-enrolls with, from its own re-enrollment secret.
+ *
+ * The same HKDF-SHA256 as w_etoken_derive_key() -- 32 zero salt bytes, info = label || 0x01,
+ * 32 bytes out -- over the 32 secret bytes and the info label "WAZUH-REENROLL-KEY". The label is
+ * the whole difference: it is what stops a token credential and an agent credential from ever
+ * deriving the same key, and it matches deriveReenrollKey() in
+ * shared_modules/utils/jwt/enrollKeyDerivation.hpp, which authd verifies with.
+ *
+ * The `kid` this key signs under is the agent's own canonical id, not a token id.
+ *
+ * @param secret The 32 secret bytes (the decoded 64 hex characters of `reenroll_secret`).
+ * @param out Receives the 32 bytes of the key.
+ * @return 0 on success, -1 on error.
+ */
+int w_reenroll_derive_key(const uint8_t secret[W_REENROLL_SECRET_BYTES],
+                          uint8_t out[W_ETOKEN_KEY_BYTES]);
 
 /**
  * @brief Message of a decoding error.

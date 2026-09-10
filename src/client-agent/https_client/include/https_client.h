@@ -507,16 +507,22 @@ typedef struct hc_enroll_request_t
     ///< (mTLS/open enrollment): a client cert (if `config` carries one) and
     ///< a password may both be set; there is no precedence between them,
     ///< each authenticates independently (confirmed with the server team).
-    /// Enrollment-token `kid` bearer: 22 canonical base64url characters (the token's
-    /// id) + NUL, or empty for password/open mode. Both this and token_key_hex must
-    /// be non-empty for the token-kid bearer to be minted; it then takes priority
-    /// over `password` (a token-based enrollment must not also sign with a possibly-
-    /// unrelated configured authd.pass).
-    char token_kid[24];
-    /// The token credential's HKDF-derived 32-byte key, as 64 lowercase hex characters
-    /// + NUL -- same hex convention as hc_config_t::agent_key. Empty means no token-kid
-    /// bearer (see token_kid above).
-    char token_key_hex[65];
+    /// `kid` of a keyed `wazuh-enroll+jwt` bearer, or empty for password/open mode.
+    /// Two credentials travel through this one pair of fields, and the profile tells
+    /// them apart by the SHAPE of the `kid` alone (jwtEnrollProfileV1.hpp; the manager
+    /// classifies it the same way, in JwtEnrollTokenVerifier::peekKid()):
+    ///   - an enrollment token: 22 canonical base64url characters, the token's id;
+    ///   - a re-enrolling agent: its own canonical agent id ("001", <= 10 digits).
+    /// Both this and enroll_key_hex must be non-empty for the bearer to be minted; it
+    /// then takes priority over `password` (a keyed enrollment must not also sign with
+    /// a possibly-unrelated configured authd.pass).
+    char enroll_kid[24];
+    /// The credential's HKDF-derived 32-byte key, as 64 lowercase hex characters + NUL
+    /// -- same hex convention as hc_config_t::agent_key. The label the key was derived
+    /// under is the caller's business and is implied by the `kid`'s shape
+    /// (WAZUH-ENROLL-TOKEN-KEY for a token, WAZUH-REENROLL-KEY for an agent); this
+    /// field carries only the result. Empty means no keyed bearer (see enroll_kid).
+    char enroll_key_hex[65];
     full_log_fnc_t log; ///< This call's log sink. hc_enroll() may run before
     ///< hc_create() ever does (first-boot enrollment has no handle yet), so
     ///< it cannot rely on a sink already being assigned.
