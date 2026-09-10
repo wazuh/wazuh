@@ -279,9 +279,10 @@ void test_wdb_parse_global_insert_agent_invalid_json(void **state)
     char query[OS_BUFFER_SIZE] = "global insert-agent {INVALID_JSON}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent {INVALID_JSON}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent (arguments not logged: they carry credentials)");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when inserting agent.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+    // The offset, never the tail of the payload: it carries the key and the secret (issue #39078, H05).
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON syntax error at offset 2 when inserting agent.");
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
@@ -310,7 +311,7 @@ void test_wdb_parse_global_insert_agent_compliant_error(void **state)
     char query[OS_BUFFER_SIZE] = "global insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":null}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":null}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent (arguments not logged: they carry credentials)");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when inserting agent. Not compliant with constraints defined in the database.");
 
     expect_function_call(__wrap_w_inc_queries_total);
@@ -340,7 +341,7 @@ void test_wdb_parse_global_insert_agent_query_error(void **state)
     char query[OS_BUFFER_SIZE] = "global insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":123}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":123}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent (arguments not logged: they carry credentials)");
 
     expect_value(__wrap_wdb_global_insert_agent, id, 1);
     expect_string(__wrap_wdb_global_insert_agent, name, "test_name");
@@ -382,8 +383,7 @@ void test_wdb_parse_global_insert_agent_success(void **state)
     \"ip\":\"0.0.0.0\",\"register_ip\":\"1.1.1.1\",\"internal_key\":\"test_key\",\"group\":\"test_group\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":123,\
-    \"ip\":\"0.0.0.0\",\"register_ip\":\"1.1.1.1\",\"internal_key\":\"test_key\",\"group\":\"test_group\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent (arguments not logged: they carry credentials)");
 
     expect_value(__wrap_wdb_global_insert_agent, id, 1);
     expect_string(__wrap_wdb_global_insert_agent, name, "test_name");
@@ -424,9 +424,7 @@ void test_wdb_parse_global_insert_agent_success_with_reenroll_secret(void **stat
     \"reenroll_secret\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\"group\":\"test_group\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":123,\
-    \"ip\":\"0.0.0.0\",\"register_ip\":\"1.1.1.1\",\"internal_key\":\"test_key\",\
-    \"reenroll_secret\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\"group\":\"test_group\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent (arguments not logged: they carry credentials)");
 
     expect_value(__wrap_wdb_global_insert_agent, id, 1);
     expect_string(__wrap_wdb_global_insert_agent, name, "test_name");
@@ -885,9 +883,10 @@ void test_wdb_parse_global_set_agent_credentials_invalid_json(void **state)
     char query[OS_BUFFER_SIZE] = "global set-agent-credentials {INVALID_JSON}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials {INVALID_JSON}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials (arguments not logged: they carry credentials)");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when setting agent credentials.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+    // Same rule: offset only (issue #39078, H05).
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON syntax error at offset 2 when setting agent credentials.");
 
     expect_set_agent_credentials_accounting(true);
 
@@ -909,7 +908,7 @@ void test_wdb_parse_global_set_agent_credentials_invalid_data(void **state)
     char query[OS_BUFFER_SIZE] = "global set-agent-credentials {\"id\":1,\"name\":\"agent1\",\"register_ip\":\"any\",\"internal_key\":\"k\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials {\"id\":1,\"name\":\"agent1\",\"register_ip\":\"any\",\"internal_key\":\"k\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials (arguments not logged: they carry credentials)");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when setting agent credentials.");
 
     expect_set_agent_credentials_accounting(true);
@@ -939,7 +938,7 @@ void test_wdb_parse_global_set_agent_credentials_query_error(void **state)
     expect_string(__wrap_wdb_global_set_agent_credentials, reenroll_secret, "s");
     will_return(__wrap_wdb_global_set_agent_credentials, OS_INVALID);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials " SAC_QUERY_JSON);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials (arguments not logged: they carry credentials)");
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
@@ -970,7 +969,7 @@ void test_wdb_parse_global_set_agent_credentials_success(void **state)
     expect_string(__wrap_wdb_global_set_agent_credentials, reenroll_secret, "s");
     will_return(__wrap_wdb_global_set_agent_credentials, OS_SUCCESS);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials " SAC_QUERY_JSON);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials (arguments not logged: they carry credentials)");
 
     expect_set_agent_credentials_accounting(true);
 

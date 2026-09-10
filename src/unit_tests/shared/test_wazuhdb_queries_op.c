@@ -189,9 +189,9 @@ void test_wdb_insert_agent_error_socket(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent {\"id\":1,\
-\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
+    // The credential-bearing payload must NOT reach the log: the expectation is an exact match, so a
+    // message carrying the key would fail the case (issue #39078, H05).
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent for agent '001'");
 
     ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
 
@@ -248,9 +248,9 @@ void test_wdb_insert_agent_error_sql_execution(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent {\"id\":1,\
-\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
+    // The credential-bearing payload must NOT reach the log: the expectation is an exact match, so a
+    // message carrying the key would fail the case (issue #39078, H05).
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent for agent '001'");
 
     ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
 
@@ -1147,7 +1147,34 @@ void test_wdb_set_agent_credentials_error_socket(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-agent-credentials " SAC_JSON);
+    // Neither the key nor the re-enrollment secret of SAC_JSON may appear (issue #39078, H05).
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-agent-credentials for agent '001'");
+
+    ret = wdb_set_agent_credentials(1, "agent1", "any", "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915",
+                                    "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_credentials_error_sql_execution(void **state)
+{
+    int ret = 0;
+    const char *query_str = "global set-agent-credentials " SAC_JSON;
+    const char *response = "err";
+
+    expect_set_agent_credentials_json();
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, -100); // Returning any error
+
+    // The other branch that used to print the whole credential set (issue #39078, H05): a database
+    // that cannot run the query is the likeliest way to reach this log on a live manager.
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-agent-credentials for agent '001'");
 
     ret = wdb_set_agent_credentials(1, "agent1", "any", "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915",
                                     "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", NULL);
@@ -3546,6 +3573,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_set_agent_credentials */
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_credentials_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_credentials_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_credentials_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_update_agent_connection_status */
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_json, setup_wdb_global_helpers, teardown_wdb_global_helpers),
