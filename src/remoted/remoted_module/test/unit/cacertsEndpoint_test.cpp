@@ -37,11 +37,11 @@
 #include <wazuh_metrics/manager.hpp>
 
 using namespace remoted::endpoints::cacerts;
+using remoted::http::CaCertificateSnapshot;
 using remoted::http::HttpRequest;
 using remoted::http::HttpResponse;
 using remoted::http::IHttpResponder;
 using remoted::http::Method;
-using remoted::http::TlsCertificateSnapshot;
 using namespace std::chrono_literals;
 
 namespace
@@ -124,16 +124,17 @@ namespace
         return {};
     }
 
-    std::function<TlsCertificateSnapshot()> statusOf(std::optional<bool> caMatchesLeaf)
+    /// What the transport hands the handler: certificates already parsed and re-serialised, plus
+    /// the verdict about them. The file-level behaviour (parsing, caching, invalidation) belongs to
+    /// CaCertificateSource and is tested in caCertificateSource_test.cpp.
+    CaCertificateSnapshot snapshotOf(std::optional<bool> matchesLeaf, std::string pem = std::string {kPem})
     {
-        return [caMatchesLeaf]
-        {
-            TlsCertificateSnapshot snapshot;
-            snapshot.expiryDays = 3649;
-            snapshot.caMatchesLeaf = caMatchesLeaf;
-            snapshot.evaluations = 1;
-            return snapshot;
-        };
+        CaCertificateSnapshot snapshot;
+        snapshot.certificates = pem.empty() ? 0U : 1U;
+        snapshot.pem = std::move(pem);
+        snapshot.matchesLeaf = matchesLeaf;
+        snapshot.subjects = "/CN=Test CA";
+        return snapshot;
     }
 
     HttpRequest getRequest()
@@ -153,41 +154,45 @@ namespace
         remoted::metrics::EndpointHttpMetrics http {
             remoted::metrics::makeEndpointHttpMetrics(manager, "cacerts", /*withLatency=*/false, "GET")};
 
-        HttpResponse run(const std::string& caPath,
-                         std::function<TlsCertificateSnapshot()> status,
-                         const HttpRequest& request = getRequest())
+        HttpResponse run(std::function<CaCertificateSnapshot()> snapshot, const HttpRequest& request = getRequest())
         {
-            auto handler = makeHandler(caPath, std::move(status), metrics, &http);
+            auto handler = makeHandler(std::move(snapshot), metrics, &http);
             auto responder = std::make_shared<CapturingResponder>();
             handler(std::make_shared<const HttpRequest>(request), responder);
             return responder->wait();
         }
+
+        HttpResponse run(CaCertificateSnapshot snapshot, const HttpRequest& request = getRequest())
+        {
+            return run([snapshot = std::move(snapshot)] { return snapshot; }, request);
+        }
     };
 } // namespace
 
-TEST(CacertsEndpoint, ServesThePemVerbatimWithPemContentType)
+TEST(CacertsEndpoint, ServesTheSnapshotPemWithPemContentType)
 {
     Fixture f;
-    const ScratchFile pem {"served", kPem};
 
-    const auto response = f.run(pem.path(), statusOf(true));
+    const auto response = f.run(snapshotOf(true));
 
     EXPECT_EQ(response.status, 200);
     EXPECT_EQ(responseHeader(response, "content-type"), PEM_CONTENT_TYPE);
-    EXPECT_EQ(response.body, kPem); // byte for byte, no re-encoding
+    EXPECT_EQ(response.body, kPem); // what the source serialised, not a file the handler read
     EXPECT_EQ(f.metrics.served->get(), 1U);
     EXPECT_EQ(f.metrics.notFound->get(), 0U);
     EXPECT_EQ(f.metrics.caMismatch->get(), 0U);
     EXPECT_EQ(f.http.responses.c2xx->get(), 1U);
     EXPECT_EQ(f.http.responses.other->get(), 0U);
-    EXPECT_EQ(f.http.latency, nullptr); // no histogram for a file read
+    EXPECT_EQ(f.http.latency, nullptr); // no histogram for a snapshot read
 }
 
-TEST(CacertsEndpoint, MissingFileAnswers404NotFound)
+TEST(CacertsEndpoint, EmptySnapshotAnswers404NotFound)
 {
     Fixture f;
 
-    const auto response = f.run("/nonexistent/remoted-tests/root-ca.pem", statusOf(true));
+    // Missing, unreadable, too large, no certificate or unparsable: the source collapses them all
+    // into "nothing to serve", and the handler answers the same 404 to every one of them.
+    const auto response = f.run(CaCertificateSnapshot {});
 
     EXPECT_EQ(response.status, 404);
     EXPECT_EQ(response.body, R"({"error":"not_found"})"); // same body as the transport's unknown-route 404
@@ -198,32 +203,26 @@ TEST(CacertsEndpoint, MissingFileAnswers404NotFound)
     EXPECT_EQ(f.http.responses.c2xx->get(), 0U);
 }
 
-TEST(CacertsEndpoint, GarbageFileAnswers404)
+TEST(CacertsEndpoint, SnapshotWithCountButNoPemAnswers404)
 {
     Fixture f;
-    // Readable, but nothing an agent could trust: no CERTIFICATE block (a key file, say).
-    const ScratchFile garbage {"garbage", "-----BEGIN PRIVATE KEY-----\nnope\n-----END PRIVATE KEY-----\n"};
 
-    const auto response = f.run(garbage.path(), statusOf(true));
+    // Defence in depth: a snapshot that counts certificates but carries no bytes (a serialisation
+    // that failed) must not answer 200 with an empty body.
+    CaCertificateSnapshot broken;
+    broken.certificates = 2;
+    broken.matchesLeaf = true;
 
-    EXPECT_EQ(response.status, 404);
-    EXPECT_EQ(response.body, R"({"error":"not_found"})");
+    EXPECT_EQ(f.run(broken).status, 404);
     EXPECT_EQ(f.metrics.notFound->get(), 1U);
-    EXPECT_EQ(f.http.responses.other->get(), 1U);
-
-    // An empty file is the same.
-    const ScratchFile empty {"empty", ""};
-    EXPECT_EQ(f.run(empty.path(), statusOf(true)).status, 404);
-    EXPECT_EQ(f.metrics.notFound->get(), 2U);
 }
 
 TEST(CacertsEndpoint, CaMismatchAnswers503)
 {
     Fixture f;
-    const ScratchFile pem {"mismatch", kPem};
 
-    // The file is fine; the transport says it does not sign the served leaf: refuse, don't serve.
-    const auto response = f.run(pem.path(), statusOf(false));
+    // Certificates are there; they do not sign the served leaf: refuse, don't serve.
+    const auto response = f.run(snapshotOf(false));
 
     EXPECT_EQ(response.status, 503);
     EXPECT_EQ(response.body, R"({"error":"ca_mismatch"})");
@@ -234,25 +233,31 @@ TEST(CacertsEndpoint, CaMismatchAnswers503)
     EXPECT_EQ(f.http.responses.c2xx->get(), 0U);
 }
 
-TEST(CacertsEndpoint, UnverifiedStatusStillServes)
+TEST(CacertsEndpoint, UnverifiedSnapshotStillServes)
 {
     Fixture f;
-    const ScratchFile pem {"unverified", kPem};
 
-    // nullopt: the last evaluation could not read the CA (it has since been restored -- the file
-    // is readable now). Unknown is not mismatch: serve.
-    EXPECT_EQ(f.run(pem.path(), statusOf(std::nullopt)).status, 200);
-    // Never evaluated at all (default snapshot) and no status function: same answer.
-    EXPECT_EQ(f.run(pem.path(), [] { return TlsCertificateSnapshot {}; }).status, 200);
-    EXPECT_EQ(f.run(pem.path(), nullptr).status, 200);
-    EXPECT_EQ(f.metrics.served->get(), 3U);
-    EXPECT_EQ(f.http.responses.c2xx->get(), 3U);
+    // nullopt: there are certificates but no leaf to check them against yet. Unknown is not
+    // mismatch -- refusing there would turn a listener that has not evaluated into an outage.
+    EXPECT_EQ(f.run(snapshotOf(std::nullopt)).status, 200);
+    EXPECT_EQ(f.metrics.served->get(), 1U);
+    EXPECT_EQ(f.http.responses.c2xx->get(), 1U);
+}
+
+TEST(CacertsEndpoint, NoSnapshotFunctionAnswers404)
+{
+    Fixture f;
+
+    // The facade's weak_ptr no longer locks (the server is gone): there is no CA to publish, and
+    // a 404 says so. Before this endpoint took its bytes from the transport it would have read
+    // the file itself and answered 200 with an unknown verdict.
+    EXPECT_EQ(f.run(std::function<CaCertificateSnapshot()> {}).status, 404);
+    EXPECT_EQ(f.metrics.notFound->get(), 1U);
 }
 
 TEST(CacertsEndpoint, IgnoresBodyAndAuthorizationHeader)
 {
     Fixture f;
-    const ScratchFile pem {"ignores", kPem};
 
     // A trust-bootstrap route has nothing to verify a credential against, and takes no input:
     // whatever the caller sends besides the target is irrelevant to the answer.
@@ -262,7 +267,7 @@ TEST(CacertsEndpoint, IgnoresBodyAndAuthorizationHeader)
     request.headers.emplace("protocol-version", "1");
     request.headers.emplace("Content-Type", "application/json");
 
-    const auto response = f.run(pem.path(), statusOf(true), request);
+    const auto response = f.run(snapshotOf(true), request);
     EXPECT_EQ(response.status, 200);
     EXPECT_EQ(response.body, kPem);
     EXPECT_EQ(f.metrics.served->get(), 1U);
@@ -272,13 +277,12 @@ TEST(CacertsEndpoint, NullMetricsCountNothing)
 {
     // The null-object contract every metric struct in the module honours: a default-constructed
     // set and a null http family must not crash and must not count.
-    const ScratchFile pem {"nullmetrics", kPem};
-    auto handler = makeHandler(pem.path(), statusOf(true), CacertsMetrics {}, nullptr);
+    auto handler = makeHandler([] { return snapshotOf(true); }, CacertsMetrics {}, nullptr);
     auto responder = std::make_shared<CapturingResponder>();
     handler(std::make_shared<const HttpRequest>(getRequest()), responder);
     EXPECT_EQ(responder->wait().status, 200);
 
-    auto missing = makeHandler("/nonexistent/x.pem", statusOf(false), CacertsMetrics {}, nullptr);
+    auto missing = makeHandler([] { return CaCertificateSnapshot {}; }, CacertsMetrics {}, nullptr);
     auto responder2 = std::make_shared<CapturingResponder>();
     missing(std::make_shared<const HttpRequest>(getRequest()), responder2);
     EXPECT_EQ(responder2->wait().status, 404);

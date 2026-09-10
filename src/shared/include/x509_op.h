@@ -11,6 +11,7 @@
 #ifndef X509_OP_H
 #define X509_OP_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include <openssl/x509.h>
@@ -26,6 +27,36 @@
  * @return The certificate, which the caller must X509_free(), or NULL on error.
  */
 X509 *w_x509_load_pem(const char *path);
+
+/**
+ * @brief Load EVERY certificate of a PEM file, in file order.
+ *
+ * What a CA bundle needs: w_x509_load_pem() stops at the first block, so a signer listed second
+ * is invisible to it. Non-certificate blocks (a private key in a combined file) are skipped by
+ * the reader, and a file that cannot be parsed to its end yields nothing at all -- a document we
+ * do not fully understand is not one to publish from (issue #39078, H01).
+ *
+ * @param path Path of the PEM file.
+ * @param count Receives how many certificates were read; 0 on error.
+ * @return Array of certificates the caller must free with w_x509_free_all(), or NULL when there
+ *         is none.
+ */
+X509 **w_x509_load_all_pem(const char *path, size_t *count);
+
+/**
+ * @brief Free an array returned by w_x509_load_all_pem().
+ */
+void w_x509_free_all(X509 **certs, size_t count);
+
+/**
+ * @brief PEM text with @p count certificates and nothing else.
+ *
+ * The published document is built here from parsed objects, so whatever else the source file
+ * carried (a private key, comments, a CRL) cannot travel with it.
+ *
+ * @return Heap string the caller must free, or NULL on error.
+ */
+char *w_x509_certificates_pem(X509 **certs, size_t count);
 
 /**
  * @brief SHA-256 of the DER SubjectPublicKeyInfo of a certificate.

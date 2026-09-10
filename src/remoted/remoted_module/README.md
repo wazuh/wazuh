@@ -30,10 +30,12 @@ remoted_module/
 │   ├── decoding/                   # ns remoted::decoding — Content-Encoding policy (see below)
 │   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below);
 │   │                               #   tlsCertificateStatus.hpp/.cpp = served-certificate expiry + CA
-│   │                               #   coherence evaluation and its daily monitor thread
+│   │                               #   coherence evaluation and its daily monitor thread;
+│   │                               #   caCertificateSource.hpp/.cpp = the CA file as ONE read:
+│   │                               #   certificates re-serialised + verdict, cached by content hash
 │   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below);
 │   │   │                           #   endpoint.hpp also carries the remoted.auth.reject.* catalog
-│   │   ├── cacertsEndpoint.hpp/.cpp    # GET /cacerts: serves remote.https.ca_certificate (see below)
+│   │   ├── cacertsEndpoint.hpp/.cpp    # GET /cacerts: publishes remote.https.ca_certificate's certificates (see below)
 │   │   ├── cacertsMetrics.hpp          # remoted.cacerts.* + remoted.server.tls.* name catalog
 │   │   ├── controlEndpoint.hpp/.cpp    # POST /control JSON dispatch (see below)
 │   │   ├── downloadMetrics.hpp         # remoted.download.* catalog (POST /download)
@@ -234,7 +236,7 @@ src/endpoints/
 ├── statsEndpoint.hpp/.cpp    # /stats policy: forwards to modulesd's inventory sync server
 └── configEndpoint.hpp/.cpp  # /config policy: near-duplicate of statsEndpoint, on purpose
 └── downloadEndpoint.hpp/.cpp  # /download policy: request grammar + resource resolution + file streaming
-└── cacertsEndpoint.hpp/.cpp   # GET /cacerts: the CA that signs the listener cert, served as-is (no auth)
+└── cacertsEndpoint.hpp/.cpp   # GET /cacerts: the CA that signs the listener cert, certificates only (no auth)
 ```
 
 - **`GET /cacerts` (`cacertsEndpoint.hpp/.cpp`, ns `remoted::endpoints::cacerts`):** the one route

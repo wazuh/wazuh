@@ -250,6 +250,11 @@ Path to the CA certificate (PEM) that signs the listener certificate (`certifica
 certificate the manager serves on `GET /cacerts` and the one enrollment tokens pin, so agents can
 verify the listener without an out-of-band CA copy.
 
+Only its **certificates** are ever published: the manager parses the file and re-serialises the
+X.509 blocks it found, so a PEM that also carries the CA's private key (a misprovisioned bundle)
+hands out the certificate and nothing else, on `GET /cacerts` as well as in a `--embed-ca` token.
+A file it cannot parse to the end is refused whole rather than served up to its first bad block.
+
 - **Default value:** `etc/certs/root-ca.pem` (relative to the manager's chroot; the installer
   writes the option explicitly — the file itself is provisioned by the operator together with the
   listener certificate it signs, the manager generates neither)
@@ -257,7 +262,8 @@ verify the listener without an out-of-band CA copy.
   `ca_certificate` is what agents use to verify the manager. An empty value is rejected at startup
   (`(1244): Invalid configuration at '/remote/https/ca_certificate': does not satisfy 'minLength'`).
   The file is not required to exist for the manager to start: when it is missing, `GET /cacerts`
-  answers 404.
+  answers 404. Replacing it needs no restart — the manager notices a change in the file's content
+  (not its timestamp or size) and revalidates it in the very request that reads it.
 
 ### https.verification_mode
 

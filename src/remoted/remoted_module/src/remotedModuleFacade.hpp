@@ -416,23 +416,23 @@ private:
             /*countAgainstBudget=*/false);
 
         // /cacerts: the CA that signs this listener's certificate (remote.https.ca_certificate),
-        // served as-is so an agent can bootstrap trust in the manager (RF-27). No auth (the caller
-        // has no key yet), no body, no gateway; budget-exempt like the probe above, because a trust
-        // bootstrap must not be shed under memory pressure. The handler re-reads the file per request
-        // (404 when it is gone) and asks the transport whether that CA still signs the served leaf --
-        // evaluated at start and daily -- refusing with 503 when it does not, rather than handing out
-        // a CA agents cannot chain this very listener to. Weak server pointer: the route must not
-        // keep the server alive, and after stop() resets m_httpServer the status reads "unknown".
+        // published so an agent can bootstrap trust in the manager (RF-27). No auth (the caller has
+        // no key yet), no body, no gateway; budget-exempt like the probe above, because a trust
+        // bootstrap must not be shed under memory pressure. The transport hands over the CA file's
+        // current state -- the certificates it re-serialised and whether they sign the served leaf,
+        // from one read -- so the handler publishes a document we built (never the file's own
+        // bytes) and refuses with 503 a CA agents could not chain this listener to. Weak server
+        // pointer: the route must not keep the server alive, and after stop() resets m_httpServer
+        // the snapshot is empty, which answers 404.
         m_httpServer->addRoute(remoted::http::Method::Get,
                                "/cacerts",
                                remoted::endpoints::cacerts::makeHandler(
-                                   config.caCertificatePath,
                                    [weak = std::weak_ptr<remoted::http::IHttpServer>(
-                                        m_httpServer)]() -> remoted::http::TlsCertificateSnapshot
+                                        m_httpServer)]() -> remoted::http::CaCertificateSnapshot
                                    {
                                        if (const auto server = weak.lock())
                                        {
-                                           return server->certificateStatus();
+                                           return server->caCertificateSnapshot();
                                        }
                                        return {};
                                    },
@@ -927,8 +927,7 @@ private:
                 wazuh::uds_http::Method::Get,
                 "/",
                 [](std::shared_ptr<const wazuh::uds_http::HttpRequest>,
-                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
-                {
+                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder) {
                     responder->send(
                         wazuh::uds_http::HttpResponse::json(200, R"({"status":"ok","module":"remoted_module"})"));
                 },
