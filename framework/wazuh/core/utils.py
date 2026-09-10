@@ -889,13 +889,12 @@ def get_timeframe_in_seconds(timeframe: str) -> int:
         Time in seconds.
     """
     if not timeframe.isdigit():
-        if 'h' not in timeframe and 'd' not in timeframe and 'm' not in timeframe and 's' not in timeframe:
+        if not re.fullmatch(r'(\d+[dhms])+', timeframe):
             raise WazuhError(1411, timeframe)
 
-        regex, seconds = re.compile(r'(\d+)(\w)'), 0
+        seconds = 0
         time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's': 1}
-        for time, unit in regex.findall(timeframe):
-            # it's not necessarry to check whether the unit is in the dictionary, because it's been validated before.
+        for time, unit in re.findall(r'(\d+)([dhms])', timeframe):
             seconds += int(time) * time_equivalence_seconds[unit]
     else:
         seconds = int(timeframe)
