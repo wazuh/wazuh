@@ -490,7 +490,7 @@ def get_agents_in_group(group_list: list, offset: int = 0, limit: int = common.D
      distinct=distinct)
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
+@expose_resources(actions=["agent:read_key"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701]})
 def get_agents_keys(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Get the key of existing agents.

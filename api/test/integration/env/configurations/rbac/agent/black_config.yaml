@@ -1,6 +1,7 @@
 ---
 - actions:
   - agent:read
+  - agent:read_key
   - agent:delete
   - agent:restart
   - agent:upgrade
@@ -11,6 +12,7 @@
 
 - actions:
   - agent:read
+  - agent:read_key
   resources:
   - agent:id:001
   - agent:id:003

@@ -1,6 +1,7 @@
 ---
 - actions:
   - agent:read
+  - agent:read_key
   resources:
   - agent:id:002
   - agent:id:004

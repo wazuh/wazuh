@@ -98,6 +98,15 @@ x-rbac-catalog:
         actions: ['agent:read']
         resources: ['agent:id:*']
         effect: "allow"
+    'agent:read_key':
+      description: "Access the key of agents (the pre-shared secret stored in client.keys)"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: ['agent:read_key']
+        resources: ['agent:id:*']
+        effect: "allow"
     'agent:delete':
       description: "Delete agents"
       resources:
@@ -3929,7 +3938,7 @@ paths:
       description: "Return the key of an agent"
       operationId: api.controllers.agent_controller.get_agent_key
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/agent:read_key'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
