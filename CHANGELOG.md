@@ -50,6 +50,13 @@ All notable changes to this project will be documented in this file.
 - Fixed multiple checks with deprecated commands in Apple macOS 26.0 SCA file. ([#38669](https://github.com/wazuh/wazuh/pull/38669))
 - Fixed false-pass on the CIS Amazon Linux 2023 and Ubuntu 18.04 minimum password-days checks. ([#39047](https://github.com/wazuh/wazuh/pull/39047))
 
+### Other
+
+#### Changed
+
+- Updated embedded Python to 3.10.21 and dependencies `cryptography`, `pip`, `pyasn1` and `setuptools`. ([#39148](https://github.com/wazuh/wazuh/pull/39148))
+- Updated the Google Cloud dependencies (`google-cloud-storage`, `google-cloud-core`, `google-auth` and `google-resumable-media`), which relied on the `pkg_resources` module removed in `setuptools` 82. ([#39148](https://github.com/wazuh/wazuh/pull/39148))
+
 ## [v4.14.8]
 
 ### Manager
