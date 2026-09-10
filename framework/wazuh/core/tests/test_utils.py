@@ -905,24 +905,38 @@ def test_WazuhVersion__ge__(version1, version2):
     assert not current_version >= new_version
 
 
-@pytest.mark.parametrize('time', [
-    '10s',
-    '20m',
-    '30h',
-    '5d',
-    '10'
+@pytest.mark.parametrize('time, expected_seconds', [
+    ('10s', 10),
+    ('20m', 1200),
+    ('30h', 108000),
+    ('5d', 432000),
+    ('10', 10),
+    ('0s', 0),
+    ('1d2h3m4s', 93784)
 ])
-def test_get_timeframe_in_seconds(time):
+def test_get_timeframe_in_seconds(time, expected_seconds):
     """Test get_timeframe_in_seconds function."""
     result = utils.get_timeframe_in_seconds(time)
 
-    assert isinstance(result, int)
+    assert result == expected_seconds
 
 
-def test_failed_test_get_timeframe_in_seconds():
+@pytest.mark.parametrize('time', [
+    'error',
+    'soon',
+    'yesterday',
+    '1x',
+    'm',
+    '',
+    '1d2x',
+    '1d ',
+    '1D',
+    '-1d'
+])
+def test_failed_test_get_timeframe_in_seconds(time):
     """Test get_timeframe_in_seconds function exceptions."""
     with pytest.raises(exception.WazuhException, match=".* 1411 .*"):
-        utils.get_timeframe_in_seconds('error')
+        utils.get_timeframe_in_seconds(time)
 
 
 @pytest.mark.parametrize('query_filter, expected_query_filter, expected_wef', [
