@@ -58,7 +58,11 @@ enroll_https_latency_ms_p50,enroll_https_latency_ms_p99
   the manager's contract outcomes; `cacerts_other` holds what invalidates the run (a `200` without a
   PEM body, a status the contract does not name). `cacerts_latency_ms_*` is the cost of the cheapest
   route on the listener — TLS plus a file read, no downstream. A `cacerts` step never retries.
-- `enroll_https_*` are the `POST /enroll` counters of an `enroll_https` step ([16](16-enroll-https.md)):
+- `meta.bootstrap` is how the fleet obtained its identities: `"enroll-token"` (`POST /enroll` with
+  an enrollment token, the default) or `"1515"` (authd's legacy listener) in agent mode, and `""` in
+  uds mode, which enrolls nothing. The bootstrap's own requests appear in NO counter: they are setup,
+  sent before the measurement clock starts ([16](16-enroll-https.md)).
+- `enroll_https_*` are the `POST /enroll` counters of an `enroll_https` STEP ([16](16-enroll-https.md)):
   one fresh agent enrolled per request with the enrollment token's bearer. `enroll_https_200` counts
   agents created; `enroll_https_401` (the manager refused the bearer: unknown, expired or revoked
   token, or a clock/key problem), `enroll_https_403` (authd refused the use of a bearer remoted had
@@ -89,6 +93,7 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
     "scenario_path": "scenarios/mixed_fleet_windows_linux.json",
     "mode": "agent",
     "manager": "127.0.0.1", "port": 1517, "reg_port": 1515,
+    "bootstrap": "enroll-token",
     "cluster_name": "cluster01",
     "agents_requested": 100, "agents_enrolled": 100, "agents_failed": 0,
     "concurrent_agents": 0, "requests_per_second_target": 0,
