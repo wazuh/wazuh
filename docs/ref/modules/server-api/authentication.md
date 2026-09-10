@@ -92,9 +92,19 @@ RBAC is enforced **before** any core logic is executed.
 password (`authd.pass`) and the cluster key in them. Those two values come back masked as `*****`
 unless the caller holds **`cluster:read_secrets`**, an action of its own: being allowed to change the
 configuration does not entitle anyone to read the secrets inside it. It is granted by the default
-policy `secrets_read`, which only the `administrator` role carries, and every disclosure is recorded
-in `logs/api.log` as a `secret_read` line naming the user and the fields, never the value. If the
-masking itself fails, the request fails: a response nobody could mask is not served.
+policy `secrets_read`, which only the `administrator` role carries.
+
+The action is checked **against the node that answers**, with the same matcher every other permission
+goes through: a policy that grants it over `node:id:master-node` does not uncover a worker's values,
+a later `deny` over the node being served wins, and in `rbac_mode: black` the values come back in
+clear unless a policy denies them, as everything else does in that mode. The default policy grants
+it over `node:id:*`, so an `administrator` sees them on every node.
+
+Every disclosure is recorded as a `secret_read` line naming the user and the fields, never the value.
+It lands in `logs/api.log` for `GET /cluster/local/config`, which the API process serves, and in
+`logs/cluster.log` for the two node-configuration endpoints, which run inside the answering node's
+`wazuh-manager-clusterd`. If the masking itself fails, the request fails: a response nobody could
+mask is not served.
 
 ### RBAC Components
 
