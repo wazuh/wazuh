@@ -5019,8 +5019,20 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
 
     if (!syncNow)
     {
-        // Left in the queue on purpose; the caller sends it.
+        // Left in the queue on purpose; the caller sends it. That caller is checkAgentIdentity(),
+        // which queues every VD table and clears the first-sync marker, so the session it sends is
+        // a VDFirst carrying the whole inventory -- there is no missing context to attach.
         return true;
+    }
+
+    if (isVDIndex(index) && m_vdSyncEnabled)
+    {
+        // A VD session must carry the DataContext its DataValues imply (getDataContextTables).
+        // A scan gets that from processVDDataContext() once per cycle; recovery runs no scan, so
+        // without this the session leaves with one table's rows and no context: a packages
+        // recovery scans against an empty OS release, and an os or hotfixes recovery reconciles
+        // against an empty package set and solves away every existing finding.
+        processVDDataContext();
     }
 
     m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
