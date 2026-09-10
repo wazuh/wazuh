@@ -63,23 +63,16 @@ namespace
     /// would miss, and the reason this one hashes the content.
     void overwritePreservingMetadata(const std::string& path, const std::string& contents)
     {
-        struct stat before
-        {
-        };
+        struct stat before {};
         ASSERT_EQ(::stat(path.c_str(), &before), 0);
         ASSERT_EQ(static_cast<std::size_t>(before.st_size), contents.size());
 
         write(path, contents);
 
-        struct utimbuf times
-        {
-            before.st_atime, before.st_mtime
-        };
+        struct utimbuf times {before.st_atime, before.st_mtime};
         ASSERT_EQ(::utime(path.c_str(), &times), 0);
 
-        struct stat after
-        {
-        };
+        struct stat after {};
         ASSERT_EQ(::stat(path.c_str(), &after), 0);
         ASSERT_EQ(before.st_size, after.st_size);
         ASSERT_EQ(before.st_mtime, after.st_mtime);
