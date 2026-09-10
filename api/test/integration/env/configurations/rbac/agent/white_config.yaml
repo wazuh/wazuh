@@ -1,11 +1,5 @@
 ---
 - actions:
-  - enrollment_token:read
-  resources:
-  - "*:*:*"
-  effect: allow
-
-- actions:
   - agent:read
   resources:
   - agent:id:002
@@ -59,8 +53,12 @@
   - "*:*:*"
   effect: deny
 
+# `enrollment_token:read` rides along here on purpose: on its own it would be the very same policy
+# body as the default `agents_read` one, and `policies.policy` is UNIQUE, so the INSERT would be
+# rejected and this role would silently lose the permission.
 - actions:
   - agent:uninstall
+  - enrollment_token:read
   resources:
   - "*:*:*"
   effect: allow
