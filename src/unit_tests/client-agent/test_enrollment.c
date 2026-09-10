@@ -14,9 +14,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <sys/stat.h>
+
 #include "shared.h"
 #include "agentd.h"
 #include "enrollment.h"
+#include "reenroll_secret.h"
 #include "cJSON.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
@@ -352,6 +355,178 @@ static void test_process_response_200_missing_field_is_server_error(void **state
     assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
 }
 
+/* ---- the 200 path: client.keys and the re-enrollment secret (#39064) ----
+ *
+ * KEYS_FILE and AGENT_REENROLL_SECRET are relative paths, so these run the real writers against
+ * real files under etc/, the same way test_token_bootstrap.c does. The write ORDER is the point of
+ * several of them, and a mocked filesystem would prove nothing about it.
+ */
+
+#define VALID_SECRET "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+static void remove_200_paths(void) {
+    unlink(KEYS_FILE);
+    unlink(AGENT_REENROLL_SECRET);
+}
+
+static int setup_200_test(void **state) {
+    mkdir("etc", 0755);
+    remove_200_paths();
+    return setup_test(state);
+}
+
+/* Only the debug channel, and only for the 200-path tests: the two TempFile() calls (the secret
+ * and client.keys) each log an FSTAT_ERROR mdebug1 when replacing a file that does not exist yet,
+ * and the store logs one of its own. None of that is what these tests assert. Declared in the test
+ * body, not the fixture: cmocka checks a setup function's queue when setup returns, and an
+ * "always" entry left there is reported as an unchecked leftover. */
+#define ignore_debug_lines() expect_any_always(__wrap__mdebug1, formatted_msg)
+/* Used only by the tests that actually write a file: cmocka reports an "always" entry that never
+ * matched a call as a leftover, so the tests that refuse the response before anything is written
+ * must not declare one. */
+
+static int teardown_200_test(void **state) {
+    remove_200_paths();
+    return teardown_test(state);
+}
+
+static void set_body(hc_enroll_result_t *result, const char *body) {
+    result->http_code = 200;
+    strncpy(result->body, body, sizeof(result->body) - 1);
+}
+
+static char *read_file_line(const char *path) {
+    static char buffer[512];
+    FILE *fp = fopen(path, "r");
+    assert_non_null(fp);
+    memset(buffer, 0, sizeof(buffer));
+    assert_non_null(fgets(buffer, sizeof(buffer), fp));
+    fclose(fp);
+    return buffer;
+}
+
+static void test_process_response_200_stores_the_reenroll_secret(void **state) {
+    (void)state;
+    ignore_debug_lines();
+    hc_enroll_result_t result = {0};
+    char id[W_REENROLL_ID_SIZE];
+    char secret[W_REENROLL_SECRET_SIZE];
+
+    set_body(&result,
+             "{\"id\":\"001\",\"name\":\"agent01\",\"ip\":\"10.0.0.1\",\"key\":\"abc123\","
+             "\"reenroll_secret\":\"" VALID_SECRET "\"}");
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_OK);
+
+    assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 1);
+    assert_string_equal(id, "001");
+    assert_string_equal(secret, VALID_SECRET);
+    assert_string_equal(read_file_line(KEYS_FILE), "001 agent01 10.0.0.1 abc123\n");
+}
+
+/* An older manager, or a path that mints none: the four required fields still enroll the agent.
+ * Absent is not malformed. */
+static void test_process_response_200_without_a_secret_still_enrolls(void **state) {
+    (void)state;
+    ignore_debug_lines();
+    hc_enroll_result_t result = {0};
+
+    set_body(&result, "{\"id\":\"001\",\"name\":\"agent01\",\"ip\":\"10.0.0.1\",\"key\":\"abc123\"}");
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_OK);
+    assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
+    assert_string_equal(read_file_line(KEYS_FILE), "001 agent01 10.0.0.1 abc123\n");
+}
+
+/* A secret that arrives unusable fails the WHOLE response. The manager rotated its own copy before
+ * answering, so a secret we cannot store is one nobody holds any more -- and accepting the key
+ * alone is exactly how an agent ends up enrolled but unrecoverable. */
+static void test_process_response_200_malformed_secret_is_server_error(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+
+    set_body(&result,
+             "{\"id\":\"001\",\"name\":\"agent01\",\"ip\":\"10.0.0.1\",\"key\":\"abc123\","
+             "\"reenroll_secret\":\"tooshort\"}");
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg, "Enrollment response carries a malformed re-enrollment secret.");
+
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
+
+    /* And client.keys was never written: the refusal has to come BEFORE the key lands, or the
+     * agent is left holding a key whose secret it rejected. */
+    assert_int_equal(IsFile(KEYS_FILE), -1);
+    assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
+}
+
+/* A `reenroll_secret` of the wrong JSON type is refused the same way -- not silently skipped as
+ * though it were absent. */
+static void test_process_response_200_non_string_secret_is_server_error(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+
+    set_body(&result,
+             "{\"id\":\"001\",\"name\":\"agent01\",\"ip\":\"10.0.0.1\",\"key\":\"abc123\","
+             "\"reenroll_secret\":42}");
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg, "Enrollment response carries a malformed re-enrollment secret.");
+
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
+    assert_int_equal(IsFile(KEYS_FILE), -1);
+}
+
+/* The DoD's interrupted-rotation guarantee, asserted through the observable order rather than
+ * assumed: with the store already holding the previous secret, a response whose secret is refused
+ * must leave that previous secret intact and write no key. */
+static void test_process_response_200_refusal_leaves_the_previous_secret_usable(void **state) {
+    (void)state;
+    ignore_debug_lines();
+    hc_enroll_result_t result = {0};
+    char id[W_REENROLL_ID_SIZE];
+    char secret[W_REENROLL_SECRET_SIZE];
+
+    assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
+
+    set_body(&result,
+             "{\"id\":\"001\",\"name\":\"agent01\",\"ip\":\"10.0.0.1\",\"key\":\"abc123\","
+             "\"reenroll_secret\":\"nothex\"}");
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg, "Enrollment response carries a malformed re-enrollment secret.");
+
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
+
+    assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 1);
+    assert_string_equal(secret, VALID_SECRET);
+    assert_int_equal(IsFile(KEYS_FILE), -1);
+}
+
+/* Rotation: the second enrollment's secret replaces the first, keyed to the same id. */
+static void test_process_response_200_rotates_the_stored_secret(void **state) {
+    (void)state;
+    ignore_debug_lines();
+    hc_enroll_result_t result = {0};
+    char id[W_REENROLL_ID_SIZE];
+    char secret[W_REENROLL_SECRET_SIZE];
+    const char *rotated = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
+
+    assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
+
+    set_body(&result,
+             "{\"id\":\"001\",\"name\":\"agent01\",\"ip\":\"10.0.0.1\",\"key\":\"def456\","
+             "\"reenroll_secret\":\"fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210\"}");
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_OK);
+
+    assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 1);
+    assert_string_equal(secret, rotated);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_build_request_minimal_body, setup_test, teardown_test),
@@ -373,6 +548,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_unrecognized_status_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_with_malformed_json_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_missing_field_is_server_error, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_200_stores_the_reenroll_secret, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_process_response_200_without_a_secret_still_enrolls, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_process_response_200_malformed_secret_is_server_error, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_process_response_200_non_string_secret_is_server_error, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_process_response_200_refusal_leaves_the_previous_secret_usable, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_process_response_200_rotates_the_stored_secret, setup_200_test, teardown_200_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -12,6 +12,7 @@
 #include "token_bootstrap.h"
 #include "enrollment.h"
 #include "enrollment_token.h"
+#include "reenroll_secret.h"
 
 #ifdef WIN32
 
@@ -346,11 +347,18 @@ int w_agent_token_bootstrap(int uid, int gid) {
 
     os_free(anchor_file.name);
 
-    /* Both files were just written while still root (this runs before Privsep_SetGroup()/
+    /* All three files were just written while still root (this runs before Privsep_SetGroup()/
      * Privsep_SetUser() in AgentdStart()): without this, they are unreadable by the
      * unprivileged user once the process drops privileges, silently breaking the very first
      * restart after a successful bootstrap. Logged, not fatal: the anchor and the enrollment
-     * already succeeded. */
+     * already succeeded.
+     *
+     * The re-enrollment secret (#39064) is in the list because w_enrollment_process_response()
+     * writes it here, as root, on the way through -- and unlike the other two it also has to be
+     * WRITABLE by the unprivileged user afterwards, since every rotation happens in the running
+     * daemon. A root-owned secret would survive exactly one enrollment and then fail every
+     * rotation, with nothing to show for it in a log. FileSize() rather than IsFile() for the
+     * same reason 65215f70bf needed it for client.keys: only a non-empty file is a real store. */
     if (chown(AGENT_ANCHOR_CA, uid, gid) != 0) {
         merror("Token bootstrap: could not change ownership of '%s': %s (%d).", AGENT_ANCHOR_CA,
                strerror(errno), errno);
@@ -359,6 +367,11 @@ int w_agent_token_bootstrap(int uid, int gid) {
     if (chown(KEYS_FILE, uid, gid) != 0) {
         merror("Token bootstrap: could not change ownership of '%s': %s (%d).", KEYS_FILE,
                strerror(errno), errno);
+    }
+
+    if (FileSize(AGENT_REENROLL_SECRET) > 0 && chown(AGENT_REENROLL_SECRET, uid, gid) != 0) {
+        merror("Token bootstrap: could not change ownership of '%s': %s (%d).",
+               AGENT_REENROLL_SECRET, strerror(errno), errno);
     }
 
     unlink(AGENT_ENROLLMENT_TOKEN_FILE);

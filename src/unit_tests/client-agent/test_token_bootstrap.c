@@ -21,6 +21,7 @@
 #include "token_bootstrap.h"
 #include "enrollment.h"
 #include "enrollment_token.h"
+#include "reenroll_secret.h"
 #include "https_client.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
@@ -103,6 +104,7 @@ static void remove_test_paths(void) {
     unlink("etc/enrollment_token");
     unlink("etc/certs/root-ca.pem");
     unlink("etc/client.keys");
+    unlink(AGENT_REENROLL_SECRET);
 }
 
 static int group_setup(void **state) {
@@ -216,6 +218,13 @@ static void expect_valid_ip(const char *ip) {
 #define VALID_ENROLL_BODY \
     "{\"id\":\"001\",\"name\":\"test-agent\",\"ip\":\"10.0.0.5\"," \
     "\"key\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}"
+
+/* The same 200, with the fifth field a 5.0 manager actually sends (#39064). */
+#define REENROLL_SECRET "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+#define VALID_ENROLL_BODY_WITH_SECRET \
+    "{\"id\":\"001\",\"name\":\"test-agent\",\"ip\":\"10.0.0.5\"," \
+    "\"key\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"," \
+    "\"reenroll_secret\":\"" REENROLL_SECRET "\"}"
 
 /* ---- tests ---- */
 
@@ -385,6 +394,86 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal((int) strlen(g_enroll_request.token_key_hex), 64);
 }
 
+/* #39064: the bootstrap runs as ROOT, before the privilege drop, and w_enrollment_process_response()
+ * writes the re-enrollment secret from here. So the secret is created by a root-owned process and
+ * then has to be handed to the unprivileged user like the anchor and client.keys are -- and unlike
+ * those two it must end up WRITABLE by that user, because every later rotation happens in the
+ * running daemon. A root-owned secret would survive exactly one enrollment and then fail every
+ * rotation silently, which is the same shape of defect 65215f70bf had to fix for client.keys.
+ *
+ * chown() to the caller's own uid/gid is a no-op here (the suite does not run as root), so what
+ * this pins is that the store is written on the root path, with client.keys's mode, and that no
+ * ownership error is logged along the way -- an unexpected merror() would fail the test on the
+ * strict cmocka log expectations. */
+static void test_bootstrap_stores_the_reenroll_secret_from_the_root_path(void **state) {
+    (void) state;
+    char id[W_REENROLL_ID_SIZE];
+    char secret[W_REENROLL_SECRET_SIZE];
+    struct stat info;
+
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pin_matches, 1);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY_WITH_SECRET);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    /* One more TempFile() FSTAT_ERROR debug line than the happy path above (the secret is written
+     * through one too), plus w_reenroll_secret_store()'s own confirmation. Declared uninteresting
+     * rather than counted: the count is not what this test is about. */
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+
+    assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 1);
+    assert_string_equal(id, "001");
+    assert_string_equal(secret, REENROLL_SECRET);
+
+    /* client.keys's mode, so the daemon can rewrite it after the drop. */
+    assert_int_equal(stat(AGENT_REENROLL_SECRET, &info), 0);
+    assert_int_equal(info.st_mode & 0777, 0640);
+}
+
+/* A manager that sends no secret must still complete the bootstrap: the token path predates this
+ * field and an older manager is not an error. */
+static void test_bootstrap_without_a_secret_leaves_no_store(void **state) {
+    (void) state;
+
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pin_matches, 1);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile(AGENT_REENROLL_SECRET), 0);
+}
+
 /* #39028's DoD: "a credential-less token enrolls when the simulator requires no credential,
  * and is not treated as an error." has_key=false must not short-circuit into an error path --
  * enrollment still runs, just with no token_kid/token_key_hex on the wire (and no fallback to
@@ -476,6 +565,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fetch_failure_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_pin_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_pin, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bootstrap_stores_the_reenroll_secret_from_the_root_path, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_bootstrap_without_a_secret_leaves_no_store, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_credential_less_token_enrolls_without_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_ca_pem, setup_test, teardown_test),
     };

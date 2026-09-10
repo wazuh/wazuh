@@ -117,6 +117,12 @@ list(APPEND client-agent_flags " ")
 list(APPEND client-agent_names "test_enrollment")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS}")
 
+# w_reenroll_secret_store()/load()/clear() (#39064): the real store against real files relative to
+# the working directory -- the atomic rename and the 0640 mode are the point, so nothing about the
+# filesystem is mocked. Only the log wrappers, same as test_client_conf_ssl_resolution above.
+list(APPEND client-agent_names "test_reenroll_secret")
+list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS}")
+
 # w_agent_token_bootstrap(): mocks only the https_client module boundary it calls
 # through (hc_fetch_cacerts/hc_enroll/hc_spki_pin_matches), the same
 # convention test_https_client_bridge uses for that boundary below -- everything else
