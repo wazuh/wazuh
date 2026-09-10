@@ -489,8 +489,12 @@ void identity_journal_load(void) {
 
         /* A torn last line is the expected shape of a crash mid-append: skipped, counted and
          * reported once, never a reason to refuse the lines that did land. */
-        if (!cJSON_IsNumber(j_seq) || !cJSON_IsString(j_id) || !cJSON_IsString(j_key) ||
-            !cJSON_IsString(j_secret) || !OS_IsValidID(j_id->valuestring)) {
+        /* The NULL tests are redundant with cJSON_IsString() -- and there for the static analyser,
+         * which does not look inside cJSON and would otherwise read the id below as a possible
+         * null dereference. */
+        if (!cJSON_IsNumber(j_seq) || j_id == NULL || !cJSON_IsString(j_id) || j_key == NULL ||
+            !cJSON_IsString(j_key) || j_secret == NULL || !cJSON_IsString(j_secret) ||
+            !OS_IsValidID(j_id->valuestring)) {
             cJSON_Delete(object);
             malformed++;
             continue;
