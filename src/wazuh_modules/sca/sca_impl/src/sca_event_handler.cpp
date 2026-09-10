@@ -16,9 +16,6 @@
 #include "sca.h"
 #include "schemaValidator.hpp"
 
-/// @brief Largest reason string stored on a check.
-constexpr size_t REASON_MAX_LENGTH {1024};
-
 /// @brief Map of stateless operations
 static const std::map<ReturnTypeCallback, std::string> STATELESS_OPERATION_MAP
 {
@@ -231,7 +228,7 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
 
     checkData["result"] = checkResult;
 
-    checkData["reason"] = sca::SanitizeReason(reason, REASON_MAX_LENGTH);
+    checkData["reason"] = sca::SanitizeReason(reason, sca::REASON_MAX_LENGTH);
 
     try
     {

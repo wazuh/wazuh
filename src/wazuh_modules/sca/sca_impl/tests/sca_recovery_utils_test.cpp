@@ -510,3 +510,38 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageKeepsAPopulatedReason)
 
     EXPECT_EQ(result["check"]["reason"], reason);
 }
+
+TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageSanitizesAnUndecodableReason)
+{
+    nlohmann::json check =
+    {
+        {"id", "check1"},
+        {"checksum", "abc123"},
+        {"result", "Not applicable"},
+        {"reason", "Path '/tmp/\xff\xfe' does not exist"},
+        {"version", 1}
+    };
+    nlohmann::json policy = {{"id", "policy1"}};
+
+    auto result = sca::recovery::buildStatefulMessage(check, policy);
+
+    EXPECT_EQ(result["check"]["reason"], "Path '/tmp/\?\?' does not exist");
+    EXPECT_NO_THROW(result.dump());
+}
+
+TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageCapsAnOversizedReason)
+{
+    nlohmann::json check =
+    {
+        {"id", "check1"},
+        {"checksum", "abc123"},
+        {"result", "Not applicable"},
+        {"reason", std::string(2000, 'x')},
+        {"version", 1}
+    };
+    nlohmann::json policy = {{"id", "policy1"}};
+
+    auto result = sca::recovery::buildStatefulMessage(check, policy);
+
+    EXPECT_EQ(result["check"]["reason"].get<std::string>().size(), 1024U);
+}

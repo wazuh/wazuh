@@ -1364,7 +1364,19 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
                 continue;
             }
 
-            nlohmann::json statefulMessage = sca::recovery::buildStatefulMessage(check, policy);
+            std::string payload;
+
+            try
+            {
+                payload = sca::recovery::buildStatefulMessage(check, policy).dump();
+            }
+            catch (const std::exception& err)
+            {
+                LoggingHelper::getInstance().log(
+                    LOG_ERROR,
+                    "Skipping SCA " + syncReason + " event for check " + checkId + ": " + err.what());
+                continue;
+            }
 
             auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
             bool shouldPersist = true;
@@ -1375,7 +1387,7 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
 
                 if (validator)
                 {
-                    auto validationResult = validator->validate(statefulMessage.dump());
+                    auto validationResult = validator->validate(payload);
 
                     if (!validationResult.isValid)
                     {
@@ -1389,7 +1401,7 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
                         }
 
                         LoggingHelper::getInstance().log(LOG_ERROR, errorMsg);
-                        LoggingHelper::getInstance().log(LOG_ERROR, "Raw event that failed validation: " + statefulMessage.dump());
+                        LoggingHelper::getInstance().log(LOG_ERROR, "Raw event that failed validation: " + payload);
                         LoggingHelper::getInstance().log(LOG_DEBUG, "Skipping invalid SCA snapshot event for check " + checkId);
                         shouldPersist = false;
                     }
@@ -1415,11 +1427,11 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
                     hashedId,
                     Operation::CREATE,
                     SCA_SYNC_INDEX,
-                    statefulMessage.dump(),
+                    payload,
                     check["version"].get<uint64_t>()
                 );
 
-                LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateful event queued: " + statefulMessage.dump());
+                LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateful event queued: " + payload);
             }
         }
 

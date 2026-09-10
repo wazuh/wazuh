@@ -86,6 +86,9 @@ namespace sca
     /// @return The string representation of the regex type.
     std::string RegexEngineTypeToString(RegexEngineType engineType);
 
+    /// @brief Largest reason kept on a check, in bytes. Matches ignore_above on check.reason.
+    constexpr size_t REASON_MAX_LENGTH {1024};
+
     /// @brief Makes a check's unresolved reason safe to store and publish.
     /// @param reason The raw reason, one line per unresolved rule.
     /// @param maxLength Largest result in bytes.

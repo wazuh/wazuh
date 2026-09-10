@@ -796,6 +796,76 @@ TEST_F(ScaTest, SyncModule_PerformsInitialFullSnapshotBeforeFirstSync)
     dbSync->closeAndDeleteDatabase();
 }
 
+TEST_F(ScaTest, SyncModule_SnapshotKeepsGoingWhenAReasonCannotBeSerialized)
+{
+    const auto dbPath = makeTempPath();
+    auto dbSync = std::make_shared<DBSync>(
+                      HostType::AGENT,
+                      DbEngineType::SQLITE3,
+                      dbPath,
+                      kCreateStatement,
+                      DbManagement::PERSISTENT);
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(dbSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    insertRow(dbSync, "sca_policy",
+    {
+        {"id", "policy-1"},
+        {"name", "Policy 1"},
+        {"file", "policy.yml"},
+        {"description", "Policy description"},
+        {"refs", "https://example.com"}
+    });
+
+    const auto check = [](const std::string & id, const std::string & reason)
+    {
+        return nlohmann::json
+        {
+            {"checksum", "abc123"},
+            {"id", id},
+            {"policy_id", "policy-1"},
+            {"name", "Check " + id},
+            {"result", "Not applicable"},
+            {"reason", reason},
+            {"condition", "all"},
+            {"compliance", "[]"},
+            {"mitre", "[]"},
+            {"rules", "f:/tmp exists"},
+            {"regex_type", "pcre2"},
+            {"version", 7},
+            {"sync", 1}
+        };
+    };
+
+    insertRow(dbSync, "sca_check", check("check-1", "Path '/tmp/\xff\xfe' does not exist"));
+    insertRow(dbSync, "sca_check", check("check-2", "Path '/tmp/other' does not exist"));
+
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{true}));
+
+    std::vector<std::string> persisted;
+    EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, Operation::CREATE, SCA_SYNC_INDEX, testing::_, 7, false))
+    .Times(2)
+    .WillRepeatedly(testing::Invoke([&persisted](const std::string&,
+                                                 Operation,
+                                                 const std::string&,
+                                                 const std::string & data,
+                                                 uint64_t,
+                                                 bool)
+    {
+        persisted.push_back(nlohmann::json::parse(data)["check"]["id"].get<std::string>());
+    }));
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult{true}));
+
+    EXPECT_TRUE(scaMock.syncModule(Mode::DELTA));
+    EXPECT_THAT(persisted, testing::UnorderedElementsAre("check-1", "check-2"));
+
+    dbSync->closeAndDeleteDatabase();
+}
+
 TEST_F(ScaTest, SyncModule_UsesDeltaAfterFirstSyncCompleted)
 {
     const auto dbPath = makeTempPath();

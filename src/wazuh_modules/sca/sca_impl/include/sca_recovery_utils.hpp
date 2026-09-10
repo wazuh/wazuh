@@ -15,6 +15,7 @@
 #include <idbsync.hpp>
 #include <json.hpp>
 #include <sca_field_decoder.hpp>
+#include <sca_utils.hpp>
 #include <string>
 
 #include "stringHelper.h"
@@ -77,9 +78,20 @@ namespace sca
                 check.erase("policy_id");
             }
 
-            if (check.contains("reason") && (check["reason"].is_null() || check["reason"].get<std::string>().empty()))
+            if (check.contains("reason"))
             {
-                check.erase("reason");
+                const auto reason = check["reason"].is_string()
+                                    ? sca::SanitizeReason(check["reason"].get<std::string>(), sca::REASON_MAX_LENGTH)
+                                    : std::string {};
+
+                if (reason.empty())
+                {
+                    check.erase("reason");
+                }
+                else
+                {
+                    check["reason"] = reason;
+                }
             }
 
             // Remove internal field not part of indexer schema
