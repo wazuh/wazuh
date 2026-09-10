@@ -244,6 +244,17 @@ creating the agent, releasing it if the `add` is refused. Revocation is idempote
 listed with `revoked: true`, and because the master re-checks on every `add` it takes effect at once,
 even through a worker whose replica the cluster has not refreshed yet.
 
+**A revoke that cannot be written says so.** If the store file cannot be rewritten, the token is refused
+from that moment on this manager, but the answer is `9029` — *Enrollment token store write failed*, the
+API's error `1771` with HTTP 500 — and not the `9022` of a token that does not exist: the id is real and
+what the operator has to do is retry, not go looking for it. The pending revocation is remembered, so a
+reload does not undo it and the next token verb writes it; the earlier behaviour, answering success on
+the retry, let the token come back at the next restart. Two related contracts are worth stating: a
+**use** counted while the file cannot be written is *not* durable (a restart may admit one more
+enrollment with that token, or several if writes keep failing — expiry and revocation are what hold),
+and a store file above the supported limits (5000 tokens, or the byte ceiling below what the replica
+accepts) is **not loaded at all**, with a warning naming which limit it crossed.
+
 **Purging is not revoking.** A revoked token stays in the store, listed and auditable; a purged one is
 removed from the file. `--purge-enrollment-tokens` (`DELETE /agents/enrollment-tokens?status=dead`)
 removes only what can no longer authorise an enrollment — revoked, expired, or out of uses — and never

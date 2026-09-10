@@ -61,7 +61,8 @@ typedef enum auth_local_err {
     EMINTREFUSED,
     EREENROLLUNKNOWN,
     EREENROLLINVALID,
-    EREENROLLSTALE
+    EREENROLLSTALE,
+    ETOKENSTOREFAILED
 } auth_local_err;
 
 
@@ -117,7 +118,11 @@ static const struct {
     // would let a caller probe ids); remoted answers all three with its uniform 401.
     { 9026, "Unknown agent or no re-enrollment credential" },
     { 9027, "Invalid re-enrollment credential" },
-    { 9028, "Re-enrollment credential outside the accepted time window" }
+    { 9028, "Re-enrollment credential outside the accepted time window" },
+    // A storage failure, told apart from 9022 on purpose (#39078): the id exists and the operator's
+    // intent stands -- this authd already refuses the token -- but the file could not be written, so
+    // the answer is "retry", not "no such token". Every later verb retries the write on its own.
+    { 9029, "Enrollment token store write failed" }
 };
 
 // Dispatch local request. STATIC: the unit tests drive the token verbs and `add` through it.
@@ -1360,7 +1365,20 @@ static cJSON* local_token_revoke(cJSON *arguments, int *ierror) {
     }
 
     // Wrong shape or unknown: the same 9022, see ERRORS[].
-    if (!is_token_id(item->valuestring) || etoken_store_revoke(item->valuestring) != 0) {
+    if (!is_token_id(item->valuestring)) {
+        *ierror = ETOKENNOTFOUND;
+        return NULL;
+    }
+
+    switch (etoken_store_revoke(item->valuestring)) {
+    case 0:
+        break;
+    case ETOKEN_STORE_FAILED:
+        // Revoked here and now, but not on disk: saying 9022 would send the operator looking for a
+        // token that does exist, when what they have to do is try again (#39078, H04).
+        *ierror = ETOKENSTOREFAILED;
+        return NULL;
+    default:
         *ierror = ETOKENNOTFOUND;
         return NULL;
     }

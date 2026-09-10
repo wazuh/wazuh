@@ -1053,6 +1053,40 @@ static void test_add_with_token_consumes_and_releases(void **state) {
     cJSON_Delete(response);
 }
 
+static void test_token_revoke_storage_failure_is_not_a_missing_token(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_ERROR();
+    cJSON *minted = mint("{\"address\":\"wazuh-1\",\"description\":\"storage\"}");
+    char id[ETOKEN_ID_CHARS + 1];
+    char request[256];
+
+    snprintf(id, sizeof(id), "%s", data_string(minted, "id"));
+    cJSON_Delete(minted);
+
+    // Point the store at a directory that does not exist: every write fails from here on. The
+    // token is still there, so answering 9022 would send the operator looking for a token that
+    // exists when what they have to do is retry (issue #39078, H04).
+    etoken_store_init("etc/no-such-directory/enrollment_tokens.json");
+
+    snprintf(request, sizeof(request), "{\"function\":\"token_revoke\",\"arguments\":{\"id\":\"%s\"}}", id);
+    cJSON *response = dispatch(request);
+    assert_int_equal(response_error(response), 9029);
+    cJSON_Delete(response);
+
+    // An id that is genuinely unknown still answers 9022, even while storage is broken.
+    response = dispatch("{\"function\":\"token_revoke\",\"arguments\":{\"id\":\"AAAAAAAAAAAAAAAAAAAAAA\"}}");
+    assert_int_equal(response_error(response), 9022);
+    cJSON_Delete(response);
+
+    // Storage back: the pending revocation is written and the verb answers success.
+    etoken_store_init(TOKENS_FILE);
+    response = dispatch(request);
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+}
+
 static void test_add_with_token_closes_the_reservation(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -1477,6 +1511,7 @@ int main(void) {
         cmocka_unit_test(test_token_purge_unknown_scope_is_refused),
         cmocka_unit_test(test_token_purge_on_worker_9015),
         cmocka_unit_test(test_add_with_token_consumes_and_releases),
+        cmocka_unit_test(test_token_revoke_storage_failure_is_not_a_missing_token),
         cmocka_unit_test(test_add_with_token_closes_the_reservation),
         cmocka_unit_test(test_add_with_revoked_or_expired_token),
         cmocka_unit_test(test_add_with_token_on_worker_forwards_it),

@@ -737,6 +737,8 @@ def delete_enrollment_token(token_id: str = None) -> AffectedItemsWazuhResult:
     ------
     WazuhResourceNotFound(1767)
         No token has that id.
+    WazuhInternalError(1771)
+        The token is revoked on this manager but the store file could not be written.
 
     Returns
     -------
