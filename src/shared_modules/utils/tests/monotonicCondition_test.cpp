@@ -46,12 +46,12 @@ TEST(MonotonicConditionTest, NotifyOneWakesAPendingWait)
     bool ready {false};
     std::thread waker(
         [&]
-    {
-        std::this_thread::sleep_for(50ms);
-        std::lock_guard<std::mutex> guard(mutex);
-        ready = true;
-        condition.notifyOne();
-    });
+        {
+            std::this_thread::sleep_for(50ms);
+            std::lock_guard<std::mutex> guard(mutex);
+            ready = true;
+            condition.notifyOne();
+        });
 
     std::unique_lock<std::mutex> lock(mutex);
     const auto start {std::chrono::steady_clock::now()};

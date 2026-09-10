@@ -21,7 +21,8 @@
 #include <pthread.h>
 #endif
 
-/// Condition variable whose waits are immune to system-clock jumps (see PR description for the libstdc++/glibc rationale).
+/// Condition variable whose waits are immune to system-clock jumps (see PR description for the libstdc++/glibc
+/// rationale).
 #if defined(__linux__)
 
 class MonotonicCondition final
