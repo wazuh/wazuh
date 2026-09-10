@@ -27,13 +27,21 @@ set -euo pipefail
 # cluster name, so a default installation needs no flag; a REMOTE --manager must pass
 # it. "/" forces the unprefixed paths against a manager that does have one configured.
 #
-# Agent mode needs the manager configured for open enrollment first:
+# Agent mode needs the manager prepared once, which also mints the fleet's enrollment
+# token (it does NOT weaken <use_password>; see prepare_manager.sh):
 #   sudo ./prepare_manager.sh
 #
-# --enroll-token-file FILE (agent mode only): the enrollment token an `enroll_https` step
-# presents (scenarios/enroll_https.json), as minted on the manager under test with
-# `wazuh-manager-authd --create-enrollment-token --address <manager>` and saved to FILE
-# (the sender also honours WAZUH_ENROLLMENT_TOKEN). Scenarios without that step need neither.
+# --bootstrap enroll-token|1515 (agent mode only): how the fleet obtains its identities.
+# The default, enroll-token, is POST /enroll on 1517 with the enrollment token -- what a
+# 5.x agent handed a token does, and the only path that works against a manager whose
+# <use_password> is the installed default. 1515 is authd's legacy TCP listener, kept for
+# comparing the two first-contact paths; it needs `prepare_manager.sh --open-1515`.
+#
+# --enroll-token-file FILE (agent mode only): the enrollment token the enroll-token
+# bootstrap and any `enroll_https` step (scenarios/enroll_https.json) present, as minted
+# on the manager under test with `wazuh-manager-authd --create-enrollment-token --address
+# <manager>` and saved to FILE. Not needed after prepare_manager.sh: its .enrollment_token
+# next to this script is picked up automatically. WAZUH_ENROLLMENT_TOKEN also works.
 #
 # --keep-agents (agent mode only): skip the pre-run cleanup of bench-* agents, so a
 # previous run's agents AND their indexed documents survive -- e.g. to inspect a
@@ -59,6 +67,9 @@ SEED=""
 CLUSTER=""
 GLOBAL_PREFIX=""
 ENROLL_TOKEN_FILE=""
+BOOTSTRAP="enroll-token"
+# Where prepare_manager.sh leaves the token it minted (gitignored).
+DEFAULT_TOKEN_FILE="$SCRIPT_DIR/.enrollment_token"
 MANAGER_CONF="/var/wazuh-manager/etc/wazuh-manager.conf"
 ENROLL_SETTLE=""
 DO_METRICS=true
@@ -110,6 +121,7 @@ while [[ $# -gt 0 ]]; do
         --cluster)      CLUSTER="$2"; shift 2 ;;
         --global-prefix) GLOBAL_PREFIX="$2"; shift 2 ;;
         --enroll-token-file) ENROLL_TOKEN_FILE="$2"; shift 2 ;;
+        --bootstrap)    BOOTSTRAP="$2"; shift 2 ;;
         --conf)         MANAGER_CONF="$2"; shift 2 ;;
         --enroll-settle) ENROLL_SETTLE="$2"; shift 2 ;;
         --metrics-interval) METRICS_INTERVAL="$2"; shift 2 ;;
@@ -139,6 +151,36 @@ fi
     echo "Error: mode must be uds or agent (got '$EFFECTIVE_MODE'). Set it in the scenario or pass --mode." >&2
     exit 1
 }
+
+[[ "$BOOTSTRAP" == "enroll-token" || "$BOOTSTRAP" == "1515" ]] || {
+    echo "Error: --bootstrap must be enroll-token or 1515 (got '$BOOTSTRAP')." >&2
+    exit 1
+}
+
+# A uds run enrolls nothing, so it records no bootstrap -- matching what the
+# sender writes into sender_summary.json's meta.
+PARAMS_BOOTSTRAP=""
+[[ "$EFFECTIVE_MODE" == "agent" ]] && PARAMS_BOOTSTRAP="$BOOTSTRAP"
+
+# The enrollment token. Handed over for ANY agent-mode run that has one available:
+# the bootstrap is not its only consumer -- an `enroll_https` step needs it too, and
+# that step exists under --bootstrap 1515 as well.
+if [[ "$EFFECTIVE_MODE" == "agent" && -z "$ENROLL_TOKEN_FILE" && -z "${WAZUH_ENROLLMENT_TOKEN:-}" ]]; then
+    if [[ -r "$DEFAULT_TOKEN_FILE" ]]; then
+        ENROLL_TOKEN_FILE="$DEFAULT_TOKEN_FILE"
+        echo "Enrollment token not given; using $ENROLL_TOKEN_FILE"
+    elif [[ "$BOOTSTRAP" == "enroll-token" ]]; then
+        # Only the bootstrap makes it a CERTAIN failure, so only the bootstrap stops
+        # here -- before the monitor starts and the previous run's agents are deleted.
+        # A scenario that needs one for its steps is refused by the sender itself.
+        echo "Error: the enroll-token bootstrap needs an enrollment token." >&2
+        echo "  Mint one and write it out with:  sudo ./prepare_manager.sh" >&2
+        echo "  Or pass --enroll-token-file <file>, set WAZUH_ENROLLMENT_TOKEN, or" >&2
+        echo "  bootstrap over the legacy listener with --bootstrap 1515" >&2
+        echo "  (which needs sudo ./prepare_manager.sh --open-1515)." >&2
+        exit 1
+    fi
+fi
 
 SC_NAME=$("$PYTHON" -c 'import json,sys; print(json.load(open(sys.argv[1])).get("name",""))' "$SCENARIO")
 [[ -z "$LABEL" ]] && LABEL="${SC_NAME:-$(date +%Y%m%d_%H%M%S)}_${EFFECTIVE_MODE}"
@@ -198,7 +240,13 @@ echo "  scenario:   $SCENARIO ($SC_NAME)"
 echo "  mode:       $EFFECTIVE_MODE"
 echo "  results:    $RESULTS_DIR/"
 [[ "$EFFECTIVE_MODE" == "uds" ]] && echo "  socket:     $SOCKET"
-[[ "$EFFECTIVE_MODE" == "agent" ]] && echo "  manager:    $MANAGER:$PORT (reg $REG_PORT)"
+if [[ "$EFFECTIVE_MODE" == "agent" ]]; then
+    if [[ "$BOOTSTRAP" == "1515" ]]; then
+        echo "  manager:    $MANAGER:$PORT (bootstrap: 1515 on $REG_PORT)"
+    else
+        echo "  manager:    $MANAGER:$PORT (bootstrap: POST /enroll with an enrollment token)"
+    fi
+fi
 echo ""
 
 cat > "$RESULTS_DIR/params.json" <<PARAMS
@@ -207,6 +255,7 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
     "scenario_path": "$SCENARIO",
     "scenario_name": "$SC_NAME",
     "mode": "$EFFECTIVE_MODE",
+    "bootstrap": "$PARAMS_BOOTSTRAP",
     "manager": "$MANAGER",
     "port": $PORT,
     "socket": "$SOCKET",
@@ -280,6 +329,7 @@ GO_ARGS=(
     --manager "$MANAGER"
     --port "$PORT"
     --reg-port "$REG_PORT"
+    --bootstrap "$BOOTSTRAP"
     --output "$BENCH_CSV"
     --summary-json "$SENDER_JSON"
 )
