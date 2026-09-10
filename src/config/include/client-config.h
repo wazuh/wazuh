@@ -186,6 +186,29 @@ bool Validate_IPv6_Link_Local_Interface(agent_server *servers);
  */
 void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch *batch);
 
+/**
+ * @brief Parse a combined <endpoint>-grammar value into host, port, prefix and scope id (#38624).
+ *
+ * Exposed (client-config.c's own <agent><manager> parser is its only other caller) so
+ * token_bootstrap.c can split an enrollment token's `adr` field into the same hc_config_t
+ * fields, through the same libcurl-backed parser, without a second implementation of the
+ * <endpoint> grammar to keep in sync. See client-config.c's own doc comment on this function
+ * for the full grammar and the parsing rationale.
+ *
+ * @param raw Raw <endpoint>/`adr` content (never NULL).
+ * @param host Receives the host, brackets and zone id stripped.
+ * @param host_size Size of host, including the terminating NUL.
+ * @param port Receives the port.
+ * @param port_present Set when `raw` carried an explicit port.
+ * @param endpoint Receives the normalized prefix, possibly "".
+ * @param endpoint_size Size of endpoint, including the terminating NUL.
+ * @param scope_id Receives the IPv6 scope id, or 0 when there is no zone id.
+ * @return 0 on success, OS_INVALID on any grammar violation.
+ */
+int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
+                           bool *port_present, char *endpoint, size_t endpoint_size,
+                           uint32_t *scope_id);
+
 #define DEFAULT_MAX_RETRIES 5
 #define DEFAULT_RETRY_INTERVAL 10
 
