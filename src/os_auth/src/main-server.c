@@ -1411,22 +1411,23 @@ static bool identity_applied_has(const identity_applied_t *applied, size_t count
 }
 
 /**
- * @brief Whether the keystore still says this transition is the live one.
+ * @brief Whether anything still owes this transition to the database.
  *
- * The same rule identity_journal_reconcile() applies at start-up, applied here because the world
- * moves while a transition is owed: an agent enrolled during a wazuh-db outage can be DELETED
- * before the database comes back, and writing its row then would resurrect an agent the operator
- * removed. The key in client.keys is the generation marker; the id alone says nothing, since both
- * generations of a rotation share it.
+ * One question only: is the agent still in the keystore? An agent enrolled during a wazuh-db
+ * outage can be DELETED before the database comes back, and writing its row then would resurrect
+ * what the operator removed -- that is what this guards against.
+ *
+ * It deliberately does NOT compare the key. The keystore is written asynchronously, so a rotation
+ * recovered from a previous run legitimately names a key client.keys has not got yet; refusing it
+ * here would undo, one cycle later, exactly what identity_journal_reconcile() just decided to keep
+ * (issue #39078, review round). Which generation is live is decided by the journal's own order,
+ * and the reconciliation has already dropped the entries a later one superseded.
  */
 static bool identity_still_owed(const identity_journal_entry_t *entry) {
     bool owed;
-    int index;
 
     w_mutex_lock(&mutex_keys);
-    index = OS_IsAllowedID(&keys, entry->id);
-    owed = index >= 0 && keys.keyentries[index]->raw_key != NULL &&
-           strcmp(keys.keyentries[index]->raw_key, entry->key) == 0;
+    owed = OS_IsAllowedID(&keys, entry->id) >= 0;
     w_mutex_unlock(&mutex_keys);
 
     return owed;
@@ -1436,7 +1437,18 @@ static bool identity_still_owed(const identity_journal_entry_t *entry) {
 static void identity_apply_pending(identity_applied_t **applied, size_t *count, int *wdb_sock) {
     size_t pending = 0;
     size_t i;
-    identity_journal_entry_t *entries = identity_journal_snapshot(IDENTITY_RETRY_BATCH, &pending);
+    identity_journal_entry_t *entries;
+
+    /* Existence only, and access() rather than w_is_file(), for the reason purge_startup_recover()
+     * gives: wazuh-db starts after this daemon. Without it every entry of the batch would pay
+     * wdbc_connect()'s ladder -- five attempts sleeping 1..5 seconds -- and a full batch would
+     * hold the ONLY keystore writer for hours, with client.keys unwritten for the agents enrolling
+     * meanwhile (issue #39078, review round). */
+    if (access(WDB_LOCAL_SOCK, F_OK) != 0) {
+        return;
+    }
+
+    entries = identity_journal_snapshot(IDENTITY_RETRY_BATCH, &pending);
 
     for (i = 0; i < pending; i++) {
         // Written by this cycle's own loop above: it is in the journal until the commit, but it
@@ -1446,8 +1458,8 @@ static void identity_apply_pending(identity_applied_t **applied, size_t *count, 
         }
 
         if (!identity_still_owed(&entries[i])) {
-            mdebug1("Dropping the recorded transition of agent '%s': client.keys no longer names "
-                    "that credential.", entries[i].id);
+            mdebug1("Dropping the recorded transition of agent '%s': the agent is no longer in the "
+                    "keystore.", entries[i].id);
             identity_journal_drop(&entries[i].seq, 1);
 
             if (entries[i].rotate) {
@@ -1459,6 +1471,13 @@ static void identity_apply_pending(identity_applied_t **applied, size_t *count, 
 
         if (identity_apply(&entries[i], wdb_sock)) {
             identity_applied_add(applied, count, entries[i].seq, entries[i].id, entries[i].rotate);
+        } else if (*wdb_sock < 0 || !running) {
+            /* Nothing answered, or this daemon is stopping. A closed socket here means the connect
+             * itself failed, so the rest of the batch would only repeat the same 15-second ladder:
+             * leave them journaled and let the next wake -- which backs off -- try again. */
+            mdebug1("Stopping the identity retry pass after agent '%s': wazuh-db is not answering.",
+                    entries[i].id);
+            break;
         }
     }
 

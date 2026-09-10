@@ -734,6 +734,36 @@ static void test_completing_a_rotation_moves_the_generation_and_abandoning_does_
     assert_int_equal(w_reenroll_generation(NULL), 0);
 }
 
+static void test_a_refused_rotation_leaves_no_slot_behind(void **state) {
+    (void)state;
+    const unsigned int before = w_reenroll_slots();
+    char id[16];
+    int i;
+
+    /* What anyone who reaches POST /enroll can do: a bearer per invented id, every one of them
+     * refused before the agent is even looked up. The registry must come back to where it was --
+     * otherwise the memory never returns and every legitimate rotation after it pays a longer
+     * search under the same mutex (issue #39078, review round). */
+    for (i = 0; i < 200; i++) {
+        snprintf(id, sizeof(id), "9%06d", i);
+        assert_true(w_reenroll_reserve(id, NULL));
+        w_reenroll_abandon(id);
+    }
+
+    assert_int_equal(w_reenroll_slots(), before);
+
+    /* An agent that DID rotate keeps its slot: the generation is what a stale bearer is caught by,
+     * and there is one of those per agent, not per request. */
+    assert_true(w_reenroll_reserve("020", NULL));
+    w_reenroll_complete("020");
+    assert_int_equal(w_reenroll_slots(), before + 1);
+
+    assert_true(w_reenroll_reserve("020", NULL));
+    w_reenroll_abandon("020");
+    assert_int_equal(w_reenroll_slots(), before + 1);
+    assert_int_equal(w_reenroll_generation("020"), 1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Phases 1 and 4
@@ -782,6 +812,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_a_missing_file_is_not_an_error, setup_journal, teardown_journal),
         cmocka_unit_test(test_a_rotation_reservation_excludes_a_second_one),
         cmocka_unit_test(test_completing_a_rotation_moves_the_generation_and_abandoning_does_not),
+        cmocka_unit_test(test_a_refused_rotation_leaves_no_slot_behind),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

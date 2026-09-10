@@ -831,6 +831,16 @@ cJSON* local_add(const char *id,
         return local_create_error_response(ERRORS[EPENDINGPURGE].code, ERRORS[EPENDINGPURGE].message);
     }
 
+    /* Phase 0 of the identity journal, and it has to be HERE, before anything is mutated: a
+     * duplicate name or IP resolved by <force> deletes the previous agent inside the checks below
+     * (w_auth_replace_agent() -> add_remove() + OS_DeleteKey()), so a refusal discovered after that
+     * point would answer 9031 with that agent already destroyed and queued for the indexer purge.
+     * The deletion path already reasons this way one line into the same function -- see
+     * purge_backlog_full() -- and this is its twin for credentials. */
+    if (identity_journal_full()) {
+        return local_create_error_response(ERRORS[EIDENTITYUNRECORDED].code, ERRORS[EIDENTITYUNRECORDED].message);
+    }
+
     w_mutex_lock(&mutex_keys);
 
     /* The same question again, from memory only, now that the keystore is locked: a deletion of

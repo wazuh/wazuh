@@ -1458,6 +1458,53 @@ static void test_an_enrollment_that_cannot_be_journaled_is_refused(void **state)
     identity_journal_init(IDENTITY_JOURNAL_PATH);
 }
 
+static void test_a_full_journal_refuses_before_a_replacement_destroys_the_previous_agent(void **state) {
+    (void)state;
+    // The successful add logs minfo, the refusal mwarn, and local_dispatch mdebug2 -- and no
+    // merror, because the refusal returns before the dispatcher's failure path. An undeclared
+    // severity aborts inside the store mutex and HANGS the run; a declared one that never fires
+    // fails the case (see the note above).
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_WARN();
+
+    // The agent the enrollment below would replace: same name, and <force> deletes it. The manager
+    // default is what decides here, so the request needs no force block of its own.
+    const authd_force_options_t saved_force = config.force_options;
+    config.force_options.enabled = true;
+    config.force_options.key_mismatch = false;
+    config.force_options.disconnected_time_enabled = false;
+    config.force_options.after_registration_time = 0;
+
+    char victim_id[16];
+    add_agent("victim", victim_id, sizeof(victim_id), NULL, 0);
+
+    // A journal with no room left. The cases before this one left their own transitions in it,
+    // so what is filled is the room that remains.
+    char filler[16];
+    for (size_t room = IDENTITY_JOURNAL_MAX_ENTRIES - identity_journal_pending(); room > 0; room--) {
+        snprintf(filler, sizeof(filler), "%zu", room);
+        assert_true(identity_journal_append(filler, "filler", "any", REENROLL_SECRET, REENROLL_SECRET, false, NULL));
+    }
+    assert_true(identity_journal_full());
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"victim\",\"ip\":\"any\"}}");
+
+    // Refused, and refused EARLY -- no OS_IsValidIP is even consumed, because the keystore is never
+    // reached: w_auth_replace_agent() deletes the previous agent while it validates, so a refusal
+    // discovered after that point would answer 9031 with that agent already gone and queued for the
+    // indexer purge.
+    assert_int_equal(response_error(response), 9031);
+    cJSON_Delete(response);
+
+    assert_true(OS_IsAllowedID(&keys, victim_id) >= 0);
+    assert_true(OS_IsAllowedName(&keys, "victim") >= 0);
+    assert_null(find_node(queue_remove, victim_id));
+
+    identity_journal_init(IDENTITY_JOURNAL_PATH);
+    config.force_options = saved_force;
+}
+
 static void test_a_rotation_that_cannot_be_journaled_is_refused_and_frees_the_reservation(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -1739,6 +1786,7 @@ int main(void) {
         cmocka_unit_test(test_an_accepted_enrollment_is_journaled_with_its_credential),
         cmocka_unit_test(test_an_enrollment_that_cannot_be_journaled_is_refused),
         cmocka_unit_test(test_a_rotation_that_cannot_be_journaled_is_refused_and_frees_the_reservation),
+        cmocka_unit_test(test_a_full_journal_refuses_before_a_replacement_destroys_the_previous_agent),
         cmocka_unit_test(test_reenroll_twice_with_the_same_bearer_rotates_once),
         cmocka_unit_test(test_reenroll_reservation_is_released_when_the_request_is_rejected),
         cmocka_unit_test(test_reenroll_after_the_writer_persists_needs_the_new_secret),
