@@ -42,7 +42,7 @@ legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_i
 void legacy_upgrade_poll_cycle(void);
 void legacy_task_drain_clear_upgrade_replies(void);
 bool legacy_task_retry_list_contains(const char *task_id);
-void legacy_task_retry_list_add(const char *agent_id, const char *task_id, const char *payload_json, time_t create_time);
+void legacy_task_retry_list_add(const char *agent_id, const char *task_id, const char *payload_json, time_t deferred_at);
 void legacy_task_retry_list_purge_expired(void);
 
 /* Must match LEGACY_TASK_MAX_PUSH_ATTEMPTS in legacy_task_delivery.c. */
@@ -654,14 +654,12 @@ static keyentry **setup_single_task_poll_cycle(const char *agent_id, int agent_i
     expect_wdb_version(agent_id_int, version);
     expect_any(__wrap__mdebug2, formatted_msg); // "is eligible, retrieving pending tasks"
 
-    cJSON *up_payload_obj = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
-    char *up_payload_str = cJSON_PrintUnformatted(up_payload_obj);
+    // The real wire shape: the Task Manager hands the payload back as the JSON object the producer
+    // stored (see apiHandlers.cpp takePendingAgentTasks and api_test.cpp).
     cJSON *task_up = cJSON_CreateObject();
     cJSON_AddStringToObject(task_up, "task_id", "t-retry");
     cJSON_AddStringToObject(task_up, "task_type", "remote_upgrade");
-    cJSON_AddStringToObject(task_up, "payload", up_payload_str);
-    os_free(up_payload_str);
-    cJSON_Delete(up_payload_obj);
+    cJSON_AddItemToObject(task_up, "payload", build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh"));
 
     cJSON *tasks_array = cJSON_CreateArray();
     cJSON_AddItemToArray(tasks_array, task_up);
@@ -788,20 +786,17 @@ static void test_poll_cycle_permanent_failure_short_circuits_no_retry(void **sta
     expect_wdb_version(62, "Wazuh v4.14.6");
     expect_any(__wrap__mdebug2, formatted_msg); // "is eligible, retrieving pending tasks"
 
-    // Invalid payload (missing "installer"), embedded as the task's payload string -- this
-    // classifies PERMANENT (upgrade-no-ack is the other PERMANENT case, but that requires a full
-    // six-step mock sequence; the invalid-payload case is the simplest one-shot PERMANENT proof).
+    // Incomplete payload (missing "installer") -- this classifies PERMANENT (upgrade-no-ack is the
+    // other PERMANENT case, but that requires a full six-step mock sequence; the incomplete-payload
+    // case is the simplest one-shot PERMANENT proof).
     cJSON *bad_payload_obj = cJSON_CreateObject();
     cJSON_AddStringToObject(bad_payload_obj, "wpk_file", "wazuh_agent.wpk");
     cJSON_AddStringToObject(bad_payload_obj, "wpk_sha1", "abc123");
-    char *bad_payload_str = cJSON_PrintUnformatted(bad_payload_obj);
-    cJSON_Delete(bad_payload_obj);
 
     cJSON *task_up = cJSON_CreateObject();
     cJSON_AddStringToObject(task_up, "task_id", "t-bad");
     cJSON_AddStringToObject(task_up, "task_type", "remote_upgrade");
-    cJSON_AddStringToObject(task_up, "payload", bad_payload_str);
-    os_free(bad_payload_str);
+    cJSON_AddItemToObject(task_up, "payload", bad_payload_obj);
 
     cJSON *tasks_array = cJSON_CreateArray();
     cJSON_AddItemToArray(tasks_array, task_up);
@@ -862,21 +857,17 @@ static void test_poll_cycle_gating_filtering_and_bounded_retry(void **state) {
     expect_wdb_version(41, "Wazuh v4.14.6");
     expect_any(__wrap__mdebug2, formatted_msg); // "is eligible, retrieving pending tasks"
 
-    // Build the payload as an embedded JSON *string* field (matches the real wire shape, where
-    // "payload" in a task is the task's payload re-serialized to text, not a nested object).
+    // Payloads are nested JSON objects, the shape the Task Manager's pending route actually answers
+    // with (apiHandlers.cpp takePendingAgentTasks).
     cJSON *task_ar = cJSON_CreateObject();
     cJSON_AddStringToObject(task_ar, "task_id", "t-ar");
     cJSON_AddStringToObject(task_ar, "task_type", "active_response");
-    cJSON_AddStringToObject(task_ar, "payload", "{}");
+    cJSON_AddItemToObject(task_ar, "payload", cJSON_CreateObject());
 
-    cJSON *up_payload_obj = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
-    char *up_payload_str = cJSON_PrintUnformatted(up_payload_obj);
     cJSON *task_up = cJSON_CreateObject();
     cJSON_AddStringToObject(task_up, "task_id", "t-up");
     cJSON_AddStringToObject(task_up, "task_type", "remote_upgrade");
-    cJSON_AddStringToObject(task_up, "payload", up_payload_str);
-    os_free(up_payload_str);
-    cJSON_Delete(up_payload_obj);
+    cJSON_AddItemToObject(task_up, "payload", build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh"));
 
     cJSON *tasks_array = cJSON_CreateArray();
     cJSON_AddItemToArray(tasks_array, task_ar);
@@ -907,14 +898,10 @@ static void test_poll_cycle_gating_filtering_and_bounded_retry(void **state) {
     expect_wdb_version(42, "Wazuh v4.10.0");
     expect_any(__wrap__mdebug2, formatted_msg); // "is eligible, retrieving pending tasks"
 
-    cJSON *up_payload_obj_2 = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
-    char *up_payload_str_2 = cJSON_PrintUnformatted(up_payload_obj_2);
     cJSON *task_up_2 = cJSON_CreateObject();
     cJSON_AddStringToObject(task_up_2, "task_id", "t-up-2");
     cJSON_AddStringToObject(task_up_2, "task_type", "remote_upgrade");
-    cJSON_AddStringToObject(task_up_2, "payload", up_payload_str_2);
-    os_free(up_payload_str_2);
-    cJSON_Delete(up_payload_obj_2);
+    cJSON_AddItemToObject(task_up_2, "payload", build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh"));
 
     cJSON *tasks_array_2 = cJSON_CreateArray();
     cJSON_AddItemToArray(tasks_array_2, task_up_2);
@@ -969,8 +956,8 @@ static void test_poll_cycle_gating_filtering_and_bounded_retry(void **state) {
     os_free(keyentries);
 }
 
-/* A task whose "payload" field isn't even a string (malformed at the task-shape level, before ever
- * trying to JSON-parse it) is simply logged and dropped -- this poller never reports a task's
+/* A task whose "payload" field is not a JSON object (malformed at the task-shape level, before its
+ * fields are ever looked at) is simply logged and dropped -- this poller never reports a task's
  * outcome back to the Task Manager (see the file header comment), so it stays 'delivered' in
  * tasks.db regardless; the manager's own log is the only record of this failure. */
 static void test_poll_cycle_invalid_payload_logged_and_dropped(void **state) {
@@ -991,7 +978,7 @@ static void test_poll_cycle_invalid_payload_logged_and_dropped(void **state) {
     cJSON *task_bad = cJSON_CreateObject();
     cJSON_AddStringToObject(task_bad, "task_id", "t-bad-payload");
     cJSON_AddStringToObject(task_bad, "task_type", "remote_upgrade");
-    cJSON_AddItemToObject(task_bad, "payload", cJSON_CreateObject()); // object, not a string
+    cJSON_AddNumberToObject(task_bad, "payload", 42); // neither an object nor a string
 
     cJSON *tasks_array = cJSON_CreateArray();
     cJSON_AddItemToArray(tasks_array, task_bad);
@@ -1020,8 +1007,9 @@ static void test_poll_cycle_invalid_payload_logged_and_dropped(void **state) {
     os_free(keyentries);
 }
 
-/* Same as above, but for a payload that's a string yet fails to JSON-parse. */
-static void test_poll_cycle_unparsable_payload_logged_and_dropped(void **state) {
+/* Same as above, but for a payload handed back as a JSON *string* -- the shape the retired
+ * wazuh-db implementation answered with, which the Task Manager no longer produces. */
+static void test_poll_cycle_string_payload_logged_and_dropped(void **state) {
     (void) state;
 
     keyentry **keyentries;
@@ -1037,9 +1025,11 @@ static void test_poll_cycle_unparsable_payload_logged_and_dropped(void **state) 
     expect_any(__wrap__mdebug2, formatted_msg); // "is eligible, retrieving pending tasks"
 
     cJSON *task_bad = cJSON_CreateObject();
-    cJSON_AddStringToObject(task_bad, "task_id", "t-unparsable-payload");
+    cJSON_AddStringToObject(task_bad, "task_id", "t-string-payload");
     cJSON_AddStringToObject(task_bad, "task_type", "remote_upgrade");
-    cJSON_AddStringToObject(task_bad, "payload", "{not valid json");
+    // A string, even one carrying a well-formed object, is not the contract: the poller must not
+    // parse its way around a server that stopped nesting the object.
+    cJSON_AddStringToObject(task_bad, "payload", "{\"wpk_file\":\"wazuh_agent.wpk\",\"wpk_sha1\":\"abc123\",\"installer\":\"upgrade.sh\"}");
 
     cJSON *tasks_array = cJSON_CreateArray();
     cJSON_AddItemToArray(tasks_array, task_bad);
@@ -1055,7 +1045,8 @@ static void test_poll_cycle_unparsable_payload_logged_and_dropped(void **state) 
     will_return(__wrap_uhttp_post, 0);
     will_return(__wrap_uhttp_post, 200);
 
-    expect_any(__wrap__merror, formatted_msg); // "has an unparsable payload, not delivered"
+    // No req_send_and_wait mock is queued: a string payload must never reach the six-step push.
+    expect_any(__wrap__merror, formatted_msg); // "has an invalid payload, not delivered"
 
     legacy_upgrade_poll_cycle();
 
@@ -1123,14 +1114,10 @@ static void test_poll_cycle_no_response_without_task_id_is_logged_not_retried(vo
     expect_wdb_version(72, "Wazuh v4.14.6");
     expect_any(__wrap__mdebug2, formatted_msg); // "is eligible, retrieving pending tasks"
 
-    cJSON *up_payload_obj = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
-    char *up_payload_str = cJSON_PrintUnformatted(up_payload_obj);
     cJSON *task_up = cJSON_CreateObject();
     // "task_id" deliberately omitted.
     cJSON_AddStringToObject(task_up, "task_type", "remote_upgrade");
-    cJSON_AddStringToObject(task_up, "payload", up_payload_str);
-    os_free(up_payload_str);
-    cJSON_Delete(up_payload_obj);
+    cJSON_AddItemToObject(task_up, "payload", build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh"));
 
     cJSON *tasks_array = cJSON_CreateArray();
     cJSON_AddItemToArray(tasks_array, task_up);
@@ -1200,9 +1187,9 @@ static void test_retry_list_add_dedup_same_task_id_is_noop(void **state) {
 static void test_retry_list_purge_expired_removes_old_entries(void **state) {
     (void) state;
 
-    time_t old_create_time = time(0) - LEGACY_TASK_RETRY_MAX_AGE_SEC - 1;
+    time_t old_deferred_at = time(0) - LEGACY_TASK_RETRY_MAX_AGE_SEC - 1;
     expect_any(__wrap__mdebug1, formatted_msg); // "task '...' added to the retry list..."
-    legacy_task_retry_list_add("102", "t-102-old", "{}", old_create_time);
+    legacy_task_retry_list_add("102", "t-102-old", "{}", old_deferred_at);
 
     expect_any(__wrap__mdebug1, formatted_msg); // "dropped from the retry list, older than..."
     legacy_task_retry_list_purge_expired();
@@ -1224,7 +1211,7 @@ static void test_retry_list_purge_expired_keeps_fresh_entries(void **state) {
 }
 
 /* Once the list is at LEGACY_TASK_RETRY_LIST_MAX_SIZE, adding one more must evict the single
- * oldest entry (by create_time) to make room, rather than growing unbounded or rejecting the new
+ * oldest entry (by deferred_at) to make room, rather than growing unbounded or rejecting the new
  * task outright. */
 static void test_retry_list_evicts_oldest_when_full(void **state) {
     (void) state;
@@ -1637,7 +1624,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_poll_cycle_permanent_failure_short_circuits_no_retry, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_gating_filtering_and_bounded_retry, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_invalid_payload_logged_and_dropped, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_poll_cycle_unparsable_payload_logged_and_dropped, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_poll_cycle_string_payload_logged_and_dropped, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_eligible_agent_zero_pending_tasks, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_no_response_without_task_id_is_logged_not_retried, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_retry_list_add_and_contains, test_setup, test_teardown),
