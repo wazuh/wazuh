@@ -26,10 +26,12 @@
 #include "enrollClient.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
+#include "spkiPin.hpp"
 #include "sysSeams.hpp"
 
 #include <cstring>
 #include <string>
+#include <string_view>
 
 namespace Log
 {
@@ -325,7 +327,9 @@ extern "C"
 
             const std::string bodyJson = boundedField(request->body_json, sizeof(request->body_json));
             const std::string password = boundedField(request->password, sizeof(request->password));
-            const HttpResponse response = client.enroll(bodyJson, password);
+            const std::string tokenKid = boundedField(request->token_kid, sizeof(request->token_kid));
+            const std::string tokenKeyHex = boundedField(request->token_key_hex, sizeof(request->token_key_hex));
+            const HttpResponse response = client.enroll(bodyJson, password, tokenKid, tokenKeyHex);
 
             result->http_code = response.httpCode;
             result->retry_after_seconds = response.retryAfterSeconds;
@@ -377,6 +381,33 @@ extern "C"
                          sizeof(result->transport_error) - 1);
 
             return response.httpCode != 0;
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
+    bool hc_spki_pin_matches(const char* cacerts_body, size_t body_len, const char* pin_b64url)
+    {
+        if (cacerts_body == nullptr || pin_b64url == nullptr)
+        {
+            return false;
+        }
+
+        try
+        {
+            const auto digests = spkiSha256AllFromPem(std::string_view(cacerts_body, body_len));
+
+            for (const auto& digest : digests)
+            {
+                if (spkiPinCompare(digest, pin_b64url) == SpkiPinMatch::Match)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
         catch (...)
         {
