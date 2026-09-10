@@ -134,6 +134,120 @@ static X509 *load_pem_text(const char *pem)
     return cert;
 }
 
+/* w_x509_load_all_pem / w_x509_certificates_pem */
+
+void test_load_all_pem_reads_every_certificate_of_a_bundle(void **state)
+{
+    (void) state;
+
+    char *bundle = (char *) calloc(strlen(LEAF_PEM) + strlen(ROOT_CA_PEM) + 1, sizeof(char));
+    char *path = NULL;
+    X509 **certs = NULL;
+    size_t count = 0;
+
+    assert_non_null(bundle);
+    strcat(bundle, LEAF_PEM);
+    strcat(bundle, ROOT_CA_PEM);
+    path = write_temp_pem(bundle);
+
+    certs = w_x509_load_all_pem(path, &count);
+
+    /* w_x509_load_pem() would have stopped at the leaf: a signer listed second is invisible to it */
+    assert_non_null(certs);
+    assert_int_equal(count, 2);
+    assert_true(w_x509_signed_by(certs[0], certs[1]));
+
+    w_x509_free_all(certs, count);
+    unlink(path);
+    free(path);
+    free(bundle);
+}
+
+void test_load_all_pem_skips_a_private_key_and_refuses_a_corrupt_block(void **state)
+{
+    (void) state;
+
+    char *combined = (char *) calloc(strlen(ROOT_CA_PEM) + 256, sizeof(char));
+    char *path = NULL;
+    X509 **certs = NULL;
+    size_t count = 0;
+
+    /* A CA certificate followed by something that is not one: the certificate is read, the rest
+     * is not part of what we would publish */
+    assert_non_null(combined);
+    strcat(combined, ROOT_CA_PEM);
+    strcat(combined, "-----BEGIN PRIVATE KEY-----\nMIIBVQIBADANBgkqhkiG9w0BAQ==\n-----END PRIVATE KEY-----\n");
+    path = write_temp_pem(combined);
+
+    certs = w_x509_load_all_pem(path, &count);
+    assert_non_null(certs);
+    assert_int_equal(count, 1);
+
+    w_x509_free_all(certs, count);
+    unlink(path);
+    free(path);
+
+    /* A certificate block that cannot be decoded refuses the whole file, prefix included */
+    strcpy(combined, ROOT_CA_PEM);
+    strcat(combined, "-----BEGIN CERTIFICATE-----\nnot base64 at all!!\n-----END CERTIFICATE-----\n");
+    path = write_temp_pem(combined);
+
+    count = 12345;
+    assert_null(w_x509_load_all_pem(path, &count));
+    assert_int_equal(count, 0);
+
+    unlink(path);
+    free(path);
+    free(combined);
+
+    /* And a path that does not exist */
+    assert_null(w_x509_load_all_pem("/nonexistent/wazuh-test-ca.pem", &count));
+    assert_null(w_x509_load_all_pem(NULL, &count));
+}
+
+void test_certificates_pem_publishes_only_certificates(void **state)
+{
+    (void) state;
+
+    char *combined = (char *) calloc(strlen(ROOT_CA_PEM) + 256, sizeof(char));
+    char *path = NULL;
+    char *published = NULL;
+    X509 **certs = NULL;
+    X509 **reparsed = NULL;
+    size_t count = 0;
+    size_t reparsed_count = 0;
+
+    assert_non_null(combined);
+    strcat(combined, ROOT_CA_PEM);
+    strcat(combined, "-----BEGIN PRIVATE KEY-----\nMIIBVQIBADANBgkqhkiG9w0BAQ==\n-----END PRIVATE KEY-----\n");
+    path = write_temp_pem(combined);
+
+    certs = w_x509_load_all_pem(path, &count);
+    assert_non_null(certs);
+
+    published = w_x509_certificates_pem(certs, count);
+    assert_non_null(published);
+    assert_non_null(strstr(published, "BEGIN CERTIFICATE"));
+    assert_null(strstr(published, "PRIVATE KEY"));
+
+    /* What we emit parses back: the document is usable, not merely stripped */
+    unlink(path);
+    free(path);
+    path = write_temp_pem(published);
+    reparsed = w_x509_load_all_pem(path, &reparsed_count);
+    assert_non_null(reparsed);
+    assert_int_equal(reparsed_count, count);
+
+    w_x509_free_all(reparsed, reparsed_count);
+    w_x509_free_all(certs, count);
+    free(published);
+    unlink(path);
+    free(path);
+    free(combined);
+
+    assert_null(w_x509_certificates_pem(NULL, 0));
+}
+
 /* w_x509_spki_sha256 */
 
 void test_spki_sha256_matches_the_frozen_pin(void **state)
@@ -274,6 +388,9 @@ void test_san_is_loopback_only(void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test(test_load_all_pem_reads_every_certificate_of_a_bundle),
+        cmocka_unit_test(test_load_all_pem_skips_a_private_key_and_refuses_a_corrupt_block),
+        cmocka_unit_test(test_certificates_pem_publishes_only_certificates),
         cmocka_unit_test(test_spki_sha256_matches_the_frozen_pin),
         cmocka_unit_test(test_load_pem_takes_the_first_certificate_of_a_bundle),
         cmocka_unit_test(test_signed_by),

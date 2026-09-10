@@ -121,15 +121,16 @@ namespace
                 [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
                 { responder->send(HttpResponse::json(200, R"({"status":"ok","module":"remoted"})")); },
                 /*countAgainstBudget=*/false);
+            // Same slice as the facade: the CA the transport publishes comes from the transport
+            // itself, so the bytes and the verdict cannot disagree (issue #39078).
             m_server->addRoute(Method::Get,
                                "/cacerts",
                                remoted::endpoints::cacerts::makeHandler(
-                                   caCertificatePath,
-                                   [weak = std::weak_ptr<IHttpServer>(m_server)]() -> TlsCertificateSnapshot
+                                   [weak = std::weak_ptr<IHttpServer>(m_server)]() -> CaCertificateSnapshot
                                    {
                                        if (const auto server = weak.lock())
                                        {
-                                           return server->certificateStatus();
+                                           return server->caCertificateSnapshot();
                                        }
                                        return {};
                                    },

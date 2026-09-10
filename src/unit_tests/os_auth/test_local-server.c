@@ -742,9 +742,64 @@ static void test_token_create_embed_ca_no_credential(void **state) {
     assert_false(token.has_pin);
     assert_false(token.has_key);
     assert_non_null(token.ca_pem);
+    // The certificate, re-serialized from the parsed object rather than copied out of the file.
+    // Byte-identical here because the fixture's file IS just that certificate.
     assert_string_equal(token.ca_pem, CA_PEM);
     w_etoken_free(&token);
     cJSON_Delete(response);
+}
+
+static void test_token_create_embed_ca_never_carries_a_private_key(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+
+    // The misprovisioned input of issue #39078 (H01): the CA and its private key in one file. What
+    // the operator asked to embed is the trust anchor, and that is all that may travel.
+    char *combined = NULL;
+    os_calloc(strlen(CA_PEM) + 128, sizeof(char), combined);
+    strcpy(combined, CA_PEM);
+    strcat(combined, "-----BEGIN PRIVATE KEY-----\nMIIBVQIBADANBgkqhkiG9w0BAQ==\n-----END PRIVATE KEY-----\n");
+    write_file(CA_FILE, combined);
+
+    cJSON *response = mint("{\"address\":\"wazuh-1\",\"embed_ca\":true}");
+    assert_int_equal(response_error(response), 0);
+
+    w_etoken_t token;
+    assert_int_equal(w_etoken_decode(data_string(response, "token"), &token), ETOKEN_OK);
+    assert_non_null(token.ca_pem);
+    assert_non_null(strstr(token.ca_pem, "BEGIN CERTIFICATE"));
+    assert_null(strstr(token.ca_pem, "PRIVATE KEY"));
+    w_etoken_free(&token);
+    cJSON_Delete(response);
+
+    write_file(CA_FILE, CA_PEM);
+    os_free(combined);
+}
+
+static void test_token_create_embed_ca_accepts_a_bundle_signed_by_its_second_certificate(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+
+    // A bundle whose signer is NOT the first certificate. Reading only the first one -- what
+    // w_x509_load_pem() does -- refused this mint with "ca does not sign the listener certificate".
+    char *bundle = NULL;
+    os_calloc(strlen(LOOPBACK_PEM) + strlen(CA_PEM) + 1, sizeof(char), bundle);
+    strcpy(bundle, LOOPBACK_PEM);
+    strcat(bundle, CA_PEM);
+    write_file(CA_FILE, bundle);
+
+    cJSON *response = mint("{\"address\":\"wazuh-1\",\"embed_ca\":true}");
+    assert_int_equal(response_error(response), 0);
+
+    w_etoken_t token;
+    assert_int_equal(w_etoken_decode(data_string(response, "token"), &token), ETOKEN_OK);
+    assert_non_null(token.ca_pem);
+    assert_non_null(strstr(token.ca_pem, "BEGIN CERTIFICATE"));
+    w_etoken_free(&token);
+    cJSON_Delete(response);
+
+    write_file(CA_FILE, CA_PEM);
+    os_free(bundle);
 }
 
 static void test_token_create_bad_arguments(void **state) {
@@ -1412,6 +1467,8 @@ int main(void) {
         cmocka_unit_test(test_token_create_refusals_9025),
         cmocka_unit_test(test_token_create_ip_warns_and_overrides),
         cmocka_unit_test(test_token_create_embed_ca_no_credential),
+        cmocka_unit_test(test_token_create_embed_ca_never_carries_a_private_key),
+        cmocka_unit_test(test_token_create_embed_ca_accepts_a_bundle_signed_by_its_second_certificate),
         cmocka_unit_test(test_token_create_bad_arguments),
         cmocka_unit_test(test_token_verbs_on_worker_9015),
         cmocka_unit_test(test_token_list_and_revoke),

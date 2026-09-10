@@ -486,8 +486,7 @@ namespace
                         std::equal(g.name.begin(),
                                    g.name.end(),
                                    field.name().begin(),
-                                   [](char a, char b)
-                                   {
+                                   [](char a, char b) {
                                        return std::tolower(static_cast<unsigned char>(a)) ==
                                               std::tolower(static_cast<unsigned char>(b));
                                    }))
@@ -1038,6 +1037,9 @@ namespace remoted::http
         /// m_caCertificatePath at each one, so a rotated CA file is noticed at the next tick.
         X509Ptr m_leaf;
         std::string m_caCertificatePath;
+        /// The CA file as one coherent thing: what /cacerts publishes and the verdict that goes
+        /// with it, from the same read (issue #39078). Created in start(), when the leaf exists.
+        std::shared_ptr<CaCertificateSource> m_caSource;
         /// Start-time evaluation recorded before listening; re-evaluated on its own thread every
         /// HttpServerConfig::certificateStatusInterval while accepting (D45: thread + cv, since
         /// RESTinio's run_async() keeps its io_context private). Stopped in stopAccepting().
@@ -1303,11 +1305,42 @@ namespace remoted::http
         return d;
     }
 
+    CaCertificateSnapshot RestinioHttpServer::caCertificateSnapshot() const
+    {
+        // Same reasoning as certificateStatus(): the source has its own lock, and taking m_mutex
+        // here would make a /cacerts request wait out a concurrent start().
+        std::shared_ptr<CaCertificateSource> source;
+        {
+            std::lock_guard<std::mutex> lock {m_impl->m_mutex};
+            source = m_impl->m_caSource;
+        }
+        return source ? source->snapshot() : CaCertificateSnapshot {};
+    }
+
     TlsCertificateSnapshot RestinioHttpServer::certificateStatus() const
     {
         // The monitor has its own lock; m_mutex is not needed (and must not be taken: a metrics
         // dump racing start() would otherwise wait out the whole TLS setup).
-        return m_impl->m_certMonitor.snapshot();
+        auto status = m_impl->m_certMonitor.snapshot();
+
+        // Expiry is the monitor's (it only changes with the clock), but the CA half is read from
+        // the same source /cacerts answers from: otherwise remoted.server.tls.ca_matches_leaf
+        // could report a match while the endpoint is already refusing that very CA, until the
+        // next daily tick (issue #39078, H06).
+        std::shared_ptr<CaCertificateSource> source;
+        {
+            std::lock_guard<std::mutex> lock {m_impl->m_mutex};
+            source = m_impl->m_caSource;
+        }
+
+        if (source)
+        {
+            const auto ca = source->snapshot();
+            status.caMatchesLeaf = ca.matchesLeaf;
+            status.caSubjects = ca.subjects;
+        }
+
+        return status;
     }
 
     void RestinioHttpServer::start(const HttpServerConfig& config)
@@ -1334,6 +1367,7 @@ namespace remoted::http
         auto tls = createTlsContext(config);
         m_impl->m_leaf = std::move(tls.leaf);
         m_impl->m_caCertificatePath = config.caCertificatePath;
+        m_impl->m_caSource = std::make_shared<CaCertificateSource>(config.caCertificatePath, m_impl->m_leaf.get());
         m_impl->m_certMonitor.record(tls.initialStatus);
 
         m_impl->m_workerPool = std::make_unique<asio::thread_pool>(config.workerThreads);
@@ -1471,14 +1505,26 @@ namespace remoted::http
         // Periodic re-evaluation of the served certificate (expiry + CA coherence), re-logged on
         // every tick exactly like the start-time one. The raw leaf pointer is safe to capture:
         // m_leaf is only replaced by a later start(), and stopAccepting() joins this thread first.
-        m_impl->m_certMonitor.start(
-            config.certificateStatusInterval,
-            [leaf = m_impl->m_leaf.get(), leafPath = config.certificatePath, caPath = config.caCertificatePath]
-            {
-                const auto status = evaluateCertificateStatus(leaf, caPath);
-                logCertificateStatus(status, leafPath, caPath);
-                return status;
-            });
+        m_impl->m_certMonitor.start(config.certificateStatusInterval,
+                                    [leaf = m_impl->m_leaf.get(),
+                                     leafPath = config.certificatePath,
+                                     caPath = config.caCertificatePath,
+                                     source = m_impl->m_caSource]
+                                    {
+                                        // Expiry is the leaf's business; the CA half comes from the same source the
+                                        // endpoint answers from, so this tick can never overwrite a fresher CA verdict
+                                        // with a re-read of its own (issue #39078, H06).
+                                        TlsCertificateSnapshot status;
+                                        status.expiryDays = daysUntilExpiry(leaf);
+                                        status.leafSubject = subjectOfCertificate(leaf);
+
+                                        const auto ca = source->snapshot();
+                                        status.caMatchesLeaf = ca.matchesLeaf;
+                                        status.caSubjects = ca.subjects;
+
+                                        logCertificateStatus(status, leafPath, caPath);
+                                        return status;
+                                    });
     }
 
     void RestinioHttpServer::stopAccepting() noexcept

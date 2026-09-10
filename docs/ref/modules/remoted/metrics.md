@@ -100,12 +100,13 @@ single request may cost ([`https.max_body_size`](configuration.md#httpsmax_body_
 
 ### TLS listener certificate — `remoted.server.tls.*`
 
-The health of the certificate the HTTPS listener serves, evaluated when the listener starts and
-once every 24 hours afterwards (each evaluation also re-logs its findings). The leaf is the
-certificate loaded when the listener started; the CA is re-read from disk at each evaluation. Both
-read `0` while the listener is down — so `ca_matches_leaf` at `0` with the listener **up** is the
-mismatch signal, and `GET /cacerts` is answering `503` (see
-[CA distribution](#ca-distribution--remotedcacerts)).
+The health of the certificate the HTTPS listener serves. Expiry is evaluated when the listener
+starts and once every 24 hours afterwards (each evaluation also re-logs its findings); the leaf is
+the certificate loaded when the listener started. `ca_matches_leaf`, on the other hand, is read
+from the same place `GET /cacerts` answers from, so the two can never disagree: replacing the CA
+file changes both in the next request, without waiting for the daily tick. Both read `0` while the
+listener is down — so `ca_matches_leaf` at `0` with the listener **up** is the mismatch signal, and
+`GET /cacerts` is answering `503` (see [CA distribution](#ca-distribution--remotedcacerts)).
 
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
