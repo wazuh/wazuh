@@ -352,9 +352,9 @@ static void test_full_happy_path_via_pin(void **state) {
 
 /* #39028's DoD: "a credential-less token enrolls when the simulator requires no credential,
  * and is not treated as an error." has_key=false must not short-circuit into an error path --
- * enrollment still runs, just with no token_kid/token_key_hex on the wire (and, per the
- * DIVERGENCE FROM #38993 comment in token_bootstrap.c, no fallback to a configured password
- * either -- g_enroll_request.password stays empty exactly as it does on the keyed happy path). */
+ * enrollment still runs, just with no token_kid/token_key_hex on the wire (and no fallback to
+ * a configured password either, per token_bootstrap.c's own comment on that branch --
+ * g_enroll_request.password stays empty exactly as it does on the keyed happy path). */
 static void test_credential_less_token_enrolls_without_error(void **state) {
     (void) state;
     write_token_file(true, false, NULL);
@@ -392,8 +392,8 @@ static void test_credential_less_token_enrolls_without_error(void **state) {
     assert_int_equal(g_enroll_config.verify_mode, HC_VERIFY_FULL);
     assert_true(strlen(g_enroll_config.ca_path) > 0);
     /* No key on the token: no kid, no derived key, and no fallback to a configured password
-     * either -- the request goes out with no credential at all (see the DIVERGENCE FROM #38993
-     * comment next to this branch in token_bootstrap.c). */
+     * either -- the request goes out with no credential at all (see the comment next to this
+     * branch in token_bootstrap.c). */
     assert_string_equal(g_enroll_request.password, "");
     assert_int_equal((int) strlen(g_enroll_request.token_kid), 0);
     assert_int_equal((int) strlen(g_enroll_request.token_key_hex), 0);

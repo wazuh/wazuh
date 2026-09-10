@@ -281,12 +281,15 @@ int w_agent_token_bootstrap(int uid, int gid) {
     /* Never the configured authd.pass here: a token-based enrollment must not sign with a
      * possibly-unrelated password (built_request.password is discarded below, unused).
      *
-     * DIVERGENCE FROM #38993: a credential-less token (token.has_key == false) does NOT fall
-     * back to WAZUH_REGISTRATION_PASSWORD/authd.pass either -- enrollment goes out with no
-     * credential at all. #38993's wire contract has no stated fallback order for this case;
-     * silently reusing whatever password happens to be configured would let a credential-less
-     * token piggyback on an unrelated secret, which is worse than sending none. Flagged here
-     * for #38993 to confirm or override, not silently accommodated. */
+     * A credential-less token (token.has_key == false) does NOT fall back to
+     * WAZUH_REGISTRATION_PASSWORD/authd.pass either -- enrollment goes out with no credential
+     * at all. Confirmed against the manager's own EnrollmentAuthenticator
+     * (remoted/remoted_module/src/enrollment/enrollmentAuthenticator.hpp on
+     * enhancement/38991-identity): it has no notion of a "credential-less token" distinct from
+     * "no credential presented" -- sending no Authorization header falls through to whatever
+     * requirePassword is already configured, exactly like a classic no-password attempt.
+     * Silently reusing a configured password here would misrepresent to the manager (and any
+     * audit trail) what actually authenticated the request. */
 
     if (token.has_key) {
         uint8_t derived_key[W_ETOKEN_KEY_BYTES];
