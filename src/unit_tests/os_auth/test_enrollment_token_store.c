@@ -740,6 +740,9 @@ static void test_purge_dead_removes_only_the_unusable(void **state) {
 
         copy_string(used_id, sizeof(used_id), data, "id");
         assert_int_equal(etoken_store_consume(used_id, time(NULL)), ETOKEN_USE_OK);
+        /* The enrollment that took the use finished, as the local server does when the agent was
+         * created: an open reservation would (rightly) keep the entry out of this purge */
+        etoken_store_commit(used_id);
     }
     cJSON_Delete(data);
 
@@ -801,6 +804,93 @@ static void test_purge_all_empties_the_store(void **state) {
 
     assert_int_equal(etoken_store_load(), 0);
     assert_int_equal(etoken_store_count(), 0);
+}
+
+/* --- Reservations in flight -------------------------------------------------------------------- */
+
+/// Mint a single-use token and reserve its only use, as an enrollment about to run does.
+static void reserve_only_use(char *id, size_t size) {
+    cJSON *data = mint_token("wazuh-inflight", 3600, 1, NULL, 0);
+
+    copy_string(id, size, data, "id");
+    cJSON_Delete(data);
+
+    assert_int_equal(etoken_store_consume(id, time(NULL)), ETOKEN_USE_OK);
+}
+
+static void test_purge_dead_spares_a_use_still_in_flight(void **state) {
+    (void)state;
+    char id[ETOKEN_ID_CHARS + 1] = {0};
+
+    expect_any_mdebug1();
+    expect_any_mdebug2();
+    expect_any_minfo();
+
+    reserve_only_use(id, sizeof(id));
+
+    /* The token is out of uses on paper, but the enrollment that took the last one is still
+     * running: purging it here would make the release below a no-op and lose the use for good */
+    assert_int_equal(etoken_store_purge(ETOKEN_PURGE_DEAD, time(NULL), NULL), 0);
+    assert_int_equal(etoken_store_count(), 1);
+
+    etoken_store_release(id);
+    assert_int_equal(file_uses_of(id), 0);
+    assert_int_equal(etoken_store_consume(id, time(NULL)), ETOKEN_USE_OK);
+}
+
+static void test_purge_dead_removes_it_once_the_enrollment_is_over(void **state) {
+    (void)state;
+    char id[ETOKEN_ID_CHARS + 1] = {0};
+
+    expect_any_mdebug1();
+    expect_any_mdebug2();
+    expect_any_minfo();
+
+    reserve_only_use(id, sizeof(id));
+    etoken_store_commit(id);
+
+    /* Committed: the use is spent for good and the entry is a leftover like any other */
+    assert_int_equal(etoken_store_purge(ETOKEN_PURGE_DEAD, time(NULL), NULL), 1);
+    assert_int_equal(etoken_store_count(), 0);
+}
+
+static void test_purge_all_takes_a_use_in_flight_too(void **state) {
+    (void)state;
+    char id[ETOKEN_ID_CHARS + 1] = {0};
+
+    expect_any_mdebug1();
+    expect_any_mdebug2();
+    expect_any_minfo();
+
+    reserve_only_use(id, sizeof(id));
+
+    /* Emptying the store is an explicit order, not a cleanup: it takes the token an enrollment is
+     * holding as well, and the release that follows finds nothing and says so */
+    assert_int_equal(etoken_store_purge(ETOKEN_PURGE_ALL, time(NULL), NULL), 1);
+    assert_int_equal(etoken_store_count(), 0);
+
+    etoken_store_release(id);
+    assert_int_equal(etoken_store_count(), 0);
+}
+
+static void test_a_reservation_survives_a_reload(void **state) {
+    (void)state;
+    char id[ETOKEN_ID_CHARS + 1] = {0};
+
+    expect_any_mdebug1();
+    expect_any_mdebug2();
+    expect_any_minfo();
+
+    reserve_only_use(id, sizeof(id));
+
+    /* Any mint or revoke rewrites the file and the next verb reloads it, replacing the entries
+     * wholesale. The reservation is not kept in them precisely so that it outlives this */
+    assert_int_equal(etoken_store_load(), 0);
+    assert_int_equal(etoken_store_purge(ETOKEN_PURGE_DEAD, time(NULL), NULL), 0);
+    assert_int_equal(etoken_store_count(), 1);
+
+    etoken_store_commit(id);
+    assert_int_equal(etoken_store_purge(ETOKEN_PURGE_DEAD, time(NULL), NULL), 1);
 }
 
 static void test_mint_is_refused_when_the_store_is_full_of_live_tokens(void **state) {
@@ -918,6 +1008,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_purge_dead_removes_only_the_unusable, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_purge_without_victims_leaves_the_file_alone, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_purge_all_empties_the_store, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_purge_dead_spares_a_use_still_in_flight, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_purge_dead_removes_it_once_the_enrollment_is_over, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_purge_all_takes_a_use_in_flight_too, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_a_reservation_survives_a_reload, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_mint_is_refused_when_the_store_is_full_of_live_tokens, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_mint_purges_the_dead_to_make_room, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_mint_is_refused_when_the_store_would_be_too_big, setup_store, teardown_store),

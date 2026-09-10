@@ -168,7 +168,11 @@ int etoken_store_revoke(const char *id);
  *
  * Checks, in this order, that the id exists and is not revoked, that it has not expired at @p now
  * and that max_uses (when non-zero) leaves room; then increments `uses` and persists the file.
- * The caller undoes the use with etoken_store_release() if the enrollment itself fails afterwards.
+ *
+ * The use stays RESERVED until the caller closes it with etoken_store_commit() (the enrollment
+ * happened) or etoken_store_release() (it did not, so the use goes back). Exactly one of the two
+ * must be called: while a reservation is open the token is never purged as dead, so leaving it
+ * open keeps a spent token in the store until authd restarts.
  *
  * @return ETOKEN_USE_OK, or the first violation found.
  */
@@ -178,6 +182,11 @@ etoken_use_t etoken_store_consume(const char *id, time_t now);
  * @brief Undo a use reserved by etoken_store_consume() when the enrollment failed. Persists.
  */
 void etoken_store_release(const char *id);
+
+/**
+ * @brief Close a reservation whose enrollment succeeded. Touches no file: the use is already spent.
+ */
+void etoken_store_commit(const char *id);
 
 /**
  * @brief Number of tokens in memory (revoked ones included).

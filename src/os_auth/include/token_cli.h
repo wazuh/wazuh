@@ -15,6 +15,8 @@
 #include <getopt.h>
 #include <stdio.h>
 
+#include "enrollment_token.h"
+
 /**
  * @brief The enrollment token utility mode of wazuh-manager-authd (issue #38993).
  *
@@ -29,6 +31,14 @@
  * return value. Nothing here calls exit(); every message goes to the FILE the caller passes, which
  * is what makes the module unit-testable.
  */
+
+/* Longest reply the CLI reads back from authd. OS_MAXSTR (64 KB), what the socket helpers default
+ * to, is not enough: a full-store purge answers with every id it removed (~122 KB for the 5000 the
+ * store admits) and --list-enrollment-tokens answers with the tokens themselves. What bounds both
+ * is the store, so this is its ceiling plus room for the JSON around it. Undersizing it does not
+ * truncate the print: OS_RecvSecureTCP() refuses the message whole, and a purge that already
+ * happened would be reported as a failure. */
+#define TOKEN_CLI_MAX_REPLY (W_ETOKEN_STORE_MAX_BYTES + OS_MAXSTR)
 
 typedef enum {
     TOKEN_CLI_NONE = 0,

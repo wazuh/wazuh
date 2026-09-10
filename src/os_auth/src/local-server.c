@@ -621,9 +621,13 @@ char* local_dispatch(const char *input) {
                     }
                 }
                 response = local_add(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options);
-                if (token_id && response) {
-                    cJSON *err = cJSON_GetObjectItem(response, "error");
+                if (token_id) {
+                    cJSON *err = response ? cJSON_GetObjectItem(response, "error") : NULL;
+                    // Every path closes the reservation: committed when the agent was created, given
+                    // back otherwise -- including the one where local_add() produces no response at
+                    // all, which used to burn the use and leave the caller nothing to retry with.
                     if (cJSON_IsNumber(err) && err->valueint == 0) {
+                        etoken_store_commit(token_id);
                         minfo("Enrollment token '%s' consumed by agent '%s'.", token_id, name);
                     } else {
                         etoken_store_release(token_id);

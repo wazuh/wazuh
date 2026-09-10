@@ -25,6 +25,7 @@
 
 #include "shared.h"
 #include "token_cli.h"
+#include "enrollment_token_store.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
@@ -98,7 +99,7 @@ static void expect_exchange(const char *expected_request, const char *response) 
     expect_string(__wrap_OS_SendSecureTCP, msg, expected_request);
     will_return(__wrap_OS_SendSecureTCP, 0);
     expect_value(__wrap_OS_RecvSecureTCP, sock, FAKE_SOCK);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    expect_value(__wrap_OS_RecvSecureTCP, size, TOKEN_CLI_MAX_REPLY);
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, (int)strlen(response));
 }
@@ -406,6 +407,72 @@ static void test_purge_all_with_force_sends_the_wider_scope(void **state) {
     streams_free(&s);
 }
 
+static void test_purge_of_a_full_store_is_read_back_whole(void **state) {
+    (void)state;
+    token_cli_opts_t opts;
+    streams_t s;
+    char *argv[] = {"authd", "--purge-enrollment-tokens"};
+    const char *request = "{\"arguments\":{\"scope\":\"dead\"},\"function\":\"token_purge\"}";
+    char *reply = NULL;
+    size_t used = 0;
+    int i;
+
+    // What emptying a full store answers: one id per token, ~122 KB, well past the 64 KB the socket
+    // helpers default to. Read short, the purge would look like a failure although it had happened.
+    os_calloc(TOKEN_CLI_MAX_REPLY, sizeof(char), reply);
+    used = (size_t)snprintf(reply, TOKEN_CLI_MAX_REPLY,
+                            "{\"error\":0,\"data\":{\"removed\":%d,\"remaining\":0,\"ids\":[", ETOKEN_MAX_TOKENS);
+
+    for (i = 0; i < ETOKEN_MAX_TOKENS; i++) {
+        used += (size_t)snprintf(reply + used, TOKEN_CLI_MAX_REPLY - used, "%s\"%.*d\"",
+                                 i ? "," : "", ETOKEN_ID_CHARS, i);
+    }
+
+    snprintf(reply + used, TOKEN_CLI_MAX_REPLY - used, "]}}");
+    assert_true(strlen(reply) > OS_MAXSTR);
+
+    streams_open(&s);
+    assert_int_equal(parse_argv(&opts, s.err, 2, argv), 1);
+    expect_exchange(request, reply);
+    assert_int_equal(w_token_cli_run(&opts, stdin, s.out, s.err), 0);
+    streams_close(&s);
+    assert_string_equal(s.out_buf, "Removed 5000 enrollment token(s); 0 left.\n");
+    assert_string_equal(s.err_buf, "");
+    streams_free(&s);
+    os_free(reply);
+}
+
+static void test_a_reply_that_does_not_fit_is_not_reported_as_silence(void **state) {
+    (void)state;
+    token_cli_opts_t opts;
+    streams_t s;
+    char *argv[] = {"authd", "--purge-enrollment-tokens"};
+    const char *request = "{\"arguments\":{\"scope\":\"dead\"},\"function\":\"token_purge\"}";
+
+    streams_open(&s);
+    assert_int_equal(parse_argv(&opts, s.err, 2, argv), 1);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, AUTH_LOCAL_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, FAKE_SOCK);
+    expect_value(__wrap_OS_SendSecureTCP, sock, FAKE_SOCK);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(request));
+    expect_string(__wrap_OS_SendSecureTCP, msg, request);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+    expect_value(__wrap_OS_RecvSecureTCP, sock, FAKE_SOCK);
+    expect_value(__wrap_OS_RecvSecureTCP, size, TOKEN_CLI_MAX_REPLY);
+    will_return(__wrap_OS_RecvSecureTCP, "");
+    will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
+
+    // authd answered, this side could not take the answer in: the operator is told the request may
+    // already have been applied instead of being invited to retry it.
+    assert_int_equal(w_token_cli_run(&opts, stdin, s.out, s.err), 1);
+    streams_close(&s);
+    assert_non_null(strstr(s.err_buf, "too large"));
+    assert_null(strstr(s.err_buf, "no response"));
+    streams_free(&s);
+}
+
 /* ------------------------------------------------------------------ show */
 
 static void assert_frozen_description(const char *text) {
@@ -509,6 +576,8 @@ int main(void) {
         cmocka_unit_test(test_purge_dead_is_the_default),
         cmocka_unit_test(test_purge_all_asks_before_emptying_the_store),
         cmocka_unit_test(test_purge_all_with_force_sends_the_wider_scope),
+        cmocka_unit_test(test_purge_of_a_full_store_is_read_back_whole),
+        cmocka_unit_test(test_a_reply_that_does_not_fit_is_not_reported_as_silence),
         cmocka_unit_test(test_show_token_from_arg_file_and_stdin),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -998,6 +998,38 @@ static void test_add_with_token_consumes_and_releases(void **state) {
     cJSON_Delete(response);
 }
 
+static void test_add_with_token_closes_the_reservation(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    cJSON *minted = mint("{\"address\":\"wazuh-1\",\"max_uses\":1}");
+    char id[ETOKEN_ID_CHARS + 1];
+    char request[512];
+
+    snprintf(id, sizeof(id), "%s", data_string(minted, "id"));
+    cJSON_Delete(minted);
+
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"committed-agent\",\"ip\":\"any\",\"token_id\":\"%s\"}}", id);
+    cJSON *response = dispatch(request);
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+
+    // The enrollment is over, so the use is spent for good: a purge takes the token away. While the
+    // add was running the store would have kept it, which is what stops a concurrent purge from
+    // deleting a token whose use is about to be given back.
+    response = dispatch("{\"function\":\"token_purge\",\"arguments\":{\"scope\":\"dead\"}}");
+    assert_int_equal(response_error(response), 0);
+
+    char *ids = cJSON_PrintUnformatted(cJSON_GetObjectItem(cJSON_GetObjectItem(response, "data"), "ids"));
+    assert_non_null(strstr(ids, id));
+    free(ids);
+    cJSON_Delete(response);
+}
+
 static void test_add_with_revoked_or_expired_token(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -1388,6 +1420,7 @@ int main(void) {
         cmocka_unit_test(test_token_purge_unknown_scope_is_refused),
         cmocka_unit_test(test_token_purge_on_worker_9015),
         cmocka_unit_test(test_add_with_token_consumes_and_releases),
+        cmocka_unit_test(test_add_with_token_closes_the_reservation),
         cmocka_unit_test(test_add_with_revoked_or_expired_token),
         cmocka_unit_test(test_add_with_token_on_worker_forwards_it),
         cmocka_unit_test(test_local_add_returns_and_queues_a_reenroll_secret),
