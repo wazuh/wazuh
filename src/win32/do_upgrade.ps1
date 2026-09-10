@@ -254,6 +254,98 @@ if ($normalizedWazuhDir -ne $currentDir) {
     abort_upgrade "2"
 }
 
+# Default drop-in location for the manager's CA (mirrored on Linux/macOS in
+# pkg_installer.sh): an operator can place it here ahead of an upgrade without having
+# to hand-edit ossec.conf, and it also doubles as the on-disk anchor path for a CA
+# delivered by the manager (below). Resolves to <install_dir>\certs\root-ca.pem, same
+# as AGENT_ANCHOR_CA (src/shared/include/defs.h) on Windows.
+$default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
+
+# Detect and validate a manager-delivered CA. The manager streams its root CA
+# into the incoming-transfer directory under this reserved filename over the com
+# channel, before issuing the upgrade command -- never look in the upgrade
+# directory (".\upgrade"), since it is cleared before this script runs, same as
+# UPGRADE_DIR on the Linux/macOS side. Runs at the very start of the script, ahead of
+# the manager connectivity check and the <ssl> gate below.
+#
+# Installing the file is the entire cutover here -- ossec.conf is never edited. Mirrors
+# pkg_installer.sh's INCOMING_CA_FILE handling; see that file for the
+# full rationale on why wiring this into <ssl><certificate_authorities> is a separate,
+# explicitly recorded decision rather than done implicitly here.
+$incoming_ca_file = Join-Path $wazuhDir "incoming\root-ca.pem"
+
+if (Test-Path -PathType Leaf $incoming_ca_file) {
+    Write-Output "$(Get-Date -format u) - Found a CA delivered by the manager at $($incoming_ca_file), validating it." >> .\upgrade\upgrade.log
+
+    $ca_reject_reason = $null
+    $ca_cert = $null
+
+    try {
+        $ca_pem = Get-Content -Path $incoming_ca_file -Raw
+        $ca_base64 = ($ca_pem -replace '-----BEGIN CERTIFICATE-----', '' -replace '-----END CERTIFICATE-----', '' -replace '[\r\n\s]', '')
+        $ca_bytes = [System.Convert]::FromBase64String($ca_base64)
+        $ca_cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($ca_bytes)
+    } catch {
+        $ca_reject_reason = "does not parse as a PEM certificate ($($_.Exception.Message))"
+    }
+
+    if (-Not $ca_reject_reason) {
+        $basic_constraints = $ca_cert.Extensions | Where-Object { $_ -is [System.Security.Cryptography.X509Certificates.X509BasicConstraintsExtension] } | Select-Object -First 1
+        if (-Not $basic_constraints -or -Not $basic_constraints.CertificateAuthority) {
+            $ca_reject_reason = "is not a CA certificate (no Basic Constraints CA:TRUE)"
+        }
+    }
+
+    if (-Not $ca_reject_reason) {
+        $now = Get-Date
+        if ($now -lt $ca_cert.NotBefore) {
+            $ca_reject_reason = "is not yet valid (notBefore $($ca_cert.NotBefore))"
+        } elseif ($now -gt $ca_cert.NotAfter) {
+            $ca_reject_reason = "has expired (notAfter $($ca_cert.NotAfter))"
+        }
+    }
+
+    if ($ca_reject_reason) {
+        # A malformed/expired/non-CA file must not break the upgrade, nor be left behind
+        # for a later upgrade to pick up -- remove it below same as on success.
+        Write-Output "$(Get-Date -format u) - Delivered CA at $($incoming_ca_file) $($ca_reject_reason); refusing to install it and continuing without it." >> .\upgrade\upgrade.log
+    } else {
+        # Replacing an already-present anchor is a bigger event than a first install --
+        # the manager is authoritative for its own CA, so this always proceeds, but the
+        # operator should be able to grep for the distinction rather than see the same
+        # "Installed" line either way.
+        if (Test-Path -PathType Leaf $default_ca_file) {
+            $ca_install_verb = "Replaced the existing"
+        } else {
+            $ca_install_verb = "Installed the delivered"
+        }
+
+        New-Item -ItemType Directory -Force -Path (Split-Path $default_ca_file) | Out-Null
+        Copy-Item -Path $incoming_ca_file -Destination $default_ca_file -Force
+
+        # Deny Authenticated Users on this one file, same pattern already used for
+        # client.keys/authd.pass (InstallerScripts.vbs): the install directory grants
+        # S-1-5-11 (Authenticated Users) broad read access, so a sensitive file needs
+        # that grant stripped explicitly. Administrators/SYSTEM keep the access they
+        # already have from the install directory's own ACL -- the agent service
+        # itself runs as SYSTEM, so this does not block it from reading the anchor.
+        try {
+            icacls "$default_ca_file" /remove *S-1-5-11 /q | Out-Null
+        } catch {
+            Write-Output "$(Get-Date -format u) - Could not restrict permissions on $($default_ca_file): $($_.Exception.Message)" >> .\upgrade\upgrade.log
+        }
+
+        # A present, readable anchor here is picked up automatically at agent startup
+        # and resolves an unset <verification_mode> to 'full' against it -- so this
+        # alone is sufficient to activate verification; no <ssl> edit is needed.
+        Write-Output "$(Get-Date -format u) - $($ca_install_verb) CA at $($default_ca_file). ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> .\upgrade\upgrade.log
+    }
+
+    Remove-Item -Path $incoming_ca_file -Force -ErrorAction SilentlyContinue
+} else {
+    Write-Output "$(Get-Date -format u) - No CA delivered by the manager at $($incoming_ca_file) this run." >> .\upgrade\upgrade.log
+}
+
 # Get current version
 $current_version = get-version
 if ($null -eq $current_version) {
@@ -287,7 +379,7 @@ if ($msi_new_version -ne $null) {
 }
 
 # Read <block><sub><tag> from the agent configuration, taking the last match.
-# Strips commented-out lines before get_conf_value/xml_block_present extract anything, so a
+# Strips commented-out lines before get_conf_value extracts anything, so a
 # tag an operator comments out (e.g. to fall back to the default) reads as absent here too,
 # matching OS_XML's own comment handling and pkg_installer.sh's strip_xml_comments() on the
 # Linux/macOS side.
@@ -301,7 +393,7 @@ function strip_xml_comments($conf_path) {
         }
         # A self-contained one-line comment ("<!-- ... -->", both on this line) must be
         # dropped here too, not just one that opens on this line and closes later --
-        # get_conf_value/xml_block_present do unanchored regex matching on the result, so
+        # get_conf_value does unanchored regex matching on the result, so
         # a commented-out example left in would otherwise be read as live.
         if ($line -match '<!--' -and $line -match '-->') {
             continue
@@ -440,82 +532,6 @@ function probe_server_verified($server, $port, $endpoint) {
     } finally {
         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $saved_callback
     }
-}
-
-# True if <block><sub> exists at all, regardless of what it contains -- distinct from
-# get_conf_value/a specific-tag check, which look for one leaf tag. Needed so pin_ca()
-# inserts into an existing (but otherwise unrelated, e.g. <ciphers>-only) <ssl> block
-# instead of creating a second, duplicate one.
-function xml_block_present($block, $sub) {
-    $conf_path = Join-Path $wazuhDir "ossec.conf"
-    if (-Not (Test-Path $conf_path)) {
-        return $false
-    }
-    $conf = (strip_xml_comments $conf_path) -replace "`n", ""
-    $block_match = [regex]::Match($conf, "<$block>(.*)</$block>")
-    if (-Not $block_match.Success) {
-        return $false
-    }
-    return [regex]::IsMatch($block_match.Groups[1].Value, "<$sub>|<$sub\s*/>")
-}
-
-# Pin a CA file into <agent><ssl><certificate_authorities>, creating the <ssl> block
-# if the config does not have one yet. Mirrors set_agent_ssl_ca() in
-# register_configure_agent.sh / pin_ca() in pkg_installer.sh; duplicated because this
-# script ships inside the WPK and runs standalone, with nothing to source. Only called
-# when certificate_authorities is not already configured, so it never overwrites an
-# operator-configured CA.
-#
-# Returns $false (and leaves ossec.conf untouched) if the insertion point was never
-# found -- e.g. an existing <ssl> block whose opening tag isn't alone on its own line --
-# rather than silently reporting success with nothing actually pinned.
-function pin_ca($ca_path) {
-    # '&', '<', '>' are structurally significant in XML content -- a raw CA path
-    # containing any of them would leave ossec.conf malformed and unparseable, not
-    # just carry the wrong value. '&' first: escaping '<'/'>' introduces new literal
-    # '&' characters (as part of "&lt;"/"&gt;") that must not be re-escaped after.
-    $ca_path = $ca_path.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
-
-    $conf_path = Join-Path $wazuhDir "ossec.conf"
-    $lines = Get-Content $conf_path
-    $output = New-Object System.Collections.Generic.List[string]
-    $inserted = $false
-
-    if (xml_block_present "agent" "ssl") {
-        foreach ($line in $lines) {
-            $output.Add($line)
-            if ((-Not $inserted) -and ($line -match '^\s*<ssl>\s*$')) {
-                $output.Add("      <certificate_authorities>$ca_path</certificate_authorities>")
-                $inserted = $true
-            }
-        }
-    } else {
-        # Only <agent>, never <client>: an unmigrated 4.x-shaped ossec.conf (a WPK
-        # upgrade never rewrites the file, so this is a live shape, not hypothetical,
-        # #38103) is read by Read_Legacy_Client_Address(), which only looks at
-        # <server><address>/<endpoint> and never <ssl> -- pinning under <client> would
-        # report success here while leaving the real parser's certificate_authorities
-        # unset. Fail the same way a malformed <ssl> block does, so the caller aborts
-        # instead of believing a CA it can't actually use is now pinned.
-        foreach ($line in $lines) {
-            if ((-Not $inserted) -and ($line -match '^\s*<agent>\s*$')) {
-                $output.Add($line)
-                $output.Add("    <ssl>")
-                $output.Add("      <certificate_authorities>$ca_path</certificate_authorities>")
-                $output.Add("    </ssl>")
-                $inserted = $true
-            } else {
-                $output.Add($line)
-            }
-        }
-    }
-
-    if (-Not $inserted) {
-        return $false
-    }
-
-    Set-Content -Path $conf_path -Value $output
-    return $true
 }
 
 # Defaults for the components an <endpoint> value leaves out, matching the agent's own
@@ -706,11 +722,6 @@ if ([string]::IsNullOrEmpty($ssl_verification_mode)) {
     }
 }
 
-# Default drop-in location for the manager's CA (mirrored on Linux in
-# pkg_installer.sh): an operator can place it here ahead of an upgrade without having
-# to hand-edit ossec.conf.
-$default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
-
 # Same path as AGENT_ANCHOR_CA (src/shared/include/defs.h), which the agent now reads
 # directly: since #39025 a present, readable file here supplies the verification state for
 # anything <ssl> left unsaid, so the resolution this gate mirrors above is no longer the one
@@ -723,6 +734,34 @@ $default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
 
 if (Test-Path -PathType Leaf $default_ca_file) {
     write-output "$(Get-Date -format u) - A trust anchor is present at $($default_ca_file). Since #39025 the upgraded agent verifies with 'full' against that file when <ssl> names no <verification_mode>, and uses it as the default <certificate_authorities>. An explicit <verification_mode> is honoured unchanged." >> .\upgrade\upgrade.log
+} else {
+    # No anchor at all -- neither delivered this run nor left over from a previous
+    # one -- and <ssl> left unset resolves to unverified without it. Say so plainly,
+    # since this is the one remaining path to an unverified 5.0 agent and it must be
+    # obvious, not silent.
+    write-output "$(Get-Date -format u) - No trust anchor is present at $($default_ca_file); the upgraded agent will run unverified unless <ssl><verification_mode> and <certificate_authorities> are configured explicitly. To enable verification: place the manager's CA at $($default_ca_file) and re-run the upgrade, or configure <certificate_authorities> explicitly and restart the agent." >> .\upgrade\upgrade.log
+}
+
+# Whether the currently-installed (pre-upgrade) agent predates 5.0, read from
+# $current_version above (captured before the MSI replaces VERSION.json). A genuine
+# 4.x config is always <client>-only -- Read_Legacy_Client_Address() (config.c) never
+# reads <ssl> under <client> -- so that agent cannot express TLS verification via
+# ossec.conf, edit or not. It also does not need to for safety: under implicit
+# 'system' mode, w_agent_validate_ssl_ca() (config.c) only refuses to start when no OS
+# CA bundle exists at all, never when that bundle simply fails to verify this
+# particular manager -- so letting a legacy upgrade proceed past that specific failure
+# below does not risk the fail-closed outage this gate exists to prevent. An
+# already-5.x agent gets no such pass: it has had every chance to be configured
+# correctly, so the strict check remains in force for it. Mirrors pkg_installer.sh's
+# IS_LEGACY_AGENT.
+$is_legacy_agent = $false
+try {
+    $current_ver_parsed = [Version]($current_version -replace '^v', '')
+    if ($current_ver_parsed.Major -lt 5) {
+        $is_legacy_agent = $true
+    }
+} catch {
+    # Unparsable -- never assume legacy from a guess.
 }
 
 if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certificate") {
@@ -757,15 +796,20 @@ if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certific
         # script can safely fix on the operator's behalf.
         write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at $($server_address):$($server_port). Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> .\upgrade\upgrade.log
         abort_upgrade "2"
-    } elseif (Test-Path -PathType Leaf $default_ca_file) {
-        if (pin_ca $default_ca_file) {
-            write-output "$(Get-Date -format u) - The system trust store does not verify the manager's certificate; pinned $($default_ca_file) as <certificate_authorities> instead." >> .\upgrade\upgrade.log
-        } else {
-            write-output "$(Get-Date -format u) - Upgrade failed: found a CA at $($default_ca_file) but could not pin it into <ssl><certificate_authorities> (no <agent> block found, or an existing <ssl> block was not in the expected format), interrupting upgrade." >> .\upgrade\upgrade.log
-            abort_upgrade "2"
-        }
+    } elseif ($is_legacy_agent) {
+        # The currently-installed agent (pre-upgrade) predates 5.0: its <client>-only
+        # config cannot express TLS verification regardless of what this script does
+        # (see $is_legacy_agent above), and 'system' mode's real fail-closed condition
+        # -- no OS CA bundle at all -- does not apply here. Proceed rather than block
+        # a legacy migration over a check that agent was never able to pass in the
+        # first place.
+        write-output "$(Get-Date -format u) - The system trust store does not verify the manager's certificate at $($server_address):$($server_port), but the currently-installed agent ($($current_version)) predates 5.0 and its config cannot express TLS verification either way -- proceeding unverified. A delivered CA may already be installed at $($default_ca_file); configure <verification_mode>certificate</verification_mode> with <certificate_authorities> explicitly after the upgrade to enable verification." >> .\upgrade\upgrade.log
     } else {
-        write-output "$(Get-Date -format u) - Upgrade failed: the system trust store does not verify the manager's certificate at $($server_address):$($server_port), and no CA was found at $($default_ca_file). Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade." >> .\upgrade\upgrade.log
+        # ossec.conf is never edited by this script (see the CA-detection block above)
+        # -- a CA may already be sitting at $default_ca_file, but pinning it into
+        # <certificate_authorities> is left to the operator rather than done here, so
+        # its mere presence does not change this outcome.
+        write-output "$(Get-Date -format u) - Upgrade failed: the system trust store does not verify the manager's certificate at $($server_address):$($server_port). A delivered CA may already be installed at $($default_ca_file); configure <verification_mode>certificate</verification_mode> with <certificate_authorities>$($default_ca_file)</certificate_authorities> explicitly, then retry the upgrade; interrupting upgrade." >> .\upgrade\upgrade.log
         abort_upgrade "2"
     }
 } elseif ($ssl_verification_mode -ceq "none") {

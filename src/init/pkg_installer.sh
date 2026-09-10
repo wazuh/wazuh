@@ -70,14 +70,14 @@ xml_escape() {
     printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
 }
 
-# Strips commented-out lines before xml_value/xml_tag_present/xml_block_present extract
-# anything, so a tag an operator comments out (e.g. to fall back to the default) reads as
-# absent here too, matching OS_XML's own comment handling -- same in_comment
-# line-tracking technique this file's pin_ca() and register_configure_agent.sh's
-# agent_option_value() already use. Like those, a comment that opens and closes on the
-# same line is not stripped: every comment actually shipped in this codebase's XML wraps
-# whole indented lines, so that trade-off is accepted here too rather than fixed once and
-# left inconsistent elsewhere.
+# Strips commented-out lines before xml_value/xml_tag_present extract anything, so a
+# tag an operator comments out (e.g. to fall back to the default) reads as absent
+# here too, matching OS_XML's own comment handling -- same in_comment line-tracking
+# technique register_configure_agent.sh's agent_option_value() already uses. Like
+# that one, a comment that opens and closes on the same line is not stripped: every
+# comment actually shipped in this codebase's XML wraps whole indented lines, so
+# that trade-off is accepted here too rather than fixed once and left inconsistent
+# elsewhere.
 strip_xml_comments() {
     awk '
         in_comment {
@@ -362,110 +362,97 @@ probe_server_verified() {
     fi
 }
 
-# True (exit 0) if <block><sub> exists at all, regardless of what it contains --
-# distinct from xml_tag_present, which looks for a specific leaf tag. Needed so
-# pin_ca() inserts into an existing (but otherwise unrelated, e.g. <ciphers>-only)
-# <ssl> block instead of creating a second, duplicate one.
-xml_block_present() {
-    strip_xml_comments | tr -d '\n\r' | grep -o "<$1>.*</$1>" | grep -qE "<$2>|<$2[ \t]*/>"
-}
+# Default drop-in location for the manager's CA (mirrored on Windows in
+# do_upgrade.ps1): an operator can place it here ahead of an upgrade without having
+# to hand-edit ossec.conf, and it also doubles as the on-disk anchor path for a CA
+# delivered by the manager (below). Resolves to /var/ossec/etc/certs/root-ca.pem on
+# a default install.
+DEFAULT_CA_FILE="./etc/certs/root-ca.pem"
 
-# Pin a CA file into <agent><ssl><certificate_authorities>, creating the <ssl> block
-# if the config does not have one yet. Mirrors set_agent_ssl_ca() in
-# register_configure_agent.sh; duplicated because this script ships inside the WPK
-# and runs standalone, with nothing to source. Only called when
-# xml_tag_present agent ssl certificate_authorities is false, so it never overwrites
-# an operator-configured CA.
+# Detect and validate a manager-delivered CA. The manager streams its root
+# CA into var/incoming under this reserved filename over the com channel, before
+# issuing the upgrade command -- never look in var/upgrade, since
+# com upgrade's cldir_ex(UPGRADE_DIR) has already cleared it by the time this script
+# runs. Runs at the very start of the script, ahead of the manager connectivity
+# check and the <ssl> gate below.
 #
-# Returns non-zero (and leaves ossec.conf untouched) if the insertion point was never
-# found -- e.g. an existing <ssl> block whose opening tag isn't alone on its own line --
-# rather than silently reporting success with nothing actually pinned.
-pin_ca() {
-    CA_PATH="$(xml_escape "${1}")"
-    TMP_PIN_CONF="$(mktemp)"
-    PIN_OK=1
+# Installing the file is the entire cutover here -- ossec.conf is never edited.
+# That is a deliberate, narrower scope than the issue's full "Install the anchor"/
+# "Do not override deliberate operator configuration" sections: this build has no
+# anchor-driven verification (confirmed against moduleConfig.cpp's validateTls()
+# and config.c -- verifyMode/caPath come strictly from parsed config, nothing
+# probes a conventional anchor path), so a file placed here does not by itself
+# change what mode the upgraded agent boots into. Wiring it into <ssl> is left for
+# a separate, explicitly recorded decision rather than done implicitly here.
+INCOMING_CA_FILE="./var/incoming/root-ca.pem"
 
-    if xml_block_present agent ssl; then
-        # SSL_CA (xml_value agent ssl certificate_authorities) is empty both when the tag
-        # is absent AND when it's present-but-empty (a self-closed <certificate_authorities/>,
-        # or leftover from an interrupted prior run) -- callers reach pin_ca() in both cases.
-        # Drop any such existing occurrence within this <ssl> block instead of inserting a
-        # second, sibling one: the real parser applies last-tag-wins, and the newly inserted
-        # tag lands BEFORE (not after) an existing one here, so the stale/empty tag would
-        # otherwise silently win over the CA this function was just asked to pin.
-        awk -v ca="${CA_PATH}" '
-            in_comment {
-                if ($0 ~ /-->/) { in_comment = 0 }
-                print
-                next
-            }
-            # A self-contained one-line comment ("<!-- ... -->", both on this line) must
-            # be recognized here too, ahead of every rule below -- otherwise a
-            # commented-out example matches the unanchored certificate_authorities check
-            # further down and gets stripped as if it were the live tag.
-            $0 ~ /<!--/ {
-                print
-                if ($0 !~ /-->/) { in_comment = 1 }
-                next
-            }
-            !inserted && /^[[:space:]]*<ssl>[[:space:]]*$/ {
-                print
-                print "      <certificate_authorities>" ca "</certificate_authorities>"
-                inserted = 1
-                in_ssl = 1
-                next
-            }
-            inserted && in_ssl && /^[[:space:]]*<\/ssl>[[:space:]]*$/ {
-                in_ssl = 0
-                print
-                next
-            }
-            inserted && in_ssl && (/<certificate_authorities[[:space:]]*\/>/ || /<certificate_authorities>[^<]*<\/certificate_authorities>/) {
-                next
-            }
-            { print }
-            END { if (!inserted) { exit 1 } }
-        ' ./etc/ossec.conf > "${TMP_PIN_CONF}"
-        PIN_OK=$?
+if [ -f "${INCOMING_CA_FILE}" ]; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Found a CA delivered by the manager at ${INCOMING_CA_FILE}, validating it." >> ./logs/upgrade.log
+
+    CA_REJECT_REASON=""
+
+    if ! openssl x509 -in "${INCOMING_CA_FILE}" -noout > /dev/null 2>&1; then
+        CA_REJECT_REASON="does not parse as a PEM certificate"
+    elif ! openssl x509 -in "${INCOMING_CA_FILE}" -noout -text 2>/dev/null | grep -A1 "X509v3 Basic Constraints" | grep -q "CA:TRUE"; then
+        CA_REJECT_REASON="is not a CA certificate (no X509v3 Basic Constraints CA:TRUE)"
     else
-        # Only <agent>, never <client>: an unmigrated 4.x-shaped ossec.conf (a WPK
-        # upgrade never rewrites the file, so this is a live shape, not hypothetical,
-        # #38103) is read by Read_Legacy_Client_Address(), which only looks at
-        # <server><address>/<endpoint> and never <ssl> -- pinning under <client> would
-        # report success here while leaving the real parser's certificate_authorities
-        # unset. Fail the same way a malformed <ssl> block does, so the caller aborts
-        # instead of believing a CA it can't actually use is now pinned.
-        awk -v ca="${CA_PATH}" '
-            in_comment {
-                if ($0 ~ /-->/) { in_comment = 0 }
-                print
-                next
-            }
-            $0 ~ /<!--/ {
-                print
-                if ($0 !~ /-->/) { in_comment = 1 }
-                next
-            }
-            !inserted && /^[[:space:]]*<agent>[[:space:]]*$/ {
-                print
-                print "    <ssl>"
-                print "      <certificate_authorities>" ca "</certificate_authorities>"
-                print "    </ssl>"
-                inserted = 1
-                next
-            }
-            { print }
-            END { if (!inserted) { exit 1 } }
-        ' ./etc/ossec.conf > "${TMP_PIN_CONF}"
-        PIN_OK=$?
+        CA_NOT_BEFORE=$(openssl x509 -in "${INCOMING_CA_FILE}" -noout -startdate 2>/dev/null | cut -d= -f2-)
+        CA_NOT_AFTER=$(openssl x509 -in "${INCOMING_CA_FILE}" -noout -enddate 2>/dev/null | cut -d= -f2-)
+        NOW_EPOCH=$(date +%s)
+        # openssl's notBefore/notAfter come out as "Mon D HH:MM:SS YYYY TZ" (e.g.
+        # "Sep 10 19:55:53 2026 GMT"). GNU date -d parses that directly; BSD date
+        # (macOS) has no -d and needs strptime-style -j -f instead, or every valid
+        # CA is silently rejected here as having an "unparsable validity period".
+        if [[ "$OS" == "Darwin" ]]; then
+            CA_NOT_BEFORE_EPOCH=$(date -j -f "%b %e %T %Y %Z" "${CA_NOT_BEFORE}" +%s 2>/dev/null)
+            CA_NOT_AFTER_EPOCH=$(date -j -f "%b %e %T %Y %Z" "${CA_NOT_AFTER}" +%s 2>/dev/null)
+        else
+            CA_NOT_BEFORE_EPOCH=$(date -d "${CA_NOT_BEFORE}" +%s 2>/dev/null)
+            CA_NOT_AFTER_EPOCH=$(date -d "${CA_NOT_AFTER}" +%s 2>/dev/null)
+        fi
+
+        if [ -z "${CA_NOT_BEFORE_EPOCH}" ] || [ -z "${CA_NOT_AFTER_EPOCH}" ]; then
+            CA_REJECT_REASON="has an unparsable validity period"
+        elif [ "${NOW_EPOCH}" -lt "${CA_NOT_BEFORE_EPOCH}" ]; then
+            CA_REJECT_REASON="is not yet valid (notBefore ${CA_NOT_BEFORE})"
+        elif [ "${NOW_EPOCH}" -gt "${CA_NOT_AFTER_EPOCH}" ]; then
+            CA_REJECT_REASON="has expired (notAfter ${CA_NOT_AFTER})"
+        fi
     fi
 
-    if [ "${PIN_OK}" -eq 0 ]; then
-        cat "${TMP_PIN_CONF}" > ./etc/ossec.conf
+    if [ -n "${CA_REJECT_REASON}" ]; then
+        # A malformed/expired/non-CA file must not break the upgrade, nor be left
+        # behind for a later upgrade to pick up -- remove it below same as on success.
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} ${CA_REJECT_REASON}; refusing to install it and continuing without it." >> ./logs/upgrade.log
+    else
+        # Replacing an already-present anchor is a bigger event than a first install --
+        # the manager is authoritative for its own CA, so this always proceeds, but the
+        # operator should be able to grep for the distinction rather than see the same
+        # "Installed" line either way.
+        if [ -f "${DEFAULT_CA_FILE}" ]; then
+            CA_INSTALL_VERB="Replaced the existing"
+        else
+            CA_INSTALL_VERB="Installed the delivered"
+        fi
+
+        mkdir -p "$(dirname "${DEFAULT_CA_FILE}")"
+        cp "${INCOMING_CA_FILE}" "${DEFAULT_CA_FILE}"
+        # root:wazuh 640, matching the existing wpk_root.pem trust anchor: readable by
+        # the wazuh group the daemon runs under, but owned (and only writable) by root
+        # -- a daemon that can rewrite its own anchor is not a boundary at all.
+        chown root:wazuh "${DEFAULT_CA_FILE}" 2>/dev/null
+        chmod 640 "${DEFAULT_CA_FILE}" 2>/dev/null
+
+        # A present, readable anchor here is picked up automatically at agent startup
+        # and resolves an unset <verification_mode> to 'full' against it -- so this
+        # alone is sufficient to activate verification; no <ssl> edit is needed.
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - ${CA_INSTALL_VERB} CA at ${DEFAULT_CA_FILE}. ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> ./logs/upgrade.log
     fi
-    rm -f "${TMP_PIN_CONF}"
-    return ${PIN_OK}
-}
+
+    rm -f "${INCOMING_CA_FILE}"
+else
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - No CA delivered by the manager at ${INCOMING_CA_FILE} this run." >> ./logs/upgrade.log
+fi
 
 # A WPK upgrade never rewrites ossec.conf, so this script meets two config shapes and has
 # to read both (#38624):
@@ -561,11 +548,31 @@ if [ -z "${SSL_VERIFICATION_MODE}" ]; then
     fi
 fi
 
-# Default drop-in location for the manager's CA (mirrored on Windows in
-# do_upgrade.ps1): an operator can place it here ahead of an upgrade without having
-# to hand-edit ossec.conf. Resolves to /var/ossec/etc/certs/root-ca.pem on a default
-# install.
-DEFAULT_CA_FILE="./etc/certs/root-ca.pem"
+# Whether the currently-installed (pre-upgrade) agent predates 5.0, queried now
+# because the package below replaces it. A genuine 4.x config is always
+# <client>-only -- Read_Legacy_Client_Address() (config.c) never reads <ssl> under
+# <client> -- so that agent cannot express TLS verification via ossec.conf, edit or
+# not. It also does not need to for safety: under implicit 'system' mode,
+# w_agent_validate_ssl_ca() (config.c) only refuses to start when no OS CA bundle
+# exists at all, never when that bundle simply fails to verify this particular
+# manager -- so letting a legacy upgrade proceed past that specific failure below
+# does not risk the fail-closed outage this gate exists to prevent. An
+# already-5.x agent gets no such pass: it has had every chance to be configured
+# correctly, so the strict check remains in force for it.
+CURRENT_AGENT_VERSION=""
+if command -v dpkg-query > /dev/null 2>&1; then
+    CURRENT_AGENT_VERSION=$(dpkg-query -W -f='${Version}' wazuh-agent 2>/dev/null)
+fi
+if [ -z "${CURRENT_AGENT_VERSION}" ] && command -v rpm > /dev/null 2>&1; then
+    CURRENT_AGENT_VERSION=$(rpm -q --qf '%{VERSION}' wazuh-agent 2>/dev/null)
+fi
+
+CURRENT_AGENT_MAJOR="${CURRENT_AGENT_VERSION%%.*}"
+IS_LEGACY_AGENT=0
+case "${CURRENT_AGENT_MAJOR}" in
+    ''|*[!0-9]*) ;; # unknown or unparsable (e.g. macOS, no package manager match) -- never assume legacy from a guess
+    *) [ "${CURRENT_AGENT_MAJOR}" -lt 5 ] && IS_LEGACY_AGENT=1 ;;
+esac
 
 # Same path as AGENT_ANCHOR_CA (src/shared/include/defs.h), which the agent now reads
 # directly: since #39025 a present, readable file here supplies the verification state for
@@ -581,6 +588,12 @@ DEFAULT_CA_FILE="./etc/certs/root-ca.pem"
 
 if [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - A trust anchor is present at ${DEFAULT_CA_FILE}. Since #39025 the upgraded agent verifies with 'full' against that file when <ssl> names no <verification_mode>, and uses it as the default <certificate_authorities>. An explicit <verification_mode> is honoured unchanged." >> ./logs/upgrade.log
+else
+    # No anchor at all -- neither delivered this run nor left over from a previous
+    # one -- and <ssl> left unset resolves to 'none' without it: the upgraded agent
+    # will run unverified. Say so plainly, since this is the one remaining path to
+    # an unverified 5.0 agent and it must be obvious, not silent.
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - No trust anchor is present at ${DEFAULT_CA_FILE}; the upgraded agent will run unverified unless <ssl><verification_mode> and <certificate_authorities> are configured explicitly. To enable verification: place the manager's CA at ${DEFAULT_CA_FILE} and re-run the upgrade, or configure <certificate_authorities> explicitly and restart the agent." >> ./logs/upgrade.log
 fi
 
 case "${SSL_VERIFICATION_MODE}" in
@@ -617,15 +630,20 @@ case "${SSL_VERIFICATION_MODE}" in
             # there is nothing this script can safely fix on the operator's behalf.
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}. Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> ./logs/upgrade.log
             abort_upgrade "2"
-        elif [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; then
-            if pin_ca "${DEFAULT_CA_FILE}"; then
-                echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate; pinned ${DEFAULT_CA_FILE} as <certificate_authorities> instead." >> ./logs/upgrade.log
-            else
-                echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Found a CA at ${DEFAULT_CA_FILE} but could not pin it into <ssl><certificate_authorities> (no <agent> block found, or an existing <ssl> block was not in the expected format), interrupting upgrade." >> ./logs/upgrade.log
-                abort_upgrade "2"
-            fi
+        elif [ "${IS_LEGACY_AGENT}" = "1" ]; then
+            # The currently-installed agent (pre-upgrade) predates 5.0: its <client>-only
+            # config cannot express TLS verification regardless of what this script does
+            # (see CURRENT_AGENT_VERSION above), and 'system' mode's real fail-closed
+            # condition -- no OS CA bundle at all -- does not apply here. Proceed rather
+            # than block a legacy migration over a check that agent was never able to
+            # pass in the first place.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, but the currently-installed agent (${CURRENT_AGENT_VERSION}) predates 5.0 and its config cannot express TLS verification either way -- proceeding unverified. A delivered CA may already be installed at ${DEFAULT_CA_FILE}; configure <verification_mode>certificate</verification_mode> with <certificate_authorities> explicitly after the upgrade to enable verification." >> ./logs/upgrade.log
         else
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, and no CA was found at ${DEFAULT_CA_FILE}. Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade." >> ./logs/upgrade.log
+            # ossec.conf is never edited by this script (see the CA-detection block
+            # above) -- a CA may already be sitting at DEFAULT_CA_FILE, but pinning it
+            # into <certificate_authorities> is left to the operator rather than done
+            # here, so its mere presence does not change this outcome.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}. A delivered CA may already be installed at ${DEFAULT_CA_FILE}; configure <verification_mode>certificate</verification_mode> with <certificate_authorities>${DEFAULT_CA_FILE}</certificate_authorities> explicitly, then retry the upgrade; interrupting upgrade." >> ./logs/upgrade.log
             abort_upgrade "2"
         fi
         ;;
@@ -692,10 +710,21 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Installation result = ${RESULT}" >> ./logs/
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking for Wazuh Agent control script." >> ./logs/upgrade.log
 
 if [ -f "./bin/wazuh-control" ]; then
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log
     if [[ "$OS" == "Darwin" ]]; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log
         launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist >> ./logs/upgrade.log 2>&1 || true
+    elif ./bin/wazuh-control status 2>/dev/null | grep -q "wazuh-agentd is running"; then
+        # deb's postinst / rpm's %post already stopped the pre-upgrade agent (preinst/%pre)
+        # and restarted it after install -- via systemctl when the host runs systemd -- when
+        # it finds the wazuh.restart marker those scripts drop. Calling wazuh-control restart
+        # again here bypasses systemd and kills the daemon set it's still supervising as
+        # wazuh-agent.service; systemd then marks the unit "deactivated" with nothing left to
+        # bring it back up, and this script's own wait-for-connection loop below times out
+        # against a dead agent. If wazuh-agentd is already up, trust that restart instead of
+        # racing it.
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Wazuh Agent is already running (restarted by the package installer); skipping redundant restart." >> ./logs/upgrade.log
     else
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log
         ./bin/wazuh-control restart >> ./logs/upgrade.log 2>&1
     fi
 else
