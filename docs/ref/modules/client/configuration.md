@@ -18,7 +18,7 @@ For module overview and architecture, see [Client Module](index.html).
 
 Configures the agent's connection to the Wazuh manager.
 
-`<client>` is the 4.X name of this block and is renamed to `<agent>` in 5.0; the inner block is `<manager>`. A configuration left by a 4.X agent still starts, and two things are read out of the legacy block: `<client><server><address>`, with the port defaulting to `1517`, and the whole `<client><enrollment>` sub-block, so an upgraded agent keeps the identity it enrolls with. Every other option inside `<client>` is ignored and warned about at startup, so rename the block to `<agent><manager>` to keep them all.
+`<client>` is the 4.X name of this block and is renamed to `<agent>` in 5.0; the inner block is `<manager>`. A configuration left by a 4.X agent still starts, and two things are read out of the legacy block: `<client><server><address>`, with the port defaulting to `1517`, and the whole `<client><enrollment>` sub-block, so an upgraded agent keeps the identity it enrolls with. Every other option directly inside `<client>` is ignored and warned about at startup; the options nested in its `<server>` block are dropped without a message. Rename the block to `<agent><manager>` to keep them all.
 
 ### manager
 
