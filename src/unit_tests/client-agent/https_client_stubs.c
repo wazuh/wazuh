@@ -94,3 +94,19 @@ bool hc_enroll(const void *config, const void *request, void *result)
     (void)result;
     return false;
 }
+
+bool hc_fetch_cacerts(const void *config, const void *request, void *result)
+{
+    (void)config;
+    (void)request;
+    (void)result;
+    return false;
+}
+
+bool hc_spki_pin_matches(const char *cacerts_body, size_t body_len, const char *pin_b64url)
+{
+    (void)cacerts_body;
+    (void)body_len;
+    (void)pin_b64url;
+    return false;
+}

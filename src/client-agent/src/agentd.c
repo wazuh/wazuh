@@ -13,6 +13,7 @@
 #include "https_client_bridge.h"
 #include "os_net.h"
 #include "state.h"
+#include "token_bootstrap.h"
 
 bool needs_config_reload = false;
 void reload_handler(int signum) {
@@ -41,6 +42,13 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         nowDaemon();
         goDaemon();
     }
+
+    /* Enrollment-token bootstrap: must run while still root, since it writes AGENT_ANCHOR_CA
+     * and (on success) client.keys and needs to fix their ownership before the privilege drop
+     * just below. Log-and-continue on failure or when no token was configured: the legacy
+     * password/mTLS enrollment loop (start_agent_prepare(), further down) must still get its
+     * normal chance either way. */
+    w_agent_token_bootstrap(uid, gid);
 
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {
