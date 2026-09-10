@@ -1323,6 +1323,11 @@ static void purge_startup_recover(void) {
 /// out of reach, and drops back to the minimum on the first commit. Writer thread only.
 static unsigned int identity_retry_delay = IDENTITY_RETRY_MIN_SECONDS;
 
+/// Highest journal sequence this thread has already taken work for. The retry pass looks no
+/// further: everything above it is a transition whose own queue node is still coming, and whose
+/// key has therefore not reached client.keys yet. Writer thread only.
+static long long identity_high_water = 0;
+
 /// A transition whose database write went through and is waiting for the commit that makes it real.
 typedef struct identity_applied_t {
     long long seq;
@@ -1448,7 +1453,12 @@ static void identity_apply_pending(identity_applied_t **applied, size_t *count, 
         return;
     }
 
-    entries = identity_journal_snapshot(IDENTITY_RETRY_BATCH, &pending);
+    /* Nothing has been taken yet, so there is no earlier cycle to retry for. */
+    if (identity_high_water <= 0) {
+        return;
+    }
+
+    entries = identity_journal_snapshot(IDENTITY_RETRY_BATCH, identity_high_water, &pending);
 
     for (i = 0; i < pending; i++) {
         // Written by this cycle's own loop above: it is in the journal until the commit, but it
@@ -1542,6 +1552,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
     int wdb_sock = -1;
 
     authd_sigblock();
+
+    /* Everything the startup reconciliation kept is owed and recoverable, so this thread may look
+     * at all of it from its first cycle; anything appended from now on waits for its own. */
+    identity_high_water = identity_journal_last_seq();
 
     mdebug1("Writer thread ready.");
 
@@ -1661,6 +1675,14 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         for (cur = copy_insert; cur; cur = next) {
             next = cur->next;
+
+            /* This node's key is in the client.keys just written, whatever the database says next,
+             * so its journal entry is now safe for the retry pass to look at. Moved here and not
+             * to the success path on purpose: an entry whose write FAILS is exactly what the retry
+             * pass exists for. */
+            if (cur->journal_seq > identity_high_water) {
+                identity_high_water = cur->journal_seq;
+            }
 
             if (cur->rotate) {
                 /* A re-enrollment (#38993): the agent already has its row, so its credentials are replaced on

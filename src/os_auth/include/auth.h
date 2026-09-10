@@ -464,11 +464,20 @@ bool identity_journal_full(void);
 /// How many transitions are still owed to the database. The writer's timed wake depends on it.
 size_t identity_journal_pending(void);
 
+/// Highest sequence the journal has handed out, including the entries loaded from disk. The writer
+/// starts its own mark here, so what a previous run left behind is recoverable at once.
+long long identity_journal_last_seq(void);
+
 /// Up to @p max transitions still owed (0 = all), as of now. Decides nothing and changes nothing.
 ///
+/// @param max Largest batch to return, 0 for no limit.
+/// @param upto_seq Highest sequence the caller is willing to see, 0 for no limit. The writer passes
+///                 the last one it has already taken work for: a transition appended after that has
+///                 its key still on its way to client.keys, and applying it here would let the
+///                 journal forget a credential nothing else records yet.
 /// @param[out] count Number of entries returned.
 /// @return A caller-owned array, released with identity_journal_free().
-identity_journal_entry_t* identity_journal_snapshot(size_t max, size_t *count);
+identity_journal_entry_t* identity_journal_snapshot(size_t max, long long upto_seq, size_t *count);
 
 /// Release a snapshot, wiping the credentials it carries.
 void identity_journal_free(identity_journal_entry_t *entries, size_t count);

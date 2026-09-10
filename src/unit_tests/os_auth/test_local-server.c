@@ -1419,7 +1419,7 @@ static void test_an_accepted_enrollment_is_journaled_with_its_credential(void **
     // The same key and the same secret the caller was just given: what the journal holds is what
     // the database owes, and it is the credential itself -- a digest would restore nothing.
     size_t count = 0;
-    identity_journal_entry_t *entries = identity_journal_snapshot(0, &count);
+    identity_journal_entry_t *entries = identity_journal_snapshot(0, 0, &count);
     identity_journal_entry_t *mine = NULL;
     for (size_t i = 0; i < count; i++) {
         if (!strcmp(entries[i].id, data_string(response, "id"))) {

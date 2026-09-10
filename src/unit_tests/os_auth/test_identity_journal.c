@@ -165,7 +165,7 @@ static void test_an_appended_transition_is_readable_after_a_restart(void **state
     assert_int_equal(identity_journal_pending(), 1);
 
     size_t count = 0;
-    identity_journal_entry_t *entries = identity_journal_snapshot(0, &count);
+    identity_journal_entry_t *entries = identity_journal_snapshot(0, 0, &count);
     assert_int_equal(count, 1);
     assert_string_equal(entries[0].id, "001");
     assert_string_equal(entries[0].name, "agent-one");
@@ -284,7 +284,7 @@ static void test_dropping_an_entry_shortens_the_file(void **state) {
     assert_int_equal(identity_journal_drop(&first, 1), 0);
 
     size_t count = 0;
-    identity_journal_entry_t *entries = identity_journal_snapshot(0, &count);
+    identity_journal_entry_t *entries = identity_journal_snapshot(0, 0, &count);
     assert_int_equal(count, 1);
     assert_string_equal(entries[0].id, "002");
     identity_journal_free(entries, count);
@@ -298,7 +298,7 @@ static void test_a_snapshot_is_bounded_by_the_batch(void **state) {
     assert_true(identity_journal_append("003", "three", "any", KEY_A, SECRET_B, false, NULL));
 
     size_t count = 0;
-    identity_journal_entry_t *entries = identity_journal_snapshot(2, &count);
+    identity_journal_entry_t *entries = identity_journal_snapshot(2, 0, &count);
     assert_int_equal(count, 2);
     // Oldest first: a retry works through the backlog in the order it was created.
     assert_string_equal(entries[0].id, "001");
@@ -306,6 +306,54 @@ static void test_a_snapshot_is_bounded_by_the_batch(void **state) {
 
     // And the journal itself is untouched by looking at it.
     assert_int_equal(identity_journal_pending(), 3);
+}
+
+static void test_a_snapshot_stops_at_the_callers_mark(void **state) {
+    (void)state;
+
+    long long first = 0;
+    assert_true(identity_journal_append("001", "one", "any", KEY_A, SECRET_A, false, &first));
+    assert_true(identity_journal_append("002", "two", "any", KEY_B, SECRET_B, false, NULL));
+
+    // The writer only looks as far as the transitions it has already taken work for: the one
+    // appended while it was working still has its key on the way to client.keys, and applying it
+    // here would let the journal forget a credential nothing else records yet.
+    size_t count = 0;
+    identity_journal_entry_t *entries = identity_journal_snapshot(0, first, &count);
+    assert_int_equal(count, 1);
+    assert_string_equal(entries[0].id, "001");
+    identity_journal_free(entries, count);
+
+    // Zero is "everything", which is what the tests and the startup path want.
+    entries = identity_journal_snapshot(0, 0, &count);
+    assert_int_equal(count, 2);
+    identity_journal_free(entries, count);
+}
+
+static void test_an_append_after_a_torn_line_keeps_both_readable(void **state) {
+    (void)state;
+    EXPECT_LOG_WARN();
+    EXPECT_LOG_INFO();
+
+    // A write cut short by a full disk or a crash: a fragment with no newline.
+    FILE *fp = fopen(JOURNAL_PATH, "a");
+    assert_non_null(fp);
+    assert_true(fputs("{\"seq\":9,\"id\":\"009\",\"rot", fp) >= 0);
+    assert_int_equal(fclose(fp), 0);
+
+    // The next transition must not be glued onto it: that made ONE malformed line and lost the
+    // good entry as well as the fragment.
+    assert_true(identity_journal_append("001", "one", "any", KEY_A, SECRET_A, false, NULL));
+
+    identity_journal_init(JOURNAL_PATH);
+    identity_journal_load();
+
+    assert_int_equal(identity_journal_pending(), 1);
+    size_t count = 0;
+    identity_journal_entry_t *entries = identity_journal_snapshot(0, 0, &count);
+    assert_int_equal(count, 1);
+    assert_string_equal(entries[0].id, "001");
+    identity_journal_free(entries, count);
 }
 
 /* --- What a line from a dead process means ----------------------------------------------------- */
@@ -344,7 +392,7 @@ static void test_reconciliation_keeps_a_rotation_client_keys_never_received(void
     assert_int_equal(identity_journal_pending(), 1);
 
     size_t count = 0;
-    identity_journal_entry_t *entries = identity_journal_snapshot(0, &count);
+    identity_journal_entry_t *entries = identity_journal_snapshot(0, 0, &count);
     assert_int_equal(count, 1);
     assert_string_equal(entries[0].secret, SECRET_B);
     identity_journal_free(entries, count);
@@ -372,7 +420,7 @@ static void test_reconciliation_keeps_only_the_newest_entry_of_an_agent(void **s
     assert_int_equal(identity_journal_reconcile(), 1);
 
     size_t count = 0;
-    identity_journal_entry_t *entries = identity_journal_snapshot(0, &count);
+    identity_journal_entry_t *entries = identity_journal_snapshot(0, 0, &count);
     assert_int_equal(count, 1);
     // The newest one: writing the older secret back would hand the agent's identity to a bearer it
     // has already replaced.
@@ -411,6 +459,8 @@ int main(void) {
         cmocka_unit_test_setup(test_the_backlog_bound_refuses_new_transitions_and_keeps_the_old, setup_case),
         cmocka_unit_test_setup(test_dropping_an_entry_shortens_the_file, setup_case),
         cmocka_unit_test_setup(test_a_snapshot_is_bounded_by_the_batch, setup_case),
+        cmocka_unit_test_setup(test_a_snapshot_stops_at_the_callers_mark, setup_case),
+        cmocka_unit_test_setup(test_an_append_after_a_torn_line_keeps_both_readable, setup_case),
         cmocka_unit_test_setup(test_reconciliation_keeps_the_live_generation, setup_case),
         cmocka_unit_test_setup(test_reconciliation_keeps_a_rotation_client_keys_never_received, setup_case),
         cmocka_unit_test_setup(test_reconciliation_keeps_only_the_newest_entry_of_an_agent, setup_case),
