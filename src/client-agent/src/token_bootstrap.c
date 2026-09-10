@@ -12,6 +12,7 @@
 #include "token_bootstrap.h"
 #include "enrollment.h"
 #include "enrollment_token.h"
+#include "reenroll_secret.h"
 
 #ifdef WAZUH_UNIT_TESTING
     // Remove static qualifier when unit testing
@@ -637,6 +638,18 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
      * chown on every later boot, so this is not a one-shot chance to fix it. A no-op on
      * Windows, where there is no second user to restore access for. */
     w_token_bootstrap_chown_keys_file(gid, false);
+
+    /* The re-enrollment secret (#39064) is written here too, as root, by
+     * w_enrollment_process_response() on the way through. Unlike the anchor it also has to be
+     * WRITABLE by the unprivileged user afterwards, since every rotation happens in the running
+     * daemon after the privilege drop -- a root-owned secret would survive exactly one
+     * enrollment and then fail every rotation, with nothing to show for it in a log. FileSize()
+     * rather than IsFile() for the same reason client.keys needs it: only a non-empty file is a
+     * real store. */
+    if (FileSize(AGENT_REENROLL_SECRET) > 0 && chown(AGENT_REENROLL_SECRET, uid, gid) != 0) {
+        merror("Token bootstrap: could not change ownership of '%s': %s (%d).",
+               AGENT_REENROLL_SECRET, strerror(errno), errno);
+    }
 
     unlink(AGENT_ENROLLMENT_TOKEN_FILE);
     w_etoken_free(&token);
