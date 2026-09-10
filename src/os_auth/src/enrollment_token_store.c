@@ -68,6 +68,23 @@ static int etoken_tokens_size = 0;
 static char *etoken_path = NULL;
 static time_t etoken_mtime = 0;
 
+/* Uses reserved by etoken_store_consume() whose enrollment has not finished yet.
+ *
+ * Deliberately NOT a field of the entry: an enrollment holds its reservation across the whole
+ * OS_AddNewAgent() -- seconds, with the mutex released so other enrollments proceed -- and any
+ * reload in between replaces the array wholesale with what the file says. Kept aside, a reservation
+ * survives that, and a purge run in the middle of an enrollment cannot take away the token whose
+ * last use is about to be returned by etoken_store_release(). Guarded by etoken_mutex, and empty
+ * in the common case: authd is not usually enrolling anybody while an operator purges.
+ */
+typedef struct {
+    char id[ETOKEN_ID_CHARS + 1];
+    unsigned int count;
+} etoken_inflight_t;
+
+static etoken_inflight_t *etoken_inflight = NULL;
+static int etoken_inflight_size = 0;
+
 /**
  * @brief Wipe and release one entry. The struct itself is left zeroed.
  */
@@ -94,13 +111,90 @@ static void etoken_clear_locked(void) {
 }
 
 /**
+ * @brief Reservations held for that id, 0 when there is none. Caller holds the mutex.
+ */
+static unsigned int etoken_inflight_held_locked(const char *id) {
+    int i;
+
+    for (i = 0; i < etoken_inflight_size; i++) {
+        if (!strcmp(etoken_inflight[i].id, id)) {
+            return etoken_inflight[i].count;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Take a reservation for that id. Caller holds the mutex.
+ */
+static void etoken_inflight_hold_locked(const char *id) {
+    int i;
+
+    for (i = 0; i < etoken_inflight_size; i++) {
+        if (!strcmp(etoken_inflight[i].id, id)) {
+            etoken_inflight[i].count++;
+            return;
+        }
+    }
+
+    os_realloc(etoken_inflight, sizeof(etoken_inflight_t) * (etoken_inflight_size + 1), etoken_inflight);
+    memset(&etoken_inflight[etoken_inflight_size], 0, sizeof(etoken_inflight_t));
+    strncpy(etoken_inflight[etoken_inflight_size].id, id, ETOKEN_ID_CHARS);
+    etoken_inflight[etoken_inflight_size].count = 1;
+    etoken_inflight_size++;
+}
+
+/**
+ * @brief Give back one reservation for that id, dropping the record when the last one goes.
+ *        Caller holds the mutex.
+ */
+static void etoken_inflight_drop_locked(const char *id) {
+    int i;
+
+    for (i = 0; i < etoken_inflight_size; i++) {
+        if (strcmp(etoken_inflight[i].id, id)) {
+            continue;
+        }
+
+        if (etoken_inflight[i].count > 1) {
+            etoken_inflight[i].count--;
+            return;
+        }
+
+        if (i != etoken_inflight_size - 1) {
+            etoken_inflight[i] = etoken_inflight[etoken_inflight_size - 1];
+        }
+
+        etoken_inflight_size--;
+
+        if (etoken_inflight_size == 0) {
+            os_free(etoken_inflight);
+        } else {
+            os_realloc(etoken_inflight, sizeof(etoken_inflight_t) * etoken_inflight_size, etoken_inflight);
+        }
+
+        return;
+    }
+}
+
+/**
  * @brief Whether an entry can no longer authorise an enrollment. Caller holds the mutex.
  *
  * The same three conditions etoken_store_consume() refuses on, in the same order: revoked, expired,
  * out of uses. A token with `uses == 0` and time left is alive however long it has sat unused --
  * that is a token an operator minted and has not handed out yet, not a leftover.
+ *
+ * A token whose last use is reserved by an enrollment still running is not dead either: the
+ * enrollment may still fail and return that use, and a purge that took the entry away in the
+ * meantime would make the return a no-op. `all` ignores this: emptying the store is an explicit,
+ * documented order, not a cleanup.
  */
 static int etoken_is_dead_locked(const etoken_entry_t *entry, time_t now) {
+    if (etoken_inflight_size > 0 && etoken_inflight_held_locked(entry->id) > 0) {
+        return 0;
+    }
+
     return entry->revoked || now >= entry->expires ||
            (entry->max_uses != 0 && entry->uses >= entry->max_uses);
 }
@@ -1043,6 +1137,9 @@ etoken_use_t etoken_store_consume(const char *id, time_t now) {
         ret = ETOKEN_USE_EXHAUSTED;
     } else {
         etoken_tokens[index].uses++;
+        /* Held until the enrollment either commits or gives the use back: while it is held, a
+         * concurrent purge leaves the entry alone */
+        etoken_inflight_hold_locked(etoken_tokens[index].id);
         saved = (etoken_store_save_locked() == 0);
     }
 
@@ -1077,7 +1174,15 @@ void etoken_store_release(const char *id) {
     int index;
     int released = 0;
 
+    if (id == NULL) {
+        return;
+    }
+
     w_mutex_lock(&etoken_mutex);
+
+    /* Unconditionally: the reservation is dropped even when the use cannot be given back, so a
+     * token is never left unpurgeable by an enrollment that is over */
+    etoken_inflight_drop_locked(id);
 
     if (index = etoken_find_locked(id), index >= 0 && etoken_tokens[index].uses > 0) {
         etoken_tokens[index].uses--;
@@ -1090,8 +1195,20 @@ void etoken_store_release(const char *id) {
     if (released) {
         mdebug2("Use of the enrollment token '%s' released.", id);
     } else {
-        mdebug2("Nothing to release for the enrollment token '%s'.", id != NULL ? id : "");
+        mdebug2("Nothing to release for the enrollment token '%s'.", id);
     }
+}
+
+void etoken_store_commit(const char *id) {
+    if (id == NULL) {
+        return;
+    }
+
+    w_mutex_lock(&etoken_mutex);
+    etoken_inflight_drop_locked(id);
+    w_mutex_unlock(&etoken_mutex);
+
+    mdebug2("Use of the enrollment token '%s' committed.", id);
 }
 
 int etoken_store_count(void) {
@@ -1108,6 +1225,10 @@ void etoken_store_free(void) {
     w_mutex_lock(&etoken_mutex);
 
     etoken_clear_locked();
+    /* Reservations do not survive dropping the tokens they reserve: this is the teardown, not a
+     * reload */
+    os_free(etoken_inflight);
+    etoken_inflight_size = 0;
     /* The path survives: this function drops the tokens, it does not un-initialise the module, so
      * a caller (and every test fixture) can load the store again right afterwards */
     etoken_mtime = 0;

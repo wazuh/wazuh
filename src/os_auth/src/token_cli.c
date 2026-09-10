@@ -232,9 +232,19 @@ static cJSON *cli_request(cJSON *request, FILE *err)
     }
 
     os_free(text);
-    os_calloc(OS_MAXSTR + 1, sizeof(char), response);
-    length = OS_RecvSecureTCP(sock, response, OS_MAXSTR);
+    os_calloc(TOKEN_CLI_MAX_REPLY + 1, sizeof(char), response);
+    length = OS_RecvSecureTCP(sock, response, TOKEN_CLI_MAX_REPLY);
     auth_close(sock);
+
+    if (length == OS_SOCKTERR) {
+        /* The request was served: authd wrote the file and answered, this side could not take the
+         * answer in. Saying "no response" here would tell the operator to retry something already
+         * done */
+        fprintf(err, "ERROR: the response from wazuh-manager-authd is too large to read; "
+                     "the request may have been applied\n");
+        os_free(response);
+        return NULL;
+    }
 
     if (length <= 0) {
         fprintf(err, "ERROR: no response from wazuh-manager-authd\n");
