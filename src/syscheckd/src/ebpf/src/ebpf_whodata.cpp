@@ -24,10 +24,12 @@
 
 // clang-format off
 #include "ebpf_whodata.hpp"
+#include "btf_signature.h"
 #include "bpf_helpers.h"
 // clang-format on
 
 #define KERNEL_VERSION_FILE  "/proc/sys/kernel/osrelease"
+#define BTF_VMLINUX_FILE     "/sys/kernel/btf/vmlinux"
 #define EBPF_HC_FILE         "tmp/ebpf_hc"
 #define LIB_INSTALL_PATH     "bpf"
 #define BPF_OBJ_INSTALL_PATH "lib/modern.bpf.o"
@@ -492,11 +494,15 @@ static inline bool bpf_link_is_error(const struct bpf_link* link)
  *                    false -> keep kprobes, drop lsm/*
  *   - prefer_dpath:  among the lsm/* variants, true keeps *_dpath and drops
  *                    *_walk; false keeps *_walk and drops *_dpath.
+ *   - setattr_dentry_arg: which argument of security_inode_setattr holds the
+ *                    dentry; selects between the kprobe__security_inode_setattr_arg1
+ *                    and _arg2 variants (see modern.bpf.c).
  *
  * security_inode_setattr is always enabled (it works regardless of the
- * active LSM list and is independent of bpf_d_path).
+ * active LSM list and is independent of bpf_d_path), but exactly one of its
+ * two signature variants is kept.
  */
-static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath)
+static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath, int setattr_dentry_arg)
 {
     bpf_program* prog;
     bpf_object__for_each_program(bpf_helpers, prog, obj)
@@ -516,7 +522,15 @@ static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath)
         const bool is_dpath_variant = name && strstr(name, "_dpath") != nullptr;
         const bool is_walk_variant = name && strstr(name, "_walk") != nullptr;
 
+        /* Only one of the two security_inode_setattr argument layouts can
+         * match the running kernel; drop the other. */
+        const bool is_setattr_variant =
+            name && strstr(name, "kprobe__security_inode_setattr_arg") == name;
+        const bool setattr_mismatch = is_setattr_variant &&
+                                      strstr(name, setattr_dentry_arg == 1 ? "_arg2" : "_arg1") != nullptr;
+
         const bool keep =
+            !setattr_mismatch &&
             !(use_lsm ? (is_create_or_unlink_kprobe || (is_lsm && (prefer_dpath ? is_walk_variant : is_dpath_variant)))
                       : is_lsm);
 
@@ -536,7 +550,59 @@ static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath)
     }
 }
 
-static int load_and_attach(const char* bpfobj_path, bool use_lsm, bool final_attempt)
+/*
+ * Resolves which argument of the running kernel's security_inode_setattr()
+ * holds the dentry.
+ *
+ * Prefers the kernel's own BTF (works on vendor kernels with backported
+ * signatures, e.g. RHEL/Rocky Linux 9's 5.14 with struct mnt_idmap * as the
+ * first argument, where a version check wrongly selects arg1). When BTF is
+ * unavailable or unparseable, falls back to the numeric version heuristic
+ * (mainline grew the leading idmap argument in 6.0).
+ */
+static int detect_setattr_dentry_arg()
+{
+    auto logFn = fimebpf::instance().m_loggingFunction;
+
+    switch (fimebpf::probe_security_inode_setattr(BTF_VMLINUX_FILE))
+    {
+        case fimebpf::SETATTR_ARG1:
+            logFn(LOG_DEBUG_VERBOSE, FIM_EBPF_SETATTR_ARG1);
+            return 1;
+        case fimebpf::SETATTR_ARG2:
+            logFn(LOG_DEBUG_VERBOSE, FIM_EBPF_SETATTR_ARG2);
+            return 2;
+        default:
+            break;
+    }
+
+    /* No usable BTF: fall back to the version heuristic. */
+    std::ifstream file(KERNEL_VERSION_FILE);
+    if (!file)
+    {
+        logFn(LOG_INFO, FIM_EBPF_SETATTR_BTF_FALLBACK);
+        return 1; /* pre-6.0 layout is the safe default (see below). */
+    }
+
+    std::string version;
+    file >> version;
+
+    int major = 0, minor = 0;
+    if (sscanf(version.c_str(), "%d.%d", &major, &minor) < 2)
+    {
+        logFn(LOG_INFO, FIM_EBPF_SETATTR_BTF_FALLBACK);
+        return 1;
+    }
+
+    char msg[256] = {0};
+    snprintf(msg, sizeof(msg), FIM_EBPF_SETATTR_VERSION_FALLBACK, version.c_str());
+    logFn(LOG_INFO, msg);
+
+    /* Mainline < 6.0 takes (dentry, attr); 6.0+ takes (idmap, dentry, attr). */
+    return major >= 6 ? 2 : 1;
+}
+
+static int load_and_attach(const char* bpfobj_path, bool use_lsm, bool final_attempt, int setattr_dentry_arg)
 {
     auto logFn = fimebpf::instance().m_loggingFunction;
     if (!logFn || !bpf_helpers)
@@ -559,7 +625,7 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm, bool final_att
             return 1;
         }
 
-        select_programs(obj, use_lsm, prefer_dpath);
+        select_programs(obj, use_lsm, prefer_dpath, setattr_dentry_arg);
 
         if (!bpf_helpers->bpf_object_load(obj))
         {
@@ -637,7 +703,9 @@ int init_bpfobj()
     g_bpf_lsm_active = bpf_helpers->is_bpf_lsm_active ? bpf_helpers->is_bpf_lsm_active() : is_bpf_lsm_active();
     logFn(LOG_INFO, g_bpf_lsm_active ? FIM_EBPF_LSM_ACTIVE : FIM_EBPF_LSM_INACTIVE);
 
-    if (load_and_attach(bpfobj_path, g_bpf_lsm_active, !g_bpf_lsm_active) == 0)
+    const int setattr_dentry_arg = detect_setattr_dentry_arg();
+
+    if (load_and_attach(bpfobj_path, g_bpf_lsm_active, !g_bpf_lsm_active, setattr_dentry_arg) == 0)
     {
         return 0;
     }
@@ -645,7 +713,7 @@ int init_bpfobj()
     if (g_bpf_lsm_active)
     {
         logFn(LOG_INFO, FIM_EBPF_LSM_KPROBE_FALLBACK);
-        if (load_and_attach(bpfobj_path, false, true) == 0)
+        if (load_and_attach(bpfobj_path, false, true, setattr_dentry_arg) == 0)
         {
             g_bpf_lsm_active = false;
             return 0;

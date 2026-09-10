@@ -20,7 +20,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_library(fimebpf SHARED src/ebpf_whodata.cpp)
+add_library(fimebpf SHARED src/ebpf_whodata.cpp src/btf_signature.cpp)
 
 # Link against wazuh
 target_link_libraries(fimebpf PRIVATE wazuh)

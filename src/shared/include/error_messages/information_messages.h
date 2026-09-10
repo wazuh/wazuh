@@ -72,6 +72,10 @@
 #define FIM_EBPF_LSM_DPATH_FALLBACK         "(6053): BPF LSM load failed with the bpf_d_path-based variants; retrying with the manual path walker (some kernels, e.g. Amazon Linux 2/2023, disallow bpf_d_path for these hooks)."
 #define FIM_AUDIT_FALLBACK_CONFIGURATION    "(6054): The audisp plugin configuration expected for the installed audit version did not create the socket '%s'. Who-data started with an alternative plugin configuration."
 #define FIM_EBPF_LSM_KPROBE_FALLBACK        "(6055): BPF LSM hooks failed to load or attach on this kernel; falling back to kprobe hooks."
+#define FIM_EBPF_SETATTR_ARG1               "(6056): Kernel BTF reports security_inode_setattr(dentry, ...); using the first-argument dentry variant."
+#define FIM_EBPF_SETATTR_ARG2               "(6057): Kernel BTF reports security_inode_setattr(idmap, dentry, ...); using the second-argument dentry variant."
+#define FIM_EBPF_SETATTR_BTF_FALLBACK       "(6058): Kernel BTF is unavailable or does not describe security_inode_setattr; selecting the eBPF metadata variant by kernel version."
+#define FIM_EBPF_SETATTR_VERSION_FALLBACK   "(6059): Kernel BTF unavailable; selecting the security_inode_setattr argument layout from kernel version '%s'."
 
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"
