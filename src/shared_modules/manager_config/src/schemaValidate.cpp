@@ -97,6 +97,23 @@ namespace manager_config::detail
         else if (keyword == "required")
         {
             message = "missing mandatory option (does not satisfy 'required')";
+            // rapidjson lists the absent property names under the keyword's "missing" array. GetError()'s
+            // value type uses its own state allocator, so navigate with FindMember instead of rapidjson::Pointer
+            // (which is specialized for the default rapidjson::Value and won't bind to it).
+            const auto& error = validator.GetError();
+            if (const auto required = error.FindMember("required"); required != error.MemberEnd())
+            {
+                if (const auto missing = required->value.FindMember("missing");
+                    missing != required->value.MemberEnd() && missing->value.IsArray() && !missing->value.Empty())
+                {
+                    std::string names;
+                    for (const auto& name : missing->value.GetArray())
+                    {
+                        names += (names.empty() ? "" : ", ") + std::string(name.GetString());
+                    }
+                    message += ": " + names;
+                }
+            }
         }
         message += " [schema " + pointerToString(validator.GetInvalidSchemaPointer()) + "]";
         return Error {pointerToString(validator.GetInvalidDocumentPointer()), message};

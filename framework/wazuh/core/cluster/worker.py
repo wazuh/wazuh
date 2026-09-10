@@ -1018,10 +1018,7 @@ class Worker(client.AbstractClientManager):
                 [self.active_response_task.run]
             )
         else:
-            self.logger.warning(
-                "Indexer is not configured in etc/wazuh-manager.conf (indexer.hosts is empty) or it is unavailable; "
-                "Indexer tasks will not be started."
-            )
+            self.logger.warning("Indexer configuration is unavailable; Indexer tasks will not be started.")
         if self.run_active_response_job:
             tasks.append((self.run_active_response_job, tuple()))
         return tasks

@@ -3,8 +3,9 @@
      change the schema and run the tool (docs/build.sh checks that this file is up to date). -->
 # Manager configuration reference
 
-`/var/wazuh-manager/etc/wazuh-manager.conf` is a strict XML document whose root <wazuh_config> holds one element per section below. Every
-option has a default: an absent option takes it, and `bin/wazuh-manager-conf dump` prints the effective
+`/var/wazuh-manager/etc/wazuh-manager.conf` is a strict XML document whose root <wazuh_config> holds one element per section below. Sections
+and options marked **required** have no default and must be set explicitly; every other option takes its
+default when absent, and `bin/wazuh-manager-conf dump` prints the effective
 document. The file is validated against `etc/wazuh-manager.schema.json` (this reference is generated from
 that schema) when the manager starts and by `bin/wazuh-manager-conf validate`; an invalid value is
 reported with the JSON pointer of the offending option (`(1244): Invalid configuration at
@@ -22,9 +23,9 @@ with a unit suffix (`s`, `m`, `h`, `d`, `w`); sizes accept bytes or a `B`/`K`/`M
 - [`auth`](#auth)
 - [`wdb`](#wdb)
 - [`vulnerability-detection`](#vulnerabilitydetection)
-- [`indexer`](#indexer)
+- [`indexer`](#indexer) — **required**
 - [`task-manager`](#taskmanager)
-- [`cluster`](#cluster)
+- [`cluster`](#cluster) — **required**
 
 ## `global`
 
@@ -125,11 +126,13 @@ Vulnerability scanner module (modulesd).
 
 ## `indexer`
 
-Wazuh indexer connection shared by modulesd, the engine and the cluster. Absent section: hosts is empty and every consumer decides whether that is fatal.
+**Required section:** the manager will not start without it.
+
+Wazuh indexer connection shared by modulesd, the engine and the cluster. Mandatory: wazuh-manager-analysisd cannot start without at least one host.
 
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
-| `hosts` | list of string | `[]` | at least 1 item; unique; **required** | Indexer URLs (scheme://host:port). |
+| `hosts` | list of string |  | at least 1 item; unique; **required** | Indexer URLs (scheme://host:port). |
 | `ssl` | mapping |  |  | TLS material of the indexer connection (paths relative to the manager home unless absolute). |
 | `ssl.certificate_authorities` | list of string | `[]` |  | CA bundles (PEM). |
 | `ssl.certificate` | string | `""` |  | Client certificate (PEM). Empty = no client certificate. |
@@ -150,7 +153,9 @@ Task manager module. Also serves remote agent upgrades.
 
 ## `cluster`
 
-Cluster identity and transport (wazuh-manager-clusterd; name/node_name/node_type also read by the C daemons and the engine).
+**Required section:** the manager will not start without it.
+
+Cluster identity and transport (wazuh-manager-clusterd; name/node_name/node_type also read by the C daemons and the engine). Mandatory: every manager is a cluster node, and cluster.key has no usable default.
 
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
