@@ -69,13 +69,16 @@ func vectorKey(t *testing.T) []byte {
 }
 
 func TestRequestSendsTheEnrollBodyAndTheTokenBearer(t *testing.T) {
-	client, got := serve(t, 200, `{"id":"042","name":"bench-linux-0001-tk-1","ip":"any","key":"c0ffee"}`, "/wazuh-manager")
+	client, got := serve(t, 200, `{"id":"042","name":"bench-linux-0001-tk-1","ip":"any","key":"c0ffee",`+
+		`"reenroll_secret":"5ecre7"}`, "/wazuh-manager")
 
 	res, err := Request(client, vectorKey(t), vectorKid, "bench-linux-0001-tk-1", "5.0.0", 1700000000)
 	if err != nil {
 		t.Fatalf("Request: %v", err)
 	}
-	if res.Status != 200 || res.AgentID != "042" {
+	// The whole record is returned, not just the status: the bootstrap
+	// (--bootstrap enroll-token) runs the fleet under exactly these credentials.
+	if res.Status != 200 || res.AgentID != "042" || res.Key != "c0ffee" || res.ReenrollSecret != "5ecre7" {
 		t.Errorf("result = %+v", res)
 	}
 	if got.method != "POST" || got.path != "/wazuh-manager/enroll" {
@@ -97,6 +100,20 @@ func TestRequestSendsTheEnrollBodyAndTheTokenBearer(t *testing.T) {
 	}
 	if got.body["name"] != "bench-linux-0001-tk-1" || got.body["version"] != "5.0.0" || len(got.body) != 2 {
 		t.Errorf("body = %v", got.body)
+	}
+}
+
+// A master whose authd predates the field answers the record without it
+// (agent-api.yaml), which is a usable identity: id and key are what sign.
+func TestRequestAcceptsARecordWithoutTheReenrollSecret(t *testing.T) {
+	client, _ := serve(t, 200, `{"id":"042","name":"bench-a-tk-1","ip":"any","key":"c0ffee"}`, "")
+
+	res, err := Request(client, vectorKey(t), vectorKid, "bench-a-tk-1", "5.0.0", 1700000000)
+	if err != nil {
+		t.Fatalf("Request: %v", err)
+	}
+	if res.AgentID != "042" || res.Key != "c0ffee" || res.ReenrollSecret != "" {
+		t.Errorf("result = %+v", res)
 	}
 }
 

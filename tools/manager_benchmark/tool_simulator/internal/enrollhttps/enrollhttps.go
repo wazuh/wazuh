@@ -4,13 +4,15 @@
 // `wazuh-manager-authd --create-enrollment-token` instead of the shared
 // password (docu/16-enroll-https.md).
 //
-// The identities the harness itself runs its fleets under still come from the
-// legacy 1515 enrollment (wire.Enroll): this package does not replace that
-// bootstrap, it measures the HTTPS path -- remoted verifying the bearer against
-// its replica of authd's token store, forwarding the token id to authd, authd
-// consuming a use and minting the agent. Every call enrolls a NEW name (authd
-// answers 409 to a repeat), so the step's cost includes authd's client.keys
-// write, which is the point: it is what a fleet's first contact costs.
+// It serves two callers. As the `enroll_https` STEP it measures the path --
+// remoted verifying the bearer against its replica of authd's token store,
+// forwarding the token id to authd, authd consuming a use and minting the agent
+// -- and as the fleet's BOOTSTRAP (`--bootstrap enroll-token`, issue #39054) it
+// is how every simulated agent obtains the identity it then runs under, which is
+// what lets the harness run against a manager whose <use_password> is the
+// installed default. Every call enrolls a NEW name (authd answers 409 to a
+// repeat), so the cost includes authd's client.keys write: it is what a fleet's
+// first contact costs.
 package enrollhttps
 
 import (
@@ -23,13 +25,19 @@ import (
 
 const path = "/enroll"
 
-// Result is what the caller records: the status and latency, plus the agent id
-// the manager assigned on a 200 (so a caller could clean it up by id; the
-// harness relies on the `bench-` name prefix instead, see cleanup_agents.sh).
+// Result is what the caller records: the status and latency, plus the record the
+// manager answered a 200 with -- the agent id it assigned, the key its bearers
+// are signed with and the re-enrollment secret. A measured step keeps only the
+// status and the latency; the bootstrap adopts the whole record as the agent's
+// identity.
 type Result struct {
 	Status  int
 	Latency time.Duration
 	AgentID string
+	Key     string
+	// ReenrollSecret is authd's `reenroll_secret`, absent only against a master
+	// whose authd predates the field (agent-api.yaml), so it is never required.
+	ReenrollSecret string
 }
 
 // ErrProtocol signals a run-invalidating answer: a 200 whose body is not the
@@ -44,10 +52,11 @@ func (e *ErrProtocol) Error() string { return e.msg }
 // enrollResponse is the 200 body of POST /enroll (agent-api.yaml): authd's
 // record for the new agent, verbatim.
 type enrollResponse struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	IP   string `json:"ip"`
-	Key  string `json:"key"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	IP             string `json:"ip"`
+	Key            string `json:"key"`
+	ReenrollSecret string `json:"reenroll_secret"`
 }
 
 // Request enrolls one agent name with the enrollment token whose key and id
@@ -85,6 +94,8 @@ func Request(c *wire.Client, key []byte, kid, name, version string, now int64) (
 			return result, &ErrProtocol{fmt.Sprintf("enroll: 200 without the agent record for %q: %s", name, truncate(resp.Body))}
 		}
 		result.AgentID = record.ID
+		result.Key = record.Key
+		result.ReenrollSecret = record.ReenrollSecret
 	case 401, 403, 409:
 		// Contract outcomes, recorded as such.
 	default:

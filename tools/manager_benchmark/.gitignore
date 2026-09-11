@@ -8,6 +8,11 @@ LOAD_REPORT.md
 load_report_data/
 bench_env.txt
 
+# The fleet's enrollment token, minted on the manager under test by
+# prepare_manager.sh and read by run_benchmark.sh. A credential of ONE machine,
+# and short-lived: never committed.
+.enrollment_token
+
 # Python bytecode
 __pycache__/
 *.pyc
