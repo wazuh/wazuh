@@ -376,6 +376,8 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
     std::stack<std::filesystem::path> dirs;
     dirs.emplace(rootPath);
 
+    std::string unresolvedFileReason;
+
     while (!dirs.empty())
     {
         auto currentDir = std::move(dirs.top());
@@ -478,8 +480,14 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                                     return m_ctx.isNegated ? RuleResult::NotFound : RuleResult::Found;
                                 }
 
-                                // If content doesn't match, continue to check other files.
-                                // This file's reason must not explain a later one.
+                                // A file that could not be evaluated is remembered, not reported yet:
+                                // a later file may still match, and only if none does can the scan
+                                // say the pattern is absent. Its reason must not explain that match.
+                                if (result.value() == RuleResult::Invalid)
+                                {
+                                    unresolvedFileReason = m_lastUnresolvedReason;
+                                }
+
                                 m_lastUnresolvedReason.clear();
                             }
                             else
@@ -545,6 +553,12 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
             m_lastUnresolvedReason = "Invalid pattern '" + pattern + "' for directory '" + rootPath.string() + "'";
             return RuleResult::Invalid;
         }
+    }
+
+    if (!unresolvedFileReason.empty())
+    {
+        m_lastUnresolvedReason = unresolvedFileReason;
+        return RuleResult::Invalid;
     }
 
     LoggingHelper::getInstance().log(LOG_DEBUG, "Pattern '" + pattern + "' was not found in directory '" + rootPath.string() + "'");

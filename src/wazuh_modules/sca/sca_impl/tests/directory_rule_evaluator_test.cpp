@@ -653,6 +653,51 @@ TEST_F(DirRuleEvaluatorTest, PatternFailureOnAnEarlierFileDoesNotExplainALaterMa
     EXPECT_TRUE(evaluator.GetUnresolvedReason().empty());
 }
 
+TEST_F(DirRuleEvaluatorTest, UnevaluableFileWithNoLaterMatchIsUnresolved)
+{
+    // Same shape as the test above, except no file ever matches. The scan cannot say the pattern is
+    // absent when it could not read one of the files, so the rule is unresolved and keeps its reason.
+    m_ctx.pattern = std::string("r:. -> n:value=(\\w+) compare == 10");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"first", "second"}));
+    EXPECT_CALL(*m_rawFsMock, is_symlink(std::filesystem::path("first"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("first"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, is_symlink(std::filesystem::path("second"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("second"))).WillOnce(::testing::Return(false));
+
+    EXPECT_CALL(*m_rawIoMock, getFileContent("first")).WillOnce(::testing::Return(std::string("value=abc\n")));
+    EXPECT_CALL(*m_rawIoMock, getFileContent("second")).WillOnce(::testing::Return(std::string("value=7\n")));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+}
+
+TEST_F(DirRuleEvaluatorTest, NegatedRuleWithAnUnevaluableFileIsUnresolved)
+{
+    // A negated rule must not turn an unread file into a pass either.
+    m_ctx.pattern = std::string("r:. -> n:value=(\\w+) compare == 10");
+    m_ctx.rule = "dir/";
+    m_ctx.isNegated = true;
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"first"}));
+    EXPECT_CALL(*m_rawFsMock, is_symlink(std::filesystem::path("first"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("first"))).WillOnce(::testing::Return(false));
+
+    EXPECT_CALL(*m_rawIoMock, getFileContent("first")).WillOnce(::testing::Return(std::string("value=abc\n")));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+}
+
 TEST_F(DirRuleEvaluatorTest, ReasonFromAPreviousEvaluationDoesNotSurvive)
 {
     // The same rule object is evaluated on every scan. A reason recorded when the directory was
