@@ -225,6 +225,56 @@ async def test_get_indexer_client_raises_when_certificate_set_without_key():
 
 
 @pytest.mark.asyncio
+async def test_get_indexer_client_wraps_ssl_context_errors():
+    """A bad certificate path must not escape as a raw FileNotFoundError -- it should be
+    wrapped in IndexerUnavailableError so the log names the actual problem instead of the
+    generic "Indexer is not configured or unavailable" manage_indexer_tasks() falls back to."""
+    import wazuh.core.indexer.indexer as indexer_module
+
+    indexer_module._ssl_context_cache = None
+    indexer_module._ssl_context_cache_key = None
+
+    client = AsyncMock()
+    keystore_client = MagicMock()
+    keystore_client.__enter__.return_value.get.side_effect = [
+        {"value": "wazuh-manager"},
+        {"value": "wazuh-manager"},
+    ]
+
+    wazuh_config = {
+        "indexer": {
+            "hosts": ["https://localhost:9200"],
+            "ssl": {
+                "certificate": "/nonexistent/typo.pem",
+                "key": "/nonexistent/typo-key.pem",
+            },
+        }
+    }
+
+    with patch(
+                "wazuh.core.indexer.indexer._get_cached_indexer_config",
+                new_callable=AsyncMock,
+                return_value=wazuh_config,
+            ), \
+            patch(
+                "wazuh.core.indexer.indexer.KeystoreClient",
+                return_value=keystore_client,
+            ), \
+            patch(
+                "wazuh.core.indexer.indexer.create_indexer",
+                new_callable=AsyncMock,
+                return_value=client,
+            ), \
+            patch(
+                "wazuh.core.indexer.indexer._IndexerCircuitBreaker.check",
+                new_callable=AsyncMock,
+            ):
+        with pytest.raises(IndexerUnavailableError, match="Failed to build SSL context"):
+            async with get_indexer_client():
+                pass
+
+
+@pytest.mark.asyncio
 async def test_get_cached_indexer_config_caches_result():
     """Test that config is cached and not re-read on subsequent calls."""
     config = {"indexer": {"hosts": ["localhost:9200"]}}
