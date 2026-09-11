@@ -77,9 +77,11 @@ namespace remoted::enrollment
     /**
      * @brief The re-enrollment form (issue #38993): the bearer's `kid` names an agent that already has an
      *        identity, and the bearer is signed with the key derived from that agent's re-enrollment
-     *        secret. remoted does NOT verify it -- the secret lives in the master's global.db and nowhere
-     *        else -- so the bearer travels to authd verbatim (`arguments.reenroll`) and the master is the
-     *        one that judges it (9026/9027/9028, mapped back to the uniform 401 by the endpoint).
+     *        secret. remoted cannot verify that SIGNATURE -- the secret lives in the master's global.db
+     *        and nowhere else -- so the bearer travels to authd verbatim (`arguments.reenroll`) and the
+     *        master is the one that judges it (9026/9027/9028, mapped back to the uniform 401 by the
+     *        endpoint). What remoted does judge first, because it costs no secret, is the MESSAGE: see
+     *        ReenrollmentRejected.
      */
     struct ReenrollmentRequested
     {
@@ -87,8 +89,27 @@ namespace remoted::enrollment
         std::string bearer;  ///< The compact JWT, exactly as presented (what authd verifies).
     };
 
-    /// Granted (with what credential), a re-enrollment for authd to judge, or rejected (why).
-    using EnrollmentDecision = std::variant<EnrollmentGranted, ReenrollmentRequested, remoted::auth::AuthError>;
+    /**
+     * @brief A re-enrollment bearer this node refused on its own: the key-independent half of the
+     *        profile -- the exact {exp, iat, jti, nbf} claim set and the time rules
+     *        (JwtEnrollTokenVerifier::precheckMessage()) -- does not hold, so the message cannot be a
+     *        valid credential whatever secret the master holds for that agent.
+     *
+     * Kept apart from a bare AuthError so the endpoint counts it where the master's own verdicts on
+     * re-enrollment bearers are counted (remoted.enroll.reenroll.rejected_*): the operator's question
+     * ("why are re-enrollments failing?") is the same one whichever node answered it, and the answer
+     * on the wire is identical either way -- InvalidToken and StaleToken carry the very public classes
+     * authd's 9027 and 9028 map to (`invalid_signature` / `stale_token`).
+     */
+    struct ReenrollmentRejected
+    {
+        remoted::auth::AuthError error; ///< InvalidToken or StaleToken: the precheck's verdict.
+    };
+
+    /// Granted (with what credential), a re-enrollment for authd to judge, a re-enrollment refused
+    /// here, or rejected (why).
+    using EnrollmentDecision =
+        std::variant<EnrollmentGranted, ReenrollmentRequested, ReenrollmentRejected, remoted::auth::AuthError>;
 
     /**
      * @brief Authenticates POST /enroll requests.
@@ -106,17 +127,23 @@ namespace remoted::enrollment
      *     TokenKeySource's replica of authd's store. Verified ALWAYS, in every mode -- a presented
      *     credential is never ignored -- then the token's own state (expired / revoked) is checked,
      *     in this order: lookup, signature, expiry, revocation, so only a caller that holds the
-     *     token's secret learns anything about its status (ids are 128-bit random values, so an
-     *     "unknown" answer for a guessed id leaks nothing either). On success the token id travels
-     *     to authd (EnrollmentGranted::tokenId), which consumes one use.
+     *     token's secret learns anything about its status. The lookup necessarily runs before the
+     *     signature (there is no key to check it with until the `kid` resolves), which is why an
+     *     unknown id answers with the SAME public class as a bad signature -- see publicErrorFor():
+     *     what a caller cannot prove, it is not told. On success the token id travels to authd
+     *     (EnrollmentGranted::tokenId), which consumes one use.
      *   - `kid` = canonical agent id (re-enrollment, issue #38993): recognised by shape and handed
-     *     back as ReenrollmentRequested in EVERY mode, unverified -- the secret that signs it is in the
-     *     master's global.db, so authd on the master is the only place it can be verified. Only the
-     *     protocol version and the body cap are checked here for it, like for every other request.
+     *     back as ReenrollmentRequested in EVERY mode with its SIGNATURE unverified -- the secret that
+     *     signs it is in the master's global.db, so authd on the master is the only place that can
+     *     check it. Its MESSAGE, though, is checked right here, because that costs no secret: the
+     *     exact claim set and the time rules (JwtEnrollTokenVerifier::precheckMessage()). A bearer
+     *     that fails them is ReenrollmentRejected without an authd round trip and, on a worker,
+     *     without a cluster hop to the master -- with the same verdict the master would have sent.
      *
      * Failures collapse through the same remoted::auth::AuthError taxonomy -- and the same
      * publicErrorFor()/errorResponseFor() uniform 401 -- as every other endpoint; the token-specific
-     * causes (TokenUnknown/TokenExpired/TokenRevoked) keep their own metric cells.
+     * causes (TokenUnknown/TokenExpired/TokenRevoked) keep their own metric cells even where they
+     * share a public class.
      *
      * A client-certificate requirement is NOT this class's concern at all: the TLS listener
      * enforces it (or doesn't) entirely on its own, before any handler -- including this one --
@@ -154,8 +181,10 @@ namespace remoted::enrollment
          *                               are never needed here.
          * @param currentUnixTimeSeconds Current time, for the token's time rules and the enrollment
          *                               token's expiry.
-         * @return EnrollmentGranted on success (with the token id when a token was used), or the
-         *         AuthError that rejected the request.
+         * @return EnrollmentGranted on success (with the token id when a token was used),
+         *         ReenrollmentRequested for a re-enrollment bearer the master must judge,
+         *         ReenrollmentRejected for one this node already refused, or the AuthError that
+         *         rejected the request.
          */
         EnrollmentDecision authenticate(std::string_view protocolVersionHeader,
                                         std::string_view authorizationHeader,
@@ -167,6 +196,9 @@ namespace remoted::enrollment
                                                 std::int64_t currentUnixTimeSeconds) const;
         EnrollmentDecision
         authenticateToken(std::string_view kid, std::string_view token, std::int64_t currentUnixTimeSeconds) const;
+        EnrollmentDecision authenticateReenrollment(std::string_view kid,
+                                                    std::string_view token,
+                                                    std::int64_t currentUnixTimeSeconds) const;
 
         EnrollmentAuthConfig m_config;
         std::shared_ptr<remoted::auth::PasswordKeySource> m_keySource;

@@ -333,7 +333,8 @@ if you are certain the indexer keeps up.
 
 Two of **remoted's** internal options that authd reads as well, for one purpose: the time window of the
 re-enrollment credential. An agent that re-enrolls keeping its id signs a `wazuh-enroll+jwt` bearer with
-its `reenroll_secret`; remoted forwards it unverified and authd on the master judges it (see
+its `reenroll_secret`; remoted applies this window itself and then forwards the bearer, its signature
+still unverified, for authd on the master to judge (see
 [Re-enrollment secret](README.md#re-enrollment-secret)) with the same window remoted applies to the
 agent's every other request. A bearer outside it is refused with `9028`.
 

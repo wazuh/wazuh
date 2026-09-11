@@ -89,11 +89,10 @@ namespace remoted::enrollment
         // classified by shape alone, before any signature work (peekKid() trusts nothing). An
         // enrollment-token bearer takes its own path in EVERY mode, Open included: a credential the
         // agent presents is never ignored, and an operator who minted a token with a credential
-        // expects it to be checked. An agent `kid` (re-enrollment) is recognised by shape and handed
-        // to the endpoint UNVERIFIED, in every mode too: the secret it is signed with is the master's
-        // alone, so authd there is the verifier (see ReenrollmentRequested). Everything else -- no
-        // header, a non-bearer scheme, a shared-key token, garbage -- is the mode's own business
-        // below, exactly as before tokens.
+        // expects it to be checked. An agent `kid` (re-enrollment) is recognised by shape in every
+        // mode too, and its signature is the master's to check -- but its message is checked here
+        // first (see authenticateReenrollment()). Everything else -- no header, a non-bearer scheme,
+        // a shared-key token, garbage -- is the mode's own business below, exactly as before tokens.
         if (!authorizationHeader.empty())
         {
             if (const auto token = bearerToken(authorizationHeader))
@@ -105,7 +104,7 @@ namespace remoted::enrollment
                         case JwtEnrollTokenVerifier::KidKind::Token:
                             return authenticateToken(peeked->text, *token, currentUnixTimeSeconds);
                         case JwtEnrollTokenVerifier::KidKind::Agent:
-                            return ReenrollmentRequested {std::string {peeked->text}, std::string {*token}};
+                            return authenticateReenrollment(peeked->text, *token, currentUnixTimeSeconds);
                         case JwtEnrollTokenVerifier::KidKind::None: break;
                     }
                 }
@@ -166,6 +165,13 @@ namespace remoted::enrollment
             return remoted::auth::AuthError::TokenUnknown;
         }
 
+        // No message precheck here, deliberately, unlike the re-enrollment path below: this path
+        // holds the key, so the signature-first rule of verifyWithKid() is the stronger one -- the
+        // payload of an unproven caller's bearer is never parsed at all -- and there is nothing
+        // downstream to save either, since a token bearer that fails here never reaches authd. The
+        // HMAC is also the cheaper of the two checks (one SHA-256 block pair over ~200 bytes, versus
+        // a base64 decode plus a JSON parse), so pre-filtering would cost work, not save it.
+        //
         // Lookup, then the P35b mitigation: a token minted on the master moments ago may not have
         // reached this node's copy of the store yet, so an unknown `kid` forces ONE re-read (rate-
         // limited inside TokenKeySource) before the request is refused.
@@ -200,6 +206,40 @@ namespace remoted::enrollment
             return remoted::auth::AuthError::TokenRevoked;
         }
         return EnrollmentGranted {std::string {kid}};
+    }
+
+    EnrollmentDecision EnrollmentAuthenticator::authenticateReenrollment(std::string_view kid,
+                                                                         std::string_view token,
+                                                                         std::int64_t currentUnixTimeSeconds) const
+    {
+        // The signature is not remoted's to check: the key is derived from that agent's
+        // reenroll_secret, which lives in the master's global.db and nowhere else. The MESSAGE is,
+        // though -- the exact {exp, iat, jti, nbf} claim set and the time rules need no secret at
+        // all -- so it is checked here, in every mode, BEFORE the request is allowed to cost
+        // anything: a bearer that fails these cannot be authentic for any secret, and forwarding it
+        // would buy a connect-per-request to authd's socket and, on a worker, a clustered hop to the
+        // master (up to 10 attempts with 1 s sleeps on a degraded link) plus a wazuh-db read, an
+        // HKDF and an HMAC there -- all to reach the same conclusion. /enroll has no rate limiter,
+        // so that difference is the difference between a rejected request and an amplifier onto the
+        // cluster's internal socket.
+        //
+        // precheckMessage() reports exactly the verdicts verifyWithKid() reports for the same
+        // failures -- InvalidToken or StaleToken -- and toAuthError() maps them onto the very
+        // AuthErrors authd's own answers map to (its 9027 -> InvalidSignature and 9028 -> StaleToken,
+        // whose public classes are `invalid_signature` and `stale_token`; InvalidToken shares the
+        // first). So a caller cannot tell from the answer WHICH node refused it, and a legitimate
+        // agent gets the same guidance either way.
+        //
+        // What this does NOT do is authenticate: the signature is unexamined, so a well-formed,
+        // freshly minted message still travels to the master unverified and the master is still the
+        // only thing standing between that message and a rotated identity.
+        const auto verdict =
+            JwtEnrollTokenVerifier::precheckMessage(token, kid, m_config.timePolicy, at(currentUnixTimeSeconds));
+        if (verdict != jwt_profile::v1::VerifyError::None)
+        {
+            return ReenrollmentRejected {remoted::auth::toAuthError(verdict)};
+        }
+        return ReenrollmentRequested {std::string {kid}, std::string {token}};
     }
 
 } // namespace remoted::enrollment

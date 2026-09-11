@@ -36,11 +36,17 @@ namespace remoted::enrollment
     constexpr auto METRIC_TOKEN_REJECTED_REVOKED {"remoted.enroll.token.rejected_revoked"};
     constexpr auto METRIC_TOKEN_REJECTED_EXHAUSTED {"remoted.enroll.token.rejected_exhausted"};
     // The re-enrollment outcomes (issue #38993): the subset of the requests above whose bearer named an
-    // agent (`kid` = agent id). remoted forwards that bearer unverified, so every one of these is authd's
-    // verdict on the master: `accepted` is a 200 that rotated the agent's credentials, the three rejections
-    // are its 9026 (unknown agent / no secret on record), 9027 (bad signature or malformed) and 9028
-    // (outside the accepted time window) -- each also lands in the remoted.auth.reject.* cell of the
-    // AuthError it maps to (unknown_agent / invalid_signature / clock_skew).
+    // agent (`kid` = agent id). `accepted` is a 200 that rotated the agent's credentials. The rejections
+    // are authd's verdict on the master -- 9026 (unknown agent / no secret on record), 9027 (bad
+    // signature or malformed), 9028 (outside the accepted time window) and 9030 (a rotation for that
+    // agent is already accepted and not yet persisted, issue #39078) -- since the master holds the
+    // secret that signs the bearer; `rejected_signature` and `rejected_stale` ALSO count the bearers
+    // remoted refused itself, on the key-independent half of the profile (claim set and time rules,
+    // EnrollmentAuthenticator::authenticateReenrollment()), which never reach the master at all: the same
+    // failure, the same public class on the wire, so the operator reads one line whichever node decided
+    // it. The first three also land in the remoted.auth.reject.* cell of the AuthError they map to
+    // (unknown_agent / invalid_signature or bad_token / clock_skew); 9030 is a 409, not a credential
+    // failure, so it has no such cell.
     constexpr auto METRIC_REENROLL_ACCEPTED {"remoted.enroll.reenroll.accepted"};
     constexpr auto METRIC_REENROLL_REJECTED_UNKNOWN {"remoted.enroll.reenroll.rejected_unknown"};
     constexpr auto METRIC_REENROLL_REJECTED_SIGNATURE {"remoted.enroll.reenroll.rejected_signature"};
@@ -108,12 +114,13 @@ namespace remoted::enrollment
                                        "re-enrollment secret on record (9026)",
                                        "count"),
             manager.getOrCreateCounter(METRIC_REENROLL_REJECTED_SIGNATURE,
-                                       "Re-enrollments authd refused because the bearer did not verify against the "
-                                       "agent's re-enrollment secret (9027)",
+                                       "Re-enrollments refused because the bearer did not verify against the agent's "
+                                       "re-enrollment secret (authd's 9027) or was not a well-formed message at all "
+                                       "(refused by remoted, no authd round trip)",
                                        "count"),
             manager.getOrCreateCounter(METRIC_REENROLL_REJECTED_STALE,
-                                       "Re-enrollments authd refused because the bearer was outside the accepted "
-                                       "time window (9028)",
+                                       "Re-enrollments refused because the bearer was outside the accepted time "
+                                       "window (authd's 9028, or remoted's own time-rule check)",
                                        "count"),
             manager.getOrCreateCounter(METRIC_REENROLL_REJECTED_IN_PROGRESS,
                                        "Re-enrollments authd refused because a rotation for that agent is already "

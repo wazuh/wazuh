@@ -93,7 +93,6 @@ namespace remoted::auth
         constexpr const char* kInvalidSignature = "invalid_signature";
         constexpr const char* kInvalidRequest = "invalid_request";
         constexpr const char* kEnrollmentKeyUnavailable = "enrollment_key_unavailable";
-        constexpr const char* kTokenUnknown = "token_unknown";
         constexpr const char* kTokenExpired = "token_expired";
         constexpr const char* kTokenRevoked = "token_revoked";
         constexpr const char* kChallengeUnknownAgent =
@@ -106,8 +105,6 @@ namespace remoted::auth
         // 6750 §3.1 has no error code for that and `invalid_token` would be a lie about the agent's
         // credential, so the challenge is bare and only the body's `code` names the condition.
         constexpr const char* kChallengeBare = "Bearer";
-        constexpr const char* kChallengeTokenUnknown =
-            R"(Bearer error="invalid_token", error_description="token_unknown")";
         constexpr const char* kChallengeTokenExpired =
             R"(Bearer error="invalid_token", error_description="token_expired")";
         constexpr const char* kChallengeTokenRevoked =
@@ -141,17 +138,30 @@ namespace remoted::auth
             // token that is not a wazuh-agent+jwt, a `sub`/`iss` naming another agent, a peer address
             // the entry does not allow, an entry whose key does not decode. None of them is fixed by
             // re-enrolling, so they share the class that tells the agent not to (T10).
+            //
+            // TokenUnknown joins them, and deliberately does NOT get a class of its own: it is the one
+            // /enroll token verdict a caller can reach WITHOUT proving it holds the token's secret
+            // (the `kid` must be looked up before there is a key to check the signature with), so
+            // naming it would answer "does this token id exist here?" for free -- exactly the oracle
+            // authd refuses to be when it folds an unknown id into a revoked one
+            // (etoken_store_consume(), enrollment_token_store.c). With it folded, the two layers state
+            // ONE invariant: a token's state is named only to a caller that proved it holds the secret
+            // (TokenExpired / TokenRevoked below, reachable only after verifyWithKid() succeeds).
+            // Operators keep the distinction where it belongs -- remoted.auth.reject.token_unknown and
+            // remoted.enroll.token.rejected_unknown, plus the DEBUG line -- since it is their
+            // diagnostic, not the caller's.
             case AuthError::InvalidSignature:
             case AuthError::InvalidToken:
             case AuthError::IdentityMismatch:
             case AuthError::AddressNotAllowed:
+            case AuthError::TokenUnknown:
             case AuthError::MissingKey: return {401, kAuthMessage, kInvalidSignature, kChallengeInvalidSignature};
 
             case AuthError::EnrollmentKeyUnavailable:
                 return {401, kAuthMessage, kEnrollmentKeyUnavailable, kChallengeBare};
 
-            // /enroll's enrollment-token states (issue #38993).
-            case AuthError::TokenUnknown: return {401, kAuthMessage, kTokenUnknown, kChallengeTokenUnknown};
+            // /enroll's enrollment-token states (issue #38993), both proof-gated: only a caller whose
+            // bearer verified against the token's own key is told the token has lapsed or been revoked.
             case AuthError::TokenExpired: return {401, kAuthMessage, kTokenExpired, kChallengeTokenExpired};
             case AuthError::TokenRevoked: return {401, kAuthMessage, kTokenRevoked, kChallengeTokenRevoked};
         }

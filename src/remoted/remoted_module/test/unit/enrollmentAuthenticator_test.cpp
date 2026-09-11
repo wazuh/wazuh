@@ -15,7 +15,9 @@
 // here the negatives are the ones the authenticator's own wiring can get wrong: scheme, key
 // availability, time policy, hot-reloaded password, cross-profile token), and the enrollment-token
 // path (issue #38993): a `kid` naming a token id resolves its key from TokenKeySource, is verified
-// in EVERY mode, and answers the token's own state after the signature.
+// in EVERY mode, and answers the token's own state after the signature. Last, the re-enrollment
+// path: a `kid` naming an agent travels to the master with its signature unchecked, but only after
+// its MESSAGE passes the checks that need no secret (claim set + time rules).
 
 #include <chrono>
 #include <cstdio>
@@ -28,7 +30,9 @@
 
 #include "auth/tokenKeySource.hpp"
 #include "enrollment/enrollmentAuthenticator.hpp"
+#include "jwt/base64Url.hpp"
 #include "jwt/enrollKeyDerivation.hpp"
+#include "jwt/hmacSha256.hpp"
 #include "jwt/jwtEnrollTokenSigner.hpp"
 #include "jwt/jwtRequestTokenSigner.hpp"
 #include "jwt/testVectors.hpp"
@@ -86,6 +90,19 @@ namespace
         if (const auto* reenroll = std::get_if<ReenrollmentRequested>(&decision))
         {
             return *reenroll;
+        }
+        return std::nullopt;
+    }
+
+    // The verdict of a re-enrollment bearer remoted refused itself (ReenrollmentRejected), or
+    // nullopt when the decision is anything else -- including a plain AuthError, which for a
+    // re-enrollment bearer would mean the rejection lost its "this was a re-enrollment" attribution
+    // (and with it the endpoint's remoted.enroll.reenroll.* cell).
+    std::optional<AuthError> reenrollRejectionOf(const EnrollmentDecision& decision)
+    {
+        if (const auto* rejected = std::get_if<ReenrollmentRejected>(&decision))
+        {
+            return rejected->error;
         }
         return std::nullopt;
     }
@@ -542,17 +559,20 @@ TEST(EnrollmentAuthenticatorTokenTest, RevokedTokenIsTokenRevoked)
 }
 
 // -----------------------------------------------------------------------------
-// Re-enrollment (issue #38993): `kid` = canonical agent id. Recognised by shape and handed back
-// UNVERIFIED in every mode -- the secret that signs it is the master's alone, so authd verifies it
-// (its 9026/9027/9028 become the endpoint's uniform 401). Nothing here looks at the signature: the
-// frozen vector (iat 1700000000) is accepted at any `now`, and so is a bearer signed with garbage.
+// Re-enrollment (issue #38993): `kid` = canonical agent id. Recognised by shape in every mode and
+// handed back with its SIGNATURE unverified -- the secret that signs it is the master's alone, so
+// authd verifies that (its 9026/9027/9028 become the endpoint's uniform 401). What remoted does
+// check, because it costs no secret, is the MESSAGE: the exact claim set and the time rules
+// (precheckMessage()). So a bearer signed with garbage is still forwarded, while one whose claims
+// are absent, malformed or stale -- the frozen vector at a `now` years later, say -- is refused
+// here, with the very verdict the master would have sent.
 // -----------------------------------------------------------------------------
 
 TEST_F(TokenFixture, AgentKidIsForwardedAsReenrollmentInOpenMode)
 {
     EnrollmentAuthenticator open {EnrollmentAuthConfig {false}, nullptr, tokenSource};
     const auto reenroll =
-        reenrollOf(open.authenticate(kVersion, "Bearer " + std::string {tvt::kAgentKidJwt}, kSmallBody, kNow + 9999));
+        reenrollOf(open.authenticate(kVersion, "Bearer " + std::string {tvt::kAgentKidJwt}, kSmallBody, kNow));
     ASSERT_TRUE(reenroll.has_value());
     EXPECT_EQ(reenroll->agentId, std::string {tvt::kAgentKid});
     EXPECT_EQ(reenroll->bearer, std::string {tvt::kAgentKidJwt}); // verbatim: what authd verifies
@@ -588,6 +608,90 @@ TEST(EnrollmentAuthenticatorTest, AgentKidIsForwardedWithoutATokenSourceAndWhate
     capped.maxBodySize = 10;
     EnrollmentAuthenticator small {capped, nullptr};
     EXPECT_EQ(errorOf(small.authenticate(kVersion, "Bearer " + vector, 11, kNow)), AuthError::BodyTooLarge);
+}
+
+// The finding this pre-filter exists for: 130 constant bytes, no credential of any kind, and before
+// it they bought an authd connection per request -- plus, on a worker, a clustered hop to the master
+// with up to 10 attempts and 1 s sleeps on a degraded link. /enroll has no rate limiter, so the only
+// thing between that and the AuthdClient's 256-deep queue was the master's own verdict. That the
+// request no longer reaches authd at all is asserted on the mock in enrollmentEndpoint_test.cpp;
+// here, that the authenticator refuses it.
+TEST(EnrollmentAuthenticatorReenrollTest, AMessageThatIsNotEvenJsonIsRefusedInEveryMode)
+{
+    // {"alg":"HS256","kid":"001","typ":"wazuh-enroll+jwt"} . base64url(one byte) . 32 zero bytes:
+    // canonical grammar and an Agent-shaped `kid`, so peekKid() classifies it -- and the payload is
+    // not JSON at all.
+    constexpr std::string_view kNotJson =
+        "Bearer eyJhbGciOiJIUzI1NiIsImtpZCI6IjAwMSIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ.AA."
+        "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8";
+
+    // In Open mode and in Password mode alike -- the mode never mattered on this path, and does not
+    // now: the message is refused before either is consulted.
+    for (const bool requirePassword : {false, true})
+    {
+        EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {requirePassword}, nullptr};
+        const auto decision = authenticator.authenticate(kVersion, kNotJson, kSmallBody, kNow);
+        EXPECT_FALSE(reenrollOf(decision).has_value()) << "forwarded with requirePassword=" << requirePassword;
+        // Refused as a re-enrollment (so the endpoint counts it in remoted.enroll.reenroll.*), with
+        // the AuthError whose public class is the one authd's 9027 maps to: `invalid_signature`.
+        EXPECT_EQ(reenrollRejectionOf(decision), AuthError::InvalidToken);
+    }
+}
+
+TEST(EnrollmentAuthenticatorReenrollTest, StaleAndMalformedClaimsAreRefusedWithTheMastersOwnVerdicts)
+{
+    EnrollmentAuthenticator open {EnrollmentAuthConfig {false}, nullptr};
+    const auto reenrollBearer = [](std::int64_t ts)
+    {
+        // Any key at all: this path never checks the signature, so what is under test is the message.
+        const auto token = JwtEnrollTokenSigner::signWithKid(SecureBytes(32), at(ts), "001");
+        EXPECT_TRUE(token.has_value());
+        return "Bearer " + token.value_or("");
+    };
+    const auto run = [&](std::string_view authorization, std::int64_t now = kNow)
+    {
+        return open.authenticate(kVersion, authorization, kSmallBody, now);
+    };
+
+    // Fresh: forwarded, as before. On the edge of the accepted age (60 s + 30 s skew): still forwarded.
+    EXPECT_TRUE(reenrollOf(run(reenrollBearer(kNow))).has_value());
+    EXPECT_TRUE(reenrollOf(run(reenrollBearer(kNow - 90))).has_value());
+    // One second past it, and one issued beyond the skew ahead: StaleToken -> `stale_token`, the
+    // class authd's 9028 maps to, so the agent is told the same thing ("fix the clock") either way.
+    EXPECT_EQ(reenrollRejectionOf(run(reenrollBearer(kNow - 91))), AuthError::StaleToken);
+    EXPECT_EQ(reenrollRejectionOf(run(reenrollBearer(kNow + 31))), AuthError::StaleToken);
+    // The frozen vector, replayed years later: the shape a captured bearer has. Refused here now.
+    EXPECT_EQ(reenrollRejectionOf(run("Bearer " + std::string {tvt::kAgentKidJwt}, kNow + 9999)),
+              AuthError::StaleToken);
+
+    // A claim set that is well-formed JSON but not this profile's: an extra `sub`, signed so the
+    // grammar and header are beyond reproach.
+    const std::string header {tvt::kAgentKidHeaderJson};
+    const std::string payload =
+        R"({"exp":1700000060,"iat":1700000000,"jti":"AAECAwQFBgcICQoLDA0ODw","nbf":1700000000,"sub":"001"})";
+    const auto signingInput =
+        jwt_profile::v1::base64UrlEncode(header) + "." + jwt_profile::v1::base64UrlEncode(payload);
+    jwt_profile::v1::HmacSha256Digest mac {};
+    ASSERT_TRUE(jwt_profile::v1::hmacSha256(SecureBytes(32), signingInput, mac));
+    const auto extraClaim = signingInput + "." + jwt_profile::v1::base64UrlEncode(mac.data(), mac.size());
+    EXPECT_EQ(reenrollRejectionOf(run("Bearer " + extraClaim)), AuthError::InvalidToken);
+}
+
+TEST(EnrollmentAuthenticatorReenrollTest, ThePolicyThePreFilterAppliesIsTheConfiguredOne)
+{
+    // The pre-filter must never be stricter than the master's own check: both read the same
+    // remoted.jwt_max_age / remoted.jwt_clock_skew policy (authd reads remoted's internal options
+    // for w_reenroll_verify()), so a manager configured with a wide skew keeps forwarding what that
+    // skew allows.
+    EnrollmentAuthConfig wide;
+    wide.timePolicy = *jwt_profile::v1::TimePolicy::tryMake(jwt_profile::v1::kDefaultAgeSec, 120);
+    EnrollmentAuthenticator tolerant {wide, nullptr};
+    EnrollmentAuthenticator strict {EnrollmentAuthConfig {false}, nullptr};
+
+    const std::string bearer = "Bearer " + std::string {tvt::kAgentKidJwt};
+    EXPECT_EQ(reenrollRejectionOf(strict.authenticate(kVersion, bearer, kSmallBody, tv::kIat + 91)),
+              AuthError::StaleToken);
+    EXPECT_TRUE(reenrollOf(tolerant.authenticate(kVersion, bearer, kSmallBody, tv::kIat + 91)).has_value());
 }
 
 TEST_F(TokenFixture, NoTokenSourceRejectsTokensAsUnknown)

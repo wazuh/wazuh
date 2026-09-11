@@ -231,7 +231,7 @@ work**:
 |---|---|---|
 | absent | the shared enrollment password | remoted, and only when configured to require it |
 | 22 base64url characters | an enrollment token id | remoted, against its replica, **always** |
-| a canonical agent id, e.g. `001` | the agent's own re-enrollment secret | **authd on the master** — remoted forwards it unverified |
+| a canonical agent id, e.g. `001` | the agent's own re-enrollment secret | the signature: **authd on the master** — remoted holds no copy of the secret and forwards the bearer for it to judge. The claim set and the time window: remoted first, since those need no secret |
 
 The two keyed shapes are disjoint: canonical agent IDs have at most ten decimal digits, while a
 token id has 22 canonical base64url characters.

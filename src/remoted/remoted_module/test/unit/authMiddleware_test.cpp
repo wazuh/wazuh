@@ -460,11 +460,15 @@ namespace
             {AuthError::IdentityMismatch, "invalid_signature", invalidSignature.c_str()},
             {AuthError::AddressNotAllowed, "invalid_signature", invalidSignature.c_str()},
             {AuthError::MissingKey, "invalid_signature", invalidSignature.c_str()},
+            // /enroll's unknown enrollment-token id shares that class on purpose: it is the one token
+            // verdict reachable WITHOUT proving possession of the token's secret (the `kid` is
+            // resolved before there is a key to check the signature with), so a class of its own
+            // would answer "does this token id exist here?" to anyone who asks -- the oracle authd
+            // refuses to be (enrollment_token_store.c). The operator's distinction lives in
+            // remoted.auth.reject.token_unknown, not on the wire.
+            {AuthError::TokenUnknown, "invalid_signature", invalidSignature.c_str()},
             // The server could not judge the credential: a bare challenge, the class only in the body.
             {AuthError::EnrollmentKeyUnavailable, "enrollment_key_unavailable", "Bearer"},
-            {AuthError::TokenUnknown,
-             "token_unknown",
-             R"(Bearer error="invalid_token", error_description="token_unknown")"},
             {AuthError::TokenExpired,
              "token_expired",
              R"(Bearer error="invalid_token", error_description="token_expired")"},

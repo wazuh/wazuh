@@ -1249,7 +1249,10 @@ etoken_use_t etoken_store_consume(const char *id, time_t now) {
     index = etoken_find_locked(id);
 
     /* An unknown id and a revoked one answer alike, here and on the wire (9022): telling them apart
-     * would turn the enrollment endpoint into an oracle for which tokens exist */
+     * would turn the enrollment endpoint into an oracle for which tokens exist. remoted holds the
+     * same line for the half of the decision it makes on its own replica: its unknown-id rejection
+     * takes the public class of a bad signature, so an id's existence is never answered to a caller
+     * that did not prove it holds the token's secret (publicErrorFor(), remoted's authMiddleware.cpp) */
     if (index < 0 || etoken_tokens[index].revoked) {
         ret = ETOKEN_USE_NOT_FOUND;
     } else if (now >= etoken_tokens[index].expires) {

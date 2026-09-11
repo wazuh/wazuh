@@ -783,7 +783,12 @@ namespace
 
     // One /enroll with the vector token bearer against a fake authd answering @p authdResponse
     // (empty: no authd at all). Open mode + the token replica: the token path is what is under test.
-    TokenRun runWithToken(const std::string& storePath, const std::string& authdResponse, const std::string& tag)
+    // @p bearerOverride replaces the bearer for the cases that need a different one (a token signed
+    // with another secret, say); empty means the freshly minted vector bearer.
+    TokenRun runWithToken(const std::string& storePath,
+                          const std::string& authdResponse,
+                          const std::string& tag,
+                          const std::string& bearerOverride = {})
     {
         TokenRun out;
         out.manager = std::make_shared<wazuh::metrics::Manager>();
@@ -810,7 +815,10 @@ namespace
         auto handler = makeHandler(authenticator, authdClient, config, metrics, passthroughDecoder());
 
         auto request = makeRequest(kValidBody);
-        request.headers.emplace("authorization", vectorTokenBearer(static_cast<std::int64_t>(std::time(nullptr))));
+        request.headers.emplace("authorization",
+                                bearerOverride.empty()
+                                    ? vectorTokenBearer(static_cast<std::int64_t>(std::time(nullptr)))
+                                    : "Bearer " + bearerOverride);
         auto responder = std::make_shared<CapturingResponder>();
         handler(std::make_shared<const HttpRequest>(request), responder);
         out.response = responder->wait();
@@ -878,7 +886,7 @@ TEST(EnrollmentEndpointTest, RevokedTokenIs401AndCountsItsClassWithoutReachingAu
     std::remove(store.c_str());
 }
 
-TEST(EnrollmentEndpointTest, UnknownTokenIs401AndCountsRejectedUnknown)
+TEST(EnrollmentEndpointTest, UnknownTokenIs401AndCountsRejectedUnknownWithoutNamingItOnTheWire)
 {
     // An empty store: the vector token was never minted here.
     const std::string store = "/tmp/enrollmentEndpoint_test_" + std::to_string(::getpid()) + "_empty.tokens.json";
@@ -892,16 +900,67 @@ TEST(EnrollmentEndpointTest, UnknownTokenIs401AndCountsRejectedUnknown)
     EXPECT_TRUE(run.authdRequest.empty());
     EXPECT_EQ(run.enrollValue(METRIC_TOKEN_REJECTED_UNKNOWN), 1U);
     EXPECT_EQ(run.enrollValue(METRIC_REJECTED_AUTH), 1U);
-    EXPECT_EQ(parseBody(run.response)["error"]["code"], "token_unknown");
+    // No `token_unknown` on the wire, deliberately: this is the one token verdict a caller reaches
+    // WITHOUT proving it holds the token's secret (the `kid` must be resolved before there is a key
+    // to check the signature with), so naming it would answer "does this token id exist here?" for
+    // free -- the oracle authd refuses to be when it folds an unknown id into a revoked one
+    // (enrollment_token_store.c). It takes the class of a bad signature instead; the operator keeps
+    // the distinction in the metric above and in the log.
+    const auto body = parseBody(run.response);
+    EXPECT_EQ(body["error"]["code"], "invalid_signature");
+    const auto challenge = std::find_if(run.response.headers.begin(),
+                                        run.response.headers.end(),
+                                        [](const auto& header) { return header.first == "WWW-Authenticate"; });
+    ASSERT_NE(challenge, run.response.headers.end());
+    EXPECT_EQ(challenge->second, R"(Bearer error="invalid_token", error_description="invalid_signature")");
+    EXPECT_EQ(run.response.body.find("token_unknown"), std::string::npos);
 
     std::remove(store.c_str());
 }
 
+TEST(EnrollmentEndpointTest, AnUnknownTokenIdAndABadSignatureAreIndistinguishableOnTheWire)
+{
+    // The oracle of the review finding, from the caller's side: with the vector token in the store,
+    // a bearer signed with the wrong secret; with an empty store, the same `kid` that does not exist.
+    // Byte for byte the same answer, so a caller that does not hold a secret learns nothing about
+    // which token ids this node knows -- while the two land in different metric cells.
+    const std::string real = writeTokenStore("_oracle_real");
+    const std::string empty = "/tmp/enrollmentEndpoint_test_" + std::to_string(::getpid()) + "_oracle_empty.json";
+    {
+        std::ofstream file(empty);
+        file << R"({"version":1,"tokens":[]})";
+    }
+    // Wrong secret: 32 zero bytes derive a key the vector token's secret never produces.
+    const auto wrongKey = jwt_profile::v1::enroll::deriveEnrollTokenKey(
+        jwt_profile::v1::SecureBytes(jwt_profile::v1::enroll::kTokenSecretBytes));
+    ASSERT_TRUE(wrongKey.has_value());
+    const auto badSignature = jwt_profile::v1::enroll::JwtEnrollTokenSigner::signWithKid(
+        *wrongKey, std::chrono::system_clock::now(), tvt::kIdB64Url);
+    ASSERT_TRUE(badSignature.has_value());
+
+    const auto known = runWithToken(real, "", "oracle_real", *badSignature);
+    const auto unknown = runWithToken(empty, "", "oracle_empty", *badSignature);
+
+    EXPECT_EQ(known.response.status, unknown.response.status);
+    EXPECT_EQ(known.response.body, unknown.response.body);
+    EXPECT_EQ(parseBody(known.response)["error"]["code"], "invalid_signature");
+    EXPECT_TRUE(known.authdRequest.empty());
+    EXPECT_TRUE(unknown.authdRequest.empty());
+    // ...but the operator still sees which was which.
+    EXPECT_EQ(known.enrollValue(METRIC_TOKEN_REJECTED_UNKNOWN), 0U);
+    EXPECT_EQ(unknown.enrollValue(METRIC_TOKEN_REJECTED_UNKNOWN), 1U);
+
+    std::remove(real.c_str());
+    std::remove(empty.c_str());
+}
+
 // -----------------------------------------------------------------------------
-// Re-enrollment (issue #38993): the bearer whose `kid` names an agent travels to authd UNVERIFIED as
-// `arguments.reenroll` (the secret that signs it is the master's alone); authd's 9026/9027/9028 are
-// authentication failures -- the uniform 401 + WWW-Authenticate, never authd's code on the wire --
-// and every outcome counts in remoted.enroll.reenroll.*.
+// Re-enrollment (issue #38993): the bearer whose `kid` names an agent travels to authd with its
+// SIGNATURE unverified as `arguments.reenroll` (the secret that signs it is the master's alone);
+// authd's 9026/9027/9028 are authentication failures -- the uniform 401 + WWW-Authenticate, never
+// authd's code on the wire -- and every outcome counts in remoted.enroll.reenroll.*. A bearer whose
+// MESSAGE does not hold up (claim set, time rules) never gets that far: the authenticator refuses
+// it and the endpoint answers from here, with the same 401 and in the same cell.
 // -----------------------------------------------------------------------------
 
 namespace
@@ -909,7 +968,8 @@ namespace
     struct ReenrollRun
     {
         HttpResponse response;
-        std::string authdRequest;
+        std::string authdRequest; // what the fake authd received ("" when it was never reached)
+        std::string bearer;       // exactly what the request carried
         std::shared_ptr<wazuh::metrics::Manager> manager;
         std::uint64_t enrollValue(const std::string& name) const
         {
@@ -918,9 +978,28 @@ namespace
         }
     };
 
-    // One /enroll with the frozen agent-kid vector (iat 1700000000: remoted must not care) against a fake
-    // authd answering @p authdResponse. requirePassword selects the mode; no password key is ever given.
-    ReenrollRun runReenroll(const std::string& authdResponse, const std::string& tag, bool requirePassword = false)
+    // The bearer a re-enrolling agent mints: kid = its agent id, claims of THIS moment. The key is
+    // irrelevant here -- remoted never checks the signature on this path (the master does), so the
+    // zero key stands in for "some secret only the master can judge"; what must be current is the
+    // message, since remoted does check that.
+    std::string reenrollBearer(std::int64_t now, std::string_view kid = tvt::kAgentKid)
+    {
+        const auto token = jwt_profile::v1::enroll::JwtEnrollTokenSigner::signWithKid(
+            jwt_profile::v1::SecureBytes(jwt_profile::v1::kKeyBytes),
+            std::chrono::system_clock::time_point {std::chrono::seconds {now}},
+            kid);
+        EXPECT_TRUE(token.has_value());
+        return token.value_or("");
+    }
+
+    // One /enroll with a freshly minted agent-kid bearer against a fake authd answering @p
+    // authdResponse (empty: no authd bound at all, so any request to it is a test failure by
+    // construction). requirePassword selects the mode; no password key is ever given.
+    // @p bearerOverride replaces the bearer for the cases that are about the message itself.
+    ReenrollRun runReenroll(const std::string& authdResponse,
+                            const std::string& tag,
+                            bool requirePassword = false,
+                            const std::string& bearerOverride = {})
     {
         ReenrollRun out;
         out.manager = std::make_shared<wazuh::metrics::Manager>();
@@ -929,19 +1008,26 @@ namespace
 
         const std::string path = makeUniqueSocketPath("enrollment_endpoint_reenroll_" + tag);
         std::mutex mu;
-        FakeUdsServer authd(path,
-                            [&](const std::string& req)
-                            {
-                                std::lock_guard<std::mutex> lock(mu);
-                                out.authdRequest = req;
-                                return authdResponse;
-                            });
+        std::unique_ptr<FakeUdsServer> authd;
+        if (!authdResponse.empty())
+        {
+            authd = std::make_unique<FakeUdsServer>(path,
+                                                    [&](const std::string& req)
+                                                    {
+                                                        std::lock_guard<std::mutex> lock(mu);
+                                                        out.authdRequest = req;
+                                                        return authdResponse;
+                                                    });
+        }
         Config config = openModeConfig();
         AuthdClient authdClient(path, false, 0, config.authdResponseTimeoutMs, 0);
         auto handler = makeHandler(authenticator, authdClient, config, metrics, passthroughDecoder());
 
+        const std::string bearer =
+            bearerOverride.empty() ? reenrollBearer(static_cast<std::int64_t>(std::time(nullptr))) : bearerOverride;
         auto request = makeRequest(kValidBody);
-        request.headers.emplace("authorization", "Bearer " + std::string {tvt::kAgentKidJwt});
+        request.headers.emplace("authorization", "Bearer " + bearer);
+        out.bearer = bearer;
         auto responder = std::make_shared<CapturingResponder>();
         handler(std::make_shared<const HttpRequest>(request), responder);
         out.response = responder->wait();
@@ -962,7 +1048,7 @@ TEST(EnrollmentEndpointTest, ReenrollmentBearerIsForwardedUnverifiedAndCountedAs
     const auto wire = nlohmann::json::parse(run.authdRequest);
     EXPECT_EQ(wire["function"], "add");
     EXPECT_EQ(wire["arguments"]["reenroll"]["kid"], std::string {tvt::kAgentKid});
-    EXPECT_EQ(wire["arguments"]["reenroll"]["bearer"], std::string {tvt::kAgentKidJwt}); // verbatim
+    EXPECT_EQ(wire["arguments"]["reenroll"]["bearer"], run.bearer); // verbatim, signature untouched
     EXPECT_FALSE(wire["arguments"].contains("token_id"));
     // The master's rotated credentials, same id, five fields.
     const auto body = parseBody(run.response);
@@ -1047,6 +1133,73 @@ TEST(EnrollmentEndpointTest, ReenrollmentAlreadyInProgressIsA409WithItsOwnCounte
     EXPECT_EQ(run.enrollValue(METRIC_REJECTED_AUTH), 0U);
     EXPECT_EQ(run.enrollValue(METRIC_REENROLL_REJECTED_SIGNATURE), 0U);
 }
+
+struct ReenrollPrefilterCase
+{
+    const char* tag;
+    const char* publicClass; // what the wire names
+    const char* metric;      // the reenroll.* cell the operator reads
+    std::string (*bearer)(); // the message under test
+};
+
+class EnrollmentEndpointReenrollPrefilterTest : public ::testing::TestWithParam<ReenrollPrefilterCase>
+{
+};
+
+// The review finding of #38993: before this pre-filter, each of these messages cost an authd
+// connection and, on a worker, a clustered hop to the master -- with no credential of any kind and
+// no rate limiter on /enroll. The assertion that matters is not the status but the mock: the fake
+// authd IS bound and would answer a rotated 200, so a bearer that still reached it would show up
+// both as a recorded request and as a 200 here.
+TEST_P(EnrollmentEndpointReenrollPrefilterTest, IsRefusedWithoutEverReachingAuthd)
+{
+    const auto param = GetParam();
+    const auto run = runReenroll(kRotatedAnswer, param.tag, /*requirePassword=*/false, param.bearer());
+
+    EXPECT_TRUE(run.authdRequest.empty()) << "the bearer reached authd";
+    EXPECT_EQ(run.response.status, 401);
+    const auto body = parseBody(run.response);
+    EXPECT_EQ(body["error"]["code"], param.publicClass);
+    EXPECT_EQ(body["error"]["message"], "Invalid client authentication");
+    const auto challenge = std::find_if(run.response.headers.begin(),
+                                        run.response.headers.end(),
+                                        [](const auto& header) { return header.first == "WWW-Authenticate"; });
+    ASSERT_NE(challenge, run.response.headers.end());
+    EXPECT_EQ(challenge->second,
+              std::string {R"(Bearer error="invalid_token", error_description=")"} + param.publicClass + "\"");
+    // Counted where authd's own verdicts on re-enrollment bearers are counted: same question, same
+    // line, whichever node answered it.
+    EXPECT_EQ(run.enrollValue(param.metric), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_REJECTED_AUTH), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_AUTHD_ERROR), 0U);
+    EXPECT_EQ(run.enrollValue(METRIC_AUTHD_UNAVAILABLE), 0U);
+    EXPECT_EQ(run.enrollValue(METRIC_REENROLL_ACCEPTED), 0U);
+    EXPECT_EQ(run.enrollValue(METRIC_ACCEPTED), 0U);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    RefusedMessages,
+    EnrollmentEndpointReenrollPrefilterTest,
+    ::testing::Values(
+        // The 130 constant bytes of the finding: a payload that is not JSON at all.
+        ReenrollPrefilterCase {"not_json",
+                               "invalid_signature",
+                               METRIC_REENROLL_REJECTED_SIGNATURE,
+                               []
+                               {
+                                   return std::string {"eyJhbGciOiJIUzI1NiIsImtpZCI6IjAwMSIsInR5cCI6IndhenVoLWVucm9sbC"
+                                                       "tqd3QifQ.AA.AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"};
+                               }},
+        // The frozen vector: a captured bearer, replayed long after its 60 s window.
+        ReenrollPrefilterCase {"replayed_vector",
+                               "stale_token",
+                               METRIC_REENROLL_REJECTED_STALE,
+                               [] { return std::string {tvt::kAgentKidJwt}; }},
+        // A message of this moment, but issued further ahead than the skew allows.
+        ReenrollPrefilterCase {"future",
+                               "stale_token",
+                               METRIC_REENROLL_REJECTED_STALE,
+                               [] { return reenrollBearer(static_cast<std::int64_t>(std::time(nullptr)) + 3600); }}));
 
 TEST(EnrollmentEndpointTest, ReenrollmentAuthdBusinessErrorsKeepTheirOwnMapping)
 {

@@ -320,7 +320,9 @@ journal — never in `client.keys` or returned by `get`. Port 1515 returns no se
 [worker forwarding](architecture.md#the-identity-journal) can nevertheless create one on the master. To re-enroll keeping
 its id, the agent sends on `POST /enroll` a `wazuh-enroll+jwt` bearer whose `kid` is its own id, signed
 with the key derived from that secret (label `WAZUH-REENROLL-KEY`). remoted holds no copy of the
-secret, so it forwards `add` with `reenroll: {kid, bearer}` unverified and the **master** judges it,
+secret, so it forwards `add` with `reenroll: {kid, bearer}` for the **master** to judge — with the
+signature unverified, though not the message: remoted checks the claim set and the time window
+itself, since those need no secret, and refuses a bearer that fails them without asking authd at all,
 inside the window of [`remoted.jwt_max_age` and `remoted.jwt_clock_skew`](configuration.md#remotedjwt_max_age-and-remotedjwt_clock_skew).
 
 On success the entry is rotated in place — same id, new key, new secret — and the writer issues
