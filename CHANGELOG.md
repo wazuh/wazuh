@@ -45,6 +45,7 @@ All notable changes to this project will be documented in this file.
 - Fixed process names truncated to fifteen characters in the syscollector inventory. ([#38969](https://github.com/wazuh/wazuh/pull/38969))
 - Fixed the gcloud wodle's Pub/Sub integration failing to start whenever the bucket integration's dependencies (e.g. `google-cloud-storage`) were broken, by deferring each integration's imports so a failure in one no longer blocks the other. ([#38868](https://github.com/wazuh/wazuh/pull/38868))
 - Fixed the macOS agent's default FIM configuration monitoring `/etc`, which macOS resolves as a symlink to `/private/etc`; without `follow_symbolic_link` enabled, syscheck only recorded the symlink itself, leaving every file under it (`sudoers`, `sshd_config`, `pam.d`, `hosts`) uncovered. The default `<directories>`, `<ignore>`, and `<nodiff>` entries now target `/private/etc` directly. ([#39119](https://github.com/wazuh/wazuh/issues/39119))
+- Fixed the gcloud wodle failing to import on Python >= 3.13, which imported the stdlib `cgi` module removed in that version through an old `google-cloud-storage` release. Already resolved as a side effect of the `google-cloud-storage`/`google-auth`/`google-cloud-core`/`google-resumable-media` bump; verified here against the reported failure. ([#39148](https://github.com/wazuh/wazuh/pull/39148)) ([#38959](https://github.com/wazuh/wazuh/pull/38959))
 
 ### Ruleset
 
