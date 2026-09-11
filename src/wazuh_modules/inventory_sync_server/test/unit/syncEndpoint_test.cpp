@@ -127,6 +127,21 @@ namespace
  * The path and verb are a wire contract with remoted's downstream configuration (its statefulEndpoint
  * forwards here). Pinning them is what turns a silent drift into a failing test.
  */
+namespace
+{
+    std::optional<std::string> retryAfter(const wazuh::uds_http::HttpResponse& response)
+    {
+        for (const auto& [name, value] : response.headers)
+        {
+            if (name == "Retry-After")
+            {
+                return value;
+            }
+        }
+        return std::nullopt;
+    }
+} // namespace
+
 TEST(SyncEndpointTest, PathAndMethodAreStable)
 {
     EXPECT_EQ(Method::Post, invsync::endpoints::sync::method());
@@ -221,6 +236,8 @@ TEST(SyncEndpointTest, AVDSessionWhileTheFeedIsNotReadyGets503WithRetryAfter)
         }
     }
     EXPECT_TRUE(hasRetryAfter);
+    EXPECT_NE(std::string {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS}, std::string {"120"})
+        << "this case must keep proving the CONFIGURED feed value survives, not the generic shed one";
     EXPECT_TRUE(fixture.events->syncOps().empty()) << "a rejected VD session must not touch the indexer";
 }
 
@@ -377,6 +394,9 @@ TEST(SyncEndpointTest, AnUnavailableIndexerShedsAtAdmission)
 
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(503, responder->captured->status);
+    // #38880: remoted relays this verbatim, so the agent can tell a shed apart from a dead link.
+    EXPECT_EQ(retryAfter(*responder->captured),
+              std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS});
 }
 
 TEST(SyncEndpointTest, AnExpiredPipelineIs503)
@@ -407,6 +427,55 @@ TEST(SyncEndpointTest, AFullPipelineQueueIs503)
 
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(503, responder->captured->status);
+    EXPECT_EQ(retryAfter(*responder->captured),
+              std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS});
+}
+
+TEST(SyncEndpointTest, TheScanCapacityShedCarriesTheGenericHintNotTheFeedOne)
+{
+    // The feed IS ready here -- it is the scan queue that is full -- so this must NOT reuse the
+    // feed's (much longer, configurable) Retry-After: the agent should come back on the ordinary
+    // shed cadence, not wait out a feed download that is not happening.
+    invsync::vd::VdScanLaneConfig laneConfig;
+    laneConfig.workers = 1;
+    laneConfig.queueSlots = 1;
+    HandlerUnderTest fixture {{}, 60, laneConfig};
+    fixture.events->closeScanGate();
+
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDFirst;
+    auto first = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}})), first);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
+    while (fixture.events->m_scanEntered.load() < 1 && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+    }
+    ASSERT_EQ(1, fixture.events->m_scanEntered.load());
+
+    SessionSpec second;
+    second.option = invsync::test::fb::Option_VDFirst;
+    second.agentId = "2";
+    auto queued = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(second, {invsync::test::ValueSpec {}}), "2"),
+                    queued);
+
+    SessionSpec third;
+    third.option = invsync::test::fb::Option_VDFirst;
+    third.agentId = "3";
+    auto rejected = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(third, {invsync::test::ValueSpec {}}), "3"),
+                    rejected);
+
+    ASSERT_TRUE(rejected->captured.has_value());
+    EXPECT_EQ(503, rejected->captured->status);
+    EXPECT_NE(std::string::npos, rejected->captured->body.find("scan capacity exhausted"));
+    EXPECT_EQ(retryAfter(*rejected->captured),
+              std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS});
+
+    fixture.events->openScanGate();
+    EXPECT_EQ(200, first->await().status);
+    EXPECT_EQ(200, queued->await().status);
 }
 
 TEST(SyncEndpointTest, AValidSessionIsDeferredAndAnsweredByTheWorkerExactlyOnce)

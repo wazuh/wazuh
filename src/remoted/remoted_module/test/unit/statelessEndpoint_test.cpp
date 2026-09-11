@@ -30,6 +30,7 @@
 #include <future>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -61,6 +62,18 @@ namespace
         ar.requestTarget = "/stateless";
         ar.payload = Payload {std::string_view {*buffer}, buffer};
         return {std::make_shared<const AuthenticatedRequest>(std::move(ar)), std::move(buffer)};
+    }
+
+    std::optional<std::string> retryAfter(const HttpResponse& response)
+    {
+        for (const auto& [name, value] : response.headers)
+        {
+            if (name == "Retry-After")
+            {
+                return value;
+            }
+        }
+        return std::nullopt;
     }
 } // namespace
 
@@ -127,6 +140,34 @@ TEST(StatelessEndpoint, ErrorResponsesCarryNeutralJson)
     const auto unavailable = stateless::postProcess(DownstreamError::ResponseTimeout, DownstreamResponse {0, ""});
     EXPECT_EQ(unavailable.status, 503);
     EXPECT_EQ(unavailable.body, R"({"error":"Service unavailable","code":503})");
+}
+
+TEST(StatelessEndpoint, EveryLocallyProducedShed503CarriesRetryAfter)
+{
+    // #38880: an unqualified 503 is indistinguishable from a network blip, so the agent retries a
+    // shed on the same cadence as a broken link. Both 503s this endpoint produces itself -- the
+    // engine never answered, and it answered outside the contract -- carry the hint.
+    const auto unreachable = stateless::postProcess(DownstreamError::Connect, DownstreamResponse {0, ""});
+    EXPECT_EQ(unreachable.status, 503);
+    EXPECT_EQ(retryAfter(unreachable), std::optional<std::string> {remoted::http::SHED_RETRY_AFTER_SECONDS});
+
+    const auto downstream5xx = stateless::postProcess(DownstreamError::None, DownstreamResponse {500, ""});
+    EXPECT_EQ(downstream5xx.status, 503);
+    EXPECT_EQ(retryAfter(downstream5xx), std::optional<std::string> {remoted::http::SHED_RETRY_AFTER_SECONDS});
+}
+
+TEST(StatelessEndpoint, NonShedStatusesCarryNoRetryAfter)
+{
+    // The header means "come back later"; on a permanent rejection it would invite exactly the
+    // retry the status is telling the agent not to make.
+    for (const auto& [error, status] : {std::pair {DownstreamError::None, 200},
+                                        std::pair {DownstreamError::None, 400},
+                                        std::pair {DownstreamError::None, 413}})
+    {
+        const auto response = stateless::postProcess(error, DownstreamResponse {status, ""});
+        EXPECT_NE(response.status, 503);
+        EXPECT_EQ(retryAfter(response), std::nullopt) << "downstream=" << status;
+    }
 }
 
 // --- validatePayloadIdentity() ---------------------------------------------------------------
