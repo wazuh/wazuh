@@ -15,6 +15,7 @@
 #include <stdlib.h>
 
 #include "agentd.h"
+#include "x509_op.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/os_utils_wrappers.h"
 #include "../wrappers/wazuh/shared/os_cert_bundle_wrappers.h"
@@ -67,6 +68,29 @@ static void expect_ca_readable(const char *path, int readable)
 {
     expect_string(__wrap_w_is_file, file, path);
     will_return(__wrap_w_is_file, readable);
+}
+
+/* The parse check w_agent_validate_ssl_ca() makes after w_is_file(): wrapped because the paths
+ * in this suite are names, not files on disk, so the real loader would refuse every one of them.
+ * X509_free comes along because the sentinel below is not a certificate to free. */
+X509 *__wrap_w_x509_load_pem(const char *path)
+{
+    check_expected(path);
+    return mock_ptr_type(X509 *);
+}
+
+void __wrap_X509_free(X509 *cert)
+{
+    (void)cert;
+}
+
+/* A non-NULL sentinel: the code only tests it against NULL and hands it straight to X509_free. */
+static X509 *const PARSED_OK = (X509 *)0x1;
+
+static void expect_ca_parses(const char *path, int ok)
+{
+    expect_string(__wrap_w_x509_load_pem, path, path);
+    will_return(__wrap_w_x509_load_pem, ok ? PARSED_OK : NULL);
 }
 
 /* Same queue as expect_ca_readable(), named apart so a call site says which probe it is. */
@@ -132,8 +156,28 @@ static void test_full_with_readable_ca_starts(void **state)
     agent cfg = make_config(AGENT_VERIFY_FULL, "etc/operator-ca.pem");
 
     expect_ca_readable("etc/operator-ca.pem", 1);
+    expect_ca_parses("etc/operator-ca.pem", 1);
 
     assert_true(w_agent_validate_ssl_ca(&cfg));
+}
+
+/* Readable and unusable are different failures, and only the first was caught before. A
+ * truncated or corrupt anchor -- the shape an interrupted bootstrap write leaves -- passes
+ * w_is_file() and would otherwise resolve to a verifying mode, then fail at the first
+ * handshake with nothing pointing back here. */
+static void test_full_with_unparseable_ca_fails(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_FULL, "etc/truncated-ca.pem");
+
+    expect_ca_readable("etc/truncated-ca.pem", 1);
+    expect_ca_parses("etc/truncated-ca.pem", 0);
+    expect_string(__wrap__merror, formatted_msg,
+                  "(4123): <certificate_authorities> 'etc/truncated-ca.pem' is readable but holds "
+                  "no certificate this agent can parse. Nothing would verify against it, so the "
+                  "start is refused here rather than at the first handshake.");
+
+    assert_false(w_agent_validate_ssl_ca(&cfg));
 }
 
 static void test_full_with_unreadable_ca_fails(void **state)
@@ -505,6 +549,7 @@ static void test_anchor_default_posture_starts(void **state)
     w_agent_resolve_ssl_posture(&cfg);
 
     expect_anchor(1);
+    expect_ca_parses(AGENT_ANCHOR_CA, 1);
     assert_true(w_agent_validate_ssl_ca(&cfg));
 
     assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_FULL);
@@ -596,6 +641,7 @@ int main(void)
         cmocka_unit_test(test_none_with_readable_ca_is_not_probed),
         cmocka_unit_test(test_none_with_unreadable_ca_is_not_probed_either),
         cmocka_unit_test(test_full_with_readable_ca_starts),
+        cmocka_unit_test(test_full_with_unparseable_ca_fails),
         cmocka_unit_test(test_full_with_unreadable_ca_fails),
         cmocka_unit_test(test_full_without_ca_fails),
         cmocka_unit_test(test_certificate_with_unreadable_ca_fails),
