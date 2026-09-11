@@ -238,6 +238,11 @@ also names something reachable is minted normally — and `remote.https.ca_certi
 `--port`/`--prefix` default to the running `remote.https` values, `--ttl` to 30 days (`N[d|h|m|s]`),
 `--max-uses` to unlimited.
 
+**The API bounds `description`, `address` and `prefix` before authd sees them.**
+`POST /agents/enrollment-tokens` caps `address` at 255 characters, `prefix` at 128 and
+`description` at 1024, so a request above any of them is answered `400` naming the field, instead
+of reaching a local socket that reads at most 64 KiB and would drop the connection.
+
 The agent presents the token as a `wazuh-enroll+jwt` bearer whose `kid` is the token id, signed with
 the key HKDF-SHA256 derives from the secret (label `WAZUH-ENROLL-TOKEN-KEY`). remoted verifies it
 against its read-only replica of the store and forwards `add` with `token_id`; authd re-checks the

@@ -1003,6 +1003,7 @@ components:
           certificate (`remote.https.certificate`); an address outside it is refused with error 1768"
           type: string
           format: alphanumeric_symbols
+          maxLength: 255
         port:
           description: "Listener port to write into the token when it differs from the configured one"
           type: integer
@@ -1013,6 +1014,7 @@ components:
           description: "URL prefix to write into the token when it differs from the configured one"
           type: string
           format: alphanumeric_symbols
+          maxLength: 128
         ttl:
           description: "Lifetime: seconds, or a number followed by `d`, `h`, `m` or `s`. Default: 30 days"
           type: string
@@ -1026,6 +1028,7 @@ components:
           description: "Free text shown when listing the tokens"
           type: string
           format: alphanumeric_symbols
+          maxLength: 1024
         embed_ca:
           description: "Carry the CA certificate inside the token instead of its pin (no `/cacerts` fetch
           by the agent)"
