@@ -144,6 +144,9 @@ int w_agent_token_bootstrap(int uid, int gid) {
     const char *candidate_pem = NULL;
     size_t candidate_len = 0;
     hc_cacerts_result_t fetch_result;
+    /* The pin-matched certificate on its own, extracted from the fetched bundle. Sized like the
+     * body it comes out of, which one certificate can never exceed. */
+    char pinned_pem[HC_MAX_CACERTS_BODY] = {0};
     File anchor_file = {NULL, NULL};
     w_enroll_request_t built_request = {NULL, NULL};
     hc_config_t enroll_config;
@@ -233,7 +236,14 @@ int w_agent_token_bootstrap(int uid, int gid) {
 
         candidate_len = strnlen(fetch_result.body, sizeof(fetch_result.body));
 
-        if (!hc_spki_pin_matches(fetch_result.body, candidate_len, pin_b64)) {
+        /* Only the certificate the pin actually named becomes the anchor -- never the body it
+         * arrived in. That body came over a connection nothing had verified yet, so anything
+         * else in it was chosen by whoever answered: a bundle of [attacker CA, genuine CA]
+         * satisfies the pin on its genuine half, and installing the whole thing would make the
+         * attacker's half a trust anchor too, which the verified reconnect would then happily
+         * accept a chain against. */
+        if (!hc_spki_pinned_certificate(fetch_result.body, candidate_len, pin_b64, pinned_pem,
+                                        sizeof(pinned_pem))) {
             merror("Token bootstrap: fetched CA does not match the enrollment token's pin -- "
                    "refusing to trust it.");
             os_free(pin_b64);
@@ -242,7 +252,8 @@ int w_agent_token_bootstrap(int uid, int gid) {
         }
 
         os_free(pin_b64);
-        candidate_pem = fetch_result.body;
+        candidate_pem = pinned_pem;
+        candidate_len = strlen(pinned_pem);
     } else {
         candidate_pem = token.ca_pem;
         candidate_len = strlen(token.ca_pem);

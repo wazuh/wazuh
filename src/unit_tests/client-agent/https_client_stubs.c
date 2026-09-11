@@ -103,10 +103,13 @@ bool hc_fetch_cacerts(const void *config, const void *request, void *result)
     return false;
 }
 
-bool hc_spki_pin_matches(const char *cacerts_body, size_t body_len, const char *pin_b64url)
+bool hc_spki_pinned_certificate(const char *cacerts_body, size_t body_len, const char *pin_b64url,
+                                char *matched_pem, size_t matched_pem_size)
 {
     (void)cacerts_body;
     (void)body_len;
     (void)pin_b64url;
+    (void)matched_pem;
+    (void)matched_pem_size;
     return false;
 }

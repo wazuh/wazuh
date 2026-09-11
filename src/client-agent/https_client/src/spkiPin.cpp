@@ -88,6 +88,12 @@ namespace
     /// silently. i2d_PUBKEY also fails closed on a key type we cannot parse,
     /// which is the more useful outcome: a pin we could never verify a
     /// handshake against is not worth computing.
+    ///
+    /// shared/src/x509_op.c's w_x509_spki_sha256() computes the same value for authd, and
+    /// delegating to it would leave one definition of the pin instead of two. It cannot be
+    /// called from here: that file needs shared.h for os_calloc/os_free, and this module links
+    /// no libwazuh by design (see CMakeLists). Closing that gap means lifting the leaf
+    /// functions into a file free of shared.h, which is a change to code the manager owns.
     std::optional<SpkiDigest> digestOf(X509* certificate, SpkiPinError* error)
     {
         EVP_PKEY* publicKey = X509_get0_pubkey(certificate); // Borrowed; must not be freed.
@@ -250,28 +256,6 @@ std::optional<SpkiDigest> spkiSha256FromDer(const void* der, std::size_t length,
     return digest;
 }
 
-std::optional<SpkiDigest> spkiSha256FromPemFile(const std::string& path, SpkiPinError* error)
-{
-    const FilePtr file {std::fopen(path.c_str(), "rb")};
-
-    if (!file)
-    {
-        setError(error, SpkiPinError::NoCertificate);
-        return std::nullopt;
-    }
-
-    std::string pem;
-    std::array<char, 8192> chunk {};
-    size_t bytesRead = 0;
-
-    while ((bytesRead = std::fread(chunk.data(), 1, chunk.size(), file.get())) > 0)
-    {
-        pem.append(chunk.data(), bytesRead);
-    }
-
-    return spkiSha256FromPem(pem, error);
-}
-
 std::string spkiPinHex(const SpkiDigest& digest)
 {
     return toHexLower(digest.data(), digest.size());
@@ -302,4 +286,97 @@ SpkiPinMatch spkiPinCompare(const SpkiDigest& digest, std::string_view pin)
 
     return CRYPTO_memcmp(digest.data(), decoded->data(), SPKI_PIN_BYTES) == 0 ? SpkiPinMatch::Match
            : SpkiPinMatch::Mismatch;
+}
+
+std::optional<std::string> spkiPinnedCertificatePem(std::string_view pem, std::string_view pin,
+                                                    SpkiPinError* error)
+{
+    // Same error-queue discipline as spkiSha256AllFromPem(): a libcurl request runs immediately
+    // before this in the bootstrap, and residue left here surfaces as an unrelated TLS failure.
+    ERR_set_mark();
+
+    try
+    {
+        const BioPtr bio = memoryBio(pem);
+
+        if (!bio)
+        {
+            setError(error, SpkiPinError::NoCertificate);
+            ERR_pop_to_mark();
+            return std::nullopt;
+        }
+
+        bool parsedAny = false;
+        SpkiPinError last = SpkiPinError::None;
+
+        while (true)
+        {
+            const X509Ptr certificate {PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr), X509_free};
+
+            if (!certificate)
+            {
+                last = classifyPemFailure();
+                break;
+            }
+
+            parsedAny = true;
+
+            SpkiPinError perCertificate = SpkiPinError::None;
+            const auto digest = digestOf(certificate.get(), &perCertificate);
+
+            if (!digest)
+            {
+                setError(error, perCertificate);
+                ERR_pop_to_mark();
+                return std::nullopt;
+            }
+
+            if (spkiPinCompare(*digest, pin) != SpkiPinMatch::Match)
+            {
+                continue;
+            }
+
+            // Written back out from the parsed certificate rather than copied out of the input:
+            // what the caller installs is then exactly one certificate, carrying none of the
+            // other blocks or surrounding text that shared the body it arrived in.
+            // (shared/src/x509_op.c's w_x509_certificates_pem() does the same for the manager;
+            // see digestOf() for why this module cannot call into that file.)
+            const BioPtr out {BIO_new(BIO_s_mem()), BIO_free};
+
+            if (!out || PEM_write_bio_X509(out.get(), certificate.get()) != 1)
+            {
+                setError(error, SpkiPinError::Internal); // LCOV_EXCL_LINE: allocation failure only.
+                ERR_pop_to_mark();
+                return std::nullopt;
+            }
+
+            char* data = nullptr;
+            const long length = BIO_get_mem_data(out.get(), &data);
+
+            if (length <= 0 || data == nullptr)
+            {
+                setError(error, SpkiPinError::Internal); // LCOV_EXCL_LINE: unreachable after a good write.
+                ERR_pop_to_mark();
+                return std::nullopt;
+            }
+
+            setError(error, SpkiPinError::None);
+            ERR_pop_to_mark();
+            return std::string(data, static_cast<std::size_t>(length));
+        }
+
+        // Nothing matched. A bundle that parsed is not a malformed input -- it simply is not the
+        // manager the token names -- so only a body that yielded no certificate at all reports a
+        // parse error here.
+        setError(error, parsedAny ? SpkiPinError::None : last);
+    }
+    catch (...) // LCOV_EXCL_START: no allocation here is large enough to fail reproducibly.
+    {
+        setError(error, SpkiPinError::Internal);
+        ERR_pop_to_mark();
+        return std::nullopt;
+    } // LCOV_EXCL_STOP
+
+    ERR_pop_to_mark();
+    return std::nullopt;
 }

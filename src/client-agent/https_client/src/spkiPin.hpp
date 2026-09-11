@@ -114,10 +114,6 @@ std::vector<SpkiDigest> spkiSha256AllFromPem(std::string_view pem, SpkiPinError*
 std::optional<SpkiDigest> spkiSha256FromDer(const void* der, std::size_t length,
                                             SpkiPinError* error = nullptr);
 
-/// As spkiSha256FromPem(), reading the PEM from a file. An unreadable or
-/// missing path is NoCertificate. Mirrors digest.hpp's sha256FileHex().
-std::optional<SpkiDigest> spkiSha256FromPemFile(const std::string& path, SpkiPinError* error = nullptr);
-
 /// 64 lowercase hex characters. The diagnostic form: comparable against
 /// `openssl dgst -sha256` output by eye, and what --show-token prints.
 std::string spkiPinHex(const SpkiDigest& digest);
@@ -153,5 +149,29 @@ enum class SpkiPinMatch
  * gate below is data-dependent. Do not "fix" that.
  */
 SpkiPinMatch spkiPinCompare(const SpkiDigest& digest, std::string_view pin);
+
+/**
+ * @brief The one certificate in @p pem whose SPKI matches @p pin, re-serialised on its own.
+ *
+ * The distinction from "does the bundle contain a match" is the whole point, and it is a
+ * security boundary rather than a convenience. A caller that installs a pin-matched BUNDLE as
+ * its trust anchor trusts every certificate in it, while the pin only ever vouched for one:
+ * anything else in that body arrived over the same unverified fetch and was chosen by whoever
+ * answered it. Serving [attacker CA, genuine CA] satisfies an existential check -- the genuine
+ * certificate is published, so it is not a secret an attacker lacks -- and smuggles a second
+ * trust anchor in beside it.
+ *
+ * So this returns the matched certificate ALONE, re-encoded from the parsed X509 rather than
+ * sliced out of the input, which also drops whatever text surrounded it.
+ *
+ * @param pem PEM text, with an explicit length; same NUL caveat as spkiSha256FromPem().
+ * @param pin The token's pin, 43 unpadded base64url characters.
+ * @param error When non-null, always written. NoCertificate when nothing parsed; None when the
+ *        bundle parsed but no certificate matched -- absence is the caller's to report, since
+ *        "not my manager" is not a malformed-input problem.
+ * @return The matched certificate as PEM, or nullopt when nothing matched.
+ */
+std::optional<std::string> spkiPinnedCertificatePem(std::string_view pem, std::string_view pin,
+                                                    SpkiPinError* error = nullptr);
 
 #endif // _HC_SPKI_PIN_HPP

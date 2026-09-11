@@ -118,7 +118,7 @@ list(APPEND client-agent_names "test_enrollment")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS}")
 
 # w_agent_token_bootstrap(): mocks only the https_client module boundary it calls
-# through (hc_fetch_cacerts/hc_enroll/hc_spki_pin_matches), the same
+# through (hc_fetch_cacerts/hc_enroll/hc_spki_pinned_certificate), the same
 # convention test_https_client_bridge uses for that boundary below -- everything else
 # (IsFile/TempFile/OS_MoveFile/w_etoken_*, w_enrollment_build_request/process_response) runs
 # for real against temp files relative to the working directory, same style as
@@ -129,7 +129,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS}")
 # them also makes the ownership assertable instead of merely inspectable.
 list(APPEND client-agent_names "test_token_bootstrap")
 list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll \
-                                -Wl,--wrap,hc_spki_pin_matches -Wl,--wrap,OS_IsValidIP \
+                                -Wl,--wrap,hc_spki_pinned_certificate -Wl,--wrap,OS_IsValidIP \
                                 -Wl,--wrap,chown -Wl,--wrap,chmod \
                                 ${DEBUG_OP_WRAPPERS}")
 
