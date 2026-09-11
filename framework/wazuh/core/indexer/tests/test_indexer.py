@@ -46,9 +46,9 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
         "indexer": {
             "hosts": ["https://localhost:9200"],
             "ssl": {
-                "certificate_authorities": [{"ca": ["etc/certs/root-ca.pem"]}],
-                "certificate": ["etc/certs/indexer-connector.pem"],
-                "key": ["etc/certs/indexer-connector-key.pem"],
+                "certificate_authorities": ["etc/certs/root-ca.pem"],
+                "certificate": "etc/certs/indexer-connector.pem",
+                "key": "etc/certs/indexer-connector-key.pem",
             },
         }
     }

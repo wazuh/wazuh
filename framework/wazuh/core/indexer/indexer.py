@@ -554,20 +554,20 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
 
     # Validate SSL certificate paths
     required_cert_paths = [
-        ("client_cert", ssl_config.get("certificate", [])),
-        ("client_key", ssl_config.get("key", [])),
-        ("ca_certs", ssl_config.get("certificate_authorities", [{}])[0].get("ca", [])),
+        ("client_cert", ssl_config.get("certificate", "")),
+        ("client_key", ssl_config.get("key", "")),
+        ("ca_certs", (ssl_config.get("certificate_authorities", []) or [""])[0]),
     ]
 
-    for cert_name, cert_path_list in required_cert_paths:
-        if not cert_path_list or not cert_path_list[0]:
+    for cert_name, cert_path in required_cert_paths:
+        if not cert_path:
             raise IndexerUnavailableError(
                 code=2200, extra_message=f"Missing or empty {cert_name} path"
             )
 
-    client_cert = resolve_wazuh_path(ssl_config["certificate"][0])
-    client_key = resolve_wazuh_path(ssl_config["key"][0])
-    ca_certs = resolve_wazuh_path(ssl_config["certificate_authorities"][0]["ca"][0])
+    client_cert = resolve_wazuh_path(ssl_config["certificate"])
+    client_key = resolve_wazuh_path(ssl_config["key"])
+    ca_certs = resolve_wazuh_path(ssl_config["certificate_authorities"][0])
 
     # Create cached SSL context to prevent repeated certificate file reads
     ssl_context = _create_ssl_context(client_cert, client_key, ca_certs)
