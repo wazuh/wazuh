@@ -247,7 +247,15 @@ namespace invsync::sync
                     (classify(item.session) == SessionKind::BulkData) ? m_durationBulk : m_durationImmediate;
                 histogram->observe(static_cast<uint64_t>(elapsed));
             }
-            item.responder->send(wazuh::uds_http::HttpResponse::json(status, body));
+            auto response = wazuh::uds_http::HttpResponse::json(status, body);
+            if (status == 503)
+            {
+                // Post-admission 503s (the stop() drain, and a flush against an unavailable
+                // indexer) are as indistinguishable from a dead link as the admission sheds are,
+                // and the drain fires on every manager restart. Same hint, same reason.
+                response.headers.emplace_back("Retry-After", wazuh::uds_http::SHED_RETRY_AFTER_SECONDS);
+            }
+            item.responder->send(std::move(response));
         }
         if (m_registry)
         {

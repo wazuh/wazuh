@@ -38,8 +38,9 @@ namespace remoted::endpoints::stateless
 
         if (error != DownstreamError::None)
         {
-            // Could not reach the engine / no timely answer -> the agent retries.
-            return HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+            // Could not reach the engine / no timely answer -> the agent retries. The engine's
+            // ingress sends no Retry-After of its own, so there is nothing to forward: ours applies.
+            return HttpResponse::serviceUnavailable();
         }
 
         const int status = response.status;
@@ -57,7 +58,7 @@ namespace remoted::endpoints::stateless
             return HttpResponse::json(413, R"({"error":"Request payload is too large","code":413})");
         }
         // 5xx / unexpected -> treat as a transient server-side failure.
-        return HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+        return HttpResponse::serviceUnavailable();
     }
 
     namespace

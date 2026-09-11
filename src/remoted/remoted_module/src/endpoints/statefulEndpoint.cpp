@@ -86,7 +86,9 @@ namespace remoted::endpoints::stateful
         if (error != DownstreamError::None)
         {
             // Could not reach the sync server / no timely answer -> the agent retries next cycle.
-            return HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+            // Produced HERE, so there is no downstream header to forward: carry our own hint, the
+            // same value the sync server would have sent had it been able to answer.
+            return HttpResponse::serviceUnavailable();
         }
 
         if (isContractStatus(response.status))
@@ -105,8 +107,9 @@ namespace remoted::endpoints::stateful
 
         // Outside the contract (404/405 route mismatch, unexpected redirects...): a transient
         // manager-side problem as far as the agent is concerned. The forwarder already logged the
-        // real status.
-        return HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+        // real status. Any Retry-After the downstream sent is NOT forwarded here -- this status is
+        // ours, not the session result -- so it carries our own.
+        return HttpResponse::serviceUnavailable();
     }
 
     remoted::endpoints::AuthenticatedHandler makeHandler(remoted::downstream::DeferredForwarder& forwarder,

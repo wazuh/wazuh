@@ -238,7 +238,16 @@ namespace invsync::vd
         {
             m_requestCounters.count(status);
             observeLaneTime(item);
-            item.responder->send(wazuh::uds_http::HttpResponse::json(status, body));
+            auto response = wazuh::uds_http::HttpResponse::json(status, body);
+            if (status == 503)
+            {
+                // Every 503 a lane worker answers -- shutting down, indexer unavailable, connector
+                // failure -- is "retry later", so it carries the generic shed hint. The one 503
+                // that must NOT come through here is the feed re-check below, which needs the
+                // configured, feed-sized value instead.
+                response.headers.emplace_back("Retry-After", wazuh::uds_http::SHED_RETRY_AFTER_SECONDS);
+            }
+            item.responder->send(std::move(response));
         }
     }
 
@@ -341,8 +350,9 @@ namespace invsync::vd
                 {
                     m_retryAfterTotal->add();
                     m_requestCounters.count(503);
-                    // This is the one send that cannot go through respond() (the header), so it
-                    // takes its lane-time sample here -- the histogram covers ALL outcomes.
+                    // This is the one send that cannot go through respond(): it needs the
+                    // CONFIGURED feed delay, not respond()'s generic shed hint. So it takes its
+                    // lane-time sample here -- the histogram covers ALL outcomes.
                     observeLaneTime(item);
                     item.responder->send(std::move(response));
                     // finish() must not answer twice. The reset is ALSO what keeps finish(0, "")
