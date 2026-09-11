@@ -61,15 +61,6 @@ else
     abort_upgrade "2"
 fi
 
-# Escapes the three characters that are structurally significant in XML content --
-# '&', '<', '>' -- so a value written verbatim into ossec.conf (a CA path, in
-# particular) can never be mistaken for markup or break the file's well-formedness.
-# '&' must run first: escaping '<'/'>' introduces new literal '&' characters (as part
-# of "&lt;"/"&gt;") that must not themselves be re-escaped by a later pass.
-xml_escape() {
-    printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
-}
-
 # Strips commented-out lines before xml_value/xml_tag_present extract anything, so a
 # tag an operator comments out (e.g. to fall back to the default) reads as absent
 # here too, matching OS_XML's own comment handling -- same in_comment line-tracking
@@ -397,6 +388,7 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Found a CA delivered by the manager at ${INCOMING_CA_FILE}, validating it." >> ./logs/upgrade.log
 
     CA_REJECT_REASON=""
+    CA_TOOL_MISSING=0
     CA_SNAPSHOT="./var/upgrade/.root-ca.pem.incoming-snapshot.$$"
 
     # var/incoming is not exclusively Wazuh-controlled: a file that validated as a
@@ -418,6 +410,19 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
         CA_REJECT_REASON="is a symlink or has more than one hard link"
     elif ! cp "${INCOMING_CA_FILE}" "${CA_SNAPSHOT}" 2>/dev/null; then
         CA_REJECT_REASON="could not be read"
+    fi
+
+    # A missing openssl is an environment problem, not evidence the delivered file
+    # itself is bad -- every openssl invocation below would fail not-found (exit
+    # 127) exactly like a real parse failure looks, silently destroying a possibly-
+    # valid delivery via the unconditional cleanup further down instead of leaving
+    # it for a retry once openssl is available. Reported and handled distinctly so
+    # an operator isn't misled into troubleshooting the certificate instead of the
+    # missing tool, and so the incoming file isn't deleted for a reason that has
+    # nothing to do with its own content.
+    if [ -z "${CA_REJECT_REASON}" ] && ! command -v openssl > /dev/null 2>&1; then
+        CA_REJECT_REASON="cannot be validated: openssl was not found on this host"
+        CA_TOOL_MISSING=1
     fi
 
     # Cheap bound before invoking openssl at all: empty or implausibly large for
@@ -447,9 +452,17 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
             # "Sep 10 19:55:53 2026 GMT"). GNU date -d parses that directly; BSD date
             # (macOS) has no -d and needs strptime-style -j -f instead, or every valid
             # CA is silently rejected here as having an "unparsable validity period".
+            #
+            # TZ=UTC on these two calls specifically: BSD date -j converts the parsed
+            # struct tm via mktime(), which always interprets it in the process's own
+            # local timezone regardless of what %Z matched in the input string --
+            # openssl's output is unconditionally GMT, so without forcing TZ=UTC here,
+            # a host west of UTC would compute an epoch shifted later than the real
+            # notBefore/notAfter (east of UTC, shifted earlier), silently rejecting a
+            # genuinely-valid, freshly-issued CA as "not yet valid".
             if [[ "$OS" == "Darwin" ]]; then
-                CA_NOT_BEFORE_EPOCH=$(date -j -f "%b %e %T %Y %Z" "${CA_NOT_BEFORE}" +%s 2>/dev/null)
-                CA_NOT_AFTER_EPOCH=$(date -j -f "%b %e %T %Y %Z" "${CA_NOT_AFTER}" +%s 2>/dev/null)
+                CA_NOT_BEFORE_EPOCH=$(TZ=UTC date -j -f "%b %e %T %Y %Z" "${CA_NOT_BEFORE}" +%s 2>/dev/null)
+                CA_NOT_AFTER_EPOCH=$(TZ=UTC date -j -f "%b %e %T %Y %Z" "${CA_NOT_AFTER}" +%s 2>/dev/null)
             else
                 CA_NOT_BEFORE_EPOCH=$(date -d "${CA_NOT_BEFORE}" +%s 2>/dev/null)
                 CA_NOT_AFTER_EPOCH=$(date -d "${CA_NOT_AFTER}" +%s 2>/dev/null)
@@ -465,7 +478,12 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
         fi
     fi
 
-    if [ -n "${CA_REJECT_REASON}" ]; then
+    if [ "${CA_TOOL_MISSING}" = "1" ]; then
+        # Left in place rather than removed (see the cleanup below): this isn't a bad
+        # delivery, just an environment that couldn't validate it this run, so a
+        # later upgrade attempt (with openssl available) should still get to try.
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} ${CA_REJECT_REASON}; leaving it in place for a later upgrade attempt and continuing unverified." >> ./logs/upgrade.log
+    elif [ -n "${CA_REJECT_REASON}" ]; then
         # A malformed/expired/non-CA file must not break the upgrade, nor be left
         # behind for a later upgrade to pick up -- remove it below same as on success.
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} ${CA_REJECT_REASON}; refusing to install it and continuing without it." >> ./logs/upgrade.log
@@ -534,7 +552,10 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
         fi
     fi
 
-    rm -f "${CA_SNAPSHOT}" "${INCOMING_CA_FILE}"
+    rm -f "${CA_SNAPSHOT}"
+    if [ "${CA_TOOL_MISSING}" != "1" ]; then
+        rm -f "${INCOMING_CA_FILE}"
+    fi
 else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - No CA delivered by the manager at ${INCOMING_CA_FILE} this run." >> ./logs/upgrade.log
 fi
@@ -715,6 +736,20 @@ case "${SSL_VERIFICATION_MODE}" in
             # there is nothing this script can safely fix on the operator's behalf.
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}. Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> ./logs/upgrade.log
             abort_upgrade "2"
+        elif [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; then
+            # <verification_mode> was left unset (not explicit), so the new binary
+            # resolves purely from anchor presence -- 'full' against DEFAULT_CA_FILE --
+            # regardless of what this gate's own 'system' resolution or the OS trust
+            # store say (see the #38949 question 6 divergence noted above). A usable
+            # anchor is already on disk (installed by the CA-adoption block above, or
+            # left over from a previous delivery), which is a different, equally
+            # sufficient path to a working post-upgrade connection -- this is precisely
+            # the scenario this feature exists for. Checked ahead of IS_LEGACY_AGENT
+            # since an already-5.x agent needs this path too: without it, a 5.x agent
+            # receiving its manager's CA for the first time would have the anchor
+            # installed and then abort anyway, never reaching a state where it takes
+            # effect.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, but a trust anchor is present at ${DEFAULT_CA_FILE} and <ssl><verification_mode> is unset -- the upgraded agent resolves to 'full' against that anchor regardless of the OS trust store, so proceeding." >> ./logs/upgrade.log
         elif [ "${IS_LEGACY_AGENT}" = "1" ]; then
             # The currently-installed agent (pre-upgrade) predates 5.0: its <client>-only
             # config cannot express TLS verification regardless of what this script does
@@ -722,13 +757,12 @@ case "${SSL_VERIFICATION_MODE}" in
             # condition -- no OS CA bundle at all -- does not apply here. Proceed rather
             # than block a legacy migration over a check that agent was never able to
             # pass in the first place.
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, but the currently-installed agent (${CURRENT_AGENT_VERSION}) predates 5.0 and its config cannot express TLS verification either way -- proceeding unverified. A delivered CA may already be installed at ${DEFAULT_CA_FILE}; configure <verification_mode>certificate</verification_mode> with <certificate_authorities> explicitly after the upgrade to enable verification." >> ./logs/upgrade.log
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, but the currently-installed agent (${CURRENT_AGENT_VERSION}) predates 5.0 and its config cannot express TLS verification either way -- proceeding unverified. No trust anchor is present at ${DEFAULT_CA_FILE}; place one there and re-run the upgrade, or configure <certificate_authorities> explicitly after the upgrade, to enable verification." >> ./logs/upgrade.log
         else
-            # ossec.conf is never edited by this script (see the CA-detection block
-            # above) -- a CA may already be sitting at DEFAULT_CA_FILE, but pinning it
-            # into <certificate_authorities> is left to the operator rather than done
-            # here, so its mere presence does not change this outcome.
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}. A delivered CA may already be installed at ${DEFAULT_CA_FILE}; configure <verification_mode>certificate</verification_mode> with <certificate_authorities>${DEFAULT_CA_FILE}</certificate_authorities> explicitly, then retry the upgrade; interrupting upgrade." >> ./logs/upgrade.log
+            # Reached only when no usable anchor is present at all (the branch above
+            # already handles the case where one is) -- ossec.conf is never modified
+            # by this script, so there is genuinely nothing more it can do here.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, and no trust anchor is present at ${DEFAULT_CA_FILE}. Place the manager's CA there and retry, or configure <certificate_authorities> explicitly; interrupting upgrade." >> ./logs/upgrade.log
             abort_upgrade "2"
         fi
         ;;
@@ -763,16 +797,22 @@ if [[ "$OS" == "Darwin" ]]; then
 elif [[ "$OS" == "Linux" ]]; then
     if pkg_exists ./var/upgrade/*.rpm; then
         if command -v rpm >/dev/null 2>&1; then
-            rpm -UFvh ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
+            # Set before, not after, the actual install command: RESULT=$? below reads
+            # the exit status of the LAST command in whichever branch ran, and a plain
+            # assignment always returns 0 -- placing this after rpm -UFvh would make
+            # RESULT always read as success regardless of whether the package install
+            # itself actually failed.
             PACKAGE_MANAGER_HANDLES_RESTART=1
+            rpm -UFvh ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. RPM package found but rpm command not found." >> ./logs/upgrade.log
             abort_upgrade "2"
         fi
     elif pkg_exists ./var/upgrade/*.deb; then
         if command -v dpkg >/dev/null 2>&1; then
-            dpkg -i --force-confdef ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
+            # Same ordering reason as the rpm branch above.
             PACKAGE_MANAGER_HANDLES_RESTART=1
+            dpkg -i --force-confdef ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. DEB package found but dpkg command not found." >> ./logs/upgrade.log
             abort_upgrade "2"
