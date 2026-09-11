@@ -30,6 +30,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -54,6 +56,7 @@ using remoted::http::Method;
 // The shared transport fake, rather than a local copy: it already satisfies every IHttpServer
 // virtual (including the in-flight byte reservation) so a new one does not break this test.
 using remoted::testutil::FakeHttpServer;
+using remoted::testutil::headerValue;
 namespace stateful = remoted::endpoints::stateful;
 
 namespace
@@ -75,17 +78,6 @@ namespace
         return {std::make_shared<const AuthenticatedRequest>(std::move(ar)), std::move(buffer)};
     }
 
-    std::optional<std::string> headerValue(const HttpResponse& response, const std::string& name)
-    {
-        for (const auto& [headerName, value] : response.headers)
-        {
-            if (headerName == name)
-            {
-                return value;
-            }
-        }
-        return std::nullopt;
-    }
 } // namespace
 
 TEST(StatefulEndpoint, TargetPointsAtTheInventorySyncServer)
@@ -208,6 +200,41 @@ TEST(StatefulEndpoint, MalformedRetryAfterIsDroppedNotReflected)
         EXPECT_EQ(response.status, 503);
         EXPECT_EQ(headerValue(response, "Retry-After"), std::nullopt) << "value='" << bad << "'";
     }
+}
+
+TEST(StatefulEndpoint, A503RemotedProducesItselfCarriesItsOwnRetryAfter)
+{
+    // #38880: nothing to forward on these two -- the sync server never delivered a session result
+    // -- so remoted supplies the hint rather than leaving the agent to guess whether the manager
+    // refused it or the link broke.
+    const auto unreachable = stateful::postProcess(DownstreamError::ResponseTimeout, DownstreamResponse {0, "", {}});
+    EXPECT_EQ(unreachable.status, 503);
+    EXPECT_EQ(headerValue(unreachable, "Retry-After"),
+              std::optional<std::string> {remoted::http::SHED_RETRY_AFTER_SECONDS});
+
+    // 404/405: a route mismatch is remoted's problem, not a session result.
+    const auto outOfContract = stateful::postProcess(DownstreamError::None, DownstreamResponse {404, "", {}});
+    EXPECT_EQ(outOfContract.status, 503);
+    EXPECT_EQ(headerValue(outOfContract, "Retry-After"),
+              std::optional<std::string> {remoted::http::SHED_RETRY_AFTER_SECONDS});
+}
+
+TEST(StatefulEndpoint, AForwardedRetryAfterWinsOverRemotedsOwn)
+{
+    // The sync server's value is feed-sized (D17) and specific to that session; remoted's is a
+    // generic shed hint. When the 503 IS the session result the downstream's value must survive,
+    // exactly once -- a duplicated header would leave the agent picking arbitrarily.
+    DownstreamResponse downstream {503, R"({"error":"vulnerability feed not ready","code":503})", {}};
+    downstream.headers.emplace_back("retry-after", "600");
+
+    const auto response = stateful::postProcess(DownstreamError::None, downstream);
+    EXPECT_EQ(response.status, 503);
+    EXPECT_EQ(headerValue(response, "Retry-After"), std::optional<std::string> {"600"});
+
+    const auto count = std::count_if(response.headers.begin(),
+                                     response.headers.end(),
+                                     [](const auto& header) { return header.first == "Retry-After"; });
+    EXPECT_EQ(count, 1) << "the forwarded value must not be doubled by a locally-added one";
 }
 
 // --- makeHandler() ----------------------------------------------------------------------------
