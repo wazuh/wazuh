@@ -94,6 +94,12 @@ class ICurlHandle
         virtual bool setOptionPtr(CurlOption option, const void* value) = 0;
         virtual void appendHeader(const std::string& header) = 0;
 
+        /// Sets X509_V_FLAG_PARTIAL_CHAIN so a self-signed CaInfo root echoed back
+        /// in the peer's own chain verifies instead of failing with
+        /// X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN. Trusts nothing beyond CaInfo.
+        /// @return false if the underlying option was rejected by libcurl.
+        virtual bool trustSelfSignedRoot() = 0;
+
         /// @return false if the underlying option(s) were rejected by libcurl;
         ///         the caller must not proceed to perform() in that case, since
         ///         the requested behavior (e.g. capturing the response) would

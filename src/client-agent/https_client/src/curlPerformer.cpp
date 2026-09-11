@@ -329,7 +329,12 @@ bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle) const
         // on top of it would widen what the agent accepts. (verify_mode=system's
         // Linux trust anchor also flows through here: the constructor resolves it
         // into caPath once, up front, so this branch needs no mode-awareness.)
-        return setMandatoryOption(handle, CurlOption::CaInfo, m_config.caPath);
+        //
+        // Unconditional here (not just full/certificate): caPath may be a self-signed
+        // root that the peer also echoes in its own chain, which fails with
+        // X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN unless this is set.
+        return setMandatoryOption(handle, CurlOption::CaInfo, m_config.caPath)
+               && handle.trustSelfSignedRoot();
     }
 
 #if defined(WIN32) || defined(__APPLE__)

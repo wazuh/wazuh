@@ -386,12 +386,27 @@ DEFAULT_CA_FILE="./etc/certs/root-ca.pem"
 # a separate, explicitly recorded decision rather than done implicitly here.
 INCOMING_CA_FILE="./var/incoming/root-ca.pem"
 
-if [ -f "${INCOMING_CA_FILE}" ]; then
+if [ -L "${INCOMING_CA_FILE}" ]; then
+    # var/incoming is written by com's own transfer, but is not exclusively
+    # Wazuh-controlled -- reject a symlink outright rather than read or copy
+    # through it, same reasoning as this codebase's own w_fopen_nofollow() for
+    # this same directory.
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - A CA arrived at ${INCOMING_CA_FILE} as a symlink; refusing to follow it, discarding it and continuing the upgrade unverified." >> ./logs/upgrade.log
+    rm -f "${INCOMING_CA_FILE}"
+elif [ -f "${INCOMING_CA_FILE}" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Found a CA delivered by the manager at ${INCOMING_CA_FILE}, validating it." >> ./logs/upgrade.log
 
     CA_REJECT_REASON=""
 
-    if ! openssl x509 -in "${INCOMING_CA_FILE}" -noout > /dev/null 2>&1; then
+    # Cheap bound before invoking openssl at all: empty or implausibly large for
+    # a CA certificate is rejected the same way a malformed one is, without ever
+    # parsing it.
+    CA_BYTES=$(wc -c < "${INCOMING_CA_FILE}" 2>/dev/null)
+    CA_BYTES=${CA_BYTES:-0}
+
+    if [ "${CA_BYTES}" -eq 0 ] || [ "${CA_BYTES}" -gt 65536 ]; then
+        CA_REJECT_REASON="is empty or larger than the 64 KiB a CA certificate should ever need"
+    elif ! openssl x509 -in "${INCOMING_CA_FILE}" -noout > /dev/null 2>&1; then
         CA_REJECT_REASON="does not parse as a PEM certificate"
     elif ! openssl x509 -in "${INCOMING_CA_FILE}" -noout -text 2>/dev/null | grep -A1 "X509v3 Basic Constraints" | grep -q "CA:TRUE"; then
         CA_REJECT_REASON="is not a CA certificate (no X509v3 Basic Constraints CA:TRUE)"
@@ -435,18 +450,35 @@ if [ -f "${INCOMING_CA_FILE}" ]; then
             CA_INSTALL_VERB="Installed the delivered"
         fi
 
-        mkdir -p "$(dirname "${DEFAULT_CA_FILE}")"
-        cp "${INCOMING_CA_FILE}" "${DEFAULT_CA_FILE}"
-        # root:wazuh 640, matching the existing wpk_root.pem trust anchor: readable by
-        # the wazuh group the daemon runs under, but owned (and only writable) by root
-        # -- a daemon that can rewrite its own anchor is not a boundary at all.
-        chown root:wazuh "${DEFAULT_CA_FILE}" 2>/dev/null
-        chmod 640 "${DEFAULT_CA_FILE}" 2>/dev/null
+        DEFAULT_CA_DIR="$(dirname "${DEFAULT_CA_FILE}")"
+        mkdir -p "${DEFAULT_CA_DIR}" 2>/dev/null
+        # mkdir -p's mode is whatever the umask leaves it -- looser than the rest
+        # of etc/, which is root:wazuh 0770. Match that convention explicitly
+        # rather than let a first-ever delivery leave a world-traversable certs
+        # directory.
+        chown root:wazuh "${DEFAULT_CA_DIR}" 2>/dev/null
+        chmod 750 "${DEFAULT_CA_DIR}" 2>/dev/null
 
-        # A present, readable anchor here is picked up automatically at agent startup
-        # and resolves an unset <verification_mode> to 'full' against it -- so this
-        # alone is sufficient to activate verification; no <ssl> edit is needed.
-        echo "$(date +"%Y/%m/%d %H:%M:%S") - ${CA_INSTALL_VERB} CA at ${DEFAULT_CA_FILE}. ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> ./logs/upgrade.log
+        # Install atomically: write to a temp file in the same directory, then
+        # rename over the target, so a reader never observes a partially-written
+        # anchor, and a failed cp/mv is caught here instead of silently logging
+        # success with nothing actually installed.
+        CA_TMP="${DEFAULT_CA_DIR}/.root-ca.pem.$$"
+        if cp "${INCOMING_CA_FILE}" "${CA_TMP}" 2>/dev/null && mv -f "${CA_TMP}" "${DEFAULT_CA_FILE}" 2>/dev/null; then
+            # root:wazuh 640, matching the existing wpk_root.pem trust anchor: readable by
+            # the wazuh group the daemon runs under, but owned (and only writable) by root
+            # -- a daemon that can rewrite its own anchor is not a boundary at all.
+            chown root:wazuh "${DEFAULT_CA_FILE}" 2>/dev/null
+            chmod 640 "${DEFAULT_CA_FILE}" 2>/dev/null
+
+            # A present, readable anchor here is picked up automatically at agent startup
+            # and resolves an unset <verification_mode> to 'full' against it -- so this
+            # alone is sufficient to activate verification; no <ssl> edit is needed.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - ${CA_INSTALL_VERB} CA at ${DEFAULT_CA_FILE}. ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> ./logs/upgrade.log
+        else
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Could not install the delivered CA at ${DEFAULT_CA_FILE} (write failure); leaving any existing anchor untouched and continuing the upgrade." >> ./logs/upgrade.log
+            rm -f "${CA_TMP}" 2>/dev/null
+        fi
     fi
 
     rm -f "${INCOMING_CA_FILE}"
