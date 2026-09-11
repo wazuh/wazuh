@@ -69,6 +69,17 @@ namespace remoted::http
                               ///< address (client.keys' third column) before verifying the token.
     };
 
+    /// `Retry-After` attached to every load-shedding 503 remoted produces itself (the global
+    /// in-flight byte budget, deferred-slot exhaustion, and the endpoints' collapse of a downstream
+    /// failure). A shed request is then distinguishable from a network blip, and the fleet's first
+    /// retry is spread instead of each agent walking its own curve. One uniform value on purpose:
+    /// it is a DELAY, not a cause, so it tells the agent nothing about which limit tripped. Matches
+    /// what the sync server sends on its own sheds (uds_http::SHED_RETRY_AFTER_SECONDS) so a
+    /// forwarded hint and a locally-produced one agree. The agent waits `max(hint, its own
+    /// full-jitter backoff)` (retrySender.cpp's delayFor), so this only ever raises a
+    /// near-immediate retry -- it can never make one slower than the agent already intended.
+    constexpr const char* SHED_RETRY_AFTER_SECONDS {"10"};
+
     /**
      * @brief Neutral HTTP response produced by a handler.
      */
@@ -87,6 +98,22 @@ namespace remoted::http
             response.status = status;
             response.body = std::move(body);
             response.headers.emplace_back("Content-Type", "application/json");
+            return response;
+        }
+
+        /**
+         * @brief Build the load-shedding 503, carrying SHED_RETRY_AFTER_SECONDS.
+         *
+         * Every 503 remoted produces ITSELF (budget shed, deferred-slot exhaustion, and each
+         * endpoint's collapse of a downstream failure) is this one, so the agent gets the same
+         * actionable delay whichever layer refused it. NOT for a 503 forwarded from a downstream
+         * service: that is the session result and passes through with the downstream's own
+         * Retry-After (statefulEndpoint's forwardRetryAfter).
+         */
+        static HttpResponse serviceUnavailable()
+        {
+            auto response = json(503, R"({"error":"Service unavailable","code":503})");
+            response.headers.emplace_back("Retry-After", SHED_RETRY_AFTER_SECONDS);
             return response;
         }
     };

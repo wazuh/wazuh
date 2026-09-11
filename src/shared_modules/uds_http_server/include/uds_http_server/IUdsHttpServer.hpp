@@ -88,6 +88,15 @@ namespace wazuh::uds_http
         std::unordered_map<std::string, std::string> headers;
     };
 
+    /// `Retry-After` attached to every load-shedding 503, so a shed request is distinguishable from
+    /// a network blip and the fleet's first retry is spread instead of each agent walking its own
+    /// curve. One uniform value on purpose: it is a DELAY, not a cause, so it tells the peer nothing
+    /// about which limit tripped (the causes stay in the logs). Matches the value the VD lane
+    /// already ships (`inventory_sync_server_vd_feed_retry_after_seconds`, 10 s) and binds against
+    /// the agent's early full-jitter backoff, whose ceiling starts at 1 s and doubles -- the agent
+    /// waits `max(Retry-After, its own backoff)`, so this only ever raises a near-immediate retry.
+    constexpr const char* SHED_RETRY_AFTER_SECONDS {"10"};
+
     /**
      * @brief Neutral HTTP response produced by a handler.
      */
