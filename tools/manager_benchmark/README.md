@@ -25,8 +25,8 @@ into one `summary.json` and plots it.
 # uds mode — straight to the module socket (the ingestion pipeline alone)
 ./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode uds
 
-# agent mode — enroll against authd, then HTTPS to remoted (the whole relay)
-sudo ./prepare_manager.sh                                    # one-time: open, password-free enrollment
+# agent mode — enroll the fleet over POST /enroll, then HTTPS to remoted (the whole relay)
+sudo ./prepare_manager.sh                                    # one-time: reachable enrollment + the fleet's token
 ./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode agent
 ```
 
@@ -148,12 +148,41 @@ show up in the manager's log as `reason=feed_update`. Full contract in
 
 ## Manager preparation (agent mode)
 
-Agent-mode runs enroll a synthetic fleet against authd, so enrollment must be open and password-free.
-`prepare_manager.sh` sets the `<auth>` block to `disabled=no`, `remote_enrollment=yes`,
-`use_password=no` (optionally `max_agents=N`) and removes `etc/authd.pass`. It is idempotent and
-writes a one-time `.bak`. The compiled default is already `use_password=0`, but upstream #36705 turned
-the shared password **on by default in the installer**, so a fresh install rejects unauthenticated
-enrollment until this is undone.
+Agent-mode runs enroll a synthetic fleet the way a 5.x agent handed an enrollment token does — `POST
+/enroll` on 1517 with a `wazuh-enroll+jwt` bearer — so the manager under test keeps the **enrollment
+policy it was installed with**. `prepare_manager.sh` does two things and softens nothing:
+
+1. makes remote enrollment reachable: `<auth>` gets `disabled=no`, `remote_enrollment=yes`
+   (optionally `max_agents=N`) — remoted serves `/enroll` only while both hold;
+2. mints **one multi-use enrollment token** for the fleet (`wazuh-manager-authd
+   --create-enrollment-token`, authd's defaults: 30 days, unlimited uses) and writes it to
+   `.enrollment_token` next to the script, which `run_benchmark.sh` picks up by itself.
+
+`<use_password>` and `etc/authd.pass` are left exactly as installed. That is the point of issue
+#39054: benchmarking used to require `use_password=no`, a configuration no production manager has,
+and a config flip the script had to apply and undo.
+
+The mint is validated against the running listener certificate, so its `--address` must be one of
+that certificate's SANs; the default is read from the certificate itself. `--address` overrides it,
+and `--no-mint` skips minting (bring your own token with `--enroll-token-file`). It is idempotent and
+writes a one-time `.bak`.
+
+### Bootstrapping over the legacy 1515 listener
+
+`--bootstrap 1515` enrolls the fleet through authd's plaintext-inside-TLS listener instead, which is
+kept for comparing the two first-contact paths. That protocol carries no credential, so it needs the
+old flip — which is now explicit:
+
+```bash
+sudo ./prepare_manager.sh --open-1515      # ALSO sets use_password=no and removes etc/authd.pass
+./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode agent --bootstrap 1515
+```
+
+It opens unauthenticated enrollment to anything that can reach port 1515, which is why it is not the
+default any more — and a later `prepare_manager.sh` **without** the flag does not undo it: put
+`<use_password>` back by hand (the one-time `.bak` has the original) when done comparing. Each run
+records which bootstrap it used in `sender_summary.json` (`meta.bootstrap`) and `params.json`, so two
+runs are never confused for one another.
 
 ## Inspecting a run's indexed data (agent mode)
 
@@ -191,7 +220,7 @@ run exits. Pair it with `--keep-agents` so the documents survive after that too:
 | Script | What it does |
 |---|---|
 | `run_benchmark.sh` | Orchestrates one run end to end (monitor + sender + summary + charts) |
-| `prepare_manager.sh` | Opens password-free enrollment for agent mode (idempotent) |
+| `prepare_manager.sh` | Makes remote enrollment reachable and mints the fleet's enrollment token (idempotent); `--open-1515` for the legacy bootstrap |
 | `scrape_metrics.sh` | Standalone `GET /metrics` poller (long format). Only used as a fallback when the monitor cannot run |
 | `cleanup_agents.sh` | Deletes only `bench-*` agents via the Wazuh API (never a real one) |
 | `indexer_control.sh` | Start/stop/health the local `wazuh-indexer` (e.g. an indexer-down scenario) |
@@ -206,7 +235,7 @@ report from someone else's laptop would be misleading as a reference. The matrix
 committed instead, so any environment can regenerate the whole thing:
 
 ```bash
-sudo ./prepare_manager.sh              # open, password-free enrollment (agent mode)
+sudo ./prepare_manager.sh              # reachable enrollment + the fleet's token (agent mode)
 ./run_matrix.sh                        # 12 runs -> results_<label>/
 ./make_report_tables.py > tables.md    # environment + status + latency + throughput tables
 ```
@@ -232,17 +261,18 @@ The same scenarios over two transports, so the difference isolates the relay:
 - **`--mode uds`** — straight to the module's Unix socket (`POST /stateful`), measuring the
   ingestion pipeline alone: validation, sharded workers, group commit, the vulnerability-detection
   scan lane.
-- **`--mode agent`** — like a real fleet: enroll against authd, then HTTPS to remoted with a
+- **`--mode agent`** — like a real fleet: enroll over `POST /enroll` with an enrollment token
+  (`--bootstrap 1515` for the legacy listener), then HTTPS to remoted with a
   `wazuh-agent+jwt` bearer token per request, sending `POST /control` (`startup`, a `notify` keepalive every 10 s, `shutdown`) and
   the `POST /stateful` sessions. A `cacerts` step adds the unauthenticated `GET /cacerts` (the CA that
   signs the listener certificate) — the trust bootstrap a real agent does first, and the floor of the
   listener's fixed per-request cost since nothing sits downstream of it (`scenarios/cacerts.json`).
-  An `enroll_https` step adds `POST /enroll` with an **enrollment token** (`scenarios/enroll_https.json`):
-  each repetition enrolls a fresh `bench-…-tk-N` agent over HTTPS with the `wazuh-enroll+jwt` bearer
-  minted from the token you pass with `--enroll-token-file` (or `WAZUH_ENROLLMENT_TOKEN`) — the
-  first-contact path of a 5.x agent handed a token instead of the shared password, end to end through
-  `authd`. Mint the token on the manager under test (`wazuh-manager-authd --create-enrollment-token
-  --address <manager>`), and run `cleanup_agents.sh` afterwards.
+  An `enroll_https` step MEASURES that same first-contact path under load
+  (`scenarios/enroll_https.json`): each repetition enrolls a fresh `bench-…-tk-N` agent, on top of
+  the one enrollment per agent the bootstrap already did, and its cost is reported in its own
+  `enroll_https_*` counters — the fleet's own bootstrap is setup and is never folded into them. Both
+  use the token from `--enroll-token-file` / `WAZUH_ENROLLMENT_TOKEN` / `.enrollment_token`, and
+  `cleanup_agents.sh` removes every `bench-*` agent either produced.
 
 Per run it produces `bench.csv` (per-second cumulative counters and latency percentiles),
 `sender_summary.json` (metadata, totals, per-kind histograms — plus the `expected` verdict when the

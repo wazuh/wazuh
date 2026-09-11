@@ -21,6 +21,22 @@ import (
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/wire"
 )
 
+// How an agent-mode fleet obtains the identities it runs under (issue #39054).
+// Both end in a `client.keys` entry the manager will authenticate; they differ in
+// which credential buys it, and therefore in what the manager under test has to
+// be configured as.
+const (
+	// BootstrapEnrollToken is POST /enroll on the HTTPS port with an
+	// enrollment-token bearer -- what a 5.x agent handed a token does, and the
+	// only bootstrap that works against a manager whose <use_password> is the
+	// installed default.
+	BootstrapEnrollToken = "enroll-token"
+	// Bootstrap1515 is authd's legacy TCP listener, kept for comparing the two
+	// first-contact paths. It carries no credential, so it needs an authd opened
+	// with <use_password>no</use_password> (prepare_manager.sh --open-1515).
+	Bootstrap1515 = "1515"
+)
+
 // Config is everything the runner needs that is not in the scenario.
 type Config struct {
 	Scenario     *scenario.Scenario
@@ -53,6 +69,10 @@ type Config struct {
 	// on the manager under test, never a scenario field. "" is fine for scenarios
 	// without the step; a scenario WITH it and no token is refused before any traffic.
 	EnrollToken string
+	// Bootstrap selects how the fleet is enrolled in agent mode:
+	// BootstrapEnrollToken (the default) or Bootstrap1515. Ignored in uds mode,
+	// which synthesizes identities instead of enrolling them.
+	Bootstrap string
 	// VDFeedOffset overrides Start.feed_offset for every VDFirst/VDSync step
 	// that doesn't set its own (environment config, like Cluster). 0 means "no
 	// override" -- defer to the step, then to what agent mode's keepalive loop
@@ -88,7 +108,8 @@ type Runner struct {
 	failed   int
 
 	// The decoded enrollment token and its HS256 key, resolved once by
-	// prepareEnrollToken(); nil when the scenario has no enroll_https step.
+	// prepareEnrollToken(); nil when the run needs none (neither the
+	// enroll-token bootstrap nor an enroll_https step).
 	enrollToken *wire.EnrollmentToken
 	enrollKey   []byte
 }
@@ -230,18 +251,19 @@ func (r *Runner) buildAgents(ctx context.Context) ([]*agent, error) {
 			ag := &agent{r: r, fleet: fleet, id: id, name: name}
 
 			if r.mode == "agent" {
-				ident, err := wire.Enroll(r.cfg.Manager, r.cfg.RegPort, name, r.cfg.Timeout)
+				if r.enrollToken != nil {
+					// One identity-less client per agent, like the authenticated one: the
+					// bootstrap's and an enroll_https lane's connections stay this agent's
+					// own (docu/08).
+					ag.enroll = wire.NewEnrollClient(r.cfg.Manager, r.cfg.Port, r.cfg.Timeout, r.cfg.Reuse, r.cfg.GlobalPrefix)
+				}
+				ident, err := r.bootstrap(ag)
 				if err != nil {
 					r.failed++
-					return nil, fmt.Errorf("enroll %s: %w", name, err)
+					return nil, err
 				}
 				ag.id = ident.ID
 				ag.client = wire.NewAgentClient(ident, r.cfg.Manager, r.cfg.Port, r.cfg.Timeout, r.cfg.Reuse, r.cfg.GlobalPrefix)
-				if r.enrollToken != nil {
-					// One identity-less client per agent, like the authenticated one: an
-					// enroll_https lane's connections stay this agent's own (docu/08).
-					ag.enroll = wire.NewEnrollClient(r.cfg.Manager, r.cfg.Port, r.cfg.Timeout, r.cfg.Reuse, r.cfg.GlobalPrefix)
-				}
 				r.enrolled++
 			} else {
 				ag.client = wire.NewUDSClient(ag.id, r.cfg.Socket, r.cfg.Timeout)
@@ -365,10 +387,17 @@ func (r *Runner) Meta() metrics.Meta {
 	for _, f := range r.scn.Fleets {
 		requested += f.Agents
 	}
+	// Only an agent-mode run bootstraps anything: a uds run synthesizes its
+	// identities, so it records no bootstrap rather than a misleading one.
+	bootstrap := ""
+	if r.mode == "agent" {
+		bootstrap = r.cfg.Bootstrap
+	}
 	ki := r.scn.Defaults.Control.KeepaliveInterval.D()
 	return metrics.Meta{
 		ScenarioName: r.scn.Name, ScenarioPath: r.cfg.ScenarioPath, Mode: r.mode,
 		Manager: r.cfg.Manager, Port: r.cfg.Port, RegPort: r.cfg.RegPort, Target: target, GlobalPrefix: r.cfg.GlobalPrefix,
+		Bootstrap:   bootstrap,
 		ClusterName: r.clusterName(), AgentsRequested: requested, AgentsEnrolled: r.enrolled, AgentsFailed: r.failed,
 		ConcurrentAgents: r.scn.Pacing.ConcurrentAgents, RPSTarget: r.scn.Pacing.RequestsPerSecond,
 		KeepaliveInterval: ki.String(), ControlEnabled: r.controlEnabled(), ConnectionReuse: r.cfg.Reuse, Compression: r.compression(),

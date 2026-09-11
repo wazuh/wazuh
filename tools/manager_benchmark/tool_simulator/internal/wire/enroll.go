@@ -14,6 +14,12 @@ type Identity struct {
 	ID   string
 	Name string
 	Key  string // 64 lowercase hex chars, as it appears in client.keys
+	// ReenrollSecret is the second 64-hex secret POST /enroll answers with (authd
+	// stores it in global.db alone, never in client.keys). Kept with the key the way
+	// a real agent keeps it, and never sent: it is what makes a token-bootstrapped
+	// identity re-enrollable. Empty for an identity from Enroll below -- port 1515
+	// issues none.
+	ReenrollSecret string
 }
 
 // Enroll registers one agent against authd over TLS (plain-text protocol):
@@ -23,7 +29,9 @@ type Identity struct {
 //
 // The manager's certificate is accepted without verification (test managers
 // are self-signed). A password-protected authd is intentionally unsupported:
-// the orchestration prepares the manager with <use_password>no</use_password>.
+// this is the LEGACY bootstrap (--bootstrap 1515), kept for comparison against
+// the enrollment-token one, and it needs a manager opened with
+// `prepare_manager.sh --open-1515` (<use_password>no</use_password>).
 func Enroll(host string, port int, name string, timeout time.Duration) (Identity, error) {
 	addr := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 	dialer := &net.Dialer{Timeout: timeout}

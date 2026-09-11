@@ -7,12 +7,15 @@ import (
 
 // Meta is the reproducibility block of sender_summary.json. The runner fills it.
 type Meta struct {
-	ScenarioName      string  `json:"scenario_name"`
-	ScenarioPath      string  `json:"scenario_path"`
-	Mode              string  `json:"mode"`
-	Manager           string  `json:"manager"`
-	Port              int     `json:"port"`
-	RegPort           int     `json:"reg_port"`
+	ScenarioName string `json:"scenario_name"`
+	ScenarioPath string `json:"scenario_path"`
+	Mode         string `json:"mode"`
+	Manager      string `json:"manager"`
+	Port         int    `json:"port"`
+	RegPort      int    `json:"reg_port"`
+	// How the fleet was enrolled: "enroll-token" | "1515" in agent mode, "" in
+	// uds mode, which enrolls nothing (issue #39054).
+	Bootstrap         string  `json:"bootstrap"`
 	Target            string  `json:"target"`
 	GlobalPrefix      string  `json:"global_prefix"`
 	ClusterName       string  `json:"cluster_name"`
