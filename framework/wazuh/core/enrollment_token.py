@@ -26,8 +26,8 @@ AUTHD_TOKEN_NOT_FOUND = 9022  # unknown id, or one that is not the shape of a to
 AUTHD_MINT_REFUSED = 9025     # the request cannot be honoured; the message carries the detail
 AUTHD_STORE_FAILED = 9029     # applied in memory, but the store file could not be written
 _REFUSED_PREFIX = 'Enrollment token refused: '
-# The API's `timeframe` format (api/validator.py _timeframe_type), checked here too: get_timeframe_in_seconds()
-# alone turns anything with a stray unit letter into 0, which authd would silently replace by its default.
+# The API's `timeframe` format (api/validator.py _timeframe_type), narrower than what
+# get_timeframe_in_seconds() takes: a single unit group, so `30d` but not `1d12h`.
 _TIMEFRAME = re.compile(r'^\d+[dhms]?$')
 
 # What purge_tokens() accepts, mirroring authd's own scopes (etoken_purge_t)
