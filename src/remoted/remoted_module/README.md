@@ -99,8 +99,9 @@ src/http_server/
     1. **In-flight byte budget** — the transport reserves each request's payload (`body + a small
        per-request overhead`) against a global budget *before* handing it to the worker pool. When
        the budget is exhausted the request is shed with a plain **`503 Service Unavailable`**
-       (server-capacity load-shedding, not per-client rate-limiting; no `Retry-After` — the agent
-       runs its own retry/backoff) instead of queueing, giving the backpressure the raw asio pool lacks. The reservation is an RAII token living in the request's
+       (server-capacity load-shedding, not per-client rate-limiting; carries a `Retry-After` so the
+       shed is distinguishable from a network failure, and the agent waits the longer of that hint
+       and its own backoff) instead of queueing, giving the backpressure the raw asio pool lacks. The reservation is an RAII token living in the request's
        shared context alongside the single payload copy; it is released the instant the context's
        last owner drops it. The **handler controls that**: dropping the request shared_ptr (or calling
        `AuthenticatedRequest::payload.release()`) frees the payload buffer AND the reservation together

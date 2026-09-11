@@ -62,7 +62,7 @@ below. Status: **kept** = the module provides it; **superseded by D-n** = delibe
 |---|---|---|
 | RNF-1 | Preserve the 9 security controls: anti-spoofing, index allowlists, authoritative `wazuh.*` overlay, strict JSON, `external_gte` guard, idempotency, admission quota, cluster isolation | [Validation](#validation-syncfullsessionvalidator), [the allowlist](#the-allowlist-syncstateindexallowlisthpp), the overlay in `sessionProcessor` |
 | RNF-2 | No head-of-line blocking: no sleeps or unbounded waits on the completion path | sharding + the VD lane; a slow agent/scan delays only its shard/lane |
-| RNF-3 | Explicit backpressure at admission and ingestion (no silent drops) | the four `503` gates; every refusal is an HTTP answer |
+| RNF-3 | Explicit backpressure at admission and ingestion (no silent drops) | the four `503` gates; every refusal is an HTTP answer, and every one carries a `Retry-After` |
 | RNF-4 | Every abort observable by the agent | deferred responders always answer (weak captures → `503`; batch abandoned on stop → `503`) |
 | RNF-5 | Deterministic teardown; no half-built startup states | [Lifecycle](#lifecycle-the-facade): phased build, reverse teardown, startup gate |
 | RNF-6 | Unit-testability of the orchestration | seams: `IIndexerConnectorSync`, `IVdScanner`, test hooks ([Tests](#tests)) |
@@ -322,7 +322,7 @@ sequenceDiagram
         alt feed still downloading (D17)
             S-->>R: 503 + Retry-After, NOTHING processed
         else lane queue full (vd_scan_queue_slots, D22)
-            S-->>R: 503 scan capacity exhausted
+            S-->>R: 503 + Retry-After, scan capacity exhausted
         else
             S->>VQ: enqueue on the scan lane
             VQ->>VQ: scan (synchronous, gates everything)
@@ -331,7 +331,7 @@ sequenceDiagram
         end
     else everything else
         alt pipeline admission queue over sync_queue_bytes (GLOBAL)
-            S-->>R: 503 shed (sync.pipeline.shed.total)
+            S-->>R: 503 + Retry-After, shed (sync.pipeline.shed.total)
         else
             S->>Q: enqueue on hash(agentId) % workers
             Q->>IDX: stage / execute + flush (group commit)

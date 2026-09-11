@@ -29,7 +29,7 @@ transport knobs are documented in each consumer's `configuration.md`.
 | RF-5 | Two-phase shutdown with guarantees S1/S2/S3 (below), budgeted to fit a daemon's 30 s stop window |
 | RF-6 | **Injected identity**: `logTag`, `serverName` (rendered as "`<name>` server / connection(s) / request(s)" in every diagnostic), `serverHeader` (the `Server:` response header), and optional internal-option hints for the two capacity diagnostics — so each consumer's lines read in its own vocabulary, and the extraction changed no log line of its first consumer |
 | RF-7 | **Diagnostics snapshot** (`diagnostics()`): budget available/in-flight bytes, in-flight request count, live sessions — relaxed atomic loads, callable at any point between construction and destruction. Consumers publish these as `wazuh_metrics` pull metrics; the library itself does not depend on wazuh_metrics |
-| RF-8 | Fixed status semantics: 400/404/405+`Allow`/411/413/414/431/500/503/504, with throttled per-condition diagnostics (one storm cannot suppress another kind's first line) |
+| RF-8 | Fixed status semantics: 400/404/405+`Allow`/411/413/414/431/500/503/504, with throttled per-condition diagnostics (one storm cannot suppress another kind's first line). Every 503 carries a `Retry-After` (`SHED_RETRY_AFTER_SECONDS`), since all of them are load-shedding: the peer can tell a shed apart from a transport failure |
 | RF-9 | Safe socket ownership: pre-flight check (`socketPathIsUsable`), refusal to unlink a non-socket, explicit chmod (0660 default), no parent-directory creation, inode-guarded unlink at teardown |
 
 ### Non-functional

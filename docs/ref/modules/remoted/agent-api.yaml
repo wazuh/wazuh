@@ -220,8 +220,13 @@ paths:
           description: |
             The server is temporarily out of capacity (its in-flight byte budget is exhausted or too
             many requests are already parked awaiting the downstream service), or the downstream engine
-            was unreachable / errored. Server-side load-shedding, not per-client rate-limiting: no
-            `Retry-After` is sent — the agent applies its own retry/backoff. The connection is closed.
+            was unreachable / errored. Server-side load-shedding, not per-client rate-limiting.
+            Carries a `Retry-After` so a shed request is distinguishable from a network failure; the
+            agent waits the longer of that hint and its own backoff. The connection is closed.
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying. Fixed value, identical at every shed point.
+              schema: { type: integer, minimum: 0 }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -409,7 +414,8 @@ paths:
 
         Because the downstream answer **is** the session result, this is the one route whose
         statuses and bodies are passed through as produced by the sync server, and the one route
-        that can return a `Retry-After` (digits-only, on a `503`). The sync server cross-checks the
+        that can relay the sync server's own `Retry-After` (digits-only, on a `503`) rather than
+        remoted's fixed shed value. The sync server cross-checks the
         FlatBuffer's `Start.agentid` against the forwarded header and answers `403` on a mismatch.
 
         It also carries its own, longer response deadline
@@ -459,11 +465,14 @@ paths:
         "503":
           description: |
             Out of capacity, the sync server was unreachable or did not answer in time, or it shed
-            the session itself. The only route that may carry a `Retry-After`, relayed from the sync
-            server when it sends a digits-only value.
+            the session itself. Always carries a `Retry-After`: relayed verbatim from the sync server
+            when the 503 is the session result (so a not-ready CVE feed sends its own, feed-sized
+            value), otherwise remoted's own fixed shed value.
           headers:
             Retry-After:
-              description: Seconds to wait before retrying. Relayed from the sync server only.
+              description: |
+                Seconds to wait before retrying. Relayed from the sync server when the 503 is the
+                session result; otherwise remoted's fixed shed value.
               schema: { type: integer, minimum: 0 }
           content:
             application/json:
@@ -982,8 +991,13 @@ components:
       description: |
         The server is temporarily out of capacity (its in-flight byte budget is exhausted or too many
         requests are already parked awaiting a downstream service), or the downstream service was
-        unreachable or errored. Server-side load-shedding, not per-client rate-limiting: no
-        `Retry-After` is sent on this route -- the agent applies its own retry/backoff.
+        unreachable or errored. Server-side load-shedding, not per-client rate-limiting. Carries a
+        `Retry-After` so the agent can tell a shed apart from a network failure; it waits the longer
+        of that hint and its own backoff, so the hint never slows a retry the agent already intended.
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying. Fixed value, identical at every shed point.
+          schema: { type: integer, minimum: 0 }
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorResponse" }
