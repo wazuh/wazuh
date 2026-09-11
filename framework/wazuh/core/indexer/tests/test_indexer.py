@@ -100,6 +100,82 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
     client.close.assert_awaited_once()
 
 
+async def _run_get_indexer_client(indexer_extra):
+    """Run get_indexer_client() with a given indexer config and return the
+    _create_ssl_context mock, so callers can assert what it was called with."""
+    client = AsyncMock()
+    client.close = AsyncMock()
+    keystore_client = MagicMock()
+    keystore_client.__enter__.return_value.get.side_effect = [
+        {"value": "wazuh-manager"},
+        {"value": "wazuh-manager"},
+    ]
+
+    wazuh_config = {"indexer": {"hosts": ["https://localhost:9200"], **indexer_extra}}
+    mock_ssl_context = MagicMock(spec=ssl.SSLContext)
+
+    with patch("wazuh.core.indexer.indexer.common.WAZUH_PATH", "/var/wazuh-manager"), \
+            patch(
+                "wazuh.core.indexer.indexer._get_cached_indexer_config",
+                new_callable=AsyncMock,
+                return_value=wazuh_config,
+            ), \
+            patch(
+                "wazuh.core.indexer.indexer.KeystoreClient",
+                return_value=keystore_client,
+            ), \
+            patch(
+                "wazuh.core.indexer.indexer._create_ssl_context",
+                return_value=mock_ssl_context,
+            ) as create_ssl_context, \
+            patch(
+                "wazuh.core.indexer.indexer.create_indexer",
+                new_callable=AsyncMock,
+                return_value=client,
+            ), \
+            patch(
+                "wazuh.core.indexer.indexer._IndexerCircuitBreaker.check",
+                new_callable=AsyncMock,
+            ):
+        async with get_indexer_client():
+            pass
+
+    return create_ssl_context
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_without_ssl_section_has_no_client_cert():
+    create_ssl_context = await _run_get_indexer_client({})
+
+    create_ssl_context.assert_called_once_with(None, None, None)
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_with_empty_ssl_section_has_no_client_cert():
+    create_ssl_context = await _run_get_indexer_client({"ssl": {}})
+
+    create_ssl_context.assert_called_once_with(None, None, None)
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_with_only_certificate_authorities_has_no_client_cert():
+    create_ssl_context = await _run_get_indexer_client(
+        {"ssl": {"certificate_authorities": ["etc/certs/root-ca.pem"]}}
+    )
+
+    create_ssl_context.assert_called_once_with(
+        None, None, "/var/wazuh-manager/etc/certs/root-ca.pem"
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_raises_when_certificate_set_without_key():
+    with pytest.raises(IndexerUnavailableError, match="must be set together"):
+        await _run_get_indexer_client(
+            {"ssl": {"certificate": "etc/certs/indexer-connector.pem"}}
+        )
+
+
 @pytest.mark.asyncio
 async def test_get_cached_indexer_config_caches_result():
     """Test that config is cached and not re-read on subsequent calls."""
