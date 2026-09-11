@@ -159,6 +159,7 @@
 | [#36092](https://github.com/wazuh/wazuh/issues/36092) | Honored the shutdown signal in `agent-upgrade` `StartMQ` to avoid timeout warning on agent stop. |
 | [#36126](https://github.com/wazuh/wazuh/issues/36126) | Adjusted DockerListener messages as log entries to fix event categorization. |
 | [#36134](https://github.com/wazuh/wazuh/issues/36134) | Dropped orphan paths before promoting on agent startup to fix FIM. |
+| [#38825](https://github.com/wazuh/wazuh/issues/38825) | Fixed the agent stopping every timer-driven message for the duration of a backward system-clock jump. |
 | [#37653](https://github.com/wazuh/wazuh/issues/37653) | Lowered the `wazuh-agentd` connection socket error log to debug level to avoid duplicating the "Lost connection with manager" error on transient disconnections. |
 | [#37626](https://github.com/wazuh/wazuh/issues/37626) | Fixed a race condition when saving the Logcollector file status on shutdown. |
 | [#37656](https://github.com/wazuh/wazuh/issues/37656) | Fixed an unbounded memory leak in `wazuh-modulesd` caused by a missing RPM macro context cleanup on every package scan cycle. |
