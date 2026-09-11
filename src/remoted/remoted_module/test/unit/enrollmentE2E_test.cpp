@@ -449,10 +449,11 @@ TEST(EnrollmentE2ETest, RevokedTokenIsRejectedWith401)
 }
 
 // -----------------------------------------------------------------------------
-// Re-enrollment (issue #38993), end to end: Password mode configured, the agent presents the bearer
-// signed with its re-enrollment key (the frozen vector: remoted never verifies it, so its 2023 iat is
-// irrelevant here), and the whole pipeline -- authenticator -> AuthdClient with `reenroll` -> authd's
-// rotated answer -- runs against the real handler.
+// Re-enrollment (issue #38993), end to end: Password mode configured, the agent presents a bearer
+// whose `kid` is its agent id, minted now (remoted checks the MESSAGE -- claim set and time rules --
+// but not the signature, which only the master can judge, so the key below is arbitrary), and the
+// whole pipeline -- authenticator -> AuthdClient with `reenroll` -> authd's rotated answer -- runs
+// against the real handler.
 // -----------------------------------------------------------------------------
 
 TEST(EnrollmentE2ETest, ReenrollmentBearerReachesAuthdAndTheRotatedCredentialsComeBack)
@@ -481,13 +482,20 @@ TEST(EnrollmentE2ETest, ReenrollmentBearerReachesAuthdAndTheRotatedCredentialsCo
     EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
     auto handler = makeHandler(authenticator, authdClient, baseConfig(), metrics, passthroughDecoder());
 
+    // The bearer the agent mints from its reenroll_secret: `kid` = its id, claims of this moment.
+    const auto reenrollKey = jwt_profile::v1::enroll::deriveReenrollKey(
+        jwt_profile::v1::SecureBytes(jwt_profile::v1::enroll::kReenrollSecretBytes));
+    ASSERT_TRUE(reenrollKey.has_value());
+    const auto reenrollToken = jwt_profile::v1::enroll::JwtEnrollTokenSigner::signWithKid(
+        *reenrollKey, std::chrono::system_clock::now(), jwt_profile::v1::test_vectors::enroll_token::kAgentKid);
+    ASSERT_TRUE(reenrollToken.has_value());
+
     HttpRequest request;
     request.method = Method::Post;
     request.target = "/enroll";
     request.headers.emplace("protocol-version", std::string {remoted::auth::kSupportedProtocolVersion});
     request.body = kBody;
-    request.headers.emplace("authorization",
-                            "Bearer " + std::string {jwt_profile::v1::test_vectors::enroll_token::kAgentKidJwt});
+    request.headers.emplace("authorization", "Bearer " + *reenrollToken);
 
     const auto response = dispatch(handler, request);
     EXPECT_EQ(response.status, 200);
@@ -499,8 +507,7 @@ TEST(EnrollmentE2ETest, ReenrollmentBearerReachesAuthdAndTheRotatedCredentialsCo
     std::lock_guard<std::mutex> lock(mu);
     const auto wire = nlohmann::json::parse(captured);
     EXPECT_EQ(wire["arguments"]["reenroll"]["kid"], "001");
-    EXPECT_EQ(wire["arguments"]["reenroll"]["bearer"],
-              std::string {jwt_profile::v1::test_vectors::enroll_token::kAgentKidJwt});
+    EXPECT_EQ(wire["arguments"]["reenroll"]["bearer"], *reenrollToken); // verbatim: what authd verifies
     EXPECT_FALSE(wire["arguments"].contains("token_id"));
     EXPECT_EQ(wire["arguments"]["name"], "agent1");
     EXPECT_EQ(static_cast<std::uint64_t>(metricsManager.get(METRIC_REENROLL_ACCEPTED)->value()), 1U);

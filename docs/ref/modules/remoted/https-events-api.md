@@ -335,9 +335,9 @@ deliberately coarser than the manager's own diagnosis (which stays in its log an
 |---|---|---|---|
 | `unknown_agent` | `Bearer error="invalid_token", error_description="unknown_agent"` | the `kid` is not in `client.keys` (never enrolled, removed, or `#`/`!`-marked) | re-enroll |
 | `stale_token` | `Bearer error="invalid_token", error_description="stale_token"` | the token is outside the accepted window (expired, older than `jwt_max_age + jwt_clock_skew`, or issued more than `jwt_clock_skew` s in the future) | correct its clock (the `Date` header is the manager's) and retry |
-| `invalid_signature` | `Bearer error="invalid_token", error_description="invalid_signature"` | the credential does not work for that identity: bad MAC, not a `wazuh-agent+jwt` (grammar, header or claims), `sub`/`iss` naming another agent, peer address outside the entry's `ip` column, or an entry whose key does not decode | **not** re-enroll; keep the credential and report |
+| `invalid_signature` | `Bearer error="invalid_token", error_description="invalid_signature"` | the credential does not work for that identity: bad MAC, not a `wazuh-agent+jwt` (grammar, header or claims), `sub`/`iss` naming another agent, peer address outside the entry's `ip` column, an entry whose key does not decode, or — on `POST /enroll` — an enrollment-token id this manager does not know | **not** re-enroll; keep the credential and report |
 | `invalid_request` | `Bearer error="invalid_request"` | no usable credential was presented: `Authorization` missing, not `Bearer`, or malformed | send a credential |
-| `token_unknown` / `token_expired` / `token_revoked` | `Bearer error="invalid_token", error_description="token_…"` | `POST /enroll` only: the enrollment token's own state | obtain a new token from the operator |
+| `token_expired` / `token_revoked` | `Bearer error="invalid_token", error_description="token_…"` | `POST /enroll` only: the enrollment token's own state, reported only to a caller whose bearer verified against that token's secret | obtain a new token from the operator |
 | `enrollment_key_unavailable` | `Bearer` (no error code: the server could not judge the credential) | `POST /enroll` only, Password mode: the manager's enrollment password is not available on this node | retry later; nothing to fix on the agent |
 
 Everything below the `401` rows keeps a numeric `code` equal to the HTTP status.
@@ -1134,12 +1134,16 @@ apart by their header's `kid`:
   | --- | --- | --- | --- | --- |
   | none | the **shared enrollment password** | the password (`etc/authd.pass`) / `WAZUH-ENROLL-JWT-KEY` | the manager the request reaches | required whenever `authd`'s [`use_password`](../authd/configuration.md#use_password) is enabled; with `use_password` off, a shared-key bearer (or no bearer at all) is ignored and the request passes |
   | a 22-character base64url string — a 16-byte **enrollment token id** | an **enrollment token** minted by the operator | the token's 16-byte secret / `WAZUH-ENROLL-TOKEN-KEY` | the manager the request reaches, **in every mode** — a presented token is never ignored, `use_password` or not — against its replica of `authd`'s token store (`etc/enrollment_tokens.json`, written on the master and synchronized to every worker like `client.keys`); then `authd` on the master consumes one use of the token | whenever presented |
-  | the agent's canonical id (`001`) | **re-enrollment** — the agent's own re-enrollment secret | the 32-byte `reenroll_secret` the agent received when it enrolled / `WAZUH-REENROLL-KEY` | **`authd` on the master node only**: the secret is stored in the master's database and nowhere else, so the manager the request reaches forwards the bearer verbatim and unverified, and `authd` judges it | whenever presented, in every mode |
+  | the agent's canonical id (`001`) | **re-enrollment** — the agent's own re-enrollment secret | the 32-byte `reenroll_secret` the agent received when it enrolled / `WAZUH-REENROLL-KEY` | the **signature**, by **`authd` on the master node only**: the secret is stored in the master's database and nowhere else, so the manager the request reaches forwards the bearer verbatim and `authd` judges it. The **claims and the time window**, by the manager the request reaches, first — those need no secret | whenever presented, in every mode |
 
   An **enrollment token** is checked in a fixed order — lookup, signature, expiry, revocation — so
   the token's state (`token_expired`, `token_revoked`) is only ever disclosed to a caller that holds
-  the token's secret; an id that is not in the store (never minted, minted without a credential,
-  or not yet synchronized to this node) is `token_unknown`. Before refusing an unknown id the manager
+  the token's secret. An id that is not in the store (never minted, minted without a credential, or
+  not yet synchronized to this node) answers `invalid_signature`, the same class as a bearer signed
+  with the wrong secret: the lookup has to happen before there is a key to check the signature with,
+  so naming that case would let anyone ask a manager which token ids it knows. The operator's view of
+  it is [`remoted.enroll.token.rejected_unknown`](metrics.md#agent-enrollment--remotedenroll) and the
+  manager's log. Before refusing an unknown id the manager
   re-reads the store once (rate-limited to one re-read per second), so a token minted on the master a
   moment earlier is picked up on a worker even ahead of the periodic reload. Uses are counted by
   `authd` alone: a token whose uses are exhausted, or that `authd` finds revoked or expired after the
@@ -1148,7 +1152,11 @@ apart by their header's `kid`:
   A **re-enrollment** bearer keeps the agent's id: on success `authd` rotates that agent's key and
   re-enrollment secret in place — same `id`, no removal, no deletion task, no indexer purge — and the
   response carries the new pair. The same `remoted.jwt_max_age` / `remoted.jwt_clock_skew` window
-  applies; `authd` reads the same two internal options.
+  applies; `authd` reads the same two internal options. The manager the request reaches applies that
+  window itself, before forwarding anything: the claim set (`{exp, iat, jti, nbf}`) and the time
+  rules need no secret, so a bearer that fails them is refused on the spot — `invalid_signature` or
+  `stale_token`, the same classes `authd` would have answered — with no round trip to `authd` and no
+  cluster hop from a worker to the master. Only the signature travels unjudged.
 
   A token of either profile presented to the other's verifier is rejected on its header set before
   the signature is even considered. The request body is capped by the same
@@ -1162,7 +1170,7 @@ apart by their header's `kid`:
   invalidates every token minted from the old one within seconds. The token store fails closed the
   same way, with one deliberate difference: an **absent** `etc/enrollment_tokens.json` is an empty
   store (no token has been minted, or the worker has not received it yet — every token bearer is
-  `token_unknown`), while a **malformed** one keeps the previously loaded tokens in service rather
+  refused), while a **malformed** one keeps the previously loaded tokens in service rather
   than revoking a fleet's enrollment over a corrupt or hand-edited file (visible as
   [`remoted.enroll.token_store.reload_failures.total`](metrics.md#agent-enrollment--remotedenroll)
   and `enrollment_tokens.last_reload_ok` on `GET /status`). Neither file is ever written by
@@ -1261,7 +1269,7 @@ master node's `authd` predates it.
 | --- | --- | --- |
 | Enrollment administratively disabled | `403` | Route always exists; see above. |
 | Missing or unsupported `protocol-version` | `400` | Validated FIRST, in every mode -- before the credential check and before the body-size cap, matching every other authenticated route. |
-| Missing/invalid credential | `401` | Same generic message for every class; `error.code` and the `WWW-Authenticate` challenge name the class: `invalid_request` (Password mode, no usable `Authorization`), `invalid_signature` (a bearer that does not verify with its key: wrong password, wrong token secret, a token of the agent profile, a malformed token), `stale_token` (outside the accepted time window), `token_unknown` / `token_expired` / `token_revoked` (the enrollment token's own state, decided from this manager's replica of the store), `enrollment_key_unavailable` (Password mode and the enrollment password is not available on this node — bare `Bearer` challenge, retry later). See Authentication above. |
+| Missing/invalid credential | `401` | Same generic message for every class; `error.code` and the `WWW-Authenticate` challenge name the class: `invalid_request` (Password mode, no usable `Authorization`), `invalid_signature` (a bearer that does not verify with its key: wrong password, wrong token secret, a token of the agent profile, a malformed token, or an enrollment-token id this manager does not know), `stale_token` (outside the accepted time window), `token_expired` / `token_revoked` (the enrollment token's own state, decided from this manager's replica of the store and reported only to a caller whose bearer verified against that token's secret), `enrollment_key_unavailable` (Password mode and the enrollment password is not available on this node — bare `Bearer` challenge, retry later). See Authentication above. |
 | Re-enrollment refused by `authd` on the master (9026 unknown agent or no re-enrollment credential on record / 9027 invalid credential / 9028 outside the accepted time window) | `401` | The bearer travels to `authd` unverified, so its verdict is an authentication failure: mapped onto the classes `unknown_agent` / `invalid_signature` / `stale_token` respectively, with the same generic message and challenge — `authd`'s code and text never reach the wire. |
 | `authd` refused the use of a **verified** enrollment token: 9022 not found or revoked, 9023 expired, 9024 uses exhausted | `403` | `{"error":{"code":9022,"message":"Enrollment token not found or revoked"}}`, `{"error":{"code":9023,"message":"Enrollment token expired"}}`, `{"error":{"code":9024,"message":"Enrollment token uses exhausted"}}`. `403` rather than `401` because the bearer did verify — re-signing fixes nothing; the operator has to mint a new token. 9022/9023 are reachable only when this manager's replica lagged behind `authd`'s store (a revocation or expiry landing between the two checks, a worker copy not yet synchronized); 9024 is decided by `authd` alone, which owns the use counter. |
 | Body exceeds `remoted.auth_max_body_size` (10 MiB default) | `413` | Checked once the protocol version is accepted, BEFORE the bearer is checked (and before a credential check, in Open mode too) -- an oversized body is rejected without ever reaching `parseAndValidateBody()`'s own smaller (16 KiB) schema check. |

@@ -19,6 +19,8 @@
 ///                   can resolve the right key. Nothing peeked is trusted until verifyWithKid() passes.
 ///   verifyWithKid() the `kid` forms: header exactly {alg, kid, typ} with the `kid` the caller resolved,
 ///                   then the same signature, claim and time rules as verify().
+///   precheckMessage() everything verifyWithKid() checks EXCEPT the signature -- for the one caller that
+///                   does not hold the key (remoted's re-enrollment path). NOT verification: see below.
 
 #pragma once
 
@@ -136,6 +138,42 @@ namespace jwt_profile::v1::enroll
             }
         }
 
+        /// @brief The key-independent half of verifyWithKid(): the compact grammar, the exact
+        /// {alg, kid, typ} header naming this very `kid`, the exact {exp, iat, jti, nbf} claim set and
+        /// the shared time rules -- everything EXCEPT the HMAC. For the one caller that cannot hold the
+        /// key at all (remoted forwarding a re-enrollment bearer to authd on the master, issue #38993):
+        /// it lets that node refuse, at no cost and with the same verdict, a message the key holder
+        /// would refuse anyway, instead of spending an authd -- and, on a worker, a cluster -- round
+        /// trip on 130 constant bytes.
+        ///
+        /// NOT a substitute for verifyWithKid(): whoever holds the key MUST call that instead.
+        /// VerifyError::None here means "nothing that can be judged without the key is wrong with this
+        /// message", never "this token is authentic" -- the signature is entirely unexamined, so the
+        /// message may well be forged. Every failure it does report is one verifyWithKid() reports too,
+        /// with the same value, so a caller that pre-filters answers exactly what the key holder would
+        /// have answered. (Only the ORDER differs: verifyWithKid() checks the signature first, so a
+        /// message that is both stale and badly signed is InvalidSignature there and StaleToken here --
+        /// two answers whoever minted the message already knows, and neither says anything about the key.)
+        static VerifyError precheckMessage(std::string_view token,
+                                           std::string_view kid,
+                                           const TimePolicy& policy,
+                                           std::chrono::system_clock::time_point now) noexcept
+        {
+            try
+            {
+                CompactParts parts;
+                if (!splitCompact(token, parts) || !headerNamesKid(parts, kid))
+                {
+                    return VerifyError::InvalidToken;
+                }
+                return checkClaims(parts, policy, now);
+            }
+            catch (...)
+            {
+                return VerifyError::InvalidToken;
+            }
+        }
+
     private:
         static constexpr std::array<JsonField, 2> kHeaderFields {{{"alg", false}, {"typ", false}}};
         enum HeaderIndex : std::size_t
@@ -201,21 +239,23 @@ namespace jwt_profile::v1::enroll
                                              std::chrono::system_clock::time_point now)
         {
             CompactParts parts;
-            if (!splitCompact(token, parts))
-            {
-                return VerifyError::InvalidToken;
-            }
-            // Exact header {alg, kid, typ} naming the key the caller resolved; a shared-key header
-            // (no `kid`) or another `kid` is InvalidToken before any HMAC.
-            const auto headerJson = base64UrlDecodeCanonical(parts.header64);
-            StrictJsonObject<3> header;
-            if (!headerJson || !StrictJsonObject<3>::parse(kKidHeaderFields, *headerJson, header) ||
-                header.str(kAlgIdx) != kAlg || header.str(kTypIdx) != kTyp || header.str(kKidIdx) != kid ||
-                classifyKid(kid) == KidKind::None)
+            if (!splitCompact(token, parts) || !headerNamesKid(parts, kid))
             {
                 return VerifyError::InvalidToken;
             }
             return verifySignatureAndClaims(parts, key, policy, now);
+        }
+
+        /// Exact header {alg, kid, typ} naming the key the caller resolved; a shared-key header (no
+        /// `kid`) or another `kid` is refused before any HMAC. Shared with precheckMessage(), so the
+        /// keyed and key-independent paths can never disagree about which messages name this `kid`.
+        static bool headerNamesKid(const CompactParts& parts, std::string_view kid)
+        {
+            const auto headerJson = base64UrlDecodeCanonical(parts.header64);
+            StrictJsonObject<3> header;
+            return headerJson && StrictJsonObject<3>::parse(kKidHeaderFields, *headerJson, header) &&
+                   header.str(kAlgIdx) == kAlg && header.str(kTypIdx) == kTyp && header.str(kKidIdx) == kid &&
+                   classifyKid(kid) != KidKind::None;
         }
 
         /// Signature before anything in the payload is looked at; then the exact claim set and the
@@ -229,6 +269,16 @@ namespace jwt_profile::v1::enroll
             {
                 return VerifyError::InvalidSignature;
             }
+            return checkClaims(parts, policy, now);
+        }
+
+        /// The exact {exp, iat, jti, nbf} claim set and the shared time rules: the half of the profile
+        /// that needs no key. Reached only after the signature on every keyed path
+        /// (verifySignatureAndClaims()), and on its own from precheckMessage() -- one body, so the two
+        /// always answer alike.
+        static VerifyError
+        checkClaims(const CompactParts& parts, const TimePolicy& policy, std::chrono::system_clock::time_point now)
+        {
             const auto payloadJson = base64UrlDecodeCanonical(parts.payload64);
             StrictJsonObject<4> claims;
             if (!payloadJson || !StrictJsonObject<4>::parse(kPayloadFields, *payloadJson, claims))

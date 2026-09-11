@@ -119,11 +119,11 @@ namespace remoted::auth
      * Every credential-related reason is a 401 with the same generic message; what the wire DOES
      * name (issue #38993, RFC 6750 `error_description` and the body's `code`) is the public CLASS
      * publicErrorFor() maps it to -- `unknown_agent` (re-enroll), `stale_token` (fix the clock and
-     * retry), `invalid_signature` (do not re-enroll), the `token_*` of /enroll, `invalid_request`
-     * (no usable credential presented) -- which is coarser than this enum: several reasons share a
-     * class, and the finer cause stays in the log and in remoted.auth.reject.*. Protocol-version
-     * and payload-agent-mismatch are called out as their own 400s, so they keep distinct public
-     * messages.
+     * retry), `invalid_signature` (do not re-enroll), the proof-gated `token_expired` /
+     * `token_revoked` of /enroll, `invalid_request` (no usable credential presented) -- which is
+     * coarser than this enum: several reasons share a class, and the finer cause stays in the log
+     * and in remoted.auth.reject.*. Protocol-version and payload-agent-mismatch are called out as
+     * their own 400s, so they keep distinct public messages.
      */
     enum class AuthError
     {
@@ -167,7 +167,10 @@ namespace remoted::auth
                                     ///< (issue #38993): the bearer's `kid` names a token id that is not in
                                     ///< the replicated store (etc/enrollment_tokens.json) even after a
                                     ///< forced re-read -- never minted, minted without a credential, or
-                                    ///< not yet synchronized to this node.
+                                    ///< not yet synchronized to this node. The one token verdict that is
+                                    ///< NOT proof-gated (the `kid` is resolved before there is a key to
+                                    ///< check the signature with), which is why publicErrorFor() gives it
+                                    ///< no class of its own: see there.
         TokenExpired,               ///< Same path: a correctly signed token bearer whose token is past
                                     ///< its `expires`. Distinct from StaleToken (the JWT's own iat/exp
                                     ///< window): the credential itself has lapsed, not this request.
@@ -207,9 +210,9 @@ namespace remoted::auth
         const char* message;   ///< Static, human-readable message; never null.
         const char* code;      ///< The public class of a 401 (`unknown_agent`, `stale_token`,
                                ///< `invalid_signature`, `invalid_request`, `enrollment_key_unavailable`,
-                               ///< `token_unknown`, `token_expired`, `token_revoked`): the body's `code`
-                               ///< and the challenge's `error_description`. nullptr for every other
-                               ///< status, whose body `code` is the status itself.
+                               ///< `token_expired`, `token_revoked`): the body's `code` and the
+                               ///< challenge's `error_description`. nullptr for every other status,
+                               ///< whose body `code` is the status itself.
         const char* challenge; ///< The full `WWW-Authenticate` value of a 401 (RFC 6750 §3):
                                ///< `Bearer error="invalid_token", error_description="<code>"` for a
                                ///< credential that was judged and failed, `Bearer error="invalid_request"`
@@ -225,9 +228,10 @@ namespace remoted::auth
      * error-response mapping. The class is deliberately coarser than AuthError (issue #38993, T10):
      * it tells the AGENT what to do -- `unknown_agent`: re-enroll; `stale_token`: fix the clock and
      * retry; `invalid_signature`: keep the credential, do NOT re-enroll (a signature, token-shape,
-     * identity, address or unusable-key failure is never fixed by a new identity); `token_*`: the
-     * enrollment token's own state; `invalid_request`: no usable credential was presented -- while
-     * the finer cause is logged and counted in remoted.auth.reject.*.
+     * identity, address, unusable-key or unknown-enrollment-token failure is never fixed by a new
+     * identity); `token_expired` / `token_revoked`: the enrollment token's own state, named only to a
+     * caller that proved it holds the token's secret; `invalid_request`: no usable credential was
+     * presented -- while the finer cause is logged and counted in remoted.auth.reject.*.
      *
      * @param err Internal failure reason returned by AuthMiddleware.
      * @return What the transport must send to the client.

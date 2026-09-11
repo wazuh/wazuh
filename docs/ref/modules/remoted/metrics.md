@@ -250,7 +250,7 @@ a disallowed peer address); the operator keeps the distinction here. All counter
 | `remoted.auth.reject.body_too_large` | Body over the authenticated cap, a zstd frame that did not fit the in-flight budget, or (on `/enroll`) a decoded body over that endpoint's own 16 KiB ceiling | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size); for compressed bodies also [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 | `remoted.auth.reject.bad_encoding` | Unsupported or undecodable `Content-Encoding` (zstd) | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) |
 | `remoted.auth.reject.malformed` | Missing/malformed authorization or protocol-version headers | diagnostic — agent/manager version drift or non-agent traffic |
-| `remoted.auth.reject.token_unknown` | `/enroll` only: an enrollment-token bearer whose `kid` is not in this node's replica of `etc/enrollment_tokens.json`, even after one forced re-read — never minted, minted without a credential, or not yet synchronized to this worker | diagnostic — check the token id the agent was given and, on a worker, that the cluster sync delivered the store ([`remoted.enroll.token_store.tokens`](#agent-enrollment--remotedenroll)) |
+| `remoted.auth.reject.token_unknown` | `/enroll` only: an enrollment-token bearer whose `kid` is not in this node's replica of `etc/enrollment_tokens.json`, even after one forced re-read — never minted, minted without a credential, or not yet synchronized to this worker. **This cell and the log are the only place the case is visible**: on the wire it answers `invalid_signature` like any bearer signed with the wrong secret, so that `/enroll` cannot be asked which token ids a node knows | diagnostic — check the token id the agent was given and, on a worker, that the cluster sync delivered the store ([`remoted.enroll.token_store.tokens`](#agent-enrollment--remotedenroll)) |
 | `remoted.auth.reject.token_expired` | `/enroll` only: a correctly signed enrollment-token bearer whose token is past its `expires`. Distinct from `clock_skew`: the credential itself has lapsed, not this request | diagnostic — mint a new token |
 | `remoted.auth.reject.token_revoked` | `/enroll` only: a correctly signed enrollment-token bearer whose token the operator revoked | diagnostic — expected after a revocation; a stream of them is an agent (or a leaked token) still trying |
 
@@ -297,16 +297,19 @@ describes the credential):
 | `remoted.enroll.token.rejected_revoked` | The token was revoked: decided from the replica (a correctly signed bearer only) | diagnostic — expected after a revocation |
 | `remoted.enroll.token.rejected_exhausted` | `authd` refused the use because the token has no uses left (9024, a `403`) — only `authd` counts uses, so this node cannot decide it earlier | diagnostic — mint a token with more uses, or another one |
 
-The **re-enrollment** subset — requests whose bearer's `kid` named an agent id. This node
-forwards that bearer unverified (the secret it is signed with lives only in the master's
-database), so every cell is `authd`'s verdict on the master:
+The **re-enrollment** subset — requests whose bearer's `kid` named an agent id. This node cannot
+check that bearer's **signature** (the secret it is signed with lives only in the master's
+database), so the verdicts below are `authd`'s on the master — except that the two rejection cells
+marked below also count the bearers this node refused on its own, on the parts that need no secret
+(the claim set and the time window): the same failure, the same class on the agent's side, so the
+line reads the same whichever node decided it:
 
 | Metric | Meaning | Tuning |
 |---|---|---|
 | `remoted.enroll.reenroll.accepted` | `authd` verified the bearer and rotated the agent's key and re-enrollment secret in place — same id, nothing removed | — |
 | `remoted.enroll.reenroll.rejected_unknown` | 9026: the agent is unknown to the master, or has no re-enrollment secret on record (enrolled over legacy port 1515, or a database rebuilt from `client.keys`) — the agent gets `401 unknown_agent` | diagnostic — such an agent can only enroll anew |
-| `remoted.enroll.reenroll.rejected_signature` | 9027: the bearer did not verify against the agent's re-enrollment secret (or was malformed) — the agent gets `401 invalid_signature` | diagnostic — a stale secret on the agent, or probing |
-| `remoted.enroll.reenroll.rejected_stale` | 9028: correctly signed but outside the accepted time window — the agent gets `401 stale_token` | [`remoted.jwt_max_age`](configuration.md#remotedjwt_max_age), [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) (`authd` reads the same two) — but fix NTP first |
+| `remoted.enroll.reenroll.rejected_signature` | 9027: the bearer did not verify against the agent's re-enrollment secret — **or** this node refused it as not a well-formed credential at all (wrong or missing claims), without contacting `authd` — the agent gets `401 invalid_signature` | diagnostic — a stale secret on the agent, or probing. A stream of them with no matching `authd` traffic is unauthenticated noise against `/enroll`, now stopped here |
+| `remoted.enroll.reenroll.rejected_stale` | 9028, or this node's own check: outside the accepted time window — the agent gets `401 stale_token` | [`remoted.jwt_max_age`](configuration.md#remotedjwt_max_age), [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) (`authd` reads the same two) — but fix NTP first |
 | `remoted.enroll.reenroll.rejected_in_progress` | 9030: a rotation for that agent is already accepted and not yet persisted — the agent gets `409` and retries, its bearer was fine | — (transient; a sustained count means the writer is not draining, look at wazuh-db) |
 
 The replica of the token store this node authenticates enrollment tokens against (pulls; present

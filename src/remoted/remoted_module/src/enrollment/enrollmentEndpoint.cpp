@@ -104,6 +104,24 @@ namespace remoted::enrollment
             }
         }
 
+        // A re-enrollment bearer remoted refused itself (ReenrollmentRejected): its message failed the
+        // key-independent checks, so it never reached the master. Counted in the SAME cells the
+        // master's own 9027/9028 land in, on purpose -- the operator watching "why are re-enrollments
+        // failing" must see one line whichever node decided it, and a bearer refused here is refused
+        // for a reason the master would have given too.
+        void countReenrollRejection(remoted::auth::AuthError err, EnrollmentMetrics& metrics)
+        {
+            switch (err)
+            {
+                case remoted::auth::AuthError::StaleToken: incReenrollRejectedStale(metrics); break;
+                case remoted::auth::AuthError::InvalidToken:
+                case remoted::auth::AuthError::InvalidSignature: incReenrollRejectedSignature(metrics); break;
+                // InvalidToken and StaleToken are all the precheck reports; InvalidSignature is
+                // listed with the first so a keyed check added there later lands in the right cell.
+                default: break;
+            }
+        }
+
         // Bridges an EnrollmentAuthenticator rejection to /enroll's own error envelope, while
         // reusing errorResponseFor()'s shared logging discipline (throttled WARN for clock skew,
         // DEBUG2 for plain client faults) so an unauthenticated peer can't flood the log any more
@@ -531,8 +549,19 @@ namespace remoted::enrollment
                 responder->send(authErrorResponse(*authErr));
                 return;
             }
+            // A re-enrollment bearer whose message the authenticator already refused (issue #38993): the
+            // same 401 the master's own 9027/9028 produce, and the same cell -- but decided here, so this
+            // request costs no authd connection and no cluster hop.
+            if (const auto* reenrollErr = std::get_if<ReenrollmentRejected>(&decision))
+            {
+                incRejectedAuth(metrics);
+                countReenrollRejection(reenrollErr->error, metrics);
+                responder->send(authErrorResponse(reenrollErr->error));
+                return;
+            }
             // Granted (with or without a token), or a re-enrollment for authd to judge: its bearer travels
-            // to the master unverified, since the secret that signs it is in the master's global.db alone.
+            // to the master with its signature unverified, since the secret that signs it is in the
+            // master's global.db alone.
             const auto* granted = std::get_if<EnrollmentGranted>(&decision);
             const auto* reenroll = std::get_if<ReenrollmentRequested>(&decision);
 
