@@ -1778,6 +1778,33 @@ def test_filter_array_by_query(q, return_length):
     assert (len(result) == return_length)
 
 
+# Array whose `created` field is a real `datetime`, the shape enrollment tokens' `created`/`expires`
+# reach filter_array_by_query with.
+typed_input_array = [
+    {
+        'id': 'first',
+        'created': datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
+    },
+    {
+        'id': 'second',
+        'created': datetime.datetime(2026, 6, 1, tzinfo=datetime.timezone.utc)
+    }]
+
+
+@pytest.mark.parametrize('q, expected_ids', [
+    ('created>2026-03-01', ['second']),
+    ('created<2026-03-01', ['first']),
+    ('created=2026-01-01', ['first']),
+    ('created!=2026-01-01', ['second']),
+    ('created>2026-01-01T00:00:00Z', ['second'])
+])
+def test_filter_array_by_query_typed_fields(q, expected_ids):
+    """Test filtering by query on a field whose value is a real datetime object."""
+    result = utils.filter_array_by_query(q, typed_input_array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
 @pytest.mark.parametrize('select, required_fields, expected_result', [
     (['single_select', 'nested1.nested12.nested121'], {'required'}, {'required': None,
                                                                      'single_select': None,

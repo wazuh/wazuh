@@ -938,7 +938,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
         for pattern in date_patterns:
             try:
                 return get_utc_strptime(element, pattern)
-            except ValueError:
+            except (ValueError, TypeError):
                 pass
 
         return element

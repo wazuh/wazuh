@@ -3954,6 +3954,43 @@ stages:
           total_failed_items: 0
           failed_items: []
 
+    # GET /agents/enrollment-tokens?q=<date field>
+  - name: Filter by a date field (matching)
+    request:
+      verify: False
+      <<: *enrollment_tokens_list
+      params:
+        q: "id={listed_token_id};expires>2020-01-01"
+        select: "id"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{listed_token_id}"
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+    # GET /agents/enrollment-tokens?q=<date field>
+  - name: Filter by a date field (not matching)
+    request:
+      verify: False
+      <<: *enrollment_tokens_list
+      params:
+        q: "id={listed_token_id};expires<2020-01-01"
+        select: "id"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+          failed_items: []
+
     # DELETE /agents/enrollment-tokens/{token_id}
   - name: Revoke the token minted above (cleanup)
     request:
