@@ -130,6 +130,20 @@ void EnrollClient::correctClockIfSkewed(const HttpResponse& response)
                static_cast<long long>(delta));
 }
 
+namespace
+{
+    /// A request that was never sent because the credential it had to carry could not be
+    /// produced. httpCode stays 0, so every caller -- the retry loop here, and hc_enroll()'s
+    /// `httpCode != 0` contract at the C boundary -- reads it as "nothing reached the manager",
+    /// which is exactly what happened.
+    HttpResponse credentialFailure()
+    {
+        HttpResponse response;
+        response.status = TransportStatus::OtherError;
+        return response;
+    }
+} // namespace
+
 HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::string& password,
                                        const std::string& tokenKid, const std::string& tokenKeyHex,
                                        bool allowCompression)
@@ -167,41 +181,42 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
     // in every mode; open mode sends nothing else. The `wazuh-enroll+jwt`
     // bearer binds time and a fresh jti, not the body: compressed or not, the
     // wire bytes travel under TLS and the same token accompanies them.
+    // A credential that cannot be used aborts the request instead of falling through to send
+    // it unsigned. Continuing would silently downgrade an enrollment the operator asked to
+    // authenticate into an anonymous one -- and against a manager that does not require a
+    // password, that downgrade succeeds rather than failing loudly with a 401.
     if (!tokenKid.empty() && !tokenKeyHex.empty())
     {
         const auto key = jwt_profile::v1::JwtKeyDecoder::decode(tokenKeyHex);
 
-        if (key)
-        {
-            const auto token = jwt_profile::v1::enroll::JwtEnrollTokenSigner::signWithKid(
-                                   *key, std::chrono::system_clock::time_point {std::chrono::seconds {m_clock.wallSeconds()}}, tokenKid);
-
-            if (token)
-            {
-                headers.push_back("Authorization: Bearer " + *token);
-            }
-            else
-            {
-                LOGFN_ERROR(m_logFn, "https_client: enrollment token bearer could not be minted.");
-            }
-        }
-        else
+        if (!key)
         {
             LOGFN_ERROR(m_logFn, "https_client: enrollment token key is not valid hex.");
+            return credentialFailure();
         }
+
+        const auto token = jwt_profile::v1::enroll::JwtEnrollTokenSigner::signWithKid(
+                               *key, std::chrono::system_clock::time_point {std::chrono::seconds {m_clock.wallSeconds()}}, tokenKid);
+
+        if (!token)
+        {
+            LOGFN_ERROR(m_logFn, "https_client: enrollment token bearer could not be minted.");
+            return credentialFailure();
+        }
+
+        headers.push_back("Authorization: Bearer " + *token);
     }
     else if (!password.empty())
     {
         const auto signature = EnrollSigner::sign(password, m_clock.wallSeconds());
 
-        if (signature)
-        {
-            headers.push_back(signature->authorization);
-        }
-        else
+        if (!signature)
         {
             LOGFN_ERROR(m_logFn, "https_client: enrollment bearer token could not be minted.");
+            return credentialFailure();
         }
+
+        headers.push_back(signature->authorization);
     }
 
     HttpRequestSpec spec;

@@ -376,6 +376,10 @@ extern "C"
             const HttpResponse response = client.fetch();
 
             result->http_code = response.httpCode;
+            // Flagged before the copy silently drops the tail. What gets cut is arbitrary --
+            // the pinned certificate may be exactly what is missing -- so the caller has to be
+            // able to tell "this is not the CA I expected" from "I could not read all of it".
+            result->body_truncated = response.body.size() >= sizeof(result->body);
             std::strncpy(result->body, response.body.c_str(), sizeof(result->body) - 1);
             std::strncpy(result->transport_error, response.curlError.c_str(),
                          sizeof(result->transport_error) - 1);
