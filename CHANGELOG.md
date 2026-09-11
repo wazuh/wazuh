@@ -45,6 +45,7 @@ All notable changes to this project will be documented in this file.
 - Fixed process names truncated to fifteen characters in the syscollector inventory. ([#38969](https://github.com/wazuh/wazuh/pull/38969))
 - Fixed the gcloud wodle's Pub/Sub integration failing to start whenever the bucket integration's dependencies (e.g. `google-cloud-storage`) were broken, by deferring each integration's imports so a failure in one no longer blocks the other. ([#38868](https://github.com/wazuh/wazuh/pull/38868))
 - Fixed the macOS agent's default FIM configuration monitoring `/etc`, which macOS resolves as a symlink to `/private/etc`; without `follow_symbolic_link` enabled, syscheck only recorded the symlink itself, leaving every file under it (`sudoers`, `sshd_config`, `pam.d`, `hosts`) uncovered. The default `<directories>`, `<ignore>`, and `<nodiff>` entries now target `/private/etc` directly. ([#39119](https://github.com/wazuh/wazuh/issues/39119))
+- Fixed the macOS agent shipping preinstalled empty `logs/ossec.log`/`ossec.json` placeholders, which daily log rotation then compressed into an empty `ossec-DD.json.gz` every day regardless of `<log_format>`; the DEB/RPM packages already stripped these before packaging, the macOS package now does too. ([#39120](https://github.com/wazuh/wazuh/issues/39120))
 
 ### Ruleset
 
