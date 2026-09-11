@@ -11,6 +11,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#35897](https://github.com/wazuh/wazuh/issues/35897) | Unified the Content Manager across the manager: the Engine's ruleset and IoC sync and the Vulnerability Scanner's feed now share one library that validates the CTI consumer inside the download snapshot; the `content_manager` modulesd module is removed |
 
 #### Removed
 

@@ -6,23 +6,20 @@ if(NOT DEFINED WAZUH_MAIN_PROJECT)
   get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 endif()
 
-# Copy input files to the build directory
-file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-
 file(GLOB PROJECT_SOURCES *.cpp)
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 
+# No gtest_main: main.cpp provides main() so that it can also define this binary's own
+# Log::GLOBAL_LOG_FUNCTION. That symbol is hidden-visibility per DSO, so linking content_manager.so
+# does not supply it and any TU here that emits an inline logging helper fails to link without it.
+# Same arrangement as the unit suite.
 target_link_libraries(
   ${PROJECT_NAME}
-  debug
-  gtest_maind
   debug
   gtestd
   debug
   gmockd
-  optimized
-  gtest_main
   optimized
   gtest
   optimized

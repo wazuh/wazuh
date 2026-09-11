@@ -1011,6 +1011,16 @@ two-step process for each:
 2. **Content fetch**: If the hashes differ, CMSync downloads the full content for that space from the Wazuh
    Indexer and applies it to the Engine's local store. The Engine then rebuilds the affected operational graphs.
 
+Both steps run against a **Point-in-Time snapshot** of the indexer, and the CTI consumer that publishes the
+content is verified as `ready` from inside that same snapshot. A consumer that is mid-update therefore cannot
+have half-written content read as if it were complete; the cycle is deferred instead and retried shortly
+after (`analysisd.content_consumer_retry_interval`), rather than waiting for the next full
+`analysisd.cm_sync_interval` tick.
+
+A synchronization can also be triggered out of band with `POST /content/ruleset/update`. It returns as soon as
+the request is queued — progress is read from `GET /status` — and a space whose hash has not moved still costs
+only the hash comparison.
+
 The content synchronized per space includes:
 
 - **Policy configuration** — List of integration (order by priority of evaluation) and policy-level settings
@@ -2874,6 +2884,9 @@ credentials from the keystore (see [Configuration sources](configuration.md#conf
 | `analysisd.ioc_indexer_connector_max_retries` | `WAZUH_IOC_INDEXER_CONNECTOR_MAX_RETRIES` | Maximum retry attempts for IoC synchronization requests to the Wazuh Indexer. | `3` | both |
 | `analysisd.ioc_indexer_connector_retry_interval` | `WAZUH_IOC_INDEXER_CONNECTOR_RETRY_INTERVAL` | Seconds between retry attempts for IoC synchronization. | `5` | both |
 | `analysisd.ioc_indexer_connector_sync_batch_size` | `WAZUH_IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE` | Maximum number of IoC documents streamed per Wazuh Indexer page while synchronizing IoC databases. | `1000` | both |
+| `analysisd.content_pit_keep_alive` | `WAZUH_CONTENT_PIT_KEEP_ALIVE` | Lease duration requested for the Point-in-Time snapshot each content download reads from. Shared by ruleset and IoC synchronization. | `5m` | both |
+| `analysisd.content_consumer_cache_seconds` | `WAZUH_CONTENT_CONSUMER_CACHE_SECONDS` | How long a CTI consumer readiness answer may be reused across content topics watching the same consumer. Keeps the IoC types from probing once each. | `5` | both |
+| `analysisd.content_consumer_retry_interval` | `WAZUH_CONTENT_CONSUMER_RETRY_INTERVAL` | Seconds before retrying a content cycle that was deferred because its CTI consumer was not ready. | `60` | both |
 
 ### Geo
 

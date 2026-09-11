@@ -26,6 +26,7 @@ target_link_libraries(cmsync_cmsync
     store::istore
     router::irouter
     wIndexerConnector::iwIndexerConnector
+    cmcontent::cmcontent
 )
 add_library(cmsync::cmsync ALIAS cmsync_cmsync)
 
@@ -45,6 +46,7 @@ add_library(cmsync::mocks ALIAS cmsync_mocks)
 
 add_executable(cmsync_utest
     ${UNIT_SRC_DIR}/cmsync_test.cpp
+    ${UNIT_SRC_DIR}/cmsync_sync_test.cpp
 )
 target_link_libraries(cmsync_utest
     PRIVATE
@@ -55,23 +57,33 @@ target_link_libraries(cmsync_utest
     store::mocks
     wIndexerConnector::mocks
     cmcrud::mocks
+    cmcontent::mocks
 )
 target_include_directories(cmsync_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(cmsync_utest)
 
-# add_executable(cmsync_ctest
-#     ${COMPONENT_SRC_DIR}/cmsync_test.cpp
-#     ${COMPONENT_SRC_DIR}/storecti_test.cpp
-# )
-# 
-# target_link_libraries(cmsync_ctest
-#     PRIVATE
-#     cmsync::cmsync
-#     GTest::gtest_main
-#     GTest::gmock
-#     ctistore::mocks
-# )
-# target_include_directories(cmsync_ctest PRIVATE ${SRC_DIR})
-# gtest_discover_tests(cmsync_ctest)
+# Re-enabled: it had been commented out because it referenced a storecti_test.cpp and a
+# ctistore::mocks target that no longer exist. Neither is needed now -- the download this suite
+# would have had to fake is no longer part of cmsync.
+add_executable(cmsync_ctest
+    ${COMPONENT_SRC_DIR}/cmsync_test.cpp
+)
+
+target_link_libraries(cmsync_ctest
+    PRIVATE
+    cmsync::cmsync
+    GTest::gtest_main
+    GTest::gmock
+    router::mocks
+    store::mocks
+    wIndexerConnector::mocks
+    cmcrud::mocks
+    # Seeds the indexer credentials the real registrations read (Keystore::put, exported by it).
+    indexer_connector
+)
+target_include_directories(cmsync_ctest PRIVATE ${SRC_DIR} ${SHARED_MODULES}/keystore/include)
+# The keystore is one RocksDB under the shared working directory: serialised with every other suite
+# that opens it, or parallel processes fail on its LOCK file.
+gtest_discover_tests(cmsync_ctest PROPERTIES RESOURCE_LOCK "rocks_db_lock")
 
 endif(ENGINE_BUILD_TEST)

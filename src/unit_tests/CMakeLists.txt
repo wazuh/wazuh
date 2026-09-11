@@ -272,7 +272,7 @@ add_custom_target(
   #     content_manager,indexer_connector}/: C++ modules with their own coverage
   #     workflow (5_testunit_<module>.yml + coverage_cpp action); legacy UT cmocka
   #     does not exercise them in any target.
-  #   - wazuh_modules/src/wm_{content_manager,inventory_sync_server,
+  #   - wazuh_modules/src/wm_{inventory_sync_server,
   #     vulnerability_scanner}.c: C bridge files for the above C++ modules. Their
   #     wm_*_read() entry points are registered only under #ifndef CLIENT, but no
   #     cmocka test exercises them in either target — the logic is covered by each
@@ -292,7 +292,6 @@ add_custom_target(
     "*wazuh_modules/vulnerability_scanner/*" --remove coverage.total
     "*wazuh_modules/content_manager/*" --remove coverage.total
     "*wazuh_modules/indexer_connector/*" --remove coverage.total
-    "*wazuh_modules/src/wm_content_manager.c" --remove coverage.total
     "*wazuh_modules/src/wm_inventory_sync_server.c" --remove coverage.total
     "*wazuh_modules/inventory_sync_server/*" --remove coverage.total
     "*wazuh_modules/src/wm_vulnerability_scanner.c"

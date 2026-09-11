@@ -9,6 +9,8 @@
 #include <store/mockStore.hpp>
 #include <wiconnector/mockswindexerconnector.hpp>
 
+#include <cmcontent/fakeContentTopic.hpp>
+#include <cmcontent/registration.hpp>
 #include <iocsync/iocsync.hpp>
 
 using namespace ioc::sync;
@@ -19,7 +21,21 @@ namespace
 
 constexpr std::size_t DEFAULT_RETRIES = 1;
 constexpr std::size_t DEFAULT_WAIT = 0;
-constexpr std::size_t DEFAULT_BATCH = 100;
+
+/// Minimal-but-valid indexer settings. Never reaches a real session: the tests inject the fake topic
+/// registry, because a real registration reads the indexer credentials from the keystore — which a
+/// unit test does not have, and which parallel test processes would contend for.
+nlohmann::json indexerConnection()
+{
+    return nlohmann::json {{"hosts", nlohmann::json::array({"http://127.0.0.1:9200"})}};
+}
+
+cmcontent::Options contentOptions()
+{
+    cmcontent::Options options;
+    options.pageSize = 100;
+    return options;
+}
 
 class IocSyncStatusTest : public ::testing::Test
 {
@@ -37,11 +53,20 @@ protected:
         const auto numTypes = ioc::kvdb::details::getSupportedIocTypes().size();
 
         EXPECT_CALL(*store, existsDoc(_)).WillOnce(Return(false));
-        // 6 from addIOCTypeToSync + 1 explicit saveStateToStore in constructor
-        EXPECT_CALL(*store, upsertDoc(_, _)).Times(numTypes + 1).WillRepeatedly(Return(store::mocks::storeOk()));
+        // One write per addIOCTypeToSync; the constructor no longer duplicates the final one.
+        EXPECT_CALL(*store, upsertDoc(_, _)).Times(numTypes).WillRepeatedly(Return(store::mocks::storeOk()));
 
-        return std::make_unique<IocSync>(indexer, kvdb, store, DEFAULT_RETRIES, DEFAULT_WAIT, DEFAULT_BATCH);
+        return std::make_unique<IocSync>(indexer,
+                                         kvdb,
+                                         store,
+                                         indexerConnection(),
+                                         DEFAULT_RETRIES,
+                                         DEFAULT_WAIT,
+                                         contentOptions(),
+                                         topics.factory());
     }
+
+    cmcontent::mocks::FakeTopicRegistry topics;
 };
 
 } // namespace
@@ -115,7 +140,8 @@ TEST_F(IocSyncStatusTest, RestoresLastSuccessfulUpdateFromStore)
     // Hash is non-empty, so availability is checked against the KVDB.
     EXPECT_CALL(*kvdb, exists(_)).WillRepeatedly(Return(true));
 
-    IocSync sync(indexer, kvdb, store, DEFAULT_RETRIES, DEFAULT_WAIT, DEFAULT_BATCH);
+    IocSync sync(
+        indexer, kvdb, store, indexerConnection(), DEFAULT_RETRIES, DEFAULT_WAIT, contentOptions(), topics.factory());
 
     auto status = sync.getIocStatus();
     ASSERT_EQ(status.size(), 1U);
