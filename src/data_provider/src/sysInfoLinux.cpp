@@ -80,7 +80,6 @@ static nlohmann::json getProcessInfo(const proc_t* process)
     nlohmann::json jsProcessInfo{};
     // Current process information
     jsProcessInfo["pid"]        = std::to_string(process->tid);
-    jsProcessInfo["name"]       = process->cmd;
     jsProcessInfo["state"]      = &process->state;
     jsProcessInfo["parent_pid"] = process->ppid;
     jsProcessInfo["utime"]      = process->utime;
@@ -111,6 +110,11 @@ static nlohmann::json getProcessInfo(const proc_t* process)
         }
     }
 
+    // process->cmd (/proc/<pid>/comm) is capped at TASK_COMM_LEN (15 chars); use the
+    // untruncated argv[0] basename instead, falling back to comm for kernel threads,
+    // which have no cmdline.
+    const std::string baseName {commandLine.empty() ? std::string {} : std::filesystem::path(commandLine).filename().string()};
+    jsProcessInfo["name"]         = baseName.empty() ? process->cmd : baseName;
     jsProcessInfo["command_line"] = commandLine;
     jsProcessInfo["args"]         = commandLineArgs;
     jsProcessInfo["args_count"]   = commandLineCount;
@@ -734,7 +738,7 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_id"] = user["uid"];
         userItem["user_full_name"] = user["description"];
         userItem["user_home"] = user["directory"];
-        userItem["user_is_remote"] = user["include_remote"];
+        userItem["user_is_remote"] = user["is_remote"];
         userItem["user_name"] = username;
         userItem["user_shell"] = user["shell"];
         userItem["user_uid_signed"] = user["uid_signed"];

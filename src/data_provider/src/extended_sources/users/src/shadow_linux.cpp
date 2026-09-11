@@ -8,12 +8,18 @@
  */
 
 #include <iostream>
+#include <limits>
 #include <regex>
 
 #include "shadow_wrapper.hpp"
 #include <shadow_linux.hpp>
 
 constexpr double SECONDS_PER_DAY = 60.0 * 60.0 * 24.0;
+constexpr int64_t SECONDS_PER_DAY_INT = 60 * 60 * 24;
+// Largest day count whose seconds still fit the int wire field; day 24856 is 2038-01-20.
+constexpr int64_t MAX_EXPIRE_DAYS = std::numeric_limits<int32_t>::max() / SECONDS_PER_DAY_INT;
+// What glibc reports for an empty field 8, and what every consumer reads as "no expiry".
+constexpr int64_t NO_EXPIRATION = -1;
 
 ShadowProvider::ShadowProvider(std::shared_ptr<IShadowWrapper> shadowWrapper)
     : m_shadowWrapper(std::move(shadowWrapper))
@@ -29,7 +35,9 @@ nlohmann::json ShadowProvider::collect()
 {
     nlohmann::json results = nlohmann::json::array();
     struct spwd* shadow_entry;
-    const auto kPasswordHashAlgRegex = std::regex("^\\$(\\w+)\\$");
+    // Skip any lock marker so a locked account ("passwd -l" stores "!$6$...") still reports its
+    // algorithm. A field with no hash at all ("*", "!!", "x") matches nothing, which is correct.
+    const auto kPasswordHashAlgRegex = std::regex("^[!*]*\\$(\\w+)\\$");
 
     // Acquire exclusive access to the shadow file
     if (m_shadowWrapper->lckpwdf() == -1)
@@ -50,7 +58,22 @@ nlohmann::json ShadowProvider::collect()
         entry["max"] = shadow_entry->sp_max;
         entry["warning"] = shadow_entry->sp_warn;
         entry["inactive"] = shadow_entry->sp_inact;
-        entry["expire"] = shadow_entry->sp_expire;
+        // sp_expire is a day count; consumers expect epoch seconds (see last_change above).
+        // Overflow past 2038-01-20 is reported as -1 (never expires) rather than a wrong date,
+        // since the manager's parser rejects an out-of-range int and would drop the whole message.
+        const auto expireDays = static_cast<int64_t>(shadow_entry->sp_expire);
+        int64_t expireSeconds = expireDays;
+
+        if (expireDays > MAX_EXPIRE_DAYS)
+        {
+            expireSeconds = NO_EXPIRATION;
+        }
+        else if (expireDays > 0)
+        {
+            expireSeconds = expireDays * SECONDS_PER_DAY_INT;
+        }
+
+        entry["expire"] = expireSeconds;
         entry["username"] = shadow_entry->sp_namp != nullptr ? shadow_entry->sp_namp : "";
         // sp_flag - reserved for future use, won't be added.
         // entry["flag"] = shadow_entry->sp_flag;
