@@ -402,14 +402,23 @@ components:
             error: 6002
 
     RequestTooLargeResponse:
-      description: "Maximum request body size exceeded"
+      description: "The request body exceeded the size accepted for this endpoint. Two limits can
+      produce it. The general one is the `max_upload_size` setting of api.yaml, in bytes, which a
+      value of 0 disables. `POST /security/user/authenticate/run_as` is additionally bounded by a
+      fixed 8192-byte limit on its authorization context, which is not configurable and is **not**
+      lifted by setting `max_upload_size` to 0, so that endpoint can answer 413 for a body every
+      other endpoint would accept. The `detail` field names the limit that rejected the request.
+      A body is refused either at the `Content-Length` header, when the request announces it with
+      `Expect: 100-continue`, or while it is being read, which is why the reported size is the
+      declared one in the first case and the bytes read so far in the second"
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
             title: "Request Entity Too Large"
-            detail: "Maximum request body size 1048576 exceeded, actual body size 1225245"
+            detail: "Maximum content size limit (10485760) exceeded (10534912 bytes read)"
+            error: 413
 
     TooManyRequestsResponse:
       description: "Maximum number of request per minute reached"
@@ -5195,6 +5204,8 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7984,6 +7995,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
