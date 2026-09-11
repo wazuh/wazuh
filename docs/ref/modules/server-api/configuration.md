@@ -41,6 +41,21 @@ The main API configuration file defines:
 | `api/configuration/api.yaml` | Main API configuration |
 | `api/configuration/security/` | Security configuration directory |
 
+### max_upload_size
+
+Maximum size, in bytes, of a request body the API accepts.
+
+- **Default value:** `10485760` (10 MB)
+- **Allowed values:** Non-negative integer; `0` disables this limit
+- **Note:** A request whose body exceeds this value is refused with `413 Payload Too Large` and a
+  detail naming the limit, whatever its content type and whether or not it sends an
+  `Expect: 100-continue` header. The refusal is also recorded in `api.log` at `WARNING` level with
+  the endpoint and the limit that rejected it.
+- **Note:** This is the general limit only. `POST /security/user/authenticate/run_as` is additionally
+  bounded by a fixed 8192-byte limit on its authorization context, which is not configurable and is
+  **not** lifted by setting `max_upload_size` to `0`: that endpoint still answers `413` for a body
+  every other endpoint would accept.
+
 ### authentication_pool_size
 
 Size of the authentication thread pool for handling concurrent login requests.
