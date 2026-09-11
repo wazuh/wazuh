@@ -53,6 +53,8 @@ test -x $WAZUH_CONTROL || { echo "$WAZUH_CONTROL not installed";
     else exit 5; fi; }
 
 start() {
+    # Same ceiling as LimitNOFILE in wazuh-manager.service
+    ulimit -n 65536 2>/dev/null
     ${WAZUH_CONTROL} start
 }
 

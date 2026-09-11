@@ -22,6 +22,8 @@ WAZUH_HOME=WAZUH_HOME_TMP
 WAZUH_CONTROL="$WAZUH_HOME/bin/wazuh-manager-control"
 
 start() {
+    # Same ceiling as LimitNOFILE in wazuh-manager.service
+    ulimit -n 65536 2>/dev/null
     ${WAZUH_CONTROL} start
 }
 
