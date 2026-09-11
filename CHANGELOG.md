@@ -50,6 +50,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 - Fixed multiple checks with deprecated commands in Apple macOS 26.0 SCA file. ([#38669](https://github.com/wazuh/wazuh/pull/38669))
 - Fixed false-pass on the CIS Amazon Linux 2023 and Ubuntu 18.04 minimum password-days checks. ([#39047](https://github.com/wazuh/wazuh/pull/39047))
+- Fixed a `Permisive` typo failing the SELinux mode check on compliant hosts across 5 SCA policies. ([#39166](https://github.com/wazuh/wazuh/pull/39166))
 
 ### Other
 
