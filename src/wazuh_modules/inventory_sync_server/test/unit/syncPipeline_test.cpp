@@ -40,22 +40,12 @@ using wazuh::uds_http::HttpRequest;
 using wazuh::uds_http::HttpResponse;
 using wazuh::uds_http::IHttpResponder;
 
+using invsync::test::retryAfter;
+
 namespace
 {
     constexpr auto CLUSTER {"test-cluster"};
     constexpr auto WAIT {std::chrono::seconds {10}};
-
-    std::optional<std::string> retryAfter(const wazuh::uds_http::HttpResponse& response)
-    {
-        for (const auto& [name, value] : response.headers)
-        {
-            if (name == "Retry-After")
-            {
-                return value;
-            }
-        }
-        return std::nullopt;
-    }
 
     /// Resolves a future with the response; safe to fulfill from a worker thread.
     class FutureResponder final : public IHttpResponder

@@ -45,22 +45,12 @@ using wazuh::uds_http::HttpRequest;
 using wazuh::uds_http::HttpResponse;
 using wazuh::uds_http::IHttpResponder;
 
+using invsync::test::retryAfter;
+
 namespace
 {
     constexpr auto CLUSTER {"test-cluster"};
     constexpr auto WAIT {std::chrono::seconds {10}};
-
-    std::optional<std::string> retryAfter(const wazuh::uds_http::HttpResponse& response)
-    {
-        for (const auto& [name, value] : response.headers)
-        {
-            if (name == "Retry-After")
-            {
-                return value;
-            }
-        }
-        return std::nullopt;
-    }
 
     class FutureResponder final : public IHttpResponder
     {
@@ -293,7 +283,7 @@ TEST(VdScanLaneTest, FeedTurningUnreadyBetweenAdmissionAndDispatchAnswers503With
 // The dispatch-time feed gate is a lane outcome like any other: counted once in the shared
 // sync.requests.total.503 cell, once in vd.retry_after.total, and -- because the item spent
 // real queue time -- sampled into vd.lane.time. Regression guard: this is the one send that
-// bypasses respond() (it carries the Retry-After header) and it used to silently skip the
+// bypasses respond() (it needs the CONFIGURED feed delay, not the generic hint) and it used to skip the
 // histogram. Also pins the single-source registration of vd.retry_after.total's metadata
 // (makeVdRetryAfterCounter): a second registration's strings would be silently discarded.
 TEST(VdScanLaneTest, FeedUnreadyAtDispatchCountsOnceAndSamplesLaneTime)
@@ -721,9 +711,9 @@ TEST(VdScanLaneTest, EachScanOutcomeMapsToTheStatusTheDispatcherNeeds)
     }
 }
 
-/// A 503 says "come back later"; a Retry-After puts a floor under WHEN. Skipped means this node
-/// runs no vulnerability scanner -- a stable property of its configuration, just as false in 10 s
-/// as now -- so it must not carry one, while NotReady (a scanner still starting) must.
+/// A 503 says "come back later"; a Retry-After puts a floor under WHEN. IVdScanner documents Skipped
+/// as permanent (no scanner on this node), so it must not carry one, while NotReady (a scanner
+/// still starting) must. This pins the lane's rule, not the adapter's mapping into those outcomes.
 TEST(VdScanLaneTest, OnlyATransient503CarriesRetryAfter)
 {
     {
