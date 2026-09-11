@@ -6,6 +6,9 @@ Starting with Wazuh 5.0, the manager installation path changed from `/var/ossec/
 
 > There is no automatic migration tooling for agent groups. You must manually transfer your group configuration files to the new manager before reconnecting any agents.
 
+> [!IMPORTANT]
+> This guide covers the case where agents **re-enroll** against the 5.0 manager and therefore get new ids and only the groups their own `ossec.conf` declares. If you can carry `client.keys` and `global.db` from the 4.x manager, follow [Manager migration from 4.x to 5.0](manager-4x-to-5x.md) instead: agents keep their ids and every group assignment, including those made from the manager side, and nothing in this guide is needed.
+
 ## How group assignment works
 
 Group assignment in Wazuh 5.0 is driven by the agent's enrollment:
@@ -37,14 +40,14 @@ Before proceeding, make sure you have:
 
 ### 1. Back up group configurations from the 4.x manager
 
-On the **4.x manager**, archive the group folders under `shared/`, excluding the runtime-generated `merged.mg`:
+On the **4.x manager**, archive the custom group folders under `shared/`, excluding the runtime-generated `merged.mg` and the `default` group:
 
 ```bash
 cd /var/ossec/etc
-tar -cvzf /tmp/wazuh_groups_backup.tar.gz --exclude='*/merged.mg' shared/*/
+tar -cvzf /tmp/wazuh_groups_backup.tar.gz --exclude='*/merged.mg' --exclude='shared/default' shared/*/
 ```
 
-The `shared/*/` glob matches only the group folders, so non-group files in `shared/` (such as `ar.conf` and `agent-template.conf`) are left out.
+The `shared/*/` glob matches only the group folders, so non-group files in `shared/` (such as `ar.conf` and `agent-template.conf`) are left out. `default` is excluded because the 5.0 package ships its own `default` folder and the 4.x one would replace it with 4.x files; if you customized `shared/default/agent.conf`, copy that single file and merge it into the 5.0 one by hand.
 
 To migrate only specific groups, replace `shared/*/` with the folder names:
 
@@ -63,12 +66,16 @@ Keep this archive somewhere that **survives the reinstall** (for example, off th
 > [!IMPORTANT]
 > Complete this step **before** connecting any agents to the 5.0 manager. The manager validates the declared group during enrollment: if an agent enrolls with a `<groups>` value that does not yet exist on the manager, **enrollment is rejected and the agent cannot connect**. (An agent with no `<groups>` tag still connects and lands in `default`.)
 
-After installing Wazuh 5.0, copy the backup archive back onto the manager host, then extract it and fix ownership:
+After installing Wazuh 5.0, copy the backup archive back onto the manager host. Stop the manager, extract the archive and fix ownership, then start it again:
 
 ```bash
+systemctl stop wazuh-manager
 tar -xvzf /tmp/wazuh_groups_backup.tar.gz -C /var/wazuh-manager/etc/
 chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/shared/
+systemctl start wazuh-manager
 ```
+
+Extract with the manager stopped: the extracted folders carry the 4.x owner until the `chown` runs, and a running `wazuh-manager-modulesd` that checks a group folder it cannot read in that window logs `Couldn't open directory 'etc/shared/<group>' ... a 'delete-group' will be sent anyway` and removes the group from the database until the next synchronization.
 
 Verify the group folders were restored:
 
