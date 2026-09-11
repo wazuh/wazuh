@@ -1,6 +1,7 @@
 ---
 - actions:
   - agent:read
+  - agent:read_key
   - agent:delete
   - agent:restart
   - agent:upgrade
@@ -18,6 +19,19 @@
   - agent:id:007
   - agent:id:009
   - agent:id:011
+  effect: allow
+
+# 011 is deliberately absent: the deny-all block above still denies it
+# agent:read_key while agent:read stays allowed, so GET /agents/011/key must be
+# denied. That is the only case proving key export no longer rides on agent:read.
+- actions:
+  - agent:read_key
+  resources:
+  - agent:id:001
+  - agent:id:003
+  - agent:id:005
+  - agent:id:007
+  - agent:id:009
   effect: allow
 
 - actions:

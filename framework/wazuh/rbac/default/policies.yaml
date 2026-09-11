@@ -15,6 +15,7 @@ default_policies:
       agents:
         actions:
           - agent:read
+          - agent:read_key
           - agent:delete
           - agent:modify_group
           - agent:restart
