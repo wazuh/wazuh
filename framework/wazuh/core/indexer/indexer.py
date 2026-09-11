@@ -80,7 +80,7 @@ _ssl_context_cache_key: Optional[tuple] = None
 
 
 def _create_ssl_context(
-    client_cert: Optional[str], client_key: Optional[str], ca_certs: Optional[str]
+    client_cert: Optional[str], client_key: Optional[str], ca_certs: List[str]
 ) -> ssl.SSLContext:
     """
     Create and cache SSL context for indexer connections.
@@ -99,8 +99,9 @@ def _create_ssl_context(
         auth only).
     client_key : str, optional
         Path to client key file. None for no client certificate.
-    ca_certs : str, optional
-        Path to CA certificate file. None to use the system trust store.
+    ca_certs : list of str
+        Paths to CA certificate files, trusted exclusively (no system trust
+        store fallback). Empty to use the system trust store instead.
 
     Returns
     -------
@@ -109,7 +110,7 @@ def _create_ssl_context(
     """
     global _ssl_context_cache, _ssl_context_cache_key
 
-    cache_key = (client_cert, client_key, ca_certs)
+    cache_key = (client_cert, client_key, tuple(ca_certs))
 
     # Fast path: check cache without lock
     if _ssl_context_cache is not None and _ssl_context_cache_key == cache_key:
@@ -121,11 +122,16 @@ def _create_ssl_context(
         if _ssl_context_cache is not None and _ssl_context_cache_key == cache_key:
             return _ssl_context_cache
 
-        # cafile=None falls back to the system trust store.
+        # The first CA (if any) goes through create_default_context, which loads the
+        # system trust store only when cafile is None. Every additional CA is trusted
+        # on top of that via load_verify_locations, which accumulates rather than
+        # replacing, so all configured CAs end up trusted instead of only the first.
         context = ssl.create_default_context(
             purpose=ssl.Purpose.SERVER_AUTH,
-            cafile=ca_certs
+            cafile=ca_certs[0] if ca_certs else None
         )
+        for extra_ca in ca_certs[1:]:
+            context.load_verify_locations(cafile=extra_ca)
         if client_cert and client_key:
             context.load_cert_chain(certfile=client_cert, keyfile=client_key)
         logger.debug("Created cached SSL context for indexer connections")
@@ -569,7 +575,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
 
     client_cert = resolve_wazuh_path(certificate) if certificate else None
     client_key = resolve_wazuh_path(key) if key else None
-    ca_certs = resolve_wazuh_path(cas[0]) if cas else None
+    ca_certs = [resolve_wazuh_path(ca) for ca in cas]
 
     # Create cached SSL context to prevent repeated certificate file reads
     ssl_context = _create_ssl_context(client_cert, client_key, ca_certs)
