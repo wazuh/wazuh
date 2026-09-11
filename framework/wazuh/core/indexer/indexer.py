@@ -578,7 +578,12 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     ca_certs = [resolve_wazuh_path(ca) for ca in cas]
 
     # Create cached SSL context to prevent repeated certificate file reads
-    ssl_context = _create_ssl_context(client_cert, client_key, ca_certs)
+    try:
+        ssl_context = _create_ssl_context(client_cert, client_key, ca_certs)
+    except IndexerUnavailableError:
+        raise
+    except Exception as e:
+        raise IndexerUnavailableError(code=2200, extra_message=f"Failed to build SSL context: {e}")
 
     # Create indexer client with cached SSL context
     try:
