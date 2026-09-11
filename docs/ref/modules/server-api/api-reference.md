@@ -492,6 +492,14 @@ field operator value[;connector field operator value]
 | `;` | AND |
 | `,` | OR |
 
+### Value types on in-memory collections
+
+Endpoints whose records are filtered in memory rather than in SQL — `/agents/enrollment-tokens`
+among them — accept `=`, `!=`, `<`, `>` and `~` only, and read the literal as the type of the field
+it is compared against. With `=`, `!=`, `<` and `>`, a date field takes `YYYY-MM-DD`,
+`YYYY-MM-DDTHH:MM:SSZ`, `YYYY-MM-DD HH:MM:SS` or `YYYY-MM-DDTHH:MM:SS.ffffffZ`
+(`q=created>2026-01-01`).
+
 ### Examples
 
 ```bash
