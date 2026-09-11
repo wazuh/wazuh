@@ -71,6 +71,12 @@ static void expect_no_password_logged(void) {
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
 }
 
+/* build_request names the identity it is about to present, before either password
+ * line. Every test here configures the same agent_name in setup. */
+static void expect_identity_logged(void) {
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
+}
+
 static void expect_valid_ip(const char *ip) {
     expect_string(__wrap_OS_IsValidIP, ip_address, ip);
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
@@ -89,6 +95,7 @@ static void test_build_request_minimal_body(void **state) {
     (void)state;
     w_enroll_request_t request;
 
+    expect_identity_logged();
     expect_no_password_logged();
     assert_int_equal(w_enrollment_build_request(&request), 0);
 
@@ -109,6 +116,8 @@ static void test_build_request_includes_groups(void **state) {
     os_strdup("default,web-servers", agt->enrollment.groups);
     w_enroll_request_t request;
 
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Enrolling as 'test-agent'. Groups: default,web-servers.");
     expect_no_password_logged();
     assert_int_equal(w_enrollment_build_request(&request), 0);
 
@@ -125,6 +134,7 @@ static void test_build_request_explicit_agent_address(void **state) {
     w_enroll_request_t request;
 
     expect_valid_ip("10.0.0.15");
+    expect_identity_logged();
     expect_no_password_logged();
     assert_int_equal(w_enrollment_build_request(&request), 0);
 
@@ -140,6 +150,7 @@ static void test_build_request_use_source_ip_sends_src_literal(void **state) {
     agt->enrollment.use_source_ip = true;
     w_enroll_request_t request;
 
+    expect_identity_logged();
     expect_no_password_logged();
     assert_int_equal(w_enrollment_build_request(&request), 0);
 
@@ -200,6 +211,7 @@ static void test_build_request_includes_key_hash_when_a_key_exists(void **state)
     assert_int_equal(w_get_key_hash(keys.keyentries[0], expected_hash), OS_SUCCESS);
 
     w_enroll_request_t request;
+    expect_identity_logged();
     expect_no_password_logged();
     assert_int_equal(w_enrollment_build_request(&request), 0);
 
@@ -220,6 +232,7 @@ static void test_build_request_reads_password_from_file(void **state) {
 
     os_strdup(path, agt->enrollment.authorization_pass_path);
 
+    expect_identity_logged();
     expect_string(__wrap__minfo, formatted_msg, "Using password specified on file: test_enrollment_password.tmp");
 
     w_enroll_request_t request;
@@ -236,6 +249,7 @@ static void test_build_request_no_password_file_yields_null_password(void **stat
     (void)state;
     os_strdup("/nonexistent/authd.pass", agt->enrollment.authorization_pass_path);
 
+    expect_identity_logged();
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
 
     w_enroll_request_t request;
@@ -310,6 +324,21 @@ static void test_process_response_403_is_disabled_not_an_error(void **state) {
     assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_DISABLED);
 }
 
+/* A prefix mismatch is reported here or nowhere: on a fresh install the /control
+ * stream that reports it for every other endpoint never runs. */
+static void test_process_response_404_names_the_configured_path(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    result.http_code = 404;
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager: it serves no /enroll route under the "
+                  "configured path '/'. The path in <endpoint> must match the global prefix "
+                  "the manager serves.");
+
+    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
+}
+
 static void test_process_response_409_is_duplicate(void **state) {
     (void)state;
     hc_enroll_result_t result = {0};
@@ -369,6 +398,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_400_is_invalid_request, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_401_is_auth_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_is_disabled_not_an_error, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_404_names_the_configured_path, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_409_is_duplicate, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_unrecognized_status_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_with_malformed_json_is_server_error, setup_test, teardown_test),
