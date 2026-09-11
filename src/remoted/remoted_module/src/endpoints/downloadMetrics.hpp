@@ -36,6 +36,7 @@ namespace remoted::endpoints::download
 {
     // The remoted.download.* name catalog.
     constexpr auto METRIC_DOWNLOAD_REJECTED {"remoted.download.rejected"};
+    constexpr auto METRIC_DOWNLOAD_DENIED {"remoted.download.denied"};
     constexpr auto METRIC_DOWNLOAD_NOT_FOUND {"remoted.download.not_found"};
     constexpr auto METRIC_DOWNLOAD_OPEN_ERROR {"remoted.download.open_error"};
     constexpr auto METRIC_DOWNLOAD_STARTED {"remoted.download.started"};
@@ -49,6 +50,13 @@ namespace remoted::endpoints::download
     struct DownloadMetrics
     {
         std::shared_ptr<wazuh::metrics::ICounter> rejected;   ///< 400s: the request line didn't parse.
+        std::shared_ptr<wazuh::metrics::ICounter> denied;     ///< 403s: the agent asked for a selector that is
+                                                              ///< not its own, or it has no known group membership
+                                                              ///< at all. Separate from `rejected` on purpose: a
+                                                              ///< parse failure is a broken client, this is an
+                                                              ///< authorization decision and the only
+                                                              ///< operator-facing signal for it (the denial itself
+                                                              ///< is logged at debug only).
         std::shared_ptr<wazuh::metrics::ICounter> notFound;   ///< 404s: the group/WPK doesn't exist
                                                               ///< (config drift -> agent retry storms).
         std::shared_ptr<wazuh::metrics::ICounter> openError;  ///< 500s: the file exists but won't open.
@@ -68,6 +76,8 @@ namespace remoted::endpoints::download
             manager.getOrCreateCounter(
                 METRIC_DOWNLOAD_REJECTED, "400 rejections: the /download request did not parse", "count"),
             manager.getOrCreateCounter(
+                METRIC_DOWNLOAD_DENIED, "403 denials: the requested resource is not the agent's own", "count"),
+            manager.getOrCreateCounter(
                 METRIC_DOWNLOAD_NOT_FOUND, "404s: the requested group/WPK does not exist", "count"),
             manager.getOrCreateCounter(
                 METRIC_DOWNLOAD_OPEN_ERROR, "500s: the located resource could not be opened", "count"),
@@ -83,6 +93,13 @@ namespace remoted::endpoints::download
         if (m.rejected)
         {
             m.rejected->add();
+        }
+    }
+    inline void incDenied(const DownloadMetrics& m)
+    {
+        if (m.denied)
+        {
+            m.denied->add();
         }
     }
     inline void incNotFound(const DownloadMetrics& m)

@@ -1336,9 +1336,22 @@ Accepted identifiers:
 - **WPK filename** — non-empty, at most 255 bytes, must **not** begin with a dot, must end in
   `.wpk`, and is drawn from a stricter set (`a-z A-Z 0-9 . _ -`).
 
-> **There is no group-membership check.** Any authenticated agent can fetch any group's or
-> multigroup's merged configuration (protocol decision on #38022). Authentication proves *an* agent
-> is asking; it does not constrain *which* configuration it may ask for.
+> **A `config` download is authorized against the requesting agent's own groups.** `resource_id`
+> must equal the selector `/control` handed that agent as `config_token` — the same string
+> `config_hash` was computed over — and anything else is answered `403`. The manager resolves that
+> selector from the agent registry `/control` already maintains, so the check costs no wazuh-db
+> round trip; an agent whose membership the manager has never established (it never completed
+> `/control/startup`, or its entry was evicted) is **denied, not served**.
+>
+> The comparison is exact, including the order of a multigroup CSV: `a,b` and `b,a` name different
+> merged files, and only one of them is the file `config_hash` refers to.
+>
+> **`wpk` downloads are not covered.** A package's authority is the agent's pending upgrade task,
+> which `/control` does not carry, so any authenticated agent can still fetch any *staged* package.
+> Stock packages are Wazuh-signed and the agent verifies them against `wpk_root.pem` before
+> installing, which bounds what an unauthorized fetch discloses to *which* package is staged —
+> operator-built custom packages are the exception to that reasoning. Closing this properly means
+> task-based authorization and is tracked separately.
 
 Containment differs per form, by design. The multigroup selector is **hashed, never joined**, so it
 cannot traverse by construction. The single-group and WPK forms *do* join agent input into a path, so
@@ -1359,8 +1372,15 @@ instead.
 | Body empty, over 4 KiB, not a JSON object, wrong member count, or a non-string member | `400` | `Invalid request format` |
 | `resource_type` is neither `config` nor `wpk` | `400` | `Invalid resource type` |
 | `resource_id` fails the grammar for its type | `400` | `Invalid resource identifier` |
+| `resource_type: config` and `resource_id` is not the requesting agent's own selector, or the manager has no established membership for it | `403` | `Forbidden` |
 | Resource absent, not a regular file, or `O_NOFOLLOW` rejected a symlink | `404` | `Resource not found` |
 | Unexpected `errno` while opening or stat-ing | `500` | `Internal server error` |
+
+The `403` is decided **before** the path is resolved, so a group the agent is not in reads exactly
+the same whether or not it exists on the manager — there is no 200-vs-404 oracle for enumerating
+group names. Note that a `403` on this route can also come from the shared transport rather than
+this endpoint, in mTLS mode, when the client certificate does not match the connecting peer's
+address; that one carries its own message and applies to every route.
 
 A symlink is deliberately indistinguishable from an absent file to the agent. Auth failures reuse the
 same responses as `/stateless`.

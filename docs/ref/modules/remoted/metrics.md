@@ -412,6 +412,7 @@ the streaming pump runs; the per-chunk loop is deliberately uninstrumented.
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `remoted.download.rejected` | counter | count | 400: the request did not parse | diagnostic |
+| `remoted.download.denied` | counter | count | 403: the agent asked for a `config` selector that is not its own, or the manager has no established group membership for it (no `/control/startup` yet, or an evicted entry) | **the only signal for a denial** — the event itself is logged at debug, so a rising count with `remoted.debug=0` is all an operator sees. Steady non-zero: an agent using a stale `config_token`, or one probing other groups. Distinct from `rejected` (a malformed request) and from `not_found` (an *entitled* request whose file is not on disk yet) |
 | `remoted.download.not_found` | counter | count | 404: the requested group/WPK does not exist — the config-drift signal behind agent retry storms | diagnostic — deploy the missing group/WPK |
 | `remoted.download.open_error` | counter | count | 500: the file exists but could not be opened | diagnostic — filesystem/permissions |
 | `remoted.download.started` | counter | count | Streamed transfers started | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections) is the only bound on concurrent transfers |
