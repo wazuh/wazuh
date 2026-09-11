@@ -3,6 +3,8 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest.mock import AsyncMock, MagicMock, patch, call
+import json
+import os
 import ssl
 from datetime import datetime, timedelta
 
@@ -16,6 +18,20 @@ from wazuh.core.indexer.indexer import (
     _IndexerCircuitBreaker,
 )
 from wazuh.core.exception import IndexerUnavailableError
+
+# The frozen effective document test_configuration.py's test_get_manager_conf() checks
+# against: schema defaults applied to a <indexer> with no <ssl> block at all. Reading
+# indexer.ssl from here instead of hand-typing it keeps this test tied to whatever the
+# config loader actually produces -- a shape change here would fail visibly instead of
+# quietly matching a stale literal, the gap that let #39113 through unnoticed.
+EFFECTIVE_CONFIG_FIXTURE = os.path.join(
+    os.path.dirname(__file__), "..", "..", "tests", "data", "configuration", "wazuh-manager.effective.json"
+)
+
+
+def _load_effective_indexer_ssl():
+    with open(EFFECTIVE_CONFIG_FIXTURE) as f:
+        return json.load(f)["indexer"]["ssl"]
 
 
 def test_resolve_wazuh_path_keeps_absolute_paths():
@@ -153,6 +169,15 @@ async def test_get_indexer_client_without_ssl_section_has_no_client_cert():
 @pytest.mark.asyncio
 async def test_get_indexer_client_with_empty_ssl_section_has_no_client_cert():
     create_ssl_context = await _run_get_indexer_client({"ssl": {}})
+
+    create_ssl_context.assert_called_once_with(None, None, [])
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_with_schema_default_ssl_has_no_client_cert():
+    """Same as the empty-<ssl> case above, but sourced from the frozen effective-config
+    fixture instead of a hand-typed literal (see EFFECTIVE_CONFIG_FIXTURE)."""
+    create_ssl_context = await _run_get_indexer_client({"ssl": _load_effective_indexer_ssl()})
 
     create_ssl_context.assert_called_once_with(None, None, [])
 
