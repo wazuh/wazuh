@@ -22,7 +22,7 @@
  * ever throws into C. agentd links the module directly (see
  * src/client-agent/CMakeLists.txt).
  *
- * The transport contract implemented behind this ABI covers AES-CMAC request signing, the
+ * The transport contract implemented behind this ABI covers the `wazuh-agent+jwt` bearer, the
  * H/E stateless format, status codes, task delivery via /control Notify, and single-request
  * /stateful sessions.
  */
@@ -50,9 +50,10 @@ extern "C"
  * fails closed instead of silently disabling verification. */
 typedef enum hc_verify_mode_t
 {
-    HC_VERIFY_FULL = 0, ///< Verify peer against the CA and check the hostname.
-    HC_VERIFY_CERT = 1, ///< Verify peer against the CA only.
-    HC_VERIFY_NONE = 2  ///< No TLS verification (explicit opt-out).
+    HC_VERIFY_FULL = 0,  ///< Verify peer against the CA and check the hostname.
+    HC_VERIFY_CERT = 1,  ///< Verify peer against the CA only.
+    HC_VERIFY_NONE = 2,  ///< No TLS verification (explicit opt-out).
+    HC_VERIFY_SYSTEM = 3 ///< Verify peer + hostname against the OS trust store, not ca_path.
 } hc_verify_mode_t;
 
 /* Connection state, surfaced to the C core (feeds the .state metrics). */
@@ -99,6 +100,7 @@ typedef enum hc_result_t
 #define HC_MAX_CIPHERS 256
 #define HC_MAX_VERSION 64
 #define HC_MAX_CHECKSUM 128 /* fits a SHA-256 hex (64) + NUL with room */
+#define HC_MAX_ENDPOINT 256 /* #38492: reverse-proxy path segment, normalized (no leading/trailing '/'). */
 
 /**
  * @brief Configuration passed from the agent (C) to the C++ module.
@@ -110,12 +112,21 @@ typedef enum hc_result_t
  */
 typedef struct hc_config_t
 {
-    char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2).
+    char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2): IPv4,
+    ///< hostname, or a bare, unbracketed IPv6 literal, which baseUrl() brackets for the wire.
     uint16_t server_port;          ///< Manager HTTPS port.
+    uint32_t server_scope_id;      ///< IPv6 zone id resolved from <endpoint> (#38624), appended
+    ///< to the bracketed host as "%25<id>" so libcurl scopes the connection;
+    ///< 0 -> no zone, which is every IPv4 and non-link-local address.
+    char server_endpoint[HC_MAX_ENDPOINT]; ///< Optional reverse-proxy path segment (#38492),
+    ///< prepended to every request target (e.g. "/endpoint/stateless");
+    ///< empty -> unprefixed, today's behavior. A routing matter only: the
+    ///< manager routes on the literal wire request-target, prefix included,
+    ///< and the bearer token does not bind the target (a mismatch is a 404).
     char agent_id[HC_MAX_ID];      ///< Agent id from client.keys.
-    char agent_key[HC_MAX_KEY];    ///< The raw client.keys key as hex. Decode verbatim,
-    ///< AES-128/192/256-CMAC by byte length
-    ///< (16/24/32; a real key is 64 hex = 32).
+    char agent_key[HC_MAX_KEY];    ///< The client.keys secret as hex: exactly 64 lowercase hex
+    ///< chars, decoded verbatim into the 32-byte HS256 key every
+    ///< `wazuh-agent+jwt` bearer token is signed with.
     int verify_mode;               ///< hc_verify_mode_t; 0 = full (fail closed).
     char ca_path[HC_MAX_PATH];     ///< certificate_authorities file path.
     char client_cert[HC_MAX_PATH]; ///< Optional mTLS certificate (FR11.3).
@@ -304,8 +315,10 @@ typedef struct hc_callbacks_t
     /// accepted Notify (comma-joined, manager's own order) -- fired only when it
     /// differs from what was last reported (Startup included), so a consumer
     /// doesn't republish identity data on every Notify for nothing. Empty is a
-    /// valid, meaningful value (no groups), not a placeholder for "default": do
-    /// not substitute a fallback here the way /download's group selector does.
+    /// valid, meaningful value (no groups), not a placeholder for "default": no
+    /// fallback is substituted here. This is the agent's group IDENTITY, and it is
+    /// unrelated to the configuration download, which the manager addresses on its
+    /// own with the opaque agent.config_token.
     void (*on_agent_groups)(const char* groups_csv, void* user_data);
     /// The HTTP outcome for a /stateful session. Unlike every other outcome in this
     /// header, `result` here is the RAW HTTP status code the manager answered with
@@ -365,7 +378,10 @@ typedef struct hc_callbacks_t
     /// number of consecutive attempts (paused=true), or has succeeded again
     /// (paused=false). The consumer arms/disarms its producer lock so modules
     /// stop generating events they cannot deliver.
-    void (*on_producer_pause)(bool paused, void* user_data);
+    /// reason: why the transport failed, in libcurl's own words. Empty when
+    /// there is none to give -- always on paused=false, and whenever the manager
+    /// answered and refused rather than going silent.
+    void (*on_producer_pause)(bool paused, const char* reason, void* user_data);
     void* user_data;
 } hc_callbacks_t;
 
@@ -455,8 +471,8 @@ HC_EXPORTED void hc_notify_now(hc_handle* handle);
 HC_EXPORTED bool hc_set_config_hash(hc_handle* handle, const char* config_hash);
 
 /**
- * @brief Swap the agent id and AES-CMAC credential at runtime (key: hex;
- *        16/24/32 bytes decoded) after a re-enrollment (#38465's POST /enroll
+ * @brief Swap the agent id and signing key at runtime (key: 64 hex chars =
+ *        32 bytes) after a re-enrollment (#38465's POST /enroll
  *        response can hand back a different numeric id along with the new
  *        key -- the two are set together so no request is ever signed with
  *        one half stale). Like hc_set_config_hash this is callback-safe (it
@@ -474,6 +490,10 @@ HC_EXPORTED int hc_get_state(const hc_handle* handle);
 
 #define HC_MAX_ENROLL_BODY 4096
 #define HC_MAX_ENROLL_PASSWORD 256
+/// Sized so a transport reason never needs truncating: libcurl's longest error
+/// string is around 60 bytes and the detail it appends is capped by
+/// CURL_ERROR_SIZE (256), leaving room to spare.
+#define HC_MAX_TRANSPORT_ERROR 512
 
 /**
  * @brief One /enroll request (#38438's contract), built entirely by the C
@@ -483,7 +503,7 @@ HC_EXPORTED int hc_get_state(const hc_handle* handle);
 typedef struct hc_enroll_request_t
 {
     char body_json[HC_MAX_ENROLL_BODY];    ///< The already-validated JSON body.
-    char password[HC_MAX_ENROLL_PASSWORD]; ///< Empty -> no WazuhEnroll header
+    char password[HC_MAX_ENROLL_PASSWORD]; ///< Empty -> no `wazuh-enroll+jwt` bearer
     ///< (mTLS/open enrollment): a client cert (if `config` carries one) and
     ///< a password may both be set; there is no precedence between them,
     ///< each authenticates independently (confirmed with the server team).
@@ -499,6 +519,12 @@ typedef struct hc_enroll_result_t
     ///< failure -- see hc_enroll()'s return value).
     long retry_after_seconds; ///< Parsed Retry-After header (0 = absent).
     char body[HC_MAX_ENROLL_BODY]; ///< Raw response body (success or error JSON).
+    /// Why the request failed below HTTP, in libcurl's own words (same contract as
+    /// on_producer_pause's reason). Usually paired with http_code == 0, but a
+    /// failure after the status line (a dropped body, a response-size cap) leaves
+    /// both this and a real http_code set. Empty when the attempt never got as far
+    /// as libcurl -- notably a transport config the fail-closed TLS policy rejected.
+    char transport_error[HC_MAX_TRANSPORT_ERROR];
 } hc_enroll_result_t;
 
 /**

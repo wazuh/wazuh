@@ -107,6 +107,12 @@ int __wrap_sqlite3_column_int(__attribute__((unused)) sqlite3_stmt *pStmt,
     return mock();
 }
 
+sqlite3_int64 __wrap_sqlite3_column_int64(__attribute__((unused)) sqlite3_stmt *pStmt,
+                                          int iCol) {
+    check_expected(iCol);
+    return mock();
+}
+
 const unsigned char *__wrap_sqlite3_column_text(__attribute__((unused)) sqlite3_stmt *pStmt,
                                                 int iCol) {
     check_expected(iCol);

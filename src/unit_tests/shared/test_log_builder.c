@@ -20,6 +20,10 @@
 #include "../wrappers/wazuh/client-agent/notify_wrappers.h"
 #include "../wrappers/wazuh/shared/agent_op_wrappers.h"
 
+/* log_builder_init() reads logcollector.ip_update_interval only in the agent build: the function is
+ * reached exclusively through mq_log_builder_init() <- logcollector, which is agent-only, so the
+ * manager build has no internal option to read and the interval keeps its 0 initializer. Hence the
+ * getDefine_Int* mocks below are agent-only too. */
 extern int g_ip_update_interval;
 int log_builder_update_host_ip(log_builder_t * builder);
 
@@ -34,11 +38,8 @@ void test_log_builder(void **state)
 
 #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     will_return_always(__wrap_getDefine_Int, 60);
-#else
-    will_return_always(__wrap_getDefine_Int_default, 60);
 #endif
 
-    int retval = 1;
     log_builder_t * builder = log_builder_init(false);
 
     char * output = log_builder_build(builder, PATTERN, LOG, LOCATION);
@@ -53,10 +54,13 @@ void test_log_builder_update(void **state)
 {
 #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     will_return_always(__wrap_getDefine_Int, 1);
-#else
-    will_return_always(__wrap_getDefine_Int_default, 1);
 #endif
     log_builder_t * builder = log_builder_init(false);
+#if !defined(TEST_AGENT) && !defined(TEST_WINAGENT)
+    /* Nothing set it during init in this build, and log_builder_update_host_ip() only refreshes the
+     * IP while the interval is positive: set it here so the refresh path is the one under test. */
+    g_ip_update_interval = 1;
+#endif
     assert_int_equal(g_ip_update_interval, 1);
     assert_non_null(builder);
 
@@ -79,11 +83,14 @@ void test_log_builder_update(void **state)
 void test_log_builder_not_update(void **state) {
 #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     will_return_always(__wrap_getDefine_Int, 0);
-#else
-    will_return_always(__wrap_getDefine_Int_default, 0);
 #endif
 
     log_builder_t * builder = log_builder_init(false);
+#if !defined(TEST_AGENT) && !defined(TEST_WINAGENT)
+    /* g_ip_update_interval is a global shared by every test in this binary and the previous one left
+     * it at 1: reset it, this test is the "interval disabled, no refresh" case. */
+    g_ip_update_interval = 0;
+#endif
     assert_int_equal(g_ip_update_interval, 0);
     assert_non_null(builder);
 

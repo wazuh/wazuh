@@ -8,9 +8,11 @@ STATES_PATTERN = "wazuh-states-*"
 AGENT_CONFIG_INDEX = "wazuh-agent-config"
 AGENT_STATS_INDEX = "wazuh-agent-stats"
 
-# Everything a whole-agent deletion has to reach -- mirrors AGENT_DELETION_SCOPE in
-# src/sync/stateIndexAllowlist.hpp. The two wazuh-agent-* indices sit outside the
-# states family, which is exactly why they used to survive the agent.
+# Everything a whole-agent deletion has to reach, whichever half reaches it -- the union of
+# AGENT_DELETION_SCOPE_BY_QUERY and AGENT_DELETION_SCOPE_BY_ID in src/sync/stateIndexAllowlist.hpp.
+# The states pattern is deleted by query on the sync connector; the two wazuh-agent-* documents by
+# document id on the async one that writes them. From the indexer's side the outcome is the same,
+# which is why this stays one tuple.
 DELETION_SCOPE = (STATES_PATTERN, AGENT_CONFIG_INDEX, AGENT_STATS_INDEX)
 
 
@@ -61,9 +63,25 @@ class Indexer:
         response.raise_for_status()
         return response.json()
 
+    def wait_for_empty_scope(self, agent_id, timeout=20):
+        """Poll until the agent has no documents left anywhere in the deletion scope.
+
+        Same reason as wait_for_docs: the purge runs after the 200, so the scope empties
+        asynchronously. Returns the last snapshot, so a failure can name what survived."""
+        deadline = time.monotonic() + timeout
+        scope = {}
+        while time.monotonic() < deadline:
+            scope = self.agent_docs_in_scope(agent_id)
+            if all(not docs for docs in scope.values()):
+                return scope
+            time.sleep(0.2)
+        return scope
+
     def wait_for_docs(self, agent_id, count, index=STATES_PATTERN, timeout=10):
-        """Poll until the agent has exactly `count` docs (a 200 means flushed,
-        so this converges on the first refresh; the loop only absorbs it)."""
+        """Poll until the agent has exactly `count` docs.
+
+        The deletion route answers at ADMISSION, so a 200 only promises the purge is queued:
+        this loop is what waits for the purge itself, plus the index refresh after it."""
         deadline = time.monotonic() + timeout
         docs = []
         while time.monotonic() < deadline:

@@ -26,7 +26,7 @@ QA_DIR = pathlib.Path(__file__).resolve().parent
 SRC_DIR = QA_DIR.parents[2]  # .../src
 SCHEMA = SRC_DIR / "shared_modules" / "utils" / "flatbuffers" / "schemas" / "inventorySync.fbs"
 GENERATED = QA_DIR / ".generated"
-SOCKET_RELPATH = "queue/sockets/inventory-sync.sock"
+SOCKET_RELPATH = "queue/sockets/inventory-sync-http.sock"
 
 
 def _generate_bindings():

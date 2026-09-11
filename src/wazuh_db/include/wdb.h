@@ -111,13 +111,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_AGENT_EXISTS,
-    // Generic task statements
-    WDB_STMT_TASK_CREATE,
-    WDB_STMT_TASK_GET_PENDING,
-    WDB_STMT_TASK_MARK_DELIVERED,
-    WDB_STMT_TASK_CLEANUP_EXPIRED,
-    WDB_STMT_TASK_DELETE_OLD,
-    WDB_STMT_PRAGMA_JOURNAL_WAL,
     WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS,
     WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL,
     WDB_STMT_SIZE // This must be the last constant
@@ -155,8 +148,6 @@ typedef enum wdb_backup_db {
 #include "wdb_pool.h"
 
 extern char *schema_global_sql;
-extern char *schema_task_manager_sql;
-extern _Config gconfig;
 
 /**
  * @brief pointer to function for any transaction
@@ -180,15 +171,6 @@ wdb_t * wdb_open_global();
  * @return wdb_t* Database Structure that store mitre database or NULL on failure.
  */
 wdb_t * wdb_open_mitre();
-
-/**
- * @brief Open task database and store in DB poll.
- *
- * It is opened every time a query to Task database is done.
- *
- * @return wdb_t* Database Structure that store task database or NULL on failure.
- */
-wdb_t * wdb_open_tasks();
 
 /**
  * @brief Frees agent_info_data struct memory.
@@ -271,6 +253,19 @@ int wdb_create_global(const char *path);
 
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source);
+
+/**
+ * @brief Run every statement of an embedded SQL schema against an open database.
+ *
+ * Applying a schema whose statements are all IF NOT EXISTS is idempotent, so this may be called
+ * on an existing database to pick up tables added by a later release. It cannot alter a table
+ * that already exists.
+ *
+ * @param[in] db Open database handle.
+ * @param[in] source Schema text, as embedded by embed_sql.cmake.
+ * @return OS_SUCCESS on success, OS_INVALID if any statement failed to prepare or step.
+ */
+int wdb_apply_schema(sqlite3 *db, const char *source);
 
 /**
  * @brief Rebuild database.
@@ -1419,97 +1414,7 @@ cJSON* wdb_global_get_distinct_agent_groups(wdb_t *wdb, char *group_hash, wdbc_r
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_task_create(wdb_t* wdb, const cJSON *parameters, char* output);
-
-/**
- * @brief Function to parse the task get_pending request.
- *
- * @param [in] wdb The task struct database.
- * @param parameters JSON with the parameters (agent_id)
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_task_get_pending(wdb_t* wdb, const cJSON *parameters, char* output);
-
-/**
- * @brief Function to parse the task mark_delivered request.
- *
- * @param [in] wdb The task struct database.
- * @param parameters JSON with the parameters (task_id, delivery_time)
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_task_mark_delivered(wdb_t* wdb, const cJSON *parameters, char* output);
-
-/**
- * @brief Function to parse the task cleanup_expired request.
- *
- * @param [in] wdb The task struct database.
- * @param parameters JSON with the parameters (ttl)
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_task_cleanup_expired(wdb_t* wdb, const cJSON *parameters, char* output);
-
-/**
- * @brief Function to parse the task delete_old request.
- *
- * @param [in] wdb The task struct database.
- * @param parameters JSON with the parameters (timestamp)
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output);
-
-/**
- * Create a new generic task in the tasks DB.
- * @param wdb The task struct database
- * @param task_id Deterministic task ID (UUID format)
- * @param agent_id Agent identifier (TEXT format, supports non-numeric IDs)
- * @param task_type Task type (active_response, remote_upgrade, agent_restart, agent_reload)
- * @param payload Complete JSON payload for agent
- * @return OS_SUCCESS on success, OS_INVALID on errors
- * */
-int wdb_task_create(wdb_t* wdb, const char *task_id, const char *agent_id, const char *task_type, const char *payload);
-
-/**
- * Get pending tasks for an agent from the tasks DB.
- * @param wdb The task struct database
- * @param agent_id Agent identifier
- * @param max_tasks Maximum number of tasks to return
- * @param tasks_json Output JSON array with pending tasks
- * @return OS_SUCCESS on success, OS_INVALID on errors
- * */
-int wdb_task_get_pending(wdb_t* wdb, const char *agent_id, int max_tasks, cJSON **tasks_json);
-
-/**
- * Mark a task as delivered in the tasks DB.
- * @param wdb The task struct database
- * @param task_id Task identifier
- * @param delivery_time Unix timestamp when task was delivered
- * @return OS_SUCCESS on success, OS_INVALID on errors
- * */
-int wdb_task_mark_delivered(wdb_t* wdb, const char *task_id, time_t delivery_time);
-
-/**
- * Mark expired tasks in the tasks DB.
- * @param wdb The task struct database
- * @param ttl Time-to-live in seconds
- * @return OS_SUCCESS on success, OS_INVALID on errors
- * */
-int wdb_task_cleanup_expired(wdb_t* wdb, int ttl);
-
-/**
- * Delete old expired/delivered tasks from the tasks DB.
- * @param wdb The task struct database
- * @param timestamp Cutoff timestamp (tasks older than this are deleted)
- * @return OS_SUCCESS on success, OS_INVALID on errors
- * */
-int wdb_task_delete_old(wdb_t* wdb, time_t timestamp);
+/* Manager tasks */
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
@@ -1537,11 +1442,16 @@ cJSON* wdb_get_config();
 void wdbcom_dispatch(char* request, char* output);
 
 /**
- * @brief Set the synchronous mode of the SQLite database session.
+ * @brief Set the synchronous mode of the SQLite database session to NORMAL.
  *
- * This function sets the synchronous mode of the SQLite database session to control how
- * and when changes made to the database are written to disk. It executes the necessary
- * SQL statements to set the synchronous mode.
+ * Used by global.db, and the mode it has always run in. That database takes a commit per agent
+ * keepalive, so the fsync FULL performs on each one is the dominant write cost; NORMAL skips it.
+ *
+ * The trade is real rather than free: global.db uses SQLite's default rollback journal, NOT WAL,
+ * and SQLite documents a small chance of corruption on power loss at this setting. It is accepted
+ * here because the contents are reconstructible -- agents re-report their state on reconnect --
+ * which is not true of every database, so this is not a default to copy without asking whether
+ * that holds.
  *
  * @param[in] wdb The database structure.
  * @return Returns 0 on success or -1 if an error occurs while setting the synchronous mode.

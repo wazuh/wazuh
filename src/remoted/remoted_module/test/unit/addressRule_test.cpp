@@ -208,15 +208,15 @@ namespace
         // never be confused with "no restriction".
         for (const auto* spec : {"",
                                  " ",
-                                 "any/24",         // `any` takes no suffix
-                                 "10.0.0",         // not four octets
-                                 "10.0.0.256",     // octet out of range
-                                 "10.0.0.5/33",    // v4 prefix out of range
-                                 "10.0.0.5/-1",    // not a non-negative decimal
-                                 "10.0.0.5/2x",    // trailing garbage in the prefix
-                                 "10.0.0.5/24/24", // a second slash
-                                 "10.0.0.5/255.255.255", // dotted mask that is not an address
-                                 "2001:db8::1/129",      // v6 prefix out of range
+                                 "any/24",                    // `any` takes no suffix
+                                 "10.0.0",                    // not four octets
+                                 "10.0.0.256",                // octet out of range
+                                 "10.0.0.5/33",               // v4 prefix out of range
+                                 "10.0.0.5/-1",               // not a non-negative decimal
+                                 "10.0.0.5/2x",               // trailing garbage in the prefix
+                                 "10.0.0.5/24/24",            // a second slash
+                                 "10.0.0.5/255.255.255",      // dotted mask that is not an address
+                                 "2001:db8::1/129",           // v6 prefix out of range
                                  "2001:db8::1/255.255.255.0", // dotted masks are v4-only
                                  "not-an-address",
                                  "10.0.0.5 "})

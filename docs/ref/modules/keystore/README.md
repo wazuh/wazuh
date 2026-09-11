@@ -48,7 +48,7 @@ fetches the Wazuh Indexer credentials the manager API needs from it.
   `src/wazuh_modules/keystore_server/include/keystore_server.h`). A failure to bind the socket is
   treated as fatal, since an API that silently lost its indexer credentials is worse than one that
   refuses to start.
-- **Transport:** a Unix domain socket at `queue/sockets/keystore` (relative to the install
+- **Transport:** a Unix domain socket at `queue/sockets/keystore.sock` (relative to the install
   directory), served over the same size-prefixed socket protocol used elsewhere in modulesd
   (`SocketServer<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>`).
 - **Protocol:** a simple pipe-delimited text query answered with JSON — `GET|<columnFamily>|<key>`,

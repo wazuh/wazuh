@@ -80,17 +80,17 @@ cJSON* buildRegistryValueStatefulEvent(const char* path, char* value, cJSON* val
 }
 #endif // WIN32
 
-void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList *directories_list){
+bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList *directories_list){
     int increase_result = fim_db_increase_each_entry_version(table_name);
     if (increase_result == -1) {
         merror("Failed to increase version for each entry in %s", table_name);
-        return;
+        return false;
     }
     // Get all synced items from the table
     cJSON* items = fim_db_get_every_element(table_name, "WHERE sync=1");
     if (!items) {
         merror("Failed to retrieve elements from table: %s", table_name);
-        return;
+        return false;
     }
 
     int item_count = cJSON_GetArraySize(items);
@@ -111,7 +111,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     else {
         merror("Invalid table name: %s", table_name);
         cJSON_Delete(items);
-        return;
+        return false;
     }
 
     // Clear the manager's index for this table before resending: recovery is now a
@@ -123,7 +123,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         merror("Failed to clear index '%s' before recovery resync for table %s; will retry later",
                recovery_index, table_name);
         cJSON_Delete(items);
-        return;
+        return false;
     }
 
     // Process each item
@@ -195,7 +195,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             merror("Invalid table name: %s", table_name);
             cJSON_Delete(item_copy);
             cJSON_Delete(items);
-            return;
+            return false;
         }
 
         // Calculate SHA1 hash of id
@@ -288,6 +288,89 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     } else {
         mdebug1("Recovery synchronization failed, will retry later%s%s", result.failure_reason[0] != '\0' ? ": " : "", result.failure_reason);
     }
+
+    // True from here on: the manager accepted the DataClean above and every row is queued, so
+    // a caller gating durable state on this is recording something the manager really saw. A
+    // failed final sync is not that -- the rows stay queued and the ordinary cycle drains them.
+    return true;
+}
+
+/* Declared here rather than by including syscheck.h: that header pulls in audit_op.h and with it
+ * the kernel's linux/audit.h, which is not on this translation unit's include path. */
+bool fim_shutdown_process_on(void);
+
+bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table_names, int table_count, const OSList* directories_list) {
+    const long current_id = asp_get_agent_id();
+
+    if (current_id == 0) {
+        // Nothing published yet. "Unknown" -- an unavailable provider, or one still holding the
+        // previous id, must never read as a new identity.
+        return false;
+    }
+
+    int64_t synced_id = 0;
+
+    if (!fim_db_try_get_last_sync_time(FIM_SYNCED_AGENT_ID_METADATA_KEY, &synced_id)) {
+        // The read itself failed -- a busy database, not an answer. Adopting here would be the
+        // worst outcome available: a single transient failure in the window right after a
+        // re-enrollment would record the new id as already synchronized and suppress the resync
+        // permanently. Treat it like an unknown id and try again next cycle.
+        return false;
+    }
+
+    if (synced_id <= 0) {
+        if (fim_shutdown_process_on()) {
+            // "Absent" is not trustworthy here. FIMDB::executeQuery answers a read with a silent
+            // no-op once the database is stopping or not yet initialized, and that reaches this
+            // caller as a clean read of an empty row -- the one ambiguity this whole decision
+            // procedure exists to avoid. FIMDB::updateItem is gated by the identical condition
+            // today, so the adoption below would write nothing anyway, but that is two distant
+            // guards happening to agree rather than a contract either of them states. Refuse
+            // explicitly and let the next boot decide with a database that can answer.
+            return false;
+        }
+
+        // Read cleanly, and nothing recorded: a clean install, or a database from before this
+        // marker existed. Adopt it and resync nothing -- on a clean install the ordinary first
+        // sync covers it, and on an upgraded agent the manager's copy is the one this agent has
+        // been maintaining all along.
+        fim_db_update_last_sync_time_value(FIM_SYNCED_AGENT_ID_METADATA_KEY, (int64_t)current_id);
+        return false;
+    }
+
+    if (synced_id == (int64_t)current_id) {
+        return false;
+    }
+
+    minfo("FIM was last synchronized as agent %ld, now running as agent %ld. Resending every monitored entry.",
+          (long)synced_id, current_id);
+
+    bool any_failed = false;
+
+    for (int i = 0; i < table_count; i++) {
+        if (fim_shutdown_process_on()) {
+            // Cut short by shutdown, like the integrity loop that follows this one: leave the
+            // marker alone so the next boot re-fires rather than recording a partial pass.
+            return false;
+        }
+
+        if (!fim_recovery_persist_table_and_resync(table_names[i], handle, directories_list)) {
+            // Keep going, like Syscollector::checkAgentIdentity(): the tables that can be resent
+            // should be, and abandoning the pass here would make every later one re-clear and
+            // re-upload the tables that had already succeeded. On Windows this is three tables,
+            // not one. The marker is the part that must not move -- recording it would claim the
+            // manager holds data it never received -- so remember the failure for the end.
+            any_failed = true;
+        }
+    }
+
+    if (any_failed) {
+        // Not fully resynchronized, so the identity is not adopted and the next cycle retries.
+        return false;
+    }
+
+    fim_db_update_last_sync_time_value(FIM_SYNCED_AGENT_ID_METADATA_KEY, (int64_t)current_id);
+    return true;
 }
 
 // Excluding from coverage since this function is a simple wrapper around calculateTableChecksum and requiresFullSync

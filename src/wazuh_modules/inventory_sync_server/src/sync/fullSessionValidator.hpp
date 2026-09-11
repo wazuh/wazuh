@@ -95,7 +95,8 @@ namespace invsync::sync
                                          std::string_view authenticatedAgentId,
                                          const std::string& managerClusterName);
 
-    /// Shared with DELETE /agents, which validates the same header the same way.
+    /// Shared with the deletion route, which validates an agent id the same way -- from its body
+    /// rather than a header, but against this same predicate.
     bool isNumericAgentId(std::string_view value);
 
     /// Left-pad to 3 characters, the historical `_id`/`wazuh.agent.id` form inherited from the

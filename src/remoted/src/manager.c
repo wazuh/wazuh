@@ -307,7 +307,7 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
             os_free(deleted);
 
             /* Log agent shutdown event to ossec.log */
-            minfo(OS_AG_STOPPED, atoi(key->id), key->name);
+            mdebug1(OS_AG_STOPPED, atoi(key->id), key->name);
         }
     } else {
         /* Clean msg and shared files (remove random string) */

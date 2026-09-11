@@ -54,7 +54,7 @@ Sends queries to Wazuh module control sockets and prints the response. Useful fo
 ### Usage
 
 ```sh
-echo -n '{"command":"getconfig","parameters":{"section":"internal"}}' | python3 socket-query.py /var/wazuh-manager/queue/sockets/analysis
+echo -n '{"command":"getconfig","parameters":{"section":"internal"}}' | python3 socket-query.py /var/wazuh-manager/queue/sockets/engine-api-http.sock
 ```
 - First argument: Path to the Wazuh module control socket.
 - Query is read from stdin.

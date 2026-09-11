@@ -10,6 +10,7 @@
 #include <base/logging.hpp>
 #include <base/utils/generator.hpp>
 #include <base/utils/metaHelpers.hpp>
+#include <base/utils/vectorHelpers.hpp>
 
 #include <cmsync/cmsync.hpp>
 
@@ -462,15 +463,14 @@ void CMSync::removeSpaceFromSync(std::string_view space)
 {
     std::unique_lock lock(m_mutex);
 
-    auto it = std::remove_if(m_namespacesState.begin(),
-                             m_namespacesState.end(),
-                             [space](const SyncedNamespace& syncedNs) { return syncedNs.getOriginSpace() == space; });
-    if (it == m_namespacesState.end())
+    // addSpaceToSync() rejects duplicates, so at most one element can match here. Element order in
+    // m_namespacesState is not semantically observed, so this is removed in O(1) via swap-with-back.
+    const auto erased = base::utils::eraseFirstBySwap(
+        m_namespacesState, [space](const SyncedNamespace& syncedNs) { return syncedNs.getOriginSpace() == space; });
+    if (!erased)
     {
         throw std::runtime_error(fmt::format("Space '{}' is not in the sync list", space));
     }
-
-    m_namespacesState.erase(it, m_namespacesState.end());
 
     LOG_INFO("[{}] Removed space '{}' from the sync list", LOG_MODULE_NAME, space);
 

@@ -14,13 +14,9 @@
 
 #include <filesystem>
 #include <fstream>
-#include <grp.h>
-#include <pwd.h>
 #include <string>
 #include <unistd.h>
 #include <vector>
-
-constexpr auto USER_GROUP {"wazuh"};
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -67,17 +63,13 @@ namespace Utils::CertHelper
         outputFile << caRootCertificateContentMerged;
         outputFile.close();
 
-        struct passwd const* pwd = getpwnam(USER_GROUP);
-        struct group const* grp = getgrnam(USER_GROUP);
-
-        if (pwd == nullptr || grp == nullptr)
+        // The account running this process, not a fixed name: the 5.x manager package creates
+        // 'wazuh-manager' and removes 'wazuh', which the agent package creates. Either literal is
+        // wrong on the other side, loudly on a manager and silently on a host with both.
+        if (chown(caRootCertificate.c_str(), geteuid(), getegid()) != 0)
         {
-            throw std::runtime_error("Could not get the user and group information.");
-        }
-
-        if (chown(caRootCertificate.c_str(), pwd->pw_uid, grp->gr_gid) != 0)
-        {
-            throw std::runtime_error("Could not change the ownership of the CA root merged file");
+            throw std::runtime_error("Could not change the ownership of the CA root merged file to " +
+                                     std::to_string(geteuid()) + ":" + std::to_string(getegid()));
         }
     }
 } // namespace Utils::CertHelper

@@ -90,9 +90,8 @@ namespace remoted::common
      * @param reserveMore   Called to reserve output-buffer capacity; see ReserveMoreFn.
      * @return The decompressed bytes on success, or the failure reason.
      */
-    std::variant<std::string, ZstdDecodeError> zstdDecode(std::string_view compressed,
-                                                          const ReserveWindowFn& reserveWindow,
-                                                          const ReserveMoreFn& reserveMore);
+    std::variant<std::string, ZstdDecodeError>
+    zstdDecode(std::string_view compressed, const ReserveWindowFn& reserveWindow, const ReserveMoreFn& reserveMore);
 
 } // namespace remoted::common
 

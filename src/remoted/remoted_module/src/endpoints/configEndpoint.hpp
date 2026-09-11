@@ -48,7 +48,7 @@ namespace remoted::endpoints::config
      *
      * Rejects an empty body with 400 before spending a deferred-work slot; everything else about the
      * document is modulesd's business, so the body is not parsed here. The gateway has already
-     * verified the AES-CMAC and the agent identity by the time this runs.
+     * verified the bearer token and the agent identity by the time this runs.
      *
      * @warning The returned handler stores a reference to @p forwarder. The caller must guarantee
      * forwarder outlives every route registered with it -- i.e. the HTTP server (which owns the route

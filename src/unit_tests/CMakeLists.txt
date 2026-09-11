@@ -51,8 +51,6 @@ include_directories(${SRC_FOLDER}/wazuh_modules/include/)
 include_directories(${SRC_FOLDER}/wazuh_modules/src/)
 include_directories(${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/)
 include_directories(${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent/)
-include_directories(${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager/)
-include_directories(${SRC_FOLDER}/wazuh_modules/src/task_manager/)
 include_directories(${SRC_FOLDER}/wazuh_db/include/)
 add_definitions(-DWAZUH_UNIT_TESTING)
 
@@ -98,24 +96,21 @@ if(NOT TARGET)
   message(FATAL_ERROR "No TARGET specified. Aborting...")
 elseif(${TARGET} STREQUAL "manager")
   include("./server.cmake")
-  configure_file(
-    "config_files/test_vulnerability_detection_multiple_configuration.conf"
-    "wazuh_modules/vulnerability_detection/test_vulnerability_detection_multiple_configuration.conf"
-    COPYONLY)
-  configure_file(
-    "config_files/test_vulnerability_detection_duplicate_configuration.conf"
-    "wazuh_modules/vulnerability_detection/test_vulnerability_detection_duplicate_configuration.conf"
-    COPYONLY)
-  configure_file(
-    "config_files/test_vulnerability_detection.conf"
-    "wazuh_modules/vulnerability_detection/test_vulnerability_detection.conf"
-    COPYONLY)
-  configure_file(
-    "config_files/test_vulnerability_detection_invalid_index_status_setting.conf"
-    "wazuh_modules/vulnerability_detection/test_vulnerability_detection_invalid_index_status_setting.conf"
-    COPYONLY)
-elseif(${TARGET} STREQUAL "agent")
+        elseif(${TARGET} STREQUAL "agent")
   include("./agent.cmake")
+  # ClientConf() itself reads agent.remote_conf via getDefine_Int() -- unlike every
+  # other client-agent test, which stays below the layer that hits it -- so
+  # test_client_conf_ssl_resolution needs a real internal_options.conf at its
+  # working directory (WAZUH_DEFINES, defs.h) or it aborts the whole test binary.
+  # It also unconditionally reaches wm_agent_upgrade_read_ca_verification_old()
+  # (legacy <active-response><ca_verification> migration, pre-dates and is
+  # unrelated to #38684), which reads the hardcoded WAZUHCONF path
+  # ("etc/ossec.conf") regardless of the file ClientConf() itself was given --
+  # a trivial empty one satisfies it without affecting what's under test.
+  configure_file("config_files/test_internal_options.conf"
+                 "client-agent/internal_options.conf" COPYONLY)
+  configure_file("config_files/test_empty_config.conf"
+                 "client-agent/etc/ossec.conf" COPYONLY)
   configure_file("config_files/test_anti_tampering.conf"
                  "client-agent/test_anti_tampering.conf" COPYONLY)
   configure_file("config_files/test_anti_tampering_no.conf"

@@ -5,18 +5,23 @@ Based on OSSEC
 Copyright (C) 2014 Trend Micro Inc.
 
 
-= Information about Wazuh =
+** Configuring Wazuh **
 
-Visit https://www.wazuh.com
+The installer writes a working configuration, so a fresh installation
+starts without any manual editing. See INSTALL to install.
 
+Where each setting is documented:
 
-= Recommended Installation =
+  - Server (manager) configuration file
+      docs/ref/configuration/manager/README.md
+  - Agent configuration file
+      docs/ref/configuration/agent/README.md
+  - Every option of every module
+      docs/ref/modules/
+  - Internal options (advanced tuning)
+      WAZUH_HOME/etc/wazuh-manager-internal-options.conf  (manager)
+      WAZUH_HOME/etc/local_internal_options.conf          (agent)
 
-See INSTALL
+Full user documentation: https://documentation.wazuh.com
 
-
-== Configuring Wazuh ==
-
-Just follow the steps from the install.sh script.
-More information at
-https://documentation.wazuh.com
+#EOF

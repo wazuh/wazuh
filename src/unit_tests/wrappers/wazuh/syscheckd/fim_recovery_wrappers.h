@@ -22,7 +22,7 @@ typedef struct _OSList OSList;
 /**
  * @brief Wrapper for fim_recovery_persist_table_and_resync
  */
-void __wrap_fim_recovery_persist_table_and_resync(char* table_name,
+bool __wrap_fim_recovery_persist_table_and_resync(char* table_name,
                                                    AgentSyncProtocolHandle* handle,
                                                    const OSList* directories_list);
 

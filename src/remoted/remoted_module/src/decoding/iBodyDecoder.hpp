@@ -73,8 +73,7 @@ namespace remoted::decoding
          *         rejection AuthGateway answers with -- e.g. UnsupportedContentEncoding,
          *         MalformedContentEncoding or BodyTooLarge.
          */
-        virtual remoted::auth::AuthError decode(ContentEncoding encoding,
-                                                remoted::auth::Payload& payload) const = 0;
+        virtual remoted::auth::AuthError decode(ContentEncoding encoding, remoted::auth::Payload& payload) const = 0;
     };
 
 } // namespace remoted::decoding

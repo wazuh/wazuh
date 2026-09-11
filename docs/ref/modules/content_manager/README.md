@@ -56,12 +56,12 @@ The Indexer connection parameters come from the manager's `<indexer>` XML block 
 ## On-demand updates (`POST /ondemand`)
 
 Topics registered with `ondemand: true` can be triggered explicitly over the manager-local
-`queue/sockets/vd.sock` Unix socket (served by the vulnerability scanner's shared HTTP-over-UDS
+`queue/sockets/vd-http.sock` Unix socket (served by the vulnerability scanner's shared HTTP-over-UDS
 server, where this module lives). This replaces the former `queue/sockets/updater-ondemand`
 socket and its `GET /ondemand/<topic>?offset=N` route.
 
 ```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/vd.sock \
+curl --unix-socket /var/wazuh-manager/queue/sockets/vd-http.sock \
      -X POST -d '{"topic":"<name>","offset":-1}' http://localhost/ondemand
 ```
 

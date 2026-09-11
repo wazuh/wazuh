@@ -51,5 +51,3 @@
               value: 127.0.0.1
       - hidden:
           value: 'no'
-      - disabled:
-          value: 'no'

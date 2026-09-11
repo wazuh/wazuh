@@ -12,6 +12,7 @@
 #include "exponentialBackoff.hpp"
 #include <chrono>
 #include <gtest/gtest.h>
+#include <thread>
 
 class IndexerExponentialBackoffTest : public ::testing::Test
 {
@@ -112,4 +113,39 @@ TEST_F(IndexerExponentialBackoffTest, MaxDelayBelowBaseDelayUsesBaseAsCap)
     {
         expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {0}, baseDelay);
     }
+}
+
+TEST(IndexerRetryBudgetTest, ExhaustsAtExactlyTheAttemptsCap)
+{
+    IndexerRetryBudget budget {3, std::chrono::milliseconds {0}};
+
+    EXPECT_FALSE(budget.exhausted(std::chrono::milliseconds {0}));
+    EXPECT_FALSE(budget.exhausted(std::chrono::milliseconds {0}));
+    EXPECT_TRUE(budget.exhausted(std::chrono::milliseconds {0}));
+}
+
+TEST(IndexerRetryBudgetTest, ZeroAttemptsAndZeroDurationNeverExhaust)
+{
+    IndexerRetryBudget budget {0, std::chrono::milliseconds {0}};
+
+    for (size_t failure = 0; failure < 1000; ++failure)
+    {
+        EXPECT_FALSE(budget.exhausted(std::chrono::hours {24}));
+    }
+}
+
+TEST(IndexerRetryBudgetTest, ExhaustsWhenTheNextDelayWouldCrossTheDeadline)
+{
+    IndexerRetryBudget budget {0, std::chrono::milliseconds {50}};
+
+    EXPECT_FALSE(budget.exhausted(std::chrono::milliseconds {1}));
+    EXPECT_TRUE(budget.exhausted(std::chrono::milliseconds {200})) << "sleeping 200 ms would cross the 50 ms deadline";
+}
+
+TEST(IndexerRetryBudgetTest, ExhaustsOnceTheDeadlinePassed)
+{
+    IndexerRetryBudget budget {0, std::chrono::milliseconds {20}};
+
+    std::this_thread::sleep_for(std::chrono::milliseconds {30});
+    EXPECT_TRUE(budget.exhausted(std::chrono::milliseconds {0}));
 }

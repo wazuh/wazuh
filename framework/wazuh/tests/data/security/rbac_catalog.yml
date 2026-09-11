@@ -168,6 +168,20 @@ get_rbac_actions:
           - PUT /agents/{agent_id}/reload
           - PUT /agents/group/{group_id}/reload
           - PUT /agents/reload
+      agent:scan_vulnerability:
+        description: Trigger an on-demand vulnerability scan on agents
+        resources:
+          - agent:id
+          - agent:group
+        example:
+          actions:
+            - agent:scan_vulnerability
+          resources:
+            - agent:id:050
+            - agent:id:049
+          effect: deny
+        related_endpoints:
+          - PUT /agents/scan/vulnerability
       agent:uninstall:
         description: Check user's permission to uninstall agents
         example:

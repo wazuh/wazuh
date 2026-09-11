@@ -9,7 +9,7 @@ import sys
 
 from wazuh_testing.constants.daemons import AGENT_DAEMON
 from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, DEFAULT_AUTHD_PASS_PATH
-from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
+from wazuh_testing.tools.simulators.remoted_simulator import DEFAULT_MANAGER_ENDPOINT_PREFIX, RemotedSimulator
 from wazuh_testing.utils.file import write_file, remove_file
 from wazuh_testing.utils.services import control_service
 
@@ -95,7 +95,8 @@ def configure_socket_listener(request, test_metadata):
     has_real_key = any(key.strip() for key in test_metadata.get('pre_existent_keys', []))
 
     socket_listener = RemotedSimulator(server_ip=manager_address,
-                                       mode='REJECT_AUTH' if has_real_key else 'ACCEPT')
+                                       mode='REJECT_AUTH' if has_real_key else 'ACCEPT',
+                                       prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
     if 'password_file_content' in test_metadata:
         socket_listener.enroll_password = test_metadata['password_file_content']
     socket_listener.start()

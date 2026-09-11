@@ -61,7 +61,7 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_TIMEOUT
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
+from wazuh_testing.tools.simulators.remoted_simulator import DEFAULT_MANAGER_ENDPOINT_PREFIX, RemotedSimulator
 from wazuh_testing.utils import callbacks
 from wazuh_testing.utils import file as file_utils
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
@@ -310,7 +310,7 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             # Advertise the SHA-256 that matches the file already on disk;
             # startup_gate_check_manager_config_hash() releases the gate
             # directly on the next Notify, no /download round trip needed.
-            remoted_server = RemotedSimulator()
+            remoted_server = RemotedSimulator(prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
             remoted_server.merged_mg = merged_content
             remoted_server.config_hash = hashlib.sha256(merged_content).hexdigest()
             remoted_server.start()
@@ -339,7 +339,7 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             # default): every download attempt fails configFetcher.cpp's hash
             # check and is discarded, so nothing is ever written locally and
             # the gate stays blocked forever.
-            remoted_server = RemotedSimulator()
+            remoted_server = RemotedSimulator(prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
             remoted_server.config_hash = 'a' * 64
             remoted_server.start()
             wait_connect()
@@ -368,7 +368,7 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
 
             # config_hash is advertised up front; the matching bytes only
             # become servable after push_delay (see _delayed_group_config_push).
-            remoted_server = RemotedSimulator()
+            remoted_server = RemotedSimulator(prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
             remoted_server.config_hash = hashlib.sha256(merged_content).hexdigest()
             remoted_server.start()
             wait_connect()
@@ -414,7 +414,7 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             # CONTROL_SOCK is gone by the time reloadAgent() runs.
             push_delay = 10
 
-            remoted_server = RemotedSimulator()
+            remoted_server = RemotedSimulator(prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
             remoted_server.config_hash = hashlib.sha256(merged_content).hexdigest()
             remoted_server.start()
             wait_connect()
@@ -467,7 +467,7 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             # log line.
             push_delay = 10
 
-            remoted_server = RemotedSimulator()
+            remoted_server = RemotedSimulator(prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
             remoted_server.config_hash = hashlib.sha256(merged_content).hexdigest()
             remoted_server.start()
             wait_connect()
@@ -588,7 +588,7 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             # Simulator advertises the NEW group's hash up front; the matching
             # bytes only become downloadable after a delay (simulating the
             # manager finishing its per-agent recompute).
-            remoted_server = RemotedSimulator()
+            remoted_server = RemotedSimulator(prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
             remoted_server.config_hash = hashlib.sha256(merged_content).hexdigest()
             remoted_server.start()
             wait_connect()

@@ -22,6 +22,7 @@
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/exec_op_wrappers.h"
+#include "../../wrappers/posix/signal_wrappers.h"
 #include "wmodules.h"
 #include "wm_docker.h"
 #include "../scheduling/wmodules_scheduling_helpers.h"
@@ -36,6 +37,38 @@ typedef struct {
     wfd_t * wfd;
     wm_docker_t* module_data;
 } states;
+
+/******* Children pool wrappers **********/
+
+/* Permissive on purpose: the pool itself is not what these tests check, and
+ * cmocka expectations here would have to be replicated in every case that
+ * launches a listener. */
+
+static pid_t appended_sid = -1;
+static bool stop_on_append = false;
+static bool flag_only_on_append = false;
+
+void __wrap_wm_append_sid(pid_t sid) {
+    appended_sid = sid;
+
+    if (stop_on_append) {
+        /* Simulate SIGTERM reaching wazuh-modulesd while the listener runs:
+         * wm_handler() raises the shutdown flag and then calls every module's
+         * stop() callback, in that order. */
+        stop_on_append = false;
+        wm_shutdown_requested = 1;
+        WM_DOCKER_CONTEXT.stop(docker_module->data);
+    } else if (flag_only_on_append) {
+        /* Simulate the losing interleaving: wm_handler() raised the flag and
+         * ran stop() while this thread was still launching, so stop() read a
+         * PID of zero and signalled nothing. */
+        flag_only_on_append = false;
+        wm_shutdown_requested = 1;
+    }
+}
+
+void __wrap_wm_remove_sid(__attribute__((unused)) pid_t sid) {
+}
 
 /******* Helpers **********/
 
@@ -88,6 +121,14 @@ static int teardown_test_executions(void **state){
     return 0;
 }
 
+static int teardown_test_shutdown(void **state) {
+    wm_shutdown_requested = 0;
+    stop_on_append = false;
+    flag_only_on_append = false;
+    appended_sid = -1;
+    return teardown_test_executions(state);
+}
+
 static int setup_test_read(void **state) {
     test_structure *test = calloc(1, sizeof(test_structure));
     test->module =  calloc(1, sizeof(wmodule));
@@ -133,6 +174,110 @@ void test_interval_execution(void **state) {
     expect_any_always(__wrap__mtwarn, formatted_msg);
 
     docker_module->context->start(module_data);
+}
+
+void test_docker_context_has_stop(__attribute__((unused)) void **state) {
+    /* Without a stop() callback the module thread stays blocked reading the
+     * listener's output and the child outlives the agent. */
+    assert_non_null(WM_DOCKER_CONTEXT.stop);
+}
+
+void test_docker_stop_without_child_is_noop(__attribute__((unused)) void **state) {
+    /* No listener running, so no signal must be sent. An unexpected call to
+     * kill() fails the test. */
+    WM_DOCKER_CONTEXT.stop(NULL);
+}
+
+void test_docker_stop_signals_child(void **state) {
+    states *states_ptr = *state;
+    wm_docker_t* module_data = (wm_docker_t *)docker_module->data;
+    wfd_t * wfd = states_ptr->wfd;
+
+    states_ptr->module_data = module_data;
+    module_data->scan_config.next_scheduled_scan_time = 0;
+    module_data->scan_config.scan_day = 0;
+    module_data->scan_config.scan_wday = -1;
+    module_data->scan_config.interval = 60 * 25; // 25min
+    module_data->scan_config.month_interval = false;
+
+    wfd->pid = 4242;
+    stop_on_append = true;
+
+    will_return(__wrap_wpopenl, wfd);
+
+    /* Four signals: the listener is terminated by its process group, which
+     * wpopenv() makes equal to its PID by calling setsid() in the child, and by
+     * its PID, which works even before setsid() has run. That pair comes once
+     * from stop() and once more from the module's own re-check of the shutdown
+     * flag after arming, which cannot know stop() already ran. Signalling a
+     * process that is already dying is harmless. */
+    for (int i = 0; i < 2; i++) {
+        expect_value(__wrap_kill, pid, -4242);
+        expect_value(__wrap_kill, sig, SIGTERM);
+        will_return(__wrap_kill, 0);
+        expect_value(__wrap_kill, pid, 4242);
+        expect_value(__wrap_kill, sig, SIGTERM);
+        will_return(__wrap_kill, 0);
+    }
+
+    // Terminating the child closes the pipe, so fgets() returns and the module
+    // reaps it.
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, 0);
+    will_return(__wrap_wpclose, 0);
+
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+
+    /* No __wrap_FOREVER value is queued and no warning is expected: the loop
+     * must leave through the shutdown check, not through the retry path that
+     * reports the listener as having finished unexpectedly. */
+
+    docker_module->context->start(module_data);
+
+    assert_int_equal(appended_sid, 4242);
+
+    /* The listener has been reaped, so the module must no longer hold it as a
+     * signal target. An unexpected call to kill() fails the test. */
+    WM_DOCKER_CONTEXT.stop(module_data);
+}
+
+void test_docker_shutdown_during_launch_kills_child(void **state) {
+    states *states_ptr = *state;
+    wm_docker_t* module_data = (wm_docker_t *)docker_module->data;
+    wfd_t * wfd = states_ptr->wfd;
+
+    states_ptr->module_data = module_data;
+    module_data->scan_config.next_scheduled_scan_time = 0;
+    module_data->scan_config.scan_day = 0;
+    module_data->scan_config.scan_wday = -1;
+    module_data->scan_config.interval = 60 * 25; // 25min
+    module_data->scan_config.month_interval = false;
+
+    wfd->pid = 5150;
+    flag_only_on_append = true;
+
+    will_return(__wrap_wpopenl, wfd);
+
+    // stop() ran before this thread published the PID and signalled nothing,
+    // so the module has to terminate the listener itself.
+    expect_value(__wrap_kill, pid, -5150);
+    expect_value(__wrap_kill, sig, SIGTERM);
+    will_return(__wrap_kill, 0);
+    expect_value(__wrap_kill, pid, 5150);
+    expect_value(__wrap_kill, sig, SIGTERM);
+    will_return(__wrap_kill, 0);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, 0);
+    will_return(__wrap_wpclose, 0);
+
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+
+    docker_module->context->start(module_data);
+
+    assert_int_equal(appended_sid, 5150);
 }
 
 void test_fake_tag(void **state) {
@@ -227,9 +372,13 @@ void test_read_scheduling_interval_configuration(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
-        cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)
+        cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions),
+        cmocka_unit_test_setup_teardown(test_docker_stop_signals_child, setup_test_executions, teardown_test_shutdown),
+        cmocka_unit_test_setup_teardown(test_docker_shutdown_during_launch_kills_child, setup_test_executions, teardown_test_shutdown)
     };
     const struct CMUnitTest tests_without_startup[] = {
+        cmocka_unit_test(test_docker_context_has_stop),
+        cmocka_unit_test(test_docker_stop_without_child_is_noop),
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_monthday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),

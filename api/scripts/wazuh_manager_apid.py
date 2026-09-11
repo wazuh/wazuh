@@ -139,7 +139,9 @@ def start(params: dict):
     app = AsyncApp(
         __name__,
         specification_dir=os.path.join(api_path[0], 'spec'),
-        swagger_ui_options=SwaggerUIOptions(swagger_ui=False),
+        # serve_spec=False avoids exposing the API specification and version at
+        # /openapi.json and /openapi.yaml, which connexion serves unauthenticated by default
+        swagger_ui_options=SwaggerUIOptions(swagger_ui=False, serve_spec=False),
         pythonic_params=True,
         lifespan=lifespan_handler,
         uri_parser_class=APIUriParser
@@ -154,7 +156,15 @@ def start(params: dict):
                 validate_responses=False
                 )
 
-    # Maximum body size that the API can accept (bytes)
+    # Maximum body size that the API can accept (bytes). This middleware caps a body by wrapping the
+    # ASGI receive channel, so it must stay above every reader of that body -- request validation
+    # included -- and below the BaseHTTPMiddleware-based middlewares, whose task groups do not let
+    # a ContentSizeExceeded raised inside a receive call reach the exception middleware. Only
+    # BEFORE_VALIDATION satisfies both, and it is what makes the ceiling a 413 rather than a 500.
+    if api_conf['max_upload_size']:
+        app.add_middleware(ContentSizeLimitMiddleware, MiddlewarePosition.BEFORE_VALIDATION,
+                           max_content_size=api_conf['max_upload_size'])
+        app.add_error_handler(ContentSizeExceeded, error_handler.content_size_handler)
     if api_conf['access']['max_request_per_minute'] > 0:
         app.add_middleware(CheckRateLimitsMiddleware, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(CheckExpectHeaderMiddleware)
@@ -162,9 +172,6 @@ def start(params: dict):
     app.add_middleware(CheckAuthContextSizeMiddleware, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     app.add_middleware(SecureHeadersMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
-    if api_conf['max_upload_size']:
-        app.add_middleware(ContentSizeLimitMiddleware, max_content_size=api_conf['max_upload_size'])
-        app.add_error_handler(ContentSizeExceeded, error_handler.content_size_handler)
 
     # Enable CORS
     if api_conf['cors']['enabled']:

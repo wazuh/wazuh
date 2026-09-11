@@ -190,6 +190,15 @@ namespace wazuh::uds_http
         /// Per-route concurrent-session cap, enforced with the route's own counter IN ADDITION to
         /// the class cap; 0 -> only the class cap applies.
         std::size_t maxSessions {0};
+        /// Per-route leak backstop; 0 -> the server-wide responseTimeoutSec.
+        ///
+        /// Raise it for a route whose PEER waits longer than the server-wide value. The backstop's
+        /// contract is that the peer's own deadline is the shorter one and fires first (see
+        /// responseTimeoutSec); a route where that is inverted turns a legitimately slow but
+        /// succeeding request into a 504 the peer retries forever, because the work it is waiting
+        /// on completes just after the connection was torn down. Setting this per route is what
+        /// keeps that from being fixed by weakening the backstop for every other route.
+        std::size_t responseTimeoutSec {0};
     };
 
     /**
@@ -247,7 +256,9 @@ namespace wazuh::uds_http
         std::size_t bodyTimeoutSec {30};   ///< Head received -> full body received.
         /// Dispatch -> send(). A LEAK BACKSTOP, not a quality-of-service deadline: the peer sets
         /// its own, shorter, per-target deadline and gives up first. Its only job is to guarantee
-        /// that a handler which loses a responder cannot hold an fd forever.
+        /// that a handler which loses a responder cannot hold an fd forever. A route whose peer
+        /// waits longer than this must raise it with RouteOptions::responseTimeoutSec rather than
+        /// have this value raised for everyone.
         std::size_t responseTimeoutSec {300};
         std::size_t writeTimeoutSec {10}; ///< Time allowed to write one response.
         /// stop(): how long to wait for already-dispatched requests to answer. Kept SHORT because
@@ -317,6 +328,16 @@ namespace wazuh::uds_http
         /// Classified sessions per class, indexed by RouteClass. Sums to at most liveSessions
         /// (connections still reading their head are counted only in liveSessions).
         std::size_t sessionsByClass[ROUTE_CLASS_COUNT] {0, 0, 0};
+
+        /// Cumulative transport-level 503s since start, by cause. The consuming module's endpoint
+        /// metrics can see none of them: the request is answered here, before a handler runs, so it
+        /// never reaches the counters an endpoint keeps. Sizing the connection cap or the byte
+        /// budget from those metrics alone therefore has a blind spot exactly where it matters, and
+        /// a throttled WARN reports only the occurrences of its own window.
+        std::size_t rejectedBudgetExhausted {0}; ///< The in-flight byte budget refused a reservation.
+        std::size_t rejectedSessionCap {0};      ///< A per-class session cap was already reached.
+        std::size_t rejectedShutdown {0};        ///< Answered because the server was already stopping.
+        std::size_t rejectedNoResponse {0};      ///< A handler dropped the request without answering.
     };
 
     /**

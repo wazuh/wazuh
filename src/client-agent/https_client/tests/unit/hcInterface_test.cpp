@@ -34,8 +34,7 @@ namespace
 {
     std::atomic<int> g_logCalls {0};
 
-    void testLogCallback(const int, const char*, const char*, const int, const char*, const char*,
-                         va_list)
+    void testLogCallback(const int, const char*, const char*, const int, const char*, const char*, va_list)
     {
         g_logCalls++;
     }
@@ -159,9 +158,8 @@ TEST_F(HcInterfaceTest, DrainReturnsWithinDeadlineAgainstADeadServer)
 
     const auto begin = std::chrono::steady_clock::now();
     hc_stop(handle); // Must not hang despite the unreachable server.
-    const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-                             std::chrono::steady_clock::now() - begin)
-                         .count();
+    const auto elapsed =
+        std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - begin).count();
     EXPECT_LT(elapsed, 5);
     hc_destroy(handle);
 }
@@ -248,8 +246,7 @@ TEST_F(HcInterfaceTest, SyncIntakeBindFailureIsNonFatal)
     // A sync socket in a nonexistent directory cannot bind; the client must
     // still start (the intake is best-effort) and stop cleanly.
     hc_config_t config = m_config;
-    std::strncpy(config.sync_socket_path, "/nonexistent_dir_xyz/hc_sync.sock",
-                 sizeof(config.sync_socket_path) - 1);
+    std::strncpy(config.sync_socket_path, "/nonexistent_dir_xyz/hc_sync.sock", sizeof(config.sync_socket_path) - 1);
     hc_handle* handle = hc_create(&config, &m_callbacks);
     ASSERT_NE(nullptr, handle);
     EXPECT_TRUE(hc_start(handle)); // Bind fails, but start succeeds.
@@ -337,11 +334,14 @@ TEST_F(HcInterfaceTest, SetAgentIdentityValidatesTheMaterial)
 {
     hc_handle* handle = hc_create(&m_config, &m_callbacks);
     ASSERT_NE(nullptr, handle);
-    EXPECT_TRUE(hc_set_agent_identity(handle, "002", "000102030405060708090a0b0c0d0e0f")); // 16 bytes.
-    EXPECT_FALSE(hc_set_agent_identity(handle, "002", "abcd")); // 2 bytes: not an AES length.
+    const char* key64 = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+    EXPECT_TRUE(hc_set_agent_identity(handle, "002", key64)); // 64 hex = the 32-byte HS256 key.
+    EXPECT_FALSE(
+        hc_set_agent_identity(handle, "002", "000102030405060708090a0b0c0d0e0f")); // 16 bytes: no longer a key.
+    EXPECT_FALSE(hc_set_agent_identity(handle, "002", "abcd"));
     EXPECT_FALSE(hc_set_agent_identity(handle, "002", nullptr));
-    EXPECT_FALSE(hc_set_agent_identity(handle, nullptr, "000102030405060708090a0b0c0d0e0f"));
-    EXPECT_FALSE(hc_set_agent_identity(nullptr, "002", "000102030405060708090a0b0c0d0e0f"));
+    EXPECT_FALSE(hc_set_agent_identity(handle, nullptr, key64));
+    EXPECT_FALSE(hc_set_agent_identity(nullptr, "002", key64));
     hc_destroy(handle);
 }
 
@@ -372,6 +372,11 @@ TEST(HcEnrollTest, UnreachableServerReturnsFalseWithZeroHttpCode)
     hc_enroll_result_t result {};
     EXPECT_FALSE(hc_enroll(&config, &request, &result));
     EXPECT_EQ(0, result.http_code);
+    // http_code == 0 says only "nothing answered", which an operator cannot act
+    // on: the reason is what separates a down manager from a rejected
+    // certificate. Not matched exactly -- libcurl and OpenSSL reword these
+    // between versions and platforms.
+    EXPECT_STRNE("", result.transport_error);
 }
 
 TEST(HcEnrollTest, InvalidTransportConfigIsRejectedBeforeSending)
@@ -385,4 +390,8 @@ TEST(HcEnrollTest, InvalidTransportConfigIsRejectedBeforeSending)
     hc_enroll_result_t result {};
     EXPECT_FALSE(hc_enroll(&config, &request, &result));
     EXPECT_EQ(0, result.http_code);
+    // libcurl never ran, so it has no opinion to report; validateTransport()
+    // logged the real reason itself, and the caller falls back to its own
+    // wording rather than printing an empty one.
+    EXPECT_STREQ("", result.transport_error);
 }

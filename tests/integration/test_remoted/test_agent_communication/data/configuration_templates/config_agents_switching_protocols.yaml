@@ -11,5 +11,3 @@
       elements:
         - agents_disconnection_time:
             value: TIME
-        - agents_disconnection_alert_time:
-            value: '100s'

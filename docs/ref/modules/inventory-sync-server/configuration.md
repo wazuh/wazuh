@@ -14,7 +14,7 @@ tuned through internal options.
 
 Two values are deliberately NOT configurable:
 
-- **The socket path** is fixed at `queue/sockets/inventory-sync.sock`, relative to the installation
+- **The socket path** is fixed at `queue/sockets/inventory-sync-http.sock`, relative to the installation
   directory. Internal options can only carry integers, so there is no mechanism to set a path; remoted
   resolves the same relative path through its chroot.
 - **The socket mode** is fixed at `0660`. It was an internal option and that was a trap: the value is a
@@ -204,7 +204,7 @@ wazuh_modules.inventory_sync_server_max_parallel_connections=1024
 
 - **Default value:** `1024`
 - **Allowed values:** 0 to 65536
-- **Note:** Max simultaneous connections; over it `503` and close. Every connection and every deferred reply costs a file descriptor out of a limit shared with all of modulesd, so setting this above `wazuh_modules.rlimit_nofile` logs a warning and guarantees failures before the cap is reached. Live occupancy is visible as `server.sessions.live` in [`GET /metrics`](metrics.md#transport--server) (the cap itself has no shed counter — a hit shows in the logs and as `live` pinned at the cap).
+- **Note:** Max simultaneous connections; over it `503` and close. Every connection and every deferred reply costs a file descriptor out of a limit shared with all of modulesd, so setting this above `wazuh_modules.rlimit_nofile` logs a warning and guarantees failures before the cap is reached. Live occupancy is visible as `server.sessions.live` in [`GET /metrics`](metrics.md#transport--server) (the cap itself has no shed counter: a hit shows in the logs and as `live` pinned at the cap).
 
 ### wazuh_modules.inventory_sync_server_max_inflight_bytes
 
@@ -216,7 +216,7 @@ wazuh_modules.inventory_sync_server_max_inflight_bytes=268435456
 
 - **Default value:** `268435456` (256 MiB)
 - **Allowed values:** `0` (unlimited) or 1 to 2147483647
-- **Note:** Total in-flight request payload bytes; over it `503`. Reserved from the declared `Content-Length` at headers-complete, BEFORE the body is read, so it bounds the read-phase peak too. Raised automatically to at least one maximum-size request, so a too-small value cannot reject everything. Live occupancy is visible as `server.budget.*` in [`GET /metrics`](metrics.md#transport--server) (levels only — budget sheds have no cumulative counter).
+- **Note:** Total in-flight request payload bytes; over it `503`. Reserved from the declared `Content-Length` at headers-complete, BEFORE the body is read, so it bounds the read-phase peak too. Raised automatically to at least one maximum-size request, so a too-small value cannot reject everything. Live occupancy is visible as `server.budget.*` in [`GET /metrics`](metrics.md#transport--server), and the cumulative shed count as `server.rejected.budget`.
 
 ### wazuh_modules.inventory_sync_server_reserved_control_connections
 
@@ -298,10 +298,10 @@ wazuh_modules.inventory_sync_server_sync_queue_bytes=67108864
 `Retry-After` value, in seconds, answered with `503` while the vulnerability feed is not ready.
 
 ```ini
-wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds=60
+wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds=10
 ```
 
-- **Default value:** `60`
+- **Default value:** `10`
 - **Allowed values:** 10 to 1800
 - **Note:** Only VD sessions get this header; the agent re-sends the same session after the delay.
   The minimum is 10 because a smaller value tells the whole fleet to hammer the endpoint. This
@@ -317,11 +317,11 @@ Workers on the vulnerability-detection scan lane.
 wazuh_modules.inventory_sync_server_vd_workers=0
 ```
 
-- **Default value:** `0` (resolves to 1)
-- **Allowed values:** 0 to 16
-- **Note:** The scanner serializes scans internally today, so values above 1 only help once the
-  scanner gains real scan parallelism. Lane occupancy and end-to-end time are `vd.lane.depth` and
-  `vd.lane.time` in [`GET /metrics`](metrics.md#vulnerability-detection-lane--vd).
+- **Default value:** `0` (half the host's cores, minimum 1)
+- **Allowed values:** 0 to 64
+- **Note:** More workers let scans for different agents run at the same time instead of queueing
+  behind each other. Lane occupancy and end-to-end time are `vd.lane.depth` and `vd.lane.time` in
+  [`GET /metrics`](metrics.md#vulnerability-detection-lane--vd).
 
 ### wazuh_modules.inventory_sync_server_vd_scan_queue_slots
 
@@ -349,7 +349,7 @@ wazuh_modules.inventory_sync_server_session_query_batch_size=0
 ```
 
 - **Default value:** `0` (1000 documents)
-- **Allowed values:** 0 to 100000
+- **Allowed values:** `0` (module default), or `100` to `10000` (the indexer rejects pages above `index.max_result_window`, default `10000`)
 - **Note:** Larger pages mean fewer round-trips to the indexer but a bigger response held in memory
   per query.
 
@@ -367,7 +367,8 @@ intact.
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size
 
-Forwarded to the Indexer Connector as `max_bulk_size`.
+The ingestion pipeline's group-commit threshold, measured in **request payload bytes** (wire
+FlatBuffer size): a worker flushes its open batch once the staged sessions reach this many bytes.
 
 ```ini
 wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size=10485760
@@ -375,17 +376,38 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size=10485760
 
 - **Default value:** `10485760` (10 MiB)
 - **Allowed values:** 4096 to 104857600
-- **Note:** Forwarded to the Indexer Connector as `max_bulk_size` — and it plays a second role: the
-  ingestion pipeline uses the same value as its group-commit threshold, measured in **request
-  payload bytes** (wire FlatBuffer size), which is a different byte measure than the connector's
-  serialized bulk. The group-commit behavior it drives is visible as `sync.bulk.*` in
-  [`GET /metrics`](metrics.md#group-commit--syncbulk).
+- **Note:** This option no longer reaches the Indexer Connector: the size of the actual `_bulk`
+  requests is capped separately by
+  `inventory_sync_server_indexer_sync_connector_max_bulk_size` below, so raising the group-commit
+  threshold cannot push a single request past the indexer's `http.max_content_length` anymore. The
+  group-commit behavior this option drives is visible as `sync.bulk.*` in
+  [`GET /metrics`](metrics.md#group-commit--syncbulk); the real request traffic is
+  `sync.indexer.bulk.*`.
+
+#### wazuh_modules.inventory_sync_server_indexer_sync_connector_max_bulk_size
+
+Forwarded to the Indexer Connector as `max_bulk_size`: the serialized NDJSON bytes the connector
+stages before it cuts a `_bulk` request.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_sync_connector_max_bulk_size=10485760
+```
+
+- **Default value:** `10485760` (10 MiB)
+- **Allowed values:** 4096 to 104857600
+- **Note:** Distinct from the group-commit threshold above on purpose, and measured in a different
+  unit (serialized NDJSON, which the manager's metadata overlay inflates past the wire FlatBuffer
+  size). Keep it at or below the indexer's `http.max_content_length`; an oversized request costs a
+  `413` round-trip plus a split retry. One group commit can therefore produce several `_bulk`
+  requests — `sync.indexer.bulk.requests` vs `sync.bulk.flushes` in
+  [`GET /metrics`](metrics.md#group-commit--syncbulk) shows exactly how many.
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds
 
 **No effect.** The value is accepted for compatibility but the module overrides the connector's
-periodic flush to one hour regardless: the ingestion workers own every flush (a timer-driven flush
-that fails discards the buffer silently, which would let a worker answer `200` for lost data).
+periodic flush to `0` regardless, which means the connector never starts its background flush
+thread: the ingestion workers own every flush (a timer-driven flush that fails discards the buffer
+silently and has no responder to report to, which would let a worker answer `200` for lost data).
 
 ```ini
 wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds=20
@@ -393,7 +415,9 @@ wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds=20
 
 - **Default value:** `20` (ignored)
 - **Allowed values:** 1 to 3600
-- **Note:** Kept only so existing configurations do not abort the daemon; slated for removal.
+- **Note:** Kept only so existing configurations do not abort the daemon; slated for removal. A
+  value other than the default logs a startup `WARNING` naming the option, so a tuned-but-dead
+  knob is visible instead of silently ignored.
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_delay_seconds
 
@@ -406,6 +430,58 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_retry_delay_seconds=15
 - **Default value:** `15`
 - **Allowed values:** 1 to 3600
 - **Note:** Forwarded as `max_retry_delay_seconds`. The minimum is 1 because the connector rejects anything below its base retry delay.
+
+#### wazuh_modules.inventory_sync_server_indexer_sync_request_timeout_seconds
+
+Forwarded as `request_timeout_seconds`.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_sync_request_timeout_seconds=60
+```
+
+- **Default value:** `60`
+- **Allowed values:** 1 to 3600
+- **Note:** Upper bound, in seconds, on one HTTP request against the indexer. This is what catches a
+  host that accepted the connection and then never answers, which otherwise blocks the caller
+  indefinitely. The connector reads `0` as "no bound" — exactly the unbounded blocking this option
+  exists to prevent — so `0` is rejected here rather than forwarded. A timed-out bulk request is
+  retried with backoff, not discarded.
+
+#### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_attempts
+
+Forwarded as `max_retry_attempts`.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_sync_max_retry_attempts=5
+```
+
+- **Default value:** `5`
+- **Allowed values:** 0 to 1000
+- **Note:** Failed attempts allowed to one connector operation (a bulk flush with its `413` split
+  chunks, a delete-by-query, an update-by-query, a search) before it gives up and the session fails.
+  Together with `max_retry_duration_seconds` below — whichever is spent first — this bounds the
+  retry loops that would otherwise let a persistent `429` or an unreachable indexer block the
+  flushing worker, and the shard behind it, forever. `0` disables the attempts bound (retries are
+  then limited only by `max_retry_duration_seconds`); setting both to `0` makes retries fully
+  unbounded and logs a startup `WARNING`. Use `1` for a single attempt with no retry.
+
+#### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_duration_seconds
+
+Forwarded as `max_retry_duration_seconds`.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_sync_max_retry_duration_seconds=15
+```
+
+- **Default value:** `15`
+- **Allowed values:** 0 to 3600
+- **Note:** Wall-clock deadline, in seconds, for one connector operation's retries: no retry sleep is
+  started that would cross it. The default stays below `remoted.downstream_stateful_response_timeout`
+  (default 20 s) so a flush fails while its caller is still listening, instead of finishing work the
+  agent already gave up on. One in-flight request can still overshoot the deadline by up to
+  `request_timeout_seconds`. `0` disables the deadline (retries are then limited only by
+  `max_retry_attempts`); setting both to `0` makes retries fully unbounded and logs a startup
+  `WARNING`.
 
 #### Asynchronous connector
 
@@ -469,6 +545,20 @@ wazuh_modules.inventory_sync_server_indexer_async_logger_threads=1
 - **Allowed values:** 1 to 64
 - **Note:** Forwarded as `logger_threads`.
 
+#### wazuh_modules.inventory_sync_server_indexer_async_request_timeout_seconds
+
+Forwarded as `request_timeout_seconds`.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_async_request_timeout_seconds=60
+```
+
+- **Default value:** `60`
+- **Allowed values:** 1 to 3600
+- **Note:** Same meaning as the synchronous family's `request_timeout_seconds`, for the asynchronous
+  connector. `0` (the connector's "no bound") is rejected here rather than forwarded. A timed-out
+  batch is requeued and retried, not discarded.
+
 #### wazuh_modules.inventory_sync_server_indexer_async_max_queue_bytes
 
 Forwarded as `max_queue_bytes`.
@@ -480,6 +570,23 @@ wazuh_modules.inventory_sync_server_indexer_async_max_queue_bytes=67108864
 - **Default value:** `67108864` (64 MiB)
 - **Allowed values:** `0` (unlimited) or 1 to 2147483647
 - **Note:** Forwarded as `max_queue_bytes`. An unbounded queue is the only unbounded allocation this module can be configured to make, so the shipped default is deliberately finite.
+
+#### Shared session
+
+#### wazuh_modules.inventory_sync_server_indexer_monitoring_interval_seconds
+
+Forwarded to the shared indexer session as `monitoring_interval_seconds`.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_monitoring_interval_seconds=10
+```
+
+- **Default value:** `10`
+- **Allowed values:** 1 to 3600
+- **Note:** Polling period of the health monitor that marks each indexer host as available or
+  unavailable. One option, not a sync/async pair: both connectors share the session's single
+  monitor, so there is exactly one polling cadence per module. The connector rejects `0` (a zero
+  period would busy-loop the monitor thread), so `0` is rejected here rather than forwarded.
 
 ---
 
@@ -528,8 +635,8 @@ Four gates shed with a `503`, in the order a request meets them — each with it
 1. **Connection cap** (`max_parallel_connections`) — too many simultaneous connections. No shed
    counter; `server.sessions.live` pinned at the cap is the signature.
 2. **In-flight byte budget** (`max_inflight_bytes`) — too many request bytes being read at once.
-   No shed counter either; watch the `server.budget.*` levels (available near 0, inflight near
-   the cap).
+   Counted in `server.rejected.budget`; watch the `server.budget.*` levels alongside it (available
+   near 0, inflight near the cap).
 3. **Pipeline admission queue** (`sync_queue_bytes`) — sessions accepted but waiting for an ingestion
    worker exceed the global byte cap; counted as `sync.pipeline.shed.total`.
 4. **VD lane capacity** (`vd_scan_queue_slots`) — VD sessions only, when the scan queue is full;

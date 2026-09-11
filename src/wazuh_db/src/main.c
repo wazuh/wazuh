@@ -15,6 +15,7 @@
 #include "os_net.h"
 #include "config.h"
 #include "wazuh_db-config.h"
+#include "mconf-config.h"
 
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);
@@ -38,6 +39,7 @@ int main(int argc, char ** argv)
 {
     int test_config = 0;
     int run_foreground = 0;
+    const char *cfg = WAZUHCONF;
     int i;
     int status;
 
@@ -59,7 +61,7 @@ int main(int argc, char ** argv)
     {
         int c;
 
-        while (c = getopt(argc, argv, "Vdhtf"), c != -1) {
+        while (c = getopt(argc, argv, "Vdhtfc:"), c != -1) {
             switch (c) {
             case 'V':
                 print_version();
@@ -79,6 +81,13 @@ int main(int argc, char ** argv)
 
             case 'f':
                 run_foreground = 1;
+                break;
+
+            case 'c':
+                if (!optarg) {
+                    merror_exit("-c needs an argument");
+                }
+                cfg = optarg;
                 break;
 
             default:
@@ -106,12 +115,19 @@ int main(int argc, char ** argv)
     // Allocating memory for configuration structures and setting default values
     wdb_init_conf();
 
-    int modules = 0;
-    modules |= WAZUHDB;
-
-    // Read wazuh configuration file
-    if (ReadConfig(modules, WAZUHCONF, &gconfig, NULL) < 0) {
+    // Read the manager configuration (etc/wazuh-manager.conf): loaded once, then the `wdb` section as cJSON.
+    if (w_mconf_load(cfg) < 0) {
         merror_exit("Invalid configuration block for Wazuh-DB.");
+    }
+
+    {
+        cJSON *wdb = w_mconf_section("wdb");
+        int ret = Read_WazuhDB_JSON(wdb);
+        cJSON_Delete(wdb);
+
+        if (ret < 0) {
+            merror_exit("Invalid configuration block for Wazuh-DB.");
+        }
     }
 
     if (!isDebug()) {
@@ -125,6 +141,10 @@ int main(int argc, char ** argv)
     mdebug1(WAZUH_HOMEDIR, home_path);
 
     if (test_config) {
+        /* Start-up does not require the certificate files to exist; the test run does. */
+        if (w_mconf_validate(cfg) < 0) {
+            merror_exit("Invalid configuration block for Wazuh-DB.");
+        }
         exit(0);
     }
 
@@ -472,12 +492,13 @@ void * run_backup(__attribute__((unused)) void * args) {
 void wdb_help() {
     print_header();
 
-    print_out("  %s: -[Vhdtf]", ARGV0);
+    print_out("  %s: -[Vhdtf] [-c config]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF);
 
     exit(EXIT_SUCCESS);
 }

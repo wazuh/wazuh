@@ -26,6 +26,7 @@
 /* Audit defs */
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
 #define AUDIT_SOCKET                "queue/sockets/audit"
+#define MAX_CONN_RETRIES            5          // Max retries to reconnect to Audit socket
 #define AUDIT_CONF_FILE             "tmp/af_wazuh.conf"
 #define AUDIT_HEALTHCHECK_DIR       "tmp"
 #define AUDIT_HEALTHCHECK_KEY       "wazuh_hc"
@@ -89,6 +90,7 @@ extern int ebpf_kernel_queue_full_reported;
 extern int synced_docs_files;
 extern int synced_docs_registry_keys;
 extern int synced_docs_registry_values;
+extern pthread_mutex_t synced_docs_mutex;
 extern volatile bool is_fim_shutdown;
 
 typedef enum fim_event_type
@@ -431,9 +433,18 @@ void free_pending_sync_item(void* data);
 /**
  * @brief Process pending sync flag updates after transaction commit.
  *
+ * Does not log a summary itself: a single realtime/whodata event can call this with a
+ * one-item list, and logging per call there would flood debug=1 on a mass create/modify
+ * (e.g. copying many files into a monitored directory). Callers that run once per scan or
+ * per startup check (fim_file_scan(), fim_registry_scan(), and the document-limit
+ * promote/demote paths in fim_initialize()) log their own summary from the returned count;
+ * the realtime/whodata call site in fim_file() does not log at all.
+ *
+ * @param table_name Name of the table the pending items belong to.
  * @param pending_items OSList of pending_sync_item_t to update sync flags.
+ * @return Number of items successfully updated (fim_db_set_sync_flag() failures aren't counted).
  */
-void process_pending_sync_updates(char* table_name, OSList* pending_items);
+int process_pending_sync_updates(char* table_name, OSList* pending_items);
 
 /**
  * @brief Send a log message
@@ -530,11 +541,43 @@ void audit_create_rules_file();
 void audit_rules_to_realtime();
 
 /**
- * @brief Set Auditd socket configuration
+ * @brief Build the list of audisp plugin configurations to try, ordered by preference
  *
- * @return 0 on success, -1 on error
+ * @param plugin_dir [out] Directory holding the audisp plugin configuration files
+ * @param templates [out] Array to fill with the configuration templates, most preferred first
+ * @param max Size of the templates array
+ * @return Number of candidates written to templates, 0 if no known plugins directory was found
  */
-int set_auditd_config(void);
+int audisp_get_candidates(const char **plugin_dir, const char **templates, int max);
+
+/**
+ * @brief Whether the audisp plugin configuration on disk is one of the known templates
+ *
+ * @param plugin_dir Directory holding the audisp plugin configuration files
+ * @param templates Known configuration templates
+ * @param count Number of templates
+ * @return 1 when the file on disk matches one of them, 0 otherwise
+ */
+int audisp_configuration_is_known(const char *plugin_dir, const char **templates, int count);
+
+/**
+ * @brief Configure the audisp plugin and connect to the who-data socket, probing the known
+ *        configurations until one of them yields a socket that can be connected to
+ *
+ * @return File descriptor of the connected socket, -1 on error
+ */
+int configure_and_connect_audit_socket(void);
+
+/**
+ * @brief Write the given audisp plugin configuration and restart Auditd if it changed
+ *
+ * @param plugin_dir Directory holding the audisp plugin configuration files
+ * @param audisp_config Configuration template to render
+ * @return 0 when the configuration is in place, 1 when it was written but Auditd was not
+ *         restarted because restart_audit is disabled, -1 on error (a failed Auditd restart
+ *         included)
+ */
+int set_auditd_config_template(const char *plugin_dir, const char *audisp_config);
 
 /**
  * @brief Initialize Audit evsents socket
@@ -542,6 +585,14 @@ int set_auditd_config(void);
  * @return File descriptor of the socket, -1 on error
  */
 int init_auditd_socket(void);
+
+/**
+ * @brief Reconnect to the Auditd socket, retrying up to MAX_CONN_RETRIES times
+ *
+ * @param audit_sock Output: file descriptor of the reconnected socket, -1 on failure
+ * @return File descriptor of the socket, -1 on error
+ */
+int audit_reconnect_with_retries(int *audit_sock);
 
 /**
  * @brief Reloads audit rules every RELOAD_RULES_INTERVAL seconds

@@ -35,7 +35,7 @@ void HandleRemote(int uid)
         }
     }
 
-    /* The classic TCP/UDP listener only serves 4.x agents. proto is 0 when <remote><legacy>
+    /* The classic TCP/UDP listener only serves 4.x agents. proto is 0 when remote.legacy
      * is absent or disabled. */
 
     /* If TCP is enabled then bind the TCP socket */

@@ -412,7 +412,7 @@ TEST(CrudService_Component, UpsertKVDB_ContentNotObject_Throws_NoMutation)
     }
 }
 
-TEST(CrudService_Component, UpsertKVDB_InvalidUUID_Throws_NoMutation)
+TEST(CrudService_Component, UpsertKVDB_NonV4UUID_Stored)
 {
     CmCrudStack stack;
 
@@ -421,17 +421,13 @@ TEST(CrudService_Component, UpsertKVDB_InvalidUUID_Throws_NoMutation)
 
     ON_CALL(*stack.store, getNS(_)).WillByDefault(Return(nsPtr));
 
-    EXPECT_CALL(*stack.validator, validateAssetShallow(_)).Times(0);
-    EXPECT_CALL(*stack.validator, validateAsset(_, _)).Times(0);
-    EXPECT_CALL(*stack.validator, softIntegrationValidate(_, _)).Times(0);
-    EXPECT_CALL(*stack.validator, softPolicyValidate(_, _)).Times(0);
-
-    EXPECT_CALL(*nsPtr, assetExistsByUUID(_)).Times(0);
-    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+    // The identifier is opaque to the engine: a UUIDv5 is stored like any other identifier
+    EXPECT_CALL(*nsPtr, assetExistsByUUID("6093809a-6285-5cf8-9284-63bd68f796e9")).WillOnce(Return(false));
+    EXPECT_CALL(*nsPtr, createResource(_, ResourceType::KVDB, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    static constexpr const char* kBadKvdbUuidYaml = R"({
-      "id": "not-a-uuid",
+    static constexpr const char* kV5KvdbUuidYaml = R"({
+      "id": "6093809a-6285-5cf8-9284-63bd68f796e9",
       "metadata": {
         "title": "windows_kerberos_status_code_to_code_name"
       },
@@ -441,15 +437,7 @@ TEST(CrudService_Component, UpsertKVDB_InvalidUUID_Throws_NoMutation)
       "enabled": true
     })";
 
-    try
-    {
-        stack.service.upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kBadKvdbUuidYaml));
-        FAIL() << "Expected std::runtime_error";
-    }
-    catch (const std::runtime_error& ex)
-    {
-        EXPECT_THAT(std::string {ex.what()}, HasSubstr("UUIDv4"));
-    }
+    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kV5KvdbUuidYaml)));
 }
 
 // ---------------------------------------------------------------------
@@ -494,7 +482,7 @@ TEST(CrudService_Component, UpsertIntegration_InvalidCategory_Throws_NoValidator
     }
 }
 
-TEST(CrudService_Component, UpsertIntegration_InvalidDecoderUUID_Throws_NoValidator_NoMutation)
+TEST(CrudService_Component, UpsertIntegration_EmptyDecoderUUID_Throws_NoValidator_NoMutation)
 {
     CmCrudStack stack;
 
@@ -509,31 +497,30 @@ TEST(CrudService_Component, UpsertIntegration_InvalidDecoderUUID_Throws_NoValida
     EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    static constexpr const char* kBadDecoderUuidIntegrationYaml = R"({
+    static constexpr const char* kEmptyDecoderUuidIntegrationYaml = R"({
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "metadata": {
         "title": "windows"
       },
       "enabled": true,
       "category": "security",
-      "decoders": ["not-a-uuid"],
+      "decoders": [""],
       "kvdbs": []
     })";
 
     try
     {
-        stack.service.upsertResource(nsId,
-                                     ResourceType::INTEGRATION,
-                                     makeJsonPayload(kBadDecoderUuidIntegrationYaml));
+        stack.service.upsertResource(
+            nsId, ResourceType::INTEGRATION, makeJsonPayload(kEmptyDecoderUuidIntegrationYaml));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
     {
-        EXPECT_THAT(std::string {ex.what()}, HasSubstr("UUIDv4"));
+        EXPECT_THAT(std::string {ex.what()}, HasSubstr("is not a valid identifier"));
     }
 }
 
-TEST(CrudService_Component, UpsertIntegration_InvalidKVDBUUID_Throws_NoValidator_NoMutation)
+TEST(CrudService_Component, UpsertIntegration_EmptyKVDBUUID_Throws_NoValidator_NoMutation)
 {
     CmCrudStack stack;
 
@@ -548,7 +535,7 @@ TEST(CrudService_Component, UpsertIntegration_InvalidKVDBUUID_Throws_NoValidator
     EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    static constexpr const char* kBadKvdbUuidIntegrationYaml = R"({
+    static constexpr const char* kEmptyKvdbUuidIntegrationYaml = R"({
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "metadata": {
         "title": "windows"
@@ -556,17 +543,17 @@ TEST(CrudService_Component, UpsertIntegration_InvalidKVDBUUID_Throws_NoValidator
       "enabled": true,
       "category": "security",
       "decoders": [],
-      "kvdbs": ["not-a-uuid"]
+      "kvdbs": [""]
     })";
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kBadKvdbUuidIntegrationYaml));
+        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kEmptyKvdbUuidIntegrationYaml));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
     {
-        EXPECT_THAT(std::string {ex.what()}, HasSubstr("UUIDv4"));
+        EXPECT_THAT(std::string {ex.what()}, HasSubstr("is not a valid identifier"));
     }
 }
 

@@ -56,7 +56,10 @@ add_executable(hlp_utest
   ${UNIT_SRC_DIR}/web_test.cpp
   ${UNIT_SRC_DIR}/kvmap_test.cpp
   ${UNIT_SRC_DIR}/dsv_csv_test.cpp
+  ${UNIT_SRC_DIR}/parse_field_test.cpp
 )
+
+target_include_directories(hlp_utest PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src/parsers)
 
 target_compile_definitions(hlp_utest PRIVATE HLP_TEST_TZDB_PATH="${CMAKE_SOURCE_DIR}/external/tzdata")
 target_link_libraries(hlp_utest PRIVATE hlp GTest::gtest_main GTest::gtest)

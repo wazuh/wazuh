@@ -26,10 +26,10 @@ SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $
 LOCK="${DIR}/var/start-script-lock"
 LOCK_PID="${LOCK}/pid"
 
-# This number should be more than enough (even if it is
-# started multiple times together). It will try for up
-# to 10 attempts (or 10 seconds) to execute.
-MAX_ITERATION="60"
+# Seconds the lock wait and the WHOLE start sequence may take. Below the unit's TimeoutSec
+# (45, templates/wazuh-agent.service), or systemd reports a timeout instead of the daemon
+# that did not come up. Cumulative: a per-daemon counter adds up past that limit.
+MAX_ITERATION="40"
 
 MAX_KILL_TRIES=30
 
@@ -182,6 +182,8 @@ start_service()
     TO_DELETE="$DIR/tmp/*"
     rm -rf $TO_DELETE
 
+    start_deadline=`expr \`date +%s\` + ${MAX_ITERATION}`
+
     # We actually start them now.
     for i in ${SDAEMONS}; do
         pstatus ${i};
@@ -203,15 +205,13 @@ start_service()
             if [ $? != 0 ]; then
                 failed=true
             else
-                j=0;
                 while [ $failed = false ]; do
                     pstatus ${i};
                     if [ $? = 1 ]; then
                         break;
                     fi
                     sleep 1;
-                    j=`expr $j + 1`;
-                    if [ "$j" -ge "${MAX_ITERATION}" ]; then
+                    if [ "`date +%s`" -ge "${start_deadline}" ]; then
                         failed=true
                     fi
                 done

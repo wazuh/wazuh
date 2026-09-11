@@ -7,7 +7,7 @@
     FORCE_ENABLED: 'yes'
     KEY_MISMATCH: 'yes'
   metadata:
-    log: Invalid interval for 'after_registration_time' option
+    log: '(1244): Invalid configuration at ''etc/wazuh-manager.conf'': /auth/force/after_registration_time'
 
 - name: "disconnected_time_invalid_value"
   description: "Check that an invalid registration time isn't allowed"
@@ -18,7 +18,7 @@
     FORCE_ENABLED: 'yes'
     KEY_MISMATCH: 'yes'
   metadata:
-    log: Invalid interval for 'disconnected_time' option
+    log: '(1244): Invalid configuration at ''etc/wazuh-manager.conf'': /auth/force/disconnected_time/value'
 
 - name: "disconnected_time_invalid_attribute"
   description: "Check that an invalid registration time enablement isn't allowed"
@@ -29,7 +29,7 @@
     FORCE_ENABLED: 'yes'
     KEY_MISMATCH: 'yes'
   metadata:
-    log: "Invalid value for attribute: 'enabled'"
+    log: '(1244): Invalid configuration at ''etc/wazuh-manager.conf'': /auth/force/disconnected_time/enabled'
 
 - name: "key_mismatch_invalid"
   description: "Check that an key_mismatch time isn't allowed"
@@ -40,7 +40,7 @@
     FORCE_ENABLED: 'yes'
     KEY_MISMATCH: 'wrong_value'
   metadata:
-    log: Invalid value for element 'key_mismatch'
+    log: '(1244): Invalid configuration at ''etc/wazuh-manager.conf'': /auth/force/key_mismatch'
 
 - name: "enablement_invalid"
   description: "Check that an invalid force_option enablement isn't allowed"
@@ -51,4 +51,4 @@
     FORCE_ENABLED: 'wrong_value'
     KEY_MISMATCH: 'yes'
   metadata:
-    log: Invalid value for element 'enabled'
+    log: '(1244): Invalid configuration at ''etc/wazuh-manager.conf'': /auth/force/enabled'

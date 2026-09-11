@@ -33,8 +33,11 @@ namespace invsync::vd
 
     struct VdScanLaneConfig
     {
-        /// Scan workers. 1 until VD gains real scan parallelism (its global mutex serializes scans
-        /// anyway -- REQ-VDQ-7); each worker owns one IndexerConnectorSync.
+        /// Scan workers; each worker owns one IndexerConnectorSync. Raising this above 1 is safe
+        /// -- VD's own ScanOrchestrator has a matching per-slot pool (REQ-VDQ-7, its
+        /// "scanWorkers" setting). Placeholder default; the facade overwrites it with
+        /// resolveVdWorkers()'s resolved value (vd_workers, or half the host's cores) before the
+        /// lane starts.
         std::size_t workers {1};
         /// Short admission queue; full => the strand answers 503 "scan capacity exhausted" (D22).
         /// 0 resolves to 2x workers.
@@ -64,8 +67,9 @@ namespace invsync::vd
         enum class Admission
         {
             Accepted,
-            Full,    ///< queue at capacity -> 503 scan capacity
-            Stopping ///< shutting down -> 503
+            Full,     ///< queue at capacity -> 503 scan capacity
+            Stopping, ///< shutting down -> 503
+            AgentBusy ///< VdScanRequest only: that agent already has a scan in flight -> 409
         };
 
         /// @param metrics OPTIONAL registry for the D18 statistics; null falls back to a private
@@ -82,7 +86,20 @@ namespace invsync::vd
         VdScanLane(const VdScanLane&) = delete;
         VdScanLane& operator=(const VdScanLane&) = delete;
 
-        /// @brief Admit one VD session. O(1), called from I/O strands.
+        /**
+         * @brief Admit one VD session or one on-demand scan request. O(1), called from I/O strands.
+         *
+         * A `VdScanRequest` for an agent that already has something in flight is REFUSED
+         * (`AgentBusy`) rather than parked, unlike a session. The two callers want opposite things:
+         * an agent re-POSTing a session is happy to wait its turn behind its own earlier one, while
+         * the Task Manager's dispatcher is re-posting after ITS timeout expired -- the first scan is
+         * very likely still running, and parking would hold the connection until the transport's
+         * backstop fires. Refusing turns that into an immediate `409`, which the dispatcher reads as
+         * "busy": deferred without consuming an attempt.
+         *
+         * The check is a probe, not a reservation: a worker can acquire the agent immediately after
+         * it passes. That race is benign -- it degrades to the parked behaviour a session gets.
+         */
         Admission tryEnqueue(Item item);
 
         /**

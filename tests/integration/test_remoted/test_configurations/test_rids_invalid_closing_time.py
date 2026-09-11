@@ -69,5 +69,10 @@ def test_rids_closing_time_invalid(test_configuration, test_metadata, configure_
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    log_monitor.start(callback=generate_callback(patterns.WARNING_INVALID_VALUE_FOR, replacement={"option": 'rids_closing_time'}))
-    assert log_monitor.callback_result
+    if test_metadata.get('fatal_1244'):
+        # Schema-level rejection: the strict loader refuses the file and remoted never starts.
+        log_monitor.start(callback=generate_callback(test_metadata['fatal_1244']))
+        assert log_monitor.callback_result
+    else:
+        log_monitor.start(callback=generate_callback(patterns.WARNING_INVALID_VALUE_FOR, replacement={"option": 'rids_closing_time'}))
+        assert log_monitor.callback_result

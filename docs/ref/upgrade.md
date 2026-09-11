@@ -83,6 +83,8 @@ File contents, permissions, and ownership are preserved for the paths listed abo
 
 The `WAZUH_REMOTE_*` installation variables described in [Installation](getting-started/installation.md) also shape that `wazuh-manager.conf.new`, so an upgrade run with them exported produces a side-file that already carries those values. If one of them holds an invalid value the side-file is not written and the upgrade reports a warning and continues: the live configuration is preserved either way.
 
+Note in particular `remote.https.global_prefix`: a preserved configuration without the tag keeps today's behavior (endpoints served unprefixed — the built-in default is `/`), while the regenerated `wazuh-manager.conf.new` carries `/wazuh-manager/`. Adopting that line from the side-file changes the URLs the manager serves **and** the request path your agents must send and sign, so only do it as part of a coordinated agent-side change.
+
 **If the upgrade fails.** Source-based upgrades attempt to restore preserved files automatically when the upgrade fails or is interrupted after the preserve step. If automatic restore fails, or if a package-based upgrade fails before restoration completes, the preserve directory is left in place for manual recovery:
 
 | Stack | Preserve directory |

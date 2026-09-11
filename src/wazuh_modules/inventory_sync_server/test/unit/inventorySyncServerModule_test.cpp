@@ -160,6 +160,35 @@ TEST_F(InventorySyncServerModuleTest, StartAndStop)
     EXPECT_GT(logCallCount().load(), 0);
 }
 
+/**
+ * R-14: the sync flush-interval option is accepted but overridden to 0 (the workers own every
+ * flush), so an operator who tunes it must be told the knob does nothing. The default -- or the
+ * struct's <=0 "no opinion" sentinel -- stays silent: there is nothing to warn about.
+ */
+TEST_F(InventorySyncServerModuleTest, ATunedSyncFlushIntervalWarnsThatItHasNoEffect)
+{
+    const auto path = uniqueSocketPath("flushwarn");
+    auto config = makeConfig(path);
+    config.indexer_sync_flush_interval_seconds = 7;
+
+    inventory_sync_server_start(testLogCallback, &config);
+    EXPECT_TRUE(LogRecorder::waitForMessageContaining("indexer_sync_flush_interval_seconds"));
+    EXPECT_TRUE(LogRecorder::waitForMessageContaining("has no effect"));
+    inventory_sync_server_stop();
+}
+
+TEST_F(InventorySyncServerModuleTest, TheDefaultSyncFlushIntervalDoesNotWarn)
+{
+    const auto path = uniqueSocketPath("flushnowarn");
+    auto config = makeConfig(path);
+    config.indexer_sync_flush_interval_seconds = 20;
+
+    inventory_sync_server_start(testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("worker thread running"));
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("has no effect"));
+    inventory_sync_server_stop();
+}
+
 TEST_F(InventorySyncServerModuleTest, StopWithoutStartIsSafe)
 {
     inventory_sync_server_stop();
@@ -270,12 +299,12 @@ TEST_F(InventorySyncServerModuleTest, AnUnusableSocketPathIsFatalAndNamesThePath
     // reported would be about the indexer rather than the socket this test means to exercise.
     invsync::test::installAlwaysAvailableFakeIndexers();
 
-    auto config = makeConfig("/proc/self/does-not-exist/inventory-sync.sock");
+    auto config = makeConfig("/proc/self/does-not-exist/inventory-sync-http.sock");
 
     EXPECT_NE(0, inventory_sync_server_start(testLogCallback, &config))
         << "an unusable socket path must be reported as fatal, not retried";
 
-    EXPECT_TRUE(LogRecorder::sawMessageContaining("/proc/self/does-not-exist/inventory-sync.sock"))
+    EXPECT_TRUE(LogRecorder::sawMessageContaining("/proc/self/does-not-exist/inventory-sync-http.sock"))
         << "the failure must name the path";
     EXPECT_FALSE(LogRecorder::sawMessageContaining("inventory_sync_server_socket_path"))
         << "it must not send the operator after a setting that does not exist";

@@ -93,18 +93,6 @@ static const std::map<std::string, std::vector<std::string>> MODULE_INDICES_MAP
         }
     }};
 
-// Indices tagged with agent metadata (cluster_name, groups) that are not owned by
-// any single coordinatable module -- wazuh-agent-config/wazuh-agent-stats are written by the
-// manager's /config and /stats endpoints (inventory_sync_server's configEndpoint/statsEndpoint)
-// from the periodic push in https_client's reporterStream, not by a wodle this module ever pauses.
-// A metadata/groups change must still re-tag them, so they are added unconditionally alongside
-// whatever COORDINATION_MODULES were actually paused this cycle.
-static const std::vector<std::string> AGENT_LEVEL_INDICES
-{
-    "wazuh-agent-config",
-    "wazuh-agent-stats"
-};
-
 const char* AGENT_METADATA_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS agent_metadata ("
                                            "agent_id          TEXT NOT NULL PRIMARY KEY,"
                                            "agent_name        TEXT,"
@@ -901,7 +889,7 @@ bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
 
         if (!m_dBSync)
         {
-            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "DBSync not available for table " + table);
+            logDbSyncUnavailable("DBSync not available for table " + table);
             return false;
         }
 
@@ -2035,11 +2023,6 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
             }
         }
 
-        // Not owned by any single coordinatable module, so never reached via the loop above --
-        // a metadata/groups change still needs to re-tag them regardless of which modules were
-        // actually paused this cycle.
-        indicesToSync.insert(indicesToSync.end(), AGENT_LEVEL_INDICES.begin(), AGENT_LEVEL_INDICES.end());
-
         if (m_spSyncProtocol)
         {
             SyncModuleResult syncResult = m_spSyncProtocol->synchronizeMetadataOrGroups(
@@ -2052,18 +2035,19 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
                     // Not a real failure: the sync was aborted because the module is stopping.
                     m_logFunction(LOG_DEBUG, "Synchronization of " + table + " aborted: the module is stopping.");
                 }
-                else if (syncResult.managerNotReady
+                else if ((syncResult.managerNotReady || syncResult.localTransportUnavailable)
                          && syncResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
                 {
-                    // The manager is not ready for this agent yet, mostly right after a restart, and the
-                    // sync has not failed enough times in a row to suspect it will not clear. Agent-info
-                    // retries this table on the next coordination cycle.
+                    // Either the manager is not ready for this agent yet, or the local sync intake
+                    // itself isn't reachable yet -- both mostly right after a restart -- and the
+                    // sync has not failed enough times in a row to suspect it will not clear.
+                    // Agent-info retries this table on the next coordination cycle.
                     m_logFunction(LOG_INFO, "Synchronization of " + table + " deferred: " +
                                   syncResult.failureReason + " Will retry next cycle.");
                 }
-                else if (syncResult.managerNotReady)
+                else if (syncResult.managerNotReady || syncResult.localTransportUnavailable)
                 {
-                    // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                    // Neither condition has cleared for several cycles in a row.
                     m_logFunction(LOG_WARNING, "Failed to synchronize " + table + " " +
                                   std::to_string(syncResult.consecutiveFailures) + " times in a row: " +
                                   syncResult.failureReason);
@@ -2171,7 +2155,7 @@ void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
 
             if (!m_dBSync)
             {
-                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot set sync flag: DBSync not available");
+                logDbSyncUnavailable("Cannot set sync flag: DBSync not available");
                 return;
             }
         }
@@ -2208,7 +2192,7 @@ void AgentInfoImpl::loadSyncFlags()
 
             if (!m_dBSync)
             {
-                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot load sync flags: DBSync not available");
+                logDbSyncUnavailable("Cannot load sync flags: DBSync not available");
                 return;
             }
 
@@ -2290,7 +2274,7 @@ bool AgentInfoImpl::checkAndRecordTask(const std::string& taskId)
 
     if (!m_dBSync)
     {
-        m_logFunction(LOG_WARNING, "Cannot check/record task " + taskId + ": DBSync not available");
+        logDbSyncUnavailable("Cannot check/record task " + taskId + ": DBSync not available");
         return false;
     }
 
@@ -2500,7 +2484,7 @@ AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t
 
         if (!m_dBSync)
         {
-            m_logFunction(LOG_WARNING, "Cannot observe VD feed offset: DBSync not available");
+            logDbSyncUnavailable("Cannot observe VD feed offset: DBSync not available");
             return result;
         }
 
@@ -2564,7 +2548,7 @@ bool AgentInfoImpl::clearVdRescanPending(uint64_t offset)
 
     if (!m_dBSync)
     {
-        m_logFunction(LOG_WARNING, "Cannot clear VD rescan pending: DBSync not available");
+        logDbSyncUnavailable("Cannot clear VD rescan pending: DBSync not available");
         return false;
     }
 
@@ -2700,7 +2684,7 @@ void AgentInfoImpl::updateLastIntegrityTime(const std::string& table)
 
             if (!m_dBSync)
             {
-                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot update last integrity time: DBSync not available");
+                logDbSyncUnavailable("Cannot update last integrity time: DBSync not available");
                 return;
             }
         }
@@ -2813,8 +2797,6 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
             indicesToCheck.insert(indicesToCheck.end(), indices.begin(), indices.end());
         }
 
-        indicesToCheck.insert(indicesToCheck.end(), AGENT_LEVEL_INDICES.begin(), AGENT_LEVEL_INDICES.end());
-
         // Perform integrity check - no globalVersion needed for CHECK modes
         SyncModuleResult syncResult = m_spSyncProtocol->synchronizeMetadataOrGroups(TABLE_CHECK_MODE_MAP.at(table), indicesToCheck);
 
@@ -2831,18 +2813,19 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
             // Not a real failure: the integrity check was aborted because the module is stopping.
             m_logFunction(LOG_DEBUG, "Integrity check for " + table + " aborted: the module is stopping.");
         }
-        else if (syncResult.managerNotReady
+        else if ((syncResult.managerNotReady || syncResult.localTransportUnavailable)
                  && syncResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
         {
-            // The manager is not ready for this agent yet, mostly right after a restart, and the
-            // sync has not failed enough times in a row to suspect it will not clear. Agent-info
-            // retries this table on the next integrity cycle.
+            // Either the manager is not ready for this agent yet, or the local sync intake itself
+            // isn't reachable yet -- both mostly right after a restart -- and the sync has not
+            // failed enough times in a row to suspect it will not clear. Agent-info retries this
+            // table on the next integrity cycle.
             m_logFunction(LOG_INFO, "Integrity check for " + table + " deferred: " +
                           syncResult.failureReason + " Will retry next cycle.");
         }
-        else if (syncResult.managerNotReady)
+        else if (syncResult.managerNotReady || syncResult.localTransportUnavailable)
         {
-            // Not a restart hiccup any more: the manager has not been ready for several cycles.
+            // Neither condition has cleared for several cycles in a row.
             m_logFunction(LOG_WARNING, "Integrity check for " + table + " failed " +
                           std::to_string(syncResult.consecutiveFailures) + " times in a row: " +
                           syncResult.failureReason);

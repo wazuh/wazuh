@@ -100,32 +100,11 @@ typedef struct _mitre_breakdown_t {
     struct timeval sql_time;
 } mitre_breakdown_t;
 
-typedef struct _task_tasks_t {
-    uint64_t create_queries;
-    uint64_t get_pending_queries;
-    uint64_t mark_delivered_queries;
-    uint64_t cleanup_expired_queries;
-    uint64_t delete_old_queries;
-    struct timeval create_time;
-    struct timeval get_pending_time;
-    struct timeval mark_delivered_time;
-    struct timeval cleanup_expired_time;
-    struct timeval delete_old_time;
-} task_tasks_t;
-
-typedef struct _task_breakdown_t {
-    uint64_t sql_queries;
-    struct timeval sql_time;
-    task_tasks_t tasks;
-} task_breakdown_t;
-
 typedef struct _queries_breakdown_t {
     uint64_t global_queries;
     uint64_t mitre_queries;
-    uint64_t task_queries;
     global_breakdown_t global_breakdown;
     mitre_breakdown_t mitre_breakdown;
-    task_breakdown_t task_breakdown;
 } queries_breakdown_t;
 
 typedef struct _db_stats_t {
@@ -557,90 +536,6 @@ void w_inc_global_sleep();
  * @param time Value to increment the counter.
  */
 void w_inc_global_sleep_time(struct timeval time);
-
-/**
- * @brief Increment task queries counter
- *
- */
-void w_inc_task();
-
-/**
- * @brief Increment sql task queries counter
- *
- */
-void w_inc_task_sql();
-
-/**
- * @brief Increment sql task time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_task_sql_time(struct timeval time);
-
-/**
- * @brief Increment create task queries counter
- *
- */
-void w_inc_task_create();
-
-/**
- * @brief Increment create task time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_task_create_time(struct timeval time);
-
-/**
- * @brief Increment get_pending task queries counter
- *
- */
-void w_inc_task_get_pending();
-
-/**
- * @brief Increment get_pending task time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_task_get_pending_time(struct timeval time);
-
-/**
- * @brief Increment mark_delivered task queries counter
- *
- */
-void w_inc_task_mark_delivered();
-
-/**
- * @brief Increment mark_delivered task time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_task_mark_delivered_time(struct timeval time);
-
-/**
- * @brief Increment cleanup_expired task queries counter
- *
- */
-void w_inc_task_cleanup_expired();
-
-/**
- * @brief Increment cleanup_expired task time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_task_cleanup_expired_time(struct timeval time);
-
-/**
- * @brief Increment delete_old task queries counter
- *
- */
-void w_inc_task_delete_old();
-
-/**
- * @brief Increment delete_old task time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_task_delete_old_time(struct timeval time);
 
 /**
  * @brief Increment mitre queries counter

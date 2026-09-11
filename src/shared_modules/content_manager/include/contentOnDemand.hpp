@@ -21,7 +21,7 @@ namespace content_manager
     /**
      * @brief Queue one on-demand content update; the responder is answered when it resolves.
      *
-     * The public seam the HTTP route (registered by the vulnerability scanner on its vd.sock
+     * The public seam the HTTP route (registered by the vulnerability scanner on its vd-http.sock
      * server) dispatches into: topic lookup, the short bounded lane and the update execution all
      * live behind it in OnDemandManager. Responses, all JSON:
      *   - 200 {"status":"ok"}                              update ran to completion

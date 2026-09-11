@@ -14,9 +14,6 @@ CURRENT_PATH="$( cd $(dirname ${0}) ; pwd -P )"
 ARCH="intel64"
 WAZUH_SOURCE_REPOSITORY="https://github.com/wazuh/wazuh"
 SERVICE_PATH="/Library/LaunchDaemons/com.wazuh.agent.plist"
-STARTUP_PATH="/Library/StartupItems/WAZUH/StartupParameters.plist"
-LAUNCHER_SCRIPT_PATH="/Library/StartupItems/WAZUH/Wazuh-launcher"
-STARTUP_SCRIPT_PATH="/Library/StartupItems/WAZUH/WAZUH"
 INSTALLATION_PATH="/Library/Ossec"    # Installation path.
 VERSION=""                            # Default VERSION (branch/tag).
 REVISION="1"                          # Package revision.
@@ -88,7 +85,7 @@ function sign_binaries() {
     if [ ! -z "${KEYCHAIN}" ] && [ ! -z "${CERT_APPLICATION_ID}" ] ; then
         security -v unlock-keychain -p "${KC_PASS}" "${KEYCHAIN}" > /dev/null
         # Sign every single binary in Wazuh's installation. This also includes library files.
-        for bin in $(find ${SERVICE_PATH} ${STARTUP_PATH} ${LAUNCHER_SCRIPT_PATH} ${STARTUP_SCRIPT_PATH} ${INSTALLATION_PATH} -exec file {} \; | grep -E 'executable|bit' | cut -d: -f1); do
+        for bin in $(find ${SERVICE_PATH} ${INSTALLATION_PATH} -exec file {} \; | grep -E 'executable|bit' | cut -d: -f1); do
             codesign -f --sign "${CERT_APPLICATION_ID}" --entitlements ${ENTITLEMENTS_PATH} --timestamp  --options=runtime --verbose=4 "${bin}"
         done
         security -v lock-keychain "${KEYCHAIN}" > /dev/null
@@ -139,15 +136,6 @@ function prepare_building_folder() {
 
     mkdir -p ${packaged_directory}$(dirname ${SERVICE_PATH})
     cp -p $SERVICE_PATH ${packaged_directory}$(dirname ${SERVICE_PATH})
-
-    mkdir -p ${packaged_directory}$(dirname ${STARTUP_PATH})
-    cp -p $STARTUP_PATH ${packaged_directory}$(dirname ${STARTUP_PATH})
-
-    mkdir -p ${packaged_directory}$(dirname ${LAUNCHER_SCRIPT_PATH})
-    cp -p $LAUNCHER_SCRIPT_PATH ${packaged_directory}$(dirname ${LAUNCHER_SCRIPT_PATH})
-
-    mkdir -p ${packaged_directory}$(dirname ${STARTUP_SCRIPT_PATH})
-    cp -p $STARTUP_SCRIPT_PATH ${packaged_directory}$(dirname ${STARTUP_SCRIPT_PATH})
 
     mkdir -p ${packaged_directory}${INSTALLATION_PATH}
     cp -Rp $INSTALLATION_PATH/* ${packaged_directory}${INSTALLATION_PATH}
@@ -312,19 +300,33 @@ function install_deps() {
         echo "Warning: brew install reported exit code $brew_exit_code, but dependencies appear to be installed."
     fi
 
-    echo "Checking required gcc version (11)."
-    if brew list --versions gcc >/dev/null 2>&1; then
-        GCC_VER="$(brew list --versions gcc | awk '{print $2}')"
-        GCC_MAJOR="${GCC_VER%%.*}"
+    # The macOS build uses Apple Clang from the Xcode Command Line Tools: src/Makefile
+    # only sets CC/CXX for Linux and winagent, and package_files/build.sh does not set
+    # them either, so no Homebrew gcc is ever invoked. This check is kept only for the
+    # arm64 packager VMs, where a gcc >= 11 is expected to be available.
+    #
+    # It is skipped on Intel: Homebrew moved macOS x86_64 to Tier 3 and no longer
+    # publishes Intel bottles for gcc, so installing it there builds the compiler from
+    # source (~50 min) and then fails in its post-install step.
+    if [ "$(uname -m)" = "arm64" ]; then
+        echo "Checking required gcc version (11)."
+        # Accept both the unversioned 'gcc' keg, installed on the packager VMs, and the
+        # versioned 'gcc@N' formulae that the GitHub runner images ship instead.
+        GCC_MAJOR="$(brew list --formula --versions 2>/dev/null | awk '$1 ~ /^gcc(@[0-9]+)?$/ {split($2, v, "."); if (v[1] + 0 > major) major = v[1] + 0} END {print major + 0}')"
         if [ "${GCC_MAJOR:-0}" -ge 11 ]; then
-            echo "Found gcc installed version ${GCC_VER} >= 11. Nothing to do."
+            echo "Found gcc ${GCC_MAJOR} >= 11. Nothing to do."
         else
-            echo "Found gcc installed version ${GCC_VER} < 11. Upgrading."
-            brew upgrade gcc
+            echo "No gcc >= 11 found. Installing gcc@15."
+            set +e
+            brew install gcc@15
+            gcc_exit_code=$?
+            set -e
+            if [ ${gcc_exit_code} -ne 0 ]; then
+                echo "Warning: brew install gcc@15 reported exit code ${gcc_exit_code}, continuing."
+            fi
         fi
     else
-        echo "No gcc found. Installing."
-        brew install gcc
+        echo "Skipping the gcc check on $(uname -m): the build uses Apple Clang and Homebrew no longer publishes Intel bottles for gcc."
     fi
     exit 0
 }

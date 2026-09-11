@@ -20,7 +20,7 @@ namespace invsync::indexer
 {
 
     /*
-     * Two builders, not one, and each emits ONLY the keys its own connector actually reads.
+     * One builder per receiver, and each emits ONLY the keys its own receiver actually reads.
      *
      * IndexerConnectorSync reads `max_bulk_size`; IndexerConnectorAsync reads `bulk_max_bytes` for the
      * same concept. Neither validates the other's key -- an unknown key is ignored silently, with no
@@ -37,8 +37,9 @@ namespace invsync::indexer
     /**
      * @brief Overlays the SYNC connector's tunables onto the raw <indexer> block.
      *
-     * Emits `max_bulk_size`, `flush_interval_seconds` and `max_retry_delay_seconds` -- the three keys
-     * IndexerConnectorSync reads. `hosts` and `ssl.*` pass through untouched.
+     * Emits `max_bulk_size`, `flush_interval_seconds`, `max_retry_delay_seconds` and
+     * `request_timeout_seconds` -- the four keys IndexerConnectorSync reads. `hosts` and `ssl.*`
+     * pass through untouched.
      *
      * @param indexerConfig The raw <indexer> block (unmodified; the return value is a copy).
      * @param config The module's C-ABI configuration; only the `indexer_sync_*` fields are read.
@@ -51,8 +52,8 @@ namespace invsync::indexer
      * @brief Overlays the ASYNC connector's tunables onto the raw <indexer> block.
      *
      * Emits `bulk_max_bytes`, `flush_interval_seconds`, `max_retry_delay_seconds`, `max_queue_bytes`,
-     * `logger_queue_size` and `logger_threads` -- the six keys IndexerConnectorAsync reads. `hosts`
-     * and `ssl.*` pass through untouched.
+     * `logger_queue_size`, `logger_threads` and `request_timeout_seconds` -- the seven keys
+     * IndexerConnectorAsync reads. `hosts` and `ssl.*` pass through untouched.
      *
      * @param indexerConfig The raw <indexer> block (unmodified; the return value is a copy).
      * @param config The module's C-ABI configuration; only the `indexer_async_*` fields are read.
@@ -60,6 +61,22 @@ namespace invsync::indexer
      */
     nlohmann::json buildAsyncConnectorConfig(const nlohmann::json& indexerConfig,
                                              const inventory_sync_server_config_t& config);
+
+    /**
+     * @brief Overlays the SHARED SESSION's tunables onto the raw <indexer> block.
+     *
+     * Emits `monitoring_interval_seconds` -- the one key IndexerSession reads beyond `hosts` and
+     * `ssl.*`, which pass through untouched. Session-level and NOT emitted by the two connector
+     * builders above: in session mode the connectors adopt the session's already-built monitor, so
+     * the key would be dead weight in their configs.
+     *
+     * @param indexerConfig The raw <indexer> block (unmodified; the return value is a copy).
+     * @param config The module's C-ABI configuration; only `indexer_monitoring_interval_seconds` is
+     *               read.
+     * @return The config ready to hand to IndexerSession's constructor.
+     */
+    nlohmann::json buildSessionConfig(const nlohmann::json& indexerConfig,
+                                      const inventory_sync_server_config_t& config);
 
 } // namespace invsync::indexer
 

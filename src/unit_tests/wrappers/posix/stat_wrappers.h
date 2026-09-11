@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 
 int __wrap_chmod(const char *path);
+int __wrap_fchmod(int fd, mode_t mode);
 
 int __wrap_chown(const char *__file, int __owner, int __group);
 

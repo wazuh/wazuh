@@ -94,6 +94,12 @@ def test_bucket_defaults(
         '--debug', '2'
     ]
 
+    # Under the per-run namespace (issue #38194) create_test_bucket injects a <path> into the config, so
+    # the module is invoked with --trail_prefix. No-op locally (no namespace -> no 'path' in metadata).
+    if metadata.get('path'):
+        parameters.insert(3, metadata['path'])
+        parameters.insert(3, '--trail_prefix')
+
     # Check AWS module started
     log_monitor.start(
         timeout=TIMEOUT[20],

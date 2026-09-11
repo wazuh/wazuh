@@ -20,6 +20,225 @@
 
 On Error Resume Next
 
+' Defaults substituted for the components WAZUH_MANAGER_ENDPOINT leaves out. The prefix
+' mirrors the manager's own default global_prefix (#38491) and the port
+' DEFAULT_HTTPS_REMOTE_PORT (src/config/include/client-config.h).
+Const MEP_DEFAULT_PORT = "1517"
+Const MEP_DEFAULT_ENDPOINT = "/wazuh-manager/"
+
+Dim MEP_HOST, MEP_PORT, MEP_ENDPOINT
+
+' IsNumeric() is no use here: it accepts "1e3", "&h10", a leading sign and surrounding
+' whitespace, none of which is a port.
+private function mep_is_all_digits(value)
+    Dim i, c
+    mep_is_all_digits = False
+    If Len(value) = 0 Then Exit Function
+    For i = 1 To Len(value)
+        c = Mid(value, i, 1)
+        If c < "0" Or c > "9" Then Exit Function
+    Next
+    mep_is_all_digits = True
+end function
+
+' No WScript object exists in the MSI scripting host, so the reason goes where the
+' shell installers put theirs -- the agent's own log.
+private sub mep_log(home_dir, objFSO, raw, reason)
+    Dim objLog
+    Set objLog = objFSO.OpenTextFile(home_dir & "ossec.log", 8, True)
+    objLog.WriteLine Now & " Invalid WAZUH_MANAGER_ENDPOINT '" & raw & "': " & reason
+    objLog.Close
+end sub
+
+' Same sink as mep_log, generic message -- used by the WAZUH_REGISTRATION_CA routing
+' below so a silently-skipped CA is discoverable, matching set_agent_ssl_ca()'s
+' equivalent log line in register_configure_agent.sh.
+private sub install_log(home_dir, objFSO, message)
+    Dim objLog
+    Set objLog = objFSO.OpenTextFile(home_dir & "ossec.log", 8, True)
+    objLog.WriteLine Now & " " & message
+    objLog.Close
+end sub
+
+' Escapes the three characters that are structurally significant in XML content --
+' '&', '<', '>' -- so a value written verbatim into ossec.conf (a CA path, in
+' particular) can never be mistaken for markup or break the file's well-formedness.
+' '&' first: escaping '<'/'>' introduces new literal '&' characters (as part of
+' "&lt;"/"&gt;") that must not themselves be re-escaped by a later Replace() call.
+Function XmlEscape(text)
+    XmlEscape = Replace(Replace(Replace(text, "&", "&amp;"), "<", "&lt;"), ">", "&gt;")
+End Function
+
+' Strips XML comments from a working copy so the WAZUH_REGISTRATION_CA checks below
+' don't match tag content that's still inside a "<!-- ... -->" wrapper -- mirrors
+' strip_xml_comments() in pkg_installer.sh and its port in do_upgrade.ps1. "[\s\S]*?"
+' spans a multi-line comment (VBScript's regexp "." does not match newline); non-greedy
+' so two separate comments don't merge into one.
+Function StrippedOfComments(text)
+    Dim reComment
+    Set reComment = New RegExp
+    reComment.Pattern = "<!--[\s\S]*?-->"
+    reComment.Global = True
+    StrippedOfComments = reComment.Replace(text, "")
+End Function
+
+' Validates WAZUH_MANAGER_ENDPOINT against the <endpoint> grammar (#38624). <endpoint>
+' takes this same language, so an accepted value is written into the config verbatim
+' and this only decides whether to write it at all. MEP_HOST / MEP_PORT / MEP_ENDPOINT
+' are still set, for callers that want the split:
+'
+'   [https://] host [:port] [/[prefix]]
+'
+' Only the host is mandatory. The subtlety worth keeping in mind: "no '/' at all" means
+' "default prefix", while "a trailing '/' with nothing after it" is the operator's
+' deliberate opt-out (#38614) and has to come out as an empty <endpoint></endpoint>.
+'
+' Same logic as parse_manager_endpoint() in src/init/register_configure_agent.sh and
+' ParseManagerEndpoint() in src/init/inst-functions.sh -- a change in one belongs in all
+' three. Returns True on success; on failure nothing is written and the reason is logged.
+private function ParseManagerEndpoint(raw, home_dir, objFSO)
+
+    Dim rest, scheme, authority, path, path_given, port_given, after_bracket, p, i, colons
+    Dim port_digits
+
+    ParseManagerEndpoint = False
+    MEP_HOST = ""
+    MEP_PORT = MEP_DEFAULT_PORT
+    MEP_ENDPOINT = MEP_DEFAULT_ENDPOINT
+
+    If raw = "" Then
+        mep_log home_dir, objFSO, raw, "a manager address is required."
+        Exit Function
+    End If
+
+    rest = raw
+
+    ' Optional scheme. Only treated as one when no '/' precedes the "://", so a path
+    ' that happens to contain "://" cannot be mistaken for a scheme.
+    p = InStr(rest, "://")
+    If p > 0 Then
+        scheme = Left(rest, p - 1)
+        If InStr(scheme, "/") = 0 Then
+            rest = Mid(rest, p + 3)
+            If LCase(scheme) <> "https" Then
+                mep_log home_dir, objFSO, raw, "unsupported scheme '" & scheme & "://'; only https is served."
+                Exit Function
+            End If
+        End If
+    End If
+
+    ' Authority up to the first '/', the prefix after it. Whether that '/' was there at
+    ' all is what separates "default prefix" from "opt-out".
+    p = InStr(rest, "/")
+    If p > 0 Then
+        authority = Left(rest, p - 1)
+        path = Mid(rest, p + 1)
+        path_given = True
+    Else
+        authority = rest
+        path = ""
+        path_given = False
+    End If
+
+    ' Host and optional port. A bracketed IPv6 literal ends at ']'; the brackets exist
+    ' only to keep its colons apart from the port's and are dropped here, because
+    ' <address> wants the bare literal (OS_IsValidIP does not match a bracketed one, and
+    ' ModuleConfig::baseUrl re-brackets it for the URL itself).
+    port_given = ""
+    If Left(authority, 1) = "[" Then
+        p = InStr(authority, "]")
+        If p = 0 Then
+            mep_log home_dir, objFSO, raw, "unterminated '[' in the address; a bracketed IPv6 literal needs a closing ']'."
+            Exit Function
+        End If
+        MEP_HOST = Mid(authority, 2, p - 2)
+        after_bracket = Mid(authority, p + 1)
+        If after_bracket <> "" Then
+            If Left(after_bracket, 1) = ":" Then
+                port_given = Mid(after_bracket, 2)
+            Else
+                mep_log home_dir, objFSO, raw, "unexpected '" & after_bracket & "' after the bracketed address."
+                Exit Function
+            End If
+        End If
+        ' A zone id (%25<iface>) stays part of the host: the agent resolves it with
+        ' if_nametoindex() at startup (#38624).
+    Else
+        colons = 0
+        For i = 1 To Len(authority)
+            If Mid(authority, i, 1) = ":" Then colons = colons + 1
+        Next
+        If colons > 1 Then
+            mep_log home_dir, objFSO, raw, "an IPv6 address must be bracketed, e.g. [2001:db8::1]:" & MEP_DEFAULT_PORT & "."
+            Exit Function
+        ElseIf colons = 1 Then
+            p = InStr(authority, ":")
+            MEP_HOST = Left(authority, p - 1)
+            port_given = Mid(authority, p + 1)
+        Else
+            MEP_HOST = authority
+        End If
+    End If
+
+    If MEP_HOST = "" Then
+        mep_log home_dir, objFSO, raw, "a manager address is required."
+        Exit Function
+    End If
+
+    If port_given <> "" Then
+        If Not mep_is_all_digits(port_given) Then
+            mep_log home_dir, objFSO, raw, "port '" & port_given & "' is not a number."
+            Exit Function
+        End If
+        ' CLng() holds a 32-bit Long, so it overflows above 2147483647. That error is not
+        ' catchable here -- "On Error Resume Next" is procedure-scoped and this function
+        ' declares none, so an overflow abandons the caller mid-statement: config() stops
+        ' at the call, no diagnostic is written, and nothing it would have configured after
+        ' that point happens. Narrow the value to something CLng can hold before using it.
+        ' Leading zeros are stripped rather than rejected, so "000080" stays the port 80 --
+        ' matching parse_manager_endpoint() in the shell installers.
+        port_digits = port_given
+
+        Do While Len(port_digits) > 1 And Left(port_digits, 1) = "0"
+            port_digits = Mid(port_digits, 2)
+        Loop
+
+        ' Kept separate from the range test below because VBScript's Or does not
+        ' short-circuit: both sides are evaluated, so CLng must never be reached with an
+        ' oversized value.
+        If Len(port_digits) > 5 Then
+            mep_log home_dir, objFSO, raw, "port '" & port_given & "' is outside 1-65535."
+            Exit Function
+        End If
+
+        If CLng(port_digits) < 1 Or CLng(port_digits) > 65535 Then
+            mep_log home_dir, objFSO, raw, "port '" & port_given & "' is outside 1-65535."
+            Exit Function
+        End If
+        MEP_PORT = port_given
+    ElseIf Right(authority, 1) = ":" Then
+        mep_log home_dir, objFSO, raw, "trailing ':' with no port."
+        Exit Function
+    End If
+
+    If path_given Then
+        Do While Left(path, 1) = "/"
+            path = Mid(path, 2)
+        Loop
+        Do While Right(path, 1) = "/"
+            path = Left(path, Len(path) - 1)
+        Loop
+        If path = "" Then
+            MEP_ENDPOINT = ""
+        Else
+            MEP_ENDPOINT = "/" & path & "/"
+        End If
+    End If
+
+    ParseManagerEndpoint = True
+
+end function
+
 private function get_unique_array_values(array)
     Dim dicTemp : Set dicTemp = CreateObject("Scripting.Dictionary")
     Dim DicItem
@@ -49,12 +268,14 @@ public function config()
     WAZUH_REGISTRATION_PASSWORD = Replace(args(7), Chr(34), "")
     WAZUH_KEEP_ALIVE_INTERVAL = Replace(args(8), Chr(34), "")
     WAZUH_TIME_RECONNECT = Replace(args(9), Chr(34), "")
-    WAZUH_REGISTRATION_CA = Replace(args(10), Chr(34), "")
+    WAZUH_REGISTRATION_CA = XmlEscape(Replace(args(10), Chr(34), ""))
     WAZUH_REGISTRATION_CERTIFICATE = Replace(args(11), Chr(34), "")
     WAZUH_REGISTRATION_KEY = Replace(args(12), Chr(34), "")
     WAZUH_AGENT_NAME = Replace(args(13), Chr(34), "")
     WAZUH_AGENT_GROUP = Replace(args(14), Chr(34), "")
     ENROLLMENT_DELAY = Replace(args(15), Chr(34), "")
+    WAZUH_MANAGER_ENDPOINT = Replace(args(16), Chr(34), "")
+    SSL_VERIFICATION = Replace(args(17), Chr(34), "")
 
     ' Only try to set the configuration if variables are setted
 
@@ -72,44 +293,67 @@ public function config()
         strText = objFile.ReadAll
         objFile.Close
 
-        If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
-            If WAZUH_MANAGER <> "" Then
-                Set re = new regexp
-                re.Pattern = "\s+<(server|manager)>(.|\n)+?</\1>"
-                If InStr(WAZUH_MANAGER,",") Then
-                    ip_list=Split(WAZUH_MANAGER,",")
+        If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_MANAGER_ENDPOINT <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
+
+            ' WAZUH_MANAGER_ENDPOINT carries the whole connection target (#38624) and
+            ' takes priority when set. WAZUH_MANAGER (with WAZUH_MANAGER_PORT) still
+            ' works: an <endpoint> is composed from them, so existing 4.x-era MSI command
+            ' lines keep configuring an agent correctly.
+            '
+            ' The MSI's inability to carry a PROPERTY="" through the property table, which
+            ' the old "/" sentinel worked around, stops mattering: the opt-out is spelled
+            ' host/ and is non-empty, so it survives the property table on its own.
+            final_endpoint = ""
+
+            If WAZUH_MANAGER_ENDPOINT <> "" Then
+                If ParseManagerEndpoint(WAZUH_MANAGER_ENDPOINT, home_dir, objFSO) Then
+                    final_endpoint = WAZUH_MANAGER_ENDPOINT
+                End If
+                ' A rejected value leaves final_endpoint empty, so no block is written and
+                ' the shipped placeholder stays -- the agent then fails loudly at startup
+                ' rather than silently connecting somewhere unintended. Matches the shell
+                ' installers.
+            ElseIf WAZUH_MANAGER <> "" Then
+                ' Only one manager block is supported, so a comma-separated list keeps its
+                ' last entry (#37702 restrictions 2/3), matching the client parser.
+                If InStr(WAZUH_MANAGER, ",") Then
+                    ip_list = Split(WAZUH_MANAGER, ",")
+                    final_endpoint = ip_list(UBound(ip_list))
                 Else
-                    ip_list=Array(WAZUH_MANAGER)
+                    final_endpoint = WAZUH_MANAGER
                 End If
 
-                not_replaced = True
-                formatted_list = vbCrLf
-                ' <server> inside <agent> since 5.x: <agent> takes no other
-                ' element name, so writing back the legacy <manager> would make the
-                ' agent reject its own configuration.
-                for i=0 to UBound(ip_list)
-                    If ip_list(i) <> "" Then
-                        formatted_list = formatted_list & "    <server>" & vbCrLf
-                        formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
-                        formatted_list = formatted_list & "      <port>1517</port>" & vbCrLf
-                        if i = UBound(ip_list) then
-                            formatted_list = formatted_list & "    </server>"
-                        Else
-                            formatted_list = formatted_list & "    </server>" & vbCrLf
-                        End If
-                    End If
-                next
-                strText = re.Replace(strText, formatted_list)
+                ' A bare IPv6 literal needs bracketing once it shares a value with the
+                ' port, or its trailing group reads as one.
+                If InStr(final_endpoint, ":") > 0 And Left(final_endpoint, 1) <> "[" Then
+                    final_endpoint = "[" & final_endpoint & "]"
+                End If
+
+                If WAZUH_MANAGER_PORT <> "" Then
+                    final_endpoint = final_endpoint & ":" & WAZUH_MANAGER_PORT
+                End If
             End If
 
-            If WAZUH_MANAGER_PORT <> "" Then ' manager server_port
-                If InStr(strText, "<port>") > 0 Then
-                    Set re = new regexp
-                    re.Pattern = "<port>.*</port>"
-                    re.Global = True
-                    strText = re.Replace(strText, "<port>" & WAZUH_MANAGER_PORT & "</port>")
+            If final_endpoint <> "" Then
+                Set re = new regexp
+                re.Pattern = "\s+<(server|manager)>(.|\n)+?</\1>"
+
+                ' A 5.x file is <agent><manager>; a 4.x file preserved across an upgrade
+                ' is <client><server>, and the 5.x parser reads this block out of that one
+                ' only under <server> -- writing <manager> there would strand the agent
+                ' with no manager configured.
+                If InStr(strText, "<agent>") > 0 Then
+                    inner_tag = "manager"
+                Else
+                    inner_tag = "server"
                 End If
 
+                formatted_list = vbCrLf & _
+                    "    <" & inner_tag & ">" & vbCrLf & _
+                    "      <endpoint>" & final_endpoint & "</endpoint>" & vbCrLf & _
+                    "    </" & inner_tag & ">"
+
+                strText = re.Replace(strText, formatted_list)
             End If
 
             If WAZUH_KEEP_ALIVE_INTERVAL <> "" Then
@@ -185,6 +429,202 @@ public function config()
 
         End If
 
+        ' Route SSL_VERIFICATION into <agent><ssl><verification_mode>, mirroring
+        ' register_configure_agent.sh's set_agent_verification_mode() on Linux/macOS. Runs
+        ' before the WAZUH_REGISTRATION_CA block below so its own "verification_mode is
+        ' 'system'" conflict check sees whatever this wrote, not a value from before this ran.
+        If SSL_VERIFICATION <> "" Then
+            If SSL_VERIFICATION <> "full" And SSL_VERIFICATION <> "certificate" And SSL_VERIFICATION <> "system" And SSL_VERIFICATION <> "none" Then
+                ' Matches Read_Agent_SSL()'s own case-sensitive strcmp (client-config.c): a
+                ' value that reads as valid to a human but not to the parser (e.g. 'System')
+                ' would install cleanly and only fail at agent startup, instead of here,
+                ' where the operator can still see and fix it immediately.
+                install_log home_dir, objFSO, "Invalid SSL_VERIFICATION '" & SSL_VERIFICATION & "': must be exactly one of full, certificate, system, none. Leaving <verification_mode> unset."
+            Else
+                Dim vmCheckText, vmTagRegex, vmSelfClosingRegex, vmReplacementValue
+                vmCheckText = StrippedOfComments(strText)
+                Set vmTagRegex = New RegExp
+                vmTagRegex.Pattern = "<verification_mode(\s*/)?>"
+                Set vmSelfClosingRegex = New RegExp
+                vmSelfClosingRegex.Pattern = "<verification_mode\s*/>"
+                ' RegExp.Replace()'s replacement-string argument treats '$' specially
+                ' ($&, $$, $1-$9, $`, $') -- doubling every '$' first, per that same
+                ' convention, makes it inert (confirmed empirically: Replace("$&", "$",
+                ' "$$") round-trips through RegExp.Replace as the literal text "$&").
+                ' SSL_VERIFICATION is enum-validated (full/certificate/system/none) so
+                ' this can never actually fire, but applied uniformly with the CA path
+                ' below rather than relying on that constraint holding forever.
+                vmReplacementValue = Replace(SSL_VERIFICATION, "$", "$$")
+
+                If vmTagRegex.Test(vmCheckText) Then
+                    ' Line by line, skipping commented-out lines, same technique as the
+                    ' certificate_authorities rewrite below.
+                    Dim vmLines, vmLineIdx, vmLine, vmInComment, vmRewritten
+                    vmLines = Split(strText, vbCrLf)
+                    vmInComment = False
+                    vmRewritten = False
+                    For vmLineIdx = 0 To UBound(vmLines)
+                        vmLine = vmLines(vmLineIdx)
+                        If vmInComment Then
+                            If InStr(vmLine, "-->") > 0 Then vmInComment = False
+                        ElseIf InStr(vmLine, "<!--") > 0 And InStr(vmLine, "-->") > 0 Then
+                            ' Self-contained one-line comment ("<!-- ... -->", both on
+                            ' this line) -- left untouched, not treated as live: the
+                            ' checks below are unanchored substring matches that would
+                            ' otherwise match a commented-out example just as well.
+                        ElseIf InStr(vmLine, "<!--") > 0 And InStr(vmLine, "-->") = 0 Then
+                            vmInComment = True
+                        ElseIf (Not vmRewritten) And InStr(vmLine, "<verification_mode>") > 0 And InStr(vmLine, "</verification_mode>") > 0 Then
+                            Set re = New RegExp
+                            re.Pattern = "<verification_mode>.*</verification_mode>"
+                            vmLines(vmLineIdx) = re.Replace(vmLine, "<verification_mode>" & vmReplacementValue & "</verification_mode>")
+                            vmRewritten = True
+                        ElseIf (Not vmRewritten) And vmSelfClosingRegex.Test(vmLine) Then
+                            vmLines(vmLineIdx) = vmSelfClosingRegex.Replace(vmLine, "<verification_mode>" & vmReplacementValue & "</verification_mode>")
+                            vmRewritten = True
+                        End If
+                    Next
+                    strText = Join(vmLines, vbCrLf)
+                    If Not vmRewritten Then
+                        install_log home_dir, objFSO, "Could not pin SSL_VERIFICATION into <ssl><verification_mode>: expected the tag alone on its own line."
+                    End If
+                ElseIf InStr(vmCheckText, "<ssl>") > 0 Then
+                    Dim vmSslLines, vmSslLineIdx, vmSslLine, vmSslInComment, vmSslInserted
+                    vmSslLines = Split(strText, vbCrLf)
+                    vmSslInComment = False
+                    vmSslInserted = False
+                    strText = ""
+                    For vmSslLineIdx = 0 To UBound(vmSslLines)
+                        vmSslLine = vmSslLines(vmSslLineIdx)
+                        If vmSslInComment Then
+                            If InStr(vmSslLine, "-->") > 0 Then vmSslInComment = False
+                        ElseIf InStr(vmSslLine, "<!--") > 0 And InStr(vmSslLine, "-->") = 0 Then
+                            vmSslInComment = True
+                        End If
+                        If vmSslLineIdx > 0 Then strText = strText & vbCrLf
+                        strText = strText & vmSslLine
+                        If (Not vmSslInserted) And (Not vmSslInComment) And (Trim(vmSslLine) = "<ssl>") Then
+                            strText = strText & vbCrLf & "      <verification_mode>" & SSL_VERIFICATION & "</verification_mode>"
+                            vmSslInserted = True
+                        End If
+                    Next
+                    If Not vmSslInserted Then
+                        install_log home_dir, objFSO, "Could not pin SSL_VERIFICATION into an existing <ssl> block: expected the opening tag alone on its own line."
+                    End If
+                Else
+                    vm_ssl_block = "    <ssl>" & vbCrLf
+                    vm_ssl_block = vm_ssl_block & "      <verification_mode>" & SSL_VERIFICATION & "</verification_mode>" & vbCrLf
+                    vm_ssl_block = vm_ssl_block & "    </ssl>" & vbCrLf
+                    vm_ssl_block = vm_ssl_block & "  </agent>" & vbCrLf
+                    strText = Replace(strText, "  </agent>", vm_ssl_block)
+                End If
+            End If
+        End If
+
+        ' Route WAZUH_REGISTRATION_CA into <agent><ssl><certificate_authorities>, mirroring
+        ' register_configure_agent.sh on Linux/macOS: <enrollment><server_ca_path> above is
+        ' parsed-but-ignored by the 5.x agent, since enrollment now reuses <agent><ssl> for
+        ' its TLS material instead of a CA path of its own.
+        If WAZUH_REGISTRATION_CA <> "" And Not objFSO.FileExists(WAZUH_REGISTRATION_CA) Then
+            ' FileExists returns False for a directory too (unlike a bare existence
+            ' check), matching pkg_installer.sh's [ -f ] on the WPK upgrade side --
+            ' without this, a bad path installs cleanly here and the failure only
+            ' surfaces later, at agent startup, via w_agent_validate_ssl_ca().
+            install_log home_dir, objFSO, "WAZUH_REGISTRATION_CA ('" & WAZUH_REGISTRATION_CA & "') is missing, not a regular file, or unreadable; leaving <certificate_authorities> unset."
+            WAZUH_REGISTRATION_CA = ""
+        End If
+
+        If WAZUH_REGISTRATION_CA <> "" Then
+            checkText = StrippedOfComments(strText)
+            Dim caTagRegex, selfClosingCaRegex, caReplacementValue
+            Set caTagRegex = New RegExp
+            caTagRegex.Pattern = "<certificate_authorities(\s*/)?>"
+            Set selfClosingCaRegex = New RegExp
+            selfClosingCaRegex.Pattern = "<certificate_authorities\s*/>"
+            ' RegExp.Replace()'s replacement-string argument treats '$' specially ($&,
+            ' $$, $1-$9, $`, $') -- doubling every '$' first makes it inert (confirmed
+            ' empirically). A CA path is an arbitrary operator-supplied filesystem path,
+            ' unlike SSL_VERIFICATION, so this one is a real, reachable risk, not just
+            ' applied for symmetry.
+            caReplacementValue = Replace(WAZUH_REGISTRATION_CA, "$", "$$")
+            If InStr(checkText, "<verification_mode>system</verification_mode>") > 0 Then
+                ' 'system' trusts the OS store, not a configured CA: the agent refuses to
+                ' start with both set (validateTls() in moduleConfig.cpp), so writing a CA
+                ' here would just trade a silently-unused CA for a daemon that won't boot.
+                install_log home_dir, objFSO, "WAZUH_REGISTRATION_CA was supplied but <verification_mode> is 'system'; leaving it unset, since the agent refuses to start with both configured together."
+            ElseIf caTagRegex.Test(checkText) Then
+                ' Line by line, skipping commented-out lines, instead of a single global
+                ' regex.Replace over the raw text -- a Global replace would rewrite every
+                ' literal <certificate_authorities>...</certificate_authorities>, commented
+                ' example included, not just the live one checkText found.
+                Dim caLines, caLineIdx, caLine, caInComment, caRewritten
+                caLines = Split(strText, vbCrLf)
+                caInComment = False
+                caRewritten = False
+                For caLineIdx = 0 To UBound(caLines)
+                    caLine = caLines(caLineIdx)
+                    If caInComment Then
+                        If InStr(caLine, "-->") > 0 Then caInComment = False
+                    ElseIf InStr(caLine, "<!--") > 0 And InStr(caLine, "-->") > 0 Then
+                        ' Self-contained one-line comment -- left untouched, not treated
+                        ' as live: the checks below are unanchored substring matches that
+                        ' would otherwise match a commented-out example just as well.
+                    ElseIf InStr(caLine, "<!--") > 0 And InStr(caLine, "-->") = 0 Then
+                        caInComment = True
+                    ElseIf (Not caRewritten) And InStr(caLine, "<certificate_authorities>") > 0 And InStr(caLine, "</certificate_authorities>") > 0 Then
+                        Set re = new regexp
+                        re.Pattern = "<certificate_authorities>.*</certificate_authorities>"
+                        caLines(caLineIdx) = re.Replace(caLine, "<certificate_authorities>" & caReplacementValue & "</certificate_authorities>")
+                        caRewritten = True
+                    ElseIf (Not caRewritten) And selfClosingCaRegex.Test(caLine) Then
+                        ' Same tag, self-closing form (<certificate_authorities/>, OS_XML's
+                        ' equivalent of an empty paired tag) -- rewrite it into the paired,
+                        ' populated form instead of leaving it and falling through to the
+                        ' <ssl>-exists branch below, which would insert a second, duplicate
+                        ' <certificate_authorities> line right alongside this one.
+                        caLines(caLineIdx) = selfClosingCaRegex.Replace(caLine, "<certificate_authorities>" & caReplacementValue & "</certificate_authorities>")
+                        caRewritten = True
+                    End If
+                Next
+                strText = Join(caLines, vbCrLf)
+                If Not caRewritten Then
+                    install_log home_dir, objFSO, "Could not pin WAZUH_REGISTRATION_CA into <ssl><certificate_authorities>: expected the tag alone on its own line."
+                End If
+            ElseIf InStr(checkText, "<ssl>") > 0 Then
+                ' Line by line as well: insert right after the opening <ssl> tag whatever
+                ' its indentation, instead of matching a hardcoded 4-space prefix, and log
+                ' instead of silently dropping the CA if no live <ssl> line is found.
+                Dim sslLines, sslLineIdx, sslLine, sslInComment, sslInserted
+                sslLines = Split(strText, vbCrLf)
+                sslInComment = False
+                sslInserted = False
+                strText = ""
+                For sslLineIdx = 0 To UBound(sslLines)
+                    sslLine = sslLines(sslLineIdx)
+                    If sslInComment Then
+                        If InStr(sslLine, "-->") > 0 Then sslInComment = False
+                    ElseIf InStr(sslLine, "<!--") > 0 And InStr(sslLine, "-->") = 0 Then
+                        sslInComment = True
+                    End If
+                    If sslLineIdx > 0 Then strText = strText & vbCrLf
+                    strText = strText & sslLine
+                    If (Not sslInserted) And (Not sslInComment) And (Trim(sslLine) = "<ssl>") Then
+                        strText = strText & vbCrLf & "      <certificate_authorities>" & WAZUH_REGISTRATION_CA & "</certificate_authorities>"
+                        sslInserted = True
+                    End If
+                Next
+                If Not sslInserted Then
+                    install_log home_dir, objFSO, "Could not pin WAZUH_REGISTRATION_CA into an existing <ssl> block: expected the opening tag alone on its own line."
+                End If
+            Else
+                ssl_block = "    <ssl>" & vbCrLf
+                ssl_block = ssl_block & "      <certificate_authorities>" & WAZUH_REGISTRATION_CA & "</certificate_authorities>" & vbCrLf
+                ssl_block = ssl_block & "    </ssl>" & vbCrLf
+                ssl_block = ssl_block & "  </agent>" & vbCrLf
+                strText = Replace(strText, "  </agent>", ssl_block)
+            End If
+        End If
+
         ' Writing the ossec.conf file
         Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
         objFile.WriteLine strText
@@ -232,11 +672,10 @@ public function config()
         Set file = objFSO.OpenTextFile(home_dir & "profile-" & OS_VERSION & ".template", ForReading)
         newline = file.ReadAll
         file.Close
-        ' The shipped template uses <server> (the deprecated <manager> tag only
-        ' survives on an upgraded ossec.conf that predates that migration), so
-        ' this must anchor on either closing tag to keep inserting the profile
-        ' block right after the server/manager block on both fresh installs
-        ' and upgrades.
+        ' The shipped template uses <manager>; <server> only survives on an
+        ' ossec.conf written by previous 5.x agents, so this must anchor on
+        ' either closing tag to keep inserting the profile block right after the
+        ' address block on both fresh installs and upgrades.
         re.Pattern = "(</server>|</manager>)"
         re.Global = False
         strNewText = re.Replace(strNewText, "$1" & vbCrLf & "    " & newline)

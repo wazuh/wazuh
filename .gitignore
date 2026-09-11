@@ -182,3 +182,6 @@ src/build-e6a/*
 src/queue/
 src/temp/
 src/feed_temp/
+src/build-rel/*
+src/build-agent/*
+src/unit_tests/build-agent/*

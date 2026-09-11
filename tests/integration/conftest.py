@@ -15,7 +15,7 @@ from py.xml import html
 from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
 from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREMENTS
-from wazuh_testing.constants.paths import ROOT_PREFIX
+from wazuh_testing.constants.paths import ROOT_PREFIX, WAZUH_PATH
 from wazuh_testing.constants.paths.variables import VAR_RUN_PATH
 from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
 from wazuh_testing.constants.paths.logs import (
@@ -40,6 +40,7 @@ import wazuh_testing.utils.configuration as wazuh_configuration
 from wazuh_testing.utils.services import control_service
 
 WAZUH_MERGED_MG_PATH = os.path.join(SHARED_CONFIGURATIONS_PATH, 'merged.mg')
+AUTHD_PENDING_PURGES_PATH = os.path.join(WAZUH_PATH, 'queue', 'authd', 'pending-purges')
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -167,6 +168,14 @@ def load_wazuh_basic_configuration():
     """Load a new basic configuration to the manager"""
     # Load wazuh configuration file with all disabled settings
     minimal_configuration = configuration.get_minimal_configuration()
+
+    # The framework's template still points auth at etc/certs/authd.pem, which no 5.x installation
+    # creates (the installer generates etc/certs/remoted.pem and reuses it for authd). The strict
+    # loader checks the files at service start, so the stale path would abort the whole restart.
+    # Fix it here until the template is updated in qa-integration-framework.
+    minimal_configuration = [line.replace('etc/certs/authd.pem', 'etc/certs/remoted.pem')
+                                 .replace('etc/certs/authd-key.pem', 'etc/certs/remoted-key.pem')
+                             for line in minimal_configuration]
 
     # Make a backup from current configuration
     backup_ossec_configuration = configuration.get_wazuh_conf()
@@ -353,6 +362,11 @@ def truncate_monitored_files_implementation(request: pytest.FixtureRequest = Non
             WAZUH_API_LOG_FILE_PATH,
             WAZUH_API_JSON_LOG_FILE_PATH,
             WAZUH_CLIENT_KEYS_PATH,
+            # authd's purge state, alongside client.keys: it stores the highest agent id ever handed
+            # out, and authd refuses to walk that counter backwards. Left in place, the mark survives
+            # the client.keys truncation and every later test gets ids continuing from the previous
+            # one instead of starting at 001.
+            AUTHD_PENDING_PURGES_PATH,
         ]
     else:
         log_files = [WAZUH_LOG_PATH]

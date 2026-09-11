@@ -51,10 +51,19 @@ if(FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
 endif(FSANITIZE)
 
+if(TSANITIZE)
+  if(FSANITIZE)
+    message(FATAL_ERROR "TSANITIZE and FSANITIZE are mutually exclusive")
+  endif()
+  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=thread")
+endif(TSANITIZE)
+
 # Function to link coverage libraries for unit tests Uses plain signature for
 # compatibility with existing plain signature usage
 function(add_coverage_libraries target_name)
-  if(UNIT_TEST)
+  # gcov counters are non-atomic globals: under TSAN every increment reports as a
+  # data race, burying real findings, so TSANITIZE builds drop coverage.
+  if(UNIT_TEST AND NOT TSANITIZE)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       target_compile_options(${target_name} PUBLIC --coverage)
       target_link_libraries(${target_name} PUBLIC -fprofile-arcs)
@@ -265,12 +274,12 @@ endif()
 # Server-only modules
 if(NOT IS_AGENT)
   add_subdirectory(engine)
-  add_subdirectory(monitord)
   add_subdirectory(os_auth)
   add_subdirectory(remoted)
   add_subdirectory(shared_modules/content_manager)
   add_subdirectory(shared_modules/indexer_connector)
   add_subdirectory(shared_modules/keystore)
+  add_subdirectory(shared_modules/manager_config)
   add_subdirectory(shared_modules/metrics)
   add_subdirectory(util)
   add_subdirectory(wazuh_db)

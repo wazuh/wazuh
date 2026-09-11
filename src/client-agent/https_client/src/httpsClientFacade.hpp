@@ -15,19 +15,19 @@
 #include "authGate.hpp"
 #include "callbackDispatcher.hpp"
 #include "clusterIdentity.hpp"
-#include "cmacSigner.hpp"
 #include "collectorSource.hpp"
 #include "compressionGate.hpp"
 #include "configHashState.hpp"
 #include "controlStream.hpp"
-#include "reporterStream.hpp"
 #include "curlPerformer.hpp"
 #include "fileCompressor.hpp"
 #include "https_client.h"
+#include "jwtSigner.hpp"
 #include "keyProvider.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
 #include "registrationGate.hpp"
+#include "reporterStream.hpp"
 #include "spoolFile.hpp"
 #include "statefulStream.hpp"
 #include "statelessStream.hpp"
@@ -99,7 +99,7 @@ class HttpsClientFacade final
         Mt19937Random m_random;
         FsProbe m_fsProbe;
         ConfigKeyProvider m_keyProvider;
-        CmacSigner m_signer;
+        JwtSigner m_signer;
         TempSpoolFactory m_spoolFactory;
         ZstdFileCompressor m_fileCompressor; // /stateful only; compresses spooled sessions once, up front.
         CurlPerformer m_performer;
@@ -111,7 +111,11 @@ class HttpsClientFacade final
         // Wakes the control loop so it publishes AUTH_ERROR / recovers promptly.
         // The wake lambda runs later, so referencing m_controlWaiter (declared
         // below) is safe.
-        AuthGate m_authGate {m_dispatcher, [this] { m_controlWaiter.notify(); }};
+        AuthGate m_authGate {m_dispatcher,
+                     [this]
+            {
+                m_controlWaiter.notify();
+            }};
         // Shared across every stream's RetrySender: one 415 disables
         // compression agent-wide for the rest of this run.
         CompressionGate m_compressionGate;

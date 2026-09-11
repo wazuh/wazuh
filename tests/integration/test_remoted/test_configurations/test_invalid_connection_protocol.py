@@ -4,6 +4,7 @@
  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
 
+import os
 import pytest
 
 from pathlib import Path
@@ -75,34 +76,10 @@ def test_invalid_connection_protocol(test_configuration, test_metadata, configur
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    #detect invalid protocol
-    for invalid_protocol in test_metadata['invalid_protocol']:
-        log_monitor.start(callback=generate_callback(regex=patterns.IGNORED_INVALID_PROTOCOL, replacement={"protocol": invalid_protocol}))
-        assert invalid_protocol in log_monitor.callback_result
-
-    #detect if warning message is created when no valid protocol is provided.
-    if len(test_metadata['valid_protocol']) == 0:
-        log_monitor.start(callback=generate_callback(patterns.ERROR_GETTING_PROTOCOL))
-        assert log_monitor.callback_result
-    elif len(test_metadata['valid_protocol']) == 1:
-        protocol_valid_upper = protocols_list_to_str_upper_case
-        log_monitor.start(callback=generate_callback(patterns.DETECT_REMOTED_STARTED,
-                                                     replacement={
-                                                        "port": test_metadata['port'],
-                                                        "protocol_valid_upper": protocol_valid_upper,
-                                                        "connection": "secure"}))
-        assert log_monitor.callback_result
-
-    else:
-        used_protocol = protocols_list_to_str_upper_case
-
-        log_monitor.start(callback=generate_callback(patterns.DETECT_REMOTED_STARTED,
-                                                     replacement={
-                                                        "port": test_metadata['port'],
-                                                        "protocol_valid_upper": used_protocol,
-                                                        "connection": "secure"}))
-        assert log_monitor.callback_result
-
-        real_config_list = get_real_configuration
-
-        utils.compare_config_api_response(real_config_list, 'remote')
+    # remote.legacy.protocol is a closed enum (tcp|udp) with at most two unique items in the manager
+    # schema: any invalid or surplus protocol is rejected with 1244 by the control script's fail-fast
+    # (the CLI verdict, surfaced in the log) and remoted never starts -- the old
+    # ignore-the-invalid-protocol-and-continue flow is gone.
+    log_monitor.start(callback=generate_callback(
+        r".*ERROR: \(1244\): Invalid configuration at '/remote/legacy/protocol.*"))
+    assert log_monitor.callback_result

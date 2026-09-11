@@ -35,7 +35,8 @@ WpkFetcher::WpkFetcher(const ModuleConfig& config, IHttpPerformer& performer,
                        CompressionGate& compressionGate)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
-    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate)
+    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
+               config.serverEndpoint)
     , m_spoolFactory(spoolFactory)
 {
 }
@@ -65,9 +66,10 @@ std::shared_ptr<SpoolFile> WpkFetcher::fetch(const std::string& wpkFile,
 
     if (result.outcome != OutcomeClass::Ok)
     {
-        LOGFN_WARN(m_logFn, "WPK download for '%s' failed (%s); aborting the upgrade "
+        LOGFN_WARN(m_logFn, "WPK download for '%s' failed (%s)%s; aborting the upgrade "
                    "(no /control response is sent; fire-and-forget).",
-                   wpkFile.c_str(), outcomeName(result.outcome));
+                   wpkFile.c_str(), outcomeName(result.outcome),
+                   transportReason(result.response.curlError).c_str());
         return nullptr;
     }
 

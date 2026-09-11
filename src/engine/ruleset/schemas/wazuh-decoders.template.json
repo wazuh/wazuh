@@ -20,8 +20,7 @@
     },
     "id": {
       "type": "string",
-      "description": "Unique identifier for the decoder in UUIDv4 format",
-      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+      "description": "Unique identifier for the decoder"
     },
     "enabled": {
       "type": "boolean",

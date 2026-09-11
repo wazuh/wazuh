@@ -31,6 +31,7 @@
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "wazuh_db-config.h"
+#include "../wrappers/wazuh/config/mconf-config_wrappers.h"
 
 
 int wdb_execute_non_select_query(wdb_t * wdb, const char *query);
@@ -88,129 +89,6 @@ int  wazuh_db_config_teardown() {
 }
 
 /* Tests wdb_open_global */
-
-void test_wdb_open_tasks_pool_success_wdb_in_pool_db_open(void **state)
-{
-    wdb_t *ret = NULL;
-
-    wdb_t *node = wdb_init(WDB_TASK_NAME);
-    node->db = (sqlite3 *)1;
-
-    expect_string(__wrap_wdb_pool_get_or_create, name, WDB_TASK_NAME);
-    will_return(__wrap_wdb_pool_get_or_create, node);
-
-    ret = wdb_open_tasks();
-
-    assert_string_equal(ret->id, WDB_TASK_NAME);
-    assert_non_null(ret->db);
-    wdb_destroy(ret);
-}
-
-void test_wdb_open_tasks_pool_success_wdb_in_pool_db_null(void **state)
-{
-    wdb_t *ret = NULL;
-
-    wdb_t *node = wdb_init(WDB_TASK_NAME);
-    sqlite3 *db = (sqlite3 *)1;
-
-    expect_string(__wrap_wdb_pool_get_or_create, name, WDB_TASK_NAME);
-    will_return(__wrap_wdb_pool_get_or_create, node);
-
-    expect_string(__wrap_sqlite3_open_v2, filename, "queue/tasks/tasks.db");
-    will_return(__wrap_sqlite3_open_v2, db);
-    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
-    will_return(__wrap_sqlite3_open_v2, OS_SUCCESS);
-
-    ret = wdb_open_tasks();
-
-    assert_string_equal(ret->id, WDB_TASK_NAME);
-    assert_non_null(ret->db);
-    wdb_destroy(ret);
-}
-
-void test_wdb_open_tasks_create_error(void **state)
-{
-    wdb_t *ret = NULL;
-    wdb_t *node = wdb_init(WDB_TASK_NAME);
-
-    expect_string(__wrap_wdb_pool_get_or_create, name, WDB_TASK_NAME);
-    will_return(__wrap_wdb_pool_get_or_create, node);
-
-    expect_string(__wrap_sqlite3_open_v2, filename, "queue/tasks/tasks.db");
-    will_return(__wrap_sqlite3_open_v2, NULL);
-    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
-    will_return(__wrap_sqlite3_open_v2, OS_INVALID);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Tasks database not found, creating.");
-    will_return(__wrap_sqlite3_close_v2, OS_SUCCESS);
-
-    expect_function_call(__wrap_wdb_pool_leave);
-
-    expect_string(__wrap_sqlite3_open_v2, filename, "queue/tasks/tasks.db");
-    will_return(__wrap_sqlite3_open_v2, NULL);
-    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
-    will_return(__wrap_sqlite3_open_v2, OS_INVALID);
-
-    will_return(__wrap_sqlite3_errmsg, "out of memory");
-    expect_string(__wrap__mdebug1, formatted_msg, "Couldn't create SQLite database 'queue/tasks/tasks.db': out of memory");
-    will_return(__wrap_sqlite3_close_v2, OS_SUCCESS);
-
-    expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database 'queue/tasks/tasks.db'");
-
-    ret = wdb_open_tasks();
-
-    assert_null(ret);
-    wdb_destroy(node);
-}
-
-void test_wdb_open_tasks_retry_open_error(void **state)
-{
-    wdb_t *ret = NULL;
-    wdb_t *node = wdb_init(WDB_TASK_NAME);
-    sqlite3 *db = (sqlite3 *)1;
-
-    expect_string(__wrap_wdb_pool_get_or_create, name, WDB_TASK_NAME);
-    will_return(__wrap_wdb_pool_get_or_create, node);
-
-    expect_string(__wrap_sqlite3_open_v2, filename, "queue/tasks/tasks.db");
-    will_return(__wrap_sqlite3_open_v2, NULL);
-    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
-    will_return(__wrap_sqlite3_open_v2, OS_INVALID);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Tasks database not found, creating.");
-    will_return(__wrap_sqlite3_close_v2, OS_SUCCESS);
-
-    // wdb_create_file ok
-    expect_string(__wrap_sqlite3_open_v2, filename, "queue/tasks/tasks.db");
-    will_return(__wrap_sqlite3_open_v2, db);
-    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
-    will_return(__wrap_sqlite3_open_v2, OS_SUCCESS);
-    will_return(__wrap_sqlite3_prepare_v2, 1);
-    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    expect_sqlite3_step_call(SQLITE_DONE);
-    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
-    will_return(__wrap_sqlite3_close_v2, OS_SUCCESS);
-    will_return(__wrap_getuid, 1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Ignoring chown when creating file from SQL.");
-    expect_string(__wrap_chmod, path, "queue/tasks/tasks.db");
-    will_return(__wrap_chmod, 0);
-
-    expect_string(__wrap_sqlite3_open_v2, filename, "queue/tasks/tasks.db");
-    will_return(__wrap_sqlite3_open_v2, NULL);
-    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
-    will_return(__wrap_sqlite3_open_v2, OS_INVALID);
-
-
-    will_return(__wrap_sqlite3_errmsg, "out of memory");
-    expect_string(__wrap__merror, formatted_msg, "Can't open SQLite database 'queue/tasks/tasks.db': out of memory");
-    will_return(__wrap_sqlite3_close_v2, OS_SUCCESS);
-    expect_function_call(__wrap_wdb_pool_leave);
-
-    ret = wdb_open_tasks();
-
-    assert_null(ret);
-    wdb_destroy(node);
-}
 
 void test_wdb_open_global_pool_success_wdb_in_pool_db_open(void **state)
 {
@@ -865,27 +743,25 @@ void test_wdb_get_internal_config() {
 /* Tests wdb_get_config */
 
 void test_wdb_get_config(){
+    /* The effective `wdb` section of the document: backup.global.{...}, no "database" array */
+    expect_string(__wrap_w_mconf_section, section, "wdb");
+    will_return(__wrap_w_mconf_section,
+                cJSON_Parse("{\"backup\":{\"global\":{\"enabled\":true,\"interval\":\"1d\",\"max_files\":3}}}"));
+
     cJSON *ret = wdb_get_config();
 
     cJSON *root = cJSON_GetObjectItem(ret, "wdb");
     assert_true(cJSON_IsObject(root));
 
-    cJSON *cfg_array = cJSON_GetObjectItem(root, "backup");
-    assert_true(cJSON_IsArray(cfg_array));
+    cJSON *backup = cJSON_GetObjectItem(root, "backup");
+    assert_true(cJSON_IsObject(backup));
+    assert_null(cJSON_GetObjectItem(backup, "database"));
 
-    cJSON *cfg = 0;
-    cJSON_ArrayForEach(cfg, cfg_array){
-        assert_true(cJSON_IsObject(cfg));
-
-        cJSON *c0 = cJSON_GetObjectItem(cfg, "database");
-        assert_true(cJSON_IsString(c0));
-        cJSON *c1 = cJSON_GetObjectItem(cfg, "enabled");
-        assert_true(cJSON_IsBool(c1));
-        cJSON *c2 = cJSON_GetObjectItem(cfg, "interval");
-        assert_true(cJSON_IsNumber(c2));
-        cJSON *c3 = cJSON_GetObjectItem(cfg, "max_files");
-        assert_true(cJSON_IsNumber(c3));
-    }
+    cJSON *global = cJSON_GetObjectItem(backup, "global");
+    assert_true(cJSON_IsObject(global));
+    assert_true(cJSON_IsBool(cJSON_GetObjectItem(global, "enabled")));
+    assert_true(cJSON_IsString(cJSON_GetObjectItem(global, "interval")));
+    assert_true(cJSON_IsNumber(cJSON_GetObjectItem(global, "max_files")));
 
     cJSON_Delete(ret);
 }
@@ -3090,46 +2966,8 @@ void test_wdb_check_fragmentation_vacuum_current_fragmentation_delta(void **stat
     wdb_destroy(node);
 }
 
-void test_wdb_set_synchronous_normal_null_errmsg(void ** state) {
-    wdb_t * wdb = wdb_init("001");
-    assert_non_null(wdb);
-    wdb->db = (sqlite3 *)1;
-
-    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous=1;");
-    will_return(__wrap_sqlite3_exec, NULL);
-    will_return(__wrap_sqlite3_exec, 0);
-
-    int retval = wdb_set_synchronous_normal(wdb);
-
-    assert_int_equal(retval, 0);
-    wdb_destroy(wdb);
-}
-
-void test_wdb_set_synchronous_normal_with_errmsg(void ** state) {
-    wdb_t * wdb = wdb_init("001");
-    assert_non_null(wdb);
-    wdb->db = (sqlite3 *)1;
-
-    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous=1;");
-    will_return(__wrap_sqlite3_exec, "synchronous ERROR");
-    will_return(__wrap_sqlite3_exec, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "Cannot set synchronous mode: 'synchronous ERROR'");
-
-    int result = wdb_set_synchronous_normal(wdb);
-
-    assert_int_equal(result, -1);
-    wdb_destroy(wdb);
-}
-
-
 int main() {
     const struct CMUnitTest tests[] = {
-        // wdb_open_tasks
-        cmocka_unit_test(test_wdb_open_tasks_pool_success_wdb_in_pool_db_open),
-        cmocka_unit_test(test_wdb_open_tasks_pool_success_wdb_in_pool_db_null),
-        cmocka_unit_test(test_wdb_open_tasks_create_error),
-        cmocka_unit_test(test_wdb_open_tasks_retry_open_error),
         // wdb_open_global
         cmocka_unit_test(test_wdb_open_global_pool_success_wdb_in_pool_db_open),
         cmocka_unit_test(test_wdb_open_global_create_error),
@@ -3232,9 +3070,6 @@ int main() {
         cmocka_unit_test(test_wdb_check_fragmentation_no_vacuum_current_fragmentation_delta),
         cmocka_unit_test(test_wdb_check_fragmentation_vacuum_first),
         cmocka_unit_test(test_wdb_check_fragmentation_vacuum_current_fragmentation_delta),
-        // wdb_set_synchronous_normal
-        cmocka_unit_test(test_wdb_set_synchronous_normal_null_errmsg),
-        cmocka_unit_test(test_wdb_set_synchronous_normal_with_errmsg),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

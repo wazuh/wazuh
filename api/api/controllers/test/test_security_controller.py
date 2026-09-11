@@ -134,6 +134,30 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('auth_context', [
+    {},
+    {'user_name': 'wazuh-admin'},
+])
+@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.security_controller.remove_nones_to_dict')
+@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('api.controllers.security_controller.generate_token', return_value='token')
+async def test_run_as_login_auth_context(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc,
+                                         auth_context, mock_request):
+    """Verify 'run_as_login' forwards any object authorization context, empty included."""
+    mock_request.json = AsyncMock(return_value=auth_context)
+
+    result = await run_as_login(user='001', raw=False)
+
+    f_kwargs = {'user_id': '001', 'auth_context': auth_context}
+    mock_remove.assert_called_once_with(f_kwargs)
+    mock_token.assert_called_once_with(user_id='001', data=mock_exc.return_value.dikt,
+                                       auth_context=auth_context)
+    assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)

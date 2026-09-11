@@ -25,6 +25,38 @@ and a second `Manager` under the same name would be a silent ODR trap. The
 planned unification is the engine aliasing `namespace fastmetrics =
 wazuh::metrics;` and dropping its copy — additive API changes only.
 
+## Requirements
+
+### Functional
+
+| # | Requirement | Status |
+|---|---|---|
+| RF-1 | Counter / gauge / histogram / pull / sliding-window-rate types behind `IMetric` interfaces, each registered with optional `description`/`unit` metadata | kept |
+| RF-2 | Thread-safe registry: `getOrCreate*` is idempotent (same name → same instance); re-registering a name under a **different type** throws | kept |
+| RF-3 | Histograms answer p50/p90/p99 snapshots with bounded relative error (~12.5%, 128 log-linear buckets); min/max are exact; percentiles are computed only on `snapshot()` | kept |
+| RF-4 | `dumpJson()` is deterministic: entries sorted by name, exact unsigned integers for counters/counts, `description`/`unit` omitted when not registered, envelope with daemon name + ISO-8601 UTC timestamp | kept |
+| RF-5 | Scalar entries carry the engine-compatible `{name, type, enabled, value}` shape so tooling treats both dumps alike | kept |
+
+### Non-functional
+
+| # | Requirement | Status |
+|---|---|---|
+| RNF-1 | No singleton — the manager is injected (`shared_ptr<IManager>`); nothing touches the engine's `base` utilities | kept |
+| RNF-2 | Hot path is one relaxed atomic op on a cached pointer; `getOrCreate*` (shared lock + hash) is cold-path only | kept |
+| RNF-3 | Public headers are STL-only; rapidjson exists in exactly one TU (`src/jsonDump.cpp`) | kept |
+| RNF-4 | C++17 | kept |
+
+## Design decisions
+
+| Decision | Rationale |
+|---|---|
+| No labels | Dimensions live in the name; closed sets are pre-created and picked with a `switch` — keeps the hot path a single atomic and the registry scan trivial |
+| No `remove()` for pull metrics | An unregisterable getter forces the lifetime question to the consumer (gauge, or `weak_ptr` resolved under the consumer's lock) instead of hiding a use-after-free |
+| rapidjson confined to `src/jsonDump.cpp` | Consumers never inherit the dependency; public headers stay STL-only |
+| Distinct target/namespace from `fastmetrics` | Both live in one build tree; a same-name `Manager` would be a silent ODR trap |
+| 128 log-linear buckets (~1.1 KiB/histogram) | Cheap enough for per-request durations; ~12.5% relative error is fine for tuning/triage percentiles |
+| Deterministic dump (sorted by name) | Diffable dumps; scrapers (`monitor.py`) key columns by name |
+
 ## Usage contract
 
 **Resolve once, mutate lock-free.** `getOrCreate*` costs a shared lock and a
@@ -107,3 +139,30 @@ metrics/
 
 Consumers link the `wazuh_metrics` target; their tests take the mocks by
 adding `shared_modules/metrics/test/mocks` to their include path.
+
+## Tests
+
+`test/unit/` builds `wazuh_metrics_utest` (GTest) under
+`cmake -S src -B src/build -DUNIT_TEST=ON`. CI runs it on every PR touching
+`src/shared_modules/metrics/**` via `.github/workflows/5_testunit_metrics.yml`: a
+coverage job (line coverage over `src/` + `include/`; function coverage is not gated,
+since the pure-interface headers dominate the function count) and an ASAN/UBSAN job.
+Valgrind is deliberately off — the rate tests assert over wall-clock windows and the
+concurrency tests are 16 threads x 100k atomic adds.
+
+| File | Pins |
+|---|---|
+| `counter_test.cpp` | add/reset/enable-disable semantics; exact counts under concurrent mixed operations |
+| `gauge_test.cpp` | set/add/sub incl. negative values; reset; enable-disable |
+| `histogram_test.cpp` | percentile round-trips on known distributions; exact min/max; upper-bound clamping; reset not leaking the min sentinel; disabled `observe()` is a no-op |
+| `manager_test.cpp` | `getOrCreate*` idempotence (same name → same instance); cross-type re-registration throws in every direction |
+| `jsonDump_test.cpp` | envelope shape; verbatim vs fallback timestamp; alphabetical order; exact integers beyond double precision; signed gauges; metadata omitted when unregistered |
+| `pullMetric_test.cpp` | callback-backed reads, typed access, exception handling, enable-disable, push+pull mixes |
+| `slidingWindowRate_test.cpp` | window averaging, old-event expiry, bursty and concurrent increments |
+| `realisticScenarios_test.cpp` | end-to-end consumer patterns: pipeline, worker pool, dynamic creation, high-frequency updates, mixed types under concurrency |
+
+## Docs
+
+Operator/integrator documentation: `docs/ref/modules/utils/metrics/` (how to query a
+module's `/metrics`, integration guide). Per-module metric catalogs live in each
+consumer's `docs/ref/modules/<mod>/metrics.md`.

@@ -109,7 +109,7 @@ void wdb_http_start(full_log_fnc_t callbackLog, const char* socket_path)
         auto server = wazuh::uds_http::makeUdsHttpServer();
 
         // Control: empty body, tiny response -- must not be shed by Data-plane pressure, same
-        // reasoning as inventory_sync_server's header-carried DELETE /agents.
+        // reasoning as inventory_sync_server's header-carried agent routes.
         registerRoute<EndpointGetV1AgentsParamGroups>(
             *server, wazuh::uds_http::Method::Get, "/v1/agents/groups", wazuh::uds_http::RouteClass::Control);
         // Data: bulk/unbounded payloads.

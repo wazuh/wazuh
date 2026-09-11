@@ -20,6 +20,7 @@ class MockFsProbe : public IFsProbe
 {
     public:
         MOCK_METHOD(bool, isReadableFile, (const std::string& path), (const, override));
+        MOCK_METHOD(std::string, findSystemCaBundle, (), (const, override));
 };
 
 #endif // _HC_MOCK_FS_PROBE_HPP

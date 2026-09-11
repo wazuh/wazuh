@@ -3051,7 +3051,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     os_calloc(1, sizeof(curl_response), response2);
     response2->status_code = 200;
     response2->max_size_reached = false;
-    os_strdup("{\"@odata.nextLink\":\"next_page_url\",\"value\":[{\"id\":\"2345\"},{\"name\":\"test\"}]}", response2->body);
+    os_strdup("{\"@odata.nextLink\":\"https://graph.microsoft.com/v1.0/next_page\",\"value\":[{\"id\":\"2345\"},{\"name\":\"test\"}]}", response2->body);
     os_strdup("test2", response2->header);
 
     os_calloc(1, sizeof(curl_response), response3);
@@ -3115,7 +3115,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     will_return(__wrap_wurl_http_request, response2);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'next_page_url'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/next_page'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3200,7 +3200,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     os_calloc(1, sizeof(curl_response), response);
     response->status_code = 200;
     response->max_size_reached = false;
-    os_strdup("{\"@odata.nextLink\":\"next_page_url\",\"value\":[{\"full_log\":\"log1\"},{\"full_log\":\"log2\"}]}", response->body);
+    os_strdup("{\"@odata.nextLink\":\"https://graph.microsoft.com/v1.0/next_page\",\"value\":[{\"full_log\":\"log1\"},{\"full_log\":\"log2\"}]}", response->body);
     os_strdup("test", response->header);
 
 #ifdef TEST_WINAGENT
@@ -3270,7 +3270,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     will_return(__wrap_wm_sendmsg, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'next_page_url'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/next_page'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3299,6 +3299,77 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 1);
+
+    wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
+}
+
+void test_wm_ms_graph_scan_relationships_next_page_out_of_host(void **state) {
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
+    module_data->enabled = true;
+    module_data->only_future_events = false;
+    module_data->curl_max_size = 1024L;
+    module_data->page_size = 200;
+    module_data->time_delay = 20;
+    module_data->run_on_start = true;
+    module_data->scan_config.interval = 60;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
+    os_strdup("token", module_data->auth_config[0]->access_token);
+    module_data->auth_config[0]->token_expiration_time = time(NULL) + 100;
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
+    os_strdup("deviceManagement", module_data->resources[0].name);
+    module_data->num_resources = 1;
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
+    os_strdup("managedDevices", module_data->resources[0].relationships[0]);
+    module_data->resources[0].num_relationships = 1;
+    bool initial = false;
+    curl_response* response;
+    wm_max_eps = 1;
+
+    os_calloc(1, sizeof(curl_response), response);
+    response->status_code = 200;
+    response->max_size_reached = false;
+    os_strdup("{\"@odata.nextLink\":\"https://evil.tld/v1.0/next_page\",\"value\":[{\"full_log\":\"log1\"}]}", response->body);
+    os_strdup("test", response->header);
+
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?$top=200'");
+
+    // Only one request must be issued: the hostile next page must not be followed
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, response);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
+    expect_any(__wrap__mtdebug2, formatted_msg);
+
+    queue_fd = 0;
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
+    expect_any(__wrap_wm_sendmsg, message);
+    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
+    will_return(__wrap_wm_sendmsg, 1);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "Ignoring next page URL out of 'graph.microsoft.com'.");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
@@ -4291,7 +4362,7 @@ static void test_wm_ms_graph_http_get_with_retry_429_retry_after_exceeds_warn(vo
     expect_string(__wrap__mtwarn, formatted_msg, "Retry-After value (400s) for relationship 'alerts_v2' exceeds (300s).");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 400s (attempt 1/3).");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 300s (attempt 1/3).");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -4510,6 +4581,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_one_log, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_two_logs, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_two_pages, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_next_page_out_of_host, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_two_resources, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_renew_token, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_renew_token_failed, setup_conf, teardown_conf),

@@ -12,7 +12,9 @@ long-term enrollment path going forward.
 
 Source: `src/os_auth/`
 
-For configuration options see [Authd Configuration](configuration.md).
+For the diagrams — the two stores, the enrollment sequence, the force-guard chain, cluster
+forwarding and the removal path — see [Authd Architecture](architecture.md). For configuration
+options see [Authd Configuration](configuration.md).
 
 ## How it works
 
@@ -34,7 +36,7 @@ For configuration options see [Authd Configuration](configuration.md).
    - `K:'<key_hash>'` — the SHA-1 hash of the agent's current key, if it already has one. It is
      compared against the manager's stored key when deciding whether a `force` re-enrollment
      applies (see [Force re-enrollment](#force-re-enrollment)).
-5. Authd validates the agent name, checks for existing registrations (applying `force` rules if configured), generates a random key pair, and queues the entry for persistence. If the request included a `G:` field, the agent is assigned to those centralized groups as part of this same enrollment.
+5. Authd validates the agent name, checks for existing registrations (applying `force` rules if configured), generates the agent key (32 bytes from OpenSSL's CSPRNG, stored as 64 lowercase hex chars -- the HS256 secret of remoted's `wazuh-agent+jwt` bearer profile), and queues the entry for persistence. If the request included a `G:` field, the agent is assigned to those centralized groups as part of this same enrollment.
 6. The agent key is written to `/var/wazuh-manager/etc/client.keys` by a background writer thread.
 7. The response is sent back to the agent over the same TLS connection.
 
@@ -43,8 +45,23 @@ For configuration options see [Authd Configuration](configuration.md).
 | Thread | Role |
 |--------|------|
 | Remote server | Accepts TLS connections on port 1515 (when `remote_enrollment` and [`legacy_enrollment`](configuration.md#legacy_enrollment) are both `yes`) |
-| Local server | Handles enrollment via the local Unix socket `queue/sockets/auth` |
-| Writer | Periodically flushes the in-memory key queue to `client.keys` on disk, and — for each removed agent — asks the [Inventory Sync Server](../inventory-sync-server/README.md) to delete that agent's documents from the indexer |
+| Local server | Handles enrollment via the local Unix socket `queue/sockets/auth.sock` |
+| Writer | Flushes the in-memory key queue to `client.keys` on disk, deletes each removed agent from wazuh-db, and records the indexer purge of every removed agent as a Task Manager task. It never waits on the network |
+| authpass watcher | On a worker with `use_password`, re-reads `etc/authd.pass` as the cluster syncs it down from the master. Until it arrives the worker fails closed and rejects enrollments |
+
+The writer runs on the **master only**. See [Cluster](#cluster) below.
+
+## Cluster
+
+A worker node does not own a keystore. An enrollment that arrives at a worker is forwarded to the
+master, which validates it, assigns the id and generates the key; the worker relays the answer to the
+agent and keeps nothing locally. The `<force>` settings are ignored on a worker — the master decides —
+and a worker that cannot reach the master answers `9016`.
+
+The key reaches the worker's own `client.keys` through the cluster's integrity sync, the same
+mechanism that distributes `etc/authd.pass`. Until it does, the worker's remoted cannot verify a key
+the agent already holds; see
+[the two stores](architecture.md#the-two-stores) and [Cluster](architecture.md#cluster).
 
 ## Storage
 
@@ -53,24 +70,90 @@ For configuration options see [Authd Configuration](configuration.md).
 | `/var/wazuh-manager/etc/client.keys` | One line per agent: `<id> <name> <ip> <key>` |
 | `/var/wazuh-manager/etc/agents-timestamp` | Per-agent registration timestamp |
 | `/var/wazuh-manager/etc/authd.pass` | Enrollment password (auto-generated on first start; required by default) |
+| `/var/wazuh-manager/queue/authd/pending-purges` | Deletions authd has begun recording but not yet finished, plus the highest agent id and sequence ever handed out. Normally empty |
+
+> For the diagrams — the thread layout, the removal path and the three intervals the purge has to
+> outlast — see [Architecture](architecture.md).
 
 ## Agent removal and the indexer
 
 Removing an agent has to clean up more than `client.keys`: the agent's documents in the indexer
 (inventory state, reported configuration and statistics) have nothing to overwrite them once the
-agent is gone. So, for every removed agent, the writer thread calls the Inventory Sync Server's
-deletion route over its Unix socket (`queue/sockets/inventory-sync.sock`) and treats the HTTP status
-as the outcome — this is not fire-and-forget.
+agent is gone. Four places are involved, and only the first three are immediate:
 
-A failed deletion is retried up to three times with a widening pause, and each pause is logged at
-info level — the writer thread is single, so while it waits nothing else it owns progresses. When
-authd gives up it logs a `WARNING` naming the agent, distinguishing a request that never completed
-(modulesd down, or the transfer timed out) from one the server refused with a status. It is a warning
-rather than an error because the agent itself IS gone and can no longer connect; what remains is
-orphaned documents in the indexer, until an operator repeats the deletion, which is safe to re-run.
-Retries are abandoned if the daemon is shutting down. See the
-[Inventory Sync Server's deletion contract](../inventory-sync-server/api-reference.md) for what a
-`200` guarantees.
+| # | What is removed | Who reads it afterwards | When |
+|---|---|---|---|
+| 1 | the entry in the in-memory keystore | authd itself: duplicate checks, agent limit | on the request |
+| 2 | the `client.keys` file | remoted, to authenticate agents | next writer pass |
+| 3 | the row in wazuh-db | the server API, to list agents | next writer pass |
+| 4 | the documents in the indexer | the dashboard | a Task Manager task, first attempted after `authd.purge_delay` |
+
+**The writer thread never waits on the network.** It records the deletion as a durable task and moves
+on; the Task Manager's dispatcher executes it. This is deliberate and it is the reason the split
+exists: the writer is the only thread that persists `client.keys`, so a slow or unreachable indexer
+used to stall every key write behind it — on a fleet-wide removal, no freshly enrolled agent reached
+`client.keys` and remoted answered `401` to all of them until the whole batch drained.
+
+### The delay before a purge
+
+A purge is not attempted immediately. The task's first attempt is set at least `authd.purge_delay`
+seconds out (see [Configuration](configuration.md)), because a `_delete_by_query` is a *search* and
+can only match what the indexer has already made searchable, and because in a cluster the worker
+nodes still hold the previous `client.keys` for a few seconds. Running it right away would let the
+last documents a departing agent wrote survive the purge, with nothing left to ever overwrite them.
+
+### Where authd's responsibility ends
+
+At the durable task row. There is no completion signal back to authd, by design — waiting for one is
+what used to block the writer — and the purge's own outcome is the task's status, reported in
+modulesd's log. The task type carries **no attempt budget**: once `client.keys` is written the agent is
+gone and nobody will ask again, so the deletion is retried until it succeeds rather than given up on.
+
+### Durability
+
+The deletion is journaled in `queue/authd/pending-purges` **before** `client.keys` is rewritten, and
+the line is dropped only once wazuh-db has acknowledged the task as committed. The journal is normally
+empty: it drains as fast as wazuh-db answers, not as fast as the indexer does.
+
+On the next start every surviving line is compared against the `client.keys` just read. An agent still
+listed there means the deletion never became final, so the line is dropped; an absent one means the
+task is still owed and is created now. That is what closes the window a crash between the key write
+and the task's creation used to leave open — nothing else in the system knows those documents are
+owed, since the agent is already out of `client.keys` and out of wazuh-db.
+
+The file also stores `last_id`, the highest agent id ever handed out. **An id is never reused**, even
+when the agents holding the highest ids have been deleted and `client.keys` no longer mentions them:
+a pending purge matches by agent id, so recycling one would let it delete the documents of a *new*
+agent. On startup the id counter is raised to that mark if needed, and the change is logged.
+
+Both `client.keys` and the database keep the id in a signed 32-bit integer, so a fleet large or
+long-lived enough can drive the counter all the way to `INT_MAX` on its own — no out-of-range input
+anywhere. Authd refuses to hand out the next id rather than wrapping it to a negative value: the
+auto-assigned enrollment fails the same way an ordinary `max_agents` refusal does — `9013 Maximum
+number of agents reached` — instead of silently producing a record `client.keys` and the database
+would disagree about.
+
+For the same reason, an insertion that names an id explicitly (`POST /agents/insert`) is **refused**
+while that id still owes a purge, rather than cancelling the purge: a recorded purge always runs.
+
+### When a deletion is refused
+
+A deletion can be turned down. If too many earlier ones are still waiting to reach the indexer, the
+request answers `9021` (`1766` through the server API) and the agent is left **untouched** — the check
+runs before the agent leaves the keystore, so retrying once the backlog drains is all that is needed.
+
+This is new behaviour and it replaces a worse one: the limit used to be discovered after `client.keys`
+had been written, where the only options left were to drop the purge silently or to log it while the
+documents were orphaned.
+
+### What a manager rebuilt from scratch inherits
+
+`queue/` survives an upgrade and a plain package removal, so the id mark and any pending purges
+survive with it. A full purge of the package — or an install from sources into a clean tree — takes
+the file with it, and the id counter starts over while the indexer still holds the previous fleet's
+documents. **Deleting a manager should therefore include deleting its indexer data**; otherwise new
+agents can inherit documents from the agents that held their ids before, in the indices they do not
+resynchronise themselves.
 
 ## Force re-enrollment
 
@@ -81,10 +164,37 @@ The `<force>` sub-block controls when an agent may overwrite an existing registr
 - `disconnected_time` — overwrite only if the agent has been disconnected for at least this long
 - `after_registration_time` — overwrite only if at least this much time has passed since the last registration
 
+All four guards are evaluated together, and every one of them has to allow the replacement. With the
+defaults (`enabled` on, `key_mismatch` on, `disconnected_time` 1 h, `after_registration_time` 1 h) an
+agent is replaced when the one holding its name has never connected or has been disconnected for at
+least an hour, was registered at least an hour ago, and presents a different key. A connected agent
+is never replaced.
+
+**A replacement is a deletion.** The agent that loses its name is removed exactly as if it had been
+deleted through the API: it goes through the same removal queue, the same writer thread and the same
+indexer purge. This matters for scale — a fleet that re-enrolls with names that already exist
+generates one deletion per agent, without anyone calling the API — and it is why the delay and the
+persistence above apply to enrollment just as much as to a deletion through the API. The admission
+bound applies as well: when too many deletions are already in progress the *enrollment* is refused,
+rather than the replacement going ahead with a purge that cannot be recorded.
+
+**Replacement never reuses the id.** The replacing agent is a new registration and receives a new
+id; the replaced id is not handed out again. The one case where a caller can name an id is
+`POST /agents/insert`, and there authd refuses rather than replacing: an id outside
+`[1, 2147483647]`, or `0` (reserved for the manager), answers `9020 Invalid agent ID` (the server API
+reports it as `1765`) before any keystore lookup even runs; an id that belongs to an existing agent
+answers `9012 Duplicate ID`, and one whose purge is still pending answers
+`9018 Agent ID has a pending deletion` (the server API reports it as `1763`). Delete the agent, let
+its purge finish, and then the id can be reused.
+
+`9018` also covers a wazuh-db that cannot answer whether the id still owes a deletion: the guard fails
+closed, because allowing the reuse risks an outstanding purge deleting the new agent's documents.
+Auto-assigned ids are unaffected — the id counter comes from authd's own journal.
+
 ## Local socket enrollment protocol
 
 In addition to the TLS enrollment path on port 1515, authd exposes a local-only enrollment API over
-the Unix domain socket `queue/sockets/auth`. This is what `manage_agents`, the API's agent
+the Unix domain socket `queue/sockets/auth.sock`. This is what `manage_agents`, the API's agent
 registration endpoints, and `remoted_module`'s `POST /enroll` bridge (see
 [HTTPS enrollment](../remoted/https-events-api.md#enrollment-endpoint-post-enroll)) all use to add,
 remove, and query agents without going through TLS or the enrollment password directly.
@@ -119,9 +229,12 @@ A request is a single-line JSON object:
     refuses only what the `<id> <name> <ip> <key>` line format cannot represent, so names that
     `manage_agents` and the API have always accepted — containing `%`, a single character, or a
     leading `.` — keep working.
-  - `id` (optional) — request a specific agent ID instead of letting authd assign the next one
+  - `id` (optional) — request a specific agent ID instead of letting authd assign the next one; must
+    be a positive integer no greater than `2147483647` (the width `client.keys` and the database
+    store it in) and other than `0` (reserved for the manager), or the request fails with
+    `9020 Invalid agent ID`
   - `groups` (optional) — comma-separated centralized group(s) to assign
-  - `key` (optional) — a caller-supplied key instead of a randomly generated one
+  - `key` (optional) — a caller-supplied key instead of a randomly generated one; must be exactly 64 lowercase hex chars (32 bytes), otherwise the request fails with `9019 Invalid agent key`
   - `key_hash` (optional) — hash of the agent's current key, used the same way as the `K:` field
     in the network protocol when deciding whether a `force` replacement applies
   - `force` (optional, object) — see below
@@ -201,3 +314,12 @@ manager's own hostname and the `CN` parsed out of `-S` (when present and not alr
 
 The actual `<auth>` XML element parsing, validation, and default values live in the shared config
 subsystem at `src/config/src/authd-config.c`, not in `os_auth` itself.
+
+## Development
+
+The in-repo companion to these pages (a plain path — it lives outside this book):
+
+- `src/os_auth/README.md` — the developer's map of the module: the functional/non-functional
+  requirements catalog (RF, RNF, and the `REQ-PURGE` contract with inventory-sync), the design
+  decisions (D1–D10) with the reasoning behind each, the load-bearing invariants, the developer FAQ,
+  and which test suite covers what.

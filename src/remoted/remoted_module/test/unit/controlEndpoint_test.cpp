@@ -388,6 +388,7 @@ TEST(ControlEndpointTest, NotifyDispatchesToHandlerAndReturnsConfigAndSettingsHa
     EXPECT_TRUE(j.contains("agent"));
     EXPECT_TRUE(j["agent"].contains("groups"));
     EXPECT_TRUE(j["agent"].contains("config_hash"));
+    EXPECT_TRUE(j["agent"].contains("config_token"));
     EXPECT_TRUE(j.contains("settings_hash"));
     EXPECT_EQ(j["settings_hash"].get<std::string>().size(), 64U);
     EXPECT_GE(f.metrics.notify->get(), 1U);

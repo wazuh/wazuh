@@ -35,7 +35,7 @@ static hc_handle *g_handle;
 
 /* The key the mock rotates to at ROTATE_KEY_AT; the re-enroll callback swaps
  * to it (matches mock_manager.py ROTATED_KEY). */
-static const char *g_rotated_key = "0f0e0d0c0b0a09080706050403020100";
+static const char *g_rotated_key = "0f0e0d0c0b0a090807060504030201001f1e1d1c1b1a19181716151413121110";
 
 /* Set by SIGINT/SIGTERM: ends sustained mode early with the clean drain. */
 static atomic_int g_stop;

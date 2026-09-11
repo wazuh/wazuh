@@ -15,7 +15,7 @@
 /*
  * C-ABI bridge for the keystore_server C++ module.
  *
- * The `queue/sockets/keystore` UDS used to be hosted by the legacy inventory_sync module -- an
+ * The `queue/sockets/keystore.sock` UDS used to be hosted by the legacy inventory_sync module -- an
  * accident of history: the keystore has nothing to do with inventory synchronization, and its one
  * production consumer is the Python framework (credential_manager.py fetches the indexer
  * credentials for the manager API). Hosting it in its own minimal module is what let that module
@@ -46,7 +46,7 @@ extern "C"
      *
      * @param callbackLog Logging callback (modulesd passes mtLoggingFunctionsWrapper).
      * @param socketPath  UDS path to bind, RELATIVE to the install dir. NULL -> the production
-     *                    default ("queue/sockets/keystore"). Non-NULL exists for tests.
+     *                    default ("queue/sockets/keystore.sock"). Non-NULL exists for tests.
      */
     EXPORTED int keystore_server_start(full_log_fnc_t callbackLog, const char* socketPath);
 

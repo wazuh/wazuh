@@ -267,6 +267,21 @@ namespace SQLite3Wrapper
             ++m_bindParametersIndex;
         }
 
+        /// @brief Bind SQL NULL to a nullable column.
+        ///
+        /// This must go through the wrapper rather than a bare sqlite3_bind_null() on get():
+        /// step() only executes once every parameter has been bound, counted by
+        /// m_bindParametersIndex, so binding outside the wrapper leaves the count short and step()
+        /// silently returns SQLITE_ERROR without running the statement.
+        void bindNull(const int32_t index)
+        {
+            if (const auto result {sqlite3_bind_null(m_stmt.get(), index)}; SQLITE_OK != result)
+            {
+                throw Sqlite3Error {sqlite3_errmsg(m_connection.db())};
+            }
+            ++m_bindParametersIndex;
+        }
+
         template<typename T>
         T value(const int32_t index) const
         {

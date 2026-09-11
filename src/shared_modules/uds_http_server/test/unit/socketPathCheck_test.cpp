@@ -67,7 +67,7 @@ TEST(SocketPathCheckTest, APathOverTheSunPathLimitIsRejectedAndSaysSo)
 TEST(SocketPathCheckTest, AMissingParentDirectoryIsRejectedAndNamesIt)
 {
     std::string reason;
-    EXPECT_FALSE(socketPathIsUsable("/proc/self/does-not-exist/inventory-sync.sock", reason));
+    EXPECT_FALSE(socketPathIsUsable("/proc/self/does-not-exist/inventory-sync-http.sock", reason));
     EXPECT_NE(std::string::npos, reason.find("does-not-exist")) << reason;
 }
 
@@ -118,5 +118,5 @@ TEST(SocketPathCheckTest, AStaleSocketAtThePathIsAcceptedBecauseBindUnlinksIt)
 TEST(SocketPathCheckTest, ARelativePathIsCheckedAgainstTheCurrentDirectory)
 {
     std::string reason;
-    EXPECT_TRUE(socketPathIsUsable("inventory-sync.sock", reason)) << reason;
+    EXPECT_TRUE(socketPathIsUsable("inventory-sync-http.sock", reason)) << reason;
 }

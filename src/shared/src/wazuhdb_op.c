@@ -8,6 +8,13 @@
  * Foundation.
  */
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #include "wazuhdb_op.h"
 
 #ifndef WIN32
@@ -132,14 +139,44 @@ end:
  * @retval -1 Error in the response from socket.
  * @retval 0 Success.
  */
-int wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
+/**
+ * @brief Connects to Wazuh-DB with send and receive deadlines and no retry ladder.
+ *
+ * Deliberately does not go through wdbc_connect_with_attempts(): that sleeps 1, 2, 3, 4 and 5
+ * seconds between attempts, which is not a bound a caller can reason about and is the wrong
+ * shape for a thread that has its own retry schedule and has to notice a shutdown flag. A caller
+ * asking for a timeout gets one attempt and retries on its own terms.
+ *
+ * @param timeout Send and receive deadline, in seconds.
+ * @return Socket descriptor or -1 if error.
+ */
+STATIC int wdbc_connect_timeout(int timeout) {
+    char sockname[PATH_MAX + 1];
+    int wdb_socket = -1;
+
+    strcpy(sockname, WDB_LOCAL_SOCK);
+
+    if (wdb_socket = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_SIZE_6144), wdb_socket < 0) {
+        return -1;
+    }
+
+    if (OS_SetSendTimeout(wdb_socket, timeout) < 0 || OS_SetRecvTimeout(wdb_socket, timeout, 0) < 0) {
+        merror("Cannot set timeouts on socket '%s': %s (%d)", sockname, strerror(errno), errno);
+        close(wdb_socket);
+        return -1;
+    }
+
+    return wdb_socket;
+}
+
+int wdbc_query_ex_timeout(int *sock, const char *query, char *response, const int len, int timeout) {
 
     int retval = -2;
 
     // Connect to socket if disconnected
     if (*sock < 0) {
         // Connect
-        *sock = wdbc_connect();
+        *sock = timeout > 0 ? wdbc_connect_timeout(timeout) : wdbc_connect();
 
         if (*sock < 0) {
             merror("Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
@@ -150,13 +187,21 @@ int wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
     // Send query to Wazuh DB
     if (retval = wdbc_query(*sock, query, response, len), retval != 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            // With a deadline set this is also how a timeout arrives: SO_RCVTIMEO and SO_SNDTIMEO
+            // expire as EAGAIN, so a caller that asked for one reads a slow wazuh-db here rather
+            // than waiting on it forever.
             merror("database socket is full");
             return retval;
-        } else if (errno == EPIPE) {
+        } else if (errno == EPIPE || errno == ECONNRESET) {
+            // ECONNRESET belongs here with EPIPE: both mean the connection is gone, and which one
+            // arrives depends only on whether wazuh-db had unread data queued when it closed. With
+            // it in the catch-all below, a wazuh-db restart failed the query outright on the very
+            // path this reconnect exists to cover.
+            //
             // Retry to connect
             merror("Connection with wazuh-manager-db lost. Reconnecting.");
             close(*sock);
-            if (*sock = wdbc_connect(), *sock < 0) {
+            if (*sock = (timeout > 0 ? wdbc_connect_timeout(timeout) : wdbc_connect()), *sock < 0) {
                 return retval;
             }
             // Send query
@@ -164,12 +209,23 @@ int wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
                 return retval;
             }
         } else {
-            merror("Cannot send message: (%d) '%s'.", errno, strerror(errno));
+            // Named by the half that actually failed: wdbc_query() returns -2 when the send failed
+            // and -1 when the response did. Reporting both as a send failure is what made a
+            // wazuh-db that closed the connection mid-answer -- the ordinary shape of a manager
+            // stop, arriving as ECONNRESET -- read as this process failing to write to it.
+            merror("Cannot %s message: (%d) '%s'.", retval == -2 ? "send" : "receive", errno, strerror(errno));
             return retval;
         }
     }
 
     return retval;
+}
+
+int wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
+    // Zero keeps the unbounded behaviour every existing caller already has. Imposing a deadline
+    // here instead would reach every daemon in the tree, including syscollector's long-running
+    // sync queries, with a blast radius nothing in this change is measuring.
+    return wdbc_query_ex_timeout(sock, query, response, len, 0);
 }
 
 

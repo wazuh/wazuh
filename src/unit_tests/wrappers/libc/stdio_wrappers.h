@@ -25,6 +25,9 @@ char * __wrap_fgets (char * __s, int __n, FILE * __stream);
 FILE* __wrap_fopen(const char* path, const char* mode);
 void expect_fopen(const char* path, const char* mode, FILE *fp);
 
+FILE* __wrap_fdopen(int fd, const char* mode);
+void expect_fdopen(int fd, const char* mode, FILE *fp);
+
 int __wrap_fprintf (FILE *__stream, const char *__format, ...);
 void expect_fprintf(FILE *__stream, const char *formatted_msg, int ret);
 

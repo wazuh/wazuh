@@ -19,6 +19,7 @@
 #include <vector>
 
 using invsync::indexer::buildAsyncConnectorConfig;
+using invsync::indexer::buildSessionConfig;
 using invsync::indexer::buildSyncConnectorConfig;
 
 namespace
@@ -36,17 +37,31 @@ namespace
         config.indexer_async_max_queue_bytes = 777;
         config.indexer_async_logger_queue_size = 888;
         config.indexer_async_logger_threads = 999;
+        config.indexer_sync_request_timeout_seconds = 1111;
+        config.indexer_async_request_timeout_seconds = 2222;
+        config.indexer_monitoring_interval_seconds = 3333;
+        config.indexer_sync_max_retry_attempts = 4444;
+        config.indexer_sync_max_retry_duration_seconds = 5555;
+        config.indexer_sync_connector_max_bulk_size = 6666;
         return config;
     }
 
-    const std::vector<std::string> SYNC_KEYS {"max_bulk_size", "flush_interval_seconds", "max_retry_delay_seconds"};
+    const std::vector<std::string> SYNC_KEYS {"max_bulk_size",
+                                              "flush_interval_seconds",
+                                              "max_retry_delay_seconds",
+                                              "request_timeout_seconds",
+                                              "max_retry_attempts",
+                                              "max_retry_duration_seconds"};
 
     const std::vector<std::string> ASYNC_KEYS {"bulk_max_bytes",
                                                "flush_interval_seconds",
                                                "max_retry_delay_seconds",
                                                "max_queue_bytes",
                                                "logger_queue_size",
-                                               "logger_threads"};
+                                               "logger_threads",
+                                               "request_timeout_seconds"};
+
+    const std::vector<std::string> SESSION_KEYS {"monitoring_interval_seconds"};
 } // namespace
 
 /**
@@ -67,9 +82,14 @@ TEST(IndexerConnectorConfigTest, SyncOverlayEmitsOnlyTheSyncKeyNames)
     EXPECT_FALSE(result.contains("logger_queue_size"));
     EXPECT_FALSE(result.contains("logger_threads"));
 
-    EXPECT_EQ(111U, result.at("max_bulk_size").get<std::size_t>());
+    EXPECT_EQ(6666U, result.at("max_bulk_size").get<std::size_t>())
+        << "the connector's request cap comes from indexer_sync_connector_max_bulk_size, not from the "
+           "pipeline's group-commit threshold";
     EXPECT_EQ(222U, result.at("flush_interval_seconds").get<std::size_t>());
     EXPECT_EQ(333U, result.at("max_retry_delay_seconds").get<std::size_t>());
+    EXPECT_EQ(1111U, result.at("request_timeout_seconds").get<std::size_t>());
+    EXPECT_EQ(4444U, result.at("max_retry_attempts").get<std::size_t>());
+    EXPECT_EQ(5555U, result.at("max_retry_duration_seconds").get<std::size_t>());
 }
 
 TEST(IndexerConnectorConfigTest, AsyncOverlayEmitsOnlyTheAsyncKeyNames)
@@ -89,6 +109,31 @@ TEST(IndexerConnectorConfigTest, AsyncOverlayEmitsOnlyTheAsyncKeyNames)
     EXPECT_EQ(777U, result.at("max_queue_bytes").get<std::size_t>());
     EXPECT_EQ(888U, result.at("logger_queue_size").get<std::size_t>());
     EXPECT_EQ(999U, result.at("logger_threads").get<std::size_t>());
+    EXPECT_EQ(2222U, result.at("request_timeout_seconds").get<std::size_t>());
+}
+
+/**
+ * The session overlay carries ONLY the session's key. The reverse also matters: the connector
+ * builders must NOT emit `monitoring_interval_seconds`, because in session mode the connectors adopt
+ * the session's already-built monitor and the key in their configs would be dead weight -- again
+ * indistinguishable from a typo.
+ */
+TEST(IndexerConnectorConfigTest, SessionOverlayEmitsOnlyTheSessionKeyName)
+{
+    const auto config = fullyPopulatedConfig();
+    const auto result = buildSessionConfig(nlohmann::json::object(), config);
+
+    for (const auto& key : SESSION_KEYS)
+    {
+        EXPECT_TRUE(result.contains(key)) << "missing session key: " << key;
+    }
+    EXPECT_EQ(1U, result.size()) << "the session overlay must add nothing beyond SESSION_KEYS";
+    EXPECT_EQ(3333U, result.at("monitoring_interval_seconds").get<std::size_t>());
+
+    EXPECT_FALSE(buildSyncConnectorConfig(nlohmann::json::object(), config).contains("monitoring_interval_seconds"))
+        << "monitoring_interval_seconds is the SESSION's key name";
+    EXPECT_FALSE(buildAsyncConnectorConfig(nlohmann::json::object(), config).contains("monitoring_interval_seconds"))
+        << "monitoring_interval_seconds is the SESSION's key name";
 }
 
 /**
@@ -124,6 +169,12 @@ TEST(IndexerConnectorConfigTest, EveryOverlaidNumericKeyIsAnUnsignedJsonNumber)
     {
         EXPECT_TRUE(value.is_number_unsigned()) << "async key not unsigned: " << key;
     }
+
+    const auto sessionResult = buildSessionConfig(nlohmann::json::object(), config);
+    for (const auto& [key, value] : sessionResult.items())
+    {
+        EXPECT_TRUE(value.is_number_unsigned()) << "session key not unsigned: " << key;
+    }
 }
 
 /// `flush_interval_seconds` is the one key name both connectors read; it must be fed from two
@@ -158,6 +209,14 @@ TEST(IndexerConnectorConfigTest, NonPositiveValuesLeaveTheConnectorDefaultUntouc
     config.indexer_async_max_queue_bytes = -3;
     config.indexer_async_logger_queue_size = 0;
     config.indexer_async_logger_threads = -1;
+    config.indexer_sync_request_timeout_seconds = 0;
+    config.indexer_async_request_timeout_seconds = -4;
+    config.indexer_monitoring_interval_seconds = -5;
+    // The retry bounds treat 0 as a real setting ("disable this bound"), so only a NEGATIVE value is
+    // "no opinion" for them; a 0 here would be forwarded, not dropped.
+    config.indexer_sync_max_retry_attempts = -6;
+    config.indexer_sync_max_retry_duration_seconds = -8;
+    config.indexer_sync_connector_max_bulk_size = -7;
 
     const auto syncResult = buildSyncConnectorConfig(nlohmann::json::object(), config);
     for (const auto& key : SYNC_KEYS)
@@ -170,6 +229,43 @@ TEST(IndexerConnectorConfigTest, NonPositiveValuesLeaveTheConnectorDefaultUntouc
     {
         EXPECT_FALSE(asyncResult.contains(key)) << "non-positive value must not be written: " << key;
     }
+
+    const auto sessionResult = buildSessionConfig(nlohmann::json::object(), config);
+    for (const auto& key : SESSION_KEYS)
+    {
+        EXPECT_FALSE(sessionResult.contains(key)) << "non-positive value must not be written: " << key;
+    }
+}
+
+/// Raising the group-commit threshold must not drag the connector's request cap with it: that
+/// coupling is how a tuned deployment ended up sending `_bulk` requests past the indexer's
+/// `http.max_content_length`.
+TEST(IndexerConnectorConfigTest, ThePipelineGroupCommitThresholdNeverReachesTheConnector)
+{
+    inventory_sync_server_config_t config {};
+    config.indexer_sync_max_bulk_size = 50 * 1024 * 1024;
+
+    const auto result = buildSyncConnectorConfig(nlohmann::json::object(), config);
+    EXPECT_FALSE(result.contains("max_bulk_size"))
+        << "indexer_sync_max_bulk_size is the pipeline's threshold; absent the connector option, the "
+           "connector keeps its own default";
+}
+
+/// The retry-budget bounds read `0` as "disable this bound", so unlike every other numeric key a
+/// `0` here must reach the connector VERBATIM -- dropping it would silently restore the default cap
+/// rather than remove it.
+TEST(IndexerConnectorConfigTest, AZeroRetryBoundIsForwardedAsExplicitZero)
+{
+    inventory_sync_server_config_t config {};
+    config.indexer_sync_max_retry_attempts = 0;
+    config.indexer_sync_max_retry_duration_seconds = 0;
+
+    const auto result = buildSyncConnectorConfig(nlohmann::json::object(), config);
+
+    ASSERT_TRUE(result.contains("max_retry_attempts"));
+    ASSERT_TRUE(result.contains("max_retry_duration_seconds"));
+    EXPECT_EQ(0U, result.at("max_retry_attempts").get<std::size_t>());
+    EXPECT_EQ(0U, result.at("max_retry_duration_seconds").get<std::size_t>());
 }
 
 /// `0` for max_queue_bytes is the connector's own legitimate "unlimited", so it must reach the
@@ -182,7 +278,7 @@ TEST(IndexerConnectorConfigTest, AZeroMaxQueueBytesLeavesTheKeyAbsentMeaningUnli
     EXPECT_FALSE(buildAsyncConnectorConfig(nlohmann::json::object(), config).contains("max_queue_bytes"));
 }
 
-TEST(IndexerConnectorConfigTest, BothBuildersPreserveHostsAndSsl)
+TEST(IndexerConnectorConfigTest, AllBuildersPreserveHostsAndSsl)
 {
     nlohmann::json indexerConfig;
     indexerConfig["hosts"] = {"https://127.0.0.1:9200"};
@@ -191,8 +287,9 @@ TEST(IndexerConnectorConfigTest, BothBuildersPreserveHostsAndSsl)
 
     const auto config = fullyPopulatedConfig();
 
-    for (const auto& result :
-         {buildSyncConnectorConfig(indexerConfig, config), buildAsyncConnectorConfig(indexerConfig, config)})
+    for (const auto& result : {buildSyncConnectorConfig(indexerConfig, config),
+                               buildAsyncConnectorConfig(indexerConfig, config),
+                               buildSessionConfig(indexerConfig, config)})
     {
         ASSERT_TRUE(result.contains("hosts"));
         EXPECT_EQ(1U, result.at("hosts").size());
@@ -202,7 +299,7 @@ TEST(IndexerConnectorConfigTest, BothBuildersPreserveHostsAndSsl)
     }
 }
 
-TEST(IndexerConnectorConfigTest, NeitherBuilderMutatesItsInput)
+TEST(IndexerConnectorConfigTest, NoBuilderMutatesItsInput)
 {
     nlohmann::json indexerConfig;
     indexerConfig["hosts"] = {"https://127.0.0.1:9200"};
@@ -211,6 +308,7 @@ TEST(IndexerConnectorConfigTest, NeitherBuilderMutatesItsInput)
     const auto config = fullyPopulatedConfig();
     (void)buildSyncConnectorConfig(indexerConfig, config);
     (void)buildAsyncConnectorConfig(indexerConfig, config);
+    (void)buildSessionConfig(indexerConfig, config);
 
     EXPECT_EQ(original, indexerConfig);
 }

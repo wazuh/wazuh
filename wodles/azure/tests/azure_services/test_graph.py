@@ -224,6 +224,59 @@ def test_get_graph_events(mock_get, mock_update, mock_send):
             status_value = sent_json['status']
             assert isinstance(status_value, dict)
 
+@pytest.mark.parametrize(
+    'next_url',
+    [
+        'https://attacker.com/v1.0/auditLogs/directoryAudits',
+        'http://graph.microsoft.com/v1.0/auditLogs/directoryAudits',
+        'https://graph.microsoft.com.attacker.com/v1.0/auditLogs/directoryAudits',
+        'https://graph.microsoft.com@attacker.com/v1.0/auditLogs/directoryAudits',
+        'https://graph.microsoft.com:8443/v1.0/auditLogs/directoryAudits',
+        '//attacker.com/v1.0/auditLogs/directoryAudits',
+        'nextLink',
+    ],
+)
+@patch('azure_services.graph.logging.error')
+@patch('azure_services.graph.send_message')
+@patch('azure_services.graph.update_row_object')
+@patch('azure_services.graph.get')
+def test_get_graph_events_untrusted_next_link(mock_get, mock_update, mock_send, mock_logging, next_url):
+    """Test get_graph_events does not follow a pagination URL outside the Microsoft Graph endpoint."""
+    url = f'{URL_GRAPH}/v1.0/auditLogs/directoryAudits'
+    headers = {'Authorization': 'Bearer token'}
+
+    event_list = MagicMock(status_code=200)
+    event_list.json.return_value = {'value': [], '@odata.nextLink': next_url}
+    mock_get.side_effect = [event_list]
+
+    get_graph_events(url=url, headers=headers, md5_hash='', query='query', tag='tag', tenant='tenant')
+
+    mock_get.assert_called_once_with(url=url, headers=headers, timeout=10)
+    mock_logging.assert_called_once()
+
+
+@patch('azure_services.graph.logging.debug')
+@patch('azure_services.graph.get')
+def test_get_graph_events_does_not_log_headers(mock_get, mock_logging):
+    """Test get_graph_events does not write the authentication token to the log."""
+    token = 'A_TOKEN_THAT_MUST_NOT_BE_LOGGED'
+
+    event_list = MagicMock(status_code=200)
+    event_list.json.return_value = {'value': []}
+    mock_get.side_effect = [event_list]
+
+    get_graph_events(
+        url=f'{URL_GRAPH}/v1.0/auditLogs/directoryAudits',
+        headers={'Authorization': f'Bearer {token}'},
+        md5_hash='',
+        query='query',
+        tag='tag',
+        tenant='tenant',
+    )
+
+    for call in mock_logging.call_args_list:
+        assert token not in call[0][0]
+
 @pytest.mark.parametrize('status_code', [400, 500])
 @patch('azure_utils.logging.error')
 @patch('azure_services.graph.get')

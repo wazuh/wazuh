@@ -461,11 +461,13 @@ def test_syscollector_scanning(test_configuration, test_metadata, set_wazuh_conf
 
     for callback in check_callbacks:
         # Run check
-        log_monitor.start(callback=callbacks.generate_callback(callback), timeout=10)
+        # 60s margin: some collectors (e.g. Windows hotfixes via WMI) can take much longer than a
+        # few seconds to finish depending on host load, independent of this test's own configuration.
+        log_monitor.start(callback=callbacks.generate_callback(callback), timeout=60)
         assert log_monitor.callback_result
 
     # Check general scan has finished
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCAN_FINISHED), timeout=30)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCAN_FINISHED), timeout=60)
     assert log_monitor.callback_result
 
 

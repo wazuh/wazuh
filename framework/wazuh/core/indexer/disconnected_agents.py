@@ -8,7 +8,7 @@ from typing import Dict, Generator, List
 import wazuh.core.utils as core_utils
 from wazuh.core.agent import WazuhDBQueryAgents, get_agents_info
 from wazuh.core.cluster import master
-from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.configuration import get_manager_conf
 from wazuh.core.exception import (
     WazuhError,
     WazuhException,
@@ -90,14 +90,23 @@ class DisconnectedAgentSyncTasks:
         else:
             self._get_indexer_client = get_indexer_client
 
-        # Use from_import=True to avoid raising during tests when wazuh configuration file
-        # does not contain the indexer section. The config is only used for
-        # informational purposes here.
+        # The indexer configuration is only used for informational purposes here, so a
+        # missing section or an unreadable configuration file must not prevent the task
+        # from being created. Report it through this task's logger and carry on.
         try:
-            wazuh_config = get_ossec_conf(section="indexer", from_import=True)
-        except Exception:
+            wazuh_config = get_manager_conf(section="indexer")
+        except WazuhException as e:
             wazuh_config = {}
-        self.logger.debug(f"Wazuh config for indexer section: {wazuh_config}")
+            if e.code == 1106:
+                # The indexer section is not present in the wazuh configuration file.
+                self.logger.debug("No indexer section found in the wazuh configuration file")
+            else:
+                self.logger.warning(f"Could not read the indexer configuration: {e}")
+        except Exception as e:
+            wazuh_config = {}
+            self.logger.warning(f"Unexpected error reading the indexer configuration: {e}")
+        else:
+            self.logger.debug(f"Wazuh config for indexer section: {wazuh_config}")
 
         master_interval = cluster_items.get("intervals", {}).get("master", {})
         self.sync_interval = master_interval.get(
@@ -387,7 +396,7 @@ class DisconnectedAgentSyncTasks:
                 return
             # Read cluster name from wazuh-manager.conf
             try:
-                conf = get_ossec_conf(section="cluster")
+                conf = get_manager_conf(section="cluster")
                 cluster_name = conf.get("cluster", {}).get("name")
             except Exception as e:
                 self.logger.error(f"Failed reading cluster name from wazuh-manager.conf: {e}")

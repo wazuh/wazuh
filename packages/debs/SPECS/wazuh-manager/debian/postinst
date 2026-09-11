@@ -71,6 +71,13 @@ case "$1" in
             echo "ERROR: could not generate ${DIR}/etc/wazuh-manager.conf." >&2
             exit 1
         fi
+        # The generated file must validate against the embedded schema (file existence is not
+        # checked: the certificates it references are generated later).
+        if ! ${DIR}/bin/wazuh-manager-conf --skip-file-checks validate -f ${DIR}/etc/wazuh-manager.conf; then
+            rm -f ${DIR}/etc/wazuh-manager.conf
+            echo "ERROR: the generated ${DIR}/etc/wazuh-manager.conf is not a valid manager configuration." >&2
+            exit 1
+        fi
 
         passlist="${DIR}/agentless/.passlist"
 
@@ -187,8 +194,7 @@ case "$1" in
     for BIN in agent_groups agent_upgrade cluster_control rbac_control \
         wazuh-manager-analysisd wazuh-manager-apid wazuh-manager-authd \
         wazuh-manager-clusterd wazuh-manager-control wazuh-manager-service-control wazuh-manager-db \
-        wazuh-manager-keystore wazuh-manager-modulesd \
-        wazuh-manager-monitord wazuh-manager-remoted; do
+        wazuh-manager-keystore wazuh-manager-modulesd wazuh-manager-remoted; do
         if [ -f "${DIR}/bin/${BIN}" ]; then
             case "${BIN}" in
                 wazuh-manager-service-control)

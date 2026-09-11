@@ -18,7 +18,7 @@
 #include <chrono>
 #include <thread>
 
-auto constexpr TEST_SOCKET {"queue/db/wdb"};
+auto constexpr TEST_SOCKET {"queue/sockets/wdb.sock"};
 
 class SocketDBWrapperTest : public ::testing::Test
 {

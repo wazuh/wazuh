@@ -11,9 +11,12 @@
 
 #include "sync/syncPipeline.hpp"
 
+#include "common/metricNames.hpp"
 #include "sync/fullSessionValidator.hpp"
 #include "testIndexerConnectorFakes.hpp"
 #include "testSessionBuilder.hpp"
+
+#include <wazuh_metrics/manager.hpp>
 
 #include <gtest/gtest.h>
 
@@ -153,6 +156,32 @@ TEST(SyncPipelineTest, ABulkSessionIsStagedFlushedAndAnswered200)
     EXPECT_EQ(0, responder->extraSends());
 }
 
+/**
+ * R-08 observability: sync.bulk.flushes counts group commits, but one group commit can be several
+ * real `_bulk` requests (splits, retries, auto-flushes). The pipeline drains the connector's own
+ * request counts after every flush so the metrics carry the real traffic too.
+ */
+TEST(SyncPipelineTest, TheConnectorsRealBulkRequestsReachTheMetrics)
+{
+    auto metrics = std::make_shared<wazuh::metrics::Manager>();
+    auto events = std::make_shared<ConnectorEvents>();
+    events->m_bulkStatsRequests = 3;
+    events->m_bulkStatsBytes = 4096;
+
+    std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors {
+        std::make_shared<FakeIndexerConnectorSync>(events, "sync")};
+    SyncPipeline pipeline {SyncPipelineConfig {}, std::move(connectors), CLUSTER, nullptr, metrics};
+
+    auto responder = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline.enqueue(makeItem(deltaBody("doc-1"), responder)));
+    EXPECT_EQ(200, responder->get().status);
+
+    const auto requests = metrics->getOrCreateCounter(invsync::metrics::INDEXER_BULK_REQUESTS, "", "count");
+    const auto bytes = metrics->getOrCreateCounter(invsync::metrics::INDEXER_BULK_BYTES, "", "bytes");
+    EXPECT_EQ(3U, requests->get());
+    EXPECT_EQ(4096U, bytes->get());
+}
+
 TEST(SyncPipelineTest, GroupCommitBatchesWhateverQueuedBehindABlockedFlush)
 {
     PipelineUnderTest fixture;
@@ -243,6 +272,46 @@ TEST(SyncPipelineTest, AFailedFlushFailsTheWholeBatch)
     EXPECT_EQ(500, first->get().status);
     EXPECT_EQ(500, second->get().status) << "batch members share the flush verdict";
     EXPECT_EQ(500, third->get().status);
+}
+
+/**
+ * R-07 observability: a failed group commit is counted by its cause, and the sessions it punished
+ * are counted as blast radius -- the amplification that was previously visible only as a log line.
+ */
+TEST(SyncPipelineTest, FailedGroupCommitsAreCountedByCauseAndBlastRadius)
+{
+    auto metrics = std::make_shared<wazuh::metrics::Manager>();
+    auto events = std::make_shared<ConnectorEvents>();
+    std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors {
+        std::make_shared<FakeIndexerConnectorSync>(events, "sync")};
+    SyncPipeline pipeline {SyncPipelineConfig {}, std::move(connectors), CLUSTER, nullptr, metrics};
+
+    {
+        std::lock_guard<std::mutex> lock(events->m_mutex);
+        events->m_syncThrowOn = "flush";
+        events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::RetryExhausted;
+    }
+    auto first = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline.enqueue(makeItem(deltaBody("doc-1"), first)));
+    EXPECT_EQ(500, first->get().status);
+
+    // An untyped connector failure lands in the "other" bucket.
+    {
+        std::lock_guard<std::mutex> lock(events->m_mutex);
+        events->m_syncThrowCause.reset();
+    }
+    auto second = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline.enqueue(makeItem(deltaBody("doc-2"), second)));
+    EXPECT_EQ(500, second->get().status);
+
+    const auto counter = [&metrics](const std::string& name)
+    {
+        return metrics->getOrCreateCounter(name, "", "count")->get();
+    };
+    EXPECT_EQ(1U, counter(std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "exhausted"));
+    EXPECT_EQ(1U, counter(std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "other"));
+    EXPECT_EQ(0U, counter(std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "documents"));
+    EXPECT_EQ(2U, counter(invsync::metrics::BULK_SESSIONS_FAILED));
 }
 
 TEST(SyncPipelineTest, FlushFailureMapsTo503WhenTheConnectorIsUnavailable)
@@ -383,7 +452,7 @@ TEST(SyncPipelineTest, SameAgentSessionsKeepTheirOrderWithManyWorkers)
     }
 }
 
-// --- DeleteAgent items (DELETE /agents, design doc 04) ------------------------------------------
+// --- DeleteAgent items (design doc 04) ---------------------------------------------------------
 
 namespace
 {
@@ -400,7 +469,7 @@ namespace
     }
 } // namespace
 
-TEST(SyncPipelineTest, ADeleteAgentItemWipesTheWholeScopeAndFlushes)
+TEST(SyncPipelineTest, ADeleteAgentItemWipesTheByQueryScopeAndFlushes)
 {
     PipelineUnderTest fixture;
     auto responder = std::make_shared<FutureResponder>();
@@ -411,23 +480,25 @@ TEST(SyncPipelineTest, ADeleteAgentItemWipesTheWholeScopeAndFlushes)
     EXPECT_EQ(200, response.status);
     EXPECT_EQ(R"({"status":"ok"})", response.body);
 
-    // One delete-by-query per index of the scope, and nothing else: the deletion does NOT refresh
-    // first (that needs a privilege the manager's indexer role lacks), which is why a document
-    // written inside the index refresh interval can survive it.
+    /*
+     * AGENT_DELETION_SCOPE_BY_QUERY, and NOTHING else. Exactly one op is the assertion that matters
+     * here: `wazuh-agent-config` and `wazuh-agent-stats` are deliberately NOT deleted from this
+     * connector -- they are written by the async one, and a delete-by-query issued here could
+     * neither drain its queue nor see an unrefreshed document, which is how a report in flight used
+     * to outlive the agent. The endpoint queues their deletes by id on that connector instead
+     * (deleteAgentEndpoint_test.cpp pins it).
+     *
+     * The deletion also does NOT refresh first (that needs a privilege the manager's indexer role
+     * lacks), which is why a STATE document written inside the index refresh interval can survive.
+     */
     const auto ops = fixture.events->syncOps();
-    ASSERT_EQ(3U, ops.size());
+    ASSERT_EQ(1U, ops.size());
+    EXPECT_EQ("deleteByQuery", std::get<0>(ops[0]));
+    EXPECT_EQ("005", std::get<1>(ops[0]));
+    EXPECT_EQ("wazuh-states-*", std::get<2>(ops[0]));
+    EXPECT_EQ(CLUSTER, std::get<3>(ops[0])) << "scoped to this cluster";
 
-    const std::vector<std::string> scope {"wazuh-states-*", "wazuh-agent-config", "wazuh-agent-stats"};
-    for (std::size_t i = 0; i < scope.size(); ++i)
-    {
-        const auto& deletion = ops[i];
-        EXPECT_EQ("deleteByQuery", std::get<0>(deletion));
-        EXPECT_EQ("005", std::get<1>(deletion));
-        EXPECT_EQ(scope[i], std::get<2>(deletion)) << "the config and stats indices live outside wazuh-states-*";
-        EXPECT_EQ(CLUSTER, std::get<3>(deletion)) << "scoped to this cluster";
-    }
-
-    EXPECT_EQ(1, fixture.events->m_syncFlushes.load()) << "the 200 means every delete was FLUSHED, in one go";
+    EXPECT_EQ(1, fixture.events->m_syncFlushes.load()) << "the 200 means the delete was FLUSHED";
 }
 
 TEST(SyncPipelineTest, ADeletionOrdersAfterAnEarlierSessionOfTheSameAgent)
@@ -444,14 +515,13 @@ TEST(SyncPipelineTest, ADeletionOrdersAfterAnEarlierSessionOfTheSameAgent)
     EXPECT_EQ(200, delta->get().status);
     EXPECT_EQ(200, deletion->get().status);
 
-    // Exact, not just non-empty: the assertions below index ops[1], so a regression that collapsed
-    // the deletion to a single op would read out of bounds instead of failing. One bulkIndex for the
-    // delta, then one delete-by-query per index of the deletion scope.
+    // Exact, not just non-empty: the assertions below index ops[1], so a regression that dropped
+    // the deletion entirely would read out of bounds instead of failing. One bulkIndex for the
+    // delta, then the by-query pass over AGENT_DELETION_SCOPE_BY_QUERY.
     const auto ops = fixture.events->syncOps();
-    ASSERT_EQ(4U, ops.size());
+    ASSERT_EQ(2U, ops.size());
     EXPECT_EQ("bulkIndex", std::get<0>(ops[0])) << "the delta's write reaches the indexer first";
     EXPECT_EQ("deleteByQuery", std::get<0>(ops[1])) << "and the deletion follows it, never the other way round";
-    EXPECT_EQ("deleteByQuery", std::get<0>(ops.back()));
 }
 
 TEST(SyncPipelineTest, ADeleteFailureIsVisibleToTheCaller)

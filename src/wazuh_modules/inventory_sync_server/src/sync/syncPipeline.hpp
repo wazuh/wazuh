@@ -73,20 +73,27 @@ namespace invsync::sync
         /// points into alive -- and with it the transport's in-flight byte reservation.
         struct Item
         {
-            /// What this item asks the worker to do. DeleteAgent (DELETE /agents) rides the same
+            /// What this item asks the worker to do. DeleteAgent rides the same
             /// shard queue as the agent's sessions ON PURPOSE: the deletion orders FIFO against any
             /// in-flight session of that agent instead of racing it (design doc 04 §1) -- the
             /// legacy module's delete competed for a lock with no ordering at all.
+            ///
+            /// VdScanRequest rides the VD SCAN LANE, never a pipeline shard: it is an on-demand
+            /// rescan with no session and no inventory, so there is nothing for a shard worker to
+            /// index. It shares this type because the lane's Item IS this one, and because both of
+            /// the properties that matter -- the per-agent registry exclusion and the responder
+            /// held to completion -- are already carried here.
             enum class Kind
             {
                 Session,
-                DeleteAgent
+                DeleteAgent,
+                VdScanRequest
             };
 
             std::shared_ptr<const wazuh::uds_http::HttpRequest> request;
             std::shared_ptr<wazuh::uds_http::IHttpResponder> responder;
-            /// For DeleteAgent only `session.agentId` is meaningful (sharding, registry, deletion
-            /// scope); the FlatBuffer pointer stays null.
+            /// For DeleteAgent and VdScanRequest only `session.agentId` is meaningful (sharding,
+            /// registry, deletion scope); the FlatBuffer pointer stays null.
             ValidatedSession session;
             Kind kind {Kind::Session};
             /// Stamped by the endpoint at enqueue; respond() observes the elapsed time into the
@@ -179,6 +186,12 @@ namespace invsync::sync
         std::shared_ptr<wazuh::metrics::ICounter> m_bulkFlushes;
         std::shared_ptr<wazuh::metrics::ICounter> m_bulkBytesTotal;
         std::shared_ptr<wazuh::metrics::ICounter> m_bulkSessionsTotal;
+        std::shared_ptr<wazuh::metrics::ICounter> m_indexerBulkRequests;
+        std::shared_ptr<wazuh::metrics::ICounter> m_indexerBulkBytes;
+        std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresDocuments;
+        std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresExhausted;
+        std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresOther;
+        std::shared_ptr<wazuh::metrics::ICounter> m_bulkSessionsFailed;
         std::shared_ptr<wazuh::metrics::IHistogram> m_durationBulk;
         std::shared_ptr<wazuh::metrics::IHistogram> m_durationImmediate;
         /// One pair per shard. GAUGES the workers update, not pull metrics: a pull would capture

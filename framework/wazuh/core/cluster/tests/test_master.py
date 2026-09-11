@@ -4,6 +4,7 @@
 
 import asyncio
 import logging
+import os
 import sys
 from collections import defaultdict
 from contextvars import ContextVar
@@ -30,7 +31,14 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.cluster.master import DEFAULT_DATE
         from wazuh.core import common
         from wazuh.core.cluster.dapi import dapi
+        from wazuh.core.cluster.utils import get_cluster_items
         from wazuh.core.common import DECIMALS_DATE_FORMAT
+
+# The exclusion guard matches a file name, so the name under test and the list it is matched
+# against both come from production sources (common.MANAGER_CONF and cluster.json): dropping the
+# entry from cluster.json must make these tests fail.
+MANAGER_CONF_FILENAME = os.path.basename(common.MANAGER_CONF)
+EXCLUDED_FILES = get_cluster_items()['files']['excluded_files']
 
 # Global variables
 
@@ -1786,8 +1794,8 @@ def test_master_get_node(get_running_loop_mock):
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
-async def test_disconnected_agent_group_sync_task_initialization(get_ossec_conf_mock):
+@patch('wazuh.core.indexer.disconnected_agents.get_manager_conf', return_value={})
+async def test_disconnected_agent_group_sync_task_initialization(get_manager_conf_mock):
     """Test DisconnectedAgentSyncTasks initialization."""
     
     cluster_items_with_sync = cluster_items.copy()
@@ -1809,8 +1817,8 @@ async def test_disconnected_agent_group_sync_task_initialization(get_ossec_conf_
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
-async def test_disconnected_agent_group_sync_task_batch_agents(get_ossec_conf_mock):
+@patch('wazuh.core.indexer.disconnected_agents.get_manager_conf', return_value={})
+async def test_disconnected_agent_group_sync_task_batch_agents(get_manager_conf_mock):
     """Test DisconnectedAgentSyncTasks batch_agents method."""
     
     cluster_items_with_sync = cluster_items.copy()
@@ -1841,13 +1849,13 @@ async def test_disconnected_agent_group_sync_task_batch_agents(get_ossec_conf_mo
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
+@patch('wazuh.core.indexer.disconnected_agents.get_manager_conf', return_value={})
 @patch('wazuh.core.cluster.master.AsyncWazuhDBConnection')
 @patch('wazuh.core.indexer.disconnected_agents.WazuhDBQueryAgents')
 async def test_disconnected_agent_group_sync_task_get_disconnected_agents_filter_by_time(
     mock_wazuh_db_query, 
     mock_async_conn,
-    mock_get_ossec_conf
+    mock_get_manager_conf
 ):
     """Test DisconnectedAgentSyncTasks _get_disconnected_agents_filter_by_time method."""
 
@@ -1888,11 +1896,11 @@ async def test_disconnected_agent_group_sync_task_get_disconnected_agents_filter
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
+@patch('wazuh.core.indexer.disconnected_agents.get_manager_conf', return_value={})
 @patch('wazuh.core.cluster.master.DisconnectedAgentSyncTasks.check_indexer', new_callable=AsyncMock)
 @patch('wazuh.core.cluster.master.DisconnectedAgentSyncTasks._get_disconnected_agents_filter_by_time')
 @patch('wazuh.core.cluster.master.AsyncWazuhDBConnection')
-async def test_disconnected_agent_group_sync_task_run_with_disabled_task(mock_wdb_conn, mock_get_disconnected, mock_check_indexer, get_ossec_conf_mock):
+async def test_disconnected_agent_group_sync_task_run_with_disabled_task(mock_wdb_conn, mock_get_disconnected, mock_check_indexer, get_manager_conf_mock):
     """Test DisconnectedAgentSyncTasks run method when disabled."""
 
     cluster_items_with_sync = cluster_items.copy()
@@ -1940,7 +1948,7 @@ def test_master_handler_process_files_from_worker_validates_non_merged_path(safe
     )
     assert result['errors_per_folder'] == defaultdict(list)
 
-    files_metadata = {"etc/ossec.conf": {"merged": False, "cluster_item_key": "queue/testing/"}}
+    files_metadata = {f"etc/{MANAGER_CONF_FILENAME}": {"merged": False, "cluster_item_key": "queue/testing/"}}
     result = master_handler.process_files_from_worker(
         files_metadata=files_metadata,
         decompressed_files_path='/decompressed',
@@ -1949,7 +1957,7 @@ def test_master_handler_process_files_from_worker_validates_non_merged_path(safe
         timeout=0
     )
     assert len(result['errors_per_folder']['queue/testing/']) > 0
-    assert any('outside allowed directory' in str(e) or '3022' in str(e)
+    assert any('3062' in str(e) and 'outside allowed directory' in str(e)
               for e in result['errors_per_folder']['queue/testing/'])
 
     basename_mock.return_value = "excluded.txt"
@@ -1964,7 +1972,7 @@ def test_master_handler_process_files_from_worker_validates_non_merged_path(safe
         timeout=0
     )
     assert len(result['errors_per_folder']['queue/testing/']) > 0
-    assert any('excluded list' in str(e) or '3022' in str(e)
+    assert any('3062' in str(e) and 'excluded list' in str(e)
               for e in result['errors_per_folder']['queue/testing/'])
 
 
@@ -1994,7 +2002,7 @@ def test_master_handler_process_files_from_worker_rejects_non_extra_valid_item(s
     )
 
     safe_move_mock.assert_not_called()
-    assert any('not allowed to be synced' in str(e) or '3022' in str(e) for e in result['generic_errors'])
+    assert any('3062' in str(e) and 'not allowed to be synced' in str(e) for e in result['generic_errors'])
 
 
 @patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
@@ -2004,18 +2012,18 @@ def test_master_handler_process_files_from_worker_normalizes_path_before_exclude
                                                                                         uid_mock):
     """Test that the excluded_files/client.keys checks use the normalized path, not the raw worker-supplied key.
 
-    Regression test for GHSA-88p6-7cm8-xwj8: a raw key of "etc/ossec.conf/" has an empty
-    os.path.basename() ('' != 'ossec.conf'), bypassing the excluded_files guard, even though it
-    resolves (via safe_join/normpath, which strips the trailing slash) to the real ossec.conf.
+    Regression test for GHSA-88p6-7cm8-xwj8: a raw key with a trailing slash ("etc/<conf>/") has an
+    empty os.path.basename(), bypassing the excluded_files guard, even though it resolves (via
+    safe_join/normpath, which strips the trailing slash) to the manager configuration itself.
     """
     master_handler = get_master_handler()
     cluster_items_etc = dict(cluster_items)
     cluster_items_etc['files'] = {
         **cluster_items['files'],
         'etc/': {'remove_subdirs_if_empty': True, 'permissions': 'value', 'extra_valid': True},
-        'excluded_files': ['ossec.conf']
+        'excluded_files': EXCLUDED_FILES
     }
-    files_metadata = {"etc/ossec.conf/": {"merged": False, "cluster_item_key": "etc/"}}
+    files_metadata = {f"etc/{MANAGER_CONF_FILENAME}/": {"merged": False, "cluster_item_key": "etc/"}}
 
     result = master_handler.process_files_from_worker(
         files_metadata=files_metadata,
@@ -2027,4 +2035,4 @@ def test_master_handler_process_files_from_worker_normalizes_path_before_exclude
 
     safe_move_mock.assert_not_called()
     assert len(result['errors_per_folder']['etc/']) > 0
-    assert any('excluded list' in str(e) or '3022' in str(e) for e in result['errors_per_folder']['etc/'])
+    assert any('3062' in str(e) and 'excluded list' in str(e) for e in result['errors_per_folder']['etc/'])

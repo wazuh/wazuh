@@ -17,8 +17,8 @@ using remoted::http::headerValue;
 
 TEST(HeaderUtilsTest, FindsAnAlreadyLowercaseName)
 {
-    std::unordered_map<std::string, std::string> headers {{"authorization", "WazuhEnroll 1:deadbeef"}};
-    EXPECT_EQ(headerValue(headers, "authorization"), "WazuhEnroll 1:deadbeef");
+    std::unordered_map<std::string, std::string> headers {{"authorization", "Bearer aaa.bbb.ccc"}};
+    EXPECT_EQ(headerValue(headers, "authorization"), "Bearer aaa.bbb.ccc");
 }
 
 TEST(HeaderUtilsTest, FindsTheRfcCanonicalMixedCaseName)
@@ -27,8 +27,8 @@ TEST(HeaderUtilsTest, FindsTheRfcCanonicalMixedCaseName)
     // name comes back in its canonical spelling, not lowercased. This is the exact scenario an
     // exact-match find() misses -- see this header's own class comment for the bug it was written
     // to prevent.
-    std::unordered_map<std::string, std::string> headers {{"Authorization", "WazuhEnroll 1:deadbeef"}};
-    EXPECT_EQ(headerValue(headers, "authorization"), "WazuhEnroll 1:deadbeef");
+    std::unordered_map<std::string, std::string> headers {{"Authorization", "Bearer aaa.bbb.ccc"}};
+    EXPECT_EQ(headerValue(headers, "authorization"), "Bearer aaa.bbb.ccc");
 }
 
 TEST(HeaderUtilsTest, FindsAnUppercaseName)

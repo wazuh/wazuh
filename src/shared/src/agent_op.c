@@ -304,6 +304,24 @@ int auth_connect() {
 #endif
 }
 
+// Connect to Agentd with a receive deadline. Returns socket or -1 on error.
+int auth_connect_timeout(__attribute__((unused)) int recv_timeout) {
+#ifndef WIN32
+    char sockname[PATH_MAX + 1];
+
+    strncpy(sockname, AUTH_LOCAL_SOCK, sizeof(sockname) - 1);
+    sockname[sizeof(sockname) - 1] = '\0';
+
+    // Kept separate from auth_connect() rather than replacing it, because external_socket_connect
+    // also imposes a hardcoded 5 second send timeout that no current caller has asked for.
+    // Note only the receive side takes the parameter: a caller that has to bound its total time,
+    // rather than the time of any one call, needs an elapsed-time budget of its own as well.
+    return external_socket_connect(sockname, recv_timeout);
+#else
+    return -1;
+#endif
+}
+
 // Close socket if valid.
 int auth_close(int sock) {
     return (sock >= 0) ? close(sock) : 0;
@@ -600,7 +618,7 @@ int w_request_agent_add_clustered(char *err_response,
         result = w_parse_agent_add_response(response, err_response, new_id, new_key, FALSE, FALSE, master_error_code);
     }
     else if (err_response) {
-        snprintf(err_response, 2048, "ERROR: Cannot comunicate with master");
+        snprintf(err_response, 2048, "ERROR: Cannot communicate with master");
     }
 
     free(output);
@@ -627,7 +645,7 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
         result = w_parse_agent_remove_response(response, err_response, FALSE, FALSE);
     }
     else if (err_response) {
-        snprintf(err_response, 2048, "ERROR: Cannot comunicate with master");
+        snprintf(err_response, 2048, "ERROR: Cannot communicate with master");
     }
 
     free(output);

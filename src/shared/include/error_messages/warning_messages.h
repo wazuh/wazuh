@@ -83,7 +83,9 @@
 #define FIM_WARN_INODE_WRONG_TYPE               "(6960): Inode field received with a wrong type, it must be a string."
 #define FIM_WARN_SYMLINK_NOFOLLOW               "(6961): Configured path '%s' is a symbolic link to '%s'. Without 'follow_symbolic_link' enabled, only the symlink itself will be monitored, not the directory contents. Consider monitoring '%s' directly or enabling 'follow_symbolic_link'."
 
-/* Monitord warning messages */
+/* Log rotation warning messages. Unused -- no emitter on either product -- and kept only because
+ * the codes are published. Rotation itself lives in shared/src/log_rotate.c.
+ */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."
 #define ROTATE_JSON_LONG_PATH                   "(7501): The path of the rotated json is too long."
 #define COMPRESSED_LOG_LONG_PATH                "(7502): The path of the compressed log is too long."

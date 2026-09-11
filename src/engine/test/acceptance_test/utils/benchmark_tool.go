@@ -27,7 +27,7 @@ import (
 
 const (
 	// Unix HTTP socket where wazuh-engine listens
-	SocketPath = "/var/wazuh-manager/queue/sockets/queue-http.sock"
+	SocketPath = "/var/wazuh-manager/queue/sockets/engine-ingest-http.sock"
 	// Inline JSON header sent with every batch
 	HeaderJSON = `{"wazuh":{"cluster": {"name": "wazuh", "node": "123"},"agent":{"id":"001","name":"test-agent"}}}`
 	// HTTP endpoint for event ingestion

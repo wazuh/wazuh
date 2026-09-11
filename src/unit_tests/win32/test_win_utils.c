@@ -322,6 +322,94 @@ static void test_SendMSGAction_multi_escape(void **state) {
     assert_int_equal(ret, 0);
 }
 
+static void test_SendMSGAction_rejects_a_null_message(void **state) {
+    (void) state;
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
+
+    expect_string(__wrap__merror, formatted_msg, "(1106): String not correctly formatted.");
+
+    expect_any(wrap_ReleaseMutex, hMutex);
+    will_return(wrap_ReleaseMutex, 1);
+
+    int ret = SendMSG(0, NULL, "locmsg", LOCALFILE_MQ);
+
+    assert_int_equal(ret, -1);
+}
+
+/* utf8_reported in SendMSGAction() is process-global and cmocka runs every test in one
+ * process, so this must stay the first registered test that sends invalid UTF-8. A later
+ * one reaches the mdebug2 arm instead and this mwarn expectation fails. */
+static void test_SendMSGAction_replaces_an_invalid_utf8_byte_in_the_message(void **state) {
+    (void) state;
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Invalid UTF-8 byte in a message from 'test.log'. Replacing it with U+FFFD.");
+
+    expect_string(__wrap_w_https_client_submit_event, frame, "1:test.log:caf\xEF\xBF\xBD");
+    expect_value(__wrap_w_https_client_submit_event, length, strlen("1:test.log:caf\xEF\xBF\xBD"));
+    will_return(__wrap_w_https_client_submit_event, 0);
+
+    expect_any(wrap_ReleaseMutex, hMutex);
+    will_return(wrap_ReleaseMutex, 1);
+
+    int ret = SendMSG(0, "caf\xE9", "test.log", LOCALFILE_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
+static void test_SendMSGAction_cuts_an_oversize_message_on_a_character_boundary(void **state) {
+    (void) state;
+    static char location[300];
+    static char message[OS_MAXSTR];
+    static char expected[OS_MAXSTR];
+    char expected_debug[512];
+
+    memset(location, 'a', sizeof(location) - 1);
+    location[sizeof(location) - 1] = '\0';
+
+    size_t budget = OS_MAXSTR - 1 - (strlen(location) + 3);
+
+    memset(message, 'b', budget - 1);
+    memcpy(message + budget - 1, "\xE2\x82\xAC", 3);
+    message[budget + 2] = '\0';
+
+    int header = snprintf(expected, sizeof(expected), "1:%s:", location);
+    memset(expected + header, 'b', budget - 1);
+    expected[header + budget - 1] = '\0';
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
+
+    snprintf(expected_debug, sizeof(expected_debug),
+             "Message from '%s' cut to %zu bytes to fit the queue.", location, budget - 1);
+    expect_string(__wrap__mdebug2, formatted_msg, expected_debug);
+
+    expect_string(__wrap_w_https_client_submit_event, frame, expected);
+    expect_value(__wrap_w_https_client_submit_event, length, strlen(expected));
+    will_return(__wrap_w_https_client_submit_event, 0);
+
+    expect_any(wrap_ReleaseMutex, hMutex);
+    will_return(wrap_ReleaseMutex, 1);
+
+    int ret = SendMSG(0, message, location, LOCALFILE_MQ);
+
+    assert_int_equal(ret, 0);
+
+    /* Independent of the header formula above: OS_MAXSTR - 1 is what snprintf
+     * can write, the header takes 302 bytes of it, and the trailing three-byte
+     * character does not fit in the remainder, so the line stops one byte short
+     * of a full buffer. A header off by any amount moves this. */
+    assert_int_equal(strlen(expected), 65534);
+}
+
 static void test_SendBinaryMSGAction_mutex_abandoned(void **state) {
     (void) state;
 
@@ -568,6 +656,9 @@ int main(void) {
         cmocka_unit_test(test_SendMSGAction_mutex_abandoned), cmocka_unit_test(test_SendMSGAction_mutex_error),
         cmocka_unit_test(test_SendMSGAction_non_escape), cmocka_unit_test(test_SendMSGAction_escape),
         cmocka_unit_test(test_SendMSGAction_multi_escape),
+        cmocka_unit_test(test_SendMSGAction_rejects_a_null_message),
+        cmocka_unit_test(test_SendMSGAction_replaces_an_invalid_utf8_byte_in_the_message),
+        cmocka_unit_test(test_SendMSGAction_cuts_an_oversize_message_on_a_character_boundary),
         cmocka_unit_test(test_SendBinaryMSGAction_mutex_abandoned),
         cmocka_unit_test(test_SendBinaryMSGAction_message_too_large),
         cmocka_unit_test(test_SendBinaryMSGAction_submits_the_binary_frame),

@@ -99,8 +99,16 @@ namespace
             dataStreamed.emplace_back(std::string {index}, std::string {data});
         }
 
+        /// On the seam for the deletion route's sake, never called by this endpoint -- recorded so a
+        /// regression that made /config delete something would fail a test instead of passing.
+        void bulkDelete(std::string_view id, std::string_view index) override
+        {
+            deleted.emplace_back(std::string {id}, std::string {index});
+        }
+
         std::vector<std::tuple<std::string, std::string, std::string>> indexed;
         std::vector<std::pair<std::string, std::string>> dataStreamed;
+        std::vector<std::pair<std::string, std::string>> deleted;
 
     private:
         bool m_available;
@@ -308,9 +316,8 @@ TEST(ConfigEndpointTest, AnEmptyModulesObjectIsRejected)
 
 /**
  * The endpoint stores each module's configuration verbatim: it never judges or rewrites the inner
- * `config` object (the template is `dynamic: false`, so an undeclared key is stored in `_source` and
- * simply not indexed). Only the outer shape -- a `modules` object whose every value is an object --
- * is validated.
+ * `config` object (the template is `dynamic: true`, so an undeclared key is indexed like any other
+ * field). Only the outer shape -- a `modules` object whose every value is an object -- is validated.
  */
 TEST(ConfigEndpointTest, ModuleConfigurationIsStoredVerbatim)
 {

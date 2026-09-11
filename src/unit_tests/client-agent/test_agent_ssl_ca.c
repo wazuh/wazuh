@@ -17,6 +17,7 @@
 #include "agentd.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/os_utils_wrappers.h"
+#include "../wrappers/wazuh/shared/os_cert_bundle_wrappers.h"
 
 /* w_agent_validate_ssl_ca() decides whether the agent may start with the
  * <ssl><certificate_authorities> it was given. Two behaviours matter and they
@@ -128,6 +129,46 @@ static void test_certificate_with_unreadable_ca_fails(void **state)
     assert_false(w_agent_validate_ssl_ca(&cfg));
 }
 
+/* --- verification_mode system: trusts the OS store, never a configured CA --- */
+
+static void test_system_without_ca_starts_when_bundle_found(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_SYSTEM, NULL);
+
+    expect_os_find_ca_bundle("/etc/ssl/certs/ca-certificates.crt");
+
+    assert_true(w_agent_validate_ssl_ca(&cfg));
+}
+
+static void test_system_without_ca_fails_when_no_bundle_found(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_SYSTEM, NULL);
+
+    expect_os_find_ca_bundle(NULL);
+    expect_string(__wrap__merror, formatted_msg,
+                  "(4121): <ssl><verification_mode> is 'system' but no OS CA bundle was found "
+                  "on this host.");
+
+    assert_false(w_agent_validate_ssl_ca(&cfg));
+}
+
+/* A configured CA would simply go unused under 'system' -- reject rather than
+ * silently ignore what looks like a real operator intent. */
+static void test_system_with_ca_set_fails(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_SYSTEM, "etc/certs/root-ca.pem");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(4120): <ssl><verification_mode> is 'system' but <certificate_authorities> is "
+                  "set: 'etc/certs/root-ca.pem'. Remove it, or choose a different "
+                  "verification_mode; the OS trust store is used instead.");
+
+    assert_false(w_agent_validate_ssl_ca(&cfg));
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -138,6 +179,9 @@ int main(void)
         cmocka_unit_test(test_full_with_unreadable_ca_fails),
         cmocka_unit_test(test_full_without_ca_fails),
         cmocka_unit_test(test_certificate_with_unreadable_ca_fails),
+        cmocka_unit_test(test_system_without_ca_starts_when_bundle_found),
+        cmocka_unit_test(test_system_without_ca_fails_when_no_bundle_found),
+        cmocka_unit_test(test_system_with_ca_set_fails),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

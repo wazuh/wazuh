@@ -6,4 +6,4 @@ This page documents the Wazuh Engine events ingestion API.
 - OpenAPI source: `spec-events.yaml`
 
 Use this contract to ingest enriched security events into the engine through the
-local ingestion socket (`queue/sockets/queue-http.sock`).
+local ingestion socket (`queue/sockets/engine-ingest-http.sock`).

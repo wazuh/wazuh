@@ -14,7 +14,34 @@
 #include "config.h"
 #include "sec.h"
 
-int Read_Agent_Server(XML_NODE node, agent *logr);
+/* #38624: <endpoint> is parsed with libcurl's URL API. Already a dependency here --
+ * shared/src/url.c links the same library -- so this adds no new one. */
+#include <errno.h>
+#include "urlapi.h"
+
+/* if_nametoindex(), for resolving an IPv6 zone id to a scope id (#38624). Windows
+ * declares it in netioapi.h and provides it from iphlpapi, which every agent binary
+ * and the winagent unit tests already link. */
+#ifdef WIN32
+#include <netioapi.h>
+#else
+#include <net/if.h>
+#endif
+
+/* #38492: validation bound for <endpoint>, well under hc_config_t::server_endpoint's
+ * HC_MAX_ENDPOINT (256) so the C++ bridge's strncpy() never truncates a value
+ * that passed validation here. */
+#define AGENT_SERVER_ENDPOINT_MAX_LEN 128
+
+/* #38624: bound for the host component, matching hc_config_t::server_host (HC_MAX_HOST,
+ * 256) for the same reason. */
+#define AGENT_SERVER_HOST_MAX_LEN 255
+
+static int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
+                                  bool *port_present, char *endpoint, size_t endpoint_size,
+                                  uint32_t *scope_id);
+
+int Read_Agent_Manager(XML_NODE node, agent *logr);
 int Read_Agent_SSL(XML_NODE node, agent *logr);
 int Read_Agent_Batch(XML_NODE node, agent *logr);
 int Read_Agent_Report(XML_NODE node, agent_report *report);
@@ -34,7 +61,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     char * rip = NULL;
 
     /* XML definitions */
-    const char *xml_agent_server = "server";
+    const char *xml_agent_manager = "manager";
     const char *xml_agent_ssl = "ssl";
     const char *xml_agent_batch = "batch";
     const char *xml_agent_stats_report = "stats_report";
@@ -72,7 +99,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
         }
         /* Get manager IP */
         else if (strcmp(node[i]->element, xml_agent_ip) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_agent_ip);
+            mwarn("The <%s> tag is deprecated, please use <manager><endpoint> instead.", xml_agent_ip);
 
             if (OS_IsValidIP(node[i]->content, NULL) != 1) {
                 merror(INVALID_IP, node[i]->content);
@@ -81,7 +108,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
 
             rip = node[i]->content;
         } else if (strcmp(node[i]->element, xml_agent_hostname) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_agent_hostname);
+            mwarn("The <%s> tag is deprecated, please use <manager><endpoint> instead.", xml_agent_hostname);
             if (strchr(node[i]->content, '/') ==  NULL) {
                 snprintf(f_ip, 127, "%s/", node[i]->content);
                 rip = f_ip;
@@ -91,19 +118,19 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
 
         }
-        /* Get parameters for the configured server block */
-        else if (strcmp(node[i]->element, xml_agent_server) == 0) {
+        /* Get parameters for the configured manager block */
+        else if (strcmp(node[i]->element, xml_agent_manager) == 0) {
             if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 merror(XML_INVELEM, node[i]->element);
                 return (OS_INVALID);
             }
-            if (Read_Agent_Server(chld_node, logr) < 0) {
+            if (Read_Agent_Manager(chld_node, logr) < 0) {
                 OS_ClearNode(chld_node);
                 return (OS_INVALID);
             }
             OS_ClearNode(chld_node);
         } else if (strcmp(node[i]->element, xml_agent_ssl) == 0) {
-            /* HTTPS transport TLS settings (sibling of <server>, #37702 §10). */
+            /* HTTPS transport TLS settings (sibling of <manager>, #37702 §10). */
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 if (Read_Agent_SSL(chld_node, logr) < 0) {
                     OS_ClearNode(chld_node);
@@ -213,6 +240,10 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             os_realloc(logr->server, sizeof(agent_server) * (logr->server_count + 2), logr->server);
             os_strdup(rip, logr->server[logr->server_count].rip);
             logr->server[logr->server_count].port = 0;
+            // os_realloc() does not zero new memory; this old <server-ip>/<server-hostname>
+            // syntax never had an <endpoint> concept, so default it the same way a WPK-upgraded
+            // 4.x <client><server> config does (see Read_Legacy_Client_Address()).
+            os_strdup(DEFAULT_AGENT_ENDPOINT_PREFIX, logr->server[logr->server_count].endpoint);
             // Since these are new options we will only leave a default for legacy configurations
             logr->server[logr->server_count].max_retries = DEFAULT_MAX_RETRIES;
             logr->server[logr->server_count].retry_interval = DEFAULT_RETRY_INTERVAL;
@@ -243,9 +274,11 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
  */
 int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
-    const char *xml_agent_server = "server";
-    const char *xml_agent_addr = "address";
+    const char *xml_client_server = "server";
+    const char *xml_client_addr = "address";
+    const char *xml_client_endpoint = "endpoint";
     char * address = NULL;
+    char * endpoint_value = NULL;
 
     agent * logr = (agent *)d1;
 
@@ -256,7 +289,7 @@ int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __att
     for (int i = 0; node[i]; i++) {
         XML_NODE chld_node = NULL;
 
-        if (!node[i]->element || strcmp(node[i]->element, xml_agent_server) != 0) {
+        if (!node[i]->element || strcmp(node[i]->element, xml_client_server) != 0) {
             continue;
         }
 
@@ -265,16 +298,61 @@ int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __att
         }
 
         for (int j = 0; chld_node[j]; j++) {
-            if (!chld_node[j]->element || !chld_node[j]->content ||
-                strcmp(chld_node[j]->element, xml_agent_addr) != 0) {
+            if (!chld_node[j]->element || !chld_node[j]->content) {
                 continue;
             }
 
-            os_free(address);
-            os_strdup(chld_node[j]->content, address);
+            if (strcmp(chld_node[j]->element, xml_client_addr) == 0) {
+                os_free(address);
+                os_strdup(chld_node[j]->content, address);
+            } else if (strcmp(chld_node[j]->element, xml_client_endpoint) == 0) {
+                /* The MSI reconfigures a preserved 4.x file in place and, having no
+                 * <agent> block to target, writes the endpoint into this <server> one.
+                 * Reading only <address> here left that agent with no manager at all. */
+                os_free(endpoint_value);
+                os_strdup(chld_node[j]->content, endpoint_value);
+            }
         }
 
         OS_ClearNode(chld_node);
+    }
+
+    /* An <endpoint> written here by the installer carries the whole target, so it wins
+     * and is parsed exactly as one under <agent><manager> would be. */
+    if (endpoint_value) {
+        char host[AGENT_SERVER_HOST_MAX_LEN + 1] = {'\0'};
+        char endpoint[AGENT_SERVER_ENDPOINT_MAX_LEN + 1] = {'\0'};
+        uint32_t scope_id = 0;
+        int port = DEFAULT_HTTPS_REMOTE_PORT;
+        bool port_present = false;
+
+        if (w_parse_agent_endpoint(endpoint_value, host, sizeof(host), &port, &port_present,
+                                   endpoint, sizeof(endpoint), &scope_id) == OS_INVALID) {
+            os_free(address);
+            os_free(endpoint_value);
+            return (OS_INVALID);
+        }
+
+        os_free(address);
+        os_free(endpoint_value);
+
+        os_calloc(2, sizeof(agent_server), logr->server);
+        os_strdup(host, logr->server[0].rip);
+
+        if (strchr(logr->server[0].rip, ':') != NULL) {
+            os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
+            OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
+        }
+
+        if (endpoint[0] != '\0') {
+            os_strdup(endpoint, logr->server[0].endpoint);
+        }
+
+        logr->server[0].scope_id = scope_id;
+        logr->server[0].port = port;
+        logr->server_count = 1;
+
+        return (0);
     }
 
     if (!address) {
@@ -288,10 +366,26 @@ int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __att
         OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
     }
     logr->server[0].port = DEFAULT_HTTPS_REMOTE_PORT;
+    /* 4.x had no <endpoint> concept at all -- any <port> under this legacy
+     * <client><server> block was never read either (see this function's own
+     * docstring), so a WPK-upgraded agent always reconnects on the 5.x HTTPS
+     * port with the manager's default reverse-proxy prefix, never the old
+     * 4.x port or unprefixed requests. */
+    os_strdup(DEFAULT_AGENT_ENDPOINT_PREFIX, logr->server[0].endpoint);
     logr->server_count = 1;
 
-    minfo("<agent><server><address> is not configured. Using <client><server><address> '%s' "
-          "with the default port %d.", logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT);
+    /* A 4.x file has no <endpoint> at all, so say exactly what to write -- this is the
+     * upgrade path most likely to be edited by hand, and a copy-pasteable line is the
+     * whole point. The composed value is the one now in use, so pasting it changes
+     * nothing about where the agent connects. */
+    minfo("<agent><manager><endpoint> is not configured. Using <client><server><address> '%s' "
+          "with the default port %d and the default endpoint prefix '%s'. Replace the "
+          "<client><server> block with a single <endpoint>%s%s%s:%d/%s</endpoint>",
+          logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX,
+          (strchr(logr->server[0].rip, ':') != NULL) ? "[" : "",
+          logr->server[0].rip,
+          (strchr(logr->server[0].rip, ':') != NULL) ? "]" : "",
+          DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX);
 
     return (0);
 }
@@ -338,18 +432,378 @@ int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1)
 }
 
 /**
- * @brief Read the <agent><server> block: the single manager endpoint.
+ * @brief Validate and normalize a present <endpoint> tag's content (#38492).
  *
- * @param node Children of the <server> element.
+ * Only called with the raw content of an <endpoint> tag that was actually found in
+ * the XML -- an entirely absent tag never reaches this function; see
+ * Read_Agent_Manager()'s `endpoint_set`, which now defaults that case to
+ * DEFAULT_AGENT_ENDPOINT_PREFIX instead of leaving it unprefixed.
+ *
+ * Strips leading and trailing '/' characters (so "/wazuh-manager/",
+ * "wazuh-manager", and "wazuh-manager/" all normalize the same way),
+ * then rejects anything outside [A-Za-z0-9._-] plus '/' as an internal
+ * segment separator, repeated '/' (an empty segment), and '.'/'..'
+ * segments. A *present* endpoint that normalizes to empty ("/" or "")
+ * is a deliberate opt-out and still means "no endpoint configured" --
+ * unprefixed requests, unlike the entirely-absent case above.
+ *
+ * The manager-side sister issue must accept exactly the same charset,
+ * or an endpoint this agent accepts could still fail to route once it
+ * reaches the manager's reverse proxy.
+ *
+ * @param raw Raw XML content (never NULL).
+ * @param out Buffer to receive the normalized value.
+ * @param out_size Size of out, including the terminating NUL.
+ * @return 0 on success (out holds the normalized value, possibly ""), OS_INVALID on error.
+ */
+static int w_normalize_agent_endpoint(const char *raw, char *out, size_t out_size)
+{
+    size_t start = 0;
+    size_t end = strlen(raw);
+
+    while (start < end && raw[start] == '/') {
+        start++;
+    }
+
+    while (end > start && raw[end - 1] == '/') {
+        end--;
+    }
+
+    size_t len = end - start;
+
+    if (len == 0) {
+        out[0] = '\0';
+        return 0;
+    }
+
+    if (len >= out_size) {
+        merror("Invalid endpoint '%s': longer than %zu characters.", raw, out_size - 1);
+        return OS_INVALID;
+    }
+
+    memcpy(out, raw + start, len);
+    out[len] = '\0';
+
+    bool previous_was_slash = false;
+    size_t segment_start = 0;
+
+    for (size_t i = 0; i <= len; i++) {
+        if (i < len) {
+            char c = out[i];
+            bool is_slash = (c == '/');
+
+            if (!(isalnum((unsigned char)c) || c == '-' || c == '_' || c == '.' || is_slash)) {
+                merror("Invalid endpoint '%s': only letters, digits, '-', '_', '.', and '/' "
+                       "(as a segment separator) are allowed.", raw);
+                return OS_INVALID;
+            }
+
+            if (is_slash && previous_was_slash) {
+                merror("Invalid endpoint '%s': empty path segment (repeated '/').", raw);
+                return OS_INVALID;
+            }
+
+            previous_was_slash = is_slash;
+        }
+
+        if (i == len || out[i] == '/') {
+            size_t segment_len = i - segment_start;
+
+            if ((segment_len == 1 && out[segment_start] == '.') ||
+                    (segment_len == 2 && out[segment_start] == '.' && out[segment_start + 1] == '.')) {
+                merror("Invalid endpoint '%s': '.' and '..' are not allowed path segments.", raw);
+                return OS_INVALID;
+            }
+
+            segment_start = i + 1;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Resolve an IPv6 zone id (interface name or numeric index) to a scope id (#38624).
+ *
+ * A link-local IPv6 address is ambiguous without a scope: fe80::1 may exist on
+ * several interfaces at once. The zone id names the one to use, spelled with a
+ * percent inside the brackets -- and because that percent lives in a URL, it
+ * arrives percent-encoded: [fe80::1%25eth0].
+ *
+ * Accepts either an interface name, resolved through if_nametoindex(), or an
+ * already-numeric index passed through as-is. Resolving here rather than at
+ * connect time means an unknown interface is a startup configuration error with
+ * the interface named, instead of an opaque failure from libcurl later on.
+ *
+ * @param zone Zone id text, already percent-decoded (never NULL, never empty).
+ * @param out Receives the numeric scope id.
+ * @return 0 on success, OS_INVALID when the interface does not exist.
+ */
+static int w_resolve_ipv6_zone(const char *zone, uint32_t *out)
+{
+    if (OS_StrIsNum(zone)) {
+        char *end = NULL;
+        unsigned long numeric;
+
+        /* strtoul, not strtol: long is 32-bit on MinGW, where "> UINT32_MAX" is
+         * unreachable and an overflowing value came back as LONG_MAX and was accepted.
+         * errno is the only way to see that saturation. */
+        errno = 0;
+        numeric = strtoul(zone, &end, 10);
+
+        if (errno == ERANGE || end == zone || (end && *end != '\0') ||
+            numeric == 0 || numeric > UINT32_MAX) {
+            merror("Invalid endpoint: IPv6 zone id '%s' is out of range.", zone);
+            return OS_INVALID;
+        }
+
+        *out = (uint32_t)numeric;
+        return 0;
+    }
+
+    unsigned int index = if_nametoindex(zone);
+
+    if (index == 0) {
+        merror("Invalid endpoint: no network interface named '%s' on this host.", zone);
+        return OS_INVALID;
+    }
+
+    *out = (uint32_t)index;
+    return 0;
+}
+
+/**
+ * @brief Parse the combined <endpoint> value into host, port, prefix and scope id (#38624).
+ *
+ * <endpoint> carries the whole connection target in one value, in the same
+ * language the WAZUH_MANAGER_ENDPOINT installation variable accepts, so the
+ * installers can write an operator's value through verbatim:
+ *
+ *     [https://] host [:port] [/[prefix]]
+ *
+ * Only the host is mandatory. An omitted port defaults to DEFAULT_HTTPS_REMOTE_PORT
+ * and an omitted prefix to DEFAULT_AGENT_ENDPOINT_PREFIX, so a bare address behaves
+ * exactly as it did when <address> and <port> were separate tags.
+ *
+ * Parsing goes through libcurl's URL API rather than by hand: it is already linked
+ * here (shared/src/url.c uses it), and it brings host/port syntax checks, IPv6
+ * bracket handling and zone-id extraction with it. A scheme-less value gets an
+ * "https://" prepended first, so one parser serves both spellings.
+ *
+ * The one thing curl cannot answer: CURLUPART_PATH always reports at least "/",
+ * so it cannot tell "no path was given" from "a trailing slash and nothing more".
+ * That is exactly the distinction the prefix opt-out rests on (#38614) -- no
+ * separator means the default prefix, a separator with nothing after it means
+ * unprefixed -- so the separator is looked for in the raw value instead, the way
+ * the installers' own parsers do. Losing it would silently turn every opt-out back
+ * into the default, which is the defect #38658 fixed elsewhere.
+ *
+ * @param raw Raw <endpoint> content (never NULL).
+ * @param host Receives the host, brackets and zone id stripped.
+ * @param host_size Size of host, including the terminating NUL.
+ * @param port Receives the port.
+ * @param endpoint Receives the normalized prefix, possibly "".
+ * @param endpoint_size Size of endpoint, including the terminating NUL.
+ * @param scope_id Receives the IPv6 scope id, or 0 when there is no zone id.
+ * @return 0 on success, OS_INVALID on any grammar violation.
+ */
+static int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
+                                  bool *port_present, char *endpoint, size_t endpoint_size,
+                                  uint32_t *scope_id)
+{
+    CURLU *url = NULL;
+    char *part = NULL;
+    char *with_scheme = NULL;
+    int retval = OS_INVALID;
+
+    *scope_id = 0;
+    *port_present = false;
+    *port = DEFAULT_HTTPS_REMOTE_PORT;
+    endpoint[0] = '\0';
+    host[0] = '\0';
+
+    if (*raw == '\0') {
+        merror("Invalid endpoint '%s': a manager address is required.", raw);
+        return OS_INVALID;
+    }
+
+    /* A leading '/' means a prefix was given where the address belongs -- the 5.0.0
+     * spelling arriving without the <address> that used to accompany it. Rejected
+     * explicitly because curl would otherwise read "https:///wazuh-manager/" as the
+     * hostname "wazuh-manager" and silently connect somewhere unintended. */
+    if (*raw == '/') {
+        merror("Invalid endpoint '%s': a manager address is required before the path.", raw);
+        return OS_INVALID;
+    }
+
+    /* Whether a path separator was given at all, decided before curl sees the value
+     * and ignoring one that belongs to a "scheme://" rather than to the path. */
+    const char *authority = strstr(raw, "://");
+    authority = authority ? authority + 3 : raw;
+    bool path_given = (strchr(authority, '/') != NULL);
+
+    if (strstr(raw, "://") == NULL) {
+        const size_t needed = strlen("https://") + strlen(raw) + 1;
+        os_calloc(needed, sizeof(char), with_scheme);
+        snprintf(with_scheme, needed, "https://%s", raw);
+    }
+
+    url = curl_url();
+
+    if (url == NULL) {
+        merror("Invalid endpoint '%s': could not initialize the URL parser.", raw);
+        goto end;
+    }
+
+    /* CURLU_DISALLOW_USER makes curl itself reject embedded credentials.
+     * CURLU_PATH_AS_IS keeps "." and ".." segments intact: curl would otherwise
+     * resolve them away, so "/../etc" would silently become "/etc" instead of being
+     * rejected by w_normalize_agent_endpoint(). A configured value must never be
+     * quietly rewritten into a different one. */
+    CURLUcode rc = curl_url_set(url, CURLUPART_URL, with_scheme ? with_scheme : raw,
+                                CURLU_DISALLOW_USER | CURLU_PATH_AS_IS);
+
+    if (rc != CURLUE_OK) {
+        merror("Invalid endpoint '%s': %s.", raw, curl_url_strerror(rc));
+        goto end;
+    }
+
+    if (curl_url_get(url, CURLUPART_SCHEME, &part, 0) != CURLUE_OK) {
+        merror("Invalid endpoint '%s': missing scheme.", raw);
+        goto end;
+    }
+
+    if (strcasecmp(part, "https") != 0) {
+        merror("Invalid endpoint '%s': unsupported scheme '%s'; only https is served.", raw, part);
+        goto end;
+    }
+
+    curl_free(part);
+    part = NULL;
+
+    /* A configuration value has to be exact, so anything curl parsed off the end
+     * that this grammar has no slot for is an error rather than a silent drop. */
+    if (curl_url_get(url, CURLUPART_QUERY, &part, 0) == CURLUE_OK) {
+        merror("Invalid endpoint '%s': a query string is not allowed.", raw);
+        goto end;
+    }
+
+    if (curl_url_get(url, CURLUPART_FRAGMENT, &part, 0) == CURLUE_OK) {
+        merror("Invalid endpoint '%s': a fragment is not allowed.", raw);
+        goto end;
+    }
+
+    if (curl_url_get(url, CURLUPART_HOST, &part, 0) != CURLUE_OK || *part == '\0') {
+        merror("Invalid endpoint '%s': a manager address is required.", raw);
+        goto end;
+    }
+
+    /* curl hands an IPv6 literal back still bracketed. Store it bare, the way
+     * <address> always held it: OS_ExpandIPv6() and the link-local check in
+     * Validate_IPv6_Link_Local_Interface() both compare against an unbracketed
+     * literal, and ModuleConfig::baseUrl() re-brackets it for the wire itself. */
+    const char *host_start = part;
+    size_t host_len = strlen(part);
+
+    if (host_len >= 2 && host_start[0] == '[' && host_start[host_len - 1] == ']') {
+        host_start++;
+        host_len -= 2;
+    }
+
+    if (host_len >= host_size) {
+        merror("Invalid endpoint '%s': address longer than %zu characters.", raw, host_size - 1);
+        goto end;
+    }
+
+    memcpy(host, host_start, host_len);
+    host[host_len] = '\0';
+    curl_free(part);
+    part = NULL;
+
+    /* A ':' with nothing after it is "no port" to curl, which would silently fall back
+     * to the default; the installers reject it, so reject it here too rather than let
+     * the same value mean different things either side of the install boundary. */
+    {
+        const char *authority_end = strchr(authority, '/');
+        size_t authority_len = authority_end ? (size_t)(authority_end - authority) : strlen(authority);
+
+        if (authority_len > 0 && authority[authority_len - 1] == ':') {
+            merror("Invalid endpoint '%s': a ':' must be followed by a port.", raw);
+            goto end;
+        }
+    }
+
+    /* Deliberately without CURLU_DEFAULT_PORT: that substitutes curl's own https
+     * default (443), not the agent's (1517). */
+    if (curl_url_get(url, CURLUPART_PORT, &part, 0) == CURLUE_OK) {
+        /* Range-checked here: curl accepts ":0" and would happily go on to connect,
+         * while every installer parser rejects anything below 1. */
+        long parsed = atol(part);
+
+        if (parsed < 1 || parsed > 65535) {
+            merror("Invalid endpoint '%s': port %ld is out of the range 1-65535.", raw, parsed);
+            goto end;
+        }
+
+        *port = (int)parsed;
+        *port_present = true;
+        curl_free(part);
+        part = NULL;
+    }
+
+    if (curl_url_get(url, CURLUPART_ZONEID, &part, 0) == CURLUE_OK) {
+        if (w_resolve_ipv6_zone(part, scope_id) == OS_INVALID) {
+            goto end;
+        }
+        curl_free(part);
+        part = NULL;
+    }
+
+    if (path_given) {
+        if (curl_url_get(url, CURLUPART_PATH, &part, 0) != CURLUE_OK) {
+            merror("Invalid endpoint '%s': could not read the path.", raw);
+            goto end;
+        }
+
+        /* curl always reports the path with its leading '/'. Strip it so the
+         * normalizer -- and every message it emits -- sees the prefix exactly as the
+         * operator wrote it, rather than a slash they did not type. */
+        const char *prefix = (*part == '/') ? part + 1 : part;
+
+        if (w_normalize_agent_endpoint(prefix, endpoint, endpoint_size) == OS_INVALID) {
+            goto end;
+        }
+    } else {
+        snprintf(endpoint, endpoint_size, "%s", DEFAULT_AGENT_ENDPOINT_PREFIX);
+    }
+
+    retval = 0;
+
+end:
+    if (part != NULL) {
+        curl_free(part);
+    }
+    if (url != NULL) {
+        curl_url_cleanup(url);
+    }
+    os_free(with_scheme);
+
+    return retval;
+}
+
+/**
+ * @brief Read the <agent><manager> block: the single manager endpoint.
+ *
+ * @param node Children of the <manager> element.
  * @param logr Agent configuration to fill.
  * @return 0 on success, OS_INVALID on error.
  */
-int Read_Agent_Server(XML_NODE node, agent * logr)
+int Read_Agent_Manager(XML_NODE node, agent * logr)
 {
     /* XML definitions */
     const char *xml_agent_addr = "address";
     const char *xml_agent_port = "port";
-    const char *xml_interface = "interface_index";
+    const char *xml_agent_endpoint = "endpoint";
     const char *xml_protocol = "protocol";
     const char *xml_max_retries = "max_retries";
     const char *xml_retry_interval = "retry_interval";
@@ -357,10 +811,17 @@ int Read_Agent_Server(XML_NODE node, agent * logr)
     int j;
     char f_ip[128];
     char * rip = NULL;
+    char * legacy_rip = NULL;
+    char host[AGENT_SERVER_HOST_MAX_LEN + 1] = {'\0'};
+    char endpoint[AGENT_SERVER_ENDPOINT_MAX_LEN + 1] = {'\0'};
     /* Default values */
-    uint32_t network_interface = 0;
+    uint32_t scope_id = 0;
     int port = DEFAULT_HTTPS_REMOTE_PORT;
     bool port_set = false;
+    int legacy_port = DEFAULT_HTTPS_REMOTE_PORT;
+    bool legacy_port_set = false;
+    bool endpoint_set = false;
+    bool legacy_tags_used = false;
     int max_retries = DEFAULT_MAX_RETRIES;
     int retry_interval = DEFAULT_RETRY_INTERVAL;
 
@@ -374,40 +835,48 @@ int Read_Agent_Server(XML_NODE node, agent * logr)
             merror(XML_VALUENULL, node[j]->element);
             return (OS_INVALID);
         }
-        /* Get server address (IP or hostname) */
+        /* Deprecated: <address> and <port> were folded into <endpoint> (#38624). Still
+         * read so a hand-written configuration, or one left by a 5.0.0 development build
+         * using the previous spelling, keeps working -- an upgrade never rewrites
+         * ossec.conf. No released package emitted them: <agent><manager> itself landed
+         * after v5.0.0-beta4. A real 4.x file spells this <client><server><address>,
+         * which Read_Legacy_Client_Address() handles. */
         else if (strcmp(node[j]->element, xml_agent_addr) == 0) {
             if (OS_IsValidIP(node[j]->content, NULL) == 1) {
-                rip = node[j]->content;
+                legacy_rip = node[j]->content;
             } else if (strchr(node[j]->content, '/') ==  NULL) {
                 snprintf(f_ip, 127, "%s", node[j]->content);
-                rip = f_ip;
+                legacy_rip = f_ip;
             } else {
                 merror(AG_INV_HOST, node[j]->content);
                 return (OS_INVALID);
             }
+            legacy_tags_used = true;
         } else if (strcmp(node[j]->element, xml_agent_port) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);
             }
 
-            if (port = atoi(node[j]->content), port <= 0 || port > 65535) {
-                merror(PORT_ERROR, port);
+            if (legacy_port = atoi(node[j]->content), legacy_port <= 0 || legacy_port > 65535) {
+                merror(PORT_ERROR, legacy_port);
                 return (OS_INVALID);
             }
 
-            port_set = true;
-        } else if (strcmp(node[j]->element, xml_interface) == 0) {
-            if (!OS_StrIsNum(node[j]->content)) {
-                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+            legacy_port_set = true;
+            legacy_tags_used = true;
+        } else if (strcmp(node[j]->element, xml_agent_endpoint) == 0) {
+            /* <endpoint> always carries the whole target (#38624). The 5.0.0 spelling
+             * that put only a prefix here shipped in no public release, so there is no
+             * configuration in the field where this value means anything else -- and
+             * without that case "wazuh-manager" is unambiguously a hostname. */
+            if (w_parse_agent_endpoint(node[j]->content, host, sizeof(host), &port,
+                                       &port_set, endpoint, sizeof(endpoint),
+                                       &scope_id) == OS_INVALID) {
                 return (OS_INVALID);
             }
-            int interface_numeric = atoi(node[j]->content);
-            if (interface_numeric <= 0) {
-                merror(XML_VALUEERR, node[j]->element, node[j]->content);
-                return (OS_INVALID);
-            }
-            network_interface = (uint32_t)interface_numeric;
+
+            endpoint_set = true;
         } else if (strcmp(node[j]->element, xml_protocol) == 0) {
             minfo("Ignoring the 'protocol' option. Switching to TCP.");
         } else if (strcmp(node[j]->element, xml_max_retries) == 0 ||
@@ -422,20 +891,39 @@ int Read_Agent_Server(XML_NODE node, agent * logr)
         }
     }
 
+    /* <endpoint> wins over the deprecated pair whatever order they appeared in: it is
+     * the canonical spelling, and the installers give WAZUH_MANAGER_ENDPOINT the same
+     * priority over WAZUH_MANAGER/WAZUH_MANAGER_PORT. */
+    if (endpoint_set) {
+        rip = host;
+
+        if (legacy_tags_used) {
+            mwarn("<agent><manager><address> and <port> are ignored when <endpoint> is "
+                  "configured; <endpoint> carries the whole target.");
+            legacy_tags_used = false;
+        }
+    } else {
+        rip = legacy_rip;
+        port = legacy_port;
+        port_set = legacy_port_set;
+    }
+
     if (!rip) {
-        merror("No such address in the configuration.");
+        merror("No manager <endpoint> in the configuration.");
         return (OS_INVALID);
     }
 
-    /* Single <server> block: the last one prevails (#37702 restriction 2) and
+
+    /* Single <manager> block: the last one prevails (#37702 restriction 2) and
      * server rotation is removed (restriction 3), so replace any previous entry
      * instead of appending. The array keeps a NULL-rip sentinel at index 1. */
     if (logr->server) {
         if (logr->server_count > 0) {
-            mwarn("Only one <server> block is supported; the last one prevails.");
+            mwarn("Only one <manager> block is supported; the last one prevails.");
         }
         for (int k = 0; logr->server[k].rip; k++) {
             os_free(logr->server[k].rip);
+            os_free(logr->server[k].endpoint);
         }
         os_free(logr->server);
         logr->server = NULL;
@@ -448,14 +936,48 @@ int Read_Agent_Server(XML_NODE node, agent * logr)
         os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
         OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
     }
-    logr->server[0].network_interface = network_interface;
+
+    /* <endpoint> absent entirely: default to the manager's own default prefix so an
+     * unconfigured agent still matches a manager using its default global_prefix
+     * (#38491). An explicit opt-out (endpoint present but normalizing to nothing,
+     * e.g. "/") is preserved as-is and left unprefixed -- only "tag never appeared"
+     * gets the default. */
+    if (!endpoint_set) {
+        snprintf(endpoint, sizeof(endpoint), "%s", DEFAULT_AGENT_ENDPOINT_PREFIX);
+    }
+
+    if (endpoint[0] != '\0') {
+        os_strdup(endpoint, logr->server[0].endpoint);
+    }
+    logr->server[0].scope_id = scope_id;
     logr->server[0].port = port;
+
+    /* #38624: <address>/<port> still work, but tell the operator exactly what to write
+     * instead. The suggestion is built from the values just resolved -- not from the
+     * defaults -- so a prefix-only <endpoint> in the same block is preserved and pasting
+     * the line back cannot change where the agent connects. INFO rather than WARNING:
+     * nothing is wrong, the configuration is simply written in the older spelling. */
+    if (legacy_tags_used) {
+        /* The trailing '/' is always emitted: with a prefix it separates it, and with
+         * none it is the opt-out spelling -- so an <endpoint></endpoint> opt-out is
+         * suggested back as "host:port/" and keeps meaning the same thing. An IPv6
+         * literal is bracketed, or its trailing group would read as the port. */
+        const bool is_ipv6 = strchr(logr->server[0].rip, ':') != NULL;
+
+        minfo("<agent><manager><address> and <port> are deprecated. Replace them with a "
+              "single <endpoint>%s%s%s:%d/%s</endpoint>",
+              is_ipv6 ? "[" : "", logr->server[0].rip, is_ipv6 ? "]" : "",
+              port, endpoint);
+    }
     logr->server[0].max_retries = max_retries;
     logr->server[0].retry_interval = retry_interval;
     logr->server_count = 1;
 
+    /* Names <endpoint>, not the <port> tag: since #38624 the port is a component of
+     * <endpoint>, so pointing the operator at a <port> element sends them looking for
+     * something that no longer exists in a 5.x configuration. */
     if (!port_set) {
-        minfo("<agent><server><port> is not configured. Using the default port %d.",
+        minfo("No port in <agent><manager><endpoint>. Using the default port %d.",
               DEFAULT_HTTPS_REMOTE_PORT);
     }
 
@@ -564,6 +1086,8 @@ int Read_Agent_SSL(XML_NODE node, agent * logr)
                 logr->ssl.verification_mode = AGENT_VERIFY_CERT;
             } else if (strcmp(node[j]->content, "none") == 0) {
                 logr->ssl.verification_mode = AGENT_VERIFY_NONE;
+            } else if (strcmp(node[j]->content, "system") == 0) {
+                logr->ssl.verification_mode = AGENT_VERIFY_SYSTEM;
             } else {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);
@@ -836,7 +1360,7 @@ int Read_Agent_Enrollment(XML_NODE node, agent * logr){
     const char *xml_delay_after_enrollment = "delay_after_enrollment";
     const char *xml_use_source_ip = "use_source_ip";
 
-    /* Superseded by <agent><server>/<agent><ssl> (#38465): enrollment now
+    /* Superseded by <agent><manager>/<agent><ssl> (#38465): enrollment now
      * dials the same target and presents the same TLS material as every
      * other HTTPS endpoint, so a second address/port/interface/cert/key/CA
      * for it is redundant by design. Recognized-but-ignored rather than
@@ -918,7 +1442,7 @@ int Read_Agent_Enrollment(XML_NODE node, agent * logr){
                    strcmp(node[j]->element, xml_agent_certif_path) == 0 ||
                    strcmp(node[j]->element, xml_agent_key_path) == 0) {
             minfo("<%s> under <enrollment> is no longer used: enrollment reuses "
-                  "<agent><server>/<agent><ssl>. Ignoring.", node[j]->element);
+                  "<agent><manager>/<agent><ssl>. Ignoring.", node[j]->element);
         } else {
             merror(XML_INVELEM, node[j]->element);
             return (OS_INVALID);
@@ -981,6 +1505,7 @@ void Free_Agent(agent * config){
         if (config->server) {
             for (i = 0; config->server[i].rip; i++) {
                 free(config->server[i].rip);
+                free(config->server[i].endpoint);
             }
 
             free(config->server);
@@ -1026,6 +1551,9 @@ bool Validate_IPv6_Link_Local_Interface(agent_server *servers) {
     for (i = 0; servers[i].rip; i++) {
         char *ip_address = NULL;
         char *tmp_str = strchr(servers[i].rip, '/');
+        /* #38624: the scope now comes from <endpoint>'s IPv6 zone id rather than the
+         * removed <interface_index> tag, but the check is the same one -- a link-local
+         * address without a scope is ambiguous and cannot be dialed reliably. */
         if (tmp_str) {
             // server address comes in {hostname}/{ip} format
             ip_address = strdup(++tmp_str);
@@ -1051,12 +1579,12 @@ bool Validate_IPv6_Link_Local_Interface(agent_server *servers) {
         if (strchr(ip_address, ':') != NULL) {
             /* IPv6 */
             if (strncmp(ip_address, IPV6_LINK_LOCAL_PREFIX, 20) != 0 ||
-                (strncmp(ip_address, IPV6_LINK_LOCAL_PREFIX, 20) == 0 && servers[i].network_interface > 0)) {
+                (strncmp(ip_address, IPV6_LINK_LOCAL_PREFIX, 20) == 0 && servers[i].scope_id > 0)) {
                 os_free(ip_address);
                 ret = true;
                 continue;
             }
-            else if ((strncmp(ip_address, IPV6_LINK_LOCAL_PREFIX, 20) == 0 && servers[i].network_interface <= 0)) {
+            else if ((strncmp(ip_address, IPV6_LINK_LOCAL_PREFIX, 20) == 0 && servers[i].scope_id == 0)) {
                 mwarn("No network interface index provided to use %s link-local IPv6 address.", ip_address);
             }
         } else {

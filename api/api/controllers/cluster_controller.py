@@ -20,6 +20,9 @@ from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
 
+# Content types accepted by PUT /cluster/{node_id}/configuration (the body is the XML text either way)
+CONFIGURATION_CONTENT_TYPES = ('application/octet-stream', 'application/xml')
+
 
 async def get_cluster_node(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get basic information about the local node.
@@ -293,7 +296,7 @@ async def get_info_node(node_id: str, pretty: bool = False, wait_for_complete: b
 async def get_configuration_node(node_id: str, pretty: bool = False, wait_for_complete: bool = False,
                                  section: str = None, field: str = None,
                                  raw: bool = False) -> ConnexionResponse:
-    """Get a specified node's configuration (wazuh-manager.conf).
+    """Get a specified node's configuration (etc/wazuh-manager.conf).
 
     Parameters
     ----------
@@ -324,7 +327,7 @@ async def get_configuration_node(node_id: str, pretty: bool = False, wait_for_co
                 'raw': raw}
 
     nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.read_ossec_conf,
+    dapi = DistributedAPI(f=manager.read_manager_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -719,14 +722,15 @@ async def get_node_config(node_id: str, component: str, wait_for_complete: bool 
 
 async def update_configuration(node_id: str, body: bytes, pretty: bool = False,
                                wait_for_complete: bool = False) -> ConnexionResponse:
-    """Update Wazuh configuration (wazuh-manager.conf) in node node_id.
+    """Update the manager configuration (etc/wazuh-manager.conf) in node node_id.
 
     Parameters
     ----------
     node_id : str
         Node ID.
     body : bytes
-        New content for the Wazuh configuration (wazuh-manager.conf).
+        New content for the manager configuration (etc/wazuh-manager.conf), as `application/xml` or
+        `application/octet-stream`.
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -738,14 +742,14 @@ async def update_configuration(node_id: str, body: bytes, pretty: bool = False,
         API response.
     """
     # Parse body to utf-8
-    Body.validate_content_type(request, expected_content_type='application/octet-stream')
+    Body.validate_content_type(request, expected_content_type=CONFIGURATION_CONTENT_TYPES)
     parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
 
     f_kwargs = {'node_id': node_id,
                 'new_conf': parsed_body}
 
     nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.update_ossec_conf,
+    dapi = DistributedAPI(f=manager.update_manager_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,

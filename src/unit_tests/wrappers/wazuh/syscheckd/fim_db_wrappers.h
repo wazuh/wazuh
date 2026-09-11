@@ -52,6 +52,26 @@ void expect_fim_db_remove_path(const char* path, int ret_val);
 
 FIMDBErrorCode __wrap_fim_db_file_update(fim_entry* new, callback_context_t callback);
 
+/**
+ * @brief Make the next call to __wrap_fim_db_file_update() invoke its callback with the given
+ * dbsync result, instead of just returning. One-shot: resets itself after firing once.
+ *
+ * Queue this, then will_return(__wrap_fim_db_file_update, <FIMDBErrorCode>) as usual, then
+ * will_return(__wrap_fim_db_file_update, <ReturnTypeCallback>) and
+ * will_return(__wrap_fim_db_file_update, <cJSON* result>) for the callback invocation itself.
+ */
+void expect_fim_db_file_update_invoking_callback(void);
+
+/**
+ * @brief Undo a pending expect_fim_db_file_update_invoking_callback() that never fired.
+ *
+ * The one-shot flag it sets only clears itself inside __wrap_fim_db_file_update() when the
+ * callback actually runs. If the test aborts earlier (e.g. a failed assert/expectation), the
+ * flag leaks into the next test, which would then try to drive a callback using mock values
+ * that were never queued for it. Call this from a teardown to guarantee it's cleared either way.
+ */
+void reset_fim_db_file_update_invoking_callback(void);
+
 FIMDBErrorCode __wrap_fim_db_file_pattern_search(const char* pattern,
                                                  __attribute__((unused)) callback_context_t callback);
 

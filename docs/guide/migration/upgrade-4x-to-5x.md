@@ -60,9 +60,9 @@ The following changes were identified during agent startup validation after upgr
 
 | 4.X configuration element | 5.0 status | Agent log message (observed) | Required action |
 |---|---|---|---|
-| `<client>...</client>` | Renamed | `INFO: <agent><server><address> is not configured. Using <client><server><address> 'MANAGER_IP' with the default port 1517.` | Rename the block to `<agent>`. A 5.0 agent still starts without the rename: it reads `<server><address>` from the old block and defaults the port to `1517`. Nothing else inside `<client>` is read. |
-| `<client><manager>...</manager></client>` | Invalid | `INFO: (1230): Invalid element in the configuration: 'manager'.` | Rename `<manager>` to `<server>` inside `<agent>`. The 4.14 templates already ship `<server>`. |
-| `<client><server><port>1514</port></server></client>` | Changed default | — | The agent talks HTTPS to the manager on `1517`. Inside `<agent>`, remove the port to take the new default or set `1517` explicitly; inside a legacy `<client>` block the port is not read at all. |
+| `<client>...</client>` | Renamed | — | Rename the block to `<agent>` and its inner `<server>` to `<manager>`. Only `<server><address>` is read out of a `<client>` block, so every other option in it (`<enrollment>`, `<config-profile>`, `<notify_time>`) stops taking effect until the block is renamed. |
+| `<client><server><address>` | Read as fallback | `INFO: <agent><manager><address> is not configured. Using <client><server><address> 'MANAGER_IP' with the default port 1517.` | None, to keep connecting: this is the one value a 5.0 agent still takes from a legacy block, with the port defaulted to `1517`. Move it to `<agent><manager><address>` for the supported end state. |
+| `<client><server><port>1514</port></server></client>` | Changed default | — | The agent talks HTTPS to the manager on `1517`. Inside `<agent><manager>`, remove the port to take the new default or set `1517` explicitly; inside a legacy `<client>` block the port is not read at all. |
 | `<client><server><protocol>...</protocol></server></client>` | Ignored | `INFO: Ignoring the 'protocol' option. Switching to TCP.` | Remove `<protocol>`. TCP is used. |
 | `<client><crypto_method>...</crypto_method></client>` | Ignored | `INFO: Ignoring the 'crypto_method' option. Switching to AES.` | Remove `<crypto_method>`. |
 | `<syscheck><scan_on_start>...</scan_on_start></syscheck>` | Invalid | `INFO: (1230): Invalid element in the configuration: 'scan_on_start'.` | Remove this element from `syscheck` (Always executed on start). |
@@ -106,17 +106,17 @@ After (5.0 compatible):
 
 ```xml
 <agent>
-	<server>
+	<manager>
 		<address>MANAGER_IP</address>
 		<port>1517</port>
-	</server>
+	</manager>
 </agent>
 ```
 
-`<client>` is renamed to `<agent>` in 5.0: one block under two names, never both. Options for an agent that is already on 5.0 with the old block:
+`<client>` is renamed to `<agent>` in 5.0 and its inner `<server>` to `<manager>`: one block under two names, never both. Options for an agent that is already on 5.0 with the old block:
 
-- **Leave it.** The agent reads `<server><address>` from `<client>` and uses port `1517`. It connects, and logs which value it inherited. Nothing else in the block is read, so options such as `<enrollment>` or `<config-profile>` stop having an effect.
-- **Rename it** to `<agent>`, which is what a fresh 5.0 install ships. Every option in the block is read again.
+- **Leave it.** The agent reads `<client><server><address>` and uses port `1517`. It connects, and logs which value it inherited. Nothing else in the block is read, so options such as `<enrollment>` or `<config-profile>` stop having an effect.
+- **Rename it** to `<agent><manager>`, which is what a fresh 5.0 install ships. Every option in the block is read again. Renaming only the root tag is not enough: `<agent><server>` is rejected.
 
 Recommended: rename it. The fallback exists so a remote upgrade cannot strand an agent, not as a configuration to keep.
 
@@ -160,7 +160,9 @@ Remove unsupported elements:
 
 `agent`, `execd`, `logcollector`, `rootcheck`, `sca`, `syscheck`, `wazuh_command`, `wazuh_modules`, `windows`.
 
-The internal options removed in 5.0 belong exclusively to **manager-side** components (for example `analysisd.*`, `remoted.*`, `monitord.*`, `wazuh_db.*`, `vulnerability-detection.*`). These never take effect on an agent, so they do not require any migration action on agent hosts.
+The internal options removed in 5.0 belong exclusively to **manager-side** components (for example `analysisd.*`, `remoted.*`, `wazuh_db.*`, `vulnerability-detection.*`). These never take effect on an agent, so they do not require any migration action on agent hosts.
+
+`monitord.*` is **not** in that set. Those six rotation keys are read by the agent for its own log management and are unchanged in 5.0 — keep them. (On the *manager* they were renamed; see the manager configuration migration guide.)
 
 The agent does not validate `local_internal_options.conf` against a schema. Keys that no module reads are silently ignored: they do not block startup and do not emit warning or error messages. Consequently, there are **no `local_internal_options.conf` entries that prevent a 5.0.0 agent from starting**, and no specific log messages are expected for this file during the upgrade.
 
@@ -190,23 +192,40 @@ Workaround checklist:
 - Confirm manager is up and reachable from the agent host.
 - Confirm manager has been migrated to a compatible 5.0 deployment.
 - Confirm firewall/network rules allow `1517/tcp` (agent to manager) and `1515/tcp` (enrollment).
-- Confirm the agent points to the correct manager address in `<agent><server><address>`.
+- Confirm the agent points to the correct manager address in `<agent><manager><address>`.
 - Confirm enrollment credentials: if enrollment fails with `Invalid password (from manager)`, verify that the password in `/var/ossec/etc/authd.pass` on the agent matches `/var/wazuh-manager/etc/authd.pass` on the manager.
 
 ## Remote upgrade (WPK)
 
 A remote upgrade from 4.14.X to 5.0.0 never rewrites `ossec.conf`: the file the 4.X agent had is the file the 5.0 agent reads, which is why the `<client>` fallback above exists.
 
-Before installing anything, the WPK installer checks that the manager accepts connections on the HTTPS port the upgraded agent will use, and aborts if it does not:
+Before installing anything, the WPK installer checks that the manager answers HTTPS on the port/endpoint the upgraded agent will use, retrying a few times in case it's briefly unreachable, and aborts if it still does not. On hosts whose TLS stack can't negotiate the manager's TLS 1.3 minimum (e.g. EL7-era/Amazon Linux 2 system crypto libraries), the check falls back to a plain TCP connectivity check instead of treating that incompatibility as "manager unreachable":
 
 ```console
-2026/07/31 00:26:57 - Checking connectivity to MANAGER_IP:1517.
-2026/07/31 00:26:58 - Upgrade failed. The manager is not reachable at MANAGER_IP:1517, interrupting upgrade.
+2026/07/31 00:26:57 - Checking connectivity to MANAGER_IP:1517/wazuh-manager.
+2026/07/31 00:26:58 - Upgrade failed. The manager is not reachable at MANAGER_IP:1517/wazuh-manager, interrupting upgrade.
 ```
 
 The abort happens before the package manager runs, so the agent stays on 4.14.X, keeps running, and the upgrade can be retried once `1517` is reachable. `upgrade_result` is `2`.
 
-The target address and port come from the same place the agent reads them: `<agent><server>` first, then `<client><server><address>`, with `1517` as the port default.
+The target address and port come from the same place the agent reads them: `<agent><manager>` first, then `<client><server><address>`, with `1517` as the port default.
+
+### Certificate trust check
+
+A 4.X agent never verified the manager's certificate at all; a 5.0 agent does by default (`<agent><ssl><verification_mode>`, default `system` -- see [`verification_mode`](../../ref/modules/client/configuration.md#verification_mode)). Once the connectivity check above passes, the WPK installer also checks that the *upgraded* agent will actually be able to verify that certificate, before installing anything:
+
+- If `<verification_mode>` resolves to `full` or `certificate`, it requires a readable `<certificate_authorities>` file and aborts otherwise -- same as a fresh install.
+- For the default `system` mode, it performs a real TLS handshake against the manager using the OS's own trust store. If that already verifies the certificate (e.g. it's issued by a publicly-trusted CA), the upgrade proceeds untouched.
+- Otherwise, it looks for a CA at a default drop-in path -- `/var/ossec/etc/certs/root-ca.pem` on Linux/macOS, `<installdir>\certs\root-ca.pem` on Windows -- and pins it into `<certificate_authorities>` automatically if found there.
+- If there is nothing to pin, the upgrade aborts:
+
+```console
+2026/09/02 - Upgrade failed. The system trust store does not verify the manager's certificate at MANAGER_IP:1517, and no CA was found at ./etc/certs/root-ca.pem. Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade.
+```
+
+As with the connectivity check, the abort happens before the package manager runs: the agent stays on 4.14.X, keeps running, and the upgrade can be retried. `upgrade_result` is `2`.
+
+This matters specifically for an **on-prem fleet whose manager uses a self-signed certificate** — the typical case outside a publicly-trusted CA. Since a 4.X agent never checked the certificate, upgrading in place without first placing the manager's CA at the default path (or configuring `<certificate_authorities>` explicitly) leaves the new agent unable to connect. Place the CA ahead of a fleet-wide upgrade rather than discovering the gap one aborted upgrade at a time.
 
 ## TLS 1.3 enrollment enforcement (`wazuh-authd`)
 
@@ -229,10 +248,10 @@ ERROR: SSL context setup failed. Exiting.
 
 Either way, `wazuh-authd` does not start and no agent can enroll until `<ciphers>` is updated to a colon-separated list of the values above (default: `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`) or removed to use that default.
 
-`<auth><ssl_auto_negotiate>` was also removed entirely. Leaving it in `wazuh-manager.conf` is now an invalid element and blocks the manager from starting:
+`<auth><ssl_auto_negotiate>` was also removed entirely. Leaving it in `wazuh-manager.conf` is now an unknown option (the manager configuration is validated against its schema) and blocks the manager from starting:
 
 ```console
-ERROR: (1230): Invalid element in the configuration: 'ssl_auto_negotiate'.
+ERROR: (1244): Invalid configuration at '/auth/ssl_auto_negotiate': unknown option (does not satisfy 'additionalProperties') [schema /properties/auth].
 ```
 
 Remove `<ssl_auto_negotiate>` from `<auth>` before upgrading the manager.
@@ -258,7 +277,7 @@ Migration is complete when all conditions below are met:
 
 - Agent was upgraded using the required version path.
 - No invalid `syscheck`/`rootcheck` element warnings remain.
-- The connection block is `<agent>`, and no `<client>` fallback message remains in `ossec.log`.
+- The connection block is `<agent><manager>`, and no `<client>` fallback message remains in `ossec.log`.
 - No deprecated `protocol` or `crypto_method` messages remain.
 - Agent stays connected to the manager and sends events normally.
 - No TLS 1.3 enrollment errors (`Invalid TLS 1.3 cipher suite...`, `Could not set up SSL connection...`) appear in `wazuh-authd` or agent logs, and enrollment against the 5.0 manager succeeds.

@@ -23,6 +23,7 @@ namespace eEngine = ::com::wazuh::api::engine;
 constexpr auto MESSAGE_SPACE_REQUIRED = "Field /space cannot be empty";
 constexpr auto MESSAGE_JSON_REQUIRED = "Field /jsonContent cannot be empty";
 constexpr auto MESSAGE_UUID_REQUIRED = "Field /uuid cannot be empty";
+constexpr auto MESSAGE_UUID_INVALID = "Field /uuid is not a valid identifier";
 constexpr auto MESSAGE_TYPE_REQUIRED = "Field /type is required";
 constexpr auto MESSAGE_TYPE_UNSUPPORTED = "Unsupported value for /type";
 constexpr auto MESSAGE_RESOURCE_REQUIRED = "Field /resource cannot be empty";
@@ -675,6 +676,12 @@ adapter::RouteHandler resourceGet(std::shared_ptr<cm::crud::ICrudService> crud)
             return;
         }
 
+        if (!base::utils::generators::isValidResourceId(protoReq.uuid()))
+        {
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_UUID_INVALID);
+            return;
+        }
+
         ResponseType eResponse;
 
         try
@@ -793,6 +800,12 @@ adapter::RouteHandler resourceDelete(std::shared_ptr<cm::crud::ICrudService> cru
         if (protoReq.uuid().empty())
         {
             res = adapter::userErrorResponse<ResponseType>(MESSAGE_UUID_REQUIRED);
+            return;
+        }
+
+        if (!base::utils::generators::isValidResourceId(protoReq.uuid()))
+        {
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_UUID_INVALID);
             return;
         }
 

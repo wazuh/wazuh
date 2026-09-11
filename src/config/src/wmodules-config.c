@@ -500,6 +500,10 @@ int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
     return 0;
 }
 
+/* Agent only. There is no agent-upgrade module on a manager -- upgrades are served by the task
+ * manager, which reads their settings from the `task-manager` section of the effective document
+ * (etc/wazuh-manager.conf) rather than through any XML reader. */
+#ifdef CLIENT
 int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1) {
     wmodule **wmodules = (wmodule**)d1;
     wmodule *cur_wmodule;
@@ -554,63 +558,8 @@ int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1) {
     OS_ClearNode(children);
     return 0;
 }
-
-#if !defined(WIN32) && !defined(CLIENT)
-int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1) {
-    wmodule **wmodules = (wmodule**)d1;
-    wmodule *cur_wmodule;
-    xml_node **children = NULL;
-    wmodule *cur_wmodule_exists;
-
-    // Allocate memory
-    if ((cur_wmodule = *wmodules)) {
-        cur_wmodule_exists = *wmodules;
-
-        while (cur_wmodule_exists) {
-            if(cur_wmodule_exists->tag) {
-                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
-                    cur_wmodule = cur_wmodule_exists;
-                    break;
-                }
-            }
-
-            if (cur_wmodule_exists->next == NULL) {
-                cur_wmodule = cur_wmodule_exists;
-
-                os_calloc(1, sizeof(wmodule), cur_wmodule->next);
-                cur_wmodule = cur_wmodule->next;
-                break;
-            }
-
-            cur_wmodule_exists = cur_wmodule_exists->next;
-        }
-    } else {
-        os_calloc(1, sizeof(wmodule), cur_wmodule);
-        *wmodules = cur_wmodule;
-    }
-
-    if (!cur_wmodule) {
-        merror(MEM_ERROR, errno, strerror(errno));
-        return (OS_INVALID);
-    }
-
-    // Get children
-    if (children = OS_GetElementsbyNode(xml, node), !children) {
-        mdebug1("Empty configuration for module '%s'", node->element);
-    }
-
-    //Task Manager module
-    if (!strcmp(node->element, WM_TASK_MANAGER_CONTEXT.name)) {
-        if (wm_task_manager_read(xml, children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
-    }
-
-    OS_ClearNode(children);
-    return 0;
-}
 #endif
+
 
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
 int Read_Github(const OS_XML *xml, xml_node *node, void *d1, void *d2) {

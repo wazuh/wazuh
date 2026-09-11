@@ -5,7 +5,6 @@
 #include "bpf_helpers.h"
 
 extern volatile bool event_received;
-extern volatile bool ebpf_hc_created;
 time_t fake_time_now = 0;
 extern time_t (*w_time)(time_t*);
 
@@ -14,7 +13,6 @@ protected:
 
     virtual void SetUp() {
         event_received = false;
-        ebpf_hc_created = false;
         fake_time_now = 0;
         w_time = time;
         MockFimebpf::mock_loggingFunction = mock_loggingFunction;
@@ -34,7 +32,6 @@ protected:
     virtual void TearDown() {
         std::remove("/tmp/ebpf_hc");
         event_received = false;
-        ebpf_hc_created = false;
         w_time = time;
         bpf_helpers.reset();
     }

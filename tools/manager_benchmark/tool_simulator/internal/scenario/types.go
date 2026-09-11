@@ -61,8 +61,8 @@ type Defaults struct {
 	// DEFAULT: zstd whenever the transport supports it -- that is what a real
 	// 5.x agent does -- and plain in uds mode, whose ingress has no decoder.
 	// "none" opts out explicitly; "zstd" forces it and therefore requires
-	// agent mode. remoted decompresses before relaying, and the CMAC signs the
-	// compressed bytes (they ARE the wire bytes), matching its contract. `raw`
+	// agent mode. remoted decompresses before relaying; authentication (the
+	// bearer token) never looks at the body, compressed or not. `raw`
 	// steps are never compressed: their bodies must reach the server
 	// byte-exact. CompressionFor resolves the effective value.
 	Compression string `json:"compression"`

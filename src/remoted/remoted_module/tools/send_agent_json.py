@@ -3,7 +3,7 @@
 Sends signed POST /stats and POST /config requests to remoted's HTTPS auth endpoint
 and shows what comes back, so the whole forwarding path can be exercised by hand:
 
-    agent -> remoted (HTTPS, AES-CMAC) -> modulesd's inventory sync server (UDS) -> back
+    agent -> remoted (HTTPS, wazuh-agent+jwt bearer) -> modulesd's inventory sync server (UDS) -> back
 
 Both endpoints now behave the same way, and neither echoes anything back:
 
@@ -26,23 +26,22 @@ shortly AFTER the 200, not with it.
 Signing is identical to send_stateless.py (see authMiddleware.cpp for the authoritative
 canonical string):
 
-  Authorization: Wazuh <agent-id>:<timestamp>:<mac>
   protocol-version: 1
+  Authorization: Bearer <wazuh-agent+jwt token>
 
-  MAC = AES-CMAC(agent_key, b"WAZUH-REQUEST\\n" + version + b"\\n" + METHOD + b"\\n"
-                            + request_target + b"\\n" + agent_id + b"\\n"
-                            + str(timestamp) + b"\\n" + body)
+The token is a JWT (HS256) the agent self-signs with its client.keys secret -- exactly the closed
+profile wire_jwt.py mints (header {alg,kid,typ}, six claims, 60 s lifetime, fresh jti per request).
+It binds the agent's identity only: method, target, body and compression are NOT part of
+authentication; the manager answers every credential failure with a uniform 401 +
+WWW-Authenticate: Bearer. See wire_jwt.py (and `python3 wire_jwt.py --self-test`).
 
-NOTE: the signing helpers below are duplicated from send_stateless.py on purpose, so each
-tool stays a single file you can scp onto a manager and run. If the canonical string ever
-changes on the C++ side, both copies fail loudly with 401 InvalidMac rather than silently
-mis-signing -- but keep them in step.
+NOTE: wire_jwt.py must sit next to this script (scp both onto a manager).
 
 Unlike /stateless there is NO payload-identity cross-check here: these documents do not
 carry an agent id at all, which is exactly why remoted forwards the authenticated one as an
 `X-Wazuh-Agent-Id` header for modulesd to write in.
 
-Requires: pip install requests cryptography
+Requires: pip install requests
 Requires: wazuh-manager-modulesd running with the inventory_sync_server module, otherwise
           every forwarded request answers 503 (remoted could not reach the downstream).
 
@@ -50,18 +49,26 @@ Examples:
   python3 send_agent_json.py                                  # one signed /stats -> 200
   python3 send_agent_json.py --endpoint config                # same, against /config
   python3 send_agent_json.py --body '{"cpu":42,"mem":128}'
-  python3 send_agent_json.py --tamper                         # modified body -> 401 InvalidMac
+  python3 send_agent_json.py --tamper                         # corrupted token -> 401
   python3 send_agent_json.py --all                            # every scenario, both endpoints
 """
 import argparse
 import json
+import re
 import sys
 import time
 
 import requests
 import urllib3
-from cryptography.hazmat.primitives import cmac
-from cryptography.hazmat.primitives.ciphers import algorithms
+from wire_jwt import (EXPIRED_IAT_OFFSET, FUTURE_IAT_OFFSET, auth_headers, make_jwt, read_agent_key,
+                      tamper_token)  # the shared wazuh-agent+jwt signer (same directory)
+
+
+def _json_auth_headers(agent_id, agent_key, **jwt_kwargs):
+    """The two auth headers plus the Content-Type both JSON endpoints expect."""
+    headers = auth_headers(agent_id, agent_key, **jwt_kwargs)
+    headers["Content-Type"] = "application/json"
+    return headers
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -89,53 +96,61 @@ def default_body(target: str) -> bytes:
 
 # Must match AuthConfig's defaults (auth/authTypes.hpp) unless the manager overrides them --
 # only used to pick offsets that reliably land on the wrong side of each window.
-MAX_REQUEST_AGE_SECONDS = 300
-MAX_FUTURE_SKEW_SECONDS = 30
 MAX_BODY_SIZE = 10 * 1024 * 1024
 
 
-def read_agent_key(agent_id: str, client_keys_path: str) -> bytes:
-    """Parses client.keys the same way Keystore does: 'id name ip key' lines, '#'/' '-prefixed
-    lines are comments, a name starting with '#'/'!' means removed. Returns raw key bytes."""
-    with open(client_keys_path, "r") as f:
-        for line in f:
-            if not line or line[0] in ("#", " "):
-                continue
-            parts = line.split()
-            if len(parts) < 4:
-                continue
-            line_id, name, _ip, key_hex = parts[0], parts[1], parts[2], parts[3]
-            if name.startswith("#") or name.startswith("!"):
-                continue
-            if line_id == agent_id:
-                return bytes.fromhex(key_hex)
-    raise SystemExit(f"agent id {agent_id!r} not found (or removed) in {client_keys_path}")
+
+# --- Global endpoint prefix (<remote><https><global_prefix>) ---------------------------------
+# Applied to every target when building the URL. Authentication does not cover the target (the
+# bearer token binds the agent's identity only), so a mismatch with the manager's configured
+# prefix surfaces as 404 (route not found), never as 401.
+#
+# Resolved like run_benchmark.sh resolves --cluster: the value belongs to the manager under
+# test, so when --global-prefix is not given it is read from that manager's own configuration
+# instead of making every invocation repeat it -- a default installation needs no flag. An
+# explicit value always wins; pass '/' to force the unprefixed paths against a prefixed manager.
+
+DEFAULT_MANAGER_CONF = "/var/wazuh-manager/etc/wazuh-manager.conf"
+
+GLOBAL_PREFIX = ""
 
 
-def sign_request(agent_key: bytes, protocol_version: str, method: str,
-                 request_target: str, agent_id: str, timestamp: int, body: bytes) -> str:
-    """Builds the canonical byte sequence and returns its lowercase-hex AES-CMAC."""
-    if len(agent_key) not in (16, 24, 32):
-        raise SystemExit(f"agent key must be 16, 24 or 32 bytes (got {len(agent_key)})")
-
-    c = cmac.CMAC(algorithms.AES(agent_key))
-    c.update(b"WAZUH-REQUEST\n")
-    c.update(protocol_version.encode() + b"\n")
-    c.update(method.upper().encode() + b"\n")
-    c.update(request_target.encode() + b"\n")
-    c.update(agent_id.encode() + b"\n")
-    c.update(str(timestamp).encode() + b"\n")
-    c.update(body)
-
-    return c.finalize().hex()
+def normalize_global_prefix(raw: str) -> str:
+    """'' and '/' mean no prefix; otherwise ensure a leading '/' and strip trailing '/'."""
+    stripped = raw.strip("/") if raw else ""
+    return "/" + stripped if stripped else ""
 
 
-def _auth_header(agent_id: str, agent_key: bytes, protocol_version: str, method: str,
-                 target: str, timestamp: int, body: bytes) -> dict:
-    mac = sign_request(agent_key, protocol_version, method, target, agent_id, timestamp, body)
-    return {"protocol-version": protocol_version,
-            "Content-Type": "application/json",
-            "Authorization": f"Wazuh {agent_id}:{timestamp}:{mac}"}
+def global_prefix_from_conf(conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """Reads <remote><https><global_prefix> out of the manager's configuration.
+
+    Scoped to the <https> block so a <global_prefix> elsewhere in the file cannot be picked
+    up by mistake. Returns "" when the file is missing or unreadable and when the tag is
+    absent -- an absent tag is exactly what "no prefix" means to the manager too, so the
+    caller needs no separate "not detected" case.
+    """
+    try:
+        with open(conf_path, "r") as handle:
+            text = handle.read()
+    except OSError:
+        return ""
+    block = re.search(r"<https>(.*?)</https>", text, re.S)
+    if not block:
+        return ""
+    tag = re.search(r"<global_prefix>(.*?)</global_prefix>", block.group(1), re.S)
+    return tag.group(1).strip() if tag else ""
+
+
+def resolve_global_prefix(cli_value, conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """An explicit --global-prefix wins; None (flag not given) reads the manager's config."""
+    if cli_value is not None:
+        return normalize_global_prefix(cli_value)
+    return normalize_global_prefix(global_prefix_from_conf(conf_path))
+
+
+def prefixed(path: str) -> str:
+    """Serves `path` under the configured global prefix (signed AND sent)."""
+    return GLOBAL_PREFIX + path
 
 
 # --- Scenarios -------------------------------------------------------------
@@ -149,7 +164,7 @@ def _auth_header(agent_id: str, agent_key: bytes, protocol_version: str, method:
 
 def scenario_valid(agent_id, agent_key, target):
     body = default_body(target)
-    return _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body), body
+    return _json_auth_headers(agent_id, agent_key), body
 
 
 def scenario_claimed_identity(agent_id, agent_key, target):
@@ -158,49 +173,49 @@ def scenario_claimed_identity(agent_id, agent_key, target):
     # authoritative wazuh.agent.id -- read the document back to see which id survived.
     body = (b'{"modules":{"agent":{"messages":{"count":1}}},'
             b'"agent_id":"999999","cluster":{"name":"claimed","node":"claimed"}}')
-    return _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body), body
+    return _json_auth_headers(agent_id, agent_key), body
 
 
 def scenario_no_modules_object(agent_id, agent_key, target):
     # A JSON object with nothing to store. Rejected by BOTH endpoints: every push replaces the
     # agent's document whole, so accepting this would wipe its last good report.
     body = b'{"cpu":42}'
-    return _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body), body
+    return _json_auth_headers(agent_id, agent_key), body
 
 
 def scenario_empty_modules_object(agent_id, agent_key, target):
     # `modules` present but empty -- same rejection, and the case a naive "is it there?" check
     # would let through.
     body = b'{"modules":{}}'
-    return _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body), body
+    return _json_auth_headers(agent_id, agent_key), body
 
 
 def scenario_module_not_an_object(agent_id, agent_key, target):
     # A module whose body is not an object. Rejected: there is nothing to nest under its key.
     body = b'{"modules":{"agent":"not-an-object"}}'
-    return _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body), body
+    return _json_auth_headers(agent_id, agent_key), body
 
 
 def scenario_empty_body(agent_id, agent_key, target):
     # Short-circuited by remoted itself (no deferred-work slot, no UDS round trip).
     body = b""
-    return _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body), body
+    return _json_auth_headers(agent_id, agent_key), body
 
 
 def scenario_not_an_object(agent_id, agent_key, target):
     # Valid JSON, but not an object -> modulesd 400 -> remoted 400.
     body = b'["not","an","object"]'
-    return _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body), body
+    return _json_auth_headers(agent_id, agent_key), body
 
 
 def scenario_malformed_json(agent_id, agent_key, target):
     body = b'{"unterminated":'
-    return _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body), body
+    return _json_auth_headers(agent_id, agent_key), body
 
 
 def scenario_missing_protocol_version(agent_id, agent_key, target):
     body = default_body(target)
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers = _json_auth_headers(agent_id, agent_key)
     del headers["protocol-version"]
     return headers, body
 
@@ -216,33 +231,59 @@ def scenario_malformed_authorization(_agent_id, _agent_key, target):
 
 def scenario_unknown_agent(_agent_id, _agent_key, target):
     body = default_body(target)
-    fake_id, fake_key = "999999", bytes(32)  # an id that (almost certainly) isn't enrolled
-    return _auth_header(fake_id, fake_key, "1", "POST", target, int(time.time()), body), body
+    fake_id, fake_key = "999999", "00" * 32  # an id that (almost certainly) isn't enrolled
+    return _json_auth_headers(fake_id, fake_key), body
 
 
 def scenario_expired_request(agent_id, agent_key, target):
     body = default_body(target)
-    ts = int(time.time()) - (MAX_REQUEST_AGE_SECONDS + 1)
-    return _auth_header(agent_id, agent_key, "1", "POST", target, ts, body), body
+    ts = int(time.time()) + EXPIRED_IAT_OFFSET  # older than jwt_max_age + jwt_clock_skew
+    return _json_auth_headers(agent_id, agent_key, now=ts), body
 
 
 def scenario_future_request(agent_id, agent_key, target):
     body = default_body(target)
-    ts = int(time.time()) + (MAX_FUTURE_SKEW_SECONDS + 1)
-    return _auth_header(agent_id, agent_key, "1", "POST", target, ts, body), body
+    ts = int(time.time()) + FUTURE_IAT_OFFSET  # issued further ahead than jwt_clock_skew
+    return _json_auth_headers(agent_id, agent_key, now=ts), body
 
 
-def scenario_invalid_mac(agent_id, agent_key, target):
-    signed_body = default_body(target)
-    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), signed_body)
-    return headers, b'{"tampered":true}'  # transmit different bytes than what was signed
+def _valid_with(agent_id, agent_key, target, **jwt_kwargs):
+    """The valid scenario with its Authorization replaced by a deliberately deviant token:
+    every keyword goes to wire_jwt.make_jwt (see there). The manager must answer 401."""
+    result = list(scenario_valid(agent_id, agent_key, target))
+    result[0] = _json_auth_headers(agent_id, agent_key, **jwt_kwargs)
+    return tuple(result)
+
+
+def scenario_invalid_signature(agent_id, agent_key, target):
+    result = list(scenario_valid(agent_id, agent_key, target))
+    token = result[0]["Authorization"].split(" ", 1)[1]
+    result[0] = dict(result[0], Authorization="Bearer " + tamper_token(token))
+    return tuple(result)
+
+
+def scenario_alg_none(agent_id, agent_key, target):
+    return _valid_with(agent_id, agent_key, target, alg="none")
+
+
+def scenario_aud_present(agent_id, agent_key, target):
+    return _valid_with(agent_id, agent_key, target, extra_claims={"aud": "wazuh-manager"})
+
+
+def scenario_non_canonical_kid(agent_id, agent_key, target):
+    return _valid_with(agent_id, agent_key, target, kid="0" + f"{int(agent_id):03d}")
+
+
+def scenario_ascii_key(agent_id, agent_key, target):
+    # The classic interoperability mistake: HMAC with the 64 hex chars instead of the 32 bytes.
+    return _valid_with(agent_id, agent_key, target, sign_with=agent_key.encode())
 
 
 def scenario_body_too_large(agent_id, agent_key, target):
     # Over AuthConfig's cap (10 MiB) but under the transport's (16 MiB), so AuthMiddleware
     # rejects it with a clean 413 instead of RESTinio dropping the connection.
     body = b'{"pad":"' + b"A" * (MAX_BODY_SIZE + 1024 * 1024) + b'"}'
-    return _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body), body
+    return _json_auth_headers(agent_id, agent_key), body
 
 
 # The expected status is either one code for both endpoints, or {target: code} where they
@@ -262,9 +303,13 @@ SCENARIOS = [
     ("missing_authorization", 401, scenario_missing_authorization),
     ("malformed_authorization", 401, scenario_malformed_authorization),
     ("unknown_agent", 401, scenario_unknown_agent),
-    ("expired_request", 401, scenario_expired_request),
-    ("future_request", 401, scenario_future_request),
-    ("invalid_mac_tampered_body", 401, scenario_invalid_mac),
+    ("expired_token", 401, scenario_expired_request),
+    ("future_token", 401, scenario_future_request),
+    ("invalid_signature_tampered_token", 401, scenario_invalid_signature),
+    ("alg_none", 401, scenario_alg_none),
+    ("aud_present", 401, scenario_aud_present),
+    ("non_canonical_kid", 401, scenario_non_canonical_kid),
+    ("ascii_key", 401, scenario_ascii_key),
     ("body_too_large", 413, scenario_body_too_large),
 ]
 
@@ -320,7 +365,7 @@ def run_all(base_url, agent_id, agent_key):
     print(f"Running {total} scenarios against {base_url} (agent {agent_id})\n")
 
     results = []
-    for target in ENDPOINTS:
+    for target in (prefixed(endpoint) for endpoint in ENDPOINTS):
         for name, expected, build in SCENARIOS:
             results.append(run_scenario(base_url, agent_id, agent_key, target, name, expected, build))
         print()
@@ -333,6 +378,12 @@ def run_all(base_url, agent_id, agent_key):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default="https://127.0.0.1:1517", help="Base URL of the HTTPS server.")
+    parser.add_argument("--global-prefix", default=None,
+                        help="URL path prefix the manager serves every endpoint under "
+                             "(<remote><https><global_prefix>). Used only when "
+                             "building the URL (authentication does not cover the target). Read from "
+                             + DEFAULT_MANAGER_CONF + " when not given; pass '/' to force the "
+                             "unprefixed paths.")
     parser.add_argument("--agent-id", default="1001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--client-keys", default=DEFAULT_CLIENT_KEYS, help="Path to client.keys.")
     parser.add_argument("--endpoint", default="stats", choices=("stats", "config"),
@@ -342,23 +393,30 @@ def main():
                              "the chosen endpoint. Both endpoints require a non-empty `modules` "
                              "object whose every module value is an object.")
     parser.add_argument("--tamper", action="store_true",
-                        help="Transmit a different body than the one signed, to prove the server "
-                             "rejects a modified body with 401 InvalidMac.")
+                        help="Corrupt the token's signature before sending, to prove the server "
+                             "rejects it with 401 (invalid_signature).")
     parser.add_argument("--all", action="store_true",
                         help="Ignore --body/--tamper/--endpoint and run every scenario against "
                              "BOTH /stats and /config.")
     args = parser.parse_args()
+    global GLOBAL_PREFIX
+    GLOBAL_PREFIX = resolve_global_prefix(args.global_prefix)
+    if args.global_prefix is None and GLOBAL_PREFIX:
+        print(f"Global prefix not given; using '{GLOBAL_PREFIX}' from {DEFAULT_MANAGER_CONF}")
 
     agent_key = read_agent_key(args.agent_id, args.client_keys)
 
     if args.all:
         return 0 if run_all(args.url, args.agent_id, agent_key) else 1
 
-    method, target, protocol_version = "POST", f"/{args.endpoint}", "1"
+    method, target, protocol_version = "POST", prefixed(f"/{args.endpoint}"), "1"
     signed_body = args.body.encode() if args.body is not None else default_body(target)
     timestamp = int(time.time())
-    headers = _auth_header(args.agent_id, agent_key, protocol_version, method, target, timestamp, signed_body)
-    sent_body = b'{"tampered":true}' if args.tamper else signed_body
+    headers = _json_auth_headers(args.agent_id, agent_key, now=timestamp, protocol_version=protocol_version)
+    sent_body = signed_body
+    if args.tamper:
+        # Corrupt the token's signature: the manager must answer 401 (invalid_signature).
+        headers["Authorization"] = "Bearer " + tamper_token(headers["Authorization"].split(" ", 1)[1])
 
     url = args.url.rstrip("/") + target
     print(f"--> {method} {url}")

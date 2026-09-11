@@ -106,7 +106,7 @@ namespace invsync::sync
             return badRequest("Start is missing the module name");
         }
 
-        // 4. Identity. The header carries the id remoted AUTHENTICATED via AES-CMAC; the session
+        // 4. Identity. The header carries the id remoted AUTHENTICATED (bearer token); the session
         // claims one. Compared as integers so leading zeros cannot defeat the check.
         const auto claimedAgentId = viewOf(start->agentid());
         if (!isNumericAgentId(claimedAgentId) || !isNumericAgentId(authenticatedAgentId))

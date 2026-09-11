@@ -40,7 +40,11 @@ typedef enum auth_local_err {
     EINVGROUP,
     ENOMASTER,
     ENOMASTERCOMM,
-    EINVALIDNAME // Append only: ERRORS[] below is indexed directly by these values.
+    EINVALIDNAME,
+    EPENDINGPURGE,
+    EINVALIDKEY,
+    EINVALIDID,
+    EDELETEBACKLOG // Append only: ERRORS[] below is indexed directly by these values.
 } auth_local_err;
 
 
@@ -66,7 +70,20 @@ static const struct {
     { 9016, "Cannot communicate with master node" },
     // A name that IS present but not storable in client.keys (see is_storable_agent_name()), as
     // opposed to 9005 "No such name", which means the argument was missing.
-    { 9017, "Invalid agent name" }
+    { 9017, "Invalid agent name" },
+    { 9018, "Agent ID has a pending deletion" },
+    // A caller-supplied key that is not 64 lowercase hex chars (the 32-byte key remoted's bearer
+    // profile requires). Distinct from 9009, which is the manager failing to GENERATE a key.
+    { 9019, "Invalid agent key" },
+    // A caller-supplied id outside [1, INT32_MAX] -- the range OS_AddNewAgent()/wdb can actually
+    // store -- or "0", which is reserved for the manager itself. See OS_IsValidAgentInsertID().
+    { 9020, "Invalid agent ID" },
+    // Too many deletions are already waiting to reach the indexer. Distinct from 9018, which is
+    // about ONE id being unusable: this one refuses the DELETION rather than an insertion, and the
+    // remedy is to wait rather than to pick a different id. 9021 rather than 9020: both features
+    // appended their code independently, and 9020 was already taken by the id check above -- the
+    // framework maps the two to different API errors.
+    { 9021, "Too many agent deletions are pending" }
 };
 
 // Dispatch local request
@@ -600,7 +617,51 @@ cJSON* local_add(const char *id,
     bool warn = false;
 
     mdebug2("add(%s)", name);
+
+    /* FIRST, ahead of the purge check below and of mutex_keys: a caller-supplied id must be within
+     * the range the manager can actually store it in, and rejecting a malformed one costs nothing.
+     * Reaching purge_is_pending() with it would spend a wazuh-db round trip -- on the request
+     * thread -- to ask whether an id that cannot exist owes a deletion.
+     *
+     * OS_IsValidID()'s 8-character cap is a different, unrelated convention (self-enrollment ids),
+     * not the id space /agents/insert accepts.
+     *
+     * Returns rather than `goto fail`, like the purge check: fail: unlocks mutex_keys, which is not
+     * held yet. */
+    if (id && !OS_IsValidAgentInsertID(id)) {
+        return local_create_error_response(ERRORS[EINVALIDID].code, ERRORS[EINVALIDID].message);
+    }
+
+    /* An explicitly chosen id is the one case where the caller can land on an id whose previous
+     * owner is still being cleaned up. Both this check and the duplicate-ID one below refuse
+     * instead of reassigning it, because the pending purge matches by agent id and would delete the
+     * NEW agent's documents -- and nothing in a state document lets the purge tell the two owners
+     * apart.
+     *
+     * Refusing rather than cancelling the purge is deliberate: a queued purge always runs. The
+     * caller is told to come back, which for a migration script is a retry, not a data loss.
+     *
+     * BEFORE mutex_keys, and that placement is the point: once authd has handed a deletion off, the
+     * only authority on it is the manager-task row, so this can block for up to authd.wdb_timeout.
+     * mutex_keys is the lock the writer thread and every enrollment take, so holding it across that
+     * query would let a slow wazuh-db stall enrollment -- the exact wedge the deletion redesign
+     * exists to remove. Nothing here reads the keystore, so there is nothing to serialise. */
+    if (id && purge_is_pending(id)) {
+        mwarn("Agent ID '%s' still has a pending deletion, rejecting the insertion.", id);
+        return local_create_error_response(ERRORS[EPENDINGPURGE].code, ERRORS[EPENDINGPURGE].message);
+    }
+
     w_mutex_lock(&mutex_keys);
+
+    /* The same question again, from memory only, now that the keystore is locked: a deletion of
+     * this very id could have been admitted between the check above and this lock, and add_remove()
+     * reserves the id under mutex_keys. The expensive half is not repeated -- a row that reached a
+     * terminal status a moment ago cannot have become outstanding again. */
+    if (id && purge_is_pending_locally(id)) {
+        mwarn("Agent ID '%s' was deleted while the insertion was being validated, rejecting it.", id);
+        ierror = EPENDINGPURGE;
+        goto fail;
+    }
 
     /* Check if groups are valid to be aggregated */
     if (groups) {
@@ -610,24 +671,31 @@ cJSON* local_add(const char *id,
         }
     }
 
+    /* A caller-supplied key must already have the shape remoted will accept (64 lowercase hex chars
+     * -> the agent's 32-byte HS256 key). Anything else would be stored fine and then rejected on
+     * every request as an unusable key, which is far harder to diagnose than refusing it here. */
+    if (key && !OS_IsValidAgentKey(key)) {
+        ierror = EINVALIDKEY;
+        goto fail;
+    }
+
     // Check for duplicate ID
     //
-    // w_auth_replace_agent() os_strdup()s a fresh message into str_result on every call, so each of
-    // the three duplicate checks below frees what the previous one left -- an add matching on more
-    // than one of ID/IP/name would otherwise leak, since only one os_free() runs at the end.
+    // w_auth_replace_agent() os_strdup()s a fresh message into str_result on every call, so the
+    // duplicate IP and name checks below free what the previous one left -- an add matching on both
+    // would otherwise leak, since only one os_free() runs at the end. The ID check does not
+    // participate: it refuses instead of replacing, so it never writes str_result.
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
-        os_free(str_result);
-        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
-            minfo("Duplicate ID. %s", str_result);
-        } else {
-            if (warn) {
-                mwarn("Duplicate ID, rejecting enrollment. %s", str_result);
-            } else {
-                minfo("Duplicate ID, rejecting enrollment. %s", str_result);
-            }
-            ierror = EDUPID;
-            goto fail;
-        }
+        /* NOT replaced, even when force would allow it: replacing by the SAME id queues a purge for
+         * an id that gets a new owner in this very operation. The agent has to be deleted first,
+         * and its purge has to finish, before the id can be reused.
+         *
+         * Nothing is freed here, unlike the IP and name checks below: this branch no longer calls
+         * w_auth_replace_agent(), so it leaves nothing in str_result for them to free. */
+        mwarn("Duplicate ID '%s', rejecting the insertion: delete the agent and let its deletion "
+              "finish before reusing the ID.", id);
+        ierror = EDUPID;
+        goto fail;
     }
 
     /* Check for duplicate IP */
@@ -646,7 +714,7 @@ cJSON* local_add(const char *id,
         w_free_os_ip(aux_ip);
 
         if (index = OS_IsAllowedIP(&keys, _ip), index >= 0) {
-            os_free(str_result); // see the duplicate-ID check above
+            os_free(str_result); // see the note on str_result above
             if (OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
                 minfo("Duplicate IP '%s'. %s", _ip, str_result);
             } else {
@@ -663,15 +731,9 @@ cJSON* local_add(const char *id,
         strncpy(_ip, ip, IPSIZE);
     }
 
-    /* Check whether the agent name is the same as the manager */
-    if (!strcmp(name, shost)) {
-        ierror = EDUPNAME;
-        goto fail;
-    }
-
     /* Check for duplicate names */
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {
-        os_free(str_result); // see the duplicate-ID check above
+        os_free(str_result); // see the note on str_result above
         if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
             minfo("Duplicate name. %s", str_result);
         } else {
@@ -740,7 +802,8 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
         if (!strncmp(message, "ERROR: ", 7)) {
             message += 7;
         }
-        merror("ERROR %d: %s.", master_error_code, message);
+
+        mwarn("Error %d: %s.", master_error_code, message);
         response = local_create_error_response(master_error_code, message);
     } else {
         // Transport failure, or an unparseable response: either way, no clean answer.
@@ -765,6 +828,17 @@ cJSON* local_remove(const char *id, int purge) {
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
         mdebug1("Error %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
         response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
+    } else if (purge_backlog_full()) {
+        /* PHASE 0, and it has to be here rather than anywhere later.
+         *
+         * One line below, add_remove() and OS_DeleteKey() have run: the agent is out of the
+         * in-memory keystore and this function is about to answer "deleted". From that point there
+         * is nothing left to refuse and nobody to tell, which is why the old code -- discovering
+         * the overflow in the writer -- could only choose between dropping the purge silently and
+         * logging it while the documents were orphaned. Refusing the REQUEST leaves the agent
+         * exactly as it was, and the caller can retry. */
+        mwarn("Error %d: %s.", ERRORS[EDELETEBACKLOG].code, ERRORS[EDELETEBACKLOG].message);
+        response = local_create_error_response(ERRORS[EDELETEBACKLOG].code, ERRORS[EDELETEBACKLOG].message);
     } else {
         minfo("Agent '%s' (%s) deleted (requested locally)", id, keys.keyentries[index]->name);
         /* Add pending key to write */

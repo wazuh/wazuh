@@ -1096,7 +1096,11 @@ classDef AttributesClass min-width: 200px
 Attributes are configuration details and metadata about the asset. Every asset shares the following common attributes:
 
 - **`name`**: Uniquely identifies the asset using the pattern `<asset_type>/<name>/<version>` (e.g. `decoder/aws-cloudtrail/0`).
-- **`id`**: A UUIDv4 string that uniquely identifies the asset across the system.
+- **`id`**: A string that uniquely identifies the asset across the system. It is opaque to the Engine:
+  any UUID version or other format is accepted, and one is generated (UUIDv4) when the asset does not carry it.
+  The only constraints are that it must be non-empty, at most 256 characters long and free of control
+  characters. Identifiers are never normalized: they are compared byte by byte, so two identifiers that
+  only differ in case are distinct.
 - **`enabled`**: Boolean flag. Disabled assets are ignored when building the policy operational graph.
   The policy's root decoder is the one exception: because it anchors the whole decoder tree, the build
   fails with an explicit error if it is disabled, belongs only to disabled integrations, or is not
@@ -1220,13 +1224,13 @@ Each integration has the following fields:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `id` | Yes | UUIDv4 that uniquely identifies the integration |
+| `id` | Yes | Identifier that uniquely identifies the integration (opaque; any UUID version or format) |
 | name | Yes | Human-readable title of the integration (stored under `metadata.title`) |
 | `enabled` | Yes | Boolean. Disabled integrations are skipped when building the policy |
 | `category` | Yes | One of the seven allowed categories (see below) |
-| `decoders` | Yes | Ordered list of decoder UUIDs that belong to this integration |
-| `kvdbs` | Yes | List of KVDB UUIDs used by this integration's decoders |
-| `default_parent` | No | UUID of the fallback parent decoder. Used for decoders in this integration that do not declare an explicit parent |
+| `decoders` | Yes | Ordered list of decoder identifiers that belong to this integration (no duplicates) |
+| `kvdbs` | Yes | List of KVDB identifiers used by this integration's decoders (no duplicates) |
+| `default_parent` | No | Identifier of the fallback parent decoder. Used for decoders in this integration that do not declare an explicit parent |
 
 #### Integration categories
 
@@ -1884,7 +1888,7 @@ kanban
   be repeated. The naming convention for components is `<type>/<name>/<version>`. The component type is `filter`, and
   the version must be 0, since versioning is not implemented:
 
-- **ID**: Unique identifier for the filter in UUIDv4 format.
+- **ID**: Unique identifier for the filter. It is opaque to the Engine: any UUID version or other format is accepted (non-empty, at most 256 characters, no control characters).
 
 - **Enabled**: Boolean flag to enable or disable the filter.
 
@@ -2784,6 +2788,8 @@ Edit the file and restart the `wazuh-manager` service for changes to take effect
 | `analysisd.indexer_logger_queue_size` | Maximum number of `_bulk` responses (with their payloads) that can wait in the indexer error-logger queue. Only responses whose bulk reported item errors are queued; when the queue is full the error details are dropped and a warning is logged. Allowed range: `1` to `1024`. | `8` |
 | `analysisd.indexer_logger_threads` | Number of worker threads that parse `_bulk` error responses to log per-item failures. Allowed range: `1` to `16`. | `1` |
 | `analysisd.indexer_max_retry_delay` | Maximum exponential-backoff delay in seconds between retries of a failed `_bulk` request (e.g. `429 Too Many Requests`, connection errors). See [Indexer Connector - Retry and backoff behavior](../indexer_connector/README.md#retry-and-backoff-behavior) for how the delay scales. Allowed range: `1` to `3600`. | `15` |
+| `analysisd.indexer_request_timeout` | Upper bound in seconds for one data request against `wazuh-indexer`. Catches a host that accepted the connection and then never answers; a timed-out bulk request is retried with backoff, not discarded. Allowed range: `0` to `3600` (`0` disables the bound). | `60` |
+| `analysisd.indexer_monitoring_interval` | Polling period in seconds of the indexer health monitor that marks each `wazuh-indexer` host as available or unavailable for the connector. Allowed range: `1` to `3600`. | `10` |
 
 ### Synchronization settings
 

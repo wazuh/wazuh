@@ -1,9 +1,13 @@
 cmake_minimum_required(VERSION 3.10)
 project(fim_ebpf_whodata_test)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
+if(FSANITIZE)
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
+else()
+    set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
+endif()
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
@@ -34,8 +38,14 @@ foreach(TEST_FILE ${TEST_FILES})
         optimized gmock
         optimized gtest_main
         optimized gmock_main
-	    pthread
+        pthread
         fimebpf
+    )
+
+    # libfimebpf.so inherits -fsanitize from the agent/unit-test build, which is a
+    # separate CMake configure from this test; link the runtime unconditionally so
+    # its __asan_/__ubsan_ symbols always resolve. Harmless when the lib has none.
+    target_link_libraries(${TEST_NAME}
         -fsanitize=address
         -fsanitize=undefined
     )

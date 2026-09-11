@@ -117,3 +117,60 @@ def test_custom_logging(path, hash_auth_context, body, loggerlevel):
                                       call(json_info, extra={'log_type': 'json'})])
 
         log_info_mock.debug2.assert_called_with(f'Receiving headers {headers}')
+
+
+@pytest.mark.parametrize("value, expected", [
+    ('plain', 'plain'),
+    ('a\nb', 'a\\nb'),
+    ('a\r\n\tb', 'a\\r\\n\\tb'),
+    ('a\x1b[31mb\x00\x7f', 'a\\x1b[31mb\\x00\\x7f'),
+    ('already\\nescaped', 'already\\nescaped'),
+])
+def test_escape_control_chars(value, expected):
+    """Check every C0 control character and DEL is replaced by its escape sequence."""
+    assert alogging.escape_control_chars(value) == expected
+
+
+@pytest.mark.parametrize("user, path, expected_prefix", [
+    ('wazuh\nFAKE 127.0.0.1 "GET /security/users"', '/agents',
+     'wazuh\\nFAKE 127.0.0.1 "GET /security/users" 1.1.1.1 "GET /agents"'),
+    ('wazuh', '/x\n2026/01/01 03:14:15 INFO: admin 10.0.0.5 "GET /agents',
+     'wazuh 1.1.1.1 "GET /x\\n2026/01/01 03:14:15 INFO: admin 10.0.0.5 "GET /agents"'),
+    (None, '/x\r\n\x1b[2J', 'None 1.1.1.1 "GET /x\\r\\n\\x1b[2J"'),
+])
+def test_custom_logging_escapes_control_chars(user, path, expected_prefix):
+    """The plain-text access log entry stays on one line whatever the user and path carry."""
+    with patch('api.alogging.logger') as logger_mock:
+        logger_mock.level = 20
+        alogging.custom_logging(user=user, remote='1.1.1.1', method='GET', path=path, query={}, body={},
+                                elapsed_time=0.001, status=404)
+
+    plain_line, json_record = (c[0][0] for c in logger_mock.info.call_args_list)
+    assert plain_line == f'{expected_prefix} with parameters {{}} and body {{}} done in 0.001s: 404'
+    assert not alogging.control_chars_pattern.search(plain_line)
+    # The JSON record keeps the raw values; its formatter escapes them.
+    assert json_record['user'] == user
+    assert json_record['uri'] == f'GET {path}'
+
+
+def test_custom_logging_omits_oversized_body():
+    """Check that a body too large to log is replaced by a marker in both log lines.
+
+    The same payload is written once to api.log and again to api.json, so an oversized body turns
+    one request into several times its size on disk.
+    """
+    body = {'field': 'a' * (alogging.MAX_LOGGED_BODY_SIZE + 1)}
+    expected_body = {'body_omitted': f'body of {len(json.dumps(body))} serialised bytes exceeds '
+                                     f'the {alogging.MAX_LOGGED_BODY_SIZE} byte logging limit'}
+
+    with patch('api.alogging.logger') as log_info_mock:
+        log_info_mock.info = MagicMock()
+        log_info_mock.debug2 = MagicMock()
+        alogging.custom_logging(user='wazuh', remote='1.1.1.1', method='POST', path='/agents',
+                                query={}, body=body, elapsed_time=1.01, status=200, headers={})
+
+        log_line, json_line = [called.args[0] for called in log_info_mock.info.call_args_list]
+
+    assert json_line['body'] == expected_body
+    assert json.dumps(expected_body) in log_line
+    assert 'aaaa' not in log_line

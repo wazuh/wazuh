@@ -8,8 +8,8 @@ import (
 
 // zstd is used in two places with opposite directions: Compress produces the
 // Content-Encoding: zstd request bodies remoted accepts on its authenticated
-// routes (the CMAC then signs the COMPRESSED bytes -- they are the wire bytes),
-// and Decompress reads the .json.zst captured-session dumps, which are stored
+// routes (authentication does not look at the body, compressed or not), and
+// Decompress reads the .json.zst captured-session dumps, which are stored
 // compressed because the full-fidelity first-connect corpus would otherwise
 // put ~44 MB of JSON in the repo.
 //

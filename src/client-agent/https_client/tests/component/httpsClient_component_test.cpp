@@ -12,8 +12,8 @@
 /*
  * End-to-end over the REAL curl path (CurlPerformer + CurlHandle) against a
  * fork-based plaintext fake manager. This is what exercises curlHandle.cpp
- * for coverage and proves cross-implementation AES-CMAC interop: the server
- * recomputes the MAC with the shared key, so a 200 means the two independent
+ * for coverage and proves cross-implementation bearer interop: the server
+ * verifies the token with the shared key, so a 200 means the two independent
  * implementations agree. Plaintext + HC_VERIFY_NONE by design; the TLS matrix
  * is pinned at the option level in curlPerformer_test.
  */
@@ -22,6 +22,7 @@
 #include "curlPerformer.hpp"
 #include "fakeManager.hpp"
 #include "fileCompressor.hpp"
+#include "jwtSigner.hpp"
 #include "keyProvider.hpp"
 #include "moduleConfig.hpp"
 #include "retrySender.hpp"
@@ -43,7 +44,7 @@
 namespace
 {
     constexpr uint16_t FAKE_PORT = 44853; // Distinct from http-request's 44441.
-    const std::string KEY_HEX = "000102030405060708090a0b0c0d0e0f";
+    const std::string KEY_HEX = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 
     ModuleConfig componentConfig()
     {
@@ -60,14 +61,14 @@ namespace
         return typed;
     }
 
-    // Signs and sends one request through the real curl performer.
-    HttpResponse sendSigned(CurlPerformer& performer, const CmacSigner& signer,
-                            const std::string& target, const std::string& body,
+    // Mints a bearer and sends one request through the real curl performer.
+    HttpResponse sendSigned(CurlPerformer& performer,
+                            const JwtSigner& signer,
+                            const std::string& target,
+                            const std::string& body,
                             const std::vector<std::string>& extraHeaders = {})
     {
-        const auto headers = signer.sign("POST", target,
-                                         reinterpret_cast<const uint8_t*>(body.data()), body.size(),
-                                         SystemClock {}.wallSeconds());
+        const auto headers = signer.sign(SystemClock {}.wallSeconds());
         HttpRequestSpec spec;
         spec.target = target;
         spec.body = reinterpret_cast<const uint8_t*>(body.data());
@@ -103,7 +104,7 @@ namespace
 
             ModuleConfig m_config;
             ConfigKeyProvider m_keyProvider;
-            CmacSigner m_signer;
+            JwtSigner m_signer;
             CurlPerformer m_performer;
             static FakeManager* s_manager;
     };
@@ -128,9 +129,7 @@ TEST_F(ComponentTest, ResponseStreamsToAFileThroughTheRealCurlPath)
     const std::string body = "H {\"wazuh\":{\"agent\":{\"id\":\"001\"}}}\nE 1:loc:echo-to-file\n";
     const std::string path = ::testing::TempDir() + "hc_component_response.tmp";
 
-    const auto headers = m_signer.sign("POST", "/stateless",
-                                       reinterpret_cast<const uint8_t*>(body.data()), body.size(),
-                                       SystemClock {}.wallSeconds());
+    const auto headers = m_signer.sign(SystemClock {}.wallSeconds());
     HttpRequestSpec spec;
     spec.target = "/stateless";
     spec.body = reinterpret_cast<const uint8_t*>(body.data());
@@ -145,8 +144,7 @@ TEST_F(ComponentTest, ResponseStreamsToAFileThroughTheRealCurlPath)
     EXPECT_TRUE(response.body.empty()); // Bytes went to the file, not memory.
 
     std::ifstream file {path, std::ios::binary};
-    const std::string content {std::istreambuf_iterator<char>(file),
-                               std::istreambuf_iterator<char>()};
+    const std::string content {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
     EXPECT_EQ(body, content);
     std::remove(path.c_str());
 }
@@ -158,9 +156,7 @@ TEST_F(ComponentTest, ResponseSizeCapAbortsAnOversizedTransfer)
     const std::string body(4096, 'x');
     const std::string path = ::testing::TempDir() + "hc_component_capped.tmp";
 
-    const auto headers = m_signer.sign("POST", "/stateless",
-                                       reinterpret_cast<const uint8_t*>(body.data()), body.size(),
-                                       SystemClock {}.wallSeconds());
+    const auto headers = m_signer.sign(SystemClock {}.wallSeconds());
     HttpRequestSpec spec;
     spec.target = "/stateless";
     spec.body = reinterpret_cast<const uint8_t*>(body.data());
@@ -190,9 +186,7 @@ TEST_F(ComponentTest, ResponseFileOpenRefusesToFollowASymlink)
     ASSERT_EQ(0, ::symlink(victim.c_str(), link.c_str()));
 
     const std::string body = "H {}\nE 1:l:x\n";
-    const auto headers = m_signer.sign("POST", "/stateless",
-                                       reinterpret_cast<const uint8_t*>(body.data()), body.size(),
-                                       SystemClock {}.wallSeconds());
+    const auto headers = m_signer.sign(SystemClock {}.wallSeconds());
     HttpRequestSpec spec;
     spec.target = "/stateless";
     spec.body = reinterpret_cast<const uint8_t*>(body.data());
@@ -205,19 +199,18 @@ TEST_F(ComponentTest, ResponseFileOpenRefusesToFollowASymlink)
     EXPECT_NE(TransportStatus::Ok, response.status); // Open refused before any HTTP.
 
     std::ifstream check {victim, std::ios::binary};
-    const std::string content {std::istreambuf_iterator<char> {check},
-                               std::istreambuf_iterator<char> {}};
+    const std::string content {std::istreambuf_iterator<char> {check}, std::istreambuf_iterator<char> {}};
     EXPECT_EQ("precious", content); // Untouched through the link.
 
     ::unlink(link.c_str());
     ::unlink(victim.c_str());
 }
 
-TEST_F(ComponentTest, ServerRecomputesMacSoTamperingIsRejected)
+TEST_F(ComponentTest, ServerVerifiesTheBearerSoAWrongKeyIsRejected)
 {
-    // A signer with the WRONG key produces a MAC the server will not match.
-    ConfigKeyProvider wrongProvider {"ffffffffffffffffffffffffffffffff"};
-    CmacSigner wrongSigner {"001", wrongProvider};
+    // A signer with the WRONG key mints a token whose signature the server will not verify.
+    ConfigKeyProvider wrongProvider {std::string(64, 'f')};
+    JwtSigner wrongSigner {"001", wrongProvider};
     const auto response = sendSigned(m_performer, wrongSigner, "/stateless", "H {}\nE 1:l:x\n");
     EXPECT_EQ(TransportStatus::Ok, response.status); // Transport fine...
     EXPECT_EQ(401, response.httpCode);               // ...but auth refused.
@@ -225,12 +218,12 @@ TEST_F(ComponentTest, ServerRecomputesMacSoTamperingIsRejected)
 
 TEST_F(ComponentTest, AuthorizationHeaderMatchesTheContractFormat)
 {
-    const auto headers =
-        m_signer.sign("POST", "/control", reinterpret_cast<const uint8_t*>("{}"), 2, 1700000000);
+    const auto headers = m_signer.sign(1700000000);
     ASSERT_TRUE(headers.has_value());
     EXPECT_EQ("protocol-version: 1", headers->protocolVersion);
-    const std::regex expected {R"(^Authorization: Wazuh \d{1,}:\d+:[0-9a-f]{32}$)"};
-    EXPECT_TRUE(std::regex_match(headers->authorization, expected));
+    // A compact JWS: three unpadded base64url segments, the last one a 32-byte HS256 tag.
+    const std::regex expected {R"(^Authorization: Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$)"};
+    EXPECT_TRUE(std::regex_match(headers->authorization, expected)) << headers->authorization;
 }
 
 TEST_F(ComponentTest, BackPressureIsHonoredAndEachRetryReSigns)
@@ -264,16 +257,13 @@ TEST_F(ComponentTest, StatefulSessionStreamsFromSpoolAndDedupsOnReplay)
 
     auto sendSession = [&](const std::string & sessionId)
     {
-        const auto headers = m_signer.signFile("POST", "/stateful", spool->path(),
-                                               SystemClock {}.wallSeconds());
+        const auto headers = m_signer.sign(SystemClock {}.wallSeconds());
         HttpRequestSpec spec;
         spec.target = "/stateful";
         spec.bodyFilePath = spool->path();
         spec.bodyFileSize = payload.size();
         spec.timeoutMs = 3000;
-        spec.headers = {"X-Session-Id: " + sessionId, headers->protocolVersion,
-                        headers->authorization
-                       };
+        spec.headers = {"X-Session-Id: " + sessionId, headers->protocolVersion, headers->authorization};
         return m_performer.perform(spec);
     };
 
@@ -306,8 +296,7 @@ TEST_F(ComponentTest, StatefulSessionCompressesToASmallerWireSizeAndDecompresses
     const auto& [compressedSpool, compressedSize] = *compressed;
     ASSERT_LT(compressedSize, payload.size()); // Actually shrank.
 
-    const auto headers = m_signer.signFile("POST", "/stateful", compressedSpool->path(),
-                                           SystemClock {}.wallSeconds());
+    const auto headers = m_signer.sign(SystemClock {}.wallSeconds());
     HttpRequestSpec spec;
     spec.target = "/stateful";
     spec.bodyFilePath = compressedSpool->path();
@@ -315,17 +304,18 @@ TEST_F(ComponentTest, StatefulSessionCompressesToASmallerWireSizeAndDecompresses
     spec.timeoutMs = 3000;
     spec.headers =
     {
-        "X-Session-Id: sess-cmp-zstd", "Content-Encoding: zstd", headers->protocolVersion,
-        headers->authorization
+        "X-Session-Id: sess-cmp-zstd", "Content-Encoding: zstd", headers->protocolVersion, headers->authorization
     };
 
     const auto response = m_performer.perform(spec);
 
     EXPECT_EQ(200, response.httpCode);
-    // This fake manager doesn't decode the body (see fakeManager.hpp) -- it
-    // just reports how many bytes it received, so this proves the *wire*
-    // request really did carry the smaller, compressed byte count.
-    EXPECT_NE(std::string::npos, response.body.find("\"bytes\":" + std::to_string(compressedSize)));
+    // The fake manager reports the *inflated* size the way the real manager
+    // would see it -- decoded by cpp-httplib itself (0.25.0 in the manager tree,
+    // with CPPHTTPLIB_ZSTD_SUPPORT) or by the fake's own zstd pass (0.10.9 in
+    // agent builds hands the frame over untouched) -- so this proves the
+    // smaller wire body inflated back to the full session on every CI leg.
+    EXPECT_NE(std::string::npos, response.body.find("\"bytes\":" + std::to_string(payload.size())));
 
     // Prove those wire bytes are what a real IBodyDecoder would accept: read
     // them back independently and decompress with zstd.
@@ -333,8 +323,8 @@ TEST_F(ComponentTest, StatefulSessionCompressesToASmallerWireSizeAndDecompresses
     const std::string compressedBytes {std::istreambuf_iterator<char> {compressedFile},
                                        std::istreambuf_iterator<char> {}};
     std::vector<char> decompressed(payload.size());
-    const size_t decompressedSize = ZSTD_decompress(decompressed.data(), decompressed.size(),
-                                                    compressedBytes.data(), compressedBytes.size());
+    const size_t decompressedSize =
+        ZSTD_decompress(decompressed.data(), decompressed.size(), compressedBytes.data(), compressedBytes.size());
     ASSERT_FALSE(ZSTD_isError(decompressedSize));
     ASSERT_EQ(payload.size(), decompressedSize);
     EXPECT_EQ(payload, std::string(decompressed.begin(), decompressed.end()));
@@ -342,16 +332,15 @@ TEST_F(ComponentTest, StatefulSessionCompressesToASmallerWireSizeAndDecompresses
 
 TEST_F(ComponentTest, ControlStartupReturnsHandshakeJson)
 {
-    const auto response = sendSigned(m_performer, m_signer, "/control",
-                                     R"({"type":"startup","version":"5.1.0"})");
+    const auto response = sendSigned(m_performer, m_signer, "/control", R"({"type":"startup","version":"5.1.0"})");
     EXPECT_EQ(200, response.httpCode);
     EXPECT_NE(std::string::npos, response.body.find("\"limits\""));
 }
 
 TEST_F(ComponentTest, VersionRejectionSurfacesAs409)
 {
-    const auto response = sendSigned(m_performer, m_signer, "/control",
-                                     R"({"type":"startup"})", {"X-Reject-Version: 1"});
+    const auto response =
+        sendSigned(m_performer, m_signer, "/control", R"({"type":"startup"})", {"X-Reject-Version: 1"});
     EXPECT_EQ(409, response.httpCode);
     EXPECT_EQ(OutcomeClass::VersionRejected, classifyOutcome(response));
 }

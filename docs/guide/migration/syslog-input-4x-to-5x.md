@@ -98,7 +98,7 @@ Before proceeding with either option, make sure you have:
 
 ### Installing the Wazuh agent
 
-> **Important:** In Wazuh 5.0, the Wazuh agent is **not installed automatically with the manager**. Even if rsyslog runs on the same host as the Wazuh manager, you must install and enroll a separate Wazuh agent on that host.
+> **Important:** In Wazuh 5.0, the Wazuh agent is **not installed automatically with the manager**. Even if rsyslog runs on the same host as the Wazuh manager, you must install and enroll a separate Wazuh agent on that host. That agent must be 5.x: Wazuh 4.x agent packages declare a conflict with the `wazuh-manager` package and cannot share a host with a 5.x manager.
 
 From the Wazuh dashboard, go to **Agent management -> Summary** and click **Deploy new agent**.
 

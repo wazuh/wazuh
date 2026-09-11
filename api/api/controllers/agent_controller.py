@@ -16,7 +16,7 @@ from api.models.agent_group_added_model import GroupAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
-from wazuh import agent
+from wazuh import agent, vulnerability_scan
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DATABASE_LIMIT
 from wazuh.core.results import AffectedItemsWazuhResult
@@ -240,6 +240,45 @@ async def restart_agents(pretty: bool = False, wait_for_complete: bool = False,
                           wait_for_complete=wait_for_complete,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
                           broadcasting=True,  # Always broadcast for HTTPS stateless architecture
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
+async def scan_agents(pretty: bool = False, wait_for_complete: bool = False,
+                      agents_list: str = '*') -> ConnexionResponse:
+    """Request an on-demand vulnerability scan for all agents or a list of them.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agents_list : str
+        List of agents IDs. Default: `*`
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'agent_list': agents_list}
+
+    dapi = DistributedAPI(f=vulnerability_scan.scan_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          # Not is_async: scan_agents() makes one blocking VD HTTP call per
+                          # agent, so it must run off the API server's event loop (in the
+                          # process pool), not inline on it - see CHANGELOG/issue #38553.
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          # No broadcasting: VD reads indexer-synced state, not a live per-node
+                          # agent session, so the scan only needs to run once, on the master.
+                          broadcasting=False,
                           logger=logger
                           )
     data = raise_if_exc(await dapi.distribute_function())

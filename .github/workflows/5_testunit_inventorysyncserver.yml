@@ -5,6 +5,7 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testunit_inventorysyncserver.yml"
+      - "src/shared_modules/metrics/**"
       - "src/shared_modules/utils/**"
       - "src/wazuh_modules/inventory_sync_server/**"
       - ".github/actions/build_external_deps/**"

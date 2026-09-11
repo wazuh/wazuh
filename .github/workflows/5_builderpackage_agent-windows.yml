@@ -20,6 +20,7 @@ on:
       - ".github/actions/5_builderpackage_get-upgrade-test-package-url/**"
       - ".github/actions/5_builderpackage_windows-smoke-upgrade-test/**"
       - ".github/actions/5_testintegration_detect-changes/**"
+      - "tests/integration/**"
   workflow_dispatch:
     inputs:
       revision:

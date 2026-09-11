@@ -155,7 +155,7 @@ http {
             proxy_ssl_certificate     /etc/nginx/certs/proxy_client.crt;
             proxy_ssl_certificate_key /etc/nginx/certs/proxy_client.key;
 
-            # Informational. Safe to add: headers are not covered by the signature.
+            # Informational. Safe to add: headers are not covered by the bearer token.
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
@@ -182,18 +182,27 @@ This is the one that costs the most time, because a single character changes the
 | `proxy_pass https://remoted_nodes_http;` | the original target, **unchanged** ✅ |
 | `proxy_pass https://remoted_nodes_http/;` | the target with the `location` prefix **replaced** ❌ |
 
-The request target is part of what the agent signs, so a rewritten target means a signature that no
-longer matches, which means `401` on **every** request:
+The manager routes on the literal request target (the bearer token does not bind it), so a
+rewritten target reaches a route that does not exist, which means `404` on **every** request:
 
 ```mermaid
 flowchart LR
-    A["agent signs<br/>'/wazuh/stateless'"] --> N["location /wazuh/<br/>+ proxy_pass .../<br/>rewrites to '/stateless'"] --> R["remoted → 401"]
+    A["agent sends<br/>'/wazuh-manager/stateless'"] --> N["location /wazuh-manager/<br/>+ proxy_pass .../<br/>rewrites to '/stateless'"] --> R["remoted → 404"]
 ```
 
-Consequence: remoted cannot be published under a path prefix. Use its own port or hostname.
+Consequence: a path prefix is never something the proxy adds or strips. To publish remoted under
+one, configure [`remote.https.global_prefix`](../configuration.md#httpsglobal_prefix) on the
+manager and the same prefix on the agents, and keep `proxy_pass` **without** a URI component so
+the prefixed target passes through untouched:
 
-Related, and safe: `merge_slashes` (on by default, collapses `//` into `/`) does **not** break the
-signature as long as `proxy_pass` has no URI component. There is no need to turn it off.
+```nginx
+location /wazuh-manager/ {
+    proxy_pass https://remoted_nodes_http;   # no trailing slash: target forwarded unchanged
+}
+```
+
+Related, and safe: `merge_slashes` (on by default, collapses `//` into `/`) does **not** alter the
+forwarded target as long as `proxy_pass` has no URI component. There is no need to turn it off.
 
 ### 3.2. The 1 MB default body limit
 
@@ -286,7 +295,7 @@ openssl x509 -in /var/wazuh-manager/etc/certs/remoted.pem -noout -ext subjectAlt
 #    (that is the default path; if <certificate> is set, read the file it names)
 ```
 
-Then send a real signed request from an agent and watch the access log:
+Then send a real authenticated request from an agent and watch the access log:
 
 ```
 [termination] client=10.0.0.50 "POST /stateless HTTP/1.1" -> upstream=10.0.0.11:1517 status=202 ...
@@ -296,8 +305,9 @@ What each status code tells you:
 
 | Code | Meaning |
 |---|---|
-| `202` | signature valid **and** the event was ingested |
-| `401` | signature rejected — if it is *every* request, suspect a rewritten target (3.1) |
+| `202` | token valid **and** the event was ingested |
+| `401` | token rejected — unknown agent, wrong key or clock drift; a rewritten target shows as `404`, not here |
+| `404` | no such route — if it is *every* request, suspect a rewritten target (3.1) or a prefix mismatch |
 | `413` | body too large — the proxy's limit (3.2) or the manager's 20 MB |
 | `502` | the proxy could not talk to the manager — suspect TLS 1.3 (3.3) or certificate verification |
 | `503` | the manager accepted the request but could not process it right now |

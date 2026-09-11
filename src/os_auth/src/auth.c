@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include "auth.h"
 #include "defs.h"
+#include "manager_task_op.h"
 #include "os_err.h"
 #include "string_op.h"
 #include "wazuhdb_queries_op.h"
@@ -40,6 +41,135 @@ struct keynode *queue_insert = NULL;
 struct keynode *queue_remove = NULL;
 struct keynode * volatile *insert_tail;
 struct keynode * volatile *remove_tail;
+
+/* The handoff journal between phase 1 and phase 4 of a deletion. See auth.h for the phase list.
+ *
+ * Its own mutex, deliberately NOT mutex_keys: phase 0 runs on request threads and phases 1 and 4 on
+ * the writer, so they must never contend for the lock the enrollment path also takes.
+ *
+ * Only agent ids travel here, so the memory cost is a few dozen bytes per entry. The cap is not
+ * about memory: it bounds how many deletions can be in flight at once, and past it new deletions
+ * are REFUSED AT THE REQUEST -- which is the whole point of moving that decision to phase 0. The
+ * old code discovered the overflow after client.keys had been written, where the only options left
+ * were to drop the purge silently or to log and orphan the documents. */
+#define PURGE_QUEUE_MAX_ENTRIES 65536
+
+typedef struct purge_node {
+    char *id;
+    /// Wall-clock second the deletion was requested. Persisted; it becomes the row's initial
+    /// NEXT_ATTEMPT_AT offset, so authd.purge_delay survives a restart as the delay it always was.
+    time_t requested_at;
+    /// This entry's monotonic sequence. See purge_journal_entry_t.
+    long long journal_seq;
+    struct purge_node *next;
+} purge_node_t;
+
+static purge_node_t *purge_journal = NULL;
+static purge_node_t **purge_journal_tail = &purge_journal;
+static unsigned int purge_journal_size = 0;
+static pthread_mutex_t mutex_purge = PTHREAD_MUTEX_INITIALIZER;
+/// Highest agent id ever handed out, persisted alongside the journal. Guarded by mutex_purge.
+static int purge_last_id = 0;
+/// Highest journal sequence ever assigned, persisted. Guarded by mutex_purge. Never reused, never
+/// reset: a repeat would make two genuinely different deletions of one agent derive one task id.
+static long long purge_last_seq = 0;
+
+/// Manager-task rows outstanding, as last measured by the writer. Guarded by mutex_purge rather
+/// than made atomic: phase 0 already takes that lock for the journal and reservation counts, so one
+/// lock covers all three terms and the check is consistent instead of three independent reads.
+static int purge_pending_rows = 0;
+
+/// An id that has left the keystore but whose purge the writer has not queued yet.
+///
+/// The delete response goes out as soon as the key is dropped from memory, while the purge is only
+/// queued by the writer, after it has rewritten client.keys. Without this list an insertion naming
+/// that same id would find it free in both guards -- gone from the keystore, not yet in the queue --
+/// and the purge, queued a moment later, would delete the NEW agent's documents. Under a bulk
+/// deletion the writer takes seconds to reach the last entry, so the window is not theoretical.
+///
+/// In memory only, on purpose: nothing about a removal is persisted before client.keys is rewritten,
+/// and a crash in that window leaves the agent still listed there, holding its id legitimately.
+typedef struct purge_reserved {
+    char *id;
+    struct purge_reserved *next;
+} purge_reserved_t;
+
+/// Guarded by mutex_purge, like the queue it feeds.
+static purge_reserved_t *purge_reserved = NULL;
+
+/// Reserve an id at removal time. Idempotent: an id cannot leave the keystore twice without the
+/// writer running in between, but a repeat must not grow the list either way.
+static void purge_reserve_id(const char *agent_id) {
+    purge_reserved_t *node;
+
+    if (!agent_id) {
+        return;
+    }
+
+    w_mutex_lock(&mutex_purge);
+
+    for (node = purge_reserved; node; node = node->next) {
+        if (!strcmp(node->id, agent_id)) {
+            w_mutex_unlock(&mutex_purge);
+            return;
+        }
+    }
+
+    os_calloc(1, sizeof(purge_reserved_t), node);
+    os_strdup(agent_id, node->id);
+    node->next = purge_reserved;
+    purge_reserved = node;
+
+    w_mutex_unlock(&mutex_purge);
+}
+
+/// Drop a reservation, with mutex_purge already held. Called at PHASE 1, and only there: the
+/// journal is the durable record of the id from that point on, so the reservation covers exactly
+/// the gap between the delete response and the journal line, with no instant uncovered.
+static void purge_unreserve_id_locked(const char *agent_id) {
+    purge_reserved_t **prev;
+    purge_reserved_t *node;
+
+    for (prev = &purge_reserved; (node = *prev) != NULL; prev = &node->next) {
+        if (!strcmp(node->id, agent_id)) {
+            *prev = node->next;
+            os_free(node->id);
+            os_free(node);
+            return;
+        }
+    }
+}
+
+/// How many ids are reserved. mutex_purge must be held.
+static unsigned int purge_reserved_count_locked(void) {
+    unsigned int count = 0;
+    purge_reserved_t *node;
+
+    for (node = purge_reserved; node; node = node->next) {
+        count++;
+    }
+
+    return count;
+}
+
+/// Whether an id is in one of authd's OWN records of a deletion in flight -- journaled, or reserved
+/// and not yet journaled. mutex_purge must be held. Both lists are bounded by the deletions between
+/// phase 0 and phase 4, so this stays a short scan however long the process has been running.
+static bool purge_in_flight_locked(const char *agent_id) {
+    for (purge_node_t *node = purge_journal; node; node = node->next) {
+        if (!strcmp(node->id, agent_id)) {
+            return true;
+        }
+    }
+
+    for (purge_reserved_t *reserved = purge_reserved; reserved; reserved = reserved->next) {
+        if (!strcmp(reserved->id, agent_id)) {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 /* Static regex for group validation */
 static regex_t w_auth_group_regex;
@@ -72,6 +202,10 @@ void add_remove(const keyentry *entry) {
 
     (*remove_tail) = node;
     remove_tail = &node->next;
+
+    // Before this returns, and therefore before the caller answers the deletion: from here on an
+    // insertion naming this id is refused until the writer has queued the purge for real.
+    purge_reserve_id(entry->id);
 }
 
 
@@ -327,6 +461,23 @@ w_err_t w_auth_replace_agent(keyentry *key,
 
     /* Replace the agent */
     if (replace_agent) {
+        /* PHASE 0, on this path too. A replacement IS a deletion -- add_remove() and OS_DeleteKey()
+         * are one line below -- and it is the higher-volume one: a mass re-enrollment produces one
+         * per agent, where the local socket produces one per API call. Without this the journal and
+         * the row backlog would grow past the bound that the delete path is refused against, and
+         * past the point where anything can still be refused: one line down the agent is out of the
+         * keystore and the enrollment has been answered.
+         *
+         * Refusing the ENROLLMENT is the whole point. The agent keeps its registration, the
+         * enrolling one is told to come back, and nothing has been deleted that cannot be
+         * recorded. */
+        if (purge_backlog_full()) {
+            snprintf(message, OS_SIZE_128, "Agent '%s' can't be replaced: too many deletions are in progress.",
+                     key->id);
+            os_strdup(message, *str_result);
+            return OS_INVALID;
+        }
+
         snprintf(message, OS_SIZE_128, "Removing old agent '%s' (id '%s').", key->name, key->id);
         os_strdup(message, *str_result);
         add_remove(key);
@@ -677,4 +828,610 @@ char *w_authd_read_password(const char *path) {
     }
 
     return pass;
+}
+
+/**
+ * @brief Persist the journal. The caller MUST hold mutex_purge.
+ *
+ * Rewrites the whole file into a temporary and renames it over the target, the same way
+ * OS_WriteKeys() persists client.keys: a partial write can then never be observed, and the file is
+ * small enough -- normally empty -- that rewriting it beats maintaining tombstones.
+ */
+static void purge_file_write_locked(void) {
+    File file;
+    purge_node_t *node;
+
+    if (TempFile(&file, PENDING_PURGES_FILE, 0) < 0) {
+        mwarn("Could not open a temporary file for '%s': %s. The deletions in progress are still "
+              "recorded in memory, but a crash would lose the record.",
+              PENDING_PURGES_FILE, strerror(errno));
+        return;
+    }
+
+    if (fprintf(file.fp, "last_update %ld\n", (long)time(NULL)) < 0) {
+        goto error;
+    }
+
+    /* The high-water mark of handed-out ids. It lives here rather than being derived from
+     * client.keys because that is exactly the case it has to survive: deleting the highest ids
+     * removes them from client.keys, and a restart would otherwise rebuild the counter lower and
+     * hand those very ids to new agents -- while their purges are still pending. */
+    if (fprintf(file.fp, "last_id %d\n", purge_last_id) < 0) {
+        goto error;
+    }
+
+    /* The sequence high-water mark, for the same reason and with a stricter rule: it must never go
+     * backwards even by one, or a later deletion of an already-deleted agent would derive a task id
+     * that a row in the retention window already holds, and the create would report `collided` --
+     * which phase 3 reads as "already recorded" and would silently swallow a real deletion. */
+    if (fprintf(file.fp, "last_seq %lld\n", purge_last_seq) < 0) {
+        goto error;
+    }
+
+    for (node = purge_journal; node; node = node->next) {
+        if (fprintf(file.fp, "purge %s %ld %lld\n", node->id, (long)node->requested_at, node->journal_seq) < 0) {
+            goto error;
+        }
+    }
+
+    if (fclose(file.fp) != 0) {
+        merror(FCLOSE_ERROR, file.name, errno, strerror(errno));
+        goto error_closed;
+    }
+
+    if (OS_MoveFile(file.name, PENDING_PURGES_FILE) < 0) {
+        goto error_closed;
+    }
+
+    os_free(file.name);
+    return;
+
+error:
+    fclose(file.fp);
+error_closed:
+    mwarn("Could not write '%s'. The deletions in progress are still recorded in memory, but a "
+          "crash would lose the record.", PENDING_PURGES_FILE);
+    unlink(file.name);
+    os_free(file.name);
+}
+
+/**
+ * @brief Phase 0: whether another deletion may be admitted right now.
+ *
+ * Two terms, and both are needed:
+ *
+ *   - `journal length + reservations >= PURGE_QUEUE_MAX_ENTRIES`. NOT the journal alone. This runs
+ *     on the request thread while phase 1 appends at writer time, so a burst would each see "not
+ *     full", all pass, and phase 1 would overflow where refusal is no longer possible.
+ *     `purge_reserved` IS the admitted-but-not-yet-journaled set, which is exactly the gap.
+ *   - the manager-task backlog. The journal bounds admission-in-flight, not row count; rows
+ *     accumulate independently, and the retention ceiling only evicts TERMINAL rows while these are
+ *     pending. The writer refreshes this once per cycle -- one query per cycle, not per agent.
+ *
+ * The second term FAILS OPEN by construction: a failed measurement keeps the previous value (see
+ * purge_pending_rows_update), because a wazuh-db outage must not block agent deletion. During such
+ * an outage the journal term is the only live bound, which is what it is sized for.
+ */
+bool purge_backlog_full(void) {
+    bool full = false;
+    unsigned int in_flight;
+
+    w_mutex_lock(&mutex_purge);
+
+    in_flight = purge_journal_size + purge_reserved_count_locked();
+
+    if (in_flight >= PURGE_QUEUE_MAX_ENTRIES) {
+        full = true;
+        mwarn("Refusing the deletion: %u are already in progress, the limit being %d. Retry once "
+              "they have been recorded.", in_flight, PURGE_QUEUE_MAX_ENTRIES);
+    } else if (config.max_pending_deletes > 0 && purge_pending_rows >= config.max_pending_deletes) {
+        full = true;
+        mwarn("Refusing the deletion: %d agent deletions are still waiting to be applied to the "
+              "indexer, the limit being %d. Retry once the backlog drains.",
+              purge_pending_rows, config.max_pending_deletes);
+    }
+
+    w_mutex_unlock(&mutex_purge);
+
+    return full;
+}
+
+/**
+ * @brief Publish the backlog depth measured by the writer.
+ *
+ * A negative value means the measurement failed and the previous one stands. Reporting a failure as
+ * zero would lift phase 0's second bound for exactly as long as wazuh-db is unreachable -- which is
+ * when the backlog is least likely to be draining.
+ */
+void purge_pending_rows_update(int rows) {
+    if (rows < 0) {
+        return;
+    }
+
+    w_mutex_lock(&mutex_purge);
+    purge_pending_rows = rows;
+    w_mutex_unlock(&mutex_purge);
+}
+
+/**
+ * @brief Phase 1: journal the intent to delete these agents, before client.keys is rewritten.
+ *
+ * Local only: a temp file and a rename. Writing the manager-task rows here instead would put a
+ * wazuh-db round trip in front of every client.keys write, so an outage would block enrollment --
+ * the very wedge this design exists to remove.
+ *
+ * The persist failing is not an error worth aborting on: the entries are in memory, phases 3 and 4
+ * still run, and the only thing lost is the ability to recover from a crash in the next few
+ * milliseconds. purge_file_write_locked() has already warned.
+ */
+purge_journal_entry_t* purge_journal_append(char **ids, size_t count) {
+    purge_journal_entry_t *entries = NULL;
+    size_t i;
+
+    if (!ids || count == 0) {
+        return NULL;
+    }
+
+    os_calloc(count, sizeof(purge_journal_entry_t), entries);
+
+    w_mutex_lock(&mutex_purge);
+
+    for (i = 0; i < count; i++) {
+        purge_node_t *node;
+
+        os_calloc(1, sizeof(purge_node_t), node);
+        os_strdup(ids[i], node->id);
+        node->requested_at = time(NULL);
+        node->journal_seq = ++purge_last_seq;
+
+        (*purge_journal_tail) = node;
+        purge_journal_tail = &node->next;
+        purge_journal_size++;
+
+        strncpy(entries[i].id, node->id, sizeof(entries[i].id) - 1);
+        entries[i].requested_at = node->requested_at;
+        entries[i].journal_seq = node->journal_seq;
+
+        // The journal is the durable owner of this id from here on, and it is what answers
+        // purge_is_pending() from memory until phase 4 drops the line.
+        purge_unreserve_id_locked(node->id);
+    }
+
+    purge_file_write_locked();
+
+    w_mutex_unlock(&mutex_purge);
+
+    return entries;
+}
+
+/**
+ * @brief Phase 4: forget entries whose rows wazuh-db has acknowledged as durable.
+ *
+ * Only called on that acknowledgement. Dropping a line on anything weaker would leave a window in
+ * which wazuh-db's death loses the row AND the record that it was owed -- which is why create
+ * commits inside its own command rather than riding the deferred transaction.
+ */
+void purge_journal_drop(const purge_journal_entry_t *entries, size_t count) {
+    size_t i;
+    bool changed = false;
+
+    if (!entries || count == 0) {
+        return;
+    }
+
+    w_mutex_lock(&mutex_purge);
+
+    for (i = 0; i < count; i++) {
+        purge_node_t **prev;
+        purge_node_t *node;
+
+        for (prev = &purge_journal; (node = *prev) != NULL; prev = &node->next) {
+            // Matched on the SEQUENCE, not the id: one agent can hold two journal lines at once
+            // (deleted, re-enrolled, deleted again inside one writer cycle), and dropping by id
+            // would forget the wrong one and leave the other owed forever.
+            if (node->journal_seq == entries[i].journal_seq) {
+                *prev = node->next;
+                if (!*prev) {
+                    purge_journal_tail = prev;
+                }
+                purge_journal_size--;
+                changed = true;
+                os_free(node->id);
+                os_free(node);
+                break;
+            }
+        }
+    }
+
+    if (changed) {
+        purge_file_write_locked();
+    }
+
+    w_mutex_unlock(&mutex_purge);
+}
+
+/**
+ * @brief Startup reconciliation: decide what each surviving journal line means.
+ *
+ * Called after OS_ReadKeys() and before any thread starts, so nothing contends for either
+ * structure. Every crash point in the phase sequence resolves here:
+ *
+ *   | crashed          | line | client.keys | resolves to                                    |
+ *   | before phase 1   | no   | present     | nothing owed                                   |
+ *   | between 1 and 2  | yes  | PRESENT     | drop the line; the agent is alive              |
+ *   | OS_WriteKeys err | yes  | PRESENT     | drop the line; phase 3 was correctly skipped   |
+ *   | between 2 and 3  | yes  | gone        | CREATE the row -- the window this design closes|
+ *   | between 3 and 4  | yes  | gone        | create again; the id collides, which is success|
+ *   | after phase 4    | no   | gone        | the row is already committed                   |
+ *
+ * Rows two and three are indistinguishable from here and resolve identically, which is why the
+ * gate on OS_WriteKeys needs no separate record: an agent still in client.keys was never deleted,
+ * whichever of the two happened.
+ *
+ * The kept lines stay journaled until phase 3 records them, so an explicit-id insert naming one of
+ * them is refused from memory in the meantime.
+ */
+purge_journal_entry_t* purge_journal_snapshot(size_t *count) {
+    purge_journal_entry_t *owed = NULL;
+    purge_node_t *node;
+    size_t i = 0;
+
+    if (count) {
+        *count = 0;
+    }
+
+    w_mutex_lock(&mutex_purge);
+
+    if (purge_journal_size > 0) {
+        os_calloc(purge_journal_size, sizeof(purge_journal_entry_t), owed);
+
+        for (node = purge_journal; node && i < purge_journal_size; node = node->next, i++) {
+            strncpy(owed[i].id, node->id, sizeof(owed[i].id) - 1);
+            owed[i].requested_at = node->requested_at;
+            owed[i].journal_seq = node->journal_seq;
+        }
+    }
+
+    w_mutex_unlock(&mutex_purge);
+
+    if (count) {
+        *count = i;
+    }
+
+    return owed;
+}
+
+purge_journal_entry_t* purge_journal_reconcile(size_t *count) {
+    purge_journal_entry_t *owed = NULL;
+    purge_node_t **prev;
+    purge_node_t *node;
+    size_t kept = 0;
+    unsigned int dropped = 0;
+    bool changed = false;
+
+    if (count) {
+        *count = 0;
+    }
+
+    w_mutex_lock(&mutex_purge);
+
+    for (prev = &purge_journal; (node = *prev) != NULL;) {
+        if (OS_IsAllowedID(&keys, node->id) >= 0) {
+            // Still on disk, so the deletion never became final. Nothing is owed for it, and the
+            // agent keeps its id.
+            *prev = node->next;
+            if (!*prev) {
+                purge_journal_tail = prev;
+            }
+            purge_journal_size--;
+            dropped++;
+            changed = true;
+            os_free(node->id);
+            os_free(node);
+            continue;
+        }
+
+        kept++;
+        prev = &node->next;
+    }
+
+    if (kept > 0) {
+        size_t i = 0;
+
+        os_calloc(kept, sizeof(purge_journal_entry_t), owed);
+
+        for (node = purge_journal; node && i < kept; node = node->next, i++) {
+            strncpy(owed[i].id, node->id, sizeof(owed[i].id) - 1);
+            owed[i].requested_at = node->requested_at;
+            owed[i].journal_seq = node->journal_seq;
+        }
+    }
+
+    if (changed) {
+        purge_file_write_locked();
+    }
+
+    w_mutex_unlock(&mutex_purge);
+
+    if (dropped > 0) {
+        minfo("Dropped %u journaled deletion(s) whose agents are still listed in client.keys: those "
+              "deletions never completed, so nothing is owed for them.", dropped);
+    }
+
+    if (kept > 0) {
+        minfo("Recovered %zu agent deletion(s) that were interrupted before being recorded; their "
+              "tasks are being created now.", kept);
+    }
+
+    if (count) {
+        *count = kept;
+    }
+
+    return owed;
+}
+
+bool purge_is_pending_locally(const char *agent_id) {
+    bool in_flight;
+
+    if (!agent_id) {
+        return false;
+    }
+
+    w_mutex_lock(&mutex_purge);
+    in_flight = purge_in_flight_locked(agent_id);
+    w_mutex_unlock(&mutex_purge);
+
+    return in_flight;
+}
+
+/**
+ * @brief Whether this id still owes a purge.
+ *
+ * Handing such an id to a new agent would let the pending purge delete the NEW agent's documents:
+ * the purge matches by agent id, and nothing in a state document distinguishes one owner from the
+ * next (there is no timestamp, and two of the three indices in the scope carry no agent name).
+ *
+ * Three rules:
+ *
+ *   - IN FLIGHT here -> pending, from memory. The journal and the reservations are authd's own
+ *     records and need no confirmation: the row for them either does not exist yet or was created
+ *     moments ago.
+ *   - Otherwise -> ASK THE ROW, which is the only authority on a deletion authd has already handed
+ *     off. There is deliberately no local mirror of the outstanding rows in front of this query: a
+ *     set that authd adds to at phase 1 and can only shrink when someone happens to look up that
+ *     exact id grows without bound on a manager that churns agents, and every phase 1 then scans it
+ *     under mutex_purge. The query costs one wazuh-db round trip on a path that is only reached by
+ *     an insertion naming an explicit id.
+ *   - Query FAILED -> pending. Refusing reuse is an error an operator can work around; allowing it
+ *     risks an outstanding purge deleting a new agent's documents.
+ *
+ * It may block for up to authd.wdb_timeout, so it must NOT be called with mutex_keys held; see
+ * local_add(), which is why purge_is_pending_locally() exists.
+ */
+bool purge_is_pending(const char *agent_id) {
+    int status;
+
+    if (!agent_id) {
+        return false;
+    }
+
+    if (purge_is_pending_locally(agent_id)) {
+        return true;
+    }
+
+    // A private socket rather than a shared one: this runs on whichever request thread is serving
+    // the insertion.
+    status = manager_task_agent_status(agent_id, MANAGER_TASK_TYPE_AGENT_DELETE, config.wdb_timeout);
+
+    if (status == MANAGER_TASK_STATUS_FAILED) {
+        mwarn("Could not check whether agent ID '%s' still owes a deletion; treating it as pending.",
+              agent_id);
+        return true;
+    }
+
+    // NONE as well as TERMINAL is free. Absent is reachable rather than hypothetical: OS_WriteKeys
+    // fails, phase 3 is correctly skipped, and reconciliation drops the line without creating a row.
+    return status == MANAGER_TASK_STATUS_OUTSTANDING;
+}
+
+/**
+ * @brief Record the highest id handed out, persisting it when it grows.
+ *
+ * Called from the writer thread with the id counter of the keystore snapshot it just wrote, so the
+ * file can never claim an id that client.keys does not already account for.
+ */
+void purge_last_id_update(int id_counter) {
+    bool grew = false;
+
+    w_mutex_lock(&mutex_purge);
+
+    if (id_counter > purge_last_id) {
+        purge_last_id = id_counter;
+        grew = true;
+        purge_file_write_locked();
+    }
+
+    w_mutex_unlock(&mutex_purge);
+
+    if (grew) {
+        mdebug2("Highest agent id handed out is now %d.", id_counter);
+    }
+}
+
+/**
+ * @brief Load the journal a previous run left behind.
+ *
+ * Called from main() before the threads start, so nothing contends for it. Two rules that are not
+ * obvious:
+ *
+ *   - A backward clock jump (now earlier than the file's own last_update) makes every stored
+ *     timestamp untrustworthy, so they are all re-stamped to now: better to make a purge wait its
+ *     full delay again than to run one whose delay never actually elapsed.
+ *   - ENTRIES WITHOUT A SEQUENCE ARE NUMBERED BY POSITION, not handed the next value from
+ *     last_seq. Position is deterministic across a crash during the conversion; a running counter
+ *     is not, and re-assigning different sequences would derive different task ids and produce
+ *     duplicate rows for one deletion -- breaking "a collision means already recorded" on precisely
+ *     the path that story exists for.
+ */
+void purge_file_load(void) {
+    FILE *fp = wfopen(PENDING_PURGES_FILE, "r");
+    char line[OS_BUFFER_SIZE];
+    const time_t now = time(NULL);
+    time_t last_update = 0;
+    bool clock_went_back = false;
+    unsigned int loaded = 0;
+    unsigned int converted = 0;
+    long long position = 0;
+
+    if (!fp) {
+        if (errno != ENOENT) {
+            mwarn("Could not read '%s': %s. Deletions interrupted by the previous run, if any, will "
+                  "not be recovered.", PENDING_PURGES_FILE, strerror(errno));
+        }
+        return;
+    }
+
+    while (fgets(line, sizeof(line), fp)) {
+        char label[32] = {0};
+        char id[32] = {0};
+        long stamp = 0;
+        long long seq = 0;
+        int fields;
+
+        if (sscanf(line, "%31s", label) != 1) {
+            continue;
+        }
+
+        if (!strcmp(label, "last_update")) {
+            if (sscanf(line, "%31s %ld", label, &stamp) == 2) {
+                last_update = (time_t)stamp;
+                clock_went_back = (now < last_update);
+            }
+            continue;
+        }
+
+        if (!strcmp(label, "last_id")) {
+            int stored_id = 0;
+
+            if (sscanf(line, "%31s %d", label, &stored_id) == 2 && stored_id > purge_last_id) {
+                purge_last_id = stored_id;
+            }
+            continue;
+        }
+
+        if (!strcmp(label, "last_seq")) {
+            long long stored_seq = 0;
+
+            if (sscanf(line, "%31s %lld", label, &stored_seq) == 2 && stored_seq > purge_last_seq) {
+                purge_last_seq = stored_seq;
+            }
+            continue;
+        }
+
+        if (strcmp(label, "purge")) {
+            // Unknown label: ignored on purpose, so a newer format can add lines without this
+            // parser rejecting a file it merely does not fully understand.
+            mdebug2("Ignoring unknown entry '%s' in '%s'.", label, PENDING_PURGES_FILE);
+            continue;
+        }
+
+        position++;
+
+        fields = sscanf(line, "%31s %31s %ld %lld", label, id, &stamp, &seq);
+
+        if (fields < 3 || !OS_IsValidID(id)) {
+            mwarn("Ignoring a malformed entry in '%s'.", PENDING_PURGES_FILE);
+            continue;
+        }
+
+        if (fields == 3) {
+            // A file written by a release that had no sequences. By POSITION, deliberately -- see
+            // the note above.
+            seq = position;
+            converted++;
+        }
+
+        purge_node_t *node;
+        os_calloc(1, sizeof(purge_node_t), node);
+        os_strdup(id, node->id);
+        node->requested_at = clock_went_back ? now : (time_t)stamp;
+        node->journal_seq = seq;
+
+        if (seq > purge_last_seq) {
+            purge_last_seq = seq;
+        }
+
+        (*purge_journal_tail) = node;
+        purge_journal_tail = &node->next;
+        purge_journal_size++;
+        loaded++;
+    }
+
+    fclose(fp);
+
+    if (clock_went_back) {
+        mwarn("The system clock is earlier than the last update of '%s'; the %u recovered deletion(s) "
+              "were re-stamped so each one waits its full delay again.", PENDING_PURGES_FILE, loaded);
+    }
+
+    if (converted > 0) {
+        minfo("Converted %u deletion(s) from the previous file format in '%s'; they were numbered by "
+              "position.", converted, PENDING_PURGES_FILE);
+    }
+
+    /* The id counter never goes backwards. OS_ReadKeys() rebuilt it from client.keys, which no
+     * longer lists the agents that were just deleted, so without this an id whose purge is still
+     * pending could be handed to a new agent -- and the purge would wipe that agent's documents. */
+    if (purge_last_id > keys.id_counter) {
+        /* INFO, not debug: this is the line that explains why the next agent id "jumps", and it is
+         * the visible trace of a data-integrity guard -- an id whose purge is still pending must
+         * never be handed out again. It only prints when the counter actually had to be raised. */
+        minfo("Raising the agent id counter from %d to %d: ids that were handed out are never reused.",
+              keys.id_counter, purge_last_id);
+        keys.id_counter = purge_last_id;
+    } else if (keys.id_counter > purge_last_id) {
+        purge_last_id = keys.id_counter;
+    }
+}
+
+/**
+ * @brief Report what was still in the journal at shutdown. Frees memory; keeps the file.
+ *
+ * The file is deliberately left alone: it IS the record that these deletions are still owed, and
+ * the next start reconciles it against client.keys.
+ */
+void purge_journal_discard(void) {
+    unsigned int abandoned;
+    purge_node_t *node;
+    purge_node_t *next;
+
+    w_mutex_lock(&mutex_purge);
+
+    abandoned = purge_journal_size;
+    node = purge_journal;
+    purge_journal = NULL;
+    purge_journal_tail = &purge_journal;
+    purge_journal_size = 0;
+
+    // Reservations die with the process: they were never persisted, and the agents they refer to
+    // are still in client.keys unless the writer got to them (in which case they are journaled).
+    while (purge_reserved) {
+        purge_reserved_t *stale = purge_reserved;
+        purge_reserved = stale->next;
+        os_free(stale->id);
+        os_free(stale);
+    }
+
+    w_mutex_unlock(&mutex_purge);
+
+    for (; node; node = next) {
+        next = node->next;
+        os_free(node->id);
+        os_free(node);
+    }
+
+    if (abandoned > 0) {
+        minfo("Shutting down with %u agent deletion(s) still being recorded; they stay in '%s' and "
+              "are reconciled on the next start.", abandoned, PENDING_PURGES_FILE);
+    }
 }

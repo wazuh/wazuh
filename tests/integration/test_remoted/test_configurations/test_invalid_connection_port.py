@@ -16,7 +16,6 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
-from wazuh_testing.modules.remoted.patterns import INVALID_VALUE_FOR_PORT_NUMBER, CONFIGURATION_ERROR
 
 
 # Set pytest marks.
@@ -66,11 +65,8 @@ def test_invalid_connection_port(test_configuration, test_metadata, configure_lo
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    log_monitor.start(callback=generate_callback(regex=INVALID_VALUE_FOR_PORT_NUMBER, replacement={"port": test_metadata['port_number']}))
-    assert test_metadata['port_number'] in log_monitor.callback_result
-
-    log_monitor.start(callback=generate_callback(regex=CONFIGURATION_ERROR, replacement={"severity": 'ERROR', "path": "etc/wazuh-manager.conf"}))
-    assert log_monitor.callback_result
-
-    log_monitor.start(callback=generate_callback(CONFIGURATION_ERROR.replace('{severity}', 'CRITICAL').replace('{path}', "etc/wazuh-manager.conf")))
+    # The schema bounds remote.legacy.port: an out-of-range value is rejected with 1244 by the
+    # control script's fail-fast (the CLI verdict, surfaced in the log with the JSON pointer as the
+    # subject) and remoted never starts -- there are no daemon ERROR/CRITICAL (1202) lines any more.
+    log_monitor.start(callback=generate_callback(test_metadata['invalid']))
     assert log_monitor.callback_result

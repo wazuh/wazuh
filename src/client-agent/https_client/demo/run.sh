@@ -17,7 +17,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 PORT=27860
-KEY_HEX="000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" # 32-byte AES-256 key (a real client.keys length)
+KEY_HEX="000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" # 64 hex = the 32-byte HS256 key (a real client.keys secret)
 WORK=".demo_run"
 SRC_ROOT="$(cd ../../.. && pwd)"              # .../src
 BUILD_LIB="${SRC_ROOT}/build/lib"

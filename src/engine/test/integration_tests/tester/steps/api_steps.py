@@ -17,7 +17,7 @@ from api_communication.proto import crud_pb2 as api_crud
 # ===================================================================
 
 ENV_DIR = os.environ.get("ENV_DIR", "")
-SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api.socket"
+SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api-http.sock"
 
 api_client = APIClient(SOCKET_PATH)
 

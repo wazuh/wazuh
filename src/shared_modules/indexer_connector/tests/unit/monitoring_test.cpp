@@ -554,7 +554,20 @@ namespace
          */
         void answerFirstThenBlock(const auto& postParams)
         {
-            if (m_calls.fetch_add(1) == 0)
+            answerThroughRoundThenBlock(postParams, 1);
+        }
+
+        /**
+         * @brief Answers the first \p greenAnswers health checks green, then blocks every later one.
+         *
+         * The generalization of answerFirstThenBlock() for tests that monitor several hosts: the
+         * constructor's synchronous round makes one call PER HOST on the calling thread, and every
+         * one of them must be answered for the constructor to return and the monitor thread to
+         * exist.
+         */
+        void answerThroughRoundThenBlock(const auto& postParams, std::size_t greenAnswers)
+        {
+            if (static_cast<std::size_t>(m_calls.fetch_add(1)) < greenAnswers)
             {
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
@@ -568,6 +581,12 @@ namespace
                 return;
             }
             blockUntilReleased();
+        }
+
+        /// Total get() calls seen so far, green and blocked alike.
+        int calls() const
+        {
+            return m_calls.load();
         }
 
     private:
@@ -666,4 +685,47 @@ TEST_F(MonitoringTest, TheDestructorDoesNotWaitForTheRoundToRequestStop)
     gate.release();
 
     destroyer.join();
+}
+
+/// Once stop is requested, the monitor must abandon the rest of the round: hosts not yet probed must
+/// not be probed at all. The destructor joins the monitor thread, so without this guard a shutdown
+/// landing mid-round paid up to HEALTH_CHECK_TIMEOUT_MS for every remaining host -- which, with
+/// several hosts configured, pushed modulesd and analysisd past wazuh-manager-control's 30 s budget
+/// and into `kill -9`.
+TEST_F(MonitoringTest, TheDestructorDoesNotWaitOutTheRemainingRound)
+{
+    const std::vector<std::string> servers {
+        "http://localhost:1301", "http://localhost:1302", "http://localhost:1303", "http://localhost:1304"};
+
+    HealthCheckGate gate;
+
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [&gate, hostCount = servers.size()](const auto&, const auto& postParams, const auto&)
+            {
+                // Green for the constructor's synchronous round, then block: the periodic round's
+                // first check stands in for a host that accepts the connection and never replies.
+                gate.answerThroughRoundThenBlock(postParams, hostCount);
+            }));
+
+    // Interval 0 so the periodic round starts -- and blocks on its first host -- immediately.
+    auto monitoring = std::make_unique<TestMonitoring>(
+        servers, MONITORING_HEALTH_CHECK_INTERVAL_ZERO, SecureCommunication {}, &m_mockHttpRequest);
+
+    gate.waitUntilEntered();
+    ASSERT_TRUE(gate.entered()) << "the monitor never started a blocking health check";
+
+    std::thread destroyer {[&monitoring] { monitoring.reset(); }};
+
+    // Give the destructor time to publish the stop flag (same pattern as the test above), then let
+    // ONLY the in-flight check finish. The gate stays open once released, so a regression cannot
+    // hang the test: the remaining hosts' checks sail straight through it -- and get counted.
+    std::this_thread::sleep_for(std::chrono::milliseconds {500});
+    gate.release();
+    destroyer.join();
+
+    // Constructor round (one call per host) plus the single periodic check that was in flight when
+    // stop was requested. Anything above that means the round kept probing hosts after stop.
+    EXPECT_EQ(gate.calls(), static_cast<int>(servers.size()) + 1)
+        << "the monitor kept probing hosts after stop was requested";
 }

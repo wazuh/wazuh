@@ -14,6 +14,7 @@
 
 #include "sync/fullSessionValidator.hpp"
 #include <cstdint>
+#include <string>
 
 namespace invsync::vd
 {
@@ -33,6 +34,28 @@ namespace invsync::vd
     };
 
     /**
+     * @brief What the lane learned from asking the scanner to scan one agent, with no session.
+     *
+     * Separate from ScanVerdict because the two calls have genuinely different failure sets. A
+     * session's scan either runs, legitimately skips, or poisons the session (an exception); an
+     * on-demand scan has no session to poison and several distinct reasons to come back later,
+     * and its caller -- the Task Manager's dispatcher -- needs them apart: a transient one must
+     * back off and retry, while a permanent one must stop.
+     *
+     * Deliberately NOT the scanner's own ScanTriggerResult: this header is the neutral seam, and
+     * the adapter is where that vocabulary is translated.
+     */
+    enum class AgentScanOutcome
+    {
+        Ok,       ///< The scan ran and its findings were delivered by VD itself.
+        Skipped,  ///< No scanner on this node. Nothing to do, and asking again will not change it.
+        NotReady, ///< Transient: the feed is loading, the scanner is starting, or no indexer host
+                  ///< is healthy. Worth retrying.
+        NotFound, ///< The agent is not in global.db. Permanent: retrying cannot find it.
+        Failed    ///< The scan itself failed. Worth retrying.
+    };
+
+    /**
      * @brief Seam over the vulnerability scanner for the scan lane.
      *
      * The production implementation forwards to the vulnerability_scanner module (feed readiness,
@@ -48,6 +71,13 @@ namespace invsync::vd
         /// the strand calls it at admission and the lane worker re-checks it at dispatch.
         virtual bool feedReady() const = 0;
 
+        /// @brief Whether this node runs a vulnerability scanner at all: false when vulnerability
+        /// detection is disabled (or failed to start), true whatever its feed is doing. Tells the
+        /// lane "there is no scanner here" apart from "the scanner is up but its current feed
+        /// offset reads 0", which happens while the content manager's offset store is not
+        /// answering yet. Only the former may skip the version check.
+        virtual bool scannerRunning() const = 0;
+
         /// @brief This node's current VD feed offset, for validating a VDFirst/VDSync session's
         /// Start.feed_offset before scanning it. Cheap in production (an atomic load behind the
         /// database feed manager).
@@ -61,6 +91,20 @@ namespace invsync::vd
          * lane answers 500 with zero inventory documents indexed (the gating of D22).
          */
         virtual ScanVerdict scan(const sync::ValidatedSession& session) = 0;
+
+        /**
+         * @brief Scan ONE agent, with no session behind it, SYNCHRONOUSLY.
+         *
+         * The on-demand rescan an agent asks for after noticing the feed offset moved. There is no
+         * inventory to index afterwards: VD reads the agent's packages from what is already stored
+         * and writes its findings with its own connector, so the lane's answer is the scan's own
+         * outcome and nothing more.
+         *
+         * Reports failure by RETURN VALUE rather than by exception, unlike scan(): there is no
+         * session to poison, and every failure here is something the caller has to tell apart to
+         * decide whether to come back.
+         */
+        virtual AgentScanOutcome scanAgent(const std::string& agentId) = 0;
     };
 
 } // namespace invsync::vd

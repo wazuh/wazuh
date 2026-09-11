@@ -23,7 +23,6 @@ typedef enum global_db_access
     WDB_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_UPDATE_AGENT_STATUS_CODE,
     WDB_GET_ALL_AGENTS,
-    WDB_FIND_AGENT,
     WDB_GET_AGENT_INFO,
     WDB_SELECT_AGENT_GROUP,
     WDB_FIND_GROUP,
@@ -128,16 +127,6 @@ int wdb_update_agent_status_code(
 rb_tree* wdb_get_all_agents_rbtree(int* sock);
 
 /**
- * @brief Find agent id by name and address.
- *
- * @param[in] name Name of the agent.
- * @param[in] ip IP address of the agent.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns id if success. OS_INVALID on error.
- */
-int wdb_find_agent(const char* name, const char* ip, int* sock);
-
-/**
  * @brief Returns a JSON with all the agent's information.
  *
  * @param[in] id Id of the agent for whom the information is requested.
@@ -239,6 +228,21 @@ int wdb_reset_agents_connection(const char* sync_status, int* sock);
  * @return Pointer to the array, on success. NULL on errors.
  */
 int* wdb_get_agents_by_connection_status(const char* connection_status, int* sock);
+
+/**
+ * @brief Same as wdb_get_agents_by_connection_status(), resuming after a given agent ID.
+ *
+ * The underlying query is already `WHERE id > ?` and pages on that column; this exposes the start
+ * point that wdb_get_agents_by_connection_status() hardcodes to 0. A caller that walks a large
+ * result set in bounded batches needs it: without it, every batch re-reads and discards the whole
+ * prefix it has already handled, making a full walk quadratic in the number of matching agents.
+ *
+ * @param[in] last_id Return agents whose ID is strictly greater than this. 0 starts from the beginning.
+ * @param[in] connection_status The connection status.
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Pointer to the array, on success. NULL on errors.
+ */
+int* wdb_get_agents_by_connection_status_from(int last_id, const char* connection_status, int* sock);
 
 /**
  * @brief Set agents as disconnected based on the keepalive and return an array containing

@@ -17,7 +17,7 @@
  * see w_https_client_start()'s comment) and no alternative transport is
  * offered.
  *
- * The config surface (<server>/<ssl>, parsed by Read_Agent/Read_Agent_SSL
+ * The config surface (<manager>/<ssl>, parsed by Read_Agent/Read_Agent_SSL
  * in src/config/src/client-config.c) and the real TLS wiring are done: the
  * module's own fail-closed validation (ModuleConfig::validateTls) now gets a
  * real verify_mode/CA/cert/key/ciphers instead of a forced HC_VERIFY_NONE.
@@ -109,13 +109,6 @@ static bool bridge_stopping(void)
     return stopping;
 }
 
-/* Same incremental back-off as the initial-enrollment loop (start_agent.c's
- * w_agentd_keys_init). Both read the same two internal options, so the two
- * loops can no longer drift apart -- which is what the duplicated file-local
- * constants used to risk. */
-#define BRIDGE_REENROLL_RETRY_DELTA_S_DEFAULT 5
-#define BRIDGE_REENROLL_RETRY_MAX_S_DEFAULT 60
-
 /* Runs off the dispatcher thread (spawned by bridge_on_reenroll_required):
  * the module's callback contract forbids blocking it, and enrollment can
  * take anywhere from seconds to (against a down manager) indefinitely.
@@ -145,12 +138,10 @@ void *bridge_reenroll_thread(void *arg)
         enroll_result = try_enroll_to_server();
 
         if (enroll_result != 0) {
-            const int retry_max = getDefine_Int_default("agent", "enrollment_retry_max", 1, 86400,
-                                                       BRIDGE_REENROLL_RETRY_MAX_S_DEFAULT);
-            const int retry_delta = getDefine_Int_default("agent", "enrollment_retry_delta", 1, 3600,
-                                                         BRIDGE_REENROLL_RETRY_DELTA_S_DEFAULT);
-            if (delay_sleep < retry_max) {
-                delay_sleep += retry_delta;
+            /* Same ramp as the initial-enrollment loop (start_agent.c), from the values
+             * ClientConf() resolved, so the two cannot drift apart. */
+            if (delay_sleep < agt->enrollment.retry_max) {
+                delay_sleep += agt->enrollment.retry_delta;
             }
             mdebug1("https_client: re-enrollment attempt failed; retrying in %d seconds.", delay_sleep);
             sleep((unsigned int)delay_sleep);
@@ -176,11 +167,29 @@ void *bridge_reenroll_thread(void *arg)
      * identity, but the module must not assume that -- signing with a stale
      * id after the key changed would desync from whatever id the manager
      * now associates with this key). Both move together, never just the key. */
-    if (!hc_set_agent_identity(handle, keys.keyentries[0]->id, keys.keyentries[0]->raw_key)) {
+    const bool identity_ok = hc_set_agent_identity(handle, keys.keyentries[0]->id, keys.keyentries[0]->raw_key);
+
+    if (!identity_ok) {
         merror("https_client: re-enrolled, but the new identity failed validation; traffic stays paused.");
     }
 
     w_mutex_unlock(&g_https_client_lock);
+
+    /* Republish the agent metadata. The sync protocol stamps every session's
+     * Start.agentid from the shared-memory provider, and each module compares against that
+     * same value to notice its own id changed. Without this the provider keeps the
+     * pre-enrollment id until the next /startup response or agent-info cycle happens to
+     * rewrite it: sessions sent inside that window carry an id the manager answers with 403
+     * (identity mismatch), and identity detection stays blind for as long as it lasts.
+     *
+     * Published after unlocking: w_agentd_populate_metadata() takes a mutex of its own, and
+     * nesting it inside g_https_client_lock would introduce a lock order nothing else in this
+     * file establishes. Only on a valid identity -- when validation failed the module keeps
+     * traffic paused, so there is nothing to stamp yet. */
+    if (identity_ok) {
+        w_agentd_populate_metadata();
+    }
+
     return NULL;
 }
 
@@ -1261,12 +1270,16 @@ static char *bridge_collect_stats(void *user_data)
     return w_agent_collect_stats();
 }
 
-static void bridge_on_producer_pause(bool paused, void *user_data)
+static void bridge_on_producer_pause(bool paused, const char *reason, void *user_data)
 {
     (void)user_data;
 
     if (paused) {
-        mwarn(SERVER_UNAV);
+        if (reason && *reason) {
+            mwarn(SERVER_UNAV " Reason: %s", reason);
+        } else {
+            mwarn(SERVER_UNAV);
+        }
         os_setwait();
         w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
     } else {
@@ -1514,18 +1527,29 @@ static int bridge_map_verify_mode(int agent_verify_mode)
         return HC_VERIFY_CERT;
     case AGENT_VERIFY_NONE:
         return HC_VERIFY_NONE;
+    case AGENT_VERIFY_SYSTEM:
+        return HC_VERIFY_SYSTEM;
+    case AGENT_VERIFY_UNSET:
+        // ClientConf() always resolves this to system or certificate before returning;
+        // reaching here means some other path built agt->ssl without going through that
+        // resolution step. Fail closed the same as an unrecognized value would, but say
+        // so loudly instead of silently blending into the FULL default below.
+        merror("https_client: verification_mode was still UNSET when the transport config was "
+               "built; defaulting to 'full'. This should never happen -- ClientConf() is supposed "
+               "to resolve it first.");
+        return HC_VERIFY_FULL;
     case AGENT_VERIFY_FULL:
     default:
         return HC_VERIFY_FULL;
     }
 }
 
-/* The AES-CMAC recipe (settled by the manager's own resolver): decode
- * client.keys' raw_key verbatim as hex, cipher chosen by byte length
- * (16/24/32 bytes = 32/48/64 hex chars). The module's key provider re-derives
- * the same check lazily at signing time (so a bad key never crashes
- * anything), but that means a misconfigured key otherwise fails every
- * request silently forever with no startup error. Validate it here so a
+/* The `wazuh-agent+jwt` key rule (settled by the manager's own keystore and
+ * the shared JwtKeyDecoder): client.keys' raw_key is exactly 64 lowercase hex
+ * characters, decoded verbatim into the 32-byte HS256 key. The module's key
+ * provider re-derives the same check lazily at signing time (so a bad key
+ * never crashes anything), but that means a misconfigured key otherwise fails
+ * every request silently forever with no startup error. Validate it here so a
  * broken client.keys is caught once, loudly, at start. */
 static bool bridge_key_is_valid(const char *raw_key)
 {
@@ -1533,13 +1557,13 @@ static bool bridge_key_is_valid(const char *raw_key)
         return false;
     }
 
-    size_t len = strlen(raw_key);
-    if (len != 32 && len != 48 && len != 64) {
+    if (strlen(raw_key) != 64) {
         return false;
     }
 
-    for (size_t i = 0; i < len; i++) {
-        if (!isxdigit((unsigned char)raw_key[i])) {
+    for (size_t i = 0; i < 64; i++) {
+        const char c = raw_key[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) {
             return false;
         }
     }
@@ -1548,7 +1572,7 @@ static bool bridge_key_is_valid(const char *raw_key)
 }
 
 /* Fills the transport-only fields of a hc_config_t from the parsed
- * <server>/<ssl> block (agt->server, agt->ssl) -- everything hc_enroll()
+ * <manager>/<ssl> block (agt->server, agt->ssl) -- everything hc_enroll()
  * needs (#38465) and nothing more: no identity (agent_id/agent_key, which an
  * enrolling agent has neither yet) and none of the full-client-only fields
  * (batch/stats/buffer ladder/sync_socket_path/config_checksum) bridge_build_
@@ -1562,6 +1586,16 @@ static void bridge_build_transport_config(hc_config_t *config)
     if (agt->server && agt->server[0].rip) {
         strncpy(config->server_host, agt->server[0].rip, sizeof(config->server_host) - 1);
         config->server_port = (uint16_t)agt->server[0].port;
+        /* #38624: the IPv6 zone id, already resolved to a numeric scope by the config
+         * parser, so a link-local manager address is dialed on the right interface. */
+        config->server_scope_id = agt->server[0].scope_id;
+
+        /* #38492: shared with w_https_client_enroll() via this same function,
+         * so the /enroll request target gets the configured <endpoint> path
+         * segment exactly like every other request. */
+        if (agt->server[0].endpoint) {
+            strncpy(config->server_endpoint, agt->server[0].endpoint, sizeof(config->server_endpoint) - 1);
+        }
     }
 
     config->verify_mode = bridge_map_verify_mode(agt->ssl.verification_mode);
@@ -1609,8 +1643,8 @@ static bool bridge_build_config(hc_config_t *config)
         if (keys.keysize == 0) {
             mdebug1("https_client: not enrolled yet (no client.keys); deferring start.");
         } else {
-            merror("https_client: agent key is missing or has an invalid length for AES-CMAC "
-                   "(expected 32, 48 or 64 hex characters); refusing to start.");
+            merror("https_client: agent key is missing or is not a valid HS256 key "
+                   "(expected exactly 64 lowercase hex characters); refusing to start.");
         }
         return false;
     }

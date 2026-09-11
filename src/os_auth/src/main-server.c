@@ -25,6 +25,7 @@
 
 #include "shared.h"
 #include "auth.h"
+#include "mconf-config.h"
 #include <pthread.h>
 #include <sys/wait.h>
 #include "check_cert_op.h"
@@ -33,7 +34,7 @@
 #include "os_err.h"
 #include "generate_cert.h"
 #include <sys/epoll.h>
-#include "http_op.h"
+#include "manager_task_op.h"
 
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
@@ -43,6 +44,9 @@ static void* run_remote_server(void *arg);
 
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
+
+/* Finish the deletions a previous run left mid-sequence, and seed the reusable-id guard. */
+static void purge_startup_recover(void);
 
 /* Thread that watches for authd.pass to appear on a worker node */
 static void* run_authpass_watcher(void *arg);
@@ -56,6 +60,11 @@ static void cleanup();
 /* Shared variables */
 static char *authpass = NULL;
 static time_t authpass_mtime = 0;  /* shared between process_message and run_authpass_watcher */
+/* Log-once latch for the "password not available yet" rejection below: without it, every
+ * enrollment attempt during the (expected, transient) worker sync window logs its own line.
+ * Guarded by mutex_authpass like authpass/authpass_mtime; reset wherever authpass is
+ * (re)loaded successfully, so a later unavailability (e.g. the file is removed) is reported again. */
+static bool authpass_unavailable_reported = false;
 static SSL_CTX *ctx;
 static int remote_sock = -1;
 static int g_epfd = -1;
@@ -145,6 +154,7 @@ static void* run_authpass_watcher(void *arg) {
             int first_load = (authpass == NULL);
             os_free(authpass);
             authpass = pass;
+            authpass_unavailable_reported = false;
             if (first_load) {
                 minfo("Enrollment password synchronized from the master node and now available at '%s'.", AUTHD_PASS);
             } else {
@@ -473,6 +483,10 @@ int main(int argc, char **argv)
 
     /* Exit here if test config is set */
     if (test_config) {
+        /* Start-up does not require the certificate files to exist; the test run does. */
+        if (w_mconf_validate(WAZUHCONF) < 0) {
+            merror_exit(CONFIG_ERROR, WAZUHCONF);
+        }
         exit(0);
     }
 
@@ -639,7 +653,7 @@ int main(int argc, char **argv)
         if (config.flags.use_password) {
             minfo("Accepting connections on port %hu. Shared-password enrollment is required.", config.port);
         } else {
-            mdebug1("Accepting connections on port %hu. No password required.", config.port);
+            minfo("Accepting connections on port %hu. No password required.", config.port);
         }
     }
 
@@ -664,12 +678,23 @@ int main(int argc, char **argv)
         OS_ReadTimestamps(&keys);
     }
 
-    /* Initialize libcurl once per process: the writer thread notifies agent deletions to the
-     * inventory sync server over its UDS HTTP endpoint (uhttp_*). Not fatal on failure -- authd's
-     * job is enrollment; a deletion that cannot be notified is logged by the writer and is safe to
-     * repeat by hand (the server's delete-by-query treats a missing index as success). */
-    if (uhttp_global_init() != 0) {
-        mwarn("Could not initialize the HTTP client; agent deletions will not reach the inventory sync server.");
+    /* BEFORE the listeners, not just before the writer. Read what the previous run left, decide
+     * what each surviving line means against the client.keys just loaded, and record the deletions
+     * that were interrupted before their task row existed.
+     *
+     * The ordering is the point. Every request that can reassign an agent id consults
+     * purge_is_pending(), which answers from the journal held in memory -- so a request served
+     * while the journal is still unread is answered against an empty one. The id of an agent
+     * deleted before the last crash would be judged free, handed to a new agent, and then
+     * reconciliation would find that id present in client.keys and drop the line as "never
+     * deleted": the original agent's documents are never purged, which is the exact window this
+     * design exists to close, reopened at startup.
+     *
+     * Nothing contends for the journal here, which is also what lets these two run without the
+     * mutex doing any real work. */
+    if (!config.worker_node) {
+        purge_file_load();
+        purge_startup_recover();
     }
 
     /* Start working threads */
@@ -715,6 +740,9 @@ int main(int argc, char **argv)
         w_cond_signal(&cond_pending);
         w_mutex_unlock(&mutex_keys);
         pthread_join(thread_writer, NULL);
+
+        /* After the writer, its only producer, so a line it journaled on its way out is counted. */
+        purge_journal_discard();
     }
 
     /* Join the watcher so it cannot touch authpass/mutex_authpass during shutdown. */
@@ -785,6 +813,7 @@ static void process_message(struct client *client) {
             if (fresh) {
                 os_free(authpass);
                 authpass = fresh;
+                authpass_unavailable_reported = false;
                 minfo("Enrollment password reloaded from '%s'.", AUTHD_PASS);
             }
             /* Record the mtime regardless of success: avoids re-logging a corrupt file
@@ -796,10 +825,18 @@ static void process_message(struct client *client) {
     /* Fail closed: required password missing (worker not synced yet) -> reject, never
      * validate against NULL (which skips the check). */
     if (config.flags.use_password && authpass == NULL) {
+        const bool should_log = !authpass_unavailable_reported;
+        authpass_unavailable_reported = true;
+
         if (serialize_authpass) {
             w_mutex_unlock(&mutex_authpass);
         }
-        merror("Enrollment password required but not available yet. Rejecting request from %s.", client->ip);
+        if (should_log) {
+            mwarn("Enrollment password required but not available yet. Rejecting request from %s. "
+                  "This is expected while a worker is syncing the password from the master; this "
+                  "warning will not repeat until the password becomes available.",
+                  client->ip);
+        }
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "ERROR: Enrollment password not available. Unable to add agent");
         client->write_len = strlen(client->write_buffer);
         return;
@@ -1153,151 +1190,169 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
     return NULL;
 }
 
-/* Deletion request budget. The per-request timeout is generous ON PURPOSE: a deletion refreshes
- * and then delete-by-queries the agent's whole scope, so on a loaded indexer it legitimately takes
- * seconds, and the old 5 s ceiling turned "slow" into "lost". It does not become a 3 x 30 s stall
- * when the indexer is simply DOWN: the server's admission gate answers 503 immediately, and a
- * modulesd that is not listening fails at connect_timeout_ms. The long wait only happens while the
- * server is actually working the deletion -- which is exactly when waiting is the right answer. */
-#define INV_SYNC_DELETE_TIMEOUT_MS      30000
-#define INV_SYNC_DELETE_CONNECT_TIMEOUT_MS 2000
-#define INV_SYNC_DELETE_ATTEMPTS        3
+/**
+ * @brief Phases 3 and 4: record each journaled deletion as a manager task, then forget it.
+ *
+ * One row per id, over a socket the caller already holds, and the create commits inside its own
+ * wazuh-db command -- so its `ok` is the durability acknowledgement, not a buffered write. That is
+ * precisely what lets phase 4 drop the journal line: dropping it on a merely-buffered ok would
+ * leave a window in which wazuh-db's death loses the row AND the record that it was owed.
+ *
+ * `collided` is SUCCESS here. A deletion has two legitimate creators -- this function on the
+ * writer's cycle, and the same function during startup recovery -- and the task id is derived from
+ * the agent and its journal sequence precisely so the second one is a no-op rather than a duplicate.
+ *
+ * `queue_full` is NOT success and does not drop the line: the row was not created, so the deletion
+ * is still owed. The next writer cycle retries it, and the backlog it is waiting on is the same one
+ * phase 0 refuses new deletions against. The rest of the batch is abandoned for this pass, because
+ * a full queue does not empty between two rows.
+ *
+ * Both non-success cases leave their line in place and abandon the rest of the pass, which is only
+ * safe because the callers hand over EVERY outstanding line rather than one cycle's additions:
+ * purge_journal_snapshot() on the writer, purge_journal_reconcile() at startup. Called with just
+ * the ids a single cycle journaled, an untouched line would wait for the next process start while
+ * its agent was already gone from client.keys.
+ *
+ * @param entries Every deletion still owed, oldest first.
+ * @param count How many.
+ * @param wdb_sock Reusable wazuh-db socket.
+ * @return How many rows are now recorded.
+ */
+static size_t purge_create_rows(const purge_journal_entry_t *entries, size_t count, int *wdb_sock) {
+    purge_journal_entry_t *durable = NULL;
+    size_t recorded = 0;
+    size_t i;
+
+    if (!entries || count == 0) {
+        return 0;
+    }
+
+    /* The entries whose rows are durable, collected rather than dropped one by one: every drop
+     * rewrites the whole journal file, so a per-entry drop makes a bulk deletion quadratic in file
+     * writes -- 20 000 rewrites of a 20 000-line file. */
+    os_calloc(count, sizeof(purge_journal_entry_t), durable);
+
+    for (i = 0; i < count; i++) {
+        manager_task_request_t request = {0};
+        char payload[OS_SIZE_128];
+        char *task_id = NULL;
+        int result;
+
+        if (task_id = manager_task_id_agent_delete(entries[i].id, entries[i].journal_seq), !task_id) {
+            merror("Could not derive the deletion task id of agent '%s'.", entries[i].id);
+            continue;
+        }
+
+        /* The consumer's request body, verbatim: POST /_internal/agents/delete reads the agent id
+         * from here because the dispatcher forwards a row's payload and adds no headers. */
+        snprintf(payload, sizeof(payload), "{\"agent_id\":\"%s\"}", entries[i].id);
+
+        request.task_id = task_id;
+        request.task_type = MANAGER_TASK_TYPE_AGENT_DELETE;
+        request.agent_id = entries[i].id;
+        request.payload = payload;
+        request.create_time = (long long)entries[i].requested_at;
+        /* authd.purge_delay, expressed where it now belongs. Part of what it buys is the indexer
+         * having refreshed and the cluster workers having reloaded client.keys, neither of which
+         * this daemon can observe -- so it stays a delay rather than becoming a condition. */
+        request.next_attempt_at = (long long)entries[i].requested_at + config.purge_delay;
+        /* Never coalesced: two deletions of one agent are two obligations. */
+        request.coalesce = false;
+        request.max_pending = config.max_pending_deletes;
+
+        result = manager_task_create(&request, config.wdb_timeout, NULL);
+
+        os_free(task_id);
+
+        switch (result) {
+        case MANAGER_TASK_CREATED:
+            durable[recorded++] = entries[i];
+            break;
+
+        case MANAGER_TASK_COLLIDED:
+            mdebug1("The deletion of agent '%s' was already recorded.", entries[i].id);
+            durable[recorded++] = entries[i];
+            break;
+
+        case MANAGER_TASK_QUEUE_FULL:
+            mwarn("The deletion of agent '%s' could not be recorded: %d deletions are already "
+                  "waiting to be applied to the indexer. It stays journaled and will be retried.",
+                  entries[i].id, config.max_pending_deletes);
+            goto finish;
+
+        default:
+            mwarn("The deletion of agent '%s' could not be recorded; it stays journaled and will be "
+                  "retried.", entries[i].id);
+            goto finish;
+        }
+    }
+
+finish:
+    /* PHASE 4, once per pass. Only the entries above are dropped, so one that failed cannot take a
+     * durable one down with it -- which is the property the per-entry drop was there for.
+     *
+     * Batching the PERSIST costs nothing in correctness: a crash between a row becoming durable and
+     * this write leaves the line journaled, and reconciliation then derives the same task id and
+     * collides, which this function already treats as recorded. */
+    purge_journal_drop(durable, recorded);
+    os_free(durable);
+
+    return recorded;
+}
 
 /**
- * @brief Ask the inventory sync server to delete an agent's documents from the indexer.
+ * @brief Startup recovery: finish the deletions a previous run left mid-sequence.
  *
- * POST /agents/delete over the server's UDS socket (the POST alias of DELETE /agents: uhttp_*
- * only speaks POST), the target agent in the X-Wazuh-Agent-Id header, empty body. Unlike the old
- * fire-and-forget router publish, the HTTP status IS the outcome: 200 means the deletion was
- * flushed to the indexer.
+ * Called from main() after OS_ReadKeys() and purge_file_load(), before any thread starts.
  *
- * Failure is never silent. Every attempt that does not end in 200 is logged, and giving up is an
- * ERROR naming the agent, because at that point documents of a deleted agent are left in the
- * indexer with nothing to ever overwrite them -- the operator has to repeat the deletion, which is
- * safe (the server treats a missing index as success). The transport result and the HTTP status
- * are reported separately: a curl-level failure carries no status, and printing "status 0" for it
- * is what made a modulesd that was not listening look like a server that refused.
- *
- * Called only from the writer thread; the client handle is per-thread by uhttp's contract, and
- * the lazy static is what keeps the connection alive (keepalive) across a batch of deletions.
- *
- * @param agent_id The ID of the agent to delete
+ * Nothing here is fatal, and nothing here is required for correctness: an owed row that is not
+ * created now is created by the writer's next cycle, and phase 0's row bound simply keeps the value
+ * it had until the writer measures it.
  */
-static void send_agent_delete_to_inventory_sync(const char *agent_id) {
-    static uhttp_client_t *client = NULL;
+static void purge_startup_recover(void) {
+    purge_journal_entry_t *owed = NULL;
+    size_t count = 0;
+    int wdb_sock = -1;
 
-    if (!client) {
-        uhttp_options_t opts = {
-            .unix_socket_path = INV_SYNC_SOCK,
-            .url = "http://localhost/agents/delete",
-            .timeout_ms = INV_SYNC_DELETE_TIMEOUT_MS,
-            .connect_timeout_ms = INV_SYNC_DELETE_CONNECT_TIMEOUT_MS,
-            .keepalive = true
-        };
-        client = uhttp_client_new(&opts);
-        if (!client) {
-            mwarn("Could not create the HTTP client for agent deletions; the documents of agent '%s' remain in the indexer.", agent_id);
-            return;
+    /* wazuh-db is started AFTER this daemon (wazuh-server.sh starts the reversed daemon list, and
+     * authd comes before wazuh-manager-db in it), so on a normal start its socket does not exist
+     * yet and neither call below can succeed. Both are self-healing -- owed rows are retried by the
+     * writer's next cycle, and the row count is re-measured on every one of them -- so attempting
+     * them here would buy nothing and cost a failed connect plus an ERROR line from the wazuh-db
+     * client on every single manager start.
+     *
+     * Existence only, and access() rather than w_is_file(): the latter opens the path, which fails
+     * on a socket whether or not anything is listening. A socket that exists but has no listener
+     * yet still fails below, and is handled the same way. */
+    const bool wdb_listening = access(WDB_LOCAL_SOCK, F_OK) == 0;
+
+    // Local work regardless: this reads the journal against client.keys. Only the row creation and
+    // the count below need the database.
+    owed = purge_journal_reconcile(&count);
+
+    if (owed) {
+        size_t recorded = wdb_listening ? purge_create_rows(owed, count, &wdb_sock) : 0;
+
+        if (recorded < count) {
+            mwarn("%zu recovered agent deletion(s) could not be recorded yet; they stay journaled "
+                  "and are retried on the next write cycle.", count - recorded);
         }
+
+        os_free(owed);
     }
 
-    // The header changes per call; reset-then-add keeps the client reusable. Reset rather than clear:
-    // clearing drops the headers the constructor installed (Content-Type, the Expect: suppression and
-    // the keep-alive this client asked for) and never rebuilds them.
-    char header[64];
-    snprintf(header, sizeof(header), "X-Wazuh-Agent-Id: %s", agent_id);
-    if (uhttp_client_reset_headers(client) != 0) {
-        mwarn("Could not prepare the deletion request for agent '%s'; its documents remain in the indexer.", agent_id);
-        return;
-    }
-    if (uhttp_client_add_header(client, header) != 0) {
-        merror("Could not build the deletion request for agent '%s'; its documents remain in the indexer.", agent_id);
-        return;
+    /* Prime phase 0's row bound, which is otherwise zero until the writer's first cycle -- and the
+     * writer waits on cond_pending, so on an idle manager that cycle can be a long way off. This is
+     * the restart-with-a-deep-backlog case: authd alone restarting while wazuh-db is up and holding
+     * thousands of pending deletions, where a bound reading zero would admit deletions the queue has
+     * no room for. A failure is passed through as -1, which keeps the previous value rather than
+     * reporting an outage as an empty queue. */
+    if (wdb_listening) {
+        purge_pending_rows_update(
+            manager_task_count(MANAGER_TASK_TYPE_AGENT_DELETE, MANAGER_TASK_STATUS_PENDING, config.wdb_timeout));
     }
 
-    // Retries with a widening pause (0 s, 1 s, 3 s). A 503 is the server telling us to come back:
-    // it answers that while no indexer host is healthy, and an overloaded indexer flaps in and out
-    // of healthy in bursts of a few seconds. A single fixed 2 s retry could land both attempts
-    // inside the same burst; spreading them over ~4 s rides one out without designing a persistent
-    // queue for a rare, hand-recoverable event (design doc 04 §2).
-    static const unsigned int backoff_seconds[INV_SYNC_DELETE_ATTEMPTS] = {0, 1, 3};
-
-    for (int attempt = 0; attempt < INV_SYNC_DELETE_ATTEMPTS; attempt++) {
-        // Signals are blocked in this thread (authd_sigblock()), so nothing interrupts a sleep() or
-        // a request in flight: without these checks a shutdown asked for while the writer is working
-        // its removal queue waits out the whole budget (up to ~94 s) for EVERY queued agent before
-        // the daemon can exit. Giving up on shutdown is safe -- the deletion is idempotent and the
-        // warning below tells the operator to repeat it.
-        if (!running) {
-            mdebug1("Shutting down; abandoning the deletion of agent '%s' after %d attempt(s). "
-                    "Its documents remain in the indexer; repeat the deletion after the restart.",
-                    agent_id, attempt);
-            return;
-        }
-
-        if (backoff_seconds[attempt] > 0) {
-            // Announced rather than silent: this is the WRITER thread, and it is the only one that
-            // persists client.keys. While it waits here nothing else it owns moves -- no key write,
-            // no other queued agent's deletion, no shutdown -- so a fleet-wide removal against an
-            // unhealthy indexer makes authd look stalled with nothing in the log to explain it.
-            minfo("Retrying the deletion of agent '%s' in %u s (attempt %d/%d); the writer thread stays "
-                  "blocked meanwhile, delaying client.keys writes and any other pending deletion.",
-                  agent_id, backoff_seconds[attempt], attempt + 1, INV_SYNC_DELETE_ATTEMPTS);
-        }
-
-        for (unsigned int slept = 0; slept < backoff_seconds[attempt] && running; slept++) {
-            sleep(1);
-        }
-
-        uhttp_result_t result = {0};
-        const int posted = uhttp_post(client, NULL, 0, &result);
-
-        if (posted == 0 && result.http_status == 200) {
-            minfo("Deleted the documents of agent '%s' from the indexer.", agent_id);
-            return;
-        }
-
-        const int last_attempt = (attempt == INV_SYNC_DELETE_ATTEMPTS - 1);
-
-        // Three outcomes hide behind a non-zero return, and naming the right one is what makes this
-        // log actionable. uhttp_post() returns the HTTP status itself for a non-2xx, so `posted`
-        // alone cannot classify anything -- the fields in `result` do:
-        //   - nothing set at all  -> the request was refused by the client and NEVER SENT. The
-        //     socket and the server are not the suspects; saying "could not reach the server" here
-        //     sends the operator to test an endpoint that was working all along.
-        //   - curl_code set       -> it was sent and failed in transport.
-        //   - http_status set     -> it was answered, with a status we did not want.
-        if (result.http_status != 0) {
-            mdebug1("Attempt %d/%d to delete the documents of agent '%s' answered HTTP %ld.",
-                    attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.http_status);
-
-            if (last_attempt) {
-                mwarn("The inventory sync server did not accept the deletion of agent '%s' after %d attempt(s) "
-                      "(HTTP status %ld). Its documents remain in the indexer; repeat the deletion once the indexer "
-                      "is healthy.",
-                      agent_id, INV_SYNC_DELETE_ATTEMPTS, result.http_status);
-            }
-        } else if (result.curl_code != 0) {
-            mdebug1("Attempt %d/%d to delete the documents of agent '%s' did not complete (curl code %d).",
-                    attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.curl_code);
-
-            if (last_attempt) {
-                mwarn("Could not reach the inventory sync server to delete agent '%s' after %d attempt(s) (curl code %d). "
-                      "Its documents remain in the indexer; repeat the deletion once the server is reachable.",
-                      agent_id, INV_SYNC_DELETE_ATTEMPTS, result.curl_code);
-            }
-        } else {
-            mdebug1("Attempt %d/%d to delete the documents of agent '%s' was not sent (client-side error).",
-                    attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id);
-
-            if (last_attempt) {
-                mwarn("Could not build the deletion request for agent '%s' after %d attempt(s): it was never sent, "
-                      "so this is a manager-side fault, not an unreachable server. Its documents remain in the "
-                      "indexer; report this and repeat the deletion once fixed.",
-                      agent_id, INV_SYNC_DELETE_ATTEMPTS);
-            }
-        }
-    }
+    wdbc_close(&wdb_sock);
 }
 
 /* Thread for writing keystore onto disk */
@@ -1319,6 +1374,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
     while (running) {
         int inserted_agents = 0;
         int removed_agents = 0;
+        char **removed_ids = NULL;
+        size_t removed_count = 0;
+        purge_journal_entry_t *journaled = NULL;
+        bool keys_written = false;
 
         w_mutex_lock(&mutex_keys);
 
@@ -1340,9 +1399,31 @@ void* run_writer(__attribute__((unused)) void *arg) {
         write_pending = 0;
         w_mutex_unlock(&mutex_keys);
 
+        /* PHASE 1: the intent, before client.keys is rewritten.
+         *
+         * Local only -- a temp file and a rename. Creating the task rows here instead would put a
+         * wazuh-db round trip in front of every client.keys write, so a database outage would block
+         * enrollment: the wedge this whole design exists to remove. The rows come later, in phase 3,
+         * where a failure costs a retry rather than an outage. */
+        for (cur = copy_remove; cur; cur = cur->next) {
+            os_realloc(removed_ids, (removed_count + 1) * sizeof(char *), removed_ids);
+            removed_ids[removed_count++] = cur->id;
+        }
+
+        journaled = purge_journal_append(removed_ids, removed_count);
+        os_free(removed_ids);
+
         gettime(&t0);
 
-        if (OS_WriteKeys(copy_keys) < 0) {
+        /* PHASE 2: the point of no return, and its RESULT IS CAPTURED.
+         *
+         * A failure here is logged and falls through to the removal loop below -- it always has --
+         * so without an explicit gate phase 3 would create purge rows for agents that are still on
+         * disk. The in-memory keystore cannot serve as that gate: OS_DeleteKey() already ran, so it
+         * says "deleted" while the file still says "alive". */
+        keys_written = (OS_WriteKeys(copy_keys) >= 0);
+
+        if (!keys_written) {
             merror("Couldn't write file client.keys");
             sleep(1);
         }
@@ -1359,6 +1440,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         gettime(&t1);
         mdebug2("[Writer] OS_WriteTimestamps(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+        /* Persist the high-water mark of handed-out ids from the same snapshot that was just
+         * written, so the file can never claim an id client.keys does not account for. */
+        purge_last_id_update(copy_keys->id_counter);
 
         OS_FreeKeys(copy_keys);
         os_free(copy_keys);
@@ -1420,9 +1505,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
             gettime(&t1);
             mdebug2("[Writer] wdb_remove_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            // Notify inventory-sync to delete agent data from indexer
-            send_agent_delete_to_inventory_sync(cur->id);
-
             os_free(cur->id);
             os_free(cur->name);
             os_free(cur->ip);
@@ -1433,11 +1515,62 @@ void* run_writer(__attribute__((unused)) void *arg) {
             removed_agents++;
         }
 
+        /* PHASES 3 and 4, gated on phase 2. Skipping them costs nothing: the journal lines stay and
+         * the next cycle retries them, because phase 3 below works from the whole outstanding set
+         * rather than from this cycle's ids. */
+        if (journaled) {
+            os_free(journaled);
+
+            if (!keys_written) {
+                mwarn("client.keys could not be written, so %zu deletion(s) were not recorded; they "
+                      "stay journaled until a write succeeds.", removed_count);
+            }
+        }
+
+        /* Everything the journal still owes, not just what this cycle added. A create that failed
+         * -- wazuh-db restarting, a socket timeout, a full admission bound -- left its line in
+         * place, and this is what picks it up on the next cycle. Working from `journaled` instead
+         * stranded those ids until the process restarted, with their agents already gone from
+         * client.keys and their documents orphaned in the meantime.
+         *
+         * Gated on keys_written, which is the whole safety argument: the write is attempted on
+         * every cycle, so a successful one means the keys ON DISK already reflect every deletion
+         * applied to the in-memory keystore -- this cycle's and every earlier one's -- and any line
+         * still journaled therefore belongs to an agent that is really gone. A failed write means
+         * the opposite for at least some of them, so nothing is recorded until one succeeds. */
+        if (keys_written) {
+            size_t owed_count = 0;
+            purge_journal_entry_t *owed = purge_journal_snapshot(&owed_count);
+
+            if (owed) {
+                purge_create_rows(owed, owed_count, &wdb_sock);
+                os_free(owed);
+            }
+        }
+
+        /* Phase 0's second term, refreshed once per cycle rather than once per agent. A failed
+         * measurement is passed through as -1 and keeps the previous value: reporting it as zero
+         * would lift the bound for exactly as long as wazuh-db is unreachable.
+         *
+         * It goes stale on an idle manager, which is harmless in both directions -- stale-high
+         * over-refuses, stale-low lets wazuh-db refuse at creation instead, which re-queues -- and
+         * the count only matters while deletions are flowing, which is when this thread cycles. */
+        // Not on the way out. It feeds phase 0, which refuses new deletions, and no deletion will
+        // be admitted after this point -- while wazuh-db is being stopped alongside this daemon, so
+        // the query would usually just fail and put an ERROR from the wazuh-db client in the log of
+        // every clean stop.
+        if (running) {
+            purge_pending_rows_update(
+                manager_task_count(MANAGER_TASK_TYPE_AGENT_DELETE, MANAGER_TASK_STATUS_PENDING, config.wdb_timeout));
+        }
+
         gettime(&global_t1);
         mdebug2("[Writer] Inserted agents: %d", inserted_agents);
         mdebug2("[Writer] Removed agents: %d", removed_agents);
         mdebug2("[Writer] Loop: %d ms.", (int)(1000. * (double)time_diff(&global_t0, &global_t1)));
     }
+
+    wdbc_close(&wdb_sock);
 
     return NULL;
 }

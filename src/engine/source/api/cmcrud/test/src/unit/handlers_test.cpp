@@ -24,6 +24,10 @@ using CmCrudHandlerT = Params<cm::crud::ICrudService, cm::crud::MockCrudService>
 constexpr const char* kParseErrorMsg = "Failed to parse protobuff json request: INVALID_ARGUMENT:Unexpected token.\n"
                                        "not json proto reque\n^";
 
+// resourceGet / resourceDelete handler messages
+constexpr const char* kUuidRequiredMsg = "Field /uuid cannot be empty";
+constexpr const char* kUuidInvalidMsg = "Field /uuid is not a valid identifier";
+
 // resourceValidate handler messages
 constexpr const char* kTypeRequiredMsg = "Field /type is required";
 constexpr const char* kResourceRequiredMsg = "Field /resource cannot be empty";
@@ -302,10 +306,7 @@ INSTANTIATE_TEST_SUITE_P(
                 return createRequest<eContent::resourceGet_Request>(protoReq);
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceGet(crud); },
-            []()
-            {
-                return helpers::buildJsonContentResponse(json::Json {R"({"id":"uuid-1","name":"decoder/test"})"});
-            },
+            []() { return helpers::buildJsonContentResponse(json::Json {R"({"id":"uuid-1","name":"decoder/test"})"}); },
             [](auto& mock)
             {
                 EXPECT_CALL(mock,
@@ -314,6 +315,48 @@ INSTANTIATE_TEST_SUITE_P(
                                               "uuid-1"))
                     .WillOnce(::testing::Return(json::Json {R"({"id":"uuid-1","name":"decoder/test"})"}));
             }),
+        // Opaque identifiers: a UUIDv5 or any custom string reaches the service unchanged
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceGet_Request protoReq;
+                protoReq.set_space("draft");
+                protoReq.set_uuid("6093809a-6285-5cf8-9284-63bd68f796e9");
+                return createRequest<eContent::resourceGet_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceGet(crud); },
+            []() {
+                return helpers::buildJsonContentResponse(
+                    json::Json {R"({"id":"6093809a-6285-5cf8-9284-63bd68f796e9"})"});
+            },
+            [](auto& mock)
+            {
+                EXPECT_CALL(mock, getResourceByUUID(::testing::_, "6093809a-6285-5cf8-9284-63bd68f796e9"))
+                    .WillOnce(::testing::Return(json::Json {R"({"id":"6093809a-6285-5cf8-9284-63bd68f796e9"})"}));
+            }),
+        // Empty uuid
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceGet_Request protoReq;
+                protoReq.set_space("draft");
+                return createRequest<eContent::resourceGet_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceGet(crud); },
+            []() { return userErrorResponse<eContent::resourceGet_Response>(kUuidRequiredMsg); },
+            [](auto& mock) { EXPECT_CALL(mock, getResourceByUUID(::testing::_, ::testing::_)).Times(0); }),
+        // Invalid uuid (control character): rejected before reaching the service
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceGet_Request protoReq;
+                protoReq.set_space("draft");
+                protoReq.set_uuid("bad\nid");
+                return createRequest<eContent::resourceGet_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceGet(crud); },
+            []() { return userErrorResponse<eContent::resourceGet_Response>(kUuidInvalidMsg); },
+            [](auto& mock) { EXPECT_CALL(mock, getResourceByUUID(::testing::_, ::testing::_)).Times(0); }),
         // Wrong request type
         CmCrudHandlerT(
             []()
@@ -400,6 +443,29 @@ INSTANTIATE_TEST_SUITE_P(
                                                                   { return nsId.toStr() == "draft"; }),
                                                  "uuid-1"));
             }),
+        // Empty uuid
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceDelete_Request protoReq;
+                protoReq.set_space("draft");
+                return createRequest<eContent::resourceDelete_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceDelete(crud); },
+            []() { return userErrorResponse<eEngine::GenericStatus_Response>(kUuidRequiredMsg); },
+            [](auto& mock) { EXPECT_CALL(mock, deleteResourceByUUID(::testing::_, ::testing::_)).Times(0); }),
+        // Invalid uuid (control character): rejected before reaching the service
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceDelete_Request protoReq;
+                protoReq.set_space("draft");
+                protoReq.set_uuid("bad\tid");
+                return createRequest<eContent::resourceDelete_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceDelete(crud); },
+            []() { return userErrorResponse<eEngine::GenericStatus_Response>(kUuidInvalidMsg); },
+            [](auto& mock) { EXPECT_CALL(mock, deleteResourceByUUID(::testing::_, ::testing::_)).Times(0); }),
         // Wrong request type
         CmCrudHandlerT(
             []()

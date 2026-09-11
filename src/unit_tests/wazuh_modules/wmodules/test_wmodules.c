@@ -211,6 +211,81 @@ static void test_get_modules_internal_options_reports_all_common_options(void **
     cJSON_Delete(root);
 }
 
+static void test_url_is_allowed_null_url(void ** state) {
+    assert_false(wm_url_is_allowed(NULL, "api.github.com"));
+}
+
+static void test_url_is_allowed_matching_host(void ** state) {
+    assert_true(wm_url_is_allowed("https://api.github.com/organizations/1/audit-log?after=x", "api.github.com"));
+}
+
+static void test_url_is_allowed_matching_host_no_path(void ** state) {
+    assert_true(wm_url_is_allowed("https://api.github.com", "api.github.com"));
+}
+
+static void test_url_is_allowed_plain_http(void ** state) {
+    assert_false(wm_url_is_allowed("http://api.github.com/audit-log", "api.github.com"));
+}
+
+static void test_url_is_allowed_other_scheme(void ** state) {
+    assert_false(wm_url_is_allowed("file:///etc/passwd", "api.github.com"));
+    assert_false(wm_url_is_allowed("gopher://api.github.com/", "api.github.com"));
+}
+
+static void test_url_is_allowed_other_host(void ** state) {
+    assert_false(wm_url_is_allowed("https://evil.tld/audit-log", "api.github.com"));
+}
+
+static void test_url_is_allowed_host_as_suffix(void ** state) {
+    assert_false(wm_url_is_allowed("https://api.github.com.evil.tld/audit-log", "api.github.com"));
+}
+
+static void test_url_is_allowed_host_as_prefix(void ** state) {
+    assert_false(wm_url_is_allowed("https://api.github.co/audit-log", "api.github.com"));
+}
+
+static void test_url_is_allowed_host_in_userinfo(void ** state) {
+    assert_false(wm_url_is_allowed("https://api.github.com@evil.tld/audit-log", "api.github.com"));
+}
+
+static void test_url_is_allowed_host_in_query(void ** state) {
+    assert_false(wm_url_is_allowed("https://evil.tld/?next=https://api.github.com/", "api.github.com"));
+}
+
+static void test_url_is_allowed_no_host_accepts_any_https(void ** state) {
+    assert_true(wm_url_is_allowed("https://manage.office.com/api/v1.0/content", NULL));
+    assert_true(wm_url_is_allowed("https://any.host.tld/content", NULL));
+}
+
+static void test_url_is_allowed_no_host_rejects_non_https(void ** state) {
+    assert_false(wm_url_is_allowed("http://any.host.tld/content", NULL));
+    assert_false(wm_url_is_allowed("file:///etc/passwd", NULL));
+}
+
+static void test_url_is_allowed_matching_host_with_port(void ** state) {
+    assert_true(wm_url_is_allowed("https://api.github.com:8443/audit-log", "api.github.com"));
+}
+
+static void test_url_is_allowed_empty_port(void ** state) {
+    assert_false(wm_url_is_allowed("https://api.github.com:/audit-log", "api.github.com"));
+}
+
+static void test_url_is_allowed_port_then_userinfo(void ** state) {
+    assert_false(wm_url_is_allowed("https://api.github.com:1234@evil.tld/", "api.github.com"));
+}
+
+static void test_url_is_allowed_matching_host_with_query(void ** state) {
+    assert_true(wm_url_is_allowed("https://api.github.com?after=x", "api.github.com"));
+}
+
+static void test_url_is_allowed_matching_host_with_fragment(void ** state) {
+    assert_true(wm_url_is_allowed("https://api.github.com#fragment", "api.github.com"));
+}
+
+static void test_url_is_allowed_case_insensitive(void ** state) {
+    assert_true(wm_url_is_allowed("HTTPS://API.GITHUB.COM/audit-log", "api.github.com"));
+}
+
 int main() {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_find_module_found, setup_modules, teardown_modules),
@@ -222,6 +297,24 @@ int main() {
         cmocka_unit_test_setup_teardown(test_modules_sync_failure_while_running, setup_modules, teardown_modules),
         cmocka_unit_test_setup_teardown(test_modules_sync_failure_during_shutdown, setup_modules, teardown_modules),
         cmocka_unit_test(test_get_modules_internal_options_reports_all_common_options),
+        cmocka_unit_test(test_url_is_allowed_null_url),
+        cmocka_unit_test(test_url_is_allowed_matching_host),
+        cmocka_unit_test(test_url_is_allowed_matching_host_no_path),
+        cmocka_unit_test(test_url_is_allowed_plain_http),
+        cmocka_unit_test(test_url_is_allowed_other_scheme),
+        cmocka_unit_test(test_url_is_allowed_other_host),
+        cmocka_unit_test(test_url_is_allowed_host_as_suffix),
+        cmocka_unit_test(test_url_is_allowed_host_as_prefix),
+        cmocka_unit_test(test_url_is_allowed_host_in_userinfo),
+        cmocka_unit_test(test_url_is_allowed_host_in_query),
+        cmocka_unit_test(test_url_is_allowed_no_host_accepts_any_https),
+        cmocka_unit_test(test_url_is_allowed_no_host_rejects_non_https),
+        cmocka_unit_test(test_url_is_allowed_matching_host_with_port),
+        cmocka_unit_test(test_url_is_allowed_empty_port),
+        cmocka_unit_test(test_url_is_allowed_port_then_userinfo),
+        cmocka_unit_test(test_url_is_allowed_matching_host_with_query),
+        cmocka_unit_test(test_url_is_allowed_matching_host_with_fragment),
+        cmocka_unit_test(test_url_is_allowed_case_insensitive),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

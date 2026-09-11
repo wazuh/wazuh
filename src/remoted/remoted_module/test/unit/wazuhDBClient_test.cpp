@@ -579,3 +579,39 @@ TEST(WazuhDBClientTest, DtorFailsPendingCallbacksWithIo)
     // the queued ones (>= 4 of the 5) to keep the test deterministic.
     EXPECT_GE(io.load(), 4);
 }
+
+// globalQuery: an application-level "err ..." travels over a socket that worked, so the transport
+// status alone reports every one of them as a success.
+TEST(WazuhDBClientTest, UpdateSurfacesApplicationLevelError)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_err");
+    FakeUdsServer server(path, [](const std::string&) -> std::string { return "err Invalid agent id"; });
+
+    ControlMetrics metrics;
+    WazuhDBClient client(path, 1, 1000, 100, metrics);
+
+    Waiter<SocketError> keepalive;
+    client.updateKeepalive(1, "active", "synced", [&](SocketError e) { keepalive.complete(e); });
+    ASSERT_TRUE(keepalive.wait(3000ms));
+    EXPECT_EQ(keepalive.value, SocketError::ProtocolError);
+
+    Waiter<SocketError> connectionStatus;
+    client.updateConnectionStatus(
+        1, AgentStatusCode::Ok, "disconnected", "synced", [&](SocketError e) { connectionStatus.complete(e); });
+    ASSERT_TRUE(connectionStatus.wait(3000ms));
+    EXPECT_EQ(connectionStatus.value, SocketError::ProtocolError);
+}
+
+TEST(WazuhDBClientTest, UpdateSucceedsOnOk)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_ok");
+    FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok"; });
+
+    ControlMetrics metrics;
+    WazuhDBClient client(path, 1, 1000, 100, metrics);
+
+    Waiter<SocketError> w;
+    client.updateKeepalive(1, "active", "synced", [&](SocketError e) { w.complete(e); });
+    ASSERT_TRUE(w.wait(3000ms));
+    EXPECT_EQ(w.value, SocketError::None);
+}

@@ -54,7 +54,7 @@ import sys
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
 from wazuh_testing.modules.agentd.patterns import *
-from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
+from wazuh_testing.tools.simulators.remoted_simulator import DEFAULT_MANAGER_ENDPOINT_PREFIX, RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
@@ -136,7 +136,7 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
         - keys
     '''
     # Start RemotedSimulator
-    remoted_server = RemotedSimulator()
+    remoted_server = RemotedSimulator(prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
     try:
         remoted_server.start()
 

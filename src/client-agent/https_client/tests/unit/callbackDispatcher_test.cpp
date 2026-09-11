@@ -85,6 +85,13 @@ namespace
         recordTag("buffer:" + std::to_string(level), static_cast<Record*>(userData));
     }
 
+    void recordProducerPause(bool paused, const char* reason, void* userData)
+    {
+        recordTag(std::string("pause:") + (paused ? "on:" : "off:") +
+                  (reason != nullptr ? reason : "(null)"),
+                  static_cast<Record*>(userData));
+    }
+
     hc_callbacks_t makeCallbacks(Record* record)
     {
         hc_callbacks_t callbacks {};
@@ -95,6 +102,7 @@ namespace
         callbacks.on_sync_response = recordSync;
         callbacks.on_state_change = recordState;
         callbacks.on_buffer_level = recordBuffer;
+        callbacks.on_producer_pause = recordProducerPause;
         callbacks.user_data = record;
         return callbacks;
     }
@@ -190,7 +198,8 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     dispatcher.onSyncResponse("sess-1", 0, R"({"ok":true})");
     dispatcher.onStateChange(HC_STATE_REGISTERED);
     dispatcher.onBufferLevel(HC_BUFFER_WARNING);
-    waitForCount(record, 7);
+    dispatcher.onProducerPause(true, "(7) Couldn't connect to server");
+    waitForCount(record, 8);
     dispatcher.stop();
 
     EXPECT_NE(record.order.end(),
@@ -208,6 +217,11 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(),
                         "buffer:" + std::to_string(HC_BUFFER_WARNING)));
+    // The reason crosses the ABI as const char*: assert the text survives the hop
+    // to the worker thread, not just that the callback fired.
+    EXPECT_NE(record.order.end(),
+              std::find(record.order.begin(), record.order.end(),
+                        "pause:on:(7) Couldn't connect to server"));
 }
 
 namespace

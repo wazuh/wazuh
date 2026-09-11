@@ -155,8 +155,14 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
         return strlen(*output);
     }
 
-    if (fsource = gzopen(final_source, "rb"), !fsource) {
-        merror("At WCOM uncompress: Unable to open '%s'", final_source);
+    // Not gzopen(): a symlink left at final_source would be followed, disclosing whatever it points to.
+    if (fsource = w_gzopen_nofollow(INCOMING_DIR, source, "rb"), !fsource) {
+        const int open_errno = errno;
+        if (open_errno == ELOOP) {
+            merror("At WCOM uncompress: Refused to open '%s': the path is a symbolic link", final_source);
+        } else {
+            merror("At WCOM uncompress: Unable to open '%s'", final_source);
+        }
         os_strdup("err Unable to open source", *output);
         return strlen(*output);
     }

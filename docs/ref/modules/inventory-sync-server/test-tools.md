@@ -46,8 +46,9 @@ does not build — that is the integration driver's job below.
 
 ## `tools/send_delete_agent.py` — whole-agent deletion driver
 
-Same standard-library-only approach, aimed at `DELETE /agents`: it speaks the bytes **authd** puts
-on the wire, so it exercises the real deletion rather than an approximation. The endpoint is
+Same standard-library-only approach, aimed at `POST /_internal/agents/delete`: it speaks the bytes
+**the Task Manager's dispatcher** puts on the wire — the agent id in the body, no headers — so it
+exercises the real deletion rather than an approximation. The endpoint is manager-internal and
 UDS-local (remoted has no downstream route to it), so this script is the only way to drive it by
 hand.
 

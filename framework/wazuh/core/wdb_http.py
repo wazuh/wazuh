@@ -72,7 +72,7 @@ class WazuhDBHTTPClient:
         timeout : float
             Maximum number of seconds to wait
         """
-        self.socket_path = f'{common.WDB_HTTP_SOCKET}.sock'
+        self.socket_path = str(common.WDB_HTTP_SOCKET)
 
         try:
             transport = AsyncHTTPTransport(uds=self.socket_path, retries=retries, verify=False)

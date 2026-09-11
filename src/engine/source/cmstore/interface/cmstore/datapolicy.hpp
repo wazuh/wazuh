@@ -130,6 +130,12 @@ public:
         , m_indexDiscardedEvents(indexDiscardedEvents)
         , m_cleanupDecoderVariables(cleanupDecoderVariables)
     {
+        // An empty root decoder means "no root decoder"; a present one must be a valid identifier
+        if (!m_rootDecoder.empty() && !base::utils::generators::isValidResourceId(m_rootDecoder))
+        {
+            throw std::runtime_error(fmt::format("Policy root decoder is not a valid identifier: {}",
+                                                 base::utils::generators::RESOURCE_ID_RULES));
+        }
         cm::store::detail::findDuplicateOrInvalidUUID(m_integrations, "Integration");
         cm::store::detail::findDuplicateOrInvalidUUID(m_outputs, "Output");
         cm::store::detail::findDuplicateOrInvalidUUID(m_filters, "Filter");

@@ -24,8 +24,11 @@
 #include <json.hpp>
 
 #include <atomic>
+#include <chrono>
 #include <cstdio>
 #include <string>
+#include <thread>
+#include <tuple>
 #include <unistd.h>
 #include <vector>
 
@@ -300,22 +303,54 @@ TEST_F(StatefulEndpointE2ETest, AVDSessionWithMismatchedFeedOffsetIsRejectedWith
     EXPECT_TRUE(m_events->syncOps().empty()) << "a stale-offset VD session must never reach the scanner or the indexer";
 }
 
-TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
+/// Deletion over the REAL transport, with the bytes the Task Manager's dispatcher puts on the wire:
+/// POST, the agent id in the body, and no headers of its own.
+static std::string deleteRequestFor(const std::string& body)
 {
-    // The canonical DELETE /agents (design doc 04) and its POST alias -- the alias is load-bearing:
-    // authd's uhttp_* helper only speaks POST, so a route drift would silently orphan deletions.
-    const std::string deleteHead = "DELETE /agents HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 9\r\n"
-                                   "Content-Length: 0\r\nConnection: close\r\n\r\n";
-    const auto response = wazuh::uds_http::test::sendRaw(m_path, deleteHead);
+    return "POST /_internal/agents/delete HTTP/1.1\r\nHost: localhost\r\n"
+           "Content-Type: application/json\r\nContent-Length: " +
+           std::to_string(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
+}
+
+TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAcrossBothHalves)
+{
+    const auto response = wazuh::uds_http::test::sendRaw(m_path, deleteRequestFor(R"({"agent_id":"9"})"));
     EXPECT_EQ(200, response.status) << response.body;
+    // Answered at COMPLETION: "ok" is the pipeline's own answer, sent after the flush, which is what
+    // lets the dispatcher record its task row `completed` and have that mean purged.
     EXPECT_EQ(R"({"status":"ok"})", response.body);
 
-    const std::string aliasHead = "POST /agents/delete HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 10\r\n"
-                                  "Content-Length: 0\r\nConnection: close\r\n\r\n";
-    EXPECT_EQ(200, wazuh::uds_http::test::sendRaw(m_path, aliasHead).status);
+    EXPECT_EQ(200, wazuh::uds_http::test::sendRaw(m_path, deleteRequestFor(R"({"agent_id":"10"})")).status);
 
-    // Each deletion deletes across its whole scope: wazuh-states-* plus the two wazuh-agent-*
-    // indices, which live outside the state family and used to outlive the agent.
+    /*
+     * A deletion has TWO halves, one per writer, and this E2E is where the facade's wiring of both
+     * is proved end to end (see AGENT_DELETION_SCOPE_BY_QUERY / _BY_ID):
+     *
+     *  - by query, on the sync connector, deferred to the agent's pipeline shard: the states pattern
+     *    only -- one per deletion, so two here;
+     *  - by document id, on the ASYNC connector that writes `wazuh-agent-config` and
+     *    `wazuh-agent-stats`, queued at admission -- two per deletion, so four here.
+     *
+     * Neither half has to be waited for any more: the by-query half flushed before the response was
+     * sent, and the by-id half was queued on the handler's own thread before that. The wait below is
+     * kept because the by-id ops are recorded on a shared log the pipeline worker also writes to.
+     */
+    const auto deleteByQueries = [this]
+    {
+        std::size_t count = 0;
+        for (const auto& op : m_events->syncOps())
+        {
+            count += (std::get<0>(op) == "deleteByQuery") ? 1 : 0;
+        }
+        return count;
+    };
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
+    while (deleteByQueries() < 2U && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+    }
+    ASSERT_EQ(2U, deleteByQueries()) << "both queued deletions must still reach the indexer";
+
     std::vector<std::string> deletedIndices;
     std::vector<std::string> deletedAgents;
     for (const auto& op : m_events->syncOps())
@@ -327,17 +362,28 @@ TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
         }
     }
 
-    const std::vector<std::string> scope {"wazuh-states-*", "wazuh-agent-config", "wazuh-agent-stats"};
-    std::vector<std::string> expectedIndices {scope};
-    expectedIndices.insert(expectedIndices.end(), scope.begin(), scope.end());
-    EXPECT_EQ(expectedIndices, deletedIndices);
+    // The states pattern, and NOT the two wazuh-agent-* indices: a by-query pass on this connector
+    // could not order against a report still sitting in the async connector's queue, which is why
+    // those two moved to the by-id half below.
+    EXPECT_EQ(std::vector<std::string>({"wazuh-states-*", "wazuh-states-*"}), deletedIndices);
     // Padded like every document _id: the first deletion is agent 9, the second agent 10.
-    EXPECT_EQ(std::vector<std::string>({"009", "009", "009", "010", "010", "010"}), deletedAgents);
-    EXPECT_GE(m_events->m_syncFlushes.load(), 2) << "each 200 means its delete was flushed";
+    EXPECT_EQ(std::vector<std::string>({"009", "010"}), deletedAgents);
+    EXPECT_GE(m_events->m_syncFlushes.load(), 2) << "each queued delete must end in its own flush";
 
-    const std::string badHead = "DELETE /agents HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: nope\r\n"
-                                "Content-Length: 0\r\nConnection: close\r\n\r\n";
-    EXPECT_EQ(400, wazuh::uds_http::test::sendRaw(m_path, badHead).status);
+    // The by-id half, on the connector that WROTE those two documents. Queued at admission, so it is
+    // already recorded -- no waiting, which is itself part of the contract.
+    const auto asyncOps = m_events->asyncOps();
+    ASSERT_EQ(4U, asyncOps.size()) << "two deletions x AGENT_DELETION_SCOPE_BY_ID";
+    const std::vector<std::tuple<std::string, std::string, std::string>> expectedAsyncOps {
+        {"bulkDelete", "009", "wazuh-agent-config"},
+        {"bulkDelete", "009", "wazuh-agent-stats"},
+        {"bulkDelete", "010", "wazuh-agent-config"},
+        {"bulkDelete", "010", "wazuh-agent-stats"}};
+    EXPECT_EQ(expectedAsyncOps, asyncOps);
+
+    // A body naming no usable agent. The header is NOT a fallback -- setting one here would still be
+    // a 400, which is the point: the dispatcher never sends one.
+    EXPECT_EQ(400, wazuh::uds_http::test::sendRaw(m_path, deleteRequestFor(R"({"agent_id":"nope"})")).status);
 }
 
 TEST_F(StatefulEndpointE2ETest, TheProvisionalPathIsGone)
@@ -398,10 +444,7 @@ TEST_F(StatefulEndpointE2ETest, DeletionsAreControlClassAndStatefulIsDataClass)
 {
     const std::string oversized(100 * 1024, 'x'); // over Control's 64 KiB, nothing to Data
 
-    std::string deleteRequest = "POST /agents/delete HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 9\r\n"
-                                "Content-Length: " +
-                                std::to_string(oversized.size()) + "\r\nConnection: close\r\n\r\n" + oversized;
-    const auto rejected = wazuh::uds_http::test::sendRaw(m_path, deleteRequest);
+    const auto rejected = wazuh::uds_http::test::sendRaw(m_path, deleteRequestFor(oversized));
     EXPECT_EQ(413, rejected.status);
     EXPECT_NE(std::string::npos, rejected.body.find("control-class")) << rejected.body;
 

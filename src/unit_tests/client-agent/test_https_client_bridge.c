@@ -173,10 +173,19 @@ int __wrap_OS_SHA256_File(const char *fname, os_sha256 output, int mode)
     return 0;
 }
 
-/* bridge_on_startup_result republishes the agent metadata; the real one
- * (start_agent.c) would touch the metadata shared memory, out of scope here. */
+/* bridge_on_startup_result, bridge_on_control_response and bridge_reenroll_thread all
+ * republish the agent metadata; the real one (start_agent.c) would touch the metadata
+ * shared memory, out of scope here.
+ *
+ * Counted rather than turned into function_called(): three call sites reach this, and
+ * scripting an expectation into every test that touches any of them would be noise for
+ * the ones that do not care. Tests that do assert on g_populate_metadata_calls, which
+ * setup_test() resets. */
+unsigned int g_populate_metadata_calls = 0;
+
 void __wrap_w_agentd_populate_metadata(void)
 {
+    g_populate_metadata_calls++;
 }
 
 /* bridge_build_config() reads the client-buffer occupancy options exactly as
@@ -203,12 +212,20 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     return 0;
 }
 
+/* Trail of what the bridge resolved, as "name:min:max;" entries. Needed for the two
+ * enrollment-retry options: their range is enforced by the real getDefine_Int_default(), not by
+ * this wrapper, so the only thing observable here is that the read happens with the right bounds. */
+static char g_resolved_options[512] = {0};
+
 int __wrap_getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val)
 {
     (void)high_name;
-    (void)low_name;
-    (void)min;
-    (void)max;
+
+    if (low_name) {
+        char entry[80];
+        snprintf(entry, sizeof(entry), "%s:%d:%d;", low_name, min, max);
+        strncat(g_resolved_options, entry, sizeof(g_resolved_options) - strlen(g_resolved_options) - 1);
+    }
 
     return default_val;
 }
@@ -337,6 +354,12 @@ static int setup_test(void **state)
     memset(&keys, 0, sizeof(keys));
     g_captured_config_valid = false;
     g_https_client_stopping = false;
+    g_populate_metadata_calls = 0;
+    g_resolved_options[0] = '\0';
+
+    /* What ClientConf() resolves in production; the loops read it from agt. */
+    agt->enrollment.retry_max = 60;
+    agt->enrollment.retry_delta = 5;
 
     add_server_config("10.0.0.1", 8443);
     /* A syntactically valid 64-hex-char (32-byte, AES-256) key by default;
@@ -360,6 +383,7 @@ static int teardown_test(void **state)
     if (agt) {
         if (agt->server) {
             os_free(agt->server[0].rip);
+            os_free(agt->server[0].endpoint);
             os_free(agt->server);
         }
         os_free(agt->profile);
@@ -485,6 +509,55 @@ static void test_compression_defaults_to_enabled(void **state)
     w_https_client_stop();
 }
 
+/* ClientConf() resolves the ramp once at startup; a read reintroduced here would be one per
+ * iteration again, and an out-of-range value would stop refusing the start. */
+static void test_bridge_does_not_resolve_the_enrollment_retry_ramp(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
+    expect_any(__wrap_hc_create, callbacks);
+    will_return(__wrap_hc_create, FAKE_HANDLE);
+    expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
+    will_return(__wrap_hc_start, true);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+
+    w_https_client_start();
+
+    assert_null(strstr(g_resolved_options, "enrollment_retry_max"));
+    assert_null(strstr(g_resolved_options, "enrollment_retry_delta"));
+
+    w_https_client_stop();
+}
+
+static void test_system_verify_mode_maps_to_hc_verify_system(void **state)
+{
+    (void)state;
+    agt->ssl.verification_mode = AGENT_VERIFY_SYSTEM;
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
+    expect_any(__wrap_hc_create, callbacks);
+    will_return(__wrap_hc_create, FAKE_HANDLE);
+    expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
+    will_return(__wrap_hc_start, true);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+
+    w_https_client_start();
+
+    /* The bridge maps the enum unconditionally; whether an OS CA bundle
+     * actually exists is https_client's own (module-level) concern. */
+    assert_int_equal(g_captured_config.verify_mode, HC_VERIFY_SYSTEM);
+    assert_string_equal(g_captured_config.ca_path, "");
+
+    w_https_client_stop();
+}
+
 static void test_client_cert_key_and_ciphers_are_copied(void **state)
 {
     (void)state;
@@ -507,6 +580,56 @@ static void test_client_cert_key_and_ciphers_are_copied(void **state)
     assert_string_equal(g_captured_config.client_cert, "/etc/wazuh/agent.pem");
     assert_string_equal(g_captured_config.client_key, "/etc/wazuh/agent.key");
     assert_string_equal(g_captured_config.ciphers, "HIGH:!aNULL");
+
+    w_https_client_stop();
+}
+
+/* #38492: the reverse-proxy path segment, <endpoint>, plumbed through the
+ * same bridge_build_transport_config() every other field above already goes
+ * through -- so it reaches /enroll for free, proven below. */
+
+static void test_configured_endpoint_reaches_the_module(void **state)
+{
+    (void)state;
+    os_strdup("wazuh-manager", agt->server[0].endpoint);
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
+    expect_any(__wrap_hc_create, callbacks);
+    will_return(__wrap_hc_create, FAKE_HANDLE);
+    expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
+    will_return(__wrap_hc_start, true);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+
+    w_https_client_start();
+
+    assert_true(g_captured_config_valid);
+    assert_string_equal(g_captured_config.server_endpoint, "wazuh-manager");
+
+    w_https_client_stop();
+}
+
+static void test_absent_endpoint_leaves_the_field_empty(void **state)
+{
+    (void)state;
+    /* setup_test()'s add_server_config() never sets .endpoint -- it stays NULL. */
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
+    expect_any(__wrap_hc_create, callbacks);
+    will_return(__wrap_hc_create, FAKE_HANDLE);
+    expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
+    will_return(__wrap_hc_start, true);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+
+    w_https_client_start();
+
+    assert_true(g_captured_config_valid);
+    assert_string_equal(g_captured_config.server_endpoint, "");
 
     w_https_client_stop();
 }
@@ -545,6 +668,22 @@ static void test_enroll_reuses_transport_config_not_identity(void **state)
      * populated a syntactically valid client.keys entry via set_agent_key(). */
     assert_string_equal(g_captured_enroll_config.agent_id, "");
     assert_string_equal(g_captured_enroll_config.agent_key, "");
+}
+
+static void test_enroll_reuses_the_configured_endpoint(void **state)
+{
+    (void)state;
+    os_strdup("wazuh-manager", agt->server[0].endpoint);
+
+    expect_any(__wrap_hc_enroll, config);
+    will_return(__wrap_hc_enroll, 0L);
+    will_return(__wrap_hc_enroll, true);
+
+    hc_enroll_result_t result;
+    w_https_client_enroll("{}", "", &result);
+
+    assert_true(g_captured_enroll_valid);
+    assert_string_equal(g_captured_enroll_config.server_endpoint, "wazuh-manager");
 }
 
 static void test_enroll_passes_body_and_password_through(void **state)
@@ -618,8 +757,8 @@ static void test_missing_key_refuses_to_start(void **state)
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_string(__wrap__merror, formatted_msg,
-                  "https_client: agent key is missing or has an invalid length for AES-CMAC "
-                  "(expected 32, 48 or 64 hex characters); refusing to start.");
+                  "https_client: agent key is missing or is not a valid HS256 key "
+                  "(expected exactly 64 lowercase hex characters); refusing to start.");
 
     w_https_client_start();
     /* No hc_create expectation: must not be reached. */
@@ -648,12 +787,12 @@ static void test_wrong_length_key_refuses_to_start(void **state)
 {
     (void)state;
     os_free(keys.keyentries[0]->raw_key);
-    os_strdup("aabbccdd", keys.keyentries[0]->raw_key); /* 8 hex chars: not 32/48/64 */
+    os_strdup("aabbccdd", keys.keyentries[0]->raw_key); /* 8 hex chars: not 64 */
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_string(__wrap__merror, formatted_msg,
-                  "https_client: agent key is missing or has an invalid length for AES-CMAC "
-                  "(expected 32, 48 or 64 hex characters); refusing to start.");
+                  "https_client: agent key is missing or is not a valid HS256 key "
+                  "(expected exactly 64 lowercase hex characters); refusing to start.");
 
     w_https_client_start();
 }
@@ -662,22 +801,53 @@ static void test_non_hex_key_refuses_to_start(void **state)
 {
     (void)state;
     os_free(keys.keyentries[0]->raw_key);
-    /* Right length (32 chars) but 'z' is not a hex digit. */
-    os_strdup("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz", keys.keyentries[0]->raw_key);
+    /* Right length (64 chars) but 'z' is not a hex digit. */
+    os_strdup("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz", keys.keyentries[0]->raw_key);
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_string(__wrap__merror, formatted_msg,
-                  "https_client: agent key is missing or has an invalid length for AES-CMAC "
-                  "(expected 32, 48 or 64 hex characters); refusing to start.");
+                  "https_client: agent key is missing or is not a valid HS256 key "
+                  "(expected exactly 64 lowercase hex characters); refusing to start.");
 
     w_https_client_start();
 }
 
-static void test_valid_48_char_key_is_accepted(void **state)
+/* The `wazuh-agent+jwt` key is exactly 32 bytes (64 hex chars), so a client.keys entry of any
+ * other length is refused at start (the agent must re-enroll) instead of failing every request later. */
+static void test_48_char_key_is_refused(void **state)
 {
     (void)state;
     os_free(keys.keyentries[0]->raw_key);
     os_strdup("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", keys.keyentries[0]->raw_key); /* 48 hex chars */
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: agent key is missing or is not a valid HS256 key "
+                  "(expected exactly 64 lowercase hex characters); refusing to start.");
+
+    w_https_client_start(); /* the merror expectation above is the assertion */
+}
+
+/* The shared JwtKeyDecoder only takes lowercase hex (canonical client.keys form). */
+static void test_uppercase_hex_key_is_refused(void **state)
+{
+    (void)state;
+    os_free(keys.keyentries[0]->raw_key);
+    os_strdup("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F", keys.keyentries[0]->raw_key);
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: agent key is missing or is not a valid HS256 key "
+                  "(expected exactly 64 lowercase hex characters); refusing to start.");
+
+    w_https_client_start(); /* the merror expectation above is the assertion */
+}
+
+static void test_valid_64_char_key_is_accepted(void **state)
+{
+    (void)state;
+    os_free(keys.keyentries[0]->raw_key);
+    os_strdup("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", keys.keyentries[0]->raw_key);
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
@@ -692,7 +862,7 @@ static void test_valid_48_char_key_is_accepted(void **state)
     w_https_client_start();
 
     assert_string_equal(g_captured_config.agent_key,
-                         "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+                         "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
 
     w_https_client_stop();
 }
@@ -800,6 +970,11 @@ static void test_reenroll_thread_succeeds_on_first_attempt(void **state)
                   "https_client: re-enrollment succeeded; reloading the signing identity.");
 
     bridge_reenroll_thread(FAKE_HANDLE);
+
+    /* #38601: the new id has to reach the metadata provider here. Every outgoing session is
+     * stamped from it, and each module compares against it to notice its own id changed, so
+     * leaving it stale means 403s and blind detection until something else republishes. */
+    assert_int_equal(g_populate_metadata_calls, 1);
 }
 
 static void test_reenroll_thread_retries_with_backoff_then_succeeds(void **state)
@@ -819,6 +994,44 @@ static void test_reenroll_thread_retries_with_backoff_then_succeeds(void **state
     /* Second pass succeeds. */
     will_return(__wrap_try_enroll_to_server, 0);
 
+    expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
+    expect_string(__wrap_hc_set_agent_identity, key_hex, keys.keyentries[0]->raw_key);
+    will_return(__wrap_hc_set_agent_identity, true);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "https_client: re-enrollment succeeded; reloading the signing identity.");
+
+    bridge_reenroll_thread(FAKE_HANDLE);
+}
+
+/* Driven with values that are not the shipped defaults on purpose: a reintroduced
+ * getDefine_Int_default() gets the default back from the wrapper, so the steps would come out
+ * 5, 10 and 15 instead of 7, 14 and 14. */
+static void test_reenroll_thread_backoff_follows_the_resolved_ramp(void **state)
+{
+    (void)state;
+    enable_enrollment();
+
+    agt->enrollment.retry_delta = 7;
+    agt->enrollment.retry_max = 14;
+
+    will_return(__wrap_try_enroll_to_server, -1);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "https_client: re-enrollment attempt failed; retrying in 7 seconds.");
+    expect_value(__wrap_sleep, seconds, 7);
+
+    will_return(__wrap_try_enroll_to_server, -1);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "https_client: re-enrollment attempt failed; retrying in 14 seconds.");
+    expect_value(__wrap_sleep, seconds, 14);
+
+    /* At the ceiling the delay stops growing rather than being clamped afterwards. */
+    will_return(__wrap_try_enroll_to_server, -1);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "https_client: re-enrollment attempt failed; retrying in 14 seconds.");
+    expect_value(__wrap_sleep, seconds, 14);
+
+    will_return(__wrap_try_enroll_to_server, 0);
     expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
     expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
     expect_string(__wrap_hc_set_agent_identity, key_hex, keys.keyentries[0]->raw_key);
@@ -859,6 +1072,10 @@ static void test_reenroll_thread_logs_error_when_new_key_fails_validation(void *
                   "https_client: re-enrolled, but the new identity failed validation; traffic stays paused.");
 
     bridge_reenroll_thread(FAKE_HANDLE);
+
+    /* #38601: no republish when the identity failed validation -- the module keeps traffic
+     * paused, so there is no session to stamp and nothing for a module to act on yet. */
+    assert_int_equal(g_populate_metadata_calls, 0);
 }
 
 /* on_state_change -> .state (M7 partial): exercised through the real
@@ -906,8 +1123,30 @@ static void test_registered_state_twice_clears_wait_file_each_time(void **state)
 }
 
 /* on_producer_pause: the confirmed-disconnect pause. Both directions move the
- * lock and the .state status together. */
-static void test_producer_pause_arms_the_lock_and_reports_disconnected(void **state)
+ * lock and the .state status together; the two pause cases below differ only in
+ * whether the module handed over a transport reason to name. */
+static void test_producer_pause_with_a_reason_names_the_cause(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Manager unreachable. Pausing module event production. Reason: (60) SSL peer "
+                  "certificate or SSH remote key was not OK");
+    expect_function_call(__wrap_os_setwait);
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
+    expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_NACTIVE);
+
+    g_captured_callbacks.on_producer_pause(true, "(60) SSL peer certificate or SSH remote key was not OK",
+                                          g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* The reason is empty whenever the module has nothing to add -- a pause armed by
+ * an answered rejection rather than a transport failure. */
+static void test_producer_pause_without_a_reason_logs_the_bare_message(void **state)
 {
     (void)state;
     start_client_successfully();
@@ -917,7 +1156,7 @@ static void test_producer_pause_arms_the_lock_and_reports_disconnected(void **st
     expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
     expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_NACTIVE);
 
-    g_captured_callbacks.on_producer_pause(true, g_captured_callbacks.user_data);
+    g_captured_callbacks.on_producer_pause(true, "", g_captured_callbacks.user_data);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
@@ -935,7 +1174,7 @@ static void test_producer_pause_release_clears_the_lock_and_reports_connected(vo
     expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
     expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_ACTIVE);
 
-    g_captured_callbacks.on_producer_pause(false, g_captured_callbacks.user_data);
+    g_captured_callbacks.on_producer_pause(false, "", g_captured_callbacks.user_data);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
@@ -2264,9 +2503,15 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_full_verify_mode_and_ca_reach_the_module, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certificate_verify_mode_maps_to_hc_verify_cert, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_none_verify_mode_maps_to_hc_verify_none, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_system_verify_mode_maps_to_hc_verify_system, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_compression_defaults_to_enabled, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bridge_does_not_resolve_the_enrollment_retry_ramp, setup_test,
+                                        teardown_test),
         cmocka_unit_test_setup_teardown(test_client_cert_key_and_ciphers_are_copied, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_configured_endpoint_reaches_the_module, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_absent_endpoint_leaves_the_field_empty, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_reuses_transport_config_not_identity, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_reuses_the_configured_endpoint, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_passes_body_and_password_through, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_sha256_of_local_merged_file, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_empty_when_local_file_unreadable, setup_test, teardown_test),
@@ -2274,18 +2519,23 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_no_keystore_defers_at_debug, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_wrong_length_key_refuses_to_start, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_non_hex_key_refuses_to_start, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_valid_48_char_key_is_accepted, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_48_char_key_is_refused, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_uppercase_hex_key_is_refused, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_valid_64_char_key_is_accepted, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_hc_create_failure_is_logged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_hc_start_failure_destroys_and_logs, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_callback_disabled_enrollment_logs_error_only, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_callback_enabled_enrollment_only_warns, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_succeeds_on_first_attempt, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_retries_with_backoff_then_succeeds, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reenroll_thread_backoff_follows_the_resolved_ramp, setup_test,
+                                        teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_aborts_when_stopping_flag_already_set, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_logs_error_when_new_key_fails_validation, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_state_maps_to_active, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_state_twice_clears_wait_file_each_time, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_producer_pause_arms_the_lock_and_reports_disconnected, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_producer_pause_with_a_reason_names_the_cause, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_producer_pause_without_a_reason_logs_the_bare_message, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_producer_pause_release_clears_the_lock_and_reports_connected, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_starting_state_maps_to_pending, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_stopped_state_maps_to_nactive, setup_test, teardown_test),

@@ -22,7 +22,12 @@ namespace
     // relative path is the only form both peers resolve to the same file. The name is the SERVICE's,
     // not this transitional module's, so remoted's downstream configuration is written once and does
     // not have to change again when this module replaces inventory_sync.
-    constexpr auto DEFAULT_SOCKET_PATH {"queue/sockets/inventory-sync.sock"};
+    /* MUST equal INV_SYNC_SOCK in src/shared/include/defs.h, which is what the Task Manager's
+     * dispatcher resolves to decide where to POST a routed task -- change one and routed manager
+     * tasks stop reaching this server. Deliberately a literal rather than that macro: defs.h is a
+     * C header of ~370 unrelated macros, and putting src/shared/include on this module's include
+     * path to share one string is a worse trade than this comment. */
+    constexpr auto DEFAULT_SOCKET_PATH {"queue/sockets/inventory-sync-http.sock"};
 
     // bind() applies the umask, so the mode is always set explicitly afterwards. 0660 is what the
     // manager's other Unix sockets use, and it is what lets remoted -- which runs under the wazuh

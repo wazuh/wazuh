@@ -35,6 +35,12 @@ public:
         return m_values[idx];
     }
 
+    /// @brief The value set, for inspections that must not advance the cursor.
+    const std::vector<T>& values() const
+    {
+        return m_values;
+    }
+
 private:
     std::vector<T> m_values;
     std::atomic<std::size_t> m_index {0};

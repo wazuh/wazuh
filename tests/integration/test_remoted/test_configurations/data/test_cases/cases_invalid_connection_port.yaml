@@ -4,5 +4,5 @@
     PORT: '99999'
     PROTOCOL: 'TCP'
   metadata:
-    invalid: ".*ERROR: \\(\\d+\\): Invalid port number: '99999'.*"
+    invalid: ".*ERROR: \\(1244\\): Invalid configuration at '/remote/legacy/port'.*"
     port_number: '99999'

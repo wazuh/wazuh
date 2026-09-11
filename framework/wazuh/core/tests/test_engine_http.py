@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import httpx
 
-from wazuh.core.engine_http import EngineHTTPClient, VdHTTPClient
+from wazuh.core.engine_http import EngineHTTPClient, RemotedHTTPClient, VdHTTPClient
 from wazuh.core.exception import WazuhError, WazuhInternalError
 
 
@@ -24,7 +24,7 @@ METRICS_DUMP_RESPONSE = {
 
 
 def _make_client() -> EngineHTTPClient:
-    with patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/analysis'):
+    with patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/engine-api-http.sock'):
         with patch('httpx.HTTPTransport'), patch('httpx.Client'):
             client = EngineHTTPClient()
 
@@ -184,7 +184,7 @@ def test_get_status_request_error():
 
 def test_engine_http_client_init_error():
     """Test that the client raises WazuhInternalError(2018) if httpx instantiation fails."""
-    with patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/analysis'):
+    with patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/engine-api-http.sock'):
         # Simulate that httpx cannot open the Unix socket
         with patch('httpx.HTTPTransport', side_effect=OSError("no socket")):
             with pytest.raises(WazuhInternalError) as exc_info:
@@ -204,7 +204,7 @@ VD_STATUS_RESPONSE = {
 
 
 def _make_modulesd_client() -> VdHTTPClient:
-    with patch('wazuh.core.common.VD_SOCKET', '/var/wazuh-manager/queue/sockets/vd.sock'):
+    with patch('wazuh.core.common.VD_SOCKET', '/var/wazuh-manager/queue/sockets/vd-http.sock'):
         with patch('httpx.HTTPTransport'), patch('httpx.Client'):
             client = VdHTTPClient()
 
@@ -280,8 +280,186 @@ def test_modulesd_get_status_request_error():
 
 
 def test_modulesd_http_client_init_error():
-    with patch('wazuh.core.common.VD_SOCKET', '/var/wazuh-manager/queue/sockets/vd.sock'):
+    with patch('wazuh.core.common.VD_SOCKET', '/var/wazuh-manager/queue/sockets/vd-http.sock'):
         with patch('httpx.HTTPTransport', side_effect=OSError("no socket")):
             with pytest.raises(WazuhInternalError) as exc_info:
                 VdHTTPClient()
             assert exc_info.value.code == 2023
+
+
+def test_modulesd_scan_agent_ok():
+    client = _make_modulesd_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    client._client.post.return_value = mock_response
+
+    client.scan_agent('001')
+
+    client._client.post.assert_called_once_with(
+        url='http://localhost/vulnerability-detector/scan',
+        json={'agent_id': '001'},
+        headers={'Content-Type': 'application/json'},
+    )
+
+
+@pytest.mark.parametrize('reason, expected_code', [
+    ('vd_not_initialized', 8001),
+    ('feed_not_ready', 8002),
+    ('scanner_not_ready', 8003),
+    ('indexer_unavailable', 8004),
+    ('scan_queue_full', 8005),
+    ('shutting_down', 8006),
+])
+def test_modulesd_scan_agent_rejection_reasons(reason, expected_code):
+    client = _make_modulesd_client()
+    mock_response = MagicMock()
+    mock_response.is_error = True
+    mock_response.json.return_value = {'error': reason}
+    client._client.post.return_value = mock_response
+
+    with pytest.raises(WazuhError) as exc_info:
+        client.scan_agent('001')
+    assert exc_info.value.code == expected_code
+
+
+def test_modulesd_scan_agent_unrecognized_reason():
+    client = _make_modulesd_client()
+    mock_response = MagicMock()
+    mock_response.is_error = True
+    mock_response.json.return_value = {'error': 'some_future_reason'}
+    client._client.post.return_value = mock_response
+
+    with pytest.raises(WazuhError) as exc_info:
+        client.scan_agent('001')
+    assert exc_info.value.code == 8007
+
+
+def test_modulesd_scan_agent_non_json_error_body():
+    client = _make_modulesd_client()
+    mock_response = MagicMock()
+    mock_response.is_error = True
+    mock_response.json.side_effect = ValueError("not valid json")
+    mock_response.text = 'internal error'
+    client._client.post.return_value = mock_response
+
+    with pytest.raises(WazuhError) as exc_info:
+        client.scan_agent('001')
+    assert exc_info.value.code == 2024
+
+
+def test_modulesd_scan_agent_timeout():
+    client = _make_modulesd_client()
+    client._client.post.side_effect = httpx.TimeoutException("timed out", request=MagicMock())
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.scan_agent('001')
+    assert exc_info.value.code == 2025
+
+
+def test_modulesd_scan_agent_connect_error():
+    client = _make_modulesd_client()
+    client._client.post.side_effect = httpx.ConnectError("refused", request=MagicMock())
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.scan_agent('001')
+    assert exc_info.value.code == 2026
+
+
+def test_modulesd_scan_agent_request_error():
+    client = _make_modulesd_client()
+    client._client.post.side_effect = httpx.RequestError("network error", request=MagicMock())
+
+    with pytest.raises(WazuhError) as exc_info:
+        client.scan_agent('001')
+    assert exc_info.value.code == 2013
+# ── RemotedHTTPClient ────────────────────────────────────────────────────
+
+REMOTED_STATUS_RESPONSE = {
+    'ready': True,
+    'keystore': {'readable': True, 'agents_loaded': 12, 'entries_skipped': 0},
+    'enrollment_password': {'ready': True},
+}
+
+
+def _make_remoted_client() -> RemotedHTTPClient:
+    with patch('wazuh.core.common.REMOTED_ADMIN_SOCKET', '/var/wazuh-manager/queue/sockets/remote-admin-http.sock'):
+        with patch('httpx.HTTPTransport'), patch('httpx.Client'):
+            client = RemotedHTTPClient()
+
+    client._client = MagicMock()
+    return client
+
+
+def test_remoted_get_status_ok():
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.return_value = REMOTED_STATUS_RESPONSE
+    client._client.get.return_value = mock_response
+
+    result = client.get_status()
+
+    client._client.get.assert_called_once_with(
+        url='http://localhost/status',
+        headers={'Content-Type': 'application/json'},
+    )
+    assert result == REMOTED_STATUS_RESPONSE
+
+
+def test_remoted_get_status_http_error():
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = True
+    mock_response.text = 'internal error'
+    client._client.get.return_value = mock_response
+
+    with pytest.raises(WazuhError) as exc_info:
+        client.get_status()
+    assert exc_info.value.code == 2029
+
+
+def test_remoted_get_status_invalid_json():
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.side_effect = ValueError("not valid json")
+    client._client.get.return_value = mock_response
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_status()
+    assert exc_info.value.code == 2032
+
+
+def test_remoted_get_status_timeout():
+    client = _make_remoted_client()
+    client._client.get.side_effect = httpx.TimeoutException("timed out", request=MagicMock())
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_status()
+    assert exc_info.value.code == 2030
+
+
+def test_remoted_get_status_connect_error():
+    client = _make_remoted_client()
+    client._client.get.side_effect = httpx.ConnectError("refused", request=MagicMock())
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_status()
+    assert exc_info.value.code == 2031
+
+
+def test_remoted_get_status_request_error():
+    client = _make_remoted_client()
+    client._client.get.side_effect = httpx.RequestError("network error", request=MagicMock())
+
+    with pytest.raises(WazuhError) as exc_info:
+        client.get_status()
+    assert exc_info.value.code == 2013
+
+
+def test_remoted_http_client_init_error():
+    with patch('wazuh.core.common.REMOTED_ADMIN_SOCKET', '/var/wazuh-manager/queue/sockets/remote-admin-http.sock'):
+        with patch('httpx.HTTPTransport', side_effect=OSError("no socket")):
+            with pytest.raises(WazuhInternalError) as exc_info:
+                RemotedHTTPClient()
+            assert exc_info.value.code == 2028

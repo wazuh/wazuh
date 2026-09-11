@@ -107,6 +107,60 @@ TEST(TransportDiagnosticsTest, AllZeroBeforeStart)
     EXPECT_EQ(0U, snapshot.budgetInFlightBytes);
     EXPECT_EQ(0U, snapshot.budgetInFlightCount);
     EXPECT_EQ(0U, snapshot.liveSessions);
+    EXPECT_EQ(0U, snapshot.rejectedBudgetExhausted);
+    EXPECT_EQ(0U, snapshot.rejectedSessionCap);
+    EXPECT_EQ(0U, snapshot.rejectedShutdown);
+    EXPECT_EQ(0U, snapshot.rejectedNoResponse);
+}
+
+/// The rejected.* counters are the cumulative record of a shed (see TransportDiagnostics), so they
+/// have to outlive the level going back to quiescent.
+TEST(TransportDiagnosticsTest, TheBudgetShedIsCounted)
+{
+    const auto path = uniqueSocketPath("diag_budget_shed");
+    auto config = configFor(path);
+    // Clamped up to one maximum-size body by start(), so exactly one request fits and the next is
+    // shed. Same sizing as the shed case in udsHttpServer_test.cpp.
+    config.maxBodySize = 4 * 1024;
+    config.maxInFlightBytes = 1;
+    config.responseTimeoutSec = 30;
+
+    std::mutex mutex;
+    std::vector<std::pair<std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder>>> parked;
+
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post,
+                     "/park",
+                     [&](std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
+                     {
+                         std::lock_guard<std::mutex> lock {mutex};
+                         parked.emplace_back(std::move(request), std::move(responder));
+                     });
+    server->start(config);
+
+    const std::string body(4 * 1024, 'x');
+    OpenConnection holding {path, peerRequest("POST", "/park", body)};
+    ASSERT_TRUE(waitUntil([&] { return server->diagnostics().budgetInFlightCount == 1; }));
+    EXPECT_EQ(0U, server->diagnostics().rejectedBudgetExhausted) << "an admitted request is not a shed";
+
+    OpenConnection shed {path, peerRequest("POST", "/park", body)};
+    ASSERT_TRUE(waitUntil([&] { return server->diagnostics().rejectedBudgetExhausted == 1; }))
+        << "the request the budget refused must be counted";
+
+    {
+        std::lock_guard<std::mutex> lock {mutex};
+        for (auto& entry : parked)
+        {
+            entry.second->send(HttpResponse::json(200, "{}"));
+        }
+        parked.clear();
+    }
+
+    EXPECT_TRUE(waitUntil([&] { return server->diagnostics().budgetInFlightCount == 0; }));
+    EXPECT_EQ(1U, server->diagnostics().rejectedBudgetExhausted) << "the count is cumulative, not a level";
+
+    server->stop();
+    EXPECT_EQ(1U, server->diagnostics().rejectedBudgetExhausted) << "and it stays readable after stop()";
 }
 
 TEST(TransportDiagnosticsTest, AParkedDeferralIsVisibleAndReleasesOnReply)
@@ -190,6 +244,28 @@ TEST(TransportDiagnosticsTest, IdentityInjectionRendersTheConsumerVocabulary)
     EXPECT_TRUE(LogRecorder::waitForMessageContaining("inventory sync server is no longer accepting on '"));
     server->stop();
     EXPECT_TRUE(LogRecorder::waitForMessageContaining("inventory sync server fully stopped."));
+}
+
+/// The clamp warning fires only when the ceiling moved the value, so a reserve that fits under it
+/// left no trace, and that reserve is what an operator sizes max_parallel_connections against.
+TEST(TransportDiagnosticsTest, TheStartupLineReportsTheResolvedRouteClasses)
+{
+    LogRecorder::clear();
+    const auto path = uniqueSocketPath("diag_classes");
+    auto server = makeUdsHttpServer();
+
+    auto config = configFor(path);
+    config.serverName = "test";
+    config.maxConnections = 64;
+    config.reservedControlConnections = 8; // under the ceiling of 64 / 4, so the clamp stays quiet
+    server->start(config);
+
+    EXPECT_TRUE(LogRecorder::waitForMessageContaining("max 64 connection(s), 8 reserved for control, "
+                                                      "56 data session(s)"))
+        << "the startup line must report the resolved reserve and the data session cap";
+
+    server->stopAccepting();
+    server->stop();
 }
 
 TEST(TransportDiagnosticsTest, TheBudgetHintSentenceRendersOnlyWhenConfigured)

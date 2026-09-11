@@ -13,6 +13,7 @@
 #include "wazuhdb_op.h"
 #include "wmodules.h"
 #include "wazuhdb_op.h"
+#include "mconf-config.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -25,8 +26,6 @@
 #define MAX_ATTEMPTS 1000
 
 /* Variables */
-
-_Config gconfig;
 
 static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE IF NOT EXISTS s(rowid INTEGER PRIMARY KEY, pageno INT);";
 static const char *SQL_TRUNCATE_TEMP_TABLE = "DELETE FROM s;";
@@ -87,13 +86,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected', status_code = ?, sync_status = ?, disconnection_time = STRFTIME('%s', 'NOW') where connection_status != 'disconnected' AND connection_status != 'never_connected';",
     [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > ? AND (connection_status = 'active' OR connection_status = 'pending') AND last_keepalive < ?;",
     [WDB_STMT_GLOBAL_AGENT_EXISTS] = "SELECT EXISTS(SELECT 1 FROM agent WHERE id=?);",
-    // Generic task commands
-    [WDB_STMT_TASK_CREATE] = "INSERT INTO TASKS (TASK_ID, AGENT_ID, TASK_TYPE, PAYLOAD, CREATE_TIME, STATUS) VALUES (?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_TASK_GET_PENDING] = "SELECT TASK_ID, AGENT_ID, TASK_TYPE, PAYLOAD, CREATE_TIME FROM TASKS WHERE AGENT_ID = ? AND STATUS = 'pending' ORDER BY CREATE_TIME ASC LIMIT ?;",
-    [WDB_STMT_TASK_MARK_DELIVERED] = "UPDATE TASKS SET STATUS = 'delivered', DELIVERY_TIME = ? WHERE TASK_ID = ?;",
-    [WDB_STMT_TASK_CLEANUP_EXPIRED] = "UPDATE TASKS SET STATUS = 'expired' WHERE STATUS = 'pending' AND CREATE_TIME < ?;",
-    [WDB_STMT_TASK_DELETE_OLD] = "DELETE FROM TASKS WHERE (STATUS = 'expired' AND CREATE_TIME < ?) OR (STATUS = 'delivered' AND DELIVERY_TIME < ?);",
-    [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
     [WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS] = "PRAGMA foreign_keys=ON;",
     [WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL] = "PRAGMA synchronous=1;",
 };
@@ -188,6 +180,10 @@ wdb_t * wdb_open_global() {
 
         wdb_enable_foreign_keys(wdb->db);
 
+        // NORMAL rather than SQLite's FULL default, which is what this database has always used:
+        // a commit per agent keepalive makes FULL's fsync the dominant write cost, and the state
+        // it protects is re-reported by the agents on reconnect. See wdb_set_synchronous_normal()
+        // for what that trade actually costs -- this database is not in WAL.
         wdb_set_synchronous_normal(wdb);
     }
 
@@ -211,39 +207,6 @@ wdb_t * wdb_open_mitre() {
         wdb_close(wdb, false);
         wdb_pool_leave(wdb);
         return NULL;
-    }
-
-    return wdb;
-}
-
-// Opens tasks database and stores it in DB pool. It returns a locked database or NULL
-wdb_t * wdb_open_tasks() {
-    char path[PATH_MAX + 1] = "";
-    wdb_t * wdb = wdb_pool_get_or_create(WDB_TASK_NAME);
-
-    if (wdb->db == NULL) {
-        // Try to open DB
-        snprintf(path, sizeof(path), "%s/%s.db", WDB_TASK_DIR, WDB_TASK_NAME);
-
-        if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
-            mdebug1("Tasks database not found, creating.");
-            wdb_close(wdb, false);
-
-            // Creating database
-            if (OS_SUCCESS != wdb_create_file(path, schema_task_manager_sql)) {
-                merror("Couldn't create SQLite database '%s'", path);
-                wdb_pool_leave(wdb);
-                return NULL;
-            }
-
-            // Retry to open
-            if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
-                merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(wdb->db));
-                wdb_close(wdb, false);
-                wdb_pool_leave(wdb);
-                return NULL;
-            }
-        }
     }
 
     return wdb;
@@ -302,27 +265,15 @@ int wdb_create_global(const char *path) {
     return wdb_create_file(path, schema_global_sql);
 }
 
-/* Create new database file from SQL script */
-int wdb_create_file(const char *path, const char *source) {
-    const char *ROOT = "root";
+int wdb_apply_schema(sqlite3 *db, const char *source) {
     const char *sql;
     const char *tail;
-    sqlite3 *db;
     sqlite3_stmt *stmt;
     int result;
-    uid_t uid;
-    gid_t gid;
-
-    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
-        mdebug1("Couldn't create SQLite database '%s': %s", path, sqlite3_errmsg(db));
-        sqlite3_close_v2(db);
-        return OS_INVALID;
-    }
 
     for (sql = source; sql && *sql; sql = tail) {
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
             mdebug1("Preparing statement: %s", sqlite3_errmsg(db));
-            sqlite3_close_v2(db);
             return OS_INVALID;
         }
 
@@ -336,12 +287,32 @@ int wdb_create_file(const char *path, const char *source) {
         default:
             mdebug1("Stepping statement: %s", sqlite3_errmsg(db));
             sqlite3_finalize(stmt);
-            sqlite3_close_v2(db);
             return OS_INVALID;
 
         }
 
         sqlite3_finalize(stmt);
+    }
+
+    return OS_SUCCESS;
+}
+
+/* Create new database file from SQL script */
+int wdb_create_file(const char *path, const char *source) {
+    const char *ROOT = "root";
+    sqlite3 *db;
+    uid_t uid;
+    gid_t gid;
+
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
+        mdebug1("Couldn't create SQLite database '%s': %s", path, sqlite3_errmsg(db));
+        sqlite3_close_v2(db);
+        return OS_INVALID;
+    }
+
+    if (wdb_apply_schema(db, source) != OS_SUCCESS) {
+        sqlite3_close_v2(db);
+        return OS_INVALID;
     }
 
     sqlite3_close_v2(db);
@@ -1121,32 +1092,13 @@ cJSON* wdb_get_internal_config() {
     return root;
 }
 
+/* getconfig "wdb": the effective `wdb` section of etc/wazuh-manager.conf (schema defaults applied),
+ * exactly what Read_WazuhDB_JSON() loaded into wconfig. */
 cJSON* wdb_get_config() {
     cJSON *root = cJSON_CreateObject();
-    cJSON* wdb_config = cJSON_CreateObject();
-    cJSON* j_wdb_backup = cJSON_CreateArray();
+    cJSON *wdb = w_mconf_section("wdb");
 
-    for (int i = 0; i < WDB_LAST_BACKUP; i++) {
-        cJSON* j_wdb_backup_settings_node = cJSON_CreateObject();
-
-        switch (i) {
-            case WDB_GLOBAL_BACKUP:
-                cJSON_AddStringToObject(j_wdb_backup_settings_node, "database", "global");
-                break;
-            default:
-                break;
-        }
-
-        cJSON_AddBoolToObject(j_wdb_backup_settings_node, "enabled", wconfig.wdb_backup_settings[i]->enabled);
-        cJSON_AddNumberToObject(j_wdb_backup_settings_node, "interval", wconfig.wdb_backup_settings[i]->interval);
-        cJSON_AddNumberToObject(j_wdb_backup_settings_node, "max_files", wconfig.wdb_backup_settings[i]->max_files);
-
-        cJSON_AddItemToArray(j_wdb_backup, j_wdb_backup_settings_node);
-    }
-
-    cJSON_AddItemToObject(wdb_config, "backup", j_wdb_backup);
-    cJSON_AddItemToObject(root, "wdb", wdb_config);
-
+    cJSON_AddItemToObject(root, "wdb", wdb != NULL ? wdb : cJSON_CreateObject());
     return root;
 }
 

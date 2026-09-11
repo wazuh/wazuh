@@ -1070,7 +1070,7 @@ stages:
         name: "NewAgentPostInsert"
         ip: "any"
         id: "750"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     response:
       <<: *permission_denied
 

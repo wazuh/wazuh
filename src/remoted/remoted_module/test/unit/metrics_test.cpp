@@ -299,7 +299,9 @@ TEST(AuthRejectMetricsTest, MakeRegistersFamilyAtZero)
     const auto m = remoted::endpoints::makeAuthRejectMetrics(manager);
 
     for (const auto* name : {remoted::endpoints::METRIC_AUTH_REJECT_UNKNOWN_AGENT,
-                             remoted::endpoints::METRIC_AUTH_REJECT_INVALID_MAC,
+                             remoted::endpoints::METRIC_AUTH_REJECT_INVALID_SIGNATURE,
+                             remoted::endpoints::METRIC_AUTH_REJECT_BAD_TOKEN,
+                             remoted::endpoints::METRIC_AUTH_REJECT_IDENTITY_MISMATCH,
                              remoted::endpoints::METRIC_AUTH_REJECT_CLOCK_SKEW,
                              remoted::endpoints::METRIC_AUTH_REJECT_UNUSABLE_KEY,
                              remoted::endpoints::METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED,
@@ -311,7 +313,7 @@ TEST(AuthRejectMetricsTest, MakeRegistersFamilyAtZero)
     {
         EXPECT_TRUE(manager.exists(name)) << name;
     }
-    EXPECT_EQ(manager.count(), 10U);
+    EXPECT_EQ(manager.count(), 12U);
     EXPECT_EQ(m.unknownAgent->get(), 0U);
     EXPECT_EQ(m.malformed->get(), 0U);
 }
@@ -360,8 +362,10 @@ TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
         return static_cast<uint64_t>(manager.get(name)->value());
     };
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_UNKNOWN_AGENT), 1U);
-    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_MAC), 1U);
-    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_CLOCK_SKEW), 2U); // Expired + Future
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_SIGNATURE), 1U);
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BAD_TOKEN), 1U);
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_IDENTITY_MISMATCH), 1U);
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_CLOCK_SKEW), 1U); // StaleToken (both profiles)
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_UNUSABLE_KEY), 1U);
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED), 1U);
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_ENROLLMENT_KEY), 1U);
@@ -375,7 +379,9 @@ TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
     // four header faults asserted above AND keeps this total honest -- so the failure names
     // itself instead of hiding as a silently widened bucket.
     const auto total = valueOf(remoted::endpoints::METRIC_AUTH_REJECT_UNKNOWN_AGENT) +
-                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_MAC) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_SIGNATURE) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BAD_TOKEN) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_IDENTITY_MISMATCH) +
                        valueOf(remoted::endpoints::METRIC_AUTH_REJECT_CLOCK_SKEW) +
                        valueOf(remoted::endpoints::METRIC_AUTH_REJECT_UNUSABLE_KEY) +
                        valueOf(remoted::endpoints::METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED) +
@@ -389,8 +395,8 @@ TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
     // Uninstall (back to the null object): the instance is process-wide, so leaving these
     // counters live would leak this test's accounting into any later test that rejects.
     remoted::endpoints::installAuthRejectMetrics(remoted::endpoints::AuthRejectMetrics {});
-    (void)remoted::endpoints::errorResponseFor(AuthError::InvalidMac); // not crashing IS the contract
-    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_MAC), 1U);
+    (void)remoted::endpoints::errorResponseFor(AuthError::InvalidSignature);          // not crashing IS the contract
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_SIGNATURE), 1U); // unchanged after uninstall
 }
 
 // All families resolve on ONE manager in production (the facade's), so the dump must show them

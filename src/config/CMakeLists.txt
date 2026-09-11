@@ -29,8 +29,6 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/src
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent
-  ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager
-  ${SRC_FOLDER}/wazuh_modules/src/task_manager
   ${SRC_FOLDER}/wazuh_db/include)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -45,9 +43,14 @@ file(GLOB CONFIG_CORE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
 # Remove manager-only config parsers from agent builds
 if("${TARGET}" STREQUAL "agent" OR "${TARGET}" STREQUAL "winagent")
   list(REMOVE_ITEM CONFIG_CORE_SRC
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/authd-config.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/global-config.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/indexer-config.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/remote-config.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/wazuh_db-config.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/wmodules-task-manager.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/wmodules-vulnerability-detection.c")
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/wmodules-vulnerability-detection.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/mconf-config.c")
 endif()
 
 # Create config library
@@ -63,3 +66,10 @@ if(UNIT_TEST)
 endif()
 
 target_link_libraries(config PUBLIC wazuhext wazuh wazuh_modulesd_lib)
+
+# Manager configuration (etc/wazuh-manager.conf): w_mconf_*() wraps the C++ static library
+# manager_config, so every C executable that links `config` must link with the C++ driver
+# (LINKER_LANGUAGE CXX). Never on agent targets.
+if(NOT ("${TARGET}" STREQUAL "agent" OR "${TARGET}" STREQUAL "winagent"))
+  target_link_libraries(config PUBLIC manager_config)
+endif()

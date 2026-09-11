@@ -15,8 +15,56 @@ The remote agent upgrade mechanism is preserved in 5.x. The same `PUT /agents/up
 | Minimum agent version for 5.x remote upgrade | Not applicable (4.x managers only upgraded to 4.x)                                           | v4.14.0, older agents are rejected with `"Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first"`                                                                                                                                                             |
 | `force` flag                                 | Bypasses same-version and version-exceeds-manager checks                                     | Same as before, but **cannot** bypass the intermediate version requirement                                                                                                                                                                                                         |
 | WPK delivery to the agent                    | Manager pushes the WPK to the agent through Remoted (open/write/close/sha1/upgrade commands) | Manager stores a `remote_upgrade` task in the Task Manager. `remoted`'s own task-polling thread delivers it to agents confirmed below v5.0.0 by pushing the WPK over the agent's existing session, using the same open/write/close/sha1/upgrade commands as 4.x. |
-| Upgrade result reporting                     | Agent reported success/failure back to the manager                                           | Fire-and-forget from the manager's perspective; the agent's ack (`upgrade_update_status`) is forwarded to the Engine's event pipeline like any other agent event. A manager-side push failure is only logged, not sent to the Engine. Upgrade progress is observable through the tasks table, the reported agent version, and the agent-side log |
+| Upgrade result reporting                     | Agent reported success/failure back to the manager                                           | The agent's ack (`upgrade_update_status`) is logged by `remoted` (at `WARNING` when the agent reports a genuine failure: the delivery itself succeeded, so this is not the manager's own error, but it must stay visible to severity-filtered monitoring) and replied to with `clear_upgrade_result` — it is not forwarded to the Engine's event pipeline. A push failure the manager itself detects is handled two ways depending on cost: a rejection (the agent answered, just not with success) is retried in-memory up to 5 times within the same poll cycle; a true no-response (nothing came back at all) is deferred, after a single attempt, to a small in-memory retry list that a later poll cycle picks back up, instead of blocking that cycle's sweep of every other agent. Either way, once every avenue is exhausted (or the failure can't be retried at all, or the entry ages out of the retry list), the task is simply logged and dropped — the manager never reports a task's outcome back to the Task Manager, so `tasks.db` has no way to distinguish that failure from a successful delivery; both stay `delivered`. Neither case is sent to the Engine. Upgrade progress is observable through the reported agent version, the agent-side log, and `remoted`'s own log (`WARNING` on a genuine failure) — not through the tasks table, which no longer carries a `failed` status |
 | HTTPS `verification_mode` vs. upgrade target  | Not applicable (no HTTPS transport in 4.x)                                                    | Upgrading to v5.0.0+ while `remoted`'s `<remote><https><verification_mode>` is not `none` is rejected (repo-based path: unless `force_upgrade` is set; custom-WPK path: unconditionally)       |
+| Custom WPK location                          | `file_path` could be any absolute path on the manager; the manager pushed that file directly | `file_path` must resolve **inside** `/var/wazuh-manager/var/upgrade/` (symlinks followed). Anything else is rejected with `The WPK file does not exist`. The agent now fetches the file by name from that directory, so a path outside it named a file the delivery side would never find |
+| When `<remote>` changes take effect for upgrades | Read per request                                                                          | Read once when `wazuh-manager-modulesd` starts. Changing `<remote><legacy>` or `<remote><https><verification_mode>` needs modulesd restarted as well as remoted, or upgrade requests keep applying the previous value |
+| Manager-side upgrade configuration | `<agent-upgrade>` section, with `<enabled>` and `<wpk_repository>` | Moved into `<task-manager>` as `<upgrade_enabled>` and `<wpk_repository>`. **`<agent-upgrade>` is no longer a valid manager section and the schema rejects it** — a manager configuration still carrying one is refused with `Invalid configuration at '/agent-upgrade'` and the manager will not start. See [Configuration changes](#configuration-changes) below |
+| Manager-side upgrade socket | Its own `task-upgrade.sock`, framed length-prefixed JSON | Served on the Task Manager's `task-http.sock` as `POST /v1/agents/upgrade` and `POST /v1/agents/upgrade-custom`. `task-upgrade.sock` no longer exists |
+
+---
+
+## Configuration changes
+
+The manager side of agent upgrades now runs inside the Task Manager, so its two settings moved with
+it. This is a **hard failure**, not a silent default: the manager configuration schema rejects an
+`<agent-upgrade>` section outright, so a file carrying one has to be edited before the manager will
+start.
+
+Before (4.x):
+
+```xml
+<agent-upgrade>
+  <enabled>yes</enabled>
+  <wpk_repository>packages.wazuh.com/5.x/wpk/</wpk_repository>
+</agent-upgrade>
+```
+
+After:
+
+```xml
+<task-manager>
+  <upgrade_enabled>yes</upgrade_enabled>
+  <wpk_repository>packages.wazuh.com/5.x/wpk/</wpk_repository>
+</task-manager>
+```
+
+`<agent-upgrade>` still exists **on an agent**, where it controls what that agent accepts — whether
+it can be upgraded remotely, and how it verifies the WPK signature. Only the manager's half moved;
+see the [Agent Upgrade configuration reference](../../ref/modules/agent_upgrade/configuration.md).
+
+The resolved values are reported under the Task Manager in `getconfig`, as
+`task-manager.agent_upgrade`, rather than under an `agent-upgrade` module of their own.
+
+### Renamed internal options
+
+The recurring manager work that used to belong to `wazuh-manager-monitord` — log rotation and agent
+monitoring — is now the Task Manager's, and its internal options were renamed from `monitord.*` to
+`wazuh_modules.manager_task_*`. An override left under the old name is **silently ignored**: the
+lookup compares the part before the first `.` as well as the part after it, so the old key simply
+never matches. The full list is in the
+[Task Manager configuration reference](../../ref/modules/task_manager/configuration.md#where-their-intervals-come-from).
+The agent keeps its own `monitord.*` keys.
 
 ---
 
@@ -98,7 +146,7 @@ The `-l` flag lists all outdated agents with their current version. Agents on v4
 
 ### 3. Confirm manager has WPK repository access
 
-The `agent_upgrade` module on the manager downloads the WPK from the Wazuh repository before sending it to the agent. If the manager does not have outbound access to the WPK repository, prepare a custom WPK and use the custom upgrade method instead, see [Custom WPK upgrade](#custom-wpk-upgrade).
+The manager downloads the WPK from the Wazuh repository before making it available to the agent. If the manager does not have outbound access to the WPK repository, prepare a custom WPK and use the custom upgrade method instead, see [Custom WPK upgrade](#custom-wpk-upgrade).
 
 ---
 
@@ -106,10 +154,12 @@ The `agent_upgrade` module on the manager downloads the WPK from the Wazuh repos
 
 ```
 API request or agent_upgrade binary (target: an agent below v5.0.0)
-    └─► Agent Upgrade module (queue/tasks/upgrade)
-            ├─► validates version requirements and downloads/validates WPK
-            └─► creates a remote_upgrade task in the Task Manager
-                    └─► Task Manager stores the task in tasks.db
+    └─► Task Manager, upgrade routes (queue/sockets/task-http.sock)
+            ├─► validates each agent's version and platform
+            ├─► downloads and verifies the WPK -- once per distinct
+            │       package, however many agents were requested
+            └─► stores one remote_upgrade task per agent in tasks.db,
+                    in a single transaction
                             └─► remoted's own polling thread confirms the
                                     agent is still below v5.0.0 and pushes
                                     the WPK over the agent's existing 1514
@@ -120,10 +170,12 @@ API request or agent_upgrade binary (target: an agent below v5.0.0)
 
 ```
 API request or agent_upgrade binary
-    └─► Agent Upgrade module (queue/tasks/upgrade)
-            ├─► validates version requirements and downloads/validates WPK
-            └─► creates a remote_upgrade task in the Task Manager
-                    └─► Task Manager stores the task in tasks.db
+    └─► Task Manager, upgrade routes (queue/sockets/task-http.sock)
+            ├─► validates each agent's version and platform
+            ├─► downloads and verifies the WPK -- once per distinct
+            │       package, however many agents were requested
+            └─► stores one remote_upgrade task per agent in tasks.db,
+                    in a single transaction
                             └─► Agent picks up the task on its next poll to the manager
                                     └─► Agent downloads the WPK from the manager (HTTPS)
                                             └─► Agent validates SHA1 and executes the installer
@@ -137,9 +189,9 @@ The agent-facing task payload contains three fields:
 | `wpk_sha1`  | SHA-1 the agent must reproduce before running the installer                             |
 | `installer` | Installer script inside the WPK (`upgrade.sh` on Linux/macOS, `upgrade.bat` on Windows) |
 
-For agents below v5.0.0, `remoted` streams the WPK bytes to the agent directly, the same way it always has (see [`remoted.legacy_task_polling_interval`](../../ref/modules/remoted/configuration.md)). Wire-level hiccups (a lost step acknowledgment, a disconnect mid-transfer) are retried up to 3 times before the manager gives up; failures a retry can't fix (a missing local WPK file, the agent's installer already ran and reported failure) are not retried. Either way, a push that ultimately fails is only logged on the manager, not sent to the Engine. Progress is observable through:
+For agents below v5.0.0, `remoted` streams the WPK bytes to the agent directly, the same way it always has (see [`remoted.legacy_task_polling_interval`](../../ref/modules/remoted/configuration.md)). Wire-level hiccups are handled two ways depending on how they cost: a rejection (the agent answered, just not with success — a lost step acknowledgment counts here too when the agent still replies to a later step) is retried in-memory up to 5 times, all within the same poll cycle; a true no-response (nothing came back from the agent at all) is deferred, after a single attempt, to a small in-memory retry list that a later poll cycle picks back up, so one unresponsive agent never blocks that cycle's sweep of every other agent. Failures a retry can't fix at all (a missing local WPK file, the agent's installer already ran and reported failure) are never retried, in either cycle. Each retried attempt is logged at `debug` level except the last one, which logs a `warning`; a task that exhausts every retry avenue, or ages out of the retry list, is simply logged at `warning`/`error` and dropped — this poller never reports a task's outcome back to the Task Manager, so nothing in `tasks.db` is ever sent to the Engine either way. Progress is observable through:
 
-- The `delivery_time` column of the corresponding row in `tasks.db` — populated by the manager's own `get_pending_tasks` read (a side effect of the poller retrieving the task), not by anything agent-driven; it does not mean the agent has actually installed the WPK.
+- The agent's reported version once the upgrade completes and the agent reconnects, and `remoted`'s own log for a failure the manager detects — `tasks.db` itself has no way to distinguish that outcome from a successful delivery: the task's `STATUS` stays `delivered` regardless (`delivery_time` is populated by the manager's own `get_pending_tasks` read, a side effect of the poller retrieving the task, not by anything agent-driven, so it never meant the agent had actually installed the WPK in the first place).
 - The agent's own upgrade result, forwarded to the Engine's event pipeline like any other agent event (`upgrade_update_status`, one of "Upgrade was successful" / "Upgrade failed due missing dependency" / "Upgrade failed"). `remoted` replies to the agent with `clear_upgrade_result` within a few seconds of receiving a well-formed acknowledgment, regardless of whether it reports success or failure — this is what stops the agent's own retry loop (an agent resends the same acknowledgment on a growing backoff until it gets this reply back). The reply is handled by `remoted`'s own background poller rather than inline on receipt, so a burst of acknowledgments never competes with other agents' traffic for processing.
 - The agent version reported by `GET /agents/<id>` once the upgrade completes and the agent reconnects.
 - The agent-side upgrade log (`/var/ossec/logs/ossec.log`).
@@ -294,7 +346,11 @@ Via binary:
 
 ## Custom WPK upgrade
 
-Use the custom upgrade method when the manager does not have access to the WPK repository or when a private WPK is required. The custom WPK file must be placed on the **manager**, be readable by the `wazuh-manager` user, and be accessible from all cluster nodes for clustered deployments before triggering the upgrade.
+Use the custom upgrade method when the manager does not have access to the WPK repository or when a private WPK is required.
+
+The custom WPK file must be placed **inside `/var/wazuh-manager/var/upgrade/` on the manager**, be readable by the `wazuh-manager` user, and — in a clustered deployment — exist in that directory on **every** node before triggering the upgrade.
+
+> **Changed in 5.x.** `file_path` used to accept any absolute path, because the manager pushed that file to the agent itself. The agent now fetches the WPK by *name* from the upgrade directory, so a path anywhere else names a file the delivery side would never find. Such a path is now rejected outright with `The WPK file does not exist`, rather than producing a task that fails later. Symlinks are resolved before the check, so a link inside the directory pointing outside it is rejected too.
 
 ### Via API
 

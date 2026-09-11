@@ -32,13 +32,11 @@ namespace invsync::indexer
      * IIndexerConnectorSync.hpp).
      *
      * The STAGING forwards (`bulkIndex`/`bulkDelete`/`deleteByQuery`) take the connector's own
-     * scopeLock around the call, and that is load-bearing, not defensive: those methods append to
-     * the shared staging buffers WITHOUT locking (the class's contract is caller-locks, which the
-     * legacy module honored by staging under a held scopeLock), while the connector's internal
-     * flush-timer thread takes the same mutex and READS those buffers on every tick. One worker per
-     * connector serializes the callers, but not the timer -- this lock is what does. `flush()` and
-     * the query methods are forwarded bare: they issue their own HTTP request and touch no staging
-     * buffer, so the timer has nothing of theirs to race with.
+     * scopeLock around the call, honoring the class's caller-locks contract. This module runs its
+     * connectors with `flush_interval_seconds` = 0 (no background flush thread -- see
+     * PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS), so the lock is uncontended; it stays because the
+     * contract is the connector's, not this module's. `flush()` and the query methods are
+     * forwarded bare: they take the mutex themselves where they need it.
      *
      * `m_inner` is held by value in the member-init-list, so a constructor failure (`hosts` not
      * matching the session's, an unreasonable `max_retry_delay_seconds`) throws out of THIS
@@ -102,10 +100,35 @@ namespace invsync::indexer
 
         void flush() override
         {
-            m_inner.flush();
+            try
+            {
+                m_inner.flush();
+            }
+            catch (const IndexerConnectorException& e)
+            {
+                throw ConnectorError {e.what(), causeOf(e.category())};
+            }
+        }
+
+        BulkRequestStats takeBulkRequestStats() override
+        {
+            const auto stats = m_inner.takeBulkRequestStats();
+            return {stats.requests, stats.bytes};
         }
 
     private:
+        static ConnectorError::Cause causeOf(IndexerConnectorException::Category category)
+        {
+            switch (category)
+            {
+                case IndexerConnectorException::Category::DocumentRejected:
+                    return ConnectorError::Cause::DocumentRejected;
+                case IndexerConnectorException::Category::RetryExhausted: return ConnectorError::Cause::RetryExhausted;
+                case IndexerConnectorException::Category::Other: break;
+            }
+            return ConnectorError::Cause::Other;
+        }
+
         IndexerConnectorSync m_inner;
     };
     // LCOV_EXCL_STOP

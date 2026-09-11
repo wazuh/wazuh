@@ -14,7 +14,6 @@
 #include <base/name.hpp>
 #include <base/utils/generator.hpp>
 
-
 namespace
 {
 /**
@@ -31,7 +30,7 @@ inline void checkAssetName(const std::string& name, std::string_view prefix)
     {
         try
         {
-            return base::Name{name};
+            return base::Name {name};
         }
         catch (const std::runtime_error& e)
         {
@@ -41,7 +40,8 @@ inline void checkAssetName(const std::string& name, std::string_view prefix)
 
     if (assetName.parts().size() != 3)
     {
-        throw std::runtime_error(fmt::format("Asset name '{}' must have exactly 3 parts '{}/<name>/<version>'", name, prefix));
+        throw std::runtime_error(
+            fmt::format("Asset name '{}' must have exactly 3 parts '{}/<name>/<version>'", name, prefix));
     }
 
     if (assetName.parts()[0] != prefix)
@@ -55,31 +55,33 @@ inline void checkAssetName(const std::string& name, std::string_view prefix)
 namespace cm::store::detail
 {
 
-inline void
-findDuplicateOrInvalidUUID(const std::vector<std::string>& uuids, const std::string& type, bool caseInsensitive = true)
+/**
+ * @brief Checks a list of resource identifiers.
+ *
+ * Every identifier must satisfy base::utils::generators::isValidResourceId() and the list must
+ * not contain duplicates. Identifiers are opaque and compared byte by byte: no case folding or
+ * any other normalization is applied, so two identifiers that only differ in case are distinct.
+ *
+ * @param uuids Identifiers to check
+ * @param type Resource type used in the error messages (e.g. "Decoder")
+ * @throw std::runtime_error if an identifier is not valid or appears more than once
+ */
+inline void findDuplicateOrInvalidUUID(const std::vector<std::string>& uuids, const std::string& type)
 {
     std::unordered_set<std::string> seen;
     seen.reserve(uuids.size());
 
-    for (const auto& original : uuids)
+    for (const auto& uuid : uuids)
     {
-        if (!base::utils::generators::isValidUUIDv4(original))
+        if (!base::utils::generators::isValidResourceId(uuid))
         {
-            throw std::runtime_error(type + " UUID is not a valid UUIDv4: " + original);
+            throw std::runtime_error(
+                fmt::format("{} UUID is not a valid identifier: {}", type, base::utils::generators::RESOURCE_ID_RULES));
         }
 
-        std::string key = original;
-        if (caseInsensitive)
+        if (!seen.insert(uuid).second)
         {
-            std::transform(key.begin(),
-                           key.end(),
-                           key.begin(),
-                           [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-        }
-
-        if (!seen.insert(key).second)
-        {
-            throw std::runtime_error("Duplicate " + type + " UUID: " + original);
+            throw std::runtime_error("Duplicate " + type + " UUID: " + uuid);
         }
     }
 }

@@ -4,8 +4,8 @@ Drives remoted's `POST /download` endpoint the way a real agent does, and checks
 things unit tests cannot reach: the chunked transfer over TLS, and resource resolution
 against a real installation.
 
-Signing is identical to /stateless (same AuthMiddleware), so the helpers are imported
-from send_stateless.py rather than duplicated.
+Authentication is the same wazuh-agent+jwt bearer as /stateless (see wire_jwt.py, which must sit
+next to this script), so the helpers are imported rather than duplicated.
 
 What it verifies beyond "did it return 200":
 
@@ -19,7 +19,7 @@ What it verifies beyond "did it return 200":
     size"; CPU is read as a /proc counter delta rather than sampled as a percentage, so
     it cannot miss time between samples; the fd count catches a descriptor leak.
 
-Requires: pip install requests cryptography
+Requires: pip install requests
 
 Examples:
   python3 send_download.py                            # config download for agent 001's group
@@ -32,6 +32,7 @@ import argparse
 import concurrent.futures
 import hashlib
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -40,7 +41,7 @@ import time
 import requests
 import urllib3
 
-from send_stateless import _auth_header, read_agent_key
+from wire_jwt import auth_headers, read_agent_key  # the shared wazuh-agent+jwt signer (same directory)
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -60,6 +61,59 @@ class ManagerPaths:
         self.multigroups_dir = f"{self.home}/var/multigroups"
         self.wpk_dir = f"{self.home}/var/upgrade"
 
+
+
+# --- Global endpoint prefix (<remote><https><global_prefix>) ---------------------------------
+# Applied to every target when building the URL. Authentication does not cover the target (the
+# bearer token binds the agent's identity only), so a mismatch with the manager's configured
+# prefix surfaces as 404 (route not found), never as 401.
+#
+# Resolved like run_benchmark.sh resolves --cluster: the value belongs to the manager under
+# test, so when --global-prefix is not given it is read from that manager's own configuration
+# instead of making every invocation repeat it -- a default installation needs no flag. An
+# explicit value always wins; pass '/' to force the unprefixed paths against a prefixed manager.
+
+DEFAULT_MANAGER_CONF = "/var/wazuh-manager/etc/wazuh-manager.conf"
+
+GLOBAL_PREFIX = ""
+
+
+def normalize_global_prefix(raw: str) -> str:
+    """'' and '/' mean no prefix; otherwise ensure a leading '/' and strip trailing '/'."""
+    stripped = raw.strip("/") if raw else ""
+    return "/" + stripped if stripped else ""
+
+
+def global_prefix_from_conf(conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """Reads <remote><https><global_prefix> out of the manager's configuration.
+
+    Scoped to the <https> block so a <global_prefix> elsewhere in the file cannot be picked
+    up by mistake. Returns "" when the file is missing or unreadable and when the tag is
+    absent -- an absent tag is exactly what "no prefix" means to the manager too, so the
+    caller needs no separate "not detected" case.
+    """
+    try:
+        with open(conf_path, "r") as handle:
+            text = handle.read()
+    except OSError:
+        return ""
+    block = re.search(r"<https>(.*?)</https>", text, re.S)
+    if not block:
+        return ""
+    tag = re.search(r"<global_prefix>(.*?)</global_prefix>", block.group(1), re.S)
+    return tag.group(1).strip() if tag else ""
+
+
+def resolve_global_prefix(cli_value, conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """An explicit --global-prefix wins; None (flag not given) reads the manager's config."""
+    if cli_value is not None:
+        return normalize_global_prefix(cli_value)
+    return normalize_global_prefix(global_prefix_from_conf(conf_path))
+
+
+def prefixed(path: str) -> str:
+    """Serves `path` under the configured global prefix."""
+    return GLOBAL_PREFIX + path
 
 def multigroup_dir_name(selector: str) -> str:
     """Same formula wazuh-db uses to NAME the directory: OS_SHA256_String_sized(sel, out, 8).
@@ -110,11 +164,11 @@ class DownloadResult:
 
 
 def post_download(base_url, agent_id, agent_key, body: bytes, timeout=120) -> DownloadResult:
-    """Signs and sends one /download request, consuming the body as a stream so the
+    """Sends one bearer-authenticated /download request, consuming the body as a stream so the
     client never holds the whole file either."""
     result = DownloadResult()
-    url = base_url.rstrip("/") + TARGET
-    headers = _auth_header(agent_id, agent_key, "1", "POST", TARGET, int(time.time()), body)
+    url = base_url.rstrip("/") + prefixed(TARGET)
+    headers = auth_headers(agent_id, agent_key)
 
     try:
         response = requests.post(url, headers=headers, data=body, verify=False, stream=True, timeout=timeout)
@@ -425,6 +479,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default="https://127.0.0.1:9443", help="Base URL of the HTTPS server.")
+    parser.add_argument("--global-prefix", default=None,
+                        help="URL path prefix the manager serves every endpoint under "
+                             "(<remote><https><global_prefix>). Used only when "
+                             "building the URL (authentication does not cover the target). Read from "
+                             + DEFAULT_MANAGER_CONF + " when not given; pass '/' to force the "
+                             "unprefixed paths.")
     parser.add_argument("--agent-id", default="001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--manager-home", default=DEFAULT_MANAGER_HOME,
                         help="Manager installation root (client.keys, global.db, etc/shared, var/upgrade).")
@@ -446,6 +506,10 @@ def main():
                         help="Group used by the 404 scenario; must not exist on the manager.")
     parser.add_argument("--wpk", default=None, help="WPK filename staged under var/upgrade.")
     args = parser.parse_args()
+    global GLOBAL_PREFIX
+    GLOBAL_PREFIX = resolve_global_prefix(args.global_prefix)
+    if args.global_prefix is None and GLOBAL_PREFIX:
+        print(f"Global prefix not given; using '{GLOBAL_PREFIX}' from {DEFAULT_MANAGER_CONF}")
 
     paths = ManagerPaths(args.manager_home)
 
@@ -481,7 +545,7 @@ def main():
         raise SystemExit("--resource-id is required for a wpk download")
 
     body = request_body(args.resource_type, resource_id)
-    print(f"--> POST {args.url.rstrip('/')}{TARGET}  {body.decode()}")
+    print(f"--> POST {args.url.rstrip('/')}{prefixed(TARGET)}  {body.decode()}")
 
     watcher = ProcWatcher(remoted_pid() if args.watch_rss else None)
     with watcher:

@@ -12,24 +12,15 @@ Complete configuration reference for the Wazuh manager cluster.
 
 For module overview and architecture, see [Cluster Module](index.html).
 
-> **Important: where `<cluster>` is actually parsed**
-> The shared C configuration library (`src/config/src/config.c`) recognizes
-> the `<cluster>` tag but does not parse or validate it — the corresponding
-> branch is empty and simply swallows the tag, doing no processing at the C
-> level. All parsing and validation of the `<cluster>` section happens later,
-> in Python:
-> - `utils.read_cluster_config` performs lenient parsing (filling in missing
->   fields with defaults, including the hardcoded fallback key described
->   below) and is used generally whenever the framework/API reads cluster
->   configuration.
-> - `cluster.check_cluster_config` performs strict validation, but only runs
->   at `wazuh-clusterd` daemon startup and during `cluster_control` CLI
->   validation.
->
-> In other words, the shared C configuration library provides **no safety
-> net** for this section: an invalid or incomplete `<cluster>` block will
-> pass through the C parser without error, and how strictly it is later
-> validated depends entirely on which Python code path reads it.
+> **Important: how `<cluster>` is validated**
+> The `<cluster>` section is part of the manager configuration schema
+> (`etc/wazuh-manager.schema.json`): every consumer — the C daemons, the engine,
+> `wazuh-clusterd` and the framework/API — receives the same **effective**
+> section (schema-validated, defaults applied) from the `manager_config`
+> loader. An invalid or incomplete block is rejected at startup with the JSON
+> pointer of the offending option (`(1244): Invalid configuration at
+> '/cluster/key': ...`), and `bin/wazuh-manager-conf validate` reports the same
+> verdict.
 
 ---
 
@@ -68,17 +59,12 @@ Defines the key used to encrypt the communication between the nodes. This key mu
 - **Note:** This key must be the same for all cluster nodes
 
 > **Security Warning**
-> The "randomly produced" default described above only applies to the
-> `<cluster>` block generated automatically by the installer. If you manually
-> write or edit a `<cluster>` configuration block, you **must** include an
-> explicit, randomly-generated `<key>` value. Omitting `<key>` (or any other
-> field) from a manually-written `<cluster>` block does **not** cause a new
-> random key to be generated: `read_cluster_config` silently substitutes a
-> hardcoded, shared literal value (`fd3350b86d239654e34866ab3c4988a8`) for
-> any missing field, including `key`. This means every installation that
-> omits `<key>` from a manual configuration ends up using the same
-> well-known secret, which is a serious security risk in production
-> environments.
+> `<key>` is **required**: the schema rejects a `<cluster>` block without an
+> explicit key (`(1244): Invalid configuration at '/cluster': missing
+> mandatory option (does not satisfy 'required')`), so the manager does not
+> start with one. There is no
+> hardcoded fallback key anymore. The installer always generates a random key;
+> when writing the block by hand, generate your own 32-character random value.
 
 **Key generation:**
 ```bash

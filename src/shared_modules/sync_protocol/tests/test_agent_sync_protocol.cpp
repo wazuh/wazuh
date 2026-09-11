@@ -68,10 +68,9 @@ class AgentSyncProtocolTest : public ::testing::Test
             char* groups[] = {const_cast<char*>("group1")};
             metadata.groups = groups;
             metadata.groups_count = 1;
-            // A VD feed offset already received from the manager, so existing VDFIRST/VDSYNC
-            // tests exercise the same "normal" path they did before the NO_VD_OFFSET_ERROR
-            // gate (A11) existed; the gate itself is covered separately, with its own
-            // explicit metadata (see the NoVdOffset* tests below).
+            // A VD feed offset already received from the manager, so VDFIRST/VDSYNC tests
+            // exercise the ordinary case; the sessions sent with no offset at all have their
+            // own tests, with their own explicit metadata.
             metadata.vd_feed_offset = 12345;
             metadata_provider_update(&metadata);
 
@@ -196,7 +195,9 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleReportsStoppedWhenStopRequested)
 }
 
 // A local transport failure is not a "manager not ready yet" condition, so it must not be reported as
-// manager-not-ready: the calling module keeps it at WARNING.
+// manager-not-ready -- nothing was sent, so this says nothing about the manager. It is reported via
+// localTransportUnavailable instead (see SynchronizeModuleTransportFailureReportsLocalTransportUnavailable),
+// which the calling module demotes to INFO the same way, just under a distinct, accurate label.
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleDoesNotReportTransientOnTransportFailure)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -211,6 +212,79 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDoesNotReportTransientOnTransport
 
     EXPECT_FALSE(result.success);
     EXPECT_FALSE(result.managerNotReady);
+}
+
+// Companion to SynchronizeModuleDoesNotReportTransientOnTransportFailure: checkStatus() failing never
+// reaches the handshake, so it is classified as localTransportUnavailable, on its own streak separate
+// from the manager-facing m_consecutiveSyncFailures -- and that streak grows across repeated failures.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleTransportFailureReportsLocalTransportUnavailable)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+    mockSyncTransport->setAvailable(false);
+
+    SyncModuleResult first = protocol->synchronizeModule(Mode::DELTA);
+    EXPECT_FALSE(first.success);
+    EXPECT_FALSE(first.managerNotReady);
+    EXPECT_TRUE(first.localTransportUnavailable);
+    EXPECT_EQ(first.consecutiveFailures, 1U);
+
+    SyncModuleResult second = protocol->synchronizeModule(Mode::DELTA);
+    EXPECT_TRUE(second.localTransportUnavailable);
+    EXPECT_EQ(second.consecutiveFailures, 2U);
+}
+
+// Regression guard for a race trackLocalTransportFailure() used to have: it called shouldStop()
+// itself instead of taking the caller's already-computed value, so a stop() landing between the
+// caller's read (for the "stopped" field) and trackLocalTransportFailure()'s own read could leave
+// the two disagreeing -- stopped=false in the result, but the streak silently not incremented
+// (the internal read saw the stop and skipped the bump). A background thread hammers
+// stop()/reset() throughout to make that window likely to be hit at least once; with the caller's
+// single read now threaded through as a parameter, the two can no longer disagree regardless of
+// timing, so this passes deterministically post-fix and would fail intermittently pre-fix.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleStoppedAndStreakStayConsistentUnderConcurrentStop)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+    mockSyncTransport->setAvailable(false);
+
+    std::atomic<bool> keepToggling {true};
+    std::thread toggler(
+        [&]()
+    {
+        while (keepToggling.load(std::memory_order_relaxed))
+        {
+            protocol->stop();
+            protocol->reset();
+        }
+    });
+
+    unsigned int previousFailures = 0;
+    constexpr int ITERATIONS = 20000;
+
+    for (int i = 0; i < ITERATIONS; ++i)
+    {
+        const SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
+
+        if (!result.stopped)
+        {
+            // Not reported as a shutdown-time abort, so this attempt must have been counted: the
+            // streak has to have grown. A streak that failed to grow here is exactly the
+            // inconsistency the pre-fix double read could produce.
+            EXPECT_GT(result.consecutiveFailures, previousFailures)
+                    << "iteration " << i << ": stopped=false but the local-transport-failure "
+                    "streak did not grow.";
+            previousFailures = result.consecutiveFailures;
+        }
+    }
+
+    keepToggling.store(false, std::memory_order_relaxed);
+    toggler.join();
+    protocol->reset();
 }
 
 // Exercises the C interface (asp_sync_module -> SyncModuleResult_t.stopped): this is the path
@@ -268,6 +342,48 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDataToSyncEmpty)
                               );
 
     EXPECT_TRUE(result.success);
+    // #38601: an empty queue is a success -- a routine "nothing changed" cycle is not a failure,
+    // and every module's log ladder and failure streak depend on that staying true. What it must
+    // NOT do is look like a cycle that reached the manager, because durable markers gated on a
+    // sync result would then record data the manager never received.
+    EXPECT_FALSE(result.sentAnything);
+}
+
+// The agent id every session is stamped with, read the way a module reads it before deciding
+// whether its own identity changed. Zero has to mean "nothing published yet": a module that read
+// an unavailable provider as a new identity would resynchronize on every cycle.
+TEST_F(AgentSyncProtocolTest, CurrentAgentIdReportsThePublishedId)
+{
+    EXPECT_EQ(AgentSyncProtocol::currentAgentId(), 1);
+}
+
+TEST_F(AgentSyncProtocolTest, CurrentAgentIdIsZeroWhenNothingPublished)
+{
+    metadata_provider_reset();
+
+    EXPECT_EQ(AgentSyncProtocol::currentAgentId(), 0);
+}
+
+// Zero-padding is presentational: "001" is agent 1, and the manager compares ids numerically for
+// the same reason (fullSessionValidator.cpp).
+TEST_F(AgentSyncProtocolTest, CurrentAgentIdIgnoresZeroPadding)
+{
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "007", sizeof(metadata.agent_id) - 1);
+    metadata_provider_update(&metadata);
+
+    EXPECT_EQ(AgentSyncProtocol::currentAgentId(), 7);
+}
+
+// Anything that is not a plain number reads as unknown rather than as an identity, so a corrupt
+// or unexpected value cannot trigger a resynchronization.
+TEST_F(AgentSyncProtocolTest, CurrentAgentIdIsZeroForANonNumericId)
+{
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "00x", sizeof(metadata.agent_id) - 1);
+    metadata_provider_update(&metadata);
+
+    EXPECT_EQ(AgentSyncProtocol::currentAgentId(), 0);
 }
 
 // The consecutive-failure streak is what tells a brief post-restart hiccup apart from a lasting
@@ -950,20 +1066,12 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaBypassesBytePrefilterBudgetF
     runAndAck(Option::VDSYNC);
 }
 
-// A11: a VD sync must abort (no Start ever sent) when no feed offset has been received
-// from the manager yet -- the state right after an agent restart, before the first
-// /control notify reports one. Mirrors the NO_GROUPS_ERROR gate's shape exactly.
-TEST_F(AgentSyncProtocolTest, NoVdOffsetAbortsVDFirstSyncWithoutSendingStart)
+// A call that collides with an in-flight synchronization runs no session, and says so: it is
+// reported as a success (the sync already running drains the same queue), but a caller that
+// records something about the session -- syscollector's VD first-sync marker -- must be able to
+// tell it apart from a session that actually went out.
+TEST_F(AgentSyncProtocolTest, ConcurrentCallReportsThatItRanNoSession)
 {
-    agent_metadata_t metadata = {};
-    strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
-    strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
-    char* groups[] = {const_cast<char*>("group1")};
-    metadata.groups = groups;
-    metadata.groups_count = 1;
-    metadata.vd_feed_offset = 0; // Not yet received.
-    metadata_provider_update(&metadata);
-
     mockQueue = std::make_shared<MockPersistentQueue>();
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
@@ -973,30 +1081,45 @@ TEST_F(AgentSyncProtocolTest, NoVdOffsetAbortsVDFirstSyncWithoutSendingStart)
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
     };
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
-    .WillRepeatedly(Return(testData));
+    .WillOnce(Return(testData))
+    .WillOnce(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(1);
 
-    const int sendCountBefore = mockSyncTransport->sendCount();
-    const SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA, Option::VDFIRST);
+    SyncModuleResult inFlight;
+    std::thread syncThread([this, &inFlight]()
+    {
+        inFlight = protocol->synchronizeModule(Mode::DELTA, Option::VDFIRST);
+    });
 
-    EXPECT_FALSE(result.success);
-    EXPECT_EQ(mockSyncTransport->sendCount(), sendCountBefore); // No Start was ever built/sent.
-    EXPECT_THAT(result.failureReason, ::testing::HasSubstr("No VD feed offset available"));
-    // Expected/benign, not a real failure: lets the caller (Syscollector::syncModule()) log
-    // this at INFO instead of WARNING.
-    EXPECT_TRUE(result.awaitingPrerequisite);
-    EXPECT_FALSE(result.managerNotReady);
+    // While that one waits for its response, a second caller must be turned away.
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
+    const SyncModuleResult concurrent = protocol->synchronizeModule(Mode::DELTA, Option::VDFIRST);
+
+    EXPECT_TRUE(concurrent.success);
+    EXPECT_TRUE(concurrent.sessionSkipped);
+
+    feedHttpResult(200);
+    syncThread.join();
+
+    EXPECT_TRUE(inFlight.success);
+    EXPECT_FALSE(inFlight.sessionSkipped);
 }
 
-// The gate is VD-specific (isUncappedSyncOption): a plain SYNC must proceed even with no
-// VD offset at all -- only VDFIRST/VDSYNC require one.
-TEST_F(AgentSyncProtocolTest, NoVdOffsetDoesNotAbortNonVdSync)
+// A VD sync is never held back for want of a feed offset: the agent reports whatever it last
+// heard (0 until the manager tells it otherwise) and the manager decides what that session is
+// worth -- 503 while its feed loads, accepted and indexed unscanned when its scanner is not
+// running. Gating here instead left agents on a manager with vulnerability detection disabled
+// with their packages never indexed at all (#38599).
+TEST_F(AgentSyncProtocolTest, VdSyncWithoutAFeedOffsetIsStillSent)
 {
     agent_metadata_t metadata = {};
     strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+    strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
     char* groups[] = {const_cast<char*>("group1")};
     metadata.groups = groups;
     metadata.groups_count = 1;
-    metadata.vd_feed_offset = 0;
+    metadata.vd_feed_offset = 0; // Never received one.
     metadata_provider_update(&metadata);
 
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -1016,14 +1139,58 @@ TEST_F(AgentSyncProtocolTest, NoVdOffsetDoesNotAbortNonVdSync)
     SyncModuleResult result;
     std::thread syncThread([this, &result]()
     {
-        result = protocol->synchronizeModule(Mode::DELTA, Option::SYNC);
+        result = protocol->synchronizeModule(Mode::DELTA, Option::VDFIRST);
     });
 
     EXPECT_TRUE(mockSyncTransport->waitForSession());
     feedHttpResult(200);
 
     syncThread.join();
+
     EXPECT_TRUE(result.success);
+    EXPECT_FALSE(result.awaitingPrerequisite);
+
+    // The session went out as a VD one, carrying the offset verbatim so the manager can judge it.
+    const auto raw = mockSyncTransport->lastMessage();
+    const auto* message = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(raw.data());
+    ASSERT_NE(message, nullptr);
+    const auto* fullSession = message->content_as_FullSession();
+    ASSERT_NE(fullSession, nullptr);
+    ASSERT_NE(fullSession->start(), nullptr);
+    EXPECT_EQ(fullSession->start()->option(), Wazuh::SyncSchema::Option::VDFirst);
+    EXPECT_EQ(fullSession->start()->feed_offset(), 0u);
+}
+
+// The groups gate is untouched by that: it is the one prerequisite the agent still cannot
+// synchronize without, and it applies to every option.
+TEST_F(AgentSyncProtocolTest, MissingGroupsStillAbortsAVdSyncWithoutSendingStart)
+{
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+    metadata.groups = nullptr;
+    metadata.groups_count = 0;
+    metadata.vd_feed_offset = 0;
+    metadata_provider_update(&metadata);
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .WillRepeatedly(Return(testData));
+
+    const int sendCountBefore = mockSyncTransport->sendCount();
+    const SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA, Option::VDFIRST);
+
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(mockSyncTransport->sendCount(), sendCountBefore); // No Start was ever built/sent.
+    EXPECT_THAT(result.failureReason, ::testing::HasSubstr("No groups available"));
+    EXPECT_TRUE(result.awaitingPrerequisite);
+    EXPECT_FALSE(result.managerNotReady);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaAllowsOversizedRealPayloadWhenPrefilterSelectedIt)
@@ -2082,9 +2249,9 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanWithEmptyIndices)
     EXPECT_CALL(*mockQueue, clearItemsByIndex(_))
     .Times(0);
 
-    bool result = protocol->notifyDataClean(emptyIndices);
+    SyncModuleResult result = protocol->notifyDataClean(emptyIndices);
 
-    EXPECT_FALSE(result); // Should fail with empty indices
+    EXPECT_FALSE(result.success); // Should fail with empty indices
 }
 
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanNoQueueAvailable)
@@ -2099,9 +2266,9 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanNoQueueAvailable)
     EXPECT_CALL(*mockQueue, clearItemsByIndex(_))
     .Times(0);
 
-    bool result = protocol->notifyDataClean(indices);
+    SyncModuleResult result = protocol->notifyDataClean(indices);
 
-    EXPECT_FALSE(result);
+    EXPECT_FALSE(result.success);
 }
 
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanSendStartFails)
@@ -2116,9 +2283,9 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSendStartFails)
     EXPECT_CALL(*mockQueue, clearItemsByIndex(_))
     .Times(0);
 
-    bool result = protocol->notifyDataClean(indices);
+    SyncModuleResult result = protocol->notifyDataClean(indices);
 
-    EXPECT_FALSE(result);
+    EXPECT_FALSE(result.success);
 }
 
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckTimeout)
@@ -2133,9 +2300,153 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckTimeout)
     EXPECT_CALL(*mockQueue, clearItemsByIndex(_))
     .Times(0);
 
-    bool result = protocol->notifyDataClean(indices);
+    SyncModuleResult result = protocol->notifyDataClean(indices);
 
-    EXPECT_FALSE(result); // Should fail due to timeout
+    EXPECT_FALSE(result.success); // Should fail due to timeout
+}
+
+// notifyDataClean() reports the same manager-not-ready detail synchronizeModule() does, so a
+// caller can tell a transient post-restart hiccup apart from a real failure instead of only getting
+// a bare bool. Passing trackConsecutiveFailures=true feeds the same streak synchronizeModule() uses
+// for its own tolerance window. (#38579)
+TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultReportsManagerNotReadyOnStartAckTimeout)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<std::string> indices = {"test_index_1"};
+
+    // Should not call clearItemsByIndex when StartAck times out
+    EXPECT_CALL(*mockQueue, clearItemsByIndex(_))
+    .Times(0);
+
+    SyncModuleResult result = protocol->notifyDataClean(indices, Option::SYNC, true);
+
+    EXPECT_FALSE(result.success);
+    EXPECT_TRUE(result.managerNotReady);
+    EXPECT_EQ(result.consecutiveFailures, 1u);
+}
+
+// Without opting in, a notifyDataClean() failure must NOT touch the streak
+// synchronizeModule() relies on: an ad hoc DataClean call (e.g. policy-removal cleanup) is not
+// part of the periodic sync cycle and must not skew its tolerance window. (#38579)
+TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultDoesNotTrackFailuresByDefault)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<std::string> indices = {"test_index_1"};
+
+    EXPECT_CALL(*mockQueue, clearItemsByIndex(_))
+    .Times(0);
+
+    SyncModuleResult untracked = protocol->notifyDataClean(indices);
+    EXPECT_FALSE(untracked.success);
+    EXPECT_TRUE(untracked.managerNotReady);
+    EXPECT_EQ(untracked.consecutiveFailures, 0u);
+
+    // A later opted-in call must start its own streak at 1, unaffected by the untracked call above.
+    SyncModuleResult tracked = protocol->notifyDataClean(indices, Option::SYNC, true);
+    EXPECT_FALSE(tracked.success);
+    EXPECT_TRUE(tracked.managerNotReady);
+    EXPECT_EQ(tracked.consecutiveFailures, 1u);
+}
+
+// Companion to SynchronizeModuleTransportFailureReportsLocalTransportUnavailable: notifyDataClean()
+// hits the same checkStatus() gate, so an unreachable local sync intake must be classified the same way
+// -- localTransportUnavailable, not managerNotReady. Unlike synchronizeModule()/
+// synchronizeMetadataOrGroups() (always a periodic-cycle call), notifyDataClean() also has ad hoc
+// callers, so growing this streak requires the same trackConsecutiveFailures opt-in the manager-facing
+// streak already needed -- an ad hoc caller's transport failures must not pump up the same shared
+// counter a periodic cycle relies on for its own tolerance decision. (#38579)
+TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultTransportFailureReportsLocalTransportUnavailable)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+    mockSyncTransport->setAvailable(false);
+
+    std::vector<std::string> indices = {"test_index_1"};
+
+    SyncModuleResult first = protocol->notifyDataClean(indices, Option::SYNC, true);
+    EXPECT_FALSE(first.success);
+    EXPECT_FALSE(first.managerNotReady);
+    EXPECT_TRUE(first.localTransportUnavailable);
+    EXPECT_EQ(first.consecutiveFailures, 1u);
+
+    SyncModuleResult second = protocol->notifyDataClean(indices, Option::SYNC, true);
+    EXPECT_TRUE(second.localTransportUnavailable);
+    EXPECT_EQ(second.consecutiveFailures, 2u);
+}
+
+// Without opting in, a transport-failure streak must NOT grow either -- same requirement as
+// NotifyDataCleanResultDoesNotTrackFailuresByDefault, but for the local-transport streak instead of
+// the manager-facing one. (#38579, review follow-up: trackLocalTransportFailure() was still called
+// unconditionally here, so an untracked call could inflate the shared streak a periodic cycle relies
+// on for its own tolerance decision.)
+TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultDoesNotTrackLocalTransportFailuresByDefault)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+    mockSyncTransport->setAvailable(false);
+
+    std::vector<std::string> indices = {"test_index_1"};
+
+    SyncModuleResult untracked = protocol->notifyDataClean(indices);
+    EXPECT_FALSE(untracked.success);
+    EXPECT_TRUE(untracked.localTransportUnavailable);
+    EXPECT_EQ(untracked.consecutiveFailures, 0u);
+
+    // A later opted-in call must start its own streak at 1, unaffected by the untracked call above.
+    SyncModuleResult tracked = protocol->notifyDataClean(indices, Option::SYNC, true);
+    EXPECT_TRUE(tracked.localTransportUnavailable);
+    EXPECT_EQ(tracked.consecutiveFailures, 1u);
+}
+
+// A notifyDataClean() call that reaches past checkStatus() must reset the local-transport
+// streak, same as synchronizeModule()/synchronizeMetadataOrGroups() do -- otherwise a later
+// transport failure would report an inflated streak carried over from before the local socket
+// recovered. Deliberately exercises the reset with an UNTRACKED (trackConsecutiveFailures=false,
+// the default) success call: unlike the increment, the reset is never gated by that flag, because
+// checkStatus() succeeding is an objective fact about the instance -- true regardless of which
+// caller happened to observe it -- not something that should depend on whether that particular
+// caller opted into the periodic-cycle streak. (#38579)
+TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultResetsLocalTransportStreakOnceReachable)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<std::string> indices = {"test_index_1"};
+
+    mockSyncTransport->setAvailable(false);
+    SyncModuleResult first = protocol->notifyDataClean(indices, Option::SYNC, true);
+    EXPECT_TRUE(first.localTransportUnavailable);
+    EXPECT_EQ(first.consecutiveFailures, 1u);
+
+    mockSyncTransport->setAvailable(true);
+    EXPECT_CALL(*mockQueue, clearItemsByIndex("test_index_1"))
+    .Times(1);
+
+    std::thread syncThread([this, &indices]()
+    {
+        // Untracked on purpose -- see the test-level comment above.
+        SyncModuleResult successResult = protocol->notifyDataClean(indices);
+        EXPECT_TRUE(successResult.success);
+    });
+
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    feedHttpResult(200);
+    syncThread.join();
+
+    mockSyncTransport->setAvailable(false);
+    SyncModuleResult afterReset = protocol->notifyDataClean(indices, Option::SYNC, true);
+    EXPECT_TRUE(afterReset.localTransportUnavailable);
+    EXPECT_EQ(afterReset.consecutiveFailures, 1u);
 }
 
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckError)
@@ -2153,8 +2464,8 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckError)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices);
-        EXPECT_FALSE(result); // Should fail due to manager error
+        SyncModuleResult result = protocol->notifyDataClean(indices);
+        EXPECT_FALSE(result.success); // Should fail due to manager error
     });
 
     EXPECT_TRUE(mockSyncTransport->waitForSession());
@@ -2179,8 +2490,8 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanEndAckTimeout)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices);
-        EXPECT_FALSE(result); // Should fail due to timeout
+        SyncModuleResult result = protocol->notifyDataClean(indices);
+        EXPECT_FALSE(result.success); // Should fail due to timeout
     });
 
     EXPECT_TRUE(mockSyncTransport->waitForSession());
@@ -2209,8 +2520,8 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanEndAckError)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices);
-        EXPECT_FALSE(result); // Should fail due to manager error
+        SyncModuleResult result = protocol->notifyDataClean(indices);
+        EXPECT_FALSE(result.success); // Should fail due to manager error
     });
 
     EXPECT_TRUE(mockSyncTransport->waitForSession());
@@ -2241,8 +2552,8 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanClearItemsByIndexThrows)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices);
-        EXPECT_FALSE(result); // Should fail due to clearItemsByIndex exception
+        SyncModuleResult result = protocol->notifyDataClean(indices);
+        EXPECT_FALSE(result.success); // Should fail due to clearItemsByIndex exception
     });
 
     EXPECT_TRUE(mockSyncTransport->waitForSession());
@@ -2273,8 +2584,8 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSuccessWithSingleIndex)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices);
-        EXPECT_TRUE(result); // Should succeed
+        SyncModuleResult result = protocol->notifyDataClean(indices);
+        EXPECT_TRUE(result.success); // Should succeed
     });
 
     EXPECT_TRUE(mockSyncTransport->waitForSession());
@@ -2309,8 +2620,8 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSuccessWithMultipleIndices)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices);
-        EXPECT_TRUE(result); // Should succeed
+        SyncModuleResult result = protocol->notifyDataClean(indices);
+        EXPECT_TRUE(result.success); // Should succeed
     });
 
     EXPECT_TRUE(mockSyncTransport->waitForSession());
@@ -2342,8 +2653,8 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanNoAnswerLeavesDatabaseUntouched)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices);
-        EXPECT_FALSE(result); // Fails: no answer ever arrives.
+        SyncModuleResult result = protocol->notifyDataClean(indices);
+        EXPECT_FALSE(result.success); // Fails: no answer ever arrives.
     });
 
     EXPECT_TRUE(mockSyncTransport->waitForSession());
@@ -2434,8 +2745,8 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanLogsErrorWithoutQueue)
     // Start synchronization in background
     std::thread syncThread([this, &indices]()
     {
-        bool result = protocol->notifyDataClean(indices);
-        EXPECT_FALSE(result); // Should fail due to clearItemsByIndex exception
+        SyncModuleResult result = protocol->notifyDataClean(indices);
+        EXPECT_FALSE(result.success); // Should fail due to clearItemsByIndex exception
     });
 
 
@@ -3130,8 +3441,8 @@ TEST_F(AgentSyncProtocolTest, notifyDataClean_WithSyncOption_EmptyIndices)
     std::vector<std::string> emptyIndices;
 
     // Should return false for empty indices
-    bool result = protocol->notifyDataClean(emptyIndices, Option::SYNC);
-    EXPECT_FALSE(result);
+    SyncModuleResult result = protocol->notifyDataClean(emptyIndices, Option::SYNC);
+    EXPECT_FALSE(result.success);
 }
 
 TEST_F(AgentSyncProtocolTest, notifyDataClean_WithSyncOption_MultipleIndices)

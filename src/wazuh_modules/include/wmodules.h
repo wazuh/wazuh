@@ -69,8 +69,11 @@ typedef enum crypto_type {
 #include "wm_sca.h"
 #include "wm_control.h"
 #include "wm_gcp.h"
-#include "wm_agent_upgrade.h"
-#include "wm_task_manager.h"
+#ifdef CLIENT
+#include "wm_agent_upgrade.h" // agent only; the manager side of that module is the task manager
+#else
+#include "wm_task_manager.h" // manager only; there is no task manager on an agent
+#endif
 #include "wm_agent_info.h"
 #include "wm_github.h"
 #include "wm_office365.h"
@@ -92,8 +95,11 @@ void wm_sleep_until_interruptible(time_t abs_time);
 // Like select() on a single read fd but checks wm_shutdown_requested every second; returns 0 on shutdown.
 int wm_select_interruptible(int sock, fd_set *fdset);
 
-// Read XML configuration and internal options
+// Read the configuration (etc/wazuh-manager.conf on the manager, ossec.conf on the agent) and internal options
 int wm_config();
+#ifndef CLIENT
+extern const char *wm_config_path;   // Manager configuration file (etc/wazuh-manager.conf); modulesd -c overrides it.
+#endif
 cJSON *getModulesConfig(void);
 cJSON *getModulesInternalOptions(void);
 int modulesSync(char* args, size_t length);
@@ -157,6 +163,11 @@ void wm_kill_children();
 
 // Reads an HTTP header and extracts an element from a regex
 char* wm_read_http_header_element(char *header, char *regex);
+
+/* Check that a URL is HTTPS and, when host is not NULL, that it points to that host.
+ * Returns true if the URL is allowed, false otherwise.
+ */
+bool wm_url_is_allowed(const char *url, const char *host);
 
 /* Load or save the running state
  * op: WM_IO_READ | WM_IO_WRITE

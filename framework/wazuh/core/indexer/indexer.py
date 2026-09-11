@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 from opensearchpy import AsyncOpenSearch
 from opensearchpy.exceptions import ImproperlyConfigured, TransportError
 from wazuh.core import common
-from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.configuration import get_manager_conf
 from wazuh.core.exception import WazuhIndexerError, IndexerUnavailableError
 from wazuh.core.indexer.credential_manager import KeystoreClient
 from wazuh.core.indexer.states_components import StatesIndex
@@ -54,7 +54,7 @@ async def _get_cached_indexer_config() -> dict:
     global _config_cache, _config_mtime
 
     async with _config_lock:
-        config_file = common.OSSEC_CONF
+        config_file = common.MANAGER_CONF
 
         try:
             current_mtime = os.path.getmtime(config_file)
@@ -64,7 +64,7 @@ async def _get_cached_indexer_config() -> dict:
                 return _config_cache
 
             # Read and cache configuration
-            _config_cache = get_ossec_conf(section="indexer")
+            _config_cache = get_manager_conf(section="indexer")
             _config_mtime = current_mtime
             logger.debug(f"Cached indexer configuration (mtime: {current_mtime})")
             return _config_cache
@@ -72,7 +72,7 @@ async def _get_cached_indexer_config() -> dict:
         except OSError as e:
             # File doesn't exist or can't read - fetch without caching
             logger.warning(f"Could not cache config file: {e}")
-            return get_ossec_conf(section="indexer")
+            return get_manager_conf(section="indexer")
 
 
 _ssl_context_cache: Optional[ssl.SSLContext] = None

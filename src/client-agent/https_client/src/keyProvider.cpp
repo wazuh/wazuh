@@ -11,60 +11,23 @@
 
 #include "keyProvider.hpp"
 
+#include "jwt/jwtKeyDecoder.hpp"
+
 namespace
 {
-    /// AES-CMAC key sizes, cipher chosen by length (AES-128/192/256) exactly
-    /// like the manager-side resolver. A real client.keys entry is 64 hex
-    /// chars = 32 bytes = AES-256.
-    bool validKeyLength(size_t bytes)
-    {
-        return bytes == 16 || bytes == 24 || bytes == 32;
-    }
-
-    int hexNibble(char character)
-    {
-        if (character >= '0' && character <= '9')
-        {
-            return character - '0';
-        }
-
-        if (character >= 'a' && character <= 'f')
-        {
-            return character - 'a' + 10;
-        }
-
-        if (character >= 'A' && character <= 'F')
-        {
-            return character - 'A' + 10;
-        }
-
-        return -1;
-    }
-
+    /// 64 lowercase hex chars -> 32 bytes, through the shared profile decoder
+    /// (the manager's keystore uses the same one), copied into a vector for the
+    /// IKeyProvider contract; the SecureBytes wipes itself on return.
     std::optional<std::vector<uint8_t>> decodeKeyHex(const std::string& keyHex)
     {
-        if (keyHex.size() % 2 != 0 || !validKeyLength(keyHex.size() / 2))
+        const auto key = jwt_profile::v1::JwtKeyDecoder::decode(keyHex);
+
+        if (!key)
         {
             return std::nullopt;
         }
 
-        const size_t keyBytes = keyHex.size() / 2;
-        std::vector<uint8_t> key(keyBytes);
-
-        for (size_t index = 0; index < keyBytes; index++)
-        {
-            const int high = hexNibble(keyHex[2 * index]);
-            const int low = hexNibble(keyHex[2 * index + 1]);
-
-            if (high < 0 || low < 0)
-            {
-                return std::nullopt;
-            }
-
-            key[index] = static_cast<uint8_t>((high << 4) | low);
-        }
-
-        return key;
+        return std::vector<uint8_t>(key->data(), key->data() + key->size());
     }
 } // namespace
 
@@ -73,7 +36,7 @@ ConfigKeyProvider::ConfigKeyProvider(std::string keyHex)
 {
 }
 
-std::optional<std::vector<uint8_t>> ConfigKeyProvider::cmacKey() const
+std::optional<std::vector<uint8_t>> ConfigKeyProvider::signingKey() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     return decodeKeyHex(m_keyHex);

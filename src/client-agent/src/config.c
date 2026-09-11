@@ -36,6 +36,11 @@ char agent_agent_groups[OS_SIZE_65536] = {0};
  * responder, which agent-info now polls periodically instead of only once at startup. */
 pthread_mutex_t agent_handshake_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/* Enrollment retry ramp, shared by the initial-enrollment loop (start_agent.c) and the
+ * re-enrollment one (https_client_bridge.c). */
+#define ENROLLMENT_RETRY_MAX_S_DEFAULT   60
+#define ENROLLMENT_RETRY_DELTA_S_DEFAULT 5
+
 /* Read the config file (for the remote client) */
 int ClientConf(const char *cfgfile)
 {
@@ -51,11 +56,12 @@ int ClientConf(const char *cfgfile)
     agt->main_ip_update_interval = 0;
     agt->server_count = 0;
 
-    /* The shipped configuration carries no <ssl> block, so this is the posture most
-     * agents actually run with -- as is any config written before the HTTPS transport
-     * existed. It is not the enum's zero value (FULL), which would make every one of
-     * those agents refuse to start on a missing CA, so it has to be set by hand. */
-    agt->ssl.verification_mode = AGENT_VERIFY_NONE;
+    /* Resolved after parsing, once we know whether <certificate_authorities> was set:
+     * SYSTEM by default (verifies without requiring any <ssl> block, e.g. against
+     * cloud.wazuh.com's publicly-trusted certificate), or CERT when a CA was pinned
+     * without an explicit <verification_mode>. Never left UNSET past this function
+     * returning -- see the resolution below, after both ReadConfig() calls. */
+    agt->ssl.verification_mode = AGENT_VERIFY_UNSET;
 
     /* <config_report> ships enabled: the manager needs the periodic /config snapshot
      * even on a config nobody touched. It is not the struct's zero value, so it has
@@ -101,11 +107,41 @@ int ClientConf(const char *cfgfile)
     } else {
         remote_conf = 0;
     }
+
+    /* Before both enrollment loops (main.c and win_utils.c call this ahead of AgentdStart()), so an
+     * out-of-range value refuses the start instead of killing the agent at its first failed
+     * re-enrollment. */
+    agt->enrollment.retry_max =
+        getDefine_Int_default("agent", "enrollment_retry_max", 1, 86400, ENROLLMENT_RETRY_MAX_S_DEFAULT);
+    agt->enrollment.retry_delta =
+        getDefine_Int_default("agent", "enrollment_retry_delta", 1, 3600, ENROLLMENT_RETRY_DELTA_S_DEFAULT);
+
 #ifndef WIN32
     if (ReadConfig(ATAMPERING, cfgfile, atc, NULL) < 0) {
         return OS_INVALID;
     }
 #endif
+
+    /* verification_mode is still UNSET whenever ossec.conf didn't set it explicitly --
+     * the shared remote config never reaches this point at all: Read_Agent_Shared()
+     * (dispatched above for AGENTCONFIG) only recognizes <batch>/force_reconnect_interval
+     * under <agent> and rejects everything else, <ssl> included, so a centrally-managed
+     * fleet cannot set verification_mode/certificate_authorities via shared config today.
+     * Mirrors the manager's own inference (remote-config.c): a pinned CA without an
+     * explicit mode means the operator wants it verified, not silently unused. */
+    if (agt->ssl.verification_mode == AGENT_VERIFY_UNSET) {
+        /* A present-but-empty <certificate_authorities/> (or <certificate_authorities>
+         * </certificate_authorities>) is not a real CA -- w_agent_validate_ssl_ca() will
+         * still fail closed on it either way, but resolving to 'certificate' here would
+         * warn that a CA is "configured" when none actually was. */
+        if (agt->ssl.certificate_authorities != NULL && *agt->ssl.certificate_authorities != '\0') {
+            mwarn("The '<ssl><certificate_authorities>' option is configured but "
+                  "'<verification_mode>' is not; defaulting '<verification_mode>' to 'certificate'.");
+            agt->ssl.verification_mode = AGENT_VERIFY_CERT;
+        } else {
+            agt->ssl.verification_mode = AGENT_VERIFY_SYSTEM;
+        }
+    }
 
     return (1);
 }
@@ -116,22 +152,47 @@ int ClientConf(const char *cfgfile)
 bool w_agent_validate_ssl_ca(const agent *cfg)
 {
     const char *ca = cfg->ssl.certificate_authorities;
-    const bool readable = ca && w_is_file(ca);
 
     /* Under 'none' the CA is never read, so a wrong path stays invisible until someone
      * enables verification -- and then the agent refuses to start. Warn while it is
      * still harmless rather than accepting it in silence. */
     if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE) {
-        if (ca && !readable) {
+        if (ca && !w_is_file(ca)) {
             mwarn(AG_UNUSED_SSL_CA, ca);
         }
 
         return true;
     }
 
+    /* 'system' trusts the OS store instead of an operator-supplied file: a configured CA
+     * would be silently unused, which is worth failing closed on rather than guessing which
+     * one the operator actually meant. On Windows/macOS the OS store is asked for natively
+     * (no file to probe for); on Linux the https_client module itself fails closed if no
+     * known OS bundle is found (moduleConfig.cpp's validateTls), mirroring this same check
+     * one layer up so a bad config is caught before the module ever spins up threads. */
+    if (cfg->ssl.verification_mode == AGENT_VERIFY_SYSTEM) {
+        /* A present-but-empty <certificate_authorities/> is not a real CA -- ClientConf()'s
+         * own UNSET-resolution above already treats it that way (resolving to 'system'
+         * instead of 'certificate'), so this check has to agree, or that exact shape
+         * resolves to 'system' and then refuses to start over a CA that isn't really set. */
+        if (ca && *ca != '\0') {
+            merror(AG_SSL_CA_FORBIDDEN_SYSTEM, ca);
+            return false;
+        }
+
+#if !defined(WIN32) && !defined(__APPLE__)
+        if (os_find_ca_bundle(NULL) == NULL) {
+            merror(AG_SSL_SYSTEM_NO_BUNDLE);
+            return false;
+        }
+#endif
+
+        return true;
+    }
+
     /* A verifying mode without a readable CA can never connect: the https_client module
      * fails closed on this, per its own validation. */
-    if (!readable) {
+    if (!ca || !w_is_file(ca)) {
         merror(AG_INV_SSL_CA, ca ? ca : "");
         return false;
     }
@@ -149,6 +210,8 @@ static const char *w_agent_verify_mode_str(int verification_mode)
         return "certificate";
     case AGENT_VERIFY_NONE:
         return "none";
+    case AGENT_VERIFY_SYSTEM:
+        return "system";
     default:
         return "unknown";
     }
@@ -177,8 +240,11 @@ cJSON *getAgentConfig(void) {
             cJSON_AddStringToObject(server, "address", agt->server[i].rip);
             cJSON_AddNumberToObject(server, "port", agt->server[i].port);
 
-            if (agt->server[i].network_interface)
-                cJSON_AddNumberToObject(server, "interface_index", agt->server[i].network_interface);
+            if (agt->server[i].endpoint)
+                cJSON_AddStringToObject(server, "endpoint", agt->server[i].endpoint);
+
+            if (agt->server[i].scope_id)
+                cJSON_AddNumberToObject(server, "scope_id", agt->server[i].scope_id);
 
             cJSON_AddNumberToObject(server, "max_retries", agt->server[i].max_retries);
             cJSON_AddNumberToObject(server, "retry_interval", agt->server[i].retry_interval);

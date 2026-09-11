@@ -64,9 +64,11 @@ import sys
 import pytest
 
 from pathlib import Path
+from time import sleep
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.logger import logger
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.fim.patterns import EVENT_TYPE_DELETED, EVENT_TYPE_MODIFIED
 from wazuh_testing.modules.fim.utils import get_fim_event_data
@@ -170,7 +172,24 @@ def test_delete_dir(test_configuration, test_metadata, set_wazuh_configuration, 
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
     assert wazuh_log_monitor.callback_result
 
-    file.delete_path_recursively(folder_to_delete)
+    # This module is entirely skipif'd on Windows (see pytestmark above), so the Windows branch
+    # below is dormant today -- it's here for when that skip is lifted, since this deletion is
+    # the test's own action (it's what triggers the delete event asserted below) and would hit
+    # the same Windows lock race #38675 fixes elsewhere once it runs there.
+    if sys.platform == WINDOWS:
+        max_retries = 15
+        retry_delay = 1
+        for attempt in range(max_retries):
+            try:
+                file.delete_path_recursively(folder_to_delete)
+                break
+            except OSError as exception:
+                if attempt == max_retries - 1:
+                    raise
+                logger.debug(f"Retrying deletion of {folder_to_delete}: {exception}")
+                sleep(retry_delay)
+    else:
+        file.delete_path_recursively(folder_to_delete)
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
     assert wazuh_log_monitor.callback_result
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['file']['mode'] == fim_mode

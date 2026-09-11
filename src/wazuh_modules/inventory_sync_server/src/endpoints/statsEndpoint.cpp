@@ -179,6 +179,7 @@ namespace invsync::endpoints::stats
                 return;
             }
 
+            std::string serializedDocument;
             try
             {
                 // JSON pointers so `wazuh.agent.id` reads the way it is spelled everywhere else in
@@ -193,27 +194,44 @@ namespace invsync::endpoints::stats
                 // be one allocation per node of every module's subtree, per agent report.
                 document["/wazuh/agent/statistics"_json_pointer] = std::move(*modules);
 
-                indexer->index(agentIdIt->second, indexName(), document.dump());
-
-                if (const auto decision = indexedThrottle.record())
-                {
-                    LOGFN_DEBUG1(logFn(),
-                                 "Queued %llu agent stats document(s) for indexing in the last %d s.",
-                                 static_cast<unsigned long long>(decision.total),
-                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
-                }
-
-                // The protocol's acknowledgment: an empty object. The agent has nothing to read back.
-                responder->send(wazuh::uds_http::HttpResponse::json(200, "{}"));
+                serializedDocument = document.dump();
             }
             catch (const std::exception& e)
             {
                 // Serializing can still fail on input we accepted -- invalid UTF-8 in the agent id
                 // header or anywhere inside the report, which nlohmann rejects at dump() time rather
-                // than at parse time.
+                // than at parse time. Still the caller's fault.
                 LOGFN_DEBUG1(logFn(), "Could not serialize an agent stats document: %s.", e.what());
                 responder->send(badRequest("Report holds bytes that are not valid UTF-8"));
+                return;
             }
+
+            try
+            {
+                indexer->index(agentIdIt->second, indexName(), serializedDocument);
+            }
+            catch (const std::exception& e)
+            {
+                // The body was fine; the write to storage was not. A 400 here would tell the agent
+                // to fix a payload that was never wrong; 503 correctly tells it to retry.
+                LOGFN_DEBUG1(logFn(),
+                             "Could not index agent stats document for agent '%s': %s.",
+                             agentIdIt->second.c_str(),
+                             e.what());
+                responder->send(serviceUnavailable());
+                return;
+            }
+
+            if (const auto decision = indexedThrottle.record())
+            {
+                LOGFN_DEBUG1(logFn(),
+                             "Queued %llu agent stats document(s) for indexing in the last %d s.",
+                             static_cast<unsigned long long>(decision.total),
+                             wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+            }
+
+            // The protocol's acknowledgment: an empty object. The agent has nothing to read back.
+            responder->send(wazuh::uds_http::HttpResponse::json(200, "{}"));
         };
     }
 

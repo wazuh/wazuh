@@ -77,7 +77,7 @@ defaults
 #  TLS PASSTHROUGH (:8444) -- layer 4
 #
 #  'mode tcp' and no 'ssl' anywhere: HAProxy never sees the HTTP, so it
-#  cannot break the signature. The agent validates REMOTED's certificate
+#  cannot touch the request. The agent validates REMOTED's certificate
 #  and its own client certificate reaches remoted intact.
 # =====================================================================
 frontend passthrough_in
@@ -109,8 +109,8 @@ frontend termination_in
     # [!] 'crt' takes ONE file with the certificate AND its key concatenated -- see 3.1.
     # The SAN of that certificate must contain the name agents connect to.
     #
-    # Add 'alpn h2,http/1.1' to also offer HTTP/2 to agents; the signature survives the
-    # conversion to HTTP/1.1 towards the manager.
+    # Add 'alpn h2,http/1.1' to also offer HTTP/2 to agents; the bearer token survives the
+    # conversion to HTTP/1.1 towards the manager (it lives in a header).
     bind :8443 ssl crt /etc/haproxy/certs/load_balancer.pem ssl-min-ver TLSv1.2
 
     default_backend remoted_nodes_http
@@ -123,7 +123,7 @@ backend remoted_nodes_http
     http-check send meth GET uri /
     http-check expect status 200
 
-    # Informational. Safe to add: headers are not covered by the signature.
+    # Informational. Safe to add: headers are not covered by the bearer token.
     http-request set-header X-Real-IP %[src]
     option forwardfor
 
@@ -263,6 +263,7 @@ openssl s_client -connect wazuh-manager.example.com:8444 </dev/null 2>/dev/null 
 #    :8443 must show the BALANCER's certificate, :8444 the MANAGER's
 
 # 3. The health check endpoint answers, unauthenticated
+#    (with remote.https.global_prefix configured, probe /<prefix>/ instead — e.g. /wazuh-manager/)
 curl -k https://wazuh-manager.example.com:8443/
 #    -> {"status":"ok","module":"remoted"}
 ```
@@ -280,8 +281,9 @@ What each status code tells you:
 
 | Code | Meaning |
 |---|---|
-| `202` | signature valid **and** the event was ingested |
-| `401` | signature rejected — if it is *every* request, something is rewriting the target |
+| `202` | token valid **and** the event was ingested |
+| `401` | token rejected — unknown agent, wrong key or clock drift |
+| `404` | no such route — if it is *every* request, something is rewriting the target |
 | `413` | body too large — remoted's own 20 MB limit |
 | `502` / `503` | HAProxy could not get an answer — suspect TLS 1.3, certificate verification, or every manager being down |
 

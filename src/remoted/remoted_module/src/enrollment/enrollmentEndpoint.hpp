@@ -36,8 +36,8 @@ namespace remoted::enrollment
      * @brief Builds the `POST /enroll` route handler.
      *
      * Registered directly on IHttpServer (see remotedModuleFacade.hpp) -- NOT through AuthGateway --
-     * because an enrolling agent has no client.keys entry yet, so the agent<->manager AES-CMAC
-     * protocol cannot authenticate it. The returned handler:
+     * because an enrolling agent has no client.keys entry yet, so the agent<->manager
+     * `wazuh-agent+jwt` bearer cannot authenticate it. The returned handler:
      *   1. Answers 403 immediately if @p config.enrollmentEnabled is false, before touching the
      *      authenticator or the bridge -- the route always exists (never a 404); this is what
      *      lets an operator/agent tell "unsupported" apart from "administratively off".

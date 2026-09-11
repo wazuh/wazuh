@@ -13,6 +13,9 @@
 
 #include "remoted_module.h"
 
+#include "jwt/jwtProfileV1.hpp"
+#include "jwt/jwtVerifyError.hpp"
+
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -87,7 +90,7 @@ namespace remoted::auth
     };
 
     /**
-     * @brief Identity + payload an endpoint handler receives once the MAC has
+     * @brief Identity + payload an endpoint handler receives once the bearer token has
      *        been verified.
      *
      * This struct is the contract between the transport and endpoint-specific
@@ -97,12 +100,12 @@ namespace remoted::auth
      */
     struct AuthenticatedRequest
     {
-        std::string agentId;         ///< Agent id parsed from the Authorization header.
+        std::string agentId;         ///< Verified agent id, canonical (the token's `sub`, never the raw header).
         std::string protocolVersion; ///< Value of the protocol-version header.
         std::string method;          ///< Uppercase HTTP method, e.g. "POST".
         std::string requestTarget;   ///< Raw path + query, exactly as received.
         Payload payload;             ///< Verified request body (a view into the single transport buffer).
-        /// When the auth gateway picked the request up (stamped once, before the CMAC pipeline
+        /// When the auth gateway picked the request up (stamped once, before authentication
         /// runs). Feeds the remoted.http.<endpoint>.latency histograms: end-to-end time is
         /// measured from here to response delivery. steady_clock so an NTP step can't produce
         /// negative or wild durations. Default (epoch) means "never stamped" -- consumers skip
@@ -127,12 +130,16 @@ namespace remoted::auth
         MalformedAuthorization,
         UnknownAgent,
         MissingKey,
-        AddressNotAllowed, ///< The peer address does not satisfy the agent's client.keys ip column
-                           ///< (the legacy remoted's ENC_IP_ERROR rejection). Collapses to the
-                           ///< generic 401: a distinct status would confirm that the agent id exists.
-        ExpiredRequest,
-        FutureRequest,
-        InvalidMac,
+        AddressNotAllowed,    ///< The peer address does not satisfy the agent's client.keys ip column
+                              ///< (the legacy remoted's ENC_IP_ERROR rejection). Collapses to the
+                              ///< generic 401: a distinct status would confirm that the agent id exists.
+        InvalidToken,         ///< The bearer is not a `wazuh-agent+jwt` token: size, compact grammar,
+                              ///< base64url, JSON, header/claim sets or types, jti, or the structural
+                              ///< time rules (nbf == iat, exp > iat, exp - iat <= 60).
+        InvalidSignature,     ///< The HS256 signature does not verify with the agent's key.
+        StaleToken,           ///< Clock-relative rejection: issued in the future, expired, or older than
+                              ///< the accepted age (AuthConfig::timePolicy).
+        IdentityMismatch,     ///< `sub` / `iss` do not name the agent `kid` names.
         PayloadAgentMismatch, ///< Raised by POST /stateless's pre-forward check (statelessEndpoint.cpp):
                               ///< the H-line JSON is missing/malformed, or wazuh.agent.id is
                               ///< missing/not-a-string/not-numeric, or doesn't match the authenticated
@@ -144,12 +151,21 @@ namespace remoted::auth
         EnrollmentKeyUnavailable,   ///< Raised ONLY by EnrollmentAuthenticator's Password mode
                                     ///< (enrollmentAuthenticator.cpp): etc/authd.pass is missing,
                                     ///< unreadable, invalid, or not yet synced from the master to this
-                                    ///< node, OR AES-CMAC is unavailable manager-wide. Deliberately
+                                    ///< node, OR the HKDF provider is unavailable manager-wide. Deliberately
                                     ///< distinct from MissingKey (a client.keys decode failure for an
                                     ///< ALREADY-enrolled agent) -- collapsing the two would have
                                     ///< logRejection() tell an operator to "re-enroll the affected
                                     ///< agent(s)" for a condition where no agent, and no client.keys
                                     ///< entry, exists yet at all.
+    };
+
+    /**
+     * @brief What AuthMiddleware::authenticate() hands back on success: the identity every
+     *        consumer downstream may trust, and nothing else.
+     */
+    struct VerifiedAgent
+    {
+        std::string agentId; ///< Canonical form ("001"): the token's verified `sub`, equal to `kid`.
     };
 
     /**
@@ -181,6 +197,25 @@ namespace remoted::auth
     PublicError publicErrorFor(AuthError err);
 
     /**
+     * @brief The only `protocol-version` header value this manager accepts.
+     *
+     * A protocol constant, not an ops tuning knob -- which is why it is not C-ABI driven. Named
+     * here rather than spelled inline so that EVERY authenticated scheme reads the same value:
+     * both the agent<->manager bearer-JWT middleware (AuthConfig below) and the enrollment scheme
+     * (EnrollmentAuthConfig) default to it, so the two can never drift into accepting different
+     * versions -- and neither can hardcode a literal that silently disagrees with what it
+     * validates.
+     */
+    inline constexpr std::string_view kSupportedProtocolVersion {"1"};
+
+    /**
+     * @brief Maps a verifier failure class onto the AuthError taxonomy. Shared by the
+     *        `wazuh-agent+jwt` middleware and the `wazuh-enroll+jwt` enrollment authenticator so
+     *        the same verifier outcome always counts in the same metric cell.
+     */
+    AuthError toAuthError(jwt_profile::v1::VerifyError error);
+
+    /**
      * @brief Auth-protocol tunables shared by every transport.
      *
      * Every transport implementation must configure the exact same knobs the
@@ -188,9 +223,12 @@ namespace remoted::auth
      */
     struct AuthConfig
     {
-        std::string supportedProtocolVersion = "1"; ///< Expected value of the protocol-version header.
-        std::int64_t maxRequestAgeSeconds = 300;    ///< How far in the past a request timestamp may be.
-        std::int64_t maxFutureSkewSeconds = 30;     ///< How far in the future a request timestamp may be.
+        std::string supportedProtocolVersion {kSupportedProtocolVersion}; ///< Expected protocol-version header.
+        /// Accepted token age and clock skew for the `wazuh-agent+jwt` bearer: the profile defaults
+        /// (60 s / 30 s) unless remoted's `remoted.jwt_max_age` / `remoted.jwt_clock_skew` internal
+        /// options change them, within the profile ceiling (43200 s / 43200 s -- C-ABI `jwt_max_age`
+        /// / `jwt_clock_skew`, see buildAuthConfig()).
+        jwt_profile::v1::TimePolicy timePolicy {};
         std::size_t maxBodySize = 10 * 1024 * 1024; ///< Hard cap on the authenticated body size (10 MiB).
     };
 
@@ -201,9 +239,26 @@ namespace remoted::auth
      * remoted::http::buildHttpServerConfig(). `supportedProtocolVersion` is not C-ABI driven --
      * it's a protocol constant, not an ops tuning knob.
      *
+     * The time policy is the one place a value can be rejected rather than defaulted: an unset
+     * value (`jwt_max_age <= 0`; `jwt_clock_skew` without `jwt_clock_skew_set` -- zero skew is a
+     * valid setting) takes the profile default (60 s / 30 s), but a configured value outside the
+     * profile ceiling (1..43200 / 0..43200, which remoted's own getDefine_Int_default() range
+     * already prevents) throws std::invalid_argument -- the module must never start with a wider
+     * window than the profile allows.
+     *
+     * @throw std::invalid_argument if jwt_max_age > 43200, or jwt_clock_skew_set with a skew outside 0..43200.
+     *
      * @param config Configuration handed by remoted.
      * @return Resolved AuthConfig.
      */
     AuthConfig buildAuthConfig(const remoted_module_config_t& config);
+
+    /**
+     * @brief The C-ABI `jwt_max_age` / `jwt_clock_skew` (+ `jwt_clock_skew_set`) fields as a
+     *        TimePolicy: unset -> profile default (60 s / 30 s); configured values validated
+     *        (throws std::invalid_argument outside the profile ceiling, zero skew included as valid).
+     *        Shared by buildAuthConfig() and the enrollment config so both schemes read ONE policy.
+     */
+    jwt_profile::v1::TimePolicy buildTimePolicy(int jwtMaxAge, int jwtClockSkew, bool jwtClockSkewSet);
 
 } // namespace remoted::auth

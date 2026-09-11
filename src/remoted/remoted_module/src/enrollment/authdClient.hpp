@@ -57,7 +57,7 @@ namespace remoted::enrollment
 
     /**
      * @brief Bridges an enrollment "add" request to authd's local Unix-domain socket
-     *        (queue/sockets/auth by default), the same interface `manage_agents`/the framework
+     *        (queue/sockets/auth.sock by default), the same interface `manage_agents`/the framework
      *        already use. authd owns all enrollment business logic; this class only forwards.
      *
      * Connect-per-request, unlike WazuhDBClient/TaskClient's persistent connection: authd closes
@@ -116,7 +116,7 @@ namespace remoted::enrollment
     class AuthdClient
     {
     public:
-        static constexpr const char* kDefaultSocketPath = "queue/sockets/auth";
+        static constexpr const char* kDefaultSocketPath = "queue/sockets/auth.sock";
         static constexpr std::uint32_t kDefaultConnectTimeoutMs = 2000;
         static constexpr std::uint32_t kMasterDefaultResponseTimeoutMs = 5000;
         static constexpr std::uint32_t kWorkerDefaultResponseTimeoutMs = 15000;

@@ -54,6 +54,9 @@ double __wrap_sqlite3_column_double(sqlite3_stmt *pStmt,
 int __wrap_sqlite3_column_int(sqlite3_stmt *pStmt,
                               int iCol);
 
+sqlite3_int64 __wrap_sqlite3_column_int64(sqlite3_stmt *pStmt,
+                                          int iCol);
+
 const unsigned char *__wrap_sqlite3_column_text(sqlite3_stmt *pStmt,
                                                 int iCol);
 

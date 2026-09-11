@@ -89,7 +89,9 @@ int StartMQPredicated(const char *key, short int type, short int n_attempts, boo
  * Notes: (UNIX) If the socket is busy when trying to send a message a DEBUG2 message will be loggeed but the return code will be 0
  */
 
-int SendMSGPredicated(int queue, const char *message, const char *locmsg, char loc, bool (*fn_ptr)()) __attribute__((nonnull));
+/* message (arg 2) is excluded on purpose: SendMSGAction() guards it, and declaring it
+ * non-null lets the optimizer propagate that through and delete the guard. */
+int SendMSGPredicated(int queue, const char *message, const char *locmsg, char loc, bool (*fn_ptr)()) __attribute__((nonnull(3, 5)));
 
 /**
  * Sends a message string through a message queue
@@ -105,7 +107,9 @@ int SendMSGPredicated(int queue, const char *message, const char *locmsg, char l
  * Notes: (UNIX) If the socket is busy when trying to send a message a DEBUG2 message will be loggeed but the return code will be 0
  */
 
-int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull));
+/* message (arg 2) is excluded on purpose: SendMSGAction() guards it, and declaring it
+ * non-null lets the optimizer propagate that through and delete the guard. */
+int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull(3)));
 
 /**
  * Sends a message binary through a message queue

@@ -9,12 +9,12 @@
       agent.state_interval: -1
 
 - name: Undefined_state_interval_value
-  description: Check undefined state interval option
+  description: Check a state interval option written with no value
   configuration_parameters:
   metadata:
-    event_monitor: '.*State file is disabled.*'
+    event_monitor: '.*Invalid definition for agent.state_interval.*'
     state_file_exist: False
-    agentd_ends: False
+    agentd_ends: True
     local_internal_options:
       agent.state_interval: ' '
 

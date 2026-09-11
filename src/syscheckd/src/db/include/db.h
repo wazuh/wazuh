@@ -264,6 +264,19 @@ EXPORTED char* fim_db_calculate_table_checksum(const char* table_name);
 EXPORTED int64_t fim_db_get_last_sync_time(const char* table_name);
 
 /**
+ * @brief Reads a table_metadata value, reporting a failed read separately from an absent row.
+ *
+ * fim_db_get_last_sync_time() answers 0 for both, which is fine for a timestamp -- an absent
+ * marker and an unreadable database both mean "no usable time" -- but not for a caller that
+ * treats absence as permission to record something. Use this one there.
+ *
+ * @param table_name Pseudo-key to read.
+ * @param out_value Receives the stored value, or 0 when the row is absent.
+ * @return false when the read itself failed; true when it answered, absent row included.
+ */
+EXPORTED bool fim_db_try_get_last_sync_time(const char* table_name, int64_t* out_value);
+
+/**
  * @brief Update the last sync time for a table.
  *
  * @param table_name Name of the table.

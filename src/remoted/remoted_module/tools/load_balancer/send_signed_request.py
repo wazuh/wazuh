@@ -1,43 +1,45 @@
 #!/usr/bin/env python3
 """
-Sends AES-CMAC-signed requests to remoted's HTTPS events API, with the precise control the
-load-balancer tests need.
+Sends bearer-authenticated (wazuh-agent+jwt) requests to remoted's HTTPS events API, with the precise
+control the load-balancer tests need.
 
-The sibling tools in ../ (send_stateless.py, send_agent_json.py) hardcode target="/stateless"
-per scenario and sign and send in one step. That is right for their job but cannot express
-these tests. This tool adds:
+The sibling tools in ../ (send_stateless.py, send_agent_json.py) hardcode target="/stateless" per
+scenario. That is right for their job but cannot express these tests. This tool adds:
 
-  * the request target is signed AND SENT VERBATIM  -> detects proxy normalisation
-  * --repeat        resends the SAME signed bytes N times            -> replay
-  * --timestamp     pins an absolute timestamp, so two invocations produce byte-identical
+  * the request target is SENT VERBATIM                            -> detects proxy normalisation
+                    (it is not part of authentication: a rewritten path is a 404, never a 401)
+  * --repeat        resends the SAME bytes -- same token -- N times  -> replay
+  * --timestamp     pins the token's iat (with --jti), so two invocations produce byte-identical
                     requests                                        -> replay across nodes
   * --keepalive     reuses ONE connection for every request          -> per-connection vs
                                                                         per-request balancing
-  * --strip-content-encoding / --add-content-encoding
-                    changes that header AFTER signing                -> unsigned-field tests
+  * --strip-content-encoding / --add-content-encoding / --tamper-body
+                    changes the header or the body after minting    -> proves they are NOT
+                    the token                                          authenticated
+  * --tamper        corrupts the token's signature                   -> must be 401
   * --client-cert   presents a client certificate                    -> verification_mode tests
   * --no-auth       sends NO Authorization header                    -> health-check tests, and
-                                                                        proof that unsigned
+                                                                        proof that unauthenticated
                                                                         requests are rejected
   * --print-auth    prints the Authorization header and exits        -> lets OTHER clients (e.g.
-                                                                        curl --http2) send a
-                                                                        validly signed request
+                                                                        curl --http2) send an
+                                                                        authenticated request
 
 It speaks raw http.client rather than `requests`, because requests/urllib3 normalise the URL
 and would destroy exactly what we are trying to measure.
 
-Canonical string signed (see ../../src/auth/authMiddleware.cpp, beginSession):
-
-    "WAZUH-REQUEST\\n" + protocol_version + "\\n" + METHOD + "\\n" + request_target + "\\n"
-    + agent_id + "\\n" + timestamp + "\\n" + body
+The token (see ../wire_jwt.py, which must sit next to ../): HS256 over exactly
+{alg,kid,typ} / {exp,iat,iss,jti,nbf,sub}, keyed with the 32 bytes of the agent's client.keys
+secret. It binds the agent's identity only -- not the method, target, headers or body.
 
 Response codes and what they prove:
 
-    202  signature valid AND event ingested by the engine
-    401  signature rejected                      -> authentication FAILED
-    400  signature valid, body not understood    -> authentication PASSED
-    503  signature valid, engine unavailable     -> authentication PASSED
-    502  the proxy could not reach the node      -> never reached authentication
+    202  token valid AND event ingested by the engine
+    401  token rejected                            -> authentication FAILED
+    400  token valid, body not understood          -> authentication PASSED
+    503  token valid, engine unavailable           -> authentication PASSED
+    404  the route does not exist (prefix/path)    -> never reached authentication
+    502  the proxy could not reach the node        -> never reached authentication
 
 A manipulation that returns 400 or 503 instead of 401 got past authentication.
 """
@@ -45,6 +47,7 @@ A manipulation that returns 400 or 503 instead of 401 got past authentication.
 import argparse
 import http.client
 import json
+import os
 import socket
 import ssl
 import sys
@@ -52,40 +55,10 @@ import time
 from collections import Counter
 from urllib.parse import urlparse
 
-from cryptography.hazmat.primitives.ciphers import algorithms
-from cryptography.hazmat.primitives.cmac import CMAC
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+from wire_jwt import make_jwt, read_agent_key, tamper_token  # noqa: E402  (../wire_jwt.py)
 
 DEFAULT_BODY = 'H {"wazuh":{"agent":{"id":"1001"}}}\nE 1:/var/log/syslog:load balancer test event'
-
-
-def read_agent_key(path: str, agent_id: str) -> bytes:
-    """client.keys layout: 'id name ip key'. The key is lowercase hex -> 16/24/32 bytes."""
-    with open(path, encoding="utf-8") as handle:
-        for line in handle:
-            if not line.strip() or line.startswith("#") or line.startswith(" "):
-                continue
-            fields = line.split()
-            if len(fields) >= 4 and fields[0] == agent_id:
-                key = bytes.fromhex(fields[3])
-                if len(key) not in (16, 24, 32):
-                    sys.exit(f"the key for agent {agent_id} decodes to {len(key)} bytes "
-                             "(remoted requires 16, 24 or 32)")
-                return key
-    sys.exit(f"agent {agent_id} not found in {path}")
-
-
-def sign(key: bytes, protocol_version: str, method: str, target: str,
-         agent_id: str, timestamp: int, body: bytes) -> str:
-    """AES-CMAC over the canonical request. Returns lowercase hex."""
-    mac = CMAC(algorithms.AES(key))
-    mac.update(b"WAZUH-REQUEST\n")
-    mac.update(protocol_version.encode() + b"\n")
-    mac.update(method.upper().encode() + b"\n")
-    mac.update(target.encode() + b"\n")
-    mac.update(agent_id.encode() + b"\n")
-    mac.update(str(timestamp).encode() + b"\n")
-    mac.update(body)
-    return mac.finalize().hex()
 
 
 def build_tls_context(client_cert: str = None, client_key: str = None) -> ssl.SSLContext:
@@ -207,13 +180,14 @@ def parse_arguments():
     parser.add_argument("--client-keys", default="/var/wazuh-manager/etc/client.keys")
     parser.add_argument("--agent-id", default="1001")
     parser.add_argument("--target", default="/stateless",
-                        help="request target, signed AND sent verbatim (default: %(default)s)")
+                        help="request target, sent verbatim (default: %(default)s). Not part of "
+                             "authentication: the bearer token binds the agent's identity only")
     parser.add_argument("--method", default="POST")
     parser.add_argument("--protocol-version", default="1")
     parser.add_argument("--body", default=DEFAULT_BODY)
     parser.add_argument("--body-file")
     parser.add_argument("--repeat", type=int, default=1,
-                        help="resend the SAME signed request N times (replay)")
+                        help="resend the SAME request -- same token -- N times (replay)")
     parser.add_argument("--interval", type=float, default=0.0,
                         help="seconds to wait between resends")
     parser.add_argument("--keepalive", action="store_true",
@@ -222,18 +196,22 @@ def parse_arguments():
                         help="one connection per resend, each RESUMING the previous TLS "
                              "session (what a proxy does by default)")
     parser.add_argument("--timestamp", type=int,
-                        help="absolute timestamp to sign. Pinning it makes two invocations "
-                             "produce byte-identical requests, for replay across nodes")
+                        help="absolute iat for the token. Pinning it (with --jti) makes two "
+                             "invocations produce byte-identical requests, for replay across nodes")
     parser.add_argument("--timestamp-offset", type=int, default=0,
-                        help="shift the signed timestamp (negative = older)")
+                        help="shift the token's iat (negative = older)")
+    parser.add_argument("--jti", help="fixed token id (22 base64url chars); default: fresh per run")
     parser.add_argument("--zstd", action="store_true",
                         help="compress the body and add Content-Encoding: zstd")
     parser.add_argument("--strip-content-encoding", action="store_true",
-                        help="remove Content-Encoding AFTER signing (unsigned-field test)")
+                        help="remove Content-Encoding after minting the token (the header is not authenticated)")
     parser.add_argument("--add-content-encoding",
-                        help="add this Content-Encoding AFTER signing (unsigned-field test)")
+                        help="add this Content-Encoding after minting the token (the header is not authenticated)")
     parser.add_argument("--tamper", action="store_true",
-                        help="modify the body after signing; must return 401")
+                        help="corrupt the token's signature; must return 401")
+    parser.add_argument("--tamper-body", action="store_true",
+                        help="modify the body after minting the token; the body is NOT authenticated, so "
+                             "this passes auth (400/503, never 401)")
     parser.add_argument("--header", action="append", default=[], metavar="NAME:VALUE",
                         help="extra header (repeatable)")
     parser.add_argument("--no-auth", action="store_true",
@@ -241,8 +219,8 @@ def parse_arguments():
                              "client.keys")
     parser.add_argument("--print-auth", action="store_true",
                         help="print the Authorization header value and exit without sending, so "
-                             "another client (e.g. curl --http2) can send a validly signed "
-                             "request. Sign the exact same --method/--target/--body there")
+                             "another client (e.g. curl --http2) can send an authenticated "
+                             "request with it (any method/target/body: the token binds identity only)")
     parser.add_argument("--client-cert", help="client certificate to present (mTLS)")
     parser.add_argument("--client-key", help="private key for the client certificate")
     parser.add_argument("--timeout", type=float, default=30.0)
@@ -274,24 +252,25 @@ def main() -> int:
         headers["Content-Encoding"] = "zstd"
 
     if args.no_auth:
-        # Unauthenticated on purpose (health probe / rejection test): nothing is signed, so
+        # Unauthenticated on purpose (health probe / rejection test): no token is minted, so
         # this path works even on a box whose client.keys is empty.
-        mac = "(unauthenticated)"
+        token = "(unauthenticated)"
     else:
-        key = read_agent_key(args.client_keys, args.agent_id)
-        # Signed HERE. Anything after this point simulates what an intermediary could alter.
-        mac = sign(key, args.protocol_version, args.method, args.target,
-                   args.agent_id, timestamp, body)
+        key_hex = read_agent_key(args.agent_id, args.client_keys)
+        # Minted HERE. Anything after this point simulates what an intermediary could alter.
+        token = make_jwt(args.agent_id, key_hex, now=timestamp, jti=args.jti)
+        if args.tamper:
+            token = tamper_token(token)
         if args.print_auth:
-            print(f"Wazuh {args.agent_id}:{timestamp}:{mac}")
+            print(f"Bearer {token}")
             return 0
-        headers["Authorization"] = f"Wazuh {args.agent_id}:{timestamp}:{mac}"
+        headers["Authorization"] = f"Bearer {token}"
 
     if args.strip_content_encoding:
         headers.pop("Content-Encoding", None)
     if args.add_content_encoding:
         headers["Content-Encoding"] = args.add_content_encoding
-    if args.tamper:
+    if args.tamper_body:
         body += b" TAMPERED"
     for raw in args.header:
         name, _, value = raw.partition(":")
@@ -305,8 +284,8 @@ def main() -> int:
             connection_note = ("one shared connection" if args.keepalive
                                else "a new connection each, resuming the TLS session"
                                if args.resume_session else "a new connection each")
-            print(f"    signed ONCE, resent {args.repeat} times over {connection_note} "
-                  f"-- MAC {mac[:16]}...")
+            print(f"    token minted ONCE, resent {args.repeat} times over {connection_note} "
+                  f"-- token {token[-16:]}")
 
     if args.resume_session:
         results = send_resuming_session(host, port, args.method, args.target, headers, body,

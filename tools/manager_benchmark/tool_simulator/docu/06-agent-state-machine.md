@@ -48,8 +48,9 @@ Rules:
 - **The lanes run in parallel with each other**, one goroutine per lane (see
   [07](07-scenario-schema.md) and [08](08-concurrency-and-pacing.md)). An agent in the mixed fleet
   runs its FIM, SCA, syscollector, VD and engine lanes simultaneously — the realistic shape.
-- **`startup` failure is fatal for that agent** (`400 invalid_version` or `401` means the run is
-  misconfigured); it **MUST** be reported as failed, not silently kept sending.
+- **`startup` failure is fatal for that agent** (`400`/`409 invalid_version` or `401` means the run
+  is misconfigured — a malformed version, a version above the manager's `allow_higher_versions`
+  policy, or bad signing); it **MUST** be reported as failed, not silently kept sending.
 - **A keepalive failure is not fatal**: it is counted (`control_notify_err`) and the loop continues,
   because a manager that starts failing keepalives under load is precisely a thing to observe.
 - **`notify` without `startup` is legal** on the manager side, so a scenario **MAY** model

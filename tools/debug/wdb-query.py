@@ -13,7 +13,7 @@ from sys import stdin
 from json import dumps, loads
 from json.decoder import JSONDecodeError
 
-WDB_PATH = '/var/wazuh-manager/queue/db/wdb'
+WDB_PATH = '/var/wazuh-manager/queue/sockets/wdb.sock'
 DEFAULT_WORKERS = 8
 STDIN_FILENO = stdin.fileno()
 

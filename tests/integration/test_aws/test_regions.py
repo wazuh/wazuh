@@ -119,6 +119,12 @@ def test_regions(
         '--debug', '2'
     ]
 
+    # Under the per-run namespace (issue #38194) create_test_bucket injects a <path> into the config, so
+    # the module is invoked with --trail_prefix. No-op locally (no namespace -> no 'path' in metadata).
+    if metadata.get('path'):
+        parameters.insert(3, metadata['path'])
+        parameters.insert(3, '--trail_prefix')
+
     # Check AWS module started
     log_monitor.start(
         timeout=session_parameters.default_timeout,
@@ -150,7 +156,12 @@ def test_regions(
             if hasattr(row, "aws_region"):
                 assert row.aws_region in regions_list
             else:
-                assert row.log_key.split("/")[3] in regions_list
+                # Strip the per-run namespace prefix (issue #38194) so the region stays at the same
+                # positional index as without a namespace. No-op locally (no 'path' in metadata).
+                log_key = row.log_key
+                if metadata.get('path'):
+                    log_key = log_key[len(metadata['path']):]
+                assert log_key.split("/")[3] in regions_list
 
     else:
         invalid_region = None

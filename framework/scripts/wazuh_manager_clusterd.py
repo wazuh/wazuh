@@ -187,7 +187,7 @@ def get_script_arguments() -> argparse.Namespace:
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
     parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
     parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
-                        default=common.OSSEC_CONF)
+                        default=common.MANAGER_CONF)
 
     return parser
 

@@ -164,6 +164,170 @@ void test_validate_srcip_rejects_hostname(void **state) {
     assert_int_equal(validate_srcip("google.com"), OS_INVALID);
 }
 
+// Tests for is_valid_username (Debian adduser constraints)
+
+void test_is_valid_username_valid_simple(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("testuser"), 1);
+}
+
+void test_is_valid_username_valid_with_numbers(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("user123"), 1);
+    assert_int_equal(is_valid_username("1testuser"), 1);
+}
+
+void test_is_valid_username_valid_with_underscore(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("_testuser"), 1);
+    assert_int_equal(is_valid_username("test_user"), 1);
+}
+
+void test_is_valid_username_valid_with_hyphen(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("test-user"), 1);
+}
+
+void test_is_valid_username_valid_with_dollar(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("machine$"), 1);
+    assert_int_equal(is_valid_username("test$user"), 1);
+}
+
+void test_is_valid_username_valid_uppercase(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("TestUser"), 1);
+    assert_int_equal(is_valid_username("TESTUSER"), 1);
+}
+
+void test_is_valid_username_valid_with_dot(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("test.user"), 1);
+}
+
+void test_is_valid_username_invalid_root(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("root"), 0);
+}
+
+void test_is_valid_username_invalid_null(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username(NULL), 0);
+}
+
+void test_is_valid_username_invalid_empty(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username(""), 0);
+}
+
+void test_is_valid_username_invalid_starts_with_dash(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("-testuser"), 0);
+}
+
+void test_is_valid_username_invalid_starts_with_plus(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("+testuser"), 0);
+}
+
+void test_is_valid_username_invalid_starts_with_tilde(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("~testuser"), 0);
+}
+
+void test_is_valid_username_invalid_with_colon(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("test:user"), 0);
+}
+
+void test_is_valid_username_invalid_with_comma(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("test,user"), 0);
+}
+
+void test_is_valid_username_invalid_with_whitespace(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("test user"), 0);
+    assert_int_equal(is_valid_username("test\tuser"), 0);
+    assert_int_equal(is_valid_username("test\nuser"), 0);
+    assert_int_equal(is_valid_username("test\ruser"), 0);
+}
+
+void test_is_valid_username_invalid_with_slash(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("test/user"), 0);
+    assert_int_equal(is_valid_username("test\\user"), 0);
+}
+
+// Traversal sequences are rejected by the separator rule, not by a dedicated guard
+void test_is_valid_username_invalid_separators_in_traversal(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("../root"), 0);
+    assert_int_equal(is_valid_username("test/../user"), 0);
+    assert_int_equal(is_valid_username("..\\root"), 0);
+}
+
+void test_is_valid_username_valid_with_consecutive_dots(void **state) {
+    (void) state;
+    assert_int_equal(is_valid_username("john..doe"), 1);
+    assert_int_equal(is_valid_username("a..b"), 1);
+    assert_int_equal(is_valid_username(".."), 1);
+    assert_int_equal(is_valid_username("."), 1);
+}
+
+// The 256 bound is the current contract, not a settled one: LOGIN_NAME_MAX counts
+// the NUL, so the real maximum is 255. Confirm before changing.
+void test_is_valid_username_length_boundary(void **state) {
+    (void) state;
+    char username[300];
+
+    memset(username, 'a', 256);
+    username[256] = '\0';
+    assert_int_equal(is_valid_username(username), 1);
+
+    memset(username, 'a', 257);
+    username[257] = '\0';
+    assert_int_equal(is_valid_username(username), 0);
+}
+
+// Tests for get_username_from_json (the getter must apply is_valid_username)
+
+void test_get_username_from_json_accepts_valid(void **state) {
+    (void) state;
+    cJSON *input = cJSON_Parse("{\"user\":{\"name\":\"alice\"}}");
+    assert_non_null(input);
+    const char *username = get_username_from_json(input);
+    assert_non_null(username);
+    assert_string_equal(username, "alice");
+    cJSON_Delete(input);
+}
+
+void test_get_username_from_json_rejects_invalid(void **state) {
+    (void) state;
+    cJSON *input = cJSON_Parse("{\"user\":{\"name\":\"--help\"}}");
+    assert_non_null(input);
+    assert_null(get_username_from_json(input));
+    cJSON_Delete(input);
+}
+
+void test_get_username_from_json_accepts_consecutive_dots(void **state) {
+    (void) state;
+    cJSON *input = cJSON_Parse("{\"user\":{\"name\":\"john..doe\"}}");
+    assert_non_null(input);
+    const char *username = get_username_from_json(input);
+    assert_non_null(username);
+    assert_string_equal(username, "john..doe");
+    cJSON_Delete(input);
+}
+
+void test_get_username_from_json_rejects_root(void **state) {
+    (void) state;
+    cJSON *input = cJSON_Parse("{\"user\":{\"name\":\"root\"}}");
+    assert_non_null(input);
+    assert_null(get_username_from_json(input));
+    cJSON_Delete(input);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_get_ip_version_success_ipv4, test_setup, test_teardown),
@@ -177,6 +341,32 @@ int main(void) {
         cmocka_unit_test(test_validate_srcip_rejects_cidr),
         cmocka_unit_test(test_validate_srcip_rejects_argument_injection),
         cmocka_unit_test(test_validate_srcip_rejects_hostname),
+        cmocka_unit_test(test_is_valid_username_valid_simple),
+        cmocka_unit_test(test_is_valid_username_valid_with_numbers),
+        cmocka_unit_test(test_is_valid_username_valid_with_underscore),
+        cmocka_unit_test(test_is_valid_username_valid_with_hyphen),
+        cmocka_unit_test(test_is_valid_username_valid_with_dollar),
+        cmocka_unit_test(test_is_valid_username_valid_uppercase),
+        cmocka_unit_test(test_is_valid_username_valid_with_dot),
+        cmocka_unit_test(test_is_valid_username_invalid_root),
+        cmocka_unit_test(test_is_valid_username_invalid_null),
+        cmocka_unit_test(test_is_valid_username_invalid_empty),
+        cmocka_unit_test(test_is_valid_username_invalid_starts_with_dash),
+        cmocka_unit_test(test_is_valid_username_invalid_starts_with_plus),
+        cmocka_unit_test(test_is_valid_username_invalid_starts_with_tilde),
+        cmocka_unit_test(test_is_valid_username_invalid_with_colon),
+        cmocka_unit_test(test_is_valid_username_invalid_with_comma),
+        cmocka_unit_test(test_is_valid_username_invalid_with_whitespace),
+        cmocka_unit_test(test_is_valid_username_invalid_with_slash),
+        cmocka_unit_test(test_is_valid_username_invalid_separators_in_traversal),
+        cmocka_unit_test(test_is_valid_username_valid_with_consecutive_dots),
+        cmocka_unit_test(test_is_valid_username_length_boundary),
+
+        // get_username_from_json tests
+        cmocka_unit_test(test_get_username_from_json_accepts_valid),
+        cmocka_unit_test(test_get_username_from_json_rejects_invalid),
+        cmocka_unit_test(test_get_username_from_json_accepts_consecutive_dots),
+        cmocka_unit_test(test_get_username_from_json_rejects_root),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

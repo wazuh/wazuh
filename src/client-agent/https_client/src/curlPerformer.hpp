@@ -16,6 +16,7 @@
 #include "iHttpPerformer.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
+#include "sysSeams.hpp"
 
 /**
  * @brief Maps an HttpRequestSpec onto option calls of an injected
@@ -26,7 +27,16 @@
 class CurlPerformer final : public IHttpPerformer
 {
     public:
+        /// Convenience overload for production and for tests that do not care
+        /// about verify_mode=system's Linux trust-anchor resolution: uses a
+        /// real FsProbe internally.
         CurlPerformer(const ModuleConfig& config, CurlHandleFactory factory);
+
+        /// @param fsProbe Used ONLY during construction (never stored) to resolve
+        ///        verify_mode=system's trust anchor once, up front -- not on every
+        ///        perform(), which would probe the filesystem on every request.
+        ///        Irrelevant for every other verify_mode.
+        CurlPerformer(const ModuleConfig& config, CurlHandleFactory factory, const IFsProbe& fsProbe);
 
         HttpResponse perform(const HttpRequestSpec& spec) override;
 

@@ -31,6 +31,8 @@
         "src/wazuh_modules/src/wm_aws.c",
         "src/wazuh_modules/src/wm_aws.h",
         "wodles/aws/wazuh_integration.py",
+        "wodles/utils.py",
+        "wodles/__init__.py",
         "src/Makefile",
         "tests/integration/conftest.py",
         "tests/integration/test_aws/**"
@@ -47,6 +49,8 @@
         "wodles/aws/services/inspector.py",
         "wodles/aws/services/aws_service.py",
         "wodles/aws/wazuh_integration.py",
+        "wodles/utils.py",
+        "wodles/__init__.py",
         "tests/integration/conftest.py",
         "tests/integration/test_aws/**",
         ".github/workflows/5_testintegration_linux-integration-tests.yml",

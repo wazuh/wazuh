@@ -125,36 +125,48 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define SYNCQUEUE "queue/sockets/queue-sync"
 
 // Authd local socket
-#define AUTH_LOCAL_SOCK "queue/sockets/auth"
+#define AUTH_LOCAL_SOCK "queue/sockets/auth.sock"
 
 // Local requests socket
 #define COM_LOCAL_SOCK     "queue/sockets/com"
 #define AG_LOCAL_SOCK      "queue/sockets/agent"
 #define LC_LOCAL_SOCK      "queue/sockets/logcollector"
 #define SYS_LOCAL_SOCK     "queue/sockets/syscheck"
-#define WM_LOCAL_SOCK      "queue/sockets/wmodules"
-#define REMOTE_LOCAL_SOCK  "queue/sockets/remote"
-#define ANLSYS_LOCAL_SOCK  "queue/sockets/analysis"
-#define ANLSYS_ENRICH_SOCK "queue/sockets/queue-http.sock"
-#define INV_SYNC_SOCK      "queue/sockets/inventory-sync.sock"
-#define MON_LOCAL_SOCK     "queue/sockets/monitor"
-#define CLUSTER_SOCK       "queue/cluster/c-internal.sock"
-#define CONTROL_SOCK       "queue/sockets/control"
+#define REMOTE_LOCAL_SOCK  "queue/sockets/remote.sock"
+#define ANLSYS_LOCAL_SOCK  "queue/sockets/engine-api-http.sock"
+#define ANLSYS_ENRICH_SOCK "queue/sockets/engine-ingest-http.sock"
+#define INV_SYNC_SOCK      "queue/sockets/inventory-sync-http.sock"
+#define CLUSTER_SOCK       "queue/sockets/cluster-internal.sock"
 #define AGENT_UPGRADE_SOCK "queue/sockets/upgrade"
 
-// Tasks socket
-#define TASK_QUEUE "queue/tasks/task"
+// Both products create these two from this same code. The manager carries the
+// standardized names; the agent keeps the legacy ones until the agent sockets are
+// renamed as a whole. Delete this fork then.
+#ifdef CLIENT
+#define WM_LOCAL_SOCK      "queue/sockets/wmodules"
+#define CONTROL_SOCK       "queue/sockets/control"
+#else
+#define WM_LOCAL_SOCK      "queue/sockets/wmodules.sock"
+#define CONTROL_SOCK       "queue/sockets/control.sock"
+#endif
 
 // Attempts to check sockets availability
 #define SOCK_ATTEMPTS 10
 
 // Database socket
-#define WDB_LOCAL_SOCK "queue/db/wdb"
+#define WDB_LOCAL_SOCK "queue/sockets/wdb.sock"
 
-// Tasks socket
-#define WM_UPGRADE_SOCK "queue/tasks/upgrade"
+/* Tasks socket. The task manager serves everything on it, including remote agent upgrades on
+ * /v1/agents/upgrade and /v1/agents/upgrade-custom. */
+#define WM_TASK_MODULE_SOCK "queue/sockets/task-http.sock"
 
-#define WM_TASK_MODULE_SOCK "queue/tasks/task"
+/* Host part of every task manager URL.
+ *
+ * The socket above is where the request actually goes -- libcurl is told the path through
+ * CURLOPT_UNIX_SOCKET_PATH and never resolves this host. It is still required: libcurl parses the
+ * URL before it looks at the socket option, and rejects a bare path with CURLE_URL_MALFORMAT (3)
+ * and no HTTP status, which reads to a caller exactly like an unreachable task manager. */
+#define WM_TASK_MODULE_URL "http://localhost"
 
 /* Active Response files */
 #define AR_BINDIR      "active-response/bin"
@@ -269,6 +281,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Timestamp file */
 #define TIMESTAMP_FILE "queue/agents-timestamp"
+
+/* authd's own durable state: the agent deletions whose indexer purge it still owes. Kept out of
+ * client.keys on purpose -- that file is read by other daemons and its format is a contract. */
+#define AUTHD_QUEUE_DIR     "queue/authd"
+#define PENDING_PURGES_FILE "queue/authd/pending-purges"
 
 /* Shared config directory */
 #ifndef WIN32

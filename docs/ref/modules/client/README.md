@@ -60,11 +60,11 @@ Quick configuration example:
 
 ```xml
 <agent>
-  <server>
+  <manager>
     <address>manager.example.com</address>
     <port>1517</port>
     <protocol>tcp</protocol>
-  </server>
+  </manager>
   <config-profile>web-servers</config-profile>
   <auto_restart>yes</auto_restart>
 </agent>

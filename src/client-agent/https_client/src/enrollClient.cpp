@@ -13,6 +13,7 @@
 
 #include "bodyCompressor.hpp"
 #include "enrollSigner.hpp"
+#include "requestTarget.hpp"
 
 #include <cstdlib>
 #include <utility>
@@ -26,8 +27,8 @@ namespace
     constexpr std::int64_t kSkewNoiseFloorSeconds = 5;
 } // namespace
 
-EnrollClient::EnrollClient(const ModuleConfig& config, IHttpPerformer& performer, const IFsProbe& fsProbe,
-                           IClock& clock, LogFn logFn)
+EnrollClient::EnrollClient(
+    const ModuleConfig& config, IHttpPerformer& performer, const IFsProbe& fsProbe, IClock& clock, LogFn logFn)
     : m_config(config)
     , m_performer(performer)
     , m_fsProbe(fsProbe)
@@ -104,8 +105,8 @@ void EnrollClient::correctClockIfSkewed(const HttpResponse& response)
         return; // No Date captured/parsed: nothing to measure skew against.
     }
 
-    const auto delta = static_cast<std::int64_t>(response.serverDateSeconds) -
-                       static_cast<std::int64_t>(m_clock.wallSeconds());
+    const auto delta =
+        static_cast<std::int64_t>(response.serverDateSeconds) - static_cast<std::int64_t>(m_clock.wallSeconds());
 
     if (std::abs(delta) < kSkewNoiseFloorSeconds)
     {
@@ -119,8 +120,7 @@ void EnrollClient::correctClockIfSkewed(const HttpResponse& response)
                static_cast<long long>(delta));
 }
 
-HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::string& password,
-                                       bool allowCompression)
+HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::string& password, bool allowCompression)
 {
     const auto* bodyPtr = reinterpret_cast<const uint8_t*>(bodyJson.data());
     size_t bodyLength = bodyJson.size();
@@ -128,7 +128,7 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
     std::vector<std::string> headers;
 
     // Sent unconditionally in all three auth modes (#38465 Q4b/G5, confirmed
-    // with the server team) -- unlike CmacSigner's identical header, this one
+    // with the server team) -- unlike JwtSigner's identical header, this one
     // is not tied to whether a signature is computed below.
     headers.push_back("protocol-version: 1");
 
@@ -143,15 +143,19 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
         }
     }
 
+    // #38492/#38491: fold the configured endpoint into the target -- a routing
+    // matter only (the manager routes on the literal wire request-target); the
+    // bearer below does not bind the target, same as RetrySender::attemptOnce.
+    const std::string target = prefixedTarget(m_config.serverEndpoint, "/enroll");
+
     // Password mode only (#38465 design): mTLS presents its credential at
     // the TLS layer (CurlPerformer::applyClientCertificate, already wired
-    // through m_config), open mode sends nothing else. Signed over whatever
-    // bytes are actually going on the wire, compressed or not -- the CMAC
-    // must cover what the manager will actually receive.
+    // through m_config), open mode sends nothing else. The `wazuh-enroll+jwt`
+    // bearer binds time and a fresh jti, not the body: compressed or not, the
+    // wire bytes travel under TLS and the same token accompanies them.
     if (!password.empty())
     {
-        const auto signature =
-            EnrollSigner::sign(password, "POST", "/enroll", bodyPtr, bodyLength, m_clock.wallSeconds());
+        const auto signature = EnrollSigner::sign(password, m_clock.wallSeconds());
 
         if (signature)
         {
@@ -159,12 +163,12 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
         }
         else
         {
-            LOGFN_ERROR(m_logFn, "https_client: enrollment password signature could not be computed.");
+            LOGFN_ERROR(m_logFn, "https_client: enrollment bearer token could not be minted.");
         }
     }
 
     HttpRequestSpec spec;
-    spec.target = "/enroll";
+    spec.target = target;
     spec.contentType = "application/json";
     spec.headers = std::move(headers);
     spec.body = bodyPtr;

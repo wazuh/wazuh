@@ -98,11 +98,11 @@ class WazuhException(Exception):
                'remediation': f'To solve this issue, please enable the remote commands in the API settings or add an '
                               f'exception: https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#remote-commands-localfile-and-wodle-command'},
-        1125: {'message': 'Invalid ossec configuration',
-               'remediation': 'Please, provide a valid ossec configuration'
+        1125: {'message': 'Invalid manager configuration',
+               'remediation': 'Please, provide a valid manager configuration (etc/wazuh-manager.yml)'
                },
-        1126: {'message': 'Error updating ossec configuration',
-               'remediation': 'Please, ensure `WAZUH_PATH/etc/wazuh-manager.conf` has the proper permissions and ownership.'
+        1126: {'message': 'Error updating manager configuration',
+               'remediation': 'Please, ensure `WAZUH_PATH/etc/wazuh-manager.yml` has the proper permissions and ownership.'
                },
         1127: {'message': 'Protected section was modified',
                'remediation': 'To solve this, either revert the changes made to this section or disable the protection '
@@ -113,6 +113,13 @@ class WazuhException(Exception):
                'remediation': f'To solve this issue, please enable agents higher versions in the API settings: '
                               f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#agents'},
+        1130: {'message': 'Configuration does not match the schema',
+               'remediation': 'The message names the offending option as a JSON pointer (e.g. /auth/use_password). '
+                              'Fix it in `WAZUH_PATH/etc/wazuh-manager.conf`; `bin/wazuh-manager-conf validate` '
+                              'reports the same problem.'},
+        1131: {'message': 'XML syntax error',
+               'remediation': 'Please, provide a well-formed XML file with the single root <wazuh_config>: unescaped '
+                              '& or <, legacy comments and multiple roots are not accepted.'},
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
@@ -224,6 +231,23 @@ class WazuhException(Exception):
                           'version lower than 5.0; agents on 5.0 or higher report their own '
                           'statistics over HTTPS instead.'
                },
+        1763: {'message': 'The agent ID cannot be reused yet',
+               'remediation': 'The documents of the agent that previously used this ID are still '
+                              'being deleted from the indexer. Retry in a few seconds, or use a '
+                              'different agent ID'
+               },
+        1764: {'message': 'Vulnerability scanning requires agent version 5.0 or higher.'
+               },
+        1765: {'message': 'The agent ID is not valid',
+               'remediation': 'The agent ID must be a positive integer no greater than 2147483647, '
+                              'and other than 0, which is reserved for the manager'
+               },
+        1766: {'message': 'The agent was not deleted: too many deletions are still pending',
+               'remediation': 'The manager is still removing the documents of previously deleted '
+                              'agents from the indexer. The agent is untouched and can be deleted '
+                              'again once the backlog drains; check the indexer is reachable if it '
+                              'does not'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'
@@ -273,6 +297,12 @@ class WazuhException(Exception):
         2025: {'message': 'Modulesd request timeout'},
         2026: {'message': 'Modulesd connection error'},
         2027: {'message': 'Could not parse modulesd response as JSON'},
+        # Remoted (admin socket):
+        2028: {'message': 'Could not connect to the remoted admin unix socket'},
+        2029: {'message': 'Invalid remoted admin HTTP response'},
+        2030: {'message': 'Remoted admin request timeout'},
+        2031: {'message': 'Remoted admin connection error'},
+        2032: {'message': 'Could not parse remoted admin response as JSON'},
 
         # Indexer
         2200: {'message': 'Error connecting to the Indexer service'},
@@ -346,6 +376,16 @@ class WazuhException(Exception):
                'remediation': f"Check and fix [worker names](https://documentation.wazuh.com/{DOCU_VERSION}/"
                               f"user-manual/reference/ossec-conf/cluster.html#node-name)"
                               " and restart the `wazuh-manager` service."},
+        3061: {'message': 'Unknown cluster item key',
+               'remediation': 'The received file metadata refers to a cluster item key which is not defined in the '
+                              'local cluster configuration. Check that every node of the cluster runs the same Wazuh '
+                              'version and check the `WAZUH_HOME/logs/cluster.log` file to identify the rejected '
+                              'item key.'},
+        3062: {'message': 'Rejected by the cluster synchronization guard',
+               'remediation': 'The reported file was not synchronized because it resolves outside its cluster item '
+                              'directory, is listed as an excluded file, or belongs to a cluster item which is not '
+                              'allowed to be synchronized. Check the `WAZUH_HOME/logs/cluster.log` file to identify '
+                              'the rejected file.'},
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
@@ -432,9 +472,17 @@ class WazuhException(Exception):
                'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/api/reference.html#operation/api.controllers.'
                               f'security_controller.edit_run_as'},
+
+        # Vulnerability scan
+        8001: {'message': 'Vulnerability detection module has not been initialized yet'},
+        8002: {'message': 'Vulnerability detection feed is not ready yet'},
+        8003: {'message': 'Vulnerability scanner is not ready yet'},
+        8004: {'message': 'Indexer is not available for vulnerability scanning'},
+        8005: {'message': 'Vulnerability scan queue is full, please retry later'},
+        8006: {'message': 'Vulnerability scanner module is shutting down'},
     }
 
-    # Reserve agent upgrade custom errors
+    # Reserve vulnerability scan's remaining custom errors
     ERRORS.update({key: {'message': 'Vulnerability scan\'s reserved exception IDs (8001-9000). '
                                     'The error message will be the output of vulnerability scan module'}
                    for key in range(8007, 9000)})

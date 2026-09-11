@@ -29,6 +29,19 @@ void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
 SyncModuleResult_t __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
                                           int mode);
 
+/**
+ * @brief Wrapper for asp_get_agent_id. Scripted with will_return(): 0 means "the provider has
+ *        published nothing", which callers must read as unknown rather than as a new identity.
+ */
+long __wrap_asp_get_agent_id(void);
+
+/// @brief Switches __wrap_asp_sync_module() between its default behavior (a single
+/// will_return(bool) populates only SyncModuleResult_t.success, everything else zeroed) and full
+/// mode (a single will_return(SyncModuleResult_t*) supplies the whole struct). Off by default so
+/// existing will_return(__wrap_asp_sync_module, <bool>) call sites keep working unchanged; tests
+/// that need to drive classification flags (e.g. local_transport_unavailable) call this with true.
+void __wrap_asp_sync_module_use_full_result(bool enable);
+
 bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
                                    const char* index,
                                    const char* checksum);

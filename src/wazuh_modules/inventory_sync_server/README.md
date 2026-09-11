@@ -7,8 +7,8 @@ session result. There are no acknowledgment messages, no retransmission protocol
 session store: re-applying a session is idempotent, so the whole retry story is "the agent
 re-POSTs".
 
-The module also hosts the whole-agent deletion endpoint (`DELETE /agents`, called by authd) and
-runs vulnerability-detection sessions through a scan lane where the scan **gates** indexing: a
+The module also hosts the whole-agent deletion endpoint (`POST /_internal/agents/delete`, called by
+the Task Manager's dispatcher) and runs vulnerability-detection sessions through a scan lane where the scan **gates** indexing: a
 `200` for a VD session guarantees the scan ran AND the inventory was flushed.
 
 Three documentation layers cover this module, each with its own job:
@@ -27,6 +27,9 @@ Three documentation layers cover this module, each with its own job:
 - **[`tools/manager_benchmark/`](../../../tools/manager_benchmark/README.md)** — the load and
   contract harness that measures this module end to end (see
   [Load & benchmarking](#load--benchmarking)).
+- **[`os_auth`](../../os_auth/README.md)** — where a deletion comes from: why authd records it as a
+  Task Manager row instead of calling this module, why it delays it, and what an id that still owes a
+  purge means for enrollment.
 
 ## Requirements
 
@@ -48,7 +51,7 @@ below. Status: **kept** = the module provides it; **superseded by D-n** = delibe
 | RF-7 | Metadata/Group delta with the `state.document_version <= global_version` guard + check repair; mutual exclusion with same-agent data sessions | kept (exclusion is free: shard FIFO) |
 | RF-8 | Answer with the `Status` semantics the agent implements, including `Processing` vs terminal | **superseded by D2** — the HTTP response IS the result; no ack messages |
 | RF-9 | VD orchestration: trigger VDFirst/VDSync with their gates (feed ready, `feed_offset` validation, VDFirst dedup) and expose in-flight-session queries + per-agent lock to the scanner | kept (as the scan lane + `ServerScanCoordinator`) |
-| RF-10 | Whole-agent deletion sweeping the agent's indices, retriable | kept, and widened past the original `wazuh-states-*` to `AGENT_DELETION_SCOPE` (`DELETE /agents`; authd is the only producer — D21) |
+| RF-10 | Whole-agent deletion sweeping the agent's indices, retriable | kept, and widened past the original `wazuh-states-*` to `AGENT_DELETION_SCOPE` (`POST /_internal/agents/delete`; the Task Manager's dispatcher is the only caller, authd the only producer — D21) |
 | RF-11 | `_id = {cluster}_{agent}_{id}` and cluster scoping on every operation | kept |
 | RF-12 | Admission limits: session cap and a global byte budget | kept (`max_inflight_bytes`, `max_parallel_connections`, `sync_queue_bytes`) |
 | RF-13 | Recovery on agent restart (new session replaces the old) and on modulesd restart (transient state is discardable) | kept (trivially: there is no session state — D1/D9) |
@@ -94,12 +97,12 @@ pipeline satisfies it structurally rather than by discipline:
 | REQ-VDQ-4 | No silent drop; degrade with explicit coalescing | **superseded by D22** — the lane is short and synchronous; a full lane answers `503` and the agent re-POSTs (nothing to coalesce) |
 | REQ-VDQ-5 | Redefine the ack contract for VD sessions (scan decoupled from ack) | **superseded by D22** — the OPPOSITE was chosen: the scan gates the response; `200` guarantees scan + ingest |
 | REQ-VDQ-6 | Two-phase shutdown: stop admitting → drain/abort → reset the orchestrator | kept (lane stop before scanner reset; coordinator unregisters first) |
-| REQ-VDQ-7 | REAL scan parallelism needs scanner work (shared_lock + per-worker chains), not just a queue | **pending** — `vd_workers` defaults to 1 until the scanner stops serializing scans globally |
+| REQ-VDQ-7 | REAL scan parallelism needs scanner work (shared_lock + per-worker chains), not just a queue | **kept** — `ScanOrchestrator` now takes a `shared_lock` and checks out a per-slot `Slot` (its own chains + its own `IndexerConnectorSync`) for each scan; `vd_workers`/the scanner's `scanWorkers` both default to half the host's cores (minimum 1) and can be overridden with an explicit value |
 | REQ-VDQ-8 | Feed-update coordination reformulated over queue state, not module internals | kept (`ServerScanCoordinator` answers from lane + registry state) |
 | REQ-VDQ-9 | No RocksDB in the VD path (or at all) | kept (D9 — the module has NO local store) |
 | REQ-VDQ-10 | Queue observability: depth, ages, outcomes, durations | kept (`vd.lane.*`, `vd.scans.*` metrics — see [Statistics](#statistics-d18)) |
 
-## Design decisions (D1–D22)
+## Design decisions (D1–D23)
 
 The numbered decisions the requirements above refer to, in their original numbering. The
 [official architecture page](../../../docs/ref/modules/inventory-sync-server/architecture.md)
@@ -119,7 +122,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D10 | Whole-agent deletion becomes its own endpoint (revised by D21) |
 | D11 | The keystore socket moves to its own minimal module (`keystore_server`) |
 | D12 | The new schema lands even if it breaks the agent's build (parallel teams; `TARGET=manager` unaffected) |
-| D13 | Ingress via remoted's authenticated `POST /stateful` (AES-CMAC per agent, opaque forward) |
+| D13 | Ingress via remoted's authenticated `POST /stateful` (`wazuh-agent+jwt` bearer per agent, opaque forward) |
 | D14 | The server endpoint is `POST /stateful`, mirroring remoted's route name |
 | D15 | The deletion endpoint is NOT exposed through remoted: UDS-local consumers only |
 | D16 | Checksum verification is single-attempt — no retry loop (the legacy did 5×10 s) |
@@ -129,6 +132,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D20 | The server→VD boundary is FlatBuffers-free: the scanner's neutral C++ view structs — the scanner never includes this schema's header |
 | D21 | Only authd deletes agents: the legacy `wm_database` delete path was removed, not migrated |
 | D22 | VD scans are SYNCHRONOUS and gate the response: scan → ok → index → `200`; scan fails → `500` with nothing indexed; lane full → `503`; legitimate skip (scanner disabled) still indexes and answers `200`. Stronger than the legacy, which indexed even when the scan failed |
+| D23 | A VD session addressed to a node whose scanner is not running (vulnerability detection disabled, or failed to start) skips the `feed_offset` version check and takes D22's legitimate-skip path: the inventory is indexed, nothing is scanned, `200`. Gated on the scanner, NOT on the node's offset reading 0 — a running scanner reports 0 too while the content manager's offset store is not answering yet, and skipping the check there would index packages unscanned on a node whose vulnerability detection IS enabled. A feed that is merely still loading never reaches the gate: D17 answers it `503 + Retry-After`, so packages and vulnerabilities keep going together whenever the module is up |
 
 ## Layout
 
@@ -145,7 +149,8 @@ inventory_sync_server/
 │   ├── common/                        # clusterIdentity, logThrottle, socketPathCheck, metricNames (D18)
 │   ├── http_server/                   # HTTP/1.1-over-UDS transport (asio + llhttp, own interface)
 │   ├── endpoints/                     # route policies: syncEndpoint (POST /stateful),
-│   │                                  #   deleteAgentEndpoint (DELETE /agents), stats, config
+│   │                                  #   deleteAgentEndpoint (POST /_internal/agents/delete),
+│   │                                  #   vdScanEndpoint (POST /_internal/vd/scan), stats, config
 │   ├── indexer/                       # seam over the shared indexer_connector: interfaces + adapters
 │   ├── sync/                          # the ingestion pipeline:
 │   │   ├── fullSessionValidator.*     #   request-level validation (verifier, identity, shape)
@@ -166,7 +171,7 @@ inventory_sync_server/
 ├── qa/                                # integration QA: pytest over the real socket + OpenSearch
 └── tools/                             # stdlib-only UDS drivers
     ├── send_sync.py                   #   smoke sender: health probe, every transport rejection
-    └── send_delete_agent.py           #   DELETE /agents, with optional indexer before/after
+    └── send_delete_agent.py           #   POST /_internal/agents/delete, with optional indexer before/after
 ```
 
 Two style rules keep the layout navigable: every submodule is included by prefix
@@ -243,17 +248,61 @@ touching freed state. Two details of that order are non-obvious and load-bearing
 ### The connector flush-interval override
 
 The pipeline's and the lane's sync connectors are created with `flush_interval_seconds` forced to
-3600, regardless of configuration (`PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS`). This is
-correctness, not tuning: the shared connector's TIMER flush silently discards the buffer on
-failure, and if a timer flush could race the worker's own flush, a worker could answer `200` for
-data that was silently dropped. The workers own every flush — that is the entire durability
-contract behind "200 means flushed". The `..._indexer_sync_flush_interval_seconds` internal
-option is therefore accepted-but-ignored for these connectors (documented as such).
+`0`, regardless of configuration (`PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS`), and `0` means the
+connector never starts its background flush thread. This is correctness, not tuning: a TIMER flush
+that fails discards the buffer and has **no responder to report to**, so the worker's own `flush()`
+would then find an empty buffer, return cleanly, and answer `200` for data that never reached the
+indexer. The workers own every flush — that is the entire durability contract behind "200 means
+flushed", and with no timer thread there is no second owner of the staging buffer for it to race.
+The `..._indexer_sync_flush_interval_seconds` internal option is therefore accepted-but-ignored for
+these connectors (documented as such).
+
+What the override prevents, with the timer thread drawn as the second owner it used to be:
+
+```mermaid
+sequenceDiagram
+    participant W as pipeline worker
+    participant BUF as connector buffer<br/>(m_bulkData + its mutex)
+    participant T as connector TIMER thread<br/>(only if flush_interval_seconds > 0)
+    participant IDX as indexer
+    W->>BUF: stage session S1
+    W->>BUF: stage session S2
+    Note over W,BUF: S1 and S2 are staged and UNANSWERED
+    T->>BUF: timer expires, takes the mutex, sends the buffer
+    BUF->>IDX: POST /_bulk
+    IDX-->>BUF: 500
+    BUF->>BUF: buffer cleared, exception thrown
+    T->>T: caught and logged ("Error processing bulk")
+    Note over T: there is no responder on this thread:<br/>the failure ends here
+    W->>BUF: flush()
+    BUF-->>W: buffer empty, returns CLEANLY
+    W-->>W: answers 200 to S1 and S2
+    Note over W: "200 means flushed" violated — both agents<br/>drop their outbox for data that never landed
+```
+
+With `flush_interval_seconds = 0` the `T` lane does not exist, so the interleaving above is not
+merely unlikely — it is unrepresentable.
 
 Two config families feed the connectors and must not be crossed: the `<indexer>` block (hosts,
 TLS, credentials — owned by the shared connector) and the module's `indexer_sync_*` /
 `indexer_async_*` internal-option overlays (buffer sizes, retry ceilings — owned here). The
 adapter in `src/indexer/indexerConnectorConfig.*` is where the overlay is applied.
+
+Both families include a `..._request_timeout_seconds` option (60 s default, range 1–3600),
+mapped to the connectors' `request_timeout_seconds`: the cap on any single HTTP request against
+the indexer. The connectors themselves also accept `0` (no bound), but that is the
+unbounded-blocking behavior the cap exists to prevent, so `0` is deliberately not reachable
+through these internal options.
+
+A third, session-level option — `inventory_sync_server_indexer_monitoring_interval_seconds`
+(10 s default, range 1–3600, mapped to `monitoring_interval_seconds`) — sets how often the
+shared session's health monitor polls each host with `GET /_cat/health`. It is one option, not a
+sync/async pair, because both connectors share the session's single monitor. It bounds how stale
+the availability verdict behind the `503` admission gate can be: a host's death or recovery is
+noticed within roughly one interval (plus up to 5 s of probe timeout per unresponsive host, as
+the round is sequential). Lowering it tightens detection at the cost of more health-check
+traffic; `0` (which would busy-loop the monitor thread) is rejected by the connector and
+unreachable here.
 
 ## The request path
 
@@ -324,6 +373,51 @@ lock: two requests of the same agent traverse the same FIFO. Sessions classify i
   alone. The worker **cuts the open batch first** — an immediate's effects (deletes, a checksum
   read) must not overtake bulk writes of an earlier session of the same agent.
 
+A batch is cut by an EVENT, never by a clock — there is no linger timer anywhere in this path
+(`shard.cv.wait` has no timeout). Five things close an open batch, and only the first four flush:
+
+| Trigger | Why it cuts here |
+|---|---|
+| staged bytes reach `bulkFlushBytes` | bounds the request size and the memory held by unanswered sessions |
+| the shard queue drains | nothing is coming, so waiting only delays sessions already staged: the low-load path, one session in, one flush out |
+| the next item is an `Immediate` session | it runs its own I/O now, which must not overtake staged writes of an EARLIER session of the same agent |
+| the next item is a `DeleteAgent` | same ordering rule; a delete that overtook the agent's staged writes would leave documents behind forever |
+| shutdown | **not a flush**: the batch is abandoned and every session answered `503` |
+
+```mermaid
+sequenceDiagram
+    participant A as agent A (SyncData)
+    participant B as agent B (SyncData)
+    participant C as agent A (Cleans)
+    participant EP as syncEndpoint
+    participant SH as shard[i] FIFO
+    participant W as worker i
+    participant IDX as connector i (private buffer)
+    A->>EP: POST /stateful FullSession{SyncData}
+    EP->>SH: enqueue on hash(agentId) % workers
+    B->>EP: POST /stateful FullSession{SyncData}
+    EP->>SH: enqueue
+    W->>SH: popDispatchable
+    W->>IDX: stageBulk -> bulkIndex xN
+    Note over W,IDX: batch=[A], below bulkFlushBytes
+    W->>SH: popDispatchable
+    W->>IDX: stageBulk -> bulkIndex xN
+    Note over W,IDX: batch=[A,B], still below the threshold
+    W->>SH: popDispatchable -> empty
+    Note over W,SH: CUT: queue drained
+    W->>IDX: flush()
+    IDX-->>W: ok
+    W-->>A: 200
+    W-->>B: 200
+    C->>EP: POST /stateful FullSession{Cleans}
+    EP->>SH: enqueue
+    W->>SH: popDispatchable
+    Note over W,IDX: CUT: Immediate — close the open batch BEFORE its own I/O
+    W->>IDX: deleteByQuery(index, agentId) + flush()
+    IDX-->>W: ok
+    W-->>C: 200
+```
+
 Failure mapping is centralized in the worker: a connector failure answers `503` when
 `isAvailable()` says the indexer is the problem (agent retries, like any not-ready) and `500`
 otherwise (agent still retries; the log is operator-actionable). A staging failure poisons the
@@ -372,7 +466,10 @@ check `Start.feed_offset` against `IVdScanner::currentFeedOffset()` for VD-flagg
 (answering `409 {"error":"version_mismatch","current_version":N}` — the same body shape as
 remoted's `/scan/vd` REST endpoint, so an agent handles either 409 the same way — if the session
 was built against a feed offset this node doesn't currently have; a non-VD session has no
-meaningful `feed_offset` and skips this check entirely), run the scan inside a try/catch (a throw
+meaningful `feed_offset` and skips this check entirely, and so does every session when this node
+runs no scanner at all — there is no version to disagree about, and the session goes on to the
+legitimate-skip path that indexes the agent's inventory without scanning it, D23), run the scan
+inside a try/catch (a throw
 answers `500` with ZERO indexing), then stage the inventory bulk and `flush()` — one session per
 flush, no group commit in this lane — and answer `200`.
 
@@ -405,40 +502,152 @@ drain what is running. There is no fleet-wide coordination here — each feed-up
 only the one agent it is about to scan, the same way a lane session does. On `stop()` it
 unregisters FIRST, before the lane dies under the scanner's feet.
 
+## On-demand scans (`endpoints/vdScanEndpoint.*`)
+
+`POST /_internal/vd/scan` rescans ONE agent — no session, no inventory. VD reads the agent's stored
+packages and writes its findings with its own connector, so the lane's answer is the scan's outcome
+and nothing more. Its caller is the Task Manager's dispatcher, executing a durable `vd_scan` task
+that the scanner's own admission route created; that route is untouched, including its
+`503 scan_queue_full` vocabulary, which remoted distinguishes from the content manager's
+`ondemand_queue_full` for metric attribution.
+
+**Why it lives here and not in the vulnerability scanner**, which owns the scan itself:
+
+- `AgentInFlightRegistry` is private to this module's `src/vd/`, and the seam the scanner exports
+  offers pause/quiesce, not membership. A scan started outside this module would be invisible to the
+  pipeline, so it could run while a session of that same agent is mid-apply — the delete-then-reindex
+  ordering D22 exists to protect.
+- `VdScanLane` already IS what an execution route would have to build: a bounded admission queue,
+  per-agent exclusion, a responder held to completion, 503 on capacity, and a feed-readiness re-check
+  at dispatch. A second copy would not be duplicated effort, it would be a race.
+
+**It is pipeline surgery, not just a route.** `VdScanLane::Item` *is* `SyncPipeline::Item`, whose
+worker path was scan → index the session's inventory → 200. An on-demand scan has neither, so it
+needed a third `Kind`, a branch in `workerLoop`, an agentId-only `ValidatedSession` and a session-less
+`scanAgent()` on `IVdScanner`. `DeleteAgent` precedents all four, which is what made it tractable.
+
+**The in-flight interlock.** A client-side timeout does not cancel server-side work: the dispatcher
+gives up at `manager_task_vd_scan_timeout` and re-posts while the first scan is very likely still
+running. `tryEnqueue` therefore REFUSES a scan request for an agent already in flight —
+`409 scan_in_progress`, which the dispatcher defers on without consuming an attempt — instead of
+parking it as it parks a session. The two callers want opposite things: an agent re-POSTing is happy
+to queue behind its own earlier session, while the dispatcher would hold a connection until the
+transport's backstop fired. The check is a probe under the lane mutex, not a reservation; a worker
+acquiring immediately after is benign, because it degrades to exactly the parked behaviour.
+
+`scanAgent()` reports failure **by return value**, unlike `scan()`, which throws. There is no session
+to poison, and every failure is something the caller has to tell apart to decide whether to come
+back: `NotReady` → 503, `NotFound` → 404 (permanent), `Failed` → 500, `Skipped` → 200. That last one
+is the interesting choice — no scanner on this node is a completion, not a failure, because retrying
+could never change the answer and the task would never terminate.
+
 ## Agent deletion (`endpoints/deleteAgentEndpoint.*`)
 
-`DELETE /agents` — plus a `POST /agents/delete` alias with the SAME handler, because the C-side
-HTTP helper (`uhttp_*`, libcurl) only speaks POST and authd is the production caller. UDS-local
-only; remoted has no downstream route to it.
+`POST /_internal/agents/delete`. UDS-local and manager-internal: the only caller is the Task
+Manager's dispatcher, executing a durable `agent_delete_indexer` row that authd created after
+removing the agent from `client.keys` and wazuh-db. remoted has no downstream route to it, and
+`_internal` marks it as a contract between two daemons of the same version with no compatibility
+promise. POST because the dispatcher's C-side HTTP helper (`uhttp_*`, libcurl) only speaks POST.
 
-The handler validates the `X-Wazuh-Agent-Id` header (missing/non-numeric → `400`), gates on
-indexer availability (→ `503`; the caller retries rather than losing the deletion), and enqueues
-a `SyncPipeline::Item` with `Kind::DeleteAgent` on the TARGET agent's shard — the deletion orders
-FIFO against that agent's in-flight sessions, and respects a scan in flight through the same
-registry. The worker treats it like an immediate: batch cut, then one
-`deleteByQuery(index, agent, cluster)` for every index in `AGENT_DELETION_SCOPE`
-(`wazuh-states-*`, `wazuh-agent-config`, `wazuh-agent-stats`), and one `flush()` →
-`200 {"status":"ok"}`. A missing index counts as success inside the connector, so repeating a
-deletion is harmless and stays quiet, which is the callers' whole retry contract.
+**The agent id travels in the BODY** — `{"agent_id": "7"}` — not in `X-Wazuh-Agent-Id`. The dispatcher
+POSTs a task row's `PAYLOAD` verbatim and sets no headers of its own, so the body is the only channel
+there is; the header is ignored even when present, because honouring it would hide a producer that
+forgot to write the id into the payload. Both JSON spellings (`"7"` and `7`) are accepted, because
+this task type's `4xx` comes back to the dispatcher as *retryable* — rejecting the number form would
+re-queue the deletion forever rather than fail it.
 
-**Two windows where a document can outlive the deletion.** Both are known, both are recorded by a
-skipped test in `qa/test_delete_agent.py`, and repeating the deletion clears either one (it is
-idempotent). Neither makes the deletion report failure — that is what makes them worth knowing:
+The handler validates that body (→ `400`) and gates on indexer availability (→ `503`; the caller
+retries rather than losing the deletion). Then it queues
+**two halves, one per writer** — a document can only be deleted in the right ORDER by the connector
+that writes it, which is why the scope is split into `AGENT_DELETION_SCOPE_BY_QUERY` and
+`AGENT_DELETION_SCOPE_BY_ID`:
 
-- **The index refresh interval.** A `_delete_by_query` runs a SEARCH, so it only sees refreshed
-  segments, and authd deletes immediately after removing the agent from `client.keys`. Whatever the
-  agent's last session wrote inside that interval is invisible to the query, and with the agent gone
-  nothing ever overwrites it. Refreshing each index first closed this, and was implemented — but
-  `_refresh` needs `indices:admin/refresh`, which is outside the `crud`/`write` action groups, so the
-  manager's least-privilege indexer role denies it and EVERY deletion failed with `403`. The refresh
-  was removed until the privilege is granted; restoring it is a follow-up.
-- **The async connector's queue.** `POST /config` and `POST /stats` are written through the
-  ASYNCHRONOUS connector, whose queue drains on its own timer
-  (`inventory_sync_server_indexer_async_flush_interval_seconds`, 20 s by default). The deletion runs
-  on the sync connector and cannot drain that queue, so a report still queued when the deletion runs
-  lands after the delete-by-query and recreates that agent's document. Closing it properly means
-  ordering those two endpoints against the deletion the way `DELETE /agents` already is — as pipeline
-  items on the agent's shard — which is the other follow-up.
+1. **By id, on the ASYNC connector, first.** One `bulkDelete(agentId, index)` for each of
+   `wazuh-agent-config` and `wazuh-agent-stats` — the two documents `POST /config` and `POST /stats`
+   write through that connector's accumulating queue, keyed by the agent id. Queueing the deletes on
+   that same queue is the only way to order them after a report it has already accepted: the queue is
+   FIFO. It also needs no index refresh, unlike a search-based delete. First, before the enqueue
+   below, because every microsecond of delay is one more microsecond in which a report could slip in
+   behind the deletion.
+2. **By query, on the pipeline.** A `SyncPipeline::Item` with `Kind::DeleteAgent` on the TARGET
+   agent's shard — the deletion orders FIFO against that agent's in-flight sessions, and respects a
+   scan in flight through the same registry. The worker treats it like an immediate: batch cut, then
+   one `deleteByQuery(index, agent, cluster)` per entry in `AGENT_DELETION_SCOPE_BY_QUERY`
+   (`wazuh-states-*`), and one `flush()`.
+
+A missing index counts as success inside the connector, and deleting a document that is not there is
+a no-op the whole chain ignores, so repeating a deletion is harmless and stays quiet — the callers'
+whole retry contract.
+
+**This route answers at COMPLETION: the `200` means the delete-by-query has run AND flushed.** The
+dispatcher records its manager-task row `completed` on that 200, so a 200 meaning "queued" would
+record a purge that has not happened — and a modulesd crash right after it would lose the queued
+deletion while the row already read `completed`. The item therefore carries its responder onto the
+`Item` and the pipeline's own `respond()` answers. That is what makes `completed` mean purged.
+
+It needed no pipeline change: the worker has always answered a `DeleteAgent` item, there has just
+never been anyone to answer.
+
+**What `completed` does not cover:** the by-id half. Those two deletes are queued on the async
+connector and are fire-and-forget by construction — that queue is FIFO, which is the only thing that
+can order them behind a report it has already accepted, and it exposes nothing to wait on. So the 200
+promises the state documents were deleted and flushed, and promises only that the other two deletions
+were queued. Closing that would mean giving up the ordering property the by-id half exists for; what
+limits it is idempotency, since a retried deletion re-queues them.
+
+**Its own response backstop, 900 s** (`RouteOptions::responseTimeoutSec`). The transport's server-wide
+backstop is 300 s and is written around the peer's deadline being the shorter one; the Task Manager
+gives this route 600 s, deliberately longer than the scan route's 300 s. With the server-wide value
+that ordering inverts, and a purge running past five minutes gets a synthesized 504 while it is still
+succeeding — retried forever, since this type has no attempt budget. Raising it per route rather than
+globally keeps the leak backstop intact for everyone else. It must stay above
+`manager_task_delete_timeout`.
+
+**Capacity is the caller's.** `RouteClass::Control` requires a route doing real work to shed its own
+capacity module-side; this one has no queue, so the bound is the dispatcher's delete-lane depth of 4 —
+at most four deletions in flight.
+
+### What replaced what
+
+`DELETE /agents` and its `POST /agents/delete` alias stood here until authd stopped relaying deletions
+itself. They answered at ADMISSION — `200 {"status":"queued"}` — because authd relayed from the single
+thread that persists `client.keys`, and on populated `wazuh-states-*` one `delete_by_query`
+legitimately outlives a 30 s budget: it timed out, retried into the very same running purge, and
+blocked every key write in between, so no agent could enroll until the batch drained.
+
+Answering at admission fixed that and left the obligation in memory: the durability chain ended in an
+in-memory pipeline, and a `200` recorded nothing anyone could act on later. A dispatcher lane waits
+now, which is what it is built to do, and the record is a row in `tasks.db`.
+
+**One window where a document can outlive the deletion.** It is known, it is recorded by a skipped
+test in `qa/test_delete_agent.py`, and repeating the deletion clears it (it is idempotent). It does
+not make the deletion report failure — that is what makes it worth knowing:
+
+- **The index refresh interval, and only for `wazuh-states-*`.** A `_delete_by_query` runs a SEARCH,
+  so it only sees refreshed segments. Whatever the agent's last session wrote inside that interval is
+  invisible to the query, and with the agent gone nothing ever overwrites it. Refreshing each index
+  first closed this, and was implemented — but `_refresh` needs `indices:admin/refresh`, which is
+  outside the `crud`/`write` action groups, so the manager's least-privilege indexer role denies it and
+  EVERY deletion failed with `403`. The refresh was removed until the privilege is granted; restoring
+  it is a follow-up. `authd.purge_delay` (default 120 s) is what makes it a non-event in practice.
+
+**The window that used to sit next to it**, and how it was closed: a `POST /config` or `POST /stats`
+report still in the async connector's queue when the deletion ran landed AFTER the delete-by-query and
+recreated that agent's document — permanently, since nothing overwrites it and nothing re-runs a
+deletion. The by-query pass could neither drain that queue (it runs on the other connector) nor, being
+a SEARCH, see a document that had not been refreshed yet. Those two indices are now deleted by id on
+the async queue itself, so the report is applied first and the delete behind it. Pinned by
+`test_a_report_in_flight_does_not_survive_the_deletion` in the qa suite and by
+`ADeletionIsQueuedBehindAReportTheAsyncConnectorHasAlreadyAccepted` in the unit suite.
+
+Two properties the by-query pass had are deliberately given up for those two indices, both without
+loss: cluster scoping (their `_id` carries no cluster prefix, so two clusters sharing one indexer
+already collide on WRITE — the scoping was never real) and reaching a document whose `_id` is not the
+form this manager writes today (only ever produced by a caller that bypasses remoted, which
+normalizes the agent id). What is genuinely traded away is the belt-and-braces: if the async queue
+sheds the delete (over `max_queue_bytes`), nothing else deletes those two documents — the same
+exposure their WRITES already have. What was NOT done, deliberately: moving the reports onto the
+pipeline. They accumulate and push in batches by design.
 
 ## Transport (`src/http_server/`)
 
@@ -469,7 +678,8 @@ A hand-written HTTP/1.1 server over standalone asio + llhttp, behind the module'
 | Route | Handler | Notes |
 |---|---|---|
 | `POST /stateful` | `syncEndpoint` | The ingestion route. Strand-side: header + body checks, `validateFullSession`, VD routing (feed gate → lane), indexer admission gate, pipeline enqueue. Everything else is the workers'. |
-| `DELETE /agents`, `POST /agents/delete` | `deleteAgentEndpoint` | See above. |
+| `POST /_internal/agents/delete` | `deleteAgentEndpoint` | Whole-agent deletion for the Task Manager's dispatcher, answered at COMPLETION: agent id in the body, its own 900 s response backstop. See above. |
+| `POST /_internal/vd/scan` | `vdScanEndpoint` | On-demand rescan of one agent on the VD scan lane, for the same dispatcher and with the same contract: agent id in the body, answered at COMPLETION, its own 450 s response backstop. See [On-demand scans](#on-demand-scans-endpointsvdscanendpoint). |
 | `POST /stats`, `POST /config` | `statsEndpoint` / `configEndpoint` | Validate the agent's `modules`-keyed report, overlay the authoritative identity (agent id from the header, cluster identity, timestamp — never from the body) and index ONE document per agent (`wazuh-agent-stats` / `wazuh-agent-config`, agent id as document id, replace-on-push). Full contract in [the API reference](../../../docs/ref/modules/inventory-sync-server/api-reference.md). |
 | `GET /` | inline in the facade | Liveness probe, exempt from the byte budget so it answers under memory pressure. |
 | `GET /metrics` | `metricsEndpoint` | The D18 statistics dump (`wazuh_metrics::dumpJson` of the module's registry). Budget-exempt like the probe: metrics matter most under pressure. NOT `/stats` — that is the agent-stats ingest route. |
@@ -569,7 +779,8 @@ ctest --test-dir build -R inventory_sync_server_utest -V     # or run the binary
 - `tools/send_sync.py` — stdlib-only smoke sender for a live socket (health probe, every
   transport rejection on demand). See
   [test-tools.md](../../../docs/ref/modules/inventory-sync-server/test-tools.md).
-- `tools/send_delete_agent.py` — stdlib-only driver for `DELETE /agents`, speaking authd's bytes.
+- `tools/send_delete_agent.py` — stdlib-only driver for `POST /_internal/agents/delete`, speaking the
+  dispatcher's bytes.
   `--verify` counts the agent's documents across the whole deletion scope before and after, which
   is the only way to see what the `200` did; `--witness` proves the deletion is per agent. Refuses
   an agent enrolled in `client.keys` unless `--force`.
@@ -584,10 +795,10 @@ ctest --test-dir build -R inventory_sync_server_utest -V     # or run the binary
 ## Load & benchmarking
 
 [`tools/manager_benchmark/`](../../../tools/manager_benchmark/README.md) is the load harness that
-measures this module end to end — a Go sender reproducing the agent's wire (AES-CMAC signatures,
+measures this module end to end — a Go sender reproducing the agent's wire (`wazuh-agent+jwt` bearer tokens,
 `FullSession` buffers, zstd in agent mode) over two transports:
 
-- `--mode uds` POSTs straight to `queue/sockets/inventory-sync.sock`: the ingestion pipeline
+- `--mode uds` POSTs straight to `queue/sockets/inventory-sync-http.sock`: the ingestion pipeline
   alone (validation, sharded workers, group commit, the VD lane).
 - `--mode agent` enrolls a synthetic fleet and goes through remoted's relay, like a real fleet.
 
@@ -622,9 +833,10 @@ duration, scans ok/failed/skipped, capacity total, `vd.offset_mismatch.total` fo
 rejections count into the same request family, and `vd.retry_after.total` is incremented at BOTH
 feed gates (the sync endpoint's strand-side check and the lane's dispatch-time re-check),
 resolved through the single `makeVdRetryAfterCounter()` helper so its metadata has one source.
-The facade additionally registers seven `server.*` PULL metrics over
-`IUdsHttpServer::diagnostics()` (the transport's budget/session levels, U10) — registered once
-per process, behind a weak target that quiesces to 0 after `stop()`. Constructors take the
+The facade additionally registers eleven `server.*` PULL metrics over
+`IUdsHttpServer::diagnostics()`: the seven transport budget/session levels (U10) plus the four
+cumulative `server.rejected.*` shed counters — registered once per process, behind a weak target
+that quiesces to 0 after `stop()`. Constructors take the
 manager as an optional trailing parameter; a null falls back to a private disconnected manager,
 so instrumentation stays branch-free and tests need no change. The operator-facing catalog —
 every metric with the internal option it helps size — is
@@ -671,7 +883,9 @@ target); and `Item::enqueuedAt` is stamped by the endpoint, so a default (epoch)
 - **Why is the store path hyphenated (`queue/inventory-sync-server`)?** The legacy module
   recursively removed `queue/inventory_sync` at startup, and an underscored sibling would match an
   `inventory_sync*` glob on upgraded installs. Reserved, currently unused.
-- **Why does `200` mean FLUSHED and not queued?** Because the agent deletes its outbox on `200`.
+- **Why does `200` mean FLUSHED and not queued on `/stateful`?** Because the agent deletes its
+  outbox on `200`. The deletion route holds to it too, and that is what changed: its `200` means the
+  delete-by-query flushed, so the Task Manager row behind it can read `completed` and mean purged.
   Anything weaker (accepted, staged, timer-flushed-later) makes data loss invisible to the only
   party that can retry — that is also why the connectors' timer flush is overridden
   ([the flush-interval override](#the-connector-flush-interval-override)).
@@ -681,8 +895,8 @@ target); and `Item::enqueuedAt` is stamped by the endpoint, so a default (epoch)
 - Log tags: the module logs under `wazuh-manager-modulesd:inventory-sync-server` with `:sync`,
   `:endpoints`, `:server`, `:vd` and per-indexer-object suffixes, so a misbehaving stage names
   itself. The startup line to look for:
-  `inventory sync server listening on 'queue/sockets/inventory-sync.sock' (routes: ...)`.
-- The socket is `queue/sockets/inventory-sync.sock`, mode 0660, fixed by design (internal options
+  `inventory sync server listening on 'queue/sockets/inventory-sync-http.sock' (routes: ...)`.
+- The socket is `queue/sockets/inventory-sync-http.sock`, mode 0660, fixed by design (internal options
   carry only ints, so there is no path mechanism to misconfigure; tests override it through the
   C-ABI field).
 - The heartbeat logs indexer availability TRANSITIONS only (WARN gone / INFO back), and retries a

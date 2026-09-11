@@ -126,3 +126,33 @@ char * w_utf8_filter(const char * string, bool replacement) {
     copy[i] = '\0';
     return copy;
 }
+
+size_t w_utf8_truncate_len(const char * string, size_t max_length) {
+    assert(string != NULL);
+
+    /* Only whether the string exceeds max_length matters, and past that point
+     * the length itself is never used, so stop counting there. */
+    size_t length = strnlen(string, max_length + 1);
+
+    if (length <= max_length) {
+        return length;
+    }
+
+    /* string[max_length] is the first byte dropped. While it is a continuation
+     * byte (10xxxxxx) the cut falls inside a character, so walk back to its
+     * leading byte and drop the sequence whole. */
+    size_t cut = max_length;
+    size_t steps = 0;
+
+    /* No UTF-8 character is longer than four bytes, so a leading byte is at
+     * most three steps back. */
+    while (cut > 0 && steps < 3 && ((unsigned char)string[cut] & 0xC0) == 0x80) {
+        cut--;
+        steps++;
+    }
+
+    /* A longer run of continuation bytes is not a character at all. The string
+     * was already malformed there, so cut where asked instead of discarding an
+     * unbounded run of it. */
+    return (((unsigned char)string[cut] & 0xC0) == 0x80) ? max_length : cut;
+}

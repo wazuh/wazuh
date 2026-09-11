@@ -20,7 +20,7 @@
 
 namespace
 {
-    constexpr size_t FILE_CHUNK = 64 * 1024; // Matches cmacSigner.cpp/zstdDecoder.cpp.
+    constexpr size_t FILE_CHUNK = 64 * 1024; // Matches the manager's zstdDecoder.cpp.
     // Matches the level RetrySender uses for in-memory bodies (retrySender.cpp).
     constexpr int kCompressionLevel = 3;
 
@@ -36,9 +36,8 @@ namespace
     };
 } // namespace
 
-std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>
-                                                            ZstdFileCompressor::compress(const std::string& sourcePath, uint64_t sourceSize,
-                                                                                         const std::string& spoolDir, const std::atomic<bool>* abortFlag)
+std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>> ZstdFileCompressor::compress(
+                                                                const std::string& sourcePath, uint64_t sourceSize, const std::string& spoolDir, const std::atomic<bool>* abortFlag)
 {
     const FilePtr source {std::fopen(sourcePath.c_str(), "rb"), std::fclose};
 

@@ -45,9 +45,6 @@ pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 t_global_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_global_messages.yaml')
 t_global_config_parameters, t_global_config_metadata, t_global_case_ids = configuration.get_test_cases_data(t_global_cases_path)
 
-t_tasks_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_tasks_messages.yaml')
-t_tasks_config_parameters, t_tasks_config_metadata, t_tasks_case_ids = configuration.get_test_cases_data(t_tasks_cases_path)
-
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
@@ -124,43 +121,6 @@ def test_wazuh_db_messages_global(test_metadata, daemons_handler_module,
     input_description:
         - cases_global_messages.yaml - covers insert, update, select, sync, group, connection-status and delete
           commands targeting the global database.
-
-    tags:
-        - wazuh_db
-        - wdb_socket
-    '''
-    _run_stages(test_metadata)
-
-
-@pytest.mark.parametrize('test_metadata', t_tasks_config_metadata, ids=t_tasks_case_ids)
-def test_wazuh_db_messages_tasks(test_metadata, daemons_handler_module,
-                                 clean_databases, clean_registered_agents):
-    '''
-    description: Verify every `task ...` message sent to the wazuh-manager-db socket returns the expected response.
-
-    wazuh_min_version: 5.0.0
-
-    tier: 0
-
-    parameters:
-        - test_metadata:
-            type: dict
-            brief: Test case metadata.
-        - daemons_handler_module:
-            type: fixture
-            brief: Handler of Wazuh daemons.
-        - clean_databases:
-            type: fixture
-            brief: Delete databases.
-        - clean_registered_agents:
-            type: fixture
-            brief: Remove all agents from wazuh-db.
-
-    assertions:
-        - Verify that the socket response matches the expected output of the yaml input file.
-
-    input_description:
-        - cases_tasks_messages.yaml - covers PRAGMA / synchronization queries against the task database.
 
     tags:
         - wazuh_db

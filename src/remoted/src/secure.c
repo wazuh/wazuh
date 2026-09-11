@@ -23,6 +23,7 @@
 #include "http_op.h"
 #include "legacy_task_delivery.h"
 #include "config.h"
+#include "mconf-config.h"
 #include "authd-config.h"
 
 // REMOTED_HTTPS_VERIFY_* (remote-config.h, via remoted.h) and REMOTED_MODULE_HTTPS_VERIFY_*
@@ -134,7 +135,7 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args);
 STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue, w_rr_queue_t * batch_queue);
 
 /**
- * @brief maps logr's <remote><https> config, the `remoted.http_*` internal options,
+ * @brief maps logr's remote.https config, the `remoted.http_*` internal options,
  *        and the memory-management constants onto the C-ABI struct handed to the C++
  *        remoted_module
  *
@@ -152,7 +153,7 @@ STATIC void *current_timestamp(void *none);
 STATIC void * close_fp_main(void * args);
 
 /* Start every subsystem that only serves 4.x agents (queues, caches, the legacy AES keystore,
- * and every thread that only reads/writes them). No-op when <remote><legacy> is absent or
+ * and every thread that only reads/writes them). No-op when remote.legacy is disabled or
  * disabled. */
 static void start_legacy_subsystems(void);
 
@@ -276,7 +277,9 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->http_max_header_value_size = getDefine_Int_default("remoted", "http_max_header_value_size", 1, 65536, 8192);
     rm_config->http_max_header_count = getDefine_Int_default("remoted", "http_max_header_count", 1, 1024, 64);
     rm_config->http_max_pipelined_requests = getDefine_Int_default("remoted", "http_max_pipelined_requests", 1, 64, 4);
-    rm_config->http_concurrent_accepts = getDefine_Int_default("remoted", "http_concurrent_accepts", 1, 64, 2);
+    // Same reasoning as io_threads/http_worker_threads above: min+default 0 so an unset option
+    // resolves via cpp_get_nproc() on the C++ side instead of a fixed constant.
+    rm_config->http_concurrent_accepts = getDefine_Int_default("remoted", "http_concurrent_accepts", 0, 64, 0);
     rm_config->http_buffer_size = getDefine_Int_default("remoted", "http_buffer_size", 1, 1048576, 8192);
     // Bytes per chunk when streaming a response body (POST /download). Bounded at 1 MiB because
     // this is per IN-FLIGHT TRANSFER: the worst case is roughly this times the number of
@@ -318,9 +321,16 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->downstream_max_response_body_size =
         getDefine_Int_default("remoted", "downstream_max_response_body_size", 1048576, 67108864, 10485760);
 
-    // Auth middleware (AES-CMAC request verification) tunables.
-    rm_config->auth_max_request_age = getDefine_Int_default("remoted", "auth_max_request_age", 1, 3600, 300);
-    rm_config->auth_max_future_skew = getDefine_Int_default("remoted", "auth_max_future_skew", 1, 300, 30);
+    // Auth middleware (wazuh-agent+jwt bearer verification) tunables.
+    // The wazuh-agent+jwt profile's ceiling (12h, jwt_profile::v1::kMaxAgeSec/kMaxClockSkewSec) is the
+    // upper bound: a value above it is a configuration error and keeps remoted from starting, never
+    // silently widens the window. Defaults stay at the profile's original 60 s / 30 s; the ceiling only
+    // exists so a deployment can tolerate manager/agent clock drift larger than that combined 90 s.
+    // A zero skew is a valid setting ("no tolerance"), which a zeroed struct could not express -- hence the
+    // explicit jwt_clock_skew_set flag that tells the module the value is configured, not absent.
+    rm_config->jwt_max_age = getDefine_Int_default("remoted", "jwt_max_age", 1, 43200, 60);
+    rm_config->jwt_clock_skew = getDefine_Int_default("remoted", "jwt_clock_skew", 0, 43200, 30);
+    rm_config->jwt_clock_skew_set = 1;
     rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 10485760);
 }
 
@@ -337,23 +347,28 @@ STATIC void remoted_enrollment_config(remoted_module_config_t *rm_config) {
     authd_config_t authd_cfg;
     memset(&authd_cfg, 0, sizeof(authd_cfg));
 
-    if (ReadConfig(CAUTHD, WAZUHCONF, &authd_cfg, NULL) == 0) {
+    // authd's section of the effective document RemotedConfig() already loaded: same file as
+    // remoted's own settings, so a `-c` override reaches the enrollment policy too.
+    cJSON *auth_section = w_mconf_section("auth");
+
+    if (auth_section != NULL && Read_Authd_JSON(auth_section, &authd_cfg) == 0) {
         // authd_cfg.flags.disabled behaves as a plain boolean in current authd builds: 0
-        // (enabled) unless <auth><disabled>yes</disabled> is explicit -- see the Agent
+        // (enabled) unless auth.disabled: true is explicit -- see the Agent
         // enrollment chapter of remoted_module/README.md for the verified analysis.
         rm_config->enrollment_enabled = !authd_cfg.flags.disabled && authd_cfg.flags.remote_enrollment;
         rm_config->enroll_use_password = authd_cfg.flags.use_password;
         rm_config->enroll_use_source_ip = authd_cfg.flags.use_source_ip;
         // NOT logr->allow_higher_versions: that is a separate, independently configured
-        // <remote> setting used by /control. /enroll reads authd's own <agents> setting so
+        // `remote` setting used by /control. /enroll reads authd's own `agents` setting so
         // it agrees with legacy port 1515 on which agent versions are acceptable.
         rm_config->enroll_allow_higher_versions = authd_cfg.allow_higher_versions;
     } else {
-        // authd's <auth> block could not be parsed at all -- fail closed rather than
+        // authd's `auth` section could not be read at all -- fail closed rather than
         // silently enabling enrollment with unknown password/version requirements.
         rm_config->enrollment_enabled = false;
     }
 
+    cJSON_Delete(auth_section);
     os_free(authd_cfg.ciphers);
     os_free(authd_cfg.agent_ca);
     os_free(authd_cfg.manager_cert);
@@ -377,7 +392,7 @@ STATIC void remoted_enrollment_config(remoted_module_config_t *rm_config) {
 /**
  * @brief Build the config struct passed to remoted_module_start(), combining the
  *        `remoted.http_*` internal options (see remoted_module_https_config()) with
- *        the `<remote><https>` settings parsed into `logr`, plus the memory-management
+ *        the `remote.https` settings parsed into `logr`, plus the memory-management
  *        constants that are deliberately not internal options. Extracted out of
  *        HandleSecure() so it's unit-testable without starting the module.
  */
@@ -386,7 +401,7 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
 
     // rm_config->port is the HTTPS listening port -- unrelated to logr->port (remoted's
     // own classic TCP/UDP port, already bound by the time we get here). Populated
-    // from <remote><https> when configured; otherwise left at 0 so the module falls
+    // from remote.https when configured; otherwise left at 0 so the module falls
     // back to its own default.
     rm_config->port = logr->https.port;
     remoted_module_https_config(rm_config);
@@ -399,6 +414,10 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
 
     if (logr->https.bind_addr) {
         snprintf(rm_config->bind_address, sizeof(rm_config->bind_address), "%s", logr->https.bind_addr);
+    }
+
+    if (logr->https.global_prefix) {
+        snprintf(rm_config->global_prefix, sizeof(rm_config->global_prefix), "%s", logr->https.global_prefix);
     }
 
     if (logr->https.certificate) {
@@ -487,6 +506,25 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     // must stay above whatever cadence the agent ships.
     rm_config->keepalive_throttle_sec = getDefine_Int_default("remoted", "control_keepalive_throttle", 1, 3600, 60);
 
+    // The throttle suppresses the update-keepalive write for its whole window, and the disconnection
+    // sweep marks any agent whose last_keepalive is older than <agents_disconnection_time>. The
+    // staleness the threshold sees is the throttle PLUS the agent's notify interval, which remoted
+    // does not know, so the guard fires from half: anything at or above it can cross once the
+    // agent's cadence is added, and half is also the safe setting for detection latency, because
+    // the sweep's period is the threshold itself and detection lands anywhere in [1x, 2x].
+    if (rm_config->keepalive_throttle_sec >= logr.global.agents_disconnection_time / 2) {
+        mwarn("'remoted.control_keepalive_throttle' (%d s) is at or above half of <agents_disconnection_time> "
+              "(%ld s): once the throttle plus the agent's notify interval crosses the threshold, agents that "
+              "are answering normally are marked disconnected. Keep it below half.",
+              rm_config->keepalive_throttle_sec,
+              logr.global.agents_disconnection_time);
+    }
+
+    // /scan/vd's relay to VD is answered at admission into its dispatch queue: a local-socket
+    // round trip measured in milliseconds.
+    rm_config->vd_scan_read_timeout_sec = getDefine_Int_default("remoted", "vd_scan_read_timeout", 1, 300, 5);
+    rm_config->vd_scan_write_timeout_sec = getDefine_Int_default("remoted", "vd_scan_write_timeout", 1, 300, 5);
+
     extern module_limits_t manager_module_limits;
     extern bool manager_module_limits_enabled;
 
@@ -501,6 +539,12 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     } else {
         snprintf(rm_config->limits_json, sizeof(rm_config->limits_json), "{}");
     }
+}
+
+void w_remoted_validate_module_config(void) {
+    remoted_module_config_t rm_config;
+    w_remoted_build_module_config(&logr, &rm_config);
+    remoted_module_control_config(&rm_config);
 }
 
 /* Handle secure connections */
@@ -564,8 +608,8 @@ void HandleSecure()
         merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
     }
 
-    /* protocol is 0 when <remote><legacy> is absent/disabled -- Read_Remote() resets proto
-     * to 0 in that case even if <protocol> was explicitly set, so neither branch below
+    /* protocol is 0 when remote.legacy is disabled -- Read_Remote_JSON() resets proto
+     * to 0 in that case even if protocol was explicitly set, so neither branch below
      * adds a socket and the event loop just idles -- no separate legacy_enabled check
      * needed here. */
 
@@ -713,7 +757,7 @@ static void start_legacy_subsystems(void) {
 
 static void log_secure_startup_message(void) {
     if (!logr.legacy_enabled) {
-        minfo(STARTUP_MSG " Legacy listener disabled ('<remote><legacy>' absent or disabled).",
+        minfo(STARTUP_MSG " Legacy listener disabled (remote.legacy.enabled is false).",
             (int)getpid());
         return;
     }

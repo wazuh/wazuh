@@ -17,6 +17,16 @@
 #include "audit_op.h"
 
 #define WHODATA_PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
+// Max number of audisp plugin configurations that audisp_get_candidates() may return. Each extra
+// candidate costs an Auditd restart when it has to be probed, so the list is deliberately short.
+#define MAX_AUDISP_CANDIDATES 2
+
+// Max time to wait for the audisp plugin to create the who-data socket, and how often to look
+#define AUDIT_SOCKET_WAIT_MS 5000
+#define AUDIT_SOCKET_POLL_MS 100
+// Connection attempts before deeming the socket stale
+#define AUDIT_SOCKET_CONNECT_RETRIES 3
+
 #define VERCODE(M,m,p)  ((((unsigned)(M) & 0xFF) << 16) | (((unsigned)(m) & 0xFF) << 8) | ((unsigned)(p) & 0xFF))
 #define AUDIT_HEALTHCHECK_KEY "wazuh_hc"
 #define AUDIT_KEY "wazuh_fim"

@@ -24,6 +24,7 @@
 #include "schemaValidator.hpp"
 
 #include <mock_sysinfo.hpp>
+#include "mock_agent_sync_protocol.hpp"
 
 constexpr auto SYSCOLLECTOR_DB_PATH {":memory:"};
 constexpr auto SYSCOLLECTOR_TEST_DB_PATH {"syscollector_test.db"};
@@ -3055,6 +3056,97 @@ TEST_F(SyscollectorImpTest, queryCommandGetFirstSyncCompletedReturnsTrueWhenMeta
     Syscollector::instance().destroy();
 }
 
+
+// ── #38601: synced_agent_id marker and query ─────────────────────────────────
+//
+// An agent deleted on the manager re-enrolls under a new id while local.db -- the first-sync
+// marker in it included -- survives untouched, so every later cycle sends a delta against a
+// baseline the manager no longer has for this identity. This marker is what lets a cycle notice.
+
+TEST_F(SyscollectorImpTest, queryCommandGetSyncedAgentIdDefaultsToZero)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    // Zero, not an error: a database that has never recorded one is the normal state of every
+    // agent before its first cycle, and of every agent upgrading in place.
+    std::string response = Syscollector::instance().query(R"({"command":"get_synced_agent_id"})");
+    auto responseJson = nlohmann::json::parse(response);
+
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["synced_agent_id"], 0);
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, queryCommandGetSyncedAgentIdReturnsStoredValue)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    Syscollector::instance().destroy();
+
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+    char* errMsg = nullptr;
+    // Stored as a plain number: OS_IsValidID() has already rejected anything but at most 8
+    // digits by the time an id reaches client.keys, so it fits the INTEGER column.
+    ASSERT_EQ(sqlite3_exec(db,
+                           "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('synced_agent_id', 42);",
+                           nullptr,
+                           nullptr,
+                           &errMsg),
+              SQLITE_OK)
+            << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_close(db);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    std::string response = Syscollector::instance().query(R"({"command":"get_synced_agent_id"})");
+    auto responseJson = nlohmann::json::parse(response);
+
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["synced_agent_id"], 42);
+
+    Syscollector::instance().destroy();
+}
+
 // ── first_scan_completed marker and query ────────────────────────────────────
 
 TEST_F(SyscollectorImpTest, queryCommandGetFirstScanCompletedDefaultsToFalse)
@@ -5815,6 +5907,196 @@ TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedIgnoresZeroTimest
 
     EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
     EXPECT_EQ(responseJson["data"]["vd_first_sync_completed"], 0);
+
+    Syscollector::instance().destroy();
+}
+
+// Test-only access to Syscollector's private getMetadataValue()/updateMetadataValue(), without
+// modifying Syscollector itself. Naming a private member as the non-type template argument of an
+// explicit template instantiation is not access-checked at that point (a long-standing, widely
+// used C++ idiom for reaching private members from test code with zero production-code changes).
+namespace syscollector_test_access
+{
+    template <typename Tag, typename Tag::type Member>
+    struct Rob
+    {
+        friend typename Tag::type stealAccess(Tag)
+        {
+            return Member;
+        }
+    };
+
+    struct GetMetadataValueTag
+    {
+        using type = bool (Syscollector::*)(const std::string&, int64_t&);
+        friend type stealAccess(GetMetadataValueTag);
+    };
+
+    struct UpdateMetadataValueTag
+    {
+        using type = bool (Syscollector::*)(const std::string&, int64_t);
+        friend type stealAccess(UpdateMetadataValueTag);
+    };
+
+    template struct Rob<GetMetadataValueTag, &Syscollector::getMetadataValue>;
+    template struct Rob<UpdateMetadataValueTag, &Syscollector::updateMetadataValue>;
+}
+
+// init() leaves m_spDBSync null if constructing DBSync fails (e.g. an unopenable db path,
+// mirroring a locked database file in the field) -- its very first statement constructs DBSync,
+// before any member is assigned, so a throw there leaves the object in exactly that state.
+// Calling both metadata accessors directly here bypasses syncModule()/persistVDFirstSyncIfNeeded(),
+// their only two production callers -- both currently skip this path via m_stopping, but that's an
+// accidental side effect of init()'s statement order, not a deliberate safeguard.
+TEST_F(SyscollectorImpTest, updateMetadataValueNullDBSyncAfterFailedInit)
+{
+#ifdef WIN32
+    GTEST_SKIP() << "Skipping updateMetadataValueNullDBSyncAfterFailedInit test on Windows: opening "
+                 "an unopenable db path crashes the process at a lower level than a catchable "
+                 "std::exception under Wine, instead of the clean throw this test relies on";
+#endif
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    bool initThrew = false;
+
+    try
+    {
+        Syscollector::instance().init(spInfoWrapper,
+                                      reportFunction,
+                                      persistFunction,
+                                      logFunction,
+                                      "/nonexistent-dir/local.db",
+                                      "",
+                                      "",
+                                      3600, false);
+    }
+    catch (const std::exception&)
+    {
+        initThrew = true;
+    }
+
+    ASSERT_TRUE(initThrew) << "Expected DBSync construction to throw for an unopenable db path";
+
+    // Unqualified on purpose: stealAccess() is a hidden friend, only reachable via ADL on its
+    // Tag argument's namespace -- explicit qualification (syscollector_test_access::stealAccess)
+    // does not find it.
+    const auto getMetadataValuePtr = stealAccess(syscollector_test_access::GetMetadataValueTag{});
+    const auto updateMetadataValuePtr = stealAccess(syscollector_test_access::UpdateMetadataValueTag{});
+
+    int64_t value = -1;
+    // Guarded: returns false safely instead of dereferencing a null m_spDBSync.
+    EXPECT_FALSE((Syscollector::instance().*getMetadataValuePtr)("test_key", value));
+
+    // Unguarded: dereferences a null m_spDBSync -- crashes without the fix applied above.
+    EXPECT_FALSE((Syscollector::instance().*updateMetadataValuePtr)("test_key", 1));
+}
+
+// --- Local-transport-unavailable log-level decision (issue #38621) ------------------------------
+// These inject a MockAgentSyncProtocol via m_spSyncProtocol/m_spSyncProtocolVD (through the
+// FRIEND_TEST grants in syscollector_defs.hpp) so the classification logic in syncModule() is
+// exercised without a live transport.
+
+namespace
+{
+    // VD sync isn't the subject of these tests; make it succeed trivially so it never adds noise
+    // (a WARNING/INFO log or a failed overall result) to the assertions on the regular-sync path.
+    void expectVDSyncSucceeds(MockAgentSyncProtocol& mockSyncProtocolVD)
+    {
+        EXPECT_CALL(mockSyncProtocolVD, synchronizeModule(testing::_, testing::_))
+        .WillRepeatedly(testing::Return(SyncModuleResult{true}));
+    }
+}
+
+/// Initializes Syscollector and injects fresh mocks for both the regular and VD sync protocols,
+/// wiring the regular one to return `result` for a Mode::DELTA/Option::SYNC call. Declares
+/// `logCapture` for the caller to assert against. Written as a macro, not a helper function, for
+/// the same reason as INJECT_MOCK_PROTOCOLS() in syscollector_identity_tests.cpp: FRIEND_TEST
+/// grants access to the test body, not to a function it calls.
+#define INIT_SYSCOLLECTOR_WITH_MOCKED_SYNC(spInfoWrapper, ...)                                                        \
+    auto logCapture = std::make_unique<LogCapture>();                                                                \
+    auto captureLogFunction = [logCapturePtr = logCapture.get()](modules_log_level_t level, const std::string & log) \
+    {                                                                                                                 \
+        logCapturePtr->capture(level, log);                                                                          \
+    };                                                                                                                \
+    Syscollector::instance().init(spInfoWrapper,                                                                     \
+                                  reportFunction,                                                                     \
+                                  persistFunction,                                                                    \
+                                  captureLogFunction,                                                                 \
+                                  SYSCOLLECTOR_DB_PATH,                                                               \
+                                  "",                                                                                 \
+                                  "",                                                                                 \
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false); \
+    Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400);                        \
+    auto mockSyncProtocol = std::make_unique<MockAgentSyncProtocol>();                                               \
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))                                     \
+    .WillOnce(testing::Return(__VA_ARGS__));                                                                         \
+    Syscollector::instance().m_spSyncProtocol = std::move(mockSyncProtocol);                                         \
+    auto mockSyncProtocolVD = std::make_unique<MockAgentSyncProtocol>();                                             \
+    expectVDSyncSucceeds(*mockSyncProtocolVD);                                                                       \
+    Syscollector::instance().m_spSyncProtocolVD = std::move(mockSyncProtocolVD)
+
+// While the local sync intake itself isn't reachable yet (streak within tolerance), the
+// synchronization is reported at INFO as deferred, not as a WARNING.
+TEST_F(SyscollectorImpTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    INIT_SYSCOLLECTOR_WITH_MOCKED_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                         .consecutiveFailures = 1u,
+                         .localTransportUnavailable = true});
+
+    Syscollector::instance().syncModule(Mode::DELTA);
+
+    EXPECT_TRUE(logCapture->contains(LOG_INFO,
+                                     "Syscollector synchronization deferred: Local sync intake is unreachable. Will retry next cycle."));
+    EXPECT_FALSE(logCapture->contains(LOG_WARNING, "Syscollector synchronization failed"));
+
+    Syscollector::instance().destroy();
+}
+
+// Right at the tolerance boundary, still deferred at INFO.
+TEST_F(SyscollectorImpTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    INIT_SYSCOLLECTOR_WITH_MOCKED_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                         .consecutiveFailures = SYNC_MANAGER_NOT_READY_TOLERANCE,
+                         .localTransportUnavailable = true});
+
+    Syscollector::instance().syncModule(Mode::DELTA);
+
+    EXPECT_TRUE(logCapture->contains(LOG_INFO,
+                                     "Syscollector synchronization deferred: Local sync intake is unreachable. Will retry next cycle."));
+    EXPECT_FALSE(logCapture->contains(LOG_WARNING, "Syscollector synchronization failed"));
+
+    Syscollector::instance().destroy();
+}
+
+// Past the tolerance, escalates to a WARNING that names the streak.
+TEST_F(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    INIT_SYSCOLLECTOR_WITH_MOCKED_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
+                         .consecutiveFailures = streak,
+                         .localTransportUnavailable = true});
+
+    Syscollector::instance().syncModule(Mode::DELTA);
+
+    EXPECT_TRUE(logCapture->contains(LOG_WARNING,
+                                     "Syscollector synchronization failed " + std::to_string(streak) +
+                                     " times in a row: Local sync intake is unreachable."));
 
     Syscollector::instance().destroy();
 }

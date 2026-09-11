@@ -57,6 +57,7 @@ foreach(counter RANGE ${count})
         ${WAZUHLIB}
         ${WAZUHEXT}
         SCHEDULING_MODULESD_O
+        ${TEST_DEPS}
         -ldl
         -lcmocka
         -fprofile-arcs

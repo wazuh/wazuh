@@ -37,7 +37,7 @@ NAMESPACE = POLICY_NS
 QUEUE = 1
 LOCATION = "[agent-id] (agent-ex) any->SomeModule"
 
-# Fixed UUIDs (valid v4) for decoder and its integration
+# Fixed identifiers for the decoder and its integration (opaque to the Engine; UUIDs only for readability)
 HELPERS_DECODER_UUID = "7a2d5a4b-4e6b-4dcb-8e4a-5c6e0c7a9f11"
 HELPERS_INTEG_UUID   = "e9d1a9c3-8f2b-4a6a-9f4b-2c6d5e7f2b10"
 

@@ -54,9 +54,10 @@ namespace
             switch (err)
             {
                 case remoted::auth::AuthError::UnknownAgent: return m.unknownAgent;
-                case remoted::auth::AuthError::InvalidMac: return m.invalidMac;
-                case remoted::auth::AuthError::ExpiredRequest:
-                case remoted::auth::AuthError::FutureRequest: return m.clockSkew;
+                case remoted::auth::AuthError::InvalidSignature: return m.invalidSignature;
+                case remoted::auth::AuthError::InvalidToken: return m.badToken;
+                case remoted::auth::AuthError::IdentityMismatch: return m.identityMismatch;
+                case remoted::auth::AuthError::StaleToken: return m.clockSkew;
                 case remoted::auth::AuthError::MissingKey: return m.unusableKey;
                 case remoted::auth::AuthError::AddressNotAllowed: return m.addressNotAllowed;
                 case remoted::auth::AuthError::EnrollmentKeyUnavailable: return m.enrollmentKey;
@@ -91,11 +92,11 @@ namespace
     enum class RejectionKind
     {
         ClientFault,              ///< Malformed/unauthenticated request. DEBUG2, unthrottled.
-        ClockSkew,                ///< Timestamp outside the accepted window -> auth_max_request_age/_future_skew.
+        ClockSkew,                ///< Token outside the accepted window -> jwt_max_age / jwt_clock_skew.
         BodyTooLarge,             ///< Over the authenticated-body cap -> auth_max_body_size.
         UnusableKey,              ///< The agent exists but its client.keys key does not decode.
         AgentMismatch,            ///< An authenticated agent claimed a different agent's id (security signal).
-        EnrollmentKeyUnavailable, ///< /enroll's Password mode: etc/authd.pass unavailable, or AES-CMAC
+        EnrollmentKeyUnavailable, ///< /enroll's Password mode: etc/authd.pass unavailable, or HKDF
                                   ///< unavailable manager-wide. Deliberately NOT UnusableKey -- there
                                   ///< is no agent and no client.keys entry yet to "re-enroll".
     };
@@ -104,8 +105,7 @@ namespace
     {
         switch (err)
         {
-            case remoted::auth::AuthError::ExpiredRequest:
-            case remoted::auth::AuthError::FutureRequest: return RejectionKind::ClockSkew;
+            case remoted::auth::AuthError::StaleToken: return RejectionKind::ClockSkew;
             case remoted::auth::AuthError::BodyTooLarge: return RejectionKind::BodyTooLarge;
             case remoted::auth::AuthError::MissingKey: return RejectionKind::UnusableKey;
             case remoted::auth::AuthError::EnrollmentKeyUnavailable: return RejectionKind::EnrollmentKeyUnavailable;
@@ -138,9 +138,9 @@ namespace
                 if (const auto d = clockSkewThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu request(s) in the last %d s whose timestamp fell outside the accepted "
-                               "window (%s). Check clock synchronization between the agents and the manager; the "
-                               "window is set by 'auth_max_request_age' and 'auth_max_future_skew'.",
+                               "Rejected %llu request(s) in the last %d s whose token fell outside the accepted "
+                               "time window (%s). Check clock synchronization between the agents and the manager; "
+                               "the window is set by 'jwt_max_age' and 'jwt_clock_skew' (remoted internal options).",
                                static_cast<unsigned long long>(d.total),
                                LogThrottle::kDefaultWindowSeconds,
                                remoted::auth::toString(err));
@@ -163,7 +163,8 @@ namespace
                 {
                     LOGFN_WARN(logFn(),
                                "Rejected %llu request(s) in the last %d s from agent(s) whose key could not be used: "
-                               "the key column in client.keys did not decode to a 16, 24 or 32-byte AES key. "
+                               "the key column in client.keys did not decode to the 32-byte key the bearer profile "
+                               "requires (64 lowercase hex chars). "
                                "Re-enroll the affected agent(s).",
                                static_cast<unsigned long long>(d.total),
                                LogThrottle::kDefaultWindowSeconds);
@@ -220,8 +221,8 @@ namespace remoted::endpoints
     {
         const auto pe = remoted::auth::publicErrorFor(err);
 
-        // Log AND count the PRE-collapse reason. publicErrorFor() deliberately folds seven
-        // distinct credential failures into one generic 401 so a client cannot tell which check
+        // Log AND count the PRE-collapse reason. publicErrorFor() deliberately folds every
+        // distinct credential failure into one generic 401 so a client cannot tell which check
         // failed -- but that also destroyed the distinction for the operator, since nothing
         // logged it. This is the single funnel every client-visible auth rejection passes
         // through, so one call here covers all of them.
@@ -233,7 +234,15 @@ namespace remoted::endpoints
         body += R"(","code":)";
         body += std::to_string(pe.status);
         body += "}";
-        return remoted::http::HttpResponse::json(pe.status, std::move(body));
+        auto response = remoted::http::HttpResponse::json(pe.status, std::move(body));
+        if (pe.status == 401)
+        {
+            // RFC 6750 §3: a 401 to a bearer-protected resource carries the challenge. Uniform for
+            // every credential failure (it names the scheme, never the reason) and absent from the
+            // non-credential 400/413/415, which are not authentication failures.
+            response.headers.emplace_back("WWW-Authenticate", "Bearer");
+        }
+        return response;
     }
 
 } // namespace remoted::endpoints

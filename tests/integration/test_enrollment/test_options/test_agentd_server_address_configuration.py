@@ -72,6 +72,10 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import generate_callback
 
+# Not a wazuh_testing pattern: #38624 rejects a malformed endpoint while parsing the
+# configuration, an error that has no constant in the framework yet.
+ENROLLMENT_INVALID_ENDPOINT = r".*Invalid endpoint '.*': Bad IPv6 address\."
+
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 
@@ -145,7 +149,13 @@ def test_agentd_server_address_configuration(test_configuration, test_metadata, 
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    if manager_address == 'MANAGER_IP':
+    if 'invalid_endpoint' in test_metadata:
+        # The endpoint never parses, so the agent stops at the configuration and never
+        # reaches name resolution.
+        callback=generate_callback(ENROLLMENT_INVALID_ENDPOINT)
+        log_monitor.start(timeout=30, callback=callback)
+        assert log_monitor.callback_result
+    elif manager_address == 'MANAGER_IP':
         callback=generate_callback(ENROLLMENT_INVALID_SERVER, {'server_ip': str(test_metadata['server_address'])})
         log_monitor.start(timeout=30, callback=callback)
         assert log_monitor.callback_result

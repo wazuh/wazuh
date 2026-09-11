@@ -13,8 +13,8 @@
 #define _HC_CONFIG_FETCHER_HPP
 
 #include "backoff.hpp"
-#include "cmacSigner.hpp"
 #include "iHttpPerformer.hpp"
+#include "iSigner.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
 #include "retrySender.hpp"
@@ -38,16 +38,20 @@
 class ConfigFetcher final
 {
     public:
-        ConfigFetcher(const ModuleConfig& config, IHttpPerformer& performer,
-                      const ISigner& signer, IClock& clock, IRandom& random,
-                      ISpoolFileFactory& spoolFactory, AuthGate& authGate,
+        ConfigFetcher(const ModuleConfig& config,
+                      IHttpPerformer& performer,
+                      const ISigner& signer,
+                      IClock& clock,
+                      IRandom& random,
+                      ISpoolFileFactory& spoolFactory,
+                      AuthGate& authGate,
                       CompressionGate& compressionGate);
 
-        /// Downloads the config for `group`, expecting the given SHA-256.
-        /// Returns the verified spool file (deleted on drop) or nullptr on
-        /// any failure, already logged.
-        std::shared_ptr<SpoolFile> fetch(const std::string& expectedHash,
-                                         const std::string& group, Waiter& waiter);
+        /// Downloads the config named by `resourceId` -- the manager's own
+        /// agent.config_token, used verbatim and never interpreted here --
+        /// expecting the given SHA-256. Returns the verified spool file
+        /// (deleted on drop) or nullptr on any failure, already logged.
+        std::shared_ptr<SpoolFile> fetch(const std::string& expectedHash, const std::string& resourceId, Waiter& waiter);
 
     private:
         const ModuleConfig& m_config;

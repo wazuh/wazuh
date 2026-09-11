@@ -29,12 +29,12 @@ namespace remoted::endpoints
      * @brief Applies the agent<->manager auth protocol in front of endpoint handlers.
      *
      * Header/auth validation is common to (almost) every endpoint and always
-     * synchronous (AES-CMAC over CPU). Instead of each endpoint repeating it, the
+     * synchronous (HMAC over CPU). Instead of each endpoint repeating it, the
      * gateway owns one AuthMiddleware and registers, on our transport-agnostic
      * IHttpServer, a raw async route whose worker-thread body:
-     *   1. runs the full validation (protocol-version + Authorization + timestamp
-     *      window + key lookup + AES-CMAC over the exact wire body bytes -- the MAC
-     *      always covers what was actually sent, compressed or not),
+     *   1. runs the full validation (protocol-version + `Bearer` wazuh-agent+jwt token:
+     *      key lookup + address rule + signature/claims/time policy -- header-only, the
+     *      body is not part of authentication) and the authenticated-body size cap,
      *   2. on failure, answers with publicErrorFor()'s status/message,
      *   3. on success, runs the injected IBodyDecoder over the verified body and
      *      answers with publicErrorFor() if it rejects, then
@@ -72,7 +72,7 @@ namespace remoted::endpoints
          *
          * @param server  Transport to register the route on.
          * @param method  HTTP method to match.
-         * @param path    Path to match (the query string is not matched, but IS part of the MAC).
+         * @param path    Path to match (the query string is not matched; nor is it part of authentication).
          * @param handler Invoked only after authentication succeeds; owns sending the response.
          * @param mode    Whether the handler may answer with a streamed body. Forwarded verbatim to
          *                IHttpServer::addRoute(): the transport fixes a response's output mode when

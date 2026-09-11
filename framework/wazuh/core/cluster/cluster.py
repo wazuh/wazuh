@@ -591,7 +591,7 @@ def clean_up(node_name=""):
             return
 
         for f in listdir(local_rm_path):
-            if f == os.path.basename(common.CLUSTERD_SOCKET) or f == os.path.basename(common.AR_BOOKMARK_FILEPATH):
+            if f == os.path.basename(common.AR_BOOKMARK_FILEPATH):
                 continue
             f_path = path.join(local_rm_path, f)
             try:

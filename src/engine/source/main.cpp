@@ -15,6 +15,7 @@
 #include <base/json.hpp>
 #include <base/libwazuhshared.hpp>
 #include <base/logging.hpp>
+#include <base/managerConfig.hpp>
 #include <base/process.hpp>
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
@@ -160,26 +161,36 @@ int main(int argc, char* argv[])
             return EXIT_FAILURE;
         }
 
-        if (chdir(base::process::getWazuhHome().string().c_str()) == -1)
+        const auto wazuhHome = base::process::getWazuhHome();
+        if (chdir(wazuhHome.string().c_str()) == -1)
         {
             fprintf(stderr, "chdir to Wazuh home failed: %s\n", strerror(errno));
             return EXIT_FAILURE;
         }
 
+        // Manager configuration (etc/wazuh-manager.conf). -t validates it, including the files it
+        // references; a normal start loads it once (no file checks) and registers it as the section
+        // provider of libwazuhshared.so before the first log, so the logging format and the cluster
+        // getters inside the shared library read the same document.
         if (opts.testConfig)
         {
-
-            try
+            if (const auto error = base::managerConfig::validate(wazuhHome))
             {
-                const auto ReadXML = base::libwazuhshared::getFunction<void (*)()>("os_logging_config");
-                ReadXML();
-            }
-            catch (const std::exception& e)
-            {
-                fprintf(stderr, "Error loading configuration: %s\n", e.what());
+                fprintf(stderr, "Error loading configuration: %s\n", error->c_str());
                 return EXIT_FAILURE;
             }
             return EXIT_SUCCESS;
+        }
+
+        try
+        {
+            base::managerConfig::load(wazuhHome);
+            base::managerConfig::registerSharedHook();
+        }
+        catch (const std::exception& e)
+        {
+            fprintf(stderr, "Error loading configuration: %s\n", e.what());
+            return EXIT_FAILURE;
         }
 
         try
@@ -422,10 +433,10 @@ int main(int argc, char* argv[])
 
             try
             {
-                // Get base configuration (from standalone or wazuh-manager.conf)
+                // Get base configuration (from standalone or the `indexer` section of etc/wazuh-manager.conf)
                 const auto baseJsonCnf = base::process::isStandaloneModeEnable()
                                              ? standAloneConfig()
-                                             : base::libwazuhshared::getJsonIndexerCnf();
+                                             : base::managerConfig::sectionJson("indexer");
 
                 // Parse JSON and add max_queue_bytes from engine configuration
                 json::Json jsonCnf(baseJsonCnf);
@@ -489,6 +500,30 @@ int main(int argc, char* argv[])
                                     maxRetryDelay));
                 }
                 jsonCnf.setUint64(maxRetryDelay, "/max_retry_delay_seconds");
+
+                // 0 is legal and disables the per-request bound (the pre-fix behavior).
+                constexpr size_t INDEXER_REQUEST_TIMEOUT_MAX = 3600;
+                const auto requestTimeout = confManager.get<size_t>(conf::key::INDEXER_REQUEST_TIMEOUT);
+                if (requestTimeout > INDEXER_REQUEST_TIMEOUT_MAX)
+                {
+                    throw std::runtime_error(
+                        fmt::format("analysisd.indexer_request_timeout must be between 0 and {} (got {})",
+                                    INDEXER_REQUEST_TIMEOUT_MAX,
+                                    requestTimeout));
+                }
+                jsonCnf.setUint64(requestTimeout, "/request_timeout_seconds");
+
+                // 0 is NOT legal: a zero polling period turns the health-monitor thread into a busy loop.
+                constexpr size_t INDEXER_MONITORING_INTERVAL_MAX = 3600;
+                const auto monitoringInterval = confManager.get<size_t>(conf::key::INDEXER_MONITORING_INTERVAL);
+                if (monitoringInterval == 0 || monitoringInterval > INDEXER_MONITORING_INTERVAL_MAX)
+                {
+                    throw std::runtime_error(
+                        fmt::format("analysisd.indexer_monitoring_interval must be between 1 and {} (got {})",
+                                    INDEXER_MONITORING_INTERVAL_MAX,
+                                    monitoringInterval));
+                }
+                jsonCnf.setUint64(monitoringInterval, "/monitoring_interval_seconds");
 
                 const auto maxHitsPerRequest =
                     confManager.get<std::size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);

@@ -38,33 +38,37 @@ added, because they all point at a single address.
 
 ## 2. The one thing that makes this protocol different
 
-Every agent request carries an **AES-CMAC signature** computed with the agent's pre-shared key.
-The signature covers five things, byte for byte:
+Every agent request carries a **`wazuh-agent+jwt` bearer token** the agent signs (HS256) with its
+pre-shared `client.keys` key. The token binds exactly two things:
 
 ```
-method + request target + agent id + timestamp + body
+who (agent id: kid / sub / iss)  +  when (iat / nbf / exp: 60 s, fresh jti per request)
 ```
 
 ```mermaid
 flowchart LR
     subgraph AG["Agent (has the shared key)"]
-      L["method + target + id<br/>+ timestamp + body"] -->|"AES-CMAC"| H["signature"]
+      L["agent id + iat/exp + jti"] -->|"HS256"| H["bearer token"]
     end
-    AG -->|"request + signature in the Authorization header"| M
+    AG -->|"request + token in the Authorization header"| M
     subgraph M["remoted (same key)"]
-      L2["recomputes the signature<br/>over WHAT ARRIVED"] --> C{"do they match?"}
-      C -->|"yes"| OK["202 accepted"]
-      C -->|"no, not even by one byte"| KO["401 rejected"]
+      L2["verifies the token<br/>from the headers alone"] --> C{"valid, fresh,<br/>known agent?"}
+      C -->|"yes"| R{"does the target<br/>match a route?"}
+      R -->|"yes"| OK["202 accepted"]
+      R -->|"no"| NF["404 not found"]
+      C -->|"no"| KO["401 rejected"]
     end
 ```
 
 Two consequences drive every rule on this page:
 
-1. **Anything in that list is untouchable.** A proxy that rewrites the request target or the body
-   invalidates the signature, and **every** request gets `401`.
-2. **Anything outside that list is invisible to the signature.** Headers are not covered, so a
-   proxy may add `X-Forwarded-For` freely — and, on the flip side, a header the manager relies on
-   is not protected by it.
+1. **The target and the body are not signed — TLS protects them.** A proxy that rewrites the
+   request target does not break authentication; it sends the request to a route that does not
+   exist, and **every** request gets `404`. The operational rule is the same as before — forward
+   the target and the body untouched — but the failure you will see is a missing route, never a
+   credential error.
+2. **Headers are invisible to the token.** A proxy may add `X-Forwarded-For` freely — and, on the
+   flip side, a header the manager relies on is not protected by it.
 
 There is one more property with no way around it: **remoted has no plaintext listener.** The
 connection to it is always TLS.
@@ -82,7 +86,7 @@ flowchart LR
 ```
 
 The balancer forwards bytes it cannot read. The agent validates **remoted's** certificate, and the
-agent's own client certificate reaches remoted intact. The balancer cannot break the signature even
+agent's own client certificate reaches remoted intact. The balancer cannot touch the request even
 if misconfigured — but it is also blind: it cannot filter, cannot cap sizes, and can only balance
 whole connections.
 
@@ -127,24 +131,33 @@ decrypted traffic.
 
 These come from the protocol, so they hold for NGINX, HAProxy, an ALB or anything else.
 
-### 4.1. remoted cannot live under a URL path prefix
+### 4.1. The proxy must never rewrite the path — prefixes are CONFIGURED, not rewritten
 
-Publishing it as `https://lb/wazuh/...` requires the proxy to rewrite the path, and the path is
-signed:
+The manager routes on the literal request path, so any proxy-side rewrite sends every request to a
+route that does not exist:
 
 ```mermaid
 flowchart LR
-    A["agent signs<br/>'/wazuh/stateless'"] --> N["proxy rewrites to<br/>'/stateless'"] --> R["remoted recomputes over<br/>'/stateless' → MISMATCH → 401"]
+    A["agent sends<br/>'/wazuh-manager/stateless'"] --> N["proxy rewrites to<br/>'/stateless'"] --> R["remoted: no such route → 404"]
 ```
 
-Give remoted its **own port or hostname**. Query strings, extra headers and repeated slashes are
-fine — they are forwarded unchanged as long as the proxy does not rewrite the target.
+To publish remoted under a URL path prefix, configure the SAME prefix on both ends instead:
+[`remote.https.global_prefix`](../configuration.md#httpsglobal_prefix) on the manager (freshly
+generated configurations ship `/wazuh-manager/`) and the matching prefix on the agents. The
+agent then sends `/wazuh-manager/stateless`, and the proxy's only job is to forward that path
+untouched (passthrough). A prefix mismatch between agent and manager surfaces as `404`, not `401`
+— the bearer token does not bind the path, so authentication is never what fails here.
+
+If you cannot align the prefix end to end, give remoted its **own port or hostname**. Query
+strings, extra headers and repeated slashes are fine — they are forwarded unchanged as long as
+the proxy does not rewrite the target. (Percent-encoded spellings of a path also route — the
+router decodes ordinary bytes for matching — so this changes nothing for a well-behaved client.)
 
 ### 4.2. The backend connection must be TLS 1.3
 
 remoted requires TLS 1.3 as its minimum version and it is not configurable. A proxy that offers
 only TLS 1.2 to the backend fails the handshake, and the agent sees `502` — while the agent and its
-signature were perfect, which makes it a confusing failure to chase.
+token were perfect, which makes it a confusing failure to chase.
 
 Note the asymmetry: the connection **from the agent** may be more permissive; the connection **to
 remoted** may not.
@@ -314,15 +327,17 @@ from any agent at any time**. Two things must therefore hold across all managers
 
 * **Agent keys must be present everywhere.** A manager without an agent's key answers `401`. Since
   requests are spread per request, a freshly enrolled agent whose key has not reached every manager
-  yet sees **intermittent** `401`s — correct signature, correct configuration, "sometimes it
+  yet sees **intermittent** `401`s — correct token, correct configuration, "sometimes it
   works". If you see that pattern right after enrolling, this is why.
-* **Clocks must be in sync (NTP).** The signature carries a timestamp and each manager judges it
+* **Clocks must be in sync (NTP).** The token carries its issue time and each manager judges it
   against its own clock, so drift produces the same intermittent `401`s. Keep the related
-  `remoted.auth_*` internal options identical across managers too.
+  `remoted.jwt_max_age` / `remoted.jwt_clock_skew` internal options identical across managers too.
 
 ## 8. Checklist before going to production
 
-- [ ] remoted has its own port or hostname (no URL path prefix)
+- [ ] The published path prefix (if any) equals `remote.https.global_prefix` on every manager
+      node and on every agent — the proxy never rewrites it. Otherwise remoted has its own port
+      or hostname
 - [ ] The proxy forwards the request target unchanged
 - [ ] Backend connections negotiate TLS 1.3
 - [ ] Backend certificate verification is enabled, and the certificate has a matching SAN

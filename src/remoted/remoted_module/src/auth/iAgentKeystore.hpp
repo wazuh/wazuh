@@ -26,9 +26,10 @@ namespace remoted::auth
      */
     struct AgentLookup
     {
-        /// The agent's pre-shared AES key (16, 24 or 32 bytes). Empty when the entry exists but its
-        /// on-disk key column could not be used as-is, which is what lets a caller answer the more
-        /// precise "unusable key" instead of "unknown agent".
+        /// The agent's HS256 key: exactly the 32 bytes the 64-hex client.keys secret decodes to.
+        /// Empty when the entry exists but its on-disk key column is not that (wrong length, not
+        /// lowercase hex), which is what lets a caller answer the more precise "unusable key"
+        /// instead of "unknown agent".
         std::vector<std::uint8_t> key;
 
         /// Whether the peer address passed to lookup() satisfies the entry's `ip` column.
@@ -36,7 +37,7 @@ namespace remoted::auth
     };
 
     /**
-     * @brief Relates agent ids to their pre-shared AES key and to the addresses they may connect from.
+     * @brief Relates agent ids to their pre-shared key and to the addresses they may connect from.
      */
     class IAgentKeystore
     {

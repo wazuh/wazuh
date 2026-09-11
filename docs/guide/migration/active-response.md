@@ -798,7 +798,7 @@ In 5.x `execd` keeps an in-memory dedup table but exposes no escalating-timeout 
 
 ### `Location = server` from 4.x
 
-Manager-side execution does not exist in 5.x. If the manager host runs a co-located Wazuh agent, use **Location** = `Defined agent` with that agent's ID. Otherwise install an agent on the manager host or relocate the action elsewhere.
+Manager-side execution does not exist in 5.x. If the manager host runs a co-located Wazuh agent, use **Location** = `Defined agent` with that agent's ID. Otherwise install a 5.x agent on the manager host — Wazuh 4.x agent packages declare a conflict with the `wazuh-manager` package and cannot share a host with a 5.x manager — or relocate the action elsewhere.
 
 ---
 

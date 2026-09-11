@@ -4081,8 +4081,8 @@ void test_validate_control_msg_shutdown_success(void** state)
     expect_string(__wrap_OSHash_Delete_ex, key, "001");
     expect_value(__wrap_OSHash_Delete_ex, self, agent_data_hash);
 
-    // Expect minfo to be called with OS_AG_STOPPED format
-    expect_string(__wrap__minfo, formatted_msg, "wazuh: Agent stopped: [001] (agent1).");
+    // Expect mdebug1 to be called with OS_AG_STOPPED format
+    expect_string(__wrap__mdebug1, formatted_msg, "wazuh: Agent stopped: [001] (agent1).");
 
     int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
 

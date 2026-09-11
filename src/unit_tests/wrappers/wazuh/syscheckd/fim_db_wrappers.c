@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdbool.h>
 #include <cmocka.h>
 
 int __wrap_fim_db_get_count_file_entry(){
@@ -73,10 +74,29 @@ void expect_fim_db_remove_path(const char *path, int ret_val) {
     will_return(__wrap_fim_db_remove_path, ret_val);
 }
 
+static bool drive_fim_db_file_update_callback = false;
+
+void expect_fim_db_file_update_invoking_callback(void) {
+    drive_fim_db_file_update_callback = true;
+}
+
+void reset_fim_db_file_update_invoking_callback(void) {
+    drive_fim_db_file_update_callback = false;
+}
+
 FIMDBErrorCode __wrap_fim_db_file_update(__attribute__((unused)) fim_entry* new,
-                              __attribute__((unused)) callback_context_t callback)
+                              callback_context_t callback)
 {
-    return mock_type(int);
+    FIMDBErrorCode ret = mock_type(int);
+
+    if (drive_fim_db_file_update_callback) {
+        drive_fim_db_file_update_callback = false;
+        ReturnTypeCallback result_type = mock_type(int);
+        cJSON* result_json = mock_ptr_type(cJSON*);
+        callback.callback_txn(result_type, result_json, callback.context);
+    }
+
+    return ret;
 }
 
 FIMDBErrorCode __wrap_fim_db_file_pattern_search(const char* pattern,

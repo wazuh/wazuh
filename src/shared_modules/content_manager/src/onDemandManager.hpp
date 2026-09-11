@@ -32,7 +32,7 @@
 /**
  * @brief Registry and bounded execution lane for on-demand content updates.
  *
- * This used to own a raw cpp-httplib server on its own socket; since the vd.sock unification the
+ * This used to own a raw cpp-httplib server on its own socket; since the vd-http.sock unification the
  * HTTP surface is ONE route (POST /ondemand) registered by the vulnerability scanner on the
  * shared transport, and this class keeps what was always application-level: the topic registry
  * and -- new -- the lane that runs updates off the transport's I/O threads. An update runs a

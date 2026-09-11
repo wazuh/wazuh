@@ -28,7 +28,6 @@
 #define W_AGENTD_FIELD_STATUS     "status"         ///< Agent status
 #define W_AGENTD_FIELD_KEEP_ALIVE "last_keepalive" ///< Last time a keepalive was sent
 #define W_AGENTD_FIELD_MSG_COUNT  "msg_count"      ///< Number of generated events
-#define W_AGENTD_FIELD_MSG_SENT   "msg_sent"       ///< Number of messages sent to the manager
 #define W_AGENTD_FIELD_MSG_BUFF   "msg_buffer"     ///< Number of current buffered events
 #define W_AGENTD_FIELD_EN_BUFF    "buffer_enabled" ///< Anti-flooding mechanism (buffer) is enable
 
@@ -57,7 +56,6 @@ typedef enum {
     UPDATE_STATUS = 0,   ///< Update status represented by agent_state_t
     UPDATE_KEEPALIVE,    ///< Update keepalive represented by time_t
     INCREMENT_MSG_COUNT, ///< Increment number of messages sent to the buffer
-    INCREMENT_MSG_SEND,   ///< Increment number of messages sent to the manager
     RESET_MSG_COUNT_ON_SHRINK, ///< Reset message counter due to buffer shrinking, taking into account new buffer capacity.
     INCREMENT_TASK_DISPATCHED,         ///< A /control task was routed to a handler
     INCREMENT_TASK_DISCARDED_DUPLICATE, ///< A /control task was discarded as a duplicate
@@ -71,7 +69,6 @@ typedef struct agent_state_t {
     agent_status_t status;  ///< Agent status
     time_t last_keepalive;  ///< Last time a keepalive was sent
     unsigned int msg_count; ///< Number of generated events
-    unsigned int msg_sent;  ///< Number of messages (events + control messages) sent to the manager
     unsigned int task_dispatched;         ///< /control tasks routed to a handler
     unsigned int task_discarded_duplicate; ///< /control tasks discarded as duplicates
     unsigned int task_failed;             ///< /control tasks that failed to dispatch/execute

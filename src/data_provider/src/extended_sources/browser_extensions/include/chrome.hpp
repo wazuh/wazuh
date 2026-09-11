@@ -11,6 +11,7 @@
 
 #include <string>
 #include <vector>
+#include <tuple>
 #include "json.hpp"
 #include "browser_extensions_wrapper.hpp"
 

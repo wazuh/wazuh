@@ -16,13 +16,15 @@
 // a real DeferredForwarder -- the same pattern as statsEndpoint_test.cpp.
 #include "endpoints/statefulEndpoint.hpp"
 
-#include "auth/cmac.hpp"
 #include "common/requestOutcomeMetrics.hpp"
 #include "decoding/iBodyDecoder.hpp"
 #include "downstream/IDownstreamClient.hpp"
 #include "downstream/deferredWorkLimiter.hpp"
 #include "endpoints/authGateway.hpp"
 #include "fakeHttpServer.hpp"
+#include "jwt/canonicalAgentId.hpp"
+#include "jwt/jwtRequestTokenSigner.hpp"
+#include "jwt/secureBytes.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -88,8 +90,8 @@ namespace
 
 TEST(StatefulEndpoint, TargetPointsAtTheInventorySyncServer)
 {
-    const auto target = stateful::target("queue/sockets/inventory-sync.sock", "1001", 20000);
-    EXPECT_EQ(target.socketPath, "queue/sockets/inventory-sync.sock");
+    const auto target = stateful::target("queue/sockets/inventory-sync-http.sock", "1001", 20000);
+    EXPECT_EQ(target.socketPath, "queue/sockets/inventory-sync-http.sock");
     EXPECT_EQ(target.method, Method::Post);
     EXPECT_EQ(target.path, "/stateful");
     EXPECT_EQ(target.contentType, "application/octet-stream");
@@ -101,7 +103,7 @@ TEST(StatefulEndpoint, TargetPointsAtTheInventorySyncServer)
 
 TEST(StatefulEndpoint, TargetCarriesTheAuthenticatedAgentIdAsAHeader)
 {
-    const auto target = stateful::target("queue/sockets/inventory-sync.sock", "1001", 20000);
+    const auto target = stateful::target("queue/sockets/inventory-sync-http.sock", "1001", 20000);
     ASSERT_EQ(target.headers.size(), 1U);
     EXPECT_EQ(target.headers[0].first, "X-Wazuh-Agent-Id");
     EXPECT_EQ(target.headers[0].second, "1001");
@@ -284,7 +286,7 @@ TEST(StatefulMakeHandler, EmptyBodyShortCircuitsBeforeForward)
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
 
-    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync.sock", 20000);
+    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000);
     auto fixture = makeAuthReq("", "1001");
     auto responder = std::make_shared<CapturingResponder>();
     auto fut = responder->future();
@@ -309,7 +311,7 @@ TEST(StatefulMakeHandler, MetricsCountBothTheLocal400AndTheDeliveredStatus)
     auto client = std::make_shared<FakeDownstreamClient>();
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
-    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync.sock", 20000, &metrics);
+    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, &metrics);
 
     {
         auto fixture = makeAuthReq("", "1001"); // empty body: answered 400 by the handler itself
@@ -344,7 +346,7 @@ TEST(StatefulMakeHandler, ForwardsTheOpaqueSessionWithAgentIdAndDedicatedTimeout
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
 
-    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync.sock", 20000);
+    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000);
     // Deliberately NOT a valid FlatBuffer: remoted must forward it opaquely, without parsing.
     auto fixture = makeAuthReq("\x01\x02binary-fullsession-bytes", "1001");
     auto responder = std::make_shared<CapturingResponder>();
@@ -354,7 +356,7 @@ TEST(StatefulMakeHandler, ForwardsTheOpaqueSessionWithAgentIdAndDedicatedTimeout
 
     ASSERT_TRUE(client->called());
     const auto req = client->request();
-    EXPECT_EQ(req.socketPath, "queue/sockets/inventory-sync.sock");
+    EXPECT_EQ(req.socketPath, "queue/sockets/inventory-sync-http.sock");
     EXPECT_EQ(req.path, "/stateful");
     EXPECT_EQ(req.contentType, "application/octet-stream");
     EXPECT_EQ(req.responseTimeoutMs, 20000); // the dedicated deadline reaches the wire request
@@ -404,17 +406,17 @@ namespace
         {
             if (agentId == 1)
             {
-                return remoted::auth::AgentLookup {std::vector<std::uint8_t>(16, 0x0A), true};
+                return remoted::auth::AgentLookup {std::vector<std::uint8_t>(32, 0x0A), true};
             }
             return std::nullopt;
         }
     };
 } // namespace
 
-// The doc-10 §3 component chain in one piece: a CMAC-signed agent request to /stateful runs
-// through the real AuthGateway into the real handler, and the id that reaches the downstream
+// The doc-10 §3 component chain in one piece: a bearer-authenticated agent request to /stateful
+// runs through the real AuthGateway into the real handler, and the id that reaches the downstream
 // X-Wazuh-Agent-Id header is the AUTHENTICATED one -- written by the manager from the verified
-// Authorization header, never taken from anything the agent controls independently of the MAC.
+// token, never taken from anything the agent controls independently of the signature.
 TEST(StatefulMakeHandler, AuthenticatedRequestFlowsThroughTheGatewayIntoTheForward)
 {
     auto client = std::make_shared<FakeDownstreamClient>();
@@ -427,30 +429,22 @@ TEST(StatefulMakeHandler, AuthenticatedRequestFlowsThroughTheGatewayIntoTheForwa
     gateway.addAuthenticatedRoute(server,
                                   Method::Post,
                                   "/stateful",
-                                  stateful::makeHandler(forwarder, "queue/sockets/inventory-sync.sock", 20000));
+                                  stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000));
 
-    // Sign the canonical byte sequence AuthMiddleware verifies, with FakeKeystore's key for 001.
+    // A wazuh-agent+jwt bearer for 001, minted with FakeKeystore's key for it.
     const std::string body = "\x01\x02opaque-fullsession";
-    const auto ts = static_cast<std::int64_t>(std::time(nullptr));
-    const std::vector<std::uint8_t> key(16, 0x0A);
-    remoted::auth::Cmac cmac(key);
-    cmac.update("WAZUH-REQUEST\n");
-    cmac.update("1\n"); // protocol-version
-    cmac.update("POST\n");
-    cmac.update("/stateful\n");
-    cmac.update("001\n");
-    cmac.update(std::to_string(ts));
-    cmac.update("\n");
-    cmac.update(body);
-    const auto mac = cmac.finalize();
+    const std::vector<std::uint8_t> key(32, 0x0A);
+    const jwt_profile::v1::SecureBytes secret {key.data(), key.size()};
+    const auto token = jwt_profile::v1::JwtRequestTokenSigner::sign(
+        *jwt_profile::v1::CanonicalAgentId::parse("001"), secret, std::chrono::system_clock::now());
+    ASSERT_TRUE(token);
 
     remoted::http::HttpRequest request;
     request.method = Method::Post;
     request.target = "/stateful";
     request.body = body;
     request.headers.emplace("protocol-version", "1");
-    request.headers.emplace(
-        "authorization", "Wazuh 001:" + std::to_string(ts) + ":" + remoted::auth::toLowerHex(mac.data(), mac.size()));
+    request.headers.emplace("authorization", "Bearer " + *token);
 
     auto responder = std::make_shared<CapturingResponder>();
     auto fut = responder->future();
@@ -460,7 +454,7 @@ TEST(StatefulMakeHandler, AuthenticatedRequestFlowsThroughTheGatewayIntoTheForwa
     const auto req = client->request();
     ASSERT_EQ(req.headers.size(), 1U);
     EXPECT_EQ(req.headers[0].first, "X-Wazuh-Agent-Id");
-    EXPECT_EQ(req.headers[0].second, "001"); // the id the CMAC authenticated, wire form
+    EXPECT_EQ(req.headers[0].second, "001"); // the id the token authenticated, canonical form
 
     client->fire(DownstreamError::None, DownstreamResponse {200, R"({"status":"ok"})", {}});
     ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);

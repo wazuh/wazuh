@@ -11,6 +11,7 @@
 
 #include "remoted_module.h"
 #include "testLogRecorder.hpp"
+#include "testTlsServer.hpp"
 #include <atomic>
 #include <chrono>
 #include <cstdarg>
@@ -263,6 +264,28 @@ TEST_F(RemotedModuleTest, StartAndStop)
     remoted_module_start(testLogCallback, &cfg);
     remoted_module_stop();
     EXPECT_GT(g_logCalls.load(), 0);
+}
+
+// With global_prefix set through the C ABI, every public route moves under it: the health
+// probe answers at /<prefix>/ and the bare / is gone (404). The transport/E2E suites pin the
+// full behavior table; this is the black-box proof that the C-ABI field actually reaches it.
+TEST_F(RemotedModuleTest, GlobalPrefixMovesEveryRoute)
+{
+    TempTlsFiles tls;
+    auto cfg = makeConfig(tls);
+    std::snprintf(cfg.global_prefix, sizeof(cfg.global_prefix), "/wazuh-manager/");
+    remoted_module_start(testLogCallback, &cfg);
+
+    const auto port = static_cast<std::uint16_t>(cfg.port);
+
+    const auto prefixed = remoted::test::sendGetRequest(port, "/wazuh-manager/");
+    EXPECT_NE(prefixed.find(" 200 "), std::string::npos) << prefixed;
+    EXPECT_NE(prefixed.find("\"status\":\"ok\""), std::string::npos) << prefixed;
+
+    const auto bare = remoted::test::sendGetRequest(port, "/");
+    EXPECT_NE(bare.find(" 404 "), std::string::npos) << bare;
+
+    remoted_module_stop();
 }
 
 // stop() on a module that was never started must be a safe no-op.

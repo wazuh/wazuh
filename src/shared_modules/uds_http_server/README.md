@@ -5,12 +5,16 @@ end, with deferred responses, an in-flight byte budget with real load shedding, 
 two-phase shutdown with named guarantees. Extracted verbatim from
 `wazuh_modules/inventory_sync_server` (where it was designed and hardened); that module is its
 first consumer. Intended consumers: manager daemons that serve local peers over
-`queue/sockets/*` — inventory sync, the vulnerability scanner's `vd.sock`, remoted_module's
+`queue/sockets/*` — inventory sync, the vulnerability scanner's `vd-http.sock`, remoted_module's
 local admin socket.
 
 What it deliberately is NOT: remoted's agent-facing TCP/TLS server (a protocol PEER of this
 library, not a layer of it), and not a general web framework — one request per connection,
 exact-match routing, no TLS, no keep-alive, no chunked encoding.
+
+Operator/integrator docs: `docs/ref/modules/utils/uds-http-server/` (status semantics,
+architecture, integration guide). This library has no standalone configuration — the
+transport knobs are documented in each consumer's `configuration.md`.
 
 ## Requirements
 
@@ -121,6 +125,14 @@ that are transient accept races). A Control route that does real work still shed
 capacity module-side (bounded queue → 503); the class only guarantees the data plane cannot
 starve it.
 
+`RouteOptions` overrides the class policy per route: `maxBodyBytes`, `maxSessions` and
+`responseTimeoutSec`, each `0` meaning "defer to the policy". The last one is the response backstop
+(dispatch → `send()`), and it exists because that backstop is written around the peer's own deadline
+being the SHORTER one. A route whose peer waits longer than the server-wide value inverts that: the
+504 fires while the work is still succeeding, so the peer retries and hits the same wall every time.
+Raising the server-wide value to suit one such route would weaken the leak backstop for every other
+one, so it is raised per route instead.
+
 Threading: one shared `asio::io_context` wrapped in a `Runtime` co-owned by the server, every
 session and every responder (that shared ownership is what makes a posthumous `send()` defined);
 N I/O threads (`ioThreads`, default nproc) in a resume-on-exception loop; the acceptor on its
@@ -166,7 +178,7 @@ with its own `main()` (`testMain.cpp`) that owns the binary's log sink; no modul
 
 | File | Pins |
 |---|---|
-| `udsHttpServer_test.cpp` | Routing, 404/405+`Allow`, query handling, socket modes under a hostile umask, stale-socket unlink + non-socket refusal, 411/413/414/431, slowloris, deferrals from other threads, 300 concurrent deferrals on 2 I/O threads, budget release on request drop, connection-cap 503, handler throw ⇒ 500, dropped responder ⇒ 503, never-answered ⇒ 504, no head-of-line blocking, requests outliving the server, inode-guarded unlink |
+| `udsHttpServer_test.cpp` | Routing, 404/405+`Allow`, query handling, socket modes under a hostile umask, stale-socket unlink + non-socket refusal, 411/413/414/431, slowloris, deferrals from other threads, 300 concurrent deferrals on 2 I/O threads, budget release on request drop, connection-cap 503, handler throw ⇒ 500, dropped responder ⇒ 503, never-answered ⇒ 504, a route raising its own response backstop while its neighbour keeps the server-wide one, no head-of-line blocking, requests outliving the server, inode-guarded unlink |
 | `udsShutdown_test.cpp` | S1/S2/S3 verbatim: replies between the two phases, `send()` after stop AND after destruction, drain window, force-close as EOF, concurrent stop races |
 | `requestParser_test.cpp` | The parser alone, byte-by-byte split boundaries, every limit, chunked ⇒ 411 |
 | `inFlightBudget_test.cpp` | Reservation RAII, move semantics, concurrent exactness |

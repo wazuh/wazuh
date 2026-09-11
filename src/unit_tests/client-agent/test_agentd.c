@@ -387,6 +387,21 @@ static void expect_valid_server_ip(void)
     expect_string(__wrap_OS_IsValidIP, ip_address, "10.0.0.1");
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
+
+    /* #38624: every config_report fixture still spells the manager as the deprecated
+     * <address>/<port> pair, so ClientConf() also logs the single <endpoint> that
+     * replaces it. Asserting the text here pins the suggestion these fixtures produce. */
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent><manager><address> and <port> are deprecated. Replace them with a "
+                  "single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
+}
+
+/* ClientConf() now resolves the enrollment retry pair through the defines reader, <max> first and
+ * <delta> second. The fixtures set neither option, so the queued values are the shipped defaults. */
+static void expect_enrollment_retry_reads(void)
+{
+    will_return(__wrap_getDefine_Int_default, 60); // agent.enrollment_retry_max
+    will_return(__wrap_getDefine_Int_default, 5);  // agent.enrollment_retry_delta
 }
 
 /* <config_report> absent -> ClientConf() must leave it enabled, with the
@@ -399,6 +414,7 @@ static void test_config_report_enabled_when_absent(void** state)
     (void)state;
     expect_valid_server_ip();
     will_return(__wrap_getDefine_Int, 0); // <agent><remote_conf>
+    expect_enrollment_retry_reads();
 
     assert_int_equal(ClientConf("test_config_report_default.conf"), 1);
     assert_int_equal(agt->config_report.enabled, 1);
@@ -412,6 +428,7 @@ static void test_config_report_explicit_no_is_respected(void** state)
     (void)state;
     expect_valid_server_ip();
     will_return(__wrap_getDefine_Int, 0); // <agent><remote_conf>
+    expect_enrollment_retry_reads();
 
     assert_int_equal(ClientConf("test_config_report_disabled.conf"), 1);
     assert_int_equal(agt->config_report.enabled, 0);
@@ -424,6 +441,7 @@ static void test_config_report_custom_interval_is_respected(void** state)
     (void)state;
     expect_valid_server_ip();
     will_return(__wrap_getDefine_Int, 0); // <agent><remote_conf>
+    expect_enrollment_retry_reads();
 
     assert_int_equal(ClientConf("test_config_report_custom_interval.conf"), 1);
     assert_int_equal(agt->config_report.enabled, 1);     // No <enabled> tag: stays on the default.

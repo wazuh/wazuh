@@ -72,7 +72,7 @@ extern "C"
          * NOT CONFIGURABLE, and modulesd always leaves it empty: internal options can only carry
          * ints, so there is no mechanism to set a path. The field stays because it is how a test --
          * or a future caller with a real string source -- points the server somewhere else.
-         * empty -> module default ("queue/sockets/inventory-sync.sock").
+         * empty -> module default ("queue/sockets/inventory-sync-http.sock").
          */
         char socket_path[512];
         /**
@@ -164,23 +164,25 @@ extern "C"
 
 
         /* ---- Sync pipeline (the POST /stateful ingestion path) ---- */
-        int sync_workers;           ///< Worker threads applying sessions to the indexer, sharded by
-                                    ///< agent id (FIFO per agent). Each worker owns one
-                                    ///< IndexerConnectorSync built on the shared session.
-                                    ///< Range 0..64. <=0 -> nproc/2, minimum 1.
-        long long sync_queue_bytes; ///< Early-rejection cap on payload bytes queued in the pipeline;
-                                    ///< over it -> 503. A refinement UNDER max_inflight_bytes (which
-                                    ///< already bounds the memory): this one sheds before the
-                                    ///< transport budget is exhausted so probes/other routes keep
-                                    ///< admitting. Range 1048576..1073741824. <=0 -> 64 MiB.
+        int sync_workers;                ///< Worker threads applying sessions to the indexer, sharded by
+                                         ///< agent id (FIFO per agent). Each worker owns one
+                                         ///< IndexerConnectorSync built on the shared session.
+                                         ///< Range 0..64. <=0 -> nproc/2, minimum 1.
+        long long sync_queue_bytes;      ///< Early-rejection cap on payload bytes queued in the pipeline;
+                                         ///< over it -> 503. A refinement UNDER max_inflight_bytes (which
+                                         ///< already bounds the memory): this one sheds before the
+                                         ///< transport budget is exhausted so probes/other routes keep
+                                         ///< admitting. Range 1048576..1073741824. <=0 -> 64 MiB.
         int vd_feed_retry_after_seconds; ///< Value of the `Retry-After` header attached to the 503
                                          ///< returned for vulnerability-detection sessions while
                                          ///< the CVE feed is still downloading.
-                                         ///< Range 10..1800. <=0 -> 60.
+                                         ///< Range 10..1800. <=0 -> 10.
         int vd_workers;                  ///< Workers of the vulnerability-detection scan lane
                                          ///< (scan -> index -> respond, one connector each). The
-                                         ///< scanner serializes scans globally, so more than 1
-                                         ///< only helps once that changes. Range 0..16. <=0 -> 1.
+                                         ///< scanner has its own matching per-slot pool, so
+                                         ///< raising this is safe. An explicit value is clamped
+                                         ///< to 0..64; <=0 resolves to nproc/2, minimum 1 and
+                                         ///< uncapped -- same convention as sync_workers above.
         int vd_scan_queue_slots;         ///< Short admission queue of the scan lane; full -> 503
                                          ///< "scan capacity exhausted". Range 0..256.
                                          ///< <=0 -> 2x vd_workers.
@@ -288,6 +290,45 @@ extern "C"
                                           ///< over it -> 413. Range 0..1048576. <=0 -> 65536.
         int control_max_sessions;         ///< Concurrent control-class sessions; over it -> 503.
                                           ///< Range 0..1024. <=0 -> 256.
+
+        /* ---- Per-request bound of both indexer connectors -- APPENDED, same ABI rule as above.
+         *      The connectors also accept 0 (no bound), but that is the unbounded-blocking bug this
+         *      option exists to prevent, so it is deliberately not reachable from here: the option's
+         *      minimum is 1 and <=0 means "use the connector default". ---- */
+        int indexer_sync_request_timeout_seconds;  ///< Cap, seconds, on one HTTP request against the
+                                                   ///< indexer. -> `request_timeout_seconds`.
+                                                   ///< <=0 -> 60 s.
+        int indexer_async_request_timeout_seconds; ///< Same, for the async connector.
+                                                   ///< -> `request_timeout_seconds`. <=0 -> 60 s.
+
+        /* ---- Shared health-monitor polling period -- APPENDED, same ABI rule as above. One field,
+         *      not two: both connectors share the session's single monitor, so there is exactly one
+         *      polling cadence per module. ---- */
+        int indexer_monitoring_interval_seconds; ///< Seconds between health-check rounds of the shared
+                                                 ///< session's monitor. -> `monitoring_interval_seconds`.
+                                                 ///< Range 1..3600. <=0 -> 10 s.
+
+        /* ---- Retry budget of the SYNC indexer connector -- APPENDED, same ABI rule as above.
+         *      Bounds every retry loop of one operation by attempts and by wall-clock time;
+         *      without it a persistent 429 or an unreachable indexer blocks the flushing worker
+         *      -- and the shard behind it -- forever. The connector accepts 0 (no bound), but
+         *      that is the unbounded-blocking bug this option exists to prevent, so it is not
+         *      reachable from here: minimum 1 and <=0 means "use the connector default". ---- */
+        int indexer_sync_max_retry_attempts;         ///< Failed attempts before one operation gives
+                                                     ///< up. -> `max_retry_attempts`. <=0 -> 5.
+        int indexer_sync_max_retry_duration_seconds; ///< Wall-clock deadline, seconds, for one
+                                                     ///< operation's retries.
+                                                     ///< -> `max_retry_duration_seconds`. <=0 -> 15 s.
+
+        /* ---- SYNC connector `_bulk` request cap -- APPENDED, same ABI rule as above. Separate
+         *      from `indexer_sync_max_bulk_size` on purpose: that older option is the ingestion
+         *      pipeline's group-commit threshold (wire FlatBuffer bytes), while this one caps the
+         *      serialized NDJSON of one `_bulk` request. One knob driving both let raising the
+         *      group-commit threshold silently raise the request size past the indexer's
+         *      `http.max_content_length`. ---- */
+        int indexer_sync_connector_max_bulk_size; ///< NDJSON bytes staged before the connector cuts
+                                                  ///< a `_bulk` request. -> `max_bulk_size`.
+                                                  ///< <=0 -> 10 MiB.
     } inventory_sync_server_config_t;
 
     /**

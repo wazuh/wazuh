@@ -39,7 +39,10 @@ target_link_libraries(
   # The metrics tests instantiate their own wazuh::metrics::Manager and dumpJson(); remoted_module
   # links wazuh_metrics PRIVATE (static), so this target needs its own link (which also propagates
   # the <wazuh_metrics/...> include dir the control/ and scanvd/ metric headers pull in).
-  wazuh_metrics)
+  wazuh_metrics
+  # jwtCppSpike_test.cpp (and the JWT auth tests) include <jwt-cpp/jwt.h> directly; remoted_module
+  # links ext_jwt_cpp PRIVATE, so this target needs its own link too.
+  ext_jwt_cpp)
 
 target_include_directories(
   remoted_module_utest

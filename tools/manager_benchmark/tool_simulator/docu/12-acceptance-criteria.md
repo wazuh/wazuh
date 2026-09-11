@@ -6,7 +6,7 @@ person with a devcontainer, and F9c-2's subplan closes against this list.
 | AC | Criterion | How it is shown |
 |---|---|---|
 | **AC-A** | Builds and vets clean, no cgo | `go build ./...` and `go vet ./...` succeed; `file` on the binary shows a static-ish Go executable |
-| **AC-B** | Signature parity with remoted | The CMAC vector self-test passes, and a signed request against the REAL manager returns something other than `401` for every route used (`/control`, `/stateful`) |
+| **AC-B** | Token parity with remoted | The frozen `wazuh-agent+jwt` vector self-test passes, and a bearer-authenticated request against the REAL manager returns something other than `401` for every route used (`/control`, `/stateful`) |
 | **AC-C** | Enrollment works against a password-less authd | A run with `fleet.agents: 3` enrolls 3 agents and records their ids in `meta.agents_enrolled`; the ids appear in the manager's `client.keys` |
 | **AC-D** | Control traffic is real and its answers are discarded | A 60 s run with `keepalive_interval: 5s` and 3 agents shows ~36 `control_notify_ok`; the code contains no read of `limits`, `agent.groups`, `config_hash`, `settings_hash` or `tasks` beyond validation (reviewable by grep) |
 | **AC-E** | `uds` mode drives the server alone | A run against the QA harness (`inventory_sync_server_testtool --serve --no-vd`) produces `sessions_ok > 0` and documents visible in the indexer |

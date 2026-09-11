@@ -29,6 +29,23 @@ extern "C" {
 /// @param max_session_bytes Maximum bytes per session, or 0 to keep the default.
 void asp_set_session_max_bytes(uint64_t max_session_bytes);
 
+/// @brief Returns the agent id this process is currently synchronizing under.
+///
+/// Reads the shared-memory metadata provider -- the same source, through the same call, that
+/// stamps every outgoing session's `Start.agentid`. A module comparing against this value can
+/// therefore never force a resync stamped with an id different from the one it compared against,
+/// which is why detection must read it from here and not from `client.keys`: the two disagree
+/// precisely during the re-enrollment window, and the manager answers a mismatch with 403.
+///
+/// Deliberately handle-less, like asp_set_session_max_bytes(): the agent id is process-global
+/// state, unrelated to any one protocol instance, and modules hold an IAgentSyncProtocol
+/// reference rather than the concrete class.
+///
+/// @return The agent id as a positive integer, or 0 when the provider has published nothing yet
+///         or holds a value that is not a plain number. Callers must treat 0 as "unknown", never
+///         as "changed" -- an unavailable provider must not look like a new identity.
+long asp_get_agent_id(void);
+
 /// @brief Creates an instance of AgentSyncProtocol.
 ///
 /// @param module Name of the module associated with this instance.

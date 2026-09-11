@@ -12,9 +12,12 @@
 #ifndef _HC_FAKE_MANAGER_HPP
 #define _HC_FAKE_MANAGER_HPP
 
-#include "cmacSigner.hpp"
 #include "digest.hpp"
-#include "enrollSigner.hpp"
+#include "jwt/enrollKeyDerivation.hpp"
+#include "jwt/jwtEnrollTokenVerifier.hpp"
+#include "jwt/jwtKeyDecoder.hpp"
+#include "jwt/jwtRequestTokenVerifier.hpp"
+#include "jwt/secureBytes.hpp"
 #include "keyProvider.hpp"
 
 #include "external/cpp-httplib/httplib.h"
@@ -22,8 +25,10 @@
 
 #include <openssl/evp.h>
 #include <openssl/x509.h>
+#include <zstd.h>
 
 #include <atomic>
+#include <chrono>
 #include <csignal>
 #include <cstdint>
 #include <cstdlib>
@@ -31,8 +36,16 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 #include <sys/wait.h>
 #include <unistd.h>
+
+// The config_token every notify reports, and the only resource_id /download will serve.
+// Deliberately NOT the group name, even though the real 5.0 manager currently mints the group
+// selector (controlHandler.cpp's makeConfigToken): the token is opaque to the agent, so a
+// value the agent could not have derived from agent.groups is what proves it really came
+// through the notify rather than being reconstructed locally.
+inline constexpr auto FAKE_MANAGER_CONFIG_TOKEN {"cfg-token-abc123"};
 
 // Mirrors the real manager's HashCache::getSettingsHash() (remoted_module/src/
 // control/hashCache.cpp) and the agent's ControlStream::computeSettingsHash():
@@ -60,7 +73,7 @@ inline std::string fakeManagerSettingsHash(const std::string& startupBody)
 
 /**
  * @brief Fork-based plaintext fake manager (the http-request component-test
- *        idiom). It validates the AES-CMAC of every request server-side with
+ *        idiom). It validates the wazuh-agent+jwt bearer of every request server-side with
  *        the shared key, so a 200 proves real cross-implementation auth
  *        interop; a mismatch yields 401. It supports a one-shot 503 (back-
  *        pressure), a session LRU-of-one (dedup), and a 409 version-reject mode.
@@ -76,7 +89,9 @@ class FakeManager final
         /// a client detects the change and refreshes its startup data.
         /// configBlob non-empty: /download serves it (chunked octet-stream)
         /// and every notify reports agent.config_hash = MD5(configBlob), so a
-        /// client whose local hash differs downloads it.
+        /// client whose local hash differs downloads it. Those notifies also
+        /// carry agent.config_token = FAKE_MANAGER_CONFIG_TOKEN, and /download
+        /// serves nothing else, so the client must relay the token verbatim.
         /// statelessMaxBody > 0: a /stateless POST whose body exceeds it gets
         /// 413, so the client must split and resend smaller (#37835).
         /// rotateKeyAfterNotifies > 0 with rotatedKeyHex set: after that many
@@ -96,22 +111,28 @@ class FakeManager final
         /// enrollPassword empty (default): /enroll accepts any request whose
         /// protocol-version header is present, no signature required (open
         /// mode, #38465 Q3). Non-empty: /enroll additionally requires an
-        /// Authorization: WazuhEnroll <ts>:<mac> header whose mac verifies
-        /// against this password via the module's own EnrollSigner (the same
-        /// reuse-the-production-signer idiom the rest of this fake manager
-        /// already uses for CmacSigner on /control et al -- the independent
-        /// cross-implementation proof of the HKDF/CMAC algorithm itself lives
-        /// in enrollSigner_test.cpp's Python-derived KAT, not here).
+        /// `Authorization: Bearer <wazuh-enroll+jwt>` header that verifies with the
+        /// manager's own shared JwtEnrollTokenVerifier against the HKDF key of
+        /// this password (jwt/enrollKeyDerivation.hpp -- the same construction
+        /// remoted's PasswordKeySource runs; the frozen KAT lives in
+        /// enrollSigner_test.cpp and jwt_vectors.json).
         /// enrollForcedStatus non-zero: /enroll always answers that status
         /// with a generic error body instead of running the real flow, so a
         /// test can drive the 400/401/403/409/500/503 mapping in
         /// w_enrollment_process_response() without needing five fake servers.
-        FakeManager(uint16_t port, const std::string& keyHex, bool tls = false,
-                    int settingsFlipAfter = 0, std::string configBlob = {},
-                    size_t statelessMaxBody = 0, int rotateKeyAfterNotifies = 0,
-                    std::string rotatedKeyHex = {}, std::string statefulHoldFile = {},
-                    uint64_t vdFeedOffset = 0, int scanVdRejectFirstNAttempts = 0,
-                    std::string enrollPassword = {}, int enrollForcedStatus = 0)
+        FakeManager(uint16_t port,
+                    const std::string& keyHex,
+                    bool tls = false,
+                    int settingsFlipAfter = 0,
+                    std::string configBlob = {},
+                    size_t statelessMaxBody = 0,
+                    int rotateKeyAfterNotifies = 0,
+                    std::string rotatedKeyHex = {},
+                    std::string statefulHoldFile = {},
+                    uint64_t vdFeedOffset = 0,
+                    int scanVdRejectFirstNAttempts = 0,
+                    std::string enrollPassword = {},
+                    int enrollForcedStatus = 0)
             : m_port(port)
             , m_keyHex(keyHex)
             , m_tls(tls)
@@ -150,45 +171,36 @@ class FakeManager final
         FakeManager& operator=(const FakeManager&) = delete;
 
     private:
-        static bool verifyCmac(const std::string& keyHex, const std::string& target,
-                               const httplib::Request& request)
+        /// Authenticates one agent request exactly as the manager does: the SHARED
+        /// wazuh-agent+jwt verifier (shared_modules/utils/jwt/) over the `Authorization:
+        /// Bearer` header, keyed with the 32 bytes keyHex decodes to. Using the manager's own
+        /// verifier is what makes this suite the C++<->C++ interoperability proof: a token the
+        /// agent mints here IS what remoted accepts. The target plays no part (identity only).
+        static bool verifyBearer(const std::string& keyHex, const std::string& /*target*/, const httplib::Request& request)
         {
+            if (request.get_header_value("protocol-version") != "1")
+            {
+                return false;
+            }
+
             const auto auth = request.get_header_value("Authorization");
-            // Format: "Wazuh <id>:<ts>:<mac>".
-            const auto space = auth.find(' ');
+            const std::string prefix = "Bearer ";
 
-            if (auth.rfind("Wazuh ", 0) != 0 || space == std::string::npos)
+            if (auth.rfind(prefix, 0) != 0)
             {
                 return false;
             }
 
-            const std::string token = auth.substr(space + 1);
-            const auto firstColon = token.find(':');
-            const auto secondColon = token.rfind(':');
-
-            if (firstColon == std::string::npos || firstColon == secondColon)
-            {
-                return false;
-            }
-
-            const std::string id = token.substr(0, firstColon);
-            const std::string ts = token.substr(firstColon + 1, secondColon - firstColon - 1);
-            const std::string mac = token.substr(secondColon + 1);
-
-            const std::string canonical =
-                "WAZUH-REQUEST\n1\nPOST\n" + target + "\n" + id + "\n" + ts + "\n" + request.body;
-            const ConfigKeyProvider provider {keyHex};
-            const auto key = provider.cmacKey();
+            const auto key = jwt_profile::v1::JwtKeyDecoder::decode(keyHex);
 
             if (!key)
             {
                 return false;
             }
 
-            const auto expected =
-                CmacSigner::macHex(*key, reinterpret_cast<const uint8_t*>(canonical.data()),
-                                   canonical.size());
-            return expected.has_value() && *expected == mac;
+            const auto result = jwt_profile::v1::JwtRequestTokenVerifier::verify(
+                                    auth.substr(prefix.size()), *key, jwt_profile::v1::TimePolicy {}, std::chrono::system_clock::now());
+            return result.ok();
         }
 
         template<typename ServerT>
@@ -202,8 +214,7 @@ class FakeManager final
             const uint64_t vdFeedOffset = m_vdFeedOffset;
             const int scanVdRejectFirstNAttempts = m_scanVdRejectFirstNAttempts;
             const std::string configHash =
-                configBlob.empty() ? std::string {}
-                :
+                configBlob.empty() ? std::string {} :
                 sha256Hex(configBlob.data(), configBlob.size());
             auto backpressureArmed = std::make_shared<std::atomic<bool>>(true);
             auto lastSession = std::make_shared<std::string>();
@@ -211,15 +222,14 @@ class FakeManager final
 
             // The key every endpoint verifies against: after the configured
             // notify count the server rotates to the new key, so requests
-            // signed with the old key start getting 401 (#37828).
+            // minted with the old key start getting 401 (#37828).
             const int rotateAfter = m_rotateKeyAfterNotifies;
             const std::string rotatedKey = m_rotatedKeyHex;
-            const auto verify = [keyHex, rotatedKey, rotateAfter, notifyCount](
-                                    const std::string & target, const httplib::Request & request)
+            const auto verify =
+                [keyHex, rotatedKey, rotateAfter, notifyCount](const std::string & target, const httplib::Request & request)
             {
-                const bool rotated =
-                    rotateAfter > 0 && !rotatedKey.empty() && notifyCount->load() >= rotateAfter;
-                return verifyCmac(rotated ? rotatedKey : keyHex, target, request);
+                const bool rotated = rotateAfter > 0 && !rotatedKey.empty() && notifyCount->load() >= rotateAfter;
+                return verifyBearer(rotated ? rotatedKey : keyHex, target, request);
             };
             // Accumulates accepted /stateless bodies so the fork parent can
             // read them back via GET /peek/stateless (fork servers share no
@@ -260,8 +270,7 @@ class FakeManager final
             });
 
             server.Get("/peek/stateless",
-                       [acceptedEvents, acceptedMutex](const httplib::Request&,
-                                                       httplib::Response & response)
+                       [acceptedEvents, acceptedMutex](const httplib::Request&, httplib::Response & response)
             {
                 std::lock_guard<std::mutex> lock(*acceptedMutex);
                 response.status = 200;
@@ -287,9 +296,9 @@ class FakeManager final
                     })
             {
                 auto store = kind == "stats" ? lastStats : lastConfig;
-                server.Post("/" + kind,
-                            [verify, kind, store, acceptedMutex](const httplib::Request & request,
-                                                                 httplib::Response & response)
+                server.Post(
+                    "/" + kind,
+                    [verify, kind, store, acceptedMutex](const httplib::Request & request, httplib::Response & response)
                 {
                     if (!verify("/" + kind, request))
                     {
@@ -314,9 +323,40 @@ class FakeManager final
                 });
             }
 
+            // Size of the session as the manager would see it. Agent builds compile the fake
+            // against cpp-httplib 0.10.9 (http-request's EXTERNAL_DEPS_VERSION=19 default), which
+            // knows nothing about zstd and hands a `Content-Encoding: zstd` body over untouched;
+            // the manager tree's 0.25.0 (+CPPHTTPLIB_ZSTD_SUPPORT) inflates it before the handler
+            // runs. Inflate here whenever the body is still a zstd frame so the compression test
+            // proves the same thing -- wire bytes back to the full session -- under both.
+            const auto statefulBytes = [](const httplib::Request & request) -> std::size_t
+            {
+                const auto& body = request.body;
+                const bool zstdFrame = body.size() >= 4 && static_cast<unsigned char>(body[0]) == 0x28 &&
+                static_cast<unsigned char>(body[1]) == 0xB5 &&
+                static_cast<unsigned char>(body[2]) == 0x2F &&
+                static_cast<unsigned char>(body[3]) == 0xFD;
+
+                if (request.get_header_value("Content-Encoding") != "zstd" || !zstdFrame)
+                {
+                    return body.size();
+                }
+
+                const auto expected = ZSTD_getFrameContentSize(body.data(), body.size());
+
+                if (expected == ZSTD_CONTENTSIZE_ERROR || expected == ZSTD_CONTENTSIZE_UNKNOWN)
+                {
+                    return 0;
+                }
+
+                std::vector<char> inflated(static_cast<std::size_t>(expected));
+                const auto produced = ZSTD_decompress(inflated.data(), inflated.size(), body.data(), body.size());
+                return ZSTD_isError(produced) ? 0 : produced;
+            };
+
             server.Post("/stateful",
-                        [verify, lastSession, holdFile](const httplib::Request & request,
-                                                        httplib::Response & response)
+                        [verify, lastSession, holdFile, statefulBytes](const httplib::Request & request,
+                                                                       httplib::Response & response)
             {
                 if (!verify("/stateful", request))
                 {
@@ -328,8 +368,9 @@ class FakeManager final
                 // hard stop so a broken test cannot wedge the run. The cap sits
                 // well above the test's own deadlines even when valgrind
                 // stretches them tenfold, so it only fires on a real hang.
-                for (int waited = 0; !holdFile.empty() && waited < 120000 &&
-                        access(holdFile.c_str(), F_OK) == 0; waited += 20)
+                for (int waited = 0;
+                        !holdFile.empty() && waited < 120000 && access(holdFile.c_str(), F_OK) == 0;
+                        waited += 20)
                 {
                     usleep(20 * 1000);
                 }
@@ -338,16 +379,15 @@ class FakeManager final
                 const bool cached = (*lastSession == session);
                 *lastSession = session;
                 response.status = 200;
-                response.set_content(
-                    std::string {"{\"sessionId\":\""} + session + "\",\"cached\":" +
-                    (cached ? "true" : "false") + ",\"bytes\":" +
-                    std::to_string(request.body.size()) + "}",
-                    "application/json");
+                response.set_content(std::string {"{\"sessionId\":\""} + session +
+                                     "\",\"cached\":" + (cached ? "true" : "false") +
+                                     ",\"bytes\":" + std::to_string(statefulBytes(request)) + "}",
+                                     "application/json");
             });
 
-            server.Post("/download",
-                        [verify, configBlob](const httplib::Request & request,
-                                             httplib::Response & response)
+            server.Post(
+                "/download",
+                [verify, configBlob](const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/download", request))
                 {
@@ -355,8 +395,18 @@ class FakeManager final
                     return;
                 }
 
-                if (configBlob.empty() ||
-                        request.body.find("\"resource_type\":\"config\"") == std::string::npos)
+                if (configBlob.empty() || request.body.find("\"resource_type\":\"config\"") == std::string::npos)
+                {
+                    response.status = 404;
+                    return;
+                }
+
+                // Only the token this manager handed out in its notify is served, exactly as
+                // the real one resolves a resource_id it minted. An agent that derived the
+                // selector itself instead of relaying config_token gets a 404 here, so the
+                // E2E download tests fail rather than silently pass on a lucky guess.
+                if (request.body.find(std::string {R"("resource_id":")"} +
+                                      FAKE_MANAGER_CONFIG_TOKEN + R"(")") == std::string::npos)
                 {
                     response.status = 404;
                     return;
@@ -365,9 +415,8 @@ class FakeManager final
                 // Chunked transfer on purpose (#37733 5.2.3): the client's
                 // decode + stream-to-file path is exercised for real.
                 response.status = 200;
-                response.set_chunked_content_provider(
-                    "application/octet-stream",
-                    [configBlob](size_t offset, httplib::DataSink & sink)
+                response.set_chunked_content_provider("application/octet-stream",
+                                                      [configBlob](size_t offset, httplib::DataSink & sink)
                 {
                     constexpr size_t CHUNK = 16 * 1024;
                     const size_t remaining = configBlob.size() - offset;
@@ -404,10 +453,17 @@ class FakeManager final
             // (including host.ip from the live connection) over the curl path.
             auto lastNotifyBody = std::make_shared<std::string>();
 
-            server.Post("/control",
-                        [verify, settingsFlipAfter, notifyCount, configHash, controlTypes,
-                                 controlContentTypes, lastNotifyBody, controlMutex, vdFeedOffset](
-                            const httplib::Request & request, httplib::Response & response)
+            server.Post(
+                "/control",
+                [verify,
+                 settingsFlipAfter,
+                 notifyCount,
+                 configHash,
+                 controlTypes,
+                 controlContentTypes,
+                 lastNotifyBody,
+                 controlMutex,
+                 vdFeedOffset](const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/control", request))
                 {
@@ -452,14 +508,11 @@ class FakeManager final
                 // v2 after the settings flip); notify reports agent.groups
                 // and the settings_hash of the CURRENT startup body; response
                 // answers a plain ok.
-                static const std::string startupV1 =
-                    R"({"limits":{"eps":0},"cluster":{"name":"fake"},)"
-                    R"("agent":{"groups":["default"]}})";
-                static const std::string startupV2 =
-                    R"({"limits":{"eps":100},"cluster":{"name":"fake"},)"
-                    R"("agent":{"groups":["default"]}})";
-                const bool flipped = settingsFlipAfter > 0 &&
-                                     notifyCount->load() >= settingsFlipAfter;
+                static const std::string startupV1 = R"({"limits":{"eps":0},"cluster":{"name":"fake"},)"
+                                                     R"("agent":{"groups":["default"]}})";
+                static const std::string startupV2 = R"({"limits":{"eps":100},"cluster":{"name":"fake"},)"
+                                                     R"("agent":{"groups":["default"]}})";
+                const bool flipped = settingsFlipAfter > 0 && notifyCount->load() >= settingsFlipAfter;
                 const std::string& startupBody = flipped ? startupV2 : startupV1;
                 response.status = 200;
 
@@ -476,19 +529,18 @@ class FakeManager final
                         std::lock_guard<std::mutex> lock(*controlMutex);
                         *lastNotifyBody = request.body;
                     }
-                    const std::string agent =
-                        configHash.empty()
-                        ? std::string {R"({"groups":["default"]})"}
-                        :
-                        R"({"groups":["default"],"config_hash":")" + configHash + R"("})";
+                    const std::string agent = configHash.empty()
+                                              ? std::string {R"({"groups":["default"]})"}
+                                              :
+                                              R"({"groups":["default"],"config_token":")" +
+                                              std::string {FAKE_MANAGER_CONFIG_TOKEN} +
+                                              R"(","config_hash":")" + configHash + R"("})";
+
                     const std::string vdFeedOffsetField =
-                        vdFeedOffset > 0
-                        ? R"(,"vd_feed_offset":)" + std::to_string(vdFeedOffset)
-                        : std::string {};
-                    response.set_content(
-                        R"({"agent":)" + agent + R"(,"settings_hash":")" +
-                        fakeManagerSettingsHash(startupBody) + R"(")" + vdFeedOffsetField + "}",
-                        "application/json");
+                        vdFeedOffset > 0 ? R"(,"vd_feed_offset":)" + std::to_string(vdFeedOffset) : std::string {};
+                    response.set_content(R"({"agent":)" + agent + R"(,"settings_hash":")" +
+                                         fakeManagerSettingsHash(startupBody) + R"(")" + vdFeedOffsetField + "}",
+                                         "application/json");
                     return;
                 }
 
@@ -504,8 +556,7 @@ class FakeManager final
             });
 
             server.Get("/peek/control",
-                       [controlTypes, controlMutex](const httplib::Request&,
-                                                    httplib::Response & response)
+                       [controlTypes, controlMutex](const httplib::Request&, httplib::Response & response)
             {
                 std::lock_guard<std::mutex> lock(*controlMutex);
                 response.status = 200;
@@ -513,8 +564,7 @@ class FakeManager final
             });
 
             server.Get("/peek/control-content-type",
-                       [controlContentTypes, controlMutex](const httplib::Request&,
-                                                           httplib::Response & response)
+                       [controlContentTypes, controlMutex](const httplib::Request&, httplib::Response & response)
             {
                 std::lock_guard<std::mutex> lock(*controlMutex);
                 response.status = 200;
@@ -522,8 +572,7 @@ class FakeManager final
             });
 
             server.Get("/peek/last-notify",
-                       [lastNotifyBody, controlMutex](const httplib::Request&,
-                                                      httplib::Response & response)
+                       [lastNotifyBody, controlMutex](const httplib::Request&, httplib::Response & response)
             {
                 std::lock_guard<std::mutex> lock(*controlMutex);
                 response.status = 200;
@@ -544,8 +593,7 @@ class FakeManager final
             auto scanVdMutex = std::make_shared<std::mutex>();
 
             server.Post("/scan/vd",
-                        [verify, vdFeedOffset, scanVdRejectFirstNAttempts, scanVdAttempts,
-                                 lastScanVdBody, scanVdMutex](
+                        [verify, vdFeedOffset, scanVdRejectFirstNAttempts, scanVdAttempts, lastScanVdBody, scanVdMutex](
                             const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/scan/vd", request))
@@ -564,10 +612,9 @@ class FakeManager final
                 if (attempt < scanVdRejectFirstNAttempts)
                 {
                     response.status = 409;
-                    response.set_content(
-                        R"({"error":"version_mismatch","current_version":)" +
-                        std::to_string(vdFeedOffset + 1) + "}",
-                        "application/json");
+                    response.set_content(R"({"error":"version_mismatch","current_version":)" +
+                                         std::to_string(vdFeedOffset + 1) + "}",
+                                         "application/json");
                     return;
                 }
 
@@ -576,8 +623,7 @@ class FakeManager final
             });
 
             server.Get("/peek/scan-vd",
-                       [lastScanVdBody, scanVdMutex](const httplib::Request&,
-                                                     httplib::Response & response)
+                       [lastScanVdBody, scanVdMutex](const httplib::Request&, httplib::Response & response)
             {
                 std::lock_guard<std::mutex> lock(*scanVdMutex);
                 response.status = 200;
@@ -607,40 +653,31 @@ class FakeManager final
                 }
 
                 const auto auth = request.get_header_value("Authorization");
-                const std::string prefix = "WazuhEnroll ";
+                const std::string prefix = "Bearer ";
 
                 if (auth.rfind(prefix, 0) != 0)
                 {
                     return false;
                 }
 
-                const std::string token = auth.substr(prefix.size());
-                const auto colon = token.find(':');
+                const auto key = jwt_profile::v1::enroll::deriveEnrollKey(enrollPassword);
 
-                if (colon == std::string::npos)
+                if (!key)
                 {
-                    return false;
+                    return false; // LCOV_EXCL_LINE: HKDF cannot fail for a non-empty password.
                 }
 
-                const std::time_t timestamp =
-                    static_cast<std::time_t>(std::strtoll(token.substr(0, colon).c_str(), nullptr, 10));
-                const auto expected =
-                    EnrollSigner::sign(enrollPassword, "POST", "/enroll",
-                                       reinterpret_cast<const uint8_t*>(request.body.data()),
-                                       request.body.size(), timestamp);
-
-                if (!expected)
-                {
-                    return false; // LCOV_EXCL_LINE: HKDF/CMAC cannot fail here.
-                }
-
-                const std::string authPrefix = "Authorization: ";
-                return expected->authorization.substr(authPrefix.size()) == auth;
+                return jwt_profile::v1::enroll::JwtEnrollTokenVerifier::verify(auth.substr(prefix.size()),
+                                                                               *key,
+                                                                               jwt_profile::v1::TimePolicy {},
+                                                                               std::chrono::system_clock::now()) ==
+                       jwt_profile::v1::VerifyError::None;
             };
 
-            server.Post("/enroll",
-                        [verifyEnroll, enrollForcedStatus, lastEnrollBody, enrollMutex](
-                            const httplib::Request & request, httplib::Response & response)
+            server.Post(
+                "/enroll",
+                [verifyEnroll, enrollForcedStatus, lastEnrollBody, enrollMutex](const httplib::Request & request,
+                                                                                httplib::Response & response)
             {
                 {
                     std::lock_guard<std::mutex> lock(*enrollMutex);
@@ -667,9 +704,8 @@ class FakeManager final
                 if (!verifyEnroll(request))
                 {
                     response.status = 401;
-                    response.set_content(
-                        R"({"error":{"code":"invalid_signature","message":"signature mismatch"}})",
-                        "application/json");
+                    response.set_content(R"({"error":{"code":"invalid_signature","message":"signature mismatch"}})",
+                                         "application/json");
                     return;
                 }
 
@@ -687,9 +723,8 @@ class FakeManager final
                 catch (const std::exception&)
                 {
                     response.status = 400;
-                    response.set_content(
-                        R"({"error":{"code":"invalid_body","message":"malformed JSON"}})",
-                        "application/json");
+                    response.set_content(R"({"error":{"code":"invalid_body","message":"malformed JSON"}})",
+                                         "application/json");
                     return;
                 }
 
@@ -722,8 +757,8 @@ class FakeManager final
             X509_gmtime_adj(X509_get_notAfter(cert), 60L * 60L);
             X509_set_pubkey(cert, pkey);
             X509_NAME* name = X509_get_subject_name(cert);
-            X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
-                                       reinterpret_cast<const unsigned char*>("127.0.0.1"), -1, -1, 0);
+            X509_NAME_add_entry_by_txt(
+                name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("127.0.0.1"), -1, -1, 0);
             X509_set_issuer_name(cert, name);
             X509_sign(cert, pkey, EVP_sha256());
             *keyOut = pkey;

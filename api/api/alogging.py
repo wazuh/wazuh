@@ -11,7 +11,22 @@ from pythonjsonlogger import jsonlogger
 from api.configuration import api_conf
 from api.api_exception import APIError
 
+# C0 control characters and DEL. Written raw to the plain-text log they start a forged
+# entry or drive the terminal that displays the file.
+control_chars_pattern = re.compile(r'[\x00-\x1f\x7f]')
+
 logger = logging.getLogger('wazuh-api')
+
+# Maximum size, in serialised bytes, of a request body that is written to the API logs. The same
+# payload is written once to api.log and again to api.json, so logging it verbatim turns a single
+# request into several times its size on disk. It is also the size above which the access logger
+# refuses to buffer a body at all.
+MAX_LOGGED_BODY_SIZE = 8 * 1024
+
+
+def escape_control_chars(value: str) -> str:
+    """Replace each control character with its Python escape sequence (`\\n`, `\\x1b`...)."""
+    return control_chars_pattern.sub(lambda m: repr(m.group())[1:-1], value)
 
 
 class APILoggerSize:
@@ -234,6 +249,15 @@ def custom_logging(user, remote, method, path, query,
     headers: dict
         Optional dictionary of request headers.
     """
+    # Serialise the body once and refuse to log an oversized one. The access logger already
+    # declines to buffer a body above this size, but nothing else stops a caller of this function
+    # from handing over a payload that would be written out verbatim, twice.
+    body_dump = json.dumps(body)
+    if len(body_dump) > MAX_LOGGED_BODY_SIZE:
+        body = {'body_omitted': f'body of {len(body_dump)} serialised bytes exceeds the '
+                                f'{MAX_LOGGED_BODY_SIZE} byte logging limit'}
+        body_dump = json.dumps(body)
+
     json_info = {
         'user': user,
         'ip': remote,
@@ -245,6 +269,9 @@ def custom_logging(user, remote, method, path, query,
         'status_code': status
     }
 
+    # Only the plain-text line needs it: the JSON record is escaped by its formatter.
+    user, path = escape_control_chars(str(user)), escape_control_chars(str(path))
+
     if not hash_auth_context:
         log_info = f'{user} {remote} "{method} {path}" '
     else:
@@ -252,7 +279,7 @@ def custom_logging(user, remote, method, path, query,
         json_info['hash_auth_context'] = hash_auth_context
 
     log_info += f'with parameters {json.dumps(query)} and body '\
-                f'{json.dumps(body)} done in {elapsed_time:.3f}s: {status}'
+                f'{body_dump} done in {elapsed_time:.3f}s: {status}'
 
     logger.info(log_info, extra={'log_type': 'log'})
     logger.info(json_info, extra={'log_type': 'json'})

@@ -201,7 +201,7 @@ void test_w_send_clustered_message_connection_error(void **state) {
         will_return(__wrap_external_socket_connect, -1);
 
         will_return(__wrap_strerror, "ERROR");
-        expect_string(__wrap__mdebug1, formatted_msg, "Could not connect to socket 'queue/cluster/c-internal.sock': ERROR (0).");
+        expect_string(__wrap__mdebug1, formatted_msg, "Could not connect to socket 'queue/sockets/cluster-internal.sock': ERROR (0).");
     }
     expect_value_count(__wrap_sleep, seconds, 1, 9);
 
@@ -387,7 +387,7 @@ void test_w_send_clustered_message_success_after_connection_error(void **state) 
     will_return(__wrap_external_socket_connect, -1);
 
     will_return(__wrap_strerror, "ERROR");
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not connect to socket 'queue/cluster/c-internal.sock': ERROR (0).");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not connect to socket 'queue/sockets/cluster-internal.sock': ERROR (0).");
     expect_value(__wrap_sleep, seconds, 1);
 
     will_return(__wrap_external_socket_connect, sock_num);

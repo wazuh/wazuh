@@ -98,6 +98,24 @@ int wdbc_connect();
 int wdbc_connect_with_attempts(int max_attempts);
 int wdbc_query(const int sock, const char* query, char* response, const int len);
 int wdbc_query_ex(int* sock, const char* query, char* response, const int len);
+
+/**
+ * @brief Check connection to Wazuh-DB, send a query and store the response, under a deadline.
+ *
+ * Same contract as wdbc_query_ex(), which is this function with a zero timeout, except that a
+ * positive timeout puts SO_SNDTIMEO and SO_RCVTIMEO on the socket and skips the connect retry
+ * ladder. A stalled wazuh-db then surfaces as -1 with EAGAIN instead of hanging the caller.
+ *
+ * @param[in] sock Pointer to the client socket descriptor.
+ * @param[in] query Query to be sent to Wazuh-DB.
+ * @param[out] response Char pointer where the response from Wazuh-DB will be stored.
+ * @param[in] len Length of the response param.
+ * @param[in] timeout Send and receive deadline in seconds, or 0 to wait indefinitely.
+ * @retval -2 Error in the communication.
+ * @retval -1 Error in the response from socket.
+ * @retval 0 Success.
+ */
+int wdbc_query_ex_timeout(int* sock, const char* query, char* response, const int len, int timeout);
 int wdbc_parse_result(char* result, char** payload);
 cJSON* wdbc_query_parse_json(int* sock, const char* query, char* response, const int len);
 wdbc_result wdbc_query_parse(int* sock, const char* query, char* response, const int len, char** payload);

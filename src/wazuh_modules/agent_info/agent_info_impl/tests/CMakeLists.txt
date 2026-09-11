@@ -9,6 +9,8 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/include
   ${SRC_FOLDER}/wazuh_modules/agent_info/include
   ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/tests
+  ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/tests/mocks
+  ${SRC_FOLDER}/shared_modules/sync_protocol/tests/mocks
   ${SRC_FOLDER}/shared_modules/dbsync/tests/mocks
   ${SRC_FOLDER}/shared_modules/file_helper/filesystem/tests/mocks
   ${SRC_FOLDER}/shared_modules/file_helper/file_io/tests/mocks
@@ -132,3 +134,10 @@ target_link_libraries(agent_info_vd_offset_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoVdOffsetTest COMMAND agent_info_vd_offset_test)
 
 set_tests_properties(AgentInfoVdOffsetTest PROPERTIES LABELS "agent_info")
+
+# Agent Info Sync Classification Tests (SyncModuleResult classification flags, issue #38621)
+add_executable(agent_info_sync_classification_test agent_info_sync_classification_test.cpp agent_info_mock.cpp)
+target_link_libraries(agent_info_sync_classification_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoSyncClassificationTest COMMAND agent_info_sync_classification_test)
+
+set_tests_properties(AgentInfoSyncClassificationTest PROPERTIES LABELS "agent_info")

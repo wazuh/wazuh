@@ -57,6 +57,7 @@ tags:
 import pytest
 import requests
 from pathlib import Path
+from time import sleep
 
 from . import CONFIGURATION_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing import DATA_PATH
@@ -120,8 +121,18 @@ def test_cluster_statistics_format(test_metadata, load_wazuh_basic_configuration
     url = get_base_url() + f'/cluster/node01/daemons/stats?daemons_list={endpoint}'
     authentication_headers, _ = login()
 
-    # Get daemon statistics
-    response = requests.get(url, headers=authentication_headers, verify=False)
+    # Get daemon statistics. This is the only api-suite request that goes through the cluster
+    # DAPI (clusterd's internal socket), and right after the restarts the previous modules leave
+    # behind that path can lag the API itself, answering a generic 500 while it warms up -- so
+    # retry until the DAPI answers, and surface the last body if it never does.
+    for _ in range(30):
+        response = requests.get(url, headers=authentication_headers, verify=False, timeout=10)
+        if response.status_code == 200:
+            break
+        sleep(2)
+    else:
+        pytest.fail(f"The cluster daemons/stats endpoint never became ready: "
+                    f"HTTP {response.status_code}: {response.text}")
 
     # Check if the API statistics response data meets the expected schema. Raise an exception if not.
     validate_statistics(response, statistics_schema_path)

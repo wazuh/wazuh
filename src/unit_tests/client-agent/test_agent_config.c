@@ -31,10 +31,11 @@ static int setup_agent(void **state)
     memset(&test_agt, 0, sizeof(test_agt));
     memset(test_servers, 0, sizeof(test_servers));
 
-    /* The defaults ClientConf() seeds before parsing, so an "unconfigured" case here
-     * is the same struct an agent with an untouched ossec.conf ends up running on. */
+    /* The defaults ClientConf() ends up with once <ssl> is unset (UNSET resolves to
+     * SYSTEM there), so an "unconfigured" case here is the same struct an agent with
+     * an untouched ossec.conf ends up running on. */
     test_agt.flags.auto_restart = 1;
-    test_agt.ssl.verification_mode = AGENT_VERIFY_NONE;
+    test_agt.ssl.verification_mode = AGENT_VERIFY_SYSTEM;
     test_agt.batch.interval = 10;
     test_agt.stats_report.interval = 60;
     test_agt.config_report.enabled = 1;
@@ -67,7 +68,7 @@ static void with_servers(void)
 
     test_servers[1].rip = "192.168.0.2";
     test_servers[1].port = 1518;
-    test_servers[1].network_interface = 3;
+    test_servers[1].scope_id = 3;
     test_servers[1].max_retries = 7;
     test_servers[1].retry_interval = 20;
 
@@ -198,12 +199,12 @@ static void test_reports_every_manager(void **state)
     assert_number_field(first, "port", 1517);
     assert_number_field(first, "max_retries", 5);
     assert_number_field(first, "retry_interval", 10);
-    assert_null(cJSON_GetObjectItem(first, "interface_index"));
+    assert_null(cJSON_GetObjectItem(first, "scope_id"));
 
     cJSON *second = cJSON_GetArrayItem(managers, 1);
     assert_string_field(second, "address", "192.168.0.2");
     assert_number_field(second, "port", 1518);
-    assert_number_field(second, "interface_index", 3);
+    assert_number_field(second, "scope_id", 3);
 
     cJSON_Delete(root);
 }
@@ -319,7 +320,7 @@ static void test_reports_default_ssl_posture(void **state)
     cJSON *ssl = cJSON_GetObjectItem(get_agent_section(&root), "ssl");
 
     assert_non_null(ssl);
-    assert_string_field(ssl, "verification_mode", "none");
+    assert_string_field(ssl, "verification_mode", "system");
     assert_null(cJSON_GetObjectItem(ssl, "certificate"));
     assert_null(cJSON_GetObjectItem(ssl, "key"));
     assert_null(cJSON_GetObjectItem(ssl, "certificate_authorities"));
@@ -336,6 +337,18 @@ static void test_reports_full_verification_mode(void **state)
     test_agt.ssl.verification_mode = AGENT_VERIFY_FULL;
 
     assert_string_field(cJSON_GetObjectItem(get_agent_section(&root), "ssl"), "verification_mode", "full");
+
+    cJSON_Delete(root);
+}
+
+static void test_reports_system_verification_mode(void **state)
+{
+    (void)state;
+    cJSON *root = NULL;
+
+    test_agt.ssl.verification_mode = AGENT_VERIFY_SYSTEM;
+
+    assert_string_field(cJSON_GetObjectItem(get_agent_section(&root), "ssl"), "verification_mode", "system");
 
     cJSON_Delete(root);
 }
@@ -416,6 +429,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_reports_every_configured_ssl_field, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_default_ssl_posture, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_full_verification_mode, setup_agent, teardown_agent),
+        cmocka_unit_test_setup_teardown(test_reports_system_verification_mode, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_configured_batch_limits, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_batch_defaults, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_both_periodic_pushes, setup_agent, teardown_agent),

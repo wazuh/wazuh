@@ -18,8 +18,8 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.results import AffectedItemsWazuhResult
 
 
-@patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/remote')
-@patch('wazuh.core.common.WDB_SOCKET', '/var/wazuh-manager/queue/db/wdb')
+@patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/remote.sock')
+@patch('wazuh.core.common.WDB_SOCKET', '/var/wazuh-manager/queue/sockets/wdb.sock')
 @patch('wazuh.stats.EngineHTTPClient')
 @patch('wazuh.stats.get_daemons_stats_socket')
 def test_get_daemons_stats(mock_get_daemons_stats_socket, mock_engine_client_cls):
@@ -31,7 +31,7 @@ def test_get_daemons_stats(mock_get_daemons_stats_socket, mock_engine_client_cls
     response = stats.get_daemons_stats(['wazuh-manager-remoted', 'wazuh-manager-analysisd', 'wazuh-manager-db'])
 
     # remoted and db still use the socket; analysisd goes through EngineHTTPClient
-    calls = [call('/var/wazuh-manager/queue/sockets/remote'), call('/var/wazuh-manager/queue/db/wdb')]
+    calls = [call('/var/wazuh-manager/queue/sockets/remote.sock'), call('/var/wazuh-manager/queue/sockets/wdb.sock')]
     mock_get_daemons_stats_socket.assert_has_calls(calls)
     mock_engine_client.get_metrics_dump.assert_called_once()
     mock_engine_client.close.assert_called_once()

@@ -701,6 +701,28 @@ setToggleVar()
     fi
 }
 
+##########
+# ValidateServiceRegistrationVars()
+#
+# USER_REGISTER_SERVICE and USER_TAKEOVER_SERVICE decide whether runInit() may
+# write the host's service definition, so an invalid value must abort while the
+# system is still untouched instead of being read as the safe default.
+##########
+ValidateServiceRegistrationVars()
+{
+    if [ "X${USER_REGISTER_SERVICE}" != "X" ] && \
+       [ "X$(normalizeYesNo "${USER_REGISTER_SERVICE}")" = "Xinvalid" ]; then
+        echo "ERROR: invalid USER_REGISTER_SERVICE value '${USER_REGISTER_SERVICE}'. Use '${yes}' or '${no}'."
+        exit 1;
+    fi
+
+    if [ "X${USER_TAKEOVER_SERVICE}" != "X" ] && \
+       [ "X$(normalizeYesNo "${USER_TAKEOVER_SERVICE}")" = "Xinvalid" ]; then
+        echo "ERROR: invalid USER_TAKEOVER_SERVICE value '${USER_TAKEOVER_SERVICE}'. Use '${yes}' or '${no}'."
+        exit 1;
+    fi
+}
+
 setDefaultIfEmpty()
 {
     _var_name="$1"
@@ -1139,6 +1161,8 @@ main()
     if [ "X${update_only}" = "X" ] && [ "X$INSTYPE" = "Xmanager" ]; then
         ValidateRemoteVars
     fi
+
+    ValidateServiceRegistrationVars
 
     # Optionally remove existing directory.
     askForDelete

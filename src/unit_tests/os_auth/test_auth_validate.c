@@ -584,6 +584,56 @@ static void test_w_auth_replace_agent_success(void **state) {
     os_free(str_result);
 }
 
+static void test_w_auth_replace_agent_backlog_full(void **state) {
+    /* A replacement IS a deletion, so it takes phase 0 like any other. It is also the higher-volume
+     * one -- a mass re-enrollment produces one per agent -- and the gate has to be HERE, before
+     * add_remove() and OS_DeleteKey(): one line further down the agent is out of the keystore and
+     * the enrollment has been answered, so there is nothing left to refuse.
+     *
+     * Every guard below is set exactly as the success case sets them, so the only difference is the
+     * backlog -- which is what makes the refusal attributable to it. */
+    w_err_t err;
+    keyentry key;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+    char *connection_status = "disconnected";
+    char* str_result = NULL;
+    time_t date_add = 1632255744;
+    time_t disconnection_time = 1632258049;
+    cJSON *j_agent_info_array = NULL;
+    cJSON *j_agent_info = NULL;
+
+    j_agent_info_array = cJSON_CreateArray();
+    j_agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
+    cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
+    cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
+
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info_array);
+
+    will_return(__wrap_difftime, 10);
+
+    config.force_options.disconnected_time_enabled = false;
+    config.force_options.after_registration_time = 1;
+
+    config.max_pending_deletes = 1;
+    purge_pending_rows_update(1);
+
+    expect_any(__wrap__mwarn, formatted_msg); // phase 0 refusing
+
+    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
+
+    purge_pending_rows_update(0);
+    config.max_pending_deletes = 0;
+    config.force_options.after_registration_time = 0;
+
+    assert_int_equal(err, OS_INVALID);
+    assert_string_equal(str_result, "Agent '001' can't be replaced: too many deletions are in progress.");
+    free_keyentry(&key);
+    os_free(str_result);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_auth_validate_groups),
@@ -601,6 +651,7 @@ int main(void) {
         cmocka_unit_test_setup(test_w_auth_replace_agent_not_old_enough, setup_validate_force_enabled),
         cmocka_unit_test_setup(test_w_auth_replace_agent_existent_key_hash, setup_validate_force_enabled),
         cmocka_unit_test_setup(test_w_auth_replace_agent_success, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_backlog_full, setup_validate_force_enabled),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

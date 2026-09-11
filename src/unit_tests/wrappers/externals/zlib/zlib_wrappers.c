@@ -35,6 +35,23 @@ gzFile __wrap_gzopen(const char * path,
     return mock_type(gzFile);
 }
 
+gzFile __wrap_w_gzopen_nofollow(const char * basedir,
+                                const char * filename,
+                                const char * mode) {
+    check_expected(basedir);
+    check_expected(filename);
+    check_expected(mode);
+
+    return mock_type(gzFile);
+}
+
+void expect_w_gzopen_nofollow(const char * basedir, const char * filename, const char * mode, gzFile ret) {
+    expect_string(__wrap_w_gzopen_nofollow, basedir, basedir);
+    expect_string(__wrap_w_gzopen_nofollow, filename, filename);
+    expect_string(__wrap_w_gzopen_nofollow, mode, mode);
+    will_return(__wrap_w_gzopen_nofollow, ret);
+}
+
 int __wrap_gzclose(gzFile file) {
     check_expected_ptr(file);
     return mock();

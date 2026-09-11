@@ -52,7 +52,7 @@ The standalone engine will create the following directory structure:
 - **logs**: Contains the `alerts-ecs.json` file, which is configured to be the output in
     the default security policy, this file will be created by the engine if it does not exist.
 - **sockets**: Used for engine sockets
-    - **sockets/engine-api.sock**: Engine HTTP server socket.
+    - **sockets/engine-api-http.sock**: Engine HTTP server socket.
 
 ## Configuration variables
 

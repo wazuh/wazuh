@@ -74,7 +74,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,-
                             -Wl,--wrap,wdb_exec_stmt_single_column -Wl,--wrap,w_is_single_node -Wl,--wrap,sqlite3_column_text ${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb")
-list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,strerror -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,time_diff \
+list(APPEND wdb_tests_flags "-Wl,--wrap,w_mconf_section -Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,strerror -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,time_diff \
                              -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Delete_ex \
                              -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,sqlite3_open_v2 -Wl,--wrap,sqlite3_close_v2 -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_step \
                              -Wl,--wrap,sqlite3_column_count -Wl,--wrap,sqlite3_column_type -Wl,--wrap,sqlite3_column_name -Wl,--wrap,sqlite3_column_double \
@@ -90,16 +90,6 @@ list(APPEND wdb_tests_names "test_wdb_upgrade")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_user_version_get \
                              -Wl,--wrap,wdb_sql_exec \
                              ${DEBUG_OP_WRAPPERS}")
-
-list(APPEND wdb_tests_names "test_wdb_task_parser")
-list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_task_create -Wl,--wrap,wdb_task_get_pending -Wl,--wrap,wdb_task_mark_delivered \
-                             -Wl,--wrap,wdb_task_cleanup_expired -Wl,--wrap,wdb_task_delete_old -Wl,--wrap,wdb_open_tasks \
-                             ${DEBUG_OP_WRAPPERS}")
-
-list(APPEND wdb_tests_names "test_wdb_task")
-list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int \
-                             -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_column_int -Wl,--wrap,time -Wl,--wrap,sqlite3_errmsg\
-                             -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_step ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wazuh_db-config")
 list(APPEND wdb_tests_flags "${DEBUG_OP_WRAPPERS}")

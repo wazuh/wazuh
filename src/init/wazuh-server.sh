@@ -12,6 +12,8 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 WAZUH_CONF="${WAZUH_CONF:-wazuh-manager.conf}"
+# Reader of the manager configuration: validation and effective values (schema defaults applied).
+MCONF="${DIR}/bin/wazuh-manager-conf -H ${DIR} -f ${DIR}/etc/${WAZUH_CONF}"
 
 # Installation info
 VERSION="v5.1.0"
@@ -28,7 +30,7 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-monitord wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
+DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
@@ -37,10 +39,9 @@ SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $
 LOCK="${DIR}/var/start-script-lock"
 LOCK_PID="${LOCK}/pid"
 
-# This number should be more than enough (even if it is
-# started multiple times together). It will try for up
-# to 10 attempts (or 10 seconds) to execute.
-MAX_ITERATION="60"
+# Seconds the lock loop waits. Below the unit's TimeoutSec (45,
+# templates/wazuh-manager.service), or systemd reports a timeout instead of the real reason.
+MAX_ITERATION="40"
 
 MAX_KILL_TRIES=30
 
@@ -170,6 +171,11 @@ disable()
     fi
 }
 
+get_node_type()
+{
+    ${MCONF} get cluster.node_type 2>/dev/null
+}
+
 status()
 {
     RETVAL=0
@@ -177,10 +183,17 @@ status()
 
     checkpid;
 
+    node_type=$(get_node_type);
+
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
     fi
     for i in ${DAEMONS}; do
+        ## The API daemon only runs on the master node
+        if [ X"$i" = "Xwazuh-manager-apid" ] && [ "$node_type" != "master" ]; then
+            continue
+        fi
+
         if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
         else
@@ -188,7 +201,18 @@ status()
         fi
         pstatus ${i};
         if [ $? = 0 ]; then
-            if [ $USE_JSON = true ]; then
+            # The marker testconfig() leaves on a refused configuration, and the same one the
+            # framework reads as 'failed'. Without it a rejected value is indistinguishable from a
+            # daemon that was never started.
+            if [ -f ${DIR}/var/run/${i}.failed ]; then
+                if [ $USE_JSON = true ]; then
+                    echo -n '{"daemon":"'${i}'","status":"failed"}'
+                elif [ "`cat ${DIR}/var/run/${i}.failed 2>/dev/null`" = "refused" ]; then
+                    echo "${i} refused its configuration..."
+                else
+                    echo "${i} failed to start..."
+                fi
+            elif [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"stopped"}'
             else
                 echo "${i} not running..."
@@ -209,7 +233,31 @@ status()
 
 testconfig()
 {
-    # We first loop to check the config.
+    # Each marker is a verdict from a previous run and this one replaces all of them. Cleared
+    # here, not in start_service(): this function exits 1 on the FIRST failure, so start_service()
+    # may never run to clear a marker left by an earlier, unrelated one.
+    rm -f ${DIR}/var/run/*.failed
+
+    # The whole file first (XML, schema, cross-field rules and the files it references): fails fast
+    # with the JSON pointer of the offending option before any daemon runs its own -t.
+    MCONF_VERDICT=$(${MCONF} validate 2>&1)
+    if [ $? != 0 ]; then
+        echo "${MCONF_VERDICT}" >&2
+        # With the fail-fast no daemon starts, so nothing else records the reason where operators
+        # (and the integration tests) look for it: surface the verdict in the manager log too.
+        echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: ${MCONF_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+        if [ $USE_JSON = true ]; then
+            echo -n '{"error":20,"message":"'${WAZUH_CONF}': Configuration error."}'
+        else
+            echo "${WAZUH_CONF}: Configuration error. Exiting"
+        fi
+        rm -f ${DIR}/var/run/*.start
+        rm -f ${DIR}/var/run/.restart
+        unlock;
+        exit 1;
+    fi
+
+    # Then each daemon checks what is not configuration (files, sockets, keys).
     for i in ${SDAEMONS}; do
         daemon_name="$i"
         ${DIR}/bin/${daemon_name} -t ${DEBUG_CLI};
@@ -219,9 +267,10 @@ testconfig()
             else
                 echo "${i}: Configuration error. Exiting"
             fi
-            if [ ! -f ${DIR}/var/run/.restart ]; then
-                touch ${DIR}/var/run/${i}.failed
-            fi
+            # Unconditionally: the wipe at the top of this function already replaced the old
+            # .restart guard's job, and keeping the guard here would leave a restart with a
+            # refused configuration reporting plain "not running".
+            echo "refused" > ${DIR}/var/run/${i}.failed
             rm -f ${DIR}/var/run/*.start
             rm -f ${DIR}/var/run/.restart
             unlock;
@@ -289,7 +338,7 @@ wait_for_wazuh_engine_ready()
     fi
 
     while [ $attempts -lt $max_attempts ]; do
-        curl --silent --fail --unix-socket ${DIR}/queue/sockets/analysis \
+        curl --silent --fail --unix-socket ${DIR}/queue/sockets/engine-api-http.sock \
             -X POST -H "Content-Type: application/json" \
             -d '{}' \
             http://localhost/_internal/event-dumper/status \
@@ -326,7 +375,7 @@ start_service()
     TO_DELETE="$DIR/tmp"
     find "$TO_DELETE" -mindepth 1 -delete
 
-    node_type=$(grep '<node_type>' ${DIR}/etc/${WAZUH_CONF} | sed 's/<node_type>\(.*\)<\/node_type>/\1/' | tr -d ' ');
+    node_type=$(get_node_type);
     if [ -z $node_type ]; then
         echo "Invalid cluster configuration, check the $DIR/etc/${WAZUH_CONF} file."
         unlock;
@@ -344,16 +393,9 @@ start_service()
             continue
         fi
 
-        ## If wazuh-manager-authd is disabled, don't try to start it.
+        ## If wazuh-manager-authd is disabled (auth.disabled: true), don't try to start it.
         if [ X"$i" = "Xwazuh-manager-authd" ]; then
-             start_config="$(grep -n "<auth>" ${DIR}/etc/${WAZUH_CONF} | cut -d':' -f 1)"
-             end_config="$(grep -n "</auth>" ${DIR}/etc/${WAZUH_CONF} | cut -d':' -f 1)"
-             if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-                sed -n "${start_config},${end_config}p" ${DIR}/etc/${WAZUH_CONF} | grep "<disabled>yes" >/dev/null 2>&1
-                if [ $? = 0 ]; then
-                    continue
-                fi
-             else
+             if [ "$(${MCONF} get auth.disabled 2>/dev/null)" = "true" ]; then
                 continue
              fi
         fi
@@ -367,7 +409,6 @@ start_service()
         if [ $? = 0 ]; then
             ## Create starting flag
             failed=false
-            rm -f ${DIR}/var/run/${i}.failed
             touch ${DIR}/var/run/${i}.start
             daemon_name="$i"
 
@@ -403,7 +444,8 @@ start_service()
                     echo "${i} did not start correctly.";
                 fi
                 rm -f ${DIR}/var/run/${i}.start
-                touch ${DIR}/var/run/${i}.failed
+                # Same marker the framework reads as 'failed'; the content tells status why.
+                echo "start" > ${DIR}/var/run/${i}.failed
                 rm -f ${DIR}/var/run/*.start
                 rm -f ${DIR}/var/run/.restart
                 unlock;

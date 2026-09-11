@@ -14,10 +14,6 @@
 #include "loggerHelper.h"
 #include <utility>
 
-/// Health-check period, seconds. Matches the literal both connectors pass when they build their own
-/// selector, so sharing a session does not change how often hosts are polled.
-constexpr auto SESSION_MONITORING_INTERVAL {10};
-
 // LCOV_EXCL_START
 class IndexerSession::Impl
 {
@@ -45,10 +41,21 @@ public:
         m_data.m_hosts = config.at("hosts").get<std::vector<std::string>>();
         m_data.m_secureCommunication = buildSecureCommunication(config, logFn);
 
+        // In session mode this is the ONLY place the polling period can come from: the connectors
+        // sharing this session adopt this monitor and ignore their own `monitoring_interval_seconds`.
+        const auto monitoringInterval = config.contains("monitoring_interval_seconds") &&
+                                                config.at("monitoring_interval_seconds").is_number_integer()
+                                            ? config.at("monitoring_interval_seconds").get<long>()
+                                            : static_cast<long>(DEFAULT_MONITORING_INTERVAL);
+        if (monitoringInterval < 1)
+        {
+            throw IndexerConnectorException("monitoring_interval_seconds must be >= 1");
+        }
+
         // The one synchronous round of `GET /_cat/health` (5 s timeout per host) plus the one polling
         // thread. Every connector sharing this session reuses both.
         m_data.m_monitoring = std::make_shared<TMonitoring<HTTPRequest>>(
-            m_data.m_hosts, SESSION_MONITORING_INTERVAL, m_data.m_secureCommunication);
+            m_data.m_hosts, static_cast<uint32_t>(monitoringInterval), m_data.m_secureCommunication);
     }
 
     IndexerSessionData m_data;

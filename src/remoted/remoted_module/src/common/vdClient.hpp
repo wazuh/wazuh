@@ -50,9 +50,16 @@ namespace remoted::common
         /// caller behind it.
         static constexpr std::chrono::milliseconds DEFAULT_FAILURE_RETRY_INTERVAL {5000};
 
+        /// Per-query socket deadlines for the offset request. Named rather than inlined at the call
+        /// site because they are part of the budget of every request that gates on an offset: a
+        /// stale cache makes getOffset() pay them synchronously before the caller's own downstream
+        /// work starts (see ScanVdHandlerImpl::budgetMsFor()).
+        static constexpr long OFFSET_READ_TIMEOUT_SECONDS = 1;
+        static constexpr long OFFSET_WRITE_TIMEOUT_SECONDS = 1;
+
         /**
          * @param socketPath VD module UDS endpoint, as a raw filesystem path (e.g.
-         * "/queue/sockets/vd.sock") -- NOT a "unix://" URI; httplib::Client's single-string
+         * "/queue/sockets/vd-http.sock") -- NOT a "unix://" URI; httplib::Client's single-string
          * constructor only parses http(s) URLs, so the path is passed as-is together with
          * set_address_family(AF_UNIX). Defaults to the real modulesd socket; overridable so
          * tests can point this at a fake server instead.
@@ -61,7 +68,7 @@ namespace remoted::common
          * @param failureRetryInterval See DEFAULT_FAILURE_RETRY_INTERVAL. Same testability
          * rationale as cacheTtl.
          */
-        explicit VdClient(std::string socketPath = "/queue/sockets/vd.sock",
+        explicit VdClient(std::string socketPath = "/queue/sockets/vd-http.sock",
                           std::chrono::milliseconds cacheTtl = DEFAULT_CACHE_TTL,
                           std::chrono::milliseconds failureRetryInterval = DEFAULT_FAILURE_RETRY_INTERVAL);
         ~VdClient() = default;

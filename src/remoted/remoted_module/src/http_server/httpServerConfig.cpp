@@ -13,15 +13,21 @@
 
 #include "proc.hpp"
 
+#include <algorithm>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 
 namespace
 {
-    constexpr auto DEFAULT_BIND_ADDRESS {"127.0.0.1"};
+    constexpr auto DEFAULT_BIND_ADDRESS {"0.0.0.0"};
     constexpr std::uint16_t DEFAULT_HTTPS_PORT {1517};
     // Multiplier applied to cpp_get_nproc() for the handler pool: unlike the I/O reactor threads,
-    // work here can block (CMAC verification, client.keys file I/O), so it is oversubscribed.
+    // work here can block (token verification, client.keys file I/O), so it is oversubscribed.
     constexpr unsigned int WORKER_THREADS_NPROC_MULTIPLIER {2};
+    // Floor applied to the nproc-derived fallback only (an explicit config value is never
+    // floored): a single-vCPU host/cgroup must not regress below the old fixed default of 2.
+    constexpr std::size_t MIN_CONCURRENT_ACCEPTS {2};
     // Transport hard cap. Kept above the auth middleware's body limit (AuthConfig::maxBodySize,
     // 10 MiB) so an oversized batch reaches the middleware and gets a clean 413 there, while this
     // still bounds memory as a backstop.
@@ -34,7 +40,6 @@ namespace
     constexpr std::size_t DEFAULT_MAX_HEADER_VALUE_SIZE {8192};
     constexpr std::size_t DEFAULT_MAX_HEADER_COUNT {64};
     constexpr std::size_t DEFAULT_MAX_PIPELINED_REQUESTS {4};
-    constexpr std::size_t DEFAULT_CONCURRENT_ACCEPTS {2};
     constexpr std::size_t DEFAULT_BUFFER_SIZE {8192};
     // Bytes per chunk for a streamed response body. Agreed default; tunable through
     // remoted.http_stream_chunk_size because the CPU cost per byte moves noticeably with it.
@@ -65,7 +70,7 @@ namespace
         return configValue > 0 ? static_cast<std::size_t>(configValue) : defaultValue;
     }
 
-    // Same as above for the C-ABI's `long` fields (e.g. http_max_body_size, a regular <remote>
+    // Same as above for the C-ABI's `long` fields (e.g. http_max_body_size, a regular remote
     // setting rather than an internal option, but resolved the same way: positive wins).
     std::size_t resolveUnsigned(const long configValue, const std::size_t defaultValue)
     {
@@ -143,6 +148,12 @@ namespace remoted::http
 
         result.bindAddress = config.bind_address[0] != '\0' ? std::string {config.bind_address} : DEFAULT_BIND_ADDRESS;
 
+        // Copied VERBATIM (an empty buffer resolves to "" == no prefix): canonicalization --
+        // trailing-slash strip, identity collapse -- happens in ONE place, RestinioHttpServer::
+        // start() via normalizeGlobalPrefix(), so a directly-constructed HttpServerConfig
+        // behaves identically to a builder-produced one.
+        result.globalPrefix = config.global_prefix[0] != '\0' ? std::string {config.global_prefix} : std::string {};
+
         result.port = static_cast<std::uint16_t>(resolveUnsigned(config.port, DEFAULT_HTTPS_PORT));
         result.ioThreads = resolveThreadCount(config.io_threads);
         result.workerThreads = resolveThreadCount(config.http_worker_threads, WORKER_THREADS_NPROC_MULTIPLIER);
@@ -156,7 +167,10 @@ namespace remoted::http
         result.maxHeaderCount = resolveUnsigned(config.http_max_header_count, DEFAULT_MAX_HEADER_COUNT);
         result.maxPipelinedRequests =
             resolveUnsigned(config.http_max_pipelined_requests, DEFAULT_MAX_PIPELINED_REQUESTS);
-        result.concurrentAccepts = resolveUnsigned(config.http_concurrent_accepts, DEFAULT_CONCURRENT_ACCEPTS);
+        result.concurrentAccepts =
+            config.http_concurrent_accepts > 0
+                ? static_cast<std::size_t>(config.http_concurrent_accepts)
+                : std::max<std::size_t>(static_cast<std::size_t>(cpp_get_nproc()), MIN_CONCURRENT_ACCEPTS);
         result.bufferSize = resolveUnsigned(config.http_buffer_size, DEFAULT_BUFFER_SIZE);
         result.streamChunkSize = resolveUnsigned(config.http_stream_chunk_size, DEFAULT_STREAM_CHUNK_SIZE);
 
@@ -183,6 +197,54 @@ namespace remoted::http
         result.dualStackMode = resolveDualStackMode(config.dual_stack);
 
         return result;
+    }
+
+    std::string normalizeGlobalPrefix(std::string_view raw)
+    {
+        // "" / "/" / "///" all mean the root: no prefix. N slashes are treated alike because
+        // they all normalize to the same (empty) set of path segments.
+        if (raw.find_first_not_of('/') == std::string_view::npos)
+        {
+            return {};
+        }
+
+        std::string prefix;
+        if (raw.front() != '/')
+        {
+            // Defensive only: the C-side validator already rejects a missing leading slash, but
+            // a directly-constructed HttpServerConfig (tests, embedders) gets the same contract.
+            prefix.reserve(raw.size() + 1);
+            prefix.push_back('/');
+        }
+        prefix.append(raw);
+
+        while (prefix.back() == '/')
+        {
+            prefix.pop_back();
+        }
+
+        for (const char byte : prefix)
+        {
+            // RFC 3986 unreserved + '/'. Deliberately no '%' (the prefix is compared byte-exactly
+            // against the wire target, never percent-decoded) and none of path2regex's
+            // metacharacters (: ( ) * + ?), which would corrupt the concatenated route pattern.
+            const bool allowed = (byte >= 'A' && byte <= 'Z') || (byte >= 'a' && byte <= 'z') ||
+                                 (byte >= '0' && byte <= '9') || byte == '.' || byte == '_' || byte == '~' ||
+                                 byte == '-' || byte == '/';
+            if (!allowed)
+            {
+                throw std::invalid_argument("Invalid global endpoint prefix '" + std::string {raw} +
+                                            "': allowed characters are A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'");
+            }
+        }
+
+        if (prefix.find("//") != std::string::npos)
+        {
+            throw std::invalid_argument("Invalid global endpoint prefix '" + std::string {raw} +
+                                        "': it contains an empty path segment ('//')");
+        }
+
+        return prefix;
     }
 
 } // namespace remoted::http

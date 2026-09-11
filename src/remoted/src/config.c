@@ -14,6 +14,7 @@
 #include "os_net.h"
 #include "remoted.h"
 #include "config.h"
+#include "mconf-config.h"
 #include "module_limits.h"
 
 /* Global variables */
@@ -55,8 +56,6 @@ bool manager_module_limits_enabled = true;
 /* Read the config file (the remote access) */
 int RemotedConfig(const char *cfgfile, remoted *cfg)
 {
-    int modules = 0;
-
     /* Initialize module limits with default values */
     module_limits_init(&manager_module_limits);
 
@@ -84,7 +83,6 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     /* SCA limits */
     manager_module_limits.sca.checks = getDefine_Int_default("sca", "checks_limit", 0, INT_MAX, 30000);
 
-    modules |= CREMOTE;
 
     cfg->port = 0;
     cfg->queue_size = 131072;
@@ -130,11 +128,29 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 900;
-    cfg->global.agents_disconnection_alert_time = 0;
 
-    if (ReadConfig(modules, cfgfile, cfg, NULL) < 0 ||
-        ReadConfig(CGLOBAL, cfgfile, &cfg->global, NULL) < 0 ) {
+    /* etc/wazuh-manager.conf: loaded once per process (schema + defaults applied), then each section
+     * of the effective document is read as cJSON (mconf-config.h). */
+    if (w_mconf_load(cfgfile) < 0) {
         return (OS_INVALID);
+    }
+
+    {
+        cJSON *remote = w_mconf_section("remote");
+        int ret = Read_Remote_JSON(remote, cfg);
+        cJSON_Delete(remote);
+
+        if (ret < 0) {
+            return (OS_INVALID);
+        }
+
+        cJSON *global = w_mconf_section("global");
+        ret = Read_Global_JSON(global, &cfg->global);
+        cJSON_Delete(global);
+
+        if (ret < 0) {
+            return (OS_INVALID);
+        }
     }
 
     if (cfg->queue_size < 1) {
@@ -164,53 +180,14 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 }
 
 
+/* getconfig "remote": the effective `remote` section of etc/wazuh-manager.conf (schema defaults
+ * applied, native types), exactly what RemotedConfig() loaded. Feeds one endpoint:
+ * GET /cluster/.../configuration/request/remote, which asks the daemon over its socket. */
 cJSON *getRemoteConfig(void) {
-
     cJSON *root = cJSON_CreateObject();
-    cJSON *rem = cJSON_CreateArray();
-    char port[255] = {0};
-    char queue_size[255] = {0};
+    cJSON *remote = w_mconf_section("remote");
 
-    cJSON *conn = cJSON_CreateObject();
-    cJSON_AddStringToObject(conn,"connection","secure");
-    if (logr.ipv6) cJSON_AddStringToObject(conn,"ipv6","yes"); else cJSON_AddStringToObject(conn,"ipv6","no");
-
-    if (logr.lip) cJSON_AddStringToObject(conn,"local_ip",logr.lip);
-
-    if (logr.proto) {
-        cJSON * proto_array = cJSON_CreateArray();
-
-        /* If TCP is enabled */
-        if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
-            cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_TCP_STR));
-        }
-        /* If UDP is enabled */
-        if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
-            cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_UDP_STR));
-        }
-        cJSON_AddItemToObject(conn, "protocol", proto_array);
-    }
-
-    if (logr.port){
-        sprintf(port,"%d",logr.port);
-        cJSON_AddStringToObject(conn,"port",port);
-    }
-
-    if (logr.queue_size) {
-        sprintf(queue_size,"%ld",logr.queue_size);
-        cJSON_AddStringToObject(conn,"queue_size", queue_size);
-
-        cJSON * agents = cJSON_CreateObject();
-        cJSON_AddStringToObject(agents, "allow_higher_versions", logr.allow_higher_versions ? "yes" : "no");
-        cJSON_AddItemToObject(conn, "agents", agents);
-    }
-
-    cJSON_AddNumberToObject(conn, "connection_overtake_time", logr.connection_overtake_time);
-
-    cJSON_AddItemToArray(rem,conn);
-
-    cJSON_AddItemToObject(root,"remote",rem);
-
+    cJSON_AddItemToObject(root, "remote", remote != NULL ? remote : cJSON_CreateObject());
     return root;
 }
 
@@ -262,18 +239,11 @@ cJSON *getRemoteInternalConfig(void) {
 
 }
 
+/* getconfig "global": the effective `global` section of etc/wazuh-manager.conf. */
 cJSON *getRemoteGlobalConfig(void) {
-
     cJSON *root = cJSON_CreateObject();
-    cJSON *global = cJSON_CreateObject();
-    cJSON *remoted = cJSON_CreateObject();
+    cJSON *global = w_mconf_section("global");
 
-    cJSON_AddNumberToObject(remoted,"agents_disconnection_alert_time",logr.global.agents_disconnection_alert_time);
-    cJSON_AddNumberToObject(remoted,"agents_disconnection_time",logr.global.agents_disconnection_time);
-
-    cJSON_AddItemToObject(global,"remoted",remoted);
-    cJSON_AddItemToObject(root,"global",global);
-
+    cJSON_AddItemToObject(root, "global", global != NULL ? global : cJSON_CreateObject());
     return root;
-
 }

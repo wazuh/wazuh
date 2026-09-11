@@ -23,7 +23,7 @@
 // External function declarations from syscheck.c
 extern void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation);
 extern void add_pending_sync_item(OSList *pending_items, const cJSON *json, int sync_value);
-extern void process_pending_sync_updates(char* table_name, OSList *pending_items);
+extern int process_pending_sync_updates(char* table_name, OSList *pending_items);
 extern cJSON* extract_primary_keys(const char* table_name, const cJSON* full_doc);
 extern int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs);
 
@@ -540,11 +540,12 @@ static void test_process_pending_sync_updates_files(void **state) {
     expect_value(__wrap_fim_db_set_sync_flag, sync_value, 1);
     will_return(__wrap_fim_db_set_sync_flag, 0);
 
-    // Process updates
+    // Process updates. process_pending_sync_updates() no longer logs a summary itself (callers
+    // that run once per scan do that from the returned count instead) — assert on the count.
     expect_string(__wrap__mdebug2, formatted_msg, "Setting sync=1 for path: /tmp/test1.txt");
     expect_string(__wrap__mdebug2, formatted_msg, "Setting sync=1 for path: /tmp/test2.txt");
-    expect_string(__wrap__mdebug1, formatted_msg, "Processed 2 pending sync flag updates");
-    process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending);
+    int processed = process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending);
+    assert_int_equal(processed, 2);
 
     // Clean up
     cJSON_Delete(item1);

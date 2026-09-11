@@ -73,7 +73,7 @@ if __name__ == '__main__':
         pattern = args.pattern
         environment = Path(args.environment).resolve()
         test_integration = args.test_integration
-        api_sock = environment / 'queue/sockets/engine-api'
+        api_sock = environment / 'queue/sockets/engine-api-http.sock'
         test_command = f'engine-test -c {args.test_integration_conf_file} run {test_integration} --api-socket {api_sock} -j'
         output = args.output
         binary = args.binary

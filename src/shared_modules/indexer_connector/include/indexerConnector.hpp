@@ -131,11 +131,14 @@ public:
      *        one health monitor for the configured hosts.
      *
      * @param config Indexer configuration. `hosts` is required; `ssl.certificate_authorities`,
-     *               `ssl.certificate` and `ssl.key` are optional.
+     *               `ssl.certificate` and `ssl.key` are optional. `monitoring_interval_seconds`
+     *               (default 10, minimum 1) sets the health monitor's polling period -- in session
+     *               mode this is the only place it can be set, since every connector built from the
+     *               session adopts this monitor.
      * @param logging Logging context pairing the caller module name and the log callback.
      *
-     * @throws IndexerConnectorException if `hosts` is missing or empty, or if a configured CA root
-     *         certificate file does not exist.
+     * @throws IndexerConnectorException if `hosts` is missing or empty, if a configured CA root
+     *         certificate file does not exist, or if `monitoring_interval_seconds` is below 1.
      */
     explicit IndexerSession(const nlohmann::json& config, LoggingContext logging = {});
 
@@ -145,6 +148,17 @@ public:
     IndexerSession& operator=(const IndexerSession&) = delete;
     IndexerSession(IndexerSession&&) = delete;
     IndexerSession& operator=(IndexerSession&&) = delete;
+};
+
+/**
+ * @brief Snapshot of the `_bulk` HTTP requests a sync connector actually sent -- every attempt
+ *        counts, splits and retries included, so a caller can compare its own logical flushes
+ *        against the real request traffic those flushes produced.
+ */
+struct IndexerBulkRequestStats
+{
+    uint64_t requests {0}; ///< `_bulk` POSTs sent (full buffers and split chunks alike).
+    uint64_t bytes {0};    ///< NDJSON payload bytes those POSTs carried.
 };
 
 /**
@@ -163,6 +177,9 @@ public:
      * @brief Class constructor that initializes the publisher.
      *
      * @param config Indexer configuration, including database_path and servers.
+     *               `monitoring_interval_seconds` (default 10, minimum 1) sets the polling period of
+     *               the health monitor this constructor builds. `flush_interval_seconds` = 0 starts
+     *               NO background flush thread at all: the caller owns every flush().
      * @param logging Logging context pairing the caller module name and the log callback.
      *                The caller name is used to build the log tag as
      *                "<callerName>(indexer-connector)" (e.g. "vulnerability-scanner(indexer-connector)").
@@ -179,7 +196,12 @@ public:
      * network I/O at construction.
      *
      * @param config Indexer configuration. Still supplies this connector's own tunables
-     *               (`max_bulk_size`, `flush_interval_seconds`, `max_retry_delay_seconds`). Its
+     *               (`max_bulk_size`, `flush_interval_seconds`, `max_retry_delay_seconds`,
+     *               `request_timeout_seconds`). `flush_interval_seconds` = 0 starts NO background
+     *               flush thread at all: the caller owns every flush(). `monitoring_interval_seconds`
+     *               is IGNORED here --
+     *               the shared session's monitor was already built with the session's own value --
+     *               just like the `ssl.*` and credential keys, which the session also supplies. Its
      *               `hosts` list MUST equal the session's: the monitor only knows the hosts it was
      *               built with, so a foreign host would throw std::out_of_range on the first request.
      * @param session Session to share. Not retained -- see IndexerSession's LIFETIME note.
@@ -380,6 +402,11 @@ public:
      * @return true if have a server available, false otherwise.
      */
     bool isAvailable() const;
+
+    /**
+     * @brief Returns the `_bulk` request counts accumulated since the previous call and resets them.
+     */
+    IndexerBulkRequestStats takeBulkRequestStats();
 };
 
 /**
@@ -397,6 +424,8 @@ public:
      * @brief Class constructor that initializes the publisher.
      *
      * @param config Indexer configuration, including servers and SSL settings.
+     *               `monitoring_interval_seconds` (default 10, minimum 1) sets the polling period of
+     *               the health monitor this constructor builds.
      * @param logging Logging context pairing the caller module name and the log callback.
      *                The caller name is used to build the log tag as
      *                "<callerName>(indexer-connector)" (e.g. "wazuh-manager-analysisd(indexer-connector)").
@@ -414,7 +443,11 @@ public:
      *
      * @param config Indexer configuration. Still supplies this connector's own tunables
      *               (`bulk_max_bytes`, `flush_interval_seconds`, `max_retry_delay_seconds`,
-     *               `max_queue_bytes`, `logger_queue_size`, `logger_threads`). Its `hosts` list MUST
+     *               `max_queue_bytes`, `logger_queue_size`, `logger_threads`,
+     *               `request_timeout_seconds`). `monitoring_interval_seconds` is IGNORED here --
+     *               the shared session's monitor was already built with the session's own value --
+     *               just like the `ssl.*` and credential keys, which the session also supplies.
+     *               Its `hosts` list MUST
      *               equal the session's: the monitor only knows the hosts it was built with, so a
      *               foreign host would throw std::out_of_range on the first request.
      * @param session Session to share. Not retained -- see IndexerSession's LIFETIME note.
@@ -461,6 +494,26 @@ public:
      * @param data Data.
      */
     void indexDataStream(std::string_view index, std::string_view data);
+
+    /**
+     * @brief Queue the deletion of ONE document by id.
+     *
+     * Enqueued into the SAME queue as index(), which is what this method is for: the queue is FIFO
+     * (and a failed batch is retried from its front), so a deletion queued after an index() of the
+     * same document is always applied after it. A caller that has to remove a document whose own
+     * index() may still be pending here cannot get that ordering from anything else -- a delete
+     * issued through another connector races this queue, and a `_delete_by_query` would not even see
+     * a document that has not been refreshed yet.
+     *
+     * Fire-and-forget like index(), and idempotent: deleting a document that is not there comes back
+     * as a per-item `404 not_found`, which is not an error and is not reported anywhere.
+     *
+     * @param id ID of the document to delete. Must not be empty.
+     * @param index Index name. Must not be empty.
+     *
+     * @throws IndexerConnectorException if @p id or @p index is empty.
+     */
+    void deleteById(std::string_view id, std::string_view index);
 
     /**
      * @brief Check have a server available.
@@ -567,18 +620,39 @@ public:
 
 class IndexerConnectorException : public std::exception
 {
+public:
+    /**
+     * @brief Coarse failure cause, for callers that aggregate failures into metrics. It changes
+     *        what the operator should look at, not what the caller does: every category is still
+     *        a failed operation whose recovery is the caller re-staging.
+     */
+    enum class Category
+    {
+        Other,            ///< Hard rejection or unexpected state (non-retryable status, bad split).
+        DocumentRejected, ///< The indexer answered but rejected documents, left them undeleted, or
+                          ///< returned a body that confirms nothing.
+        RetryExhausted    ///< The retry budget ran out on a retryable condition (429, transport).
+    };
+
 private:
     std::string m_message;
+    Category m_category {Category::Other};
 
 public:
-    explicit IndexerConnectorException(std::string message)
+    explicit IndexerConnectorException(std::string message, Category category = Category::Other)
         : m_message(std::move(message))
+        , m_category(category)
     {
     }
 
     const char* what() const noexcept override
     {
         return m_message.c_str();
+    }
+
+    Category category() const noexcept
+    {
+        return m_category;
     }
 };
 

@@ -43,6 +43,10 @@ type Config struct {
 	Reuse       bool
 	Seed        uint64
 	SenderVer   string
+	// GlobalPrefix is the manager's <remote><https><global_prefix>, already normalized
+	// in main(). "" means unprefixed. Agent mode only: NewUDSClient takes no prefix, so
+	// a uds run ignores it by construction.
+	GlobalPrefix string
 	// VDFeedOffset overrides Start.feed_offset for every VDFirst/VDSync step
 	// that doesn't set its own (environment config, like Cluster). 0 means "no
 	// override" -- defer to the step, then to what agent mode's keepalive loop
@@ -216,7 +220,7 @@ func (r *Runner) buildAgents(ctx context.Context) ([]*agent, error) {
 					return nil, fmt.Errorf("enroll %s: %w", name, err)
 				}
 				ag.id = ident.ID
-				ag.client = wire.NewAgentClient(ident, r.cfg.Manager, r.cfg.Port, r.cfg.Timeout, r.cfg.Reuse)
+				ag.client = wire.NewAgentClient(ident, r.cfg.Manager, r.cfg.Port, r.cfg.Timeout, r.cfg.Reuse, r.cfg.GlobalPrefix)
 				r.enrolled++
 			} else {
 				ag.client = wire.NewUDSClient(ag.id, r.cfg.Socket, r.cfg.Timeout)
@@ -343,7 +347,7 @@ func (r *Runner) Meta() metrics.Meta {
 	ki := r.scn.Defaults.Control.KeepaliveInterval.D()
 	return metrics.Meta{
 		ScenarioName: r.scn.Name, ScenarioPath: r.cfg.ScenarioPath, Mode: r.mode,
-		Manager: r.cfg.Manager, Port: r.cfg.Port, RegPort: r.cfg.RegPort, Target: target,
+		Manager: r.cfg.Manager, Port: r.cfg.Port, RegPort: r.cfg.RegPort, Target: target, GlobalPrefix: r.cfg.GlobalPrefix,
 		ClusterName: r.clusterName(), AgentsRequested: requested, AgentsEnrolled: r.enrolled, AgentsFailed: r.failed,
 		ConcurrentAgents: r.scn.Pacing.ConcurrentAgents, RPSTarget: r.scn.Pacing.RequestsPerSecond,
 		KeepaliveInterval: ki.String(), ControlEnabled: r.controlEnabled(), ConnectionReuse: r.cfg.Reuse, Compression: r.compression(),

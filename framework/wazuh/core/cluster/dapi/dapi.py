@@ -484,6 +484,7 @@ class DistributedAPI:
                                                              ),
                                         object_hook=c_common.as_wazuh_object)
                 except WazuhClusterError as e:
+                    # 3022 is the node-identity error; any other cluster error is not about the node name.
                     if e.code == 3022:
                         result = e
                     else:

@@ -9,11 +9,13 @@
  * Foundation.
  */
 
-#include "auth/cmac.hpp"
 #include "decoding/bodyDecoder.hpp"
 #include "endpoints/authGateway.hpp"
 #include "fakeHttpServer.hpp"
 #include "http_server/IHttpServer.hpp"
+#include "jwt/canonicalAgentId.hpp"
+#include "jwt/jwtRequestTokenSigner.hpp"
+#include "jwt/secureBytes.hpp"
 #include "zstdTestHelper.hpp"
 
 #include <gtest/gtest.h>
@@ -51,14 +53,14 @@ namespace
         {
             if (agentId == 1)
             {
-                return remoted::auth::AgentLookup {std::vector<std::uint8_t>(16, 0x0A), true};
+                return remoted::auth::AgentLookup {std::vector<std::uint8_t>(32, 0x0A), true};
             }
             return std::nullopt;
         }
     };
 
     // Keystore stub that always throws, simulating an unexpected failure (e.g. a corrupted on-disk
-    // state) reached from INSIDE AuthMiddleware::beginSession() -- i.e. before the gateway's old,
+    // state) reached from INSIDE AuthMiddleware::authenticate() -- i.e. before the gateway's old,
     // too-narrow try/catch used to start.
     class ThrowingKeystore final : public remoted::auth::IAgentKeystore
     {
@@ -121,42 +123,32 @@ namespace
         return AuthGateway {remoted::auth::AuthConfig {}, std::make_shared<FakeKeystore>(), passthroughDecoder()};
     }
 
-    // Build a valid "Wazuh <id>:<ts>:<mac>" Authorization for agent 001, signing the same
-    // canonical byte sequence AuthMiddleware verifies, with the key FakeKeystore returns.
-    std::string
-    buildAuthorization(const std::string& method, const std::string& target, const std::string& body, std::int64_t ts)
+    // A valid `Bearer <wazuh-agent+jwt>` Authorization for agent 001, minted with the key
+    // FakeKeystore returns for it (a fresh token per call).
+    std::string buildAuthorization()
     {
-        const std::vector<std::uint8_t> key(16, 0x0A); // matches FakeKeystore::lookup(1) ("001" on the wire)
-        remoted::auth::Cmac cmac(key);
-        cmac.update("WAZUH-REQUEST\n");
-        cmac.update("1\n"); // protocol-version
-        cmac.update(method);
-        cmac.update("\n");
-        cmac.update(target);
-        cmac.update("\n");
-        cmac.update("001\n"); // agent id
-        cmac.update(std::to_string(ts));
-        cmac.update("\n");
-        cmac.update(body);
-        const auto mac = cmac.finalize();
-        return "Wazuh 001:" + std::to_string(ts) + ":" + remoted::auth::toLowerHex(mac.data(), mac.size());
+        const std::vector<std::uint8_t> key(32, 0x0A); // matches FakeKeystore::lookup(1) ("001" on the wire)
+        const jwt_profile::v1::SecureBytes secret {key.data(), key.size()};
+        const auto token = jwt_profile::v1::JwtRequestTokenSigner::sign(
+            *jwt_profile::v1::CanonicalAgentId::parse("001"), secret, std::chrono::system_clock::now());
+        return "Bearer " + (token ? *token : std::string {});
     }
 
-    // A request that authenticates cleanly for agent 001 against makeGateway().
+    // A request that authenticates cleanly for agent 001 against makeGateway(). The token is
+    // identity-only, so any body/target authenticates the same way.
     HttpRequest signedRequest(const std::string& body)
     {
-        const auto ts = static_cast<std::int64_t>(std::time(nullptr));
         HttpRequest request;
         request.method = Method::Post;
         request.target = "/stateless";
         request.body = body;
         request.headers.emplace("protocol-version", "1");
-        request.headers.emplace("authorization", buildAuthorization("POST", "/stateless", body, ts));
+        request.headers.emplace("authorization", buildAuthorization());
         return request;
     }
 
-    // Same as signedRequest(), plus a Content-Encoding header. The MAC still covers exactly
-    // `body` -- whatever the caller passes as the wire bytes, compressed or not.
+    // Same as signedRequest(), plus a Content-Encoding header. `body` is whatever the caller wants
+    // on the wire, compressed or not -- authentication does not look at it.
     HttpRequest signedRequestWithContentEncoding(const std::string& body, const std::string& encoding)
     {
         auto request = signedRequest(body);
@@ -434,7 +426,7 @@ TEST(AuthGatewayTest, DecoderSeesTheParsedEncodingAndTheVerifiedBody)
 
     // The gateway parses the header and hands over the enum, not the raw string.
     EXPECT_EQ(seenEncoding, ContentEncoding::Zstd);
-    EXPECT_EQ(seenBytes, "the-wire-bytes"); // the exact bytes the MAC covered
+    EXPECT_EQ(seenBytes, "the-wire-bytes"); // the exact wire bytes, untouched by authentication
 }
 
 TEST(AuthGatewayTest, DecoderIsStillRunWithNoEncodingSoItOwnsThePassthrough)
@@ -546,7 +538,7 @@ INSTANTIATE_TEST_SUITE_P(DecoderErrors,
 
 TEST(AuthGatewayTest, DecoderIsNotRunWhenAuthenticationFails)
 {
-    // The security property the MAC-over-wire-bytes ordering exists for: an unauthenticated peer
+    // The security property the auth-before-decode ordering exists for: an unauthenticated peer
     // must never reach a decoder, so it cannot spend our CPU or memory on one.
     FakeHttpServer server;
     bool decoderCalled = false;
@@ -570,9 +562,11 @@ TEST(AuthGatewayTest, DecoderIsNotRunWhenAuthenticationFails)
                                       responder->send(HttpResponse {200, "", {}});
                                   });
 
-    // Signed correctly, then the transmitted body is swapped -> the MAC no longer matches.
-    auto request = signedRequestWithContentEncoding("signed body", "some-encoding");
-    request.body = "tampered body";
+    // A well-formed request whose token signature is corrupted -> 401 before any decoding. (The
+    // body is deliberately left alone: it is not part of authentication under the bearer profile.)
+    auto request = signedRequestWithContentEncoding("some body", "some-encoding");
+    auto& authorization = request.headers["authorization"];
+    authorization[authorization.size() - 2] = authorization[authorization.size() - 2] == 'A' ? 'B' : 'A';
     auto responder = std::make_shared<CapturingResponder>();
     server.dispatch(Method::Post, "/stateless", request, responder);
 
@@ -580,6 +574,155 @@ TEST(AuthGatewayTest, DecoderIsNotRunWhenAuthenticationFails)
     EXPECT_EQ(responder->captured->status, 401);
     EXPECT_FALSE(decoderCalled);
     EXPECT_FALSE(handlerCalled);
+}
+
+namespace
+{
+    std::optional<std::string> headerOf(const HttpResponse& response, std::string_view name)
+    {
+        for (const auto& [key, value] : response.headers)
+        {
+            if (key == name)
+            {
+                return value;
+            }
+        }
+        return std::nullopt;
+    }
+} // namespace
+
+// RFC 6750 §3: every 401 carries `WWW-Authenticate: Bearer`, uniformly -- it names the scheme, never
+// the reason -- while the non-credential rejections (400/413/415) carry no challenge at all.
+TEST(AuthGatewayTest, Every401CarriesTheBearerChallengeAndNothingElseDoes)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [](std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder> responder)
+        { responder->send(HttpResponse {200, "", {}}); });
+
+    const auto dispatch = [&server](HttpRequest request) -> HttpResponse
+    {
+        auto responder = std::make_shared<CapturingResponder>();
+        server.dispatch(Method::Post, "/stateless", request, responder);
+        EXPECT_TRUE(responder->captured.has_value());
+        return responder->captured.value_or(HttpResponse {});
+    };
+
+    // Missing Authorization.
+    HttpRequest missing;
+    missing.method = Method::Post;
+    missing.target = "/stateless";
+    missing.headers.emplace("protocol-version", "1");
+    auto response = dispatch(missing);
+    EXPECT_EQ(response.status, 401);
+    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), std::optional<std::string> {"Bearer"});
+
+    // A retired-scheme credential, and a well-formed token with a corrupted signature.
+    auto legacy = signedRequest("body");
+    legacy.headers["authorization"] = "Wazuh 001:1784238000:00112233445566778899aabbccddeeff";
+    response = dispatch(legacy);
+    EXPECT_EQ(response.status, 401);
+    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), std::optional<std::string> {"Bearer"});
+
+    auto tampered = signedRequest("body");
+    auto& authorization = tampered.headers["authorization"];
+    authorization[authorization.size() - 2] = authorization[authorization.size() - 2] == 'A' ? 'B' : 'A';
+    response = dispatch(tampered);
+    EXPECT_EQ(response.status, 401);
+    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), std::optional<std::string> {"Bearer"});
+
+    // Missing protocol-version is a 400 about the protocol, not a credential failure: no challenge.
+    auto noVersion = signedRequest("body");
+    noVersion.headers.erase("protocol-version");
+    response = dispatch(noVersion);
+    EXPECT_EQ(response.status, 400);
+    EXPECT_FALSE(headerOf(response, "WWW-Authenticate").has_value());
+
+    // The success path never carries one either.
+    response = dispatch(signedRequest("body"));
+    EXPECT_EQ(response.status, 200);
+    EXPECT_FALSE(headerOf(response, "WWW-Authenticate").has_value());
+}
+
+// The authenticated-body cap is the gateway's own check: an oversized body is a 413 -- no
+// challenge -- and the decoder never runs on it.
+TEST(AuthGatewayTest, BodyOverTheCapIs413BeforeTheDecoder)
+{
+    FakeHttpServer server;
+    bool decoderCalled = false;
+    remoted::auth::AuthConfig config;
+    config.maxBodySize = 8;
+    AuthGateway gateway {config,
+                         std::make_shared<FakeKeystore>(),
+                         stubDecoder(
+                             [&decoderCalled](ContentEncoding, remoted::auth::Payload&)
+                             {
+                                 decoderCalled = true;
+                                 return remoted::auth::AuthError::None;
+                             })};
+    bool handlerCalled = false;
+    gateway.addAuthenticatedRoute(server,
+                                  Method::Post,
+                                  "/stateless",
+                                  [&handlerCalled](std::shared_ptr<const remoted::auth::AuthenticatedRequest>,
+                                                   std::shared_ptr<IHttpResponder> responder)
+                                  {
+                                      handlerCalled = true;
+                                      responder->send(HttpResponse {200, "", {}});
+                                  });
+
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", signedRequest("nine byte"), responder);
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(responder->captured->status, 413);
+    EXPECT_FALSE(headerOf(*responder->captured, "WWW-Authenticate").has_value());
+    EXPECT_FALSE(decoderCalled);
+    EXPECT_FALSE(handlerCalled);
+
+    // Exactly at the cap is fine; the token is still checked first (a bad token is 401 regardless of size).
+    auto atCap = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", signedRequest("8 bytes!"), atCap);
+    ASSERT_TRUE(atCap->captured.has_value());
+    EXPECT_EQ(atCap->captured->status, 200);
+
+    auto badAndBig = signedRequest("nine byte");
+    badAndBig.headers["authorization"] = "Bearer not-a-token";
+    auto bad = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", badAndBig, bad);
+    ASSERT_TRUE(bad->captured.has_value());
+    EXPECT_EQ(bad->captured->status, 401);
+}
+
+// A duplicated credential header reaches the gateway as an EMPTY value (the transport's contract,
+// see IHttpServer.hpp / RestinioHttpServer::makeHttpRequest) and is rejected as absent.
+TEST(AuthGatewayTest, AnEmptyCredentialHeaderIsRejectedAsAbsent)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [](std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder> responder)
+        { responder->send(HttpResponse {200, "", {}}); });
+
+    auto emptyAuth = signedRequest("body");
+    emptyAuth.headers["authorization"] = "";
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", emptyAuth, responder);
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(responder->captured->status, 401);
+
+    auto emptyVersion = signedRequest("body");
+    emptyVersion.headers["protocol-version"] = "";
+    auto responder2 = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", emptyVersion, responder2);
+    ASSERT_TRUE(responder2->captured.has_value());
+    EXPECT_EQ(responder2->captured->status, 400);
 }
 
 TEST(AuthGatewayTest, AnUntouchedPayloadReachesTheHandlerAsSent)
@@ -634,7 +777,7 @@ TEST(AuthGatewayTest, RealZstdBodyReachesTheHandlerDecompressed)
                                       responder->send(HttpResponse::json(200, "{}"));
                                   });
 
-    // Signed over the COMPRESSED bytes: the MAC always covers the exact wire body.
+    // The body travels compressed; authentication never looks at it, decoding happens after auth.
     const auto request = signedRequestWithContentEncoding(compressed, "zstd");
     auto responder = std::make_shared<CapturingResponder>();
     server.dispatch(Method::Post, "/stateless", request, responder);

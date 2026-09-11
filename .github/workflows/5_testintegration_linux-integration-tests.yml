@@ -127,7 +127,7 @@ jobs:
             exit 1
           fi
 
-          sudo WAZUH_MANAGER="127.0.0.1" dpkg -i "${PACKAGE_PATH}" || sudo apt-get install -f -y
+          sudo WAZUH_MANAGER_ENDPOINT="127.0.0.1:1517" dpkg -i "${PACKAGE_PATH}" || sudo apt-get install -f -y
 
           sudo awk '
             /<rootcheck>/ { in_block=1; print; next }
@@ -226,6 +226,7 @@ jobs:
           cd tests/integration
           set +e
           sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" \
+            GITHUB_RUN_ID="${GITHUB_RUN_ID}" \
             AWS_VPC_ID="${AWS_VPC_ID}" \
             AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" \
             AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" \

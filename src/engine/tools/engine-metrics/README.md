@@ -18,12 +18,12 @@ points (approximately 5 minutes at 1-second intervals).
 
 ```bash
 engine-metrics dashboard
-engine-metrics dashboard -s /var/wazuh-manager/queue/sockets/analysis --port 5000 --interval 1.0
+engine-metrics dashboard -s /var/wazuh-manager/queue/sockets/engine-api-http.sock --port 5000 --interval 1.0
 ```
 
 | Option              | Default                                       | Description                     |
 |---------------------|-----------------------------------------------|---------------------------------|
-| `-s`, `--api-socket`| `/var/wazuh-manager/queue/sockets/analysis`   | Engine API socket path          |
+| `-s`, `--api-socket`| `/var/wazuh-manager/queue/sockets/engine-api-http.sock`   | Engine API socket path          |
 | `--port`            | `5000`                                        | Dashboard HTTP port             |
 | `--interval`        | `1.0`                                         | Poll interval in seconds        |
 
@@ -41,7 +41,7 @@ and appear in the Events section by default.
 
 ```bash
 engine-metrics dump
-engine-metrics dump -s /var/wazuh-manager/queue/sockets/analysis
+engine-metrics dump -s /var/wazuh-manager/queue/sockets/engine-api-http.sock
 ```
 
 ### List (list all registered metric names)
@@ -71,7 +71,7 @@ All API subcommands (`dump`, `list`, `get`, `enable`, `disable`) accept:
 
 | Option              | Default                                             | Description       |
 |---------------------|-----------------------------------------------------|-------------------|
-| `-s`, `--api-socket`| `/var/wazuh-manager/queue/sockets/analysis`         | Engine API socket |
+| `-s`, `--api-socket`| `/var/wazuh-manager/queue/sockets/engine-api-http.sock`         | Engine API socket |
 | `--space`           | *(none)*                                            | Per-space scope   |
 
 ## Adding or changing a metric

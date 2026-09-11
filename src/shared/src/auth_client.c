@@ -76,4 +76,68 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
     return result;
 }
 
+int auth_remove_agent_code(int sock, const char *id, int *error_code) {
+    char buffer[OS_MAXSTR + 1];
+    char *output = NULL;
+    ssize_t length = 0;
+    cJSON *response = NULL;
+    cJSON *error = NULL;
+    cJSON *request = NULL;
+    cJSON *arguments = NULL;
+    int retval = -1;
+
+    if (!id) {
+        return -1;
+    }
+
+    request = cJSON_CreateObject();
+    arguments = cJSON_CreateObject();
+
+    cJSON_AddItemToObject(request, "arguments", arguments);
+    cJSON_AddStringToObject(request, "function", "remove");
+    cJSON_AddStringToObject(arguments, "id", id);
+
+    output = cJSON_PrintUnformatted(request);
+    cJSON_Delete(request);
+
+    // Every failure below returns rather than exiting, which is the whole difference from
+    // auth_remove_agent(): the caller is a daemon thread that has its own retry schedule.
+    if (OS_SendSecureTCP(sock, strlen(output), output) < 0) {
+        mdebug1("Cannot send the removal of agent '%s' to authd: %s", id, strerror(errno));
+        os_free(output);
+        return -1;
+    }
+
+    os_free(output);
+
+    if (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length <= 0) {
+        mdebug1("No answer from authd to the removal of agent '%s'.", id);
+        return -1;
+    }
+
+    buffer[length] = '\0';
+
+    if (response = cJSON_Parse(buffer), !response) {
+        mdebug1("Cannot parse authd's answer to the removal of agent '%s'.", id);
+        return -1;
+    }
+
+    if (error = cJSON_GetObjectItem(response, "error"), error && cJSON_IsNumber(error)) {
+        if (error_code) {
+            *error_code = error->valueint;
+        }
+
+        // An answer is an answer even when it reports a refusal: which code it carries is exactly
+        // what the caller asked for, and reading a refusal as a transport failure would cost it
+        // the distinction.
+        retval = 0;
+    } else {
+        mdebug1("authd's answer to the removal of agent '%s' carries no status.", id);
+    }
+
+    cJSON_Delete(response);
+
+    return retval;
+}
+
 #endif

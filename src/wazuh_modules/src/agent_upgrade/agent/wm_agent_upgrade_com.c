@@ -85,6 +85,7 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) __attribute
 STATIC int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
 STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]);
 STATIC int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]);
+STATIC const char * _tmpBareName(const char * path);
 
 size_t wm_agent_upgrade_process_command(const char *buffer, char **output) {
     cJSON *buffer_obj = cJSON_Parse(buffer);
@@ -236,12 +237,17 @@ STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     int fd;
 
     if (fd = mkstemp(dest), fd >= 0) {
-        close(fd);
-
-        if (chmod(dest, 0640) < 0) {
+        // Not chmod(dest, ...): between mkstemp() creating dest and a name-based chmod() looking
+        // it up again, dest could be unlinked and replaced with a symlink, making chmod() follow
+        // it and change an unrelated target's mode. fd is already open on the exact file mkstemp()
+        // created, so fchmod() skips that second lookup entirely.
+        if (fchmod(fd, 0640) < 0) {
+            close(fd);
             unlink(dest);
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_CHMOD_ERROR, "unsign()", dest);
             output = -1;
+        } else {
+            close(fd);
         }
     } else {
 #else
@@ -259,6 +265,25 @@ STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     umask(old_mask);
     unlink(source);
     return output;
+}
+
+// _jailfile() always builds its output as TMP_DIR followed by a path separator and a bare filename;
+// this recovers that bare filename instead of blindly skipping strlen(TMP_DIR) + 1 bytes, which would
+// walk past the string's NUL terminator (and hand a garbage pointer to w_gzopen_nofollow/w_fopen_nofollow)
+// for any path that turns out not to actually start with that prefix.
+STATIC const char * _tmpBareName(const char * path) {
+    const size_t prefixLen = strlen(TMP_DIR) + 1;
+#ifndef WIN32
+    const char SEP = '/';
+#else
+    const char SEP = '\\';
+#endif
+
+    if (strlen(path) <= prefixLen || strncmp(path, TMP_DIR, strlen(TMP_DIR)) != 0 || path[strlen(TMP_DIR)] != SEP) {
+        return NULL;
+    }
+
+    return path + prefixLen;
 }
 
 STATIC int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]) {
@@ -283,16 +308,63 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
         memcpy(dest + length, TEMPLATE, sizeof(TEMPLATE));
     }
 
-    if (fsource = gzopen(source, "rb"), !fsource) {
+    // Not gzopen(): a symlink left at source would be followed, disclosing whatever it points to.
+    const char * sourceBareName = _tmpBareName(source);
+
+    if (!sourceBareName || (fsource = w_gzopen_nofollow(TMP_DIR, sourceBareName, "rb"), !fsource)) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPEN_ERROR, "uncompress()", source);
         return -1;
     }
 
-    if (ftarget = wfopen(dest, "wb"), !ftarget) {
+    // dest still holds the literal template here: unlike _unsign() above, it was never expanded into a
+    // unique name, leaving a predictable path a symlink could be pre-planted at before wfopen() opened
+    // it. Expand it now and, on POSIX, reuse the descriptor mkstemp() already vetted instead of a second,
+    // name-based open that would reintroduce the same race.
+#ifndef WIN32
+    {
+        int fd;
+
+        if (fd = mkstemp(dest), fd < 0) {
+            gzclose(fsource);
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMPRESSED_FILE_ERROR, "uncompress()");
+            return -1;
+        }
+
+        // Not chmod(dest, ...): between mkstemp() creating dest and a name-based chmod() looking
+        // it up again, dest could be unlinked and replaced with a symlink, making chmod() follow
+        // it and change an unrelated target's mode. fd is already open on the exact file mkstemp()
+        // created, so fchmod() skips that second lookup entirely.
+        if (fchmod(fd, 0640) < 0) {
+            unlink(dest);
+            close(fd);
+            gzclose(fsource);
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_CHMOD_ERROR, "uncompress()", dest);
+            return -1;
+        }
+
+        if (ftarget = fdopen(fd, "wb"), !ftarget) {
+            unlink(dest);
+            close(fd);
+            gzclose(fsource);
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPEN_ERROR, "uncompress()", dest);
+            return -1;
+        }
+    }
+#else
+    if (_mktemp_s(dest, strlen(dest) + 1)) {
+        gzclose(fsource);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMPRESSED_FILE_ERROR, "uncompress()");
+        return -1;
+    }
+
+    const char * destBareName = _tmpBareName(dest);
+
+    if (!destBareName || (ftarget = w_fopen_nofollow(TMP_DIR, destBareName, "wb"), !ftarget)) {
         gzclose(fsource);
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPEN_ERROR, "uncompress()", dest);
         return -1;
     }
+#endif
 
     {
         int length;

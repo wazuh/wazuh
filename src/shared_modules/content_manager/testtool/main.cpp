@@ -125,7 +125,7 @@ namespace Log
 /**
  * @brief Console responder for the in-process on-demand entry point.
  *
- * Since the vd.sock unification the on-demand HTTP route lives on the vulnerability scanner's
+ * Since the vd-http.sock unification the on-demand HTTP route lives on the vulnerability scanner's
  * server; a standalone content_manager has no HTTP surface, so this tool drives the same seam
  * the route dispatches into (content_manager::dispatchOnDemand) and prints what the peer would
  * have received.
@@ -166,7 +166,7 @@ int main()
             runOffsetUpdate(topic_name);
         }
 
-        // OnDemand request, through the same seam the vd.sock route dispatches into.
+        // OnDemand request, through the same seam the vd-http.sock route dispatches into.
         content_manager::dispatchOnDemand(topic_name, -1, std::make_shared<ConsoleResponder>());
 
         std::this_thread::sleep_for(std::chrono::seconds(60));

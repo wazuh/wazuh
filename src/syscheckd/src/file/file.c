@@ -226,6 +226,7 @@ STATIC void handle_orphaned_delete(const char* path,
     cJSON* sync_json = cJSON_GetObjectItem(result_json, "sync");
     if (sync_json == NULL) {
         mdebug1("Couldn't find sync for orphaned delete '%s'", path);
+        cJSON_Delete(stateful_event);
         return;
     }
     int sync_value = (int)cJSON_GetNumberValue(sync_json);
@@ -306,18 +307,27 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         case INSERTED:
             txn_context->event->type = FIM_ADD;
             sync_operation = OPERATION_CREATE;
-            // For CREATE events: determine if within limit and defer sync flag update
+            // For CREATE events: determine if within limit and defer sync flag update.
+            // Check-then-increment must be atomic: the scheduled scan and a realtime/whodata
+            // event can run this concurrently (see synced_docs_mutex's declaration comment).
             if (syscheck.file_limit > 0) {
+                w_mutex_lock(&synced_docs_mutex);
+                int docs_before = synced_docs_files;
                 sync_flag = (synced_docs_files < syscheck.file_limit) ? 1 : 0;
+                if (sync_flag == 1 && txn_context->pending_sync_updates != NULL) {
+                    synced_docs_files++;
+                }
+                w_mutex_unlock(&synced_docs_mutex);
+                // Logged pre-increment (docs_before), matching the value the sync_flag
+                // decision above was actually based on.
                 mdebug2("INSERTED: synced_docs_files=%d, file_limit=%d, sync_flag=%d, path=%s",
-                        synced_docs_files, syscheck.file_limit, sync_flag, path);
+                        docs_before, syscheck.file_limit, sync_flag, path);
             } else {
                 sync_flag = 1;
                 mdebug2("INSERTED: file_limit=0 (unlimited), sync_flag=1, path=%s", path);
             }
             // Add to deferred list if sync_flag should be 1
             if (sync_flag == 1 && txn_context->pending_sync_updates != NULL) {
-                synced_docs_files++;
                 cJSON* sync_item = cJSON_CreateObject();
                 if (sync_item != NULL) {
                     cJSON_AddStringToObject(sync_item, "path", path);
@@ -344,8 +354,17 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
             }
 
             if (sync_flag == 0 && syscheck.file_limit > 0) { // Promote
-                if (synced_docs_files < syscheck.file_limit) {
+                // Check-then-increment must be atomic (see synced_docs_mutex's declaration
+                // comment); the cJSON construction below doesn't touch shared state, so it
+                // stays outside the lock.
+                w_mutex_lock(&synced_docs_mutex);
+                bool promote = (synced_docs_files < syscheck.file_limit);
+                if (promote) {
                     synced_docs_files++;
+                }
+                w_mutex_unlock(&synced_docs_mutex);
+
+                if (promote) {
                     cJSON* sync_item = cJSON_CreateObject();
                     if (sync_item != NULL) {
                         cJSON_AddStringToObject(sync_item, "path", path);
@@ -372,7 +391,9 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
                 if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
                     sync_flag = sync_json->valueint;
                     if (sync_flag == 1) {
+                        w_mutex_lock(&synced_docs_mutex);
                         synced_docs_files--;
+                        w_mutex_unlock(&synced_docs_mutex);
                     }
                 }
             }
@@ -1113,11 +1134,29 @@ void fim_file(const char *path,
         }
         OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
 
+        // Sync flag updates deferred like the scan path (file.c's fim_file_scan()) so the
+        // DELETED branch's later read of the sync column (run_check.c) is not stuck at its
+        // insert-time default of 0 for files first seen outside a scheduled scan (#38522).
+        // Unlike fim_file_scan(), this path doesn't need syscheck.fim_scan_mutex: both
+        // fim_db_file_update() above and fim_db_set_sync_flag() (inside
+        // process_pending_sync_updates() below) go through FIMDB::updateItem(), which already
+        // takes m_handlersMutex and checks m_stopping before touching the dbsync handler, so a
+        // concurrent FIMDB::teardown() can't run underneath either call.
+        OSList* pending_sync_updates = OSList_Create();
+        if (!pending_sync_updates) {
+            merror("Failed to create pending sync updates list");
+            OSList_Destroy(failed_paths);
+            free_file_data(new_entry.file_entry.data);
+            return;
+        }
+        OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+
         callback_ctx ctx = {
             .event = evt_data,
             .config = configuration,
             .entry = &new_entry,
-            .failed_paths = failed_paths
+            .failed_paths = failed_paths,
+            .pending_sync_updates = pending_sync_updates
         };
 
         callback_context_t callback_data;
@@ -1126,9 +1165,42 @@ void fim_file(const char *path,
 
         fim_db_file_update(&new_entry, callback_data);
 
+        // If schema validation failed, the row is about to be deleted below: don't try to
+        // set its sync flag afterwards (fim_db_set_sync_flag() would find no row to update
+        // and log a spurious WARNING on every such event), and undo the increment
+        // transaction_callback() already applied to synced_docs_files for it, since
+        // cleanup_failed_fim_files() removes the row without going through the DELETED
+        // branch that would otherwise balance it. This path handles a single file per call,
+        // so failed_paths and pending_sync_updates — both populated from the same
+        // transaction_callback() invocation — can only ever be about that one path; a
+        // non-empty failed_paths here means whatever is in pending_sync_updates is for it.
+        if (OSList_GetFirstNode(failed_paths) != NULL) {
+            OSListNode *node_it;
+            OSList_foreach(node_it, pending_sync_updates) {
+                pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
+                if (item != NULL && item->sync_value == 1) {
+                    w_mutex_lock(&synced_docs_mutex);
+                    synced_docs_files--;
+                    w_mutex_unlock(&synced_docs_mutex);
+                }
+            }
+        } else if (OSList_GetFirstNode(pending_sync_updates) != NULL) {
+            // Most realtime/whodata events don't have anything to promote (the file was
+            // already synced, or this was a MODIFIED with no old.sync=0 to promote), so skip
+            // the call entirely when there's nothing to do. When there IS something to
+            // promote, still don't log a summary here (process_pending_sync_updates() no
+            // longer logs on its own) — a mass create/modify against a realtime-monitored
+            // directory calls this once per file, and a per-file "Processed N pending sync
+            // flag updates" line would flood debug=1. The per-scan summary (scheduled scan,
+            // registry scan) is logged by those callers instead.
+            process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
+        }
+        OSList_Destroy(pending_sync_updates);
+
         // Delete files that failed schema validation (outside transaction)
         cleanup_failed_fim_files(failed_paths);
         OSList_Destroy(failed_paths);
+
         free_file_data(new_entry.file_entry.data);
     }
 }
@@ -1230,6 +1302,74 @@ void fim_handle_delete_by_path(const char *path,
         cb.callback = fim_db_remove_entry;
         fim_db_file_pattern_search(pattern, cb);
     }
+}
+
+/**
+ * @brief Drops pending sync-flag updates whose path also failed schema validation this scan,
+ *        compensating synced_docs_files for any that had already been counted.
+ *
+ * A file that fails schema validation has its row deleted directly (fim_db_file_delete(),
+ * called from cleanup_failed_fim_files()), bypassing the DELETED branch of
+ * transaction_callback() that would otherwise decrement synced_docs_files back down. Letting
+ * process_pending_sync_updates() try to set that row's sync flag afterwards would both log a
+ * spurious WARNING (the row is gone by then) and leave the counter permanently inflated.
+ *
+ * Must run after transaction_callback() has finished populating both lists for this scan, and
+ * before either cleanup_failed_fim_files() or process_pending_sync_updates() consumes them —
+ * see #38608.
+ *
+ * @param failed_paths OSList of char* paths that failed schema validation this scan.
+ * @param pending_sync_updates OSList of pending_sync_item_t queued for a sync flag update;
+ *                              items whose path is also in failed_paths are removed from it.
+ */
+STATIC void reconcile_failed_paths_with_pending_sync(OSList *failed_paths, OSList *pending_sync_updates) {
+    if (OSList_GetFirstNode(failed_paths) == NULL || OSList_GetFirstNode(pending_sync_updates) == NULL) {
+        return;
+    }
+
+    size_t max_nodes = (size_t)pending_sync_updates->currently_size;
+    OSListNode **nodes_to_remove = calloc(max_nodes, sizeof(OSListNode *));
+    if (nodes_to_remove == NULL) {
+        merror("Failed to allocate scratch buffer to correlate failed schema-validation paths "
+               "with pending sync updates; sync flags may be attempted for deleted rows this scan");
+        return;
+    }
+
+    // Two passes: first collect the pending_sync_updates nodes whose path also failed
+    // validation, without mutating the list while iterating it — OSList_foreach reads
+    // node_it->next on every iteration, so unlinking/freeing a node mid-traversal would use
+    // freed memory. Only after this read-only pass finishes are the collected nodes removed.
+    size_t nodes_to_remove_count = 0;
+    OSListNode *node_it;
+    OSList_foreach(node_it, pending_sync_updates) {
+        pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
+        const char *item_path = (item != NULL && item->json != NULL)
+                                     ? cJSON_GetStringValue(cJSON_GetObjectItem(item->json, "path"))
+                                     : NULL;
+        if (item_path == NULL) {
+            continue;
+        }
+
+        OSListNode *fp_it;
+        OSList_foreach(fp_it, failed_paths) {
+            const char *failed_path = (const char *)fp_it->data;
+            if (failed_path != NULL && strcmp(item_path, failed_path) == 0) {
+                if (item->sync_value == 1) {
+                    w_mutex_lock(&synced_docs_mutex);
+                    synced_docs_files--;
+                    w_mutex_unlock(&synced_docs_mutex);
+                }
+                free_pending_sync_item(item);
+                nodes_to_remove[nodes_to_remove_count++] = node_it;
+                break;
+            }
+        }
+    }
+
+    for (size_t i = 0; i < nodes_to_remove_count; i++) {
+        OSList_DeleteThisNode(pending_sync_updates, nodes_to_remove[i]);
+    }
+    free(nodes_to_remove);
 }
 
 void fim_file_scan() {
@@ -1373,12 +1513,19 @@ void fim_file_scan() {
     } else {
         fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
 
+        // #38608: see reconcile_failed_paths_with_pending_sync()'s doc comment for why this
+        // has to run before either list is consumed below.
+        reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
+
         // Delete files that failed schema validation (outside transaction)
         cleanup_failed_fim_files(failed_paths);
         OSList_Destroy(failed_paths);
 
-        // Process pending sync flag updates now that transaction is committed
-        process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
+        // Process pending sync flag updates now that transaction is committed. This runs once
+        // per full scan (unlike the per-file realtime/whodata call site above), so it's the one
+        // that logs the summary.
+        int synced_count = process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
+        mdebug1("Processed %d pending sync flag updates", synced_count);
     }
 
     w_mutex_unlock(&syscheck.fim_scan_mutex);

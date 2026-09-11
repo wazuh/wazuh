@@ -69,7 +69,12 @@ foreach(counter RANGE ${count})
             ${WAZUHLIB}
             ${WAZUHEXT}
             CONTROL_O
+            # libconfig's w_mconf_*() (etc/wazuh-manager.conf) wraps the C++ manager_config library.
+            -lmanager_config
+            ${SRC_FOLDER}/external/pugixml/build/libpugixml.a
             -Wl,--end-group
+            -lstdc++
+            -lm
             -lcmocka
             -ldl
             -fprofile-arcs

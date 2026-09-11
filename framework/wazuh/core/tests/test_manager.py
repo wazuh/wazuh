@@ -46,7 +46,12 @@ def get_logs(json_log: bool = False):
 ])
 @patch('os.path.exists')
 @patch('wazuh.core.cluster.utils.glob')
-def test_get_status(manager_glob, manager_exists, test_manager, process_status):
+@patch('wazuh.core.configuration.load_manager_conf', return_value={
+    'cluster': {'name': 'wazuh', 'node_name': 'node01', 'node_type': 'master',
+                'key': '9d273b53510fef702b54a92e9cffc82e', 'port': 1516, 'bind_addr': '127.0.0.1',
+                'nodes': ['127.0.0.1'], 'hidden': False},
+    'logging': {'log_format': ['plain']}})
+def test_get_status(manager_conf_mock, manager_glob, manager_exists, test_manager, process_status):
     """Tests core.manager.status()
 
     Tests manager.status() function in two cases:
@@ -128,41 +133,53 @@ def test_get_logs_summary(mock_exists, mock_active_logging_format):
                                                      'debug': 2}
 
 
+class _Completed:
+    def __init__(self, returncode, stderr='', stdout=''):
+        self.returncode, self.stderr, self.stdout = returncode, stderr, stdout
+
+
 @patch('wazuh.core.manager.exists', return_value=True)
-@patch('wazuh.core.manager.load_wazuh_xml')
-def test_validate_ossec_conf(mock_load_xml, mock_exists):
-    """Test that validate_ossec_conf validates XML configuration successfully."""
-    # Mock successful XML load
-    mock_load_xml.return_value = None
+@patch('wazuh.core.manager.subprocess.run', return_value=_Completed(0))
+def test_validate_manager_conf(mock_run, mock_exists):
+    """validate_manager_conf() delegates to bin/wazuh-manager-conf validate and reports OK on exit 0."""
+    assert validate_manager_conf() == {'status': 'OK'}
 
-    result = validate_ossec_conf()
+    mock_exists.assert_called_with(common.MANAGER_CONF)
+    command = mock_run.call_args[0][0]
+    # Resolved through manager_conf.cli_path() so a source checkout falls back to src/build/bin
+    # instead of failing the post-write validation with a missing installed binary.
+    assert command[0] == manager_conf.cli_path()
+    assert command[1:] == ['-H', common.WAZUH_PATH, '-f', common.MANAGER_CONF, 'validate']
 
-    assert result == {'status': 'OK'}
-    mock_exists.assert_called_with(common.OSSEC_CONF)
-    mock_load_xml.assert_called_once_with(xml_path=common.OSSEC_CONF)
+    validate_manager_conf('/tmp/other.yml')
+    assert mock_run.call_args[0][0][-2:] == ['/tmp/other.yml', 'validate']
 
 
-@patch('wazuh.core.manager.load_wazuh_xml')
-@patch("wazuh.core.manager.exists")
-def test_validation_ko(mock_exists, mock_load_xml):
-    """Test that validate_ossec_conf handles errors correctly."""
-
-    # Configuration file not exists
+@patch('wazuh.core.manager.subprocess.run')
+@patch('wazuh.core.manager.exists')
+def test_validate_manager_conf_ko(mock_exists, mock_run):
+    """validate_manager_conf() maps the CLI outcome to the framework error codes."""
+    # Configuration file does not exist
     mock_exists.return_value = False
     with pytest.raises(WazuhInternalError, match='.* 1020 .*'):
-        validate_ossec_conf()
+        validate_manager_conf()
 
-    # XML validation error
+    # Invalid configuration: the CLI exits 1 and names the offending option
     mock_exists.return_value = True
-    mock_load_xml.side_effect = WazuhError(1113, 'Invalid XML syntax')
-    with pytest.raises(WazuhError, match='.* 1113 .*'):
-        validate_ossec_conf()
+    mock_run.return_value = _Completed(1, stderr="(1244): Invalid configuration at '/etc/wazuh-manager.conf': "
+                                                 "/vulnerability-detection/pageSize: does not satisfy 'minimum'.\n")
+    with pytest.raises(WazuhError, match='.* 1130 .*') as exc:
+        validate_manager_conf()
+    assert '/vulnerability-detection/pageSize' in str(exc.value)
 
-    # Other exception wrapped as validation error
-    mock_load_xml.side_effect = Exception('Unexpected error')
+    # The validator itself failed (usage error, crash)
+    mock_run.return_value = _Completed(2, stdout='unknown option')
     with pytest.raises(WazuhError, match='.* 1908 .*'):
-        validate_ossec_conf()
+        validate_manager_conf()
 
+    mock_run.side_effect = OSError('No such file or directory')
+    with pytest.raises(WazuhError, match='.* 1908 .*'):
+        validate_manager_conf()
 
 
 @patch('wazuh.core.manager.configuration.api_conf', new={'max_upload_size': 0})

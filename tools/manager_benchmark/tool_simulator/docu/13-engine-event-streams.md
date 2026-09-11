@@ -12,8 +12,8 @@ Source of truth: `src/remoted/remoted_module/src/endpoints/statelessEndpoint.{hp
 ## The route
 
 `POST /stateless`, HTTPS/1517, authenticated by the same gateway as everything else (see
-[04-wire-protocol.md](04-wire-protocol.md)): `protocol-version: 1` plus the AES-CMAC
-`Authorization`, signed over the target `/stateless` and the exact body. It exists **only in
+[04-wire-protocol.md](04-wire-protocol.md)): `protocol-version: 1` plus the `wazuh-agent+jwt`
+bearer `Authorization` (identity only; the body is not part of authentication). It exists **only in
 `agent` mode** — there is no Unix-socket equivalent, because the engine ingress is remoted's own
 downstream, not this module's.
 

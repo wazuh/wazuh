@@ -133,11 +133,11 @@ base::OptError Builder::softIntegrationValidate(const std::shared_ptr<cm::store:
     // Default parent
     if (const auto& opt = integration.getDefaultParent(); opt.has_value())
     {
-        const auto& parentName = *opt;
-        if (!nsReader->assetExistsByUUID(parentName))
+        const auto& parentId = *opt;
+        if (!nsReader->assetExistsByUUID(parentId))
         {
             return base::Error {fmt::format("Root decoder '{}' does not exist as asset for integration '{}.'.",
-                                            std::get<0>(nsReader->resolveNameFromUUID(parentName)),
+                                            std::get<0>(nsReader->resolveNameFromUUID(parentId)),
                                             integrationName)};
         }
     }
@@ -245,11 +245,10 @@ base::OptError Builder::softPolicyValidate(const std::shared_ptr<cm::store::ICMS
         }
         catch (const std::exception& e)
         {
-            return base::Error {
-                fmt::format("Failed to resolve filter with uuid='{}' referenced by policy '{}': {}",
-                            filterUUID,
-                            policyName,
-                            e.what())};
+            return base::Error {fmt::format("Failed to resolve filter with uuid='{}' referenced by policy '{}': {}",
+                                            filterUUID,
+                                            policyName,
+                                            e.what())};
         }
     }
 
@@ -263,14 +262,12 @@ base::OptError Builder::softPolicyValidate(const std::shared_ptr<cm::store::ICMS
         }
         catch (const std::exception& e)
         {
-            return base::Error {
-                fmt::format("Failed to resolve output with uuid='{}' referenced by policy '{}': {}",
-                            outputUUID,
-                            policyName,
-                            e.what())};
+            return base::Error {fmt::format("Failed to resolve output with uuid='{}' referenced by policy '{}': {}",
+                                            outputUUID,
+                                            policyName,
+                                            e.what())};
         }
     }
-
 
     return base::noError();
 }

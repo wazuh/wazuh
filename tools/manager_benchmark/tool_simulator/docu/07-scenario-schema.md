@@ -90,7 +90,7 @@ independent.
 | `checksum` | `ModuleCheck` + `ChecksumModule` | `checksum` is `"correct"` (computed from what this agent sent), `"mismatch"`, or a literal |
 | `metadata` / `groups` | `MetadataDelta` / `GroupDelta` (or `*Check`) | Start-only; needs `indices` and `global_version` |
 | `full_resync` | Expands to `cleans` + `delta` | The D19 composition, as two sequential sessions on the same lane |
-| `delete_agent` | `DELETE /agents` | `uds` mode only |
+| `delete_agent` | `POST /_internal/agents/delete` | `uds` mode only |
 | `engine` | An H/E event batch to `POST /stateless` | `agent` mode only; see [13](13-engine-event-streams.md) |
 | `scan_vd` | A feed-update re-scan request to `POST /scan/vd` | `agent` mode only; takes ONLY `feed_offset` and the timing fields — no payload; see [14](14-scan-vd.md) |
 | `raw` | A deliberately invalid body | Rejection paths: `not_full_session`, `garbage`, `empty`, `oversized` |
@@ -138,7 +138,7 @@ Durations are Go duration strings (`"3s"`, `"5m"`).
 | `repeat_until` | Keep replaying every fleet's lanes until this duration elapses (`"0"` = one pass of each lane's steps) |
 | `drain_timeout` | The bounded shutdown window (see [10](10-error-handling-and-shutdown.md)) |
 
-**What `requests_per_second` counts**: `/stateful` sessions, `DELETE /agents` and `POST /scan/vd`
+**What `requests_per_second` counts**: `/stateful` sessions, `POST /_internal/agents/delete` and `POST /scan/vd`
 requests, one token each. A session's document count does NOT weigh against it — a VD full sync of 500 documents is one
 FlatBuffer, one request, one token. Session *volume* is shaped with `documents.count`/`size_bytes`
 and observed in the summary's `documents_per_second`; the rate knob shapes how often the server sees

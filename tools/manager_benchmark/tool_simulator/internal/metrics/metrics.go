@@ -207,7 +207,7 @@ func (r *Registry) RecordControl(fleet, kind string, ok bool, latencyUS uint64) 
 	}
 }
 
-// RecordDelete records a DELETE /agents outcome.
+// RecordDelete records a POST /_internal/agents/delete outcome.
 func (r *Registry) RecordDelete(fleet, lane string, ok bool) {
 	if ok {
 		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.DeletesOK }, 1)

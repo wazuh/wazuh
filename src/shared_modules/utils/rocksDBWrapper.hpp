@@ -584,7 +584,21 @@ namespace Utils
                 {
                     it->drop();
                     columnsNames.push_back((*it)->GetName());
-                    it = m_columnsInstances.erase(it);
+
+                    // Swap the current element with the last one and pop the back to avoid the O(n) cost of
+                    // erasing from the middle of the vector. Order is not meaningful here: rebuildColumnsIndex()
+                    // rebuilds m_columnsIndex from scratch once the loop finishes.
+                    if (const auto lastIt = std::prev(m_columnsInstances.end()); it != lastIt)
+                    {
+                        std::swap(*it, *lastIt);
+                        m_columnsInstances.pop_back();
+                        // Do not advance: the element swapped into this slot has not been visited yet.
+                    }
+                    else
+                    {
+                        m_columnsInstances.pop_back();
+                        it = m_columnsInstances.end();
+                    }
                 }
                 else
                 {
@@ -636,7 +650,14 @@ namespace Utils
                 if (it != m_columnsInstances.end())
                 {
                     it->drop();
-                    m_columnsInstances.erase(it);
+
+                    // Swap-remove: order is not meaningful, rebuildColumnsIndex() below rebuilds
+                    // m_columnsIndex from scratch based on the resulting content.
+                    if (it != std::prev(m_columnsInstances.end()))
+                    {
+                        std::swap(*it, m_columnsInstances.back());
+                    }
+                    m_columnsInstances.pop_back();
 
                     rebuildColumnsIndex();
 

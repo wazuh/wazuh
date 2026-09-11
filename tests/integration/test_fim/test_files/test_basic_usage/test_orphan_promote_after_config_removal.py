@@ -8,14 +8,39 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 type: integration
 
 brief: Regression test for issue #36134. When a realtime <directories> rule
-       is removed from ossec.conf and the agent is restarted, the previously
-       monitored files still live in the local fim.db with sync=0. The agent's
-       fim_initialize() promote loop must drop those orphaned rows up front
-       rather than calling build_stateful_event_file() with the current
-       directories list (which would log
-       "ERROR: Failed to get configuration for path: <path>"). The orphan-
+       is removed from ossec.conf and the agent is restarted, an orphaned row
+       (its directory no longer resolves in the current configuration) must
+       not make fim_initialize's promote loop log
+       "ERROR: Failed to get configuration for path: <path>". The orphan-
        cleanup path in the next scheduled scan is responsible for emitting
        the real DELETE event.
+
+       Also covers #38522: until it was fixed, every file first seen through
+       a realtime event landed in fim.db with sync=0 (the non-transactional
+       insert path never flushed the sync flag). That same missing sync flag
+       meant the orphan-delete path's own persistence gate
+       (validate_and_persist_fim_event) silently dropped the resulting
+       DELETE too — the underlying #38522 bug, just reached through a
+       different trigger than a plain on-disk delete. This test asserts that
+       sync=1 gets queued for the realtime-added file as soon as it's
+       created, and that the orphan-delete path actually persists a
+       stateful DELETE for it (not just logs that it tried to) once its
+       directory is dropped from the configuration.
+
+       NOTE on #36134 coverage: with #38522 fixed, a realtime insert under
+       the default (unlimited) file_limit gets sync=1 immediately, so it's
+       never a docs_to_promote candidate and never reaches #36134's
+       orphan-drop-on-promote branch (drop_orphaned_promoted_documents) —
+       that branch only fires for rows dbsync still has as sync=0.
+       Reproducing that specific branch needs a file_limit increase between
+       two agent starts (the promote loop's own outer gate is
+       "synced_docs < limit", which a constant limit with a still-throttled
+       row never satisfies), which is a materially different scenario from
+       "a realtime rule got dropped". This test keeps the general "no ERROR
+       for an orphaned path" assertion as a cheap regression guard, but a
+       dedicated test exercising drop_orphaned_promoted_documents itself
+       (via a genuine file_limit increase) is a separate, still-open gap —
+       not something this PR's scope covers.
 
        The test seeds a small file under both <directories> before the agent
        starts so the baseline scan promotes at least one row to sync=1; that
@@ -42,12 +67,14 @@ os_platform:
 
 references:
     - https://github.com/wazuh/wazuh/issues/36134
+    - https://github.com/wazuh/wazuh/issues/38522
     - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/syscheck.html
 
 tags:
     - fim
     - realtime
 '''
+import re
 import sys
 import time
 
@@ -87,14 +114,20 @@ if sys.platform == WINDOWS:
 
 # Log patterns specific to this regression — not (yet) exposed by
 # wazuh_testing.modules.fim.patterns.
-FAILED_TO_GET_CONFIG_PATTERN = r'.*ERROR: Failed to get configuration for path: (\S+)'
-SKIPPING_PROMOTION_PATTERN = (
-    r'.*Skipping promotion of orphaned path \(no active configuration\): (\S+)'
-)
 HANDLE_ORPHANED_DELETE_PATTERN = (
     r".*Generating delete event for orphaned file '(\S+)' \(path removed from configuration\)"
 )
 DOCUMENT_LIMIT_CHANGED_PATTERN = r'.*Document limit (increased|decreased)'
+# #38522: the non-transactional (realtime/whodata) insert path now queues the
+# sync flag update as soon as the file is first seen, instead of leaving the
+# row at sync=0 forever. version is left as \d+ since dbsync assigns it, not
+# this test.
+SYNC_FLAG_QUEUED_PATTERN = r'.*Added item to pending sync list: {path} \(version: \d+, sync: 1\)'
+# #38522: confirms handle_orphaned_delete's stateful event actually cleared
+# validate_and_persist_fim_event's sync gate, not just that the function was
+# entered — the "Generating delete event" line alone fires unconditionally,
+# before that gate is checked.
+PERSISTING_FIM_EVENT_PATTERN = r'.*Persisting FIM event: .*"path":\s*"{path}"'
 
 
 @pytest.fixture()
@@ -157,26 +190,26 @@ def test_orphan_promote_after_config_removal(
     start_monitoring,
 ):
     '''
-    description: Reproduce issue #36134 and verify the fix.
+    description: Reproduce issue #36134 and verify the fix, plus lock in #38522's
+                 fix for the same realtime insert path.
 
                  The agent is started with two <directories> rules: one
                  realtime path that the test will drop later, and one
                  scheduled path that stays in the config. Both folders are
                  pre-seeded with a sentinel file so the initial baseline
                  scan promotes at least one row to sync=1. The test then
-                 creates a file under the realtime folder via inotify (so
-                 the row lands in fim.db with sync=0), stops the agent,
-                 strips the realtime <directories> entry from ossec.conf,
-                 and restarts the agent.
+                 creates a file under the realtime folder via inotify, stops
+                 the agent, strips the realtime <directories> entry from
+                 ossec.conf, and restarts the agent.
 
                  The fixed agent must:
-                   1) not log "ERROR: Failed to get configuration for path"
-                      for the orphaned file,
-                   2) log the helper's
-                      "Skipping promotion of orphaned path (no active
-                      configuration): <file>" debug line,
+                   1) queue the sync flag update for the realtime-added file
+                      as soon as it's created (#38522),
+                   2) not log "ERROR: Failed to get configuration for path"
+                      for the orphaned file after the config is dropped,
                    3) still emit the orphan delete event via
-                      handle_orphaned_delete on the next scheduled scan.
+                      handle_orphaned_delete on the next scheduled scan, and
+                      actually persist it (not just log that it tried to).
 
     wazuh_min_version: 5.0.0
 
@@ -184,18 +217,32 @@ def test_orphan_promote_after_config_removal(
     '''
     realtime_folder = Path(test_metadata['realtime_folder'])
     target_file = realtime_folder / test_metadata['test_file']
+    target_file_pattern = re.escape(str(target_file))
 
     # Step 1: agent is up via daemons_handler. The baseline scan has
     # already visited both folders and promoted the seed files to sync=1
     # (start_monitoring blocks until the first sync finishes).
     #
-    # Create the realtime-tracked file. inotify queues an "added" event;
-    # the row lands in fim.db with sync=0 (the realtime path does not
-    # flush the sync flag).
+    # Create the realtime-tracked file. inotify queues an "added" event; with
+    # #38522 fixed, the row lands in fim.db with sync=1 right away instead of
+    # being stuck at sync=0.
     file.write_file(str(target_file), 'evidence-36134')
     FileMonitor(WAZUH_LOG_PATH).start(
         generate_callback(EVENT_TYPE_ADDED),
         timeout=30,
+    )
+
+    # Assertion 1 (#38522 regression): the realtime insert queued the sync
+    # flag update for target_file. Read before step 2 truncates the log.
+    creation_log_text = Path(WAZUH_LOG_PATH).read_text()
+    sync_queued_lines = [
+        line for line in creation_log_text.splitlines()
+        if re.search(SYNC_FLAG_QUEUED_PATTERN.format(path=target_file_pattern), line)
+    ]
+    assert sync_queued_lines, (
+        f'Expected a "Added item to pending sync list" line with sync: 1 for '
+        f'{target_file} right after its creation, got none. ossec.log tail:'
+        f'\n{creation_log_text[-2000:]}'
     )
 
     # Step 2: stop the agent, drop the realtime <directories> rule from
@@ -208,25 +255,27 @@ def test_orphan_promote_after_config_removal(
     services.control_service('start')
 
     # Wait for fim_initialize() to log its "Document limit (increased|
-    # decreased)" line — that signals the promote loop ran with our
-    # docs_to_promote in hand. If this never appears the promote branch
-    # was short-circuited (e.g. no sync=1 rows) and the test setup is
-    # wrong.
+    # decreased)" line — that signals the promote loop ran (it does even
+    # with an empty docs_to_promote array: on the non-error path,
+    # fim_db_get_documents_to_promote returns a valid, non-NULL cJSON array
+    # regardless of how many sync=0 rows it found). If this never appears
+    # the promote branch was short-circuited (e.g. no sync=1 rows) and the
+    # test setup is wrong.
     FileMonitor(WAZUH_LOG_PATH).start(
         generate_callback(DOCUMENT_LIMIT_CHANGED_PATTERN),
         timeout=60,
     )
 
-    # Give fim_initialize a beat to finish so the orphan-skip mdebug2
-    # lands in the log file before we read it.
+    # Give fim_initialize a beat to finish before we read the log.
     time.sleep(2)
 
     log_text = Path(WAZUH_LOG_PATH).read_text()
 
-    # Assertion 1 (the regression itself): no ERROR for any orphaned path.
-    # We match by directory prefix because both the seed_file and the
-    # realtime-added test file are orphans now — neither should produce
-    # a merror.
+    # Assertion 2 (the #36134 regression itself): no ERROR for any orphaned
+    # path under realtime_folder. This guards seed_file and target_file
+    # alike — both are orphans once the directory is dropped, regardless of
+    # whether either one is still an active docs_to_promote candidate at
+    # this point.
     failed_lines = [
         line for line in log_text.splitlines()
         if 'ERROR: Failed to get configuration for path' in line
@@ -237,20 +286,45 @@ def test_orphan_promote_after_config_removal(
         f'{realtime_folder}:\n' + '\n'.join(failed_lines)
     )
 
-    # Assertion 2: the fix's debug line fired for the realtime-added
-    # file (the one with sync=0 that gets fed to docs_to_promote).
-    skip_lines = [
-        line for line in log_text.splitlines()
-        if 'Skipping promotion of orphaned path' in line and str(target_file) in line
-    ]
-    assert skip_lines, (
-        f'Expected "Skipping promotion of orphaned path" line for '
-        f'{target_file}, got none. ossec.log tail:\n{log_text[-2000:]}'
-    )
-
-    # Assertion 3: the existing orphan-delete path still handles cleanup
-    # on the first scheduled scan after restart.
+    # Assertion 3: the existing orphan-delete path still handles cleanup of
+    # target_file on the first scheduled scan after restart, and actually
+    # persists the stateful DELETE (not just logs that it tried to — the
+    # "Generating delete event" line fires unconditionally, before
+    # validate_and_persist_fim_event's sync gate is checked; #38522 was
+    # exactly that gate silently dropping the event for a sync=0 row).
     FileMonitor(WAZUH_LOG_PATH).start(
         generate_callback(HANDLE_ORPHANED_DELETE_PATTERN),
         timeout=90,
+    )
+
+    time.sleep(2)
+    delete_log_text = Path(WAZUH_LOG_PATH).read_text()
+
+    all_lines = delete_log_text.splitlines()
+    generating_delete_line_indices = [
+        i for i, line in enumerate(all_lines)
+        if re.search(HANDLE_ORPHANED_DELETE_PATTERN, line) and str(target_file) in line
+    ]
+    generating_delete_lines = [all_lines[i] for i in generating_delete_line_indices]
+    assert generating_delete_lines, (
+        f'Expected "Generating delete event for orphaned file" line for '
+        f'{target_file}, got none. ossec.log tail:\n{delete_log_text[-2000:]}'
+    )
+
+    # The "Persisting FIM event" payload carries no event-type field, so a create and a
+    # delete for the same path produce an identical-looking log line. target_file's original
+    # CREATE (earlier in this same ossec.log, from _setup_orphan_test_folders) already left
+    # one such line — searching the whole file would let that stale line satisfy this
+    # assertion even if the DELETE itself was never persisted, exactly the #38522 bug this
+    # test exists to catch. Anchor the search to lines from the orphan-delete detection
+    # onward so only a persist for THIS delete can match.
+    persisted_lines = [
+        line for line in all_lines[generating_delete_line_indices[0]:]
+        if re.search(PERSISTING_FIM_EVENT_PATTERN.format(path=target_file_pattern), line)
+    ]
+    assert persisted_lines, (
+        f'The orphan delete for {target_file} was generated but never '
+        f'persisted (no matching "Persisting FIM event" line) — this is '
+        f'exactly the #38522 bug: the sync gate silently dropped the '
+        f'stateful DELETE. ossec.log tail:\n{delete_log_text[-2000:]}'
     )

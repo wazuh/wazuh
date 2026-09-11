@@ -28,14 +28,14 @@
  * https_client_bridge.c's bridge_reenroll_thread() for re-enroll) already
  * owns backoff/retry one layer up, so this class just moves bytes for
  * exactly one try -- reusing CurlPerformer (via the injected IHttpPerformer)
- * for the TLS matrix and EnrollSigner for the password-mode signature,
+ * for the TLS matrix and EnrollSigner for the password-mode bearer,
  * neither of which needs an agent identity that does not exist yet.
  */
 class EnrollClient
 {
     public:
-        EnrollClient(const ModuleConfig& config, IHttpPerformer& performer, const IFsProbe& fsProbe,
-                     IClock& clock, LogFn logFn);
+        EnrollClient(
+            const ModuleConfig& config, IHttpPerformer& performer, const IFsProbe& fsProbe, IClock& clock, LogFn logFn);
 
         /**
          * @param bodyJson The already-built, already-validated JSON body
@@ -62,8 +62,7 @@ class EnrollClient
         HttpResponse enroll(const std::string& bodyJson, const std::string& password);
 
     private:
-        HttpResponse performOnce(const std::string& bodyJson, const std::string& password,
-                                 bool allowCompression);
+        HttpResponse performOnce(const std::string& bodyJson, const std::string& password, bool allowCompression);
 
         /// Mirrors RetrySender::correctClockIfSkewed(): a no-op unless the
         /// response carried a Date and the gap against `m_clock.wallSeconds()`

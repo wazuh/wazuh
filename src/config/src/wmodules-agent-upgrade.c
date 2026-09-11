@@ -9,26 +9,29 @@
 
 #include "wmodules.h"
 
+/* AGENT ONLY, in its entirety. This guard is the whole mechanism: config/src/*.c is globbed for
+ * every target, and the file compiles to nothing on a manager.
+ *
+ * Not the wmodules-aws.c shape, and the difference is the point. Those readers are agent-only at
+ * RUNTIME but dual-target at BUILD: a manager still parses <wodle name="aws-s3"> out of a group's
+ * agent.conf on its agents' behalf, so wm_aws.h is included unconditionally and WM_AWS_CONTEXT is
+ * compiled into the manager. Neither holds here. <agent-upgrade> is never read from agent.conf
+ * (config.c passes !(modules & CAGENT_CONFIG)), and this change took the module out of the manager
+ * build altogether -- so wmodules.h no longer includes wm_agent_upgrade.h there, and without the
+ * guard the manager would not COMPILE this file, let alone link it. */
 #ifdef CLIENT
+
 #include "wm_agent_upgrade_agent.h"
 
-#endif
-
 static const char *XML_ENABLED = "enabled";
-#ifdef CLIENT
 static const char *XML_WAIT_START = "notification_wait_start";
 static const char *XML_WAIT_MAX = "notification_wait_max";
 static const char *XML_WAIT_FACTOR = "notification_wait_factor";
 static const char *XML_CA_VERIFICATION = "ca_verification";
 static const char *XML_CA_STORE = "ca_store";
-#else
-static const char *XML_WPK_REPOSITORY = "wpk_repository";
-#endif
 
-#ifdef CLIENT
 static int wm_agent_upgrade_read_ca_verification(xml_node **nodes, unsigned int *verification_flag);
 static int wm_agent_upgrade_read_ca_verification_old(unsigned int *verification_flag);
-#endif
 
 #ifdef CLIENT
 int wm_agent_upgrade_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
@@ -42,13 +45,8 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
         module->context = &WM_AGENT_UPGRADE_CONTEXT;
         module->tag = strdup(module->context->name);
         os_calloc(1, sizeof(wm_agent_upgrade), data);
-        #ifdef CLIENT
         data->enabled = 1;
         data->agent_config.enable_ca_verification = 1;
-        #else
-        data->enabled = 1;
-        data->manager_config.wpk_repository = NULL;
-        #endif
         module->data = data;
     }
 
@@ -107,10 +105,6 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
                 merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_AGENT_UPGRADE_CONTEXT.name);
                 return OS_INVALID;
             }
-        }
-        else if (!strcmp(nodes[i]->element, XML_WPK_REPOSITORY)) {
-            os_free(data->manager_config.wpk_repository);
-            os_strdup(nodes[i]->content, data->manager_config.wpk_repository);
         }
         #endif
         else {
@@ -212,3 +206,5 @@ static int wm_agent_upgrade_read_ca_verification_old(unsigned int *verification_
     return 0;
 }
 #endif
+
+#endif /* CLIENT */

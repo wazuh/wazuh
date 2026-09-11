@@ -18,10 +18,7 @@ std::string toUpperUUID(const std::string& uuid)
     std::string upper = uuid;
     for (char& c : upper)
     {
-        if (c != '-')
-        {
-            c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-        }
+        c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
     }
     return upper;
 }
@@ -39,24 +36,46 @@ TEST(DetailTest, EmptyListDoesNotThrow)
     EXPECT_NO_THROW(cm::store::detail::findDuplicateOrInvalidUUID({}, TYPE));
 }
 
-TEST(DetailTest, InvalidUUIDThrows)
+TEST(DetailTest, NonV4UUIDsDoNotThrow)
 {
-    const std::vector<std::string> uuids = {"not-a-valid-uuid"};
+    // The identifier is opaque to the engine: any UUID version or format is accepted
+    const std::vector<std::string> uuids = {"6093809a-6285-5cf8-9284-63bd68f796e9", // v5
+                                            "00000000-0000-0000-0000-000000000000", // nil
+                                            "0199a9f4-1b1e-7c3b-8f2a-2f9a1c0d4e5f", // v7
+                                            "not-a-uuid"};
+    EXPECT_NO_THROW(cm::store::detail::findDuplicateOrInvalidUUID(uuids, TYPE));
+}
+
+TEST(DetailTest, EmptyUUIDThrows)
+{
+    const std::vector<std::string> uuids = {""};
     EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID(uuids, TYPE), std::runtime_error);
 }
 
-TEST(DetailTest, InvalidUUIDErrorMessageContainsValue)
+TEST(DetailTest, EmptyUUIDErrorMessageContainsType)
 {
-    const std::string bad = "not-a-valid-uuid";
     try
     {
-        cm::store::detail::findDuplicateOrInvalidUUID({bad}, TYPE);
+        cm::store::detail::findDuplicateOrInvalidUUID({""}, TYPE);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
     {
-        EXPECT_NE(std::string(e.what()).find(bad), std::string::npos);
+        EXPECT_NE(std::string(e.what()).find(TYPE), std::string::npos);
+        EXPECT_NE(std::string(e.what()).find("not a valid identifier"), std::string::npos);
     }
+}
+
+TEST(DetailTest, ControlCharacterUUIDThrows)
+{
+    EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({validUUID(), "bad\nid"}, TYPE), std::runtime_error);
+    EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({"bad\tid"}, TYPE), std::runtime_error);
+}
+
+TEST(DetailTest, OversizedUUIDThrows)
+{
+    const std::string oversized(base::utils::generators::MAX_RESOURCE_ID_LENGTH + 1, 'a');
+    EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({oversized}, TYPE), std::runtime_error);
 }
 
 TEST(DetailTest, DuplicateUUIDThrows)
@@ -80,15 +99,18 @@ TEST(DetailTest, DuplicateUUIDErrorMessageContainsDuplicateValue)
     }
 }
 
-TEST(DetailTest, ExactDuplicateStillThrowsWhenCaseSensitiveDisabled)
+TEST(DetailTest, IdsDifferingOnlyByCaseAreDistinct)
 {
-    const std::string uuid = validUUID();
-    EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({uuid, uuid}, TYPE, false), std::runtime_error);
-}
-
-TEST(DetailTest, UppercaseUUIDRejectedBeforeCaseInsensitiveDuplicateCheck)
-{
+    // Identifiers are opaque and compared byte by byte: no case folding is applied
     const std::string lower = validUUID();
     const std::string upper = toUpperUUID(lower);
-    EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({lower, upper}, TYPE), std::runtime_error);
+    ASSERT_NE(lower, upper);
+    EXPECT_NO_THROW(cm::store::detail::findDuplicateOrInvalidUUID({lower, upper}, TYPE));
+    EXPECT_NO_THROW(cm::store::detail::findDuplicateOrInvalidUUID({"ABC", "abc", "Abc"}, TYPE));
+}
+
+TEST(DetailTest, DuplicateNonUUIDIdentifierThrows)
+{
+    EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({"custom/id_1", "custom/id_1"}, TYPE),
+                 std::runtime_error);
 }

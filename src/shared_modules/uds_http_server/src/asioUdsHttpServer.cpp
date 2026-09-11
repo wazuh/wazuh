@@ -324,6 +324,11 @@ namespace wazuh::uds_http
             /// the shutdown INFO so the third source of 503 (besides budget and cap) is accounted for.
             std::atomic<std::size_t> shutdownRejected {0};
 
+            /// The other transport-level 503s, counted for the reason TransportDiagnostics gives.
+            std::atomic<std::size_t> budgetRejected {0};
+            std::atomic<std::size_t> sessionCapRejected {0};
+            std::atomic<std::size_t> noResponseRejected {0};
+
             std::atomic_bool accepting {false};
 
             /// Resolved once in start() from the configured limits; see perRequestOverhead().
@@ -456,6 +461,7 @@ namespace wazuh::uds_http
                                    {
                                        return;
                                    }
+                                   self->m_state->noResponseRejected.fetch_add(1, std::memory_order_relaxed);
                                    if (const auto decision = self->m_state->abandonedThrottle.record())
                                    {
                                        LOGFN_WARN(self->m_state->log,
@@ -526,12 +532,18 @@ namespace wazuh::uds_http
                     // handler that kept a responder and never used it.
                     if (const auto decision = m_state->responseTimeoutThrottle.record())
                     {
+                        // The route in hand, not the server-wide value: with per-route overrides
+                        // those differ, and naming the wrong one sends an operator to the wrong knob.
                         LOGFN_WARN(m_state->log,
-                                   "%llu request(s) in the last %d s were not answered within %zu s and were closed "
-                                   "with 504. Their handler is stuck or lost the responder.",
+                                   "%llu request(s) in the last %d s were not answered within their response "
+                                   "backstop and were closed with 504 (last: %s, %zu s). Their handler is stuck or "
+                                   "lost the responder.",
                                    static_cast<unsigned long long>(decision.total),
                                    LogThrottle::kDefaultWindowSeconds,
-                                   m_state->config.responseTimeoutSec);
+                                   m_route ? m_route->path.c_str() : "unknown route",
+                                   m_route && m_route->options.responseTimeoutSec != 0
+                                       ? m_route->options.responseTimeoutSec
+                                       : m_state->config.responseTimeoutSec);
                     }
                     deliver(errorResponse(504, "Handler did not respond in time"));
                     return;
@@ -543,12 +555,12 @@ namespace wazuh::uds_http
                 // network is invisible.
                 if (const auto decision = m_state->phaseTimeoutThrottle.record())
                 {
-                    LOGFN_DEBUG1(m_state->log,
-                                 "Closed %llu connection(s) in the last %d s that timed out before a response was "
-                                 "due (last phase: %s).",
-                                 static_cast<unsigned long long>(decision.total),
-                                 LogThrottle::kDefaultWindowSeconds,
-                                 phaseName(m_phase));
+                    LOGFN_WARN(m_state->log,
+                               "Closed %llu connection(s) in the last %d s that timed out before a response was "
+                               "due (last phase: %s).",
+                               static_cast<unsigned long long>(decision.total),
+                               LogThrottle::kDefaultWindowSeconds,
+                               phaseName(m_phase));
                 }
                 m_finished = true;
                 closeSocket();
@@ -678,6 +690,7 @@ namespace wazuh::uds_http
 
             void reportClassSessionCap(RouteClass cls, std::size_t cap)
             {
+                m_state->sessionCapRejected.fetch_add(1, std::memory_order_relaxed);
                 if (const auto decision = m_state->classSessionCapThrottle.record())
                 {
                     LOGFN_WARN(m_state->log,
@@ -765,6 +778,7 @@ namespace wazuh::uds_http
                     auto reserved = m_state->budget->tryReserve(declared + m_state->perRequestOverhead);
                     if (!reserved)
                     {
+                        m_state->budgetRejected.fetch_add(1, std::memory_order_relaxed);
                         if (const auto decision = m_state->budgetThrottle.record())
                         {
                             const auto& hint = m_state->config.budgetOptionHint;
@@ -904,7 +918,13 @@ namespace wazuh::uds_http
                     m_readBuffer.clear();
                     m_readBuffer.shrink_to_fit();
 
-                    armTimer(Phase::Response, std::chrono::seconds {m_state->config.responseTimeoutSec});
+                    // Per-route override, same 0-defers-to-policy rule as the body and session caps.
+                    // Routes whose peer waits longer than the server-wide backstop raise their own;
+                    // see RouteOptions::responseTimeoutSec for why not the global one.
+                    armTimer(Phase::Response,
+                             std::chrono::seconds {m_route->options.responseTimeoutSec != 0
+                                                       ? m_route->options.responseTimeoutSec
+                                                       : m_state->config.responseTimeoutSec});
                     watchPeerDuringDeferral();
 
                     responder = std::make_shared<SessionResponder>(m_runtime, weak_from_this(), m_state);
@@ -963,6 +983,10 @@ namespace wazuh::uds_http
              * behind by the request's own reads -- readable-per-cache while a recv() would say
              * EAGAIN -- which falsely condemned ~1% of group-committed responses whose request
              * arrived in more than one segment. A real read only completes on actual data or EOF.
+             *
+             * Transport-level only: the byte reservation lives in the RequestContext with the
+             * payload, so a peer that gives up mid-flush frees its fd, registry entry and
+             * connection slot here while its bytes stay charged until the handler drops the request.
              */
             void watchPeerDuringDeferral()
             {
@@ -2101,7 +2125,8 @@ namespace wazuh::uds_http
         // reports it at debug level.
         LOGFN_INFO(m_impl->state->log,
                    "%s server bound to '%s' (mode %04o, %zu I/O thread(s), %zu concurrent accept(s), "
-                   "max %zu connection(s), %zu byte in-flight budget, %zu byte body cap, %zu byte per-request "
+                   "max %zu connection(s), %zu reserved for control, %zu data session(s), %zu byte in-flight "
+                   "budget, %zu byte body cap, %zu byte per-request "
                    "overhead; timeouts s: header=%zu body=%zu response=%zu write=%zu drain=%zu).",
                    m_impl->state->config.serverName.c_str(),
                    m_impl->socketPath.c_str(),
@@ -2109,6 +2134,8 @@ namespace wazuh::uds_http
                    threadCount,
                    m_impl->state->config.concurrentAccepts,
                    m_impl->state->config.maxConnections,
+                   m_impl->state->config.reservedControlConnections,
+                   m_impl->state->config.dataPolicy.maxSessions,
                    m_impl->state->config.maxInFlightBytes,
                    m_impl->state->config.maxBodySize,
                    m_impl->state->perRequestOverhead,
@@ -2144,6 +2171,10 @@ namespace wazuh::uds_http
         {
             snapshot.sessionsByClass[i] = state.classSessions[i].load(std::memory_order_relaxed);
         }
+        snapshot.rejectedBudgetExhausted = state.budgetRejected.load(std::memory_order_relaxed);
+        snapshot.rejectedSessionCap = state.sessionCapRejected.load(std::memory_order_relaxed);
+        snapshot.rejectedShutdown = state.shutdownRejected.load(std::memory_order_relaxed);
+        snapshot.rejectedNoResponse = state.noResponseRejected.load(std::memory_order_relaxed);
         return snapshot;
     }
 

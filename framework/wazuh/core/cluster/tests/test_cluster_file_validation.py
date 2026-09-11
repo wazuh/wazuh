@@ -26,13 +26,13 @@ class TestClusterMergedFileValidation:
     """Tests for merged file parameter validation in cluster operations."""
 
     @pytest.mark.parametrize('merge_type, merge_name, header_name, should_reject', [
-        ("../etc", "payload.merged", "ossec.conf", True),
-        ("..\\etc", "payload.merged", "ossec.conf", True),
-        (".hidden", "payload.merged", "ossec.conf", True),
-        ("valid", "../payload.merged", "ossec.conf", True),
-        ("valid", "..\\payload.merged", "ossec.conf", True),
-        ("valid", "payload.merged", "../../../etc/ossec.conf", False),
-        ("valid", "payload.merged", "..\\..\\..\\etc\\ossec.conf", False),
+        ("../etc", "payload.merged", "wazuh-manager.conf", True),
+        ("..\\etc", "payload.merged", "wazuh-manager.conf", True),
+        (".hidden", "payload.merged", "wazuh-manager.conf", True),
+        ("valid", "../payload.merged", "wazuh-manager.conf", True),
+        ("valid", "..\\payload.merged", "wazuh-manager.conf", True),
+        ("valid", "payload.merged", "../../../etc/wazuh-manager.conf", False),
+        ("valid", "payload.merged", "..\\..\\..\\etc\\wazuh-manager.conf", False),
         ("valid", "payload.merged", ".hidden_file", False),
         ("valid", "payload.merged", "subdir/file.txt", False),
         ("shared", "payload.merged", "validfile.txt", False),
@@ -68,8 +68,8 @@ class TestClusterMergedFileValidation:
             merged_file = os.path.join(tmpdir, "payload.merged")
 
             test_paths = [
-                "dir/../../../etc/ossec.conf",
-                "valid/./../../../etc/ossec.conf",
+                "dir/../../../etc/wazuh-manager.conf",
+                "valid/./../../../etc/wazuh-manager.conf",
             ]
 
             for test_path in test_paths:

@@ -128,7 +128,7 @@ def delete_child_pids(name: str, ppid: int, logger: logging.Logger):
         except Exception as exc:
             logger.error(f'Unhandled exception while trying to terminate the process with ID {process.pid}: {exc}')
         for filename in filenames[:]:
-            if str(process.pid) in filename:
+            if filename.endswith(f'-{process.pid}.pid'):
                 try:
                     path.exists(filename) and os.unlink(filename)
                 except OSError:

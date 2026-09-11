@@ -94,6 +94,13 @@ inline const char* outcomeName(OutcomeClass outcome)
     }
 }
 
+/// Suffix quoting libcurl's reason in a failure log, or nothing when there is
+/// none: an attempt the manager answered, or one that failed before libcurl ran.
+inline std::string transportReason(const std::string& curlError)
+{
+    return curlError.empty() ? std::string() : ": " + curlError;
+}
+
 /// Maps an OutcomeClass onto the hc_result_t that crosses the C ABI.
 inline int toHcResult(OutcomeClass outcome)
 {
@@ -176,6 +183,8 @@ struct HttpResponse
     std::string localIp;        ///< Local IP of the connection (CURLINFO_LOCAL_IP);
     ///< the agent's own address toward the manager.
     std::string body;
+    std::string curlError;      ///< libcurl's own wording for a failed attempt, empty
+    ///< otherwise (success, or a failure that never reached libcurl).
 };
 
 #endif // _HC_HTTP_TYPES_HPP
