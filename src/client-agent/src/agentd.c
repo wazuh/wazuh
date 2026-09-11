@@ -116,8 +116,12 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     start_agent_prepare();
 
     /* HTTPS client: the agent's only transport. It owns the connection
-     * lifecycle, the keepalives, the buffering and the shutdown notification. */
-    w_https_client_start();
+     * lifecycle, the keepalives, the buffering and the shutdown notification.
+     * Its own failure paths already logged the reason via merror; exit here
+     * rather than run on with no way to ever reach the manager. */
+    if (!w_https_client_start()) {
+        merror_exit("https_client: startup failed. Exiting.");
+    }
 
     /* Note: Whatever the drain touches must outlive this: exit() unwinds atexit LIFO, so
      * a C++ static lazily initialized on a module thread registers after this line

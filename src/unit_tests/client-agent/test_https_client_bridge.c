@@ -764,7 +764,7 @@ static void test_missing_key_refuses_to_start(void **state)
                   "https_client: agent key is missing or is not a valid HS256 key "
                   "(expected exactly 64 lowercase hex characters); refusing to start.");
 
-    w_https_client_start();
+    assert_false(w_https_client_start());
     /* No hc_create expectation: must not be reached. */
 }
 
@@ -783,7 +783,7 @@ static void test_no_keystore_defers_at_debug(void **state)
     expect_string(__wrap__mdebug1, formatted_msg,
                   "https_client: not enrolled yet (no client.keys); deferring start.");
 
-    w_https_client_start();
+    assert_false(w_https_client_start());
     /* No hc_create expectation: must not be reached. */
 }
 
@@ -798,7 +798,7 @@ static void test_wrong_length_key_refuses_to_start(void **state)
                   "https_client: agent key is missing or is not a valid HS256 key "
                   "(expected exactly 64 lowercase hex characters); refusing to start.");
 
-    w_https_client_start();
+    assert_false(w_https_client_start());
 }
 
 static void test_non_hex_key_refuses_to_start(void **state)
@@ -813,7 +813,7 @@ static void test_non_hex_key_refuses_to_start(void **state)
                   "https_client: agent key is missing or is not a valid HS256 key "
                   "(expected exactly 64 lowercase hex characters); refusing to start.");
 
-    w_https_client_start();
+    assert_false(w_https_client_start());
 }
 
 /* The `wazuh-agent+jwt` key is exactly 32 bytes (64 hex chars), so a client.keys entry of any
@@ -829,7 +829,7 @@ static void test_48_char_key_is_refused(void **state)
                   "https_client: agent key is missing or is not a valid HS256 key "
                   "(expected exactly 64 lowercase hex characters); refusing to start.");
 
-    w_https_client_start(); /* the merror expectation above is the assertion */
+    assert_false(w_https_client_start());
 }
 
 /* The shared JwtKeyDecoder only takes lowercase hex (canonical client.keys form). */
@@ -844,7 +844,7 @@ static void test_uppercase_hex_key_is_refused(void **state)
                   "https_client: agent key is missing or is not a valid HS256 key "
                   "(expected exactly 64 lowercase hex characters); refusing to start.");
 
-    w_https_client_start(); /* the merror expectation above is the assertion */
+    assert_false(w_https_client_start());
 }
 
 static void test_valid_64_char_key_is_accepted(void **state)
@@ -863,7 +863,7 @@ static void test_valid_64_char_key_is_accepted(void **state)
     will_return(__wrap_hc_start, true);
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
 
-    w_https_client_start();
+    assert_true(w_https_client_start());
 
     assert_string_equal(g_captured_config.agent_key,
                          "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
@@ -884,10 +884,15 @@ static void test_hc_create_failure_is_logged(void **state)
     will_return(__wrap_hc_create, NULL);
     expect_string(__wrap__merror, formatted_msg, "https_client: failed to create the client instance.");
 
-    w_https_client_start();
+    assert_false(w_https_client_start());
     /* No hc_start/hc_destroy expectation: neither must be reached. */
 }
 
+/* #38859: a rejected transport config (e.g. an inverted https_backoff_base/
+ * https_backoff_cap pair -- see ModuleConfigTest.ValidateRejectsInvertedBackoffBounds)
+ * surfaces here as hc_start() returning false. Before this fix the caller
+ * (AgentdStart()) had no way to observe that: w_https_client_start() was void,
+ * so the agent kept running with no transport and no visible failure. */
 static void test_hc_start_failure_destroys_and_logs(void **state)
 {
     (void)state;
@@ -902,7 +907,7 @@ static void test_hc_start_failure_destroys_and_logs(void **state)
     expect_string(__wrap__merror, formatted_msg, "https_client: failed to start (configuration rejected).");
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
 
-    w_https_client_start();
+    assert_false(w_https_client_start());
 }
 
 /* 401 -> re-enrollment (M5): bridge_on_reenroll_required's spawn decision,
