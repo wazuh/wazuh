@@ -15,6 +15,7 @@ with patch('wazuh.common.wazuh_uid'), patch('wazuh.common.wazuh_gid'):
 from connexion import AsyncApp  # noqa: E402
 from starlette.testclient import TestClient  # noqa: E402
 
+from api.parameter_validator import WazuhParameterValidator  # noqa: E402
 from api.uri_parser import APIUriParser  # noqa: E402
 import api.authentication as authentication  # noqa: E402
 
@@ -25,30 +26,29 @@ MAX_LENGTH = 1024
 def _build_client():
     """Build a minimal connexion app serving the real spec.yaml, with authentication bypassed."""
     app = AsyncApp(__name__, specification_dir=SPEC_DIR, pythonic_params=True, uri_parser_class=APIUriParser)
-    app.add_api('spec.yaml', strict_validation=True, validate_responses=False)
+    app.add_api('spec.yaml', strict_validation=True, validate_responses=False,
+                validator_map={'parameter': WazuhParameterValidator})
     return TestClient(app)
 
 
 def test_agents_search_too_long_is_rejected_before_reaching_wdb():
     """GET /agents?search=<1025 chars> must be rejected with 400 by the spec validator, naming the
-    maxLength limit, instead of reaching wazuh-db (which is what let it hit the socket's 65536-byte cap)."""
+    length limit, instead of reaching wazuh-db (which is what let it hit the socket's 65536-byte cap)."""
     with patch.object(authentication, 'decode_token', new=AsyncMock(return_value={'sub': 'wazuh', 'rbac_policies': {}})):
         client = _build_client()
         response = client.get('/agents', params={'search': 'a' * (MAX_LENGTH + 1)},
                                headers={'Authorization': 'Bearer test-token'})
 
     assert response.status_code == 400
-    body = response.text
-    assert 'maxLength' in body
-    assert str(MAX_LENGTH) in body
+    assert f'must be at most {MAX_LENGTH} characters long' in response.text
 
 
 def test_agents_search_at_max_length_is_not_rejected_by_the_validator():
     """A `search` value exactly at the 1024-char limit must not be rejected by the schema validator
-    (any failure past that point belongs to a different layer, not the maxLength check)."""
+    (any failure past that point belongs to a different layer, not the length check)."""
     with patch.object(authentication, 'decode_token', new=AsyncMock(return_value={'sub': 'wazuh', 'rbac_policies': {}})):
         client = _build_client()
         response = client.get('/agents', params={'search': 'a' * MAX_LENGTH},
                                headers={'Authorization': 'Bearer test-token'})
 
-    assert not (response.status_code == 400 and 'maxLength' in response.text)
+    assert not (response.status_code == 400 and 'search' in response.text)

@@ -1295,6 +1295,23 @@ stages:
           total_failed_items: 0
 
 ---
+test_name: GET /cluster/{node_id}/status with an unknown node
+
+stages:
+
+  - name: Read the status of a node the cluster does not have
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/nonexistent/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 404
+      json:
+        error: 1730
+
+---
 test_name: PUT /cluster/restart
 
 stages:
