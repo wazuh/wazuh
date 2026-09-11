@@ -74,9 +74,13 @@ def manager():
     its mind while the agent is running.
     """
     simulator = RemotedSimulator(server_ip=MANAGER_ADDRESS, prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
-    simulator.set_reenroll_secret(AGENT_ID, AGENT_REENROLL_SECRET)
     simulator.start()
+    # The seed goes AFTER clear(), not before: clear() forgets this manager's enrolled agents and
+    # their re-enrollment secrets go with them, which is correct -- an id the manager has
+    # forgotten must answer `unknown_agent`. Seeding first wipes the seed, and then every case
+    # provokes that one refusal instead of the outcome it is about.
     simulator.clear()
+    simulator.set_reenroll_secret(AGENT_ID, AGENT_REENROLL_SECRET)
 
     yield simulator
 
