@@ -692,6 +692,17 @@ stages:
           pin_hex: !anystr
 
     # POST /agents/enrollment-tokens
+  - name: Try to mint a token with a prefix longer than the schema allows
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "wazuh-master"
+        prefix: "/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/"
+    response:
+      status_code: 400
+
+    # POST /agents/enrollment-tokens
   - name: Try to mint a token for a name the listener certificate does not carry
     request:
       verify: False
