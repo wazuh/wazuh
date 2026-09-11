@@ -61,3 +61,35 @@ TEST(MonotonicConditionTest, NotifyOneWakesAPendingWait)
     EXPECT_TRUE(woken);
     EXPECT_LT(std::chrono::steady_clock::now() - start, 5s);
 }
+
+TEST(MonotonicConditionTest, PredicateLessWaitForWakesOnNotify)
+{
+    MonotonicCondition condition;
+    std::mutex mutex;
+    std::thread waker(
+        [&]
+        {
+            std::this_thread::sleep_for(50ms);
+            condition.notifyAll();
+        });
+
+    std::unique_lock<std::mutex> lock(mutex);
+    const auto start {std::chrono::steady_clock::now()};
+    const bool woken {condition.waitFor(lock, 30s)};
+    waker.join();
+
+    EXPECT_TRUE(woken);
+    EXPECT_LT(std::chrono::steady_clock::now() - start, 5s);
+}
+
+TEST(MonotonicConditionTest, PredicateLessWaitForTimesOutWithNoNotify)
+{
+    MonotonicCondition condition;
+    std::mutex mutex;
+    std::unique_lock<std::mutex> lock(mutex);
+    const auto start {std::chrono::steady_clock::now()};
+
+    EXPECT_FALSE(condition.waitFor(lock, 100ms));
+
+    EXPECT_GE(std::chrono::steady_clock::now() - start, 90ms);
+}

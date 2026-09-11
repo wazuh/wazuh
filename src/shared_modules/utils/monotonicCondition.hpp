@@ -70,6 +70,15 @@ public:
         return true;
     }
 
+    /// Waits up to timeout for a single notify, with no predicate to re-check on
+    /// spurious wakeups (mirrors std::condition_variable::wait_for(lock, timeout)).
+    bool waitFor(std::unique_lock<std::mutex>& lock, std::chrono::nanoseconds timeout)
+    {
+        const auto deadline {toTimespec(now() + timeout)};
+
+        return pthread_cond_timedwait(&m_cond, lock.mutex()->native_handle(), &deadline) == 0;
+    }
+
     void notifyAll()
     {
         pthread_cond_broadcast(&m_cond);
@@ -117,6 +126,11 @@ public:
     bool waitFor(std::unique_lock<std::mutex>& lock, std::chrono::nanoseconds timeout, Predicate predicate)
     {
         return m_cv.wait_for(lock, timeout, predicate);
+    }
+
+    bool waitFor(std::unique_lock<std::mutex>& lock, std::chrono::nanoseconds timeout)
+    {
+        return m_cv.wait_for(lock, timeout) == std::cv_status::no_timeout;
     }
 
     void notifyAll()

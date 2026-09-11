@@ -498,7 +498,7 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
                      "); the indexer may not have caught up with a recent write yet, retrying.");
 
             std::unique_lock<std::mutex> lock(m_syncState.mtx);
-            m_syncState.cv.wait_for(lock, CHECKSUM_RETRY_DELAY, [this] { return shouldStop(); });
+            m_syncState.cv.waitFor(lock, CHECKSUM_RETRY_DELAY, [this] { return shouldStop(); });
         }
         else
         {
@@ -752,7 +752,7 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAnd
                     logged = true;
                 }
 
-                m_syncState.cv.wait_for(lock, std::chrono::seconds(1));
+                m_syncState.cv.waitFor(lock, std::chrono::seconds(1));
             }
         }
 
@@ -1084,7 +1084,7 @@ bool AgentSyncProtocol::runSession(const SessionContent& content)
             m_logger(LOG_DEBUG, "Failed to hand session " + std::to_string(session) + " to the agent.");
 
             std::unique_lock<std::mutex> lock(m_syncState.mtx);
-            m_syncState.cv.wait_for(lock, RESEND_BACKOFF, [&]
+            m_syncState.cv.waitFor(lock, RESEND_BACKOFF, [&]
             {
                 return shouldStop();
             });
@@ -1105,7 +1105,7 @@ bool AgentSyncProtocol::runSession(const SessionContent& content)
 #else
         const auto waitTimeout = SESSION_RESPONSE_TIMEOUT;
 #endif
-        const bool conditionMet = m_syncState.cv.wait_for(lock, waitTimeout, [&]
+        const bool conditionMet = m_syncState.cv.waitFor(lock, waitTimeout, [&]
         {
             return m_syncState.responseReceived || m_syncState.syncFailed || shouldStop();
         });
@@ -1223,7 +1223,7 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
     {
         m_syncState.lastSyncResult = SyncResult::SUCCESS;
         m_syncState.responseReceived = true;
-        m_syncState.cv.notify_all();
+        m_syncState.cv.notifyAll();
         m_logger(LOG_DEBUG, "Sync response received with success status: " + std::string(body));
         return true;
     }
@@ -1275,7 +1275,7 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
             break;
     }
 
-    m_syncState.cv.notify_all();
+    m_syncState.cv.notifyAll();
     return true;
 }
 
@@ -1382,7 +1382,7 @@ void AgentSyncProtocol::stop()
     // This prevents crashes when the object is destroyed while waiting
     {
         std::lock_guard<std::mutex> lock(m_syncState.mtx);
-        m_syncState.cv.notify_all();
+        m_syncState.cv.notifyAll();
     }
 
     m_logger(LOG_DEBUG, "Stop requested for sync protocol.");
