@@ -241,9 +241,14 @@ the sync interval; the master's re-check on `add` is what makes a revocation imm
 ## The enrollment password
 
 With `use_password` enabled, `etc/authd.pass` holds the shared secret. The master generates one at
-first start if none exists and logs that it did. Workers receive the file through the same cluster
-sync as `client.keys`, which is why they run the **authpass watcher**: a worker that has not received
-it yet fails closed — it rejects enrollments rather than validating against a null password.
+first start if none exists and logs that it did: `w_generate_random_pass()` takes 32 bytes from the
+CSPRNG (`RAND_bytes`) and hex-encodes them to 64 characters, the same shape and the same fail-closed
+rule as the agent key (`OS_NewAgentKey()`) — a CSPRNG failure aborts the start rather than falling
+back to a weaker generator. Everything downstream treats the value as an opaque line, so a password
+supplied by an administrator keeps working whatever its shape. Workers receive the file through the
+same cluster sync as `client.keys`, which is why they run the **authpass watcher**: a worker that
+has not received it yet fails closed — it rejects enrollments rather than validating against a
+null password.
 
 remoted's `/enroll` route does not present this password as-is; it derives an AES-256-CMAC key from it
 with HKDF-SHA256 and signs the request (`Authorization: WazuhEnroll <timestamp>:<mac>`). See the

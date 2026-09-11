@@ -11,6 +11,8 @@
 #include <shared.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <openssl/crypto.h>
+#include <openssl/rand.h>
 #include "auth.h"
 #include "defs.h"
 #include "manager_task_op.h"
@@ -845,60 +847,39 @@ void w_auth_validate_groups_cleanup(void) {
     w_mutex_unlock(&w_auth_group_regex_mutex);
 }
 
+/* The hex encoding below writes exactly two characters per byte, so the two sizes must agree:
+ * raising one alone would overrun the buffer, lowering it alone would silently halve the password. */
+_Static_assert(AUTHD_PASS_HEX_CHARS == 2 * AUTHD_PASS_BYTES,
+               "AUTHD_PASS_HEX_CHARS must be the hex length of AUTHD_PASS_BYTES");
+
+/* The shared enrollment password: AUTHD_PASS_BYTES straight from the CSPRNG, hex-encoded.
+ * Same discipline as the agent key (OS_NewAgentKey) and the enrollment token secret
+ * (enrollment_token_store.c) -- no digest step, which would cap the result at the digest's
+ * width however much entropy went into it. Fail closed on a CSPRNG failure: the caller
+ * (w_authd_load_password) turns the NULL into merror_exit() rather than write a weaker
+ * password to etc/authd.pass. */
 char *w_generate_random_pass()
 {
-    int rand1;
-    int rand2;
-    char *rand3;
-    char *rand4;
-    os_md5 md1;
-    os_md5 md3;
-    os_md5 md4;
-    char *fstring = NULL;
-    char *str1 = NULL;
-    int time_value = (int)time(NULL);
+    static const char HEX[] = "0123456789abcdef";
+    unsigned char rnd[AUTHD_PASS_BYTES];
+    char *pass = NULL;
+    size_t i;
 
-    rand1 = os_random();
-    rand2 = os_random();
-
-    rand3 = GetRandomNoise();
-    rand4 = GetRandomNoise();
-
-    OS_MD5_Str(rand3, -1, md3);
-    OS_MD5_Str(rand4, -1, md4);
-
-    const int requested_size = snprintf(NULL,
-                                        0,
-                                        "%d%d%s%d%s%s",
-                                        time_value,
-                                        rand1,
-                                        getuname(),
-                                        rand2,
-                                        md3,
-                                        md4);
-
-    if (requested_size > 0) {
-        os_calloc(requested_size + 1, sizeof(char), str1);
-        const int requested_size_assignation = snprintf(str1,
-                                                        requested_size + 1,
-                                                        "%d%d%s%d%s%s",
-                                                        time_value,
-                                                        rand1,
-                                                        getuname(),
-                                                        rand2,
-                                                        md3,
-                                                        md4);
-
-        if (requested_size_assignation > 0 && requested_size_assignation == requested_size) {
-            OS_MD5_Str(str1, -1, md1);
-            fstring = strdup(md1);
-        }
+    if (RAND_bytes(rnd, sizeof(rnd)) != 1) {
+        merror("Unable to generate an enrollment password: the CSPRNG (RAND_bytes) failed.");
+        return NULL;
     }
 
-    free(rand3);
-    free(rand4);
-    os_free(str1);
-    return(fstring);
+    os_calloc(AUTHD_PASS_HEX_CHARS + 1, sizeof(char), pass);
+
+    for (i = 0; i < sizeof(rnd); i++) {
+        pass[2 * i] = HEX[rnd[i] >> 4];
+        pass[2 * i + 1] = HEX[rnd[i] & 0x0f];
+    }
+    pass[AUTHD_PASS_HEX_CHARS] = '\0';
+
+    OPENSSL_cleanse(rnd, sizeof(rnd));
+    return pass;
 }
 
 /* Read and trim (CR/LF) the first line of an open password file. Shared by both readers. */
