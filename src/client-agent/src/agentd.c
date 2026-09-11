@@ -22,6 +22,23 @@ void reload_handler(int signum) {
     }
 }
 
+/* CreatePID()'s file embeds the PID in its name, so it can't back a static PIDFile=;
+ * write one with a fixed name so systemd tracks this daemon instead of the whole cgroup. */
+static void write_systemd_pidfile(void)
+{
+    char path[256];
+    snprintf(path, sizeof(path), "%s/wazuh-agentd.pid", OS_PIDFILE);
+
+    FILE *fp = wfopen(path, "w");
+    if (!fp) {
+        merror("Could not write PID file '%s': %s (%d)", path, strerror(errno), errno);
+        return;
+    }
+
+    fprintf(fp, "%d\n", (int)getpid());
+    fclose(fp);
+}
+
 /* Start the agent daemon */
 void AgentdStart(int uid, int gid, const char *user, const char *group)
 {
@@ -87,6 +104,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
     }
+    write_systemd_pidfile();
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
