@@ -15,7 +15,7 @@ Most `GET` endpoints accept these standard parameters:
 |-----------|------|---------|-------------|
 | `pretty` | boolean | `false` | Human-readable output |
 | `wait_for_complete` | boolean | `false` | Disable timeout response |
-| `offset` | int | `0` | First element to return |
+| `offset` | int | `0` | First element to return (max: 2,147,483,647) |
 | `limit` | int | `500` | Max elements to return (max: 100,000) |
 | `search` | string | — | Free-text search (prefix `-` for complementary) |
 | `sort` | string | — | Sort by fields (`+` asc, `-` desc, dot notation for nested) |
