@@ -133,7 +133,7 @@ TEST(AuthdClientTest, ServerAbsentIsATransportFailure)
     // Well under the response timeout: proves this resolves via the fast connect failure, not by
     // waiting the deadline out.
     const auto result = waiter.wait(std::chrono::milliseconds(500));
-    EXPECT_EQ(result.errorCode, -1);
+    EXPECT_EQ(result.errorCode, kAuthdRequestNotSentErrorCode);
     EXPECT_NE(result.message.find("Could not connect"), std::string::npos);
 }
 
@@ -177,7 +177,7 @@ TEST(AuthdClientTest, SaturatedAcceptBacklogIsAFastConnectFailureNotAHang)
     client.addAgent(makeRequest(), waiter.callback());
 
     const auto result = waiter.wait(std::chrono::milliseconds(500));
-    EXPECT_EQ(result.errorCode, -1);
+    EXPECT_EQ(result.errorCode, kAuthdRequestNotSentErrorCode);
     EXPECT_NE(result.message.find("Could not connect"), std::string::npos);
 
     for (const int fd : fillers)
@@ -200,7 +200,8 @@ TEST(AuthdClientTest, ServerDroppingTheResponseTimesOut)
     client.addAgent(makeRequest(), waiter.callback());
 
     const auto result = waiter.wait(std::chrono::seconds(2));
-    EXPECT_EQ(result.errorCode, -1);
+    // The request was already sent when this fires: authd may have processed it anyway.
+    EXPECT_EQ(result.errorCode, kAuthdOutcomeUnknownErrorCode);
     EXPECT_NE(result.message.find("Timed out"), std::string::npos);
 }
 
@@ -215,7 +216,9 @@ TEST(AuthdClientTest, MalformedResponseIsATransportFailure)
     client.addAgent(makeRequest(), waiter.callback());
 
     const auto result = waiter.wait();
-    EXPECT_EQ(result.errorCode, -1);
+    // A reply DID come back, just not a parseable one: authd answered, so this is "outcome
+    // unknown", not "never sent".
+    EXPECT_EQ(result.errorCode, kAuthdOutcomeUnknownErrorCode);
 }
 
 TEST(AuthdClientTest, MissingDataOnSuccessIsATransportFailure)
@@ -231,7 +234,7 @@ TEST(AuthdClientTest, MissingDataOnSuccessIsATransportFailure)
     client.addAgent(makeRequest(), waiter.callback());
 
     const auto result = waiter.wait();
-    EXPECT_EQ(result.errorCode, -1);
+    EXPECT_EQ(result.errorCode, kAuthdOutcomeUnknownErrorCode);
 }
 
 TEST(AuthdClientTest, RequestOmitsForceIdAndKeyAndIncludesOptionalFieldsWhenProvided)
@@ -334,7 +337,7 @@ TEST(AuthdClientTest, QueueFullRejectsBeyondCapacity)
     client.addAgent(makeRequest(), third.callback());           // queue already full -> rejected now
 
     const auto thirdResult = third.wait();
-    EXPECT_EQ(thirdResult.errorCode, -1);
+    EXPECT_EQ(thirdResult.errorCode, kAuthdRequestNotSentErrorCode);
     EXPECT_NE(thirdResult.message.find("queue is full"), std::string::npos);
 
     // The queue diagnostics behind remoted.enroll.authd.queue.*: capacity is what was configured,
@@ -380,7 +383,7 @@ TEST(AuthdClientTest, StoppingRejectionsAreNotCountedAsSaturation)
     ResultWaiter afterStop;
     client.addAgent(makeRequest(), afterStop.callback());
     const auto result = afterStop.wait();
-    EXPECT_EQ(result.errorCode, -1); // refused, like a full queue...
+    EXPECT_EQ(result.errorCode, kAuthdRequestNotSentErrorCode); // refused, like a full queue...
 
     diag = client.queueDiagnostics();
     EXPECT_EQ(diag.rejectedTotal, 0U); // ...but NOT as saturation
@@ -416,7 +419,7 @@ TEST(AuthdClientTest, StopFailsQueuedRequestsAndIsIdempotent)
     client->stop(); // must not crash or double-join
 
     const auto queuedResult = queued.wait();
-    EXPECT_EQ(queuedResult.errorCode, -1);
+    EXPECT_EQ(queuedResult.errorCode, kAuthdRequestNotSentErrorCode);
     EXPECT_NE(queuedResult.message.find("stopping"), std::string::npos);
 
     inFlight.wait(); // times out on the drop-response server; just must not hang the fixture
