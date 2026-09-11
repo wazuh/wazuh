@@ -34,6 +34,7 @@
 #include "control/controlHandler.hpp"
 #include "control/hashCache.hpp"
 #include "control/metrics.hpp"
+#include "control/registryAgentGroupSource.hpp"
 #include "control/taskClient.hpp"
 #include "control/wazuhDBClient.hpp"
 #include "decoding/bodyDecoder.hpp"
@@ -457,14 +458,32 @@ private:
         // ResponseMode::Streamable because the transport fixes a response's output mode when the
         // request is dispatched -- a Buffered registration would make every download answer 500.
         //
-        // resource_id is the group (or WPK filename) the agent requests and the manager serves
-        // exactly that; there is no group lookup and no membership check (protocol decision on
-        // #38022). Containment therefore rests on the resource-id grammars plus O_NOFOLLOW.
-        m_authGateway->addAuthenticatedRoute(*m_httpServer,
-                                             remoted::http::Method::Post,
-                                             "/download",
-                                             remoted::endpoints::download::makeHandler({}, m_downloadMetrics),
-                                             remoted::http::ResponseMode::Streamable);
+        // Created here, ahead of the routes, because /download authorizes against it as well as
+        // /control filling it. Held in a local (not passed inline) so the registry-size pull metric
+        // can weak-point at it.
+        //
+        // Ownership is SHARED, not the ControlHandler's alone: the /download handler holds it too,
+        // through the RegistryAgentGroupSource captured into the route lambda that lives in the
+        // server's route table. The last reference therefore drops when stop() phase 4 releases
+        // m_httpServer -- NOT at phase 1b's m_controlHandler.reset() -- which is the quiesce point
+        // registerControlRegistryDiagnostics() documents for the pull metric.
+        auto agentRegistry = std::make_shared<remoted::control::AgentRegistry>();
+
+        // resource_id is what the agent requests, but it is no longer taken on trust: a config
+        // download is served only when it equals the selector this agent's own groups produce --
+        // the same string /control handed it as config_token -- and anything else is 403. The
+        // groups come from the registry /control already maintains, so there is no wazuh-db round
+        // trip on this path. An agent with no registry entry is DENIED, not served (#38683).
+        // WPK requests are NOT authorized here: their authority is the pending upgrade task, which
+        // /control does not carry. What contains those remains the resource-id grammars plus
+        // O_NOFOLLOW, and the packages are signature-verified by the agent against wpk_root.pem.
+        m_authGateway->addAuthenticatedRoute(
+            *m_httpServer,
+            remoted::http::Method::Post,
+            "/download",
+            remoted::endpoints::download::makeHandler(
+                {}, m_downloadMetrics, std::make_shared<remoted::control::RegistryAgentGroupSource>(agentRegistry)),
+            remoted::http::ResponseMode::Streamable);
 
         // /stateless takes the client's default response deadline (its target leaves the override
         // at 0), so that is what gets checked against the transport's request cap.
@@ -532,10 +551,6 @@ private:
         // carry over too -- desirable for observability.
         const auto controlConfig = remoted::control::buildControlConfig(m_config);
         auto vdClient = std::make_shared<remoted::common::VdClient>();
-        // Held in a local (not passed inline) so the registry-size pull metric can weak-point at
-        // it; the ControlHandler owns it, so the weak_ptr expires when stop() phase 1b resets
-        // the handler.
-        auto agentRegistry = std::make_shared<remoted::control::AgentRegistry>();
         m_controlHandler = std::make_unique<remoted::control::ControlHandler>(
             agentRegistry,
             std::make_shared<remoted::control::WazuhDBClient>(controlConfig.wdbSocketPath,
@@ -870,11 +885,16 @@ private:
      *        (remoted.control.registry.agents).
      *
      * Same wiring as the transport diagnostics: weak target repointed per start, registered
-     * once. The registry is OWNED by m_controlHandler (reset in stop() phase 1b), so the pull
-     * quiesces to 0 as soon as the control plane is torn down. size() sums the shards under
-     * shared locks -- dump-cadence only. Purely diagnostic: it answers "how many agents does
-     * this node currently track"; there is no knob behind it (the registry TTL and eviction
-     * cadence are compile-time constants -- see controlConfig.hpp).
+     * once. The registry is SHARED by m_controlHandler and the /download handler (which holds it
+     * through the RegistryAgentGroupSource captured into its route lambda), so the weak target
+     * survives stop() phase 1b and expires only when phase 4 releases m_httpServer along with its
+     * route table. Between those two phases this pull therefore still reports the live size rather
+     * than 0 -- unobservable through the documented channel, because the admin socket stopped
+     * accepting back in phase 1 and the final metrics dump runs after phase 4 with the target
+     * already dead. size() sums the shards under shared locks -- dump-cadence only. Purely
+     * diagnostic: it answers "how many agents does this node currently track"; there is no knob
+     * behind it (the registry TTL and eviction cadence are compile-time constants -- see
+     * controlConfig.hpp).
      */
     void registerControlRegistryDiagnostics(const std::shared_ptr<remoted::control::AgentRegistry>& registry)
     {
@@ -1511,9 +1531,14 @@ private:
 
     // /control lifecycle: the metric struct is a value member on the facade (stable address
     // across HTTP-server retries; ControlHandler holds a reference), caching counters that live
-    // in m_metricsManager. m_controlHandler owns the AgentRegistry, HashCache, WazuhDBClient and
-    // TaskClient it was constructed with; resetting it joins their threads in the right order
-    // (see ControlHandler::Impl's dtor).
+    // in m_metricsManager. m_controlHandler owns the HashCache, WazuhDBClient and TaskClient it
+    // was constructed with; resetting it joins their threads in the right order (see
+    // ControlHandler::Impl's dtor). The AgentRegistry is the exception: it is SHARED with the
+    // /download handler, which authorizes against it (see startHttpServer()), so the map itself
+    // outlives this reset and is released with m_httpServer in stop() phase 4. Nothing
+    // thread-bearing outlives the reset, though: the eviction thread is ControlHandler::Impl's
+    // own and is stopped and joined there before anything can touch the registry again, so what
+    // survives into phase 4 is passive data with no thread behind it.
     remoted::control::ControlMetrics m_controlMetrics {
         remoted::control::makeControlMetrics(*m_metricsManager)};       ///< /control counters.
     std::unique_ptr<remoted::control::ControlHandler> m_controlHandler; ///< Startup/notify/shutdown pipeline.

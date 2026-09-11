@@ -196,11 +196,63 @@ namespace
         return request;
     }
 
+    /// Stands in for the registry-backed source: one answer, or nullopt for "this agent has no
+    /// known membership" (never enrolled a startup, or evicted).
+    class FakeAgentGroupSource : public remoted::endpoints::IAgentGroupSource
+    {
+    public:
+        explicit FakeAgentGroupSource(std::optional<std::string> selector)
+            : m_selector(std::move(selector))
+        {
+        }
+
+        std::optional<std::string> expectedSelectorFor(const std::string&) const override
+        {
+            return m_selector;
+        }
+
+    private:
+        std::optional<std::string> m_selector;
+    };
+
+    std::shared_ptr<const remoted::endpoints::IAgentGroupSource> sourceFor(std::optional<std::string> selector)
+    {
+        return std::make_shared<const FakeAgentGroupSource>(std::move(selector));
+    }
+
+    /// Default selector for the cases that are not about authorization: whatever the body asks for
+    /// is the agent's own, so those cases keep exercising exactly what they used to.
+    std::shared_ptr<const remoted::endpoints::IAgentGroupSource> allowingSourceFor(const std::string& bodyText)
+    {
+        const auto idStart = bodyText.find(R"("resource_id":")");
+        if (idStart == std::string::npos)
+        {
+            return sourceFor(std::nullopt);
+        }
+        const auto valueStart = idStart + std::string_view {R"("resource_id":")"}.size();
+        const auto valueEnd = bodyText.find('"', valueStart);
+        if (valueEnd == std::string::npos)
+        {
+            return sourceFor(std::nullopt);
+        }
+        return sourceFor(bodyText.substr(valueStart, valueEnd - valueStart));
+    }
+
     std::shared_ptr<RecordingResponder> runHandler(const std::string& bodyText, ResourcePaths paths = {})
     {
         auto responder = std::make_shared<RecordingResponder>();
         auto body = std::make_shared<std::string>(bodyText);
-        makeHandler(std::move(paths))(authenticatedRequest(body), responder);
+        makeHandler(std::move(paths), {}, allowingSourceFor(bodyText))(authenticatedRequest(body), responder);
+        return responder;
+    }
+
+    /// Same, with an explicit group source -- the authorization cases.
+    std::shared_ptr<RecordingResponder>
+    runHandlerAs(const std::string& bodyText, std::optional<std::string> ownSelector, ResourcePaths paths = {})
+    {
+        auto responder = std::make_shared<RecordingResponder>();
+        auto body = std::make_shared<std::string>(bodyText);
+        makeHandler(std::move(paths), {}, sourceFor(std::move(ownSelector)))(authenticatedRequest(body), responder);
         return responder;
     }
 
@@ -418,8 +470,8 @@ TEST(DownloadErrorResponseTest, MapsNotFoundAndInternalDistinctly)
 
 TEST(DownloadLocateTest, ConfigResolvesUnderTheSharedDirectoryUsingTheRequestedGroup)
 {
-    // resource_id names the group the agent asks for and the manager serves exactly that -- no
-    // group lookup, no membership check (protocol decision on #38022).
+    // locateResource() maps a resource id to a path and nothing else; authorization happens above
+    // it, in the handler (see DownloadHandlerTest's denial cases).
     const auto result = locateResource(configRequest("web-servers"), {});
 
     EXPECT_EQ(result.error, LocateError::None);
@@ -428,8 +480,9 @@ TEST(DownloadLocateTest, ConfigResolvesUnderTheSharedDirectoryUsingTheRequestedG
 
 TEST(DownloadLocateTest, AnyRequestedGroupResolvesRegardlessOfTheAgent)
 {
-    // Documents the consequence of dropping the lookup: this layer cannot tell whose group it is,
-    // so it serves whichever the caller names.
+    // This layer is identity-free BY DESIGN: it cannot tell whose group it is, which is what keeps
+    // its containment argument about the id grammars and O_NOFOLLOW alone. The membership check
+    // that decides whose group it may be lives in the handler above it.
     for (const auto* group : {"web-servers", "databases", "default", "some-other-team"})
     {
         const auto result = locateResource(configRequest(group), {});
@@ -787,21 +840,34 @@ TEST(DownloadHandlerTest, MetricsCountEachOutcomeAndOfferedBytes)
 
     wazuh::metrics::Manager manager;
     const auto metrics = makeDownloadMetrics(manager);
-    auto handler = makeHandler(paths, metrics);
+    auto handler = makeHandler(paths, metrics, sourceFor("web-servers"));
 
-    const auto run = [&handler](const std::string& bodyText)
+    // Two handlers, ONE metric set: the counters are what this test proves independent, and since
+    // authorization now runs before resolution, reaching the 404 path takes an agent entitled to a
+    // group whose merged.mg is not on disk (the group exists in wazuh-db, the file is not built
+    // yet) rather than one asking for a group that is not its own -- that is a 403 now.
+    auto handlerForAMissingOwnGroup = makeHandler(paths, metrics, sourceFor("no-such-group"));
+
+    const auto runWith = [](auto& target, const std::string& bodyText)
     {
         auto responder = std::make_shared<RecordingResponder>();
         auto body = std::make_shared<std::string>(bodyText);
-        handler(authenticatedRequest(body), responder);
+        target(authenticatedRequest(body), responder);
         return responder;
+    };
+    const auto run = [&](const std::string& bodyText)
+    {
+        return runWith(handler, bodyText);
     };
 
     EXPECT_EQ(run("not json")->status, 400);
     EXPECT_EQ(metrics.rejected->get(), 1U);
 
-    EXPECT_EQ(run(R"({"resource_type":"config","resource_id":"no-such-group"})")->status, 404);
+    EXPECT_EQ(
+        runWith(handlerForAMissingOwnGroup, R"({"resource_type":"config","resource_id":"no-such-group"})")->status,
+        404);
     EXPECT_EQ(metrics.notFound->get(), 1U);
+    EXPECT_EQ(metrics.denied->get(), 0U); // an entitled request that 404s is not a denial
 
     const auto streamedResponder = run(VALID_CONFIG_BODY);
     EXPECT_TRUE(streamedResponder->streamed);
@@ -874,4 +940,149 @@ TEST(DownloadHandlerTest, AnswersFourHundredAndFourWhenTheResolvedFileIsMissing)
 
     EXPECT_EQ(responder->status, 404);
     EXPECT_FALSE(responder->streamed);
+}
+
+// ---------------------------------------------------------------------------
+// Authorization (#38683): a config download is served only for the selector the requesting agent's
+// own groups produce -- the same string /control handed it as config_token. Everything else is a
+// 403 decided BEFORE any path is resolved.
+// ---------------------------------------------------------------------------
+
+TEST(DownloadHandlerTest, ServesTheAgentsOwnSelector)
+{
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", "own group\n");
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    const auto responder =
+        runHandlerAs(R"({"resource_type":"config","resource_id":"web-servers"})", "web-servers", paths);
+
+    EXPECT_EQ(responder->status, 200);
+    EXPECT_EQ(responder->body, "own group\n");
+}
+
+TEST(DownloadHandlerTest, ServesTheAgentsOwnMultigroupSelector)
+{
+    // The multigroup directory is sha256(csv)[0:8] over the selector verbatim; the agent is
+    // entitled to exactly the CSV /control gave it.
+    TempDir dir;
+    const std::string selector {"web-servers,databases"};
+    dir.makeDir("multigroups/" + multigroupDirName(selector));
+    dir.writeFile("multigroups/" + multigroupDirName(selector) + "/merged.mg", "effective config\n");
+
+    ResourcePaths paths;
+    paths.multigroupsDir = dir.path() + "/multigroups";
+
+    const auto responder =
+        runHandlerAs(R"({"resource_type":"config","resource_id":")" + selector + R"("})", selector, paths);
+
+    EXPECT_EQ(responder->status, 200);
+    EXPECT_EQ(responder->body, "effective config\n");
+}
+
+TEST(DownloadHandlerTest, DeniesAnotherGroupsSelector)
+{
+    TempDir dir;
+    dir.makeDir("shared/databases");
+    dir.writeFile("shared/databases/merged.mg", "SECRET aws access key\n");
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    // The agent belongs to web-servers and asks for databases -- the defect this closes.
+    const auto responder =
+        runHandlerAs(R"({"resource_type":"config","resource_id":"databases"})", "web-servers", paths);
+
+    EXPECT_EQ(responder->status, 403);
+    EXPECT_EQ(responder->body, R"({"error":"Forbidden","code":403})");
+    EXPECT_FALSE(responder->streamed);
+}
+
+TEST(DownloadHandlerTest, DeniesAReorderedMultigroupSelector)
+{
+    // Order is identity: "a,b" and "b,a" name different multigroup directories, and config_hash was
+    // computed over one of them. A reordered CSV is somebody else's selector.
+    const auto responder =
+        runHandlerAs(R"({"resource_type":"config","resource_id":"databases,web-servers"})", "web-servers,databases");
+
+    EXPECT_EQ(responder->status, 403);
+}
+
+TEST(DownloadHandlerTest, DeniesWhenTheAgentHasNoRegistryEntry)
+{
+    // Fail closed. An agent can reach /download without ever sending /control/startup, and that
+    // ordering is entirely the caller's to choose -- so a miss must not fall through to serving
+    // whatever the request named.
+    const auto responder = runHandlerAs(R"({"resource_type":"config","resource_id":"web-servers"})", std::nullopt);
+
+    EXPECT_EQ(responder->status, 403);
+}
+
+TEST(DownloadHandlerTest, DeniesWhenNoGroupSourceIsWired)
+{
+    // A miswired handler must deny, never serve: the failure mode of this check has to be closed.
+    auto responder = std::make_shared<RecordingResponder>();
+    auto body = std::make_shared<std::string>(VALID_CONFIG_BODY);
+    makeHandler({}, {}, nullptr)(authenticatedRequest(body), responder);
+
+    EXPECT_EQ(responder->status, 403);
+}
+
+TEST(DownloadHandlerTest, DeniedRequestsAreIndistinguishableWhetherTheGroupExists)
+{
+    // The 200-vs-404 enumeration oracle: the answer must not depend on whether the group the agent
+    // is not in happens to exist on disk. Both denials are decided before any path is resolved.
+    TempDir dir;
+    dir.makeDir("shared/databases");
+    dir.writeFile("shared/databases/merged.mg", "SECRET\n");
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    const auto existing = runHandlerAs(R"({"resource_type":"config","resource_id":"databases"})", "web-servers", paths);
+    const auto absent =
+        runHandlerAs(R"({"resource_type":"config","resource_id":"no-such-group"})", "web-servers", paths);
+
+    EXPECT_EQ(existing->status, absent->status);
+    EXPECT_EQ(existing->body, absent->body);
+    EXPECT_EQ(existing->status, 403);
+}
+
+TEST(DownloadHandlerTest, MetricsCountDenialsSeparatelyFromParseRejections)
+{
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+    auto handler = makeHandler({}, metrics, sourceFor("web-servers"));
+
+    auto responder = std::make_shared<RecordingResponder>();
+    auto body = std::make_shared<std::string>(R"({"resource_type":"config","resource_id":"databases"})");
+    handler(authenticatedRequest(body), responder);
+
+    ASSERT_EQ(responder->status, 403);
+    EXPECT_EQ(metrics.denied->get(), 1U);
+    EXPECT_EQ(metrics.rejected->get(), 0U);
+    EXPECT_EQ(metrics.notFound->get(), 0U);
+    EXPECT_EQ(metrics.openError->get(), 0U);
+    EXPECT_EQ(metrics.started->get(), 0U);
+}
+
+TEST(DownloadHandlerTest, WpkRequestsAreNotAuthorizedAgainstGroups)
+{
+    // Pins the deliberate scope limit: a WPK's authority is the agent's pending upgrade task, which
+    // /control does not carry, so this check does not apply to it. Changing this is a separate
+    // decision, not a bug fix.
+    TempDir dir;
+    dir.makeDir("upgrade");
+    dir.writeFile("upgrade/pkg.wpk", "package\n");
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    const auto responder = runHandlerAs(R"({"resource_type":"wpk","resource_id":"pkg.wpk"})", std::nullopt, paths);
+
+    EXPECT_EQ(responder->status, 200);
+    EXPECT_EQ(responder->body, "package\n");
 }

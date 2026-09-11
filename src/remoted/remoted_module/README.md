@@ -234,9 +234,10 @@ src/endpoints/
 ├── statelessEndpoint.hpp/.cpp # /stateless policy: identity check + downstream target + post-processing
 ├── statefulEndpoint.hpp/.cpp # /stateful policy: opaque inventory-sync sessions, contract passthrough
 ├── statsEndpoint.hpp/.cpp    # /stats policy: forwards to modulesd's inventory sync server
-└── configEndpoint.hpp/.cpp  # /config policy: near-duplicate of statsEndpoint, on purpose
-└── downloadEndpoint.hpp/.cpp  # /download policy: request grammar + resource resolution + file streaming
-└── cacertsEndpoint.hpp/.cpp   # GET /cacerts: the CA that signs the listener cert, certificates only (no auth)
+├── configEndpoint.hpp/.cpp   # /config policy: near-duplicate of statsEndpoint, on purpose
+├── downloadEndpoint.hpp/.cpp # /download policy: request grammar + resource resolution + file streaming
+├── iAgentGroupSource.hpp     # interface: the selector an authenticated agent may download
+└── cacertsEndpoint.hpp/.cpp  # GET /cacerts: the CA that signs the listener cert, certificates only (no auth)
 ```
 
 - **`GET /cacerts` (`cacertsEndpoint.hpp/.cpp`, ns `remoted::endpoints::cacerts`):** the one route
@@ -361,6 +362,10 @@ src/control/
 ├── metrics.hpp               # ControlMetrics (remoted.control.* registry handles + wdb latency histogram)
 ├── controlHandler.hpp/.cpp   # ControlHandler: core business logic for all three message types
 ├── agentRegistry.hpp/.cpp    # AgentRegistry: thread-safe sharded map (agent metadata cache + eviction)
+├── groupSelector.hpp         # toGroupsCsv()/makeConfigToken(): the group selector /control hands the
+│                             #   agent as config_token, shared so /download resolves the same string
+├── registryAgentGroupSource.hpp/.cpp # RegistryAgentGroupSource: IAgentGroupSource over the registry
+│                             #   (answers "which selector may this agent download?", nullopt = deny)
 ├── wazuhDBClient.hpp/.cpp    # WazuhDBClient: async UDS client to wazuh-db (agent status/data updates)
 ├── taskClient.hpp/.cpp       # TaskClient: async UDS client to task-manager (pending task fetch)
 ├── mergedMgWatcher.hpp/.cpp  # MergedMgWatcher: inotify + poll watcher for var/multigroups/*.mg changes
@@ -665,8 +670,10 @@ and clients, which are all thread-safe internally.
    thread runs periodically (every `agentRegistryEvictionIntervalSec`). Wazuh-db and task-manager
    clients maintain persistent connections (reconnect on error).
 3. **Shutdown**: `RemotedModuleFacade::stop()` stops the HTTP server (drains in-flight requests),
-   then stops the wazuh-db and task-manager clients (drains their queues), then destroys the
-   registry (eviction thread stops automatically on destruction).
+   then resets `ControlHandler` — whose destructor stops and joins the eviction thread first, so
+   nothing can touch the registry afterwards, and then drops the wazuh-db and task-manager clients
+   (draining their queues). The registry itself outlives that reset: `/download` shares it to
+   authorize config requests, so it is released later, with the HTTP server's route table.
 
 ## Scan endpoint (`POST /scan/vd`) — `src/scanvd/`
 
@@ -1418,9 +1425,17 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   A `wpk` request names a filename and gets `var/upgrade/<filename>`. The multigroup form is what
   lets an agent in several groups fetch its *effective* configuration rather than one member
   group's, and it needs no database: the selector is hashed exactly as wazuh-db names the directory.
-  There is no group lookup and no membership check (protocol decision on #38022), so **any
-  authenticated agent can fetch any group's or multigroup's merged configuration**. For a `config`
-  request the agent does not pick that value: it relays the `config_token` `/control` handed it (see
+  A `config` request is authorized against the requesting agent's own groups: `resource_id` must
+  equal `makeConfigToken(toGroupsCsv(entry->groups))` for that agent's registry entry -- the same
+  string `/control` handed it as `config_token` -- and anything else is **403**, decided before the
+  path is resolved. The groups come from the registry `/control` already maintains
+  (`control/registryAgentGroupSource.hpp`), so there is no wazuh-db round trip on this path, and an
+  entry whose groups never came from wazuh-db (`groupsRefreshedAtSec == 0`, which is what
+  `/control/shutdown` leaves behind for an unknown agent) is denied rather than treated as
+  "no groups, so default". A `wpk` request is **not** authorized here: its authority is the agent's
+  pending upgrade task, which `/control` does not carry.
+
+  The agent never picks the value it sends: it relays the `config_token` `/control` handed it (see
   the notify response above), so `/control` must report `config_hash` over the file this resolves to
   for the token it handed that agent, or that agent re-downloads on every notify.
 - **Containment differs per form.** The multigroup selector is *hashed, never joined*, so it cannot
@@ -1899,7 +1914,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|cacerts>.responses.{2xx,400,403,409,413,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
-| `remoted.download.{rejected, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
+| `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector, or the manager has no established membership for it). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request) and from `not_found` (an *entitled* request whose file is not on disk) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
 | `remoted.cacerts.{served, not_found, ca_mismatch}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, or refused because the configured CA does not sign the served leaf | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch |
 | `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does `remote.https.ca_certificate` sign it (0 also when the CA is unreadable) | `IHttpServer::certificateStatus()` over the transport's `TlsCertificateMonitor` snapshot (start + every 24 h); registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
