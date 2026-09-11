@@ -29,13 +29,24 @@ Create a backup before upgrading:
 BACKUP_DIR="/backup/wazuh-manager-$(date +%Y%m%d-%H%M%S)"
 sudo mkdir -p $BACKUP_DIR/db
 
-# Backup configuration and database
+# Backup configuration and database. The source is tested first -- with `sudo
+# test`, since queue/db is not readable unprivileged -- because sqlite3 creates a
+# database when handed a path that does not exist, and the copy would then pass
+# the integrity check below while holding nothing.
 sudo tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager etc/
-sudo sqlite3 /var/wazuh-manager/var/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
+sudo test -f /var/wazuh-manager/queue/db/global.db \
+  && sudo sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'" \
+  || echo "MISSING: /var/wazuh-manager/queue/db/global.db - nothing was backed up"
 
 # Verify backup integrity
 tar -tzf $BACKUP_DIR/wazuh-etc.tar.gz > /dev/null && echo "Backup successful"
-sudo sqlite3 $BACKUP_DIR/db/global.db "PRAGMA integrity_check"
+if [ -f "$BACKUP_DIR/db/global.db" ]; then
+    sudo sqlite3 "$BACKUP_DIR/db/global.db" "PRAGMA integrity_check"
+    # The row count is what proves the copy carries the registry
+    sudo sqlite3 "$BACKUP_DIR/db/global.db" "SELECT count(*) FROM agent"
+else
+    echo "MISSING: no global.db in this backup - do NOT upgrade on it"
+fi
 ```
 
 ### Download package
@@ -106,8 +117,11 @@ sudo systemctl status wazuh-manager
 # Check logs for errors
 sudo tail -50 /var/wazuh-manager/logs/wazuh-manager.log
 
-# Check database integrity
-sudo sqlite3 /var/wazuh-manager/var/db/global.db "PRAGMA integrity_check"
+# Check database integrity. Guarded: an unguarded sqlite3 would create the very
+# database it is checking, and an integrity check passes on an empty one.
+sudo sh -c '[ -f /var/wazuh-manager/queue/db/global.db ] \
+  && sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check" \
+  || echo "MISSING: /var/wazuh-manager/queue/db/global.db"'
 ```
 
 ### Cluster upgrade
@@ -129,10 +143,14 @@ sudo mkdir -p $BACKUP_DIR/db
 
 # Full backup of master
 sudo tar -czf $BACKUP_DIR/wazuh-master-etc.tar.gz -C /var/wazuh-manager etc/
-sudo sqlite3 /var/wazuh-manager/var/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
+sudo test -f /var/wazuh-manager/queue/db/global.db \
+  && sudo sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'" \
+  || echo "MISSING: /var/wazuh-manager/queue/db/global.db - nothing was backed up"
 
 # Verify backup
 tar -tzf $BACKUP_DIR/wazuh-master-etc.tar.gz > /dev/null && echo "Master backup successful"
+[ -f "$BACKUP_DIR/db/global.db" ] && sudo sqlite3 "$BACKUP_DIR/db/global.db" "SELECT count(*) FROM agent" \
+  || echo "MISSING: no global.db in this backup"
 ```
 
 **On each worker node:**
@@ -273,8 +291,11 @@ sudo /var/wazuh-manager/bin/cluster_control -l
 # Check cluster health
 sudo /var/wazuh-manager/bin/cluster_control -i
 
-# Check database integrity
-sudo sqlite3 /var/wazuh-manager/var/db/global.db "PRAGMA integrity_check"
+# Check database integrity. Guarded: an unguarded sqlite3 would create the very
+# database it is checking, and an integrity check passes on an empty one.
+sudo sh -c '[ -f /var/wazuh-manager/queue/db/global.db ] \
+  && sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check" \
+  || echo "MISSING: /var/wazuh-manager/queue/db/global.db"'
 
 # Monitor logs for errors
 sudo tail -100 /var/wazuh-manager/logs/wazuh-manager.log | grep -i error
@@ -442,11 +463,12 @@ sudo rpm -e wazuh-manager
 sudo tar -xzf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager
 
 # Restore database
-sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/var/db/global.db
+sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/queue/db/global.db
 
 # Set permissions
 sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc
-sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/var/db
+sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
+sudo chmod 660 /var/wazuh-manager/queue/db/global.db
 ```
 
 **Step 4: Reinstall the previous version**
@@ -503,11 +525,12 @@ sudo rpm -e wazuh-manager
 
 # Restore configuration and database
 sudo tar -xzf $BACKUP_DIR/wazuh-master-etc.tar.gz -C /var/wazuh-manager
-sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/var/db/global.db
+sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/queue/db/global.db
 
 # Set permissions
 sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc
-sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/var/db
+sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
+sudo chmod 660 /var/wazuh-manager/queue/db/global.db
 
 # Reinstall previous version package
 
@@ -533,8 +556,11 @@ sudo tail -100 /var/wazuh-manager/logs/wazuh-manager.log
 # Verify permissions
 sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager
 
-# Check database integrity
-sudo sqlite3 /var/wazuh-manager/var/db/global.db "PRAGMA integrity_check"
+# Check database integrity. Guarded: an unguarded sqlite3 would create the very
+# database it is checking, and an integrity check passes on an empty one.
+sudo sh -c '[ -f /var/wazuh-manager/queue/db/global.db ] \
+  && sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check" \
+  || echo "MISSING: /var/wazuh-manager/queue/db/global.db"'
 ```
 
 **Issue: Agents not reconnecting after manager upgrade**
@@ -577,15 +603,16 @@ sudo systemctl restart wazuh-manager
 
 ```bash
 # Check database file permissions
-sudo ls -l /var/wazuh-manager/var/db/
+sudo ls -l /var/wazuh-manager/queue/db/
 
 # Review wazuh-manager.log for migration messages
 sudo grep -i "database\|migration" /var/wazuh-manager/logs/wazuh-manager.log
 
 # If migration fails, restore from backup
 sudo systemctl stop wazuh-manager
-sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/var/db/global.db
-sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/var/db/global.db
+sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/queue/db/global.db
+sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
+sudo chmod 660 /var/wazuh-manager/queue/db/global.db
 sudo systemctl start wazuh-manager
 ```
 
