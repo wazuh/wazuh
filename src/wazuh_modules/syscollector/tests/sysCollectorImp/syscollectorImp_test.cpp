@@ -4869,8 +4869,7 @@ TEST_F(SyscollectorImpTest, hardwareMemoryUsageIsNullWhenTotalIsZero)
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 }
 
-// End-to-end check that the per-table "ignore" lists (HW_IGNORED_FIELDS, PROCESSES_IGNORED_FIELDS,
-// NET_IFACE_IGNORED_FIELDS) actually suppress dbsync MODIFIED events across several scan cycles.
+// End-to-end check that the volatile counters stay current without being reported as changes.
 // Hardware memory, process CPU times and network byte/packet counters change on every scan below
 // (as real monotonic counters do), while every other field stays constant: each collector must
 // keep refreshing its state document on every cycle, and must report none of those cycles as a
