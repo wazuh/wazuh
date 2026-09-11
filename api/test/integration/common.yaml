@@ -10,6 +10,7 @@ variables:
   host: localhost
   balanced_port: 55010
   master_port: 55000
+  worker1_port: 55001
   user: testing
   user_auth_context: wazuh-wui
   pass: wazuh
