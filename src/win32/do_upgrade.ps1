@@ -274,19 +274,40 @@ $default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
 # explicitly recorded decision rather than done implicitly here.
 $incoming_ca_file = Join-Path $wazuhDir "incoming\root-ca.pem"
 
-if (Test-Path -PathType Leaf $incoming_ca_file) {
+# incoming\ is written by com's own transfer, but is not exclusively Wazuh-controlled --
+# reject a reparse point (symlink/junction) outright rather than read through it, same
+# reasoning as pkg_installer.sh's symlink rejection for the equivalent Linux/macOS path.
+$incoming_item = Get-Item -Force -ErrorAction SilentlyContinue $incoming_ca_file
+if ($incoming_item -and $incoming_item.LinkType) {
+    Write-Output "$(Get-Date -format u) - A CA arrived at $($incoming_ca_file) as a $($incoming_item.LinkType); refusing to follow it, discarding it and continuing the upgrade unverified." >> .\upgrade\upgrade.log
+    Remove-Item -Force -ErrorAction SilentlyContinue $incoming_ca_file
+} elseif (Test-Path -PathType Leaf $incoming_ca_file) {
     Write-Output "$(Get-Date -format u) - Found a CA delivered by the manager at $($incoming_ca_file), validating it." >> .\upgrade\upgrade.log
 
     $ca_reject_reason = $null
     $ca_cert = $null
+    $ca_pem = $null
 
     try {
         $ca_pem = Get-Content -Path $incoming_ca_file -Raw
-        $ca_base64 = ($ca_pem -replace '-----BEGIN CERTIFICATE-----', '' -replace '-----END CERTIFICATE-----', '' -replace '[\r\n\s]', '')
-        $ca_bytes = [System.Convert]::FromBase64String($ca_base64)
-        $ca_cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($ca_bytes)
     } catch {
-        $ca_reject_reason = "does not parse as a PEM certificate ($($_.Exception.Message))"
+        $ca_reject_reason = "could not be read ($($_.Exception.Message))"
+    }
+
+    # Cheap bound before ever parsing it: empty or implausibly large for a CA
+    # certificate is rejected the same way a malformed one is.
+    if (-Not $ca_reject_reason -and ([string]::IsNullOrEmpty($ca_pem) -or $ca_pem.Length -gt 65536)) {
+        $ca_reject_reason = "is empty or larger than the 64 KiB a CA certificate should ever need"
+    }
+
+    if (-Not $ca_reject_reason) {
+        try {
+            $ca_base64 = ($ca_pem -replace '-----BEGIN CERTIFICATE-----', '' -replace '-----END CERTIFICATE-----', '' -replace '[\r\n\s]', '')
+            $ca_bytes = [System.Convert]::FromBase64String($ca_base64)
+            $ca_cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($ca_bytes)
+        } catch {
+            $ca_reject_reason = "does not parse as a PEM certificate ($($_.Exception.Message))"
+        }
     }
 
     if (-Not $ca_reject_reason) {
@@ -321,24 +342,40 @@ if (Test-Path -PathType Leaf $incoming_ca_file) {
         }
 
         New-Item -ItemType Directory -Force -Path (Split-Path $default_ca_file) | Out-Null
-        Copy-Item -Path $incoming_ca_file -Destination $default_ca_file -Force
 
-        # Deny Authenticated Users on this one file, same pattern already used for
-        # client.keys/authd.pass (InstallerScripts.vbs): the install directory grants
-        # S-1-5-11 (Authenticated Users) broad read access, so a sensitive file needs
-        # that grant stripped explicitly. Administrators/SYSTEM keep the access they
-        # already have from the install directory's own ACL -- the agent service
-        # itself runs as SYSTEM, so this does not block it from reading the anchor.
+        # Install atomically: write to a temp file in the same directory, then move it
+        # over the target, so a reader never observes a partially-written anchor, and a
+        # failed write is caught here instead of silently logging success with nothing
+        # actually installed.
+        $ca_install_ok = $true
+        $ca_tmp_file = "$($default_ca_file).tmp"
         try {
-            icacls "$default_ca_file" /remove *S-1-5-11 /q | Out-Null
+            Set-Content -Path $ca_tmp_file -Value $ca_pem -NoNewline -ErrorAction Stop
+            Move-Item -Force -Path $ca_tmp_file -Destination $default_ca_file -ErrorAction Stop
         } catch {
-            Write-Output "$(Get-Date -format u) - Could not restrict permissions on $($default_ca_file): $($_.Exception.Message)" >> .\upgrade\upgrade.log
+            Write-Output "$(Get-Date -format u) - Could not install the delivered CA at $($default_ca_file) (write failure: $($_.Exception.Message)); leaving any existing anchor untouched and continuing the upgrade." >> .\upgrade\upgrade.log
+            Remove-Item -Force -ErrorAction SilentlyContinue $ca_tmp_file
+            $ca_install_ok = $false
         }
 
-        # A present, readable anchor here is picked up automatically at agent startup
-        # and resolves an unset <verification_mode> to 'full' against it -- so this
-        # alone is sufficient to activate verification; no <ssl> edit is needed.
-        Write-Output "$(Get-Date -format u) - $($ca_install_verb) CA at $($default_ca_file). ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> .\upgrade\upgrade.log
+        if ($ca_install_ok) {
+            # Deny Authenticated Users on this one file, same pattern already used for
+            # client.keys/authd.pass (InstallerScripts.vbs): the install directory grants
+            # S-1-5-11 (Authenticated Users) broad read access, so a sensitive file needs
+            # that grant stripped explicitly. Administrators/SYSTEM keep the access they
+            # already have from the install directory's own ACL -- the agent service
+            # itself runs as SYSTEM, so this does not block it from reading the anchor.
+            try {
+                icacls "$default_ca_file" /remove *S-1-5-11 /q | Out-Null
+            } catch {
+                Write-Output "$(Get-Date -format u) - Could not restrict permissions on $($default_ca_file): $($_.Exception.Message)" >> .\upgrade\upgrade.log
+            }
+
+            # A present, readable anchor here is picked up automatically at agent startup
+            # and resolves an unset <verification_mode> to 'full' against it -- so this
+            # alone is sufficient to activate verification; no <ssl> edit is needed.
+            Write-Output "$(Get-Date -format u) - $($ca_install_verb) CA at $($default_ca_file). ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> .\upgrade\upgrade.log
+        }
     }
 
     Remove-Item -Path $incoming_ca_file -Force -ErrorAction SilentlyContinue
