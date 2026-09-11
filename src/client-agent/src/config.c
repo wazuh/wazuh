@@ -14,6 +14,7 @@
 #include "os_net.h"
 #include "agentd.h"
 #include "module_limits.h"
+#include "x509_op.h"
 
 /* Global variables */
 int run_foreground;
@@ -281,6 +282,27 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
         merror(AG_INV_SSL_CA, ca ? ca : "");
         return false;
     }
+
+    /* Readable is not the same as usable, and w_is_file() above only answers the first. The
+     * gap matters most for the trust anchor the enrollment-token bootstrap writes, which
+     * w_agent_resolve_ssl_posture() treats as present on the same openability test: a
+     * truncated or corrupt one would resolve to a verifying mode and then fail at the first
+     * handshake, far from the cause. Parsing it here turns that into a named refusal at
+     * startup. An operator's own <certificate_authorities> gets the same check, since a file
+     * nothing can parse is no more usable for them.
+     *
+     * The first certificate is enough: PEM_read_bio_X509() scans past comments and
+     * non-certificate blocks, so a bundle, or a combined key-and-certificate file, still
+     * answers here -- this asks whether there is a certificate at all, not whether every
+     * block in the file is one. */
+    X509 *parsed = w_x509_load_pem(ca);
+
+    if (parsed == NULL) {
+        merror(AG_SSL_CA_UNPARSEABLE, ca);
+        return false;
+    }
+
+    X509_free(parsed);
 
     return true;
 }
