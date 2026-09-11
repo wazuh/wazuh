@@ -22,8 +22,8 @@ from wazuh.core.exception import IndexerUnavailableError
 # The frozen effective document test_configuration.py's test_get_manager_conf() checks
 # against: schema defaults applied to a <indexer> with no <ssl> block at all. Reading
 # indexer.ssl from here instead of hand-typing it keeps this test tied to whatever the
-# config loader actually produces -- a shape change here would fail visibly instead of
-# quietly matching a stale literal, the gap that let #39113 through unnoticed.
+# config loader actually produces, so a shape change here fails visibly instead of
+# silently matching a stale literal.
 EFFECTIVE_CONFIG_FIXTURE = os.path.join(
     os.path.dirname(__file__), "..", "..", "tests", "data", "configuration", "wazuh-manager.effective.json"
 )
