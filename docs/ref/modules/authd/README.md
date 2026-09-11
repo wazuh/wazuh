@@ -238,6 +238,25 @@ also names something reachable is minted normally — and `remote.https.ca_certi
 `--port`/`--prefix` default to the running `remote.https` values, `--ttl` to 30 days (`N[d|h|m|s]`),
 `--max-uses` to unlimited.
 
+**What a mint refuses about the request itself**, before any certificate is read, and identically from
+the CLI and the API (issue #39133):
+
+| Rule | Why |
+|------|-----|
+| `--ttl` at most **3650 days** (315360000 s) | A token's expiry is stored as an absolute time in a signed `time_t`. A longer lifetime does not produce a distant expiry, it produces a **negative** one, which the store's own loader refuses — and a record like that is one every node carries, because the cluster replicates the file |
+| `--description` and `--prefix` at most **256 characters** | Both are persisted in `etc/enrollment_tokens.json`, re-serialized on every consumed use and shipped to every worker |
+| No control character (`\n`, `\r`, `\t`, DEL, terminal escapes) in `--description` or `--prefix` | The description is written into the INFO line that records who minted which token, so a newline there forges a second record. Spaces and ordinary punctuation are free text as before |
+
+A refusal is `9025` with the reason (`Enrollment token refused: ttl must be between 1 and 315360000
+seconds (3650 days); 0 takes the default`). The CLI refuses an out-of-range `--ttl` locally, without
+reaching the socket.
+
+An entry of the store that cannot be read — a negative `expires` written by a version that still
+accepted one, or any other malformed field — is **dropped with a warning** and the rest of the file is
+loaded; the next write removes it from the file. What is still refused whole is a document that is not
+JSON, that carries another `version`, that has no `tokens` array, or that holds more tokens (or bytes)
+than this manager could ever write back: in those the tokens already loaded are kept.
+
 The agent presents the token as a `wazuh-enroll+jwt` bearer whose `kid` is the token id, signed with
 the key HKDF-SHA256 derives from the secret (label `WAZUH-ENROLL-TOKEN-KEY`). remoted verifies it
 against its read-only replica of the store and forwards `add` with `token_id`; authd re-checks the
@@ -391,8 +410,10 @@ A request is a single-line JSON object:
   request)
 - **`get`** — look up an agent's stored data. Arguments: `id` (required)
 - **`token_create`** — mint an [enrollment token](#enrollment-tokens) (master only). Arguments:
-  `address` (required), `port`, `prefix`, `ttl` (seconds), `max_uses` (`0` = unlimited),
-  `description`, `embed_ca`, `no_credential` (booleans). Answers
+  `address` (required), `port`, `prefix`, `ttl` (seconds, `0` = the 30 day default, at most
+  315360000), `max_uses` (`0` = unlimited), `description`, `embed_ca`, `no_credential` (booleans).
+  `ttl` out of range, and a `description` or `prefix` over 256 characters or carrying a control
+  character, answer `9025` with the reason. Answers
   `{"error": 0, "data": {"token": "<token>", "id": "<id>", "adr": "<endpoint>", "expires": <epoch>, "pin_hex": "<sha256>"}}`
   (`pin_hex` only when the token pins rather than embeds the CA)
 - **`token_list`** — no arguments. Answers `{"error": 0, "data": [{"id", "adr", "created", "expires",

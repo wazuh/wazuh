@@ -1013,8 +1013,11 @@ components:
           description: "URL prefix to write into the token when it differs from the configured one"
           type: string
           format: alphanumeric_symbols
+          maxLength: 256
         ttl:
-          description: "Lifetime: seconds, or a number followed by `d`, `h`, `m` or `s`. Default: 30 days"
+          description: "Lifetime: seconds, or a number followed by `d`, `h`, `m` or `s`. Default: 30 days.
+          At most 315360000 seconds (3650 days): the expiry is stored as an absolute time, and a lifetime
+          beyond that cannot be represented"
           type: string
           format: timeframe
         max_uses:
@@ -1023,9 +1026,11 @@ components:
           format: int32
           minimum: 0
         description:
-          description: "Free text shown when listing the tokens"
+          description: "Free text shown when listing the tokens. Control characters (a newline included)
+          are refused: the description is written to the manager's log when the token is minted"
           type: string
           format: alphanumeric_symbols
+          maxLength: 256
         embed_ca:
           description: "Carry the CA certificate inside the token instead of its pin (no `/cacerts` fetch
           by the agent)"

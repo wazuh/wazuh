@@ -68,6 +68,49 @@ static void etoken_detail(char *detail, size_t detail_size, const char *fmt, ...
 }
 
 /**
+ * @brief Whether a free-text field an operator supplies is safe to persist and to log.
+ *
+ * Two rules, and the second is the one that bites. The text is written verbatim into
+ * etc/enrollment_tokens.json -- a file the cluster replicates and the store re-serializes on every
+ * consumed use -- so its length is bounded here instead of being whatever reached the socket. And
+ * `description` is interpolated into the INFO line that records who minted which token: a
+ * description carrying a newline writes a SECOND line into logs/wazuh-manager.log that is
+ * indistinguishable from a real mint, which defeats the only reason that line exists. Nothing else
+ * on either path stops it -- the API's `alphanumeric_symbols` format allows `\s`, which matches a
+ * newline, and the command line applies no format at all -- so the check belongs here, where the
+ * socket and the CLI have already met (issue #39133).
+ *
+ * @param text The field, or NULL (always acceptable: these fields are optional).
+ * @param name How to name it in the refusal.
+ * @param max Longest text accepted, in characters.
+ * @return 0 when the text is acceptable, -1 otherwise (@p detail says which rule it broke).
+ */
+static int etoken_text_check(const char *text, const char *name, size_t max, char *detail, size_t detail_size) {
+    const char *c;
+
+    if (text == NULL) {
+        return 0;
+    }
+
+    if (strlen(text) > max) {
+        etoken_detail(detail, detail_size, "%s is longer than the %zu characters accepted", name, max);
+        return -1;
+    }
+
+    for (c = text; *c != '\0'; c++) {
+        /* Every control byte (0x00-0x1F) and DEL. A space is deliberately allowed: this is free
+         * text an operator writes, and it is only the bytes that can forge a record -- a newline, a
+         * carriage return, a terminal escape -- that have no place in it */
+        if ((unsigned char) *c < 0x20 || (unsigned char) *c == 0x7F) {
+            etoken_detail(detail, detail_size, "%s contains a control character", name);
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+/**
  * @brief One integer item of the `https` object, or @p def when it is absent or of another type.
  */
 static long etoken_conf_int(const cJSON *https, const char *name, long def) {
@@ -217,6 +260,28 @@ int etoken_mint_prepare(const etoken_mint_request_t *req, etoken_mint_t *out, ch
 
     if (req->address == NULL || req->address[0] == '\0') {
         etoken_detail(detail, detail_size, "address is required");
+        return -1;
+    }
+
+    /* What the request says about itself, checked before a single file is opened: these refusals do
+     * not depend on the certificates, and the operator gets the same reason whether the request
+     * arrived on auth.sock or from the command line.
+     *
+     * The lifetime is the one that cannot be left to the store. `expires` is `now + ttl` in a
+     * signed time_t, so a lifetime the caller can reach freely -- the socket takes anything up to
+     * LONG_MAX, the CLI multiplies a strtoul() by 86400 -- wraps into a negative expiry, and the
+     * mint then answers SUCCESS while persisting an entry that the store's own loader refuses.
+     * Since a load drops what it cannot read, one such record is a token lost on the master's next
+     * restart and on every worker the file reaches. Nothing above ETOKEN_MAX_TTL is useful and all
+     * of it is dangerous, so it is refused with a reason (issue #39133). */
+    if (req->ttl < 0 || req->ttl > ETOKEN_MAX_TTL) {
+        etoken_detail(detail, detail_size, "ttl must be between 1 and %ld seconds (%ld days); 0 takes the default",
+                      ETOKEN_MAX_TTL, ETOKEN_MAX_TTL / 86400);
+        return -1;
+    }
+
+    if (etoken_text_check(req->description, "description", ETOKEN_DESCRIPTION_MAX, detail, detail_size) < 0 ||
+        etoken_text_check(req->prefix, "prefix", ETOKEN_PREFIX_MAX, detail, detail_size) < 0) {
         return -1;
     }
 

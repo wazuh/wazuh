@@ -202,9 +202,19 @@ namespace remoted::auth
             return parsed;
         }
 
-        /// The whole store -> a replica. nullopt with @p reason when the file is not a store.
-        std::optional<std::unordered_map<std::string, TokenKeySource::TokenEntry>> parseStore(const std::string& text,
-                                                                                              std::string& reason)
+        /// The whole store -> a replica. nullopt with @p reason when the DOCUMENT is not a store.
+        ///
+        /// One ENTRY that cannot be read is a different thing from a document that cannot: it is dropped,
+        /// counted in @p skipped, and the rest of the file still becomes the replica -- the same answer
+        /// authd's own loader gives. Refusing the file over one record was how a single token with, say, a
+        /// negative `expires` (a record a manager could write before the lifetime was bounded) froze every
+        /// worker's replica at whatever it held before, permanently, and took token enrollment down with
+        /// it (issue #39133). @p reason then names the last record dropped, for the log.
+        ///
+        /// A duplicate id stays a document-level refusal: authd never writes two records with one id, so
+        /// it means the file was edited by hand, and choosing between them would be guessing.
+        std::optional<std::unordered_map<std::string, TokenKeySource::TokenEntry>>
+        parseStore(const std::string& text, std::string& reason, std::size_t& skipped)
         {
             const auto root = nlohmann::json::parse(text, nullptr, false);
             if (root.is_discarded() || !root.is_object())
@@ -237,7 +247,8 @@ namespace remoted::auth
                         continue; // credential-less token: skipped by design
                     }
                     reason = std::move(entryReason);
-                    return std::nullopt;
+                    ++skipped;
+                    continue;
                 }
                 if (!replica.emplace(std::move(parsed->id), std::move(parsed->entry)).second)
                 {
@@ -634,7 +645,8 @@ namespace remoted::auth
             if (postHash && *postHash == *preHash)
             {
                 std::string reason;
-                auto replica = text ? parseStore(*text, reason) : std::nullopt;
+                std::size_t skipped = 0;
+                auto replica = text ? parseStore(*text, reason, skipped) : std::nullopt;
                 if (text)
                 {
                     std::string& rawText = *text;                    // by reference, see parseStore()'s secret wipe
@@ -670,6 +682,28 @@ namespace remoted::auth
                                    remoted::common::LogThrottle::kDefaultWindowSeconds);
                     }
                     return false;
+                }
+
+                if (skipped > 0)
+                {
+                    // The load SUCCEEDED: the replica below is the file minus the records that could not
+                    // be read, which is what keeps one bad token from costing a worker every other one.
+                    // Still said out loud, throttled, because the file is written by one process and a
+                    // record it cannot read back is a defect somewhere upstream.
+                    if (const auto d = m_droppedThrottle.record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "%zu record(s) of the enrollment token store '%s' could not be read (%s) "
+                                   "and were dropped; the other %zu token(s) are replicated. %llu such load(s) "
+                                   "in the last %d s. The file is written by wazuh-manager-authd on the master "
+                                   "node and must not be edited by hand.",
+                                   skipped,
+                                   m_path.c_str(),
+                                   reason.c_str(),
+                                   replica->size(),
+                                   static_cast<unsigned long long>(d.total),
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
                 }
 
                 adoptReplica(std::move(*replica));

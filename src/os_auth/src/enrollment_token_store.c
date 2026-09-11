@@ -50,6 +50,14 @@
 /* Format version of the file. Bumped only for a change a version 1 reader could not survive */
 #define ETOKEN_STORE_VERSION 1
 
+/* Entries a single load names in the log before it falls back to the count alone */
+#define ETOKEN_LOAD_WARN_LIMIT 10
+
+/* The largest `expires` an entry may carry: the maximum of the type the entry holds it in, which is
+ * also what etoken_parse_entry() accepts. Written as a shift of an unsigned so the expression
+ * itself cannot overflow, and so a 32 bit time_t gets its own maximum rather than a truncated one */
+#define ETOKEN_EXPIRES_MAX ((time_t) ((((uint64_t) 1) << (sizeof(time_t) * 8 - 1)) - 1))
+
 /* Attempts to draw an id that no token holds yet. A collision needs two identical 128 bit draws,
  * so the loop exists to make the impossible explicit rather than because it is expected to spin */
 #define ETOKEN_ID_ATTEMPTS 8
@@ -535,9 +543,17 @@ invalid_description:
 /**
  * @brief Read the file and replace the in-memory tokens. Caller holds the mutex.
  *
- * All or nothing: the whole file is parsed into a fresh array and only then swapped in, so a
- * malformed store leaves the tokens that were already loaded in place. A worker holding a good
- * replica keeps serving enrollments while an operator fixes the file.
+ * The DOCUMENT is all or nothing: it is parsed into a fresh array and only swapped in once it has
+ * been read whole, so a file that is not JSON, carries another version or has no `tokens` array
+ * leaves the tokens already loaded in place. A worker holding a good replica keeps serving
+ * enrollments while an operator fixes the file.
+ *
+ * One malformed ENTRY inside a well-formed document is different, and is dropped rather than taken
+ * as a reason to refuse the file. Refusing was the stricter reading, and it turned a single bad
+ * record into a fleet-wide outage: not one token loads, every token enrollment answers 9022, and
+ * token_revoke cannot repair it because the in-memory list is empty -- the only way out being to
+ * hand-edit the file the store's single-writer rule forbids. Dropping the record loses exactly the
+ * token that could not be read, which is a token nobody could have used anyway (issue #39133).
  *
  * @return 0 on success (an absent file included, which is simply an empty store), -1 on error.
  */
@@ -549,6 +565,7 @@ static int etoken_store_load_locked(void) {
     cJSON *item = NULL;
     etoken_entry_t *loaded = NULL;
     int loaded_size = 0;
+    int skipped = 0;
     int index = 0;
 
     if (etoken_path == NULL) {
@@ -613,20 +630,22 @@ static int etoken_store_load_locked(void) {
         memset(&loaded[loaded_size], 0, sizeof(etoken_entry_t));
 
         if (reason = etoken_parse_entry(item, &loaded[loaded_size]), reason != NULL) {
-            int i;
-
             /* The position and the field, never the value: half of a token's fields are credential
-             * material, and the rest are of no use to whoever has to fix the file */
-            mwarn("The enrollment token store '%s' is malformed: token %d is invalid (%s). The "
-                  "tokens already loaded are kept.", etoken_path, index, reason);
-
-            for (i = 0; i < loaded_size; i++) {
-                etoken_entry_free(&loaded[i]);
+             * material, and the rest are of no use to whoever has to fix the file. The entry is
+             * dropped and the rest of the store still loads -- see this function's comment.
+             *
+             * Named one by one only up to a point: a store that is bad throughout would otherwise
+             * write one line per token on every reload, and the count at the end of this function
+             * is what an operator acts on anyway */
+            if (skipped < ETOKEN_LOAD_WARN_LIMIT) {
+                mwarn("The enrollment token store '%s' is malformed: token %d is invalid (%s). That "
+                      "token is dropped and the rest of the store is loaded; the next write removes "
+                      "it from the file.", etoken_path, index, reason);
             }
 
-            os_free(loaded);
-            cJSON_Delete(root);
-            return -1;
+            skipped++;
+            index++;
+            continue;
         }
 
         loaded_size++;
@@ -650,6 +669,12 @@ static int etoken_store_load_locked(void) {
 
         os_free(loaded);
         return -1;
+    }
+
+    if (loaded_size == 0) {
+        /* Nothing survived, or there was nothing to begin with: an empty store is a NULL array
+         * everywhere else in this file, and a realloc'd block for a dropped entry is not one */
+        os_free(loaded);
     }
 
     etoken_clear_locked();
@@ -688,9 +713,33 @@ static int etoken_store_load_locked(void) {
         }
     }
 
-    mdebug1("Loaded %d enrollment token(s) from '%s'.", etoken_tokens_size, etoken_path);
+    if (skipped > 0) {
+        mwarn("Loaded %d enrollment token(s) from '%s'; %d could not be read and were dropped.",
+              etoken_tokens_size, etoken_path, skipped);
+    } else {
+        mdebug1("Loaded %d enrollment token(s) from '%s'.", etoken_tokens_size, etoken_path);
+    }
 
     return 0;
+}
+
+/**
+ * @brief Wipe every secret held by the JSON tree being built for the file.
+ *
+ * The tree holds a copy of every secret of every token at once, so it is wiped before it is
+ * released -- on the way out of a failed serialisation exactly as on the way out of a successful
+ * one. A failure is no reason to leave credential material in freed memory.
+ */
+static void etoken_cleanse_tree_secrets(cJSON *array) {
+    int i;
+
+    for (i = 0; array != NULL && i < cJSON_GetArraySize(array); i++) {
+        cJSON *secret = cJSON_GetObjectItem(cJSON_GetArrayItem(array, i), "secret");
+
+        if (cJSON_IsString(secret) && secret->valuestring != NULL) {
+            OPENSSL_cleanse(secret->valuestring, strlen(secret->valuestring));
+        }
+    }
 }
 
 /**
@@ -779,13 +828,7 @@ static int etoken_store_save_locked(void) {
     text = cJSON_PrintUnformatted(root);
 
     /* Every secret of every token is in that cJSON tree; wipe the copies before releasing them */
-    for (i = 0; array != NULL && i < cJSON_GetArraySize(array); i++) {
-        cJSON *secret = cJSON_GetObjectItem(cJSON_GetArrayItem(array, i), "secret");
-
-        if (cJSON_IsString(secret) && secret->valuestring != NULL) {
-            OPENSSL_cleanse(secret->valuestring, strlen(secret->valuestring));
-        }
-    }
+    etoken_cleanse_tree_secrets(array);
 
     cJSON_Delete(root);
     root = NULL;
@@ -856,6 +899,9 @@ static int etoken_store_save_locked(void) {
     return 0;
 
 error_json:
+    /* The same sweep the success path does: the entries already added carry their secrets, and
+     * giving up on the serialisation is not a reason to hand them back to the allocator */
+    etoken_cleanse_tree_secrets(array);
     cJSON_Delete(root);
     return -1;
 
@@ -950,6 +996,20 @@ int etoken_store_create(const etoken_mint_t *mint, time_t now, cJSON **data) {
         (mint->has_pin == (mint->ca_pem != NULL))) {
         merror("Cannot mint an enrollment token: the request carries no endpoint, no lifetime or "
                "not exactly one anchor.");
+        return -1;
+    }
+
+    /* The expiry the entry would carry, checked before anything is drawn or written. `now + ttl` is
+     * a signed addition, and one that wraps writes a NEGATIVE `expires` that this same file's
+     * loader refuses -- so an unguarded mint can persist a record authd cannot read back.
+     *
+     * The mint already caps the lifetime (ETOKEN_MAX_TTL, enrollment_token_mint.c), which makes
+     * this the second lock on the same door, and that is on purpose: the rule it enforces belongs
+     * to the store, not to one of its callers. Nothing this function writes may be something
+     * etoken_store_load_locked() would have to throw away (issue #39133). */
+    if (mint->ttl > ETOKEN_MAX_TTL || now < 0 || now > ETOKEN_EXPIRES_MAX - (time_t) mint->ttl) {
+        merror("Cannot mint an enrollment token: a lifetime of %ld second(s) would expire outside "
+               "the range the store can represent.", mint->ttl);
         return -1;
     }
 

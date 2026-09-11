@@ -76,29 +76,50 @@ int w_authd_validate_ciphers(const char *ciphers) {
 }
 
 int get_time_interval(char *source, time_t *interval) {
+    /* The greatest value a time_t can hold, as an unsigned so the expression cannot itself overflow */
+    const uint64_t max_interval = ((((uint64_t) 1) << (sizeof(time_t) * 8 - 1)) - 1);
+    uint64_t factor;
+    uint64_t value;
     char *endptr;
-    *interval = strtoul(source, &endptr, 0);
 
-    if ((!*interval && endptr == source) || *interval < 0) {
+    errno = 0;
+    value = (uint64_t) strtoull(source, &endptr, 0);
+
+    /* Nothing parsed, out of range, or a negative that strtoull() quietly wrapped: strtoull()
+     * accepts a leading '-' and returns the two's complement of the number, which is why a value
+     * above the time_t maximum is refused below rather than trusted here */
+    if ((value == 0 && endptr == source) || (value == ULLONG_MAX && errno == ERANGE)) {
         return OS_INVALID;
     }
 
     switch (*endptr) {
     case 'd':
-        *interval *= 86400;
+        factor = 86400;
         break;
     case 'h':
-        *interval *= 3600;
+        factor = 3600;
         break;
     case 'm':
-        *interval *= 60;
+        factor = 60;
         break;
     case 's':
     case '\0':
+        factor = 1;
         break;
     default:
         return OS_INVALID;
     }
+
+    /* The unit multiplies a number that came from a configuration file or a command line. Left
+     * unchecked the product wraps -- signed overflow, and in practice a NEGATIVE interval that
+     * every caller downstream then has to recognise as "too large", which none of them can: by then
+     * the number no longer says what was written. "999999999999999d" is refused here instead
+     * (issue #39133) */
+    if (value > max_interval / factor) {
+        return OS_INVALID;
+    }
+
+    *interval = (time_t) (value * factor);
 
     return 0;
 }

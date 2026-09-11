@@ -539,6 +539,64 @@ void test_strerror_covers_every_code(void **state)
     assert_string_equal(w_etoken_strerror((w_etoken_error_t) 99), "unknown error");
 }
 
+/* A token is a canonical encoding of its content: one text, one token, and nothing in the text that
+ * the decoder does not look at. An embedded NUL breaks all three at once, because cJSON takes the
+ * document's length from strlen() -- so everything past the NUL is parsed by nobody, checked by
+ * nobody and wiped by nobody, while the base64url layer below still says the two texts differ.
+ */
+void test_decode_rejects_an_embedded_nul(void **state)
+{
+    const char valid[] = "{\"ver\":1,\"adr\":\"h\",\"pin\":\"" PIN_B64URL "\"}";
+    uint8_t blob[512];
+    size_t len;
+    char *token = NULL;
+    w_etoken_t decoded;
+
+    (void) state;
+
+    /* A whole, valid token followed by a NUL and then anything at all. Accepting this would mean
+     * unlimited different texts decoding to one token -- exactly what b64url_op.h promises cannot
+     * happen -- and it would make any bound on the token's length unenforceable on input */
+    len = strlen(valid);
+    assert_true(len + 32 < sizeof(blob));
+    memcpy(blob, valid, len);
+    blob[len] = '\0';
+    memcpy(blob + len + 1, "{\"ver\":1,\"adr\":\"o\"}", 19);
+
+    token = w_b64url_encode(blob, len + 1 + 19);
+    assert_non_null(token);
+    assert_int_equal(w_etoken_decode(token, &decoded), ETOKEN_MALFORMED);
+    assert_null(decoded.adr);
+    w_etoken_free(&decoded);
+    free(token);
+
+    /* A NUL anywhere else is no different: the parser would only ever see the prefix */
+    memcpy(blob, valid, len);
+    blob[8] = '\0';
+    token = w_b64url_encode(blob, len);
+    assert_non_null(token);
+    assert_int_equal(w_etoken_decode(token, &decoded), ETOKEN_MALFORMED);
+    w_etoken_free(&decoded);
+    free(token);
+
+    /* A trailing NUL is not a "harmless terminator" either: the same content has one canonical
+     * text, and this is not it */
+    memcpy(blob, valid, len);
+    blob[len] = '\0';
+    token = w_b64url_encode(blob, len + 1);
+    assert_non_null(token);
+    assert_int_equal(w_etoken_decode(token, &decoded), ETOKEN_MALFORMED);
+    w_etoken_free(&decoded);
+    free(token);
+
+    /* And the same bytes without the NUL still decode: what is refused is the NUL, not the token */
+    token = token_of(valid);
+    assert_int_equal(w_etoken_decode(token, &decoded), ETOKEN_OK);
+    assert_string_equal(decoded.adr, "h");
+    w_etoken_free(&decoded);
+    free(token);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -547,6 +605,7 @@ int main(void)
         cmocka_unit_test(test_encode_omits_defaults),
         cmocka_unit_test(test_decode_roundtrip_and_defaults),
         cmocka_unit_test(test_decode_errors),
+        cmocka_unit_test(test_decode_rejects_an_embedded_nul),
         cmocka_unit_test(test_decode_checks_the_address_grammar),
         cmocka_unit_test(test_free_zeroes_the_secret),
         cmocka_unit_test(test_describe_never_prints_the_key),
