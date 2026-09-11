@@ -72,6 +72,12 @@
   effect: deny
 
 - actions:
+  - enrollment_token:delete
+  resources:
+  - "*:*:*"
+  effect: deny
+
+- actions:
   - agent:uninstall
   resources:
   - "*:*:*"
