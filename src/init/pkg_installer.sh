@@ -748,12 +748,23 @@ case "${SSL_VERIFICATION_MODE}" in
         ;;
 esac
 
+# Whether the package manager's own install hooks can be trusted to have already
+# stopped and restarted the daemon (deb's preinst/postinst, rpm's %pre/%post -- both
+# confirmed in this repo to use a wazuh.restart marker + an explicit stop-then-restart).
+# Left 0 for apk and the install.sh fallback: install.sh's own stop helper never
+# restarts, so wazuh-control status already reports "not running" there regardless, but
+# no equivalent packaging/install hooks for apk exist anywhere in this codebase to
+# confirm the same restart behavior -- treat it the same as the fallback rather than
+# assume an unconfirmed package format behaves like deb/rpm.
+PACKAGE_MANAGER_HANDLES_RESTART=0
+
 if [[ "$OS" == "Darwin" ]]; then
     installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
 elif [[ "$OS" == "Linux" ]]; then
     if pkg_exists ./var/upgrade/*.rpm; then
         if command -v rpm >/dev/null 2>&1; then
             rpm -UFvh ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
+            PACKAGE_MANAGER_HANDLES_RESTART=1
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. RPM package found but rpm command not found." >> ./logs/upgrade.log
             abort_upgrade "2"
@@ -761,6 +772,7 @@ elif [[ "$OS" == "Linux" ]]; then
     elif pkg_exists ./var/upgrade/*.deb; then
         if command -v dpkg >/dev/null 2>&1; then
             dpkg -i --force-confdef ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
+            PACKAGE_MANAGER_HANDLES_RESTART=1
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. DEB package found but dpkg command not found." >> ./logs/upgrade.log
             abort_upgrade "2"
@@ -798,7 +810,7 @@ if [ -f "./bin/wazuh-control" ]; then
     if [[ "$OS" == "Darwin" ]]; then
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log
         launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist >> ./logs/upgrade.log 2>&1 || true
-    elif ./bin/wazuh-control status 2>/dev/null | grep -q "wazuh-agentd is running"; then
+    elif [ "${PACKAGE_MANAGER_HANDLES_RESTART}" = "1" ] && ./bin/wazuh-control status 2>/dev/null | grep -q "wazuh-agentd is running"; then
         # deb's postinst / rpm's %post already stopped the pre-upgrade agent (preinst/%pre)
         # and restarted it after install -- via systemctl when the host runs systemd -- when
         # it finds the wazuh.restart marker those scripts drop. Calling wazuh-control restart
@@ -807,6 +819,12 @@ if [ -f "./bin/wazuh-control" ]; then
         # bring it back up, and this script's own wait-for-connection loop below times out
         # against a dead agent. If wazuh-agentd is already up, trust that restart instead of
         # racing it.
+        #
+        # Gated on PACKAGE_MANAGER_HANDLES_RESTART (deb/rpm only): without it, a leftover
+        # pre-upgrade wazuh-agentd process from an install method that does NOT restart on
+        # its own (apk has no confirmed install hooks in this codebase; see where that flag
+        # is set) would be misread as "already restarted," silently skipping the restart and
+        # leaving the OLD binary running despite a logged success.
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Wazuh Agent is already running (restarted by the package installer); skipping redundant restart." >> ./logs/upgrade.log
     else
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log
