@@ -474,3 +474,74 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageNoVersion)
     EXPECT_TRUE(result["state"].contains("modified_at"));
     EXPECT_FALSE(result["state"].contains("document_version"));
 }
+
+TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageDropsAnEmptyReason)
+{
+    nlohmann::json check =
+    {
+        {"id", "check1"},
+        {"checksum", "abc123"},
+        {"result", "Passed"},
+        {"reason", ""},
+        {"version", 1}
+    };
+    nlohmann::json policy = {{"id", "policy1"}};
+
+    auto result = sca::recovery::buildStatefulMessage(check, policy);
+
+    EXPECT_FALSE(result["check"].contains("reason"));
+}
+
+TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageKeepsAPopulatedReason)
+{
+    const std::string reason = "Path '/etc/modprobe.d/' does not exist";
+
+    nlohmann::json check =
+    {
+        {"id", "check1"},
+        {"checksum", "abc123"},
+        {"result", "Not applicable"},
+        {"reason", reason},
+        {"version", 1}
+    };
+    nlohmann::json policy = {{"id", "policy1"}};
+
+    auto result = sca::recovery::buildStatefulMessage(check, policy);
+
+    EXPECT_EQ(result["check"]["reason"], reason);
+}
+
+TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageSanitizesAnUndecodableReason)
+{
+    nlohmann::json check =
+    {
+        {"id", "check1"},
+        {"checksum", "abc123"},
+        {"result", "Not applicable"},
+        {"reason", "Path '/tmp/\xff\xfe' does not exist"},
+        {"version", 1}
+    };
+    nlohmann::json policy = {{"id", "policy1"}};
+
+    auto result = sca::recovery::buildStatefulMessage(check, policy);
+
+    EXPECT_EQ(result["check"]["reason"], "Path '/tmp/\?\?' does not exist");
+    EXPECT_NO_THROW(result.dump());
+}
+
+TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageCapsAnOversizedReason)
+{
+    nlohmann::json check =
+    {
+        {"id", "check1"},
+        {"checksum", "abc123"},
+        {"result", "Not applicable"},
+        {"reason", std::string(2000, 'x')},
+        {"version", 1}
+    };
+    nlohmann::json policy = {{"id", "policy1"}};
+
+    auto result = sca::recovery::buildStatefulMessage(check, policy);
+
+    EXPECT_EQ(result["check"]["reason"].get<std::string>().size(), 1024U);
+}

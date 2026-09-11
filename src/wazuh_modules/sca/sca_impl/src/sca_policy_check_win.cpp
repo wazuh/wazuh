@@ -180,6 +180,9 @@ RegistryRuleEvaluator::RegistryRuleEvaluator(PolicyEvaluationContext ctx,
 
 RuleResult RegistryRuleEvaluator::Evaluate()
 {
+    // A previous evaluation of this rule must not explain this one
+    m_lastUnresolvedReason.clear();
+
     if (m_ctx.pattern)
     {
         return CheckKeyForContents();

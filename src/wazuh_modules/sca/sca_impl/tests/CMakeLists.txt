@@ -48,6 +48,12 @@ add_test(NAME SCATest COMMAND sca_unit_test)
 
 set_tests_properties(SCATest PROPERTIES LABELS "sca")
 
+add_executable(sca_policy_unit_test sca_policy_test.cpp)
+target_link_libraries(sca_policy_unit_test PRIVATE SCAImpl)
+add_test(NAME SCAPolicyTest COMMAND sca_policy_unit_test)
+
+set_tests_properties(SCAPolicyTest PROPERTIES LABELS "sca")
+
 add_executable(sca_policy_loader_unit_test sca_policy_loader_test.cpp)
 target_link_libraries(sca_policy_loader_unit_test PRIVATE SCAImpl)
 add_test(NAME SCAPolicyLoaderTest COMMAND sca_policy_loader_unit_test)

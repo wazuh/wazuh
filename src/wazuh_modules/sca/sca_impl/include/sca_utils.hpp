@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <vector>
@@ -84,4 +85,13 @@ namespace sca
     /// @param engineType The RegexEngineType enum value.
     /// @return The string representation of the regex type.
     std::string RegexEngineTypeToString(RegexEngineType engineType);
+
+    /// @brief Largest reason kept on a check, in bytes. Matches ignore_above on check.reason.
+    constexpr size_t REASON_MAX_LENGTH {1024};
+
+    /// @brief Makes a check's unresolved reason safe to store and publish.
+    /// @param reason The raw reason, one line per unresolved rule.
+    /// @param maxLength Largest result in bytes.
+    /// @return A valid UTF-8 reason of at most maxLength bytes.
+    std::string SanitizeReason(const std::string& reason, size_t maxLength);
 } // namespace sca

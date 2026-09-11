@@ -291,3 +291,18 @@ TEST_F(FileRuleEvaluatorTest, NegatedPatternRegexMatchesContentReturnsNotFound)
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
 }
+
+TEST_F(FileRuleEvaluatorTest, InvalidRegexPatternHasReasonString)
+{
+    m_ctx.pattern = std::string("r:***invalid***");
+    m_ctx.rule = "some/file";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawIoMock, getFileContent("some/file")).WillOnce(::testing::Return("content"));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("Invalid pattern"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("some/file"));
+}

@@ -2435,6 +2435,213 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_WithReasonAndNotApplicable_SetsRea
     }
 }
 
+TEST_F(SCAEventHandlerTest, ReportCheckResult_KeepsReasonOnAnyResult)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "Failed";
+    const std::string reason = "Invalid pattern 'r:^SELINUX=' for file '/etc/selinux/config'";
+
+    nlohmann::json capturedQuery;
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([&capturedQuery, checkResult, reason](const nlohmann::json & query,
+                                                    const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        capturedQuery = query;
+
+        nlohmann::json returnData =
+        {
+            {"old", {{"id", "test_check"}, {"result", "Passed"}}},
+            {"new", {{"id", "test_check"}, {"result", checkResult}, {"reason", reason}}}
+        };
+        callback(MODIFIED, returnData);
+    });
+
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync, mockPushStateless, mockPushStateful);
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(nlohmann::json {{"id", policyId}, {"name", "Test Policy"}}));
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(nlohmann::json {{"id", checkId}, {"policy_id", policyId}, {"result", "Passed"}}));
+
+    newHandler->ReportCheckResult(policyId, checkId, checkResult, reason);
+
+    // The reason reaches the database even though the result is not "Not applicable".
+    ASSERT_TRUE(capturedQuery.contains("data"));
+    ASSERT_FALSE(capturedQuery["data"].empty());
+    EXPECT_EQ(capturedQuery["data"][0]["reason"], reason);
+
+    ASSERT_EQ(statefulMessages.size(), 1U);
+    const auto statefulMessage = nlohmann::json::parse(statefulMessages[0]);
+    EXPECT_EQ(statefulMessage["check"]["reason"], reason);
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_TruncatesAnOversizedReason)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "Not applicable";
+    const std::string reason(2000, 'x');
+
+    nlohmann::json capturedQuery;
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([&capturedQuery](const nlohmann::json & query,
+                               const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        capturedQuery = query;
+        callback(MODIFIED, nlohmann::json {{"new", {{"id", "test_check"}, {"result", "Not applicable"}}}});
+    });
+
+    auto mockPushStateful = [](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) -> int
+    {
+        return 0;
+    };
+
+    auto mockPushStateless = [](const std::string&) -> int
+    {
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync, mockPushStateless, mockPushStateful);
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(nlohmann::json {{"id", policyId}, {"name", "Test Policy"}}));
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(nlohmann::json {{"id", checkId}, {"policy_id", policyId}, {"result", "Passed"}}));
+
+    newHandler->ReportCheckResult(policyId, checkId, checkResult, reason);
+
+    ASSERT_TRUE(capturedQuery.contains("data"));
+    ASSERT_FALSE(capturedQuery["data"].empty());
+    EXPECT_EQ(capturedQuery["data"][0]["reason"].get<std::string>().size(), 1024U);
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_DoesNotPublishAnEmptyReason)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "Passed";
+
+    nlohmann::json capturedQuery;
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([&capturedQuery](const nlohmann::json & query,
+                               const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        capturedQuery = query;
+
+        nlohmann::json returnData =
+        {
+            {"old", {{"id", "test_check"}, {"result", "Not applicable"}, {"reason", ""}}},
+            {"new", {{"id", "test_check"}, {"result", "Passed"}, {"reason", ""}}}
+        };
+        callback(MODIFIED, returnData);
+    });
+
+    std::vector<std::string> statefulMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [](const std::string&) -> int
+    {
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync, mockPushStateless, mockPushStateful);
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(nlohmann::json {{"id", policyId}, {"name", "Test Policy"}}));
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(nlohmann::json {{"id", checkId}, {"policy_id", policyId}, {"result", "Not applicable"}}));
+
+    newHandler->ReportCheckResult(policyId, checkId, checkResult);
+
+    // The column is written empty, which is what clears the reason a previous scan left behind.
+    ASSERT_TRUE(capturedQuery.contains("data"));
+    ASSERT_FALSE(capturedQuery["data"].empty());
+    EXPECT_EQ(capturedQuery["data"][0]["reason"], "");
+
+    ASSERT_EQ(statefulMessages.size(), 1U);
+    const auto statefulMessage = nlohmann::json::parse(statefulMessages[0]);
+    EXPECT_FALSE(statefulMessage["check"].contains("reason"));
+    EXPECT_FALSE(statefulMessage["check"].value("previous", nlohmann::json::object()).contains("reason"));
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_SanitizesAReasonQuotingAnUndecodablePath)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "Not applicable";
+    const std::string reason = "Path '/tmp/\xff\xfe' does not exist";
+
+    nlohmann::json capturedQuery;
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([&capturedQuery](const nlohmann::json & query,
+                               const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        capturedQuery = query;
+        callback(MODIFIED, nlohmann::json
+        {
+            {"new", {{"id", "test_check"}, {"result", "Not applicable"}, {"reason", query["data"][0]["reason"]}}}
+        });
+    });
+
+    std::vector<std::string> statefulMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [](const std::string&) -> int
+    {
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync, mockPushStateless, mockPushStateful);
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(nlohmann::json {{"id", policyId}, {"name", "Test Policy"}}));
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(nlohmann::json {{"id", checkId}, {"policy_id", policyId}, {"result", "Passed"}}));
+
+    // A raw path byte reaching json::dump() throws type_error.316, and nothing in the scan loop
+    // catches it, so the sanitising happens before the value is stored.
+    EXPECT_NO_THROW(newHandler->ReportCheckResult(policyId, checkId, checkResult, reason));
+
+    ASSERT_TRUE(capturedQuery.contains("data"));
+    ASSERT_FALSE(capturedQuery["data"].empty());
+    EXPECT_EQ(capturedQuery["data"][0]["reason"], "Path '/tmp/\?\?' does not exist");
+    ASSERT_EQ(statefulMessages.size(), 1U);
+}
+
 TEST_F(SCAEventHandlerTest, ReportCheckResult_RowDataWithoutNew_UsesRowDataDirectly)
 {
     const std::string policyId = "test_policy";
