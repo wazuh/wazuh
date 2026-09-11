@@ -1049,7 +1049,6 @@ void fim_whodata_event(whodata_evt * w_evt) {
         // Otherwise, it could be a file deleted or a directory moved (or renamed).
         w_rwlock_rdlock(&syscheck.directories_lock);
         fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
-        w_rwlock_unlock(&syscheck.directories_lock);
 #ifndef WIN32
         if (w_evt->inode && w_evt->dev) {
             const unsigned long int inode = strtoul(w_evt->inode, NULL, 10);
@@ -1060,6 +1059,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
             fim_db_file_inode_search(inode, dev, callback_data);
         }
 #endif
+        w_rwlock_unlock(&syscheck.directories_lock);
     }
 }
 
