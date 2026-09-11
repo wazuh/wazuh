@@ -67,8 +67,8 @@ def test_rejected_parameter_does_not_disclose_the_schema():
 
 
 def test_rejected_parameter_does_not_echo_the_submitted_value():
-    """A rejected parameter must not quote the submitted bytes back: the detail is also written to
-    the access log."""
+    """A rejected parameter must not quote the submitted bytes back: the detail is what the caller
+    receives."""
     response = _get({'groups_list': '\x00'}, path='/groups')
 
     assert response.status_code == 400

@@ -571,6 +571,26 @@ def test_DistributedAPI_forward_request_node_id_that_does_not_exist_is_not_found
         raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
 
+@patch('wazuh.core.cluster.local_client.LocalClient.execute',
+       new=AsyncMock(return_value='{"items": [{"name": "master"}], "totalItems": 1}'))
+def test_DistributedAPI_forward_request_node_id_unknown_is_a_node_name():
+    """Test a node_id of 'unknown' is read as a node name, not as the internal sentinel.
+
+    The sentinel falls back to the local node, which would answer the master's own data for a name
+    the cluster does not have.
+    """
+    nodes_info_result = AffectedItemsWazuhResult()
+    nodes_info_result.affected_items.append({'name': 'master'})
+    nodes_info_result.add_failed_item(id_='unknown', error=WazuhResourceNotFound(1730))
+    common.cluster_nodes.set(['master'])
+
+    with patch('wazuh.core.cluster.dapi.dapi.get_nodes_info', new=AsyncMock(return_value=nodes_info_result)), \
+            patch('wazuh.core.cluster.dapi.dapi.node_info', {'type': 'master', 'node': 'master'}):
+        dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
+                       'f_kwargs': {'node_id': 'unknown'}, 'nodes': ['master']}
+        raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1730)
+
+
 def test_DistributedAPI_forward_request_merges_all_broadcast_responses():
     """Test `forward_request` merges responses from every broadcast node, not just the first one.
 

@@ -27,7 +27,7 @@ from api.parameter_validator import WazuhParameterValidator
     ('groups_list', {'type': 'array', 'items': {'type': 'string', 'format': 'group_names'}}, ['\x00'],
      "Invalid value for query parameter 'groups_list': must match the 'group_names' format"),
     ('agent_list', {'type': 'array', 'minItems': 1, 'items': {'type': 'string'}}, [],
-     "Invalid value for query parameter 'agent_list': must contain at least 1 items"),
+     "Invalid value for query parameter 'agent_list': must contain at least 1 item"),
 ])
 def test_validate_parameter_names_the_violated_constraint(name, schema, value, expected):
     """A rejected parameter reports which parameter failed and which constraint it violated."""
@@ -41,7 +41,7 @@ def test_validate_parameter_names_the_violated_constraint(name, schema, value, e
     ({'type': 'string', 'enum': ['asc']}, "<script>alert(1)</script>"),
 ])
 def test_validate_parameter_does_not_echo_the_submitted_value(schema, value):
-    """The submitted value is never quoted back: the message is also written to the access log."""
+    """The submitted value is never quoted back: the message is what the caller receives."""
     error = WazuhParameterValidator.validate_parameter('query', value, {'name': 'param', 'schema': schema})
 
     assert str(value) not in error
