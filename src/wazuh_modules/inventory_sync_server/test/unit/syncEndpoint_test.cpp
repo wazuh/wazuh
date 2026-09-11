@@ -38,6 +38,18 @@ namespace
 {
     constexpr auto CLUSTER {"test-cluster"};
 
+    std::optional<std::string> retryAfter(const wazuh::uds_http::HttpResponse& response)
+    {
+        for (const auto& [name, value] : response.headers)
+        {
+            if (name == "Retry-After")
+            {
+                return value;
+            }
+        }
+        return std::nullopt;
+    }
+
     /// Captures whatever the handler sends; also resolves a future so a DEFERRED response (sent by
     /// a pipeline worker) can be awaited.
     class CapturingResponder final : public IHttpResponder
@@ -127,21 +139,6 @@ namespace
  * The path and verb are a wire contract with remoted's downstream configuration (its statefulEndpoint
  * forwards here). Pinning them is what turns a silent drift into a failing test.
  */
-namespace
-{
-    std::optional<std::string> retryAfter(const wazuh::uds_http::HttpResponse& response)
-    {
-        for (const auto& [name, value] : response.headers)
-        {
-            if (name == "Retry-After")
-            {
-                return value;
-            }
-        }
-        return std::nullopt;
-    }
-} // namespace
-
 TEST(SyncEndpointTest, PathAndMethodAreStable)
 {
     EXPECT_EQ(Method::Post, invsync::endpoints::sync::method());
@@ -395,8 +392,7 @@ TEST(SyncEndpointTest, AnUnavailableIndexerShedsAtAdmission)
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(503, responder->captured->status);
     // #38880: remoted relays this verbatim, so the agent can tell a shed apart from a dead link.
-    EXPECT_EQ(retryAfter(*responder->captured),
-              std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS});
+    EXPECT_EQ(retryAfter(*responder->captured), std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS});
 }
 
 TEST(SyncEndpointTest, AnExpiredPipelineIs503)
@@ -427,8 +423,7 @@ TEST(SyncEndpointTest, AFullPipelineQueueIs503)
 
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(503, responder->captured->status);
-    EXPECT_EQ(retryAfter(*responder->captured),
-              std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS});
+    EXPECT_EQ(retryAfter(*responder->captured), std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS});
 }
 
 TEST(SyncEndpointTest, TheScanCapacityShedCarriesTheGenericHintNotTheFeedOne)
@@ -470,8 +465,7 @@ TEST(SyncEndpointTest, TheScanCapacityShedCarriesTheGenericHintNotTheFeedOne)
     ASSERT_TRUE(rejected->captured.has_value());
     EXPECT_EQ(503, rejected->captured->status);
     EXPECT_NE(std::string::npos, rejected->captured->body.find("scan capacity exhausted"));
-    EXPECT_EQ(retryAfter(*rejected->captured),
-              std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS});
+    EXPECT_EQ(retryAfter(*rejected->captured), std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS});
 
     fixture.events->openScanGate();
     EXPECT_EQ(200, first->await().status);

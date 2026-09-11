@@ -24,6 +24,7 @@
 #include <chrono>
 #include <future>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 #include <variant>
@@ -43,6 +44,18 @@ namespace
 {
     constexpr auto CLUSTER {"test-cluster"};
     constexpr auto WAIT {std::chrono::seconds {10}};
+
+    std::optional<std::string> retryAfter(const wazuh::uds_http::HttpResponse& response)
+    {
+        for (const auto& [name, value] : response.headers)
+        {
+            if (name == "Retry-After")
+            {
+                return value;
+            }
+        }
+        return std::nullopt;
+    }
 
     /// Resolves a future with the response; safe to fulfill from a worker thread.
     class FutureResponder final : public IHttpResponder
@@ -330,7 +343,10 @@ TEST(SyncPipelineTest, FlushFailureMapsTo503WhenTheConnectorIsUnavailable)
     fixture.events->m_syncAvailable.store(false);
     fixture.events->openFlushGate();
 
-    EXPECT_EQ(503, responder->get().status) << "an indexer outage is retriable, so 503, not 500";
+    const auto flushed = responder->get();
+    EXPECT_EQ(503, flushed.status) << "an indexer outage is retriable, so 503, not 500";
+    EXPECT_EQ(retryAfter(flushed), std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS})
+        << "a retriable outage must say when to come back";
 }
 
 TEST(SyncPipelineTest, AnUnavailableConnectorAtDispatchAnswers503WithoutStaging)
@@ -341,7 +357,9 @@ TEST(SyncPipelineTest, AnUnavailableConnectorAtDispatchAnswers503WithoutStaging)
     auto responder = std::make_shared<FutureResponder>();
     ASSERT_TRUE(fixture.pipeline->enqueue(makeItem(deltaBody("doc-1"), responder)));
 
-    EXPECT_EQ(503, responder->get().status);
+    const auto shed = responder->get();
+    EXPECT_EQ(503, shed.status);
+    EXPECT_EQ(retryAfter(shed), std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS});
     EXPECT_TRUE(fixture.events->syncOps().empty()) << "nothing may be staged into a connector that cannot flush";
 }
 
@@ -419,8 +437,14 @@ TEST(SyncPipelineTest, StopAnswers503ToWhateverWasStillQueued)
     // everything still queued behind it was answered 503 -- either by the draining worker (which
     // saw m_stopping before processing) or by stop()'s own sweep. Nobody is left hanging.
     EXPECT_EQ(200, inFlight->get().status);
-    EXPECT_EQ(503, queuedA->get().status);
-    EXPECT_EQ(503, queuedB->get().status);
+    const auto drainedA = queuedA->get();
+    const auto drainedB = queuedB->get();
+    EXPECT_EQ(503, drainedA.status);
+    EXPECT_EQ(503, drainedB.status);
+    // The stop() drain fires on every manager restart, so these are the most FREQUENT sheds the
+    // fleet sees; they must carry the hint like any other.
+    EXPECT_EQ(retryAfter(drainedA), std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS});
+    EXPECT_EQ(retryAfter(drainedB), std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS});
 
     auto late = std::make_shared<FutureResponder>();
     EXPECT_FALSE(fixture.pipeline->enqueue(makeItem(deltaBody("doc-4"), late))) << "enqueue after stop must refuse";

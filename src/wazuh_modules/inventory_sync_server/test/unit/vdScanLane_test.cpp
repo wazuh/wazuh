@@ -26,6 +26,7 @@
 #include <future>
 #include <json.hpp>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 #include <variant>
@@ -48,6 +49,18 @@ namespace
 {
     constexpr auto CLUSTER {"test-cluster"};
     constexpr auto WAIT {std::chrono::seconds {10}};
+
+    std::optional<std::string> retryAfter(const wazuh::uds_http::HttpResponse& response)
+    {
+        for (const auto& [name, value] : response.headers)
+        {
+            if (name == "Retry-After")
+            {
+                return value;
+            }
+        }
+        return std::nullopt;
+    }
 
     class FutureResponder final : public IHttpResponder
     {
@@ -321,7 +334,9 @@ TEST(VdScanLaneTest, FeedUnreadyAtDispatchCountsOnceAndSamplesLaneTime)
     ASSERT_NE(nullptr, laneTime);
     EXPECT_EQ(2U, laneTime->snapshot().count) << "both outcomes sampled: the 200 AND the header-carrying 503";
 
-    EXPECT_EQ("503 responses carrying a Retry-After header (the CVE feed was not ready)",
+    // Deliberately NOT "503s carrying a Retry-After": since every shed 503 carries one, that
+    // wording would describe all of them while the counter only moves at the two feed gates.
+    EXPECT_EQ("503 responses answered because the CVE feed was not ready",
               metrics->getMetadata("vd.retry_after.total").description);
 }
 
@@ -492,6 +507,7 @@ TEST(VdScanLaneTest, IndexingFailingWithAnUnavailableIndexerAnswers503)
     const auto response = responder->get();
     EXPECT_EQ(503, response.status);
     EXPECT_NE(std::string::npos, response.body.find("Service unavailable"));
+    EXPECT_EQ(retryAfter(response), std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS});
 }
 
 TEST(VdScanLaneTest, StopAnswers503ToQueuedSessions)
@@ -702,6 +718,36 @@ TEST(VdScanLaneTest, EachScanOutcomeMapsToTheStatusTheDispatcherNeeds)
         ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(responder)));
 
         EXPECT_EQ(status, responder->get().status) << "outcome " << static_cast<int>(outcome);
+    }
+}
+
+/// A 503 says "come back later"; a Retry-After puts a floor under WHEN. Skipped means this node
+/// runs no vulnerability scanner -- a stable property of its configuration, just as false in 10 s
+/// as now -- so it must not carry one, while NotReady (a scanner still starting) must.
+TEST(VdScanLaneTest, OnlyATransient503CarriesRetryAfter)
+{
+    {
+        LaneUnderTest fixture;
+        fixture.events->m_vdAgentScanOutcome.store(invsync::vd::AgentScanOutcome::Skipped);
+        auto responder = std::make_shared<FutureResponder>();
+        ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(responder)));
+
+        const auto response = responder->get();
+        EXPECT_EQ(503, response.status);
+        EXPECT_EQ(retryAfter(response), std::nullopt)
+            << "a node that runs no scanner will still run none in 10 s; a hint there invites the "
+               "retry the status is refusing";
+    }
+    {
+        LaneUnderTest fixture;
+        fixture.events->m_vdAgentScanOutcome.store(invsync::vd::AgentScanOutcome::NotReady);
+        auto responder = std::make_shared<FutureResponder>();
+        ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(responder)));
+
+        const auto response = responder->get();
+        EXPECT_EQ(503, response.status);
+        EXPECT_EQ(retryAfter(response), std::optional<std::string> {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS})
+            << "a scanner that is merely not ready yet is transient, so it must say when to retry";
     }
 }
 

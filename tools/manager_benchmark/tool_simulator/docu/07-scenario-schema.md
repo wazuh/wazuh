@@ -165,7 +165,7 @@ budget spent).
 
 ```json
 "expected": {
-  "sessions":  { "ok": { "eq": 48 }, "s5xx": { "eq": 0 }, "s503_retry_after": { "gte": 1 } },
+  "sessions":  { "ok": { "eq": 48 }, "s5xx": { "eq": 0 }, "retries_feed": { "gte": 1 } },
   "stateless": { "s202": { "gte": 1 } },
   "scan":      { "sent": { "eq": 100 }, "other": { "eq": 0 } },
   "control":   { "startup_err": { "eq": 0 } },

@@ -239,12 +239,14 @@ namespace invsync::vd
             m_requestCounters.count(status);
             observeLaneTime(item);
             auto response = wazuh::uds_http::HttpResponse::json(status, body);
-            if (status == 503)
+            // "Retry later" only where later could plausibly differ: shutting down, indexer
+            // unavailable, connector failure, scanner still starting. NOT for SCAN_NO_SCANNER_BODY
+            // -- that is a stable property of this node's configuration, false again in 10 s and in
+            // 10 days, and a hint there would invite exactly the retry the status is refusing.
+            // The feed re-check below does not come through here either: it needs the configured,
+            // feed-sized value instead of the generic hint.
+            if (status == 503 && body != SCAN_NO_SCANNER_BODY)
             {
-                // Every 503 a lane worker answers -- shutting down, indexer unavailable, connector
-                // failure -- is "retry later", so it carries the generic shed hint. The one 503
-                // that must NOT come through here is the feed re-check below, which needs the
-                // configured, feed-sized value instead.
                 response.headers.emplace_back("Retry-After", wazuh::uds_http::SHED_RETRY_AFTER_SECONDS);
             }
             item.responder->send(std::move(response));

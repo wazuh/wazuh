@@ -123,7 +123,7 @@ bounded in two phases, and excess load is shed with a plain `503`:
    a route runs. The liveness `GET /` is exempt, so it keeps answering `200` under pressure.
 2. **Deferred-work limiter** — bounds how many requests are parked awaiting a downstream service.
 
-Neither sends `Retry-After`: this is server-side load-shedding, not per-client rate-limiting, and the
+Both send `Retry-After`: this is server-side load-shedding, not per-client rate-limiting, but the agent still needs to tell a shed apart from a broken link, and the
 agent runs its own retry/backoff. See [Configuration](configuration.md) for the sizing knobs and
 [Metrics](metrics.md) for what to watch.
 

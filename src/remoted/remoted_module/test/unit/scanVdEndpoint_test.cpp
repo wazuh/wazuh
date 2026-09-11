@@ -306,6 +306,16 @@ TEST_F(ScanVdEndpointTest, VdRejectedReturns503WithVdsOwnErrorCode)
     ASSERT_TRUE(responder.done());
     EXPECT_EQ(responder.captured().status, 503);
     EXPECT_EQ(responder.captured().body, R"({"error":"scan_queue_full"})");
+    // A feed-offset bump reaches the whole fleet through /control, so every agent re-scans at once
+    // and this queue is the one that fills by construction. Without the hint the agent retries on
+    // the cadence of a broken link, which is the storm the header exists for.
+    const auto& headers = responder.captured().headers;
+    EXPECT_NE(std::find_if(headers.begin(),
+                           headers.end(),
+                           [](const auto& h)
+                           { return h.first == "Retry-After" && h.second == remoted::http::SHED_RETRY_AFTER_SECONDS; }),
+              headers.end())
+        << "a capacity 503 on /scan/vd must carry Retry-After";
 }
 
 TEST_F(ScanVdEndpointTest, VdRejectedWithoutACodeFallsBackToVdError)

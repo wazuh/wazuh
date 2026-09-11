@@ -70,14 +70,18 @@ namespace remoted::http
     };
 
     /// `Retry-After` attached to every load-shedding 503 remoted produces itself (the global
-    /// in-flight byte budget, deferred-slot exhaustion, and the endpoints' collapse of a downstream
-    /// failure). A shed request is then distinguishable from a network blip, and the fleet's first
-    /// retry is spread instead of each agent walking its own curve. One uniform value on purpose:
-    /// it is a DELAY, not a cause, so it tells the agent nothing about which limit tripped. Matches
-    /// what the sync server sends on its own sheds (uds_http::SHED_RETRY_AFTER_SECONDS) so a
-    /// forwarded hint and a locally-produced one agree. The agent waits `max(hint, its own
-    /// full-jitter backoff)` (retrySender.cpp's delayFor), so this only ever raises a
-    /// near-immediate retry -- it can never make one slower than the agent already intended.
+    /// in-flight byte budget, deferred-slot exhaustion, the `/scan/vd` dispatcher queue, an
+    /// unreachable authd, and the endpoints' collapse of a downstream failure). A shed request is
+    /// then distinguishable from a network blip instead of being retried on the cadence of a broken
+    /// link. One uniform value on purpose: it is a DELAY, not a cause, so it tells the agent nothing
+    /// about which limit tripped. Matches what the sync server sends on its own sheds
+    /// (uds_http::SHED_RETRY_AFTER_SECONDS, tied to this one by a static_assert in
+    /// remotedModuleFacade.hpp) so a forwarded hint and a locally-produced one agree.
+    ///
+    /// What this buys is DEFERRAL, not dispersion -- see the fuller note on the uds_http constant.
+    /// The agent waits `max(hint, its own full-jitter backoff)` (retrySender.cpp's delayFor), so it
+    /// can never make a retry sooner than the agent intended, but while the agent's ceiling is under
+    /// 10 s this floor is what every agent uses, so those retries arrive together.
     constexpr const char* SHED_RETRY_AFTER_SECONDS {"10"};
 
     /**

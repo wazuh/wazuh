@@ -707,7 +707,7 @@ Maximum requests parked awaiting a downstream service before replying with HTTP 
 
 - **Default value:** `256`
 - **Allowed values:** Integer from `1` to `65536`
-- **Note:** No `Retry-After` header is sent; the agent runs its own retry/backoff on a 503. If you
+- **Note:** The `503` carries a fixed `Retry-After`; the agent waits the longer of that and its own retry/backoff. If you
   see warnings about this limit being reached, consider increasing it or investigating why the
   downstream service is slow. Live occupancy and the cumulative shed count are visible as
   `remoted.forwarder.deferred.*` in

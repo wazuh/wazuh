@@ -20,12 +20,19 @@ const octetStream = "application/octet-stream"
 // rate limiter and the 503 retry contracts), and records the outcome.
 //
 // Two distinct 503 retry paths, because they mean different things:
-//   - 503 WITH Retry-After (FR-11): the CVE feed is still downloading. The
-//     header dictates the delay and --feed-timeout bounds the budget.
-//   - 503 WITHOUT the header: backpressure (pipeline full, scan lane full,
-//     indexer unhealthy). A real agent re-POSTs the same session, so the
-//     sender does too: scenario retry interval (default 500ms), bounded by
-//     max_attempts (default 10 sends). Shed-counting scenarios disable it.
+//   - feed-not-ready (FR-11): the CVE feed is still downloading. Retry-After
+//     dictates the delay and --feed-timeout bounds the budget.
+//   - backpressure: pipeline full, scan lane full, indexer unhealthy. A real
+//     agent re-POSTs the same session, so the sender does too: scenario retry
+//     interval (default 500ms), bounded by max_attempts (default 10 sends).
+//     Shed-counting scenarios disable it.
+//
+// They are told apart by the BODY, not by the presence of Retry-After: since
+// wazuh/wazuh#38880 every shed 503 carries the header too, so keying on it
+// would route every backpressure shed into the feed branch and leave the
+// backpressure branch dead (retries_503 stuck at 0, and retry.enabled=false
+// scenarios retrying anyway). Only the feed gate names itself in the body, and
+// only its delay is the configured, feed-sized one.
 //
 // Every attempt takes a token from the shared limiter and is recorded: a retry
 // is real traffic the server answered, so sessions_sent counts attempts, and
@@ -81,12 +88,15 @@ func (a *agent) runSession(ctx context.Context, lane string, step scenario.Step)
 		}
 		noop := isNoop(resp.Body)
 		hasRetry := resp.RetryAfter != ""
+		// s503_retry_after still counts the header (it is what the wire carries); the BRANCH below
+		// keys on the body, which is the only thing that still identifies the feed gate.
 		a.r.reg.RecordSession(a.fleet.Name, lane, resp.Status, noop, hasRetry, us(resp.Latency), uint64(len(body)), uint64(docs))
 
 		if resp.Status != 503 {
 			return
 		}
-		if hasRetry {
+		feedNotReady := hasRetry && strings.Contains(string(resp.Body), "vulnerability feed not ready")
+		if feedNotReady {
 			if time.Now().After(feedDeadline) {
 				a.r.reg.RecordRetryExhausted(a.fleet.Name, lane)
 				return

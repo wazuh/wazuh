@@ -62,7 +62,7 @@ below. Status: **kept** = the module provides it; **superseded by D-n** = delibe
 |---|---|---|
 | RNF-1 | Preserve the 9 security controls: anti-spoofing, index allowlists, authoritative `wazuh.*` overlay, strict JSON, `external_gte` guard, idempotency, admission quota, cluster isolation | [Validation](#validation-syncfullsessionvalidator), [the allowlist](#the-allowlist-syncstateindexallowlisthpp), the overlay in `sessionProcessor` |
 | RNF-2 | No head-of-line blocking: no sleeps or unbounded waits on the completion path | sharding + the VD lane; a slow agent/scan delays only its shard/lane |
-| RNF-3 | Explicit backpressure at admission and ingestion (no silent drops) | the four `503` gates; every refusal is an HTTP answer, and every one carries a `Retry-After` |
+| RNF-3 | Explicit backpressure at admission and ingestion (no silent drops) | the four `503` gates; every refusal is an HTTP answer, and each of these carries a `Retry-After` (the module's other endpoints — config, stats, metrics, delete-agent, vd-scan — are not agent-facing and are unchanged) |
 | RNF-4 | Every abort observable by the agent | deferred responders always answer (weak captures → `503`; batch abandoned on stop → `503`) |
 | RNF-5 | Deterministic teardown; no half-built startup states | [Lifecycle](#lifecycle-the-facade): phased build, reverse teardown, startup gate |
 | RNF-6 | Unit-testability of the orchestration | seams: `IIndexerConnectorSync`, `IVdScanner`, test hooks ([Tests](#tests)) |

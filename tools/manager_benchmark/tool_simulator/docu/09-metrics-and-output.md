@@ -81,7 +81,7 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
   },
   "totals": {
     "sessions": { "sent": 240000, "ok": 239880, "noop": 120, "s400": 0, "s403": 0, "s409": 0,
-                  "s401": 0, "s413": 0, "s500": 0, "s503": 120, "s503_retry_after": 0, "other": 0,
+                  "s401": 0, "s413": 0, "s500": 0, "s503": 120, "s503_retry_after": 120, "other": 0,
                   "abandoned_on_drain": 0 },
     "stateless": { "sent": 6000, "s202": 6000, "s400": 0, "s413": 0, "s503": 0, "other": 0,
                    "events_sent": 1500000 },

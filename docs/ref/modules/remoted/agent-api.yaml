@@ -465,9 +465,11 @@ paths:
         "503":
           description: |
             Out of capacity, the sync server was unreachable or did not answer in time, or it shed
-            the session itself. Always carries a `Retry-After`: relayed verbatim from the sync server
-            when the 503 is the session result (so a not-ready CVE feed sends its own, feed-sized
-            value), otherwise remoted's own fixed shed value.
+            the session itself. Carries a `Retry-After`: relayed verbatim from the sync server when
+            the 503 is the session result and its value is digits-only (so a not-ready CVE feed sends
+            its own, feed-sized value), otherwise remoted's own fixed shed value. A contract 503
+            whose relayed value is malformed is forwarded WITHOUT the header rather than with a
+            substituted one -- remoted does not paper over a misbehaving downstream.
           headers:
             Retry-After:
               description: |

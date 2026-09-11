@@ -12,7 +12,7 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
   metadata/group reconciliation, all answered synchronously with the contract's status codes
   (`200` ok/noop, `400`, `403` identity mismatch, `409` checksum mismatch (or `version_mismatch`
   for a VDFirst/VDSync session whose `feed_offset` is stale), `413` over budget, `500` failed with
-  nothing indexed, `503` + optional `Retry-After`).
+  nothing indexed, `503` + `Retry-After`).
 - **Per-agent ordering by construction**: sessions are applied by workers sharded on the agent id
   (one indexer connector per worker, group-commit bulk flushes), so two requests of the same agent
   can never be reordered.
@@ -97,7 +97,7 @@ agent's documents). The situations an operator will recognize:
   the VD lane's capacity — see the
   [503 troubleshooting entry](configuration.md#requests-are-answered-503-under-load) for which
   option matches which gate. Sheds are expected backpressure: agents retry on their own.
-- **What does `Retry-After` mean?** Only one `503` carries it: the CVE feed is still downloading,
+- **What does `Retry-After` mean?** Every shed `503` carries a fixed one; only the CVE-feed gate carries the configured, longer value,
   so vulnerability-detection sessions are rejected *without processing* and the agent re-sends
   the same session after the given seconds. No other `503` schedules the retry for the agent.
 - **Why did an agent full-resync out of nowhere?** Its `ModuleCheck` answered `409` — the
