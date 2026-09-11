@@ -1852,9 +1852,14 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
     return 0;
 }
 
+/* Minimum time between repeated "queue is full" warnings for the same target, so a
+ * sustained outage stays visible in the log instead of going quiet after the first drop. */
+#define W_MSG_QUEUE_FULL_WARN_INTERVAL 60
+
 int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsigned long size, logtarget * log_target, char queue_mq) {
     w_message_t *message;
-    static int reported = 0;
+    static time_t last_warned = 0;
+    static unsigned long dropped_since_warning = 0;
     int result;
 
     w_mutex_lock(&msg->mutex);
@@ -1872,13 +1877,21 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
         w_cond_signal(&msg->available);
     }
 
-    if ((result < 0) && !reported) {
-        #ifndef WIN32
-            mwarn("Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
-        #else
-            mwarn("Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
-        #endif
-            reported = 1;
+    if (result < 0) {
+        dropped_since_warning++;
+
+        time_t now = time(NULL);
+        if (now - last_warned >= W_MSG_QUEUE_FULL_WARN_INTERVAL) {
+            #ifndef WIN32
+                mwarn("Target '%s' message queue is full (%zu). %lu log line(s) lost since the last warning.",
+                      log_target->log_socket->name, msg->msg_queue->size, dropped_since_warning);
+            #else
+                mwarn("Target '%s' message queue is full (%u). %lu log line(s) lost since the last warning.",
+                      log_target->log_socket->name, msg->msg_queue->size, dropped_since_warning);
+            #endif
+            last_warned = now;
+            dropped_since_warning = 0;
+        }
     }
 
     w_mutex_unlock(&msg->mutex);
