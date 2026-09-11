@@ -317,6 +317,10 @@ stop_service()
         fi
 
         rm -f ${DIR}/var/run/${i}-*.pid
+        if [ "$i" = "wazuh-agentd" ]; then
+            # Fixed-path PID file, written only for wazuh-agent.service's PIDFile=.
+            rm -f ${DIR}/var/run/wazuh-agentd.pid
+        fi
     done
 
     echo "Wazuh $VERSION Stopped"

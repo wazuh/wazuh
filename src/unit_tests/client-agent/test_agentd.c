@@ -21,8 +21,10 @@
 
 /* agentd.c calls w_https_client_start()/w_https_client_stop(), which would drag
  * https_client_bridge.o (and its hc_* module references) into this test binary.
- * test_agentd does not exercise the client, so stub the two entry points. */
-void __wrap_w_https_client_start(void) {}
+ * test_agentd does not exercise the client, so stub the two entry points.
+ * The stub reports success: AgentdStart() now merror_exit()s on a false
+ * return, which none of these tests expect. */
+bool __wrap_w_https_client_start(void) { return true; }
 void __wrap_w_https_client_stop(void) {}
 
 static int setup_group(void **state) {

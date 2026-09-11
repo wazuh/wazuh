@@ -18,11 +18,17 @@
 #include "https_client.h" // hc_enroll_result_t
 
 /**
- * @brief Start the HTTPS client module unconditionally. Relies on
- *        client-agent/src/main.c having already refused to start the agent
- *        (a hard exit) unless a validated server address is configured.
+ * @brief Start the HTTPS client module. client-agent/src/main.c already
+ *        refused to start the agent (a hard exit) unless a validated server
+ *        address is configured, but transport options (e.g. the backoff
+ *        base/cap pair) are only validated here, once the module builds its
+ *        config -- so this can still fail after main.c's checks passed.
+ * @return true once the client is created and running; false if the config
+ *         was rejected or the client failed to start (already logged via
+ *         merror by this call). The caller must not treat false as a
+ *         functioning transport.
  */
-void w_https_client_start(void);
+bool w_https_client_start(void);
 
 /** @brief Stop and destroy the HTTPS client module if it was started. */
 void w_https_client_stop(void);

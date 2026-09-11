@@ -452,8 +452,12 @@ int local_start()
      * the Windows startup path is separate). Started before any producer
      * thread: on Windows the modules call SendMSG in-process, so an event
      * emitted before the accumulator exists is dropped outright rather than
-     * waiting in a queue as it would on POSIX. */
-    w_https_client_start();
+     * waiting in a queue as it would on POSIX. Its own failure paths already
+     * logged the reason via merror; exit here rather than run on with no way
+     * to ever reach the manager. */
+    if (!w_https_client_start()) {
+        merror_exit("https_client: startup failed. Exiting.");
+    }
     atexit(w_https_client_stop);
 
     /* Start syscheck thread */
