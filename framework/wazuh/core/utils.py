@@ -969,7 +969,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
         for val in value1:
             if op == '~':
                 # value1 should be str if operator is '~'
-                val = str(val) if type(val) == int else val
+                val = val if isinstance(val, str) else str(val)
                 if value2 in val:
                     return True
             else:

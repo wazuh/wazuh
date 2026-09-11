@@ -1859,6 +1859,24 @@ def test_filter_array_by_query_typed_fields_bool(q, expected_ids):
     assert [item['id'] for item in result] == expected_ids
 
 
+@pytest.mark.parametrize('q, array, expected_ids', [
+    # `~` only cast an int value to str; a bool or datetime value raised TypeError
+    # (`value2 in val` on a non-iterable) instead of matching or not.
+    ('revoked~True', [{'id': 'a', 'revoked': True}, {'id': 'b', 'revoked': False}], ['a']),
+    ('revoked~alse', [{'id': 'a', 'revoked': True}, {'id': 'b', 'revoked': False}], ['b']),
+    ('created~2026-01',
+     [{'id': 'a', 'created': datetime.datetime(2026, 1, 1)},
+      {'id': 'b', 'created': datetime.datetime(2027, 1, 1)}],
+     ['a']),
+])
+def test_filter_array_by_query_contains_non_str(q, array, expected_ids):
+    """Test that `~` no longer raises TypeError on a field whose value is a real bool or
+    datetime object -- it now casts any non-str value to str, the same as it already did for int."""
+    result = utils.filter_array_by_query(q, array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
 @pytest.mark.parametrize('select, required_fields, expected_result', [
     (['single_select', 'nested1.nested12.nested121'], {'required'}, {'required': None,
                                                                      'single_select': None,
