@@ -149,9 +149,15 @@ int w_agent_token_bootstrap(int uid, int gid) {
     hc_enroll_request_t enroll_request;
     hc_enroll_result_t enroll_result;
 
+    /* Both latches below discard the token on their way out. It is a one-shot credential, and
+     * once either of these is true it can never be used again -- but it was only ever deleted
+     * on the success path, so a reinstall over an enrolled agent left it sitting at rest
+     * indefinitely with nothing left that would consume it. Removing it is not conditional on
+     * having used it; it is conditional on it no longer being usable. */
     if (IsFile(AGENT_ANCHOR_CA) == 0) {
         /* Latch: an anchor already on disk means a previous boot already completed the
          * bootstrap. Never re-fetch once one is committed. */
+        unlink(AGENT_ENROLLMENT_TOKEN_FILE);
         return 0;
     }
 
@@ -159,6 +165,7 @@ int w_agent_token_bootstrap(int uid, int gid) {
         /* Already enrolled: nothing left to do. IsFile() alone can't tell this apart from
          * the empty placeholder client.keys the package installs by default -- only a
          * non-empty file means a real ID/NAME/IP/KEY entry exists. */
+        unlink(AGENT_ENROLLMENT_TOKEN_FILE);
         return 0;
     }
 
