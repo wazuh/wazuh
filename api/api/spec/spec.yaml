@@ -1024,6 +1024,7 @@ components:
           type: integer
           format: int32
           minimum: 0
+          maximum: 4294967295
         description:
           description: "Free text shown when listing the tokens"
           type: string
