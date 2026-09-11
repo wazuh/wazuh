@@ -448,9 +448,16 @@ introducing a second one for the same concept.
 
 Maximum number of open file descriptors for the remoted process.
 
-- **Default value:** `458752`
-- **Allowed values:** Positive integer
-- **Note:** The default already supports ~200K concurrent connections. Only increase above the default (up to the allowed maximum of `1048576`) if you observe file-descriptor exhaustion under very large agent counts — do not set below the default of `458752`.
+- **Default value:** `65536`
+- **Allowed values:** Integer from `1024` to `1048576`
+- **Note:** The default is the ceiling the service unit (`LimitNOFILE=65536`) and the SysV init
+  scripts start the manager under, so it is reached on any package installation. The process cannot
+  raise its limit above that ceiling: asking for more without `CAP_SYS_RESOURCE` (typically inside a
+  container) logs `Could not set resource limit for file descriptors` as an ERROR and remoted keeps
+  the inherited limit. HTTPS connections are bounded by `remoted.max_parallel_connections` (default
+  `512`), far below this value; only a large 4.x fleet on the legacy TCP listener needs more, and then
+  the supervisor's ceiling must be raised together with this option. See
+  [File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits).
 
 ### remoted.send_chunk
 
@@ -1187,11 +1194,11 @@ Internal options (`/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`):
 ```conf
 remoted.control_msg_queue_size=32768
 remoted.keyupdate_interval=30
-remoted.rlimit_nofile=524288
 ```
 
-Only raise `rlimit_nofile` above its default (`458752`) if you observe file-descriptor exhaustion
-under very large fleets; do not set it lower than the default for a scale-up scenario.
+`rlimit_nofile` stays at its default (`65536`): it already equals the ceiling the manager is started
+under, and a higher value only takes effect if that ceiling is raised with it (see
+[File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits)).
 
 ### High Throughput (>50K events/sec)
 
