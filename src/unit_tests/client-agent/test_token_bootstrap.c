@@ -285,7 +285,7 @@ static void test_no_token_file_is_noop(void **state) {
     assert_int_not_equal(IsFile("etc/client.keys"), 0);
 }
 
-static void test_anchor_already_present_is_noop(void **state) {
+static void test_anchor_already_present_skips_and_discards_the_token(void **state) {
     (void) state;
     write_file("etc/certs/root-ca.pem", "EXISTING-ANCHOR");
     write_token_file(true, true, NULL);
@@ -293,12 +293,14 @@ static void test_anchor_already_present_is_noop(void **state) {
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
     assert_int_equal(g_fetch_call_count, 0);
     assert_int_equal(g_enroll_call_count, 0);
-    /* The latch short-circuits before the token is ever read, let alone consumed. */
-    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+    /* Nothing is fetched or enrolled, and the anchor already in place is untouched -- but the
+     * token is removed all the same. It is one-shot, this agent is past the point of using it,
+     * and leaving it would keep a credential on disk that nothing will ever consume. */
+    assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
     assert_string_equal(read_file("etc/certs/root-ca.pem"), "EXISTING-ANCHOR");
 }
 
-static void test_already_enrolled_is_noop(void **state) {
+static void test_already_enrolled_skips_and_discards_the_token(void **state) {
     (void) state;
     write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
     write_token_file(true, true, NULL);
@@ -307,6 +309,9 @@ static void test_already_enrolled_is_noop(void **state) {
     assert_int_equal(g_fetch_call_count, 0);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    /* Same reasoning as the anchor latch above: an agent that already holds a key will never
+     * spend this token, so it does not stay on disk. */
+    assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
 }
 
 /* Regression test: client.keys can exist as an empty 0-byte placeholder (the package's own
@@ -537,8 +542,8 @@ static void test_full_happy_path_via_ca_pem(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_no_token_file_is_noop, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_anchor_already_present_is_noop, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_already_enrolled_is_noop, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_anchor_already_present_skips_and_discards_the_token, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_already_enrolled_skips_and_discards_the_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_empty_placeholder_keys_file_is_not_already_enrolled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_malformed_token_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_failure_logs_named_error_and_writes_nothing, setup_test, teardown_test),
