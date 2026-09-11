@@ -79,7 +79,9 @@ _ssl_context_cache: Optional[ssl.SSLContext] = None
 _ssl_context_cache_key: Optional[tuple] = None
 
 
-def _create_ssl_context(client_cert: str, client_key: str, ca_certs: str) -> ssl.SSLContext:
+def _create_ssl_context(
+    client_cert: Optional[str], client_key: Optional[str], ca_certs: List[str]
+) -> ssl.SSLContext:
     """
     Create and cache SSL context for indexer connections.
 
@@ -92,12 +94,14 @@ def _create_ssl_context(client_cert: str, client_key: str, ca_certs: str) -> ssl
 
     Parameters
     ----------
-    client_cert : str
-        Path to client certificate file
-    client_key : str
-        Path to client key file
-    ca_certs : str
-        Path to CA certificate file
+    client_cert : str, optional
+        Path to client certificate file. None for no client certificate (basic
+        auth only).
+    client_key : str, optional
+        Path to client key file. None for no client certificate.
+    ca_certs : list of str
+        Paths to CA certificate files, trusted exclusively (no system trust
+        store fallback). Empty to use the system trust store instead.
 
     Returns
     -------
@@ -106,7 +110,7 @@ def _create_ssl_context(client_cert: str, client_key: str, ca_certs: str) -> ssl
     """
     global _ssl_context_cache, _ssl_context_cache_key
 
-    cache_key = (client_cert, client_key, ca_certs)
+    cache_key = (client_cert, client_key, tuple(ca_certs))
 
     # Fast path: check cache without lock
     if _ssl_context_cache is not None and _ssl_context_cache_key == cache_key:
@@ -118,11 +122,18 @@ def _create_ssl_context(client_cert: str, client_key: str, ca_certs: str) -> ssl
         if _ssl_context_cache is not None and _ssl_context_cache_key == cache_key:
             return _ssl_context_cache
 
+        # The first CA (if any) goes through create_default_context, which loads the
+        # system trust store only when cafile is None. Every additional CA is trusted
+        # on top of that via load_verify_locations, which accumulates rather than
+        # replacing, so all configured CAs end up trusted instead of only the first.
         context = ssl.create_default_context(
             purpose=ssl.Purpose.SERVER_AUTH,
-            cafile=ca_certs
+            cafile=ca_certs[0] if ca_certs else None
         )
-        context.load_cert_chain(certfile=client_cert, keyfile=client_key)
+        for extra_ca in ca_certs[1:]:
+            context.load_verify_locations(cafile=extra_ca)
+        if client_cert and client_key:
+            context.load_cert_chain(certfile=client_cert, keyfile=client_key)
         logger.debug("Created cached SSL context for indexer connections")
 
         _ssl_context_cache = context
@@ -494,8 +505,6 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         )
 
     ssl_config = indexer_section.get("ssl", {})
-    if not ssl_config:
-        raise IndexerUnavailableError(code=2200, extra_message="Missing SSL configuration")
 
     try:
         with KeystoreClient() as ks_client:
@@ -552,25 +561,37 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     except Exception as e:
         raise IndexerUnavailableError(code=2200, extra_message=f"Failed to parse host URLs: {e}")
 
-    # Validate SSL certificate paths
-    required_cert_paths = [
-        ("client_cert", ssl_config.get("certificate", [])),
-        ("client_key", ssl_config.get("key", [])),
-        ("ca_certs", ssl_config.get("certificate_authorities", [{}])[0].get("ca", [])),
-    ]
+    # TLS material is optional per the configuration schema: an empty certificate/key
+    # means no client certificate, an empty CA list means the system trust store. An
+    # empty entry inside an otherwise non-empty list is neither: it can never resolve to
+    # a usable file, so it is rejected the same way a lone certificate/key is.
+    certificate = ssl_config.get("certificate") or ""
+    key = ssl_config.get("key") or ""
+    cas = ssl_config.get("certificate_authorities") or []
 
-    for cert_name, cert_path_list in required_cert_paths:
-        if not cert_path_list or not cert_path_list[0]:
-            raise IndexerUnavailableError(
-                code=2200, extra_message=f"Missing or empty {cert_name} path"
-            )
+    if bool(certificate) != bool(key):
+        raise IndexerUnavailableError(
+            code=2200,
+            extra_message="indexer.ssl.certificate and indexer.ssl.key must be set together",
+        )
 
-    client_cert = resolve_wazuh_path(ssl_config["certificate"][0])
-    client_key = resolve_wazuh_path(ssl_config["key"][0])
-    ca_certs = resolve_wazuh_path(ssl_config["certificate_authorities"][0]["ca"][0])
+    if any(not ca for ca in cas):
+        raise IndexerUnavailableError(
+            code=2200,
+            extra_message="indexer.ssl.certificate_authorities must not contain empty entries",
+        )
+
+    client_cert = resolve_wazuh_path(certificate) if certificate else None
+    client_key = resolve_wazuh_path(key) if key else None
+    ca_certs = [resolve_wazuh_path(ca) for ca in cas]
 
     # Create cached SSL context to prevent repeated certificate file reads
-    ssl_context = _create_ssl_context(client_cert, client_key, ca_certs)
+    try:
+        ssl_context = _create_ssl_context(client_cert, client_key, ca_certs)
+    except IndexerUnavailableError:
+        raise
+    except Exception as e:
+        raise IndexerUnavailableError(code=2200, extra_message=f"Failed to build SSL context: {e}")
 
     # Create indexer client with cached SSL context
     try:
