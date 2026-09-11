@@ -24,6 +24,22 @@
 /* Default lifetime of a token when the caller gives none: 30 days */
 #define ETOKEN_DEFAULT_TTL 2592000L
 
+/* Longest lifetime a mint accepts: 10 years, already far beyond any rollout a token is minted for.
+ *
+ * The bound is not about taste. An entry's expiry is `now + ttl` in a signed time_t, and a lifetime
+ * near the type's own maximum wraps into a NEGATIVE expiry -- a value the store's own loader
+ * refuses (etoken_parse_entry()). One such record is enough to matter: the master persists it,
+ * answers success, and at its next restart the file is one the loader drops a token from; the
+ * workers receive the same file through the cluster. Refusing the lifetime is what keeps the store
+ * something authd can always read back. */
+#define ETOKEN_MAX_TTL 315360000L
+
+/* Longest `description` and `prefix` a mint accepts. Free text from an operator, but text that is
+ * persisted in the file the cluster replicates and re-serialized on every consumed use, so it is
+ * bounded where both the socket and the command line pass rather than left to whatever arrives */
+#define ETOKEN_DESCRIPTION_MAX 256
+#define ETOKEN_PREFIX_MAX 256
+
 /* Most tokens the store will hold. A mint that would cross it purges the dead entries first and is
  * only refused when that many tokens are still alive. Sized against the file remoted will accept:
  * an entry measures ~240 bytes, or ~1.4 KB when the operator embeds the CA, so 5000 of the widest

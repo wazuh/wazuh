@@ -191,6 +191,10 @@ namespace remoted::auth
         /// Throttles the "store is malformed / unreadable" warning: the watcher retries every
         /// m_refreshIntervalSeconds, so a bad file would otherwise flood wazuh-manager.log.
         remoted::common::LogThrottle m_invalidThrottle;
+
+        /// The same, for a file that DID load with some of its records dropped: counted apart so the
+        /// two warnings never report each other's totals.
+        remoted::common::LogThrottle m_droppedThrottle;
     };
 
 } // namespace remoted::auth

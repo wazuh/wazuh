@@ -417,6 +417,7 @@ w_etoken_error_t w_etoken_decode(const char *text, w_etoken_t *out)
     cJSON *key = NULL;
     uint8_t *bytes = NULL;
     size_t bytes_len = 0;
+    size_t json_len = 0;
     etoken_adr parsed;
     w_etoken_error_t result = ETOKEN_MALFORMED;
 
@@ -430,6 +431,22 @@ w_etoken_error_t w_etoken_decode(const char *text, w_etoken_t *out)
         return ETOKEN_MALFORMED;
     }
 
+    /* An embedded NUL is not a token, and it has to be refused HERE rather than left to the parser.
+     * cJSON takes the length of the document from strlen(), so everything after a NUL would never
+     * be looked at: `require_null_terminated` below would validate only the prefix, the member
+     * check would only see the prefix's members, and the cleanse at the end would wipe only the
+     * prefix -- leaving the rest of a credential in freed memory. It would also mean unlimited
+     * different texts decoding to one token, which is precisely what the codec promises cannot
+     * happen (b64url_op.h: "two different texts can therefore never decode to the same bytes").
+     * That promise holds at the base64 layer; this is what makes it hold at the JSON layer too
+     * (issue #39133).
+     */
+    if (memchr(raw, '\0', raw_len) != NULL) {
+        OPENSSL_cleanse(raw, raw_len);
+        free(raw);
+        return ETOKEN_MALFORMED;
+    }
+
     if ((json = (char *) malloc(raw_len + 1)) == NULL) {
         OPENSSL_cleanse(raw, raw_len);
         free(raw);
@@ -438,6 +455,7 @@ w_etoken_error_t w_etoken_decode(const char *text, w_etoken_t *out)
 
     memcpy(json, raw, raw_len);
     json[raw_len] = '\0';
+    json_len = raw_len;
     OPENSSL_cleanse(raw, raw_len);
     free(raw);
 
@@ -553,7 +571,9 @@ end:
     cJSON_Delete(root);
 
     if (json != NULL) {
-        OPENSSL_cleanse(json, strlen(json));
+        /* The decoded length, not strlen(): the two agree because a blob with an embedded NUL was
+         * refused above, and saying so explicitly keeps the wipe complete if that ever changes */
+        OPENSSL_cleanse(json, json_len);
         free(json);
     }
 
