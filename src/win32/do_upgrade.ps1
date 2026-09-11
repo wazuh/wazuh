@@ -254,172 +254,12 @@ if ($normalizedWazuhDir -ne $currentDir) {
     abort_upgrade "2"
 }
 
-# Default drop-in location for the manager's CA (mirrored on Linux/macOS in
-# pkg_installer.sh): an operator can place it here ahead of an upgrade without having
-# to hand-edit ossec.conf, and it also doubles as the on-disk anchor path for a CA
-# delivered by the manager (below). Resolves to <install_dir>\certs\root-ca.pem, same
-# as AGENT_ANCHOR_CA (src/shared/include/defs.h) on Windows.
-$default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
-
-# Detect and validate a manager-delivered CA. The manager streams its root CA
-# into the incoming-transfer directory under this reserved filename over the com
-# channel, before issuing the upgrade command -- never look in the upgrade
-# directory (".\upgrade"), since it is cleared before this script runs, same as
-# UPGRADE_DIR on the Linux/macOS side. Runs at the very start of the script, ahead of
-# the manager connectivity check and the <ssl> gate below.
-#
-# Installing the file is the entire cutover here -- ossec.conf is never edited. Mirrors
-# pkg_installer.sh's INCOMING_CA_FILE handling; see that file for the
-# full rationale on why wiring this into <ssl><certificate_authorities> is a separate,
-# explicitly recorded decision rather than done implicitly here.
-$incoming_ca_file = Join-Path $wazuhDir "incoming\root-ca.pem"
-
-# incoming\ is written by com's own transfer, but is not exclusively Wazuh-controlled --
-# reject a reparse point (symlink/junction) outright rather than read through it, same
-# reasoning as pkg_installer.sh's symlink rejection for the equivalent Linux/macOS path.
-$incoming_item = Get-Item -Force -ErrorAction SilentlyContinue $incoming_ca_file
-if ($incoming_item -and $incoming_item.LinkType) {
-    Write-Output "$(Get-Date -format u) - A CA arrived at $($incoming_ca_file) as a $($incoming_item.LinkType); refusing to follow it, discarding it and continuing the upgrade unverified." >> .\upgrade\upgrade.log
-    Remove-Item -Force -ErrorAction SilentlyContinue $incoming_ca_file
-} elseif (Test-Path -PathType Leaf $incoming_ca_file) {
-    Write-Output "$(Get-Date -format u) - Found a CA delivered by the manager at $($incoming_ca_file), validating it." >> .\upgrade\upgrade.log
-
-    $ca_reject_reason = $null
-    $ca_cert = $null
-    $ca_pem = $null
-
-    try {
-        $ca_pem = Get-Content -Path $incoming_ca_file -Raw
-    } catch {
-        $ca_reject_reason = "could not be read ($($_.Exception.Message))"
-    }
-
-    # Cheap bound before ever parsing it: empty or implausibly large for a CA
-    # certificate is rejected the same way a malformed one is.
-    if (-Not $ca_reject_reason -and ([string]::IsNullOrEmpty($ca_pem) -or $ca_pem.Length -gt 65536)) {
-        $ca_reject_reason = "is empty or larger than the 64 KiB a CA certificate should ever need"
-    }
-
-    if (-Not $ca_reject_reason) {
-        try {
-            $ca_base64 = ($ca_pem -replace '-----BEGIN CERTIFICATE-----', '' -replace '-----END CERTIFICATE-----', '' -replace '[\r\n\s]', '')
-            $ca_bytes = [System.Convert]::FromBase64String($ca_base64)
-            $ca_cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($ca_bytes)
-        } catch {
-            $ca_reject_reason = "does not parse as a PEM certificate ($($_.Exception.Message))"
-        }
-    }
-
-    if (-Not $ca_reject_reason) {
-        $basic_constraints = $ca_cert.Extensions | Where-Object { $_ -is [System.Security.Cryptography.X509Certificates.X509BasicConstraintsExtension] } | Select-Object -First 1
-        if (-Not $basic_constraints -or -Not $basic_constraints.CertificateAuthority) {
-            $ca_reject_reason = "is not a CA certificate (no Basic Constraints CA:TRUE)"
-        }
-    }
-
-    if (-Not $ca_reject_reason) {
-        $now = Get-Date
-        if ($now -lt $ca_cert.NotBefore) {
-            $ca_reject_reason = "is not yet valid (notBefore $($ca_cert.NotBefore))"
-        } elseif ($now -gt $ca_cert.NotAfter) {
-            $ca_reject_reason = "has expired (notAfter $($ca_cert.NotAfter))"
-        }
-    }
-
-    if ($ca_reject_reason) {
-        # A malformed/expired/non-CA file must not break the upgrade, nor be left behind
-        # for a later upgrade to pick up -- remove it below same as on success.
-        Write-Output "$(Get-Date -format u) - Delivered CA at $($incoming_ca_file) $($ca_reject_reason); refusing to install it and continuing without it." >> .\upgrade\upgrade.log
-    } else {
-        # Replacing an already-present anchor is a bigger event than a first install --
-        # the manager is authoritative for its own CA, so this always proceeds, but the
-        # operator should be able to grep for the distinction rather than see the same
-        # "Installed" line either way.
-        if (Test-Path -PathType Leaf $default_ca_file) {
-            $ca_install_verb = "Replaced the existing"
-        } else {
-            $ca_install_verb = "Installed the delivered"
-        }
-
-        New-Item -ItemType Directory -Force -Path (Split-Path $default_ca_file) | Out-Null
-
-        # Install atomically: write to a temp file in the same directory, then move it
-        # over the target, so a reader never observes a partially-written anchor, and a
-        # failed write is caught here instead of silently logging success with nothing
-        # actually installed.
-        $ca_install_ok = $true
-        $ca_tmp_file = "$($default_ca_file).tmp"
-        try {
-            Set-Content -Path $ca_tmp_file -Value $ca_pem -NoNewline -ErrorAction Stop
-            Move-Item -Force -Path $ca_tmp_file -Destination $default_ca_file -ErrorAction Stop
-        } catch {
-            Write-Output "$(Get-Date -format u) - Could not install the delivered CA at $($default_ca_file) (write failure: $($_.Exception.Message)); leaving any existing anchor untouched and continuing the upgrade." >> .\upgrade\upgrade.log
-            Remove-Item -Force -ErrorAction SilentlyContinue $ca_tmp_file
-            $ca_install_ok = $false
-        }
-
-        if ($ca_install_ok) {
-            # Deny Authenticated Users on this one file, same pattern already used for
-            # client.keys/authd.pass (InstallerScripts.vbs): the install directory grants
-            # S-1-5-11 (Authenticated Users) broad read access, so a sensitive file needs
-            # that grant stripped explicitly. Administrators/SYSTEM keep the access they
-            # already have from the install directory's own ACL -- the agent service
-            # itself runs as SYSTEM, so this does not block it from reading the anchor.
-            try {
-                icacls "$default_ca_file" /remove *S-1-5-11 /q | Out-Null
-            } catch {
-                Write-Output "$(Get-Date -format u) - Could not restrict permissions on $($default_ca_file): $($_.Exception.Message)" >> .\upgrade\upgrade.log
-            }
-
-            # A present, readable anchor here is picked up automatically at agent startup
-            # and resolves an unset <verification_mode> to 'full' against it -- so this
-            # alone is sufficient to activate verification; no <ssl> edit is needed.
-            Write-Output "$(Get-Date -format u) - $($ca_install_verb) CA at $($default_ca_file). ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> .\upgrade\upgrade.log
-        }
-    }
-
-    Remove-Item -Path $incoming_ca_file -Force -ErrorAction SilentlyContinue
-} else {
-    Write-Output "$(Get-Date -format u) - No CA delivered by the manager at $($incoming_ca_file) this run." >> .\upgrade\upgrade.log
-}
-
-# Get current version
-$current_version = get-version
-if ($null -eq $current_version) {
-    write-output "$(Get-Date -format u) - Upgrade failed: could not read the current agent version." >> .\upgrade\upgrade.log
-    abort_upgrade "2"
-}
-write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
-
-# Get new msi version
-$msi_new_version = get_msi_version
-if ($msi_new_version -ne $null) {
-  write-output "$(Get-Date -format u) - MSI new version: $($msi_new_version)." >> .\upgrade\upgrade.log
-} else {
-  write-output "$(Get-Date -format u) - Could not find version in MSI file." >> .\upgrade\upgrade.log
-}
-
-
-# Check version compatibility: direct upgrade to 5.x requires agent >= 4.14
-if ($msi_new_version -ne $null) {
-    try {
-        $target_ver = [Version]($msi_new_version -replace '^v', '')
-        $current_ver = [Version]($current_version -replace '^v', '')
-        if ($target_ver -ge [Version]"5.0.0" -and $current_ver -lt [Version]"4.14.0") {
-            write-output "$(Get-Date -format u) - Upgrade failed: direct upgrade to v5.0.0 is not supported from version $($current_version). Please upgrade to v4.14.x first." >> .\upgrade\upgrade.log
-            abort_upgrade "1"
-        }
-    } catch {
-        write-output "$(Get-Date -format u) - Could not compare versions for compatibility check: $($_.Exception.Message)" >> .\upgrade\upgrade.log
-        abort_upgrade "2"
-    }
-}
-
 # Read <block><sub><tag> from the agent configuration, taking the last match.
 # Strips commented-out lines before get_conf_value extracts anything, so a
 # tag an operator comments out (e.g. to fall back to the default) reads as absent here too,
 # matching OS_XML's own comment handling and pkg_installer.sh's strip_xml_comments() on the
-# Linux/macOS side.
+# Linux/macOS side. Defined ahead of the CA-adoption block below, which needs
+# get_conf_value to check for an operator-pinned <certificate_authorities>.
 function strip_xml_comments($conf_path) {
     $in_comment = $false
     $result = New-Object System.Collections.Generic.List[string]
@@ -472,6 +312,200 @@ function get_conf_value($block, $sub, $tag) {
         return $null
     }
     return $tag_matches[$tag_matches.Count - 1].Groups[1].Value.Trim()
+}
+
+# Default drop-in location for the manager's CA (mirrored on Linux/macOS in
+# pkg_installer.sh): an operator can place it here ahead of an upgrade without having
+# to hand-edit ossec.conf, and it also doubles as the on-disk anchor path for a CA
+# delivered by the manager (below). Resolves to <install_dir>\certs\root-ca.pem, same
+# as AGENT_ANCHOR_CA (src/shared/include/defs.h) on Windows.
+$default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
+
+# Detect and validate a manager-delivered CA. The manager streams its root CA
+# into the incoming-transfer directory under this reserved filename over the com
+# channel, before issuing the upgrade command -- never look in the upgrade
+# directory (".\upgrade"), since it is cleared before this script runs, same as
+# UPGRADE_DIR on the Linux/macOS side. Runs at the very start of the script, ahead of
+# the manager connectivity check and the <ssl> gate below.
+#
+# Installing the file is the entire cutover here -- ossec.conf is never edited. Mirrors
+# pkg_installer.sh's INCOMING_CA_FILE handling; see that file for the
+# full rationale on why wiring this into <ssl><certificate_authorities> is a separate,
+# explicitly recorded decision rather than done implicitly here.
+$incoming_ca_file = Join-Path $wazuhDir "incoming\root-ca.pem"
+
+# incoming\ is written by com's own transfer, but is not exclusively Wazuh-controlled --
+# reject a reparse point (symlink/junction) outright rather than read through it, same
+# reasoning as pkg_installer.sh's symlink rejection for the equivalent Linux/macOS path.
+# Get-Item -Force is the sole existence check here, deliberately not Test-Path
+# -PathType Leaf: Test-Path resolves through a reparse point to confirm the
+# TARGET exists, so it returns $false for a dangling symlink/junction, and a
+# dangling one would then never reach the LinkType branch below to be removed
+# -- contradicting this function's own "always removes the incoming file"
+# guarantee. Get-Item surfaces the reparse point's own metadata regardless of
+# whether its target exists, so it catches a dangling link too.
+$incoming_item = Get-Item -Force -ErrorAction SilentlyContinue $incoming_ca_file
+if (-Not $incoming_item) {
+    Write-Output "$(Get-Date -format u) - No CA delivered by the manager at $($incoming_ca_file) this run." >> .\upgrade\upgrade.log
+} elseif ($incoming_item.LinkType) {
+    Write-Output "$(Get-Date -format u) - A CA arrived at $($incoming_ca_file) as a $($incoming_item.LinkType); refusing to follow it, discarding it and continuing the upgrade unverified." >> .\upgrade\upgrade.log
+    Remove-Item -Force -ErrorAction SilentlyContinue $incoming_ca_file
+} else {
+    Write-Output "$(Get-Date -format u) - Found a CA delivered by the manager at $($incoming_ca_file), validating it." >> .\upgrade\upgrade.log
+
+    $ca_reject_reason = $null
+    $ca_cert = $null
+    $ca_pem = $null
+
+    try {
+        $ca_pem = Get-Content -Path $incoming_ca_file -Raw
+    } catch {
+        $ca_reject_reason = "could not be read ($($_.Exception.Message))"
+    }
+
+    # Cheap bound before ever parsing it: empty or implausibly large for a CA
+    # certificate is rejected the same way a malformed one is.
+    if (-Not $ca_reject_reason -and ([string]::IsNullOrEmpty($ca_pem) -or $ca_pem.Length -gt 65536)) {
+        $ca_reject_reason = "is empty or larger than the 64 KiB a CA certificate should ever need"
+    }
+
+    if (-Not $ca_reject_reason) {
+        try {
+            $ca_base64 = ($ca_pem -replace '-----BEGIN CERTIFICATE-----', '' -replace '-----END CERTIFICATE-----', '' -replace '[\r\n\s]', '')
+            $ca_bytes = [System.Convert]::FromBase64String($ca_base64)
+            $ca_cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($ca_bytes)
+        } catch {
+            $ca_reject_reason = "does not parse as a PEM certificate ($($_.Exception.Message))"
+        }
+    }
+
+    if (-Not $ca_reject_reason) {
+        $basic_constraints = $ca_cert.Extensions | Where-Object { $_ -is [System.Security.Cryptography.X509Certificates.X509BasicConstraintsExtension] } | Select-Object -First 1
+        if (-Not $basic_constraints -or -Not $basic_constraints.CertificateAuthority) {
+            $ca_reject_reason = "is not a CA certificate (no Basic Constraints CA:TRUE)"
+        }
+    }
+
+    if (-Not $ca_reject_reason) {
+        $now = Get-Date
+        if ($now -lt $ca_cert.NotBefore) {
+            $ca_reject_reason = "is not yet valid (notBefore $($ca_cert.NotBefore))"
+        } elseif ($now -gt $ca_cert.NotAfter) {
+            $ca_reject_reason = "has expired (notAfter $($ca_cert.NotAfter))"
+        }
+    }
+
+    if ($ca_reject_reason) {
+        # A malformed/expired/non-CA file must not break the upgrade, nor be left behind
+        # for a later upgrade to pick up -- remove it below same as on success.
+        Write-Output "$(Get-Date -format u) - Delivered CA at $($incoming_ca_file) $($ca_reject_reason); refusing to install it and continuing without it." >> .\upgrade\upgrade.log
+    } else {
+        # An operator can point <certificate_authorities> at this exact default path
+        # themselves (rather than relying on manager delivery) -- comparing resolved
+        # paths where possible, since the config value and $default_ca_file are rarely
+        # written the same way (relative vs. absolute) even when they name the same
+        # file. Overwriting still proceeds either way (the manager is authoritative
+        # for its own CA), but a collision with an operator's own explicit pin is a
+        # more consequential event than routine anchor rotation and deserves its own,
+        # louder log line rather than reading identically to one.
+        $operator_ca_path = get_conf_value "agent" "ssl" "certificate_authorities"
+        $ca_pinned_here = $false
+        if (-Not [string]::IsNullOrEmpty($operator_ca_path)) {
+            try {
+                $resolved_operator = (Resolve-Path -ErrorAction Stop $operator_ca_path).Path
+                $resolved_default = (Resolve-Path -ErrorAction Stop $default_ca_file).Path
+                if ($resolved_operator -eq $resolved_default) {
+                    $ca_pinned_here = $true
+                }
+            } catch {
+                if ($operator_ca_path -eq $default_ca_file) {
+                    $ca_pinned_here = $true
+                }
+            }
+        }
+
+        # Replacing an already-present anchor is a bigger event than a first install --
+        # the manager is authoritative for its own CA, so this always proceeds, but the
+        # operator should be able to grep for the distinction rather than see the same
+        # "Installed" line either way.
+        if ($ca_pinned_here) {
+            $ca_install_verb = "Overwrote the operator-pinned (<certificate_authorities>$($operator_ca_path)</certificate_authorities>)"
+        } elseif (Test-Path -PathType Leaf $default_ca_file) {
+            $ca_install_verb = "Replaced the existing"
+        } else {
+            $ca_install_verb = "Installed the delivered"
+        }
+
+        New-Item -ItemType Directory -Force -Path (Split-Path $default_ca_file) | Out-Null
+
+        # Install atomically: write to a temp file in the same directory, then move it
+        # over the target, so a reader never observes a partially-written anchor, and a
+        # failed write is caught here instead of silently logging success with nothing
+        # actually installed.
+        $ca_install_ok = $true
+        $ca_tmp_file = "$($default_ca_file).tmp"
+        try {
+            Set-Content -Path $ca_tmp_file -Value $ca_pem -NoNewline -ErrorAction Stop
+            Move-Item -Force -Path $ca_tmp_file -Destination $default_ca_file -ErrorAction Stop
+        } catch {
+            Write-Output "$(Get-Date -format u) - Could not install the delivered CA at $($default_ca_file) (write failure: $($_.Exception.Message)); leaving any existing anchor untouched and continuing the upgrade." >> .\upgrade\upgrade.log
+            Remove-Item -Force -ErrorAction SilentlyContinue $ca_tmp_file
+            $ca_install_ok = $false
+        }
+
+        if ($ca_install_ok) {
+            # Deny Authenticated Users on this one file, same pattern already used for
+            # client.keys/authd.pass (InstallerScripts.vbs): the install directory grants
+            # S-1-5-11 (Authenticated Users) broad read access, so a sensitive file needs
+            # that grant stripped explicitly. Administrators/SYSTEM keep the access they
+            # already have from the install directory's own ACL -- the agent service
+            # itself runs as SYSTEM, so this does not block it from reading the anchor.
+            try {
+                icacls "$default_ca_file" /remove *S-1-5-11 /q | Out-Null
+            } catch {
+                Write-Output "$(Get-Date -format u) - Could not restrict permissions on $($default_ca_file): $($_.Exception.Message)" >> .\upgrade\upgrade.log
+            }
+
+            # A present, readable anchor here is picked up automatically at agent startup
+            # and resolves an unset <verification_mode> to 'full' against it -- so this
+            # alone is sufficient to activate verification; no <ssl> edit is needed.
+            Write-Output "$(Get-Date -format u) - $($ca_install_verb) CA at $($default_ca_file). ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> .\upgrade\upgrade.log
+        }
+    }
+
+    Remove-Item -Path $incoming_ca_file -Force -ErrorAction SilentlyContinue
+}
+
+# Get current version
+$current_version = get-version
+if ($null -eq $current_version) {
+    write-output "$(Get-Date -format u) - Upgrade failed: could not read the current agent version." >> .\upgrade\upgrade.log
+    abort_upgrade "2"
+}
+write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
+
+# Get new msi version
+$msi_new_version = get_msi_version
+if ($msi_new_version -ne $null) {
+  write-output "$(Get-Date -format u) - MSI new version: $($msi_new_version)." >> .\upgrade\upgrade.log
+} else {
+  write-output "$(Get-Date -format u) - Could not find version in MSI file." >> .\upgrade\upgrade.log
+}
+
+
+# Check version compatibility: direct upgrade to 5.x requires agent >= 4.14
+if ($msi_new_version -ne $null) {
+    try {
+        $target_ver = [Version]($msi_new_version -replace '^v', '')
+        $current_ver = [Version]($current_version -replace '^v', '')
+        if ($target_ver -ge [Version]"5.0.0" -and $current_ver -lt [Version]"4.14.0") {
+            write-output "$(Get-Date -format u) - Upgrade failed: direct upgrade to v5.0.0 is not supported from version $($current_version). Please upgrade to v4.14.x first." >> .\upgrade\upgrade.log
+            abort_upgrade "1"
+        }
+    } catch {
+        write-output "$(Get-Date -format u) - Could not compare versions for compatibility check: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    }
 }
 
 # Accept any certificate: the manager's is self-signed. Compiled, because .NET calls this
