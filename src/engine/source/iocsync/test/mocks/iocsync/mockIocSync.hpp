@@ -14,6 +14,7 @@ public:
     MOCK_METHOD(void, synchronize, (), (override));
     MOCK_METHOD(void, requestShutdown, (), (override));
     MOCK_METHOD(std::vector<IocTypeStatus>, getIocStatus, (), (const, override));
+    MOCK_METHOD(void, requestOnDemandUpdate, (std::string_view iocType), (override));
 };
 
 } // namespace ioc::sync::mocks
