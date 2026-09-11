@@ -383,6 +383,10 @@ $default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
 # explicitly recorded decision rather than done implicitly here.
 $incoming_ca_file = Join-Path $wazuhDir "incoming\root-ca.pem"
 
+# Set once the delivered CA passes validation; it is installed further down, past
+# the last gate that can abort this upgrade.
+$ca_validated = $false
+
 # incoming\ is written by com's own transfer, but is not exclusively Wazuh-controlled --
 # reject a reparse point (symlink/junction) outright rather than read through it, same
 # reasoning as pkg_installer.sh's symlink rejection for the equivalent Linux/macOS path.
@@ -508,90 +512,17 @@ if (-Not $incoming_item) {
         # for a later upgrade to pick up -- remove it below same as on success.
         Write-Output "$(Get-Date -format u) - Delivered CA at $($incoming_ca_file) $($ca_reject_reason); refusing to install it and continuing without it." >> .\upgrade\upgrade.log
     } else {
-        # An operator can point <certificate_authorities> at this exact default path
-        # themselves (rather than relying on manager delivery) -- comparing resolved
-        # paths where possible, since the config value and $default_ca_file are rarely
-        # written the same way (relative vs. absolute) even when they name the same
-        # file. Overwriting still proceeds either way (the manager is authoritative
-        # for its own CA), but a collision with an operator's own explicit pin is a
-        # more consequential event than routine anchor rotation and deserves its own,
-        # louder log line rather than reading identically to one.
-        $operator_ca_path = get_conf_value "agent" "ssl" "certificate_authorities"
-        $ca_pinned_here = $false
-        if (-Not [string]::IsNullOrEmpty($operator_ca_path)) {
-            try {
-                $resolved_operator = (Resolve-Path -ErrorAction Stop $operator_ca_path).Path
-                $resolved_default = (Resolve-Path -ErrorAction Stop $default_ca_file).Path
-                if ($resolved_operator -eq $resolved_default) {
-                    $ca_pinned_here = $true
-                }
-            } catch {
-                if ($operator_ca_path -eq $default_ca_file) {
-                    $ca_pinned_here = $true
-                }
-            }
-        }
-
-        # Replacing an already-present anchor is a bigger event than a first install --
-        # the manager is authoritative for its own CA, so this always proceeds, but the
-        # operator should be able to grep for the distinction rather than see the same
-        # "Installed" line either way.
-        if ($ca_pinned_here) {
-            $ca_install_verb = "Overwrote the operator-pinned (<certificate_authorities>$($operator_ca_path)</certificate_authorities>)"
-        } elseif (Test-Path -PathType Leaf $default_ca_file) {
-            $ca_install_verb = "Replaced the existing"
-        } else {
-            $ca_install_verb = "Installed the delivered"
-        }
-
-        New-Item -ItemType Directory -Force -Path (Split-Path $default_ca_file) | Out-Null
-
-        # Install atomically: write to a temp file in the same directory, then move it
-        # over the target, so a reader never observes a partially-written anchor, and a
-        # failed write is caught here instead of silently logging success with nothing
-        # actually installed.
-        $ca_install_ok = $true
-        $ca_tmp_file = "$($default_ca_file).tmp"
-        try {
-            Set-Content -Path $ca_tmp_file -Value $ca_pem -NoNewline -ErrorAction Stop
-            Move-Item -Force -Path $ca_tmp_file -Destination $default_ca_file -ErrorAction Stop
-        } catch {
-            Write-Output "$(Get-Date -format u) - Could not install the delivered CA at $($default_ca_file) (write failure: $($_.Exception.Message)); leaving any existing anchor untouched and continuing the upgrade." >> .\upgrade\upgrade.log
-            Remove-Item -Force -ErrorAction SilentlyContinue $ca_tmp_file
-            $ca_install_ok = $false
-        }
-
-        if ($ca_install_ok) {
-            # Deny Authenticated Users on this one file, same intent as the pattern
-            # already used for client.keys/authd.pass (InstallerScripts.vbs) -- but
-            # implemented differently: the install directory's S-1-5-11 grant that
-            # applies to a freshly-created file here is inherited, not explicit, and
-            # icacls's plain /remove only strips explicit ACEs -- it silently leaves
-            # an inherited one in place and still reports success. Breaking
-            # inheritance (/inheritance:r) and re-granting only Administrators/SYSTEM
-            # explicitly (:r replaces rather than appends, so a re-run doesn't
-            # duplicate entries) actually removes Authenticated Users' access instead
-            # of leaving it untouched under a passing exit code.
-            try {
-                icacls "$default_ca_file" /inheritance:r /grant:r "*S-1-5-32-544:(F)" "*S-1-5-18:(F)" /q | Out-Null
-                # icacls is an external process: a non-zero exit code is not a
-                # PowerShell exception and would not otherwise be caught below --
-                # check $LASTEXITCODE explicitly rather than assume success.
-                if ($LASTEXITCODE -ne 0) {
-                    Write-Output "$(Get-Date -format u) - Could not restrict permissions on $($default_ca_file): icacls exited with code $($LASTEXITCODE)." >> .\upgrade\upgrade.log
-                }
-            } catch {
-                Write-Output "$(Get-Date -format u) - Could not restrict permissions on $($default_ca_file): $($_.Exception.Message)" >> .\upgrade\upgrade.log
-            }
-
-            # A present, readable anchor here is picked up automatically at agent startup
-            # and resolves an unset <verification_mode> to 'full' against it -- so this
-            # alone is sufficient to activate verification; no <ssl> edit is needed.
-            Write-Output "$(Get-Date -format u) - $($ca_install_verb) CA at $($default_ca_file). ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> .\upgrade\upgrade.log
-        }
+        # Written only once the remaining gates have passed (see below).
+        $ca_validated = $true
+        Write-Output "$(Get-Date -format u) - Delivered CA at $($incoming_ca_file) is valid; holding it until this script's remaining checks pass, then installing it at $($default_ca_file)." >> .\upgrade\upgrade.log
     }
 
-    Remove-Item -Force -ErrorAction SilentlyContinue $ca_snapshot, $incoming_ca_file
+    # $ca_pem carries the validated content from here on, so only the delivered file
+    # is kept: it lets an aborted upgrade retry against the same delivery.
+    Remove-Item -Force -ErrorAction SilentlyContinue $ca_snapshot
+    if (-Not $ca_validated) {
+        Remove-Item -Force -ErrorAction SilentlyContinue $incoming_ca_file
+    }
 }
 
 # Accept any certificate: the manager's is self-signed. Compiled, because .NET calls this
@@ -880,17 +811,20 @@ if ([string]::IsNullOrEmpty($ssl_verification_mode)) {
 }
 
 # Same path as AGENT_ANCHOR_CA (src/shared/include/defs.h), which the agent now reads
-# directly: since #39025 a present, readable file here supplies the verification state for
-# anything <ssl> left unsaid, so the resolution this gate mirrors above is no longer the one
-# the upgraded binary will apply: an unset <verification_mode> resolves to 'full' with the
-# anchor present and 'none' without it, never to this gate's 'system'. An explicit mode is
-# honoured unchanged, 'none' included, so the divergence is in the unset and no-readable-CA
-# rows only. Reconciling the rest is #38949 question 6; no verdict below was changed for it,
-# but the state that drives the divergence is now recorded, so an upgrade log is enough to
-# explain a posture this gate did not predict.
+# directly: a present, readable file here supplies the verification state for anything
+# <ssl> left unsaid, so the resolution this gate mirrors above is no longer the one the
+# upgraded binary applies: an unset <verification_mode> resolves to 'full' with the anchor
+# present and 'none' without it, never to this gate's 'system'. An explicit mode is
+# honoured unchanged, 'none' included, so the divergence is in the unset and
+# no-readable-CA rows only. Reconciling the rest is still open; no verdict below was
+# changed for it, but the state that drives the divergence is logged.
 
-if (Test-Path -PathType Leaf $default_ca_file) {
-    write-output "$(Get-Date -format u) - A trust anchor is present at $($default_ca_file). Since #39025 the upgraded agent verifies with 'full' against that file when <ssl> names no <verification_mode>, and uses it as the default <certificate_authorities>. An explicit <verification_mode> is honoured unchanged." >> .\upgrade\upgrade.log
+# One already on disk and one validated this run but not yet written reach the same
+# post-upgrade state, so the checks below ask this instead of testing the file.
+$anchor_available = (Test-Path -PathType Leaf $default_ca_file) -or $ca_validated
+
+if ($anchor_available) {
+    write-output "$(Get-Date -format u) - A trust anchor will be in place at $($default_ca_file) for the upgraded agent. It verifies with 'full' against that file when <ssl> names no <verification_mode>, and uses it as the default <certificate_authorities>. An explicit <verification_mode> is honoured unchanged." >> .\upgrade\upgrade.log
 } else {
     # No anchor at all -- neither delivered this run nor left over from a previous
     # one -- and <ssl> left unset resolves to unverified without it. Say so plainly,
@@ -953,12 +887,12 @@ if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certific
         # script can safely fix on the operator's behalf.
         write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at $($server_address):$($server_port). Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> .\upgrade\upgrade.log
         abort_upgrade "2"
-    } elseif (Test-Path -PathType Leaf $default_ca_file) {
+    } elseif ($anchor_available) {
         # <verification_mode> was left unset (not explicit), so the new binary resolves
         # purely from anchor presence -- 'full' against $default_ca_file -- regardless
         # of what this gate's own 'system' resolution or the OS trust store say. A
-        # usable anchor is already on disk (installed by the CA-adoption block above,
-        # or left over from a previous delivery), which is a different, equally
+        # usable anchor is available (validated this run and installed once the gates
+        # pass, or left over from a previous delivery), which is a different, equally
         # sufficient path to a working post-upgrade connection -- this is precisely the
         # scenario this feature exists for. Checked ahead of $is_legacy_agent since an
         # already-5.x agent needs this path too: without it, a 5.x agent receiving its
@@ -991,6 +925,96 @@ if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certific
     # binary refusing to start after the old one is already gone.
     write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is '$($ssl_verification_mode)', which is not a value this agent recognizes (full, certificate, system, or none); interrupting upgrade." >> .\upgrade\upgrade.log
     abort_upgrade "2"
+}
+
+# Installed only past the last gate that can abort: with <verification_mode> unset the
+# anchor's mere presence flips the agent to 'full' on its next restart, so writing it
+# earlier left an aborted upgrade with a changed trust posture on the old version.
+if ($ca_validated) {
+    # An operator can point <certificate_authorities> at this exact default path
+    # themselves (rather than relying on manager delivery) -- comparing resolved
+    # paths where possible, since the config value and $default_ca_file are rarely
+    # written the same way (relative vs. absolute) even when they name the same
+    # file. Overwriting still proceeds either way (the manager is authoritative
+    # for its own CA), but a collision with an operator's own explicit pin is a
+    # more consequential event than routine anchor rotation and deserves its own,
+    # louder log line rather than reading identically to one.
+    $operator_ca_path = get_conf_value "agent" "ssl" "certificate_authorities"
+    $ca_pinned_here = $false
+    if (-Not [string]::IsNullOrEmpty($operator_ca_path)) {
+        try {
+            $resolved_operator = (Resolve-Path -ErrorAction Stop $operator_ca_path).Path
+            $resolved_default = (Resolve-Path -ErrorAction Stop $default_ca_file).Path
+            if ($resolved_operator -eq $resolved_default) {
+                $ca_pinned_here = $true
+            }
+        } catch {
+            if ($operator_ca_path -eq $default_ca_file) {
+                $ca_pinned_here = $true
+            }
+        }
+    }
+
+    # Replacing an already-present anchor is a bigger event than a first install --
+    # the manager is authoritative for its own CA, so this always proceeds, but the
+    # operator should be able to grep for the distinction rather than see the same
+    # "Installed" line either way.
+    if ($ca_pinned_here) {
+        $ca_install_verb = "Overwrote the operator-pinned (<certificate_authorities>$($operator_ca_path)</certificate_authorities>)"
+    } elseif (Test-Path -PathType Leaf $default_ca_file) {
+        $ca_install_verb = "Replaced the existing"
+    } else {
+        $ca_install_verb = "Installed the delivered"
+    }
+
+    New-Item -ItemType Directory -Force -Path (Split-Path $default_ca_file) | Out-Null
+
+    # Install atomically: write to a temp file in the same directory, then move it
+    # over the target, so a reader never observes a partially-written anchor, and a
+    # failed write is caught here instead of silently logging success with nothing
+    # actually installed.
+    $ca_install_ok = $true
+    $ca_tmp_file = "$($default_ca_file).tmp"
+    try {
+        Set-Content -Path $ca_tmp_file -Value $ca_pem -NoNewline -ErrorAction Stop
+        Move-Item -Force -Path $ca_tmp_file -Destination $default_ca_file -ErrorAction Stop
+    } catch {
+        Write-Output "$(Get-Date -format u) - Could not install the delivered CA at $($default_ca_file) (write failure: $($_.Exception.Message)); leaving any existing anchor untouched and continuing the upgrade." >> .\upgrade\upgrade.log
+        Remove-Item -Force -ErrorAction SilentlyContinue $ca_tmp_file
+        $ca_install_ok = $false
+    }
+
+    if ($ca_install_ok) {
+        # Deny Authenticated Users on this one file, same intent as the pattern
+        # already used for client.keys/authd.pass (InstallerScripts.vbs) -- but
+        # implemented differently: the install directory's S-1-5-11 grant that
+        # applies to a freshly-created file here is inherited, not explicit, and
+        # icacls's plain /remove only strips explicit ACEs -- it silently leaves
+        # an inherited one in place and still reports success. Breaking
+        # inheritance (/inheritance:r) and re-granting only Administrators/SYSTEM
+        # explicitly (:r replaces rather than appends, so a re-run doesn't
+        # duplicate entries) actually removes Authenticated Users' access. This only
+        # covers the window before the MSI: SetWazuhPermissions resets the install
+        # directory's ACLs, so the lasting state of this file is set there instead.
+        try {
+            icacls "$default_ca_file" /inheritance:r /grant:r "*S-1-5-32-544:(F)" "*S-1-5-18:(F)" /q | Out-Null
+            # icacls is an external process: a non-zero exit code is not a
+            # PowerShell exception and would not otherwise be caught below --
+            # check $LASTEXITCODE explicitly rather than assume success.
+            if ($LASTEXITCODE -ne 0) {
+                Write-Output "$(Get-Date -format u) - Could not restrict permissions on $($default_ca_file): icacls exited with code $($LASTEXITCODE)." >> .\upgrade\upgrade.log
+            }
+        } catch {
+            Write-Output "$(Get-Date -format u) - Could not restrict permissions on $($default_ca_file): $($_.Exception.Message)" >> .\upgrade\upgrade.log
+        }
+
+        # A present, readable anchor here is picked up automatically at agent startup
+        # and resolves an unset <verification_mode> to 'full' against it -- so this
+        # alone is sufficient to activate verification; no <ssl> edit is needed.
+        Write-Output "$(Get-Date -format u) - $($ca_install_verb) CA at $($default_ca_file). ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> .\upgrade\upgrade.log
+    }
+
+    Remove-Item -Force -ErrorAction SilentlyContinue $incoming_ca_file
 }
 
 # Ensure no other instance of msiexec is running by stopping them

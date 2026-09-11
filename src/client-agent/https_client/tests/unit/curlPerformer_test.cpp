@@ -412,7 +412,8 @@ TEST(CurlPerformerTest, TlsSystemModeVerifiesPeerAndHost)
     ON_CALL(fsProbe, findSystemCaBundle()).WillByDefault(Return("/etc/ssl/certs/ca-certificates.crt"));
     EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/etc/ssl/certs/ca-certificates.crt"));
     EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, _)).Times(0);
-    EXPECT_CALL(*handle, trustSelfSignedRoot());
+    // caPath is the OS bundle here, not a configured CA: no partial-chain relaxation.
+    EXPECT_CALL(*handle, trustSelfSignedRoot()).Times(0);
 #endif
 
     auto shared = std::make_shared<std::unique_ptr<ICurlHandle>>(std::move(mock));

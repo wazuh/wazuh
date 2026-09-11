@@ -328,17 +328,18 @@ bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle) const
         // An explicit <ca> is the whole trust set; adding the machine's stores
         // on top of it would widen what the agent accepts. (verify_mode=system's
         // Linux trust anchor also flows through here: the constructor resolves it
-        // into caPath once, up front, so this branch needs no mode-awareness.)
-        //
-        // Unconditional here (not just full/certificate): caPath may be a self-signed
-        // root that the peer also echoes in its own chain, which fails with
-        // X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN unless this is set.
+        // into caPath once, up front -- the only place below that has to tell the
+        // two apart is the partial-chain relaxation.)
         if (!setMandatoryOption(handle, CurlOption::CaInfo, m_config.caPath))
         {
             return false;
         }
 
-        if (!handle.trustSelfSignedRoot())
+        // A configured CA may be a self-signed root the peer echoes in its own chain,
+        // which fails with X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN unless this is set. Not
+        // under 'system': caPath is the OS bundle there, and relaxing chain building
+        // across the whole store widens what the agent accepts.
+        if (m_config.verifyMode != HC_VERIFY_SYSTEM && !handle.trustSelfSignedRoot())
         {
             // Unlike the options above, this one isn't in optionMap() (it's set via
             // CURLOPT_SSL_CTX_FUNCTION, not a plain curl_easy_setopt), so it can't

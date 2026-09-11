@@ -377,6 +377,10 @@ DEFAULT_CA_FILE="./etc/certs/root-ca.pem"
 # a separate, explicitly recorded decision rather than done implicitly here.
 INCOMING_CA_FILE="./var/incoming/root-ca.pem"
 
+# Set once the delivered CA passes validation; it is installed further down, past
+# the last gate that can abort this upgrade.
+CA_VALIDATED=0
+
 if [ -L "${INCOMING_CA_FILE}" ]; then
     # var/incoming is written by com's own transfer, but is not exclusively
     # Wazuh-controlled -- reject a symlink outright rather than read or copy
@@ -488,73 +492,18 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
         # behind for a later upgrade to pick up -- remove it below same as on success.
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} ${CA_REJECT_REASON}; refusing to install it and continuing without it." >> ./logs/upgrade.log
     else
-        # An operator can point <certificate_authorities> at this exact default path
-        # themselves (rather than relying on manager delivery) -- comparing resolved
-        # paths where possible, since the config value and DEFAULT_CA_FILE are rarely
-        # written the same way (absolute vs. relative) even when they name the same
-        # file. Overwriting still proceeds either way (the manager is authoritative
-        # for its own CA), but a collision with an operator's own explicit pin is a
-        # more consequential event than routine anchor rotation and deserves its own,
-        # louder log line rather than reading identically to one.
-        OPERATOR_CA_PATH=$(xml_value agent ssl certificate_authorities)
-        CA_PINNED_HERE=0
-        if [ -n "${OPERATOR_CA_PATH}" ]; then
-            if command -v readlink > /dev/null 2>&1 \
-                && [ -n "$(readlink -f "${OPERATOR_CA_PATH}" 2>/dev/null)" ] \
-                && [ "$(readlink -f "${OPERATOR_CA_PATH}" 2>/dev/null)" = "$(readlink -f "${DEFAULT_CA_FILE}" 2>/dev/null)" ]; then
-                CA_PINNED_HERE=1
-            elif [ "${OPERATOR_CA_PATH}" = "${DEFAULT_CA_FILE}" ]; then
-                CA_PINNED_HERE=1
-            fi
-        fi
-
-        # Replacing an already-present anchor is a bigger event than a first install --
-        # the manager is authoritative for its own CA, so this always proceeds, but the
-        # operator should be able to grep for the distinction rather than see the same
-        # "Installed" line either way.
-        if [ "${CA_PINNED_HERE}" = "1" ]; then
-            CA_INSTALL_VERB="Overwrote the operator-pinned (<certificate_authorities>${OPERATOR_CA_PATH}</certificate_authorities>)"
-        elif [ -f "${DEFAULT_CA_FILE}" ]; then
-            CA_INSTALL_VERB="Replaced the existing"
-        else
-            CA_INSTALL_VERB="Installed the delivered"
-        fi
-
-        DEFAULT_CA_DIR="$(dirname "${DEFAULT_CA_FILE}")"
-        mkdir -p "${DEFAULT_CA_DIR}" 2>/dev/null
-        # mkdir -p's mode is whatever the umask leaves it -- looser than the rest
-        # of etc/, which is root:wazuh 0770. Match that convention explicitly
-        # rather than let a first-ever delivery leave a world-traversable certs
-        # directory.
-        chown root:wazuh "${DEFAULT_CA_DIR}" 2>/dev/null
-        chmod 750 "${DEFAULT_CA_DIR}" 2>/dev/null
-
-        # Install atomically: write to a temp file in the same directory, then
-        # rename over the target, so a reader never observes a partially-written
-        # anchor, and a failed cp/mv is caught here instead of silently logging
-        # success with nothing actually installed. Sourced from the snapshot, not
-        # INCOMING_CA_FILE, for the same TOCTOU reason noted above.
-        CA_TMP="${DEFAULT_CA_DIR}/.root-ca.pem.$$"
-        if cp "${CA_SNAPSHOT}" "${CA_TMP}" 2>/dev/null && mv -f "${CA_TMP}" "${DEFAULT_CA_FILE}" 2>/dev/null; then
-            # root:wazuh 640, matching the existing wpk_root.pem trust anchor: readable by
-            # the wazuh group the daemon runs under, but owned (and only writable) by root
-            # -- a daemon that can rewrite its own anchor is not a boundary at all.
-            chown root:wazuh "${DEFAULT_CA_FILE}" 2>/dev/null
-            chmod 640 "${DEFAULT_CA_FILE}" 2>/dev/null
-
-            # A present, readable anchor here is picked up automatically at agent startup
-            # and resolves an unset <verification_mode> to 'full' against it -- so this
-            # alone is sufficient to activate verification; no <ssl> edit is needed.
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - ${CA_INSTALL_VERB} CA at ${DEFAULT_CA_FILE}. ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> ./logs/upgrade.log
-        else
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Could not install the delivered CA at ${DEFAULT_CA_FILE} (write failure); leaving any existing anchor untouched and continuing the upgrade." >> ./logs/upgrade.log
-            rm -f "${CA_TMP}" 2>/dev/null
-        fi
+        # Written only once the remaining gates have passed (see below).
+        CA_VALIDATED=1
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} is valid; holding it until this script's remaining checks pass, then installing it at ${DEFAULT_CA_FILE}." >> ./logs/upgrade.log
     fi
 
-    rm -f "${CA_SNAPSHOT}"
-    if [ "${CA_TOOL_MISSING}" != "1" ]; then
-        rm -f "${INCOMING_CA_FILE}"
+    # Kept while an install is still pending: the snapshot is its source, and leaving
+    # the delivered file lets an aborted upgrade retry against the same delivery.
+    if [ "${CA_VALIDATED}" != "1" ]; then
+        rm -f "${CA_SNAPSHOT}"
+        if [ "${CA_TOOL_MISSING}" != "1" ]; then
+            rm -f "${INCOMING_CA_FILE}"
+        fi
     fi
 else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - No CA delivered by the manager at ${INCOMING_CA_FILE} this run." >> ./logs/upgrade.log
@@ -681,19 +630,24 @@ case "${CURRENT_AGENT_MAJOR}" in
 esac
 
 # Same path as AGENT_ANCHOR_CA (src/shared/include/defs.h), which the agent now reads
-# directly: since #39025 a present, readable file here supplies the verification state for
-# anything <ssl> left unsaid, so the resolution this gate mirrors above is no longer the one
-# the upgraded binary will apply. Two rows diverge: an unset <verification_mode>, which this
-# gate resolves to 'system' and the new binary resolves to 'full' with the anchor present or
-# 'none' without it; and a config with no readable <certificate_authorities>, which this gate
-# aborts on and the new binary starts with. An explicit mode is not one of them -- the binary
-# honours 'none', 'certificate' and 'system' exactly as written. Reconciling the rest is
-# #38949 question 6; no verdict below was changed for it, but the state that drives the
-# divergence is now recorded, so an upgrade log is enough to explain a posture this gate did
-# not predict.
+# directly: a present, readable file here supplies the verification state for anything
+# <ssl> left unsaid, so the resolution this gate mirrors above is no longer the one the
+# upgraded binary applies. Two rows diverge: an unset <verification_mode>, which this gate
+# resolves to 'system' and the new binary to 'full' with the anchor present or 'none'
+# without it; and a config with no readable <certificate_authorities>, which this gate
+# aborts on and the new binary starts with. An explicit mode is honoured unchanged.
+# Reconciling the rest is still open; no verdict below was changed for it, but the state
+# that drives the divergence is logged.
 
-if [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; then
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - A trust anchor is present at ${DEFAULT_CA_FILE}. Since #39025 the upgraded agent verifies with 'full' against that file when <ssl> names no <verification_mode>, and uses it as the default <certificate_authorities>. An explicit <verification_mode> is honoured unchanged." >> ./logs/upgrade.log
+# One already on disk and one validated this run but not yet written reach the same
+# post-upgrade state, so the checks below ask this instead of testing the file.
+ANCHOR_AVAILABLE=0
+if { [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; } || [ "${CA_VALIDATED}" = "1" ]; then
+    ANCHOR_AVAILABLE=1
+fi
+
+if [ "${ANCHOR_AVAILABLE}" = "1" ]; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - A trust anchor will be in place at ${DEFAULT_CA_FILE} for the upgraded agent. It verifies with 'full' against that file when <ssl> names no <verification_mode>, and uses it as the default <certificate_authorities>. An explicit <verification_mode> is honoured unchanged." >> ./logs/upgrade.log
 else
     # No anchor at all -- neither delivered this run nor left over from a previous
     # one -- and <ssl> left unset resolves to 'none' without it: the upgraded agent
@@ -736,13 +690,13 @@ case "${SSL_VERIFICATION_MODE}" in
             # there is nothing this script can safely fix on the operator's behalf.
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}. Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> ./logs/upgrade.log
             abort_upgrade "2"
-        elif [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; then
+        elif [ "${ANCHOR_AVAILABLE}" = "1" ]; then
             # <verification_mode> was left unset (not explicit), so the new binary
             # resolves purely from anchor presence -- 'full' against DEFAULT_CA_FILE --
             # regardless of what this gate's own 'system' resolution or the OS trust
-            # store say (see the #38949 question 6 divergence noted above). A usable
-            # anchor is already on disk (installed by the CA-adoption block above, or
-            # left over from a previous delivery), which is a different, equally
+            # store say (see the divergence noted above). A usable
+            # anchor is available (validated this run and installed once the gates pass,
+            # or left over from a previous delivery), which is a different, equally
             # sufficient path to a working post-upgrade connection -- this is precisely
             # the scenario this feature exists for. Checked ahead of IS_LEGACY_AGENT
             # since an already-5.x agent needs this path too: without it, a 5.x agent
@@ -781,6 +735,77 @@ case "${SSL_VERIFICATION_MODE}" in
         abort_upgrade "2"
         ;;
 esac
+
+# Installed only past the last gate that can abort: with <verification_mode> unset the
+# anchor's mere presence flips the agent to 'full' on its next restart, so writing it
+# earlier left an aborted upgrade with a changed trust posture on the old version.
+if [ "${CA_VALIDATED}" = "1" ]; then
+    # An operator can point <certificate_authorities> at this exact default path
+    # themselves (rather than relying on manager delivery) -- comparing resolved
+    # paths where possible, since the config value and DEFAULT_CA_FILE are rarely
+    # written the same way (absolute vs. relative) even when they name the same
+    # file. Overwriting still proceeds either way (the manager is authoritative
+    # for its own CA), but a collision with an operator's own explicit pin is a
+    # more consequential event than routine anchor rotation and deserves its own,
+    # louder log line rather than reading identically to one.
+    OPERATOR_CA_PATH=$(xml_value agent ssl certificate_authorities)
+    CA_PINNED_HERE=0
+    if [ -n "${OPERATOR_CA_PATH}" ]; then
+        if command -v readlink > /dev/null 2>&1 \
+            && [ -n "$(readlink -f "${OPERATOR_CA_PATH}" 2>/dev/null)" ] \
+            && [ "$(readlink -f "${OPERATOR_CA_PATH}" 2>/dev/null)" = "$(readlink -f "${DEFAULT_CA_FILE}" 2>/dev/null)" ]; then
+            CA_PINNED_HERE=1
+        elif [ "${OPERATOR_CA_PATH}" = "${DEFAULT_CA_FILE}" ]; then
+            CA_PINNED_HERE=1
+        fi
+    fi
+
+    # Replacing an already-present anchor is a bigger event than a first install --
+    # the manager is authoritative for its own CA, so this always proceeds, but the
+    # operator should be able to grep for the distinction rather than see the same
+    # "Installed" line either way.
+    if [ "${CA_PINNED_HERE}" = "1" ]; then
+        CA_INSTALL_VERB="Overwrote the operator-pinned (<certificate_authorities>${OPERATOR_CA_PATH}</certificate_authorities>)"
+    elif [ -f "${DEFAULT_CA_FILE}" ]; then
+        CA_INSTALL_VERB="Replaced the existing"
+    else
+        CA_INSTALL_VERB="Installed the delivered"
+    fi
+
+    DEFAULT_CA_DIR="$(dirname "${DEFAULT_CA_FILE}")"
+    mkdir -p "${DEFAULT_CA_DIR}" 2>/dev/null
+    # mkdir -p's mode is whatever the umask leaves it -- looser than the rest
+    # of etc/, which is root:wazuh 0770. Match that convention explicitly
+    # rather than let a first-ever delivery leave a world-traversable certs
+    # directory.
+    chown root:wazuh "${DEFAULT_CA_DIR}" 2>/dev/null
+    chmod 750 "${DEFAULT_CA_DIR}" 2>/dev/null
+
+    # Install atomically: write to a temp file in the same directory, then
+    # rename over the target, so a reader never observes a partially-written
+    # anchor, and a failed cp/mv is caught here instead of silently logging
+    # success with nothing actually installed. Sourced from the snapshot, not
+    # INCOMING_CA_FILE, for the same TOCTOU reason noted above.
+    CA_TMP="${DEFAULT_CA_DIR}/.root-ca.pem.$$"
+    if cp "${CA_SNAPSHOT}" "${CA_TMP}" 2>/dev/null && mv -f "${CA_TMP}" "${DEFAULT_CA_FILE}" 2>/dev/null; then
+        # root:wazuh 640, matching the existing wpk_root.pem trust anchor: readable by
+        # the wazuh group the daemon runs under, but owned (and only writable) by root
+        # -- a daemon that can rewrite its own anchor is not a boundary at all.
+        chown root:wazuh "${DEFAULT_CA_FILE}" 2>/dev/null
+        chmod 640 "${DEFAULT_CA_FILE}" 2>/dev/null
+
+        # A present, readable anchor here is picked up automatically at agent startup
+        # and resolves an unset <verification_mode> to 'full' against it -- so this
+        # alone is sufficient to activate verification; no <ssl> edit is needed.
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - ${CA_INSTALL_VERB} CA at ${DEFAULT_CA_FILE}. ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> ./logs/upgrade.log
+    else
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Could not install the delivered CA at ${DEFAULT_CA_FILE} (write failure); leaving any existing anchor untouched and continuing the upgrade." >> ./logs/upgrade.log
+        rm -f "${CA_TMP}" 2>/dev/null
+    fi
+
+    rm -f "${CA_SNAPSHOT}"
+    rm -f "${INCOMING_CA_FILE}"
+fi
 
 # Whether the package manager's own install hooks can be trusted to have already
 # stopped and restarted the daemon (deb's preinst/postinst, rpm's %pre/%post -- both
