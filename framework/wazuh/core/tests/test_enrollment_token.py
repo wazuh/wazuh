@@ -88,8 +88,14 @@ def test_revoke_token(mock_socket):
     # A storage failure is the manager's problem, not the caller's: internal, and worth retrying
     # (issue #39078, H04). Told apart from 9022 on purpose -- the token does exist.
     (9029, 'Enrollment token store write failed', WazuhInternalError, 1771, None),
-    # Anything else is authd's own error, untouched.
+    # Any other authd-native code (>= 9000) is still the caller's problem: a 1773 carrying authd's
+    # own code and message, instead of the bare exception that used to surface as a 500.
+    (9002, 'Parsing JSON input', WazuhError, 1773, 'authd code 9002: Parsing JSON input'),
+    # AUTHD_INTERNAL (9001) is authd's own fault, not the caller's -- excluded from the 1773
+    # catch-all on purpose, so it stays a bare exception (a real 500), not a misleading 400.
     (9001, 'Internal error', WazuhException, 9001, None),
+    # Below authd's numbering space: a framework socket failure, re-raised untouched.
+    (1014, 'Error communicating with socket', WazuhException, 1014, None),
 ])
 @patch('wazuh.core.enrollment_token.WazuhSocketJSON')
 def test_authd_errors(mock_socket, authd_code, authd_message, expected_class, expected_code, expected_detail):
@@ -104,6 +110,29 @@ def test_authd_errors(mock_socket, authd_code, authd_message, expected_class, ex
         assert expected_detail in exc.value.message
         assert 'Enrollment token refused: address' not in exc.value.message.replace(
             'Enrollment token refused: ', '', 1) or expected_code != 1768
+
+
+@pytest.mark.parametrize('authd_code', [9022, 9025, 9004, 9015, 9029, 9001, 1014])
+@patch('wazuh.core.enrollment_token.WazuhSocketJSON')
+def test_authd_socket_is_closed_on_every_error(mock_socket, authd_code):
+    """The socket is released whichever error the answer carries, mapped or not."""
+    mock_socket.return_value.receive.side_effect = WazuhException(authd_code, 'error', cmd_error=True)
+
+    with pytest.raises(WazuhException):
+        enrollment_token.create_token('wazuh-master')
+
+    mock_socket.return_value.close.assert_called_once()
+
+
+@patch('wazuh.core.enrollment_token.WazuhSocketJSON')
+def test_authd_socket_is_closed_when_send_fails(mock_socket):
+    """The socket is released even when send() itself fails, not only receive()."""
+    mock_socket.return_value.send.side_effect = WazuhException(1014, 'Number of sent bytes is 0')
+
+    with pytest.raises(WazuhException):
+        enrollment_token.create_token('wazuh-master')
+
+    mock_socket.return_value.close.assert_called_once()
 
 
 @patch('wazuh.core.enrollment_token.WazuhSocketJSON')

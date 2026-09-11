@@ -692,6 +692,88 @@ stages:
           pin_hex: !anystr
 
     # POST /agents/enrollment-tokens
+  - name: Mint a token embedding the CA
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "wazuh-master"
+        embed_ca: true
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          token: !anystr
+          id: !anystr
+          address: "wazuh-master"
+          expires: !anystr
+
+    # POST /agents/enrollment-tokens
+  - name: Mint a token with a custom port and prefix
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "wazuh-master"
+        port: 1234
+        prefix: "/custom/"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          token: !anystr
+          id: !anystr
+          address: "wazuh-master"
+          expires: !anystr
+          pin_hex: !anystr
+
+    # POST /agents/enrollment-tokens -- issued against a worker: DistributedAPI forwards it to the master
+  - name: Mint an enrollment token through a worker node
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{worker1_port:d}/agents/enrollment-tokens"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        address: "wazuh-master"
+        description: "minted through worker1"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          token: !anystr
+          id: !anystr
+          address: "wazuh-master"
+          expires: !anystr
+          pin_hex: !anystr
+
+    # POST /agents/enrollment-tokens
+  - name: Try to mint a token with a prefix longer than the schema allows
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "wazuh-master"
+        prefix: "/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/"
+    response:
+      status_code: 400
+
+    # POST /agents/enrollment-tokens
+  - name: Try to mint a token with max_uses above the schema's maximum
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "wazuh-master"
+        max_uses: 5000000000
+    response:
+      status_code: 400
+
+    # POST /agents/enrollment-tokens
   - name: Try to mint a token for a name the listener certificate does not carry
     request:
       verify: False

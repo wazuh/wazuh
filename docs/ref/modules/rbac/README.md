@@ -136,6 +136,9 @@ The following RBAC actions control agent operations:
 | `agent:upgrade` | `agent:id`, `agent:group` | Upgrade agents |
 | `agent:uninstall` | `*` | Check permission to uninstall agents |
 | `agent:scan_vulnerability` | `agent:id`, `agent:group` | Request an on-demand vulnerability scan |
+| `enrollment_token:create` | `*` | Mint an enrollment token |
+| `enrollment_token:read` | `*` | List enrollment tokens |
+| `enrollment_token:delete` | `*` | Revoke or purge enrollment tokens |
 
 The `agent:reload` action was introduced in v5.0.0 alongside a task-based restart/reload dispatch mechanism (agents are grouped into chunks and reloaded via `create_reload_tasks`), replacing the previous Active Response-based restart approach.
 
