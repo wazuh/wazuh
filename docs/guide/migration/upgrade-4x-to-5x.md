@@ -66,6 +66,8 @@ The following changes were identified during agent startup validation after upgr
 | `<client><server><port>1514</port></server></client>` | Changed default | — | The agent talks HTTPS to the manager on `1517`. Inside `<agent><manager>`, remove the port to take the new default or set `1517` explicitly; inside a legacy `<client>` block the port is not read at all. |
 | `<client><server><protocol>...</protocol></server></client>` | Ignored | — | Remove `<protocol>`. TCP is used. Inside a legacy `<client><server>` block only the address is read, and its siblings are dropped without a message; the `INFO: Ignoring the 'protocol' option. Switching to TCP.` line comes from `<protocol>` under `<agent>`. |
 | `<client><crypto_method>...</crypto_method></client>` | Ignored | `WARNING: <crypto_method> inside the legacy <client> block is ignored: only <server> and <enrollment> are read from it.` | Remove `<crypto_method>`. AES is used. Under `<agent>` the same option reports `INFO: Ignoring the 'crypto_method' option. Switching to AES.` instead. |
+| `<client><client_buffer>...</client_buffer></client>` | Moved | `INFO: 'client_buffer' is no longer used and will be ignored. Event batching is configured under <agent><batch>.` | Remove `<client_buffer>`; configure batching under `<agent><batch>` if the defaults do not suit you. |
+| `<labels>...</labels>` (in `ossec.conf` or pushed through `agent.conf`) | Removed | `WARNING: (1223): 'labels' is no longer supported and will be ignored. Agent labels were removed in 5.0.0.` | Remove the block from the agent's `ossec.conf` and from every group's `agent.conf`. There is no 5.0 replacement for agent labels. |
 | `<syscheck><scan_on_start>...</scan_on_start></syscheck>` | Invalid | `INFO: (1230): Invalid element in the configuration: 'scan_on_start'.` | Remove this element from `syscheck` (Always executed on start). |
 | `<rootcheck><check_files>...</check_files></rootcheck>` | Removed | `INFO: Rootcheck option 'check_files' is no longer supported. Use the FIM module instead.` | Remove from `rootcheck`; use FIM (`syscheck`) controls. |
 | `<rootcheck><check_trojans>...</check_trojans></rootcheck>` | Removed | `INFO: Rootcheck option 'check_trojans' is no longer supported. Use the FIM module instead.` | Remove from `rootcheck`; use FIM (`syscheck`) controls. |
@@ -108,8 +110,7 @@ After (5.0 compatible):
 ```xml
 <agent>
 	<manager>
-		<address>MANAGER_IP</address>
-		<port>1517</port>
+		<endpoint>MANAGER_IP:1517</endpoint>
 	</manager>
 </agent>
 ```
@@ -212,8 +213,19 @@ Workaround checklist:
 - Confirm manager is up and reachable from the agent host.
 - Confirm manager has been migrated to a compatible 5.0 deployment.
 - Confirm firewall/network rules allow `1517/tcp` (agent to manager) and `1515/tcp` (enrollment).
-- Confirm the agent points to the correct manager address in `<agent><manager><address>`.
+- Confirm the agent points to the correct manager address in `<agent><manager><endpoint>`.
 - Confirm enrollment credentials: if enrollment fails with `Invalid password (from manager)`, verify that the password in `/var/ossec/etc/authd.pass` on the agent matches `/var/wazuh-manager/etc/authd.pass` on the manager.
+
+## Package upgrade on the host
+
+Installing the 5.0.0 package over a 4.14.X agent (`dpkg -i`, `rpm -Uvh`) keeps `client.keys`, `ossec.conf` and `local_internal_options.conf`: the preinst copies them to `/var/ossec/packages_files/agent_config_files/` and the postinst puts them back, then writes the 5.0 template next to yours as `ossec.conf.new`. The agent restarts with its 4.X identity and configuration, reads the manager address from the legacy `<client>` block and connects over HTTPS on `1517` with the same id and key; no enrollment happens.
+
+Two things to plan for when the upgrade is not run by hand on a terminal:
+
+- On Debian-based hosts `dpkg -i` stops at a conffile prompt for `/etc/init.d/wazuh-agent` (`Configuration file '/etc/init.d/wazuh-agent' ... Package distributor has shipped an updated version`). Without a terminal it waits forever. Run it as `dpkg -i --force-confold wazuh-agent_5.0.0-*.deb` (or the equivalent apt option) so the local file is kept and the upgrade proceeds.
+- Between unpack and postinst, `/var/ossec/etc/ossec.conf` and `client.keys` on disk are the package placeholders (a template with `MANAGER_IP`, an empty key file). An agent restarted in that window logs `ERROR: (4112): Invalid server address found: 'MANAGER_IP'` and `ERROR: (1215): No client configured. Exiting.` Do not restart the agent until the package manager has finished; if it did finish and the files are still the placeholders, the postinst did not run: complete it (`dpkg --configure --force-confold wazuh-agent`) and the backups under `packages_files/agent_config_files/` are restored.
+
+The certificate requirement described under [Certificate trust check](#certificate-trust-check) applies to a package upgrade too, without the automatic check the WPK installer performs: with the default `verification_mode`, an upgraded agent whose host does not trust the manager's CA starts but does not connect until the CA is placed at `/var/ossec/etc/certs/root-ca.pem` (or `<certificate_authorities>` is set).
 
 ## Remote upgrade (WPK)
 
@@ -297,7 +309,7 @@ Migration is complete when all conditions below are met:
 
 - Agent was upgraded using the required version path.
 - No invalid `syscheck`/`rootcheck` element warnings remain.
-- The connection block is `<agent><manager>`, and no `<client>` fallback message remains in `ossec.log`.
+- The connection block is `<agent><manager><endpoint>`, and no `<client>` fallback message remains in `ossec.log`.
 - No deprecated `protocol` or `crypto_method` messages remain.
 - Agent stays connected to the manager and sends events normally.
 - No TLS 1.3 enrollment errors (`Invalid TLS 1.3 cipher suite...`, `Could not set up SSL connection...`) appear in `wazuh-authd` or agent logs, and enrollment against the 5.0 manager succeeds.
