@@ -152,8 +152,8 @@ namespace invsync::endpoints::sync
                     if (const auto decision = vdThrottle.record())
                     {
                         LOGFN_DEBUG1(logFn(),
-                                     "Answered 503 + Retry-After to %llu vulnerability-detection session(s) in the "
-                                     "last %d s: the CVE feed is not ready.",
+                                     "Rejected %llu vulnerability-detection session(s) with 503 in the last %d s: "
+                                     "the CVE feed is not ready.",
                                      static_cast<unsigned long long>(decision.total),
                                      wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
                     }

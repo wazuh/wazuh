@@ -177,9 +177,9 @@ Answer these once per deployment; they decide which of the knobs above you will 
 | Uploads fail on one link class only, always at the same size | invariant 3: the read deadline, not the agent budget | connection closed with no HTTP status; the agent counts a transport failure |
 | A first sync never converges | session too large for the budgets, or the local hand-off failing (§4) | `Synchronization of ... deferred` / `... failed N times in a row` on the agent |
 | Integrity check returns `500` forever | the session query page is larger than the indexer accepts | the indexer's `index.max_result_window` against the configured batch size (values above 10000 are already refused at startup, so this means the indexer's window was lowered) |
-| `503` with `Retry-After` on `/stateful` | VD feed not ready (CVE content not loaded) | content-updater log |
-| `503` without `Retry-After` | downstream timeout **or** an in-flight budget shed — indistinguishable to the agent | `remoted.server.budget.*` vs `remoted.forwarder.*`; budget sheds are not in endpoint metrics |
-| Every request `401` of class `stale_token` | clock drift past the token window (invariant 7) | `remoted.auth.reject.clock_skew` |
+| `503` on `/stateful` whose body is `vulnerability feed not ready` | VD feed not ready (CVE content not loaded) — its `Retry-After` is `inventory_sync_server_vd_feed_retry_after_seconds`, relayed from the sync server, and only differs from the fixed shed value if you raised it (default and minimum are both 10) | content-updater log |
+| `503` with a generic body | downstream timeout **or** an in-flight budget shed — indistinguishable to the agent, and no longer distinguishable by the header either | `remoted.server.budget.*` vs `remoted.forwarder.*`; budget sheds are not in endpoint metrics |
+| Every request `401`, no other symptom | clock drift past the token window (invariant 7) | `remoted.auth.reject.clock_skew` |
 | Agent reports synced but the indexer is missing data | immediate sessions report success while the indexer is unreachable; the queue is not persistent | `Indexer node ... is no longer available` in the manager log |
 
 ## 8. Verifying a change

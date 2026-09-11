@@ -92,7 +92,7 @@ namespace remoted::scanvd
             // synchronous downstream round trips.
             const auto vdAnswer = postScan(agentId);
 
-            if (vdAnswer.first == 200)
+            if (vdAnswer.status == 200)
             {
                 LOGFN_DEBUG1(logFn(), "VD queued the scan for agent %u at offset %llu", agentId, currentOffset);
                 incAccepted(m_metrics);
@@ -100,11 +100,11 @@ namespace remoted::scanvd
                 return;
             }
 
-            if (vdAnswer.second == "scan_queue_full")
+            if (vdAnswer.errorCode == "scan_queue_full")
             {
                 incQueueFull(m_metrics);
             }
-            else if (vdAnswer.second == "indexer_unavailable")
+            else if (vdAnswer.errorCode == "indexer_unavailable")
             {
                 // VD's own reported, VD-logged cause -- exactly like scan_queue_full, and NOT a
                 // relay failure. Folding it into the vd_error window below would let a
@@ -125,17 +125,27 @@ namespace remoted::scanvd
                                "(last: %s). The agents retry on their next notify.",
                                static_cast<unsigned long long>(decision.total),
                                wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
-                               vdAnswer.second.c_str());
+                               vdAnswer.errorCode.c_str());
                 }
             }
-            callback(ScanVdResponse {ScanVdOutcome::VdRejected, currentOffset, vdAnswer.second});
+            callback(ScanVdResponse {ScanVdOutcome::VdRejected, currentOffset, vdAnswer.errorCode, vdAnswer.retryable});
         }
 
     private:
-        /// @return {status, errorCode}: {200, ""} when VD queued the scan; otherwise the error
-        /// code out of VD's body ("scan_queue_full", "feed_not_ready", ...), "vd_unreachable"
-        /// when the round trip itself failed, or "vd_error" for anything unrecognisable.
-        std::pair<int, std::string> postScan(uint32_t agentId)
+        struct PostScanResult
+        {
+            int status;
+            std::string errorCode;
+            bool retryable {true}; ///< VD's own flag when it answered with one; true (a relay
+                                   ///< failure, not VD's call) for an unreachable or
+                                   ///< unparseable response.
+        };
+
+        /// @return {status, errorCode, retryable}: {200, "", true} when VD queued the scan;
+        /// otherwise the error code out of VD's body ("scan_queue_full", "feed_not_ready", ...)
+        /// with VD's own "retryable" flag, or "vd_unreachable"/"vd_error" (both retryable) when
+        /// the round trip itself failed or its answer was unparseable.
+        PostScanResult postScan(uint32_t agentId)
         {
             try
             {
@@ -153,11 +163,11 @@ namespace remoted::scanvd
                 const auto res = client.Post("/vulnerability-detector/scan", requestBody.dump(), "application/json");
                 if (!res)
                 {
-                    return {0, "vd_unreachable"};
+                    return {0, "vd_unreachable", true};
                 }
                 if (res->status == 200)
                 {
-                    return {200, {}};
+                    return {200, {}, true};
                 }
 
                 try
@@ -165,18 +175,21 @@ namespace remoted::scanvd
                     const auto errorJson = nlohmann::json::parse(res->body);
                     if (errorJson.contains("error") && errorJson["error"].is_string())
                     {
-                        return {res->status, errorJson["error"].get<std::string>()};
+                        const bool retryable = !errorJson.contains("retryable") ||
+                                               !errorJson["retryable"].is_boolean() ||
+                                               errorJson["retryable"].get<bool>();
+                        return {res->status, errorJson["error"].get<std::string>(), retryable};
                     }
                 }
                 catch (...) // NOLINT(bugprone-empty-catch)
                 {
                     // Unparseable body: fall through to the generic code.
                 }
-                return {res->status, "vd_error"};
+                return {res->status, "vd_error", true};
             }
             catch (const std::exception&)
             {
-                return {0, "vd_unreachable"};
+                return {0, "vd_unreachable", true};
             }
         }
 

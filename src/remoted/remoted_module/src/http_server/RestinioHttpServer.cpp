@@ -1117,10 +1117,10 @@ namespace remoted::http
                             }
 
                             // Reserve the request's payload against the global in-flight budget
-                            // before doing anything else. If it's exhausted, shed load with a plain
-                            // 503 (the agent runs its own retry/backoff) instead of letting the
-                            // worker-pool queue grow without bound. Routes flagged exempt (e.g. the
-                            // liveness probe) skip it.
+                            // before doing anything else. If it's exhausted, shed load with a 503
+                            // carrying Retry-After (see below) instead of letting the worker-pool
+                            // queue grow without bound. Routes flagged exempt (e.g. the liveness
+                            // probe) skip it.
                             InFlightBudget::Reservation reservation;
                             if (countAgainstBudget)
                             {

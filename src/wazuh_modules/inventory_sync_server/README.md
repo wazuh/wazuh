@@ -62,7 +62,7 @@ below. Status: **kept** = the module provides it; **superseded by D-n** = delibe
 |---|---|---|
 | RNF-1 | Preserve the 9 security controls: anti-spoofing, index allowlists, authoritative `wazuh.*` overlay, strict JSON, `external_gte` guard, idempotency, admission quota, cluster isolation | [Validation](#validation-syncfullsessionvalidator), [the allowlist](#the-allowlist-syncstateindexallowlisthpp), the overlay in `sessionProcessor` |
 | RNF-2 | No head-of-line blocking: no sleeps or unbounded waits on the completion path | sharding + the VD lane; a slow agent/scan delays only its shard/lane |
-| RNF-3 | Explicit backpressure at admission and ingestion (no silent drops) | the four `503` gates; every refusal is an HTTP answer, and every one carries a `Retry-After` |
+| RNF-3 | Explicit backpressure at admission and ingestion (no silent drops) | the four `503` gates; every refusal is an HTTP answer, and each of these carries a `Retry-After` (config, stats, metrics, delete-agent and vd-scan don't relay this module's `503` to the agent — remoted substitutes its own on those routes — so this module's own header is moot there) |
 | RNF-4 | Every abort observable by the agent | deferred responders always answer (weak captures → `503`; batch abandoned on stop → `503`) |
 | RNF-5 | Deterministic teardown; no half-built startup states | [Lifecycle](#lifecycle-the-facade): phased build, reverse teardown, startup gate |
 | RNF-6 | Unit-testability of the orchestration | seams: `IIndexerConnectorSync`, `IVdScanner`, test hooks ([Tests](#tests)) |
@@ -870,8 +870,10 @@ target); and `Item::enqueuedAt` is stamped by the endpoint, so a default (epoch)
 - **Why is the byte-queue `503` body generic while the VD `503`s carry a reason?** Which
   admission gate fired (budget, queue, indexer, shutdown) is an operator concern — visible in
   logs and `GET /metrics` — and the agent's reaction is identical: retry later. The two VD gates
-  differ because the AGENT reacts differently: `Retry-After` schedules the re-POST, and "scan
-  capacity exhausted" is a normal-cycle retry.
+  now both carry `Retry-After`; they differ in its SIZE, not its presence: the feed gate schedules
+  a retry sized to the CVE feed's own state (`inventory_sync_server_vd_feed_retry_after_seconds`),
+  while "scan capacity exhausted" carries the same fixed value every other shed does — a
+  normal-cycle retry, not one dimensioned to its cause.
 - **Why one connector per worker + group commit?** A shared connector is a shared staging buffer,
   which is a lock, which is REQ-SYNC-2's root cause (HTTP under the staging mutex — the legacy's
   deadlock family). Private connectors make ordering topological, and the group commit amortizes

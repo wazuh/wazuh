@@ -37,6 +37,9 @@ namespace remoted::endpoints::scanvd
         std::string errorCode;  ///< Meaningful only when outcome == VdRejected: VD's own error code
                                 ///< passed through (scan_queue_full, feed_not_ready, shutting_down,
                                 ///< ...) or vd_unreachable when the POST itself failed.
+        bool retryable {true};  ///< Meaningful only when outcome == VdRejected: VD's own
+                                ///< `retryable` flag, passed through as-is (true when the POST
+                                ///< itself failed, since that is a relay failure, not VD's call).
     };
 
     using ScanVdCallback = std::function<void(const ScanVdResponse&)>;

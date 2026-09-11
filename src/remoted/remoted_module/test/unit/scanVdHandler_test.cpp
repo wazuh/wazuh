@@ -196,6 +196,25 @@ TEST(ScanVdHandlerTest, AVdReadinessRejectionPassesItsCodeThrough)
     EXPECT_EQ(rig.metrics.queueFull->get(), 0u);
 }
 
+TEST(ScanVdHandlerTest, AVdNotInitializedRejectionCarriesVdsRetryableFlagThrough)
+{
+    // vd_not_initialized is VD's own permanent code (no scanner on this node): VD marks it
+    // retryable:false, and the handler must pass that flag through as-is rather than the
+    // endpoint deciding permanence itself off the error string (D19 / #38880 F41).
+    Rig rig {"notinit"};
+    rig.server.setScanHandler(
+        [](const httplib::Request&, httplib::Response& res)
+        {
+            res.status = 503;
+            res.set_content(R"({"error":"vd_not_initialized","retryable":false})", "application/json");
+        });
+
+    const auto response = callSync(rig.handler, 7, 100);
+    EXPECT_EQ(response.outcome, ScanVdOutcome::VdRejected);
+    EXPECT_EQ(response.errorCode, "vd_not_initialized");
+    EXPECT_FALSE(response.retryable);
+}
+
 TEST(ScanVdHandlerTest, AnUnreachableVdIsAnHonest503NotASilentDrop)
 {
     const auto socketPath = makeUniqueVdSocketPath("unreachable");

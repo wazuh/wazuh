@@ -232,19 +232,23 @@ namespace invsync::vd
         }
     }
 
-    void VdScanLane::respond(Item& item, int status, const std::string& body)
+    void VdScanLane::respond(Item& item, int status, const std::string& body, bool transient)
     {
         if (item.responder)
         {
             m_requestCounters.count(status);
             observeLaneTime(item);
             auto response = wazuh::uds_http::HttpResponse::json(status, body);
-            if (status == 503)
+            // "Retry later" only where later could plausibly differ: shutting down, indexer
+            // unavailable, connector failure, scanner still starting. NOT when the caller marks the
+            // outcome permanent (no scanner on this node): a hint there would invite the retry the
+            // status is refusing. The caller passes this explicitly -- it already knows which
+            // outcome it got, and deciding from the rendered body coupled this to a wire literal
+            // instead of the AgentScanOutcome the switch above is built on.
+            // The feed re-check below does not come through here either: it needs the configured,
+            // feed-sized value instead of the generic hint.
+            if (status == 503 && transient)
             {
-                // Every 503 a lane worker answers -- shutting down, indexer unavailable, connector
-                // failure -- is "retry later", so it carries the generic shed hint. The one 503
-                // that must NOT come through here is the feed re-check below, which needs the
-                // configured, feed-sized value instead.
                 response.headers.emplace_back("Retry-After", wazuh::uds_http::SHED_RETRY_AFTER_SECONDS);
             }
             item.responder->send(std::move(response));
@@ -320,9 +324,9 @@ namespace invsync::vd
                 }
             }
 
-            const auto finish = [&](int status, const std::string& body)
+            const auto finish = [&](int status, const std::string& body, bool transient = true)
             {
-                respond(item, status, body);
+                respond(item, status, body, transient);
                 m_registry->release(item.session.agentId, AgentInFlightRegistry::Lane::Scan);
             };
 
@@ -393,7 +397,7 @@ namespace invsync::vd
                                    "On-demand vulnerability scan for agent %s could not run: this node runs no "
                                    "vulnerability scanner. The task will be retried and then dead-lettered.",
                                    item.session.agentId.c_str());
-                        finish(503, SCAN_NO_SCANNER_BODY);
+                        finish(503, SCAN_NO_SCANNER_BODY, /*transient=*/false);
                         break;
 
                     case AgentScanOutcome::NotReady:

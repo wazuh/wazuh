@@ -92,7 +92,7 @@ namespace invsync::metrics
     inline std::shared_ptr<wazuh::metrics::ICounter> makeVdRetryAfterCounter(wazuh::metrics::IManager& manager)
     {
         return manager.getOrCreateCounter(
-            VD_RETRY_AFTER_TOTAL, "503 responses carrying a Retry-After header (the CVE feed was not ready)", "count");
+            VD_RETRY_AFTER_TOTAL, "503 responses answered because the CVE feed was not ready", "count");
     }
 
     /**

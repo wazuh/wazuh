@@ -89,12 +89,18 @@ namespace wazuh::uds_http
     };
 
     /// `Retry-After` attached to every load-shedding 503, so a shed request is distinguishable from
-    /// a network blip and the fleet's first retry is spread instead of each agent walking its own
-    /// curve. One uniform value on purpose: it is a DELAY, not a cause, so it tells the peer nothing
-    /// about which limit tripped (the causes stay in the logs). Matches the value the VD lane
-    /// already ships (`inventory_sync_server_vd_feed_retry_after_seconds`, 10 s) and binds against
-    /// the agent's early full-jitter backoff, whose ceiling starts at 1 s and doubles -- the agent
-    /// waits `max(Retry-After, its own backoff)`, so this only ever raises a near-immediate retry.
+    /// a network blip instead of being retried on the cadence of a broken link. One uniform value on
+    /// purpose: it is a DELAY, not a cause, so it tells the peer nothing about which limit tripped
+    /// (the causes stay in the logs). Matches the value the VD lane already ships
+    /// (`inventory_sync_server_vd_feed_retry_after_seconds`, 10 s).
+    ///
+    /// What this buys is DEFERRAL, not dispersion. The agent waits `max(Retry-After, its own
+    /// full-jitter backoff)`, whose ceiling starts at 1 s and doubles, so for the first four
+    /// attempts this fixed floor wins for every agent at once and their retries land together --
+    /// 10x later than they would have, but no longer spread. Dispersion returns once the agent's
+    /// own ceiling grows past 10 s. A jittered per-response value would buy both; it is deliberately
+    /// not done here, because the load being deferred is what hurts and a fixed floor is the
+    /// smaller, testable change.
     constexpr const char* SHED_RETRY_AFTER_SECONDS {"10"};
 
     /**

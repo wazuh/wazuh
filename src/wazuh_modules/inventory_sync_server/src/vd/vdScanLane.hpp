@@ -119,7 +119,7 @@ namespace invsync::vd
 
     private:
         void workerLoop(std::size_t index);
-        void respond(Item& item, int status, const std::string& body);
+        void respond(Item& item, int status, const std::string& body, bool transient = true);
         void respondConnectorFailure(Item& item, indexer::IIndexerConnectorSync& connector);
         /// One vd.lane.time sample for @p item (no-op on an unstamped enqueuedAt). Split out of
         /// respond() so the one send that cannot go through it -- the feed-not-ready 503, which
