@@ -12,228 +12,369 @@
 #ifndef _EXECUTION_CONTEXT_HPP
 #define _EXECUTION_CONTEXT_HPP
 
-#include "chainOfResponsability.hpp"
 #include "componentsHelper.hpp"
 #include "defs.h"
-#include "json.hpp"
+#include "loggerHelper.h"
 #include "sharedDefs.hpp"
-#include "stringHelper.h"
-#include "updaterContext.hpp"
-#include "utils/timeHelper.h"
-#include <algorithm>
-#include <cstdlib>
 #include <filesystem>
+#include <json.hpp>
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <system_error>
+#include <vector>
 
-const std::string GENERIC_OUTPUT_FOLDER_PATH {std::filesystem::temp_directory_path() / "output_folder"};
+// `defs.h` defines USER as a string macro, and rocksdb spells USER as an enumerator in both
+// Env::Priority and ThreadStatus::ThreadType. Whichever the preprocessor sees first wins, and with
+// the macro in force those two enums fail to parse — which surfaces as a few hundred errors deep
+// inside rocksdb headers that say nothing about the actual cause. Shield the include and put the
+// macro back, so this holds however our own includers happen to be ordered.
+#pragma push_macro("USER")
+#undef USER
+#include "utils/rocksDBWrapper.hpp"
+#pragma pop_macro("USER")
 
 /**
- * @class ExecutionContext
+ * @brief Validates a registration's configuration and opens whatever storage it asks for.
  *
- * @brief Prepares the execution context as a step of a chain of responsibility.
+ * Reduced to exactly that. It used to also create download/content folders for file-based
+ * downloaders; there are none left — content streams from the indexer straight into the sink — so
+ * those folders were pure overhead and are gone.
  *
+ * Everything this class rejects is rejected **at registration**, which is the only point where a
+ * configuration error can still be reported to the host as an exception rather than having to be
+ * flattened into a `CycleStatus::FailedConfig` on every cycle forever.
  */
-class ExecutionContext final : public AbstractHandler<std::shared_ptr<UpdaterBaseContext>>
+class ExecutionContext final
 {
-private:
+public:
+    std::string httpUserAgent;                          ///< `consumerName/<version>`.
+    std::shared_ptr<Utils::RocksDBWrapper> database;    ///< Updater database, or null when unused.
+
     /**
-     * @brief Reads and returns the last offset from the database.
+     * @brief Validate @p configData and open its database if it has one.
      *
-     * @param context Updater context configured with the database driver.
-     * @return unsigned int Last offset from the database. If there is no available data, cero is returned.
+     * @param configData The `configData` object of the registration parameters.
+     * @param topicName Topic name; part of the database file name.
+     * @return The prepared context.
+     * @throws std::invalid_argument if the configuration is not usable.
      */
-    unsigned int getDatabaseOffset(const UpdaterBaseContext& context) const
+    static ExecutionContext prepare(const nlohmann::json& configData, const std::string& topicName)
     {
-        unsigned int databaseOffset;
-        try
+        validate(configData);
+
+        ExecutionContext context;
+        context.httpUserAgent = configData.at("consumerName").get<std::string>() + "/" + __wazuh_version;
+
+        const auto databasePath = configData.value("databasePath", std::string {});
+        if (!databasePath.empty())
         {
-            databaseOffset =
-                std::stoi(context.spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString());
-        }
-        catch (const std::runtime_error&)
-        {
-            // First execution. Set offset to zero.
-            databaseOffset = 0;
-            context.spRocksDB->put(
-                Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::Columns::CURRENT_OFFSET);
+            context.database = openDatabase(databasePath, topicName);
         }
 
-        return databaseOffset;
+        return context;
     }
 
     /**
-     * @brief Reads and returns the file hash from the database.
+     * @brief Check a registration's configuration without touching the filesystem.
      *
-     * @param context Updater context configured with the database driver.
-     * @return std::string Last file hash from the database. If there is no available data, an empty string is returned.
+     * @param configData The `configData` object of the registration parameters.
+     * @throws std::invalid_argument with a message naming the offending key.
      */
-    std::string getDatabaseFileHash(const UpdaterBaseContext& context) const
+    static void validate(const nlohmann::json& configData)
     {
-        try
+        if (!configData.is_object())
         {
-            return context.spRocksDB->getLastKeyValue(Components::Columns::DOWNLOADED_FILE_HASH).second.ToString();
-        }
-        catch (const std::runtime_error& e)
-        {
-            // First execution. Return empty hash.
-            return "";
-        }
-    }
-
-    /**
-     * @brief Parses the offset from the input configuration.
-     *
-     * @param inputConfig Reference to the input config.
-     * @return unsigned int Non-negative offset from the input config.
-     */
-    unsigned int getConfigOffset(const nlohmann::json& inputConfig) const
-    {
-        const auto configOffset {inputConfig.at("offset").get<int>()};
-        if (configOffset < 0)
-        {
-            throw std::runtime_error {"Offset should be a non-negative number: " + std::to_string(configOffset)};
+            throw std::invalid_argument {"configData must be an object"};
         }
 
-        return configOffset;
-    }
-
-    /**
-     * @brief Creates the RocksDB instance.
-     *
-     * @param context updater base context.
-     */
-    void createRocksDB(UpdaterBaseContext& context) const
-    {
-        // Create the database name. It will be the topic name with the prefix "updater_" and the suffix "_metadata".
-        const auto databaseName {"/updater_" + context.topicName + "_metadata"};
-        const auto& databasePath {context.configData.at("databasePath").get_ref<std::string&>()};
-
-        // Check if the output folder exists.
-        if (!std::filesystem::exists(databasePath))
-        {
-            // Create the folders.
-            std::filesystem::create_directories(databasePath);
-        }
-
-        // Initialize RocksDB driver instance.
-        context.spRocksDB = std::make_unique<Utils::RocksDBWrapper>(databasePath + databaseName);
-
-        // Create database columns if necessary.
-        const std::vector<std::string> COLUMNS {Components::Columns::CURRENT_OFFSET,
-                                                Components::Columns::DOWNLOADED_FILE_HASH};
-        for (const auto& columnName : COLUMNS)
-        {
-            if (!context.spRocksDB->columnExists(columnName))
-            {
-                logDebug1(WM_CONTENTUPDATER, "Column '%s' doesn't exist so it will be created", columnName.c_str());
-                context.spRocksDB->createColumn(columnName);
-            }
-        }
-
-        // Set last downloaded hash.
-        context.downloadedFileHash = getDatabaseFileHash(context);
-
-        // Read input offsets.
-        const auto databaseOffset {getDatabaseOffset(context)};
-        const auto configOffset {getConfigOffset(context.configData)};
-
-        // Choose the greatest between the DB and the config offset.
-        const auto currentOffset {std::max(databaseOffset, configOffset)};
-
-        if (currentOffset > databaseOffset)
-        {
-            // Put the current offset in the database.
-            context.spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
-                                   std::to_string(currentOffset),
-                                   Components::Columns::CURRENT_OFFSET);
-        }
-    }
-
-    /**
-     * @brief Creates the folder that are needed by the tool in order to be executed.
-     *
-     * @param context updater base context.
-     */
-    void createOutputFolder(UpdaterBaseContext& context) const
-    {
-
-        // Check if the output folder path is given and not empty.
-        if (context.configData.contains("outputFolder") &&
-            !context.configData.at("outputFolder").get<std::string>().empty())
-        {
-            // set the output folder path to the given value
-            context.outputFolder = context.configData.at("outputFolder").get<std::string>();
-        }
-        else
-        {
-            // set the output folder path to the default value.
-            context.outputFolder = GENERIC_OUTPUT_FOLDER_PATH;
-        }
-
-        auto const& outputFolderPath = context.outputFolder;
-
-        // check if the output folder exists.
-        if (std::filesystem::exists(outputFolderPath))
-        {
-            // Delete the output folder to avoid conflicts.
-            logDebug2(WM_CONTENTUPDATER, "Removing previous output folder '%s'", outputFolderPath.string().c_str());
-            std::filesystem::remove_all(outputFolderPath);
-        }
-
-        // Create the folders.
-        logDebug2(WM_CONTENTUPDATER, "Creating output folders at '%s'", outputFolderPath.string().c_str());
-        std::filesystem::create_directories(outputFolderPath);
-        std::filesystem::create_directories(outputFolderPath / DOWNLOAD_FOLDER);
-        std::filesystem::create_directories(outputFolderPath / CONTENTS_FOLDER);
-
-        context.downloadsFolder = outputFolderPath / DOWNLOAD_FOLDER;
-        context.contentsFolder = outputFolderPath / CONTENTS_FOLDER;
-    }
-
-    /**
-     * @brief Sets the user agent context member used in HTTP requests.
-     *
-     * @param context Updater context.
-     */
-    void setHttpUserAgent(UpdaterBaseContext& context) const
-    {
-        if (!context.configData.contains("consumerName") ||
-            context.configData.at("consumerName").get_ref<const std::string&>().empty())
+        if (!configData.contains("consumerName") || !configData.at("consumerName").is_string() ||
+            configData.at("consumerName").get_ref<const std::string&>().empty())
         {
             throw std::invalid_argument {"Missing or empty consumerName"};
         }
-        context.httpUserAgent = context.configData.at("consumerName").get<std::string>() + "/" + __wazuh_version;
+
+        const auto changeDetection = configData.value("changeDetection", std::string {});
+        if (changeDetection != "cursor" && changeDetection != "hash")
+        {
+            throw std::invalid_argument {"changeDetection must be either \"cursor\" or \"hash\""};
+        }
+
+        if (!configData.contains("indexer") || !configData.at("indexer").is_object())
+        {
+            throw std::invalid_argument {"Missing indexer configuration"};
+        }
+        const auto& indexer = configData.at("indexer");
+
+        if (dataIndices(indexer).empty())
+        {
+            throw std::invalid_argument {"indexer must define a non-empty \"index\" or \"indices\""};
+        }
+
+        validateConsumerStatusIndex(indexer);
+
+        if (changeDetection == "hash")
+        {
+            validateHashProbe(indexer);
+        }
+
+        validateQueryShape(indexer);
     }
 
-public:
     /**
-     * @brief Prepare the execution context necessary to execute the orchestration.
+     * @brief The indices a registration's PIT covers, excluding the consumer status index.
      *
-     * @param context updater base context.
-     * @return std::shared_ptr<UpdaterBaseContext>
+     * @param indexer The `configData.indexer` object.
+     * @return Index names, in configuration order.
      */
-    std::shared_ptr<UpdaterBaseContext> handleRequest(std::shared_ptr<UpdaterBaseContext> context) override
+    static std::vector<std::string> dataIndices(const nlohmann::json& indexer)
     {
-        logDebug1(WM_CONTENTUPDATER, "ExecutionContext - Starting process");
+        std::vector<std::string> indices;
 
-        // Check if the database path is given and not empty.
-        if (context->configData.contains("databasePath") &&
-            !context->configData.at("databasePath").get<std::string>().empty())
+        if (indexer.contains("indices") && indexer.at("indices").is_array())
         {
-            createRocksDB(*context);
+            for (const auto& entry : indexer.at("indices"))
+            {
+                if (entry.is_string() && !entry.get_ref<const std::string&>().empty())
+                {
+                    indices.push_back(entry.get<std::string>());
+                }
+            }
+        }
+        else if (indexer.contains("index") && indexer.at("index").is_string() &&
+                 !indexer.at("index").get_ref<const std::string&>().empty())
+        {
+            indices.push_back(indexer.at("index").get<std::string>());
         }
 
-        // Output folders (downloads/ and contents/) are only needed for file-based downloaders.
-        // The Indexer-sourced path streams data directly without intermediate files.
-        if (context->configData.value("contentSource", "") != "indexer")
+        return indices;
+    }
+
+private:
+    /**
+     * @brief Type-check the keys that shape the search request.
+     *
+     * These are read later with `json::value(key, default)`, which throws a `type_error` naming
+     * nothing useful when the stored type does not match — and, worse, `sourceFilter` and `sortKeys`
+     * are read behind an `is_object`/`is_array` test, so a mistyped one is silently *ignored*. For
+     * `sourceFilter` that means quietly downloading every field of every document: the vulnerability
+     * scanner's filter drops most of a CVE5 record, so losing it turns a feed update into a
+     * multi-gigabyte transfer that still works and is therefore never noticed. Rejecting the
+     * registration is the only point at which that is cheap to catch.
+     *
+     * @param indexer The `configData.indexer` object.
+     */
+    static void validateQueryShape(const nlohmann::json& indexer)
+    {
+        if (indexer.contains("numSlices"))
         {
-            createOutputFolder(*context);
+            const auto& slices = indexer.at("numSlices");
+            if (!slices.is_number_unsigned() || slices.get<std::size_t>() == 0)
+            {
+                throw std::invalid_argument {"indexer.numSlices must be a positive integer"};
+            }
         }
 
-        setHttpUserAgent(*context);
+        if (indexer.contains("pageSize") && !indexer.at("pageSize").is_number_unsigned())
+        {
+            throw std::invalid_argument {"indexer.pageSize must be a positive integer"};
+        }
 
-        return AbstractHandler<std::shared_ptr<UpdaterBaseContext>>::handleRequest(std::move(context));
+        if (indexer.contains("consumerStatusCacheSeconds") &&
+            !indexer.at("consumerStatusCacheSeconds").is_number_unsigned())
+        {
+            throw std::invalid_argument {"indexer.consumerStatusCacheSeconds must be a non-negative integer"};
+        }
+
+        if (indexer.contains("keepAlive") &&
+            (!indexer.at("keepAlive").is_string() || indexer.at("keepAlive").get_ref<const std::string&>().empty()))
+        {
+            throw std::invalid_argument {"indexer.keepAlive must be a non-empty duration string, e.g. \"5m\""};
+        }
+
+        if (indexer.contains("expandWildcards") && !indexer.at("expandWildcards").is_boolean())
+        {
+            throw std::invalid_argument {"indexer.expandWildcards must be a boolean"};
+        }
+
+        if (indexer.contains("sourceFilter") && !indexer.at("sourceFilter").is_object())
+        {
+            throw std::invalid_argument {"indexer.sourceFilter must be an object with \"includes\"/\"excludes\""};
+        }
+
+        if (indexer.contains("cursorField") &&
+            (!indexer.at("cursorField").is_string() ||
+             indexer.at("cursorField").get_ref<const std::string&>().empty()))
+        {
+            throw std::invalid_argument {"indexer.cursorField must be a non-empty field name"};
+        }
+
+        if (indexer.contains("sortKeys"))
+        {
+            const auto& sortKeys = indexer.at("sortKeys");
+            if (!sortKeys.is_array() || sortKeys.empty())
+            {
+                throw std::invalid_argument {"indexer.sortKeys must be a non-empty array"};
+            }
+            for (const auto& key : sortKeys)
+            {
+                if (!key.is_object() || key.empty())
+                {
+                    throw std::invalid_argument {"indexer.sortKeys entries must be single-field objects"};
+                }
+            }
+        }
+
+        if (indexer.contains("requiredDocumentIds"))
+        {
+            const auto& ids = indexer.at("requiredDocumentIds");
+            if (!ids.is_array())
+            {
+                throw std::invalid_argument {"indexer.requiredDocumentIds must be an array of document ids"};
+            }
+            for (const auto& id : ids)
+            {
+                if (!id.is_string() || id.get_ref<const std::string&>().empty())
+                {
+                    throw std::invalid_argument {"indexer.requiredDocumentIds entries must be non-empty strings"};
+                }
+            }
+        }
+    }
+
+    /**
+     * @brief The consumer status index must be one concrete index, not an alias or a pattern.
+     *
+     * Both defences against consumer documents leaking into the content — the query-side `must_not`
+     * on `_index` and the hit-side drop — compare against the `_index` metafield, and that reports
+     * the concrete backing index. A pattern or a comma list would simply never match, so the leak
+     * would be silent. Rejecting it here is the only place it can be caught cheaply.
+     */
+    static void validateConsumerStatusIndex(const nlohmann::json& indexer)
+    {
+        const auto index = indexer.value("consumerStatusIndex", std::string {});
+        if (index.empty())
+        {
+            return;
+        }
+
+        if (index.find('*') != std::string::npos || index.find(',') != std::string::npos || index.front() == '-')
+        {
+            throw std::invalid_argument {
+                "indexer.consumerStatusIndex must be a concrete index name (no wildcard, comma list or exclusion): '" +
+                index + "'"};
+        }
+
+        if (indexer.value("consumerStatusId", std::string {}).empty())
+        {
+            throw std::invalid_argument {"indexer.consumerStatusId is required when consumerStatusIndex is set"};
+        }
+    }
+
+    static void validateHashProbe(const nlohmann::json& indexer)
+    {
+        const bool hasDocId = indexer.contains("hashDocId") && indexer.at("hashDocId").is_string() &&
+                              !indexer.at("hashDocId").get_ref<const std::string&>().empty();
+        const bool hasIndex = indexer.contains("hashIndex") && indexer.at("hashIndex").is_string() &&
+                              !indexer.at("hashIndex").get_ref<const std::string&>().empty();
+
+        if (hasDocId == hasIndex)
+        {
+            throw std::invalid_argument {
+                "hash change detection requires exactly one of indexer.hashDocId or indexer.hashIndex"};
+        }
+
+        if (hasIndex && (!indexer.contains("hashQuery") || !indexer.at("hashQuery").is_object()))
+        {
+            throw std::invalid_argument {"indexer.hashQuery is required when indexer.hashIndex is set"};
+        }
+
+        if (!indexer.contains("hashPointers") || !indexer.at("hashPointers").is_array() ||
+            indexer.at("hashPointers").empty())
+        {
+            throw std::invalid_argument {"indexer.hashPointers must be a non-empty array of JSON pointers"};
+        }
+
+        for (const auto& pointer : indexer.at("hashPointers"))
+        {
+            if (!pointer.is_string() || pointer.get_ref<const std::string&>().empty() ||
+                pointer.get_ref<const std::string&>().front() != '/')
+            {
+                throw std::invalid_argument {"indexer.hashPointers entries must be JSON pointers starting with '/'"};
+            }
+        }
+
+        if (!indexer.contains("dataQuery") || !indexer.at("dataQuery").is_object())
+        {
+            throw std::invalid_argument {"indexer.dataQuery is required for hash change detection"};
+        }
+    }
+
+    /**
+     * @brief Open the updater database, rebuilding it if what is on disk cannot be opened.
+     *
+     * `RocksDBWrapper` already attempts its own repair first (`repairIfCorrupt` defaults to true),
+     * so this is the second line of defence, for when that repair fails too. It matters because the
+     * failure mode is otherwise a *host that will not start*: the open throws, the registration
+     * constructor propagates it, and the vulnerability scanner dies with it. That used to be
+     * survivable only by accident — the scanner deleted this whole directory before registering, a
+     * reach-in that no longer exists.
+     *
+     * Discarding the file is the right answer here in a way it would not be for content: this
+     * database holds one thing, the change-detection token, and losing it costs exactly one full
+     * re-download — which is also precisely what a database that could not be repaired needs.
+     *
+     * @param databasePath Directory holding the updater databases.
+     * @param topicName Topic name; part of the database file name.
+     * @return The open database.
+     * @throws std::exception if it cannot be opened even after being rebuilt.
+     */
+    static std::shared_ptr<Utils::RocksDBWrapper> openDatabase(const std::string& databasePath,
+                                                               const std::string& topicName)
+    {
+        if (!std::filesystem::exists(databasePath))
+        {
+            std::filesystem::create_directories(databasePath);
+        }
+
+        const auto databaseFile = databasePath + "/updater_" + topicName + "_metadata";
+
+        std::shared_ptr<Utils::RocksDBWrapper> database;
+        try
+        {
+            database = std::make_shared<Utils::RocksDBWrapper>(databaseFile);
+        }
+        catch (const std::exception& e)
+        {
+            logWarn(WM_CONTENTUPDATER,
+                    "The content token database for '%s' could not be opened or repaired (%s); it will be rebuilt "
+                    "and the next cycle will perform a full reload.",
+                    topicName.c_str(),
+                    e.what());
+
+            std::error_code errorCode;
+            std::filesystem::remove_all(databaseFile, errorCode);
+            if (errorCode)
+            {
+                throw std::runtime_error {"Could not remove the unusable content token database '" + databaseFile +
+                                          "': " + errorCode.message()};
+            }
+
+            // Left to throw: a rebuild that fails too is not a recoverable state, and starting with
+            // no token store at all would silently re-download the whole feed on every cycle
+            // forever, which is worse than refusing to register.
+            database = std::make_shared<Utils::RocksDBWrapper>(databaseFile);
+        }
+
+        if (!database->columnExists(Components::Columns::CURRENT_OFFSET))
+        {
+            logDebug1(WM_CONTENTUPDATER,
+                      "Column '%s' doesn't exist so it will be created",
+                      Components::Columns::CURRENT_OFFSET.c_str());
+            database->createColumn(Components::Columns::CURRENT_OFFSET);
+        }
+
+        return database;
     }
 };
 

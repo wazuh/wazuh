@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/syncStatus.hpp>
@@ -41,6 +42,18 @@ public:
      * @return Vector of SpaceStatus, one per configured space.
      */
     virtual std::vector<SpaceStatus> getSpacesStatus() const = 0;
+
+    /**
+     * @brief Queue an out-of-band synchronization, off the scheduler.
+     *
+     * Non-blocking: the request is handed to the content manager's bounded lane and runs on one of
+     * its workers, so this is safe to call from an API handler thread. A space whose content has
+     * not moved costs one hash probe, and a space already syncing is left alone rather than run
+     * twice.
+     *
+     * @param space Space to update. Empty updates every tracked space.
+     */
+    virtual void requestOnDemandUpdate(std::string_view space = {}) = 0;
 };
 
 } // namespace cm::sync

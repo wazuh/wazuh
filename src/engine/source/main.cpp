@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <agentcache/agentMetadataCache.hpp>
+#include <api/contentsync/handlers.hpp>
 #include <api/handlers.hpp>
 #include <api/status/handlers.hpp>
 #include <base/eventParser.hpp>
@@ -25,7 +26,9 @@
 #include <builder/builder.hpp>
 #include <cmcrud/cmcrudservice.hpp>
 #include <cmstore/cmstore.hpp>
+#include <cmcontent/registration.hpp>
 #include <cmsync/cmsync.hpp>
+#include <contentManager.hpp>
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
 #include <confremote/confremotemanager.hpp>
@@ -246,6 +249,13 @@ int main(int argc, char* argv[])
         sigaction(SIGPIPE, &sigPipeHandler, nullptr);
     }
 
+    // Content Manager: hand it this process's log function so everything it emits lands in the
+    // engine's log with the engine's rotation policy. Log::GLOBAL_LOG_FUNCTION is defined per DSO,
+    // so the .so keeps its own copy and this only tells it which sink to use -- no wazuhext is
+    // pulled in. Started before any module that registers a content topic.
+    ContentModule::instance().start(logging::createStandaloneLogFunction());
+    exitHandler.add([]() { ContentModule::instance().stop(); });
+
     // Engine start - Init modules
 
     std::shared_ptr<store::Store> store;
@@ -260,6 +270,9 @@ int main(int argc, char* argv[])
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
+    /// The same indexer settings the connector was built from, handed to every content
+    /// registration. They are assembled once, in the Indexer Connector section below.
+    nlohmann::json indexerConnectionSettings = nlohmann::json::object();
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<dumper::Dumper> dumper;
     std::shared_ptr<raweventindexer::RawEventIndexer> rawEventIndexer;
@@ -530,6 +543,10 @@ int main(int argc, char* argv[])
 
                 // Create indexer connector with enhanced configuration
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str(), maxHitsPerRequest);
+
+                // The content manager builds its own (read-only, session-shared) connectors from
+                // exactly these settings, so there is no second place to configure the indexer.
+                indexerConnectionSettings = nlohmann::json::parse(jsonCnf.str());
                 // Register destructive shutdown first so it executes (LIFO) AFTER requestShutdown,
                 // ensuring in-flight pagination loops abort and release shared locks before destroy.
                 exitHandler.add([indexerConnector]() { indexerConnector->shutdown(); });
@@ -699,8 +716,20 @@ int main(int argc, char* argv[])
         {
             auto maxRetries = confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES);
             auto retryInterval = confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL);
-            cmSyncService = std::make_shared<cm::sync::CMSync>(
-                indexerConnector, cmCrudService, store, orchestrator, maxRetries, retryInterval);
+            cmcontent::Options contentOptions;
+            contentOptions.pageSize = confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
+            contentOptions.pitKeepAlive = confManager.get<std::string>(conf::key::CONTENT_PIT_KEEP_ALIVE);
+            contentOptions.consumerCacheSeconds = confManager.get<size_t>(conf::key::CONTENT_CONSUMER_CACHE_SECONDS);
+            contentOptions.consumerRetrySeconds = confManager.get<size_t>(conf::key::CONTENT_CONSUMER_RETRY_INTERVAL);
+
+            cmSyncService = std::make_shared<cm::sync::CMSync>(indexerConnector,
+                                                              cmCrudService,
+                                                              store,
+                                                              orchestrator,
+                                                              indexerConnectionSettings,
+                                                              maxRetries,
+                                                              retryInterval,
+                                                              contentOptions);
             LOG_INFO("Content Manager Sync Service initialized");
 
             exitHandler.add([cmSyncService]() { cmSyncService->requestShutdown(); });
@@ -713,8 +742,19 @@ int main(int argc, char* argv[])
             auto maxRetries = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_MAX_RETRIES);
             auto retryInterval = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_RETRY_INTERVAL);
             auto iocSyncBatchSize = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
-            iocSyncService = std::make_shared<ioc::sync::IocSync>(
-                indexerConnector, IOCkvdb, store, maxRetries, retryInterval, iocSyncBatchSize);
+            cmcontent::Options contentOptions;
+            contentOptions.pageSize = iocSyncBatchSize;
+            contentOptions.pitKeepAlive = confManager.get<std::string>(conf::key::CONTENT_PIT_KEEP_ALIVE);
+            contentOptions.consumerCacheSeconds = confManager.get<size_t>(conf::key::CONTENT_CONSUMER_CACHE_SECONDS);
+            contentOptions.consumerRetrySeconds = confManager.get<size_t>(conf::key::CONTENT_CONSUMER_RETRY_INTERVAL);
+
+            iocSyncService = std::make_shared<ioc::sync::IocSync>(indexerConnector,
+                                                                 IOCkvdb,
+                                                                 store,
+                                                                 indexerConnectionSettings,
+                                                                 maxRetries,
+                                                                 retryInterval,
+                                                                 contentOptions);
             LOG_INFO("IOC Sync Service initialized");
 
             exitHandler.add([iocSyncService]() { iocSyncService->requestShutdown(); });
@@ -871,6 +911,10 @@ int main(int argc, char* argv[])
             // Status
             api::status::handlers::registerHandlers(cmSyncService, iocSyncService, geoManager, apiServer);
             LOG_DEBUG("Status API registered.");
+
+            // On-demand content synchronization (ruleset and IOC)
+            api::contentsync::handlers::registerHandlers(cmSyncService, iocSyncService, apiServer);
+            LOG_DEBUG("Content synchronization API registered.");
 
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));

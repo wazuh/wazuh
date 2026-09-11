@@ -8,230 +8,224 @@
  * Foundation.
  */
 
+#include "contentOnDemand.hpp"
 #include "onDemandManager.hpp"
 
 #include "gtest/gtest.h"
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <future>
-#include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
 
 namespace
 {
-    /// Records what the lane sends, with a waitable count.
-    class FakeResponder final : public wazuh::uds_http::IHttpResponder
+
+using content_manager::OnDemandCode;
+using content_manager::OnDemandResult;
+using content_manager::RunRequest;
+
+/// Collects the outcomes the lane hands back, from whichever thread produces them.
+class Outcomes
+{
+public:
+    void record(OnDemandResult result)
     {
-    public:
-        void send(wazuh::uds_http::HttpResponse response) override
-        {
-            {
-                std::lock_guard<std::mutex> lock {m_mutex};
-                m_responses.push_back(std::move(response));
-            }
-            m_sent.notify_all();
-        }
-
-        bool waitForResponse(std::chrono::milliseconds timeout = std::chrono::seconds {5})
-        {
-            std::unique_lock<std::mutex> lock {m_mutex};
-            return m_sent.wait_for(lock, timeout, [this] { return !m_responses.empty(); });
-        }
-
-        wazuh::uds_http::HttpResponse response()
         {
             std::lock_guard<std::mutex> lock {m_mutex};
-            return m_responses.empty() ? wazuh::uds_http::HttpResponse {} : m_responses.front();
+            m_results.push_back(std::move(result));
         }
-
-    private:
-        std::mutex m_mutex;
-        std::condition_variable m_sent;
-        std::vector<wazuh::uds_http::HttpResponse> m_responses;
-    };
-
-    /// The manager is a process-wide singleton: every test starts and ends with a clean registry.
-    class OnDemandManagerTest : public ::testing::Test
-    {
-    protected:
-        void SetUp() override
-        {
-            OnDemandManager::instance().clearEndpoints();
-        }
-        void TearDown() override
-        {
-            OnDemandManager::instance().clearEndpoints();
-        }
-    };
-
-    std::shared_ptr<FakeResponder> dispatch(const std::string& topic, int offset = -1)
-    {
-        auto responder = std::make_shared<FakeResponder>();
-        OnDemandManager::instance().dispatch(topic, offset, responder);
-        return responder;
+        m_cv.notify_all();
     }
+
+    /// @return True when @p count outcomes arrived within the timeout.
+    bool waitFor(std::size_t count, std::chrono::milliseconds timeout = std::chrono::seconds {5})
+    {
+        std::unique_lock<std::mutex> lock {m_mutex};
+        return m_cv.wait_for(lock, timeout, [this, count] { return m_results.size() >= count; });
+    }
+
+    std::vector<OnDemandResult> snapshot()
+    {
+        std::lock_guard<std::mutex> lock {m_mutex};
+        return m_results;
+    }
+
+private:
+    std::mutex m_mutex;
+    std::condition_variable m_cv;
+    std::vector<OnDemandResult> m_results;
+};
+
+content_manager::CycleOutcome outcomeOf(content_manager::CycleStatus status, std::string detail = {})
+{
+    content_manager::CycleOutcome outcome;
+    outcome.status = status;
+    outcome.detail = std::move(detail);
+    return outcome;
+}
+
+class OnDemandManagerTest : public ::testing::Test
+{
+protected:
+    void TearDown() override
+    {
+        OnDemandManager::instance().clearEndpoints();
+    }
+};
+
 } // namespace
 
-TEST_F(OnDemandManagerTest, ACompletedUpdateIs200AndAnInProgressOneIsAnHonest409)
+TEST_F(OnDemandManagerTest, UnknownTopicIsRejectedInline)
 {
-    OnDemandManager::instance().addEndpoint("ok-topic", [](ActionOrchestrator::UpdateData) { return true; });
-    OnDemandManager::instance().addEndpoint("busy-topic", [](ActionOrchestrator::UpdateData) { return false; });
+    Outcomes outcomes;
 
-    auto ok = dispatch("ok-topic");
-    ASSERT_TRUE(ok->waitForResponse());
-    EXPECT_EQ(200, ok->response().status);
-    EXPECT_EQ(R"({"status":"ok"})", ok->response().body);
+    // No queue slot is spent on a request that can never run.
+    content_manager::requestOnDemand("nope", {}, [&outcomes](OnDemandResult r) { outcomes.record(std::move(r)); });
 
-    auto busy = dispatch("busy-topic");
-    ASSERT_TRUE(busy->waitForResponse());
-    EXPECT_EQ(409, busy->response().status) << "the old server answered a lying 200 here";
-    EXPECT_NE(std::string::npos, busy->response().body.find("update_in_progress"));
+    const auto results = outcomes.snapshot();
+    ASSERT_EQ(results.size(), 1U);
+    EXPECT_EQ(results.front().code, OnDemandCode::UnknownTopic);
 }
 
-TEST_F(OnDemandManagerTest, AnUnknownTopicIs404WithoutSpendingAQueueSlot)
+TEST_F(OnDemandManagerTest, RunsARegisteredTopicAndReportsCompletion)
 {
-    OnDemandManager::instance().addEndpoint("known", [](ActionOrchestrator::UpdateData) { return true; });
-    auto responder = dispatch("nope");
-    ASSERT_TRUE(responder->waitForResponse());
-    EXPECT_EQ(404, responder->response().status);
-    EXPECT_NE(std::string::npos, responder->response().body.find("unknown_topic"));
-}
-
-TEST_F(OnDemandManagerTest, TheOffsetTravelsToTheCallback)
-{
-    std::mutex mutex;
-    std::vector<int> offsets;
+    RunRequest seen;
     OnDemandManager::instance().addEndpoint("topic",
-                                            [&](ActionOrchestrator::UpdateData data)
+                                            [&seen](RunRequest request)
                                             {
-                                                std::lock_guard<std::mutex> lock {mutex};
-                                                offsets.push_back(data.offset);
-                                                return true;
+                                                seen = request;
+                                                return OnDemandManager::RunResult {
+                                                    true, outcomeOf(content_manager::CycleStatus::Updated, "done")};
                                             });
-    ASSERT_TRUE(dispatch("topic", 0)->waitForResponse());
-    ASSERT_TRUE(dispatch("topic", -1)->waitForResponse());
-    std::lock_guard<std::mutex> lock {mutex};
-    EXPECT_EQ((std::vector<int> {0, -1}), offsets);
+
+    Outcomes outcomes;
+    content_manager::requestOnDemand(
+        "topic", RunRequest {true, false}, [&outcomes](OnDemandResult r) { outcomes.record(std::move(r)); });
+
+    ASSERT_TRUE(outcomes.waitFor(1));
+    const auto results = outcomes.snapshot();
+    EXPECT_EQ(results.front().code, OnDemandCode::Completed);
+    EXPECT_EQ(results.front().detail, "done");
+
+    EXPECT_TRUE(seen.forceFullReload);
+    // requestOnDemand forces this, so a host cannot accidentally queue a "scheduled" cycle.
+    EXPECT_TRUE(seen.onDemand);
 }
 
-TEST_F(OnDemandManagerTest, TheLaneIsBoundedWithAnExplicitRetryable503)
+TEST_F(OnDemandManagerTest, ATopicAlreadyRunningIsReportedHonestly)
 {
-    std::mutex gateMutex;
-    std::condition_variable gate;
-    bool open = false;
-    OnDemandManager::instance().addEndpoint("slow",
-                                            [&](ActionOrchestrator::UpdateData)
-                                            {
-                                                std::unique_lock<std::mutex> lock {gateMutex};
-                                                gate.wait(lock, [&] { return open; });
-                                                return true;
-                                            });
+    OnDemandManager::instance().addEndpoint(
+        "topic", [](RunRequest) { return OnDemandManager::RunResult {false, {}}; });
 
-    // Capacity: QUEUE_SLOTS (4) + the jobs the two workers already popped and hold gated.
-    std::vector<std::shared_ptr<FakeResponder>> accepted;
-    int rejected = 0;
-    for (int i = 0; i < 12; ++i)
-    {
-        auto responder = dispatch("slow");
-        if (responder->waitForResponse(std::chrono::milliseconds {50}))
+    Outcomes outcomes;
+    content_manager::requestOnDemand("topic", {}, [&outcomes](OnDemandResult r) { outcomes.record(std::move(r)); });
+
+    ASSERT_TRUE(outcomes.waitFor(1));
+    // The pre-lane server answered success to requests it had silently dropped; coalescing is the
+    // design working, but it has to be visible.
+    EXPECT_EQ(outcomes.snapshot().front().code, OnDemandCode::AlreadyRunning);
+}
+
+TEST_F(OnDemandManagerTest, AFailedCycleIsReportedAsFailed)
+{
+    OnDemandManager::instance().addEndpoint(
+        "topic",
+        [](RunRequest)
         {
-            EXPECT_EQ(503, responder->response().status);
-            EXPECT_NE(std::string::npos, responder->response().body.find("ondemand_queue_full"));
-            ++rejected;
-        }
-        else
+            return OnDemandManager::RunResult {true,
+                                               outcomeOf(content_manager::CycleStatus::FailedTransport, "no indexer")};
+        });
+
+    Outcomes outcomes;
+    content_manager::requestOnDemand("topic", {}, [&outcomes](OnDemandResult r) { outcomes.record(std::move(r)); });
+
+    ASSERT_TRUE(outcomes.waitFor(1));
+    EXPECT_EQ(outcomes.snapshot().front().code, OnDemandCode::Failed);
+}
+
+TEST_F(OnDemandManagerTest, ASkippedCycleIsNotAFailure)
+{
+    OnDemandManager::instance().addEndpoint(
+        "topic",
+        [](RunRequest)
         {
-            accepted.push_back(std::move(responder));
-        }
-    }
-    EXPECT_GE(rejected, 12 - 6 - 1) << "beyond slots + in-flight the lane must shed explicitly";
+            return OnDemandManager::RunResult {
+                true, outcomeOf(content_manager::CycleStatus::SkippedConsumerNotReady, "consumer busy")};
+        });
 
-    {
-        std::lock_guard<std::mutex> lock {gateMutex};
-        open = true;
-    }
-    gate.notify_all();
-    for (auto& responder : accepted)
-    {
-        ASSERT_TRUE(responder->waitForResponse());
-        EXPECT_EQ(200, responder->response().status);
-    }
+    Outcomes outcomes;
+    content_manager::requestOnDemand("topic", {}, [&outcomes](OnDemandResult r) { outcomes.record(std::move(r)); });
+
+    ASSERT_TRUE(outcomes.waitFor(1));
+    // The update ran to completion; it just had nothing to do. That is a 200, not a 500.
+    EXPECT_EQ(outcomes.snapshot().front().code, OnDemandCode::Completed);
 }
 
-TEST_F(OnDemandManagerTest, RemoveEndpointWaitsForTheInFlightRunAndThenNothingOfItRuns)
+TEST_F(OnDemandManagerTest, AThrowingCallbackIsReportedAsFailed)
 {
-    std::mutex gateMutex;
-    std::condition_variable gate;
-    bool open = false;
-    std::atomic<int> runs {0};
-    OnDemandManager::instance().addEndpoint("keeper", [](ActionOrchestrator::UpdateData) { return true; });
-    OnDemandManager::instance().addEndpoint("mine",
-                                            [&](ActionOrchestrator::UpdateData)
+    OnDemandManager::instance().addEndpoint("topic",
+                                            [](RunRequest) -> OnDemandManager::RunResult
+                                            { throw std::runtime_error("boom"); });
+
+    Outcomes outcomes;
+    content_manager::requestOnDemand("topic", {}, [&outcomes](OnDemandResult r) { outcomes.record(std::move(r)); });
+
+    ASSERT_TRUE(outcomes.waitFor(1));
+    EXPECT_EQ(outcomes.snapshot().front().code, OnDemandCode::Failed);
+}
+
+TEST_F(OnDemandManagerTest, RemoveEndpointWaitsForAnInFlightCallback)
+{
+    std::promise<void> entered;
+    std::promise<void> release;
+    auto releaseFuture = release.get_future();
+
+    OnDemandManager::instance().addEndpoint("topic",
+                                            [&entered, &releaseFuture](RunRequest)
                                             {
-                                                runs.fetch_add(1);
-                                                std::unique_lock<std::mutex> lock {gateMutex};
-                                                gate.wait(lock, [&] { return open; });
-                                                return true;
+                                                entered.set_value();
+                                                releaseFuture.wait();
+                                                return OnDemandManager::RunResult {
+                                                    true, outcomeOf(content_manager::CycleStatus::Updated)};
                                             });
 
-    auto inFlight = dispatch("mine");
-    while (runs.load() == 0)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds {5});
-    }
+    Outcomes outcomes;
+    content_manager::requestOnDemand("topic", {}, [&outcomes](OnDemandResult r) { outcomes.record(std::move(r)); });
 
-    // The contract Action's teardown relies on: removeEndpoint() returns only once no callback
-    // of the removed topic is still running.
-    auto removing = std::async(std::launch::async, [] { OnDemandManager::instance().removeEndpoint("mine"); });
-    EXPECT_NE(std::future_status::ready, removing.wait_for(std::chrono::milliseconds {100}));
-    {
-        std::lock_guard<std::mutex> lock {gateMutex};
-        open = true;
-    }
-    gate.notify_all();
-    removing.get();
-    ASSERT_TRUE(inFlight->waitForResponse());
-    EXPECT_EQ(200, inFlight->response().status);
+    entered.get_future().wait();
 
-    auto afterRemoval = dispatch("mine");
-    ASSERT_TRUE(afterRemoval->waitForResponse());
-    EXPECT_EQ(404, afterRemoval->response().status);
+    // removeEndpoint must not return while a callback of that topic is still running: topic
+    // teardown builds its "nothing of mine is still executing" guarantee on exactly this.
+    std::atomic<bool> removed {false};
+    std::thread remover(
+        [&removed]
+        {
+            OnDemandManager::instance().removeEndpoint("topic");
+            removed = true;
+        });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds {50});
+    EXPECT_FALSE(removed.load());
+
+    release.set_value();
+    remover.join();
+    EXPECT_TRUE(removed.load());
+    EXPECT_TRUE(outcomes.waitFor(1));
 }
 
-TEST_F(OnDemandManagerTest, AThrowingUpdateIs500AndTheWorkerSurvives)
+TEST_F(OnDemandManagerTest, ARequestWithNoCompletionIsAccepted)
 {
-    int calls = 0;
-    OnDemandManager::instance().addEndpoint("flaky",
-                                            [&](ActionOrchestrator::UpdateData) -> bool
-                                            {
-                                                if (++calls == 1)
-                                                {
-                                                    throw std::runtime_error {"download blew up"};
-                                                }
-                                                return true;
-                                            });
-    auto first = dispatch("flaky");
-    ASSERT_TRUE(first->waitForResponse());
-    EXPECT_EQ(500, first->response().status);
-    EXPECT_NE(std::string::npos, first->response().body.find("update_failed"));
+    OnDemandManager::instance().addEndpoint(
+        "topic",
+        [](RunRequest) { return OnDemandManager::RunResult {true, outcomeOf(content_manager::CycleStatus::Updated)}; });
 
-    auto second = dispatch("flaky");
-    ASSERT_TRUE(second->waitForResponse());
-    EXPECT_EQ(200, second->response().status) << "one failed update must not kill the lane";
-}
-
-TEST_F(OnDemandManagerTest, EmptyingTheRegistryStopsTheLaneAndDispatchSaysShuttingDown)
-{
-    OnDemandManager::instance().addEndpoint("only", [](ActionOrchestrator::UpdateData) { return true; });
-    OnDemandManager::instance().removeEndpoint("only");
-
-    // The registry is empty, so this is a 404 -- but re-adding restarts the lane cleanly.
-    OnDemandManager::instance().addEndpoint("again", [](ActionOrchestrator::UpdateData) { return true; });
-    auto responder = dispatch("again");
-    ASSERT_TRUE(responder->waitForResponse());
-    EXPECT_EQ(200, responder->response().status) << "the lane must come back with the next endpoint";
+    // Fire and forget: a host that does not care about the outcome must not have to invent a
+    // callback to say so.
+    EXPECT_NO_THROW(content_manager::requestOnDemand("topic", {}, {}));
 }

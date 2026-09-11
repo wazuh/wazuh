@@ -2624,7 +2624,7 @@ components:
             $ref: '#/components/schemas/LogSummary'
           wazuh-manager-modulesd:control:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-manager-modulesd:content_manager:
+          wazuh-manager-modulesd:content-updater:
             $ref: '#/components/schemas/LogSummary'
           wazuh-manager-modulesd:database:
             $ref: '#/components/schemas/LogSummary'
@@ -6584,7 +6584,7 @@ paths:
                         debug: 0
                         error: 3
                         warning: 0
-                    - wazuh-manager-modulesd:content_manager:
+                    - wazuh-manager-modulesd:content-updater:
                         info: 1
                         all: 1
                         critical: 0

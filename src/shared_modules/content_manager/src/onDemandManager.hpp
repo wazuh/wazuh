@@ -12,17 +12,15 @@
 #ifndef _ONDEMAND_MANAGER_HPP
 #define _ONDEMAND_MANAGER_HPP
 
-#include "actionOrchestrator.hpp"
+#include "contentOnDemand.hpp"
+#include "contentTypes.hpp"
+#include "logThrottle.hpp"
 #include "singleton.hpp"
-
-#include <uds_http_server/IUdsHttpServer.hpp>
-#include <uds_http_server/logThrottle.hpp>
 
 #include <condition_variable>
 #include <deque>
 #include <functional>
 #include <map>
-#include <memory>
 #include <mutex>
 #include <shared_mutex>
 #include <string>
@@ -32,73 +30,88 @@
 /**
  * @brief Registry and bounded execution lane for on-demand content updates.
  *
- * This used to own a raw cpp-httplib server on its own socket; since the vd-http.sock unification the
- * HTTP surface is ONE route (POST /ondemand) registered by the vulnerability scanner on the
- * shared transport, and this class keeps what was always application-level: the topic registry
- * and -- new -- the lane that runs updates off the transport's I/O threads. An update runs a
- * whole content download, so it must never run inline in a handler; it is queued here (SHORT
- * queue: beyond it the caller gets an explicit retryable 503 instead of the old invisible pile-up
- * in the httplib pool) and answered through the deferred responder when it finishes.
+ * An update runs a whole content download, so it must never run inline on whatever thread asked for
+ * it; it is queued here — on a deliberately SHORT queue, because depth would only accumulate stale
+ * requests — and its completion callback is invoked when it finishes.
  *
- * Callbacks return bool -- false meaning "an update for this topic is already in progress"
- * (Action's runActionExclusively lost its CAS) -- so the caller finally gets an honest 409 where
- * the old server answered a lying 200.
+ * The lane used to answer through a `uds_http` responder, which tied this library to one transport
+ * that only one of its hosts uses. It now answers through a plain `std::function`, and the HTTP
+ * mapping lives next to each host's route. Nothing else about the lane changed.
  *
- * Locking contract, preserved from the old server: a worker holds m_registryMutex SHARED for the
- * whole callback run, so removeEndpoint()'s unique_lock keeps its guarantee that no callback of
- * the removed topic is in flight once it returns (Action's teardown relies on it). Workers are
- * lazily started with the first endpoint and stopped -- OUTSIDE the registry lock, or the join
- * would deadlock against a running callback's shared_lock -- when the last one is removed.
+ * Locking contract, unchanged and depended upon: a worker holds `m_registryMutex` SHARED for the
+ * whole callback run, so `removeEndpoint`'s unique lock keeps its guarantee that no callback of the
+ * removed topic is in flight once it returns — which is exactly what `~Action` relies on, and what
+ * makes it safe for a host to add and remove topics at runtime. Workers start lazily with the first
+ * endpoint and stop — OUTSIDE the registry lock, or the join would deadlock against a running
+ * callback's shared lock — when the last one is removed.
  */
 class OnDemandManager final : public Singleton<OnDemandManager>
 {
 public:
+    /// What a registered topic's update callback reports back.
+    struct RunResult
+    {
+        bool ran {false};                      ///< False when an update for that topic was already running.
+        content_manager::CycleOutcome outcome; ///< What the cycle did, when it ran.
+    };
+
+    /// A registered topic's update callback.
+    using UpdateFunction = std::function<RunResult(content_manager::RunRequest)>;
+
     /**
-     * @brief OnDemandManager destructor. Stops the lane and joins its workers.
+     * @brief Stop the lane and join its workers.
      */
     ~OnDemandManager();
 
     /**
      * @brief Register a topic; the lane is started with the first one.
      *
-     * @param endpoint Topic name (the old path segment).
-     * @param func Update callback; returns false when the topic's update was already running.
+     * @param endpoint Topic name.
+     * @param func Update callback.
+     * @throws std::runtime_error if the topic is already registered.
      */
-    void addEndpoint(const std::string& endpoint, std::function<bool(ActionOrchestrator::UpdateData)> func);
+    void addEndpoint(const std::string& endpoint, UpdateFunction func);
 
     /**
-     * @brief Remove a topic. Blocks until no callback of it is in flight; stops the lane when the
-     *        registry empties.
+     * @brief Remove a topic.
      *
-     * @param endpoint Endpoint to remove
+     * Blocks until no callback of it is in flight; stops the lane when the registry empties.
+     *
+     * @param endpoint Topic name.
      */
     void removeEndpoint(const std::string& endpoint);
 
     /**
-     * @brief Clear every endpoint and stop the lane.
+     * @brief Remove every topic and stop the lane.
      */
     void clearEndpoints();
 
     /**
-     * @brief Queue one update for @p topic (see contentOnDemand.hpp for the response contract).
+     * @brief Queue one update.
      *
-     * Non-blocking: rejections (unknown topic, lane full, shutting down) are answered inline.
+     * Non-blocking: rejections are answered inline through @p completion.
+     *
+     * @param topic Topic name.
+     * @param request What the update should do.
+     * @param completion Invoked exactly once with the outcome. May be empty.
      */
-    void dispatch(const std::string& topic, int offset, std::shared_ptr<wazuh::uds_http::IHttpResponder> responder);
+    void dispatch(const std::string& topic,
+                  content_manager::RunRequest request,
+                  std::function<void(content_manager::OnDemandResult)> completion);
 
 private:
     struct Job
     {
         std::string topic;
-        int offset;
-        std::shared_ptr<wazuh::uds_http::IHttpResponder> responder;
+        content_manager::RunRequest request;
+        std::function<void(content_manager::OnDemandResult)> completion;
     };
 
     /// Short on purpose: an update takes as long as its download, so depth would only accumulate
-    /// stale requests -- the caller retries against an explicit 503.
+    /// stale requests — the caller retries against an explicit rejection instead.
     static constexpr std::size_t QUEUE_SLOTS {4};
-    /// Two, preserving the old thread pool's ability to run two different topics' updates
-    /// concurrently (same-topic concurrency is already refused by the Action's own CAS -> 409).
+    /// Two, so two different topics' updates can run concurrently. Same-topic concurrency is
+    /// already refused by the topic's own exclusivity check.
     static constexpr std::size_t WORKER_COUNT {2};
 
     void startWorkersLocked(); ///< Requires m_laneMutex held.
@@ -106,7 +119,9 @@ private:
     void run();
     void logUnknownTopic(const std::string& topic); ///< Throttled; shared by both 404 paths.
 
-    std::map<std::string, std::function<bool(ActionOrchestrator::UpdateData)>> m_endpoints {};
+    static void answer(const Job& job, content_manager::OnDemandCode code, std::string detail);
+
+    std::map<std::string, UpdateFunction> m_endpoints {};
     std::shared_mutex m_registryMutex {};
 
     std::mutex m_laneMutex {};
@@ -115,13 +130,13 @@ private:
     bool m_stopping {false};
     std::vector<std::thread> m_workers {};
 
-    /// One window per condition, so a persistent one cannot mask a newly-appearing different
-    /// one. NOTE for tests: this manager is a singleton with no reset, so these windows live
-    /// for the whole process -- after the first emission a 90 s silence is expected behaviour,
-    /// not a lost log line.
-    wazuh::uds_http::LogThrottle m_laneFullThrottle {};
-    wazuh::uds_http::LogThrottle m_unknownTopicThrottle {};
-    wazuh::uds_http::LogThrottle m_inProgressThrottle {};
+    /// One window per condition, so a persistent one cannot mask a newly-appearing different one.
+    /// NOTE for tests: this manager is a singleton with no reset, so these windows live for the
+    /// whole process — after the first emission a 90 s silence is expected behaviour, not a lost
+    /// log line.
+    LogThrottle m_laneFullThrottle {};
+    LogThrottle m_unknownTopicThrottle {};
+    LogThrottle m_inProgressThrottle {};
 };
 
 #endif // _ONDEMAND_MANAGER_HPP

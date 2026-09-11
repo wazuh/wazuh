@@ -19,6 +19,25 @@ message UpdateIoc_Request
     string hash = 2; ///< MD5 hash of the file to update
 }
 
+/***************************************************
+ * Trigger an IOC synchronization from the wazuh-indexer
+ *
+ * endpoint: POST /content/ioc/sync
+ *
+ * Asks the content manager to run a cycle now for every tracked IOC type, instead of waiting for
+ * the next ioc-sync-task tick. Takes no parameters and returns as soon as the request is queued:
+ * the answer means "accepted", not "finished". Per-type progress is read from GET /status.
+ *
+ * Deliberately separate from POST /content/ioc/update above, which ingests a LOCAL nd-json file
+ * given a path and a hash. The two share no input: folding the indexer mode in as a flag would
+ * leave half the request fields meaningless on every call.
+ *
+ * Request: {} -> Returns a GenericStatus_Response
+ **************************************************/
+
+// message SyncIoc_Request  {}  -> no parameters
+// message SyncIoc_Response -> Return a GenericStatus_Response
+
 // message UpdateIoc_Response -> Return a GenericStatus_Response
 
 /***************************************************

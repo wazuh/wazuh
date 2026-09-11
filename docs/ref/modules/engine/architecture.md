@@ -43,6 +43,7 @@ subgraph engine["Wazuh Engine"]
   ioc["IOC"]:::ModuleClass
   geo["Geo"]:::ModuleClass
   ic["Indexer Connector"]:::HubClass
+  cmlib["Content Manager<br/>(shared library)"]:::ModuleClass
   streamlog["Stream Log"]:::ModuleClass
   conf["Configuration"]:::ModuleClass
 
@@ -57,7 +58,7 @@ subgraph engine["Wazuh Engine"]
   backend --> geo
   backend --> ic
   backend --> streamlog
-  cm --> ic
+  cm --> cmlib
   conf --> ic
 end
 
@@ -65,9 +66,11 @@ remoted --> server
 operator --> server
 ic --> indexer
 indexer --> ic
+cmlib --> indexer
+indexer --> cmlib
 ```
 
-The diagram shows the engine boundary and its relationships with the outside world. Events enter through the **Server** module, are routed by the **Orchestrator** to the active security policies, and are processed by the **Backend** using the executable graph produced by the **Builder**. Content (decoders, integrations, policies, KVDBs) is pulled from `wazuh-indexer` by the **Engine Content Manager** through the **Indexer Connector**, which is also the channel for outbound processed events.
+The diagram shows the engine boundary and its relationships with the outside world. Events enter through the **Server** module, are routed by the **Orchestrator** to the active security policies, and are processed by the **Backend** using the executable graph produced by the **Builder**. Content (decoders, integrations, policies, KVDBs) is pulled from `wazuh-indexer` by the **Engine Content Manager** through the shared **Content Manager** library, which the engine links in-process; the **Indexer Connector** carries outbound processed events and the engine's own remote configuration.
 
 ---
 
@@ -84,7 +87,8 @@ The diagram shows the engine boundary and its relationships with the outside wor
 | KVDB | Per-space key-value lookups used by decoders and filters | [Key Value Databases (KVDBs)](./README.md#key-value-databases-kvdbs) |
 | IOC | Global Indicator-of-Compromise databases consumed by enrichment | [IOC enrichment](./README.md#ioc-enrichment) |
 | Geo | GeoIP/ASN enrichment using MaxMind databases | [Geo enrichment](./README.md#geo-enrichment) |
-| Indexer Connector | Sole channel to `wazuh-indexer`: outbound events, inbound content, inbound configuration | [Output process](./README.md#output-process) |
+| Indexer Connector | Engine's own `wazuh-indexer` channel: outbound events, inbound configuration, readiness probes | [Output process](./README.md#output-process) |
+| Content Manager (shared library) | Downloads ruleset and IoC content from `wazuh-indexer`; linked in-process, shared with Vulnerability Detection | [`cmcontent`](../../../../src/engine/source/cmcontent/README.md) |
 | Stream Log | Async rotating log channels backing file outputs and the event dumper | [Output directory structure](./README.md#output-directory-structure) |
 | Configuration | Local YAML configuration plus runtime settings pulled from `wazuh-indexer` | — |
 
@@ -130,7 +134,13 @@ The Geo module performs GeoIP and ASN lookups using MaxMind MMDB databases. Like
 
 ### Indexer Connector
 
-The Indexer Connector is the single component that talks to `wazuh-indexer`. It carries three flows: **outbound** processed events (driven by policy outputs), **inbound** content (consumed by the Engine Content Manager and the IOC synchronizer), and **inbound** runtime configuration (consumed by the Configuration module). Concentrating all `wazuh-indexer` traffic in one place is what allows the rest of the engine to stay independent of the indexer's transport details.
+The Indexer Connector carries the engine's own `wazuh-indexer` traffic: **outbound** processed events (driven by policy outputs), **inbound** runtime configuration (consumed by the Configuration module), and the cheap existence and consumer-readiness probes the synchronizers make before starting a cycle.
+
+**Content downloads do not go through it.** Ruleset and IoC content is pulled by the shared **Content Manager** library (`shared_modules/content_manager`), which the engine links in-process and which opens its own read-only connectors — the same library and the same implementation the Vulnerability Detection module uses. Keeping them separate is deliberate: that library is a distinct shared object, and reaching across the boundary for the Indexer Connector's own connector would reintroduce exactly the duplication the shared library removes. The cost is bounded, because every connector it builds comes from one session per distinct indexer configuration.
+
+### Content Manager (shared library)
+
+See [`cmcontent`](../../../../src/engine/source/cmcontent/README.md) for the engine's half of it: the per-space and per-type topic configuration, the sinks that receive downloaded documents, and the token-store adapter.
 
 ### Stream Log
 

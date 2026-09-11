@@ -22,7 +22,9 @@ target_include_directories(iocsync_iocsync
 target_link_libraries(iocsync_iocsync
     PUBLIC
     iocsync::iiocsync
-    PRIVATE
+    # PUBLIC because iocsync.hpp now names the types these headers declare: the registration it
+    # holds per IOC type, and the sink that feeds it.
+    cmcontent::cmcontent
     wIndexerConnector::iwIndexerConnector
     store::istore
     iockvdb::ikvdb
@@ -38,6 +40,7 @@ set(UNIT_SRC_DIR   ${TEST_SRC_DIR}/unit)
 # Unit tests
 add_executable(iocsync_utest
     ${UNIT_SRC_DIR}/iocsync_status_test.cpp
+    ${UNIT_SRC_DIR}/iocsync_sync_test.cpp
 )
 target_link_libraries(iocsync_utest
     PRIVATE
@@ -47,6 +50,7 @@ target_link_libraries(iocsync_utest
         store::mocks
         wIndexerConnector::mocks
         iockvdb::mocks
+        cmcontent::mocks
 )
 target_include_directories(iocsync_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(iocsync_utest)

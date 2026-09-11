@@ -2,11 +2,21 @@
 #define _CMSYNC_CMSYNC
 
 #include <atomic>
+#include <memory>
 #include <mutex>
+#include <optional>
 #include <shared_mutex>
 #include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
+#include <json.hpp>
 
 #include <base/statusSnapshot.hpp>
+#include <cmcontent/contentTopic.hpp>
+#include <cmcontent/registration.hpp>
+#include <cmcontent/rulesetSink.hpp>
 #include <cmcrud/icmcrudservice.hpp>
 #include <router/iapi.hpp>
 #include <store/istore.hpp>
@@ -20,20 +30,57 @@ namespace cm::sync
 // Forward declarations, state of synchronized namespace
 class SyncedNamespace;
 
+/**
+ * @brief Keeps each space's ruleset namespace in step with the indexer.
+ *
+ * The download is no longer implemented here: it is one `ContentRegister` per space over the shared
+ * content manager, which owns the PIT, the pagination and the consumer-readiness guarantee. What
+ * remains is what is genuinely ruleset-specific — which spaces to track, how their namespaces map
+ * onto router entries, and how a cycle's outcome becomes the status the API reports.
+ */
 class CMSync : public ICMSync
 {
 
 private:
+    /// One space's registration: the sink it feeds and the topic it is registered under.
+    ///
+    /// Declaration order is destruction order reversed, and it matters: `topic` must go first,
+    /// because destroying it blocks until any in-flight cycle has drained and that cycle is still
+    /// using the sink.
+    struct Registration
+    {
+        std::shared_ptr<cmcontent::RulesetSpaceSink> sink;
+        std::unique_ptr<cmcontent::IContentTopic> topic;
+    };
+
     std::weak_ptr<wiconnector::IWIndexerConnector> m_indexerPtr; ///< Indexer connector resource
     std::weak_ptr<cm::crud::ICrudService> m_cmcrudPtr;           ///< Resource namespace handler
     std::weak_ptr<::store::IStore> m_store;                      ///< Internal config store
     std::weak_ptr<router::IRouterAPI> m_router;                  ///< Router API for event injection
 
-    std::size_t m_attempts;    ///< Number of attempts to connect or retry operations before failing
+    std::size_t m_attempts;    ///< Number of attempts to retry a cycle before failing
     std::size_t m_waitSeconds; ///< Seconds to wait between attempts
 
-    mutable std::shared_mutex m_mutex; ///< Mutex to protect access to m_namespacesState and sync operations
+    nlohmann::json m_indexerConnection;  ///< Indexer connection settings handed to every registration
+    cmcontent::Options m_contentOptions; ///< Page size and timing tunables for every registration
+    cmcontent::TopicFactory m_topicFactory; ///< Builds each space's topic; substituted in tests
+
+    /// Guards m_namespacesState and serialises whole scheduled cycles against each other.
+    ///
+    /// It does NOT reach the content cycle: an on-demand update runs on one of the content
+    /// manager's lane workers, not on the thread that holds this. Nothing a cycle touches may
+    /// therefore live behind this mutex — which is why the token a cycle reads is derived from the
+    /// router (see @ref loadTokenForRoute) rather than looked up in `m_namespacesState`.
+    mutable std::shared_mutex m_mutex;
     std::vector<SyncedNamespace> m_namespacesState; ///< State of the namespaces being synchronized
+
+    /// Derived state over m_namespacesState: one entry per tracked space.
+    ///
+    /// Structural changes are serialised by m_mutex. m_registrationsMutex guards the container
+    /// itself, for the callers that cannot take m_mutex: requestShutdown() and
+    /// requestOnDemandUpdate() both run while a cycle holds it.
+    std::unordered_map<std::string, Registration> m_registrations;
+    mutable std::mutex m_registrationsMutex;
 
     std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal graceful shutdown of sync operations
 
@@ -54,65 +101,51 @@ private:
     bool existSpaceInRemote(std::string_view space);
 
     /**
-     * @brief Download a full namespace from the indexer to the local cmcrud store
+     * @brief Run one content cycle for a space and fold its outcome into the persisted state.
      *
-     * @param originSpace Define the source space in the indexer
-     * @param dstNamespace Define the destination namespace in the local store (Must not exist)
-     * @param consumerId Optional consumer ID to validate during policy retrieval
-     * @return true if the download succeeded, false if consumer is not ready
-     * @throws std::runtime_error on errors.
+     * @param nsState State of the namespace to synchronize.
+     * @return true if the state changed and must be dumped.
+     * @pre m_mutex is held.
      */
-    bool downloadNamespace(std::string_view originSpace,
-                           const cm::store::NamespaceId& dstNamespace,
-                           const std::optional<std::string_view>& consumerId = std::nullopt);
+    bool syncSpace(SyncedNamespace& nsState);
 
     /**
-     * @brief Get remote policy hash and enabled status from the indexer
+     * @brief Build the content registration for one space.
      *
-     * @param space Space name in the indexer
-     * @param consumerId Optional consumer ID to validate within PIT
-     * @return An optional pair containing the policy hash and enabled status.
-     *         Returns std::nullopt if the consumer is provided and is not ready.
-     * @throws std::runtime_error on errors.
+     * @param nsState State of the namespace.
+     * @pre m_mutex is held.
      */
-    std::optional<std::pair<std::string, bool>>
-    getPolicyHashAndEnabledFromRemote(std::string_view space,
-                                      const std::optional<std::string_view>& consumerId = std::nullopt);
+    void registerTopic(const SyncedNamespace& nsState);
 
     /**
-     * @brief Downloads a namespace from the indexer and enriches it with local assets
+     * @brief Read the hash of the ruleset a route currently serves.
      *
-     * This method performs a two-phase operation to prepare a complete namespace:
-     * 1. Downloads the policy and resources from the wazuh-indexer (KVDB, decoders, integrations, policy)
-     * 2. Enriches the namespace with local-only assets (outputs, filters, etc.)
+     * The router is the source of truth here, not a persisted field: it knows what is *deployed*,
+     * which is the only thing worth comparing a remote hash against. A route deleted out of band
+     * therefore reads back as "no token", and the next cycle rebuilds it — exactly the behaviour
+     * the previous per-space comparison had, without adding a field to the state document.
      *
-     * The method generates a unique temporary namespace ID to avoid conflicts and performs
-     * automatic rollback on failure, ensuring the local store remains consistent.
+     * Takes the route name rather than the topic on purpose: the mapping from one to the other
+     * lives in `m_namespacesState`, and this runs on the content cycle's thread, which may be an
+     * on-demand lane worker holding none of this object's locks. Binding the route name into the
+     * registration at construction keeps the cycle away from that vector entirely.
      *
-     * @param originSpace The source space name in the wazuh-indexer to download from
-     * @param consumerId Optional consumer ID to validate during policy retrieval
-     * @return An optional NamespaceId. Returns std::nullopt if consumer is provided and not ready.
-     * @throws std::runtime_error if any step of the process fails
-     * @warning There is no ganrantee that the returned namespace is valid, should be verified by the router.
-     * @note If the operation fails at any point, the temporary namespace is automatically deleted
-     *       to maintain store consistency
+     * @param routeName Route name of the space.
+     * @return The deployed hash, or "" when no route exists or it is not enabled.
      */
-    std::optional<cm::store::NamespaceId>
-    downloadAndEnrichNamespace(std::string_view originSpace,
-                               const std::optional<std::string_view>& consumerId = std::nullopt);
+    std::string loadTokenForRoute(const std::string& routeName) const;
 
     /**
-     * @brief Syncs a namespace in the router by updating or creating its route
+     * @brief Delete staging namespaces left behind by an interrupted sync.
      *
-     * This method ensures that the router has an up-to-date route for the specified
-     * namespace. If the route already exists, it updates it to point to the new
-     * namespace ID. If it does not exist, it creates a new route.
+     * A cycle that is killed between `importNamespace` and the route swap leaves a namespace that
+     * nothing points at and nothing will ever clean up, because the only reference to it died with
+     * the process. They are identifiable — `cmsync_<space>_<suffix>` — and everything that is not
+     * the namespace a tracked space currently serves is garbage by definition.
      *
-     * @param nsState The state of the namespace being synchronized, including origin space and route name
-     * @param newNamespaceId The new namespace ID to be used in the router
-     * @throws std::runtime_error if the operation fails
+     * @pre m_mutex is held.
      */
-    void syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::store::NamespaceId& newNamespaceId);
+    void collectOrphanNamespaces();
 
     void addSpaceToSync(std::string_view space);      ///< Add a space to the sync list
     void removeSpaceFromSync(std::string_view space); ///< Remove a space from the sync
@@ -122,23 +155,37 @@ private:
 
 public:
     CMSync() = delete;
+
+    /**
+     * @brief Construct a new CMSync object.
+     *
+     * @param indexerPtr Indexer connector, used for the cheap pre-flight checks.
+     * @param cmcrudPtr Namespace store.
+     * @param storePtr Internal config store.
+     * @param routerPtr Router API.
+     * @param indexerConnection Indexer connection settings for the content registrations.
+     * @param attempts Number of attempts to retry a cycle before failing.
+     * @param waitSeconds Seconds to wait between attempts.
+     * @param contentOptions Page size and timing tunables for the content registrations.
+     * @param topicFactory Builds each space's topic. Defaults to the real content manager; tests
+     * pass a fake so the orchestration here can be exercised without an indexer.
+     */
     CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
            const std::shared_ptr<cm::crud::ICrudService>& cmcrudPtr,
            const std::shared_ptr<::store::IStore>& storePtr,
            const std::shared_ptr<router::IRouterAPI>& routerPtr,
+           nlohmann::json indexerConnection,
            const size_t attempts,
-           const size_t waitSeconds);
+           const size_t waitSeconds,
+           cmcontent::Options contentOptions,
+           cmcontent::TopicFactory topicFactory = {});
     ~CMSync() override;
 
     /**
      * @brief Perform synchronization of all configured namespaces
      *
-     * This method iterates through all namespaces configured for synchronization,
-     * checking for updates in the wazuh-indexer. If changes are detected, it
-     * downloads the updated namespace, enriches it with local assets, and updates
-     * the router accordingly.
-     *
-     * @throws std::runtime_error if any step of the synchronization process fails
+     * Iterates every space configured for synchronization, runs one content cycle for each, and
+     * updates the router and the persisted state from its outcome.
      */
     void synchronize();
 
@@ -151,6 +198,17 @@ public:
      * @copydoc ICMSync::getSpacesStatus
      */
     std::vector<SpaceStatus> getSpacesStatus() const override;
+
+    /**
+     * @brief Queue an out-of-band update, off the scheduler.
+     *
+     * Non-blocking: the request goes onto the content manager's short bounded lane and runs on one
+     * of its workers, so it is safe to call from an HTTP handler thread. Same-topic concurrency is
+     * refused by the topic itself, so this cannot run two cycles for one space at once.
+     *
+     * @param space Space to update. Empty updates every tracked space.
+     */
+    void requestOnDemandUpdate(std::string_view space = {}) override;
 };
 
 } // namespace cm::sync

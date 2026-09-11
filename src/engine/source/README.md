@@ -83,12 +83,13 @@ Used by virtually every other module.
 - [streamlog/](streamlog/README.md) — Async rotating log channels (size+time, gzip, retention) used by file outputs and `dumper`.
 - [dumper/](dumper/README.md) — Toggleable raw-event dumper that writes via `streamlog` when active.
 - [scheduler/](scheduler/README.md) — Priority thread-pool task scheduler for periodic syncs and metric flushes.
-- [wiconnector/](wiconnector/README.md) — Thread-safe client for the Wazuh Indexer: events, policy resources, IOCs and remote config. Sole egress to the indexer.
+- [wiconnector/](wiconnector/README.md) — Thread-safe client for the Wazuh Indexer: event indexing, existence/readiness probes and remote config. Content *downloads* go through `cmcontent` over the shared `content_manager` library instead.
 
 ### Synchronization & remote configuration
 
 - [confremote/](confremote/README.md) — Pulls remote runtime configuration from the indexer with rollback on rejection.
 - [cmcrud/](cmcrud/README.md) — Validation/adapter layer between the API and `cmstore` mutations; enforces canonical ordering and namespace import atomicity.
+- [cmcontent/](cmcontent/README.md) — The engine's half of the shared `content_manager` library: per-space and per-type topic configuration, the sinks that receive downloaded documents, and the token-store adapter. Lets `cmsync` and `iocsync` share one download implementation with Vulnerability Detection.
 - [cmsync/](cmsync/README.md) — Periodic content sync from indexer; hot-swaps router routes when policies change.
 - [iocsync/](iocsync/README.md) — Periodic IOC sync into `iockvdb` with atomic hot-swap.
 - [rawevtindexer/](rawevtindexer/README.md) — Toggleable forensic indexing of raw (pre-processing) events.
@@ -143,11 +144,18 @@ Used by virtually every other module.
         └────────┘
 
                   ┌────────────────┐
-                  │  wiconnector   │ ──► wazuh-indexer    (sole egress)
+                  │  wiconnector   │ ──► wazuh-indexer
                   └────────────────┘
                           ▲
               cmsync, iocsync, confremote,
               rawevtindexer, streamlog, builder
+
+                  ┌────────────────┐
+                  │ content_manager│ ──► wazuh-indexer    (content downloads)
+                  │  (shared .so)  │
+                  └────────────────┘
+                          ▲
+                  cmcontent ◄── cmsync, iocsync
 ```
 
 Key relationships:
@@ -155,7 +163,13 @@ Key relationships:
 - **`router` is the runtime hub.** It owns event queues, worker threads and route lifecycle; `cmsync` hot-swaps its routes.
 - **`builder` is the compilation hub.** Every dependency that contributes to event processing is funneled into it via `BuilderDeps`.
 - **`store` and `cmstore` are the data hubs.** Persisted state (schemas, allowed fields, ruleset, sync state) flows through them.
-- **`wiconnector` is the only egress to the indexer.** All outbound traffic to OpenSearch goes through it.
+- **Two egress paths to the indexer, deliberately.** `wiconnector` carries event indexing and the
+  engine's own read probes. Content *downloads* go through the shared `content_manager` library,
+  which opens its own read-only connectors. They are not merged because that library is a separate
+  DSO shared with the Vulnerability Scanner, and reaching across the boundary for `wiconnector`'s
+  connector would reintroduce exactly the coupling the shared library removes. The cost is bounded:
+  `content_manager` builds every connector from one `IndexerSession` per distinct indexer
+  configuration, so the whole process holds two health monitors rather than one per topic.
 
 ---
 
@@ -165,6 +179,9 @@ Modules are wired together in [main.cpp](main.cpp) using `std::shared_ptr` and a
 
 1. **Process bootstrap** — option parsing, logging (standalone vs `libwazuhshared`), signal handlers (`SIGINT`, `SIGTERM`, `SIGPIPE` → ignore), optional `goDaemon()`.
 2. **Configuration** — `conf::Conf` loads from ini file; every later module reads it via `confManager.get<T>(key::…)`.
+   Immediately after, `ContentModule::start(logging::createStandaloneLogFunction())` hands the shared
+   `content_manager` library this process's log function, so anything it emits lands in the engine's log.
+   It must happen before any module registers a content topic.
 3. **Privilege drop** (manager-integrated mode only) — the process starts as `root` and switches group and user to the hardcoded `wazuh-manager:wazuh-manager` (`base::process::WAZUH_GROUP`/`WAZUH_USER`), unless disabled via `key::DROP_PRIVILEGES`; group first, since `setgid()` is not permitted after `setuid()`. Everything below runs unprivileged. In standalone mode the launcher's user/group are inherited untouched.
    > **Caveat when debugging with `DROP_PRIVILEGES=false`:** running as `root` leaves every runtime-created path (`data/store`, `data/ruleset`, `data/kvdb-ioc`, `data/mmdb`, `data/tzdb`, `logs/<YYYY>/<MMM>/`, `var/run`) owned by `root:root`. Re-enabling the drop then fails at startup with a permission error from the first module that writes — `chown -R wazuh-manager:wazuh-manager` those paths before restarting. See [configuration.md](../../../docs/ref/modules/engine/configuration.md#process-privileges).
 4. **Core data layer** — `store::Store` (with `FileDriver`) → `cmstore::CMStore` → `kvdbstore::KVDBManager` → `iockvdb::KVDBManager(store)` → `geo::Manager(store, downloader)` → `fastmetrics::registerManager()` → `schemf::Schema` (loads `schema/engine-schema/0` from `store`).
@@ -172,7 +189,7 @@ Modules are wired together in [main.cpp](main.cpp) using `std::shared_ptr` and a
 6. **Scheduler & I/O** (always, but most consumers gated on `enableProcessing`) — `scheduler::Scheduler` (registered for early shutdown). When `enableProcessing` is on: `wiconnector::WIndexerConnector` (queue metrics registered as pull callbacks) and `streamlog::LogManager(store, scheduler)`.
 7. **Compilation hub** — `builder::Builder(cmStore, schemaValidator, defs, allowedFields, builderDeps, store)` where `BuilderDeps` carries `logpar`, `kvdbManager`, `IOCkvdb`, `geoManager`, `streamLogger`, `indexerConnector` and the file-output rotation config. Then `cmcrud::CrudService(cmStore, builder)`.
 8. **Background services** (gated) — `confremote::ConfRemoteManager`, `rawevtindexer::RawEventIndexer`, `router::Orchestrator(...)` (started immediately and registered for shutdown), `cmsync::CMSync`, `iocsync::IocSync` (scheduled via `scheduler`), `dumper::Dumper(streamLogger)`.
-9. **API surface** — `httpsrv::Server` is created, then per-domain handlers register their routes against it: metrics, geo, router, tester, dumper, rawevtindexer, cmcrud, ioccrud. Finally `apiServer->start(socketPath)`. An optional second `httpsrv::Server` is created for the remote-event-receiver (event ingestion).
+9. **API surface** — `httpsrv::Server` is created, then per-domain handlers register their routes against it: metrics, geo, router, tester, dumper, rawevtindexer, cmcrud, ioccrud, status, contentsync. Finally `apiServer->start(socketPath)`. An optional second `httpsrv::Server` is created for the remote-event-receiver (event ingestion).
 
 Shutdown is the exact reverse: `StackExecutor` drains callbacks in LIFO. The API server stops first (it joins client connections), background services request shutdown and join, the orchestrator drains queues, `streamlog` and `wiconnector` flush, the scheduler stops, and logging is the last thing torn down.
 

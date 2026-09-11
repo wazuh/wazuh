@@ -213,6 +213,7 @@ The store is instantiated once in `main.cpp` using `FileDriver` pointed at the c
 | **geo** | Stores MMDB database hashes for GeoIP update detection |
 | **iockvdb** | Persists IOC KVDB state |
 | **iocsync** | Stores IOC synchronization state |
+| **cmsync** | Stores per-space ruleset synchronization state |
 | **confremote** | Stores remote runtime configuration |
 | **streamlog** | Logger configuration persistence |
 | **api/ioccrud** | Updates IOC sync status documents |
@@ -228,6 +229,7 @@ The store is instantiated once in `main.cpp` using `FileDriver` pointed at the c
 | `router/tester/0` | router | Tester configuration snapshot |
 | `geo/mmdb-hash/internal` | geo | GeoIP database hashes |
 | `kvdb/ioc/state/0` | iockvdb | IOC KVDB state |
-| `ioc/sync-state/0` | iocsync | IOC synchronization state |
+| `iocsync/status/0` | iocsync | Per-IOC-type synchronization state: type, last content hash, last successful update |
+| `cmsync/status/0` | cmsync | Per-space synchronization state: origin space, namespace id, consumer id, enabled flag, last successful update |
 | `ioc/remote-status/0` | api/ioccrud | IOC sync status |
 | `confremote/*` | confremote | Remote configuration settings |

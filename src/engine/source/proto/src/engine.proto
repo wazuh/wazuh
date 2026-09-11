@@ -14,3 +14,18 @@ message GenericStatus_Response
     ReturnStatus status = 1;   // Status of the query
     optional string error = 2; // Error message if status is ERROR
 }
+
+/***************************************************
+ * Trigger a ruleset synchronization from the wazuh-indexer
+ *
+ * endpoint: POST /content/ruleset/update
+ *
+ * Asks the content manager to run a cycle now for every tracked ruleset space, instead of waiting
+ * for the next cm-sync-task tick. Takes no parameters and returns as soon as the request is queued:
+ * the answer means "accepted", not "finished". Per-space progress is read from GET /status.
+ *
+ * Request: {} -> Returns a GenericStatus_Response
+ **************************************************/
+
+// message UpdateRuleset_Request  {}  -> no parameters
+// message UpdateRuleset_Response -> Return a GenericStatus_Response

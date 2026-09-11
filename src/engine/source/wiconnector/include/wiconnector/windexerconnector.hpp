@@ -61,14 +61,6 @@ private:
     std::size_t m_maxHitsPerRequest;
     std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal in-flight pagination loops to abort
 
-    std::optional<std::size_t>
-    queryByBatches(std::string_view indexName,
-                   std::string_view query,
-                   std::size_t batchSize,
-                   const std::function<void(const json::Json&)>& onDocument,
-                   const std::optional<std::string_view>& sourceFilter = std::nullopt,
-                   const std::optional<std::string_view>& consumerIdToValidate = std::nullopt);
-
     bool existsIndex(std::string_view indexName);
 
 public:
@@ -108,20 +100,6 @@ public:
     void index(std::string_view index, std::string_view data) override;
 
     /**
-     * @copydoc IWIndexerConnector::getPolicy
-     */
-    std::optional<PolicyResources>
-    getPolicy(std::string_view space,
-              const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) override;
-
-    /**
-     * @copydoc IWIndexerConnector::getPolicyHashAndEnabled
-     */
-    std::optional<std::pair<std::string, bool>>
-    getPolicyHashAndEnabled(std::string_view space,
-                            const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) override;
-
-    /**
      * @copydoc IWIndexerConnector::existsPolicy
      */
     bool existsPolicy(std::string_view space) override;
@@ -130,21 +108,6 @@ public:
      * @copydoc IWIndexerConnector::existsIocDataIndex
      */
     bool existsIocDataIndex() override;
-
-    /**
-     * @copydoc IWIndexerConnector::getIocTypeHashes
-     */
-    std::optional<std::unordered_map<std::string, std::string>>
-    getIocTypeHashes(const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) override;
-
-    /**
-     * @copydoc IWIndexerConnector::streamIocsByType
-     */
-    std::optional<std::size_t>
-    streamIocsByType(std::string_view iocType,
-                     std::size_t batchSize,
-                     const IocRecordCallback& onIoc,
-                     const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) override;
 
     /**
      * @copydoc IWIndexerConnector::getEngineRemoteConfig
@@ -177,11 +140,8 @@ public:
     /**
      * @brief Requests a graceful shutdown of in-flight pagination operations.
      *
-     * Sets an internal flag checked between batches in @ref getPolicy and @ref queryByBatches
-     * (used by @ref streamIocsByType and @ref getIocTypeHashes). This allows long-running
-     * synchronization operations to abort promptly without waiting for full pagination to
-     * complete. Unlike @ref shutdown, this method is non-destructive: it only signals intent
-     * and does not destroy the underlying async connector.
+     * Sets an internal flag observed by any in-flight query. Unlike @ref shutdown, this method is
+     * non-destructive: it only signals intent and does not destroy the underlying async connector.
      *
      * Intended to be invoked before @ref shutdown so that worker threads holding shared locks
      * can release them quickly, allowing @ref shutdown to acquire the exclusive lock without

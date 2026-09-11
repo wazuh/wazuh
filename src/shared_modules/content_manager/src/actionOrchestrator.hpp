@@ -12,87 +12,75 @@
 #ifndef _ACTION_ORCHESTRATOR_HPP
 #define _ACTION_ORCHESTRATOR_HPP
 
+#include "components/contentCycle.hpp"
 #include "components/executionContext.hpp"
 #include "components/factoryContentUpdater.hpp"
-#include "components/updaterContext.hpp"
-#include "componentsHelper.hpp"
-#include "utils/rocksDBWrapper.hpp"
+#include "components/indexerQueryPort.hpp"
+#include "components/rocksDbTokenStore.hpp"
+#include "contentSink.hpp"
+#include "contentTokenStore.hpp"
+#include "contentTypes.hpp"
+#include "loggerHelper.h"
+#include "sharedDefs.hpp"
 #include <memory>
+#include <stdexcept>
+#include <string>
 #include <utility>
 
 /**
- * @brief In charge of initializing the content updater orchestration.
+ * @brief Owns one topic's cycle and the state it needs between runs.
  *
- * The orchestration fetches CVE data from the Wazuh Indexer (via IndexerDownloader)
- * and persists it to the local RocksDB feed database.
+ * Thin by design: validate at construction, then hand every run to @ref ContentCycle. It no longer
+ * throws from `run` — a cycle's failure is a value now, not an exception, which is what lets it be
+ * driven from a scheduler worker that must not be unwound through.
  */
 class ActionOrchestrator final
 {
 public:
     /**
-     * @brief Enum that represents the type of update.
+     * @brief Prepare a topic.
      *
+     * @param parameters Registration parameters (`topicName`, `configData`, …).
+     * @param stopActionCondition Cooperative stop flag shared with the driver.
+     * @param sink Where the content goes.
+     * @param tokenStore Host-supplied token store. When null, one is built over
+     *                   `configData.databasePath` if that key is present.
+     * @param port Indexer access.
+     * @throws std::invalid_argument if the configuration is not usable.
      */
-    enum UpdateType
-    {
-        CONTENT
-    };
-
-    /**
-     * @brief Struct containing the necessary members to execute the orchestration.
-     *
-     */
-    struct UpdateData
-    {
-        UpdateType type; ///< Orchestration update type.
-        int offset;      ///< Reserved for interface compatibility; not used by Indexer path.
-
-        /**
-         * @brief Creates an UpdateData struct for content update.
-         *
-         * @param offset Reserved parameter (kept for API compatibility). Pass -1 for normal
-         *               scheduler-driven updates; pass 0 to force a full reload.
-         * @return UpdateData Struct ready to be used by the orchestrator.
-         */
-        static UpdateData createContentUpdateData(const int offset)
-        {
-            return UpdateData(UpdateType::CONTENT, offset);
-        }
-
-    private:
-        UpdateData(const UpdateType type, const int offset)
-            : type(type)
-            , offset(offset) {};
-    };
-
-    /**
-     * @brief Creates a new instance of ActionOrchestrator.
-     *
-     * @param parameters            Parameters used to create the orchestration.
-     * @param stopActionCondition   Condition wrapper used to interrupt the orchestration stages.
-     * @param fileProcessingCallback Callback function in charge of the file processing task.
-     */
-    explicit ActionOrchestrator(const nlohmann::json& parameters,
-                                std::shared_ptr<ConditionSync> stopActionCondition,
-                                const FileProcessingCallback fileProcessingCallback,
-                                ContentUpdateCallbacks updateCallbacks = {})
+    ActionOrchestrator(const nlohmann::json& parameters,
+                       std::shared_ptr<ConditionSync> stopActionCondition,
+                       std::shared_ptr<content_manager::IContentSink> sink,
+                       std::shared_ptr<content_manager::IContentTokenStore> tokenStore,
+                       std::shared_ptr<IIndexerQueryPort> port)
     {
         try
         {
-            m_spBaseContext = std::make_shared<UpdaterBaseContext>(
-                stopActionCondition, fileProcessingCallback, std::move(updateCallbacks));
-            m_spBaseContext->topicName = parameters.at("topicName");
-            m_spBaseContext->configData = parameters.at("configData");
+            m_topicName = parameters.at("topicName").get<std::string>();
+            const auto& configData = parameters.at("configData");
 
-            logDebug1(
-                WM_CONTENTUPDATER, "Creating '%s' Content Updater orchestration", m_spBaseContext->topicName.c_str());
+            auto context = ExecutionContext::prepare(configData, m_topicName);
+            m_database = std::move(context.database);
 
-            auto executionContext {std::make_shared<ExecutionContext>()};
-            executionContext->handleRequest(m_spBaseContext);
+            m_tokenStore = std::move(tokenStore);
+            if (!m_tokenStore && m_database)
+            {
+                m_tokenStore = std::make_shared<RocksDbTokenStore>(m_database);
+            }
 
-            m_spUpdaterOrchestration = FactoryContentUpdater::create(m_spBaseContext->configData);
+            // Intent through configuration rather than a reach-in: hosts used to delete the
+            // library's storage directory behind its back to force a rebuild, which could only work
+            // before the registration existed.
+            if (m_tokenStore && configData.value("resetStateOnRegister", false))
+            {
+                logInfo(WM_CONTENTUPDATER,
+                        "Clearing the stored content token for '%s' as requested at registration.",
+                        m_topicName.c_str());
+                m_tokenStore->clear(m_topicName);
+            }
 
-            logDebug1(WM_CONTENTUPDATER, "Content updater orchestration created");
+            m_cycle = FactoryContentUpdater::create(
+                configData, m_topicName, std::move(sink), m_tokenStore, std::move(stopActionCondition), std::move(port));
         }
         catch (const std::exception& e)
         {
@@ -101,92 +89,27 @@ public:
     }
 
     /**
-     * @brief Run the content updater orchestration.
+     * @brief Run one cycle.
      *
-     * @param updateData Update orchestration data.
+     * @param request What the caller wants from it.
+     * @return What happened. Never throws.
      */
-    void run(const UpdateData& updateData) const
+    content_manager::CycleOutcome run(const content_manager::RunRequest& request) noexcept
     {
-        auto spUpdaterContext {std::make_shared<UpdaterContext>()};
-        spUpdaterContext->spUpdaterBaseContext = m_spBaseContext;
-
-        try
-        {
-            runContentUpdate(spUpdaterContext, updateData.offset == 0);
-        }
-        catch (const std::exception& e)
-        {
-            invokeContentUpdateCallback(m_spBaseContext->updateCallbacks.onFailure, "failure");
-            cleanContext();
-            throw std::runtime_error {"Orchestration run failed: " + std::string {e.what()}};
-        }
+        return m_cycle->run(request);
     }
 
-    uint64_t getCurrentOffset() const
+    /// @return The token in force for this topic, or "" when there is none.
+    std::string currentToken() const noexcept
     {
-        if (!m_spBaseContext->spRocksDB)
-        {
-            return 0;
-        }
-
-        try
-        {
-            const auto value =
-                m_spBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString();
-            return value.empty() ? 0 : std::stoull(value);
-        }
-        catch (const std::exception&)
-        {
-            return 0;
-        }
+        return m_tokenStore ? m_tokenStore->load(m_topicName) : std::string {};
     }
 
 private:
-    std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> m_spUpdaterOrchestration;
-    std::shared_ptr<UpdaterBaseContext> m_spBaseContext;
-
-    /**
-     * @brief Clean ContentUpdater persistent data and the updater context if provided.
-     */
-    void cleanContext(std::shared_ptr<UpdaterContext> spUpdaterContext = nullptr) const
-    {
-        if (spUpdaterContext)
-        {
-            spUpdaterContext->initialize();
-            spUpdaterContext->spUpdaterBaseContext = m_spBaseContext;
-        }
-
-        m_spBaseContext->downloadedFileHash.clear();
-    }
-
-    /**
-     * @brief Triggers the content update pipeline (IndexerDownloader → UpdateIndexerCursor).
-     *
-     * When forceFullReload is true the stored cursor is cleared so that IndexerDownloader
-     * performs a full initial load on the next run.
-     *
-     * @param spUpdaterContext Updater context.
-     * @param forceFullReload  If true, clears the stored cursor to trigger a full reload.
-     */
-    void runContentUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, const bool forceFullReload) const
-    {
-        logDebug2(WM_CONTENTUPDATER,
-                  "Running '%s' content update (forceFullReload=%s)",
-                  spUpdaterContext->spUpdaterBaseContext->topicName.c_str(),
-                  forceFullReload ? "true" : "false");
-
-        if (forceFullReload && spUpdaterContext->spUpdaterBaseContext->spRocksDB)
-        {
-            // Clear the stored cursor so IndexerDownloader performs a full PIT load.
-            logDebug2(WM_CONTENTUPDATER,
-                      "Clearing stored cursor for '%s' to force full reload",
-                      spUpdaterContext->spUpdaterBaseContext->topicName.c_str());
-            spUpdaterContext->spUpdaterBaseContext->spRocksDB->put(
-                Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::Columns::CURRENT_OFFSET);
-        }
-
-        m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
-    }
+    std::string m_topicName;
+    std::shared_ptr<Utils::RocksDBWrapper> m_database;
+    std::shared_ptr<content_manager::IContentTokenStore> m_tokenStore;
+    std::unique_ptr<ContentCycle> m_cycle;
 };
 
 #endif // _ACTION_ORCHESTRATOR_HPP

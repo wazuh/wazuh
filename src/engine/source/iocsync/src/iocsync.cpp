@@ -1,12 +1,10 @@
 #include <ctime>
 #include <memory>
 #include <optional>
-#include <set>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include <fmt/format.h>
 
@@ -14,10 +12,10 @@
 #include <base/json.hpp>
 #include <base/logging.hpp>
 #include <base/name.hpp>
-#include <base/utils/generator.hpp>
 #include <base/utils/metaHelpers.hpp>
-#include <base/utils/stringUtils.hpp>
 #include <base/utils/vectorHelpers.hpp>
+#include <cmcontent/contentTopic.hpp>
+#include <contentOnDemand.hpp>
 #include <iockvdb/helpers.hpp>
 
 #include <iocsync/iocsync.hpp>
@@ -27,25 +25,6 @@ namespace
 
 const base::Name STORE_NAME_IOCSYNC {"iocsync/status/0"}; ///< Name of the internal store document
 constexpr std::string_view COMPONENT_NAME = "IOC::Sync";  ///< Component name for logging
-
-void ensureTargetDbExists(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocPtr, std::string_view targetDBName)
-{
-    // Check if handle exists and has a valid instance
-    if (kvdbiocPtr->exists(targetDBName))
-    {
-        return;
-    }
-
-    try
-    {
-        kvdbiocPtr->add(targetDBName);
-        LOG_INFO("[IOC::Sync] Created target database '{}'", targetDBName);
-    }
-    catch (const std::exception& e)
-    {
-        throw std::runtime_error(fmt::format("Failed to ensure target database '{}': {}", targetDBName, e.what()));
-    }
-}
 
 } // namespace
 
@@ -141,33 +120,45 @@ public:
 IocSync::IocSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
                  const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocManagerPtr,
                  const std::shared_ptr<::store::IStore>& storePtr,
+                 nlohmann::json indexerConnection,
                  const size_t maxRetries,
                  const size_t retryIntervalSeconds,
-                 const size_t iocSyncBatchSize)
+                 cmcontent::Options contentOptions,
+                 cmcontent::TopicFactory topicFactory)
     : m_indexerPtr(indexerPtr)
     , m_kvdbiocManagerPtr(kvdbiocManagerPtr)
     , m_store(storePtr)
-    , m_mutex()
     , m_attempts(maxRetries)
     , m_waitSeconds(retryIntervalSeconds)
-    , m_iocSyncBatchSize(iocSyncBatchSize)
+    , m_indexerConnection(std::move(indexerConnection))
+    , m_contentOptions(std::move(contentOptions))
+    , m_topicFactory(topicFactory ? std::move(topicFactory) : cmcontent::defaultTopicFactory())
+    , m_mutex()
 {
     // Check if is the first setup
     if (storePtr->existsDoc(STORE_NAME_IOCSYNC))
     {
         loadStateFromStore();
+
+        std::unique_lock lock(m_mutex);
+        for (const auto& dbState : m_databasesState)
+        {
+            registerTopic(dbState.getIocType(), dbState.getLastDataHash());
+        }
+        lock.unlock();
+
         updateIocStatusSnapshot(); // Publish initial status
         return;
     }
 
-    LOG_INFO("[IOC::Sync] First setup detected, initializing default IOC types to sync");
+    LOG_INFO("[{}] First setup detected, initializing default IOC types to sync", COMPONENT_NAME);
 
-    // Add default IOC types to sync from indexer connector policy
+    // Add default IOC types to sync from indexer connector policy. Each call persists the state, so
+    // no extra write is needed afterwards.
     for (const auto& iocType : ioc::kvdb::details::getSupportedIocTypes())
     {
         addIOCTypeToSync(iocType);
     }
-    saveStateToStore();
     updateIocStatusSnapshot(); // Publish initial status
 }
 
@@ -185,91 +176,34 @@ bool IocSync::existIocDataInRemote()
                                          m_shutdownRequested);
 }
 
-std::optional<std::unordered_map<std::string, std::string>> IocSync::getRemoteHashesFromRemote()
+void IocSync::registerTopic(std::string_view iocType, const std::string& initialToken)
 {
-    auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "Indexer Connector");
+    const auto topicName = cmcontent::iocTopic(iocType);
 
-    return base::utils::executeWithRetry(
-        [&indexerPtr]() { return indexerPtr->getIocTypeHashes(wiconnector::IOC_ENRICHMENT_CONSUMER_ID); },
-        fmt::format("{}", COMPONENT_NAME),
-        "Get IOC type hashes from wazuh-indexer",
-        m_attempts,
-        m_waitSeconds,
-        m_shutdownRequested);
-}
-
-bool IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string& dbName)
-{
-    auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
-    auto kvdbiocPtr = base::utils::lockWeakPtr(m_kvdbiocManagerPtr, "KVDBIOCManager");
-
-    // Create the database
-    kvdbiocPtr->add(dbName);
-
-    try
     {
-        std::size_t stored = 0;
-
-        auto processedDocsOpt = indexerPtr->streamIocsByType(
-            iocType,
-            m_iocSyncBatchSize,
-            [&stored, &kvdbiocPtr, &dbName](const std::string& key, const std::string& value)
-            {
-                // Normalize key to lowercase for case-insensitive matching
-                const auto normalizedKey = base::utils::string::toLowerCase(key);
-                json::Json valueJson {value.c_str()};
-                ioc::kvdb::details::updateValueInDB(kvdbiocPtr, dbName, normalizedKey, valueJson);
-                stored++;
-            },
-            wiconnector::IOC_ENRICHMENT_CONSUMER_ID);
-
-        // Consumer is not ready — rollback and signal caller
-        if (!processedDocsOpt.has_value())
+        std::lock_guard<std::mutex> containerLock(m_registrationsMutex);
+        if (m_registrations.find(topicName) != m_registrations.end())
         {
-            LOG_DEBUG("[IOC::Sync] Consumer is not ready for IOC type '{}', "
-                      "rolling back database '{}'",
-                      iocType,
-                      dbName);
-            try
-            {
-                kvdbiocPtr->remove(dbName);
-            }
-            catch (const std::exception& ex)
-            {
-                LOG_WARNING("[IOC::Sync] Failed to rollback database '{}' after consumer "
-                            "not ready: {}",
-                            dbName,
-                            ex.what());
-            }
-            return false;
-        }
-
-        LOG_DEBUG("[IOC::Sync] Downloaded {} IOCs of type '{}' "
-                  "(processed {} docs)",
-                  stored,
-                  iocType,
-                  *processedDocsOpt);
-
-        if (stored == 0)
-        {
-            LOG_WARNING("[IOC::Sync] No IOCs found for type '{}'", iocType);
+            return;
         }
     }
-    catch (const std::exception& e)
-    {
-        // Rollback: remove the database
-        try
-        {
-            kvdbiocPtr->remove(dbName);
-        }
-        catch (const std::exception& ex)
-        {
-            LOG_WARNING("[IOC::Sync] Failed to rollback database '{}' after download failure: {}", dbName, ex.what());
-        }
-        throw std::runtime_error(fmt::format("Failed to download IOCs to database '{}': {}", dbName, e.what()));
-    }
 
-    return true;
+    Registration registration;
+    registration.sink = std::make_shared<cmcontent::IocTypeSink>(m_kvdbiocManagerPtr, std::string {iocType});
+
+    // The cycle reads and writes the token through this cell, never through m_databasesState. An
+    // on-demand cycle runs on a content-manager lane worker while this object's own sync thread may
+    // be iterating that vector under m_mutex, so a token store reaching into it would be a data race
+    // on a std::string — and on the vector itself, which add/remove can reallocate.
+    registration.token = std::make_shared<cmcontent::TokenCell>(initialToken);
+
+    registration.topic = m_topicFactory(topicName,
+                                        cmcontent::iocParameters(m_indexerConnection, iocType, m_contentOptions),
+                                        registration.sink,
+                                        cmcontent::cellTokenStore(registration.token));
+
+    std::lock_guard<std::mutex> containerLock(m_registrationsMutex);
+    m_registrations.emplace(topicName, std::move(registration));
 }
 
 void IocSync::addIOCTypeToSync(std::string_view iocType)
@@ -287,28 +221,45 @@ void IocSync::addIOCTypeToSync(std::string_view iocType)
 
     // Add the new IOC type to the sync list
     m_databasesState.emplace_back(iocType);
+    registerTopic(iocType, {});
 
-    LOG_INFO("[IOC::Sync] Added IOC type '{}' to the sync list", iocType);
+    LOG_INFO("[{}] Added IOC type '{}' to the sync list", COMPONENT_NAME, iocType);
 
     saveStateToStore();
 }
 
 void IocSync::removeIOCTypeFromSync(std::string_view iocType)
 {
-    std::unique_lock lock(m_mutex);
+    // Moved out under the lock and destroyed after it is released. ~ContentRegister blocks until
+    // any in-flight cycle for that topic has drained, and that cycle reaches back into this object
+    // through the token store; destroying it while holding m_mutex would deadlock against itself.
+    Registration doomed;
 
-    // addIOCTypeToSync() rejects duplicates, so at most one element can match here. Element order in
-    // m_databasesState is not semantically observed, so this is removed in O(1) via swap-with-back.
-    const auto erased = base::utils::eraseFirstBySwap(
-        m_databasesState, [iocType](const SyncedIOCDatabase& syncedDB) { return syncedDB.getIocType() == iocType; });
-    if (!erased)
     {
-        throw std::runtime_error(fmt::format("IOC type '{}' is not in the sync list", iocType));
+        std::unique_lock lock(m_mutex);
+
+        // addIOCTypeToSync() rejects duplicates, so at most one element can match here. Element order in
+        // m_databasesState is not semantically observed, so this is removed in O(1) via swap-with-back.
+        const auto erased = base::utils::eraseFirstBySwap(
+            m_databasesState, [iocType](const SyncedIOCDatabase& syncedDB) { return syncedDB.getIocType() == iocType; });
+        if (!erased)
+        {
+            throw std::runtime_error(fmt::format("IOC type '{}' is not in the sync list", iocType));
+        }
+
+        {
+            std::lock_guard<std::mutex> containerLock(m_registrationsMutex);
+            if (const auto it = m_registrations.find(cmcontent::iocTopic(iocType)); it != m_registrations.end())
+            {
+                doomed = std::move(it->second);
+                m_registrations.erase(it);
+            }
+        }
+
+        LOG_INFO("[{}] Removed IOC type '{}' from the sync list", COMPONENT_NAME, iocType);
+
+        saveStateToStore();
     }
-
-    LOG_INFO("[IOC::Sync] Removed IOC type '{}' from the sync list", iocType);
-
-    saveStateToStore();
 }
 
 void IocSync::loadStateFromStore()
@@ -365,126 +316,126 @@ void IocSync::saveStateToStore()
     }
 }
 
-bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
-                          const std::unordered_map<std::string, std::string>& remoteTypeHashes,
-                          const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocPtr)
+bool IocSync::syncIOCType(SyncedIOCDatabase& dbState, const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocPtr)
 {
-    try
+    const auto topicName = cmcontent::iocTopic(dbState.getIocType());
+
+    Registration* registration = nullptr;
     {
-        LOG_DEBUG("[IOC::Sync] Synchronizing database for IOC type '{}'", dbState.getIocType());
-
-        // Check if hash exists for this type
-        const auto remoteHashIt = remoteTypeHashes.find(dbState.getIocType());
-        if (remoteHashIt == remoteTypeHashes.end())
+        std::lock_guard<std::mutex> containerLock(m_registrationsMutex);
+        const auto it = m_registrations.find(topicName);
+        if (it == m_registrations.end())
         {
-            LOG_WARNING("[IOC::Sync] Hash not found for IOC type '{}', skipping", dbState.getIocType());
+            LOG_WARNING("[{}] No content registration for IOC type '{}'", COMPONENT_NAME, dbState.getIocType());
             return false;
         }
+        registration = &it->second;
+    }
 
-        const auto& remoteHash = remoteHashIt->second;
-        const auto targetDBName = ioc::kvdb::details::getDbNameFromType(dbState.getIocType());
-        const bool existDb = kvdbiocPtr->exists(targetDBName);
+    content_manager::RunRequest request;
 
-        // Check if sync is needed
-        if (remoteHash == dbState.getLastDataHash() && existDb)
+    // A hash that matches the remote one means the *content* has not moved — it says nothing about
+    // whether the database holding it still exists. A physically deleted database has to be
+    // rebuilt, and the only way to express that is to ask for a forced full reload: the cycle would
+    // otherwise decide there is nothing to fetch and deliver no documents to swap in.
+    const auto targetDbName = ioc::kvdb::details::getDbNameFromType(dbState.getIocType());
+    if (!kvdbiocPtr->exists(targetDbName))
+    {
+        if (!dbState.getLastDataHash().empty())
         {
-            LOG_DEBUG("[IOC::Sync] No changes detected for IOC type '{}'", dbState.getIocType());
-            return false;
-        }
-
-        // Log sync reason
-        if (!existDb)
-        {
-            LOG_WARNING("[IOC::Sync] Database '{}' for IOC type '{}' has no valid instance (physical "
-                        "deletion detected), forcing full resync",
-                        targetDBName,
+            LOG_WARNING("[{}] Database '{}' for IOC type '{}' has no valid instance (physical deletion detected), "
+                        "forcing full resync",
+                        COMPONENT_NAME,
+                        targetDbName,
                         dbState.getIocType());
         }
-        else
-        {
-            LOG_INFO("[IOC::Sync] Changes detected for IOC type '{}', updating...", dbState.getIocType());
-        }
+        request.forceFullReload = true;
+    }
 
-        // Download to temporary database
-        const auto tempDBName =
-            fmt::format("iocsync_{}_{}", dbState.getIocType(), base::utils::generators::randomHexString(4));
-
-        try
-        {
-            if (!downloadAndPopulateDB(dbState.getIocType(), tempDBName))
+    content_manager::CycleOutcome outcome;
+    try
+    {
+        // executeWithRetry retries on a thrown exception, but runOnce is noexcept and reports by
+        // status, so a retryable outcome is rethrown here to drive it. The existing
+        // analysisd.ioc_indexer_connector_{max_retries,retry_interval} keys keep their meaning and
+        // now guard the whole cycle instead of a single query.
+        outcome = base::utils::executeWithRetry(
+            [&]()
             {
-                LOG_DEBUG("[IOC::Sync] IOC consumer is not ready for type '{}', skipping", dbState.getIocType());
-                return false;
-            }
-        }
-        catch (const std::exception& e)
-        {
-            LOG_WARNING("[IOC::Sync] Failed to download IOCs for type '{}': {}", dbState.getIocType(), e.what());
-            return false;
-        }
-
-        // Ensure target DB exists
-        try
-        {
-            ensureTargetDbExists(kvdbiocPtr, targetDBName);
-        }
-        catch (const std::exception& e)
-        {
-            try
-            {
-                kvdbiocPtr->remove(tempDBName);
-            }
-            catch (const std::exception& ex)
-            {
-                LOG_WARNING("[IOC::Sync] Failed to rollback temporary database '{}': {}", tempDBName, ex.what());
-            }
-            LOG_WARNING(
-                "[IOC::Sync] Failed to ensure target database for IOC type '{}': {}", dbState.getIocType(), e.what());
-            return false;
-        }
-
-        // Perform atomic hot-swap
-        try
-        {
-            kvdbiocPtr->hotSwap(tempDBName, targetDBName);
-        }
-        catch (const std::exception& e)
-        {
-            try
-            {
-                kvdbiocPtr->remove(tempDBName);
-            }
-            catch (const std::exception& ex)
-            {
-                LOG_WARNING("[IOC::Sync] Failed to rollback temporary database '{}' after swap failure: {}",
-                            tempDBName,
-                            ex.what());
-            }
-            LOG_WARNING(
-                "[IOC::Sync] Failed to hot-swap database for IOC type '{}': {}", dbState.getIocType(), e.what());
-            return false;
-        }
-
-        // Update state
-        dbState.setLastDataHash(remoteHash);
-
-        LOG_INFO("[IOC::Sync] Synchronized IOC type '{}'", dbState.getIocType());
-        return true;
+                auto result = registration->topic->runOnce(request);
+                if (result.retryAfter.count() > 0)
+                {
+                    throw std::runtime_error(result.detail);
+                }
+                return result;
+            },
+            fmt::format("{}", COMPONENT_NAME),
+            fmt::format("Synchronize IOC type '{}'", dbState.getIocType()),
+            m_attempts,
+            m_waitSeconds,
+            m_shutdownRequested);
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("[IOC::Sync] Failed to synchronize database for IOC type '{}': {}", dbState.getIocType(), e.what());
+        LOG_WARNING(
+            "[{}] Failed to synchronize IOC type '{}': {}", COMPONENT_NAME, dbState.getIocType(), e.what());
+        // An on-demand cycle may have committed a new hash while this one was failing; reconciling
+        // regardless is what keeps the persisted state from contradicting the database on disk.
+        return reconcileToken(dbState, *registration);
+    }
+
+    if (outcome.status == content_manager::CycleStatus::SkippedAlreadyRunning)
+    {
+        // An on-demand update for this type is in flight. Nothing was observed here, so nothing is
+        // concluded here either: the type keeps whatever status it had, and the next scheduled pass
+        // picks up whatever that cycle committed. Reporting this as a failure would flip a healthy
+        // type to FAILED purely because the API had been used a moment earlier.
+        LOG_DEBUG("[{}] An update for IOC type '{}' was already running; leaving its state untouched",
+                  COMPONENT_NAME,
+                  dbState.getIocType());
+        return reconcileToken(dbState, *registration);
+    }
+
+    const bool tokenChanged = reconcileToken(dbState, *registration);
+
+    if (outcome.status == content_manager::CycleStatus::Updated)
+    {
+        dbState.setLastSuccessfulUpdate(static_cast<uint32_t>(std::time(nullptr)));
+        return true;
+    }
+
+    if (outcome.status == content_manager::CycleStatus::Unchanged)
+    {
+        LOG_DEBUG("[{}] No changes detected for IOC type '{}'", COMPONENT_NAME, dbState.getIocType());
+    }
+
+    return tokenChanged;
+}
+
+bool IocSync::reconcileToken(SyncedIOCDatabase& dbState, const Registration& registration)
+{
+    if (!registration.token)
+    {
         return false;
     }
+
+    auto token = registration.token->get();
+    if (token == dbState.getLastDataHash())
+    {
+        return false;
+    }
+
+    dbState.setLastDataHash(token);
+    return true;
 }
 
 void IocSync::synchronize()
 {
-    LOG_DEBUG("[IOC::Sync] Checking for IOC database updates to synchronize");
+    LOG_DEBUG("[{}] Checking for IOC database updates to synchronize", COMPONENT_NAME);
 
     if (m_shutdownRequested.load(std::memory_order_relaxed))
     {
-        LOG_INFO("[IOC::Sync] Synchronization aborted before start");
+        LOG_INFO("[{}] Synchronization aborted before start", COMPONENT_NAME);
         return;
     }
 
@@ -494,7 +445,10 @@ void IocSync::synchronize()
         const auto kvdbiocPtr = base::utils::lockWeakPtr(m_kvdbiocManagerPtr, "KVDBIOCManager");
         std::unique_lock lock(m_mutex);
 
-        // Pre-flight check: verify IOC consumer is ready and has data (local_offset != 0)
+        // Pre-flight check: verify the IOC consumer is ready AND has data (local_offset != 0).
+        // The content cycle validates readiness again inside its own snapshot — that is the
+        // correctness gate — but one cheap query here short-circuits every registration at once,
+        // and it additionally covers local_offset, which the in-snapshot check does not.
         {
             auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
             const bool ready = base::utils::executeWithRetry(
@@ -507,8 +461,9 @@ void IocSync::synchronize()
 
             if (!ready)
             {
-                LOG_INFO("[IOC::Sync] IOC syncronization skipped because wazuh-indexer consumer for IOCs is not ready "
-                         "for sync (might be updating or no data yet)");
+                LOG_INFO("[{}] IOC synchronization skipped because the wazuh-indexer consumer for IOCs is not ready "
+                         "for sync (might be updating or no data yet)",
+                         COMPONENT_NAME);
                 reportSyncFailure(); // types without a usable version → FAILED (could not sync)
                 return;
             }
@@ -517,21 +472,10 @@ void IocSync::synchronize()
         // Check if remote index exists
         if (!existIocDataInRemote())
         {
-            LOG_WARNING("[IOC::Sync] Remote IOC data index does not exist; skipping sync cycle");
+            LOG_WARNING("[{}] Remote IOC data index does not exist; skipping sync cycle", COMPONENT_NAME);
             reportSyncFailure();
             return;
         }
-
-        // Get remote hashes (returns nullopt if IOC consumer is not ready)
-        const auto remoteTypeHashesOpt = getRemoteHashesFromRemote();
-        if (!remoteTypeHashesOpt.has_value())
-        {
-            LOG_INFO("[IOC::Sync] IOC syncronization skipped because the IOC consumer is not ready (data/hash is being "
-                     "updated in the indexer)");
-            reportSyncFailure();
-            return;
-        }
-        const auto& remoteTypeHashes = *remoteTypeHashesOpt;
 
         // Synchronize each IOC type
         bool stateChanged = false;
@@ -539,7 +483,7 @@ void IocSync::synchronize()
         {
             if (m_shutdownRequested.load(std::memory_order_relaxed))
             {
-                LOG_INFO("[IOC::Sync] Synchronization aborted during IOC type iteration");
+                LOG_INFO("[{}] Synchronization aborted during IOC type iteration", COMPONENT_NAME);
                 updateIocStatusSnapshot();
                 return;
             }
@@ -548,9 +492,8 @@ void IocSync::synchronize()
             dbState.setSyncStatus(base::SyncStatus::UPDATING);
             updateIocStatusSnapshot();
 
-            if (syncIOCType(dbState, remoteTypeHashes, kvdbiocPtr))
+            if (syncIOCType(dbState, kvdbiocPtr))
             {
-                dbState.setLastSuccessfulUpdate(static_cast<uint32_t>(std::time(nullptr)));
                 stateChanged = true;
             }
 
@@ -558,7 +501,8 @@ void IocSync::synchronize()
             updateIocStatusSnapshot();
         }
 
-        // Save state if changed
+        // Save state if changed. One write per cycle, from the single thread that owns the state:
+        // the token store deliberately only mutates memory for exactly this reason.
         if (stateChanged)
         {
             try
@@ -567,17 +511,17 @@ void IocSync::synchronize()
             }
             catch (const std::exception& e)
             {
-                LOG_WARNING("[IOC::Sync] Failed to save sync state to store: {}", e.what());
+                LOG_WARNING("[{}] Failed to save sync state to store: {}", COMPONENT_NAME, e.what());
             }
         }
 
-        LOG_DEBUG("[IOC::Sync] Finished synchronization of IOC databases");
+        LOG_DEBUG("[{}] Finished synchronization of IOC databases", COMPONENT_NAME);
     }
     catch (const std::exception& e)
     {
         if (m_shutdownRequested.load(std::memory_order_relaxed))
         {
-            LOG_INFO("[IOC::Sync] Synchronization aborted during remote operation");
+            LOG_INFO("[{}] Synchronization aborted during remote operation", COMPONENT_NAME);
             // Reset any in-progress types
             for (auto& dbState : m_databasesState)
             {
@@ -589,7 +533,7 @@ void IocSync::synchronize()
             updateIocStatusSnapshot();
             return;
         }
-        LOG_WARNING("[IOC::Sync] Synchronization cycle failed: {}", e.what());
+        LOG_WARNING("[{}] Synchronization cycle failed: {}", COMPONENT_NAME, e.what());
         // Mark in-progress and never-synced types as failed (the failure may have occurred during the
         // pre-flight, before any type was set RUNNING).
         reportSyncFailure();
@@ -602,12 +546,56 @@ void IocSync::synchronize()
 void IocSync::requestShutdown()
 {
     m_shutdownRequested.store(true, std::memory_order_relaxed);
-    LOG_INFO("[IOC::Sync] Shutdown requested");
+
+    // Wind down anything mid-cycle: without this, a registration destroyed during teardown would
+    // block until its current page loop finished on its own. Only the container is locked here --
+    // m_mutex is held by the very cycle this is trying to interrupt.
+    std::lock_guard<std::mutex> containerLock(m_registrationsMutex);
+    for (auto& [_, registration] : m_registrations)
+    {
+        if (registration.topic)
+        {
+            registration.topic->requestStop();
+        }
+    }
+
+    LOG_INFO("[{}] Shutdown requested", COMPONENT_NAME);
 }
 
 std::vector<IocTypeStatus> IocSync::getIocStatus() const
 {
     return *m_iocStatus.load();
+}
+
+void IocSync::requestOnDemandUpdate(std::string_view iocType)
+{
+    const auto wanted = iocType.empty() ? std::string {} : cmcontent::iocTopic(iocType);
+
+    std::lock_guard<std::mutex> containerLock(m_registrationsMutex);
+    for (const auto& [topicName, registration] : m_registrations)
+    {
+        if (!wanted.empty() && topicName != wanted)
+        {
+            continue;
+        }
+
+        content_manager::requestOnDemand(topicName,
+                                         content_manager::RunRequest {false, true},
+                                         [topicName](content_manager::OnDemandResult result)
+                                         {
+                                             if (result.code == content_manager::OnDemandCode::Completed)
+                                             {
+                                                 LOG_DEBUG("[{}] On-demand update of '{}' finished",
+                                                           COMPONENT_NAME,
+                                                           topicName);
+                                                 return;
+                                             }
+                                             LOG_WARNING("[{}] On-demand update of '{}' was not run: {}",
+                                                         COMPONENT_NAME,
+                                                         topicName,
+                                                         result.detail);
+                                         });
+    }
 }
 
 void IocSync::updateIocStatusSnapshot()

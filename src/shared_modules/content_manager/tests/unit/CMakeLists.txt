@@ -2,15 +2,12 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(content_manager_utest)
 
-# Copy input files to the build directory
-file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-
 if(NOT DEFINED WAZUH_MAIN_PROJECT)
   get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 endif()
 
-# Include directories
-include_directories(${SRC_FOLDER}/shared_modules/uds_http_server/include)
+# The fakes live beside the suites that use them, and are reached as "fakes/...".
+include_directories(${CMAKE_CURRENT_LIST_DIR})
 
 file(GLOB PROJECT_SOURCES *.cpp)
 
@@ -35,6 +32,7 @@ target_link_libraries(
   gmock
   wazuhext
   rocksdb
+  indexer_connector
   pthread)
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
