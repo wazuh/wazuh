@@ -225,6 +225,25 @@ async def test_get_indexer_client_raises_when_certificate_set_without_key():
 
 
 @pytest.mark.asyncio
+async def test_get_indexer_client_raises_on_a_lone_empty_certificate_authority():
+    """A single blank <ca></ca> entry can never resolve to a usable file, so it is
+    rejected instead of silently treated as "no CA configured" (that case is an empty
+    list, not a list holding one empty string)."""
+    with pytest.raises(IndexerUnavailableError, match="must not contain empty entries"):
+        await _run_get_indexer_client({"ssl": {"certificate_authorities": [""]}})
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_raises_on_a_mixed_empty_certificate_authority():
+    """Same as above, but mixed in with an otherwise valid CA -- the valid entry must
+    not mask the blank one."""
+    with pytest.raises(IndexerUnavailableError, match="must not contain empty entries"):
+        await _run_get_indexer_client(
+            {"ssl": {"certificate_authorities": ["etc/certs/root-ca.pem", ""]}}
+        )
+
+
+@pytest.mark.asyncio
 async def test_get_indexer_client_wraps_ssl_context_errors():
     """A bad certificate path must not escape as a raw FileNotFoundError -- it should be
     wrapped in IndexerUnavailableError so the log names the actual problem instead of the

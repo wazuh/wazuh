@@ -562,15 +562,23 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         raise IndexerUnavailableError(code=2200, extra_message=f"Failed to parse host URLs: {e}")
 
     # TLS material is optional per the configuration schema: an empty certificate/key
-    # means no client certificate, an empty CA list means the system trust store.
+    # means no client certificate, an empty CA list means the system trust store. An
+    # empty entry inside an otherwise non-empty list is neither: it can never resolve to
+    # a usable file, so it is rejected the same way a lone certificate/key is.
     certificate = ssl_config.get("certificate") or ""
     key = ssl_config.get("key") or ""
-    cas = [ca for ca in (ssl_config.get("certificate_authorities") or []) if ca]
+    cas = ssl_config.get("certificate_authorities") or []
 
     if bool(certificate) != bool(key):
         raise IndexerUnavailableError(
             code=2200,
             extra_message="indexer.ssl.certificate and indexer.ssl.key must be set together",
+        )
+
+    if any(not ca for ca in cas):
+        raise IndexerUnavailableError(
+            code=2200,
+            extra_message="indexer.ssl.certificate_authorities must not contain empty entries",
         )
 
     client_cert = resolve_wazuh_path(certificate) if certificate else None
