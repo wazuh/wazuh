@@ -303,7 +303,9 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     // bounded only by this value, which is why it is settable rather than fixed.
     rm_config->max_parallel_connections = getDefine_Int_default("remoted", "max_parallel_connections", 1, 65536, 512);
     // max_deferred_requests caps requests parked awaiting a downstream service (503 over it).
-    // No Retry-After is sent: the agent runs its own retry/backoff on a 503.
+    // That 503 carries a Retry-After (a fixed value, identical at every shed point) so the agent
+    // can tell a shed apart from a network failure; it still waits the longer of that and its own
+    // backoff, so the hint can only defer a retry, never hurry one.
     rm_config->max_deferred_requests = getDefine_Int_default("remoted", "max_deferred_requests", 1, 65536, 256);
 
     // Downstream (async UDS client to the engine's event ingress) tunables.

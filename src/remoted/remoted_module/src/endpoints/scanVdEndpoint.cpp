@@ -57,7 +57,16 @@ namespace remoted::endpoints::scanvd
             std::string body = R"({"error":")";
             body.append(code);
             body.append(R"("})");
-            return remoted::http::HttpResponse::json(status, std::move(body));
+            auto response = remoted::http::HttpResponse::json(status, std::move(body));
+            if (status == 503)
+            {
+                // Capacity, like every other shed: `scan_queue_full` is the dispatcher refusing
+                // work. This route is the one that is synchronised fleet-wide by construction --
+                // a feed-offset bump reaches every agent through /control, so they all re-scan at
+                // once -- so leaving it unqualified is exactly the storm the hint exists for.
+                response.headers.emplace_back("Retry-After", remoted::http::SHED_RETRY_AFTER_SECONDS);
+            }
+            return response;
         }
 
         remoted::http::HttpResponse errorJsonWithOffset(int status, std::string_view code, uint64_t currentOffset)

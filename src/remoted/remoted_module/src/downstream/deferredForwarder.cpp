@@ -40,13 +40,6 @@ namespace remoted::downstream
             return instance;
         }
 
-        remoted::http::HttpResponse serviceUnavailable()
-        {
-            remoted::http::HttpResponse response {503, R"({"error":"Service unavailable","code":503})", {}};
-            response.headers.emplace_back("Content-Type", "application/json");
-            return response;
-        }
-
         remoted::http::HttpResponse internalError()
         {
             remoted::http::HttpResponse response {500, R"({"error":"Internal server error","code":500})", {}};
@@ -152,7 +145,8 @@ namespace remoted::downstream
         auto slot = m_impl->limiter->tryAcquire();
         if (!slot)
         {
-            // Too many requests already awaiting downstream: shed with a plain 503 (the agent retries).
+            // Too many requests already awaiting downstream: shed with a 503 carrying Retry-After,
+            // so the agent defers instead of retrying into a queue that is already over capacity.
             if (const auto shed = m_impl->slotExhaustedThrottle.record())
             {
                 LOGFN_WARN(logFn(),
@@ -170,7 +164,7 @@ namespace remoted::downstream
             {
                 target.httpMetrics->responses.count(503);
             }
-            responder->send(serviceUnavailable());
+            responder->send(remoted::http::HttpResponse::serviceUnavailable());
             return;
         }
 

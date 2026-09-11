@@ -183,7 +183,17 @@ namespace
         body += R"(","code":)";
         body += std::to_string(status);
         body += "}";
-        return wazuh::uds_http::HttpResponse::json(status, std::move(body));
+        auto response = wazuh::uds_http::HttpResponse::json(status, std::move(body));
+        if (status == 503)
+        {
+            // Every 503 this transport produces is load-shedding (class session cap, in-flight byte
+            // budget, connection cap, shutdown drain), so the hint applies to all of them. The one
+            // exception in spirit is "Handler produced no response", which is a handler bug rather
+            // than capacity -- it is left carrying the header too, because a peer retrying that
+            // after a delay is the correct behaviour anyway.
+            response.headers.emplace_back("Retry-After", wazuh::uds_http::SHED_RETRY_AFTER_SECONDS);
+        }
+        return response;
     }
 } // namespace
 

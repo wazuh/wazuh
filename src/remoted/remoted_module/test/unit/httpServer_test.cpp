@@ -1074,6 +1074,8 @@ TEST(HttpServerTest, DiagnosticsCountARealAdmissionShed)
     ASSERT_FALSE(raw.empty()) << "no response from the server";
     const auto [head, body] = remoted::test::splitResponse(raw);
     EXPECT_NE(head.find("503"), std::string::npos) << head;
+    EXPECT_NE(head.find("Retry-After: " + std::string {remoted::http::SHED_RETRY_AFTER_SECONDS}), std::string::npos)
+        << "a budget shed must tell the agent when to come back, not read as a broken link: " << head;
     EXPECT_FALSE(handlerRan.load()) << "a shed request must never reach its route handler";
 
     const auto d = server->diagnostics();

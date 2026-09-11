@@ -22,6 +22,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <thread>
 
 #include "auth/keystore.hpp"
@@ -64,6 +65,14 @@
 #include "singleton.hpp"
 
 #include <uds_http_server/IUdsHttpServer.hpp>
+
+// The two transports keep separate type sets on purpose (see IUdsHttpServer.hpp's PEER CONTRACT),
+// so the shed hint is declared twice -- but a forwarded value and a locally produced one must agree
+// on /stateful, and nothing else compares them. This is the one TU that sees both headers.
+static_assert(std::string_view {remoted::http::SHED_RETRY_AFTER_SECONDS} ==
+                  std::string_view {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS},
+              "remoted and uds_http_server must shed with the same Retry-After: a 503 forwarded from "
+              "a module and one remoted produces itself would otherwise disagree on the same route.");
 #include <uds_http_server/udsHttpServerFactory.hpp>
 #include <wazuh_metrics/jsonDump.hpp>
 #include <wazuh_metrics/manager.hpp>
@@ -352,7 +361,7 @@ private:
 
         // Deferred-work limiter: bounds requests parked awaiting a downstream service. A slot is
         // held from the moment a request enters the deferred stage until its reply is delivered;
-        // when full, the forwarder sheds load with a plain 503 (the agent runs its own retry) -- the
+        // when full, the forwarder sheds load with a 503 carrying Retry-After -- the
         // second half of the two-phase backpressure (the byte budget covers receive+send, this the wait).
         const auto maxDeferred = m_config.max_deferred_requests > 0
                                      ? static_cast<std::size_t>(m_config.max_deferred_requests)
@@ -384,7 +393,7 @@ private:
         // /stateless: the gateway runs the full bearer-token validation and only calls this handler once
         // auth succeeds; makeHandler() then cross-checks the payload's claimed wazuh.agent.id against
         // the authenticated agent id (400 PayloadAgentMismatch on mismatch/malformed header), and on
-        // success the forwarder acquires a deferred-work slot (plain 503 when full), forwards the H/E
+        // success the forwarder acquires a deferred-work slot (503 + Retry-After when full), forwards the H/E
         // batch to the engine's event ingress over UDS, and replies from the downstream result (202
         // accepted / 400 bad batch / 413 / 503). The payload + byte budget are freed once the send
         // completes. The 400/401/413 auth rejections are produced by the gateway.

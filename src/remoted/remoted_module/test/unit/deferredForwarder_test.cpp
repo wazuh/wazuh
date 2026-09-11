@@ -18,6 +18,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+
 #include <atomic>
 #include <chrono>
 #include <future>
@@ -200,7 +202,14 @@ TEST(DeferredForwarderTest, SlotFullShedsWith503WithoutCallingClient)
     forwarder.forward(second.req, secondResponder, sampleTarget(), sampleMapper);
 
     ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
-    EXPECT_EQ(fut.get().status, 503);
+    const auto shed = fut.get();
+    EXPECT_EQ(shed.status, 503);
+    // #38880: slot exhaustion is capacity, not a broken downstream -- the agent is told to come
+    // back rather than left to guess, so it does not retry straight into a full queue.
+    const auto retryAfter = std::find_if(
+        shed.headers.begin(), shed.headers.end(), [](const auto& header) { return header.first == "Retry-After"; });
+    ASSERT_NE(retryAfter, shed.headers.end());
+    EXPECT_EQ(retryAfter->second, remoted::http::SHED_RETRY_AFTER_SECONDS);
 }
 
 TEST(DeferredForwarderTest, PassesTargetAndBodyToClient)

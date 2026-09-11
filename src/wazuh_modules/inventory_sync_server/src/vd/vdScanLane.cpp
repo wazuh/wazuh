@@ -238,7 +238,21 @@ namespace invsync::vd
         {
             m_requestCounters.count(status);
             observeLaneTime(item);
-            item.responder->send(wazuh::uds_http::HttpResponse::json(status, body));
+            auto response = wazuh::uds_http::HttpResponse::json(status, body);
+            // "Retry later" only where later could plausibly differ: shutting down, indexer
+            // unavailable, connector failure, scanner still starting. NOT for SCAN_NO_SCANNER_BODY,
+            // which IVdScanner documents as permanent (no scanner on this node): a hint there would
+            // invite the retry the status is refusing. Known imprecision, pre-existing and outside
+            // this change: the adapter also reports Skipped while a configured scanner has not
+            // finished initialising, so in that window this 503 goes out bare and the caller falls
+            // back to its own backoff -- the pre-hint behaviour, not a regression.
+            // The feed re-check below does not come through here either: it needs the configured,
+            // feed-sized value instead of the generic hint.
+            if (status == 503 && body != SCAN_NO_SCANNER_BODY)
+            {
+                response.headers.emplace_back("Retry-After", wazuh::uds_http::SHED_RETRY_AFTER_SECONDS);
+            }
+            item.responder->send(std::move(response));
         }
     }
 
@@ -341,8 +355,9 @@ namespace invsync::vd
                 {
                     m_retryAfterTotal->add();
                     m_requestCounters.count(503);
-                    // This is the one send that cannot go through respond() (the header), so it
-                    // takes its lane-time sample here -- the histogram covers ALL outcomes.
+                    // This is the one send that cannot go through respond(): it needs the
+                    // CONFIGURED feed delay, not respond()'s generic shed hint. So it takes its
+                    // lane-time sample here -- the histogram covers ALL outcomes.
                     observeLaneTime(item);
                     item.responder->send(std::move(response));
                     // finish() must not answer twice. The reset is ALSO what keeps finish(0, "")

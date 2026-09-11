@@ -31,9 +31,12 @@ scan_latency_ms_p50,scan_latency_ms_p99
 - `timestamp` is ISO-8601 UTC with a `Z`; `elapsed_s` is seconds since the run started.
 - Every count column is a **cumulative** counter, monotonically non-decreasing (deltas are the
   consumer's job — that keeps rows independent of sampling jitter).
-- `sessions_503_retry_after` is a **subset** of `sessions_503` (the feed-not-ready case, separated
-  because it is manager bring-up, not backpressure); `retries_feed` counts the re-sends it caused.
-- `retries_503` counts the re-sends of BARE 503s (backpressure), governed by the scenario's
+- `sessions_503_retry_after` counts 503s that carried `Retry-After`. Since wazuh/wazuh#38880 every
+  shed 503 does, so against a current manager it equals `sessions_503` and no longer isolates the
+  feed-not-ready case; `retries_feed` is the counter that does (the sender identifies the feed gate
+  by its body).
+- `retries_503` counts the re-sends of backpressure 503s (every 503 whose body does not name the
+  feed gate), governed by the scenario's
   `defaults.retry` block ([07](07-scenario-schema.md)); `retries_exhausted` counts sessions
   abandoned with their retry budget spent while the server still answered 503. Because every
   attempt is real traffic the server answered, **`sessions_sent` counts attempts**, not logical
@@ -81,7 +84,7 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
   },
   "totals": {
     "sessions": { "sent": 240000, "ok": 239880, "noop": 120, "s400": 0, "s403": 0, "s409": 0,
-                  "s401": 0, "s413": 0, "s500": 0, "s503": 120, "s503_retry_after": 0, "other": 0,
+                  "s401": 0, "s413": 0, "s500": 0, "s503": 120, "s503_retry_after": 120, "other": 0,
                   "abandoned_on_drain": 0 },
     "stateless": { "sent": 6000, "s202": 6000, "s400": 0, "s413": 0, "s503": 0, "other": 0,
                    "events_sent": 1500000 },

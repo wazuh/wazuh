@@ -360,7 +360,11 @@ namespace remoted::enrollment
                            remoted::common::LogThrottle::kDefaultWindowSeconds,
                            result.message.c_str());
             }
-            return errorResponse(503, -1, "Enrollment service temporarily unavailable");
+            // Downstream unavailable, not a rejection of this request: same contract as every
+            // other endpoint's collapse of an unreachable service, so it carries the same hint.
+            auto unavailable = errorResponse(503, -1, "Enrollment service temporarily unavailable");
+            unavailable.headers.emplace_back("Retry-After", remoted::http::SHED_RETRY_AFTER_SECONDS);
+            return unavailable;
         }
 
     } // namespace

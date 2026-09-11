@@ -1049,7 +1049,7 @@ namespace remoted::http
 
                             // Reserve the request's payload against the global in-flight budget
                             // before doing anything else. If it's exhausted, shed load with a plain
-                            // 503 (the agent runs its own retry/backoff) instead of letting the
+                            // 503 carrying Retry-After (see below) instead of letting the
                             // worker-pool queue grow without bound. Routes flagged exempt (e.g. the
                             // liveness probe) skip it.
                             InFlightBudget::Reservation reservation;
@@ -1075,6 +1075,11 @@ namespace remoted::http
                                     }
                                     return request->create_response(restinio::status_service_unavailable())
                                         .append_header(restinio::http_field::content_type, "application/json")
+                                        // Load-shedding, not a per-client limit: the delay is what
+                                        // lets the agent tell this apart from a network blip and
+                                        // defers its retry off the cadence of a broken link.
+                                        .append_header(restinio::http_field::retry_after,
+                                                       remoted::http::SHED_RETRY_AFTER_SECONDS)
                                         .set_body(R"({"error":"Service unavailable","code":503})")
                                         .connection_close()
                                         .done();
