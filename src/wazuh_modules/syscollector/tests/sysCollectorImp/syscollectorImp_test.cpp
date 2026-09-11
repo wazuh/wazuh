@@ -13,7 +13,9 @@
 #include <cstdio>
 #include <functional>
 #include <future>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <sqlite3.h>
 #include <thread>
 
@@ -4867,22 +4869,24 @@ TEST_F(SyscollectorImpTest, hardwareMemoryUsageIsNullWhenTotalIsZero)
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 }
 
-// End-to-end check that the per-table "ignore" lists (HW_IGNORED_FIELDS, PROCESSES_IGNORED_FIELDS,
-// NET_IFACE_IGNORED_FIELDS) actually suppress dbsync MODIFIED events across several scan cycles.
+// End-to-end check that the volatile counters stay current without being reported as changes.
 // Hardware memory, process CPU times and network byte/packet counters change on every scan below
 // (as real monotonic counters do), while every other field stays constant: each collector must
-// still persist exactly once (the initial insert), never again on the following cycles.
-TEST_F(SyscollectorImpTest, ignoredCountersDoNotTriggerModifiedEventsAcrossScans)
+// keep refreshing its state document on every cycle, and must report none of those cycles as a
+// change on the stateless path.
+TEST_F(SyscollectorImpTest, volatileCountersRefreshStateWithoutStatelessNoise)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    constexpr int64_t FIRST_MEMORY_FREE {1000000};
 
     int hwCallCount{0};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(testing::Invoke(
                                                                [&hwCallCount]()
     {
         auto data = nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON);
-        data["memory_free"] = 1000000 + (hwCallCount * 4096);
+        data["memory_free"] = FIRST_MEMORY_FREE + (hwCallCount * 4096);
         data["memory_used"] = 3000000 + hwCallCount;
         // dbsync_hwinfo.cpu_speed is a DOUBLE column; the shared fixture's plain "2904"
         // literal parses as a JSON integer, which permanently mismatches the DB-stored
@@ -4937,39 +4941,50 @@ TEST_F(SyscollectorImpTest, ignoredCountersDoNotTriggerModifiedEventsAcrossScans
     EXPECT_CALL(*spInfoWrapper, services()).Times(0);
     EXPECT_CALL(*spInfoWrapper, browserExtensions()).Times(0);
 
-    CallbackMockPersist wrapperPersist;
+    std::mutex countsMutex;
+    std::map<std::string, int> statefulCount;
+    std::map<std::string, int> statelessCount;
+    std::map<std::string, nlohmann::json> lastStateful;
+
     std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        [&countsMutex, &statefulCount, &lastStateful](const std::string&, Operation_t, const std::string & index,
+                                                      const std::string & data, uint64_t)
         {
-            wrapperPersist.callbackMock(id, operation, index, data, version);
+            std::lock_guard<std::mutex> lock{countsMutex};
+            ++statefulCount[index];
+            lastStateful[index] = nlohmann::json::parse(data);
         }
     };
 
-    // Exactly one persisted event per collector: the initial insert. None of the following
-    // scan cycles - which only ever change ignored fields - may produce a second (MODIFIED) event.
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-processes"), testing::_, testing::_)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-interfaces"), testing::_, testing::_)).Times(1);
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&countsMutex, &statelessCount](const std::string & payload)
+        {
+            const auto parsed = nlohmann::json::parse(payload);
+            std::lock_guard<std::mutex> lock{countsMutex};
+            ++statelessCount[parsed.at("collector").get<std::string>()];
+        }
+    };
 
     std::thread t
     {
-        [&spInfoWrapper, &callbackDataPersist]()
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
         {
             Syscollector::instance().init(spInfoWrapper,
-                                          reportFunction,
+                                          callbackDataDelta,
                                           callbackDataPersist,
                                           logFunction,
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          1, true, true, false, true, false, false, false, true, false, false, false, false, false, false);
+                                          1, true, true, false, true, false, false, false, true, false, false, false, false, false, true);
 
             Syscollector::instance().start();
         }
     };
 
-    // interval=1s: initial scan at t=0, second (noise-only-change) scan at ~t=1s.
+    // interval=1s: initial scan at t=0, further counter-only scans roughly once per second.
     std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
@@ -4977,6 +4992,28 @@ TEST_F(SyscollectorImpTest, ignoredCountersDoNotTriggerModifiedEventsAcrossScans
     {
         t.join();
     }
+
+    // Sanity check: more than one scan actually ran, otherwise the rest proves nothing.
+    ASSERT_GT(hwCallCount, 1);
+    ASSERT_GT(procCallCount, 1);
+    ASSERT_GT(netCallCount, 1);
+
+    // Every scan refreshes the state document, so the inventory keeps up with the host.
+    EXPECT_GT(statefulCount["wazuh-states-inventory-hardware"], 1);
+    EXPECT_GT(statefulCount["wazuh-states-inventory-processes"], 1);
+    EXPECT_GT(statefulCount["wazuh-states-inventory-interfaces"], 1);
+
+    // notifyOnFirstScan is enabled, so the initial insert is reported. Every scan after it only
+    // moves the volatile counters, and none of those is reported.
+    EXPECT_EQ(statelessCount["dbsync_hwinfo"], 1);
+    EXPECT_EQ(statelessCount["dbsync_processes"], 1);
+    EXPECT_EQ(statelessCount["dbsync_network_iface"], 1);
+
+    // The last state document carries a later value than the first scan's, which is the whole
+    // point: before this behavior the document stayed pinned to the first-scan snapshot.
+    ASSERT_TRUE(lastStateful.count("wazuh-states-inventory-hardware"));
+    EXPECT_GT(lastStateful["wazuh-states-inventory-hardware"]["host"]["memory"]["free"].get<int64_t>(),
+              FIRST_MEMORY_FREE);
 }
 
 // Windows reports interface_mtu as 4294967295 (UINT32_MAX) when the MTU is not available;
