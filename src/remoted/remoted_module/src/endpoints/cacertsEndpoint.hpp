@@ -23,24 +23,26 @@
  * under memory pressure. The transport applies the global prefix like it does for every route.
  *
  * Contract:
- *   - 200 `application/x-pem-file`: the file, byte for byte (a bundle is served as a bundle).
- *   - 404 `{"error":"not_found"}`: the file is missing, unreadable or carries no
- *     `-----BEGIN CERTIFICATE-----` block. Same body as the transport's unknown-route 404.
- *   - 503 `{"error":"ca_mismatch"}`: the listener's last evaluation says this CA does NOT sign the
- *     certificate being served -- handing it out would make every verifying agent fail its
- *     handshake against this very manager, so the endpoint refuses instead.
+ *   - 200 `application/x-pem-file`: the CERTIFICATE blocks of the configured file, re-serialised
+ *     here from the parsed X.509 objects. A bundle is served as a bundle; anything else the file
+ *     carries (a private key, a comment, a CRL) is not part of the answer, because the answer is
+ *     built rather than forwarded (issue #39078, H01).
+ *   - 404 `{"error":"not_found"}`: the file is missing, unreadable, too large, carries no
+ *     certificate, or could not be parsed to its end -- a document we do not fully understand is
+ *     refused whole. Same body as the transport's unknown-route 404.
+ *   - 503 `{"error":"ca_mismatch"}`: none of those certificates signs the certificate being served
+ *     -- handing them out would make every verifying agent fail its handshake against this very
+ *     manager, so the endpoint refuses instead.
  *
- * The file is read on every request (cold endpoint, tiny file: cheaper than a cache with an
- * invalidation story), so a CA that goes missing is a 404 right away. The coherence verdict comes
- * from the transport's evaluation (start + every certificateStatusInterval), so a CA ROTATED in
- * place is served until the next tick or restart -- documented, with the refresh-on-fingerprint
- * improvement deferred. An evaluation that could not read the CA (nullopt) does not block: if the
- * file is readable now, it is served.
+ * Both the bytes and the verdict come from ONE read of the file, cached under its content hash by
+ * CaCertificateSource: a replaced CA is noticed in the request that reads it, not up to a day
+ * later (H06). A snapshot with no certificates at all reads "unknown" rather than "mismatch": if
+ * the file is unreadable now, the answer is 404, not a refusal.
  */
 
 #include "common/requestOutcomeMetrics.hpp" // remoted::metrics::EndpointHttpMetrics
 #include "endpoints/cacertsMetrics.hpp"
-#include "http_server/IHttpServer.hpp" // RouteHandler, TlsCertificateSnapshot
+#include "http_server/IHttpServer.hpp" // RouteHandler, CaCertificateSnapshot
 
 #include <functional>
 #include <string>
@@ -53,19 +55,18 @@ namespace remoted::endpoints::cacerts
     /**
      * @brief Build the raw route handler for `GET /cacerts`.
      *
-     * @param caCertificatePath The PEM to serve (HttpServerConfig::caCertificatePath), read per request.
-     * @param status            Reads the listener's latest TlsCertificateSnapshot (typically
-     *                          IHttpServer::certificateStatus() through a weak_ptr); a null
-     *                          function or a default snapshot means "unknown", which serves.
-     * @param metrics           The remoted.cacerts.* counters (the WHY). Copied in; a
-     *                          default-constructed set counts nothing.
-     * @param httpMetrics       The remoted.http.cacerts.responses.* family (the WHAT), counted
-     *                          through a MeteredResponder. May be null (counts nothing). Must
-     *                          outlive the handler when non-null -- the facade keeps it as a value
-     *                          member, like every other endpoint's.
+     * @param snapshot    Reads the CA file's current state -- the certificates to publish and
+     *                    whether they sign the served leaf, from the same read (typically
+     *                    IHttpServer::caCertificateSnapshot() through a weak_ptr). A null function
+     *                    or an empty snapshot answers 404: there is nothing to hand out.
+     * @param metrics     The remoted.cacerts.* counters (the WHY). Copied in; a
+     *                    default-constructed set counts nothing.
+     * @param httpMetrics The remoted.http.cacerts.responses.* family (the WHAT), counted through a
+     *                    MeteredResponder. May be null (counts nothing). Must outlive the handler
+     *                    when non-null -- the facade keeps it as a value member, like every other
+     *                    endpoint's.
      */
-    remoted::http::RouteHandler makeHandler(std::string caCertificatePath,
-                                            std::function<remoted::http::TlsCertificateSnapshot()> status,
+    remoted::http::RouteHandler makeHandler(std::function<remoted::http::CaCertificateSnapshot()> snapshot,
                                             CacertsMetrics metrics,
                                             const remoted::metrics::EndpointHttpMetrics* httpMetrics);
 

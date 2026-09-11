@@ -59,6 +59,11 @@ gain it — the defaults are only re-inserted when the ORM version changes — s
 even `wazuh` sees the enrollment password and the cluster key masked until the database is recreated
 or the policy is added by hand.
 
+That is the general rule, not an exception: **RBAC policies are not migrated.** There is no upgrade
+path from 4.x, and an `rbac.db` left by an earlier 5.0 development build keeps whatever defaults it
+was seeded with — its owner recreates it, or adds the missing policy. New default policies therefore
+reach an installation through a fresh database, and nothing in the manager rewrites one in place.
+
 `wazuh-manager-apid` logs a warning on every start for each of these users whose password is still the shipped one. It does not refuse to serve: the defaults are documented, and some deployments configure the credentials only after the first start.
 
 Change them with `bin/rbac_control change-password`, which prompts for each password when run without options (an empty answer leaves that one unchanged) and can also be driven from a file so that installers and password tools can use it:

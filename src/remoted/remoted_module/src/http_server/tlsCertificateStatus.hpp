@@ -38,6 +38,7 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -53,11 +54,43 @@ namespace remoted::http
     using X509Ptr = std::unique_ptr<X509, X509Deleter>;
 
     /**
+     * @brief Outcome of parsing PEM bytes: the certificates found, and whether the input ended cleanly.
+     *
+     * `wellFormed` is false when the reader stopped on something it could not decode instead of at
+     * end of input. The distinction matters for what we publish: a file we do not fully understand
+     * is refused whole rather than served up to its first bad block (issue #39078, H01).
+     */
+    struct PemCertificates
+    {
+        std::vector<X509Ptr> certificates;
+        bool wellFormed {true};
+    };
+
+    /**
+     * @brief Read every CERTIFICATE block out of PEM bytes already in memory.
+     *
+     * Non-certificate blocks (a key, a CRL) are skipped by OpenSSL's PEM reader, so a bundle or a
+     * combined file yields exactly its certificates -- and, because the caller serialises these
+     * objects back instead of forwarding the bytes, nothing else can ever leave through them.
+     */
+    PemCertificates parseCertificates(std::string_view pem);
+
+    /// Subject line of a certificate, for logs and snapshots. Empty for a null certificate.
+    std::string subjectOfCertificate(const X509* certificate);
+
+    /**
+     * @brief PEM text containing @p certificates and nothing else.
+     *
+     * What `GET /cacerts` and `--embed-ca` publish: a document this process built from parsed
+     * X.509 objects, not a file it forwarded.
+     */
+    std::string serializeCertificates(const std::vector<X509Ptr>& certificates);
+
+    /**
      * @brief Read every CERTIFICATE block of a PEM file.
      *
-     * Non-certificate blocks (a key, a CRL) are skipped by OpenSSL's PEM reader, so a bundle or
-     * a combined file works. Empty when the file is missing, unreadable or carries no certificate:
-     * the caller cannot tell those apart, and does not need to -- none of them can be served.
+     * Empty when the file is missing, unreadable, carries no certificate or could not be parsed to
+     * its end: the caller cannot tell those apart, and does not need to -- none of them can be served.
      */
     std::vector<X509Ptr> loadCertificates(const std::string& pemPath);
 

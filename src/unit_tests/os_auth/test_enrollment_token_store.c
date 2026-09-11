@@ -208,6 +208,38 @@ static int file_uses_of(const char *id) {
     return uses;
 }
 
+/// Whether the FILE (not memory) says that token is revoked; -1 when the id is not in it.
+static int file_revoked_of(const char *id) {
+    cJSON *root = NULL;
+    cJSON *array = read_store_file(&root);
+    cJSON *item = NULL;
+    int revoked = -1;
+
+    cJSON_ArrayForEach(item, array) {
+        const cJSON *token_id = cJSON_GetObjectItem(item, "id");
+
+        if (cJSON_IsString((cJSON *)token_id) && strcmp(token_id->valuestring, id) == 0) {
+            revoked = cJSON_IsTrue(cJSON_GetObjectItem(item, "revoked")) ? 1 : 0;
+        }
+    }
+
+    cJSON_Delete(root);
+
+    return revoked;
+}
+
+/// Point the store at a path under a directory that does not exist: every save fails from now on,
+/// which is how these cases reproduce a storage failure without depending on file permissions
+/// (the tests run as root, so a read-only directory would not stop a write).
+static void break_storage(void) {
+    etoken_store_init("etc/no-such-directory/enrollment_tokens.json");
+}
+
+/// Put the store back on its real file.
+static void restore_storage(void) {
+    etoken_store_init(STORE_PATH);
+}
+
 /// Move the file's modification time forward, so the store sees a change it did not make itself.
 static void touch_store_file(time_t when) {
     struct utimbuf times = {when, when};
@@ -806,6 +838,185 @@ static void test_purge_all_empties_the_store(void **state) {
     assert_int_equal(etoken_store_count(), 0);
 }
 
+/* --- Storage failures ---------------------------------------------------------------------------- */
+
+static void test_revoke_reports_a_storage_failure_instead_of_success(void **state) {
+    (void)state;
+    char id[ETOKEN_ID_CHARS + 1] = {0};
+    cJSON *data = NULL;
+
+    expect_any_mdebug1();
+    expect_any_minfo();
+    expect_any_merror();
+
+    data = mint_token("wazuh-1", 3600, 0, NULL, 0);
+    copy_string(id, sizeof(id), data, "id");
+    cJSON_Delete(data);
+    assert_int_equal(file_revoked_of(id), 0);
+
+    break_storage();
+
+    /* The operator's intent stands in memory -- this authd stops honouring the token right away --
+     * but the answer says the file does not know yet */
+    assert_int_equal(etoken_store_revoke(id), ETOKEN_STORE_FAILED);
+    assert_int_equal(etoken_store_consume(id, time(NULL)), ETOKEN_USE_NOT_FOUND);
+    assert_int_equal(file_revoked_of(id), 0);
+
+    /* The retry that used to lie: the flag was already set in memory, so it answered success
+     * without writing anything (issue #39078, H04) */
+    assert_int_equal(etoken_store_revoke(id), ETOKEN_STORE_FAILED);
+    assert_int_equal(file_revoked_of(id), 0);
+
+    restore_storage();
+    assert_int_equal(etoken_store_revoke(id), 0);
+    assert_int_equal(file_revoked_of(id), 1);
+}
+
+static void test_a_pending_revocation_is_retried_by_the_next_verb(void **state) {
+    (void)state;
+    char id[ETOKEN_ID_CHARS + 1] = {0};
+    cJSON *data = NULL;
+
+    expect_any_mdebug1();
+    expect_any_minfo();
+    expect_any_merror();
+
+    data = mint_token("wazuh-1", 3600, 0, NULL, 0);
+    copy_string(id, sizeof(id), data, "id");
+    cJSON_Delete(data);
+
+    break_storage();
+    assert_int_equal(etoken_store_revoke(id), ETOKEN_STORE_FAILED);
+
+    /* Every verb calls reload_if_changed() first, and that is where the pending write is retried:
+     * the operator does not have to run the revoke again */
+    restore_storage();
+    /* 1: init() reset the known mtime, so this call reloads the file first and then flushes */
+    assert_int_equal(etoken_store_reload_if_changed(), 1);
+    assert_int_equal(file_revoked_of(id), 1);
+
+    /* Nothing left pending: a further call is the free, idempotent one and does not rewrite */
+    assert_int_equal(etoken_store_revoke(id), 0);
+}
+
+static void test_a_pending_revocation_survives_a_reload(void **state) {
+    (void)state;
+    char id[ETOKEN_ID_CHARS + 1] = {0};
+    cJSON *data = NULL;
+
+    expect_any_mdebug1();
+    expect_any_minfo();
+    expect_any_merror();
+
+    data = mint_token("wazuh-1", 3600, 0, NULL, 0);
+    copy_string(id, sizeof(id), data, "id");
+    cJSON_Delete(data);
+
+    break_storage();
+    assert_int_equal(etoken_store_revoke(id), ETOKEN_STORE_FAILED);
+
+    /* A reload replaces the whole array with what the file says -- and the file still says the
+     * token is live. Without the pending list this is exactly where the revocation was lost, and
+     * it is the path etoken_store_purge() takes to recover from its own failed save */
+    restore_storage();
+    assert_int_equal(etoken_store_load(), 0);
+    assert_int_equal(etoken_store_consume(id, time(NULL)), ETOKEN_USE_NOT_FOUND);
+
+    /* And the intent is still pending, so the next verb writes it */
+    assert_int_equal(etoken_store_reload_if_changed(), 0);
+    assert_int_equal(file_revoked_of(id), 1);
+}
+
+static void test_a_pending_revocation_of_a_vanished_token_is_dropped(void **state) {
+    (void)state;
+    char id[ETOKEN_ID_CHARS + 1] = {0};
+    cJSON *data = NULL;
+
+    expect_any_mdebug1();
+    expect_any_minfo();
+    expect_any_merror();
+
+    data = mint_token("wazuh-1", 3600, 0, NULL, 0);
+    copy_string(id, sizeof(id), data, "id");
+    cJSON_Delete(data);
+
+    break_storage();
+    assert_int_equal(etoken_store_revoke(id), ETOKEN_STORE_FAILED);
+
+    /* Someone else (the master, through the cluster) removed the token while the revocation was
+     * pending: there is nothing left to revoke, and the list must not keep the id forever */
+    unlink(STORE_PATH);
+    restore_storage();
+    assert_int_equal(etoken_store_load(), 0);
+    assert_int_equal(etoken_store_count(), 0);
+    assert_int_equal(etoken_store_reload_if_changed(), 0);
+    assert_int_equal(etoken_store_count(), 0);
+}
+
+static void test_a_store_above_the_token_cap_is_not_loaded(void **state) {
+    (void)state;
+    cJSON *data = NULL;
+    char id[ETOKEN_ID_CHARS + 1] = {0};
+    FILE *fp = NULL;
+    int i;
+
+    expect_any_mdebug1();
+    expect_any_minfo();
+    expect_any_mwarn();
+
+    data = mint_token("wazuh-1", 3600, 0, NULL, 0);
+    copy_string(id, sizeof(id), data, "id");
+    cJSON_Delete(data);
+
+    /* A file inherited from somewhere else with more tokens than this authd can ever write back */
+    fp = fopen(STORE_PATH, "w");
+    assert_non_null(fp);
+    fprintf(fp, "{\"version\":1,\"tokens\":[");
+    for (i = 0; i <= ETOKEN_MAX_TOKENS; i++) {
+        fprintf(fp,
+                "%s{\"id\":\"%022d\",\"secret\":null,\"adr\":\"wazuh-1\",\"pin\":null,"
+                "\"ca\":\"x\",\"created\":1,\"expires\":99999999999,\"max_uses\":0,\"uses\":0,"
+                "\"revoked\":false,\"description\":null}",
+                i ? "," : "", i);
+    }
+    fprintf(fp, "]}");
+    assert_int_equal(fclose(fp), 0);
+
+    /* Refused, and what was already loaded is kept: the alternative is an authd holding a store it
+     * cannot persist (issue #39078, H08) */
+    assert_int_equal(etoken_store_load(), -1);
+    assert_int_equal(etoken_store_count(), 1);
+}
+
+static void test_a_store_above_the_byte_ceiling_is_not_loaded(void **state) {
+    (void)state;
+    cJSON *data = NULL;
+    FILE *fp = NULL;
+    size_t written = 0;
+    char filler[4096];
+
+    expect_any_mdebug1();
+    expect_any_minfo();
+    expect_any_mwarn();
+
+    data = mint_token("wazuh-1", 3600, 0, NULL, 0);
+    cJSON_Delete(data);
+
+    /* The size is checked before parsing: what the bytes say does not matter, only that this authd
+     * could never write that much back */
+    memset(filler, 'x', sizeof(filler));
+    fp = fopen(STORE_PATH, "w");
+    assert_non_null(fp);
+    while (written <= (size_t)W_ETOKEN_STORE_MAX_BYTES) {
+        assert_int_equal(fwrite(filler, 1, sizeof(filler), fp), sizeof(filler));
+        written += sizeof(filler);
+    }
+    assert_int_equal(fclose(fp), 0);
+
+    assert_int_equal(etoken_store_load(), -1);
+    assert_int_equal(etoken_store_count(), 1);
+}
+
 /* --- Reservations in flight -------------------------------------------------------------------- */
 
 /// Mint a single-use token and reserve its only use, as an enrollment about to run does.
@@ -940,16 +1151,23 @@ static void test_mint_is_refused_when_the_store_would_be_too_big(void **state) {
     expect_any_merror();
 
     /* Few tokens, each carrying a CA far larger than a real one: the count cap is nowhere near, and
-     * the only thing standing between this store and a replica that stops updating is the ceiling */
-    write_store_of(200, 3600, 0, 0, 0, 40000);
+     * the only thing standing between this store and a replica that stops updating is the ceiling.
+     * The file itself stays UNDER the ceiling -- since #39078 a store above it is not even loaded --
+     * so what crosses it is the mint below, which carries a CA of its own */
+    write_store_of(180, 3600, 0, 0, 0, 40000);
     before = store_inode();
 
+    /* The mint carries the CA instead of a pin -- exactly one anchor, as the codec requires -- and
+     * it is that CA which takes the store over the ceiling */
     build_mint(&mint, "wazuh-over-the-ceiling", 3600, 0, NULL, 0);
+    mint.has_pin = 0;
+    os_calloc(200000 + 1, sizeof(char), mint.ca_pem);
+    memset(mint.ca_pem, 'C', 200000);
     assert_int_equal(etoken_store_create(&mint, time(NULL), &data), ETOKEN_CREATE_TOOBIG);
     etoken_mint_free(&mint);
 
     assert_null(data);
-    assert_int_equal(etoken_store_count(), 200);
+    assert_int_equal(etoken_store_count(), 180);
     assert_int_equal(store_inode(), before);
 }
 
@@ -1008,6 +1226,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_purge_dead_removes_only_the_unusable, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_purge_without_victims_leaves_the_file_alone, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_purge_all_empties_the_store, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_revoke_reports_a_storage_failure_instead_of_success, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_a_pending_revocation_is_retried_by_the_next_verb, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_a_pending_revocation_survives_a_reload, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_a_pending_revocation_of_a_vanished_token_is_dropped, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_a_store_above_the_token_cap_is_not_loaded, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_a_store_above_the_byte_ceiling_is_not_loaded, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_purge_dead_spares_a_use_still_in_flight, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_purge_dead_removes_it_once_the_enrollment_is_over, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_purge_all_takes_a_use_in_flight_too, setup_store, teardown_store),

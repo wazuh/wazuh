@@ -100,7 +100,7 @@ it, inventory-sync applies it — and all three depend on these:
 | `src/config.c` | `<auth>` block plus the `authd.*` internal options, and the two `remoted.jwt_*` ones the re-enrollment window is read from |
 | `src/token_cli.c` | the `--create/--list/--revoke-enrollment-token` and `--show-token` utility mode: a client of the socket verbs, run by `main()` before the daemon starts |
 | `src/enrollment_token_mint.c` | whether a token can be minted: the listener certificate's SAN, loopback and CA-signature checks, and the `adr` the token will carry |
-| `src/enrollment_token_store.c` | `etc/enrollment_tokens.json` and its in-memory replica: load, mtime-driven reload, atomic rewrite, consume/release, revoke |
+| `src/enrollment_token_store.c` | `etc/enrollment_tokens.json` and its in-memory replica: load (refused above either limit), mtime-driven reload, atomic rewrite, consume/release, revoke with its pending-write retry |
 | `src/reenroll_verify.cpp` | the one C++ file: an `extern "C"` bridge over the header-only verifier in `shared_modules/utils/jwt/` |
 | `include/auth.h` | everything the two servers and the threads share |
 
@@ -175,6 +175,48 @@ The agent has a usable key at that point, but **remoted does not know about it y
 `client.keys` on the writer's next pass, and remoted reloads the file on its own cadence. Enrollment
 latency is therefore the writer's pass time plus remoted's reload — which is exactly why nothing slow
 may live in that pass.
+
+**One rotation at a time, per agent** (issue #39078, H02). A re-enrollment reserves the agent **before** the request reads its `reenroll_secret` from wazuh-db, and
+the reservation is released by the **writer**, once the new credentials are in the database. That placement is the whole fix: the row keeps naming the old secret
+until the writer replaces it, so two requests carrying the same bearer used to verify and rotate one after the other, handing out two credentials for one agent and
+invalidating the first. A caller that finds the reservation taken gets `9030` (*Re-enrollment already in progress*, remoted's **409**, counter
+`remoted.enroll.reenroll.rejected_in_progress`) — a wait, not a credential problem: `9027` is what a stale bearer gets once the rotation has landed. A rejection
+before anything is handed out releases the reservation at once; a **failed** database write does not, because the row still holds the old secret and letting it
+authorise another rotation is the hole itself. Until that transition is resolved the agent cannot rotate on this manager, and the writer says so in the log.
+
+**The credential is on the record before it is handed out** (issue #39078, H03). `local_add()` and `local_reenroll()` append the agent, the key and the
+re-enrollment secret to `queue/authd/pending-identities` (0640, one JSON line, appended without rewriting the file) **before** they answer, and only the writer
+removes the line — after `global commit`, never on wazuh-db's `ok`, which comes from inside a deferred transaction. The rules that follow from that:
+
+- **An unrecordable transition is refused**, `9031` (remoted's **503**, the API's `1772`), and no credential is handed out: an enrollment is undone in the keystore
+  and a rotation never touches it. The deletion journal is allowed to lose a line because its entries can be rebuilt from `client.keys`; a secret exists nowhere
+  else, so the same rule here would mean an agent that can never re-enroll. The room is checked **before** the request mutates anything, because a duplicate name
+  or IP resolved by `<force>` deletes the previous agent while the request is validated — the same reason the deletion path asks `purge_backlog_full()` at phase 0.
+- **The writer retries on its own clock** while anything is owed — one second, doubling to a minute — instead of waiting for the next enrollment to wake it, and a
+  retry cycle does not rewrite `client.keys`. It skips the pass when wazuh-db's socket is not even there and abandons it at the first entry that cannot reach the
+  database: otherwise every entry would pay the client's five-attempt connect ladder, and one pass could hold the only keystore writer for hours. Each owed entry reads the row first: already this credential means drop it, a row with another one (including the
+  NULL secret `sync_keys_with_wdb()` leaves when it mirrors `client.keys`) means `set-agent-credentials`, no row means `insert-agent`.
+- **At startup the judge is the journal's own order**, not `client.keys`: an id no longer listed there owes nothing (the agent was deleted, or its first key write
+  never landed, and it will enroll again), a **later entry for the same agent** supersedes an earlier one, and anything else is still owed — even when
+  `client.keys` names another key, which is precisely the crash this exists for. Writing it lets the agent re-enroll with the secret it already holds and heal
+  itself. Every rotation kept this way takes its reservation back before the listeners start, so the previous secret cannot authorise a second one meanwhile.
+  wazuh-db is not consulted there: its socket does not exist yet when authd starts.
+- **The bound is the admission**: 5000 transitions in flight, past which new ones are refused rather than older ones dropped, and a file above 8 MiB is not loaded
+  at all. There is no `fsync`: what this recovers is a crashed process and an unreachable database, not a power cut.
+
+**What the store promises when it cannot write** (issue #39078):
+
+- **A revoke is either written or reported as failed.** The flag goes on in memory at once — this authd stops honouring the token immediately — but the answer is
+  `9029` («Enrollment token store write failed», the API's `1771`, HTTP 500), never the `9022` of an id that does not exist, and never a success. The id is kept in a
+  pending list that survives a reload (the array is replaced by what the file says; the file is precisely what does not know), so the next verb retries the write and
+  the token cannot come back after a restart.
+- **A consumed use is best effort, and that is a contract, not an oversight.** `etoken_store_consume()` counts the use in memory and lets the enrollment through even
+  if the file could not be written: failing it over a disk hiccup would deny a legitimate agent. The price is explicit — a restart before the next successful write
+  reloads the older counter, so a single-use token may admit another enrollment, and repeated failures may allow more than one. It does not even take a lost disk: a
+  store already at its serialized ceiling fails to save on the growth of the counter itself. **Expiry and revocation are the durable properties**; revoking is the
+  reliable way to stop a token.
+- **A store above either limit is not loaded.** More than 5000 tokens, or a file over `W_ETOKEN_STORE_MAX_BYTES`, is refused with a warning and whatever was already
+  loaded is kept: accepting it would leave authd holding a store it could never write back.
 
 Two credentials `/enroll` can carry take their own route through `local_dispatch()`:
 
@@ -588,4 +630,11 @@ would make "the row is outstanding" and "the query failed" the same case.
   until the cluster syncs the file, but the master's answer wins.
 - **A re-enrollment is not a deletion**: same id, no purge, documents kept. Agents enrolled over port
   1515, and rows the database module rebuilt from `client.keys`, have no secret and answer `9026`
-  until they enroll anew.
+  until they enroll anew. Rebuilding those rows is not a recovery of the secret and never can be:
+  `client.keys` does not carry it, and neither does a `global.db` from a build older than the column
+  — that database is recreated, not migrated.
+- **Re-enrollment supports agent ids of up to eight digits.** `OS_IsValidID()` caps the `kid` there
+  and the agent applies the same rule to the answer, so an agent holding a nine- or ten-digit id
+  cannot rotate its credentials. Administrative insertion still accepts the full range on purpose:
+  restricting it would not close the gap, because the id counter follows the highest id in
+  `client.keys` and would hand out a long id again on the next self-enrollment.

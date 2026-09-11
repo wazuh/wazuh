@@ -712,6 +712,10 @@ INSTANTIATE_TEST_SUITE_P(AuthdCodes,
                                            AuthdErrorCase {9013, 503},
                                            AuthdErrorCase {9015, 503},
                                            AuthdErrorCase {9016, 503},
+                                           // The credential could not be journaled, so none was
+                                           // handed out (issue #39078, H03): a "come back", like
+                                           // the two above, not a fault of the request.
+                                           AuthdErrorCase {9031, 503},
                                            AuthdErrorCase {9022, 403},   // enrollment token unknown/revoked (#38993)
                                            AuthdErrorCase {9023, 403},   // enrollment token expired
                                            AuthdErrorCase {9024, 403},   // enrollment token exhausted
@@ -1029,6 +1033,20 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(ReenrollRejectionCase {9026, METRIC_REENROLL_REJECTED_UNKNOWN, "unknown_agent"},
                       ReenrollRejectionCase {9027, METRIC_REENROLL_REJECTED_SIGNATURE, "invalid_signature"},
                       ReenrollRejectionCase {9028, METRIC_REENROLL_REJECTED_STALE, "stale_token"}));
+
+TEST(EnrollmentEndpointTest, ReenrollmentAlreadyInProgressIsA409WithItsOwnCounter)
+{
+    // A rotation for that agent is accepted and not yet persisted (9030, issue #39078 H02). The
+    // bearer was fine, so this is not an authentication failure to fold into the 401: it is the
+    // same "that state is taken" 409 a duplicate name gets, and the agent retries rather than
+    // re-signing. Its own counter, because a 409 alone does not say which rule refused.
+    const auto run = runReenroll(R"({"error":9030,"message":"Re-enrollment already in progress"})", "in_flight");
+    EXPECT_EQ(run.response.status, 409);
+    EXPECT_EQ(parseBody(run.response)["error"]["code"], 9030);
+    EXPECT_EQ(run.enrollValue(METRIC_REENROLL_REJECTED_IN_PROGRESS), 1U);
+    EXPECT_EQ(run.enrollValue(METRIC_REJECTED_AUTH), 0U);
+    EXPECT_EQ(run.enrollValue(METRIC_REENROLL_REJECTED_SIGNATURE), 0U);
+}
 
 TEST(EnrollmentEndpointTest, ReenrollmentAuthdBusinessErrorsKeepTheirOwnMapping)
 {

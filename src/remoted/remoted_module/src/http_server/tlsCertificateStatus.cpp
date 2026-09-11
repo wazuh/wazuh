@@ -31,19 +31,6 @@ namespace remoted::http
     {
         using BioPtr = std::unique_ptr<BIO, decltype(&BIO_free)>;
 
-        std::string subjectOf(const X509* certificate)
-        {
-            if (certificate == nullptr)
-            {
-                return {};
-            }
-            // X509_NAME_oneline's fixed buffer is fine here: the value is for a log line, not for
-            // matching, and a subject longer than this is truncated rather than lost.
-            char buffer[256];
-            const char* oneline = X509_NAME_oneline(X509_get_subject_name(certificate), buffer, sizeof(buffer));
-            return oneline != nullptr ? std::string {oneline} : std::string {};
-        }
-
         bool equalsIgnoreCase(const std::string& a, const std::string& b)
         {
             return a.size() == b.size() &&
@@ -85,36 +72,110 @@ namespace remoted::http
         using GeneralNamesPtr = std::unique_ptr<GENERAL_NAMES, decltype(&GENERAL_NAMES_free)>;
     } // namespace
 
+    std::string subjectOfCertificate(const X509* certificate)
+    {
+        if (certificate == nullptr)
+        {
+            return {};
+        }
+        // X509_NAME_oneline's fixed buffer is fine here: the value is for a log line, not for
+        // matching, and a subject longer than this is truncated rather than lost.
+        char buffer[256];
+        const char* oneline = X509_NAME_oneline(X509_get_subject_name(certificate), buffer, sizeof(buffer));
+        return oneline != nullptr ? std::string {oneline} : std::string {};
+    }
+
     void X509Deleter::operator()(X509* certificate) const noexcept
     {
         X509_free(certificate);
     }
 
+    PemCertificates parseCertificates(std::string_view pem)
+    {
+        PemCertificates result;
+        if (pem.empty())
+        {
+            return result;
+        }
+
+        BioPtr bio {BIO_new_mem_buf(pem.data(), static_cast<int>(pem.size())), &BIO_free};
+        if (!bio)
+        {
+            ERR_clear_error();
+            result.wellFormed = false;
+            return result;
+        }
+
+        // PEM_read_bio_X509 skips blocks that are not a CERTIFICATE, so a combined key+cert file
+        // or a bundle yields exactly its certificates. It fails at end of input with a "no start
+        // line" error; any other reason means a block it could not decode.
+        for (X509Ptr certificate {PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr)}; certificate;
+             certificate.reset(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr)))
+        {
+            result.certificates.push_back(std::move(certificate));
+        }
+
+        // The only clean way out of the loop. Anything else (bad base64, a truncated block, a
+        // header the decoder chokes on) means we do not understand the whole input, and a document
+        // we do not fully understand is not one to publish from.
+        result.wellFormed = ERR_GET_REASON(ERR_peek_last_error()) == PEM_R_NO_START_LINE;
+        ERR_clear_error();
+
+        if (!result.wellFormed)
+        {
+            result.certificates.clear();
+        }
+
+        return result;
+    }
+
+    std::string serializeCertificates(const std::vector<X509Ptr>& certificates)
+    {
+        BioPtr bio {BIO_new(BIO_s_mem()), &BIO_free};
+        if (!bio)
+        {
+            ERR_clear_error();
+            return {};
+        }
+
+        for (const auto& certificate : certificates)
+        {
+            if (PEM_write_bio_X509(bio.get(), certificate.get()) != 1)
+            {
+                ERR_clear_error();
+                return {};
+            }
+        }
+
+        char* data = nullptr;
+        const long length = BIO_get_mem_data(bio.get(), &data);
+        return (data != nullptr && length > 0) ? std::string {data, static_cast<std::size_t>(length)} : std::string {};
+    }
+
     std::vector<X509Ptr> loadCertificates(const std::string& pemPath)
     {
-        std::vector<X509Ptr> certificates;
         if (pemPath.empty())
         {
-            return certificates;
+            return {};
         }
 
         BioPtr bio {BIO_new_file(pemPath.c_str(), "r"), &BIO_free};
         if (!bio)
         {
             ERR_clear_error();
-            return certificates;
+            return {};
         }
 
-        // PEM_read_bio_X509 skips blocks that are not a CERTIFICATE, so a combined key+cert file
-        // or a bundle yields exactly its certificates. It fails at end of file with a "no start
-        // line" error -- expected, cleared below so it never leaks into a later TLS operation.
-        for (X509Ptr certificate {PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr)}; certificate;
-             certificate.reset(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr)))
+        std::string contents;
+        char buffer[4096];
+        for (int read = BIO_read(bio.get(), buffer, sizeof(buffer)); read > 0;
+             read = BIO_read(bio.get(), buffer, sizeof(buffer)))
         {
-            certificates.push_back(std::move(certificate));
+            contents.append(buffer, static_cast<std::size_t>(read));
         }
         ERR_clear_error();
-        return certificates;
+
+        return parseCertificates(contents).certificates;
     }
 
     std::optional<int> daysUntilExpiry(const X509* certificate)
@@ -256,7 +317,7 @@ namespace remoted::http
     {
         TlsCertificateSnapshot snapshot;
         snapshot.expiryDays = daysUntilExpiry(leaf);
-        snapshot.leafSubject = subjectOf(leaf);
+        snapshot.leafSubject = subjectOfCertificate(leaf);
 
         const auto cas = loadCertificates(caPath);
         if (!cas.empty())
@@ -268,7 +329,7 @@ namespace remoted::http
                 {
                     snapshot.caSubjects += ", ";
                 }
-                snapshot.caSubjects += subjectOf(ca.get());
+                snapshot.caSubjects += subjectOfCertificate(ca.get());
             }
         }
         return snapshot;

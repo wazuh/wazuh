@@ -97,6 +97,181 @@ typedef struct purge_reserved {
 /// Guarded by mutex_purge, like the queue it feeds.
 static purge_reserved_t *purge_reserved = NULL;
 
+/* --- Rotations in flight ----------------------------------------------------------------------
+ *
+ * One entry per agent whose re-enrollment has been accepted and not yet persisted, plus a
+ * generation that counts the rotations this authd has completed for that agent.
+ *
+ * The reservation is taken BEFORE the request reads the agent's re-enrollment secret from wazuh-db,
+ * which is the only placement that closes the window: the row keeps saying the old secret until the
+ * writer updates it, so a second request that got as far as reading it would verify the same bearer
+ * and rotate again, handing out two credentials for one agent and invalidating the first (issue
+ * #39078, H02). It is released when the writer persists the transition -- never when the write
+ * FAILS, because then the old secret is still what the database holds, and letting it authorise
+ * another rotation is the very hole this closes.
+ *
+ * Its own mutex, not mutex_keys: the reservation has to be taken around a wazuh-db round trip, and
+ * that is precisely what local_reenroll() must not do under the keystore lock.
+ */
+typedef struct reenroll_slot {
+    char *id;
+    unsigned int generation;   ///< Completed rotations for this agent; the caller captures it and re-checks it
+    bool in_flight;            ///< A rotation is accepted and not yet persisted
+    struct reenroll_slot *next;
+} reenroll_slot_t;
+
+static reenroll_slot_t *reenroll_slots = NULL;
+static pthread_mutex_t mutex_reenroll = PTHREAD_MUTEX_INITIALIZER;
+
+/// The slot for that id, or NULL when the agent has never been seen. mutex_reenroll held.
+static reenroll_slot_t *reenroll_slot_find_locked(const char *agent_id) {
+    reenroll_slot_t *slot;
+
+    for (slot = reenroll_slots; slot; slot = slot->next) {
+        if (!strcmp(slot->id, agent_id)) {
+            return slot;
+        }
+    }
+
+    return NULL;
+}
+
+/// The slot for that id, creating it if this is the first time the agent is seen. mutex_reenroll held.
+static reenroll_slot_t *reenroll_slot_locked(const char *agent_id) {
+    reenroll_slot_t *slot = reenroll_slot_find_locked(agent_id);
+
+    if (slot != NULL) {
+        return slot;
+    }
+
+    os_calloc(1, sizeof(reenroll_slot_t), slot);
+    os_strdup(agent_id, slot->id);
+    slot->next = reenroll_slots;
+    reenroll_slots = slot;
+
+    return slot;
+}
+
+/// Drop a slot that holds nothing worth remembering. mutex_reenroll held.
+///
+/// The list must not grow with the requests it REFUSES: the id comes from the caller, is only
+/// checked against the eight-digit id rule, and the reservation is taken before the agent is known
+/// to exist -- so a caller that reaches POST /enroll can otherwise seed a slot per invented id,
+/// costing memory that never comes back and a longer linear search under this mutex for every
+/// legitimate rotation after it (issue #39078, review round).
+static void reenroll_slot_discard_locked(reenroll_slot_t *victim) {
+    reenroll_slot_t **prev;
+    reenroll_slot_t *slot;
+
+    for (prev = &reenroll_slots; (slot = *prev) != NULL; prev = &slot->next) {
+        if (slot == victim) {
+            *prev = slot->next;
+            os_free(slot->id);
+            os_free(slot);
+            return;
+        }
+    }
+}
+
+bool w_reenroll_reserve(const char *agent_id, unsigned int *generation) {
+    reenroll_slot_t *slot;
+    bool taken = false;
+
+    if (!agent_id) {
+        return false;
+    }
+
+    w_mutex_lock(&mutex_reenroll);
+
+    slot = reenroll_slot_locked(agent_id);
+
+    if (!slot->in_flight) {
+        slot->in_flight = true;
+        taken = true;
+
+        if (generation != NULL) {
+            *generation = slot->generation;
+        }
+    }
+
+    w_mutex_unlock(&mutex_reenroll);
+
+    return taken;
+}
+
+unsigned int w_reenroll_generation(const char *agent_id) {
+    reenroll_slot_t *slot;
+    unsigned int generation = 0;
+
+    if (!agent_id) {
+        return 0;
+    }
+
+    w_mutex_lock(&mutex_reenroll);
+    slot = reenroll_slot_find_locked(agent_id);
+    /* An agent with no slot has completed no rotation, which is what generation 0 means: this must
+     * not create one, or a read would grow the list the same way a refused request used to. */
+    generation = slot != NULL ? slot->generation : 0;
+    w_mutex_unlock(&mutex_reenroll);
+
+    return generation;
+}
+
+void w_reenroll_complete(const char *agent_id) {
+    reenroll_slot_t *slot;
+
+    if (!agent_id) {
+        return;
+    }
+
+    w_mutex_lock(&mutex_reenroll);
+    slot = reenroll_slot_locked(agent_id);
+    /* The generation moves only here: a caller that captured the previous one was reading a
+     * credential this rotation has replaced */
+    slot->generation++;
+    slot->in_flight = false;
+    w_mutex_unlock(&mutex_reenroll);
+}
+
+void w_reenroll_abandon(const char *agent_id) {
+    reenroll_slot_t *slot;
+
+    if (!agent_id) {
+        return;
+    }
+
+    w_mutex_lock(&mutex_reenroll);
+    slot = reenroll_slot_find_locked(agent_id);
+
+    if (slot != NULL) {
+        /* Nothing was handed out, so the generation stands: this is the rejection path (unknown
+         * agent, a bearer that did not verify, a keystore that says no) */
+        slot->in_flight = false;
+
+        /* And a slot with no generation to preserve holds nothing at all -- which is every slot a
+         * rejected request created. What stays is one slot per agent that actually rotated, bounded
+         * by the fleet. */
+        if (slot->generation == 0) {
+            reenroll_slot_discard_locked(slot);
+        }
+    }
+
+    w_mutex_unlock(&mutex_reenroll);
+}
+
+unsigned int w_reenroll_slots(void) {
+    unsigned int count = 0;
+    reenroll_slot_t *slot;
+
+    w_mutex_lock(&mutex_reenroll);
+    for (slot = reenroll_slots; slot; slot = slot->next) {
+        count++;
+    }
+    w_mutex_unlock(&mutex_reenroll);
+
+    return count;
+}
+
 /// Reserve an id at removal time. Idempotent: an id cannot leave the keystore twice without the
 /// writer running in between, but a repeat must not grow the list either way.
 static void purge_reserve_id(const char *agent_id) {
@@ -177,7 +352,7 @@ static bool w_auth_group_regex_compiled = false;
 static pthread_mutex_t w_auth_group_regex_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Append key to insertion queue
-void add_insert(const keyentry *entry, const char *group, const char *reenroll_secret) {
+void add_insert(const keyentry *entry, const char *group, const char *reenroll_secret, long long journal_seq) {
     struct keynode *node;
 
     os_calloc(1, sizeof(struct keynode), node);
@@ -187,13 +362,14 @@ void add_insert(const keyentry *entry, const char *group, const char *reenroll_s
     node->raw_key = strdup(entry->raw_key);
     node->group = group ? strdup(group) : NULL;
     node->reenroll_secret = reenroll_secret ? strdup(reenroll_secret) : NULL;
+    node->journal_seq = journal_seq;
 
     (*insert_tail) = node;
     insert_tail = &node->next;
 }
 
 // Append a rotated key to the insertion queue (re-enrollment, #38993)
-void add_rotate(const keyentry *entry, const char *group, const char *reenroll_secret) {
+void add_rotate(const keyentry *entry, const char *group, const char *reenroll_secret, long long journal_seq) {
     struct keynode *node;
 
     os_calloc(1, sizeof(struct keynode), node);
@@ -203,6 +379,7 @@ void add_rotate(const keyentry *entry, const char *group, const char *reenroll_s
     node->raw_key = strdup(entry->raw_key);
     node->group = group ? strdup(group) : NULL;
     node->reenroll_secret = strdup(reenroll_secret);
+    node->journal_seq = journal_seq;
     node->rotate = 1;
 
     (*insert_tail) = node;

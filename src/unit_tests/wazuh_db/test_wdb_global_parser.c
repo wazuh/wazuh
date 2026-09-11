@@ -279,9 +279,10 @@ void test_wdb_parse_global_insert_agent_invalid_json(void **state)
     char query[OS_BUFFER_SIZE] = "global insert-agent {INVALID_JSON}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent {INVALID_JSON}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent (arguments not logged: they carry credentials)");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when inserting agent.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+    // The offset, never the tail of the payload: it carries the key and the secret (issue #39078, H05).
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON syntax error at offset 2 when inserting agent.");
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
@@ -310,7 +311,7 @@ void test_wdb_parse_global_insert_agent_compliant_error(void **state)
     char query[OS_BUFFER_SIZE] = "global insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":null}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":null}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent (arguments not logged: they carry credentials)");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when inserting agent. Not compliant with constraints defined in the database.");
 
     expect_function_call(__wrap_w_inc_queries_total);
@@ -340,7 +341,7 @@ void test_wdb_parse_global_insert_agent_query_error(void **state)
     char query[OS_BUFFER_SIZE] = "global insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":123}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":123}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent (arguments not logged: they carry credentials)");
 
     expect_value(__wrap_wdb_global_insert_agent, id, 1);
     expect_string(__wrap_wdb_global_insert_agent, name, "test_name");
@@ -382,8 +383,7 @@ void test_wdb_parse_global_insert_agent_success(void **state)
     \"ip\":\"0.0.0.0\",\"register_ip\":\"1.1.1.1\",\"internal_key\":\"test_key\",\"group\":\"test_group\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":123,\
-    \"ip\":\"0.0.0.0\",\"register_ip\":\"1.1.1.1\",\"internal_key\":\"test_key\",\"group\":\"test_group\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent (arguments not logged: they carry credentials)");
 
     expect_value(__wrap_wdb_global_insert_agent, id, 1);
     expect_string(__wrap_wdb_global_insert_agent, name, "test_name");
@@ -424,9 +424,7 @@ void test_wdb_parse_global_insert_agent_success_with_reenroll_secret(void **stat
     \"reenroll_secret\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\"group\":\"test_group\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":123,\
-    \"ip\":\"0.0.0.0\",\"register_ip\":\"1.1.1.1\",\"internal_key\":\"test_key\",\
-    \"reenroll_secret\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\"group\":\"test_group\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent (arguments not logged: they carry credentials)");
 
     expect_value(__wrap_wdb_global_insert_agent, id, 1);
     expect_string(__wrap_wdb_global_insert_agent, name, "test_name");
@@ -885,9 +883,10 @@ void test_wdb_parse_global_set_agent_credentials_invalid_json(void **state)
     char query[OS_BUFFER_SIZE] = "global set-agent-credentials {INVALID_JSON}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials {INVALID_JSON}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials (arguments not logged: they carry credentials)");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when setting agent credentials.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+    // Same rule: offset only (issue #39078, H05).
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON syntax error at offset 2 when setting agent credentials.");
 
     expect_set_agent_credentials_accounting(true);
 
@@ -909,7 +908,7 @@ void test_wdb_parse_global_set_agent_credentials_invalid_data(void **state)
     char query[OS_BUFFER_SIZE] = "global set-agent-credentials {\"id\":1,\"name\":\"agent1\",\"register_ip\":\"any\",\"internal_key\":\"k\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials {\"id\":1,\"name\":\"agent1\",\"register_ip\":\"any\",\"internal_key\":\"k\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials (arguments not logged: they carry credentials)");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when setting agent credentials.");
 
     expect_set_agent_credentials_accounting(true);
@@ -939,7 +938,7 @@ void test_wdb_parse_global_set_agent_credentials_query_error(void **state)
     expect_string(__wrap_wdb_global_set_agent_credentials, reenroll_secret, "s");
     will_return(__wrap_wdb_global_set_agent_credentials, OS_INVALID);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials " SAC_QUERY_JSON);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials (arguments not logged: they carry credentials)");
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
@@ -970,7 +969,7 @@ void test_wdb_parse_global_set_agent_credentials_success(void **state)
     expect_string(__wrap_wdb_global_set_agent_credentials, reenroll_secret, "s");
     will_return(__wrap_wdb_global_set_agent_credentials, OS_SUCCESS);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials " SAC_QUERY_JSON);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials (arguments not logged: they carry credentials)");
 
     expect_set_agent_credentials_accounting(true);
 
@@ -4307,6 +4306,77 @@ void test_wdb_parse_global_restore_backup_success_pre_restore_missing(void **sta
 
 /* wdb_parse_global_vacuum */
 
+/* The `commit` verb (issue #39078, H03): authd needs to know when a write is durable, and
+ * wazuh-db's `ok` is not that -- it comes from inside a deferred transaction. */
+void test_wdb_parse_global_commit_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char *query = NULL;
+
+    os_strdup("global commit", query);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+
+    expect_function_call(__wrap_w_inc_global_commit);
+    will_return(__wrap_gettimeofday, NULL);
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: commit");
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
+
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_commit_time);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(result, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_wdb_parse_global_commit_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_SUCCESS;
+    char *query = NULL;
+
+    os_strdup("global commit", query);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+
+    expect_function_call(__wrap_w_inc_global_commit);
+    will_return(__wrap_gettimeofday, NULL);
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: commit");
+    will_return(__wrap_wdb_commit2, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot end transaction.");
+
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_commit_time);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    result = wdb_parse(query, data->output, 0);
+
+    // The caller has to be able to tell: on this answer authd keeps the transition journaled.
+    assert_string_equal(data->output, "err Cannot end transaction");
+    assert_int_equal(result, OS_INVALID);
+
+    os_free(query);
+}
+
 void test_wdb_parse_global_vacuum_commit_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int result = OS_INVALID;
@@ -5023,6 +5093,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_success_pre_restore_false, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_success_pre_restore_missing, test_setup, test_teardown),
         /* Tests wdb_parse_global_vacuum */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_commit_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_commit_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_commit_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_vacuum_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_vacuum_success_get_db_state_error, test_setup, test_teardown),

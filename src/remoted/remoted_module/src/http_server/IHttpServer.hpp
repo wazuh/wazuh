@@ -12,6 +12,7 @@
 #ifndef _REMOTED_HTTP_SERVER_INTERFACE_HPP
 #define _REMOTED_HTTP_SERVER_INTERFACE_HPP
 
+#include "caCertificateSource.hpp"
 #include "inFlightBudget.hpp"
 #include "tlsCertificateStatus.hpp"
 
@@ -400,6 +401,20 @@ namespace remoted::http
          * evaluate, like the test fakes.
          */
         virtual TlsCertificateSnapshot certificateStatus() const
+        {
+            return {};
+        }
+
+        /**
+         * @brief Current state of the CA file: the certificates to publish and whether they sign
+         *        the served leaf, taken from one read (see CaCertificateSource).
+         *
+         * What `GET /cacerts` answers with. Re-read on each call and re-validated whenever the
+         * file's content changes, so the PEM handed out and the verdict about it always describe
+         * the same bytes. Callable from any thread; an empty snapshot before start() and on
+         * implementations that hold no certificate, like the test fakes.
+         */
+        virtual CaCertificateSnapshot caCertificateSnapshot() const
         {
             return {};
         }

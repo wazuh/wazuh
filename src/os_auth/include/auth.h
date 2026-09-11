@@ -86,6 +86,10 @@ struct keynode {
     /// global.db, so the writer UPDATEs its credentials (set-agent-credentials) instead of inserting a
     /// row, and only touches its groups when the request named some.
     int rotate;
+    /// Sequence of this transition in the identity journal (issue #39078, H03), 0 when it was not
+    /// journaled (the legacy 1515 path, which generates no secret). It is what lets the writer
+    /// forget the entry once the database write is COMMITTED, and not one moment earlier.
+    long long journal_seq;
     struct keynode *next;
 };
 
@@ -94,11 +98,11 @@ void* run_local_server(void *arg);
 
 // Append key to insertion queue. reenroll_secret may be NULL (legacy 1515 enrollment: no secret is
 // generated for it, see local_add()).
-void add_insert(const keyentry *entry, const char *group, const char *reenroll_secret);
+void add_insert(const keyentry *entry, const char *group, const char *reenroll_secret, long long journal_seq);
 
 // Append a rotated key to the insertion queue (re-enrollment, #38993): same fields as add_insert() plus
 // the `rotate` flag. group may be NULL (the agent keeps its groups); reenroll_secret is the new one.
-void add_rotate(const keyentry *entry, const char *group, const char *reenroll_secret);
+void add_rotate(const keyentry *entry, const char *group, const char *reenroll_secret, long long journal_seq);
 
 // Append key to deletion queue
 void add_remove(const keyentry *entry);
@@ -340,6 +344,41 @@ purge_journal_entry_t* purge_journal_reconcile(size_t *count);
 /// BLOCKS for up to authd.wdb_timeout, so it must not be called with mutex_keys held.
 bool purge_is_pending(const char *agent_id);
 
+/**
+ * @brief Reserve the right to rotate this agent's credentials.
+ *
+ * Taken BEFORE the request reads the agent's re-enrollment secret: the database keeps saying the
+ * old secret until the writer updates it, so a second request that got that far would verify the
+ * same bearer and hand out a second credential for one agent (issue #39078, H02).
+ *
+ * @param agent_id Agent to reserve.
+ * @param generation Receives the rotations completed for this agent so far; re-check it under
+ *                   mutex_keys before mutating, since a rotation may have completed while this
+ *                   request was verifying.
+ * @return true when the reservation was taken, false when another rotation already holds it.
+ */
+bool w_reenroll_reserve(const char *agent_id, unsigned int *generation);
+
+/// Rotations completed for this agent so far.
+unsigned int w_reenroll_generation(const char *agent_id);
+
+/**
+ * @brief Release a reservation whose transition was persisted, and count the rotation.
+ *
+ * Called by the writer on a successful credential update, and only then: a failed write leaves the
+ * old secret in the database, so releasing there would let that secret authorise another rotation.
+ */
+void w_reenroll_complete(const char *agent_id);
+
+/// Release a reservation whose request was rejected before anything was handed out. The agent's
+/// slot is dropped when it has no completed rotation to remember, so the refusals cannot grow the
+/// registry: the id comes from the request and is reserved before the agent is known to exist.
+void w_reenroll_abandon(const char *agent_id);
+
+/// How many agents the rotation registry is holding. For the tests: what they assert is that a
+/// refused request leaves nothing behind.
+unsigned int w_reenroll_slots(void);
+
 /// The memory-only half of purge_is_pending(): whether the id is journaled or reserved here, which
 /// is what authd knows without asking anyone. Never blocks, so it is the one that may be called
 /// under mutex_keys -- as a re-check, after purge_is_pending() has already answered outside it.
@@ -349,6 +388,118 @@ bool purge_is_pending_locally(const char *agent_id);
 /// to measure it must NOT be reported as zero: keep the last value instead, or a wazuh-db outage
 /// would silently lift the bound.
 void purge_pending_rows_update(int rows);
+
+/* --- The identity transition journal -----------------------------------------------------------
+ *
+ * The other half of the same story (issue #39078, H03). An enrollment and a re-enrollment answer
+ * with a key and a re-enrollment secret while the database write is still queued, so a wazuh-db
+ * outage or a crash used to leave the agent holding credentials nothing else knows: it can talk to
+ * remoted until client.keys is reloaded, and it can never re-enroll, because the row has no secret
+ * or the previous one.
+ *
+ * PENDING_IDENTITIES_FILE holds those transitions, in the clear, from before the answer until the
+ * database write is COMMITTED. In the clear because the verifier derives its signing key from the
+ * real secret and client.keys does not carry it -- a hash would record that something happened and
+ * restore nothing.
+ *
+ *   1. RECORD, on the request thread, before the keystore is mutated (re-enrollment) or right
+ *      after the id is assigned (enrollment), and always before the answer is built. A failure
+ *      here REFUSES the operation: 9031, and no credential is handed out.
+ *   2. APPLY, on the writer, as the insert or the credential update it always did.
+ *   3. COMMIT, once per cycle: `global commit`. An `ok` from insert-agent is not durability --
+ *      wazuh-db runs a deferred transaction and commits it on its own clock (wdb_commit_old).
+ *   4. FORGET, on that commit -- and only then is a rotation's reservation released.
+ *
+ * The writer wakes on its own clock while anything is owed, so a manager that goes idle during an
+ * outage still finishes the job; a crash is resolved at the next start by
+ * identity_journal_reconcile(), which judges each line against the client.keys just read.
+ */
+
+/// How many transitions may be in flight at once. Past it a new one is REFUSED (9031) rather than
+/// performed unrecorded, and never at the expense of an older entry: every line here is a
+/// credential an agent already holds.
+#define IDENTITY_JOURNAL_MAX_ENTRIES 5000
+
+/// Largest file that is loaded back. The bound above keeps a legitimate file two orders of
+/// magnitude below this, so anything bigger is corruption, not a busy manager.
+#define IDENTITY_JOURNAL_MAX_BYTES (8 * 1024 * 1024)
+
+/// One recorded transition: the agent as it was named, and the credential it was given.
+typedef struct identity_journal_entry_t {
+    long long seq;      ///< Address of the entry, for dropping it once committed. Never reused.
+    char *id;
+    char *name;
+    char *ip;
+    char *key;          ///< The agent key, as handed to the agent.
+    char *secret;       ///< The re-enrollment secret, likewise. Wiped, not just freed.
+    bool rotate;        ///< A re-enrollment (UPDATE of an existing row) rather than an enrollment.
+    time_t requested_at;
+} identity_journal_entry_t;
+
+/// Point the journal at @p path (NULL restores the default) AND forget whatever is held in
+/// memory. For the tests, which run in a temporary tree; production never calls it.
+void identity_journal_init(const char *path);
+
+/// Step 1. Record a transition and persist it, appending one line.
+///
+/// @return true when the line is on disk. **false means the caller must not perform the
+/// operation**: nothing else stores the secret, so an unrecorded transition is an agent that can
+/// never re-enroll.
+bool identity_journal_append(const char *id,
+                             const char *name,
+                             const char *ip,
+                             const char *key,
+                             const char *secret,
+                             bool rotate,
+                             long long *seq);
+
+/// Whether the journal cannot admit another transition right now.
+///
+/// Phase 0, and it exists because of WHERE a refusal can still be free: an enrollment that
+/// resolves a duplicate name or IP with <force> deletes the previous agent while it validates, so
+/// a caller told "no room" after that point would lose that agent for nothing. Asked before
+/// anything is mutated, exactly like purge_backlog_full() on the deletion path.
+bool identity_journal_full(void);
+
+/// How many transitions are still owed to the database. The writer's timed wake depends on it.
+size_t identity_journal_pending(void);
+
+/// Highest sequence the journal has handed out, including the entries loaded from disk. The writer
+/// starts its own mark here, so what a previous run left behind is recoverable at once.
+long long identity_journal_last_seq(void);
+
+/// Up to @p max transitions still owed (0 = all), as of now. Decides nothing and changes nothing.
+///
+/// @param max Largest batch to return, 0 for no limit.
+/// @param upto_seq Highest sequence the caller is willing to see, 0 for no limit. The writer passes
+///                 the last one it has already taken work for: a transition appended after that has
+///                 its key still on its way to client.keys, and applying it here would let the
+///                 journal forget a credential nothing else records yet.
+/// @param[out] count Number of entries returned.
+/// @return A caller-owned array, released with identity_journal_free().
+identity_journal_entry_t* identity_journal_snapshot(size_t max, long long upto_seq, size_t *count);
+
+/// Release a snapshot, wiping the credentials it carries.
+void identity_journal_free(identity_journal_entry_t *entries, size_t count);
+
+/// Step 4. Drop these sequences and rewrite the shorter file.
+///
+/// @return How many of them were still journaled.
+size_t identity_journal_drop(const long long *seqs, size_t count);
+
+/// Read the journal a previous run left behind. Call after OS_ReadKeys() and before any thread
+/// starts, like purge_file_load().
+void identity_journal_load(void);
+
+/// Startup reconciliation, against the client.keys already read. The generation is decided by the
+/// JOURNAL's own order, not by the key in client.keys, which the writer may never have got to:
+/// an id absent from client.keys owes nothing, an entry with a later one for the same agent is the
+/// previous generation, and anything else is still owed -- even when client.keys names another
+/// key, which is precisely the crash this journal exists for. Retained rotations get their
+/// reservation back before any thread starts.
+///
+/// @return How many transitions survived.
+size_t identity_journal_reconcile(void);
 
 /// Record the highest id handed out so far, so it is never reused after a restart.
 void purge_last_id_update(int id_counter);
