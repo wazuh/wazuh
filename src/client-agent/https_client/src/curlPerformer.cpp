@@ -333,8 +333,22 @@ bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle) const
         // Unconditional here (not just full/certificate): caPath may be a self-signed
         // root that the peer also echoes in its own chain, which fails with
         // X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN unless this is set.
-        return setMandatoryOption(handle, CurlOption::CaInfo, m_config.caPath)
-               && handle.trustSelfSignedRoot();
+        if (!setMandatoryOption(handle, CurlOption::CaInfo, m_config.caPath))
+        {
+            return false;
+        }
+
+        if (!handle.trustSelfSignedRoot())
+        {
+            // Unlike the options above, this one isn't in optionMap() (it's set via
+            // CURLOPT_SSL_CTX_FUNCTION, not a plain curl_easy_setopt), so it can't
+            // route through setMandatoryOption()'s optionName() lookup -- name it
+            // directly instead of failing silently.
+            LOGFN_ERROR(m_logFn, "libcurl rejected trustSelfSignedRoot; refusing to connect without it.");
+            return false;
+        }
+
+        return true;
     }
 
 #if defined(WIN32) || defined(__APPLE__)

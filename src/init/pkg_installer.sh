@@ -398,40 +398,60 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
 
     CA_REJECT_REASON=""
 
+    # var/incoming is not exclusively Wazuh-controlled: a file that validated as a
+    # legitimate CA a moment ago could be swapped for a symlink to a sensitive
+    # file (e.g. /etc/shadow) before a later step re-reads the same path, which a
+    # plain -L check right here does not prevent by itself -- it only catches a
+    # symlink present at THIS instant, not one substituted in afterward. Snapshot
+    # the file into our own copy, under var/upgrade (not attacker-writable),
+    # immediately -- right after the one hard-link check below -- and validate
+    # and install from that snapshot alone from here on, so nothing after this
+    # point ever re-opens the attacker-influenced path. Also reject more than one
+    # hard link: -L alone does not catch a hard link to a sensitive file either.
+    CA_SNAPSHOT="./var/upgrade/.root-ca.pem.incoming-snapshot.$$"
+
+    if [ -n "$(find "${INCOMING_CA_FILE}" -links +1 2>/dev/null)" ]; then
+        CA_REJECT_REASON="has more than one hard link (refusing to treat it as this delivery's own copy)"
+    elif ! cp "${INCOMING_CA_FILE}" "${CA_SNAPSHOT}" 2>/dev/null; then
+        CA_REJECT_REASON="could not be read"
+    fi
+
     # Cheap bound before invoking openssl at all: empty or implausibly large for
     # a CA certificate is rejected the same way a malformed one is, without ever
     # parsing it.
-    CA_BYTES=$(wc -c < "${INCOMING_CA_FILE}" 2>/dev/null)
-    CA_BYTES=${CA_BYTES:-0}
+    if [ -z "${CA_REJECT_REASON}" ]; then
+        CA_BYTES=$(wc -c < "${CA_SNAPSHOT}" 2>/dev/null)
+        CA_BYTES=${CA_BYTES:-0}
 
-    if [ "${CA_BYTES}" -eq 0 ] || [ "${CA_BYTES}" -gt 65536 ]; then
-        CA_REJECT_REASON="is empty or larger than the 64 KiB a CA certificate should ever need"
-    elif ! openssl x509 -in "${INCOMING_CA_FILE}" -noout > /dev/null 2>&1; then
-        CA_REJECT_REASON="does not parse as a PEM certificate"
-    elif ! openssl x509 -in "${INCOMING_CA_FILE}" -noout -text 2>/dev/null | grep -A1 "X509v3 Basic Constraints" | grep -q "CA:TRUE"; then
-        CA_REJECT_REASON="is not a CA certificate (no X509v3 Basic Constraints CA:TRUE)"
-    else
-        CA_NOT_BEFORE=$(openssl x509 -in "${INCOMING_CA_FILE}" -noout -startdate 2>/dev/null | cut -d= -f2-)
-        CA_NOT_AFTER=$(openssl x509 -in "${INCOMING_CA_FILE}" -noout -enddate 2>/dev/null | cut -d= -f2-)
-        NOW_EPOCH=$(date +%s)
-        # openssl's notBefore/notAfter come out as "Mon D HH:MM:SS YYYY TZ" (e.g.
-        # "Sep 10 19:55:53 2026 GMT"). GNU date -d parses that directly; BSD date
-        # (macOS) has no -d and needs strptime-style -j -f instead, or every valid
-        # CA is silently rejected here as having an "unparsable validity period".
-        if [[ "$OS" == "Darwin" ]]; then
-            CA_NOT_BEFORE_EPOCH=$(date -j -f "%b %e %T %Y %Z" "${CA_NOT_BEFORE}" +%s 2>/dev/null)
-            CA_NOT_AFTER_EPOCH=$(date -j -f "%b %e %T %Y %Z" "${CA_NOT_AFTER}" +%s 2>/dev/null)
+        if [ "${CA_BYTES}" -eq 0 ] || [ "${CA_BYTES}" -gt 65536 ]; then
+            CA_REJECT_REASON="is empty or larger than the 64 KiB a CA certificate should ever need"
+        elif ! openssl x509 -in "${CA_SNAPSHOT}" -noout > /dev/null 2>&1; then
+            CA_REJECT_REASON="does not parse as a PEM certificate"
+        elif ! openssl x509 -in "${CA_SNAPSHOT}" -noout -text 2>/dev/null | grep -A1 "X509v3 Basic Constraints" | grep -q "CA:TRUE"; then
+            CA_REJECT_REASON="is not a CA certificate (no X509v3 Basic Constraints CA:TRUE)"
         else
-            CA_NOT_BEFORE_EPOCH=$(date -d "${CA_NOT_BEFORE}" +%s 2>/dev/null)
-            CA_NOT_AFTER_EPOCH=$(date -d "${CA_NOT_AFTER}" +%s 2>/dev/null)
-        fi
+            CA_NOT_BEFORE=$(openssl x509 -in "${CA_SNAPSHOT}" -noout -startdate 2>/dev/null | cut -d= -f2-)
+            CA_NOT_AFTER=$(openssl x509 -in "${CA_SNAPSHOT}" -noout -enddate 2>/dev/null | cut -d= -f2-)
+            NOW_EPOCH=$(date +%s)
+            # openssl's notBefore/notAfter come out as "Mon D HH:MM:SS YYYY TZ" (e.g.
+            # "Sep 10 19:55:53 2026 GMT"). GNU date -d parses that directly; BSD date
+            # (macOS) has no -d and needs strptime-style -j -f instead, or every valid
+            # CA is silently rejected here as having an "unparsable validity period".
+            if [[ "$OS" == "Darwin" ]]; then
+                CA_NOT_BEFORE_EPOCH=$(date -j -f "%b %e %T %Y %Z" "${CA_NOT_BEFORE}" +%s 2>/dev/null)
+                CA_NOT_AFTER_EPOCH=$(date -j -f "%b %e %T %Y %Z" "${CA_NOT_AFTER}" +%s 2>/dev/null)
+            else
+                CA_NOT_BEFORE_EPOCH=$(date -d "${CA_NOT_BEFORE}" +%s 2>/dev/null)
+                CA_NOT_AFTER_EPOCH=$(date -d "${CA_NOT_AFTER}" +%s 2>/dev/null)
+            fi
 
-        if [ -z "${CA_NOT_BEFORE_EPOCH}" ] || [ -z "${CA_NOT_AFTER_EPOCH}" ]; then
-            CA_REJECT_REASON="has an unparsable validity period"
-        elif [ "${NOW_EPOCH}" -lt "${CA_NOT_BEFORE_EPOCH}" ]; then
-            CA_REJECT_REASON="is not yet valid (notBefore ${CA_NOT_BEFORE})"
-        elif [ "${NOW_EPOCH}" -gt "${CA_NOT_AFTER_EPOCH}" ]; then
-            CA_REJECT_REASON="has expired (notAfter ${CA_NOT_AFTER})"
+            if [ -z "${CA_NOT_BEFORE_EPOCH}" ] || [ -z "${CA_NOT_AFTER_EPOCH}" ]; then
+                CA_REJECT_REASON="has an unparsable validity period"
+            elif [ "${NOW_EPOCH}" -lt "${CA_NOT_BEFORE_EPOCH}" ]; then
+                CA_REJECT_REASON="is not yet valid (notBefore ${CA_NOT_BEFORE})"
+            elif [ "${NOW_EPOCH}" -gt "${CA_NOT_AFTER_EPOCH}" ]; then
+                CA_REJECT_REASON="has expired (notAfter ${CA_NOT_AFTER})"
+            fi
         fi
     fi
 
@@ -440,11 +460,33 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
         # behind for a later upgrade to pick up -- remove it below same as on success.
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} ${CA_REJECT_REASON}; refusing to install it and continuing without it." >> ./logs/upgrade.log
     else
+        # An operator can point <certificate_authorities> at this exact default path
+        # themselves (rather than relying on manager delivery) -- comparing resolved
+        # paths where possible, since the config value and DEFAULT_CA_FILE are rarely
+        # written the same way (absolute vs. relative) even when they name the same
+        # file. Overwriting still proceeds either way (the manager is authoritative
+        # for its own CA), but a collision with an operator's own explicit pin is a
+        # more consequential event than routine anchor rotation and deserves its own,
+        # louder log line rather than reading identically to one.
+        OPERATOR_CA_PATH=$(xml_value agent ssl certificate_authorities)
+        CA_PINNED_HERE=0
+        if [ -n "${OPERATOR_CA_PATH}" ]; then
+            if command -v readlink > /dev/null 2>&1 \
+                && [ -n "$(readlink -f "${OPERATOR_CA_PATH}" 2>/dev/null)" ] \
+                && [ "$(readlink -f "${OPERATOR_CA_PATH}" 2>/dev/null)" = "$(readlink -f "${DEFAULT_CA_FILE}" 2>/dev/null)" ]; then
+                CA_PINNED_HERE=1
+            elif [ "${OPERATOR_CA_PATH}" = "${DEFAULT_CA_FILE}" ]; then
+                CA_PINNED_HERE=1
+            fi
+        fi
+
         # Replacing an already-present anchor is a bigger event than a first install --
         # the manager is authoritative for its own CA, so this always proceeds, but the
         # operator should be able to grep for the distinction rather than see the same
         # "Installed" line either way.
-        if [ -f "${DEFAULT_CA_FILE}" ]; then
+        if [ "${CA_PINNED_HERE}" = "1" ]; then
+            CA_INSTALL_VERB="Overwrote the operator-pinned (<certificate_authorities>${OPERATOR_CA_PATH}</certificate_authorities>)"
+        elif [ -f "${DEFAULT_CA_FILE}" ]; then
             CA_INSTALL_VERB="Replaced the existing"
         else
             CA_INSTALL_VERB="Installed the delivered"
@@ -462,9 +504,10 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
         # Install atomically: write to a temp file in the same directory, then
         # rename over the target, so a reader never observes a partially-written
         # anchor, and a failed cp/mv is caught here instead of silently logging
-        # success with nothing actually installed.
+        # success with nothing actually installed. Sourced from the snapshot, not
+        # INCOMING_CA_FILE, for the same TOCTOU reason noted above.
         CA_TMP="${DEFAULT_CA_DIR}/.root-ca.pem.$$"
-        if cp "${INCOMING_CA_FILE}" "${CA_TMP}" 2>/dev/null && mv -f "${CA_TMP}" "${DEFAULT_CA_FILE}" 2>/dev/null; then
+        if cp "${CA_SNAPSHOT}" "${CA_TMP}" 2>/dev/null && mv -f "${CA_TMP}" "${DEFAULT_CA_FILE}" 2>/dev/null; then
             # root:wazuh 640, matching the existing wpk_root.pem trust anchor: readable by
             # the wazuh group the daemon runs under, but owned (and only writable) by root
             # -- a daemon that can rewrite its own anchor is not a boundary at all.
@@ -481,7 +524,7 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
         fi
     fi
 
-    rm -f "${INCOMING_CA_FILE}"
+    rm -f "${CA_SNAPSHOT}" "${INCOMING_CA_FILE}"
 else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - No CA delivered by the manager at ${INCOMING_CA_FILE} this run." >> ./logs/upgrade.log
 fi
