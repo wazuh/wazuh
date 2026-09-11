@@ -347,6 +347,8 @@ TEST(CurlPerformerTest, ConfiguredCaIsTheWholeTrustSet)
     EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/etc/ca.pem"));
     // The machine's own stores are never added on top of it.
     EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, _)).Times(0);
+    // A configured CA may be a self-signed root the peer echoes back in its own chain.
+    EXPECT_CALL(*handle, trustSelfSignedRoot());
 
     auto performer = makePerformer(config, std::move(mock));
     performer.perform(HttpRequestSpec {});
@@ -359,6 +361,8 @@ TEST(CurlPerformerTest, TrustAnchorsWithoutConfiguredCa)
     allowOtherOptions(*handle);
 
     EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, _)).Times(0);
+    // Only reached when caPath is actually set, which it is not here.
+    EXPECT_CALL(*handle, trustSelfSignedRoot()).Times(0);
 #if defined(WIN32) || defined(__APPLE__)
     // Our OpenSSL-backed Windows/macOS curl has no bundle of its own to fall back on.
     EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, TLS_NATIVE_CA_STORE));
@@ -368,6 +372,25 @@ TEST(CurlPerformerTest, TrustAnchorsWithoutConfiguredCa)
 
     auto performer = makePerformer(makeConfig(HC_VERIFY_FULL), std::move(mock));
     performer.perform(HttpRequestSpec {});
+}
+
+TEST(CurlPerformerTest, RejectedTrustSelfSignedRootAbortsBeforePerforming)
+{
+    // Fail-closed like every other hardening option in applyTrustAnchors(): a
+    // configured CA that curl can't be made to trust as a partial chain must not
+    // silently fall back to the classic (rejecting) chain builder.
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+    auto config = makeConfig(HC_VERIFY_FULL);
+    config.caPath = "/etc/ca.pem";
+
+    EXPECT_CALL(*handle, trustSelfSignedRoot()).WillOnce(Return(false));
+    EXPECT_CALL(*handle, perform()).Times(0);
+
+    auto performer = makePerformer(config, std::move(mock));
+    const auto response = performer.perform(HttpRequestSpec {});
+    EXPECT_EQ(TransportStatus::TlsFail, response.status);
 }
 
 TEST(CurlPerformerTest, TlsSystemModeVerifiesPeerAndHost)
@@ -384,10 +407,13 @@ TEST(CurlPerformerTest, TlsSystemModeVerifiesPeerAndHost)
 #if defined(WIN32) || defined(__APPLE__)
     EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, TLS_NATIVE_CA_STORE));
     EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, _)).Times(0);
+    EXPECT_CALL(*handle, trustSelfSignedRoot()).Times(0);
 #else
     ON_CALL(fsProbe, findSystemCaBundle()).WillByDefault(Return("/etc/ssl/certs/ca-certificates.crt"));
     EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/etc/ssl/certs/ca-certificates.crt"));
     EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, _)).Times(0);
+    // caPath is the OS bundle here, not a configured CA: no partial-chain relaxation.
+    EXPECT_CALL(*handle, trustSelfSignedRoot()).Times(0);
 #endif
 
     auto shared = std::make_shared<std::unique_ptr<ICurlHandle>>(std::move(mock));
