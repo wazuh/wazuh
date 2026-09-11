@@ -411,7 +411,6 @@ jobs:
           fi
 
           echo "Upgrading to current version with package: $FILE_NAME"
-          docker cp /tmp/$FILE_NAME $UPGRADE_CONTAINER:/packages/$FILE_NAME
           "$RETRY_SCRIPT" --attempts 3 --delay 15 --backoff 2 --max-delay 45 --timeout 900 \
             --label "Upgrade manager package in test container" -- \
             docker exec $UPGRADE_CONTAINER bash -lc "$INSTALL_CMD"
