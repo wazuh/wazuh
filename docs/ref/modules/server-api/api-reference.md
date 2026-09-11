@@ -500,6 +500,11 @@ it is compared against. With `=`, `!=`, `<` and `>`, a date field takes `YYYY-MM
 `YYYY-MM-DDTHH:MM:SSZ`, `YYYY-MM-DD HH:MM:SS` or `YYYY-MM-DDTHH:MM:SS.ffffffZ`
 (`q=created>2026-01-01`).
 
+With `=` and `!=`, a boolean field takes `true`, `false`, `1` or `0` (`q=revoked=true`; any other
+literal is read as `false`, except a date-shaped one, which matches nothing). The `search`
+parameter is case-insensitive and matches the rendered value, so `search=true` also finds records
+whose boolean field is set.
+
 ### Examples
 
 ```bash

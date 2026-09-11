@@ -399,12 +399,30 @@ def test_get_values(object, fields):
     assert isinstance(result[0], str)
 
 
+@pytest.mark.parametrize('object, expected', [
+    ({'revoked': True}, ['true']),
+    ({'revoked': False}, ['false']),
+    ({'count': 3}, ['3']),
+    ({'description': None}, ['none'])
+])
+def test_get_values_non_str(object, expected):
+    """Test that get_values lowercases non-str values, which search_array compares against a
+    lowercased query."""
+    assert utils.get_values(o=object) == expected
+
+
 @pytest.mark.parametrize('array, text, negation, length', [
     (['test', 'name'], 'e', False, 2),
     (['test', 'name'], 'name', False, 1),
     (['test', 'name'], 'unknown', False, 0),
     (['test', 'name'], 'test', True, 1),
-    (['test', 'name'], 'unknown', True, 2)
+    (['test', 'name'], 'unknown', True, 2),
+    # Boolean field values: search_array lowercases the query, so the candidates must be
+    # lowercased too for a bool to be searchable at all.
+    ([{'revoked': True}, {'revoked': False}], 'true', False, 1),
+    ([{'revoked': True}, {'revoked': False}], 'True', False, 1),
+    ([{'revoked': True}, {'revoked': False}], 'false', False, 1),
+    ([{'revoked': True}, {'revoked': False}], 'true', True, 1)
 ])
 def test_search_array(array, text, negation, length):
     """Test search_array function."""
@@ -1801,6 +1819,42 @@ typed_input_array = [
 def test_filter_array_by_query_typed_fields(q, expected_ids):
     """Test filtering by query on a field whose value is a real datetime object."""
     result = utils.filter_array_by_query(q, typed_input_array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
+# Array whose `revoked` field is a real `bool`, the shape enrollment tokens' `revoked`/`credential`
+# reach filter_array_by_query with. Also carries `created` so a combined date+bool query can be
+# exercised without needing a third fixture.
+bool_typed_input_array = [
+    {
+        'id': 'first',
+        'created': datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc),
+        'revoked': False
+    },
+    {
+        'id': 'second',
+        'created': datetime.datetime(2026, 6, 1, tzinfo=datetime.timezone.utc),
+        'revoked': True
+    }]
+
+
+@pytest.mark.parametrize('q, expected_ids', [
+    ('revoked=true', ['second']),
+    ('revoked=false', ['first']),
+    ('revoked!=true', ['first']),
+    ('revoked=1', ['second']),
+    ('revoked=0', ['first']),
+    ('revoked=true;created>2026-03-01', ['second']),
+    # Any literal other than true/false/1/0 is read as false, so it matches the unset records.
+    ('revoked=maybe', ['first']),
+    # A date-shaped literal is parsed as a date before the boolean coercion, so it matches
+    # nothing at all -- but it no longer raises.
+    ('revoked=2026-01-01', [])
+])
+def test_filter_array_by_query_typed_fields_bool(q, expected_ids):
+    """Test filtering by query on a field whose value is a real bool object."""
+    result = utils.filter_array_by_query(q, bool_typed_input_array)
 
     assert [item['id'] for item in result] == expected_ids
 

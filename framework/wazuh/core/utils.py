@@ -346,7 +346,7 @@ def get_values(o: object, fields: list = None) -> list:
             if not fields or key in fields:
                 strings.extend(get_values(obj[key]))
     else:
-        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode) else str(obj))
+        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode) else str(obj).lower())
 
     return strings
 
@@ -978,6 +978,8 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
                 if type(value2) == datetime:
                     val = check_date_format(val)
                 value2 = int(value2) if type(val) == int else value2
+                if type(val) == bool and isinstance(value2, str):
+                    value2 = value2.lower() in ('true', '1')
                 if operators[op](val, value2):
                     return True
 
