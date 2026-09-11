@@ -77,7 +77,7 @@ Require agents to provide a shared enrollment password.
 - **Default value:** `no` (the configuration shipped by the installer sets it to `yes`)
 - **Allowed values:** `yes`, `no`
 
-When enabled, the password is read from `/var/wazuh-manager/etc/authd.pass` (a single line). If the file does not exist, `wazuh-authd` generates a random password on start, stores it in that file, and reuses it on later starts. If the file exists but is empty or invalid, `wazuh-authd` does not start. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
+When enabled, the password is read from `/var/wazuh-manager/etc/authd.pass` (a single line). If the file does not exist, `wazuh-authd` generates a random password on start (32 bytes straight from the CSPRNG, written as 64 lowercase hexadecimal characters), stores it in that file, and reuses it on later starts. A password written by hand is not held to that format: any single line longer than two characters is accepted. If the file exists but is empty or invalid, `wazuh-authd` does not start. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
 
 **Agent-side setup:** Because `use_password` is `yes` by default, agents must supply the enrollment password or their enrollment request will be rejected. First retrieve the password from the manager:
 
@@ -101,7 +101,7 @@ sudo chmod 640 /var/ossec/etc/authd.pass
 
 The agent reads the password from `etc/authd.pass` (relative to its install directory, typically `/var/ossec/etc/authd.pass`) at startup.
 
-**Password rotation:** The generated password persists across restarts. To rotate it (for example after a security incident), delete `/var/wazuh-manager/etc/authd.pass` on the master and restart `wazuh-authd`. A new random password will be generated, persisted, and distributed to workers automatically. The reuse of an existing password is logged at `INFO` level on every start.
+**Password rotation:** The generated password persists across restarts. To rotate it (for example after a security incident), delete `/var/wazuh-manager/etc/authd.pass` on the master and restart `wazuh-authd`. A new random password will be generated, persisted, and distributed to workers automatically. If the CSPRNG fails, `wazuh-authd` exits instead of writing a weaker password. The reuse of an existing password is logged at `INFO` level on every start.
 
 ### remote_enrollment
 
