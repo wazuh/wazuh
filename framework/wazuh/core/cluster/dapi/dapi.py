@@ -555,6 +555,14 @@ class DistributedAPI:
             for node in nodes.items():
                 if node[0] in [node_name['name'] for node_name in allowed_nodes.affected_items] or node[0] == 'unknown':
                     valid_nodes.append(node)
+            if 'node_id' in self.f_kwargs and not valid_nodes:
+                # A node_id is a path parameter: a name the cluster does not have is a 404, as a
+                # nonexistent group is. get_nodes_info() classified it and denied unreadable nodes
+                # first. The cluster's node universe is get_connected_nodes(), so a configured node
+                # that is disconnected right now is reported the same way, as the specification states.
+                not_found = next((e for e in allowed_nodes.failed_items if e.code == 1730), None)
+                if not_found is not None:
+                    raise not_found
             del self.f_kwargs['node_id' if 'node_id' in self.f_kwargs else 'node_list']
         else:
             if nodes:

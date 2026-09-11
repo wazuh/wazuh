@@ -33,7 +33,7 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.core.manager import get_manager_status
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh import agent, cluster, manager, WazuhError, WazuhInternalError
-        from wazuh.core.exception import WazuhClusterError, WazuhException
+        from wazuh.core.exception import WazuhClusterError, WazuhException, WazuhResourceNotFound
         from api.util import raise_if_exc
         from wazuh.core.cluster import local_client
         from wazuh.core.cluster.common import WazuhJSONEncoder
@@ -544,6 +544,30 @@ def test_DistributedAPI_forward_request_broadcasts_agent_targeted_requests():
 
         dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                        'f_kwargs': {'node_list': '*'}, 'broadcasting': True, 'nodes': ['master']}
+        raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+
+
+@patch('wazuh.core.cluster.local_client.LocalClient.execute',
+       new=AsyncMock(return_value='{"items": [{"name": "master"}], "totalItems": 1}'))
+def test_DistributedAPI_forward_request_node_id_that_does_not_exist_is_not_found():
+    """Test a request scoped to a single nonexistent node fails as 1730 instead of answering empty.
+
+    The node is a path parameter, so it must behave like a nonexistent group. A `node_list` request
+    keeps reporting the failure per node rather than failing as a whole.
+    """
+    nodes_info_result = AffectedItemsWazuhResult()
+    nodes_info_result.affected_items.append({'name': 'master'})
+    nodes_info_result.add_failed_item(id_='nonexistent', error=WazuhResourceNotFound(1730))
+    common.cluster_nodes.set(['master'])
+
+    with patch('wazuh.core.cluster.dapi.dapi.get_nodes_info', new=AsyncMock(return_value=nodes_info_result)), \
+            patch('wazuh.core.cluster.dapi.dapi.node_info', {'type': 'master', 'node': 'master'}):
+        dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
+                       'f_kwargs': {'node_id': 'nonexistent'}, 'nodes': ['master']}
+        raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1730)
+
+        dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
+                       'f_kwargs': {'node_list': ['nonexistent']}, 'nodes': ['master']}
         raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
 

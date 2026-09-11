@@ -517,7 +517,7 @@ Errors follow a structured JSON response format.
 | 400       | Bad Request       | Invalid parameters       |
 | 401       | Unauthorized      | Invalid or expired token |
 | 403       | Forbidden         | RBAC denied              |
-| 404       | Not Found         | Invalid endpoint         |
+| 404       | Not Found         | Invalid endpoint, or the named resource (group, cluster node) does not exist |
 | 405       | Method Not Allowed | Invalid HTTP method     |
 | 413       | Payload Too Large | Request body too large   |
 | 429       | Too Many Requests | Rate limit exceeded      |
