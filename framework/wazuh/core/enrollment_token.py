@@ -25,6 +25,7 @@ AUTHD_WORKER_NODE = 9015      # the store is written on the master only
 AUTHD_TOKEN_NOT_FOUND = 9022  # unknown id, or one that is not the shape of a token id
 AUTHD_MINT_REFUSED = 9025     # the request cannot be honoured; the message carries the detail
 AUTHD_STORE_FAILED = 9029     # applied in memory, but the store file could not be written
+AUTHD_INTERNAL = 9001         # authd's own fault (a prep step failed, a dispatch bug), not the caller's
 # authd's own codes for these verbs start at 9000; anything below it comes from the framework's
 # socket layer (1013, 1014...), a different numbering space entirely.
 _AUTHD_CODE_FLOOR = 9000
@@ -59,9 +60,11 @@ def _authd_request(function: str, arguments: dict = None):
     WazuhInternalError(1771)
         authd applied the change in memory but could not write the store file.
     WazuhError(1773)
-        Any other authd-native code (>= 9000), with the code and authd's message as extra message.
+        Any other authd-native code (>= 9000) that isn't authd's own internal fault, with the code
+        and authd's message as extra message.
     WazuhException
-        A framework-level failure talking to the socket, as the socket layer reported it.
+        A framework-level failure talking to the socket, or `AUTHD_INTERNAL` (authd's own fault),
+        as the socket layer or authd reported it.
 
     Returns
     -------
@@ -73,8 +76,8 @@ def _authd_request(function: str, arguments: dict = None):
         msg['arguments'] = arguments
 
     authd_socket = WazuhSocketJSON(common.AUTHD_SOCKET)
-    authd_socket.send(msg)
     try:
+        authd_socket.send(msg)
         data = authd_socket.receive()
     except WazuhException as e:
         if e.code == AUTHD_TOKEN_NOT_FOUND:
@@ -93,10 +96,13 @@ def _authd_request(function: str, arguments: dict = None):
             # holds the intent and retries the write on its own, so this is an internal error the
             # caller should retry, not a 4xx (issue #39078, H04).
             raise WazuhInternalError(1771)
-        if e.code >= _AUTHD_CODE_FLOOR:
+        if e.code != AUTHD_INTERNAL and e.code >= _AUTHD_CODE_FLOOR:
             # An authd-native code nobody mapped yet: the request reached authd and authd refused it,
             # so it is the caller's problem, not a communication failure. The raw code and message
-            # travel in `extra_message` so the specific condition stays visible.
+            # travel in `extra_message` so the specific condition stays visible. AUTHD_INTERNAL is
+            # excluded on purpose: it means authd's own dispatch failed, not that anything about the
+            # request was wrong, so it falls through to `raise e` below like any other communication
+            # failure -- a generic 500, not a misleading 400.
             raise WazuhError(1773, extra_message=f'authd code {e.code}: {e.message}')
         raise e
     finally:
