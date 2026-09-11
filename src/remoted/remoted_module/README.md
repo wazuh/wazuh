@@ -824,7 +824,8 @@ sequenceDiagram
         TK-->>EA: HKDF key + expires + revoked (or nullopt)
         Note over EA: verifyWithKid(), then expiry, then revocation
     else kid = agent id (re-enrollment, every mode)
-        Note over EA: NOT verified here -- handed back as ReenrollmentRequested{kid, bearer}
+        Note over EA: precheckMessage(): claim set + time rules (no key needed)
+        Note over EA: signature NOT verified here -- ReenrollmentRequested{kid, bearer}<br/>on success, ReenrollmentRejected{AuthError} when the message fails
     else no kid, requirePassword
         EA->>PK: currentKey()
         PK-->>EA: HKDF-derived HS256 key (or nullopt)
@@ -832,7 +833,7 @@ sequenceDiagram
     else no kid, not requirePassword
         Note over EA: always-pass -- nothing left for THIS class to check
     end
-    EA-->>EP: EnrollmentGranted{tokenId?} / ReenrollmentRequested / AuthError
+    EA-->>EP: EnrollmentGranted{tokenId?} / ReenrollmentRequested / ReenrollmentRejected / AuthError
     Note over EP: parse JSON, validate name/version/groups/ip
     EP->>AC: addAgent({name, ip, groups, key_hash, token_id?, reenroll?})
     AC->>AD: {"function":"add","arguments":{...}} (SizeHeaderProtocol)
@@ -855,7 +856,7 @@ The bearer itself comes in **three forms**, told apart by the JOSE header's `kid
 |---|---|---|---|---|
 | none | the shared enrollment password | HKDF of `etc/authd.pass` (`PasswordKeySource`, `info` label `WAZUH-ENROLL-JWT-KEY`) | remoted | required when `requirePassword` (authd's `use_password`) is set; **ignored** otherwise |
 | 22 canonical base64url chars = a 16-byte **enrollment token id** (issue #38993) | an enrollment token minted by the operator (authd) | HKDF of that token's 16-byte secret (`TokenKeySource`'s replica of `etc/enrollment_tokens.json`, label `WAZUH-ENROLL-TOKEN-KEY`) | remoted, **always, in every mode** — a presented credential is never ignored — in this order: lookup → signature → expiry → revocation; then `token_id` travels to authd, which consumes one use | whenever presented |
-| the canonical **agent id** (`001`) | **re-enrollment** (issue #38993): the agent's own re-enrollment secret | HKDF of the 32-byte `reenroll_secret` (label `WAZUH-REENROLL-KEY`) — the secret lives in the master's `global.db` and nowhere else | **authd on the master** (`local_reenroll()`, `os_auth/src/local-server.c`): remoted does NOT verify it and forwards it verbatim as `arguments.reenroll = {kid, bearer}`; authd answers 9026/9027/9028 | whenever presented, in every mode |
+| the canonical **agent id** (`001`) | **re-enrollment** (issue #38993): the agent's own re-enrollment secret | HKDF of the 32-byte `reenroll_secret` (label `WAZUH-REENROLL-KEY`) — the secret lives in the master's `global.db` and nowhere else | the **signature**: **authd on the master** (`local_reenroll()`, `os_auth/src/local-server.c`), which remoted forwards verbatim as `arguments.reenroll = {kid, bearer}`; authd answers 9026/9027/9028. The **message** (claim set + time rules): remoted, first, since that needs no secret — `precheckMessage()` | whenever presented, in every mode |
 
 The two `kid` shapes are disjoint (a 22-character base64url string is never a canonical digit
 string), so classification is unambiguous; a `kid` of neither shape, or any other header member,
@@ -871,8 +872,10 @@ is not a `wazuh-enroll+jwt` at all and is rejected before any key store is consu
   wazuh-enroll+jwt}` plus the optional `kid` of the table above, claims exactly `{exp, iat, jti,
   nbf}` (no `iss`/`sub` in any form — the re-enrollment identity is the `kid`), `exp - iat = 60`,
   verified by the shared `JwtEnrollTokenVerifier` (`verify()` for the shared key, `verifyWithKid()`
-  for the two `kid` forms — the header must name exactly the `kid` whose key is used) with the
-  `TimePolicy` every route reads (`remoted.jwt_max_age` / `remoted.jwt_clock_skew`). The
+  for the two `kid` forms — the header must name exactly the `kid` whose key is used; plus
+  `precheckMessage()`, the same checks minus the HMAC, for the re-enrollment bearer whose key this
+  node does not have) with the `TimePolicy` every route reads (`remoted.jwt_max_age` /
+  `remoted.jwt_clock_skew`). The
   **Password** gate (`EnrollmentAuthConfig::requirePassword`) is set whenever authd's `use_password`
   flag is on, regardless of whether the listener also requires a client certificate, and decides only
   what happens to a request that presents **no** `kid` credential: with it set, the shared-key bearer
@@ -882,16 +885,37 @@ is not a `wazuh-enroll+jwt` at all and is rejected before any key store is consu
   forces ONE re-read of the store (`reloadIfMissing()`, rate-limited to one per second) before the
   request is refused as `TokenUnknown` — a token minted on the master moments ago may not have
   reached this worker's copy yet. The signature is checked BEFORE the token's state, so an
-  `expired`/`revoked` answer is only ever given to a caller that proved it holds the token's secret
-  (ids are 128-bit random values, so an `unknown` answer for a guessed id leaks nothing either).
+  `expired`/`revoked` answer is only ever given to a caller that proved it holds the token's secret.
+  The lookup, though, *has* to run before the signature — there is no key to check it with until the
+  `kid` resolves — so `TokenUnknown` is the one token verdict a caller reaches without proving
+  anything, and it deliberately does **not** get a public class of its own: on the wire it is
+  `invalid_signature`, indistinguishable from a bearer signed with the wrong secret. That is the
+  same line authd holds when it folds an unknown id into a revoked one (`etoken_store_consume()`,
+  `os_auth/src/enrollment_token_store.c`) precisely so `/enroll` cannot answer "does this token id
+  exist here?" for free. The operator keeps the distinction where it is useful and harmless —
+  `remoted.auth.reject.token_unknown`, `remoted.enroll.token.rejected_unknown` and the DEBUG line.
   Expiry uses the same rule authd applies when it consumes the use (`now >= expires` is expired),
   so the two never disagree on the boundary second. Uses/`max_uses` stay authd's business: the
   verified `token_id` is forwarded and authd is the final word (9022/9023/9024, mapped to `403`).
 
-  For a **re-enrollment** bearer, remoted checks only what it checks for every request (the
-  protocol version and the body cap) and hands `{kid, bearer}` to the endpoint unverified: the
-  secret it is signed with is the master's alone. This holds in Password mode too, even when
-  `etc/authd.pass` is unavailable on this node — the password key is simply not involved.
+  For a **re-enrollment** bearer, remoted cannot check the *signature*: the secret it is signed with
+  is the master's alone. It does check the *message*, because that costs no secret —
+  `JwtEnrollTokenVerifier::precheckMessage()`: the compact grammar, the exact `{alg, kid, typ}`
+  header naming this very `kid`, the exact `{exp, iat, jti, nbf}` claim set and the same time rules
+  (`checkTimeRules()`) every token of both profiles obeys, under the very `TimePolicy` authd will
+  apply on the master. A bearer that fails them cannot be authentic for *any* secret, so it is
+  refused here as `ReenrollmentRejected` — **no authd connection, and on a worker no clustered hop
+  to the master**. That matters because `/enroll` has no rate limiter (deliberately deferred, #38994):
+  before this filter, 130 constant bytes with no credential of any kind bought a connect-per-request
+  to `queue/sockets/auth.sock` plus, on a worker, `w_send_clustered_message()` to the master (up to
+  10 attempts with 1 s sleeps on a degraded link) and a `wdb_get_agent_info()` + HKDF + HMAC there.
+  `precheckMessage()` reports exactly the verdicts `verifyWithKid()` reports for the same failures,
+  and they map onto the very `AuthError`s authd's own answers map to (9027 → `invalid_signature`,
+  9028 → `stale_token`), so the answer never says *which* node refused the bearer and a legitimate
+  agent gets the same guidance either way. What remains unverified is exactly the signature: a
+  well-formed, fresh message still travels to the master, and the master is still the only thing
+  between it and a rotated identity (`w_reenroll_verify()`). All of this holds in Password mode too,
+  even when `etc/authd.pass` is unavailable on this node — the password key is simply not involved.
 
   `EnrollmentAuthenticator::authenticate()` checks the `protocol-version` header first — before the
   body-size cap and before any credential, in **every** mode including the credential-less one — and
@@ -1030,8 +1054,10 @@ accepted token age + skew and the body-size cap, sourced from the SAME
 `jwt_max_age`/`jwt_clock_skew`/`auth_max_body_size` internal options the agent<->manager scheme
 reads, so the two never silently disagree). `authenticate()` returns an `EnrollmentDecision`: an
 `EnrollmentGranted` (with the verified `tokenId` when a token was used, `nullopt` for the password
-and credential-less paths), a `ReenrollmentRequested{agentId, bearer}` for authd to judge, or the
-`AuthError` that rejected the request. The protocol-version check runs first and the body-size check
+and credential-less paths), a `ReenrollmentRequested{agentId, bearer}` for authd to judge, a
+`ReenrollmentRejected{AuthError}` for a re-enrollment bearer whose message this node already refused
+(kept apart from a bare `AuthError` only so the endpoint counts it in the `remoted.enroll.reenroll.*`
+cells the master's own verdicts land in), or the `AuthError` that rejected the request. The protocol-version check runs first and the body-size check
 next, both unconditionally — in Open mode too — so an unauthenticated peer can never make this
 endpoint hold an arbitrarily large body before being rejected; the token itself is verified from the
 header alone. Reuses the shared `JwtEnrollTokenVerifier`, `toAuthError()` and the `AuthError`
@@ -1086,7 +1112,8 @@ where the last two are optional and never sent together (issue #38993): `token_i
 enrollment token id, exactly as the bearer's `kid` spelled it, so authd consumes one use of that
 token (`etoken_store_consume()`, answering 9022/9023/9024 when it disagrees with remoted's replica
 about the token's state); `reenroll` is the re-enrollment bearer and the agent id it named, both
-verbatim and **unverified**, for authd on the master to verify against that agent's `reenroll_secret`
+verbatim and with the **signature unverified** (the message itself was checked before the request got
+this far), for authd on the master to verify against that agent's `reenroll_secret`
 (`local_reenroll()`) and, when it verifies, rotate the agent's key and secret in place (9026/9027/
 9028 otherwise). Neither is present on the password and Open paths, whose wire request stays
 byte-identical to what it was before tokens. authd's reply `data` carries `id`, `name`, `ip`, `key`
@@ -1184,9 +1211,9 @@ re-enrollment the `id` is the one the bearer named and `key`/`reenroll_secret` a
 | 9015 | worker rejection (`remove`/`get`, or an `add` that supplied a caller-chosen `id`/`key` -- see below) | 503 |
 | 9016 (new) | clustered forward to master failed (transport leg of `w_request_agent_add_clustered`) | 503 |
 | 9022 / 9023 / 9024 | authd refused the use of a **verified** enrollment token: not found or revoked / expired / no uses left (`httpStatusForAuthdError()`). `403`, not `401`: the bearer DID verify, so this is not something the agent fixes by re-signing. 9022/9023 are reachable only when remoted's replica lagged behind authd's store; 9024 only authd can decide (it owns the use counter) | 403, `error.code` = the authd code |
-| 9026 / 9027 / 9028 | authd's verdict on a **re-enrollment** bearer remoted forwarded unverified: unknown agent or no secret on record / invalid credential / outside the accepted time window (`reenrollmentRejection()`) — authentication failures, so they take the uniform 401 through `authErrorResponse()`, never authd's code or text | 401, `error.code` = `unknown_agent` / `invalid_signature` / `stale_token` |
+| 9026 / 9027 / 9028 | authd's verdict on a **re-enrollment** bearer whose signature remoted forwarded unverified: unknown agent or no secret on record / invalid credential / outside the accepted time window (`reenrollmentRejection()`) — authentication failures, so they take the uniform 401 through `authErrorResponse()`, never authd's code or text. A bearer whose *message* did not hold up never gets here at all: remoted answers the same 401, from `ReenrollmentRejected` | 401, `error.code` = `unknown_agent` / `invalid_signature` / `stale_token` |
 | transport failure (authd unreachable) | — | 503 |
-| bad/missing/stale credential | — | 401, `error.code` = the class (`invalid_signature`, `invalid_request`, `stale_token`, `unknown_agent`, `token_unknown`, `token_expired`, `token_revoked`, `enrollment_key_unavailable`) |
+| bad/missing/stale credential | — | 401, `error.code` = the class (`invalid_signature`, `invalid_request`, `stale_token`, `unknown_agent`, `token_expired`, `token_revoked`, `enrollment_key_unavailable`) |
 | local schema or version validation failure | — | 400 |
 | enrollment administratively disabled | — | 403 |
 
@@ -1338,8 +1365,8 @@ registry, a silent no-op on a null-object instance), the `remoted.enroll.*` cata
 `enrollment/metrics.hpp` and is counted in `enrollmentEndpoint.cpp`:
 
 - **Outcome of every request** — `remoted.enroll.accepted` (a `200`), `remoted.enroll.rejected_auth`
-  (every `401`: the shared-key bearer, an enrollment token remoted refused, and authd's 9026/9027/
-  9028 on a re-enrollment — a spike here means a password rollout out of sync between managers and
+  (every `401`: the shared-key bearer, an enrollment token remoted refused, a re-enrollment message
+  remoted refused, and authd's 9026/9027/9028 on a re-enrollment — a spike here means a password rollout out of sync between managers and
   agents, or tokens that lapsed), `remoted.enroll.rejected_validation` (local rejections:
   `Content-Encoding`, schema, version), `remoted.enroll.disabled` (`403`s — useful to notice an agent
   still trying an enrollment path an operator turned off), `remoted.enroll.authd_error` (any 90xx
@@ -1351,11 +1378,14 @@ registry, a silent no-op on a null-object instance), the `remoted.enroll.*` cata
   `.rejected_expired`, `.rejected_revoked` (decided by remoted's replica, `countTokenRejection()`, and
   also bumped when authd's 9022/9023 disagreed with a replica that lagged, `countTokenOutcome()`),
   `.rejected_exhausted` (authd's 9024 alone: it owns the use counter).
-- **The re-enrollment subset** (`kid` = agent id) — every cell is authd's verdict on the master:
-  `remoted.enroll.reenroll.accepted` (a `200` that rotated the agent's credentials),
-  `.rejected_unknown` (9026), `.rejected_signature` (9027), `.rejected_stale` (9028). Each rejection
-  also lands in the `remoted.auth.reject.*` cell of the `AuthError` it maps to (`unknown_agent` /
-  `invalid_signature` / `clock_skew`).
+- **The re-enrollment subset** (`kid` = agent id) — `remoted.enroll.reenroll.accepted` (a `200` that
+  rotated the agent's credentials), `.rejected_unknown` (9026), `.rejected_signature` (9027),
+  `.rejected_stale` (9028). The master decides these, since it holds the secret that signs the
+  bearer — except that `.rejected_signature` and `.rejected_stale` also count the bearers **remoted
+  refused itself** on the key-independent half of the profile (`countReenrollRejection()`), which
+  never reach the master at all: same failure, same class on the wire, so the operator reads one line
+  whichever node decided it. Each rejection also lands in the `remoted.auth.reject.*` cell of the
+  `AuthError` it maps to (`unknown_agent` / `invalid_signature` or `bad_token` / `clock_skew`).
 - **The token store's health** (pulls, registered by the facade's
   `registerTokenKeySourceDiagnostics()` over `TokenKeySource::diagnostics()`) —
   `remoted.enroll.token_store.tokens` (credential-bearing tokens in the replica right now),
@@ -1712,9 +1742,9 @@ agent acts on, while the fine cause stays in the log and in `remoted.auth.reject
 |---|---|---|---|
 | `unknown_agent` | `Bearer error="invalid_token", error_description="unknown_agent"` | `UnknownAgent` | re-enrolls |
 | `stale_token` | `… error_description="stale_token"` | `StaleToken` | fixes its clock (`Date` header) and retries |
-| `invalid_signature` | `… error_description="invalid_signature"` | `InvalidSignature`, `InvalidToken`, `IdentityMismatch`, `AddressNotAllowed`, `MissingKey` | does **not** re-enroll: a new identity fixes none of these |
+| `invalid_signature` | `… error_description="invalid_signature"` | `InvalidSignature`, `InvalidToken`, `IdentityMismatch`, `AddressNotAllowed`, `MissingKey`, `TokenUnknown` | does **not** re-enroll: a new identity fixes none of these |
 | `invalid_request` | `Bearer error="invalid_request"` | `MissingAuthorization`, `MalformedAuthorization` | sends a credential |
-| `token_unknown` / `token_expired` / `token_revoked` | `… error_description="token_…"` | `TokenUnknown` / `TokenExpired` / `TokenRevoked` — the `/enroll` enrollment-token states | asks the operator for a token |
+| `token_expired` / `token_revoked` | `… error_description="token_…"` | `TokenExpired` / `TokenRevoked` — the `/enroll` enrollment-token states, named only to a caller that proved it holds the token's secret | asks the operator for a token |
 | `enrollment_key_unavailable` | `Bearer` (bare: the server could not judge the credential) | `EnrollmentKeyUnavailable` | retries later |
 
 On `/enroll`, authd's verdicts on a re-enrollment bearer (9026 unknown agent or no secret on record,
@@ -1722,7 +1752,16 @@ On `/enroll`, authd's verdicts on a re-enrollment bearer (9026 unknown agent or 
 `UnknownAgent`/`InvalidSignature`/`StaleToken` before rendering (`reenrollmentRejection()`,
 `enrollment/enrollmentEndpoint.cpp`), so they take the same three classes and the same
 `remoted.auth.reject.*` cells as a native rejection — the wire never carries authd's code or text
-for them.
+for them. The same holds in the other direction: the bearers remoted refuses itself, on the
+key-independent half of the profile (`precheckMessage()`), answer with `InvalidToken` or
+`StaleToken`, i.e. the very classes 9027 and 9028 map to, so which node decided is not observable.
+
+`TokenUnknown` shares `invalid_signature` on purpose, and it is the only class-sharing that is a
+security property rather than a taxonomy choice: an unknown enrollment-token id is the one `/enroll`
+verdict reachable without proving possession of a secret, so naming it would make the endpoint an
+oracle for which token ids a node knows — the same reason authd folds an unknown id into a revoked
+one (`etoken_store_consume()`). The operator's view keeps both apart in
+`remoted.auth.reject.token_unknown` / `remoted.enroll.token.rejected_unknown`.
 
 The 5.x agent classifies a `401` by status alone today (`client-agent/https_client/src/outcomeClassifier.cpp`)
 and corrects its clock from the `Date` header; acting on the class is the agent's follow-up.
@@ -1894,7 +1933,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.control.*` (6 counters + `rejected` + `wdb.latency` histogram) | control-plane health, wazuh-db sizing | `controlHandler`/`controlEndpoint`/`wazuhDBClient`/`taskClient` (see the /control section) |
 | `remoted.control.registry.agents` (pull) | how many agents this node currently tracks — diagnostic only: the registry TTL (6 h) and eviction cadence (5 min) are compile-time constants, not settings | `AgentRegistry::size()` |
 | `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
-| `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed, token_unknown, token_expired, token_revoked}` | WHY authentication failed, finer than the class the wire names (see [401 classes](#401-classes)); the three `token_*` cells are `/enroll`'s enrollment-token states | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
+| `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed, token_unknown, token_expired, token_revoked}` | WHY authentication failed, finer than the class the wire names (see [401 classes](#401-classes)); the three `token_*` cells are `/enroll`'s enrollment-token states, and `token_unknown` is the operator's ONLY view of them apart from the log, since that one shares `invalid_signature` on the wire | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
 | `remoted.auth.keystore.{agents, entries_skipped, reloads.total, reload_failures.total}` (pulls) | did the client.keys hot-reload pick up re-enrolls; is the file unreadable/unstable; how many lines the load could not use | atomics maintained by `Keystore::reload()`. `agents`/`entries_skipped` are LEVELS of the adopted load (a failed load leaves both untouched); neither counts comments, blanks or removed entries |
 | `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|cacerts>.responses.{2xx,400,403,409,413,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
@@ -1905,7 +1944,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
 | `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above) | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.token.{accepted, rejected_unknown, rejected_expired, rejected_revoked, rejected_exhausted}` | the enrollment-token subset of the above, by what happened to the TOKEN: unknown/expired/revoked decided by remoted's replica (and by authd's 9022/9023 when the replica lagged), exhausted by authd alone (9024) | `countTokenRejection()` (remoted's own verdict) + `countTokenOutcome()` (authd's) in `enrollmentEndpoint.cpp` |
-| `remoted.enroll.reenroll.{accepted, rejected_unknown, rejected_signature, rejected_stale}` | the re-enrollment subset (`kid` = agent id): authd's verdict on the master — 9026 / 9027 / 9028 — since remoted forwards that bearer unverified; each rejection also lands in the `remoted.auth.reject.*` cell of the `AuthError` it maps to | `countReenrollOutcome()` in `enrollmentEndpoint.cpp` |
+| `remoted.enroll.reenroll.{accepted, rejected_unknown, rejected_signature, rejected_stale}` | the re-enrollment subset (`kid` = agent id): authd's verdict on the master — 9026 / 9027 / 9028 — since the master holds the secret that signs the bearer, PLUS (in `rejected_signature`/`rejected_stale`) the bearers remoted refused itself on the message alone, which never reached the master; each rejection also lands in the `remoted.auth.reject.*` cell of the `AuthError` it maps to | `countReenrollOutcome()` (authd's verdict) + `countReenrollRejection()` (remoted's own) in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.token_store.{tokens, reloads.total, reload_failures.total}` (pulls) | does this node recognise the tokens the operator minted (an empty replica on a worker = the sync has not landed); is `etc/enrollment_tokens.json` being picked up, or is a corrupt/hand-edited store making the previous replica serve | `TokenKeySource::diagnostics()` through `registerTokenKeySourceDiagnostics()`; 0 while enrollment is disabled |
 | `remoted.enroll.authd.queue.{depth, capacity, rejected.total}` (pulls) | is `remoted.authd_max_queue_size`/`authd_worker_threads` sized right, and how much of `authd_unavailable` was saturation rather than an unreachable authd | `AuthdClient::queueDiagnostics()` (same lock, dump cadence only); the counter is bumped ONLY on the queue-full branch, never on shutdown |
 | `remoted.forwarder.deferred.{inflight, capacity, rejected.total}` (pulls) | is `remoted.max_deferred_requests` sized right; how much did the limiter shed | the `DeferredWorkLimiter`'s own atomics |
@@ -2079,15 +2118,21 @@ old tokens, Password mode failing closed without a key file or key source; the e
 accepted in Open AND Password mode, unknown id → `TokenUnknown` with exactly one rate-limited forced
 re-read, wrong secret → `InvalidSignature`, expired → `TokenExpired`, revoked → `TokenRevoked`, no
 `TokenKeySource` → `TokenUnknown`; the agent-`kid` bearer handed back as `ReenrollmentRequested` in every
-mode, unverified, even without a token source or a password key; protocol-version before the body cap
-before the credential, in every mode), `enrollmentEndpoint_test.cpp` (the handler against a fake
+mode with its signature unverified, even without a token source or a password key, while a message
+that is not JSON, carries the wrong claim set or is stale/future is `ReenrollmentRejected` with the
+verdict the master would have sent, under the configured `TimePolicy`; protocol-version before the
+body cap before the credential, in every mode), `enrollmentEndpoint_test.cpp` (the handler against a fake
 authd client: `403` when disabled without touching auth or authd, every `400` of the body schema and
 version policy, `Content-Encoding` handled through the decoder, IP resolution incl. the `src`
 sentinel, `force`/`id`/`key` never sent, the `200` carrying `reenroll_secret` when authd sends it,
 `token_id` forwarded and counted as `token.accepted`, authd's 9024 → `403` + `rejected_exhausted`, a
-revoked/unknown token → `401` with its class counted without reaching authd, the re-enrollment bearer
-forwarded unverified and counted, re-enrollment in Password mode reaching authd without the password
-key, and authd's 9026/9027/9028 mapped to the 401 classes while its other codes keep their mapping;
+revoked token → `401` with its class counted without reaching authd, an unknown token id answering
+byte-for-byte like a bad signature (no id-existence oracle) while keeping its own metric cell, the
+re-enrollment bearer forwarded with its signature unverified and counted, a re-enrollment message
+refused without the fake authd ever being bound at all (asserted on the mock, not the status) and
+counted in the same `reenroll.*` cell, re-enrollment in Password mode reaching authd without the
+password key, and authd's 9026/9027/9028 mapped to the 401 classes while its other codes keep their
+mapping;
 plus the `MeteredResponder` status/latency accounting), `authdClient_test.cpp` (a fake authd over a
 real UDS socket: success data incl. `reenroll_secret`, `arguments.reenroll` on the wire, business
 codes preserved, transport failures, the saturated backlog as a fast connect failure, timeouts, queue
@@ -2103,7 +2148,9 @@ key), `jwtEnrollSignVerify_test.cpp` (the shared `EnrollSigner`/`JwtEnrollTokenV
 vectors of all three forms byte for byte, exact header/claim sets, ASCII-only segments, structural time
 rules, the time policy, compact grammar before decoding, profiles never crossing over, `peekKid()`
 telling token/agent/none apart, `verifyWithKid()` accepting only its own `kid` and key, the shared-key
-`verify()` still rejecting any `kid`), and two end-to-end files over a **real** TLS listener with a
+`verify()` still rejecting any `kid`, and `precheckMessage()` answering value-for-value what
+`verifyWithKid()` answers for every key-independent failure while still passing a message whose
+signature is garbage — a filter, never a verdict), and two end-to-end files over a **real** TLS listener with a
 fake authd: `enrollmentE2E_test.cpp` (Password mode success and wrong signature, Open mode, authd
 down → `503`, a replayed signed request inside the window NOT stopped by remoted itself, a token
 bearer enrolling and forwarding its `token_id`, a revoked token → `401`, a re-enrollment bearer

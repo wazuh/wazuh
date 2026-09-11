@@ -13,6 +13,8 @@
 // jwt/jwtEnrollProfileV1.hpp). The grammar/time core is shared with `wazuh-agent+jwt`
 // (jwtVerify_test.cpp covers it exhaustively); here the enroll-specific surface: exact 2-field
 // header, exact 4-claim payload, no kid, cross-profile rejection in both directions, HKDF key.
+// Then the `kid` forms of issue #38993 (peekKid/verifyWithKid) and precheckMessage(), the
+// key-independent filter remoted applies to a re-enrollment bearer it cannot verify.
 
 #include <gtest/gtest.h>
 
@@ -408,4 +410,136 @@ TEST(EnrollVerifier, KidFormsAreDisjointAndCrossKeysFail)
     // A token of one form verified with the other form's key is a plain signature failure.
     EXPECT_EQ(verifyKidAt(tt::kAgentKidJwt, tt::kAgentKid, tokenKey()), VerifyError::InvalidSignature);
     EXPECT_EQ(verifyKidAt(tt::kTokenKidJwt, tt::kIdB64Url, reenrollKey()), VerifyError::InvalidSignature);
+}
+
+// ------------------------------------------------------- precheckMessage (issue #38993 review)
+// The key-independent half of verifyWithKid(): everything except the HMAC, for the caller that
+// cannot hold the key (remoted forwarding a re-enrollment bearer to the master). Two properties
+// matter and both are pinned here: (1) it never accepts a message verifyWithKid() would refuse for
+// a key-independent reason, and it answers with the SAME VerifyError, so a pre-filtering caller
+// cannot be told apart from the key holder; (2) it is NOT verification -- a message with any
+// signature at all passes as long as its claims hold.
+
+namespace
+{
+    VerifyError precheckAt(std::string_view token,
+                           std::string_view kid,
+                           std::int64_t now = kNow,
+                           const TimePolicy& policy = TimePolicy {})
+    {
+        return JwtEnrollTokenVerifier::precheckMessage(token, kid, policy, at(now));
+    }
+
+    // The same message with the signature segment replaced by 32 zero bytes: canonical grammar, a
+    // MAC no key produced.
+    std::string withGarbageSignature(std::string_view token)
+    {
+        const std::string text {token};
+        return text.substr(0, text.rfind('.') + 1) + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    }
+} // namespace
+
+TEST(EnrollPrecheck, AcceptsAWellFormedMessageWhateverTheSignature)
+{
+    // The frozen agent-kid vector, and the same message signed with nothing that verifies: both
+    // pass, because the signature is exactly what this function does not look at.
+    EXPECT_EQ(precheckAt(tt::kAgentKidJwt, tt::kAgentKid), VerifyError::None);
+    EXPECT_EQ(precheckAt(withGarbageSignature(tt::kAgentKidJwt), tt::kAgentKid), VerifyError::None);
+    // ...while the key holder still refuses the second one. Precheck is a filter, not a verdict.
+    EXPECT_EQ(verifyKidAt(withGarbageSignature(tt::kAgentKidJwt), tt::kAgentKid, reenrollKey()),
+              VerifyError::InvalidSignature);
+    // The enrollment-token form goes through the same door (nothing here is agent-specific).
+    EXPECT_EQ(precheckAt(tt::kTokenKidJwt, tt::kIdB64Url), VerifyError::None);
+}
+
+TEST(EnrollPrecheck, RejectsTheReplayableMessageOfTheReviewFinding)
+{
+    // The 130 bytes of the finding: a valid {alg, kid: "001", typ} header, a payload that is
+    // canonical base64url of ONE byte -- not JSON at all -- and 43 canonical signature chars. It
+    // satisfies splitCompact() and peekKid(), which is why it used to reach authd and, on a worker,
+    // the master; the claim set is what stops it now, at zero cost.
+    constexpr std::string_view replay = "eyJhbGciOiJIUzI1NiIsImtpZCI6IjAwMSIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ.AA."
+                                        "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8";
+    const auto peeked = JwtEnrollTokenVerifier::peekKid(replay);
+    ASSERT_TRUE(peeked.has_value()); // the shape still classifies: that was never the leak
+    EXPECT_EQ(peeked->kind, KidKind::Agent);
+    EXPECT_EQ(precheckAt(replay, "001"), VerifyError::InvalidToken);
+}
+
+TEST(EnrollPrecheck, RejectsEveryClaimSetTheKeyHolderWouldRejectAndAnswersAlike)
+{
+    // Each case: what precheckMessage() says without a key, and what verifyWithKid() says holding
+    // the right one. They must agree value for value -- that is what makes the pre-filter invisible.
+    const auto expectAgreement = [](const std::string& message, VerifyError expected, std::int64_t now = kNow)
+    {
+        EXPECT_EQ(precheckAt(message, tt::kAgentKid, now), expected);
+        EXPECT_EQ(verifyKidAt(message, tt::kAgentKid, reenrollKey(), now), expected);
+    };
+    // A signature the reenroll key produces, so verifyWithKid() gets past the HMAC and lands on the
+    // very claim rule under test.
+    const auto signedWithReenrollKey = [](std::string_view headerJson, std::string_view payloadJson)
+    {
+        std::string signingInput = base64UrlEncode(headerJson) + "." + base64UrlEncode(payloadJson);
+        HmacSha256Digest mac {};
+        EXPECT_TRUE(hmacSha256(reenrollKey(), signingInput, mac));
+        return signingInput + "." + base64UrlEncode(mac.data(), mac.size());
+    };
+    const std::string header {tt::kAgentKidHeaderJson};
+
+    // Not JSON, an empty object, a missing claim, an extra claim, a claim of the wrong type.
+    expectAgreement(signedWithReenrollKey(header, "not json"), VerifyError::InvalidToken);
+    expectAgreement(signedWithReenrollKey(header, "{}"), VerifyError::InvalidToken);
+    expectAgreement(signedWithReenrollKey(header, R"({"exp":1700000060,"iat":1700000000,"nbf":1700000000})"),
+                    VerifyError::InvalidToken);
+    expectAgreement(
+        signedWithReenrollKey(
+            header,
+            R"({"exp":1700000060,"iat":1700000000,"jti":"AAECAwQFBgcICQoLDA0ODw","nbf":1700000000,"sub":"001"})"),
+        VerifyError::InvalidToken);
+    expectAgreement(
+        signedWithReenrollKey(
+            header, R"({"exp":"1700000060","iat":1700000000,"jti":"AAECAwQFBgcICQoLDA0ODw","nbf":1700000000})"),
+        VerifyError::InvalidToken);
+    // A jti that is not 16 canonical base64url bytes.
+    expectAgreement(signedWithReenrollKey(header, payload(tv::kIat, tv::kIat, tv::kExp, "AAECAwQFBgcICQoLDA0OD")),
+                    VerifyError::InvalidToken);
+    // The structural time rules: nbf != iat, exp <= iat, a lifetime over the profile's 60 s.
+    expectAgreement(signedWithReenrollKey(header, payload(tv::kIat, tv::kIat + 1, tv::kExp)),
+                    VerifyError::InvalidToken);
+    expectAgreement(signedWithReenrollKey(header, payload(tv::kIat, tv::kIat, tv::kIat)), VerifyError::InvalidToken);
+    expectAgreement(signedWithReenrollKey(header, payload(tv::kIat, tv::kIat, tv::kIat + 61)),
+                    VerifyError::InvalidToken);
+    // The clock-relative ones: older than the accepted age, and issued beyond the skew ahead.
+    expectAgreement(std::string {tt::kAgentKidJwt}, VerifyError::None, tv::kIat + 90);
+    expectAgreement(std::string {tt::kAgentKidJwt}, VerifyError::StaleToken, tv::kIat + 91);
+    expectAgreement(signedWithReenrollKey(header, payload(kNow + 31, kNow + 31, kNow + 91)), VerifyError::StaleToken);
+}
+
+TEST(EnrollPrecheck, RejectsAnythingThatDoesNotNameThisKid)
+{
+    // Another `kid` than the caller resolved, the shared-key (kid-less) form, a `kid` of neither
+    // shape, another profile's typ, and plain garbage: all InvalidToken, before the payload is read.
+    EXPECT_EQ(precheckAt(tt::kAgentKidJwt, "002"), VerifyError::InvalidToken);
+    EXPECT_EQ(precheckAt(tt::kAgentKidJwt, tt::kIdB64Url), VerifyError::InvalidToken);
+    EXPECT_EQ(precheckAt(tt::kTokenKidJwt, tt::kAgentKid), VerifyError::InvalidToken);
+    EXPECT_EQ(precheckAt(tv::kToken, tt::kAgentKid), VerifyError::InvalidToken);
+    EXPECT_EQ(precheckAt(mint(R"({"alg":"HS256","kid":"1","typ":"wazuh-enroll+jwt"})", tv::kPayloadJson), "1"),
+              VerifyError::InvalidToken);
+    EXPECT_EQ(precheckAt(mint(R"({"alg":"HS256","kid":"001","typ":"wazuh-agent+jwt"})", tv::kPayloadJson), "001"),
+              VerifyError::InvalidToken);
+    EXPECT_EQ(precheckAt(agent_tv::kToken, "001"), VerifyError::InvalidToken);
+    EXPECT_EQ(precheckAt("", "001"), VerifyError::InvalidToken);
+    EXPECT_EQ(precheckAt("a.b", "001"), VerifyError::InvalidToken);
+    EXPECT_EQ(precheckAt(std::string(kMaxTokenBytes + 1, 'A'), "001"), VerifyError::InvalidToken);
+}
+
+TEST(EnrollPrecheck, ReadsTheSameTimePolicyTheVerifierDoes)
+{
+    // A wider skew (remoted.jwt_clock_skew) makes the same message acceptable again, in both
+    // functions alike: the pre-filter cannot be stricter than the verifier the operator configured.
+    const auto wide = TimePolicy::tryMake(kDefaultAgeSec, 120);
+    ASSERT_TRUE(wide.has_value());
+    EXPECT_EQ(precheckAt(tt::kAgentKidJwt, tt::kAgentKid, tv::kIat + 91), VerifyError::StaleToken);
+    EXPECT_EQ(precheckAt(tt::kAgentKidJwt, tt::kAgentKid, tv::kIat + 91, *wide), VerifyError::None);
+    EXPECT_EQ(verifyKidAt(tt::kAgentKidJwt, tt::kAgentKid, reenrollKey(), tv::kIat + 91, *wide), VerifyError::None);
 }
