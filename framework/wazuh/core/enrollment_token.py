@@ -25,6 +25,9 @@ AUTHD_WORKER_NODE = 9015      # the store is written on the master only
 AUTHD_TOKEN_NOT_FOUND = 9022  # unknown id, or one that is not the shape of a token id
 AUTHD_MINT_REFUSED = 9025     # the request cannot be honoured; the message carries the detail
 AUTHD_STORE_FAILED = 9029     # applied in memory, but the store file could not be written
+# authd's own codes for these verbs start at 9000; anything below it comes from the framework's
+# socket layer (1013, 1014...), a different numbering space entirely.
+_AUTHD_CODE_FLOOR = 9000
 _REFUSED_PREFIX = 'Enrollment token refused: '
 # The API's `timeframe` format (api/validator.py _timeframe_type), checked here too: get_timeframe_in_seconds()
 # alone turns anything with a stray unit letter into 0, which authd would silently replace by its default.
@@ -53,8 +56,12 @@ def _authd_request(function: str, arguments: dict = None):
         certificate's SAN, the certificate only names loopback, the CA does not sign it...).
     WazuhError(1769)
         This node is a cluster worker: tokens are minted and revoked on the master.
+    WazuhInternalError(1771)
+        authd applied the change in memory but could not write the store file.
+    WazuhError(1773)
+        Any other authd-native code (>= 9000), with the code and authd's message as extra message.
     WazuhException
-        Any other authd error, as authd reported it.
+        A framework-level failure talking to the socket, as the socket layer reported it.
 
     Returns
     -------
@@ -65,11 +72,10 @@ def _authd_request(function: str, arguments: dict = None):
     if arguments is not None:
         msg['arguments'] = arguments
 
+    authd_socket = WazuhSocketJSON(common.AUTHD_SOCKET)
+    authd_socket.send(msg)
     try:
-        authd_socket = WazuhSocketJSON(common.AUTHD_SOCKET)
-        authd_socket.send(msg)
         data = authd_socket.receive()
-        authd_socket.close()
     except WazuhException as e:
         if e.code == AUTHD_TOKEN_NOT_FOUND:
             raise WazuhResourceNotFound(1767, extra_message=str(arguments.get('id', '')) if arguments else None)
@@ -87,7 +93,14 @@ def _authd_request(function: str, arguments: dict = None):
             # holds the intent and retries the write on its own, so this is an internal error the
             # caller should retry, not a 4xx (issue #39078, H04).
             raise WazuhInternalError(1771)
+        if e.code >= _AUTHD_CODE_FLOOR:
+            # An authd-native code nobody mapped yet: the request reached authd and authd refused it,
+            # so it is the caller's problem, not a communication failure. The raw code and message
+            # travel in `extra_message` so the specific condition stays visible.
+            raise WazuhError(1773, extra_message=f'authd code {e.code}: {e.message}')
         raise e
+    finally:
+        authd_socket.close()
 
     return data
 
