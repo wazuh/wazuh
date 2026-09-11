@@ -283,7 +283,10 @@ than this manager could ever write back: in those the tokens already loaded are 
 **The API also bounds `address`, `prefix`, `description` and `max_uses` at the schema level, before
 authd ever sees them** (`POST /agents/enrollment-tokens` answers `400` naming the field), matching
 the limits above exactly rather than inventing separate ones — a request over any of them never
-reaches the local socket that reads at most 64 KiB and would otherwise drop the connection.
+reaches the local socket that reads at most 64 KiB and would otherwise drop the connection. Any
+other error authd reports for these verbs, beyond the ones with their own mapping (`9022` -> `1767`,
+`9025`/`9004` -> `1768`, `9015` -> `1769`, `9029` -> `1771`), is answered as `1773` *Enrollment token
+request refused by the manager*, carrying authd's own code and message.
 
 The agent presents the token as a `wazuh-enroll+jwt` bearer whose `kid` is the token id, signed with
 the key HKDF-SHA256 derives from the secret (label `WAZUH-ENROLL-TOKEN-KEY`). remoted verifies it
