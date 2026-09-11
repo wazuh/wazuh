@@ -703,6 +703,17 @@ stages:
       status_code: 400
 
     # POST /agents/enrollment-tokens
+  - name: Try to mint a token with max_uses above the schema's maximum
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "wazuh-master"
+        max_uses: 5000000000
+    response:
+      status_code: 400
+
+    # POST /agents/enrollment-tokens
   - name: Try to mint a token for a name the listener certificate does not carry
     request:
       verify: False

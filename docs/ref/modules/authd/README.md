@@ -267,6 +267,7 @@ the CLI and the API (issue #39133):
 | `--ttl` at most **3650 days** (315360000 s) | A token's expiry is stored as an absolute time in a signed `time_t`. A longer lifetime does not produce a distant expiry, it produces a **negative** one, which the store's own loader refuses — and a record like that is one every node carries, because the cluster replicates the file |
 | `--description` and `--prefix` at most **256 characters** | Both are persisted in `etc/enrollment_tokens.json`, re-serialized on every consumed use and shipped to every worker |
 | `--address` at most **253 characters** | `adr_is_dns_name()` refuses any DNS name longer than that regardless of caller; an IP literal is accepted instead and is never this long |
+| `--max-uses` at most **4294967295** (`UINT_MAX`) | The use counter is stored as an `unsigned int`; anything above wraps |
 | No control character (`\n`, `\r`, `\t`, DEL, terminal escapes) in `--description` or `--prefix` | The description is written into the INFO line that records who minted which token, so a newline there forges a second record. Spaces and ordinary punctuation are free text as before |
 
 A refusal is `9025` with the reason (`Enrollment token refused: ttl must be between 1 and 315360000
@@ -279,10 +280,10 @@ loaded; the next write removes it from the file. What is still refused whole is 
 JSON, that carries another `version`, that has no `tokens` array, or that holds more tokens (or bytes)
 than this manager could ever write back: in those the tokens already loaded are kept.
 
-**The API also bounds `address`, `prefix` and `description` at the schema level, before authd ever
-sees them** (`POST /agents/enrollment-tokens` answers `400` naming the field), matching the limits
-above exactly rather than inventing separate ones — a request over any of them never reaches the
-local socket that reads at most 64 KiB and would otherwise drop the connection.
+**The API also bounds `address`, `prefix`, `description` and `max_uses` at the schema level, before
+authd ever sees them** (`POST /agents/enrollment-tokens` answers `400` naming the field), matching
+the limits above exactly rather than inventing separate ones — a request over any of them never
+reaches the local socket that reads at most 64 KiB and would otherwise drop the connection.
 
 The agent presents the token as a `wazuh-enroll+jwt` bearer whose `kid` is the token id, signed with
 the key HKDF-SHA256 derives from the secret (label `WAZUH-ENROLL-TOKEN-KEY`). remoted verifies it
