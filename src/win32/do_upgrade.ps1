@@ -185,6 +185,22 @@ function Get-MSIProductVersion {
 
 
 
+# True if $path is a reparse point (symlink or junction), regardless of whether its
+# target exists. Uses the raw .NET FileAttributes flag rather than Get-Item's
+# LinkType convenience property: LinkType requires PowerShell 5.0+, and this script
+# otherwise targets much older hosts (see Start-NativePowerShell's "Windows
+# PowerShell v1.0" path above) -- on an older PowerShell, LinkType is simply absent
+# ($null), which would leave every reparse-point check below silently inert instead
+# of failing loudly. FileAttributes.ReparsePoint has existed since .NET 1.1.
+function Test-IsReparsePoint($path) {
+    try {
+        $attrs = [System.IO.File]::GetAttributes($path)
+        return (($attrs -band [System.IO.FileAttributes]::ReparsePoint) -ne 0)
+    } catch {
+        return $false
+    }
+}
+
 # Stop UI and launch the MSI installer
 function install {
     param (
@@ -380,8 +396,8 @@ $incoming_ca_file = Join-Path $wazuhDir "incoming\root-ca.pem"
 $incoming_item = Get-Item -Force -ErrorAction SilentlyContinue $incoming_ca_file
 if (-Not $incoming_item) {
     Write-Output "$(Get-Date -format u) - No CA delivered by the manager at $($incoming_ca_file) this run." >> .\upgrade\upgrade.log
-} elseif ($incoming_item.LinkType) {
-    Write-Output "$(Get-Date -format u) - A CA arrived at $($incoming_ca_file) as a $($incoming_item.LinkType); refusing to follow it, discarding it and continuing the upgrade unverified." >> .\upgrade\upgrade.log
+} elseif (Test-IsReparsePoint $incoming_ca_file) {
+    Write-Output "$(Get-Date -format u) - A CA arrived at $($incoming_ca_file) as a symlink/junction; refusing to follow it, discarding it and continuing the upgrade unverified." >> .\upgrade\upgrade.log
     Remove-Item -Force -ErrorAction SilentlyContinue $incoming_ca_file
 } else {
     Write-Output "$(Get-Date -format u) - Found a CA delivered by the manager at $($incoming_ca_file), validating it." >> .\upgrade\upgrade.log
@@ -408,14 +424,17 @@ if (-Not $incoming_item) {
     } catch {
         $hardlink_count = 0
     }
-    $incoming_recheck = Get-Item -Force -ErrorAction SilentlyContinue $incoming_ca_file
 
-    if (($incoming_recheck -and $incoming_recheck.LinkType) -or $hardlink_count -gt 1) {
+    if ((Test-IsReparsePoint $incoming_ca_file) -or $hardlink_count -gt 1) {
         $ca_reject_reason = "is a symlink/junction or has more than one hard link"
     } else {
         try {
             Copy-Item -Path $incoming_ca_file -Destination $ca_snapshot -Force -ErrorAction Stop
-            $ca_pem = Get-Content -Path $ca_snapshot -Raw
+            # -ErrorAction Stop: Get-Content's default ErrorActionPreference lets a read
+            # failure (permission denied, file locked) emit a non-terminating error and
+            # continue past this try/catch with $ca_pem still $null, which the next
+            # check below would then misreport as "empty" rather than the real cause.
+            $ca_pem = Get-Content -Path $ca_snapshot -Raw -ErrorAction Stop
         } catch {
             $ca_reject_reason = "could not be read ($($_.Exception.Message))"
         }
@@ -443,9 +462,26 @@ if (-Not $incoming_item) {
 
     if (-Not $ca_reject_reason) {
         try {
-            $ca_base64 = ($ca_pem -replace '-----BEGIN CERTIFICATE-----', '' -replace '-----END CERTIFICATE-----', '' -replace '[\r\n\s]', '')
+            # Extract strictly between the first BEGIN/END pair, not just delete the
+            # marker strings from the whole content: openssl's own PEM reader does the
+            # same (scans for the markers, ignores anything outside them), so a file
+            # with a readable preamble before BEGIN -- valid PEM, and accepted on the
+            # Linux/macOS side -- would otherwise leave that preamble text mixed into
+            # $ca_base64 here and fail to decode.
+            $pem_match = [regex]::Match($ca_pem, '-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+            if (-Not $pem_match.Success) {
+                throw "no BEGIN/END CERTIFICATE block found"
+            }
+            $ca_base64 = ($pem_match.Groups[1].Value -replace '[\r\n\s]', '')
             $ca_bytes = [System.Convert]::FromBase64String($ca_base64)
-            $ca_cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($ca_bytes)
+            # New-Object, not the ::new() static-method syntax: ::new() requires
+            # PowerShell 5.0+ and this script otherwise targets much older hosts (see
+            # Start-NativePowerShell's "Windows PowerShell v1.0" path above) -- on an
+            # older PowerShell, ::new() would fail to parse and every valid CA would be
+            # rejected here as "does not parse as a PEM certificate". The leading comma
+            # stops New-Object from unrolling the byte array into multiple constructor
+            # arguments.
+            $ca_cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 (, $ca_bytes)
         } catch {
             $ca_reject_reason = "does not parse as a PEM certificate ($($_.Exception.Message))"
         }
@@ -526,14 +562,18 @@ if (-Not $incoming_item) {
         }
 
         if ($ca_install_ok) {
-            # Deny Authenticated Users on this one file, same pattern already used for
-            # client.keys/authd.pass (InstallerScripts.vbs): the install directory grants
-            # S-1-5-11 (Authenticated Users) broad read access, so a sensitive file needs
-            # that grant stripped explicitly. Administrators/SYSTEM keep the access they
-            # already have from the install directory's own ACL -- the agent service
-            # itself runs as SYSTEM, so this does not block it from reading the anchor.
+            # Deny Authenticated Users on this one file, same intent as the pattern
+            # already used for client.keys/authd.pass (InstallerScripts.vbs) -- but
+            # implemented differently: the install directory's S-1-5-11 grant that
+            # applies to a freshly-created file here is inherited, not explicit, and
+            # icacls's plain /remove only strips explicit ACEs -- it silently leaves
+            # an inherited one in place and still reports success. Breaking
+            # inheritance (/inheritance:r) and re-granting only Administrators/SYSTEM
+            # explicitly (:r replaces rather than appends, so a re-run doesn't
+            # duplicate entries) actually removes Authenticated Users' access instead
+            # of leaving it untouched under a passing exit code.
             try {
-                icacls "$default_ca_file" /remove *S-1-5-11 /q | Out-Null
+                icacls "$default_ca_file" /inheritance:r /grant:r "*S-1-5-32-544:(F)" "*S-1-5-18:(F)" /q | Out-Null
                 # icacls is an external process: a non-zero exit code is not a
                 # PowerShell exception and would not otherwise be caught below --
                 # check $LASTEXITCODE explicitly rather than assume success.
@@ -913,6 +953,18 @@ if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certific
         # script can safely fix on the operator's behalf.
         write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at $($server_address):$($server_port). Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> .\upgrade\upgrade.log
         abort_upgrade "2"
+    } elseif (Test-Path -PathType Leaf $default_ca_file) {
+        # <verification_mode> was left unset (not explicit), so the new binary resolves
+        # purely from anchor presence -- 'full' against $default_ca_file -- regardless
+        # of what this gate's own 'system' resolution or the OS trust store say. A
+        # usable anchor is already on disk (installed by the CA-adoption block above,
+        # or left over from a previous delivery), which is a different, equally
+        # sufficient path to a working post-upgrade connection -- this is precisely the
+        # scenario this feature exists for. Checked ahead of $is_legacy_agent since an
+        # already-5.x agent needs this path too: without it, a 5.x agent receiving its
+        # manager's CA for the first time would have the anchor installed and then
+        # abort anyway, never reaching a state where it takes effect.
+        write-output "$(Get-Date -format u) - The system trust store does not verify the manager's certificate at $($server_address):$($server_port), but a trust anchor is present at $($default_ca_file) and <ssl><verification_mode> is unset -- the upgraded agent resolves to 'full' against that anchor regardless of the OS trust store, so proceeding." >> .\upgrade\upgrade.log
     } elseif ($is_legacy_agent) {
         # The currently-installed agent (pre-upgrade) predates 5.0: its <client>-only
         # config cannot express TLS verification regardless of what this script does
@@ -920,13 +972,12 @@ if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certific
         # -- no OS CA bundle at all -- does not apply here. Proceed rather than block
         # a legacy migration over a check that agent was never able to pass in the
         # first place.
-        write-output "$(Get-Date -format u) - The system trust store does not verify the manager's certificate at $($server_address):$($server_port), but the currently-installed agent ($($current_version)) predates 5.0 and its config cannot express TLS verification either way -- proceeding unverified. A delivered CA may already be installed at $($default_ca_file); configure <verification_mode>certificate</verification_mode> with <certificate_authorities> explicitly after the upgrade to enable verification." >> .\upgrade\upgrade.log
+        write-output "$(Get-Date -format u) - The system trust store does not verify the manager's certificate at $($server_address):$($server_port), but the currently-installed agent ($($current_version)) predates 5.0 and its config cannot express TLS verification either way -- proceeding unverified. No trust anchor is present at $($default_ca_file); place one there and re-run the upgrade, or configure <certificate_authorities> explicitly after the upgrade, to enable verification." >> .\upgrade\upgrade.log
     } else {
-        # ossec.conf is never edited by this script (see the CA-detection block above)
-        # -- a CA may already be sitting at $default_ca_file, but pinning it into
-        # <certificate_authorities> is left to the operator rather than done here, so
-        # its mere presence does not change this outcome.
-        write-output "$(Get-Date -format u) - Upgrade failed: the system trust store does not verify the manager's certificate at $($server_address):$($server_port). A delivered CA may already be installed at $($default_ca_file); configure <verification_mode>certificate</verification_mode> with <certificate_authorities>$($default_ca_file)</certificate_authorities> explicitly, then retry the upgrade; interrupting upgrade." >> .\upgrade\upgrade.log
+        # Reached only when no usable anchor is present at all (the branch above
+        # already handles the case where one is) -- ossec.conf is never modified by
+        # this script, so there is genuinely nothing more it can do here.
+        write-output "$(Get-Date -format u) - Upgrade failed: the system trust store does not verify the manager's certificate at $($server_address):$($server_port), and no trust anchor is present at $($default_ca_file). Place the manager's CA there and retry, or configure <certificate_authorities> explicitly; interrupting upgrade." >> .\upgrade\upgrade.log
         abort_upgrade "2"
     }
 } elseif ($ssl_verification_mode -ceq "none") {
