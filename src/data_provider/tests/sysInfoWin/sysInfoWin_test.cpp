@@ -12,6 +12,7 @@
 
 #include <set>
 #include <stdio.h>
+#include <cstring>
 #include "packages/packagesWindowsParserHelper.h"
 #include "sysInfoWin_test.h"
 #include <iostream>
@@ -417,4 +418,141 @@ TEST_F(SysInfoWinTest, ParseCmdLineDeterministic)
     const auto result2 = parseProcessCommandLine(input);
     EXPECT_EQ(result1.cmd, result2.cmd);
     EXPECT_EQ(result1.argvs, result2.argvs);
+}
+
+
+// Tests for buildProcessSnapshotRecord() — the record the Windows process inventory
+// emits from the snapshot entry alone, with no handle on the process.
+
+namespace
+{
+    PROCESSENTRY32 makeProcessEntry(const DWORD pid, const DWORD parentPid, const char* exeFile)
+    {
+        PROCESSENTRY32 entry{};
+        entry.dwSize = sizeof(PROCESSENTRY32);
+        entry.th32ProcessID = pid;
+        entry.th32ParentProcessID = parentPid;
+        std::strncpy(entry.szExeFile, exeFile, sizeof(entry.szExeFile) - 1);
+        return entry;
+    }
+}
+
+// A regular entry yields the snapshot fields and nothing that needs a handle.
+TEST_F(SysInfoWinTest, BuildProcessSnapshotRecordNormalEntry)
+{
+    const auto record = buildProcessSnapshotRecord(makeProcessEntry(1234, 5678, "notepad.exe"));
+
+    EXPECT_EQ(record.at("name").get<std::string>(), "notepad.exe");
+    EXPECT_EQ(record.at("pid").get<std::string>(), "1234");
+    EXPECT_EQ(record.at("parent_pid").get<DWORD>(), static_cast<DWORD>(5678));
+    EXPECT_FALSE(record.contains("command_line"));
+    EXPECT_FALSE(record.contains("args"));
+    EXPECT_FALSE(record.contains("args_count"));
+    EXPECT_FALSE(record.contains("stime"));
+    EXPECT_FALSE(record.contains("utime"));
+    EXPECT_FALSE(record.contains("start"));
+}
+
+// Pid 0 is named from the snapshot path and must not carry the self-referential parent.
+TEST_F(SysInfoWinTest, BuildProcessSnapshotRecordSystemIdleProcess)
+{
+    const auto record = buildProcessSnapshotRecord(makeProcessEntry(0, 0, "[System Process]"));
+
+    EXPECT_EQ(record.at("name").get<std::string>(), "System Idle Process");
+    EXPECT_EQ(record.at("pid").get<std::string>(), "0");
+    EXPECT_FALSE(record.contains("parent_pid"));
+}
+
+// Pid 4 is the kernel process, named from the snapshot path as well, and keeps its parent.
+TEST_F(SysInfoWinTest, BuildProcessSnapshotRecordSystemProcess)
+{
+    const auto record = buildProcessSnapshotRecord(makeProcessEntry(4, 0, "System"));
+
+    EXPECT_EQ(record.at("name").get<std::string>(), "System");
+    EXPECT_EQ(record.at("pid").get<std::string>(), "4");
+    EXPECT_EQ(record.at("parent_pid").get<DWORD>(), static_cast<DWORD>(0));
+}
+
+// szExeFile arrives in the ANSI code page and has to come out as UTF-8. Skipped where the
+// active code page cannot represent the name, which would make the expectation unreachable.
+TEST_F(SysInfoWinTest, BuildProcessSnapshotRecordNonAsciiName)
+{
+    // L"café.exe" — é is U+00E9
+    char ansiName[MAX_PATH] {};
+    BOOL usedDefaultChar = FALSE;
+    const int converted = WideCharToMultiByte(CP_ACP, 0, L"caf\u00E9.exe", -1,
+                                              ansiName, MAX_PATH, nullptr, &usedDefaultChar);
+
+    if (0 == converted || usedDefaultChar)
+    {
+        GTEST_SKIP() << "The active ANSI code page cannot represent the test name.";
+    }
+
+    const auto record = buildProcessSnapshotRecord(makeProcessEntry(1111, 1, ansiName));
+
+    EXPECT_EQ(record.at("name").get<std::string>(), "caf\xC3\xA9.exe");
+}
+
+
+// Tests for buildProcessRecord() — the merge of the snapshot fields with the fields that
+// need a process handle, which is where the reported defect lived.
+
+// No handle fields is the case where OpenProcess failed. Producing an empty record here is
+// what removed protected processes such as lsass.exe from the inventory.
+TEST_F(SysInfoWinTest, BuildProcessRecordWithoutHandleFieldsKeepsSnapshotFields)
+{
+    const auto record = buildProcessRecord(makeProcessEntry(660, 552, "lsass.exe"), nlohmann::json::object());
+
+    EXPECT_FALSE(record.empty());
+    EXPECT_EQ(record.at("name").get<std::string>(), "lsass.exe");
+    EXPECT_EQ(record.at("pid").get<std::string>(), "660");
+    EXPECT_EQ(record.at("parent_pid").get<DWORD>(), static_cast<DWORD>(552));
+    EXPECT_FALSE(record.contains("start"));
+    EXPECT_FALSE(record.contains("command_line"));
+}
+
+// The handle-derived fields are overlaid on the snapshot ones: both survive.
+TEST_F(SysInfoWinTest, BuildProcessRecordOverlaysHandleFields)
+{
+    const nlohmann::json handleFields
+    {
+        {"start", "2026-09-11T00:00:00Z"},
+        {"stime", 12},
+        {"utime", 34},
+        {"command_line", "C:\\Windows\\system32\\svchost.exe -k netsvcs"}
+    };
+    const auto record = buildProcessRecord(makeProcessEntry(1000, 660, "svchost.exe"), handleFields);
+
+    EXPECT_EQ(record.at("name").get<std::string>(), "svchost.exe");
+    EXPECT_EQ(record.at("pid").get<std::string>(), "1000");
+    EXPECT_EQ(record.at("parent_pid").get<DWORD>(), static_cast<DWORD>(660));
+    EXPECT_EQ(record.at("start").get<std::string>(), "2026-09-11T00:00:00Z");
+    EXPECT_EQ(record.at("stime").get<int>(), 12);
+    EXPECT_EQ(record.at("utime").get<int>(), 34);
+    EXPECT_EQ(record.at("command_line").get<std::string>(), "C:\\Windows\\system32\\svchost.exe -k netsvcs");
+}
+
+// A default-constructed nlohmann::json is a null, not an empty object, and it is what the
+// production caller hands over when no handle opened. Overlaying it must not throw.
+TEST_F(SysInfoWinTest, BuildProcessRecordWithDefaultConstructedHandleFields)
+{
+    const auto record = buildProcessRecord(makeProcessEntry(0, 0, "[System Process]"), nlohmann::json {});
+
+    EXPECT_EQ(record.at("name").get<std::string>(), "System Idle Process");
+    EXPECT_EQ(record.at("pid").get<std::string>(), "0");
+    EXPECT_FALSE(record.contains("parent_pid"));
+    EXPECT_FALSE(record.contains("start"));
+}
+
+// The GetProcessTimes-failed path: a command line but no times.
+TEST_F(SysInfoWinTest, BuildProcessRecordWithPartialHandleFields)
+{
+    const nlohmann::json partialHandleFields {{"command_line", "none"}, {"args", ""}, {"args_count", 0}};
+    const auto record = buildProcessRecord(makeProcessEntry(4, 0, "System"), partialHandleFields);
+
+    EXPECT_EQ(record.at("name").get<std::string>(), "System");
+    EXPECT_EQ(record.at("command_line").get<std::string>(), "none");
+    EXPECT_FALSE(record.contains("start"));
+    EXPECT_FALSE(record.contains("stime"));
+    EXPECT_FALSE(record.contains("utime"));
 }

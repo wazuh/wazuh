@@ -1842,11 +1842,21 @@ void Syscollector::scanProcesses()
             QUEUE_SIZE,
             callback
         };
-        m_spInfo->processes([this, &txn](nlohmann::json & rawData)
+        // A record with no start time is one the Windows collector could not read the process
+        // times for, whether because no handle opened or because GetProcessTimes failed. The
+        // other collectors always set it, so this counter stays at zero there.
+        std::size_t processesWithoutStartTime { 0 };
+
+        m_spInfo->processes([this, &txn, &processesWithoutStartTime](nlohmann::json & rawData)
         {
             nlohmann::json input;
 
             sanitizeJsonValue(rawData);
+
+            if (!rawData.contains("start"))
+            {
+                ++processesWithoutStartTime;
+            }
 
             auto checksumInput = rawData;
             checksumInput.erase("utime");
@@ -1861,6 +1871,13 @@ void Syscollector::scanProcesses()
             txn.syncTxnRow(input);
         });
         txn.getDeletedRows(callback);
+
+        if (processesWithoutStartTime > 0)
+        {
+            m_logFunction(LOG_DEBUG_VERBOSE,
+                          std::to_string(processesWithoutStartTime) +
+                          " process(es) reported without process start time");
+        }
 
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending processes scan");
     }
