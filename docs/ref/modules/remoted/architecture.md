@@ -117,14 +117,14 @@ Nine agent-facing routes. Full request/response contracts in
 ### Back-pressure
 
 The manager processes what it has capacity for rather than buffering into a fixed queue. Capacity is
-bounded in two phases, and excess load is shed with a plain `503`:
+bounded in two phases, and excess load is shed with a `503` carrying `Retry-After`:
 
 1. **In-flight byte budget** — bounds the total unprocessed payload held in memory, reserved before
    a route runs. The liveness `GET /` is exempt, so it keeps answering `200` under pressure.
 2. **Deferred-work limiter** — bounds how many requests are parked awaiting a downstream service.
 
-Both send `Retry-After`: this is server-side load-shedding, not per-client rate-limiting, but the agent still needs to tell a shed apart from a broken link, and the
-agent runs its own retry/backoff. See [Configuration](configuration.md) for the sizing knobs and
+Both send a fixed `Retry-After` so the agent can tell a shed apart from a broken link; this is server-side load-shedding, not per-client rate-limiting, and the
+agent waits the longer of the hint and its own backoff. See [Configuration](configuration.md) for the sizing knobs and
 [Metrics](metrics.md) for what to watch.
 
 ### Local admin plane

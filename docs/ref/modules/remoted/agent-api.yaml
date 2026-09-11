@@ -752,7 +752,13 @@ paths:
         "503":
           description: |
             Not accepted; the agent retries on its next notify cycle and its pending state survives.
-            The `error` code names the actual cause for an operator reading the exchange.
+            The `error` code names the actual cause for an operator reading the exchange. Carries a
+            fixed `Retry-After`: a feed-offset bump reaches the whole fleet at once, so this is the
+            route whose sheds are synchronised by construction.
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying. Fixed value, identical at every shed point.
+              schema: { type: integer, minimum: 0 }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -886,8 +892,14 @@ paths:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
         "503":
           description: |
-            `authd` reached `max_agents` (9013), a worker rejected the request (9015) or its forward
-            to the master failed (9016), or `authd` was unreachable / unparseable / timed out.
+            Either `authd` was unreachable / unparseable / timed out (`code: -1`), which carries a
+            fixed `Retry-After`; or `authd` answered `max_agents` (9013), a worker rejected the
+            request (9015) or its forward to the master failed (9016), which are relayed WITHOUT
+            one -- 9013 does not clear until an operator acts.
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying. Present only on the `code: -1` case.
+              schema: { type: integer, minimum: 0 }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }

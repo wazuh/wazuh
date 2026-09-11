@@ -22,6 +22,8 @@
 #include "vd/IVdScanner.hpp"
 #include "vd/vdScannerFactory.hpp"
 
+#include <uds_http_server/IUdsHttpServer.hpp>
+
 #include <json.hpp>
 
 #include <atomic>
@@ -626,6 +628,20 @@ namespace invsync::test
                     config, adapter.session(), std::move(logging));
             });
         invsync::test_hooks::setVdScannerFactoryForTests([]() { return invsync::vd::makeProductionVdScanner(); });
+    }
+
+    /// The `Retry-After` a response carries, or nullopt. One definition for every suite that
+    /// asserts the shed hint, so they cannot drift apart in how they look it up.
+    inline std::optional<std::string> retryAfter(const wazuh::uds_http::HttpResponse& response)
+    {
+        for (const auto& [name, value] : response.headers)
+        {
+            if (name == "Retry-After")
+            {
+                return value;
+            }
+        }
+        return std::nullopt;
     }
 
 } // namespace invsync::test

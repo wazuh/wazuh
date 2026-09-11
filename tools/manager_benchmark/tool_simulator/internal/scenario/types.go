@@ -84,12 +84,13 @@ func (d Defaults) CompressionFor(mode string) string {
 	}
 }
 
-// Retry governs re-sending a /stateful session the server answered 503 WITHOUT
-// a Retry-After header (backpressure: pipeline full, scan lane full, indexer
-// unhealthy). Retrying is what a real agent does, so it defaults to ON; the
-// scenarios whose purpose is to COUNT sheds disable it explicitly. The
-// 503+Retry-After path (feed still downloading) keeps its own rules: the header
-// dictates the delay and --feed-timeout bounds the budget.
+// Retry governs re-sending a /stateful session the server answered with a
+// backpressure 503 (pipeline full, scan lane full, indexer unhealthy): any 503
+// whose body does not name the feed gate. Since wazuh/wazuh#38880 those carry a
+// Retry-After too, so the header no longer tells the two apart. Retrying is what
+// a real agent does, so it defaults to ON; the scenarios whose purpose is to
+// COUNT sheds disable it explicitly. The feed-not-ready path keeps its own
+// rules: its Retry-After dictates the delay and --feed-timeout bounds the budget.
 //
 // Pointer fields distinguish "absent" (take the default) from an explicit
 // false/0 in the file.

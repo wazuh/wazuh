@@ -1077,7 +1077,7 @@ namespace remoted::http
                                         .append_header(restinio::http_field::content_type, "application/json")
                                         // Load-shedding, not a per-client limit: the delay is what
                                         // lets the agent tell this apart from a network blip and
-                                        // spreads the fleet's first retry.
+                                        // defers its retry off the cadence of a broken link.
                                         .append_header(restinio::http_field::retry_after,
                                                        remoted::http::SHED_RETRY_AFTER_SECONDS)
                                         .set_body(R"({"error":"Service unavailable","code":503})")

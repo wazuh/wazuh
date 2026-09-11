@@ -285,9 +285,9 @@ engine itself rejects, so a client cannot distinguish the two causes.
 Requests larger than the 20 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
 closed) before authentication runs, so they never receive a clean `413`.
 
-The server bounds capacity in two phases and sheds excess load with a plain **`503 Service
-Unavailable`** (server-side load-shedding, not per-client rate-limiting; the connection is closed; no
-a fixed `Retry-After`, so the agent can tell a shed from a broken link): the **in-flight byte budget** bounds total
+The server bounds capacity in two phases and sheds excess load with a **`503 Service
+Unavailable`** (server-side load-shedding, not per-client rate-limiting; the connection is closed; it
+carries a fixed `Retry-After`, so the agent can tell a shed from a broken link): the **in-flight byte budget** bounds total
 unprocessed payload in memory, and the **deferred-work limiter** bounds how many requests are parked
 awaiting the downstream service. The liveness `GET /` is exempt from the byte budget, so it stays
 `200` under pressure. See the memory settings below.

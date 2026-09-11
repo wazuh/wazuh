@@ -99,7 +99,7 @@ agent's documents). The situations an operator will recognize:
   option matches which gate. Sheds are expected backpressure: agents retry on their own.
 - **What does `Retry-After` mean?** Every shed `503` carries a fixed one; only the CVE-feed gate carries the configured, longer value,
   so vulnerability-detection sessions are rejected *without processing* and the agent re-sends
-  the same session after the given seconds. No other `503` schedules the retry for the agent.
+  the same session after the given seconds. Every other `503` carries the fixed shed value, which only defers the agent's own backoff: the feed gate is the one `503` that schedules a retry sized to its cause.
 - **Why did an agent full-resync out of nowhere?** Its `ModuleCheck` answered `409` — the
   manager-side checksum of that module's documents did not match the agent's. The resync is the
   repair, not the problem.

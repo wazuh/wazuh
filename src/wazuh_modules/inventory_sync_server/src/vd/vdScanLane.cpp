@@ -240,9 +240,12 @@ namespace invsync::vd
             observeLaneTime(item);
             auto response = wazuh::uds_http::HttpResponse::json(status, body);
             // "Retry later" only where later could plausibly differ: shutting down, indexer
-            // unavailable, connector failure, scanner still starting. NOT for SCAN_NO_SCANNER_BODY
-            // -- that is a stable property of this node's configuration, false again in 10 s and in
-            // 10 days, and a hint there would invite exactly the retry the status is refusing.
+            // unavailable, connector failure, scanner still starting. NOT for SCAN_NO_SCANNER_BODY,
+            // which IVdScanner documents as permanent (no scanner on this node): a hint there would
+            // invite the retry the status is refusing. Known imprecision, pre-existing and outside
+            // this change: the adapter also reports Skipped while a configured scanner has not
+            // finished initialising, so in that window this 503 goes out bare and the caller falls
+            // back to its own backoff -- the pre-hint behaviour, not a regression.
             // The feed re-check below does not come through here either: it needs the configured,
             // feed-sized value instead of the generic hint.
             if (status == 503 && body != SCAN_NO_SCANNER_BODY)

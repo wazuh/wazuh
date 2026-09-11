@@ -98,7 +98,7 @@ src/http_server/
   bound memory:
     1. **In-flight byte budget** — the transport reserves each request's payload (`body + a small
        per-request overhead`) against a global budget *before* handing it to the worker pool. When
-       the budget is exhausted the request is shed with a plain **`503 Service Unavailable`**
+       the budget is exhausted the request is shed with a **`503 Service Unavailable`**
        (server-capacity load-shedding, not per-client rate-limiting; carries a `Retry-After` so the
        shed is distinguishable from a network failure, and the agent waits the longer of that hint
        and its own backoff) instead of queueing, giving the backpressure the raw asio pool lacks. The reservation is an RAII token living in the request's
@@ -133,7 +133,7 @@ src/http_server/
     4. **Deferred-work limiter** (`max_deferred_requests`) — a **count**-based sibling of the byte
        budget (`downstream/deferredWorkLimiter.hpp`) that bounds how many requests are **parked
        awaiting a downstream service**. A `Slot` is acquired before forwarding and held (RAII) until
-       the reply is sent; when full, the forwarder sheds with the same plain **`503`**. This is the
+       the reply is sent; when full, the forwarder sheds with the same **`503`** + `Retry-After`. This is the
        second phase of a two-phase backpressure: the byte budget covers *receive + send* (and is
        released once the payload has been sent), the deferred limiter covers *the wait*.
 - **Single-copy payload + early release:** the payload is copied exactly **once** — into the shared
@@ -1298,7 +1298,7 @@ src/downstream/
   if an endpoint's connect+write+response budget exceeds `http_request_timeout`, which caps the whole
   request and would otherwise cut the wait short.
 - **`DeferredForwarder::forward(req, responder, target, postProcess)`** — acquires a
-  `DeferredWorkLimiter::Slot` (plain `503` when full; the agent retries), sends via the client, and on
+  `DeferredWorkLimiter::Slot` (`503` + `Retry-After` when full; the agent retries after it), sends via the client, and on
   completion **offloads** the per-endpoint `PostProcessor` onto its own pool (so the client's I/O
   threads stay free), which builds and delivers the reply, then releases the slot. `DownstreamTarget`
   carries the `socketPath`, so one forwarder serves **many endpoints and many sockets**.
@@ -1353,12 +1353,12 @@ sequenceDiagram
     participant E as Engine
 
     Ag->>A: TLS + POST /stateless (H/E batch)
-    Note over A: tryReserve(byte budget) — plain 503 if full<br/>makeHttpRequest() = SINGLE copy into RequestContext<br/>create_response() builder drop RESTinio's buffer
+    Note over A: tryReserve(byte budget) — 503 + Retry-After if full<br/>makeHttpRequest() = SINGLE copy into RequestContext<br/>create_response() builder drop RESTinio's buffer
     A->>B: asio::post (worker queue)
     Note over A: return request_accepted() — I/O thread free
     Note over B: bearer verify (AuthMiddleware::authenticate)<br/>build AuthenticatedRequest (payload = view + keep-alive)
     B->>F: forward(authReq, responder, target, mapper)
-    Note over F: limiter.tryAcquire() — plain 503 if full
+    Note over F: limiter.tryAcquire() — 503 + Retry-After if full
     F->>C: client.sendAsync(req, keepAlive = authReq, onComplete)
     Note over B: forward() returns — worker thread free
     Note over C: async_connect → async_write(head + body view)
@@ -1376,7 +1376,7 @@ sequenceDiagram
 
 1. **[A] Ingress.** RESTinio accepts the TLS connection and reads the full request into its own buffer
    (bounded by `http_max_body_size` and `max_parallel_connections`). The route handler runs on the I/O
-   thread: it reserves the payload against the **byte budget** (plain `503` if exhausted), copies the
+   thread: it reserves the payload against the **byte budget** (`503` + `Retry-After` if exhausted), copies the
    body **once** into a shared `RequestContext` (with its `Reservation`), builds a `RestinioResponder`
    (`create_response()` moves the connection into a builder), and **drops the RESTinio handle** — freeing
    RESTinio's original buffer here. Then it `asio::post`s to the worker pool and returns immediately.
@@ -1387,7 +1387,7 @@ sequenceDiagram
    closure), which first runs `validatePayloadIdentity()` (parses the `H` line, cross-checks
    `wazuh.agent.id` against the authenticated agent id — `400` on a mismatch/malformed header,
    without ever calling `forward()`), then calls `DeferredForwarder::forward(...)`.
-3. **[B] forward().** Acquires a `DeferredWorkLimiter` slot (plain `503` if full), then
+3. **[B] forward().** Acquires a `DeferredWorkLimiter` slot (`503` + `Retry-After` if full), then
    `client->sendAsync(dreq, keepAlive = std::move(authReq), completion)`. `forward()` returns and the
    **worker thread is free** — the request is now in flight holding only the byte reservation (via the
    keep-alive), the deferred slot, and the responder builder.

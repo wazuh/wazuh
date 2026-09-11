@@ -34,21 +34,11 @@ using wazuh::uds_http::HttpResponse;
 using wazuh::uds_http::IHttpResponder;
 using wazuh::uds_http::Method;
 
+using invsync::test::retryAfter;
+
 namespace
 {
     constexpr auto CLUSTER {"test-cluster"};
-
-    std::optional<std::string> retryAfter(const wazuh::uds_http::HttpResponse& response)
-    {
-        for (const auto& [name, value] : response.headers)
-        {
-            if (name == "Retry-After")
-            {
-                return value;
-            }
-        }
-        return std::nullopt;
-    }
 
     /// Captures whatever the handler sends; also resolves a future so a DEFERRED response (sent by
     /// a pipeline worker) can be awaited.
