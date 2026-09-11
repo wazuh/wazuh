@@ -35,6 +35,8 @@ namespace tv = jwt_profile::v1::test_vectors::enroll_token;
 namespace
 {
     constexpr std::int64_t kFarFuture = 4102444800; // 2100-01-01
+    // A second well-formed id (16 zero bytes) for the records a case needs the reader to drop.
+    constexpr const char* kOtherId = "AAAAAAAAAAAAAAAAAAAAAA";
     // Another canonical 22-char id (16 zero bytes): well-formed, never minted.
     constexpr std::string_view kOtherKid = "AAAAAAAAAAAAAAAAAAAAAA";
 
@@ -77,6 +79,21 @@ namespace
         out += tv::kPinB64Url;
         out +=
             R"(","ca":null,"created":1700000000,"expires":4102444800,"max_uses":0,"uses":0,"revoked":false,"description":"public"})";
+        return out;
+    }
+
+    // A record with a well-formed id and a `expires` no reader accepts: what a lifetime near LONG_MAX
+    // used to persist, before the mint bounded it (issue #39133).
+    std::string poisonedRecord(std::string_view id)
+    {
+        std::string out = R"({"id":")";
+        out += id;
+        out += R"(","secret":")";
+        out += tv::kSecretB64Url;
+        out += R"(","adr":"siem.example.local","pin":")";
+        out += tv::kPinB64Url;
+        out +=
+            R"(","ca":null,"created":1700000000,"expires":-9223372035074776832,"max_uses":0,"uses":0,"revoked":false,"description":null})";
         return out;
     }
 
@@ -193,24 +210,17 @@ namespace
         TokenKeySource source(m_path);
         ASSERT_TRUE(source.lookup(tv::kIdB64Url).has_value());
 
-        // Each of these is something authd never writes; every one must be refused as a whole and
-        // leave the good replica serving.
-        for (
-            const auto* bad :
-            {"not json",
-             R"({"version":2,"tokens":[]})",
-             R"({"version":1})",
-             R"({"version":1,"tokens":[{"id":"bad","secret":null,"expires":1,"revoked":false}]})",
-             R"({"version":1,"tokens":[{"id":"AAECAwQFBgcICQoLDA0ODw","secret":"short","expires":1,"revoked":false}]})",
-             R"({"version":1,"tokens":[{"id":"AAECAwQFBgcICQoLDA0ODw","secret":"EBESExQVFhcYGRobHB0eHw","expires":-1,"revoked":false}]})",
-             R"({"version":1,"tokens":[{"id":"AAECAwQFBgcICQoLDA0ODw","secret":"EBESExQVFhcYGRobHB0eHw","expires":1,"revoked":"no"}]})"})
+        // A document that is not a store at all. There is no "rest of the file" to keep in any of
+        // these, so the previous replica goes on serving.
+        for (const auto* bad : {"not json", R"({"version":2,"tokens":[]})", R"({"version":1})"})
         {
             writeFile(bad);
             EXPECT_FALSE(source.reload()) << bad;
             EXPECT_TRUE(source.lookup(tv::kIdB64Url).has_value()) << bad;
             EXPECT_FALSE(source.diagnostics().lastLoadOk) << bad;
         }
-        // Two records with one id: authd never writes that either.
+        // Two records with one id: authd never writes that, so the file was edited by hand and
+        // choosing between them would be guessing.
         writeFile(store(vectorRecord() + "," + vectorRecord()));
         EXPECT_FALSE(source.reload());
 
@@ -218,7 +228,7 @@ namespace
         // is armed and may reload each rewrite too (through the same mutex, to the same verdict).
         const auto diag = source.diagnostics();
         EXPECT_EQ(diag.tokens, 1U);
-        EXPECT_GE(diag.reloadFailures, 8U);
+        EXPECT_GE(diag.reloadFailures, 4U);
         EXPECT_GE(diag.reloads, 1U);
 
         // A good file again: the replica follows it and the load is marked ok.
@@ -227,6 +237,44 @@ namespace
         EXPECT_TRUE(source.diagnostics().lastLoadOk);
         EXPECT_GE(source.diagnostics().reloads, 2U);
         EXPECT_TRUE(source.lookup(tv::kIdB64Url)->revoked);
+    }
+
+    TEST_F(TokenKeySourceTest, ARecordThatCannotBeReadIsDroppedAndTheRestIsReplicated)
+    {
+        // The failure this is about: a token minted with an unbounded lifetime persisted a negative
+        // `expires`, and refusing the whole file over it froze this replica at whatever it held --
+        // for good, on every worker the cluster synchronised the file to, so NO token enrolled
+        // anybody any more. One unreadable record now costs exactly that record (issue #39133).
+        writeFile(store(poisonedRecord(kOtherId) + "," + vectorRecord()));
+        TokenKeySource source(m_path);
+
+        EXPECT_TRUE(source.diagnostics().lastLoadOk);
+        EXPECT_EQ(source.diagnostics().tokens, 1U);
+        EXPECT_TRUE(source.lookup(tv::kIdB64Url).has_value());
+        EXPECT_FALSE(source.lookup(kOtherId).has_value());
+
+        // Every field an entry owns, one bad record each, with a good one beside it: the load
+        // succeeds and only the bad record is missing.
+        for (const auto* bad :
+             {R"({"id":"bad","secret":null,"expires":1,"revoked":false})",
+              R"({"id":"AAAAAAAAAAAAAAAAAAAAAA","secret":"short","expires":1,"revoked":false})",
+              R"({"id":"AAAAAAAAAAAAAAAAAAAAAA","secret":"EBESExQVFhcYGRobHB0eHw","expires":-1,"revoked":false})",
+              R"({"id":"AAAAAAAAAAAAAAAAAAAAAA","secret":"EBESExQVFhcYGRobHB0eHw","expires":1,"revoked":"no"})"})
+        {
+            writeFile(store(std::string(bad) + "," + vectorRecord()));
+            EXPECT_TRUE(source.reload()) << bad;
+            EXPECT_TRUE(source.diagnostics().lastLoadOk) << bad;
+            EXPECT_EQ(source.diagnostics().tokens, 1U) << bad;
+            EXPECT_TRUE(source.lookup(tv::kIdB64Url).has_value()) << bad;
+        }
+
+        // And a file whose every record is unreadable is an empty replica, not a refusal: it is what
+        // the file says, and the previous tokens are no longer in it.
+        writeFile(store(poisonedRecord(kOtherId)));
+        EXPECT_TRUE(source.reload());
+        EXPECT_TRUE(source.diagnostics().lastLoadOk);
+        EXPECT_EQ(source.diagnostics().tokens, 0U);
+        EXPECT_FALSE(source.lookup(tv::kIdB64Url).has_value());
     }
 
     TEST_F(TokenKeySourceTest, UnknownFieldsAreIgnored)

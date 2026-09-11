@@ -54,6 +54,32 @@ def test_create_token_invalid_ttl(mock_socket):
     mock_socket.return_value.send.assert_not_called()
 
 
+@pytest.mark.parametrize('ttl', ['3651d', '315360001', '99999999999999999999d'])
+@patch('wazuh.core.enrollment_token.WazuhSocketJSON')
+def test_create_token_ttl_above_the_ceiling(mock_socket, ttl):
+    """A lifetime past what a token's expiry can hold is refused here, not on the socket.
+
+    Python's integers have no ceiling of their own, so without this the request would carry a number
+    authd has to refuse as well -- and a caller would read a refusal that travelled through a socket
+    instead of "not a valid timeframe".
+    """
+    with pytest.raises(WazuhError, match='.* 1411 .*'):
+        enrollment_token.create_token('wazuh-master', ttl=ttl)
+
+    mock_socket.return_value.send.assert_not_called()
+
+
+@patch('wazuh.core.enrollment_token.WazuhSocketJSON')
+def test_create_token_ttl_at_the_ceiling_is_sent(mock_socket):
+    """The ceiling itself is a lifetime like any other: what is refused is what cannot be stored."""
+    mock_socket.return_value.receive.return_value = dict(CREATED)
+
+    enrollment_token.create_token('wazuh-master', ttl='3650d')
+
+    mock_socket.return_value.send.assert_called_once_with(
+        {'function': 'token_create', 'arguments': {'address': 'wazuh-master', 'ttl': 315360000}})
+
+
 @patch('wazuh.core.enrollment_token.WazuhSocketJSON')
 def test_list_tokens(mock_socket):
     """list_tokens() renames `adr`, turns epochs into UTC datetimes and booleans into booleans."""

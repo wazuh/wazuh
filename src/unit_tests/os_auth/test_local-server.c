@@ -830,6 +830,132 @@ static void test_token_create_bad_arguments(void **state) {
     cJSON_Delete(response);
 }
 
+// A refusal of the REQUEST, decided before a certificate is opened -- which is why none of these
+// cases declares a `remote` section: expect_remote() sets a cmocka expectation, and one that went
+// unused would fail the case. That is the assertion, not an omission.
+static void test_token_create_refuses_a_lifetime_out_of_range(void **state) {
+    (void)state;
+    EXPECT_LOG_WARN();
+    // The last case below is refused by the JSON layer instead, which reports with merror.
+    EXPECT_LOG_ERROR();
+    int before = etoken_store_count();
+    // 9223372036854774784 is the nearest double below 2^63: it passes get_optional_long_arg()'s
+    // `> (double)LONG_MAX` check and converts to a long exactly, so `now + ttl` wrapped into a
+    // negative expiry the store's own loader refuses -- and the mint answered SUCCESS.
+    const char *out_of_range[] = {
+        "9223372036854774784",
+        "315360001",  // one second above the cap
+    };
+
+    for (size_t i = 0; i < sizeof(out_of_range) / sizeof(out_of_range[0]); i++) {
+        char request[256];
+        snprintf(request, sizeof(request),
+                 "{\"function\":\"token_create\",\"arguments\":{\"address\":\"wazuh-1\",\"ttl\":%s}}",
+                 out_of_range[i]);
+        cJSON *response = dispatch(request);
+        assert_int_equal(response_error(response), 9025);
+        cJSON *message = cJSON_GetObjectItem(response, "message");
+        assert_true(cJSON_IsString(message));
+        assert_non_null(strstr(message->valuestring, "ttl must be between"));
+        cJSON_Delete(response);
+    }
+
+    // Above what a long can even hold, the JSON layer answers first: either way nothing is minted.
+    cJSON *response = dispatch("{\"function\":\"token_create\",\"arguments\":{\"address\":\"wazuh-1\",\"ttl\":1e30}}");
+    assert_int_equal(response_error(response), 9002);
+    cJSON_Delete(response);
+
+    assert_int_equal(etoken_store_count(), before);
+}
+
+static void test_token_create_accepts_the_longest_lifetime(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    time_t before = time(NULL);
+    // The ceiling itself mints: what is refused is a lifetime that cannot be stored, not a long one.
+    cJSON *response = mint("{\"address\":\"wazuh-1\",\"ttl\":315360000}");
+    cJSON *expires = cJSON_GetObjectItem(cJSON_GetObjectItem(response, "data"), "expires");
+
+    assert_true(cJSON_IsNumber(expires));
+    assert_true(expires->valuedouble >= (double)(before + 315360000));
+    cJSON_Delete(response);
+}
+
+static void test_token_create_refuses_a_description_that_could_forge_a_log_line(void **state) {
+    (void)state;
+    EXPECT_LOG_WARN();
+    int before = etoken_store_count();
+    // The mint writes `description` into the INFO line that records who minted which token. A
+    // newline there writes a SECOND line into the manager's log indistinguishable from a real mint,
+    // which is the one thing that line exists to make possible: auditing. The API's
+    // `alphanumeric_symbols` format does not stop it (its `\s` matches a newline) and the command
+    // line applies no format at all, so the refusal has to live where both paths meet.
+    const char *forgeries[] = {
+        "rollout\\n2026/09/09 12:00:00 wazuh-manager-authd: INFO: Enrollment token minted",
+        "rollout\\r\\nsecond line",
+        "rollout\\u001b[2K",  // a terminal escape: the same record, rewritten on the reader's screen
+    };
+
+    for (size_t i = 0; i < sizeof(forgeries) / sizeof(forgeries[0]); i++) {
+        char request[512];
+        snprintf(request, sizeof(request),
+                 "{\"function\":\"token_create\",\"arguments\":{\"address\":\"wazuh-1\",\"description\":\"%s\"}}",
+                 forgeries[i]);
+        cJSON *response = dispatch(request);
+        assert_int_equal(response_error(response), 9025);
+        cJSON *message = cJSON_GetObjectItem(response, "message");
+        assert_true(cJSON_IsString(message));
+        assert_non_null(strstr(message->valuestring, "description contains a control character"));
+        cJSON_Delete(response);
+    }
+
+    assert_int_equal(etoken_store_count(), before);
+}
+
+static void test_token_create_bounds_the_free_text_it_persists(void **state) {
+    (void)state;
+    EXPECT_LOG_WARN();
+    int before = etoken_store_count();
+    // 60 KB of description is 60 KB written into etc/enrollment_tokens.json, re-serialized on every
+    // consumed use and shipped to every worker by the cluster -- for one token.
+    char *request = NULL;
+    char *description = NULL;
+    cJSON *response = NULL;
+    cJSON *message = NULL;
+    const size_t huge = 60 * 1024;
+
+    os_calloc(huge + 1, sizeof(char), description);
+    memset(description, 'A', huge);
+    os_calloc(huge + 512, sizeof(char), request);
+    snprintf(request, huge + 512,
+             "{\"function\":\"token_create\",\"arguments\":{\"address\":\"wazuh-1\",\"description\":\"%s\"}}",
+             description);
+
+    response = dispatch(request);
+    assert_int_equal(response_error(response), 9025);
+    message = cJSON_GetObjectItem(response, "message");
+    assert_true(cJSON_IsString(message));
+    assert_non_null(strstr(message->valuestring, "description is longer than"));
+    cJSON_Delete(response);
+
+    // The prefix is bounded for the same reason: it travels into every token's endpoint.
+    memset(description, 'p', ETOKEN_PREFIX_MAX + 1);
+    description[ETOKEN_PREFIX_MAX + 1] = '\0';
+    snprintf(request, huge + 512,
+             "{\"function\":\"token_create\",\"arguments\":{\"address\":\"wazuh-1\",\"prefix\":\"%s\"}}",
+             description);
+    response = dispatch(request);
+    assert_int_equal(response_error(response), 9025);
+    message = cJSON_GetObjectItem(response, "message");
+    assert_true(cJSON_IsString(message));
+    assert_non_null(strstr(message->valuestring, "prefix is longer than"));
+    cJSON_Delete(response);
+
+    os_free(description);
+    os_free(request);
+    assert_int_equal(etoken_store_count(), before);
+}
+
 static void test_token_verbs_on_worker_9015(void **state) {
     (void)state;
     EXPECT_LOG_ERROR();
@@ -1765,6 +1891,10 @@ int main(void) {
         cmocka_unit_test(test_token_create_embed_ca_never_carries_a_private_key),
         cmocka_unit_test(test_token_create_embed_ca_accepts_a_bundle_signed_by_its_second_certificate),
         cmocka_unit_test(test_token_create_bad_arguments),
+        cmocka_unit_test(test_token_create_refuses_a_lifetime_out_of_range),
+        cmocka_unit_test(test_token_create_accepts_the_longest_lifetime),
+        cmocka_unit_test(test_token_create_refuses_a_description_that_could_forge_a_log_line),
+        cmocka_unit_test(test_token_create_bounds_the_free_text_it_persists),
         cmocka_unit_test(test_token_verbs_on_worker_9015),
         cmocka_unit_test(test_token_list_and_revoke),
         cmocka_unit_test(test_token_purge_removes_and_reports),
