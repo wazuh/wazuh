@@ -2,6 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import logging
+
 from connexion.lifecycle import ConnexionRequest, ConnexionResponse
 from connexion import exceptions
 
@@ -10,6 +12,8 @@ from content_size_limit_asgi.errors import ContentSizeExceeded
 from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
 from api.api_exception import ExpectFailedException
 from api.controllers.util import json_response, build_recursion_error_response, ERROR_CONTENT_TYPE
+
+logger = logging.getLogger('wazuh-api')
 
 
 def _cleanup_detail_field(detail: str) -> str:
@@ -155,9 +159,17 @@ async def content_size_handler(request: ConnexionRequest, exc: ContentSizeExceed
     Response
         Returns status code 413 if the maximum upload file size is exceeded.
     """
+    # The access log records this request like any other, so without a line naming the limit an
+    # operator sees a bare 413 and no way to tell which setting refused it.
+    logger.warning(f"Rejected a request to {request.scope.get('path', '')}: {exc}")
+
+    # Same body as the ceiling `CheckExpectHeaderMiddleware` answers with, so a caller sees one
+    # shape for 413 whether the limit was crossed at the header or while the body was being read.
+    # It is also the shape `RequestTooLargeResponse` publishes in spec.yaml.
     problem = {
-        "title": "Content size exceeded.",
-        "detail": str(exc)
+        "title": "Request Entity Too Large",
+        "detail": str(exc),
+        "error": 413
     }
     return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
                          status_code=413, content_type=ERROR_CONTENT_TYPE)

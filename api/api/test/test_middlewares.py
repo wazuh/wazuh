@@ -1464,11 +1464,13 @@ async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
     call_next_mock = AsyncMock(return_value=Response("Success"))
 
     with patch('api.middlewares.configuration.api_conf', new={'max_upload_size': 5}):
-        with pytest.raises(ExpectFailedException) as exc_info:
+        with pytest.raises(PayloadTooLargeException) as exc_info:
             await middleware.dispatch(mock_request, call_next_mock)
 
     call_next_mock.assert_not_called()
-    assert exc_info.value.status == 417
+    # The expectation is understood; it is the body it announces that is refused, so this is a 413
+    # like every other size ceiling in the API, not the 417 an unmeetable expectation gets.
+    assert exc_info.value.status == 413
     assert "Maximum content size limit (5) exceeded" in exc_info.value.detail
 
 
