@@ -74,8 +74,8 @@ wazuh_db.commit_time_max=60
 # Maximum number of open database connections (1-4096, default: 64)
 wazuh_db.open_db_limit=64
 
-# Maximum file descriptors (1024-1048576, default: 458752)
-wazuh_db.rlimit_nofile=458752
+# Maximum file descriptors (1024-1048576, default: 65536, the service unit's LimitNOFILE ceiling)
+wazuh_db.rlimit_nofile=65536
 
 # Database fragmentation threshold percentage (0-100, default: 75)
 wazuh_db.fragmentation_threshold=75

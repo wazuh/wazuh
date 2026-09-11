@@ -137,6 +137,10 @@ static void mock_remoted_internal_option_values(int legacy_value) {
     will_return(__wrap_getDefine_Int_default, 37);     // pass_empty_keyfile
     will_return(__wrap_getDefine_Int_default, 41);     // ctrl_msg_queue_size
     will_return(__wrap_getDefine_Int_default, 43);     // keyupdate_interval
+    // rlimit_nofile: the default must match the LimitNOFILE ceiling of wazuh-manager.service
+    expect_value(__wrap_getDefine_Int_default, min, 1024);
+    expect_value(__wrap_getDefine_Int_default, max, 1048576);
+    expect_value(__wrap_getDefine_Int_default, default_val, 65536);
     will_return(__wrap_getDefine_Int_default, 59);     // nofile
     will_return(__wrap_getDefine_Int_default, 61);     // sender_pool
     will_return(__wrap_getDefine_Int_default, 67);     // request_pool

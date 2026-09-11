@@ -20,6 +20,8 @@ WAZUH_CONTROL="$WAZUH_HOME/bin/wazuh-manager-control"
 
 start() {
     echo -n "Starting Wazuh: "
+    # Same ceiling as LimitNOFILE in wazuh-manager.service
+    ulimit -n 65536 2>/dev/null
     ${WAZUH_CONTROL} start > /dev/null
     RETVAL=$?
     if [ $RETVAL -eq 0 ]; then

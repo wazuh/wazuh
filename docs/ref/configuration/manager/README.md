@@ -100,11 +100,37 @@ wazuh_modules.task_nice=10
 # Timeout in seconds for killing unresponsive modules (default: 10)
 wazuh_modules.kill_timeout=10
 
-# Maximum file descriptors for module processes (default: 8192)
+# Maximum file descriptors for module processes (8192-1048576, default: 8192)
 wazuh_modules.rlimit_nofile=8192
 ```
 
 **Used by modules:** Task Manager, Inventory Sync Server, Vulnerability Scanner, and other wodle-based modules.
+
+---
+
+## File descriptor limits
+
+Two layers decide how many files a daemon can keep open:
+
+1. **The supervisor's ceiling.** Whatever starts the manager sets the hard limit every daemon
+   inherits: `LimitNOFILE=65536` in `wazuh-manager.service`, `ulimit -n 65536` in the SysV init
+   scripts, or `ulimits.nofile` in a container. No daemon can go above it.
+2. **What each daemon asks for** inside that ceiling, through its internal option:
+
+| Option | Default | Range |
+|---|---|---|
+| `remoted.rlimit_nofile` | `65536` | `1024`-`1048576` |
+| `wazuh_db.rlimit_nofile` | `65536` | `1024`-`1048576` |
+| `wazuh_modules.rlimit_nofile` | `8192` | `8192`-`1048576` |
+
+The remoted and wazuh-db defaults equal the supervisor's ceiling, so they are reached on any package
+installation. A value above the ceiling needs `CAP_SYS_RESOURCE`, which containers drop by default:
+the daemon then logs `Could not set resource limit for file descriptors` as an ERROR and keeps the
+inherited limit. To go higher, raise the ceiling first and the option second.
+
+`wazuh_modules.rlimit_nofile` is a floor as well as a default: a value below `8192` is rejected at
+start with `Invalid definition` and `wazuh-manager-modulesd` does not run. Every other daemon sets no
+limit of its own and runs with the ceiling.
 
 ---
 
