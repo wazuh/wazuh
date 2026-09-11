@@ -397,21 +397,25 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Found a CA delivered by the manager at ${INCOMING_CA_FILE}, validating it." >> ./logs/upgrade.log
 
     CA_REJECT_REASON=""
+    CA_SNAPSHOT="./var/upgrade/.root-ca.pem.incoming-snapshot.$$"
 
     # var/incoming is not exclusively Wazuh-controlled: a file that validated as a
     # legitimate CA a moment ago could be swapped for a symlink to a sensitive
-    # file (e.g. /etc/shadow) before a later step re-reads the same path, which a
-    # plain -L check right here does not prevent by itself -- it only catches a
-    # symlink present at THIS instant, not one substituted in afterward. Snapshot
-    # the file into our own copy, under var/upgrade (not attacker-writable),
-    # immediately -- right after the one hard-link check below -- and validate
-    # and install from that snapshot alone from here on, so nothing after this
-    # point ever re-opens the attacker-influenced path. Also reject more than one
-    # hard link: -L alone does not catch a hard link to a sensitive file either.
-    CA_SNAPSHOT="./var/upgrade/.root-ca.pem.incoming-snapshot.$$"
-
-    if [ -n "$(find "${INCOMING_CA_FILE}" -links +1 2>/dev/null)" ]; then
-        CA_REJECT_REASON="has more than one hard link (refusing to treat it as this delivery's own copy)"
+    # file (e.g. /etc/shadow) before a later step re-reads the same path. The
+    # top-level -L check above and this point are several statements apart --
+    # wide enough for that swap -- so re-check immediately adjacent to the only
+    # read of this path, not just once at the top of this block: the narrowest
+    # window achievable without O_NOFOLLOW-capable tooling. -L again also
+    # catches a symlink swapped in since the top-level check; find's own
+    # default (physical/lstat) mode would see a freshly-swapped-in symlink's
+    # own link count (usually 1), not catch it via -links alone, so both checks
+    # run together, immediately before the cp, rather than relying on either
+    # alone. Snapshot into our own copy under var/upgrade (not
+    # attacker-writable) and validate/install from that snapshot alone from
+    # here on, so nothing after this point ever re-opens the attacker-
+    # influenced path.
+    if [ -L "${INCOMING_CA_FILE}" ] || [ -n "$(find "${INCOMING_CA_FILE}" -links +1 2>/dev/null)" ]; then
+        CA_REJECT_REASON="is a symlink or has more than one hard link"
     elif ! cp "${INCOMING_CA_FILE}" "${CA_SNAPSHOT}" 2>/dev/null; then
         CA_REJECT_REASON="could not be read"
     fi
@@ -425,6 +429,12 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
 
         if [ "${CA_BYTES}" -eq 0 ] || [ "${CA_BYTES}" -gt 65536 ]; then
             CA_REJECT_REASON="is empty or larger than the 64 KiB a CA certificate should ever need"
+        elif [ "$(grep -c -- "-----BEGIN CERTIFICATE-----" "${CA_SNAPSHOT}" 2>/dev/null)" -gt 1 ]; then
+            # openssl x509 parses only the first certificate in a multi-cert PEM file
+            # and silently ignores the rest -- a manager delivery is expected to be
+            # exactly one self-signed root, never a bundle/chain, so reject this
+            # shape explicitly rather than silently act on only part of the file.
+            CA_REJECT_REASON="contains more than one certificate (expected exactly one self-signed root)"
         elif ! openssl x509 -in "${CA_SNAPSHOT}" -noout > /dev/null 2>&1; then
             CA_REJECT_REASON="does not parse as a PEM certificate"
         elif ! openssl x509 -in "${CA_SNAPSHOT}" -noout -text 2>/dev/null | grep -A1 "X509v3 Basic Constraints" | grep -q "CA:TRUE"; then

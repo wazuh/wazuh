@@ -314,6 +314,38 @@ function get_conf_value($block, $sub, $tag) {
     return $tag_matches[$tag_matches.Count - 1].Groups[1].Value.Trim()
 }
 
+# Get current version
+$current_version = get-version
+if ($null -eq $current_version) {
+    write-output "$(Get-Date -format u) - Upgrade failed: could not read the current agent version." >> .\upgrade\upgrade.log
+    abort_upgrade "2"
+}
+write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
+
+# Get new msi version
+$msi_new_version = get_msi_version
+if ($msi_new_version -ne $null) {
+  write-output "$(Get-Date -format u) - MSI new version: $($msi_new_version)." >> .\upgrade\upgrade.log
+} else {
+  write-output "$(Get-Date -format u) - Could not find version in MSI file." >> .\upgrade\upgrade.log
+}
+
+
+# Check version compatibility: direct upgrade to 5.x requires agent >= 4.14
+if ($msi_new_version -ne $null) {
+    try {
+        $target_ver = [Version]($msi_new_version -replace '^v', '')
+        $current_ver = [Version]($current_version -replace '^v', '')
+        if ($target_ver -ge [Version]"5.0.0" -and $current_ver -lt [Version]"4.14.0") {
+            write-output "$(Get-Date -format u) - Upgrade failed: direct upgrade to v5.0.0 is not supported from version $($current_version). Please upgrade to v4.14.x first." >> .\upgrade\upgrade.log
+            abort_upgrade "1"
+        }
+    } catch {
+        write-output "$(Get-Date -format u) - Could not compare versions for compatibility check: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+        abort_upgrade "2"
+    }
+}
+
 # Default drop-in location for the manager's CA (mirrored on Linux/macOS in
 # pkg_installer.sh): an operator can place it here ahead of an upgrade without having
 # to hand-edit ossec.conf, and it also doubles as the on-disk anchor path for a CA
@@ -325,8 +357,9 @@ $default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
 # into the incoming-transfer directory under this reserved filename over the com
 # channel, before issuing the upgrade command -- never look in the upgrade
 # directory (".\upgrade"), since it is cleared before this script runs, same as
-# UPGRADE_DIR on the Linux/macOS side. Runs at the very start of the script, ahead of
-# the manager connectivity check and the <ssl> gate below.
+# UPGRADE_DIR on the Linux/macOS side. Runs after the version-compatibility check
+# above (an unsupported version jump must abort before anything is installed, not
+# after), but still ahead of the manager connectivity check and the <ssl> gate below.
 #
 # Installing the file is the entire cutover here -- ossec.conf is never edited. Mirrors
 # pkg_installer.sh's INCOMING_CA_FILE handling; see that file for the
@@ -356,17 +389,56 @@ if (-Not $incoming_item) {
     $ca_reject_reason = $null
     $ca_cert = $null
     $ca_pem = $null
+    $ca_snapshot = Join-Path $wazuhDir "upgrade\.root-ca.pem.incoming-snapshot.tmp"
 
+    # incoming\ is not exclusively Wazuh-controlled: a file that validated as a
+    # legitimate CA a moment ago could be swapped for a reparse point or a hard
+    # link to an attacker-chosen certificate before a later step re-reads the
+    # same path -- the LinkType check above and this point are separate
+    # filesystem accesses, wide enough for that swap. Re-check LinkType and the
+    # hard-link count again, immediately adjacent to the only read of this
+    # path, then snapshot into .\upgrade\ (not attacker-writable, unlike
+    # incoming\) and validate/install from that snapshot alone from here on --
+    # mirrors pkg_installer.sh's equivalent pattern on Linux/macOS. NTFS hard
+    # links aren't reparse points, so LinkType alone doesn't catch one; fsutil
+    # hardlink list does (a file with only its own name reports exactly 1).
+    $hardlink_count = 0
     try {
-        $ca_pem = Get-Content -Path $incoming_ca_file -Raw
+        $hardlink_count = (fsutil hardlink list $incoming_ca_file 2>$null | Measure-Object).Count
     } catch {
-        $ca_reject_reason = "could not be read ($($_.Exception.Message))"
+        $hardlink_count = 0
+    }
+    $incoming_recheck = Get-Item -Force -ErrorAction SilentlyContinue $incoming_ca_file
+
+    if (($incoming_recheck -and $incoming_recheck.LinkType) -or $hardlink_count -gt 1) {
+        $ca_reject_reason = "is a symlink/junction or has more than one hard link"
+    } else {
+        try {
+            Copy-Item -Path $incoming_ca_file -Destination $ca_snapshot -Force -ErrorAction Stop
+            $ca_pem = Get-Content -Path $ca_snapshot -Raw
+        } catch {
+            $ca_reject_reason = "could not be read ($($_.Exception.Message))"
+        }
     }
 
     # Cheap bound before ever parsing it: empty or implausibly large for a CA
     # certificate is rejected the same way a malformed one is.
     if (-Not $ca_reject_reason -and ([string]::IsNullOrEmpty($ca_pem) -or $ca_pem.Length -gt 65536)) {
         $ca_reject_reason = "is empty or larger than the 64 KiB a CA certificate should ever need"
+    }
+
+    # A manager delivery is expected to be exactly one self-signed root, never a
+    # bundle/chain -- reject that shape explicitly. Left unchecked, the global
+    # -replace below would strip every BEGIN/END marker in a multi-cert file
+    # and concatenate all their bodies into one blob, unlike openssl x509 on
+    # the Linux/macOS side, which silently parses only the first certificate
+    # and ignores the rest; explicit rejection here keeps both platforms
+    # consistent instead of diverging on this input shape.
+    if (-Not $ca_reject_reason) {
+        $begin_marker_count = ([regex]::Matches($ca_pem, '-----BEGIN CERTIFICATE-----')).Count
+        if ($begin_marker_count -gt 1) {
+            $ca_reject_reason = "contains more than one certificate (expected exactly one self-signed root)"
+        }
     }
 
     if (-Not $ca_reject_reason) {
@@ -462,6 +534,12 @@ if (-Not $incoming_item) {
             # itself runs as SYSTEM, so this does not block it from reading the anchor.
             try {
                 icacls "$default_ca_file" /remove *S-1-5-11 /q | Out-Null
+                # icacls is an external process: a non-zero exit code is not a
+                # PowerShell exception and would not otherwise be caught below --
+                # check $LASTEXITCODE explicitly rather than assume success.
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Output "$(Get-Date -format u) - Could not restrict permissions on $($default_ca_file): icacls exited with code $($LASTEXITCODE)." >> .\upgrade\upgrade.log
+                }
             } catch {
                 Write-Output "$(Get-Date -format u) - Could not restrict permissions on $($default_ca_file): $($_.Exception.Message)" >> .\upgrade\upgrade.log
             }
@@ -473,39 +551,7 @@ if (-Not $incoming_item) {
         }
     }
 
-    Remove-Item -Path $incoming_ca_file -Force -ErrorAction SilentlyContinue
-}
-
-# Get current version
-$current_version = get-version
-if ($null -eq $current_version) {
-    write-output "$(Get-Date -format u) - Upgrade failed: could not read the current agent version." >> .\upgrade\upgrade.log
-    abort_upgrade "2"
-}
-write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
-
-# Get new msi version
-$msi_new_version = get_msi_version
-if ($msi_new_version -ne $null) {
-  write-output "$(Get-Date -format u) - MSI new version: $($msi_new_version)." >> .\upgrade\upgrade.log
-} else {
-  write-output "$(Get-Date -format u) - Could not find version in MSI file." >> .\upgrade\upgrade.log
-}
-
-
-# Check version compatibility: direct upgrade to 5.x requires agent >= 4.14
-if ($msi_new_version -ne $null) {
-    try {
-        $target_ver = [Version]($msi_new_version -replace '^v', '')
-        $current_ver = [Version]($current_version -replace '^v', '')
-        if ($target_ver -ge [Version]"5.0.0" -and $current_ver -lt [Version]"4.14.0") {
-            write-output "$(Get-Date -format u) - Upgrade failed: direct upgrade to v5.0.0 is not supported from version $($current_version). Please upgrade to v4.14.x first." >> .\upgrade\upgrade.log
-            abort_upgrade "1"
-        }
-    } catch {
-        write-output "$(Get-Date -format u) - Could not compare versions for compatibility check: $($_.Exception.Message)" >> .\upgrade\upgrade.log
-        abort_upgrade "2"
-    }
+    Remove-Item -Force -ErrorAction SilentlyContinue $ca_snapshot, $incoming_ca_file
 }
 
 # Accept any certificate: the manager's is self-signed. Compiled, because .NET calls this
