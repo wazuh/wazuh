@@ -388,26 +388,28 @@ extern "C"
         }
     }
 
-    bool hc_spki_pin_matches(const char* cacerts_body, size_t body_len, const char* pin_b64url)
+    bool hc_spki_pinned_certificate(const char* cacerts_body, size_t body_len, const char* pin_b64url,
+                                    char* matched_pem, size_t matched_pem_size)
     {
-        if (cacerts_body == nullptr || pin_b64url == nullptr)
+        if (cacerts_body == nullptr || pin_b64url == nullptr || matched_pem == nullptr || matched_pem_size == 0)
         {
             return false;
         }
 
         try
         {
-            const auto digests = spkiSha256AllFromPem(std::string_view(cacerts_body, body_len));
+            const auto matched = spkiPinnedCertificatePem(std::string_view(cacerts_body, body_len), pin_b64url);
 
-            for (const auto& digest : digests)
+            // A destination that cannot hold the whole certificate fails closed rather than
+            // writing a truncated one: a half-written PEM is not a trust anchor, and silently
+            // installing one would be worse than refusing the bootstrap.
+            if (!matched || matched->size() >= matched_pem_size)
             {
-                if (spkiPinCompare(digest, pin_b64url) == SpkiPinMatch::Match)
-                {
-                    return true;
-                }
+                return false;
             }
 
-            return false;
+            std::memcpy(matched_pem, matched->c_str(), matched->size() + 1);
+            return true;
         }
         catch (...)
         {

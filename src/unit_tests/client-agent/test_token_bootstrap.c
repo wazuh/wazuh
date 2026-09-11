@@ -30,8 +30,12 @@
  * KEYS_FILE and AGENT_ENROLLMENT_TOKEN_FILE are all relative paths, so a real mkdir/fopen here
  * exercises the exact latch/read/write logic production code runs, with nothing to fake at
  * that layer. Only the https_client module boundary
- * (hc_fetch_cacerts/hc_enroll/hc_spki_pin_matches) is mocked, mirroring
+ * (hc_fetch_cacerts/hc_enroll/hc_spki_pinned_certificate) is mocked, mirroring
  * test_https_client_bridge.c's own convention for that same boundary. */
+
+/* Deliberately unlike the fetched body below: the anchor must end up holding the pinned
+ * certificate alone, so the two have to be distinguishable. */
+#define PINNED_CERT "PINNED-CERT-ONLY"
 
 static hc_config_t g_fetch_config;
 static int g_fetch_call_count = 0;
@@ -89,12 +93,26 @@ bool __wrap_hc_enroll(const hc_config_t *config, const hc_enroll_request_t *requ
 
 static int g_spki_call_count = 0;
 
-bool __wrap_hc_spki_pin_matches(const char *cacerts_body, size_t body_len, const char *pin_b64url) {
+/* Returns the pinned certificate itself, not a verdict: what the bootstrap installs as the
+ * anchor must be this certificate alone and never the bundle it was found in, so the tests
+ * feed a value here that is deliberately different from the fetched body and then assert on
+ * which of the two reached the anchor. A NULL means no certificate matched. */
+bool __wrap_hc_spki_pinned_certificate(const char *cacerts_body, size_t body_len,
+                                       const char *pin_b64url, char *matched_pem,
+                                       size_t matched_pem_size) {
     (void) cacerts_body;
     (void) body_len;
     (void) pin_b64url;
     g_spki_call_count++;
-    return (bool) mock();
+
+    const char *pem = (const char *) mock();
+
+    if (pem == NULL) {
+        return false;
+    }
+
+    snprintf(matched_pem, matched_pem_size, "%s", pem);
+    return true;
 }
 
 /* The bootstrap asks for an anchor owned by root, which an unprivileged process cannot do:
@@ -302,7 +320,7 @@ static void test_empty_placeholder_keys_file_is_not_already_enrolled(void **stat
     will_return(__wrap_hc_fetch_cacerts, 200L);
     will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
     will_return(__wrap_hc_fetch_cacerts, 1);
-    will_return(__wrap_hc_spki_pin_matches, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
     will_return(__wrap_hc_enroll, 200L);
     will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
     will_return(__wrap_hc_enroll, 1);
@@ -366,7 +384,7 @@ static void test_pin_mismatch_logs_named_error_and_writes_nothing(void **state) 
     will_return(__wrap_hc_fetch_cacerts, 200L);
     will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
     will_return(__wrap_hc_fetch_cacerts, 1);
-    will_return(__wrap_hc_spki_pin_matches, 0);
+    will_return(__wrap_hc_spki_pinned_certificate, NULL);
 
     expect_string(__wrap__merror, formatted_msg,
                   "Token bootstrap: fetched CA does not match the enrollment token's pin -- "
@@ -387,7 +405,7 @@ static void test_full_happy_path_via_pin(void **state) {
     will_return(__wrap_hc_fetch_cacerts, 200L);
     will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
     will_return(__wrap_hc_fetch_cacerts, 1);
-    will_return(__wrap_hc_spki_pin_matches, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
     will_return(__wrap_hc_enroll, 200L);
     will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
     will_return(__wrap_hc_enroll, 1);
@@ -411,7 +429,10 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal(g_enroll_call_count, 1);
 
     assert_int_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_string_equal(read_file("etc/certs/root-ca.pem"), "FAKE-CA-BODY");
+    /* The pinned certificate alone, not the bundle it arrived in: anything else in that body
+     * was chosen by whoever answered an unverified fetch, and installing it would hand them a
+     * trust anchor beside the genuine one. */
+    assert_string_equal(read_file("etc/certs/root-ca.pem"), PINNED_CERT);
     assert_int_equal(IsFile("etc/client.keys"), 0);
     /* The one-shot token is discarded on success. */
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
@@ -441,7 +462,7 @@ static void test_credential_less_token_enrolls_without_error(void **state) {
     will_return(__wrap_hc_fetch_cacerts, 200L);
     will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
     will_return(__wrap_hc_fetch_cacerts, 1);
-    will_return(__wrap_hc_spki_pin_matches, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
     will_return(__wrap_hc_enroll, 200L);
     will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
     will_return(__wrap_hc_enroll, 1);
@@ -464,7 +485,10 @@ static void test_credential_less_token_enrolls_without_error(void **state) {
     assert_int_equal(g_enroll_call_count, 1);
 
     assert_int_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_string_equal(read_file("etc/certs/root-ca.pem"), "FAKE-CA-BODY");
+    /* The pinned certificate alone, not the bundle it arrived in: anything else in that body
+     * was chosen by whoever answered an unverified fetch, and installing it would hand them a
+     * trust anchor beside the genuine one. */
+    assert_string_equal(read_file("etc/certs/root-ca.pem"), PINNED_CERT);
     assert_int_equal(IsFile("etc/client.keys"), 0);
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
 

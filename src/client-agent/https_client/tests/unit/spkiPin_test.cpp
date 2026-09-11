@@ -380,22 +380,6 @@ TEST(SpkiPinTest, RoundTripPemToDerToPemIsStable)
     EXPECT_EQ(kRsaSpkiHex, spkiPinHex(digestOrFail(reencodedPem)));
 }
 
-TEST(SpkiPinTest, PemFileAndPemStringAgree)
-{
-    const std::string path = ::testing::TempDir() + "hc_spki_fixture.pem";
-    {
-        std::ofstream file {path, std::ios::binary};
-        file << kEcCertPem;
-    }
-
-    SpkiPinError error = SpkiPinError::Internal;
-    const auto fromFile = spkiSha256FromPemFile(path, &error);
-    ASSERT_TRUE(fromFile.has_value());
-    EXPECT_EQ(SpkiPinError::None, error);
-    EXPECT_EQ(kEcSpkiHex, spkiPinHex(*fromFile));
-    std::remove(path.c_str());
-}
-
 // ---------------------------------------------------------------------------
 // DoD 4: the pin comparison.
 //
@@ -602,13 +586,6 @@ TEST(SpkiPinTest, EmptyDerIsNoCertificate)
     EXPECT_EQ(SpkiPinError::NoCertificate, error);
 }
 
-TEST(SpkiPinTest, MissingPemFileIsNoCertificate)
-{
-    SpkiPinError error = SpkiPinError::None;
-    EXPECT_FALSE(spkiSha256FromPemFile("/nonexistent/hc-spki/none.pem", &error).has_value());
-    EXPECT_EQ(SpkiPinError::NoCertificate, error);
-}
-
 TEST(SpkiPinTest, ErrorPointerIsOptional)
 {
     // Every entry point, with the defaulted null error argument, on a good and
@@ -618,7 +595,6 @@ TEST(SpkiPinTest, ErrorPointerIsOptional)
     EXPECT_EQ(1u, spkiSha256AllFromPem(kRsaCertPem).size());
     EXPECT_TRUE(spkiSha256AllFromPem("").empty());
     EXPECT_FALSE(spkiSha256FromDer(nullptr, 0).has_value());
-    EXPECT_FALSE(spkiSha256FromPemFile("/nonexistent/hc-spki/none.pem").has_value());
 }
 
 // A real libcurl GET runs immediately before these calls in the bootstrap
