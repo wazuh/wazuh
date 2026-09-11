@@ -57,8 +57,6 @@
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
-constexpr auto SYSTEM_IDLE_PROCESS_NAME {"System Idle Process"};
-constexpr auto SYSTEM_PROCESS_NAME {"System"};
 
 
 static const std::map<std::string, DWORD> gs_firmwareTableProviderSignature
@@ -73,17 +71,14 @@ static constexpr auto ProcessCommandLineInformation = static_cast<PROCESSINFOCLA
 class SysInfoProcess final
 {
     public:
-        SysInfoProcess(const DWORD pId, const HANDLE processHandle)
-            : m_pId{ pId },
-              m_hProcess{ processHandle },
+        explicit SysInfoProcess(const HANDLE processHandle)
+            : m_hProcess{ processHandle },
               m_creationTime{},
               m_kernelModeTime{},
               m_userModeTime{},
-              m_pageFileUsage{},
-              m_virtualSize{}
+              m_timesValid{ false }
         {
             setProcessTimes();
-            setProcessMemInfo();
         }
 
         ~SysInfoProcess() = default;
@@ -152,26 +147,11 @@ class SysInfoProcess final
             return m_userModeTime.QuadPart;
         }
 
-        DWORD pageFileUsage() const
+        // creationTime(), kernelModeTime() and userModeTime() are meaningless unless this returns
+        // true: a zero creation time underflows into a plausible-looking 2009-04-22 timestamp.
+        bool timesValid() const
         {
-            return m_pageFileUsage;
-        }
-
-        DWORD virtualSize() const
-        {
-            return m_virtualSize;
-        }
-
-        DWORD sessionId() const
-        {
-            DWORD ret{};
-
-            if (!ProcessIdToSessionId(m_pId, &ret))
-            {
-                // Unable to retrieve session ID from current process.
-            }
-
-            return ret;
+            return m_timesValid;
         }
 
     private:
@@ -202,24 +182,8 @@ class SysInfoProcess final
                 m_creationTime.HighPart = lpCreationTime.dwHighDateTime;
                 m_creationTime.QuadPart /= TO_SECONDS_VALUE;
 
+                m_timesValid = true;
             }
-
-            // else: Unable to retrieve kernel mode and user mode times from current process.
-        }
-
-        void setProcessMemInfo()
-        {
-            PROCESS_MEMORY_COUNTERS pMemCounters{};
-
-            // Get page file usage and virtual size
-            // Reference: https://stackoverflow.com/a/1986486
-            if (GetProcessMemoryInfo(m_hProcess, &pMemCounters, sizeof(pMemCounters)))
-            {
-                m_pageFileUsage = pMemCounters.PagefileUsage;
-                m_virtualSize   = pMemCounters.WorkingSetSize + pMemCounters.PagefileUsage;
-            }
-
-            // else: Unable to retrieve page file usage from current process
         }
 
         static SystemDrivesMap getNtWin32DrivesMap()
@@ -339,61 +303,41 @@ class SysInfoProcess final
             }
         }
 
-        const DWORD     m_pId;
         HANDLE          m_hProcess;
         ULARGE_INTEGER  m_creationTime;
         ULARGE_INTEGER  m_kernelModeTime;
         ULARGE_INTEGER  m_userModeTime;
-        DWORD           m_pageFileUsage;
-        DWORD           m_virtualSize;
+        bool            m_timesValid;
 };
 
 
-static bool isSystemProcess(const DWORD pid)
+static nlohmann::json getProcessHandleFields(const PROCESSENTRY32& processEntry)
 {
-    return pid == 0 || pid == 4;
-}
-
-static std::string processName(const PROCESSENTRY32& processEntry)
-{
-    std::string ret;
-    const DWORD pId { processEntry.th32ProcessID };
-
-    if (isSystemProcess(pId))
-    {
-        ret = (pId == 0) ? SYSTEM_IDLE_PROCESS_NAME : SYSTEM_PROCESS_NAME;
-    }
-    else
-    {
-        ret = processEntry.szExeFile;
-    }
-
-    return ret;
-}
-
-static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
-{
-    nlohmann::json jsProcessInfo{};
+    // An empty object, never a null: this is what buildProcessRecord() overlays, and it is
+    // returned as is whenever no handle can be opened.
+    auto jsHandleFields = nlohmann::json::object();
     const auto pId { processEntry.th32ProcessID };
-    const auto processHandle { OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pId) };
+
+    // PROCESS_QUERY_LIMITED_INFORMATION covers every call made on the handle below, and
+    // Windows grants it on processes that refuse PROCESS_QUERY_INFORMATION, such as csrss.exe.
+    const auto processHandle { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pId) };
 
     if (processHandle)
     {
-        SysInfoProcess process(pId, processHandle);
+        SysInfoProcess process(processHandle);
 
-        // Current process information
-        jsProcessInfo["name"]         = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(processName(processEntry));
-        jsProcessInfo["stime"]        = process.kernelModeTime();
-        jsProcessInfo["parent_pid"]   = processEntry.th32ParentProcessID;
-        jsProcessInfo["pid"]          = std::to_string(pId);
-        jsProcessInfo["utime"]        = process.userModeTime();
-        jsProcessInfo["start"]        = Utils::rawTimestampToISO8601(static_cast<uint32_t>(process.creationTime()));
+        if (process.timesValid())
+        {
+            jsHandleFields["stime"]        = process.kernelModeTime();
+            jsHandleFields["utime"]        = process.userModeTime();
+            jsHandleFields["start"]        = Utils::rawTimestampToISO8601(static_cast<uint32_t>(process.creationTime()));
+        }
 
         if (isSystemProcess(pId))
         {
-            jsProcessInfo["command_line"]    = "none";
-            jsProcessInfo["args"]  = "";
-            jsProcessInfo["args_count"]  = 0;
+            jsHandleFields["command_line"]    = "none";
+            jsHandleFields["args"]  = "";
+            jsHandleFields["args_count"]  = 0;
         }
         else
         {
@@ -402,23 +346,24 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
 
             if (!parsed.cmd.empty())
             {
-                jsProcessInfo["command_line"]   = parsed.cmd;
-                jsProcessInfo["args"] = parsed.argvs;
-                jsProcessInfo["args_count"] = parsed.argvs.size();
+                jsHandleFields["command_line"]   = parsed.cmd;
+                jsHandleFields["args"] = parsed.argvs;
+                jsHandleFields["args_count"] = parsed.argvs.size();
             }
             else
             {
-                jsProcessInfo["command_line"]   = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(process.cmd());
-                jsProcessInfo["args"] = "";
-                jsProcessInfo["args_count"]  = 0;
+                jsHandleFields["command_line"]   = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(process.cmd());
+                jsHandleFields["args"] = "";
+                jsHandleFields["args_count"]  = 0;
             }
         }
 
         CloseHandle(processHandle);
     }
 
-    return jsProcessInfo;
+    return jsHandleFields;
 }
+
 
 static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::function<void(nlohmann::json&)> returnCallback, const REGSAM access = 0)
 {
@@ -642,31 +587,7 @@ static void fillProcessesData(std::function<void(PROCESSENTRY32)> func)
     processEntry.dwSize = sizeof(PROCESSENTRY32);
     const auto processesSnapshot { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
 
-    if (INVALID_HANDLE_VALUE != processesSnapshot)
-    {
-        if (Process32First(processesSnapshot, &processEntry))
-        {
-            do
-            {
-                func(processEntry);
-            }
-            while (Process32Next(processesSnapshot, &processEntry));
-        }
-        else
-        {
-            CloseHandle(processesSnapshot);
-            throw std::system_error
-            {
-                static_cast<int>(GetLastError()),
-                std::system_category(),
-                "Unable to retrieve process information from the snapshot."
-            };
-        }
-
-        CloseHandle(processesSnapshot);
-
-    }
-    else
+    if (INVALID_HANDLE_VALUE == processesSnapshot)
     {
         throw std::system_error
         {
@@ -675,6 +596,25 @@ static void fillProcessesData(std::function<void(PROCESSENTRY32)> func)
             "Unable to create process snapshot."
         };
     }
+
+    // Closes the snapshot on every exit path, including func() throwing.
+    const std::unique_ptr<void, decltype(&CloseHandle)> snapshotGuard { processesSnapshot, CloseHandle };
+
+    if (!Process32First(processesSnapshot, &processEntry))
+    {
+        throw std::system_error
+        {
+            static_cast<int>(GetLastError()),
+            std::system_category(),
+            "Unable to retrieve process information from the snapshot."
+        };
+    }
+
+    do
+    {
+        func(processEntry);
+    }
+    while (Process32Next(processesSnapshot, &processEntry));
 }
 
 nlohmann::json SysInfo::getProcessesInfo() const
@@ -862,12 +802,8 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
 {
     fillProcessesData([&callback](const auto & processEntry)
     {
-        auto processInfo = getProcessInfo(processEntry);
-
-        if (!processInfo.empty())
-        {
-            callback(processInfo);
-        }
+        auto processInfo = buildProcessRecord(processEntry, getProcessHandleFields(processEntry));
+        callback(processInfo);
     });
 }
 
