@@ -16,10 +16,15 @@ from typing import Optional
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.middleware.cors import CORSMiddleware
 
+from connexion import AsyncApp
 from connexion.exceptions import OAuthProblem, Unauthorized
 from connexion.lifecycle import ConnexionRequest
+from connexion.middleware import MiddlewarePosition
 from connexion.security import AbstractSecurityHandler
+
+from content_size_limit_asgi import ContentSizeLimitMiddleware
 
 from secure import Secure, ContentSecurityPolicy, XFrameOptions, Server
 
@@ -695,7 +700,13 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
     """Middleware to check for the 'Expect' header in incoming requests."""
 
     async def dispatch(self, request: ConnexionRequest, call_next: RequestResponseEndpoint) -> Response:
-        """Check for specific request headers and generate error 417 if conditions are not met.
+        """Refuse an expectation this API cannot meet, before the body behind it is read.
+
+        An expectation other than `100-continue` is refused with 417, the status RFC 9110 reserves
+        for one the server will not meet. A `100-continue` whose declared length is already above
+        `max_upload_size` is refused with 413 instead: the expectation itself is understood, it is
+        the body it announces that is too large, and 413 is the status every other size ceiling in
+        this API answers with.
 
         Parameters
         ----------
@@ -707,6 +718,13 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
         Returns
         -------
             Returned response.
+
+        Raises
+        ------
+        ExpectFailedException
+            If the request expects something other than `100-continue`.
+        PayloadTooLargeException
+            If the request declares a body above `max_upload_size`.
         """
 
         if 'Expect' not in request.headers:
@@ -721,10 +739,77 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
             if 'Content-Length' in request.headers:
                 content_length = int(request.headers["Content-Length"])
                 max_upload_size = configuration.api_conf["max_upload_size"]
-                if content_length > max_upload_size:
-                    raise ExpectFailedException(status=417, title="Expectation failed",
-                                                detail=f"Maximum content size limit ({max_upload_size}) exceeded "
-                                                       f"({content_length} bytes read)")
+                if max_upload_size and content_length > max_upload_size:
+                    logger.warning(
+                        "Rejected a request to %s: Maximum content size limit (%s) exceeded (%s bytes declared)",
+                        request.scope.get('path', ''), max_upload_size, content_length)
+                    raise PayloadTooLargeException(
+                        title="Request Entity Too Large",
+                        detail=f"Maximum content size limit ({max_upload_size}) exceeded "
+                               f"({content_length} bytes declared)")
 
         response = await call_next(request)
         return response
+
+
+def setup_middlewares(app: AsyncApp):
+    """Register every API middleware on `app`, in the only order that keeps the size ceiling a 413.
+
+    `ContentSizeLimitMiddleware` enforces `max_upload_size` by wrapping the ASGI receive channel and
+    raising `ContentSizeExceeded` from inside the receive call that crosses the limit. That exception
+    has to reach connexion's exception middleware to become a 413, and a `BaseHTTPMiddleware` runs
+    everything below it inside its own anyio task group: an exception crossing that boundary arrives
+    wrapped in an `ExceptionGroup` the exception middleware does not handle, and `ServerErrorMiddleware`
+    renders it as a 500. A `BaseHTTPMiddleware` registered *above* the ceiling is harmless; one *below*
+    it turns every oversized body into a 500.
+
+    connexion inserts a middleware immediately before the class named by its position, so two
+    registered at the same position stack in registration order, the later one landing below the
+    earlier. Registering the ceiling last is therefore what keeps every `BaseHTTPMiddleware` above it,
+    and `BEFORE_VALIDATION` is what keeps it above `RequestValidationMiddleware`, the layer that reads
+    the body of every endpoint that declares a JSON schema.
+
+    A middleware added after this function, or at a position below `BEFORE_VALIDATION`, silently takes
+    the ceiling back to answering 500. Add it inside this function instead, before the ceiling.
+
+    Parameters
+    ----------
+    app : AsyncApp
+        Connexion application to register the middlewares on.
+    """
+    api_conf = configuration.api_conf
+
+    # CheckRateLimitsMiddleware (wraps SecurityMiddleware) charges the unauthenticated bucket only
+    # once a request has actually failed authentication; CheckAuthenticatedRateLimitMiddleware
+    # (runs right after SecurityMiddleware) charges the authenticated bucket for one that
+    # succeeded. Each is independent -- neither reserves anything for the other to release.
+    if api_conf['access']['max_unauthenticated_request_per_minute'] > 0:
+        app.add_middleware(CheckRateLimitsMiddleware, MiddlewarePosition.BEFORE_SECURITY)
+    if api_conf['access']['max_request_per_minute'] > 0:
+        app.add_middleware(CheckAuthenticatedRateLimitMiddleware, MiddlewarePosition.BEFORE_VALIDATION)
+    # Judged before request validation reads the body, and above the ceiling. Its default position,
+    # BEFORE_CONTEXT, left it below every reader of the body, where it swallowed the ceiling's
+    # ContentSizeExceeded for the endpoints request validation does not read -- the XML and
+    # octet-stream configuration uploads, the very requests max_upload_size exists to bound.
+    app.add_middleware(CheckExpectHeaderMiddleware, MiddlewarePosition.BEFORE_VALIDATION)
+    app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
+    app.add_middleware(CheckAuthContextSizeMiddleware, MiddlewarePosition.BEFORE_SECURITY)
+    app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
+    app.add_middleware(SecureHeadersMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
+
+    # Enable CORS
+    if api_conf['cors']['enabled']:
+        app.add_middleware(
+            CORSMiddleware,
+            position=MiddlewarePosition.BEFORE_EXCEPTION,
+            allow_origins=api_conf['cors']['source_route'],
+            expose_headers=api_conf['cors']['expose_headers'],
+            allow_headers=api_conf['cors']['allow_headers'],
+            allow_credentials=api_conf['cors']['allow_credentials'],
+        )
+
+    # Maximum body size that the API accepts, in bytes (0 disables the ceiling). This must stay the
+    # last middleware registered -- see this function's docstring.
+    if api_conf['max_upload_size']:
+        app.add_middleware(ContentSizeLimitMiddleware, MiddlewarePosition.BEFORE_VALIDATION,
+                           max_content_size=api_conf['max_upload_size'])
