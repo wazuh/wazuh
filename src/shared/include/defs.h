@@ -289,6 +289,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AUTHD_QUEUE_DIR     "queue/authd"
 #define PENDING_PURGES_FILE "queue/authd/pending-purges"
 
+/* The credentials authd has already handed out and the database has not stored yet (issue #39078).
+ * Same directory and the same reason: it is authd's own durable state, and it carries secrets, so
+ * it is written 0640 and never shared with the other daemons. */
+#define PENDING_IDENTITIES_FILE "queue/authd/pending-identities"
+
 /* Shared config directory */
 #ifndef WIN32
 #define SHAREDCFG_DIR "etc/shared"

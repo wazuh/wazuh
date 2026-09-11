@@ -196,7 +196,10 @@ int etoken_mint_prepare(const etoken_mint_request_t *req, etoken_mint_t *out, ch
     cJSON *remote = NULL;
     const cJSON *https = NULL;
     X509 *leaf = NULL;
+    X509 **cas = NULL;      /* every certificate of the CA file; `ca` points into this array */
     X509 *ca = NULL;
+    size_t ca_count = 0;
+    size_t i;
     ASN1_OCTET_STRING *literal = NULL;
     char *certificate = NULL;
     char *ca_certificate = NULL;
@@ -264,13 +267,23 @@ int etoken_mint_prepare(const etoken_mint_request_t *req, etoken_mint_t *out, ch
 
     /* --- The trust anchor -------------------------------------------------------------------- */
 
-    if (ca = w_x509_load_pem(ca_certificate), ca == NULL) {
+    /* Every certificate of the file, once: the signer may be the second of a bundle, and the same
+     * objects are what gets pinned and (with --embed-ca) published -- so nothing can change between
+     * validating the file and publishing from it (issue #39078, H01) */
+    if (cas = w_x509_load_all_pem(ca_certificate, &ca_count), cas == NULL) {
         etoken_detail(detail, detail_size, "no ca_certificate: cannot read '%s'", ca_certificate);
         ret = -1;
         goto end;
     }
 
-    if (!w_x509_signed_by(leaf, ca)) {
+    for (i = 0; i < ca_count; i++) {
+        if (w_x509_signed_by(leaf, cas[i])) {
+            ca = cas[i];
+            break;
+        }
+    }
+
+    if (ca == NULL) {
         /* A pin of a CA that did not sign the listener certificate pins nothing: the agent would
          * reject the chain it is actually offered */
         etoken_detail(detail, detail_size, "ca does not sign the listener certificate");
@@ -279,10 +292,17 @@ int etoken_mint_prepare(const etoken_mint_request_t *req, etoken_mint_t *out, ch
     }
 
     if (req->embed_ca) {
-        /* The whole file, not the parsed certificate: the operator asked for what the listener is
-         * verified against, and a bundle is served as it stands */
-        if (out->ca_pem = w_get_file_content(ca_certificate, ETOKEN_CA_MAX_BYTES), out->ca_pem == NULL) {
+        /* The certificates of the file, re-serialized here: the operator asked for what the
+         * listener is verified against, and a bundle travels as a bundle -- but a private key that
+         * shared the file never does */
+        if (out->ca_pem = w_x509_certificates_pem(cas, ca_count), out->ca_pem == NULL) {
             etoken_detail(detail, detail_size, "cannot read the ca_certificate '%s'", ca_certificate);
+            ret = -2;
+            goto end;
+        }
+
+        if (strlen(out->ca_pem) > ETOKEN_CA_MAX_BYTES) {
+            etoken_detail(detail, detail_size, "the ca_certificate '%s' is too large to embed", ca_certificate);
             ret = -2;
             goto end;
         }
@@ -336,9 +356,8 @@ end:
         X509_free(leaf);
     }
 
-    if (ca != NULL) {
-        X509_free(ca);
-    }
+    /* `ca` is one of these, not an owner of its own */
+    w_x509_free_all(cas, ca_count);
 
     os_free(certificate);
     os_free(ca_certificate);

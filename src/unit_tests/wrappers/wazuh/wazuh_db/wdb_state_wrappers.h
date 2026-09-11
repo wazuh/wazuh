@@ -38,6 +38,10 @@ void __wrap_w_inc_global_vacuum();
 
 void __wrap_w_inc_global_vacuum_time(__attribute__((unused)) struct timeval diff);
 
+void __wrap_w_inc_global_commit();
+
+void __wrap_w_inc_global_commit_time(__attribute__((unused)) struct timeval diff);
+
 void __wrap_w_inc_global_get_fragmentation();
 
 void __wrap_w_inc_global_get_fragmentation_time(__attribute__((unused)) struct timeval diff);

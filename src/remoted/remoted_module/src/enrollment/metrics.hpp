@@ -45,6 +45,7 @@ namespace remoted::enrollment
     constexpr auto METRIC_REENROLL_REJECTED_UNKNOWN {"remoted.enroll.reenroll.rejected_unknown"};
     constexpr auto METRIC_REENROLL_REJECTED_SIGNATURE {"remoted.enroll.reenroll.rejected_signature"};
     constexpr auto METRIC_REENROLL_REJECTED_STALE {"remoted.enroll.reenroll.rejected_stale"};
+    constexpr auto METRIC_REENROLL_REJECTED_IN_PROGRESS {"remoted.enroll.reenroll.rejected_in_progress"};
 
     struct EnrollmentMetrics
     {
@@ -63,6 +64,7 @@ namespace remoted::enrollment
         std::shared_ptr<wazuh::metrics::ICounter> reenrollRejectedUnknown;
         std::shared_ptr<wazuh::metrics::ICounter> reenrollRejectedSignature;
         std::shared_ptr<wazuh::metrics::ICounter> reenrollRejectedStale;
+        std::shared_ptr<wazuh::metrics::ICounter> reenrollRejectedInProgress;
     };
 
     inline EnrollmentMetrics makeEnrollmentMetrics(wazuh::metrics::IManager& manager)
@@ -112,6 +114,11 @@ namespace remoted::enrollment
             manager.getOrCreateCounter(METRIC_REENROLL_REJECTED_STALE,
                                        "Re-enrollments authd refused because the bearer was outside the accepted "
                                        "time window (9028)",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_REENROLL_REJECTED_IN_PROGRESS,
+                                       "Re-enrollments authd refused because a rotation for that agent is already "
+                                       "accepted and not yet persisted (9030): the caller retries, it does not "
+                                       "re-sign",
                                        "count")};
     }
 
@@ -184,6 +191,14 @@ namespace remoted::enrollment
         if (m.reenrollRejectedStale)
         {
             m.reenrollRejectedStale->add();
+        }
+    }
+
+    inline void incReenrollRejectedInProgress(EnrollmentMetrics& m)
+    {
+        if (m.reenrollRejectedInProgress)
+        {
+            m.reenrollRejectedInProgress->add();
         }
     }
 

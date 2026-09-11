@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include <openssl/bio.h>
+#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/sha.h>
@@ -68,6 +69,104 @@ X509 *w_x509_load_pem(const char *path)
     BIO_free(bio);
 
     return cert;
+}
+
+X509 **w_x509_load_all_pem(const char *path, size_t *count)
+{
+    BIO *bio = NULL;
+    X509 **certs = NULL;
+    X509 *cert = NULL;
+    size_t total = 0;
+    int well_formed = 0;
+
+    if (count != NULL) {
+        *count = 0;
+    }
+
+    if (path == NULL) {
+        return NULL;
+    }
+
+    if ((bio = BIO_new_file(path, "r")) == NULL) {
+        ERR_clear_error();
+        return NULL;
+    }
+
+    /* PEM_read_bio_X509() skips blocks that are not a CERTIFICATE, so a combined key+cert file or
+     * a bundle yields exactly its certificates */
+    while ((cert = PEM_read_bio_X509(bio, NULL, NULL, NULL)) != NULL) {
+        os_realloc(certs, sizeof(X509 *) * (total + 1), certs);
+        certs[total++] = cert;
+    }
+
+    /* The only clean way out of the loop is end of input; anything else means a block we could not
+     * decode, and then the whole file is refused (issue #39078, H01) */
+    well_formed = (ERR_GET_REASON(ERR_peek_last_error()) == PEM_R_NO_START_LINE);
+    ERR_clear_error();
+    BIO_free(bio);
+
+    if (!well_formed || total == 0) {
+        w_x509_free_all(certs, total);
+        return NULL;
+    }
+
+    if (count != NULL) {
+        *count = total;
+    }
+
+    return certs;
+}
+
+void w_x509_free_all(X509 **certs, size_t count)
+{
+    size_t i;
+
+    if (certs == NULL) {
+        return;
+    }
+
+    for (i = 0; i < count; i++) {
+        X509_free(certs[i]);
+    }
+
+    os_free(certs);
+}
+
+char *w_x509_certificates_pem(X509 **certs, size_t count)
+{
+    BIO *bio = NULL;
+    char *data = NULL;
+    char *out = NULL;
+    long length = 0;
+    size_t i;
+
+    if (certs == NULL || count == 0) {
+        return NULL;
+    }
+
+    if ((bio = BIO_new(BIO_s_mem())) == NULL) {
+        ERR_clear_error();
+        return NULL;
+    }
+
+    for (i = 0; i < count; i++) {
+        if (PEM_write_bio_X509(bio, certs[i]) != 1) {
+            ERR_clear_error();
+            BIO_free(bio);
+            return NULL;
+        }
+    }
+
+    length = BIO_get_mem_data(bio, &data);
+
+    if (data != NULL && length > 0) {
+        os_calloc((size_t)length + 1, sizeof(char), out);
+        memcpy(out, data, (size_t)length);
+    }
+
+    BIO_free(bio);
+
+    return out;
 }
 
 int w_x509_spki_sha256(X509 *cert, uint8_t out[32])

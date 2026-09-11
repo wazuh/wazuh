@@ -15,7 +15,7 @@ codes into the API's.
 import re
 
 from wazuh.core import common
-from wazuh.core.exception import WazuhError, WazuhException, WazuhResourceNotFound
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.utils import get_date_from_timestamp, get_timeframe_in_seconds
 from wazuh.core.wazuh_socket import WazuhSocketJSON
 
@@ -24,6 +24,7 @@ AUTHD_NO_ARGUMENT = 9004      # `address` missing or empty
 AUTHD_WORKER_NODE = 9015      # the store is written on the master only
 AUTHD_TOKEN_NOT_FOUND = 9022  # unknown id, or one that is not the shape of a token id
 AUTHD_MINT_REFUSED = 9025     # the request cannot be honoured; the message carries the detail
+AUTHD_STORE_FAILED = 9029     # applied in memory, but the store file could not be written
 _REFUSED_PREFIX = 'Enrollment token refused: '
 # The API's `timeframe` format (api/validator.py _timeframe_type), checked here too: get_timeframe_in_seconds()
 # alone turns anything with a stray unit letter into 0, which authd would silently replace by its default.
@@ -81,6 +82,11 @@ def _authd_request(function: str, arguments: dict = None):
             raise WazuhError(1768, extra_message='the address is required')
         if e.code == AUTHD_WORKER_NODE:
             raise WazuhError(1769)
+        if e.code == AUTHD_STORE_FAILED:
+            # Nothing the caller did wrong and nothing they can fix by changing the request: authd
+            # holds the intent and retries the write on its own, so this is an internal error the
+            # caller should retry, not a 4xx (issue #39078, H04).
+            raise WazuhInternalError(1771)
         raise e
 
     return data

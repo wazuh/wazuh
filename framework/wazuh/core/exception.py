@@ -263,6 +263,17 @@ class WazuhException(Exception):
         1770: {'message': 'Invalid enrollment token purge scope',
                'remediation': 'Valid scopes are `dead` (revoked, expired or exhausted tokens) and `all`'
                },
+        1771: {'message': 'The enrollment token store could not be written',
+               'remediation': 'The change is applied on this manager and will be written as soon as the '
+                              'store file is writable again; check the disk and the permissions of '
+                              'etc/enrollment_tokens.json, then retry'
+               },
+        1772: {'message': 'The agent credentials could not be recorded',
+               'remediation': 'The manager refused the enrollment instead of handing out credentials it '
+                              'could not write down; check the disk and the permissions of '
+                              'queue/authd, and whether too many enrollments are still waiting for '
+                              'wazuh-db, then retry'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'

@@ -348,6 +348,17 @@ static void test_revoke_ok_and_unknown(void **state) {
     assert_string_equal(s.out_buf, "");
     assert_non_null(strstr(s.err_buf, "ERROR 9022: Enrollment token not found or revoked\n"));
     streams_free(&s);
+
+    // A storage failure is its own answer (issue #39078, H04): the token exists and authd already
+    // refuses it, so the operator has to retry the write, not go looking for the id.
+    streams_open(&s);
+    assert_int_equal(parse_argv(&opts, s.err, 3, argv), 1);
+    expect_exchange(request, "{\"error\":9029,\"message\":\"Enrollment token store write failed\"}");
+    assert_int_equal(w_token_cli_run(&opts, stdin, s.out, s.err), 1);
+    streams_close(&s);
+    assert_string_equal(s.out_buf, "");
+    assert_non_null(strstr(s.err_buf, "ERROR 9029: Enrollment token store write failed\n"));
+    streams_free(&s);
 }
 
 /* ------------------------------------------------------------------ purge */

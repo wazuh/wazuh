@@ -475,6 +475,7 @@ static const char LOOPBACK_PEM[] =
 
 #define TOKEN_PIN_HEX "6091dc3665ed5e833c8d945f93ebbf14b37020ccee77334e4497ac2ef3590aa2"
 #define TOKENS_FILE "etc/enrollment_tokens.json"
+#define IDENTITY_JOURNAL_PATH "queue/authd/pending-identities"
 #define LEAF_FILE "etc/certs/remoted.pem"
 #define CA_FILE "etc/certs/root-ca.pem"
 #define LOOPBACK_FILE "etc/certs/loopback.pem"
@@ -535,6 +536,11 @@ static int setup_token_env(void **state) {
     assert_int_equal(chdir(token_env_dir), 0);
     assert_int_equal(mkdir("etc", 0770), 0);
     assert_int_equal(mkdir("etc/certs", 0770), 0);
+    // Every add and every rotation journals its credential before answering (issue #39078, H03),
+    // so without this directory the whole suite would answer 9031.
+    assert_int_equal(mkdir("queue", 0770), 0);
+    assert_int_equal(mkdir("queue/authd", 0750), 0);
+    identity_journal_init(IDENTITY_JOURNAL_PATH);
     write_file(LEAF_FILE, LEAF_PEM);
     write_file(CA_FILE, CA_PEM);
     write_file(LOOPBACK_FILE, LOOPBACK_PEM);
@@ -563,6 +569,10 @@ static int teardown_token_env(void **state) {
     free_keynode_queue(&queue_remove);
     insert_tail = &queue_insert;
     remove_tail = &queue_remove;
+    identity_journal_init(NULL);
+    unlink(IDENTITY_JOURNAL_PATH);
+    rmdir("queue/authd");
+    rmdir("queue");
     unlink(TOKENS_FILE);
     unlink(LEAF_FILE);
     unlink(CA_FILE);
@@ -742,9 +752,64 @@ static void test_token_create_embed_ca_no_credential(void **state) {
     assert_false(token.has_pin);
     assert_false(token.has_key);
     assert_non_null(token.ca_pem);
+    // The certificate, re-serialized from the parsed object rather than copied out of the file.
+    // Byte-identical here because the fixture's file IS just that certificate.
     assert_string_equal(token.ca_pem, CA_PEM);
     w_etoken_free(&token);
     cJSON_Delete(response);
+}
+
+static void test_token_create_embed_ca_never_carries_a_private_key(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+
+    // The misprovisioned input of issue #39078 (H01): the CA and its private key in one file. What
+    // the operator asked to embed is the trust anchor, and that is all that may travel.
+    char *combined = NULL;
+    os_calloc(strlen(CA_PEM) + 128, sizeof(char), combined);
+    strcpy(combined, CA_PEM);
+    strcat(combined, "-----BEGIN PRIVATE KEY-----\nMIIBVQIBADANBgkqhkiG9w0BAQ==\n-----END PRIVATE KEY-----\n");
+    write_file(CA_FILE, combined);
+
+    cJSON *response = mint("{\"address\":\"wazuh-1\",\"embed_ca\":true}");
+    assert_int_equal(response_error(response), 0);
+
+    w_etoken_t token;
+    assert_int_equal(w_etoken_decode(data_string(response, "token"), &token), ETOKEN_OK);
+    assert_non_null(token.ca_pem);
+    assert_non_null(strstr(token.ca_pem, "BEGIN CERTIFICATE"));
+    assert_null(strstr(token.ca_pem, "PRIVATE KEY"));
+    w_etoken_free(&token);
+    cJSON_Delete(response);
+
+    write_file(CA_FILE, CA_PEM);
+    os_free(combined);
+}
+
+static void test_token_create_embed_ca_accepts_a_bundle_signed_by_its_second_certificate(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+
+    // A bundle whose signer is NOT the first certificate. Reading only the first one -- what
+    // w_x509_load_pem() does -- refused this mint with "ca does not sign the listener certificate".
+    char *bundle = NULL;
+    os_calloc(strlen(LOOPBACK_PEM) + strlen(CA_PEM) + 1, sizeof(char), bundle);
+    strcpy(bundle, LOOPBACK_PEM);
+    strcat(bundle, CA_PEM);
+    write_file(CA_FILE, bundle);
+
+    cJSON *response = mint("{\"address\":\"wazuh-1\",\"embed_ca\":true}");
+    assert_int_equal(response_error(response), 0);
+
+    w_etoken_t token;
+    assert_int_equal(w_etoken_decode(data_string(response, "token"), &token), ETOKEN_OK);
+    assert_non_null(token.ca_pem);
+    assert_non_null(strstr(token.ca_pem, "BEGIN CERTIFICATE"));
+    w_etoken_free(&token);
+    cJSON_Delete(response);
+
+    write_file(CA_FILE, CA_PEM);
+    os_free(bundle);
 }
 
 static void test_token_create_bad_arguments(void **state) {
@@ -995,6 +1060,40 @@ static void test_add_with_token_consumes_and_releases(void **state) {
     // A token id of the wrong shape never reaches the store: 9022.
     response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"tok-agent-3\",\"ip\":\"any\",\"token_id\":\"short\"}}");
     assert_int_equal(response_error(response), 9022);
+    cJSON_Delete(response);
+}
+
+static void test_token_revoke_storage_failure_is_not_a_missing_token(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_ERROR();
+    cJSON *minted = mint("{\"address\":\"wazuh-1\",\"description\":\"storage\"}");
+    char id[ETOKEN_ID_CHARS + 1];
+    char request[256];
+
+    snprintf(id, sizeof(id), "%s", data_string(minted, "id"));
+    cJSON_Delete(minted);
+
+    // Point the store at a directory that does not exist: every write fails from here on. The
+    // token is still there, so answering 9022 would send the operator looking for a token that
+    // exists when what they have to do is retry (issue #39078, H04).
+    etoken_store_init("etc/no-such-directory/enrollment_tokens.json");
+
+    snprintf(request, sizeof(request), "{\"function\":\"token_revoke\",\"arguments\":{\"id\":\"%s\"}}", id);
+    cJSON *response = dispatch(request);
+    assert_int_equal(response_error(response), 9029);
+    cJSON_Delete(response);
+
+    // An id that is genuinely unknown still answers 9022, even while storage is broken.
+    response = dispatch("{\"function\":\"token_revoke\",\"arguments\":{\"id\":\"AAAAAAAAAAAAAAAAAAAAAA\"}}");
+    assert_int_equal(response_error(response), 9022);
+    cJSON_Delete(response);
+
+    // Storage back: the pending revocation is written and the verb answers success.
+    etoken_store_init(TOKENS_FILE);
+    response = dispatch(request);
+    assert_int_equal(response_error(response), 0);
     cJSON_Delete(response);
 }
 
@@ -1304,6 +1403,257 @@ static void test_reenroll_rotates_key_and_secret_keeping_the_id(void **state) {
     cJSON_Delete(response);
 }
 
+/* --- The credential is written down before it is handed out (issue #39078, H03) -------------- */
+
+static void test_an_accepted_enrollment_is_journaled_with_its_credential(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"journaled-agent\",\"ip\":\"any\"}}");
+    assert_int_equal(response_error(response), 0);
+
+    // The same key and the same secret the caller was just given: what the journal holds is what
+    // the database owes, and it is the credential itself -- a digest would restore nothing.
+    size_t count = 0;
+    identity_journal_entry_t *entries = identity_journal_snapshot(0, 0, &count);
+    identity_journal_entry_t *mine = NULL;
+    for (size_t i = 0; i < count; i++) {
+        if (!strcmp(entries[i].id, data_string(response, "id"))) {
+            mine = &entries[i];
+        }
+    }
+    assert_non_null(mine);
+    assert_string_equal(mine->key, data_string(response, "key"));
+    assert_string_equal(mine->secret, data_string(response, "reenroll_secret"));
+    assert_false(mine->rotate);
+    identity_journal_free(entries, count);
+    cJSON_Delete(response);
+}
+
+static void test_an_enrollment_that_cannot_be_journaled_is_refused(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_ERROR();
+    const unsigned int keysize_before = keys.keysize;
+    identity_journal_init("queue/no-such-directory/pending-identities");
+
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"unrecorded-agent\",\"ip\":\"any\"}}");
+    // No credential is handed out: an agent whose secret nothing durable holds could never
+    // re-enroll, and nobody would ever know it had one.
+    assert_int_equal(response_error(response), 9031);
+    assert_null(cJSON_GetObjectItem(cJSON_GetObjectItem(response, "data"), "key"));
+    // And the addition is undone rather than left half-done.
+    assert_int_equal(keys.keysize, keysize_before);
+    assert_int_equal(OS_IsAllowedName(&keys, "unrecorded-agent"), -1);
+    cJSON_Delete(response);
+
+    identity_journal_init(IDENTITY_JOURNAL_PATH);
+}
+
+static void test_a_full_journal_refuses_before_a_replacement_destroys_the_previous_agent(void **state) {
+    (void)state;
+    // The successful add logs minfo, the refusal mwarn, and local_dispatch mdebug2 -- and no
+    // merror, because the refusal returns before the dispatcher's failure path. An undeclared
+    // severity aborts inside the store mutex and HANGS the run; a declared one that never fires
+    // fails the case (see the note above).
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_WARN();
+
+    // The agent the enrollment below would replace: same name, and <force> deletes it. The manager
+    // default is what decides here, so the request needs no force block of its own.
+    const authd_force_options_t saved_force = config.force_options;
+    config.force_options.enabled = true;
+    config.force_options.key_mismatch = false;
+    config.force_options.disconnected_time_enabled = false;
+    config.force_options.after_registration_time = 0;
+
+    char victim_id[16];
+    add_agent("victim", victim_id, sizeof(victim_id), NULL, 0);
+
+    // A journal with no room left. The cases before this one left their own transitions in it,
+    // so what is filled is the room that remains.
+    char filler[16];
+    for (size_t room = IDENTITY_JOURNAL_MAX_ENTRIES - identity_journal_pending(); room > 0; room--) {
+        snprintf(filler, sizeof(filler), "%zu", room);
+        assert_true(identity_journal_append(filler, "filler", "any", REENROLL_SECRET, REENROLL_SECRET, false, NULL));
+    }
+    assert_true(identity_journal_full());
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"victim\",\"ip\":\"any\"}}");
+
+    // Refused, and refused EARLY -- no OS_IsValidIP is even consumed, because the keystore is never
+    // reached: w_auth_replace_agent() deletes the previous agent while it validates, so a refusal
+    // discovered after that point would answer 9031 with that agent already gone and queued for the
+    // indexer purge.
+    assert_int_equal(response_error(response), 9031);
+    cJSON_Delete(response);
+
+    assert_true(OS_IsAllowedID(&keys, victim_id) >= 0);
+    assert_true(OS_IsAllowedName(&keys, "victim") >= 0);
+    assert_null(find_node(queue_remove, victim_id));
+
+    identity_journal_init(IDENTITY_JOURNAL_PATH);
+    config.force_options = saved_force;
+}
+
+static void test_a_rotation_that_cannot_be_journaled_is_refused_and_frees_the_reservation(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_ERROR();
+    char id[16];
+    char old_key[128];
+    add_agent("unrecorded-rot", id, sizeof(id), old_key, sizeof(old_key));
+
+    identity_journal_init("queue/no-such-directory/pending-identities");
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+
+    cJSON *response = reenroll(id, "unrecorded-rot");
+    assert_int_equal(response_error(response), 9031);
+    // The keystore is untouched: the entry still holds the key the agent already has.
+    int index = OS_IsAllowedID(&keys, id);
+    assert_true(index >= 0);
+    assert_string_equal(keys.keyentries[index]->raw_key, old_key);
+    cJSON_Delete(response);
+
+    // And the reservation was released, so the very next attempt goes through -- 9031 is a
+    // "come back", not a state that locks the agent out.
+    identity_journal_init(IDENTITY_JOURNAL_PATH);
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    response = reenroll(id, "unrecorded-rot");
+    assert_int_equal(response_error(response), 0);
+    assert_string_not_equal(data_string(response, "key"), old_key);
+    cJSON_Delete(response);
+}
+
+static void test_reenroll_twice_with_the_same_bearer_rotates_once(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char old_key[128];
+    add_agent("twice-agent", id, sizeof(id), old_key, sizeof(old_key));
+
+    // First rotation: accepted, queued, and NOT yet persisted -- the writer does not run in these
+    // tests, which is exactly the window the finding is about (issue #39078, H02).
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *first = reenroll(id, "twice-agent");
+    assert_int_equal(response_error(first), 0);
+    const char *first_key = data_string(first, "key");
+    assert_string_not_equal(first_key, old_key);
+
+    // The same bearer again. The row still says the old secret -- that is the point -- so before
+    // this the request verified again and handed out a SECOND credential for one agent. No
+    // wdb_get_agent_info() is expected now: the reservation refuses it before the database is asked.
+    cJSON *second = reenroll(id, "twice-agent");
+    assert_int_equal(response_error(second), 9030);
+
+    // One key, and it is the first answer's: the second caller got nothing to remember.
+    int index = OS_IsAllowedID(&keys, id);
+    assert_true(index >= 0);
+    assert_string_equal(keys.keyentries[index]->raw_key, first_key);
+
+    // One rotation node queued, not two.
+    struct keynode *node = find_node(queue_insert, id);
+    assert_non_null(node);
+    assert_string_equal(node->raw_key, first_key);
+    assert_null(find_node(node->next, id));
+
+    cJSON_Delete(first);
+    cJSON_Delete(second);
+}
+
+static void test_reenroll_reservation_is_released_when_the_request_is_rejected(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char old_key[128];
+    add_agent("released-agent", id, sizeof(id), old_key, sizeof(old_key));
+
+    // A bearer that does not verify: nothing was handed out, so the agent must be free to try again
+    // at once -- a reservation left behind here would lock it out until authd restarts.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_INVALID);
+
+    cJSON *rejected = reenroll(id, "released-agent");
+    assert_int_equal(response_error(rejected), 9027);
+    cJSON_Delete(rejected);
+
+    // And now a good one goes through.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *accepted = reenroll(id, "released-agent");
+    assert_int_equal(response_error(accepted), 0);
+    cJSON_Delete(accepted);
+}
+
+static void test_reenroll_after_the_writer_persists_needs_the_new_secret(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char old_key[128];
+    add_agent("persisted-agent", id, sizeof(id), old_key, sizeof(old_key));
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *first = reenroll(id, "persisted-agent");
+    assert_int_equal(response_error(first), 0);
+    cJSON_Delete(first);
+
+    // What the writer does when the credentials reach the database: the reservation is released and
+    // the generation moves on.
+    w_reenroll_complete(id);
+
+    // The old bearer now meets the NEW secret in the row, so it is a plain signature failure (9027)
+    // -- not "already in progress": there is nothing in flight any more.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_INVALID);
+
+    cJSON *second = reenroll(id, "persisted-agent");
+    assert_int_equal(response_error(second), 9027);
+    cJSON_Delete(second);
+}
+
 static void test_reenroll_duplicate_name_of_another_agent_9008(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -1412,6 +1762,8 @@ int main(void) {
         cmocka_unit_test(test_token_create_refusals_9025),
         cmocka_unit_test(test_token_create_ip_warns_and_overrides),
         cmocka_unit_test(test_token_create_embed_ca_no_credential),
+        cmocka_unit_test(test_token_create_embed_ca_never_carries_a_private_key),
+        cmocka_unit_test(test_token_create_embed_ca_accepts_a_bundle_signed_by_its_second_certificate),
         cmocka_unit_test(test_token_create_bad_arguments),
         cmocka_unit_test(test_token_verbs_on_worker_9015),
         cmocka_unit_test(test_token_list_and_revoke),
@@ -1420,6 +1772,7 @@ int main(void) {
         cmocka_unit_test(test_token_purge_unknown_scope_is_refused),
         cmocka_unit_test(test_token_purge_on_worker_9015),
         cmocka_unit_test(test_add_with_token_consumes_and_releases),
+        cmocka_unit_test(test_token_revoke_storage_failure_is_not_a_missing_token),
         cmocka_unit_test(test_add_with_token_closes_the_reservation),
         cmocka_unit_test(test_add_with_revoked_or_expired_token),
         cmocka_unit_test(test_add_with_token_on_worker_forwards_it),
@@ -1430,6 +1783,13 @@ int main(void) {
         cmocka_unit_test(test_reenroll_invalid_bearer_9027),
         cmocka_unit_test(test_reenroll_stale_9028),
         cmocka_unit_test(test_reenroll_rotates_key_and_secret_keeping_the_id),
+        cmocka_unit_test(test_an_accepted_enrollment_is_journaled_with_its_credential),
+        cmocka_unit_test(test_an_enrollment_that_cannot_be_journaled_is_refused),
+        cmocka_unit_test(test_a_rotation_that_cannot_be_journaled_is_refused_and_frees_the_reservation),
+        cmocka_unit_test(test_a_full_journal_refuses_before_a_replacement_destroys_the_previous_agent),
+        cmocka_unit_test(test_reenroll_twice_with_the_same_bearer_rotates_once),
+        cmocka_unit_test(test_reenroll_reservation_is_released_when_the_request_is_rejected),
+        cmocka_unit_test(test_reenroll_after_the_writer_persists_needs_the_new_secret),
         cmocka_unit_test(test_reenroll_duplicate_name_of_another_agent_9008),
         cmocka_unit_test(test_reenroll_malformed_or_with_token_id_9027),
         cmocka_unit_test(test_reenroll_on_worker_forwards_kid_and_bearer),
