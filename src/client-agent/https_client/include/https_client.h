@@ -579,6 +579,11 @@ typedef struct hc_cacerts_result_t
     long http_code;                     ///< 0 = no HTTP response at all (transport/config
     ///< failure -- see hc_fetch_cacerts()'s return value).
     char body[HC_MAX_CACERTS_BODY];     ///< Raw response body (the CA bundle on 200).
+    /// Whether the manager's body did not fit in `body` and was cut short. Reported rather
+    /// than left to be inferred: the certificate the token pins can sit past the cut, and a
+    /// caller that just hashed what arrived would call that a pin mismatch -- announcing an
+    /// attack when the real fault is a buffer this end chose.
+    bool body_truncated;
     /// Same contract as hc_enroll_result_t::transport_error.
     char transport_error[HC_MAX_TRANSPORT_ERROR];
 } hc_cacerts_result_t;

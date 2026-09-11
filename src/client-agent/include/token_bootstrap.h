@@ -44,6 +44,14 @@
  * @return 0 when there was nothing to do, or the bootstrap fully succeeded; -1 when a token was
  *         present and the bootstrap was attempted but failed.
  */
+/* Largest enrollment token this agent will read, wherever it comes from. Shared so the
+ * installer's --show-token and the first-boot bootstrap agree: when --show-token accepted more
+ * than the bootstrap could read, a token between the two sizes passed the install and then
+ * failed at the first start, with nothing at install time to warn about it. A token carrying a
+ * pin is a couple of hundred bytes and one embedding a CA a few KB, so this is a sanity bound
+ * rather than a tight one. */
+#define W_ETOKEN_MAX_FILE_BYTES 8192
+
 int w_agent_token_bootstrap(int uid, int gid);
 
 #endif /* TOKEN_BOOTSTRAP_H */

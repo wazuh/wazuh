@@ -33,10 +33,6 @@ int w_agent_token_bootstrap(int uid, int gid) {
     #define STATIC static
 #endif
 
-/* Generous upper bound for the token file: a JSON token with an embedded `ca` PEM is much
- * larger than a bare pinned token, but still nowhere near this. */
-#define W_TOKEN_BOOTSTRAP_MAX_FILE_BYTES 8192
-
 STATIC char *w_token_bootstrap_read_token(const char *path);
 STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out);
 STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid);
@@ -55,7 +51,7 @@ STATIC char *w_token_bootstrap_read_token(const char *path) {
         return NULL;
     }
 
-    char buf[W_TOKEN_BOOTSTRAP_MAX_FILE_BYTES];
+    char buf[W_ETOKEN_MAX_FILE_BYTES];
     char *read_ok = fgets(buf, sizeof(buf) - 1, fp);
     fclose(fp);
 
@@ -228,6 +224,18 @@ int w_agent_token_bootstrap(int uid, int gid) {
             return -1;
         }
 
+        /* Checked before the pin compare, which cannot tell the two apart: a certificate cut
+         * off by this buffer hashes to nothing the token names, and would be reported as a
+         * mismatch -- the message that says an attacker may be answering. A body this end
+         * could not hold is our limit, not the manager's identity. */
+        if (fetch_result.body_truncated) {
+            merror("Token bootstrap: the manager's /cacerts response is larger than the %d bytes "
+                   "this agent can read, so it cannot be checked against the enrollment token's "
+                   "pin.", HC_MAX_CACERTS_BODY);
+            w_etoken_free(&token);
+            return -1;
+        }
+
         if ((pin_b64 = w_b64url_encode(token.pin, W_ETOKEN_PIN_BYTES)) == NULL) {
             merror("Token bootstrap: could not encode the enrollment token's pin.");
             w_etoken_free(&token);
@@ -328,22 +336,34 @@ int w_agent_token_bootstrap(int uid, int gid) {
 
     if (token.has_key) {
         uint8_t derived_key[W_ETOKEN_KEY_BYTES];
+        char *kid = NULL;
+        bool credential_ready = false;
 
-        if (w_etoken_derive_key(token.secret, derived_key) == 0) {
-            char *kid = w_b64url_encode(token.id, W_ETOKEN_ID_BYTES);
-
-            if (kid != NULL) {
-                strncpy(enroll_request.token_kid, kid, sizeof(enroll_request.token_kid) - 1);
-                os_free(kid);
-                w_token_bootstrap_hex(derived_key, sizeof(derived_key), enroll_request.token_key_hex);
-            } else {
-                merror("Token bootstrap: could not encode the enrollment token's identifier.");
-            }
-        } else {
+        /* A credential the token carries but the agent cannot prepare aborts the bootstrap. It
+         * used to log and carry on, which left token_kid and token_key_hex empty and enrolled
+         * anonymously instead -- and against a manager that does not require a password that
+         * succeeds, so the agent would be enrolled without the credential the operator issued
+         * it, with only a log line to say so. */
+        if (w_etoken_derive_key(token.secret, derived_key) != 0) {
             merror("Token bootstrap: could not derive the enrollment token's signing key.");
+        } else if ((kid = w_b64url_encode(token.id, W_ETOKEN_ID_BYTES)) == NULL) {
+            merror("Token bootstrap: could not encode the enrollment token's identifier.");
+        } else {
+            strncpy(enroll_request.token_kid, kid, sizeof(enroll_request.token_kid) - 1);
+            os_free(kid);
+            w_token_bootstrap_hex(derived_key, sizeof(derived_key), enroll_request.token_key_hex);
+            credential_ready = true;
         }
 
         memset(derived_key, 0, sizeof(derived_key));
+
+        if (!credential_ready) {
+            w_enroll_request_destroy(&built_request);
+            unlink(anchor_file.name);
+            os_free(anchor_file.name);
+            w_etoken_free(&token);
+            return -1;
+        }
     }
 
     memset(&enroll_result, 0, sizeof(enroll_result));

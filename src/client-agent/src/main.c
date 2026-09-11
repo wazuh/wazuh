@@ -12,6 +12,7 @@
 
 #include "shared.h"
 #include "agentd.h"
+#include "token_bootstrap.h"
 #include "enrollment_token.h"
 #include <getopt.h>
 
@@ -22,11 +23,6 @@
 #ifndef ARGV0
 #define ARGV0 "wazuh-agentd"
 #endif
-
-/* Largest enrollment token accepted on stdin. A token that carries a pin is a couple of
- * hundred bytes and one that embeds a CA certificate a few KB, so this is a sanity bound
- * rather than a tight one. */
-#define ETOKEN_MAX_TEXT 65536
 
 /* --show-token's exit status when the token itself was rejected. Distinct from every other
  * failure so a caller can tell a bad token from a decoder it never managed to run: a missing
@@ -77,7 +73,7 @@ static void help_agentd(char *home_path)
  */
 static int show_enrollment_token(void)
 {
-    char text[ETOKEN_MAX_TEXT + 1] = {'\0'};
+    char text[W_ETOKEN_MAX_FILE_BYTES + 1] = {'\0'};
     size_t length = fread(text, 1, sizeof(text) - 1, stdin);
     w_etoken_t token;
     w_etoken_error_t error;
@@ -89,7 +85,7 @@ static int show_enrollment_token(void)
     }
 
     if (length == sizeof(text) - 1) {
-        fprintf(stderr, "%s: the enrollment token does not fit in %d bytes.\n", ARGV0, ETOKEN_MAX_TEXT);
+        fprintf(stderr, "%s: the enrollment token does not fit in %d bytes.\n", ARGV0, W_ETOKEN_MAX_FILE_BYTES);
         return 1;
     }
 
