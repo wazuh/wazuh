@@ -85,7 +85,7 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
     create_ssl_context.assert_called_once_with(
         "/var/wazuh-manager/etc/certs/indexer-connector.pem",
         "/var/wazuh-manager/etc/certs/indexer-connector-key.pem",
-        "/var/wazuh-manager/etc/certs/root-ca.pem",
+        ["/var/wazuh-manager/etc/certs/root-ca.pem"],
     )
 
     # Verify indexer was created with SSL context instead of cert paths
@@ -147,14 +147,14 @@ async def _run_get_indexer_client(indexer_extra):
 async def test_get_indexer_client_without_ssl_section_has_no_client_cert():
     create_ssl_context = await _run_get_indexer_client({})
 
-    create_ssl_context.assert_called_once_with(None, None, None)
+    create_ssl_context.assert_called_once_with(None, None, [])
 
 
 @pytest.mark.asyncio
 async def test_get_indexer_client_with_empty_ssl_section_has_no_client_cert():
     create_ssl_context = await _run_get_indexer_client({"ssl": {}})
 
-    create_ssl_context.assert_called_once_with(None, None, None)
+    create_ssl_context.assert_called_once_with(None, None, [])
 
 
 @pytest.mark.asyncio
@@ -164,7 +164,30 @@ async def test_get_indexer_client_with_only_certificate_authorities_has_no_clien
     )
 
     create_ssl_context.assert_called_once_with(
-        None, None, "/var/wazuh-manager/etc/certs/root-ca.pem"
+        None, None, ["/var/wazuh-manager/etc/certs/root-ca.pem"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_resolves_every_configured_certificate_authority():
+    create_ssl_context = await _run_get_indexer_client(
+        {
+            "ssl": {
+                "certificate_authorities": [
+                    "etc/certs/old-ca.pem",
+                    "etc/certs/new-ca.pem",
+                ]
+            }
+        }
+    )
+
+    create_ssl_context.assert_called_once_with(
+        None,
+        None,
+        [
+            "/var/wazuh-manager/etc/certs/old-ca.pem",
+            "/var/wazuh-manager/etc/certs/new-ca.pem",
+        ],
     )
 
 
@@ -224,7 +247,7 @@ def test_create_ssl_context_caching():
 
     cert = "/path/cert.pem"
     key = "/path/key.pem"
-    ca = "/path/ca.pem"
+    ca = ["/path/ca.pem"]
 
     # Clear the cache first
     indexer_module._ssl_context_cache = None
@@ -248,6 +271,27 @@ def test_create_ssl_context_caching():
         indexer_module._ssl_context_cache_key = None
         result3 = _create_ssl_context("/other/cert.pem", key, ca)
         assert mock_create.call_count == 2
+
+
+def test_create_ssl_context_trusts_every_configured_certificate_authority():
+    """Every CA in the list must end up trusted, not just the first one."""
+    import wazuh.core.indexer.indexer as indexer_module
+
+    indexer_module._ssl_context_cache = None
+    indexer_module._ssl_context_cache_key = None
+
+    with patch("wazuh.core.indexer.indexer.ssl.create_default_context") as mock_create:
+        mock_context = MagicMock(spec=ssl.SSLContext)
+        mock_create.return_value = mock_context
+
+        _create_ssl_context(None, None, ["/path/old-ca.pem", "/path/new-ca.pem"])
+
+        # The first CA is loaded exclusively (no system trust store fallback)...
+        mock_create.assert_called_once_with(
+            purpose=ssl.Purpose.SERVER_AUTH, cafile="/path/old-ca.pem"
+        )
+        # ...and every additional CA is trusted on top of it.
+        mock_context.load_verify_locations.assert_called_once_with(cafile="/path/new-ca.pem")
 
 
 @pytest.mark.asyncio
