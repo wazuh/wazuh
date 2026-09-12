@@ -31,7 +31,9 @@ E <EVENT_2><LF>
 
 - `H` = Header line (JSON metadata, once per batch)
 - `E` = Event line (raw event data)
-- ` ` = Space character (0x20)
+- ` ` = Space character (0x20): the header starts with `H ` and each event starts with `E `.
+  Continuation lines use the indentation below; they do not require an `H`/`E` marker. Extra spaces
+  after the two-byte marker belong to the JSON whitespace or event payload, not the marker.
 - `<LF>` = Line feed (0x0A)
 
 ## Header Line (H)
@@ -100,28 +102,59 @@ The header is a JSON object conforming to Elastic Common Schema (ECS):
 
 **Minimal Header** (only required fields):
 ```
-H	{"agent":{"id":"001"}}
+H {"wazuh":{"agent":{"id":"001"}}}
 ```
 
 **Full Header** (all fields):
 ```
-H	{"agent":{"id":"001","name":"web-server-01","version":"v5.0.0","groups":["web","production"],"host":{"architecture":"x86_64","hostname":"web-server-01","os":{"name":"Ubuntu","version":"22.04","platform":"ubuntu","type":"linux"}}},"wazuh":{"cluster":{"name":"production","node":"master-node"}}}
+H {"wazuh":{"agent":{"id":"001","name":"web-server-01","version":"v5.0.0","groups":["web","production"],"host":{"architecture":"x86_64","hostname":"web-server-01","os":{"name":"Ubuntu","version":"22.04","platform":"ubuntu","type":"linux"}}},"cluster":{"name":"production","node":"master-node"}}}
 ```
 
 ## Event Line (E)
 
 Format: `E <EVENT_PAYLOAD><LF>`
 
-Payload is raw event data (JSON or text), UTF-8 encoded. Newlines must be escaped. Max 64KB per event.
+Payload is raw event data (JSON or text), UTF-8 encoded.
+
+**Multi-line payloads are supported and are not escaped.** Events are framed by the `\nE `
+delimiter, so a payload containing that sequence would otherwise be read as two events. The sender
+therefore indents every *continuation* line (each line after the first within one event) with a
+single space, and the receiver strips exactly one leading space from each continuation line to
+recover the continuation text. Trailing framing newlines are trimmed before unindenting; a final
+unindented payload newline is not preserved. Quotes, tabs and non-ASCII characters are not escaped
+by this framing layer.
+
+A three-line payload travels as one event, its second and third lines each indented by one space
+(the leading space is protocol framing, not part of the payload):
+
+```
+E java.lang.IllegalStateException: pool closed
+     at com.example.Pool.acquire(Pool.java:88)
+     at com.example.Worker.run(Worker.java:31)
+```
+
+JSON string values must escape newlines, but pretty-printed JSON may contain raw newlines between
+tokens. Both that JSON and plain-text stack traces use the continuation indentation when sent as
+a single multi-line event.
+
+The manager applies no per-event size limit of its own on the HTTPS path; what bounds a request
+there is the whole body: the transport limit is
+[`https.max_body_size`](configuration.md#httpsmax_body_size), 20 MiB by default, and the authentication
+limit is [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size), 10 MiB by default.
+Both limits apply to the bytes received on the wire. For zstd on `/stateless`, decoded output is
+charged to the shared [in-flight byte budget](configuration.md#remotedmax_inflight_bytes),
+not capped at 10 MiB; the decoder also limits its window to 8 MiB. `/stateless` separately limits
+the header JSON to 8 KiB. On the legacy
+TCP/UDP channel a single agent message is bounded by the receive buffer, `OS_MAXSTR` (64 KiB).
 
 ## Complete Batch Example
 
 ### Simple Batch
 
 ```
-H	{"agent":{"id":"001","name":"web-01","version":"v5.0.0","groups":["web"],"host":{"os":{"type":"linux"}}}}
-E	{"timestamp":"2026-01-05T10:00:00Z","log":"Connection from 192.168.1.100"}
-E	{"timestamp":"2026-01-05T10:00:01Z","log":"Authentication successful"}
+H {"wazuh":{"agent":{"id":"001","name":"web-01","version":"v5.0.0","groups":["web"],"host":{"os":{"type":"linux"}}}}}
+E {"timestamp":"2026-01-05T10:00:00Z","log":"Connection from 192.168.1.100"}
+E {"timestamp":"2026-01-05T10:00:01Z","log":"Authentication successful"}
 ```
 
 ### Full Batch
@@ -130,19 +163,22 @@ E	{"timestamp":"2026-01-05T10:00:01Z","log":"Authentication successful"}
 POST /events/enriched HTTP/1.1
 Host: localhost
 Content-Type: application/x-wev1
-Content-Length: 512
+Content-Length: 655
 User-Agent: wazuh-manager-remoted/1.0
 Connection: keep-alive
 
-H	{"agent":{"id":"001","name":"web-server-01","version":"v5.0.0","groups":["web","production"],"host":{"architecture":"x86_64","hostname":"web-server-01","os":{"name":"Ubuntu","version":"22.04","platform":"ubuntu","type":"linux"}}},"wazuh":{"cluster":{"name":"production","node":"master-node"}}}
-E	{"timestamp":"2026-01-05T10:00:00.000Z","log":"sshd[1234]: Connection from 192.168.1.100 port 54321"}
-E	{"timestamp":"2026-01-05T10:00:01.123Z","log":"sshd[1234]: Accepted publickey for admin from 192.168.1.100"}
-E	{"timestamp":"2026-01-05T10:00:02.456Z","log":"sudo: admin : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/bin/systemctl restart nginx"}
+H {"wazuh":{"agent":{"id":"001","name":"web-server-01","version":"v5.0.0","groups":["web","production"],"host":{"architecture":"x86_64","hostname":"web-server-01","os":{"name":"Ubuntu","version":"22.04","platform":"ubuntu","type":"linux"}}},"cluster":{"name":"production","node":"master-node"}}}
+E {"timestamp":"2026-01-05T10:00:00.000Z","log":"sshd[1234]: Connection from 192.168.1.100 port 54321"}
+E {"timestamp":"2026-01-05T10:00:01.123Z","log":"sshd[1234]: Accepted publickey for admin from 192.168.1.100"}
+E {"timestamp":"2026-01-05T10:00:02.456Z","log":"sudo: admin : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/bin/systemctl restart nginx"}
 ```
 
 ## Parsing
 
-Split by `\n`, check first char (`H` or `E`), extract payload after space (index 2).
+Read the first line as the header: it must begin with `H ` and the rest of the line is the JSON.
+Then split the remainder on the `\nE ` delimiter rather than on bare newlines, take the payload
+after the leading `E `, and unindent continuation lines by removing one leading space from each.
+Trailing newlines are trimmed from each event; blank lines between events are skipped.
 
 ## Error Handling
 
