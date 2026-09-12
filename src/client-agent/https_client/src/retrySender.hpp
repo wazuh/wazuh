@@ -15,6 +15,7 @@
 #include "authGate.hpp"
 #include "backoff.hpp"
 #include "compressionGate.hpp"
+#include "fileDecompressor.hpp"
 #include "iHttpPerformer.hpp"
 #include "iSigner.hpp"
 #include "moduleLog.hpp"
@@ -59,6 +60,13 @@ class RetrySender final
         /// non-empty, attemptOnce() folds it into HttpRequestSpec::target
         /// (via prefixedTarget()) -- a routing matter only; the bearer token
         /// does not bind the target.
+        /// decompressor (#38514, optional): when the final response of a
+        /// successful send() carries Content-Encoding: zstd and the request was
+        /// file-backed (HttpRequestSpec::responseFilePath set -- only /download
+        /// today), send() decompresses that file in place before returning.
+        /// nullptr (the default) means this stream never produces a
+        /// decompression-eligible response, so send() never even checks the
+        /// header for it -- the five non-download streams pass nothing here.
         RetrySender(IHttpPerformer& performer,
                     const ISigner& signer,
                     IClock& clock,
@@ -66,17 +74,31 @@ class RetrySender final
                     bool compressionEnabled,
                     CompressionGate* compressionGate = nullptr,
                     AuthGate* authGate = nullptr,
-                    std::string serverEndpoint = {});
+                    std::string serverEndpoint = {},
+                    IFileDecompressor* decompressor = nullptr);
 
         /// spec.headers carry the non-auth headers; the auth pair is appended per
         /// attempt. AuthFail/Permanent/VersionRejected/Interrupted return
-        /// immediately; the backoff resets on success.
+        /// immediately; the backoff resets on success. A successful, file-backed
+        /// response carrying Content-Encoding: zstd is decompressed in place
+        /// before returning (#38514); a malformed/truncated/over-cap frame
+        /// downgrades the outcome to Permanent instead of returning Ok, so the
+        /// bad file is never handed to the caller.
         Result send(const HttpRequestSpec& spec, Waiter& waiter, uint32_t maxAttempts);
 
     private:
         Result attemptOnce(const HttpRequestSpec& base);
         std::chrono::milliseconds delayFor(const Result& result);
         static bool isRetryable(OutcomeClass outcome);
+
+        /// Called once, after send()'s retry loop has already settled on a transport outcome and
+        /// reset/armed the backoff and auth gate accordingly -- decompression is a content-level
+        /// concern, not a transport one, so it never influences either. A no-op unless this
+        /// stream has a decompressor (only /download's two fetchers do), the request was
+        /// file-backed, and the response actually carried Content-Encoding: zstd. On failure,
+        /// downgrades result.outcome to Permanent so the bad file is never handed to the caller.
+        void decompressResponseIfNeeded(const HttpRequestSpec& spec, Result& result,
+                                        const std::atomic<bool>* abortFlag) const;
 
         /// Measures skew from the failed attempt's response against this
         /// clock's current wallSeconds() and, if it exceeds a noise floor,
@@ -94,6 +116,7 @@ class RetrySender final
         CompressionGate* m_compressionGate;
         AuthGate* m_authGate;
         std::string m_serverEndpoint;
+        IFileDecompressor* m_decompressor;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 };
 

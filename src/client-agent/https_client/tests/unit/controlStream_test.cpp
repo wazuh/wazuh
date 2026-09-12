@@ -96,6 +96,7 @@ namespace
                        m_compressionGate,
                        m_taskStore,
                        m_vdOffsetStore,
+                       m_decompressor,
                        [this] { return m_hostJson; })
             {
             }
@@ -126,6 +127,7 @@ namespace
             FakeWaiter m_waiter;
             FakeTaskIdStore m_taskStore;
             FakeVdOffsetStore m_vdOffsetStore;
+            ZstdFileDecompressor m_decompressor;
             std::string m_hostJson; ///< Injected Notify host block ("" -> omitted).
             ControlStream m_stream;
     };

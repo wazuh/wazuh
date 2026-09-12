@@ -18,6 +18,7 @@
 #include "configFetcher.hpp"
 #include "configHashState.hpp"
 #include "controlStateMachine.hpp"
+#include "fileDecompressor.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
 #include "rescanRequester.hpp"
@@ -51,7 +52,7 @@ class ControlStream final
                       ISpoolFileFactory& spoolFactory, ConfigHashState& configHash,
                       ClusterIdentity& cluster, AuthGate& authGate, CompressionGate& compressionGate,
                       ITaskIdStore& taskStore, IVdOffsetStore& vdOffsetStore,
-                      std::function<std::string()> collectHost = {});
+                      IFileDecompressor& decompressor, std::function<std::string()> collectHost = {});
 
         /// Safety net for any destruction path that doesn't go through HttpsClientFacade::
         /// stop() first (e.g. a test constructing a bare ControlStream): joins m_upgradeThread

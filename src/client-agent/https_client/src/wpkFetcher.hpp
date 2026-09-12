@@ -13,6 +13,7 @@
 #define _HC_WPK_FETCHER_HPP
 
 #include "backoff.hpp"
+#include "fileDecompressor.hpp"
 #include "iHttpPerformer.hpp"
 #include "iSigner.hpp"
 #include "moduleConfig.hpp"
@@ -39,6 +40,14 @@
  * control thread itself: a remote_upgrade is rare and already ends in a
  * restart, so a stall here is a lesser concern than for the routine
  * config-sync path.
+ *
+ * Unlike ConfigFetcher, never advertises Accept-Encoding (#38514 -- a WPK is
+ * already-compressed payload, discarded from this feature by the #38282
+ * spike). Still takes an IFileDecompressor: decompression is decided solely
+ * by the response's own Content-Encoding header, so a WPK response carrying
+ * one anyway (a manager bug, or a compromised manager) is still handled
+ * safely rather than silently applied as a corrupt package -- the same
+ * transport-level rule ConfigFetcher relies on, applied uniformly.
  */
 class WpkFetcher final
 {
@@ -50,7 +59,8 @@ class WpkFetcher final
                    IRandom& random,
                    ISpoolFileFactory& spoolFactory,
                    AuthGate& authGate,
-                   CompressionGate& compressionGate);
+                   CompressionGate& compressionGate,
+                   IFileDecompressor& decompressor);
 
         /// Downloads the WPK named `wpkFile`, expecting the given SHA-1.
         /// Returns the verified spool file (deleted on drop) or nullptr on
