@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MANAGER_HOST="${MANAGER_HOST:-host.docker.internal}"
+MANAGER_PORT="${MANAGER_PORT:-1514}"
+AUTHD_PORT="${AUTHD_PORT:-1515}"
+AGENT_NAME="${AGENT_NAME:-$(hostname)}"
+AUTHD_PASSWORD="${AUTHD_PASSWORD:-}"
+
+OSSEC_CONF="/var/ossec/etc/ossec.conf"
+LOG_FILE="/var/ossec/logs/ossec.log"
+
+echo "[entrypoint] manager=${MANAGER_HOST}:${MANAGER_PORT} authd_port=${AUTHD_PORT} agent_name=${AGENT_NAME}"
+
+if grep -q "<address>" "$OSSEC_CONF"; then
+  sed -i "s|<address>.*</address>|<address>${MANAGER_HOST}</address>|" "$OSSEC_CONF" || true
+else
+  echo "[entrypoint] WARN: <address> tag not found in ${OSSEC_CONF}."
+fi
+
+# Restricted to the <client> block: 4.x nests the port under <server>, 5.x under
+# <manager>, and both files carry unrelated <port> tags elsewhere.
+if grep -q "<client>" "$OSSEC_CONF"; then
+  sed -i "/<client>/,/<\/client>/ s|<port>.*</port>|<port>${MANAGER_PORT}</port>|" "$OSSEC_CONF" || true
+else
+  echo "[entrypoint] WARN: <client> block not found in ${OSSEC_CONF}."
+fi
+
+# 5.x agents verify the manager's TLS certificate by default (<agent><ssl>
+# <verification_mode>, default "system"). The dev manager presents its
+# self-generated remoted.pem, whose SAN does not cover host.docker.internal, so
+# enrollment over HTTPS fails closed. Disable verification for these
+# containerised, dev-only agents; 4.x agents have no such block.
+if [[ ! -x /var/ossec/bin/agent-auth ]] && grep -q "<agent>" "$OSSEC_CONF" \
+   && ! grep -q "<verification_mode>" "$OSSEC_CONF"; then
+  sed -i "/<agent>/,/<\/agent>/ s|</agent>|  <ssl>\n      <verification_mode>none</verification_mode>\n    </ssl>\n  </agent>|" "$OSSEC_CONF"
+  echo "[entrypoint] 5.x agent: TLS verification_mode=none (self-signed dev manager)"
+fi
+
+# 4.x agents register with agent-auth. 5.x agents have no agent-auth: their
+# enrollment (manager address + registration password) is configured at install
+# time from WAZUH_MANAGER/WAZUH_REGISTRATION_PASSWORD and runs on start.
+if [[ -x /var/ossec/bin/agent-auth ]]; then
+  if [[ -n "${AUTHD_PASSWORD}" ]]; then
+    /var/ossec/bin/agent-auth -A "${AGENT_NAME}" -m "${MANAGER_HOST}" -p "${AUTHD_PORT}" -P "${AUTHD_PASSWORD}" || true
+  else
+    /var/ossec/bin/agent-auth -A "${AGENT_NAME}" -m "${MANAGER_HOST}" -p "${AUTHD_PORT}" || true
+  fi
+fi
+
+/var/ossec/bin/wazuh-control start
+
+touch "$LOG_FILE"
+tail -F "$LOG_FILE"
