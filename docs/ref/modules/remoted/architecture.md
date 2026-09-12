@@ -34,7 +34,7 @@ flowchart LR
         direction TB
         subgraph HTTPS["HTTPS server (C++, remoted_module) — :1517"]
             AUTH["Auth middleware<br/>JWT bearer + registered address"]
-            EP["Endpoints<br/>enroll · stateless · stateful · control<br/>download · stats · config · scan/vd"]
+            EP["Endpoints<br/>/ · cacerts · enroll · stateless · stateful<br/>control · download · stats · config · scan/vd"]
             BUD["In-flight byte budget<br/>+ deferred-work limiter"]
         end
         subgraph LEG["Legacy pipeline (C) — :1514, opt-in"]
@@ -68,6 +68,8 @@ flowchart LR
     META --> WDB
 ```
 
+*Diagram source of truth: `src/remoted/remoted_module/README.md`.*
+
 Every downstream hop is HTTP over a Unix-domain socket.
 
 ## HTTPS agent API (`remoted_module`)
@@ -99,12 +101,13 @@ when it silently is not.
 
 ### Endpoints
 
-Nine agent-facing routes. Full request/response contracts in
+Ten agent-facing routes. Full request/response contracts in
 [HTTPS Agent API](https-events-api.md); machine-readable in [`agent-api.yaml`](agent-api.yaml).
 
 | Route | Purpose | Downstream |
 | --- | --- | --- |
 | `GET /` | Unauthenticated liveness probe | — |
+| `GET /cacerts` | Unauthenticated CA distribution; the agent must independently authenticate the CA, for example with a pin | filesystem |
 | `POST /enroll` | Agent registration; bridges to `authd`, which keeps all enrollment logic | authd local socket |
 | `POST /stateless` | Event batches (H/E wire format) | Engine, `POST /events/enriched` |
 | `POST /stateful` | Whole inventory sync sessions, relayed opaquely | Inventory Sync Server |
@@ -120,7 +123,8 @@ The manager processes what it has capacity for rather than buffering into a fixe
 bounded in two phases, and excess load is shed with a plain `503`:
 
 1. **In-flight byte budget** — bounds the total unprocessed payload held in memory, reserved before
-   a route runs. The liveness `GET /` is exempt, so it keeps answering `200` under pressure.
+   a route runs. `GET /` and `GET /cacerts` are exempt from this budget; its exhaustion does not
+   cause either route to return `503`. Connection limits and TLS checks still apply.
 2. **Deferred-work limiter** — bounds how many requests are parked awaiting a downstream service.
 
 Neither sends `Retry-After`: this is server-side load-shedding, not per-client rate-limiting, and the
@@ -218,7 +222,7 @@ For the complete set, see [Configuration](configuration.md).
 
 ## References
 
-- [HTTPS Agent API](https-events-api.md) — the agent-facing protocol and all nine endpoints
+- [HTTPS Agent API](https-events-api.md) — the agent-facing protocol and all ten endpoints
 - [Endpoint reference](agent-api-reference.html) — the same contract as OpenAPI
 - [Configuration](configuration.md)
 - [Metrics](metrics.md)
