@@ -10,7 +10,7 @@ Complete configuration reference for the Wazuh enrollment service (authd), which
 
 **Internal Options:** `authd.*`
 
-For module overview and architecture, see [Auth Daemon Module](index.html).
+For module overview and architecture, see [Auth Daemon Module](README.md).
 
 ---
 
@@ -60,7 +60,7 @@ Register agents using their source IP address instead of `any`.
 
 Controls whether a deleted or replaced agent's old entry is kept as an audit trail. When an agent
 is removed — including the implicit removal that happens when another agent re-enrolls and forces
-it out (see [Force re-enrollment](index.html#force-re-enrollment)) — the active `client.keys` entry
+it out (see [Force re-enrollment](README.md#force-re-enrollment)) — the active `client.keys` entry
 is always deleted regardless of this setting. What `purge` decides is whether that deleted entry is
 also retained as a `!`-prefixed placeholder line in `client.keys` (e.g. `001 !oldname 1.2.3.4
 <key>`), which keeps a record of the old ID/name/IP so it is not reused. By default the placeholder
@@ -77,7 +77,7 @@ Require agents to provide a shared enrollment password.
 - **Default value:** `no` (the configuration shipped by the installer sets it to `yes`)
 - **Allowed values:** `yes`, `no`
 
-When enabled, the password is read from `/var/wazuh-manager/etc/authd.pass` (a single line). If the file does not exist, `wazuh-authd` generates a random password on start (32 bytes straight from the CSPRNG, written as 64 lowercase hexadecimal characters), stores it in that file, and reuses it on later starts. A password written by hand is not held to that format: any single line longer than two characters is accepted. If the file exists but is empty or invalid, `wazuh-authd` does not start. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
+When enabled, the password is read from `/var/wazuh-manager/etc/authd.pass` (a single line). If the file does not exist, `wazuh-manager-authd` generates a random password on start (32 bytes straight from the CSPRNG, written as 64 lowercase hexadecimal characters), stores it in that file, and reuses it on later starts. A password written by hand is not held to that format: any single line longer than two characters is accepted. If the file exists but is empty or invalid, `wazuh-manager-authd` does not start. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
 
 **Agent-side setup:** Because `use_password` is `yes` by default, agents must supply the enrollment password or their enrollment request will be rejected. First retrieve the password from the manager:
 
@@ -88,7 +88,7 @@ sudo cat /var/wazuh-manager/etc/authd.pass
 The recommended way to provide it to an agent is the `WAZUH_REGISTRATION_PASSWORD` install variable, which writes `etc/authd.pass` and sets its ownership and permissions automatically:
 
 ```bash
-WAZUH_MANAGER="<manager-ip>" WAZUH_REGISTRATION_PASSWORD="<password>" apt install ./wazuh-agent.deb
+sudo env WAZUH_MANAGER="<manager-ip>" WAZUH_REGISTRATION_PASSWORD="<password>" apt install ./wazuh-agent.deb
 ```
 
 To add it to an already-installed agent, write the file manually. The agent daemon (`wazuh-agentd`) runs as the `wazuh` user, so the file must be readable by that user:
@@ -101,7 +101,7 @@ sudo chmod 640 /var/ossec/etc/authd.pass
 
 The agent reads the password from `etc/authd.pass` (relative to its install directory, typically `/var/ossec/etc/authd.pass`) at startup.
 
-**Password rotation:** The generated password persists across restarts. To rotate it (for example after a security incident), delete `/var/wazuh-manager/etc/authd.pass` on the master and restart `wazuh-authd`. A new random password will be generated, persisted, and distributed to workers automatically. If the CSPRNG fails, `wazuh-authd` exits instead of writing a weaker password. The reuse of an existing password is logged at `INFO` level on every start.
+**Password rotation:** The generated password persists across restarts. To rotate it (for example after a security incident), delete `/var/wazuh-manager/etc/authd.pass` on the master and restart `wazuh-manager-authd`. A new random password will be generated, persisted, and distributed to workers automatically. If the CSPRNG fails, `wazuh-manager-authd` exits instead of writing a weaker password. The reuse of an existing password is logged at `INFO` level on every start.
 
 ### remote_enrollment
 
@@ -135,7 +135,7 @@ Has no effect when `remote_enrollment` is `no` (both paths are already off), and
 
 ### ciphers
 
-Colon-separated list of TLS 1.3 cipher suites accepted by the enrollment TLS session (applied via OpenSSL's `SSL_CTX_set_ciphersuites`). `wazuh-authd` requires TLS 1.3 as the minimum protocol version, so this option only accepts TLS 1.3 cipher suite names — legacy OpenSSL cipher-list strings (e.g. `HIGH:!ADH:...`) used before TLS 1.3 enforcement are no longer valid and are rejected at startup with a clear error.
+Colon-separated list of TLS 1.3 cipher suites accepted by the enrollment TLS session (applied via OpenSSL's `SSL_CTX_set_ciphersuites`). `wazuh-manager-authd` requires TLS 1.3 as the minimum protocol version, so this option only accepts TLS 1.3 cipher suite names — legacy OpenSSL cipher-list strings (e.g. `HIGH:!ADH:...`) used before TLS 1.3 enforcement are no longer valid and are rejected at startup with a clear error.
 
 - **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
 - **Allowed values:** Colon-separated combination of `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`
@@ -235,6 +235,20 @@ The enrollment token store's two limits — 5000 tokens and 7 MiB of file — ar
 options: they are sized against what the managers' read-only replica accepts, so raising one on a
 single node would only move the failure elsewhere. Room is made by purging
 (`--purge-enrollment-tokens`), which is what the refusal tells the operator to do.
+
+The [identity journal](architecture.md#the-identity-journal)'s two ceilings are constants for the
+same kind of reason: 5000 pending entries for append admission and an 8 MiB file limit at startup
+load (not enforced by append). Neither is a tuning knob. At the admission ceiling, inspect database
+write/commit failures and authd's backlog before retrying enrollment.
+
+Every option below is read once at start with a compiled-in default. Three things follow:
+
+- **The shipped file is empty.** It carries only comments, so tuning one of these means adding the
+  `name=value` line yourself.
+- **An out-of-range or non-numeric value is fatal**, not clamped: the daemon refuses to start and
+  names the option it rejected.
+  Put comments on separate lines beginning with `#`; an inline comment becomes part of the value.
+- **The file is per node and is never synchronized.** Nothing in a cluster propagates it.
 
 Additional authd settings can be configured in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`:
 
@@ -455,7 +469,7 @@ Relaxed settings for testing (NOT for production):
 
 ## See Also
 
-- [Auth Daemon Module](index.html) - Module overview and architecture
+- [Auth Daemon Module](README.md) - Module overview and architecture
 - [Client Configuration](../client/configuration.md) - Agent enrollment settings
 - [Remote Configuration](../remoted/configuration.md) - Agent connection settings
-- [Agent Management](../agent-management/index.html) - Agent lifecycle management
+- [Agent Management](../agent-management/README.md) - Agent lifecycle management
