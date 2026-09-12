@@ -39,11 +39,10 @@
  * password/mTLS enrollment loop its normal chance when this returns -1 or the token path was
  * never configured.
  *
- * @param uid The uid AgentdStart() is about to drop privileges to, given to client.keys so the
- *        agent can read the credential it just enrolled with once it drops. The anchor is not
- *        chowned to it: that one keeps root as its owner and shares only the group, so the
- *        runtime user can read the certificate authority it verifies against but not replace
- *        it.
+ * @param uid The uid AgentdStart() is about to drop privileges to. Currently unused: neither
+ *        file this function writes is chowned to it (see token_bootstrap.c's own comments on
+ *        the anchor and on client.keys) -- kept for signature symmetry with AgentdStart()'s
+ *        uid/gid pair.
  * @param gid The gid AgentdStart() is about to drop privileges to, so the committed anchor ends
  *        up group-owned by it.
  * @return 0 when there was nothing to do, or the bootstrap fully succeeded; -1 when a token was
