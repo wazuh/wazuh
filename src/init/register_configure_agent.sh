@@ -23,13 +23,11 @@ WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
 # Set default sed alias
 sed="sed -ri"
 
-# Named refusal codes for resolve_deployment_conflicts(). One per cause: an operator who passed
-# no token and one whose token would not decode have different things to fix, and a test
-# asserting on the code cannot then pass for the wrong reason.
-WET_ERR_NO_TOKEN="ERR_NO_TOKEN"
+# The ERR_ codes are refusals, which stop the run; INFO_NO_MANAGER is not, the agent simply
+# has no address, which is a supported way to install one that is configured or enrolled later.
+WET_INFO_NO_MANAGER="INFO_NO_MANAGER"
 WET_ERR_BAD_TOKEN="ERR_BAD_TOKEN"
 WET_ERR_NO_DECODER="ERR_NO_DECODER"
-WET_ERR_MODE_WITH_TOKEN="ERR_MODE_WITH_TOKEN"
 
 # The sixteen names the token replaced. Still read, so an install carrying a 4.x-era command or
 # an untouched playbook is told what happened.
@@ -47,6 +45,16 @@ deployment_refusal() {
     echo "$(date '+%Y/%m/%d %H:%M:%S') Deployment variables refused [${1}]: ${2}" \
         >> "${INSTALLDIR}/logs/ossec.log"
     echo "wazuh-agent: deployment variables refused [${1}]: ${2}" >&2
+
+}
+
+# Same two sinks and the same named-code contract, for an outcome that is not a refusal: the
+# install is complete and correct, it just has nowhere to connect yet.
+deployment_notice() {
+
+    echo "$(date '+%Y/%m/%d %H:%M:%S') No manager configured [${1}]: ${2}" \
+        >> "${INSTALLDIR}/logs/ossec.log"
+    echo "wazuh-agent: no manager configured [${1}]: ${2}" >&2
 
 }
 
@@ -179,16 +187,6 @@ insert_into_agent_block() {
     return "${inserted}"
 
 }
-
-# Escapes the three characters that are structurally significant in XML content --
-# '&', '<', '>' -- so a value written verbatim into ossec.conf (a CA path, in
-# particular) can never be mistaken for markup or break the file's well-formedness.
-# '&' must run first: escaping '<'/'>' introduces new literal '&' characters (as part
-# of "&lt;"/"&gt;") that must not themselves be re-escaped by a later pass.
-xml_escape() {
-    printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
-}
-
 # True when the option is really set, as opposed to appearing inside a comment.
 # Commented-out options are exactly how the shipped files used to show an example,
 # and editing one leaves the setting the caller asked for unwritten.
@@ -498,22 +496,11 @@ resolve_deployment_conflicts() {
     warn_removed_variables
 
     if [ -z "${WAZUH_ENROLLMENT_TOKEN}" ]; then
-        deployment_refusal "${WET_ERR_NO_TOKEN}" "WAZUH_ENROLLMENT_TOKEN is required to register an agent; none was supplied, so this agent is installed but not registered. Mint one with 'wazuh-manager-authd --create-enrollment-token --address <host>'."
+        deployment_notice "${WET_INFO_NO_MANAGER}" "WAZUH_ENROLLMENT_TOKEN was not supplied, so the agent does not know where to connect."
         return 0
     fi
 
     decode_enrollment_token || return 1
-
-    # An explicit mode always wins over the anchor the bootstrap is about to write: 'system'
-    # trusts the OS store instead, 'none' stands as asked (config.c only warns), and
-    # 'certificate' checks the chain but not the name. Only 'full' agrees with what a token is
-    # for, and it is what an anchor resolves to on its own -- so any explicit mode here either
-    # changes nothing or quietly undoes the token this install just consumed. Refuse the pair
-    # rather than enumerate the three that break it.
-    if [ -n "${WAZUH_SSL_VERIFICATION}" ]; then
-        deployment_refusal "${WET_ERR_MODE_WITH_TOKEN}" "WAZUH_SSL_VERIFICATION cannot be set alongside WAZUH_ENROLLMENT_TOKEN; the token installs the trust anchor and an explicit mode overrides it. Pass one or the other."
-        return 1
-    fi
 
     TOKEN_PRESENT="yes"
 
@@ -548,10 +535,20 @@ add_adress_block() {
     # Remove both server and legacy manager configuration blocks
     ${sed} "/<manager>/,/\/manager>/d; /<server>/,/\/server>/d" "${CONF_FILE}"
 
+    # A 5.x file is <agent><manager>; a 4.x file preserved across an in-place upgrade is
+    # <client><server>, and the 5.x parser reads the address out of <client> only under <server>
+    # -- writing <manager> there leaves the agent with nothing it will read. Same rule as
+    # config() in src/win32/InstallerScripts.vbs, which picks the wrapper the same way.
+    if grep -q "<agent>" "${CONF_FILE}"; then
+        aab_wrapper="manager"
+    else
+        aab_wrapper="server"
+    fi
+
     {
-        echo "    <manager>"
+        echo "    <${aab_wrapper}>"
         echo "      <endpoint>${FINAL_ENDPOINT}</endpoint>"
-        echo "    </manager>"
+        echo "    </${aab_wrapper}>"
     } >> "${TMP_SERVER}"
 
     insert_into_agent_block "${TMP_SERVER}"
@@ -700,9 +697,6 @@ add_auto_enrollment () {
             echo "      <enabled>yes</enabled>"
             echo "      <agent_name>agent</agent_name>"
             echo "      <groups>Group1</groups>"
-            echo "      <agent_certificate_path>/path/to/agent.cert</agent_certificate_path>"
-            echo "      <agent_key_path>/path/to/agent.key</agent_key_path>"
-            echo "      <authorization_pass_path>/path/to/authd.pass</authorization_pass_path>"
             echo "      <delay_after_enrollment>20</delay_after_enrollment>"
         } > "${TMP_ENROLLMENT}"
     fi
@@ -765,29 +759,29 @@ main () {
     # instead of root:wazuh 0660.
     ensure_ossec_log
 
-    # Settle every variable against every other one before the first writer runs. A refusal
-    # leaves the configuration the package shipped -- no <manager> block of our making, no
-    # authd.pass, no stored token -- which is the state an install with no deployment variables
-    # at all reaches, and is what keeps a refused token from ending in an unverified enrollment.
+    # Settle every variable against every other one before the first writer runs, so a refusal
+    # returns before any of them and no token is stored -- that is what keeps a refused token
+    # from ending in an unverified enrollment. It is not a rollback: add_adress_block() further
+    # down deletes the existing <manager> block before inserting its replacement, so a file that
+    # insert cannot match is left without one whatever this gate decides.
     if ! resolve_deployment_conflicts; then
         unset_vars
         return 1
     fi
 
-    # The token's address is the only thing that reaches <endpoint> now, and it is written
-    # verbatim. No validation here: w_etoken_decode() checks 'adr' against the same grammar
-    # before --show-token will print it at all (ETOKEN_BAD_ADR), so a malformed address never
-    # gets past the decoder, and re-checking it in shell would be a second implementation of a
-    # rule the codec already owns.
+    # The token's address is the only thing that reaches <endpoint>, and it is written verbatim.
+    # No validation here: w_etoken_decode() checks 'adr' against the same grammar before
+    # --show-token will print it at all (ETOKEN_BAD_ADR), so a malformed address never gets past
+    # the decoder, and re-checking it in shell would be a second implementation of a rule the
+    # codec already owns.
     if [ "${TOKEN_PRESENT}" = "yes" ]; then
         FINAL_ENDPOINT="${TOKEN_ADR}"
         add_adress_block
     fi
 
-    # The one TLS variable left, and the only one that matters to an install with no token: a
-    # manager behind a publicly trusted certificate needs no anchor and no CA file, just the
-    # mode. Refused earlier when a token was also supplied, so reaching here with a value means
-    # there is no anchor on the way for it to override.
+    # Honoured in both supported shapes: alongside a token, where it overrides the mode the
+    # bootstrapped anchor would have resolved to on its own, and alongside an endpoint, where
+    # it is the only TLS input there is.
     set_agent_verification_mode "${WAZUH_SSL_VERIFICATION}"
 
     # What is left of <enrollment>: the three settings that were never about registration.

@@ -243,6 +243,7 @@ removed "WAZUH_AUTHD_PORT"                "1515"
 removed "WAZUH_PEM"                       "/tmp/agent.pem"
 removed "WAZUH_KEY"                       "/tmp/agent.key"
 removed "WAZUH_REGISTRATION_CA"           "/tmp/ca.pem"
+
 removed "WAZUH_CERTIFICATE"               "/tmp/ca.pem"
 
 # The pre-rename spelling has no alias, so it has to say so or it fails only in behaviour.

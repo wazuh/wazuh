@@ -18,6 +18,11 @@
 #include "state.h"
 #include "module_limits.h"
 
+/* Decode the enrollment token on stdin and print what it carries, without its credential.
+ * Shared by both agent entry points so Linux and Windows accept exactly the same tokens.
+ * Returns 0, 2 when the token itself was rejected, or 1 when it could not be read. */
+int w_agent_show_enrollment_token(void);
+
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 

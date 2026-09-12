@@ -74,9 +74,9 @@ else()
 list(APPEND shared_tests_flags "${STRING_OP_BASE_FLAGS}")
 endif()
 
-# Enrollment token primitives. b64url_op.c is pure C and ships in every target, so its test
-# follows test_string_op; x509_op.c and enrollment_token.c need OpenSSL, which only the
-# manager target links (through WAZUHEXT), so they follow test_ssl_op.
+# Enrollment token primitives. All three sources ship in every target, and winagent.cmake puts
+# WAZUHEXT in TEST_DEPS, so the two that need OpenSSL build there too. They were skipped on
+# winagent until #39063, which left the pin path the Windows agent runs never exercised on it.
 list(APPEND shared_tests_names "test_b64url_op")
 set(B64URL_OP_BASE_FLAGS "${DEBUG_OP_WRAPPERS} -Wl,--wrap,syscom_dispatch")
 if(${TARGET} STREQUAL "winagent")
@@ -87,13 +87,24 @@ else()
 list(APPEND shared_tests_flags "${B64URL_OP_BASE_FLAGS}")
 endif()
 
-if(NOT ${TARGET} STREQUAL "winagent")
+# On winagent, DEPENDENCIES_O drags in the win32/syscheck object graph, so these symbols have to
+# be wrapped or the link fails -- the same set every other winagent test above uses.
+# syscom_dispatch belongs with them: agent_report.c, syscheck_op.c and wmodules.c all reach it
+# through DEPENDENCIES_O, and test_x509_op pulls that graph in where test_enrollment_token does
+# not, so leaving it out fails only the first of the two.
+if(${TARGET} STREQUAL "winagent")
+set(ETOKEN_FLAGS "-Wl,--wrap,Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
+                  -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown \
+                  -Wl,--wrap,syscom_dispatch")
+else()
+set(ETOKEN_FLAGS " ")
+endif()
+
 list(APPEND shared_tests_names "test_x509_op")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "${ETOKEN_FLAGS}")
 
 list(APPEND shared_tests_names "test_enrollment_token")
-list(APPEND shared_tests_flags " ")
-endif()
+list(APPEND shared_tests_flags "${ETOKEN_FLAGS}")
 
 list(APPEND shared_tests_names "test_expression")
 set(EXPRESSION_BASE_FLAGS "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,OSRegex_Compile \

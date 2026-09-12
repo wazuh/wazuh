@@ -119,10 +119,8 @@ mep_error() {
 
 }
 
-# Split a combined <endpoint> value (#38624) into MEP_HOST / MEP_PORT / MEP_ENDPOINT.
-# Same logic as parse_manager_endpoint() in register_configure_agent.sh,
-# ParseManagerEndpoint() in inst-functions.sh and its VBScript twin; duplicated because
-# this script ships inside the WPK and runs standalone, with nothing to source.
+# This parser stays because a WPK upgrade still has to read the <endpoint> already in ossec.conf,
+# and this script ships inside the WPK and runs standalone, with nothing to source.
 parse_manager_endpoint() {
 
     mep_raw="$1"

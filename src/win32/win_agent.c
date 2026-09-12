@@ -138,6 +138,18 @@ STATIC int run_service_restart(void)
 
 int main(int argc, char **argv)
 {
+    /* Decoding a token is a pure function of stdin, so it is answered before anything here looks
+     * at the installation -- in particular before the chdir() below, which exits the process on
+     * failure. The package installer calls this while it is still rewriting ossec.conf, and an
+     * operator inspecting a token by hand should not need a working install either. Kept ahead
+     * of the argv dispatch further down for that reason, and it runs the same function the POSIX
+     * entry point does, so a token one platform accepts is a token the other accepts. */
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--show-token") == 0) {
+            return (w_agent_show_enrollment_token());
+        }
+    }
+
     char *tmpstr;
     char mypath[OS_MAXSTR + 1];
     char myfinalpath[OS_MAXSTR + 1];
