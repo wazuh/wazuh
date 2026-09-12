@@ -25,6 +25,7 @@ It serves two channels at once, and they share almost nothing:
 - [Metrics](metrics.md) - The HTTPS agent server's metric catalog, each metric linked to the setting it helps size
 - [Stateless Metadata](stateless-metadata.md) - Agent metadata enrichment for stateless events (legacy channel)
 - [Event Protocol](event-protocol.md) - Event framing and message format specification
+- [Quick Reference](quick-reference.md) - Commands, counters and starting-point settings for both channels
 
 ## Overview
 

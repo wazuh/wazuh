@@ -1,14 +1,22 @@
-# Quick Reference: Stateless Metadata
+<a id="quick-reference-stateless-metadata"></a>
+
+# Quick Reference
+
+The commands, counters and starting-point settings for both remoted channels, on one page. Every
+entry links to the reference page that explains it.
 
 ## TL;DR
 
-Wazuh 5.0+ automatically enriches all events with agent metadata (OS, version, groups, etc.) before
-forwarding them to the engine. No configuration required.
+Every batch identifies its agent and may include host metadata. The engine caches parsed headers;
+the header supplies the context rather than a separate agent lookup. The legacy path currently
+omits groups — see [the cache limitation](stateless-metadata.md#group-updates).
 
-The metadata **cache** described on this page belongs to the legacy `<remote><legacy>` channel, which
-extracts it from 4.x keep-alives. A 5.x agent instead reports its host metadata on `POST /control`
-(`notify`), and the manager writes it straight to wazuh-db — see
-[HTTPS Agent API](https-events-api.md#control-endpoint-post-control).
+The metadata **cache** described on this page belongs to the legacy `<remote><legacy>` channel,
+which builds that header from 4.x keep-alives and runs only when that channel is enabled. A 5.x
+agent builds its own header and reports host metadata separately, on `POST /control` (`notify`),
+which the manager writes straight to wazuh-db — see
+[HTTPS Agent API](https-events-api.md#control-endpoint-post-control) and
+[Stateless Metadata](stateless-metadata.md).
 
 ## Key Concepts
 
@@ -22,9 +30,9 @@ extracts it from 4.x keep-alives. A 5.x agent instead reports its host metadata 
 | Field         | Example           | Source                                                         |
 | ------------- | ----------------- | -------------------------------------------------------------- |
 | Agent ID      | `"001"`           | Agent registration                                             |
-| Agent Name    | `"web-server-01"` | Keep-alive message                                             |
+| Agent Name    | `"web-server-01"` | Manager keystore                                             |
 | Agent Version | `"v5.0.0"`        | Keep-alive message                                             |
-| Groups        | `["web", "prod"]` | Keep-alive message                                             |
+| Groups        | `["web", "prod"]` | Agent-supplied HTTPS header; currently absent from the legacy cache                                             |
 | OS Name       | `"Ubuntu"`        | Keep-alive message                                             |
 | OS Version    | `"22.04"`         | Keep-alive message                                             |
 | OS Platform   | `"ubuntu"`        | Keep-alive message                                             |
@@ -37,7 +45,7 @@ extracts it from 4.x keep-alives. A 5.x agent instead reports its host metadata 
 ### Check Metadata Collection
 
 ```bash
-tail -f `/var/wazuh-manager/logs/wazuh-manager.log` | grep -i "keepalive\|metadata"
+tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep -i "keepalive\|metadata"
 ```
 
 ## Configuration Quick Start
@@ -80,9 +88,9 @@ whether it is the one binding.
 ## Protocol Example
 
 ```
-H	{"wazuh":{"agent":{"id":"001","name":"web-01","groups":["web"]}}}
-E	{"log":"Connection from 192.168.1.100"}
-E	{"log":"Authentication successful"}
+H {"wazuh":{"agent":{"id":"001","name":"web-01","groups":["web"]}}}
+E {"log":"Connection from 192.168.1.100"}
+E {"log":"Authentication successful"}
 ```
 
 ## Monitoring

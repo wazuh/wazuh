@@ -132,9 +132,13 @@ the countdown. Two cases:
    (the `mv`/`chown`/`chmod` steps of
    [Deploy certificates](../../getting-started/installation.md#deploy-certificates)).
 3. `systemctl restart wazuh-manager` — the leaf is loaded once, when the listener starts.
-4. Check: `openssl s_client -connect <host>:1517 -CAfile root-ca.pem </dev/null` prints
+4. Check (substitute the certified hostname):
+   `sudo openssl s_client -connect mgr.example.com:1517 -servername mgr.example.com -verify_hostname mgr.example.com -verify_return_error -CAfile /var/wazuh-manager/etc/certs/root-ca.pem </dev/null` prints
    `Verify return code: 0 (ok)`, `GET /cacerts` answers `200`, and `cert_expiry_days` is back to the new
    validity (the WARN is not logged again).
+
+   If the listener requires mutual TLS, also supply its accepted client certificate and key with
+   `-cert` and `-key`.
 
 Agents keep verifying throughout: they pin the CA, not the leaf.
 
@@ -153,7 +157,7 @@ agent is re-enrolled or updated with it is documented on the agent side.
 
 ## Authentication (JWT bearer)
 
-**Single exception: `POST /enroll`.** Every other endpoint on this page requires the agent<->manager
+**Enrollment uses a separate credential; `GET /` and `GET /cacerts` need no bearer.** The other endpoints require the agent<->manager
 bearer token described in this section, keyed by an agent's pre-shared `client.keys` entry. An
 enrolling agent has no such entry yet, so `/enroll` cannot use it — it authenticates with an
 independent credential instead: a client certificate, a `wazuh-enroll+jwt` bearer of its own (keyed
@@ -161,7 +165,7 @@ by the shared enrollment password, by an enrollment token, or — for an agent r
 existing id — by that agent's re-enrollment secret), or neither. See
 [Enrollment endpoint](#enrollment-endpoint-post-enroll) below.
 
-Every other request MUST carry two headers:
+Every request using the agent bearer MUST carry two headers:
 
 ```text
 protocol-version: 1
@@ -285,11 +289,11 @@ manager decompresses:
 Supporting both was considered and dropped: it would mean two decoders, two dependency chains and
 two test matrices for a codec that is dominated on this workload.
 
-- Decompression happens **after** authentication succeeds, never before: the bearer token is verified
+- On routes using the agent bearer, decompression happens **after** authentication succeeds: the bearer token is verified
   from the headers alone (the body is not part of it — TLS protects it), so an unauthenticated
-  request never costs CPU/memory decompressing anything.
-- `remoted.auth_max_body_size` (the 10 MiB cap that bounds an *uncompressed* body) plays **no part**
-  in the zstd path at all. Instead, **both** of the decoder's memory costs are charged as real
+  request never reaches that decoder. `/enroll` can be open and has its own 16 KiB decoded-body cap.
+- `remoted.auth_max_body_size` caps the **wire body** at 10 MiB by default, including a compressed
+  body. It does not cap the decoded output on authenticated agent routes. **Both** of the decoder's memory costs are charged as real
   reservations against the **in-flight byte budget** (`max_inflight_bytes`, see
   [Configuration](#configuration)) — the same pool that bounds unprocessed request payloads. So a
   mostly-idle server admits requests one already near its memory ceiling refuses, and concurrent
@@ -369,8 +373,9 @@ The server bounds capacity in two phases and sheds excess load with a plain **`5
 Unavailable`** (server-side load-shedding, not per-client rate-limiting; the connection is closed; no
 `Retry-After` — the agent runs its own retry/backoff): the **in-flight byte budget** bounds total
 unprocessed payload in memory, and the **deferred-work limiter** bounds how many requests are parked
-awaiting the downstream service. The liveness `GET /` is exempt from the byte budget, so it stays
-`200` under pressure. See the memory settings below.
+awaiting the downstream service. The liveness `GET /` and the trust-bootstrap `GET /cacerts` are
+exempt from the byte budget: its exhaustion does not reject either route. Connection limits and
+TLS checks still apply. See the memory settings below.
 
 The one `503` that *does* carry a `Retry-After` is relayed, not generated: on `/stateful`, a
 digits-only `Retry-After` from the inventory sync server is passed through, since there the
@@ -442,7 +447,8 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
   WPK upgrade package. The only route that answers with a **streamed** body: HTTP chunked transfer
   encoding, so memory does not grow with file size. Returns **`200 OK`** with
   `Content-Type: application/octet-stream`, **`400`** on a malformed request or a rejected
-  identifier, **`404`** when the resource does not exist, or **`500`**. See
+  identifier, **`403`** when a `config` request names a selector that is not the requesting agent's
+  own, **`404`** when the resource does not exist, or **`500`**. See
   [Download endpoint](#download-endpoint-post-download) below for details.
 - **`POST /stats`** — authenticated ingestion of the statistics document an agent reports for all of
   its modules. Relayed to the [Inventory Sync Server](../inventory-sync-server/README.md) over
@@ -465,7 +471,7 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
   authenticated endpoint above, it does **not** use the agent<->manager bearer token — the agent
   has no key yet — and it is **always registered**, answering **`403`** rather than a bare `404`
   when enrollment is administratively disabled. Returns **`200 OK`** with the new agent's
-  `{id,name,ip,key}` on success, or a mapped `4xx`/`5xx` on failure. See
+  `{id,name,ip,key,reenroll_secret}` on success, or a mapped `4xx`/`5xx` on failure. See
   [Enrollment endpoint](#enrollment-endpoint-post-enroll) below for details.
 
 The machine-readable contract is published as OpenAPI, covering all ten routes — see the
@@ -547,7 +553,8 @@ The capacity limits are **layered**: the transport max body size caps a single r
 caps how many bodies can be read at once (peak ≈ max connections × max body size), the in-flight byte
 budget caps the total accepted-but-unprocessed payload in memory, and the deferred-request limiter
 caps how many requests are parked awaiting a downstream service. Exhausting either budget → a plain
-`503` (the agent retries; the liveness `GET /` is exempt from the byte budget).
+`503` (the agent retries; the two unauthenticated routes, `GET /` and `GET /cacerts`, are exempt
+from the byte budget).
 
 ### Downstream client and auth middleware
 
@@ -649,7 +656,7 @@ the throttled log line can only sample:
 | Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout` | `remoted.forwarder.error.connect_timeout` / `.write_timeout` / `.response_timeout` |
 | Downstream response exceeded the configured cap | `remoted.downstream_max_response_body_size` | `remoted.forwarder.error.response_too_large` |
 | Tokens outside the accepted time window (agent clock drift) | `remoted.jwt_max_age`, `remoted.jwt_clock_skew` | `remoted.auth.reject.clock_skew` |
-| Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` (uncompressed body), or `remoted.max_inflight_bytes` (`Content-Encoding: zstd`) | `remoted.auth.reject.body_too_large` |
+| Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` (wire body, compressed or not), or `remoted.max_inflight_bytes` (zstd decoding memory) | `remoted.auth.reject.body_too_large` |
 | Downstream timeouts add up past `http_request_timeout` | `remoted.http_request_timeout` | `remoted.http.<endpoint>.latency` percentiles vs the cap |
 
 Two more, about a registered address that no longer matches, both collapsed on the same 90-second
@@ -714,7 +721,7 @@ error handling follow the same bearer-token mechanism as `/stateless` (see
 
 #### Startup
 
-Sent by the agent on initial connection. The manager marks the agent as connected in global.db,
+Sent by the agent on initial connection. The manager marks the agent as `pending` in global.db,
 records the connection time, and returns limits (FIM, Syscollector, SCA quotas), cluster
 information (name), and the agent's assigned groups. The agent stores this data locally.
 No hashes are included in the startup response.
@@ -1088,7 +1095,9 @@ re-enrollment verification); this endpoint only authenticates the request and re
 existing local socket
 (`queue/sockets/auth.sock`) — the same interface `manage_agents` and the API's agent-registration
 endpoints already use. See [Authd](../authd/README.md) for what happens once a request reaches
-that socket, and [`legacy_enrollment`](../authd/configuration.md#legacy_enrollment) for how an
+that socket — or [the enrollment lifecycle](../authd/enrollment-lifecycle.md) for the whole path in
+order, from minting a token to the agent's row reaching `global.db` — and
+[`legacy_enrollment`](../authd/configuration.md#legacy_enrollment) for how an
 operator can retire port 1515 while keeping `/enroll` (or disable both together via
 `remote_enrollment`).
 
@@ -1272,6 +1281,8 @@ master node's `authd` predates it.
 | `authd` internal/parse/key-generation failure (9001/9002/9009) | `500` | |
 | `authd` refused a caller-supplied key (9019) | `400` | unreachable from `/enroll` (self-enrollment never sends a key); mapped for completeness |
 | `authd` `max_agents` reached (9013) | `503` | Server-wide capacity condition, not a per-client rate limit. |
+| Re-enrollment already in progress (9030) | `409` | Retry after the pending rotation is committed; no second rotation is performed. |
+| Identity transition could not be recorded (9031) | `503` | No credential is handed out. See [journal admission and recovery limitations](../authd/architecture.md#the-identity-journal). |
 | Worker rejected the request (9015), or its forward to the master failed (9016, new in 5.0) | `503` | Only reachable via the local-socket bridge — see [Authd's local socket protocol](../authd/README.md#local-socket-enrollment-protocol). |
 | `authd` unreachable, or its reply was unparseable/timed out | `503` | `{"error":{"code":-1,"message":"Enrollment service temporarily unavailable"}}` |
 
@@ -1457,7 +1468,7 @@ endpoint-level check is that the body is **not empty** — parsing is the sync s
 it on both sides would walk the payload twice on a periodic path. Rejecting an empty body here still
 saves a deferred-work slot and a UDS round trip.
 
-The two bodies have different, specific shapes, and a malformed one is rejected downstream with a
+Both bodies require a nonempty `modules` object whose values are objects; a malformed report is rejected downstream with a
 `400` (see [Error handling](#error-handling-3)):
 
 **`POST /stats`** — an object keyed by module:
@@ -1469,34 +1480,30 @@ The two bodies have different, specific shapes, and a malformed one is rejected 
 `modules` is moved under `wazuh.agent.statistics` untouched: nothing renames a metric or reshapes a
 module's body, since only the agent knows which of its counters are cumulative.
 
-**`POST /config`** — an **array** of one `{module, config}` pair per module:
+**`POST /config`** — an object keyed by module, using the same envelope:
 
 ```json
-[
-  {"module": "fim", "config": {}},
-  {"module": "logcollector", "config": {}}
-]
+{"modules": {"fim": {}, "logcollector": {}}}
 ```
 
-Each element is reduced to exactly those two keys — anything else the agent sent is dropped — and the
-array becomes an object keyed by module name under `wazuh.agent.configuration.content`, with
-`modules` derived from its keys so the two cannot drift apart.
+The `modules` object becomes `wazuh.agent.configuration.content`, with
+`wazuh.agent.configuration.modules` derived from its keys. Other root members are dropped.
 
 A report is **all or nothing** on both routes: one malformed module rejects the whole document rather
 than indexing a partial report the agent could not tell apart from a complete one.
 
 ### Responses
 
-The two differ in exactly one way — what a success carries back:
+Both routes acknowledge the report with an empty JSON object:
 
 | | `POST /stats` | `POST /config` |
 | --- | --- | --- |
-| `200 OK` body | fixed `{}` | the sync server's enriched document, passed through |
+| `200 OK` body | fixed `{}` | `{}` from the sync server, passed through |
 
 `/stats` answers a fixed body on purpose: the agent has nothing to read back, and a constant keeps an
-arbitrary downstream string off the wire. On **failure** neither route reflects the downstream body —
-both collapse to a fixed local message — so an arbitrary downstream string is never returned to an
-agent.
+arbitrary downstream string off the wire. `/config` relays a successful downstream body, so its
+`{}` acknowledgement depends on the sync server's contract. On **failure** both routes collapse
+the downstream body to a fixed local message.
 
 > **A `200` means accepted, not indexed.** The sync server answers before the indexer write completes
 > (the write is fire-and-forget), so an indexer-side rejection is **silent** to the agent, which
@@ -1509,7 +1516,8 @@ agent.
 
 | Condition | HTTP | `error` message |
 | --- | --- | --- |
-| Empty body, or the sync server rejected the document | `400` | `Invalid stats document` / `Invalid config document` |
+| Empty body | `400` | `Empty request body` |
+| Sync server rejected the document | `400` | `Invalid stats document` / `Invalid config document` |
 | Body over the auth body limit | `413` | `Request payload is too large` |
 | Sync server unreachable, no timely answer, or any 5xx/unexpected status | `503` | `Service unavailable` |
 
@@ -1536,8 +1544,8 @@ memory pressure, and it is served under the [global prefix](#endpoints) like eve
 
 | Outcome | HTTP | Body | Meaning |
 | --- | --- | --- | --- |
-| Served | `200` | the PEM file, byte for byte, `Content-Type: application/x-pem-file` | The CA the listener chains to. A bundle is served as a bundle |
-| No CA | `404` | `{"error":"not_found"}` | The configured file is missing, unreadable, or carries no `-----BEGIN CERTIFICATE-----` block. Same body as an unknown route; the manager log names the file |
+| Served | `200` | re-serialised certificates, `Content-Type: application/x-pem-file` | The CA the listener chains to. A bundle is served as a bundle; private keys and other non-certificate material are omitted |
+| No CA | `404` | `{"error":"not_found"}` | The configured file is missing, unreadable, too large, or contains no usable certificates (including an undecodable certificate block). Same body as an unknown route; the manager logs the failure |
 | Incoherent CA | `503` | `{"error":"ca_mismatch"}` | The configured CA does **not** sign the certificate this listener is serving. Refused rather than served: handing it out would make every verifying agent fail its handshake against this very manager |
 
 **What the coherence check compares.** The leaf is the certificate loaded into the TLS context when
@@ -1546,14 +1554,13 @@ and every `CERTIFICATE` block in the file counts — the CA is coherent when *an
 leaf, so a bundle carrying the signing CA plus others passes. It is a signature check, not a full
 chain validation: dates and constraints are the agent's verifier's business.
 
-**Cadence.** Evaluated once when the listener starts (before it accepts anything) and once every
-24 hours afterwards, together with the certificate's own expiry; each evaluation re-logs its findings
-(an ERROR when the CA does not sign the leaf or the leaf has expired, a WARN when the CA is unreadable
-or the leaf expires within 30 days). The file itself is read on **every request**, so a CA that goes
-missing is a `404` immediately and one that comes back is served immediately. The one case the
-cadence leaves open is a *different but valid* CA written over the file while remoted runs: it is
-served until the next evaluation or a restart. Rotate the CA and the certificate together and restart
-remoted — a rotation is exactly the moment the `503` guard exists for.
+**Cadence.** Each request reads the CA file and obtains the certificate bundle and coherence verdict
+from the same snapshot. Parsing and signature checks are cached by a hash of those bytes; a changed
+file is re-evaluated even if its size and modification time stay the same. A missing CA therefore
+answers `404` immediately, and a replacement CA that does not sign the loaded leaf answers `503`
+on the next request. Separately, the certificate monitor runs at startup and every 24 hours, logging
+expiry and coherence findings. Rotate the CA and listener certificate together and restart remoted
+to load the new leaf.
 
 **Trust on first use.** The channel the CA travels over is, by definition, not yet verified. An
 agent that already holds a CA MUST NOT replace it from this route, and a deployment that can
@@ -1570,6 +1577,12 @@ evaluation itself (`cert_expiry_days`, negative once expired, and `ca_matches_le
 `POST /stateless` requests the way the manager verifies them (shared `wire_jwt.py`, pure Python
 standard library, key read from `client.keys`; `python3 wire_jwt.py --self-test` reproduces the frozen
 vectors). Requires `pip install -r requirements.txt` (in the same `tools/` directory).
+
+Run the following examples from `src/remoted/remoted_module/tools/` with an account that can read
+the manager's files. Authenticated senders need an existing `client.keys` entry: most default to
+agent `1001`; the download sender defaults to `001`. Override `--agent-id` for your test agent.
+The senders read the global prefix from the local manager's XML configuration; when running
+elsewhere, pass `--global-prefix /wazuh-manager` for the installed default (or your configured prefix).
 
 ```bash
 # one valid request -> 202
@@ -1590,34 +1603,38 @@ discover the manager's current offset for you instead of guessing it:
 
 ```bash
 # looks up the current vd_feed_offset via /control, then sends a matching request -> 200
-python3 send_scan_vd.py --auto-offset
+python3 send_scan_vd.py --url https://127.0.0.1:1517 --auto-offset
 
-# a deliberately wrong offset -> 409, prints the manager's real current_version to retry with
-python3 send_scan_vd.py --feed-offset 1
+# 409 if the manager's offset differs from 1; prints current_version to retry with
+python3 send_scan_vd.py --url https://127.0.0.1:1517 --feed-offset 1
 
 # run every success/failure scenario (missing/invalid type, missing/negative feed_offset,
 # oversized body, auth failures, ...), including the matching- and mismatched-offset cases
-python3 send_scan_vd.py --all
+python3 send_scan_vd.py --url https://127.0.0.1:1517 --all
 # options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys
 ```
 
-`src/remoted/remoted_module/tools/send_download.py` does the same for `POST /download`, and can
-resolve the agent's own group for you rather than making you name one:
+`src/remoted/remoted_module/tools/send_download.py` exercises `POST /download`. Its configuration
+selector defaults to `default`; it does not discover the agent's groups:
 
 ```bash
-# fetch the merged configuration of the agent's first group -> 200 + streamed body
-python3 send_download.py --agent-id 001
+# fetch selector default for agent 001 -> 200 + streamed body (requires matching /control state)
+python3 send_download.py --url https://127.0.0.1:1517 --agent-id 001
 
 # a staged WPK package
-python3 send_download.py --resource-type wpk --wpk wazuh_agent_v5.0.0_linux_x86_64.wpk
+python3 send_download.py --url https://127.0.0.1:1517 --resource-type wpk --resource-id wazuh_agent_v5.0.0_linux_x86_64.wpk
 
-# run every success/failure scenario (bad type, rejected identifier, unknown group -> 404, ...)
-python3 send_download.py --all
+# run every success/failure scenario (bad type, rejected identifier, unknown group -> 403, ...)
+python3 send_download.py --url https://127.0.0.1:1517 --all
 
 # concurrency + memory check: N agents downloading at once, sampling remoted's RSS
-python3 send_download.py --simulate 50 --repeat 4 --selectors 'default;web,prod' --watch-rss
+python3 send_download.py --url https://127.0.0.1:1517 --simulate 50 --repeat 4 --selectors 'default;web,prod' --watch-rss
 # options: --url (default https://127.0.0.1:9443), --manager-home, --resource-id, --unknown-group
 ```
+
+Use the `agent.config_token` from `/control` as `--resource-id` when the selector is not `default`.
+Simulated agents must already exist and have matching `/control` registry groups. For `--all`,
+stage a WPK first; `--wpk` chooses that scenario's filename and is not used by a single download.
 
 `src/remoted/remoted_module/tools/send_agent_json.py` covers the two reporting routes, `POST /stats`
 and `POST /config`, with the same bearer:
@@ -1626,7 +1643,7 @@ and `POST /config`, with the same bearer:
 # one /stats report -> 200 + {}
 python3 send_agent_json.py
 
-# the same against /config -> 200 + the enriched document
+# the same against /config -> 200 + {}
 python3 send_agent_json.py --endpoint config
 
 # corrupt the token's signature -> 401 (invalid_signature)
@@ -1658,7 +1675,7 @@ python3 send_enroll.py --name web-01 --client-cert agent.pem --client-key agent.
 # advance (body validation always; bearer/timing scenarios too if --password is given)
 python3 send_enroll.py --password Secret123 --all
 # options: --url (default https://127.0.0.1:1517), --version, --groups, --ip, --key-hash,
-#          --password-file (reads /var/wazuh-manager/etc/authd.pass by default)
+#          --password-file /var/wazuh-manager/etc/authd.pass (requires an explicit path)
 ```
 
 ## References
