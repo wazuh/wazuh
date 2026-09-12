@@ -16,6 +16,12 @@ For the diagrams — the two stores, the enrollment sequence, the force-guard ch
 forwarding and the removal path — see [Authd Architecture](architecture.md). For configuration
 options see [Authd Configuration](configuration.md).
 
+To follow **one agent end to end** — from the operator minting a token to that agent's key reaching
+`client.keys` and its row reaching `global.db`, including what the `pin`, the `key` and the bearer
+token are and how a worker differs from the master — read
+[the enrollment lifecycle](enrollment-lifecycle.md). This page and the ones above are its reference
+material; that one is the order things happen in.
+
 ## How it works
 
 1. Agent connects to port 1515 over TLS.
@@ -83,6 +89,7 @@ with `9015`, and serves `token_list` from the copy it holds.
 | `/var/wazuh-manager/etc/authd.pass` | Enrollment password (auto-generated on first start; required by default) |
 | `/var/wazuh-manager/etc/enrollment_tokens.json` | The [enrollment token](#enrollment-tokens) store, `{"version":1,"tokens":[…]}`: per token `id`, `secret` (`null` when minted with `--no-credential`), `adr`, `pin` or `ca`, `created`, `expires`, `max_uses`, `uses`, `revoked`, `description`. Written by the master only, whole, through a temporary file `chmod`ed to `0640` and renamed into place |
 | `/var/wazuh-manager/queue/authd/pending-purges` | Deletions authd has begun recording but not yet finished, plus the highest agent id and sequence ever handed out. Normally empty |
+| `/var/wazuh-manager/queue/authd/pending-identities` | Credentials already handed out but not yet committed to `global.db`, one JSON line each, **in the clear** (mode `0640`) — see [Durability](#durability) and [the identity journal](architecture.md#the-identity-journal). Normally empty; a persistent nonempty file warrants checking database writes and journal-compaction errors |
 
 > For the diagrams — the thread layout, the removal path and the three intervals the purge has to
 > outlast — see [Architecture](architecture.md).
@@ -179,8 +186,9 @@ The `<force>` sub-block controls when an agent may overwrite an existing registr
 All four guards are evaluated together, and every one of them has to allow the replacement. With the
 defaults (`enabled` on, `key_mismatch` on, `disconnected_time` 1 h, `after_registration_time` 1 h) an
 agent is replaced when the one holding its name has never connected or has been disconnected for at
-least an hour, was registered at least an hour ago, and presents a different key. A connected agent
-is never replaced.
+least an hour, was registered at least an hour ago, and either omits `key_hash` or supplies a
+nonmatching hash. The disconnection check can be disabled; see the exact
+[guard chain](enrollment-lifecycle.md#a-collision-and-what-key_hash-changes).
 
 **A replacement is a deletion.** The agent that loses its name is removed exactly as if it had been
 deleted through the API: it goes through the same removal queue, the same writer thread and the same
@@ -213,18 +221,31 @@ SHA-256 of the CA's SubjectPublicKeyInfo — or `ca` the whole PEM of `remote.ht
 `--no-credential` has no `key`: it only says where to connect and which CA to trust, and remoted never
 accepts its id as a bearer `kid`.
 
-**Minting is master-only** and goes through the local socket, so authd must be running:
+**Minting is master-only** and goes through the local socket, so authd must be running.
+The installed executable is `/var/wazuh-manager/bin/wazuh-manager-authd`; run it with `sudo`
+(or from a root shell). The following is a usage synopsis: brackets mark optional arguments,
+and each line is a separate operation.
 
-```
+```text
 wazuh-manager-authd --create-enrollment-token --address <host> [--port N] [--prefix P] [--ttl 30d] \
     [--max-uses N] [--description S] [--embed-ca] [--no-credential]
-wazuh-manager-authd --list-enrollment-tokens | --revoke-enrollment-token <id> | --show-token[=<token>]
+wazuh-manager-authd --list-enrollment-tokens
+wazuh-manager-authd --revoke-enrollment-token <id>
+wazuh-manager-authd --show-token[=<token>] [--token-file <path>]
 wazuh-manager-authd --purge-enrollment-tokens [--all] [--force]
 ```
 
-The CLI (root, or the `wazuh-manager` group) prints the token alone on stdout and its id, endpoint,
+For example, replace `mgr.example.com` with a name in the listener certificate's SAN:
+
+```bash
+sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address mgr.example.com --ttl 30d
+```
+
+The CLI prints the token alone on stdout and its id, endpoint,
 expiry and pin on stderr; `--show-token` decodes one offline (argument, `--token-file` or stdin) without
-its credential. The server API offers the same operations as `POST`/`GET /agents/enrollment-tokens`
+its credential. An inline token requires `--show-token=<token>`; a separate positional argument
+is not consumed. `--purge-enrollment-tokens` removes dead tokens by default; `--all` also removes
+usable tokens and requires interactive confirmation or `--force`. The server API offers the same operations as `POST`/`GET /agents/enrollment-tokens`
 and `DELETE /agents/enrollment-tokens/{token_id}` (RBAC `enrollment_token:create`/`read`/`delete`).
 The token text is returned once and never listed again.
 
@@ -254,24 +275,13 @@ when the new credentials are stored. Two requests with the same bearer therefore
 in progress* — which remoted turns into **409** and counts as `remoted.enroll.reenroll.rejected_in_progress`. It means «retry», as opposed to the `9027`/401 a bearer
 gets once the rotation has landed and its secret is the previous generation's. If the database write fails, the reservation is deliberately kept: the row still names
 the old secret, so releasing it would let that secret authorise another rotation. The agent cannot re-enroll again on that manager until the transition is written —
-which the journal below makes sure happens.
+subject to the recovery limitations linked below.
 
-**A credential is written down before it is handed out.** Every enrollment and every re-enrollment records the agent, the key and the re-enrollment secret in
-`queue/authd/pending-identities` (mode 0640) *before* the answer is built, and the entry is removed only once the database write has been **committed** — not when
-wazuh-db answers `ok`, which comes from inside a transaction it commits on its own clock. What this buys is the case that used to lose credentials outright: with
-wazuh-db down, or after a crash between the answer and the write, the manager finishes the job by itself. The writer retries on its own timer while anything is
-owed (a second, doubling to a minute) and abandons the batch as soon as wazuh-db stops answering, so an outage never holds the keystore writer. At startup each
-line is judged by the journal's own order: an agent no longer in `client.keys` owes nothing, a **later line for the same agent** supersedes an earlier one, and
-anything else is still owed — including a rotation whose key never reached `client.keys`, which is exactly the crash this record exists for. Such a rotation
-takes its reservation back before the listeners start, so the previous secret cannot authorise a second one while the recovery is pending. Recovery is local to
-the node: no coordination, no two-phase commit.
-
-If the transition **cannot** be recorded — the directory is unwritable, or 5000 transitions are already waiting — the operation is refused with `9031`, and the
-room is checked before the request changes anything (an enrollment that resolves a duplicate with `<force>` deletes the previous agent as it validates, so a late
-refusal would cost that agent for nothing)
-(*Identity transition could not be recorded*, remoted's **503**, the API's `1772`) and **no credential is handed out**. Performing it anyway is what left agents
-holding a key and a secret nothing else knew about: they can talk to remoted, and they can never re-enroll. The refusal means «come back», and nothing is left
-half-done — the agent is not created and a rotation leaves the previous credentials in place.
+**Local-socket credentials are recorded before the answer.** The identity journal preserves pending
+credentials until a database commit; a failed append refuses the operation with `9031` (`503` at
+`/enroll`). See [the identity journal](architecture.md#the-identity-journal) for its bounds, retry
+behaviour, legacy-worker exception and current recovery limitations. A force replacement is not
+fully rolled back if its final journal append fails.
 
 **A revoke that cannot be written says so.** If the store file cannot be rewritten, the token is refused
 from that moment on this manager, but the answer is `9029` — *Enrollment token store write failed*, the
@@ -280,7 +290,8 @@ what the operator has to do is retry, not go looking for it. The pending revocat
 reload does not undo it and the next token verb writes it; the earlier behaviour, answering success on
 the retry, let the token come back at the next restart. Two related contracts are worth stating: a
 **use** counted while the file cannot be written is *not* durable (a restart may admit one more
-enrollment with that token, or several if writes keep failing — expiry and revocation are what hold),
+enrollment with that token, or several if writes keep failing — revocation survives restart only
+after a successful store write),
 and a store file above the supported limits (5000 tokens, or the byte ceiling below what the replica
 accepts) is **not loaded at all**, with a warning naming which limit it crossed.
 
@@ -298,14 +309,15 @@ grow past 7 MiB — one MiB under the 8 MiB above which remoted's replica stops 
 otherwise leave every node quietly enrolling against a stale set of tokens. Reaching either limit
 answers `9025` naming the purge. The count is about *usable* tokens: a mint that finds the store full
 purges the dead entries by itself and only refuses when 5000 tokens are genuinely in use, and a warning
-is logged from 80% of the cap onwards. A token measures about 240 bytes in the file, or 1.4 KB when it
-embeds the CA, so the byte ceiling is the one that binds a fleet minting `--embed-ca` tokens.
+is logged from 80% of the cap onwards. Record size depends on the address, description and CA bundle. Embedding the CA can make the byte
+ceiling bind before the count limit.
 
 ## Re-enrollment secret
 
 Every `add` answered over the local socket carries `reenroll_secret`: 32 random bytes as 64 lowercase
-hex chars, stored **only** in the `agent.reenroll_secret` column of `global.db` — never in
-`client.keys`, never returned by `get`; an agent enrolled over port 1515 has none. To re-enroll keeping
+hex chars, retained in `agent.reenroll_secret` in `global.db` and temporarily in the identity
+journal — never in `client.keys` or returned by `get`. Port 1515 returns no secret to the agent;
+[worker forwarding](architecture.md#the-identity-journal) can nevertheless create one on the master. To re-enroll keeping
 its id, the agent sends on `POST /enroll` a `wazuh-enroll+jwt` bearer whose `kid` is its own id, signed
 with the key derived from that secret (label `WAZUH-REENROLL-KEY`). remoted holds no copy of the
 secret, so it forwards `add` with `reenroll: {kid, bearer}` unverified and the **master** judges it,
@@ -350,8 +362,12 @@ communicate with master node"). An `add` that DOES carry a caller-chosen `id` an
 admin/restore-style add — `manage_agents`/the API can send this shape, self-enrollment never does)
 is rejected outright with `9015`, same as `remove`/`get`: there is no cluster RPC to honor a
 caller-chosen identity on a worker, so this is an explicit rejection rather than silently returning a
-different id/key than the one requested. The same holds for an `add` carrying `token_id` or `reenroll`
-and for the `token_*` verbs — see [Cluster](#cluster).
+different id/key than the one requested. An `add` carrying `token_id` or `reenroll` is **not** in that
+group: both travel to the master with the rest of the request and are judged there, which is the
+only place the token store is written and the only place a re-enrollment secret exists. What a
+worker does refuse with `9015` is the administrative `token_create`/`token_revoke`/`token_purge`
+verbs — see [Cluster](#cluster) and
+[the enrollment lifecycle](enrollment-lifecycle.md#step-6-worker-or-master).
 
 A request is a single-line JSON object:
 
@@ -413,7 +429,7 @@ A successful `add` responds with:
 `get` answers the same shape without `reenroll_secret`, a successful `remove` responds with
 `{"error": 0, "data": "Agent deleted successfully."}`, and any failure responds with
 `{"error": <code>, "message": "<description>"}` (for example `9007` "Duplicate IP", `9013` "Maximum
-number of agents reached", or `9022`–`9028` for the token and re-enrollment paths — see the
+number of agents reached", or `9022`–`9031` for the token, re-enrollment and identity-journal paths — see the
 [error code table](architecture.md#error-codes)).
 
 **Per-request force override:** the `force` object on an `add` request, when present, completely
@@ -460,7 +476,8 @@ certificates' in the installation guide. Exiting.` and exits.
 |------|---------|
 | `src/main-server.c` | Main loop, thread management, client pool, CLI argument parsing |
 | `src/auth.c` | Protocol parsing, agent validation, key generation |
-| `src/local-server.c` | Local socket enrollment handler (JSON `add`/`remove`/`get` and `token_create`/`token_list`/`token_revoke` API) |
+| `src/local-server.c` | Local socket enrollment handler (JSON `add`/`remove`/`get` and the `token_create`/`token_list`/`token_revoke`/`token_purge` API) |
+| `src/identity_journal.c` | `queue/authd/pending-identities`: the credential recorded before it is handed out, and replayed until `global.db` has committed it |
 | `src/token_cli.c` | The `--*-enrollment-token` / `--show-token` utility mode: a client of the socket verbs above |
 | `src/enrollment_token_mint.c` | What may be minted: the SAN, loopback and CA-signature checks against the listener certificate |
 | `src/enrollment_token_store.c` | `etc/enrollment_tokens.json` and its in-memory replica: load, atomic rewrite, consume, revoke |
@@ -480,5 +497,5 @@ The in-repo companion to these pages (a plain path — it lives outside this boo
 
 - `src/os_auth/README.md` — the developer's map of the module: the functional/non-functional
   requirements catalog (RF, RNF, and the `REQ-PURGE` contract with inventory-sync), the design
-  decisions (D1–D12) with the reasoning behind each, the load-bearing invariants, the developer FAQ,
-  and which test suite covers what.
+  decisions (D1–D13) with the reasoning behind each, the load-bearing invariants, the operational
+  notes, and which test suite covers what.
