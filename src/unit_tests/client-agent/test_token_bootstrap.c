@@ -121,34 +121,80 @@ bool __wrap_hc_spki_pinned_certificate(const char *cacerts_body, size_t body_len
  * rather than assumed. The last call of each is recorded for that. */
 static uid_t g_anchor_chown_uid = (uid_t) -1;
 static gid_t g_anchor_chown_gid = (gid_t) -1;
+static uid_t g_dir_chown_uid = (uid_t) -1;
+static gid_t g_dir_chown_gid = (gid_t) -1;
+static bool g_keys_chown_called = false;
 
-/* Recorded per target rather than "last call wins": the bootstrap chowns the anchor's
- * directory, then the anchor, then client.keys -- and client.keys goes to the runtime user
- * on purpose, so the final call says nothing about the anchor. */
+/* The anchor's chown() target is the TempFile()-created temporary file
+ * ("etc/certs/root-ca.pem.XXXXXX", a random mkstemp() suffix appended to the destination name --
+ * see file_op.c), not the final AGENT_ANCHOR_CA path itself: the chown happens before the
+ * rename, not after. A suffix match on "root-ca.pem" would miss that entirely, so this matches
+ * on the basename *starting with* "root-ca.pem" instead, which catches both the temporary name
+ * and the final one. */
 static bool is_anchor_path(const char *path) {
-    const char *suffix = "root-ca.pem";
-    const size_t path_len = path ? strlen(path) : 0;
-    const size_t suffix_len = strlen(suffix);
+    const char *prefix = "root-ca.pem";
+    const char *base;
 
-    return path_len >= suffix_len && strcmp(path + path_len - suffix_len, suffix) == 0;
+    if (!path) {
+        return false;
+    }
+
+    base = strrchr(path, '/');
+    base = base ? base + 1 : path;
+
+    return strncmp(base, prefix, strlen(prefix)) == 0;
+}
+
+/* The anchor's parent directory (etc/certs), chowned separately from the anchor file itself --
+ * see w_token_bootstrap_ensure_parent_dir() in token_bootstrap.c. */
+static bool is_anchor_dir_path(const char *path) {
+    return path && strcmp(path, "etc/certs") == 0;
 }
 
 int __wrap_chown(const char *path, uid_t owner, gid_t group) {
     if (is_anchor_path(path)) {
         g_anchor_chown_uid = owner;
         g_anchor_chown_gid = group;
+    } else if (is_anchor_dir_path(path)) {
+        g_dir_chown_uid = owner;
+        g_dir_chown_gid = group;
+    } else if (path && strcmp(path, KEYS_FILE) == 0) {
+        g_keys_chown_called = true;
     }
 
     return 0;
 }
 
-/* Not recorded: the mode is set on the temporary file, before the rename gives it the
- * anchor's name, so there is nothing here to match it against. Wrapped only so an
- * unprivileged run behaves like a privileged one. */
+/* Recorded now (rather than discarded): the mode is set on the anchor's temporary file and on
+ * its parent directory, both before the rename gives the anchor its final name, so tests assert
+ * against the last chmod() call recorded for each target rather than the final AGENT_ANCHOR_CA
+ * path. Wrapped so an unprivileged run behaves like a privileged one either way. */
+static mode_t g_dir_chmod_mode = (mode_t) -1;
+static mode_t g_anchor_chmod_mode = (mode_t) -1;
+
 int __wrap_chmod(const char *path, mode_t mode) {
-    (void) path;
-    (void) mode;
+    if (is_anchor_dir_path(path)) {
+        g_dir_chmod_mode = mode;
+    } else if (is_anchor_path(path)) {
+        g_anchor_chmod_mode = mode;
+    }
+
     return 0;
+}
+
+/* Regression guard: the anchor's chown() must land on the temporary file before OS_MoveFile()
+ * renames it into place, never after. __real_OS_MoveFile() (resolved by the linker's --wrap
+ * because this test binary is not itself the true entry point) preserves the real rename so the
+ * rest of the suite keeps exercising a real file on disk. */
+extern int __real_OS_MoveFile(const char *src, const char *dst);
+static bool g_anchor_chown_recorded_before_move = false;
+
+int __wrap_OS_MoveFile(const char *src, const char *dst) {
+    if (is_anchor_path(src) && g_anchor_chown_uid != (uid_t) -1) {
+        g_anchor_chown_recorded_before_move = true;
+    }
+
+    return __real_OS_MoveFile(src, dst);
 }
 
 /* ---- fixtures ---- */
@@ -183,6 +229,12 @@ static int setup_test(void **state) {
     g_spki_call_count = 0;
     g_anchor_chown_uid = (uid_t) -1;
     g_anchor_chown_gid = (gid_t) -1;
+    g_dir_chown_uid = (uid_t) -1;
+    g_dir_chown_gid = (gid_t) -1;
+    g_keys_chown_called = false;
+    g_dir_chmod_mode = (mode_t) -1;
+    g_anchor_chmod_mode = (mode_t) -1;
+    g_anchor_chown_recorded_before_move = false;
 
     return 0;
 }
@@ -453,6 +505,23 @@ static void test_full_happy_path_via_pin(void **state) {
      * it. */
     assert_int_equal(g_anchor_chown_uid, 0);
     assert_int_equal(g_anchor_chown_gid, getgid());
+
+    /* Regression guard: the anchor's chown() must land before OS_MoveFile() renames the temp
+     * file into place, closing the window where a crash between the two left a wrong-group
+     * AGENT_ANCHOR_CA permanently latching the bootstrap off. */
+    assert_true(g_anchor_chown_recorded_before_move);
+
+    /* Both the anchor and its parent directory get their mode fixed up while still root. */
+    assert_int_equal(g_anchor_chmod_mode, 0640);
+    assert_int_equal(g_dir_chmod_mode, 0750);
+
+    /* The parent directory is handed to root:gid, same reasoning as the anchor itself. */
+    assert_int_equal(g_dir_chown_uid, 0);
+    assert_int_equal(g_dir_chown_gid, getgid());
+
+    /* Regression guard: client.keys must never be chowned -- it stays at whatever the installer
+     * set it to. */
+    assert_false(g_keys_chown_called);
 }
 
 /* #39028's DoD: "a credential-less token enrolls when the simulator requires no credential,
@@ -537,6 +606,11 @@ static void test_full_happy_path_via_ca_pem(void **state) {
     assert_string_equal(read_file("etc/certs/root-ca.pem"), "FAKE-EMBEDDED-CA");
     assert_int_equal(IsFile("etc/client.keys"), 0);
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+
+    /* Same regression guard as the pin-path happy test: the anchor's chown() must land before
+     * the rename that installs it. */
+    assert_true(g_anchor_chown_recorded_before_move);
+    assert_false(g_keys_chown_called);
 }
 
 int main(void) {

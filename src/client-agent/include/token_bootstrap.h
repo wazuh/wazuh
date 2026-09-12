@@ -15,9 +15,10 @@
  *        outright), enroll fully verified against that CA, and persist it as
  *        AGENT_ANCHOR_CA -- the agent's own trust anchor from then on.
  *
- * Runs once, before AgentdStart()'s privilege drop: both files it writes (the anchor and
- * client.keys) are created while still root, so they need their ownership fixed before the
- * process becomes the unprivileged `wazuh` user.
+ * Runs once, before AgentdStart()'s privilege drop: the anchor is created while still root, so
+ * its ownership is fixed up (group only, see token_bootstrap.c) before the process becomes the
+ * unprivileged `wazuh` user. client.keys is left at whatever the installer set it to -- see
+ * token_bootstrap.c's own comment on that.
  */
 #ifndef TOKEN_BOOTSTRAP_H
 #define TOKEN_BOOTSTRAP_H
@@ -38,9 +39,12 @@
  * password/mTLS enrollment loop its normal chance when this returns -1 or the token path was
  * never configured.
  *
- * @param uid The uid AgentdStart() is about to drop privileges to, so a committed anchor and
- *        client.keys (both written here while still root) end up owned by it.
- * @param gid Same, for the group.
+ * @param uid The uid AgentdStart() is about to drop privileges to. Currently unused: neither
+ *        file this function writes is chowned to it (see token_bootstrap.c's own comments on
+ *        the anchor and on client.keys) -- kept for signature symmetry with AgentdStart()'s
+ *        uid/gid pair.
+ * @param gid The gid AgentdStart() is about to drop privileges to, so the committed anchor ends
+ *        up group-owned by it.
  * @return 0 when there was nothing to do, or the bootstrap fully succeeded; -1 when a token was
  *         present and the bootstrap was attempted but failed.
  */
