@@ -1,7 +1,6 @@
 /*
- * Wazuh content manager - Unit Tests
+ * Wazuh content manager - unit tests
  * Copyright (C) 2015, Wazuh Inc.
- * Jun 07, 2023.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,333 +8,215 @@
  * Foundation.
  */
 
-#include "executionContext_test.hpp"
-#include "componentsHelper.hpp"
-#include "defs.h"
-#include "executionContext.hpp"
-#include "updaterContext.hpp"
-#include <filesystem>
-#include <memory>
-#include <string>
+#include "components/executionContext.hpp"
+#include "gtest/gtest.h"
+#include <stdexcept>
 
-/**
- * @brief Removes the directory if it exists.
- *
- * @param outputFolder Folder to be removed.
- */
-void removeOutputFolderIfExists(const std::string& outputFolder)
+namespace
 {
-    if (std::filesystem::exists(outputFolder))
+
+nlohmann::json cursorConfig()
+{
+    return nlohmann::json {{"consumerName", "Test Consumer"},
+                           {"changeDetection", "cursor"},
+                           {"indexer",
+                            {{"index", "data-index"},
+                             {"consumerStatusIndex", ".consumers"},
+                             {"consumerStatusId", "consumer:1"}}}};
+}
+
+nlohmann::json hashConfig()
+{
+    return nlohmann::json {{"consumerName", "Test Consumer"},
+                           {"changeDetection", "hash"},
+                           {"indexer",
+                            {{"index", "data-index"},
+                             {"hashDocId", "manifest"},
+                             {"hashPointers", nlohmann::json::array({"/hash"})},
+                             {"dataQuery", {{"match_all", nlohmann::json::object()}}}}}};
+}
+
+} // namespace
+
+TEST(ExecutionContextTest, AcceptsAValidCursorConfiguration)
+{
+    EXPECT_NO_THROW(ExecutionContext::validate(cursorConfig()));
+}
+
+TEST(ExecutionContextTest, AcceptsAValidHashConfiguration)
+{
+    EXPECT_NO_THROW(ExecutionContext::validate(hashConfig()));
+}
+
+TEST(ExecutionContextTest, RejectsAMissingConsumerName)
+{
+    auto config = cursorConfig();
+    config.erase("consumerName");
+    EXPECT_THROW(ExecutionContext::validate(config), std::invalid_argument);
+
+    config["consumerName"] = "";
+    EXPECT_THROW(ExecutionContext::validate(config), std::invalid_argument);
+}
+
+TEST(ExecutionContextTest, RejectsAnUnknownChangeDetection)
+{
+    auto config = cursorConfig();
+    config["changeDetection"] = "magic";
+    EXPECT_THROW(ExecutionContext::validate(config), std::invalid_argument);
+
+    config.erase("changeDetection");
+    EXPECT_THROW(ExecutionContext::validate(config), std::invalid_argument);
+}
+
+TEST(ExecutionContextTest, RejectsAMissingIndexerSection)
+{
+    auto config = cursorConfig();
+    config.erase("indexer");
+    EXPECT_THROW(ExecutionContext::validate(config), std::invalid_argument);
+}
+
+TEST(ExecutionContextTest, RejectsAnEmptyIndexList)
+{
+    auto config = cursorConfig();
+    config["indexer"].erase("index");
+    EXPECT_THROW(ExecutionContext::validate(config), std::invalid_argument);
+
+    config["indexer"]["indices"] = nlohmann::json::array();
+    EXPECT_THROW(ExecutionContext::validate(config), std::invalid_argument);
+}
+
+TEST(ExecutionContextTest, RejectsANonConcreteConsumerStatusIndex)
+{
+    // Both defences against consumer documents leaking into the content compare against the
+    // `_index` metafield, which reports CONCRETE backing index names. A pattern or an alias would
+    // simply never match, and the leak would be silent — so it is refused at registration.
+    for (const auto* bad : {".consumers-*", ".consumers,.other", "-hidden"})
     {
-        // Delete the output folder.
-        std::filesystem::remove_all(outputFolder);
+        auto config = cursorConfig();
+        config["indexer"]["consumerStatusIndex"] = bad;
+        EXPECT_THROW(ExecutionContext::validate(config), std::invalid_argument) << bad;
     }
 }
 
-/*
- * @brief Tests the instantiation of the ExecutionContext class
- */
-TEST_F(ExecutionContextTest, instantiation)
+TEST(ExecutionContextTest, RejectsAConsumerIndexWithoutAnId)
 {
-    // Check that the ExecutionContext class can be instantiated
-    EXPECT_NO_THROW(std::make_shared<ExecutionContext>());
+    auto config = cursorConfig();
+    config["indexer"].erase("consumerStatusId");
+    EXPECT_THROW(ExecutionContext::validate(config), std::invalid_argument);
 }
 
-/*
- * @brief Test default folder when there is no configuration for the output folder.
- */
-TEST_F(ExecutionContextTest, TestDefaultFolderWhenThereIsNoConfigurationForTheOutputFolder)
+TEST(ExecutionContextTest, HashModeRequiresExactlyOneProbeShape)
 {
-    // Remove the output folder if exists
-    removeOutputFolderIfExists(GENERIC_OUTPUT_FOLDER_PATH);
+    auto both = hashConfig();
+    both["indexer"]["hashIndex"] = "policies";
+    both["indexer"]["hashQuery"] = nlohmann::json::object();
+    EXPECT_THROW(ExecutionContext::validate(both), std::invalid_argument);
 
-    m_spUpdaterBaseContext->configData.erase("outputFolder");
-
-    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-
-    EXPECT_EQ(m_spUpdaterBaseContext->outputFolder, GENERIC_OUTPUT_FOLDER_PATH);
-
-    EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->outputFolder));
+    auto neither = hashConfig();
+    neither["indexer"].erase("hashDocId");
+    EXPECT_THROW(ExecutionContext::validate(neither), std::invalid_argument);
 }
 
-/*
- * @brief Test default folder when the output folder path is empty.
- */
-TEST_F(ExecutionContextTest, TestDefaultFolderWhenTheOutputFolderPathIsEmpty)
+TEST(ExecutionContextTest, QueryProbeRequiresAQuery)
 {
-    // Remove the output folder if exists
-    removeOutputFolderIfExists(GENERIC_OUTPUT_FOLDER_PATH);
+    auto config = hashConfig();
+    config["indexer"].erase("hashDocId");
+    config["indexer"]["hashIndex"] = "policies";
+    EXPECT_THROW(ExecutionContext::validate(config), std::invalid_argument);
 
-    m_spUpdaterBaseContext->configData["outputFolder"] = "";
-
-    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-
-    EXPECT_EQ(m_spUpdaterBaseContext->outputFolder, GENERIC_OUTPUT_FOLDER_PATH);
-
-    EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->outputFolder));
+    config["indexer"]["hashQuery"] = nlohmann::json {{"match_all", nlohmann::json::object()}};
+    EXPECT_NO_THROW(ExecutionContext::validate(config));
 }
 
-/*
- * @brief Test valid case when the output folder path is not empty.
- */
-TEST_F(ExecutionContextTest, TestValidCaseWhenTheOutputFolderPathIsNotEmpty)
+TEST(ExecutionContextTest, HashModeRequiresUsablePointersAndADataQuery)
 {
-    const auto expectedOutputFolder {m_spUpdaterBaseContext->configData.at("outputFolder").get<const std::string>()};
+    auto noPointers = hashConfig();
+    noPointers["indexer"]["hashPointers"] = nlohmann::json::array();
+    EXPECT_THROW(ExecutionContext::validate(noPointers), std::invalid_argument);
 
-    // Remove the output folder if exists
-    removeOutputFolderIfExists(expectedOutputFolder);
+    auto badPointer = hashConfig();
+    badPointer["indexer"]["hashPointers"] = nlohmann::json::array({"hash"});
+    EXPECT_THROW(ExecutionContext::validate(badPointer), std::invalid_argument);
 
-    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-
-    EXPECT_EQ(m_spUpdaterBaseContext->outputFolder, expectedOutputFolder);
-
-    EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->outputFolder));
+    auto noQuery = hashConfig();
+    noQuery["indexer"].erase("dataQuery");
+    EXPECT_THROW(ExecutionContext::validate(noQuery), std::invalid_argument);
 }
 
-/*
- * @brief Test valid case when the output folder path is not empty and already exists.
- */
-TEST_F(ExecutionContextTest, TestValidCaseWhenTheOutputFolderPathIsNotEmptyAndExists)
+TEST(ExecutionContextTest, RejectsZeroSlices)
 {
-    m_spUpdaterBaseContext->configData["outputFolder"] = "/tmp/output-folder";
-    const auto expectedOutputFolder {m_spUpdaterBaseContext->configData.at("outputFolder").get<const std::string>()};
-
-    // Remove the output folder if exists
-    removeOutputFolderIfExists(expectedOutputFolder);
-
-    // Create the output folder.
-    std::filesystem::create_directory(expectedOutputFolder);
-
-    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-
-    EXPECT_EQ(m_spUpdaterBaseContext->outputFolder, expectedOutputFolder);
-
-    EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->outputFolder));
+    auto config = cursorConfig();
+    config["indexer"]["numSlices"] = 0;
+    EXPECT_THROW(ExecutionContext::validate(config), std::invalid_argument);
 }
 
-/**
- * @brief Test the correct instantiation of the RocksDB database.
- *
- */
-TEST_F(ExecutionContextTest, DatabaseGeneration)
+TEST(ExecutionContextTest, RejectsAMistypedSourceFilter)
 {
-    constexpr auto OFFSET {0};
-
-    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath.string();
-    m_spUpdaterBaseContext->configData["offset"] = OFFSET;
-
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString(),
-              std::to_string(OFFSET));
+    // The one that has to be caught here rather than anywhere else: the filter is read behind an
+    // `is_object` test, so a mistyped one is silently ignored — and a vulnerability feed downloaded
+    // without its `_source` filter still works, it is just several gigabytes instead of a few
+    // hundred megabytes. Nothing downstream would ever report it.
+    auto config = cursorConfig();
+    config["indexer"]["sourceFilter"] = "excludes-everything";
+    EXPECT_THROW(ExecutionContext::validate(config), std::invalid_argument);
 }
 
-/**
- * @brief Test the correct instantiation of the RocksDB database. A negative offset is set in the config.
- *
- */
-TEST_F(ExecutionContextTest, DatabaseGenerationNegativeOffset)
+TEST(ExecutionContextTest, RejectsMistypedQueryShapeKeys)
 {
-    constexpr auto OFFSET {-1};
-
-    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath.string();
-    m_spUpdaterBaseContext->configData["offset"] = OFFSET;
-
-    EXPECT_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext), std::runtime_error);
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-}
-
-/**
- * @brief Test the correct instantiation of the RocksDB database. A positive offset is set in the config.
- *
- */
-TEST_F(ExecutionContextTest, DatabaseGenerationPositiveOffset)
-{
-    constexpr auto OFFSET {100};
-
-    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath.string();
-    m_spUpdaterBaseContext->configData["offset"] = OFFSET;
-
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString(),
-              std::to_string(OFFSET));
-}
-
-/**
- * @brief Test the correct instantiation of the RocksDB database in two sequential executions. The second execution has
- * a config offset that is less than the config offset from first execution. The first offset should remain after both
- * executions.
- *
- */
-TEST_F(ExecutionContextTest, DatabaseGenerationConfigOffsetLessThanDatabaseOffset)
-{
-    constexpr auto FIRST_OFFSET {100};
-    constexpr auto SECOND_OFFSET {50};
-
-    // First execution.
-    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath.string();
-    m_spUpdaterBaseContext->configData["offset"] = FIRST_OFFSET;
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString(),
-              std::to_string(FIRST_OFFSET));
-
-    // Call RocksDBWrapper destructor.
-    m_spUpdaterBaseContext->spRocksDB.reset();
-
-    // Second execution.
-    m_spUpdaterBaseContext->configData["offset"] = SECOND_OFFSET;
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString(),
-              std::to_string(FIRST_OFFSET));
-}
-
-/**
- * @brief Test the correct instantiation of the RocksDB database in two sequential executions. The second execution has
- * a config offset that is greater than the config offset from first execution. The second offset should remain after
- * both executions.
- *
- */
-TEST_F(ExecutionContextTest, DatabaseGenerationConfigOffsetGreaterThanDatabaseOffset)
-{
-    constexpr auto FIRST_OFFSET {100};
-    constexpr auto SECOND_OFFSET {500};
-
-    // First execution.
-    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath.string();
-    m_spUpdaterBaseContext->configData["offset"] = FIRST_OFFSET;
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString(),
-              std::to_string(FIRST_OFFSET));
-
-    // Call RocksDBWrapper destructor.
-    m_spUpdaterBaseContext->spRocksDB.reset();
-
-    // Second execution.
-    m_spUpdaterBaseContext->configData["offset"] = SECOND_OFFSET;
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString(),
-              std::to_string(SECOND_OFFSET));
-}
-
-/**
- * @brief Test the correct instantiation of the RocksDB database in two sequential executions. Both executions have
- * the same config offset.
- *
- */
-TEST_F(ExecutionContextTest, DatabaseGenerationConfigOffsetEqualToDatabaseOffset)
-{
-    constexpr auto OFFSET {100};
-
-    // First execution.
-    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath.string();
-    m_spUpdaterBaseContext->configData["offset"] = OFFSET;
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString(),
-              std::to_string(OFFSET));
-
-    // Call RocksDBWrapper destructor.
-    m_spUpdaterBaseContext->spRocksDB.reset();
-
-    // Second execution.
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-    EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString(),
-              std::to_string(OFFSET));
-}
-
-/**
- * @brief Test the correct set of the downloaded file hash when there is no data on the DB.
- *
- */
-TEST_F(ExecutionContextTest, ReadLastDownloadedFileHashInexistant)
-{
-    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath;
-    m_spUpdaterBaseContext->configData["offset"] = 0;
-    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-
-    EXPECT_TRUE(m_spUpdaterBaseContext->downloadedFileHash.empty());
-}
-
-/**
- * @brief Test the correct set of the downloaded file hash from the DB.
- *
- */
-TEST_F(ExecutionContextTest, ReadLastDownloadedFileHash)
-{
-    constexpr auto TOPIC_NAME {"topic"};
-
-    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath;
-    m_spUpdaterBaseContext->configData["offset"] = 0;
-    m_spUpdaterBaseContext->topicName = TOPIC_NAME;
-
-    // Insert file hash on DB.
-    constexpr auto FILE_HASH {"hash"};
+    const auto rejects = [](const std::string& key, const nlohmann::json& value)
     {
-        const auto EXPECTED_DB_PATH {m_databasePath / (std::string("updater_") + TOPIC_NAME + "_metadata")};
-        auto wrapper {Utils::RocksDBWrapper(EXPECTED_DB_PATH)};
-        wrapper.createColumn(Components::Columns::DOWNLOADED_FILE_HASH);
-        wrapper.put("test_key", FILE_HASH, Components::Columns::DOWNLOADED_FILE_HASH);
-    }
+        auto config = cursorConfig();
+        config["indexer"][key] = value;
+        EXPECT_THROW(ExecutionContext::validate(config), std::invalid_argument)
+            << "indexer." << key << " accepted a value of the wrong type";
+    };
 
-    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-
-    EXPECT_EQ(m_spUpdaterBaseContext->downloadedFileHash, FILE_HASH);
+    // Every one of these is read later with json::value(key, default), which throws a type_error
+    // naming nothing useful — at cycle time, on a topic that registered cleanly.
+    rejects("pageSize", "100");
+    rejects("numSlices", -1);
+    rejects("keepAlive", 300);
+    rejects("keepAlive", "");
+    rejects("expandWildcards", "true");
+    rejects("cursorField", "");
+    rejects("consumerStatusCacheSeconds", "5");
+    rejects("sortKeys", nlohmann::json::array());
+    rejects("sortKeys", nlohmann::json::array({"offset"}));
+    rejects("requiredDocumentIds", "FEED-GLOBAL");
+    rejects("requiredDocumentIds", nlohmann::json::array({""}));
 }
 
-/**
- * @brief Tests the correct set of the HTTP user agent context member.
- *
- */
-TEST_F(ExecutionContextTest, HttpUserAgentSet)
+TEST(ExecutionContextTest, AcceptsAFullyPopulatedQueryShape)
 {
-    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-    EXPECT_EQ(m_spUpdaterBaseContext->httpUserAgent, m_consumerName + "/" + __wazuh_version);
+    auto config = cursorConfig();
+    config["indexer"]["pageSize"] = 500;
+    config["indexer"]["numSlices"] = 2;
+    config["indexer"]["keepAlive"] = "10m";
+    config["indexer"]["expandWildcards"] = true;
+    config["indexer"]["cursorField"] = "offset";
+    config["indexer"]["consumerStatusCacheSeconds"] = 0;
+    config["indexer"]["sortKeys"] = nlohmann::json::array({nlohmann::json {{"offset", "asc"}}});
+    config["indexer"]["sourceFilter"] = nlohmann::json {{"excludes", nlohmann::json::array({"a.b"})}};
+    config["indexer"]["requiredDocumentIds"] = nlohmann::json::array({"FEED-GLOBAL"});
+
+    EXPECT_NO_THROW(ExecutionContext::validate(config));
 }
 
-/**
- * @brief Test the correct exception generation when the consumerName config is empty.
- *
- */
-TEST_F(ExecutionContextTest, HttpUserAgentSetEmptyInputThrow)
+TEST(ExecutionContextTest, DataIndicesPrefersTheExplicitList)
 {
-    m_spUpdaterBaseContext->configData["consumerName"] = "";
-    EXPECT_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext), std::invalid_argument);
+    nlohmann::json indexer {{"index", "ignored"}, {"indices", nlohmann::json::array({"a", "b"})}};
+    EXPECT_EQ(ExecutionContext::dataIndices(indexer), (std::vector<std::string> {"a", "b"}));
+
+    nlohmann::json single {{"index", "only"}};
+    EXPECT_EQ(ExecutionContext::dataIndices(single), (std::vector<std::string> {"only"}));
 }
 
-/**
- * @brief Test the correct exception generation when the consumerName config is not present.
- *
- */
-TEST_F(ExecutionContextTest, DefaultHttpUserAgentSet)
+TEST(ExecutionContextTest, PrepareBuildsTheUserAgentAndOpensNoDatabaseWithoutAPath)
 {
-    m_spUpdaterBaseContext->configData.erase("consumerName");
-    EXPECT_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext), std::invalid_argument);
-}
+    const auto context = ExecutionContext::prepare(cursorConfig(), "topic");
 
-/**
- * @brief When contentSource is "indexer", output folders are NOT created, but RocksDB and httpUserAgent still
- * initialized.
- */
-TEST_F(ExecutionContextTest, IndexerSourceSkipsOutputFolder)
-{
-    m_spUpdaterBaseContext->configData["contentSource"] = "indexer";
-    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath.string();
-    m_spUpdaterBaseContext->configData["offset"] = 0;
-
-    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
-
-    // RocksDB should be initialized.
-    EXPECT_NE(m_spUpdaterBaseContext->spRocksDB, nullptr);
-
-    // HTTP user agent should be set.
-    EXPECT_FALSE(m_spUpdaterBaseContext->httpUserAgent.empty());
-
-    // Output folder should NOT have been created.
-    EXPECT_FALSE(std::filesystem::exists(m_outputFolder));
+    EXPECT_EQ(context.httpUserAgent.rfind("Test Consumer/", 0), 0U);
+    // A host that owns its own state (the engine keeps tokens in its store) omits databasePath, and
+    // then no RocksDB is opened at all.
+    EXPECT_EQ(context.database, nullptr);
 }

@@ -174,9 +174,11 @@ int wm_config() {
 
     wmodule *module;
 
-    if ((module = wm_content_manager_read())) {
-        wm_add(module);
-    }
+    // No content_manager module: it is a library, not a module. Its only job here was to install a
+    // log function into the shared object, which the vulnerability scanner -- the only thing in
+    // this process that registers a content topic -- now does itself in its own start(), before any
+    // topic exists. Registering it separately also started it AFTER the scanner, so anything the
+    // updater logged in between went nowhere.
 
     // Keystore server: hosts queue/sockets/keystore.sock for the Python framework's credential
     // manager, so the API's indexer access does not depend on any other module.

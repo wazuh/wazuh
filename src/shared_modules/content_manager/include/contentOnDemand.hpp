@@ -11,35 +11,62 @@
 #ifndef _CONTENT_ON_DEMAND_HPP
 #define _CONTENT_ON_DEMAND_HPP
 
-#include <uds_http_server/IUdsHttpServer.hpp>
+#include "contentTypes.hpp"
 
-#include <memory>
+#include <cstdint>
+#include <functional>
 #include <string>
+
+#if __GNUC__ >= 4
+#define EXPORTED __attribute__((visibility("default")))
+#else
+#define EXPORTED
+#endif
 
 namespace content_manager
 {
-    /**
-     * @brief Queue one on-demand content update; the responder is answered when it resolves.
-     *
-     * The public seam the HTTP route (registered by the vulnerability scanner on its vd-http.sock
-     * server) dispatches into: topic lookup, the short bounded lane and the update execution all
-     * live behind it in OnDemandManager. Responses, all JSON:
-     *   - 200 {"status":"ok"}                              update ran to completion
-     *   - 404 {"error":"unknown_topic",...}                no such registered topic
-     *   - 409 {"error":"update_in_progress",...}           an update for that topic already runs
-     *   - 500 {"error":"update_failed",...}                the update itself threw
-     *   - 503 {"error":"ondemand_queue_full"|"shutting_down",...}  lane full / tearing down
-     *
-     * Never blocks: safe to call from the transport's I/O threads (validation stays in the route
-     * handler; this only enqueues or answers a rejection inline).
-     *
-     * @param topic  Registered content topic (the old GET /ondemand/<topic> path segment).
-     * @param offset -1 (keep the current offset) or 0 (restart from scratch) -- pre-validated by
-     *               the caller.
-     * @param responder The transport's deferred responder for this request.
-     */
-    void
-    dispatchOnDemand(const std::string& topic, int offset, std::shared_ptr<wazuh::uds_http::IHttpResponder> responder);
+
+/**
+ * @brief Outcome of an on-demand update request.
+ *
+ * Deliberately transport-neutral: the library has no opinion on HTTP. The vulnerability scanner
+ * maps these onto its `POST /ondemand` status codes (200/404/409/500/503) next to the route it
+ * serves; the Engine maps the same values onto its own `httpsrv::Server` routes.
+ */
+enum class OnDemandCode : std::uint8_t
+{
+    Completed,    ///< The update ran to completion.
+    UnknownTopic, ///< No such registered topic.
+    AlreadyRunning, ///< An update for that topic was already in progress; this one was not run.
+    QueueFull,    ///< The bounded lane has no free slot. Retryable.
+    ShuttingDown, ///< The lane is stopping. Retryable.
+    Failed        ///< The update ran and failed.
+};
+
+/**
+ * @brief Result of an on-demand update request.
+ */
+struct OnDemandResult
+{
+    OnDemandCode code {OnDemandCode::Completed}; ///< Outcome class.
+    std::string detail;                          ///< Human-readable context, safe to log or return.
+};
+
+/**
+ * @brief Queue one on-demand content update.
+ *
+ * Never blocks: the request is either rejected inline (unknown topic, lane full, shutting down) or
+ * queued on a short bounded lane and run by one of its workers. Safe to call from a transport I/O
+ * thread.
+ *
+ * @param topic Registered content topic.
+ * @param req What the update should do. `RunRequest::onDemand` is forced to true.
+ * @param completion Invoked exactly once with the outcome — inline for an inline rejection, on a
+ *                   lane worker otherwise. May be empty for fire-and-forget.
+ */
+EXPORTED void
+requestOnDemand(const std::string& topic, RunRequest req, std::function<void(OnDemandResult)> completion) noexcept;
+
 } // namespace content_manager
 
 #endif // _CONTENT_ON_DEMAND_HPP

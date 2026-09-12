@@ -84,6 +84,11 @@ api/
 │   ├── src/handlers.cpp
 │   └── test/src/unit/handlers_test.cpp
 │
+├── contentsync/                                # On-demand ruleset / IOC synchronization triggers
+│   ├── include/api/contentsync/handlers.hpp
+│   ├── src/handlers.cpp
+│   └── test/src/unit/handlers_test.cpp
+│
 └── ioccrud/                                    # IOC (Indicator of Compromise) sync handlers
     ├── include/api/ioccrud/handlers.hpp
     ├── src/handlersSync.cpp
@@ -415,6 +420,8 @@ The engine API is split into two OpenAPI 3.0.3 contracts:
 | **Content** | `/content/validate/resource` | POST | `resourceValidate_Request` | `GenericStatus_Response` |
 | **Content** | `/content/ioc/update` | POST | `UpdateIoc_Request` | `GenericStatus_Response` |
 | **Content** | `/content/ioc/state` | GET | `GetIocState_Request` | `GetIocState_Response` |
+| **Content** | `/content/ioc/sync` | POST | _(no parameters)_ | `GenericStatus_Response` |
+| **Content** | `/content/ruleset/update` | POST | _(no parameters)_ | `GenericStatus_Response` |
 | **Logtest** | `/logtest` | POST | `PublicRunPost_Request` | `RunPost_Response` |
 | **Logtest** | `/logtest` | DELETE | `LogtestDelete_Request` | `GenericStatus_Response` |
 | **Metrics** | `/metrics/enable` | POST | `MetricsEnable_Request` | `GenericStatus_Response` |

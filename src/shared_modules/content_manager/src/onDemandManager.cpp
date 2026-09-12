@@ -10,18 +10,31 @@
  */
 
 #include "onDemandManager.hpp"
-#include "actionOrchestrator.hpp"
 #include "contentOnDemand.hpp"
+#include "loggerHelper.h"
 #include "sharedDefs.hpp"
 
+#include <stdexcept>
 #include <utility>
 
 namespace content_manager
 {
     void
-    dispatchOnDemand(const std::string& topic, int offset, std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
+    requestOnDemand(const std::string& topic, RunRequest req, std::function<void(OnDemandResult)> completion) noexcept
     {
-        OnDemandManager::instance().dispatch(topic, offset, std::move(responder));
+        try
+        {
+            req.onDemand = true;
+            OnDemandManager::instance().dispatch(topic, req, std::move(completion));
+        }
+        catch (const std::exception& e)
+        {
+            logWarn(WM_CONTENTUPDATER, "Failed to queue the on-demand update for '%s': %s", topic.c_str(), e.what());
+        }
+        catch (...)
+        {
+            logWarn(WM_CONTENTUPDATER, "Failed to queue the on-demand update for '%s'.", topic.c_str());
+        }
     }
 } // namespace content_manager
 
@@ -30,7 +43,7 @@ OnDemandManager::~OnDemandManager()
     stopWorkers();
 }
 
-void OnDemandManager::addEndpoint(const std::string& endpoint, std::function<bool(ActionOrchestrator::UpdateData)> func)
+void OnDemandManager::addEndpoint(const std::string& endpoint, UpdateFunction func)
 {
     std::unique_lock<std::shared_mutex> lock {m_registryMutex};
     if (m_endpoints.find(endpoint) != m_endpoints.end())
@@ -39,7 +52,7 @@ void OnDemandManager::addEndpoint(const std::string& endpoint, std::function<boo
     }
     m_endpoints[endpoint] = std::move(func);
 
-    // Lazily bring the lane up with the first topic (the old server started the same way).
+    // Lazily bring the lane up with the first topic.
     std::lock_guard<std::mutex> laneLock {m_laneMutex};
     startWorkersLocked();
 }
@@ -48,17 +61,17 @@ void OnDemandManager::removeEndpoint(const std::string& endpoint)
 {
     bool becameEmpty = false;
     {
-        // The unique_lock is the guarantee: a worker runs callbacks under a shared_lock, so once
-        // this is held no callback of the removed topic is in flight -- Action teardown relies
-        // on exactly that, unchanged from the old server.
+        // The unique lock is the guarantee: a worker runs callbacks under a shared lock, so once
+        // this is held no callback of the removed topic is in flight. Topic teardown relies on
+        // exactly that.
         std::unique_lock<std::shared_mutex> lock {m_registryMutex};
         m_endpoints.erase(endpoint);
         becameEmpty = m_endpoints.empty();
     }
     if (becameEmpty)
     {
-        // OUTSIDE the registry lock: stopWorkers() joins, and a worker may be blocked acquiring
-        // the shared_lock this thread would still be holding.
+        // OUTSIDE the registry lock: stopWorkers() joins, and a worker may be blocked acquiring the
+        // shared lock this thread would still be holding.
         stopWorkers();
     }
 }
@@ -73,19 +86,21 @@ void OnDemandManager::clearEndpoints()
 }
 
 void OnDemandManager::dispatch(const std::string& topic,
-                               int offset,
-                               std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
+                               content_manager::RunRequest request,
+                               std::function<void(content_manager::OnDemandResult)> completion)
 {
+    Job job {topic, request, std::move(completion)};
+
     {
         // Unknown topics are answered inline: no queue slot is spent on a request that can never
-        // run. The authoritative lookup still happens in the worker (the topic can be removed
-        // while queued).
+        // run. The authoritative lookup still happens in the worker, since the topic can be removed
+        // while the job waits.
         std::shared_lock<std::shared_mutex> lock {m_registryMutex};
         if (m_endpoints.find(topic) == m_endpoints.end())
         {
             lock.unlock();
             logUnknownTopic(topic);
-            responder->send(wazuh::uds_http::HttpResponse::json(404, R"({"error":"unknown_topic","retryable":false})"));
+            answer(job, content_manager::OnDemandCode::UnknownTopic, "unknown topic");
             return;
         }
     }
@@ -96,48 +111,70 @@ void OnDemandManager::dispatch(const std::string& topic,
         if (m_stopping || m_workers.empty())
         {
             // Not logged per request: shutdown is bounded and stopWorkers() reports what it shed.
-            responder->send(wazuh::uds_http::HttpResponse::json(503, R"({"error":"shutting_down","retryable":true})"));
+            answer(job, content_manager::OnDemandCode::ShuttingDown, "the on-demand lane is shutting down");
             return;
         }
         laneFull = m_queue.size() >= QUEUE_SLOTS;
         if (!laneFull)
         {
-            m_queue.push_back(Job {topic, offset, std::move(responder)});
+            m_queue.push_back(std::move(job));
         }
     }
 
     if (laneFull)
     {
-        // Formatted outside m_laneMutex on purpose: a burst that fills the lane is exactly when
-        // the workers need that lock to drain it.
+        // Formatted outside m_laneMutex on purpose: a burst that fills the lane is exactly when the
+        // workers need that lock to drain it.
         if (const auto decision = m_laneFullThrottle.record())
         {
             logWarn(WM_CONTENTUPDATER,
-                    "Rejected %llu on-demand update(s) with 503 in the last %d s: the on-demand lane is full "
+                    "Rejected %llu on-demand update(s) in the last %d s: the on-demand lane is full "
                     "(%zu slot(s)) (last topic: '%s').",
                     static_cast<unsigned long long>(decision.total),
-                    wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                    LogThrottle::DEFAULT_WINDOW_SECONDS,
                     QUEUE_SLOTS,
                     topic.c_str());
         }
-        responder->send(
-            wazuh::uds_http::HttpResponse::json(503, R"({"error":"ondemand_queue_full","retryable":true})"));
+        answer(job, content_manager::OnDemandCode::QueueFull, "the on-demand lane is full");
         return;
     }
 
     m_wake.notify_one();
 }
 
+void OnDemandManager::answer(const Job& job, content_manager::OnDemandCode code, std::string detail)
+{
+    if (!job.completion)
+    {
+        return;
+    }
+
+    try
+    {
+        job.completion(content_manager::OnDemandResult {code, std::move(detail)});
+    }
+    catch (const std::exception& e)
+    {
+        // The completion belongs to the host and may live in another DSO; its failure must not take
+        // a lane worker with it.
+        logWarn(WM_CONTENTUPDATER, "On-demand completion for '%s' threw: %s", job.topic.c_str(), e.what());
+    }
+    catch (...)
+    {
+        logWarn(WM_CONTENTUPDATER, "On-demand completion for '%s' threw.", job.topic.c_str());
+    }
+}
+
 void OnDemandManager::logUnknownTopic(const std::string& topic)
 {
-    // Shared by both lookups -- the inline one and the worker's re-check after the topic was
-    // removed while the job waited. Same condition from the caller's side, same window.
+    // Shared by both lookups — the inline one and the worker's re-check after the topic was removed
+    // while the job waited. Same condition from the caller's side, same window.
     if (const auto decision = m_unknownTopicThrottle.record())
     {
         logWarn(WM_CONTENTUPDATER,
-                "Rejected %llu on-demand request(s) with 404 in the last %d s: unknown topic (last: '%s').",
+                "Rejected %llu on-demand request(s) in the last %d s: unknown topic (last: '%s').",
                 static_cast<unsigned long long>(decision.total),
-                wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                LogThrottle::DEFAULT_WINDOW_SECONDS,
                 topic.c_str());
     }
 }
@@ -170,10 +207,9 @@ void OnDemandManager::stopWorkers()
         workers.swap(m_workers);
     }
     m_wake.notify_all();
-    for (auto& job : abandoned)
+    for (const auto& job : abandoned)
     {
-        // send() is exactly-once and a defined no-op after the transport stopped.
-        job.responder->send(wazuh::uds_http::HttpResponse::json(503, R"({"error":"shutting_down","retryable":true})"));
+        answer(job, content_manager::OnDemandCode::ShuttingDown, "the on-demand lane is shutting down");
     }
     for (auto& worker : workers)
     {
@@ -189,8 +225,10 @@ void OnDemandManager::stopWorkers()
     else
     {
         // Worth an INFO: work was accepted and then shed, which the operator cannot see anywhere
-        // else (the per-request 503s of a shutdown are deliberately not logged).
-        logInfo(WM_CONTENTUPDATER, "On-demand lane stopped; %zu queued update(s) were answered 503.", abandoned.size());
+        // else.
+        logInfo(WM_CONTENTUPDATER,
+                "On-demand lane stopped; %zu queued update(s) were rejected.",
+                abandoned.size());
     }
 }
 
@@ -210,48 +248,51 @@ void OnDemandManager::run()
             m_queue.pop_front();
         }
 
-        // SHARED lock for the whole run: the contract removeEndpoint() builds its "nothing of
-        // mine still runs" guarantee on. Blocking here is fine -- this is a lane worker, never a
+        // SHARED lock for the whole run: the contract removeEndpoint() builds its "nothing of mine
+        // still runs" guarantee on. Blocking here is fine — this is a lane worker, never a
         // transport I/O thread.
         std::shared_lock<std::shared_mutex> lock {m_registryMutex};
         const auto it = m_endpoints.find(job.topic);
         if (it == m_endpoints.end())
         {
             logUnknownTopic(job.topic);
-            job.responder->send(
-                wazuh::uds_http::HttpResponse::json(404, R"({"error":"unknown_topic","retryable":false})"));
+            answer(job, content_manager::OnDemandCode::UnknownTopic, "unknown topic");
             continue;
         }
 
         try
         {
-            if (it->second(ActionOrchestrator::UpdateData::createContentUpdateData(job.offset)))
+            const auto result = it->second(job.request);
+            if (!result.ran)
             {
-                job.responder->send(wazuh::uds_http::HttpResponse::json(200, R"({"status":"ok"})"));
-            }
-            else
-            {
-                // The honest answer the old server never gave: it said 200 to a request it had
-                // silently ignored because that topic's update was already running. INFO, not a
-                // warning: coalescing concurrent triggers for one topic is the design working.
+                // Coalescing concurrent triggers for one topic is the design working, so this is
+                // INFO rather than a warning — but it IS reported, where the pre-lane server used
+                // to answer success to a request it had silently dropped.
                 if (const auto decision = m_inProgressThrottle.record())
                 {
                     logInfo(WM_CONTENTUPDATER,
-                            "Answered %llu on-demand request(s) with 409 in the last %d s: an update for that topic "
-                            "was already running (last: '%s').",
+                            "Refused %llu on-demand request(s) in the last %d s: an update for that topic was "
+                            "already running (last: '%s').",
                             static_cast<unsigned long long>(decision.total),
-                            wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                            LogThrottle::DEFAULT_WINDOW_SECONDS,
                             job.topic.c_str());
                 }
-                job.responder->send(
-                    wazuh::uds_http::HttpResponse::json(409, R"({"error":"update_in_progress","retryable":true})"));
+                answer(job, content_manager::OnDemandCode::AlreadyRunning, "an update for that topic is running");
+                continue;
             }
+
+            const auto failed = result.outcome.status == content_manager::CycleStatus::FailedTransport ||
+                                result.outcome.status == content_manager::CycleStatus::FailedSink ||
+                                result.outcome.status == content_manager::CycleStatus::FailedConfig;
+
+            answer(job,
+                   failed ? content_manager::OnDemandCode::Failed : content_manager::OnDemandCode::Completed,
+                   result.outcome.detail);
         }
         catch (const std::exception& e)
         {
             logWarn(WM_CONTENTUPDATER, "On-demand update for '%s' failed: %s", job.topic.c_str(), e.what());
-            job.responder->send(
-                wazuh::uds_http::HttpResponse::json(500, R"({"error":"update_failed","retryable":true})"));
+            answer(job, content_manager::OnDemandCode::Failed, e.what());
         }
     }
 }

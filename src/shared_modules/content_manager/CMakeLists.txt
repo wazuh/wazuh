@@ -19,12 +19,6 @@ endif()
 
 # Include directories
 include_directories(include)
-# The on-demand entry point (contentOnDemand.hpp / onDemandManager) answers through the shared
-# UDS transport's deferred responder. Header-only use: IHttpResponder is a pure interface and
-# HttpResponse is inline, so no link against the archive is needed here -- the responder objects
-# arrive at runtime from the server the vulnerability scanner runs.
-include_directories(${SRC_FOLDER}/shared_modules/uds_http_server/include)
-
 include_directories(${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/shared/include)
 include_directories(${SRC_FOLDER}/external/cJSON)
@@ -46,14 +40,27 @@ link_directories(${SHARED_MODULES}/indexer_connector/build)
 link_directories(${SRC_FOLDER}/external/rocksdb/build/)
 link_directories(${SRC_FOLDER}/external/zlib/)
 link_directories(${SRC_FOLDER}/external/zlib/contrib/minizip/)
-link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
 
 file(GLOB CONTENT_DOWNLOAD_SRC "src/*.cpp")
 
 add_library(content_manager SHARED ${CONTENT_DOWNLOAD_SRC})
 
+# flatbuffers was linked but never referenced: grepping the module for it returns nothing. Dropping
+# it matters beyond tidiness -- every host that links this library inherited a DT_NEEDED on a
+# library it does not use.
 target_link_libraries(content_manager PRIVATE gcc_s wazuhext
-                                              rocksdb flatbuffers indexer_connector)
+                                              rocksdb indexer_connector)
+
+# PUBLIC so a host outside this tree (the Engine) gets the contract headers by linking the target,
+# instead of hard-coding a relative path to them.
+# ${SHARED_MODULES}/utils is here for one header: contentManager.hpp derives ContentModule from
+# Singleton<>. Nothing else in include/ reaches outside these three directories, and the
+# content_manager_public_abi_c17 target below is compiled with exactly this set so a fourth
+# dependency cannot creep in unnoticed.
+target_include_directories(content_manager PUBLIC
+                           $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+                           $<BUILD_INTERFACE:${SRC_FOLDER}/external/nlohmann>
+                           $<BUILD_INTERFACE:${SHARED_MODULES}/utils>)
 
 set_target_properties(content_manager PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                  BUILD_RPATH "$ORIGIN/../lib")
@@ -62,6 +69,21 @@ if(UNIT_TEST)
   enable_testing()
   add_coverage_libraries(content_manager)
   add_subdirectory(tests)
+
+  # Compiles the public headers alone, under C++17, with ONLY the include directories a foreign
+  # host gets. Two things fail this target and nothing else catches either of them: a public header
+  # reaching for a C++20 feature (the Engine's own libraries are C++17), and a private header
+  # (rocksDBWrapper.hpp, contentModuleFacade.hpp, onDemandManager.hpp) leaking into include/.
+  add_library(content_manager_public_abi_c17 OBJECT tests/abi/publicHeaders17.cpp)
+  set_target_properties(content_manager_public_abi_c17 PROPERTIES CXX_STANDARD 17
+                                                                  CXX_STANDARD_REQUIRED ON)
+  # set_property REPLACES the include directories this target inherited from the directory-scoped
+  # include_directories() calls above. target_include_directories would only ADD to them, and the
+  # guard would then pass no matter what leaked.
+  set_property(TARGET content_manager_public_abi_c17 PROPERTY INCLUDE_DIRECTORIES
+               ${CMAKE_CURRENT_LIST_DIR}/include
+               ${SRC_FOLDER}/external/nlohmann
+               ${SHARED_MODULES}/utils)
 endif()
 
 add_subdirectory(testtool)

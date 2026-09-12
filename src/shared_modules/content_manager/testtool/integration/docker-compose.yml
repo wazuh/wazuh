@@ -1,0 +1,61 @@
+version: '3'
+
+# A two-node cluster on purpose, not one. The slicing gate is about how a PIT partitions documents
+# across shards, and a single-node single-shard cluster cannot exercise it: every slice but one
+# comes back empty and the gate passes without having tested anything.
+#
+# Ports are shifted off 9200 so this can run alongside indexer_connector's own testtool cluster
+# rather than fighting it for the port.
+services:
+  cm-opensearch-node1:
+    image: opensearchproject/opensearch:latest
+    container_name: cm-opensearch-node1
+    environment:
+      - cluster.name=cm-content-test
+      - node.name=cm-opensearch-node1
+      - discovery.seed_hosts=cm-opensearch-node1,cm-opensearch-node2
+      - cluster.initial_cluster_manager_nodes=cm-opensearch-node1,cm-opensearch-node2
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - "DISABLE_SECURITY_PLUGIN=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - 9400:9200
+    networks:
+      - cm-content-net
+
+  cm-opensearch-node2:
+    image: opensearchproject/opensearch:latest
+    container_name: cm-opensearch-node2
+    environment:
+      - cluster.name=cm-content-test
+      - node.name=cm-opensearch-node2
+      - discovery.seed_hosts=cm-opensearch-node1,cm-opensearch-node2
+      - cluster.initial_cluster_manager_nodes=cm-opensearch-node1,cm-opensearch-node2
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - "DISABLE_SECURITY_PLUGIN=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - 9401:9200
+    networks:
+      - cm-content-net
+
+# No named volumes: these clusters are disposable and the gates seed what they need. A persisted
+# volume only leaves stale indices to confuse the next run.
+networks:
+  cm-content-net:

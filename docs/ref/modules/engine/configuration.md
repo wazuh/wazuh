@@ -116,6 +116,9 @@ Control remote configuration and content synchronization:
 
 - **`analysisd.remote_conf_sync_interval`** - Remote configuration sync interval
 - **`analysisd.cm_sync_interval`** - Content Manager sync interval
+- **`analysisd.content_consumer_retry_interval`** - Delay before retrying a content cycle that was deferred because its CTI consumer was not ready. Shorter than a full sync interval on purpose: a consumer that is briefly busy should not cost a whole cycle.
+- **`analysisd.content_consumer_cache_seconds`** - How long a CTI consumer readiness answer may be reused across content topics watching the same consumer
+- **`analysisd.content_pit_keep_alive`** - Lease duration requested for the Point-in-Time snapshot each content download reads from
 
 #### Database Synchronization
 

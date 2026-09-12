@@ -1,47 +1,49 @@
 #include "contentManager.hpp"
 #include "contentOnDemand.hpp"
 #include "contentRegister.hpp"
+#include "contentSink.hpp"
+#include "contentTypes.hpp"
 #include "defs.h"
 #include <chrono>
+#include <cstdarg>
+#include <cstdio>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <string>
 #include <thread>
 
 /*
- * @brief Configuration parameters for the content provider.
+ * Test tool for the Content Manager.
  *
- * @topicName: Name of the topic.
- * @interval: Interval in seconds to execute the content provider.
- * @ondemand: If true, the content provider will be executed on demand.
- * @configData: Configuration data to create the orchestration of the content provider.
- * @contentSource: Source of the content.
- * @compressionType: Compression type of the content.
- * @versionedContent: Type of versioned content. If false, the content must not be versioned.
- * @deleteDownloadedContent: If true, the downloaded content will be deleted.
- * @url: URL where the content is located.
- * @outputFolder: if defined, the content will be downloaded to this folder.
- * @contentFileName: Name for the downloaded file (unless using the 'offline' or 'file' contentSource).
- * @offset (integer): Api offset used to override (if greater) the one set on the database.
+ * Registers one topic against a live Wazuh Indexer, lets the library's driver thread run a couple
+ * of cycles, then triggers one on-demand update through the same seam a host's HTTP route
+ * dispatches into. The sink below only prints what it is given, which makes this the shortest way
+ * to see the exact shape of the delivery contract.
  */
 static const nlohmann::json CONFIG_PARAMETERS =
     R"(
         {
             "topicName": "test",
-            "interval": 10,
+            "interval": 30,
             "ondemand": true,
             "configData":
             {
                 "consumerName": "ContentManagerTestTool",
-                "contentSource": "api",
-                "compressionType": "raw",
-                "versionedContent": "false",
-                "deleteDownloadedContent": true,
-                "url": "https://jsonplaceholder.typicode.com/todos/1",
-                "outputFolder": "/tmp/testProvider",
-                "contentFileName": "example.json",
+                "changeDetection": "cursor",
                 "databasePath": "/tmp/content_updater/rocksdb",
-                "offset": 0
+                "indexer":
+                {
+                    "hosts": ["https://localhost:9200"],
+                    "username": "admin",
+                    "password": "admin",
+                    "index": ".wazuh-threatintel-vulnerabilities",
+                    "consumerStatusIndex": ".wazuh-cti-consumers",
+                    "consumerStatusId": "cti:catalog:consumer:vulnerabilities",
+                    "cursorField": "offset",
+                    "pageSize": 100,
+                    "numSlices": 1
+                }
             }
         }
         )"_json;
@@ -49,9 +51,8 @@ static const nlohmann::json CONFIG_PARAMETERS =
 // Enable/Disable logging verbosity.
 static const auto VERBOSE {true};
 
-// Enable/Disable the offset update process execution.
-static const auto OFFSET_UPDATE {false};
-static const auto OFFSET_UPDATE_VALUE {100000};
+// Enable/Disable the forced full-reload on-demand request.
+static const auto FORCE_FULL_RELOAD {false};
 
 /**
  * @brief Log function callback used on the Content Manager test tool.
@@ -62,6 +63,7 @@ static const auto OFFSET_UPDATE_VALUE {100000};
  * @param line Line from where the logger is called.
  * @param func Function from where the logger is called.
  * @param message Message to log.
+ * @param args Message arguments.
  */
 void logFunction(const int logLevel,
                  const char* tag,
@@ -118,64 +120,69 @@ namespace Log
 }; // namespace Log
 
 /**
- * @brief Performs a PUT query to the on-demand manager, requesting an offset update.
- *
- * @param topicName Name of the topic.
+ * @brief A sink that accepts everything and prints what it was given.
  */
-/**
- * @brief Console responder for the in-process on-demand entry point.
- *
- * Since the vd-http.sock unification the on-demand HTTP route lives on the vulnerability scanner's
- * server; a standalone content_manager has no HTTP surface, so this tool drives the same seam
- * the route dispatches into (content_manager::dispatchOnDemand) and prints what the peer would
- * have received.
- */
-class ConsoleResponder final : public wazuh::uds_http::IHttpResponder
+class PrintingSink final : public content_manager::IContentSink
 {
 public:
-    void send(wazuh::uds_http::HttpResponse response) override
+    content_manager::SessionDecision beginSession(const content_manager::SessionInfo& info) noexcept override
     {
-        std::cout << "on-demand response: " << response.status << " " << response.body << std::endl;
+        std::cout << "beginSession topic=" << info.topic << " kind=" << static_cast<int>(info.kind)
+                  << " localToken='" << info.localToken << "' remoteToken='" << info.remoteToken
+                  << "' onDemand=" << info.onDemand << std::endl;
+        return content_manager::SessionDecision::Proceed;
+    }
+
+    content_manager::PageAck acceptPage(const content_manager::ContentPage& page) noexcept override
+    {
+        std::cout << "acceptPage slice=" << page.sliceId << " index=" << page.pageIndex
+                  << " hits=" << (page.hits != nullptr ? page.hits->size() : 0) << " token='" << page.pageToken << "'"
+                  << std::endl;
+        return content_manager::PageAck {content_manager::PageStatus::Durable, {}};
+    }
+
+    content_manager::CommitResult commit(const content_manager::CommitInfo& info) noexcept override
+    {
+        std::cout << "commit topic=" << info.topic << " documents=" << info.documentsDelivered << " finalToken='"
+                  << info.finalToken << "' changed=" << info.changed << std::endl;
+        return content_manager::CommitResult {content_manager::CommitStatus::Committed, {}};
+    }
+
+    void abort(content_manager::AbortReason reason, const std::string& detail) noexcept override
+    {
+        std::cout << "abort reason=" << static_cast<int>(reason) << " detail=" << detail << std::endl;
     }
 };
 
-void runOffsetUpdate(const std::string& topicName)
-{
-    content_manager::dispatchOnDemand(topicName, OFFSET_UPDATE_VALUE, std::make_shared<ConsoleResponder>());
-}
-
 int main()
 {
-    // Server
     auto& instance = ContentModule::instance();
     instance.start(logFunction);
 
     try
     {
-        const std::string topic_name = CONFIG_PARAMETERS.at("topicName").get<std::string>();
-        // Client -> Vulnerability detector
-        ContentRegister registerer {topic_name,
-                                    CONFIG_PARAMETERS,
-                                    [](const std::string& msg) -> FileProcessingResult { return {0, "", false}; }};
+        const auto topicName = CONFIG_PARAMETERS.at("topicName").get<std::string>();
+        ContentRegister registerer {topicName, CONFIG_PARAMETERS, std::make_shared<PrintingSink>()};
 
         std::this_thread::sleep_for(std::chrono::seconds(5));
 
-        // Run offset update if specified.
-        if (OFFSET_UPDATE)
-        {
-            runOffsetUpdate(topic_name);
-        }
-
-        // OnDemand request, through the same seam the vd-http.sock route dispatches into.
-        content_manager::dispatchOnDemand(topic_name, -1, std::make_shared<ConsoleResponder>());
+        content_manager::requestOnDemand(topicName,
+                                         content_manager::RunRequest {FORCE_FULL_RELOAD, true},
+                                         [](content_manager::OnDemandResult result)
+                                         {
+                                             std::cout << "on-demand result: code=" << static_cast<int>(result.code)
+                                                       << " detail=" << result.detail << std::endl;
+                                         });
 
         std::this_thread::sleep_for(std::chrono::seconds(60));
+
+        std::cout << "current token: '" << registerer.currentToken() << "'" << std::endl;
     }
     catch (const std::exception& e)
     {
         std::cout << "Exception: " << e.what() << std::endl;
     }
-    // Stop server
+
     instance.stop();
 
     return 0;

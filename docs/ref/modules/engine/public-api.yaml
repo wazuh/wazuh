@@ -774,6 +774,86 @@ paths:
                     hash: ''
                     updating: false
                     lastError: Store is not available
+  /content/ioc/sync:
+    post:
+      tags:
+      - Content
+      summary: Synchronize IOCs from the Wazuh Indexer
+      description: "Asks the content manager to run a synchronization cycle now for every tracked IoC type,\ninstead of waiting for the next `analysisd.ioc_sync_interval` tick.\n\nThis is the **indexer-backed** counterpart to `POST /content/ioc/update`, which ingests a LOCAL\nnd-json file given a path and a hash. The two share no input and no code path, which is why they\nare separate endpoints rather than one endpoint with a mode flag.\n\n**Behaviour**:\n- Takes no parameters. A request body, if sent, is ignored.\n- Returns as soon as the request is queued: the answer means **accepted**, not **finished**.\n- Per-type progress and results are read from `GET /status`.\n- A type whose remote hash has not moved costs one probe and downloads nothing.\n- A type already synchronizing is left alone rather than run twice, so the endpoint is safe to\n  call repeatedly.\n- Work runs on the content manager's bounded lane; a burst of triggers is coalesced or shed there\n  rather than piling up on API workers.\n"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyRequest'
+            examples:
+              sync_now:
+                summary: Trigger an IOC synchronization
+                value: {}
+      responses:
+        '200':
+          description: Success - Synchronization queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+              examples:
+                queued:
+                  summary: Synchronization queued for every tracked IoC type
+                  value:
+                    status: OK
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+              examples:
+                service_unavailable:
+                  summary: IOC Sync service is not available
+                  value:
+                    status: ERROR
+                    error: IOC Sync service is not available
+  /content/ruleset/update:
+    post:
+      tags:
+      - Content
+      summary: Synchronize the ruleset from the Wazuh Indexer
+      description: "Asks the content manager to run a synchronization cycle now for every tracked ruleset space,\ninstead of waiting for the next `analysisd.cm_sync_interval` tick.\n\n**Behaviour**:\n- Takes no parameters. A request body, if sent, is ignored.\n- Returns as soon as the request is queued: the answer means **accepted**, not **finished**.\n- Per-space progress and results are read from `GET /status`.\n- A space whose remote hash has not moved costs one probe and downloads nothing.\n- A space already synchronizing is left alone rather than run twice, so the endpoint is safe to\n  call repeatedly.\n- A space whose remote policy is disabled has its route and namespace removed instead.\n- Work runs on the content manager's bounded lane; a burst of triggers is coalesced or shed there\n  rather than piling up on API workers.\n"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyRequest'
+            examples:
+              update_now:
+                summary: Trigger a ruleset synchronization
+                value: {}
+      responses:
+        '200':
+          description: Success - Synchronization queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+              examples:
+                queued:
+                  summary: Synchronization queued for every tracked space
+                  value:
+                    status: OK
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+              examples:
+                service_unavailable:
+                  summary: Content Manager Sync service is not available
+                  value:
+                    status: ERROR
+                    error: Content Manager Sync service is not available
   /content/validate/resource:
     post:
       tags:
