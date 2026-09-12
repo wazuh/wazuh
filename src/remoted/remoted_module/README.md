@@ -48,19 +48,32 @@ remoted_module/
 │   └── downstream/                 # ns remoted::downstream — async UDS forwarding + limiter (see below);
 │                                   #   forwarderMetrics.hpp = remoted.forwarder.* failure catalog
 ├── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
-└── tools/
+└── tools/                          # CLIs for an installed manager; dependencies in requirements.txt
+    ├── wire_jwt.py                 # the shared bearer minter every sender imports; --self-test
+    │                               #   reproduces the frozen vectors the C++ side is pinned to
     ├── send_stateless.py           # CLI to sign + POST /stateless for manual/E2E testing (see below)
     ├── send_agent_json.py          # CLI to sign + POST /stats and /config, and check the answer
     │                               #   (the deletion has no remoted route: see
     │                               #    inventory_sync_server/tools/send_delete_agent.py)
     ├── send_control.py             # CLI to sign + POST /control (startup/notify/shutdown scenarios)
-    └── send_scan_vd.py             # CLI to sign + POST /scan/vd, incl. offset match/mismatch (see below)
+    ├── send_scan_vd.py             # CLI to sign + POST /scan/vd, incl. offset match/mismatch (see below)
+    ├── send_download.py            # CLI to sign + POST /download: config/WPK, the 403 authorization
+    │                               #   case, and a concurrency+RSS check (see below)
+    ├── send_enroll.py              # CLI for POST /enroll in all three modes (open / password / mTLS)
+    ├── monitor.py                  # samples remoted from /proc while a load test runs (connections,
+    │                               #   threads, fds, RSS, CPU as a counter delta) -- pairs with
+    │                               #   send_download.py; NOT the metrics scraper
+    ├── requirements.txt            # requests (HTTP/TLS) and zstandard (compressed payloads)
+    └── load_balancer/              # reproducible proxy lab: NGINX/HAProxy configs (working AND
+                                    #   deliberately broken ones), a second manager node, cert
+                                    #   generation and a PASS/FAIL runner -- its own README.
+                                    #   Operator-facing counterpart: docs/ref/.../load-balancers/
 ```
 
 Each internal concern is a folder under `src/` (namespaced, PRIVATE, reachable by prefix —
-`"auth/...`", `"decoding/...`", `"http_server/...`", `"endpoints/...`", `"control/...`",
-`"downstream/...`", and `"enrollment/...`" — since `src/` is on the include path). New
-endpoints get their own folder under `src/endpoints/<name>/`.
+`"auth/...`", `"common/...`", `"decoding/...`", `"http_server/...`", `"endpoints/...`",
+`"control/...`", `"scanvd/...`", `"downstream/...`", and `"enrollment/...`" — since `src/` is on
+the include path). New endpoints get their own folder under `src/endpoints/<name>/`.
 
 ## HTTP(S) server sub-layer (`src/http_server/`)
 
@@ -2083,7 +2096,74 @@ keep-alive pinning, explicit `release()` + RAII), `authGateway_test.cpp` (gatewa
 view, payload outliving dispatch + release keeping metadata, handler-exception → 500), plus the auth
 core `jwtVerify_test.cpp`/`jwtEnrollSignVerify_test.cpp`, `authMiddleware_test.cpp` (incl. a non-canonical
 `kid` → `InvalidToken`), `keystore_test.cpp` (incl. a non-numeric `client.keys` id line being
-skipped without blocking the rest of the file).
+skipped without blocking the rest of the file), and the three primitives underneath them:
+`jwtHmacSha256_test.cpp` (RFC 4231 case 2 plus the frozen profile signature, and the recorded
+*negative* token produced when the ASCII hex text is used as the key instead of the decoded bytes),
+`jwtKeyDecoder_test.cpp` (exactly 64 lowercase hex characters → 32 bytes; every other length is
+rejected, 16-byte legacy MD5 shapes included) and `jwtProfileTypes_test.cpp` (the frozen profile
+constants, `TimePolicy`'s accepted ranges, `CanonicalAgentId` zero-padding and overflow, `SecureBytes`
+being move-only with empty states after move/clear, and base64url having to be canonical).
+
+Transport, framing and shared plumbing: `authConfig_test.cpp` (C-ABI → `AuthConfig`: a zeroed
+struct yields the profile defaults, and `jwt_clock_skew_set` is what tells "zero tolerance" apart
+from "unset" — an explicitly set negative skew throws, as does an over-maximum value), `downstreamConfig_test.cpp` (default
+socket paths — the inventory-sync literal is pinned against modulesd's own copy — seconds→ms
+conversion, `/stateful`'s dedicated 20 s deadline, and the module's own 11 MiB response cap, chosen
+strictly above the 10 MiB request cap. **Caveat:** that C++ default is unreachable in a running
+manager — `secure.c` always supplies `remoted.downstream_max_response_body_size`, whose own default
+is 10 MiB, so the effective cap equals the request cap and the "strictly above" rationale does not
+hold at runtime. The test pins the constant, not the deployed value),
+`headerUtils_test.cpp` (case-insensitive header lookup: the RFC-canonical `Authorization` the
+transport actually delivers is exactly what a naive exact `find()` misses), `authHeadersE2E_test.cpp`
+(over real TLS: a **duplicated** `Authorization` or `protocol-version` is refused rather than
+first-wins, even when both copies are valid), `globalPrefixE2E_test.cpp` (prefixed targets
+authenticate — query string included, since the bearer binds identity, not target — while
+unprefixed ones `404` *before* auth runs), `handlerBarrier_test.cpp` (a handler throwing a
+non-`std::exception` answers `500` instead of terminating the daemon; a throw *after* responding
+keeps the original answer), `logThrottle_test.cpp` (first occurrence emits, the rest of the window
+is counted not printed, and 8 threads × 10 000 records neither lose nor double-count),
+`strictJsonObject_test.cpp` (exact-allowlist parsing: missing/extra/duplicate/mistyped members,
+non-ASCII bytes and BOMs rejected, and a truncated multi-byte tail never read past the view — the
+ASAN heap-overflow regression), `caCertificateSource_test.cpp` (certificates only, never the key
+from a combined PEM; a file with one undecodable block is refused whole; re-parsed on content change
+despite identical size and mtime).
+
+Body decoding: `bodyDecoder_test.cpp` (only an exact, case-insensitive `zstd` decodes — `gzip`,
+`"zstd, gzip"` and prefixes are refused — the decoded bytes stay charged to the in-flight budget
+until the payload dies, and a `413` there is never counted as a budget shed) and
+`zstdDecoder_test.cpp` (the frame header drives one up-front window reservation; a declared window size above
+the 8 MiB ceiling is refused without consulting the budget at all).
+
+Control-plane coverage: `controlEndpoint_test.cpp` (empty/oversized bodies, non-JSON, non-object
+roots and non-numeric/negative/trailing-garbage agent ids each get their own `400` code, all
+aggregated into `remoted.control.rejected`), `controlHandler_test.cpp` (a malformed version answers
+`400` *and* writes `status_code` with the version sentinelized; `config_token` is the wdb-ordered
+multigroup CSV naming the same `merged.mg` that `config_hash` was computed over; a wazuh-db failure
+answers `500` rather than silently falling back to "default"), `controlConfig_test.cpp` (non-positive
+values fall back instead of casting a negative into a huge unsigned; a malformed `limits_json`
+collapses to `{}`), `controlTypes_test.cpp` (the version grammar and `compareVersions` ordering
+shared with `/enroll`), `agentRegistry_test.cpp` (an updater returning null is a no-op that never
+erases; eviction keys off `max(lastActivity, createdAt)`; concurrent refresh is tolerated),
+`wazuhDBClient_test.cpp` (`"ok"`/`"ok "` accepted but `"okabc"` rejected; `os_major`/`os_minor`
+derived from real strings like `15-SP7`; latency observed only on successful round trips),
+`taskClient_test.cpp` (the request body is the zero-padded agent id with no `action` member; a
+stall maps to `Timeout`, not `Io`; the destructor drains), `hashCache_test.cpp` (the multigroup
+`sha256[:8]` directory rule, and **an empty hash is never cached** — the fresh-install poisoning
+bug), `mergedMgWatcher_test.cpp` (fires for `merged.mg` only — never `agent.conf`/`shared.conf` —
+including arrival by rename, and auto-watches group directories created after startup),
+`groupSelector_test.cpp` (the CSV is joined verbatim in wdb order, duplicates and empties included,
+because that exact string *is* the hashed directory name) and
+`registryAgentGroupSource_test.cpp` (fails closed for malformed ids, unknown agents and a null
+registry, and refuses an entry with no `groupsRefreshedAtSec` — so a `/control/shutdown`-minted
+entry can never claim `default`).
+
+`/download` and `/stateful`: `downloadEndpoint_test.cpp` (the group and WPK grammars reject
+traversal; `FileByteSource` aborts when the file is truncated, grows, or is rewritten at the same
+length; a denied group returns an **identical** `403` whether or not it exists, so there is no
+enumeration oracle; WPKs are deliberately not authorized here) and `statefulEndpoint_test.cpp` (the
+sync socket, the `X-Wazuh-Agent-Id` taken from the verified token, the dedicated deadline, contract
+statuses and bodies passed through untouched, everything off-contract collapsed to a neutral `503`,
+and `Retry-After` relayed only on a `503` and only when digits-only).
 
 Enrollment coverage: `enrollmentConfig_test.cpp` (the C-ABI → `enrollment::Config` resolution:
 sentinels, seconds→milliseconds, the shared time policy and its profile ceiling, the body cap),
@@ -2159,16 +2239,41 @@ last_reload_ok:true}` reported whenever enrollment is enabled without ever gatin
 warn-and-continue policy when the bind fails with the public listener unaffected, and `stop()`
 unlinking the socket with a restart cycle bringing the plane back).
 
+**Two files in `test/unit/` are spikes, not contracts.** They characterize a third-party library
+fetched by `make deps`; their purpose is to pin observed dependency behaviour, and
+their assertions are *recorded observations*: a dependency bump may change those observations and requires review of any failures.
+
+| File | What it records | What actually guards the feature |
+|---|---|---|
+| `jwtCppSpike_test.cpp` | vendored jwt-cpp 0.7.2 on duplicate JSON members, base64url padding and alphabet, `NumericDate` types, leeway, NUL-containing keys — i.e. which checks the library does **not** do, so the profile verifier owns them | `jwtVerify_test.cpp`, `jwtProfileTypes_test.cpp` |
+| `routerSemanticsSpike_test.cpp` | RESTinio `express_router` matching: `"/p/"` does not match `"/p"` while bare `"/q"` matches `"/q/"`, case-insensitivity, `%2F` left undecoded, handlers seeing the raw target | `globalPrefixE2E_test.cpp`, `httpServer_test.cpp`'s `GlobalPrefixTransportTest` |
+
+Both carry comments marking a hypothesis as confirmed or refuted by the run that produced them.
+Separately, `DISABLED_`-prefixed cases (`jwtCppSpike_test.cpp`'s traits benchmark,
+`handlerBarrier_test.cpp`'s throughput probe) are opt-in measurements, skipped by the normal test
+run. They need `--gtest_also_run_disabled_tests`; use an optimized build for meaningful timing.
+
 ```bash
-ctest --test-dir <build> -R remoted_module_utest -V
+# From the repository root, after configuring src/build with -DUNIT_TEST=ON and building the target:
+ctest --test-dir src/build -R '^remoted_module_utest$' -V
 ```
 
-### Manual / end-to-end (`tools/send_stateless.py`, `tools/send_download.py`)
+<a id="manual--end-to-end-toolssend_statelesspy-toolssend_downloadpy"></a>
+
+### Manual / end-to-end (`tools/send_stateless.py`)
+
+> **Port trap:** `send_stateless.py`, `send_agent_json.py` and `send_enroll.py` default to
+> `https://127.0.0.1:1517`, the product's own port; `send_control.py`, `send_scan_vd.py` and
+> `send_download.py` default to `https://127.0.0.1:9443` (a development listener). Against a
+> default installation the latter three need `--url https://127.0.0.1:1517`.
 
 Mints the `wazuh-agent+jwt` bearer and sends `POST /stateless` requests exactly as `AuthMiddleware`
 expects (shared `tools/wire_jwt.py`, pure standard library; agent key read straight from
-`client.keys`; `python3 wire_jwt.py --self-test` reproduces the frozen vectors). Requires
-`pip install -r tools/requirements.txt`.
+`client.keys`; `python3 tools/wire_jwt.py --self-test` reproduces the frozen vectors).
+Run the sender examples below from `src/remoted/remoted_module/`, with
+`python3 -m pip install -r tools/requirements.txt` installed in your Python environment.
+Use an account that can read the manager's files. `--agent-id` must name an existing entry in
+`client.keys`: most senders default to `1001`, while `send_download.py` defaults to `001`.
 
 Every sender resolves `--global-prefix` the way `run_benchmark.sh` resolves `--cluster`: when the
 flag is absent it reads `<remote><https><global_prefix>` from the local manager's configuration, so
@@ -2176,7 +2281,7 @@ a default installation needs no flag. The prefix is a routing matter only (the b
 the target; a mismatch is a `404`); pass `/` to force the unprefixed paths.
 
 ```bash
-python3 tools/send_stateless.py            # one valid signed request -> 200
+python3 tools/send_stateless.py            # one valid signed request -> 202
 python3 tools/send_stateless.py --tamper   # corrupted token signature -> 401 (invalid_signature)
 python3 tools/send_stateless.py --all      # every success/failure scenario with expected codes,
                                             # incl. payload_agent_mismatch -> 400 (PayloadAgentMismatch)
@@ -2208,7 +2313,7 @@ python3 tools/send_agent_json.py                          # one signed /stats ->
 python3 tools/send_agent_json.py --endpoint config        # same, against /config -> 200 + {}
 python3 tools/send_agent_json.py --body '{"cpu":42}'      # no `modules` object -> 400, both endpoints
 python3 tools/send_agent_json.py --tamper                 # corrupted token signature -> 401 (invalid_signature)
-python3 tools/send_agent_json.py --all                    # 16 scenarios x BOTH endpoints
+python3 tools/send_agent_json.py --all                    # every scenario against BOTH endpoints
 # options: --url, --agent-id, --body, --client-keys, --endpoint {stats,config}, --global-prefix
 ```
 
@@ -2230,14 +2335,14 @@ Same bearer, for the VD re-scan pair: `send_control.py` covers `/control`
 `/scan/vd` specifically.
 
 ```bash
-python3 tools/send_control.py --type notify                # prints the vd_feed_offset it got back
-python3 tools/send_control.py --all                         # every /control success/failure scenario
+python3 tools/send_control.py --url https://127.0.0.1:1517 --type notify                # prints the vd_feed_offset it got back
+python3 tools/send_control.py --url https://127.0.0.1:1517 --all                         # every /control success/failure scenario
 
-python3 tools/send_scan_vd.py --auto-offset                 # looks up the current offset via
+python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --auto-offset                 # looks up the current offset via
                                                               # /control first, then a matching request -> 200
-python3 tools/send_scan_vd.py --feed-offset 1                # a deliberately wrong offset -> 409,
+python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --feed-offset 1                # 409 if the manager's offset differs from 1,
                                                               # prints the manager's real current_version
-python3 tools/send_scan_vd.py --all                          # every /scan/vd success/failure scenario
+python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --all                          # every /scan/vd success/failure scenario
 # options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys, --global-prefix
 ```
 
@@ -2245,10 +2350,94 @@ python3 tools/send_scan_vd.py --all                          # every /scan/vd su
 `/scan/vd`: read the current offset off a live `/control` notify response rather than requiring you
 to already know it.
 
+### Manual / end-to-end (`tools/send_download.py`, `tools/monitor.py`)
+
+Same bearer, for `POST /download`. A single configuration download checks that the response is
+chunked and compares the received SHA-256 with the local file when readable. It prints
+`Content-Length` but does not assert its absence. A single WPK request checks the status;
+`--all` also requires chunked transfer on successful responses, but does not compare file hashes.
+Simulation checks chunking and compares configuration hashes when local files are readable.
+The expected configuration path comes from `resource_id`,
+without consulting the manager's database. For success, each agent must first have a `/control`
+registry entry with matching groups. The default selector is literally `default`, not a lookup of
+the agent's groups; pass `--resource-id` with the `agent.config_token` returned by `/control`.
+
+```bash
+python3 tools/send_download.py --url https://127.0.0.1:1517                         # config for an agent whose selector is default
+python3 tools/send_download.py --url https://127.0.0.1:1517 --resource-type wpk --resource-id wazuh_agent_v5.0.0_linux_x86_64.wpk   # replace with a staged filename
+python3 tools/send_download.py --url https://127.0.0.1:1517 --all                   # every scenario: bad type, rejected identifier,
+                                                        #   unknown group -> 403, another agent's
+                                                        #   selector -> 403
+python3 tools/send_download.py --url https://127.0.0.1:1517 --simulate 8 --repeat 20 --watch-rss   # concurrency + memory check
+# options: --url (default https://127.0.0.1:9443), --manager-home, --resource-id, --selectors,
+#          --unknown-group, --other-group, --agent-id, --global-prefix
+```
+
+`--wpk` selects the successful WPK case in `--all` only; a single WPK request requires
+`--resource-id`. `--all` also requires a staged WPK and the requested configuration file, and skips
+the other-existing-group scenario if that group has no local `merged.mg`. `--simulate N` uses up
+to N agents already in `client.keys`; it does not enroll agents or assign their groups.
+
+`--watch-rss` samples RSS and file descriptors during the transfer and reports throughput. Compare
+runs with different file sizes to assess memory growth; sampling can miss short-lived RSS peaks.
+CPU time is measured as a `/proc` counter delta over the observation interval.
+
+`tools/monitor.py` is the same observation decoupled from the sender, for a load run driven by
+anything (and it is **not** the metrics scraper — it reads `/proc`, not `GET /metrics`):
+
+```bash
+sudo python3 tools/monitor.py --duration 30 &
+sudo python3 tools/send_download.py --url https://127.0.0.1:1517 --simulate 8 --repeat 20
+# options: --pid, --port (default 1517), --interval, --duration, --quiet
+```
+
+### Manual / end-to-end (`tools/send_enroll.py`)
+
+The one sender with no agent key to borrow: `POST /enroll` is what creates the identity. It drives
+the three modes the manager can be configured for — Open (no credential), Password (mints the
+`wazuh-enroll+jwt` bearer from the manager's actual enrollment password) and mTLS (the client
+certificate is presented during the handshake; without a password option, no `Authorization`
+header is sent). Client certificates and password options can be combined when the listener and
+`use_password` require both.
+
+```bash
+python3 tools/send_enroll.py --name test-agent                 # Open mode -> 200 + id/key/reenroll_secret
+python3 tools/send_enroll.py --password-file /var/wazuh-manager/etc/authd.pass   # Password mode
+python3 tools/send_enroll.py --password-file /var/wazuh-manager/etc/authd.pass --tamper  # corrupted bearer -> 401
+python3 tools/send_enroll.py --client-cert agent.pem --client-key agent-key.pem  # mTLS mode
+python3 tools/send_enroll.py --all                             # every scenario it can drive without
+                                                                #   knowing the configured mode in advance
+# options: --url (default https://127.0.0.1:1517), --version, --groups, --ip, --key-hash,
+#          --password / --password-file, --client-cert, --client-key, --global-prefix
+```
+
+`--all` always runs the body-validation scenarios; the bearer and timing scenarios additionally
+require a password to be supplied, since only then can the tool mint a credential the manager will
+judge.
+
+### Load balancer / reverse proxy lab (`tools/load_balancer/`)
+
+The senders above exercise routes and can repeat requests or run scenarios. This lab adds: a real proxy in front, a second manager node, byte-exact control over the raw
+request target, and request replay. It ships working NGINX and HAProxy configurations *and*
+deliberately broken ones (path rewriting, PROXY-protocol mismatch, retry-on-503 duplication), so a
+regression shows up as a check that stops failing the way it is supposed to.
+
+```bash
+cd tools/load_balancer
+sudo ./setup_lab.sh       # certificates, second node, NGINX; modifies/restarts the installed manager
+sudo ./run_issue_checks.sh  # every check, PASS/FAIL against its documented outcome
+```
+
+It has its own [`README.md`](tools/load_balancer/README.md) (section 6 is the requirement mapping).
+Its operator-facing counterpart is
+[docs/ref/modules/remoted/load-balancers/](../../../docs/ref/modules/remoted/load-balancers/README.md),
+which documents the proxy behaviour exercised by the lab.
+
 ### `agent-api-reference.html` (docs/ref) needs no regeneration
 
 `docs/ref/modules/remoted/agent-api-reference.html` is a 638-byte ReDoc shell that loads
 `agent-api.yaml` **in the browser** (CDN bundle `redoc@2.5.2`): editing the yaml is the whole change,
 there is no generated artifact to rebuild and no tool to install (`redocly` is not part of the
-environment). Validate the yaml (`python3 -c "import yaml; yaml.safe_load(open('docs/ref/modules/remoted/agent-api.yaml'))"`)
+environment). From the repository root, validate the yaml (with PyYAML available:
+`python3 -c "import yaml; yaml.safe_load(open('docs/ref/modules/remoted/agent-api.yaml'))"`)
 and run `docs/build.sh`; that is all.
