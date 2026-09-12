@@ -64,7 +64,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
                             -Wl,--wrap,w_query_agentd -Wl,--wrap,legacy_task_process_upgrade_ack ${HASH_OP_WRAPPERS} \
-                            -Wl,--wrap,w_mconf_section")
+                            -Wl,--wrap,w_mconf_section -Wl,--wrap,access")
 
 list(APPEND remoted_names "test_save_ctrlmsg_thread")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accept -Wl,--wrap,close \
@@ -136,13 +136,16 @@ foreach(counter RANGE ${count})
         ${TEST_DEPS}
     )
 
-    # secure.c (in remoted_lib) calls the C++ module's extern "C" entry points. The legacy
-    # tests don't link libremoted_module.so, so mock them via __wrap_* (defined in
-    # wrappers/wazuh/shared_modules/remoted_module_wrappers.c). Harmless for tests that don't
-    # pull secure.c in.
+    # secure.c and legacy_task_delivery.c (both in remoted_lib) call the C++ module's extern "C"
+    # entry points. The legacy tests don't link libremoted_module.so, so mock them via __wrap_*
+    # (defined in wrappers/wazuh/remoted/remoted_module_wrappers.c).
+    #
+    # Applied to EVERY test in this loop, not per test: remoted_lib is an archive, so any binary
+    # linking it pulls in whichever member references these symbols and fails to link without the
+    # wrap -- even a test that never calls the code path. Harmless where it is not needed.
     target_link_libraries(
         ${remoted_test_name}
-        "-Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop"
+        "-Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,remoted_module_tls_ca_matches_leaf"
     )
 
     if(NOT remoted_test_flags STREQUAL " ")

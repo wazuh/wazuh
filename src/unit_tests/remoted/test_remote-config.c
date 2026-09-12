@@ -87,6 +87,7 @@ static int teardown(void **state) {
     if (ts->logr->https.certificate) free(ts->logr->https.certificate);
     if (ts->logr->https.key) free(ts->logr->https.key);
     if (ts->logr->https.ca) free(ts->logr->https.ca);
+    if (ts->logr->https.ca_certificate) free(ts->logr->https.ca_certificate);
     if (ts->logr->https.ciphers) free(ts->logr->https.ciphers);
     free(ts->logr);
     free(ts);
@@ -386,7 +387,8 @@ static void test_Read_Remote_JSON_effective_defaults(void **state) {
         "{\"legacy\":{\"enabled\":true,\"port\":1514,\"protocol\":[\"tcp\"],\"ipv6\":false,\"local_ip\":\"127.0.0.1\","
         "\"queue_size\":131072,\"rids_closing_time\":\"5m\",\"connection_overtake_time\":60},"
         "\"https\":{\"port\":1517,\"bind_addr\":\"127.0.0.1\",\"global_prefix\":\"/wazuh-manager/\","
-        "\"certificate\":\"etc/certs/remoted.pem\",\"key\":\"etc/certs/remoted-key.pem\",\"ca\":\"\"},"
+        "\"certificate\":\"etc/certs/remoted.pem\",\"key\":\"etc/certs/remoted-key.pem\",\"ca\":\"\","
+        "\"ca_certificate\":\"etc/certs/root-ca.pem\"},"
         "\"agents\":{\"allow_higher_versions\":false}}");
 
     expect_valid_ip("127.0.0.1"); // legacy.local_ip
@@ -408,11 +410,59 @@ static void test_Read_Remote_JSON_effective_defaults(void **state) {
     assert_string_equal(ts->logr->https.certificate, "etc/certs/remoted.pem");
     assert_string_equal(ts->logr->https.key, "etc/certs/remoted-key.pem");
     assert_null(ts->logr->https.ca);
+    assert_string_equal(ts->logr->https.ca_certificate, "etc/certs/root-ca.pem");
     assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_UNSET);
     assert_null(ts->logr->https.ciphers);
     assert_int_equal(ts->logr->https.max_body_size, 0);
     assert_int_equal(ts->logr->https.dual_stack, REMOTED_HTTPS_DUAL_STACK_UNSET);
     assert_false(ts->logr->allow_higher_versions);
+    /* Absent from this (schema-defaulted) document, and the reader still resolves it to true --
+     * the default that ships. */
+    assert_true(ts->logr->legacy_ca_delivery);
+
+    cJSON_Delete(remote);
+}
+
+/* CA delivery to legacy agents during an upgrade: on unless explicitly turned off, including when
+ * the whole <legacy> block is absent -- an uninitialised bool there would be read by the poller. */
+static void test_Read_Remote_JSON_ca_delivery(void **state) {
+    test_state *ts = *state;
+
+    cJSON *disabled = json_or_fail("{\"legacy\":{\"enabled\":true,\"ca_delivery\":false},\"https\":{}}");
+    assert_int_equal(Read_Remote_JSON(disabled, ts->logr), 0);
+    assert_false(ts->logr->legacy_ca_delivery);
+    cJSON_Delete(disabled);
+
+    cJSON *enabled = json_or_fail("{\"legacy\":{\"enabled\":true,\"ca_delivery\":true},\"https\":{}}");
+    assert_int_equal(Read_Remote_JSON(enabled, ts->logr), 0);
+    assert_true(ts->logr->legacy_ca_delivery);
+    cJSON_Delete(enabled);
+
+    /* Present block, key omitted. */
+    ts->logr->legacy_ca_delivery = false;
+    cJSON *omitted = json_or_fail("{\"legacy\":{\"enabled\":true},\"https\":{}}");
+    assert_int_equal(Read_Remote_JSON(omitted, ts->logr), 0);
+    assert_true(ts->logr->legacy_ca_delivery);
+    cJSON_Delete(omitted);
+
+    /* No <legacy> block at all: the listener is off and the poller never runs, but the field must
+     * still hold a defined value rather than whatever was there before. */
+    ts->logr->legacy_ca_delivery = false;
+    cJSON *no_legacy = json_or_fail("{\"https\":{}}");
+    assert_int_equal(Read_Remote_JSON(no_legacy, ts->logr), 0);
+    assert_true(ts->logr->legacy_ca_delivery);
+    cJSON_Delete(no_legacy);
+}
+
+static void test_Read_Remote_JSON_ca_certificate_absent_is_null(void **state) {
+    test_state *ts = *state;
+    /* The reader sets no default of its own: an <https> block without ca_certificate (or a document
+     * loaded without the schema defaults) leaves the field NULL so the module applies its default. */
+    cJSON *remote = json_or_fail("{\"https\":{}}");
+
+    assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
+
+    assert_null(ts->logr->https.ca_certificate);
 
     cJSON_Delete(remote);
 }
@@ -619,6 +669,8 @@ int main(void)
 
         /* Read_Remote_JSON() -- the effective `remote` section of etc/wazuh-manager.conf */
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_effective_defaults, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_ca_delivery, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_ca_certificate_absent_is_null, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_legacy_disabled_clears_listener, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_protocol_list_and_ipv6_without_local_ip, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_durations_and_sizes_int_or_string, setup, teardown),

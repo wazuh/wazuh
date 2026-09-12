@@ -116,10 +116,14 @@ namespace remoted::auth
     /**
      * @brief Internal auth failure reason, safe to log.
      *
-     * The public HTTP status/message must never distinguish between the
-     * credential-related reasons -- those all collapse to a single generic 401
-     * (see publicErrorFor()). Protocol-version and payload-agent-mismatch are
-     * called out as their own 400s, so they keep distinct public messages.
+     * Every credential-related reason is a 401 with the same generic message; what the wire DOES
+     * name (issue #38993, RFC 6750 `error_description` and the body's `code`) is the public CLASS
+     * publicErrorFor() maps it to -- `unknown_agent` (re-enroll), `stale_token` (fix the clock and
+     * retry), `invalid_signature` (do not re-enroll), the `token_*` of /enroll, `invalid_request`
+     * (no usable credential presented) -- which is coarser than this enum: several reasons share a
+     * class, and the finer cause stays in the log and in remoted.auth.reject.*. Protocol-version
+     * and payload-agent-mismatch are called out as their own 400s, so they keep distinct public
+     * messages.
      */
     enum class AuthError
     {
@@ -131,8 +135,10 @@ namespace remoted::auth
         UnknownAgent,
         MissingKey,
         AddressNotAllowed,    ///< The peer address does not satisfy the agent's client.keys ip column
-                              ///< (the legacy remoted's ENC_IP_ERROR rejection). Collapses to the
-                              ///< generic 401: a distinct status would confirm that the agent id exists.
+                              ///< (the legacy remoted's ENC_IP_ERROR rejection). Its public class is
+                              ///< `invalid_signature`, not `unknown_agent`: the agent must not re-enroll
+                              ///< over it (the id exists; the operator fixes the column), and ids being
+                              ///< sequential, revealing their existence buys an attacker nothing (T10).
         InvalidToken,         ///< The bearer is not a `wazuh-agent+jwt` token: size, compact grammar,
                               ///< base64url, JSON, header/claim sets or types, jti, or the structural
                               ///< time rules (nbf == iat, exp > iat, exp - iat <= 60).
@@ -157,6 +163,18 @@ namespace remoted::auth
                                     ///< logRejection() tell an operator to "re-enroll the affected
                                     ///< agent(s)" for a condition where no agent, and no client.keys
                                     ///< entry, exists yet at all.
+        TokenUnknown,               ///< Raised ONLY by EnrollmentAuthenticator's enrollment-token path
+                                    ///< (issue #38993): the bearer's `kid` names a token id that is not in
+                                    ///< the replicated store (etc/enrollment_tokens.json) even after a
+                                    ///< forced re-read -- never minted, minted without a credential, or
+                                    ///< not yet synchronized to this node.
+        TokenExpired,               ///< Same path: a correctly signed token bearer whose token is past
+                                    ///< its `expires`. Distinct from StaleToken (the JWT's own iat/exp
+                                    ///< window): the credential itself has lapsed, not this request.
+        TokenRevoked,               ///< Same path: a correctly signed token bearer whose token the
+                                    ///< operator revoked. Like the two above it is a 401 whose class names
+                                    ///< it on the wire (`token_revoked`) and counts in its own
+                                    ///< remoted.auth.reject.token_* cell.
     };
 
     /**
@@ -177,22 +195,42 @@ namespace remoted::auth
     const char* toString(AuthError err);
 
     /**
-     * @brief Client-visible HTTP status + message for a rejected request.
+     * @brief Client-visible HTTP status, message and -- for a 401 -- the authentication failure
+     *        class and the RFC 6750 challenge that names it.
+     *
+     * All four are static literals: the funnel that renders them (endpoints/endpoint.cpp's
+     * errorResponseFor()) runs on every rejected request and must stay allocation-free.
      */
     struct PublicError
     {
-        int status;          ///< HTTP status code to send back to the client.
-        const char* message; ///< Static, human-readable message; never null.
+        int status;            ///< HTTP status code to send back to the client.
+        const char* message;   ///< Static, human-readable message; never null.
+        const char* code;      ///< The public class of a 401 (`unknown_agent`, `stale_token`,
+                               ///< `invalid_signature`, `invalid_request`, `enrollment_key_unavailable`,
+                               ///< `token_unknown`, `token_expired`, `token_revoked`): the body's `code`
+                               ///< and the challenge's `error_description`. nullptr for every other
+                               ///< status, whose body `code` is the status itself.
+        const char* challenge; ///< The full `WWW-Authenticate` value of a 401 (RFC 6750 §3):
+                               ///< `Bearer error="invalid_token", error_description="<code>"` for a
+                               ///< credential that was judged and failed, `Bearer error="invalid_request"`
+                               ///< when none was usable, a bare `Bearer` when the server could not judge
+                               ///< it at all (enrollment key unavailable). nullptr when there is no
+                               ///< challenge (every non-401).
     };
 
     /**
-     * @brief Single source of truth for the client-visible status/message.
+     * @brief Single source of truth for the client-visible status/message/class/challenge.
      *
-     * Shared by every transport so they all answer identically instead of
-     * each re-deriving the error-response mapping.
+     * Shared by every transport so they all answer identically instead of each re-deriving the
+     * error-response mapping. The class is deliberately coarser than AuthError (issue #38993, T10):
+     * it tells the AGENT what to do -- `unknown_agent`: re-enroll; `stale_token`: fix the clock and
+     * retry; `invalid_signature`: keep the credential, do NOT re-enroll (a signature, token-shape,
+     * identity, address or unusable-key failure is never fixed by a new identity); `token_*`: the
+     * enrollment token's own state; `invalid_request`: no usable credential was presented -- while
+     * the finer cause is logged and counted in remoted.auth.reject.*.
      *
      * @param err Internal failure reason returned by AuthMiddleware.
-     * @return The status/message pair the transport must send to the client.
+     * @return What the transport must send to the client.
      */
     PublicError publicErrorFor(AuthError err);
 

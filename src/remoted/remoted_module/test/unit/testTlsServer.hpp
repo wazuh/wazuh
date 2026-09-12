@@ -95,6 +95,63 @@ namespace remoted::test
         return cert;
     }
 
+    // A CA plus a leaf it signed: what the installer provisions (root-ca.pem + a CA-signed
+    // remoted.pem), for the tests that need GET /cacerts to hand out a CA the listener really
+    // chains to. Same no-destructor rule as TestCertificate: clean up with ScratchFileCleanup.
+    struct TestCaSignedCertificate
+    {
+        std::string caCertPath;
+        std::string caKeyPath;
+        std::string certPath;
+        std::string keyPath;
+
+        /// Every file to hand to ScratchFileCleanup.
+        std::vector<std::string> files() const
+        {
+            return {caCertPath, caKeyPath, certPath, keyPath};
+        }
+    };
+
+    /**
+     * @brief Generates a throwaway CA and a leaf (CN=localhost) signed by it, via the `openssl` CLI
+     *        (the recipe enrollmentMtlsE2E_test.cpp uses for its mTLS PKI).
+     *
+     * OpenSSL 3's `req -x509` stamps `basicConstraints = critical, CA:TRUE` on the CA, so a client
+     * that trusts only its PEM completes a verify_peer handshake against the leaf -- the property
+     * GET /cacerts exists to provide.
+     *
+     * @param prefix Distinguishes concurrent test binaries' scratch files.
+     */
+    inline std::optional<TestCaSignedCertificate> generateCaSignedCertificate(const std::string& prefix)
+    {
+        const auto base = "/tmp/" + prefix + "_" + std::to_string(::getpid());
+        TestCaSignedCertificate pki;
+        pki.caCertPath = base + "_ca.crt";
+        pki.caKeyPath = base + "_ca.key";
+        pki.certPath = base + ".crt";
+        pki.keyPath = base + ".key";
+        const auto csrPath = base + ".csr";
+        const auto serialPath = base + "_ca.srl";
+
+        const auto quiet = [](const std::string& command)
+        {
+            return std::system((command + " >/dev/null 2>&1").c_str()) == 0;
+        };
+        const bool ok = quiet("openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=" + prefix + "-ca -keyout " +
+                              pki.caKeyPath + " -out " + pki.caCertPath) &&
+                        quiet("openssl req -newkey rsa:2048 -nodes -subj /CN=localhost -keyout " + pki.keyPath +
+                              " -out " + csrPath) &&
+                        quiet("openssl x509 -req -in " + csrPath + " -days 1 -CA " + pki.caCertPath + " -CAkey " +
+                              pki.caKeyPath + " -CAcreateserial -CAserial " + serialPath + " -out " + pki.certPath);
+        std::remove(csrPath.c_str());
+        std::remove(serialPath.c_str());
+        if (!ok)
+        {
+            return std::nullopt;
+        }
+        return pki;
+    }
+
     /// Removes a fixed set of scratch files on scope exit. Never copied/moved/returned.
     class ScratchFileCleanup final
     {
@@ -195,6 +252,53 @@ namespace remoted::test
     inline std::string sendGetRequest(std::uint16_t port, const std::string& target)
     {
         return sendRawOverTls(port, "GET " + target + " HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
+    }
+
+    /**
+     * @brief Like sendGetRequest(), but the client VERIFIES the server certificate against @p caPem
+     *        (PEM text, exactly as GET /cacerts hands it out) instead of skipping verification.
+     *
+     * The one place in the suite where verify_peer is on: it proves the served CA really chains
+     * to the served leaf. Chain only -- no hostname check, the listener's leaf carries no SAN.
+     *
+     * @return The raw response; empty when the handshake (or anything before the response) failed.
+     */
+    inline std::string sendGetRequestVerifying(std::uint16_t port, const std::string& target, const std::string& caPem)
+    {
+        std::string received;
+        try
+        {
+            asio::io_context ioc;
+            asio::ssl::context sslContext {asio::ssl::context::tls_client};
+            sslContext.add_certificate_authority(asio::buffer(caPem));
+            sslContext.set_verify_mode(asio::ssl::verify_peer);
+
+            asio::ssl::stream<asio::ip::tcp::socket> stream {ioc, sslContext};
+            asio::ip::tcp::resolver resolver {ioc};
+            const auto endpoints = resolver.resolve("127.0.0.1", std::to_string(port));
+            asio::connect(stream.next_layer(), endpoints);
+            stream.handshake(asio::ssl::stream_base::client);
+
+            const std::string request = "GET " + target + " HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
+            asio::write(stream, asio::buffer(request));
+
+            std::vector<char> buffer(64 * 1024);
+            while (true)
+            {
+                asio::error_code ec;
+                const auto n = stream.read_some(asio::buffer(buffer), ec);
+                if (ec)
+                {
+                    break;
+                }
+                received.append(buffer.data(), n);
+            }
+        }
+        catch (const std::exception&)
+        {
+            // A failed handshake is the negative outcome the caller asserts on: empty response.
+        }
+        return received;
     }
 
     inline std::string sendSignedRequest(std::uint16_t port,

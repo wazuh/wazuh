@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -35,7 +36,12 @@ func run() int {
 		socket       = flag.String("socket", "queue/sockets/inventory-sync-http.sock", "uds mode: module socket path")
 		manager      = flag.String("manager", "127.0.0.1", "agent mode: manager host")
 		port         = flag.Int("port", 1517, "agent mode: remoted HTTPS port")
-		regPort      = flag.Int("reg-port", 1515, "agent mode: authd enrollment port")
+		regPort      = flag.Int("reg-port", 1515, "agent mode: authd enrollment port (--bootstrap 1515 only)")
+		bootstrap    = flag.String("bootstrap", runner.BootstrapEnrollToken,
+			"agent mode: how the fleet obtains its identities. \"enroll-token\": POST /enroll on --port with the "+
+				"enrollment token, what a 5.x agent handed a token does -- the only one that works against a "+
+				"manager whose <use_password> is the installed default. \"1515\": authd's legacy TCP listener, for "+
+				"comparing the two paths; it needs a password-free authd (prepare_manager.sh --open-1515)")
 		output       = flag.String("output", "bench.csv", "per-second metrics CSV")
 		summaryJSON  = flag.String("summary-json", "sender_summary.json", "run summary JSON")
 		feedTimeout  = flag.Duration("feed-timeout", 300*time.Second, "budget for feed-not-ready (503+Retry-After) retries")
@@ -50,9 +56,13 @@ func run() int {
 			"mean no prefix. Never applied in uds mode: the module socket is not published under the prefix")
 		compression = flag.String("compression", "",
 			"session-body Content-Encoding: zstd | none (overrides the scenario's defaults.compression; agent mode only)")
-		noReuse      = flag.Bool("no-reuse", false, "disable HTTP keep-alive (agent mode)")
-		seed         = flag.Uint64("seed", 0, "deterministic document seed (0 = random, recorded in meta)")
-		validate     = flag.Bool("validate", false, "load and validate the scenario, then exit (no traffic)")
+		noReuse         = flag.Bool("no-reuse", false, "disable HTTP keep-alive (agent mode)")
+		seed            = flag.Uint64("seed", 0, "deterministic document seed (0 = random, recorded in meta)")
+		validate        = flag.Bool("validate", false, "load and validate the scenario, then exit (no traffic)")
+		enrollTokenFile = flag.String("enroll-token-file", "",
+			"agent mode: file holding the enrollment token the fleet's bootstrap and any enroll_https step "+
+				"present (minted with `wazuh-manager-authd --create-enrollment-token`); WAZUH_ENROLLMENT_TOKEN "+
+				"is the fallback")
 		vdFeedOffset = flag.Uint64("vd-feed-offset", 0, "VDFirst/VDSync sessions declare this Start.feed_offset "+
 			"unless a step overrides it; a mismatch against the target's real current offset answers 409 "+
 			"version_mismatch instead of scanning. In uds mode this is the ONLY way to set it correctly (there is "+
@@ -77,6 +87,13 @@ func run() int {
 	// the file: a typo'd counter name must not silently weaken the verdict.
 	if err := verdict.Validate(scn.Expected); err != nil {
 		fmt.Fprintf(os.Stderr, "error: scenario %s: %v\n", *scenarioPath, err)
+		return 2
+	}
+	switch *bootstrap {
+	case runner.BootstrapEnrollToken, runner.Bootstrap1515:
+	default:
+		fmt.Fprintf(os.Stderr, "error: --bootstrap must be %q or %q, got %q\n",
+			runner.BootstrapEnrollToken, runner.Bootstrap1515, *bootstrap)
 		return 2
 	}
 	// The CLI override is held to the loader's own rules: values and the
@@ -118,12 +135,26 @@ func run() int {
 		usedSeed = uint64(rand.Int63()) | 1
 	}
 
+	// The enrollment token is a credential minted on the manager under test, so it is
+	// environment config (a file, or the environment), never part of a scenario. Read here,
+	// checked by the runner only if the run needs it (the enroll-token bootstrap, or a
+	// scenario carrying an enroll_https step).
+	enrollToken := os.Getenv("WAZUH_ENROLLMENT_TOKEN")
+	if *enrollTokenFile != "" {
+		data, err := os.ReadFile(*enrollTokenFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: --enroll-token-file: %v\n", err)
+			return 2
+		}
+		enrollToken = strings.TrimSpace(string(data))
+	}
+
 	rn := runner.New(runner.Config{
 		Scenario: scn, ScenarioPath: absPath(*scenarioPath), Mode: scn.Mode,
 		Manager: *manager, Port: *port, RegPort: *regPort, Socket: *socket,
 		FeedTimeout: *feedTimeout, DrainTimeout: *drainTimeout, Timeout: *timeout, EnrollSettle: *enrollSettle, Cluster: *cluster,
 		Compression: *compression, Reuse: !*noReuse, Seed: usedSeed, SenderVer: senderVersion, VDFeedOffset: *vdFeedOffset,
-		GlobalPrefix: prefix,
+		GlobalPrefix: prefix, EnrollToken: enrollToken, Bootstrap: *bootstrap,
 	})
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

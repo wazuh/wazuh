@@ -134,7 +134,7 @@ void test_wdb_insert_agent_error_json(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -189,11 +189,11 @@ void test_wdb_insert_agent_error_socket(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent {\"id\":1,\
-\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
+    // The credential-bearing payload must NOT reach the log: the expectation is an exact match, so a
+    // message carrying the key would fail the case (issue #39078, H05).
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent for agent '001'");
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -248,11 +248,11 @@ void test_wdb_insert_agent_error_sql_execution(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent {\"id\":1,\
-\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
+    // The credential-bearing payload must NOT reach the log: the expectation is an exact match, so a
+    // message carrying the key would fail the case (issue #39078, H05).
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent for agent '001'");
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -310,7 +310,7 @@ void test_wdb_insert_agent_error_result(void **state)
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -367,7 +367,70 @@ void test_wdb_insert_agent_success(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
+void test_wdb_insert_agent_success_with_reenroll_secret(void **state)
+{
+    int ret = 0;
+    int id = 1;
+    const char *name = "agent1";
+    const char *ip = "192.168.0.101";
+    const char *register_ip = "any";
+    const char *internal_key = "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301";
+    // What authd's writer sends for an agent enrolled through the local socket (#38993).
+    const char *reenroll_secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const char *group = "default";
+    int keep_date = 0;
+
+    const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\
+\"reenroll_secret\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\"group\":\"default\",\"date_add\":1}");
+    const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\
+\"reenroll_secret\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\"group\":\"default\",\"date_add\":1}";
+    const char *response = "ok";
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON: the secret rides right after the key, before the group
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "name");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agent1");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "192.168.0.101");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "register_ip");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "any");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "internal_key");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "reenroll_secret");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "group");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "default");
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "date_add");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, reenroll_secret, group, keep_date, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
 }
@@ -449,7 +512,7 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
 }
@@ -1042,6 +1105,108 @@ void test_wdb_update_agent_keepalive_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
+/* Tests wdb_set_agent_credentials (re-enrollment, #38993) */
+
+#define SAC_JSON "{\"id\":1,\"name\":\"agent1\",\"register_ip\":\"any\",\"internal_key\":\"675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915\",\"reenroll_secret\":\"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f\"}"
+
+static void expect_set_agent_credentials_json(void)
+{
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "name");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "agent1");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "register_ip");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "any");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "internal_key");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "reenroll_secret");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+
+    will_return(__wrap_cJSON_PrintUnformatted, strdup(SAC_JSON));
+    expect_function_call(__wrap_cJSON_Delete);
+}
+
+void test_wdb_set_agent_credentials_error_socket(void **state)
+{
+    int ret = 0;
+    const char *query_str = "global set-agent-credentials " SAC_JSON;
+    const char *response = "err";
+
+    expect_set_agent_credentials_json();
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    // Handling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
+    // Neither the key nor the re-enrollment secret of SAC_JSON may appear (issue #39078, H05).
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-agent-credentials for agent '001'");
+
+    ret = wdb_set_agent_credentials(1, "agent1", "any", "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915",
+                                    "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_credentials_error_sql_execution(void **state)
+{
+    int ret = 0;
+    const char *query_str = "global set-agent-credentials " SAC_JSON;
+    const char *response = "err";
+
+    expect_set_agent_credentials_json();
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, -100); // Returning any error
+
+    // The other branch that used to print the whole credential set (issue #39078, H05): a database
+    // that cannot run the query is the likeliest way to reach this log on a live manager.
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-agent-credentials for agent '001'");
+
+    ret = wdb_set_agent_credentials(1, "agent1", "any", "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915",
+                                    "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_set_agent_credentials_success(void **state)
+{
+    int ret = 0;
+    const char *query_str = "global set-agent-credentials " SAC_JSON;
+    const char *response = "ok";
+
+    expect_set_agent_credentials_json();
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = wdb_set_agent_credentials(1, "agent1", "any", "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915",
+                                    "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", NULL);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
 /* Tests wdb_update_agent_connection_status */
 
 void test_wdb_update_agent_connection_status_error_json(void **state)
@@ -1564,6 +1729,62 @@ void test_wdb_remove_agent_success(void **state)
     ret = wdb_remove_agent(id, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
+}
+
+/* Tests wdb_commit_global */
+
+void test_wdb_commit_global_success(void **state)
+{
+    // What authd waits for before it forgets a journaled identity transition (issue #39078, H03).
+    char *query_str = "global commit";
+    const char *response = "ok";
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    assert_int_equal(OS_SUCCESS, wdb_commit_global(NULL));
+}
+
+void test_wdb_commit_global_error_result(void **state)
+{
+    // `err` here means the transaction is NOT committed, so the caller must keep its journal.
+    char *query_str = "global commit";
+    const char *response = "err Cannot end transaction";
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
+
+    assert_int_equal(OS_INVALID, wdb_commit_global(NULL));
+}
+
+void test_wdb_commit_global_error_socket(void **state)
+{
+    char *query_str = "global commit";
+    const char *response = "err";
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global commit");
+
+    assert_int_equal(OS_INVALID, wdb_commit_global(NULL));
 }
 
 /* Tests wdb_get_agent_group */
@@ -3388,6 +3609,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_success_with_reenroll_secret, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_success_keep_date, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_update_agent_data */
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_invalid_data, setup_wdb_global_helpers, teardown_wdb_global_helpers),
@@ -3405,6 +3627,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        /* Tests wdb_set_agent_credentials */
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_credentials_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_credentials_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_credentials_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_update_agent_connection_status */
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_json, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
@@ -3423,6 +3649,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        /* Tests wdb_commit_global */
+        cmocka_unit_test_setup_teardown(test_wdb_commit_global_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_commit_global_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_commit_global_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),

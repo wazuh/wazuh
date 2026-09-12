@@ -107,6 +107,8 @@ TEST(Load, EffectiveDefaultsFromMinimalDocument)
     EXPECT_EQ(rapidjson::Pointer("/remote/legacy/port").Get(effective)->GetInt(), 1514);
     EXPECT_EQ(rapidjson::Pointer("/remote/https/port").Get(effective)->GetInt(), 1517);
     EXPECT_STREQ(rapidjson::Pointer("/remote/https/global_prefix").Get(effective)->GetString(), "/wazuh-manager/");
+    EXPECT_STREQ(rapidjson::Pointer("/remote/https/ca_certificate").Get(effective)->GetString(),
+                 "etc/certs/root-ca.pem");
     EXPECT_EQ(rapidjson::Pointer("/remote/https/verification_mode").Get(effective), nullptr) << "no default: absent";
     EXPECT_EQ(rapidjson::Pointer("/auth/port").Get(effective)->GetInt(), 1515);
     EXPECT_TRUE(rapidjson::Pointer("/auth/force/disconnected_time/enabled").Get(effective)->GetBool());
@@ -139,8 +141,9 @@ TEST(Load, GeneratedManagerFileKeepsUserValuesAndFillsTheRest)
     EXPECT_TRUE(rapidjson::Pointer("/legacy/enabled").Get(remote)->GetBool());
     EXPECT_EQ(rapidjson::Pointer("/legacy/queue_size").Get(remote)->GetInt(), 131072) << "filled default";
     EXPECT_STREQ(rapidjson::Pointer("/https/certificate").Get(remote)->GetString(), "etc/certs/remoted.pem");
-    EXPECT_EQ(remote["https"].MemberCount(), 6u)
-        << "port, bind_addr, global_prefix, certificate, key, ca (the three no-default options stay absent)";
+    EXPECT_STREQ(rapidjson::Pointer("/https/ca_certificate").Get(remote)->GetString(), "etc/certs/root-ca.pem");
+    EXPECT_EQ(remote["https"].MemberCount(), 7u) << "port, bind_addr, global_prefix, certificate, key, ca, "
+                                                    "ca_certificate (the three no-default options stay absent)";
     const auto auth = json(doc.sectionJson("auth"));
     EXPECT_TRUE(auth["purge"].GetBool());
     EXPECT_TRUE(auth["use_password"].GetBool());
@@ -441,7 +444,7 @@ TEST(CApi, LoadSectionDocumentValidateFree)
     std::filesystem::remove_all(home);
 }
 
-TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtySixLeaves)
+TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtySevenLeaves)
 {
     const auto schema = json(std::string {manager_config::schemaJson()});
     std::size_t leaves = 0;
@@ -465,5 +468,7 @@ TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtySixLeaves)
         }
     };
     walk(schema);
-    EXPECT_EQ(leaves, 65u);
+    // Bump this deliberately, never to make the test pass: it is the guard that a schema option was
+    // added or removed on purpose. Last changed by remote.legacy.ca_delivery (66 -> 67).
+    EXPECT_EQ(leaves, 67u);
 }

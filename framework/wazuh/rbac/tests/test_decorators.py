@@ -5,13 +5,13 @@
 import json
 import os
 import re
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import create_engine
 from importlib import reload
 
-from wazuh.core.exception import WazuhError
+from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.tests.utils import init_db
 
@@ -29,6 +29,9 @@ def db_setup():
 
     init_db('schema_security_test.sql', test_data_path)
     reload(decorator)
+    # The secrets gate resolves the node it serves from the cluster configuration. Pin it here:
+    # what these tests are about is which node a permission was granted on, not where they run.
+    decorator._node_id = 'master-node'
 
     yield decorator
 
@@ -168,7 +171,7 @@ def test_mask_sensitive_config_without_permissions(db_setup):
 
 
 def test_mask_sensitive_config_with_permissions(db_setup):
-    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*': 'allow'}})
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:master-node': 'allow'}})
 
     @db_setup.mask_sensitive_config()
     def get_conf():
@@ -192,93 +195,163 @@ def test_mask_sensitive_config_on_affected_items_result(db_setup):
 
 
 # ---------------------------------------------------------------------------
-# Tests for _has_update_permissions (the RBAC gate for masking)
+# Tests for _can_read_secrets (the RBAC gate for masking: an action of its own, over ONE node)
 # ---------------------------------------------------------------------------
 
-def test_has_update_permissions_no_perms(db_setup):
+def test_can_read_secrets_no_perms(db_setup):
     """Returns False when RBAC context holds no relevant action."""
     db_setup.rbac.set({'rbac_mode': 'white'})
-    assert db_setup._has_update_permissions() is False
+    assert db_setup._can_read_secrets() is False
 
 
-def test_has_update_permissions_with_manager_update_config(db_setup):
-    """Returns True when manager:update_config is granted."""
-    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*': 'allow'}})
-    assert db_setup._has_update_permissions() is True
+def test_can_read_secrets_on_the_served_node(db_setup):
+    """Returns True when cluster:read_secrets is granted over the node being served."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:master-node': 'allow'}})
+    assert db_setup._can_read_secrets() is True
 
 
-def test_has_update_permissions_with_cluster_update_config(db_setup):
-    """Returns True when cluster:update_config is granted."""
-    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:update_config': {'node:id:master-node': 'allow'}})
-    assert db_setup._has_update_permissions() is True
+def test_can_read_secrets_on_another_node(db_setup):
+    """Returns False when the grant is over a DIFFERENT node.
+
+    These endpoints run on the node they answer for -- the two node-configuration ones inside the
+    target worker's clusterd -- so an allow scoped to the master must not uncover a worker's
+    secrets, however many nodes the caller can otherwise reach.
+    """
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:worker1': 'allow'}})
+    assert db_setup._can_read_secrets() is False
 
 
-def test_has_update_permissions_read_only_role(db_setup):
-    """Returns False for a user that only holds :read — the readonly-role CVE attack vector."""
-    db_setup.rbac.set({'rbac_mode': 'white', 'manager:read': {'*:*': 'allow'}})
-    assert db_setup._has_update_permissions() is False
+def test_can_read_secrets_on_every_node(db_setup):
+    """Returns True for the shipped `secrets_read` policy, which grants it over node:id:*."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:*': 'allow'}})
+    assert db_setup._can_read_secrets() is True
 
 
-def test_has_update_permissions_empty_action_dict(db_setup):
-    """Returns False when update_config key exists but the resource map is empty."""
-    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {}})
-    assert db_setup._has_update_permissions() is False
+def test_can_read_secrets_denied_on_the_served_node(db_setup):
+    """A deny over the served node wins over an allow on every node, as everywhere else in RBAC."""
+    db_setup.rbac.set({
+        'rbac_mode': 'white',
+        'cluster:read_secrets': {
+            'node:id:*': 'allow',
+            'node:id:master-node': 'deny'
+        }
+    })
+    assert db_setup._can_read_secrets() is False
 
 
-def test_has_update_permissions_non_dict_action_value(db_setup):
+def test_can_read_secrets_denied_on_another_node(db_setup):
+    """A deny over a different node leaves the served one alone."""
+    db_setup.rbac.set({
+        'rbac_mode': 'white',
+        'cluster:read_secrets': {
+            'node:id:*': 'allow',
+            'node:id:worker1': 'deny'
+        }
+    })
+    assert db_setup._can_read_secrets() is True
+
+
+def test_can_read_secrets_black_mode_without_the_action(db_setup):
+    """`black` means everything not denied is allowed, and this gate is no exception."""
+    db_setup.rbac.set({'rbac_mode': 'black'})
+    assert db_setup._can_read_secrets() is True
+
+
+def test_can_read_secrets_black_mode_with_a_deny(db_setup):
+    """...and a deny over the served node still masks in black mode."""
+    db_setup.rbac.set({'rbac_mode': 'black', 'cluster:read_secrets': {'node:id:master-node': 'deny'}})
+    assert db_setup._can_read_secrets() is False
+
+
+def test_can_read_secrets_manager_action_is_not_a_key(db_setup):
+    """`manager:read_secrets` is in no catalog and no policy: it no longer lifts the mask."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'manager:read_secrets': {'node:id:master-node': 'allow'}})
+    assert db_setup._can_read_secrets() is False
+
+
+def test_can_read_secrets_read_only_role(db_setup):
+    """Returns False for a user that only holds :read -- the readonly-role CVE attack vector."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'manager:read': {'*:*:*': 'allow'}})
+    assert db_setup._can_read_secrets() is False
+
+
+def test_can_read_secrets_empty_action_dict(db_setup):
+    """Returns False when the action key exists but the resource map is empty."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {}})
+    assert db_setup._can_read_secrets() is False
+
+
+def test_can_read_secrets_non_dict_action_value(db_setup):
     """Returns False when the action value is not a dict (malformed RBAC token)."""
-    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': None})
-    assert db_setup._has_update_permissions() is False
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': None})
+    assert db_setup._can_read_secrets() is False
 
 
-def test_has_update_permissions_none_rbac(db_setup):
+def test_can_read_secrets_none_rbac(db_setup):
     """Returns False gracefully when the RBAC context variable returns None."""
     db_setup.rbac.set(None)
-    assert db_setup._has_update_permissions() is False
+    assert db_setup._can_read_secrets() is False
 
 
-def test_has_update_permissions_deny_manager_update_config(db_setup):
-    """Returns False when manager:update_config has effect=deny."""
-    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*': 'deny'}})
-    assert db_setup._has_update_permissions() is False
+def test_can_read_secrets_masks_when_the_node_cannot_be_resolved(db_setup):
+    """No node to check the permission against means no permission: the values stay masked."""
+    db_setup._node_id = None
+    db_setup.rbac.set({'rbac_mode': 'black'})
+
+    with patch('wazuh.core.cluster.cluster.get_node', side_effect=WazuhError(3006)):
+        assert db_setup._can_read_secrets() is False
 
 
-def test_has_update_permissions_deny_cluster_update_config(db_setup):
-    """Returns False when cluster:update_config has effect=deny."""
-    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:update_config': {'node:id:master-node': 'deny'}})
-    assert db_setup._has_update_permissions() is False
+def test_local_node_id_is_read_once_from_the_cluster_configuration(db_setup):
+    """The node is the one this process serves, resolved lazily and cached."""
+    db_setup._node_id = None
+
+    with patch('wazuh.core.cluster.cluster.get_node', return_value={'node': 'worker1'}) as get_node:
+        assert db_setup._local_node_id() == 'worker1'
+        assert db_setup._local_node_id() == 'worker1'
+
+    get_node.assert_called_once()
 
 
-def test_has_update_permissions_mixed_deny_allow_allows(db_setup):
-    """Returns True when at least one resource carries allow, even if others carry deny."""
-    db_setup.rbac.set({
-        'rbac_mode': 'white',
-        'manager:update_config': {
-            'node:id:worker-1': 'deny',
-            'node:id:master': 'allow'
-        }
-    })
-    assert db_setup._has_update_permissions() is True
+# ---------------------------------------------------------------------------
+# Tests for _audit_logger (the audit line has to be written by whoever is running)
+# ---------------------------------------------------------------------------
+
+def test_audit_logger_is_the_api_one_when_it_is_configured(db_setup):
+    """In the API process 'wazuh-api' has handlers and the line belongs next to the request line."""
+    with patch.object(db_setup.logger, 'hasHandlers', return_value=True):
+        assert db_setup._audit_logger() is db_setup.logger
 
 
-def test_has_update_permissions_all_deny(db_setup):
-    """Returns False when all resources carry deny."""
-    db_setup.rbac.set({
-        'rbac_mode': 'white',
-        'manager:update_config': {
-            'node:id:worker-1': 'deny',
-            'node:id:worker-2': 'deny'
-        }
-    })
-    assert db_setup._has_update_permissions() is False
+def test_audit_logger_falls_back_where_the_api_logger_is_unconfigured(db_setup):
+    """A forwarded read runs in wazuh-manager-clusterd, which only configures 'wazuh'.
+
+    Without the fallback the record is dropped before reaching a file and the disclosure that
+    matters most -- the one on another node -- is the one that leaves no trace.
+    """
+    with patch.object(db_setup.logger, 'hasHandlers', return_value=False):
+        assert db_setup._audit_logger() is db_setup.framework_logger
+
+
+def test_secret_read_is_audited_through_the_fallback_logger(db_setup):
+    """The line is written whichever process served it."""
+    db_setup.current_user.set('auditor')
+    audit = MagicMock()
+
+    with patch.object(db_setup.logger, 'hasHandlers', return_value=False), \
+            patch.object(db_setup, 'framework_logger', audit):
+        db_setup._audit_secret_read(_conf_payload())
+
+    audit.info.assert_called_once()
+    assert 'secret_read' in audit.info.call_args[0][0]
 
 
 def test_mask_sensitive_config_raw_xml_with_deny_rule(db_setup):
-    """Verifies that cluster.key is masked when user has manager:update_config deny rule."""
+    """Verifies that cluster.key is masked when the read-secrets action is denied."""
     db_setup.rbac.set({
         'rbac_mode': 'white',
-        'manager:read': {'*:*': 'allow'},
-        'manager:update_config': {'*:*': 'deny'}
+        'manager:read': {'*:*:*': 'allow'},
+        'cluster:read_secrets': {'node:id:*': 'deny'}
     })
 
     @db_setup.mask_sensitive_config()
@@ -291,11 +364,11 @@ def test_mask_sensitive_config_raw_xml_with_deny_rule(db_setup):
 
 
 def test_mask_sensitive_config_raw_xml_with_cluster_deny_rule(db_setup):
-    """Verifies that cluster.key is masked when user has cluster:update_config deny rule."""
+    """Verifies that cluster.key is masked when user has cluster:read_secrets deny rule."""
     db_setup.rbac.set({
         'rbac_mode': 'white',
         'cluster:read': {'*:*': 'allow'},
-        'cluster:update_config': {'node:id:master-node': 'deny'}
+        'cluster:read_secrets': {'node:id:master-node': 'deny'}
     })
 
     @db_setup.mask_sensitive_config()
@@ -372,8 +445,8 @@ def test_mask_sensitive_config_raw_xml_without_permissions(db_setup):
 
 
 def test_mask_sensitive_config_raw_xml_with_permissions(db_setup):
-    """Raw XML is returned unmodified for users with update-config permissions."""
-    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*': 'allow'}})
+    """Raw XML is returned unmodified for users holding the read-secrets action."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:master-node': 'allow'}})
 
     @db_setup.mask_sensitive_config()
     def get_conf_raw():
@@ -384,8 +457,8 @@ def test_mask_sensitive_config_raw_xml_with_permissions(db_setup):
 
 
 def test_mask_sensitive_config_raw_xml_cluster_perm(db_setup):
-    """cluster:update_config is also accepted as a privileged permission."""
-    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:update_config': {'*:*': 'allow'}})
+    """The wildcard grant of the shipped policy also lifts the mask."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:*': 'allow'}})
 
     @db_setup.mask_sensitive_config()
     def get_conf_raw():
@@ -407,8 +480,12 @@ def test_mask_sensitive_config_raw_xml_no_cluster_block(db_setup):
     assert result == _XML_WITHOUT_CLUSTER_KEY
 
 
-def test_mask_sensitive_config_does_not_raise_on_masking_error(db_setup):
-    """If masking raises internally the endpoint must still return a result."""
+def test_mask_sensitive_config_fails_closed_on_masking_error(db_setup):
+    """If masking raises internally the request fails; the unmasked payload is never returned.
+
+    This used to be the opposite: the decorator swallowed the error and handed the caller the
+    payload it had failed to mask, which is the one outcome the masking exists to prevent.
+    """
     db_setup.rbac.set({'rbac_mode': 'white'})
 
     with patch.object(db_setup, '_mask_payload', side_effect=RuntimeError("boom")):
@@ -416,6 +493,98 @@ def test_mask_sensitive_config_does_not_raise_on_masking_error(db_setup):
         def get_conf():
             return _conf_payload()
 
-        # Should NOT raise; the decorator catches the error gracefully.
+        with pytest.raises(WazuhInternalError, match='.*1000.*'):
+            get_conf()
+
+
+def test_update_config_no_longer_lifts_the_mask(db_setup):
+    """Being allowed to WRITE the configuration is no longer a way to read the secrets in it."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*:*': 'allow'},
+                       'cluster:update_config': {'node:id:*': 'allow'}})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf():
+        return _conf_payload()
+
+    assert get_conf()["authd.pass"] == "*****"
+
+
+def test_secret_read_is_audited_with_the_user_and_never_the_value(db_setup):
+    """Serving a secret in clear leaves a line naming who read what, and not what it was."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:master-node': 'allow'}})
+    db_setup.current_user.set('auditor')
+
+    @db_setup.mask_sensitive_config()
+    def get_conf():
+        return _conf_payload()
+
+    with patch.object(db_setup.logger, 'info') as mock_info:
         result = get_conf()
-        assert result is not None
+
+    assert result["authd.pass"] == "P4ssW0rd!"
+    mock_info.assert_called_once()
+    line = mock_info.call_args[0][0]
+    assert 'secret_read' in line and "user='auditor'" in line and 'authd.pass' in line
+    assert 'P4ssW0rd!' not in line
+
+
+def test_no_audit_line_when_nothing_sensitive_was_served(db_setup):
+    """The action alone is not a disclosure: a payload without secrets is not audited."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:master-node': 'allow'}})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf():
+        return {"auth": {"use_password": "no"}}
+
+    with patch.object(db_setup.logger, 'info') as mock_info:
+        get_conf()
+
+    mock_info.assert_not_called()
+
+
+def test_no_audit_line_when_the_payload_was_masked(db_setup):
+    """A caller without the action gets the mask and leaves no secret_read behind."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf():
+        return _conf_payload()
+
+    with patch.object(db_setup.logger, 'info') as mock_info:
+        assert get_conf()["authd.pass"] == "*****"
+
+    mock_info.assert_not_called()
+
+
+def test_secret_read_is_audited_on_raw_xml_and_on_affected_items(db_setup):
+    """The detector follows the same shapes the masking does: strings and AffectedItemsWazuhResult."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:master-node': 'allow'}})
+
+    @db_setup.mask_sensitive_config()
+    def get_result():
+        return _conf_result_payload()
+
+    with patch.object(db_setup.logger, 'info') as mock_info:
+        assert get_result().affected_items[0]["authd.pass"] == "P4ssW0rd!"
+
+    assert 'secret_read' in mock_info.call_args[0][0]
+
+
+def test_secret_read_is_audited_for_the_bare_cluster_key(db_setup):
+    """`GET /cluster/local/config` answers a flat object whose `key` is the cluster key.
+
+    That member is masked by a rule of its own, not by a dotted path, so the audit has to know about
+    it too: without this the one endpoint that always carries a secret was the one never recorded.
+    """
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:master-node': 'allow'}})
+
+    @db_setup.mask_sensitive_config()
+    def get_cluster_conf():
+        return {"name": "wazuh", "node_name": "master", "key": "264ae8ec9f19"}
+
+    with patch.object(db_setup.logger, 'info') as mock_info:
+        result = get_cluster_conf()
+
+    assert result["key"] == "264ae8ec9f19"
+    line = mock_info.call_args[0][0]
+    assert 'secret_read' in line and 'cluster.key' in line and '264ae8ec9f19' not in line

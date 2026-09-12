@@ -38,6 +38,10 @@ void __wrap_w_inc_global_vacuum();
 
 void __wrap_w_inc_global_vacuum_time(__attribute__((unused)) struct timeval diff);
 
+void __wrap_w_inc_global_commit();
+
+void __wrap_w_inc_global_commit_time(__attribute__((unused)) struct timeval diff);
+
 void __wrap_w_inc_global_get_fragmentation();
 
 void __wrap_w_inc_global_get_fragmentation_time(__attribute__((unused)) struct timeval diff);
@@ -55,6 +59,10 @@ void __wrap_w_inc_global_agent_update_agent_data_time(__attribute__((unused)) st
 void __wrap_w_inc_global_agent_update_keepalive();
 
 void __wrap_w_inc_global_agent_update_keepalive_time(__attribute__((unused)) struct timeval diff);
+
+void __wrap_w_inc_global_agent_set_agent_credentials();
+
+void __wrap_w_inc_global_agent_set_agent_credentials_time(__attribute__((unused)) struct timeval diff);
 
 void __wrap_w_inc_global_agent_update_connection_status();
 

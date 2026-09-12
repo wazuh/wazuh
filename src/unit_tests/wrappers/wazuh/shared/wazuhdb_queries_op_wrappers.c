@@ -120,6 +120,7 @@ int __wrap_wdb_insert_agent(int id,
                             __attribute__((unused)) const char* ip,
                             const char* register_ip,
                             const char* internal_key,
+                            const char* reenroll_secret,
                             const char* group,
                             int keep_date,
                             __attribute__((unused)) int* sock)
@@ -128,6 +129,11 @@ int __wrap_wdb_insert_agent(int id,
     check_expected(name);
     check_expected(register_ip);
     check_expected(internal_key);
+    // Checked only when the caller passes one (like group): the client.keys mirroring paths never do.
+    if (reenroll_secret)
+    {
+        check_expected(reenroll_secret);
+    }
     if (group)
     {
         check_expected(group);

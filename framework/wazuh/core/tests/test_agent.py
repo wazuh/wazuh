@@ -674,6 +674,17 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
             agent._add_authd('test_add', '192.168.0.1')
 
 
+@patch('wazuh.core.agent.WazuhSocketJSON')
+def test_agent_add_authd_unrecorded_transition(mock_wazuh_socket):
+    """authd's 9031 means it refused the enrollment rather than hand out credentials it could not
+    record (issue #39078, H03), so the API says so instead of leaking the socket's own code."""
+    agent = Agent('001')
+    mock_wazuh_socket.return_value.receive.side_effect = WazuhError(9031, cmd_error=True)
+
+    with pytest.raises(WazuhInternalError, match=".* 1772 .*"):
+        agent._add_authd('test_add', '192.168.0.1')
+
+
 @patch('wazuh.core.agent.rmtree')
 @patch('wazuh.core.agent.path.exists', return_value=True)
 @patch('wazuh.core.common.SHARED_PATH', new=os.path.join(test_data_path, 'etc', 'shared'))

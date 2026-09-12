@@ -80,8 +80,8 @@
  * few other similarly-named X509/PKCS7/OCSP tokens) as plain integer
  * constants -- silently shadowing OpenSSL's own typedefs of the same names
  * for any translation unit that already included an OpenSSL X.509 header
- * before this point (e.g. generate_cert.c's own header includes OpenSSL
- * first). openssl/types.h carries an explicit, unconditional #undef for
+ * before this point (e.g. a header that includes OpenSSL before shared.h).
+ * openssl/types.h carries an explicit, unconditional #undef for
  * exactly this collision (see the openssl/openssl issue 9981 tracker);
  * re-including it here re-runs that undef after windows.h, restoring the
  * correct meaning for the rest of the translation unit. */
@@ -220,6 +220,7 @@ extern const char *__local_name;
 #include "agent_validate_op.h"
 #include "read-agents.h"
 #include "string_op.h"
+#include "b64url_op.h"
 #include "randombytes.h"
 #include "labels_op.h"
 #include "time_op.h"

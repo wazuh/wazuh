@@ -12,12 +12,14 @@ import (
 )
 
 // Response is the outcome of one request the sender records: status, the
-// Retry-After header (empty if absent), the body, and the wall-clock latency.
+// Retry-After and Content-Type headers (empty if absent), the body, and the
+// wall-clock latency.
 type Response struct {
-	Status     int
-	RetryAfter string
-	Body       []byte
-	Latency    time.Duration
+	Status      int
+	RetryAfter  string
+	ContentType string
+	Body        []byte
+	Latency     time.Duration
 }
 
 // Client sends one agent's requests. There is one per agent so that identities
@@ -55,6 +57,25 @@ func NewAgentClient(id Identity, host string, port int, timeout time.Duration, r
 		agentID:      id.ID,
 		keyHex:       id.Key,
 		agentMode:    true,
+		baseURL:      fmt.Sprintf("https://%s:%d", host, port),
+		timeout:      timeout,
+		globalPrefix: globalPrefix,
+	}
+}
+
+// NewEnrollClient builds an HTTPS client for an agent that has no identity yet:
+// POST /enroll with an enrollment-token bearer the caller supplies per request
+// (DoWithHeaders; issue #38993). Same TLS stance as NewAgentClient (the test
+// manager is self-signed, so verification is skipped) and the same global-prefix
+// rule; no agent id and no key, because there is nothing to sign with yet.
+func NewEnrollClient(host string, port int, timeout time.Duration, reuse bool, globalPrefix string) *Client {
+	transport := &http.Transport{
+		TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
+		DisableKeepAlives: !reuse,
+	}
+	return &Client{
+		http:         &http.Client{Transport: transport, Timeout: timeout},
+		agentMode:    false, // no per-request agent bearer: the caller sets the enrollment one
 		baseURL:      fmt.Sprintf("https://%s:%d", host, port),
 		timeout:      timeout,
 		globalPrefix: globalPrefix,
@@ -116,7 +137,26 @@ func (c *Client) Do(method, target string, body []byte, contentType, contentEnco
 	if setAgentIDHeader {
 		req.Header.Set("X-Wazuh-Agent-Id", c.agentID)
 	}
+	return c.send(req)
+}
 
+// DoWithHeaders sends one request carrying exactly the headers the caller
+// supplies -- no agent bearer, no X-Wazuh-Agent-Id -- for the routes an agent
+// reaches BEFORE it has an identity (POST /enroll with an enrollment-token
+// bearer, see NewEnrollClient). The global prefix applies as in Do.
+func (c *Client) DoWithHeaders(method, target string, body []byte, headers map[string]string) (Response, error) {
+	req, err := http.NewRequest(method, c.baseURL+c.globalPrefix+target, bytes.NewReader(body))
+	if err != nil {
+		return Response{}, err
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	return c.send(req)
+}
+
+// send performs a built request and shapes the Response every caller records.
+func (c *Client) send(req *http.Request) (Response, error) {
 	start := time.Now()
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -125,9 +165,10 @@ func (c *Client) Do(method, target string, body []byte, contentType, contentEnco
 	defer resp.Body.Close()
 	data, _ := io.ReadAll(resp.Body)
 	return Response{
-		Status:     resp.StatusCode,
-		RetryAfter: resp.Header.Get("Retry-After"),
-		Body:       data,
-		Latency:    time.Since(start),
+		Status:      resp.StatusCode,
+		RetryAfter:  resp.Header.Get("Retry-After"),
+		ContentType: resp.Header.Get("Content-Type"),
+		Body:        data,
+		Latency:     time.Since(start),
 	}, nil
 }

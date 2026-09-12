@@ -79,6 +79,30 @@ var scanCounters = map[string]func(metrics.Counters) uint64{
 	"other": func(c metrics.Counters) uint64 { return c.ScanOther },
 }
 
+// cacertsCounters are the GET /cacerts outcomes. "s200" asserts how many
+// requests were handed the CA PEM -- the property a fleet needs to bootstrap
+// trust; s404/s503 pin the manager's refusal contract (docu/15-cacerts.md).
+var cacertsCounters = map[string]func(metrics.Counters) uint64{
+	"sent":  func(c metrics.Counters) uint64 { return c.CacertsSent },
+	"s200":  func(c metrics.Counters) uint64 { return c.Cacerts200 },
+	"s404":  func(c metrics.Counters) uint64 { return c.Cacerts404 },
+	"s503":  func(c metrics.Counters) uint64 { return c.Cacerts503 },
+	"other": func(c metrics.Counters) uint64 { return c.CacertsOther },
+}
+
+// enrollHTTPSCounters are the POST /enroll (enrollment token) outcomes. "s200"
+// asserts how many fresh agents the token enrolled -- the property a fleet's
+// first contact relies on; s401/s403/s409 pin the manager's refusal contract
+// (docu/16-enroll-https.md).
+var enrollHTTPSCounters = map[string]func(metrics.Counters) uint64{
+	"sent":  func(c metrics.Counters) uint64 { return c.EnrollHTTPSSent },
+	"s200":  func(c metrics.Counters) uint64 { return c.EnrollHTTPS200 },
+	"s401":  func(c metrics.Counters) uint64 { return c.EnrollHTTPS401 },
+	"s403":  func(c metrics.Counters) uint64 { return c.EnrollHTTPS403 },
+	"s409":  func(c metrics.Counters) uint64 { return c.EnrollHTTPS409 },
+	"other": func(c metrics.Counters) uint64 { return c.EnrollHTTPSOther },
+}
+
 var deleteCounters = map[string]func(metrics.Counters) uint64{
 	"ok":  func(c metrics.Counters) uint64 { return c.DeletesOK },
 	"err": func(c metrics.Counters) uint64 { return c.DeletesErr },
@@ -103,6 +127,8 @@ func Validate(exp *scenario.Expected) error {
 		{"control", controlCounters, exp.Control},
 		{"deletes", deleteCounters, exp.Deletes},
 		{"scan", scanCounters, exp.Scan},
+		{"cacerts", cacertsCounters, exp.Cacerts},
+		{"enroll_https", enrollHTTPSCounters, exp.EnrollHTTPS},
 	}
 	for _, g := range groups {
 		for counter, assertion := range g.asserts {
@@ -138,7 +164,7 @@ func Count(exp *scenario.Expected) int {
 		return 0
 	}
 	n := len(exp.TransportErrors) + len(exp.RetriesExhausted)
-	for _, group := range []map[string]scenario.Assertion{exp.Sessions, exp.Stateless, exp.Control, exp.Deletes, exp.Scan} {
+	for _, group := range []map[string]scenario.Assertion{exp.Sessions, exp.Stateless, exp.Control, exp.Deletes, exp.Scan, exp.Cacerts, exp.EnrollHTTPS} {
 		for _, a := range group {
 			n += len(a)
 		}
@@ -190,6 +216,8 @@ func Evaluate(exp *scenario.Expected, c metrics.Counters) *Result {
 		{"control", controlCounters, exp.Control},
 		{"deletes", deleteCounters, exp.Deletes},
 		{"scan", scanCounters, exp.Scan},
+		{"cacerts", cacertsCounters, exp.Cacerts},
+		{"enroll_https", enrollHTTPSCounters, exp.EnrollHTTPS},
 	}
 	for _, g := range groups {
 		counters := make([]string, 0, len(g.asserts))

@@ -98,6 +98,21 @@ means the budget is the active bottleneck: raise
 [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes), or reduce what a
 single request may cost ([`https.max_body_size`](configuration.md#httpsmax_body_size)).
 
+### TLS listener certificate — `remoted.server.tls.*`
+
+The health of the certificate the HTTPS listener serves. Expiry is evaluated when the listener
+starts and once every 24 hours afterwards (each evaluation also re-logs its findings); the leaf is
+the certificate loaded when the listener started. `ca_matches_leaf`, on the other hand, is read
+from the same place `GET /cacerts` answers from, so the two can never disagree: replacing the CA
+file changes both in the next request, without waiting for the daily tick. Both read `0` while the
+listener is down — so `ca_matches_leaf` at `0` with the listener **up** is the mismatch signal, and
+`GET /cacerts` is answering `503` (see [CA distribution](#ca-distribution--remotedcacerts)).
+
+| Metric | Type | Unit | Meaning | Tuning |
+|---|---|---|---|---|
+| `remoted.server.tls.cert_expiry_days` | gauge (pull, signed) | days | Whole days until the served certificate's `notAfter`; **negative once expired** (the first 24 h past expiry read `-1`). The only signed value in the catalog — alert on `< 30`, which is also when remoted starts logging a WARN | [`https.certificate`](configuration.md#httpscertificate) — renew the certificate |
+| `remoted.server.tls.ca_matches_leaf` | gauge (pull) | flag | `1` when the configured CA signs the served certificate, `0` when it does not **or** could not be read (the log line tells which) | [`https.ca_certificate`](configuration.md#httpsca_certificate) — the CA that must sign [`https.certificate`](configuration.md#httpscertificate) |
+
 ### Deferred forwarding — `remoted.forwarder.deferred.*`
 
 The second half of the two-phase backpressure: how many requests are parked awaiting a
@@ -152,11 +167,19 @@ it alone: [timing tuning, invariant 2](timing-tuning.md#3-invariants).
 
 ### Request outcomes — `remoted.http.<endpoint>.responses.<code>`
 
-What each endpoint actually answered its agents. One family per endpoint — `stateless`,
-`stateful`, `stats`, `config` and `enroll` — each with the same closed set of eight status
-cells, so a scraper's columns line up across endpoints (some cells are structurally zero for
-a given endpoint, e.g. `/stateless` never answers 409). Every response is counted exactly
-once, at the single place it is sent. All units are `count`; all are counters.
+What each endpoint actually answered its agents. Six endpoints carry this family — `stateless`,
+`stateful`, `stats`, `config`, `enroll` and `cacerts` (the only `GET` route with this family) — each with the same
+closed set of eight status cells, so a scraper's columns line up across endpoints (some cells
+are structurally zero for a given endpoint, e.g. `/stateless` never answers 409, and
+`/cacerts`'s `404` lands in `other`). Every response is counted exactly once, at the single
+place it is sent. All units are `count`; all are counters.
+
+**`/control`, `/download` and `/scan/vd` have no `responses.*` family.** Do not read their absence
+as "no traffic": each is counted by outcome instead, in its own family, where the cause is more
+useful than the status —
+[`remoted.control.*`](#control-plane--remotedcontrol),
+[`remoted.download.*`](#downloads--remoteddownload) and
+[`remoted.scanvd.*`](#vd-scan-admission--remotedscanvd).
 
 | Cell (`remoted.http.<endpoint>.responses.` + code) | Meaning | Tuning |
 |---|---|---|
@@ -167,7 +190,7 @@ once, at the single place it is sent. All units are `count`; all are counters.
 | `413` | Body over the accepted size | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
 | `500` | Internal error while building the reply | diagnostic — a bug signal, report it |
 | `503` | Downstream failure or a deferred-limiter shed | [`remoted.max_deferred_requests`](configuration.md#remotedmax_deferred_requests) for the limiter share; the [downstream failures](#downstream-failures--remotedforwarder) family for the rest |
-| `other` | Any status outside the set above | diagnostic |
+| `other` | Any status outside the set above. Includes `/enroll` authentication `401`/encoding `415` responses and `/cacerts`'s `404`; other routes' gateway rejections are excluded | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) for the `415` share, which [`remoted.auth.reject.bad_encoding`](#authentication-rejections--remotedauthreject) counts by cause |
 
 Rejections produced by the **auth gateway** (bad MAC, clock skew, oversized body caught at
 authentication) happen before any endpoint handler runs and are therefore *not* in these
@@ -193,7 +216,6 @@ signal.
 |---|---|---|---|---|
 | `remoted.http.stateless.latency` | histogram | microseconds | The event-ingestion hot path, gateway receipt → response delivery | [`remoted.http_worker_threads`](configuration.md#remotedhttp_worker_threads), [`remoted.http_io_threads`](configuration.md#remotedhttp_io_threads), [`remoted.downstream_post_process_threads`](configuration.md#remoteddownstream_post_process_threads), [`remoted.downstream_io_threads`](configuration.md#remoteddownstream_io_threads) |
 | `remoted.http.stateful.latency` | histogram | microseconds | A sync session indexes within the request, so this is the number that sizes its dedicated deadline. The server-side half of the same span is [`sync.session.duration.*`](../inventory-sync-server/metrics.md#sync-pipeline--syncpipeline-syncshardi-syncsessionduration) on the sync server | [`remoted.downstream_stateful_response_timeout`](configuration.md#remoteddownstream_stateful_response_timeout), plus the thread settings above |
-
 | `remoted.http.enroll.latency` | histogram | microseconds | Handler entry → response delivery, the only measurement that spans the hop to `authd`. Timed from handler entry rather than gateway receipt (`/enroll` does not go through the gateway), and it covers the answer authd's callback delivers asynchronously | [`remoted.authd_connect_timeout`](configuration.md#remotedauthd_connect_timeout), [`remoted.authd_response_timeout`](configuration.md#remotedauthd_response_timeout), [`remoted.authd_worker_threads`](configuration.md#remotedauthd_worker_threads) |
 
 All are bounded by
@@ -213,9 +235,12 @@ the agents are being served. Both are observed at the auth gateway or later, whi
 
 ### Authentication rejections — `remoted.auth.reject.*`
 
-*Why* agents fail authentication, counted with the pre-collapse cause: on the wire the
-credential failures deliberately fold into one generic 401 (so a client cannot probe which
-check failed), but the operator keeps the distinction here. All counters, unit `count`.
+*Why* agents fail authentication, counted with the fine cause: on the wire a 401 names only its
+agent-actionable **class** (`unknown_agent`, `stale_token`, `invalid_signature`, `invalid_request`,
+the `token_*` and `enrollment_key_unavailable` of `/enroll` — see the
+[HTTPS Agent API](https-events-api.md#error-responses)), which folds several causes together
+(`invalid_signature` covers a bad MAC, a malformed token, an identity mismatch, an unusable key and
+a disallowed peer address); the operator keeps the distinction here. All counters, unit `count`.
 
 | Metric | Meaning | Tuning |
 |---|---|---|
@@ -231,6 +256,9 @@ check failed), but the operator keeps the distinction here. All counters, unit `
 | `remoted.auth.reject.body_too_large` | Body over the authenticated cap, a zstd frame that did not fit the in-flight budget, or (on `/enroll`) a decoded body over that endpoint's own 16 KiB ceiling | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size); for compressed bodies also [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 | `remoted.auth.reject.bad_encoding` | Unsupported or undecodable `Content-Encoding` (zstd) | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) |
 | `remoted.auth.reject.malformed` | Missing/malformed authorization or protocol-version headers | diagnostic — agent/manager version drift or non-agent traffic |
+| `remoted.auth.reject.token_unknown` | `/enroll` only: an enrollment-token bearer whose `kid` is not in this node's replica of `etc/enrollment_tokens.json`, even after one forced re-read — never minted, minted without a credential, or not yet synchronized to this worker | diagnostic — check the token id the agent was given and, on a worker, that the cluster sync delivered the store ([`remoted.enroll.token_store.tokens`](#agent-enrollment--remotedenroll)) |
+| `remoted.auth.reject.token_expired` | `/enroll` only: a correctly signed enrollment-token bearer whose token is past its `expires`. Distinct from `clock_skew`: the credential itself has lapsed, not this request | diagnostic — mint a new token |
+| `remoted.auth.reject.token_revoked` | `/enroll` only: a correctly signed enrollment-token bearer whose token the operator revoked | diagnostic — expected after a revocation; a stream of them is an agent (or a leaked token) still trying |
 
 `clock_skew` is the one cell in this family that a timing setting can move, and it fails
 *before* any budget in the request path matters: the token profile's lifetime is a fixed 60 s,
@@ -240,22 +268,65 @@ so the whole tolerance for host clock drift is
 fails every request with a generic `401` and no other symptom
 ([timing tuning, invariant 7](timing-tuning.md#3-invariants)).
 
+`/enroll`'s re-enrollment bearers are judged by `authd` on the master, not by this module; its
+verdicts still count here under the cause they map to — 9026 (unknown agent or no re-enrollment
+credential) in `unknown_agent`, 9027 (invalid credential) in `invalid_signature`, 9028 (outside the
+time window) in `clock_skew` — alongside their own `remoted.enroll.reenroll.*` cells below.
+
 ### Agent enrollment — `remoted.enroll.*`
 
-`POST /enroll` bridges an agent that has no credentials yet to `authd`'s local socket. These
-counters say **why** each request ended the way it did; the matching **what** (HTTP status,
-latency) is the `enroll` family in [Request outcomes](#request-outcomes--remotedhttpendpointresponsescode)
-and [Request latency](#request-latency--remotedhttpendpointlatency). All are counters, unit
-`count`, except the three queue pulls at the end.
+`POST /enroll` bridges an agent that has no credentials yet — or one re-enrolling under its
+existing id — to `authd`'s local socket. These counters say **why** each request ended the way it
+did; the matching **what** (HTTP status, latency) is the `enroll` family in
+[Request outcomes](#request-outcomes--remotedhttpendpointresponsescode) and
+[Request latency](#request-latency--remotedhttpendpointlatency). All are counters, unit `count`,
+except the pulls at the end (the `authd` queue and the token store).
 
 | Metric | Meaning | Tuning |
 |---|---|---|
-| `remoted.enroll.accepted` | `authd` created the agent and the key was returned | — |
-| `remoted.enroll.rejected_auth` | The enrollment credential check failed (Password mode: the `wazuh-enroll+jwt` bearer; mTLS mode: the listener already refused the connection) | diagnostic — the per-cause split is [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject) |
+| `remoted.enroll.accepted` | `authd` created the agent (or rotated a re-enrolling agent's credentials) and the key was returned | — |
+| `remoted.enroll.rejected_auth` | The enrollment credential check failed — every `401` of the route: the shared-password `wazuh-enroll+jwt` bearer, an enrollment token this node refused (unknown, expired, revoked, bad signature), or a re-enrollment bearer `authd` refused (9026/9027/9028). mTLS failures are not here: the listener already refused the connection | diagnostic — the per-cause split is [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject); the per-credential split is `remoted.enroll.token.*` / `remoted.enroll.reenroll.*` below |
 | `remoted.enroll.rejected_validation` | Rejected locally before reaching `authd`: undecodable `Content-Encoding`, malformed/invalid body, or a version this manager does not allow | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled); version policy is `<allow_higher_versions>` |
 | `remoted.enroll.disabled` | Enrollment is administratively off, so the request was answered `403` without touching `authd` | the manager's enrollment setting (the route always exists, so this is distinguishable from a `404`) |
-| `remoted.enroll.authd_error` | `authd` answered, and refused on its own business rules (duplicate name, agent limit, cluster forwarding) | diagnostic — `authd`'s own limits; the mapped status is in the `enroll` response cells |
+| `remoted.enroll.authd_error` | `authd` answered, and refused on its own business rules (duplicate name, agent limit, cluster forwarding) — including the `403` it gives a verified enrollment token it will not consume (9022 not found or revoked, 9023 expired, 9024 uses exhausted) | diagnostic — `authd`'s own limits; the mapped status is in the `enroll` response cells |
 | `remoted.enroll.authd_unavailable` | No clean answer from `authd`: a full request queue, an unreachable socket, a timeout, or the module shutting down | see the queue metrics below to tell saturation apart from the rest |
+
+The **enrollment-token** subset — requests whose bearer's `kid` named an enrollment token — by
+what happened to the token (the [HTTPS Agent API](https-events-api.md#enrollment-endpoint-post-enroll)
+describes the credential):
+
+| Metric | Meaning | Tuning |
+|---|---|---|
+| `remoted.enroll.token.accepted` | A `200` obtained with an enrollment token: this node verified the bearer and `authd` consumed one use | — |
+| `remoted.enroll.token.rejected_unknown` | The token id is not in this node's replica of the store (never minted, minted without a credential, or not yet synchronized here) — or, rarely, `authd` answered 9022 (not found or revoked) after this node's replica had accepted it | diagnostic — the replica's size is `remoted.enroll.token_store.tokens` below; on a worker, a burst right after a mint means the cluster sync has not landed yet (the forced re-read covers a single lagging request, not a long lag) |
+| `remoted.enroll.token.rejected_expired` | The token is past its expiry: decided from the replica (a correctly signed bearer only), or by `authd`'s 9023 when the replica lagged | diagnostic — mint a new token; the agent gets `401 token_expired` from this node or `403` 9023 from `authd` |
+| `remoted.enroll.token.rejected_revoked` | The token was revoked: decided from the replica (a correctly signed bearer only) | diagnostic — expected after a revocation |
+| `remoted.enroll.token.rejected_exhausted` | `authd` refused the use because the token has no uses left (9024, a `403`) — only `authd` counts uses, so this node cannot decide it earlier | diagnostic — mint a token with more uses, or another one |
+
+The **re-enrollment** subset — requests whose bearer's `kid` named an agent id. This node
+forwards that bearer unverified (the secret it is signed with lives only in the master's
+database), so every cell is `authd`'s verdict on the master:
+
+| Metric | Meaning | Tuning |
+|---|---|---|
+| `remoted.enroll.reenroll.accepted` | `authd` verified the bearer and rotated the agent's key and re-enrollment secret in place — same id, nothing removed | — |
+| `remoted.enroll.reenroll.rejected_unknown` | 9026: the agent is unknown to the master, or has no re-enrollment secret on record (enrolled over legacy port 1515, or a database rebuilt from `client.keys`) — the agent gets `401 unknown_agent` | diagnostic — such an agent can only enroll anew |
+| `remoted.enroll.reenroll.rejected_signature` | 9027: the bearer did not verify against the agent's re-enrollment secret (or was malformed) — the agent gets `401 invalid_signature` | diagnostic — a stale secret on the agent, or probing |
+| `remoted.enroll.reenroll.rejected_stale` | 9028: correctly signed but outside the accepted time window — the agent gets `401 stale_token` | [`remoted.jwt_max_age`](configuration.md#remotedjwt_max_age), [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) (`authd` reads the same two) — but fix NTP first |
+| `remoted.enroll.reenroll.rejected_in_progress` | 9030: a rotation for that agent is already accepted and not yet persisted — the agent gets `409` and retries, its bearer was fine | — (transient; a sustained count means the writer is not draining, look at wazuh-db) |
+
+The replica of the token store this node authenticates enrollment tokens against (pulls; present
+whenever enrollment is enabled, `0` otherwise):
+
+| Metric | Type | Unit | Meaning | Tuning |
+|---|---|---|---|---|
+| `remoted.enroll.token_store.tokens` | gauge (pull) | tokens | Tokens **with a credential** currently replicated from `etc/enrollment_tokens.json`; credential-less tokens are not replicated (nothing to authenticate with). `0` is the normal state of a manager that has minted no token — and of a worker that has not received the master's sync | diagnostic — a worker stuck at `0` while the master has tokens is a cluster-sync problem |
+| `remoted.enroll.token_store.reloads.total` | counter (pull) | count | Successful loads of the store (the startup load included; an absent file counts as a successful, empty load). `authd` rewrites the file on every consumed use, so this moves with enrollment traffic | [`remoted.enroll_password_refresh_interval`](configuration.md#remotedenroll_password_refresh_interval) sets the fallback poll cadence (inotify reacts first) |
+| `remoted.enroll.token_store.reload_failures.total` | counter (pull) | count | Loads that kept the **previous** replica: malformed content (the store is written by `authd` and must not be edited by hand), a read that kept changing across every retry, or an unreadable/oversized file | diagnostic — restore the file on the master; the previous replica keeps serving meanwhile, and `GET /status` reports `enrollment_tokens.last_reload_ok: false` |
+
+The three subsets above are read from the admin socket dump; the
+[API projection](#api-projection)'s `enrollment` group carries the six outcome counters and the
+`authd` queue pulls only.
 
 The queue in front of `authd` (pulls, so they read as levels):
 
@@ -347,10 +418,24 @@ the streaming pump runs; the per-chunk loop is deliberately uninstrumented.
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `remoted.download.rejected` | counter | count | 400: the request did not parse | diagnostic |
+| `remoted.download.denied` | counter | count | 403: the agent asked for a `config` selector that is not its own, or the manager has no established group membership for it (no `/control/startup` yet, or an evicted entry) | **the only signal for a denial** — the event itself is logged at debug, so a rising count with `remoted.debug=0` is all an operator sees. Steady non-zero: an agent using a stale `config_token`, or one probing other groups. Distinct from `rejected` (a malformed request) and from `not_found` (an *entitled* request whose file is not on disk yet) |
 | `remoted.download.not_found` | counter | count | 404: the requested group/WPK does not exist — the config-drift signal behind agent retry storms | diagnostic — deploy the missing group/WPK |
 | `remoted.download.open_error` | counter | count | 500: the file exists but could not be opened | diagnostic — filesystem/permissions |
 | `remoted.download.started` | counter | count | Streamed transfers started | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections) is the only bound on concurrent transfers |
 | `remoted.download.bytes.total` | counter | bytes | Bytes **offered** to started transfers, counted once at start (an aborted transfer overcounts) | [`remoted.http_stream_chunk_size`](configuration.md#remotedhttp_stream_chunk_size), [`remoted.http_write_timeout`](configuration.md#remotedhttp_write_timeout) |
+
+### CA distribution — `remoted.cacerts.*`
+
+Outcomes of `GET /cacerts`, the unauthenticated route that hands agents the CA that signs the
+listener certificate ([`https.ca_certificate`](configuration.md#httpsca_certificate)). The WHY
+behind `remoted.http.cacerts.responses.*`; the evaluation that decides the `503` is the
+[`remoted.server.tls.*`](#tls-listener-certificate--remotedservertls) pair.
+
+| Metric | Type | Unit | Meaning | Tuning |
+|---|---|---|---|---|
+| `remoted.cacerts.served` | counter | count | 200: the CA PEM was handed out | — |
+| `remoted.cacerts.not_found` | counter | count | 404: the CA file is missing, unreadable or carries no certificate — agents cannot bootstrap trust until it is restored | diagnostic — restore [`https.ca_certificate`](configuration.md#httpsca_certificate) |
+| `remoted.cacerts.ca_mismatch` | counter | count | 503: refused because the configured CA does not sign the served certificate | diagnostic — make [`https.ca_certificate`](configuration.md#httpsca_certificate) the CA that signed [`https.certificate`](configuration.md#httpscertificate), then restart |
 
 ### Admin transport — `remoted.admin.server.*`
 
@@ -412,7 +497,8 @@ legacy daemon counters that same response has always carried:
         "stateless": { "total": 98220, "2xx": 98213, "400": 2, "403": 0, "409": 0,
                        "413": 1, "500": 0, "503": 4, "other": 0 },
         "stateful":  { "...": 0 }, "stats": { "...": 0 },
-        "config":    { "...": 0 }, "enroll": { "...": 0 }
+        "config":    { "...": 0 }, "enroll": { "...": 0 },
+        "cacerts":   { "total": 34, "2xx": 34, "...": 0 }
       },
       "latency": {
         "stateless": { "count": 98213, "sum": 210394821, "min": 312, "max": 90210,
@@ -426,6 +512,8 @@ legacy daemon counters that same response has always carried:
       "downstream":      { "errors": { "...": 0 }, "deferred": { "capacity": 512, "...": 0 } },
       "backpressure":    { "available_bytes": 67099136, "inflight_requests": 3, "...": 0 },
       "downloads":       { "started": 12, "bytes_total": 48213004, "...": 0 },
+      "tls":             { "cert_expiry_days": 3649, "ca_matches_leaf": 1 },
+      "cacerts":         { "served": 34, "not_found": 0, "ca_mismatch": 0 },
       "vd_scan":         { "requests_total": 8, "accepted": 8, "...": 0 }
     }
   }
@@ -445,6 +533,8 @@ The group names map onto the catalog sections above one-for-one:
 | `downstream` | [`remoted.forwarder.*`](#downstream-failures--remotedforwarder), with `error.*` under `errors` and [`deferred.*`](#deferred-forwarding--remotedforwarderdeferred) under `deferred` |
 | `backpressure` | [`remoted.server.budget.*`](#public-transport-backpressure--remotedserverbudget) |
 | `downloads` | [`remoted.download.*`](#downloads--remoteddownload) |
+| `tls` | [`remoted.server.tls.*`](#tls-listener-certificate--remotedservertls) — `cert_expiry_days` is the catalog's one signed integer |
+| `cacerts` | [`remoted.cacerts.*`](#ca-distribution--remotedcacerts) |
 | `vd_scan` | [`remoted.scanvd.*`](#vd-scan-admission--remotedscanvd) |
 
 Conventions worth knowing before reading a response:
@@ -491,9 +581,9 @@ These rules say what sums to what — read them before comparing families:
   `remoted.enroll.rejected_auth`.
 - **Auth-gateway rejections** (401s, 413 at authentication, bad encoding) happen before any
   endpoint handler and appear only in `remoted.auth.reject.*`. A rejection by registered
-  address is deliberately indistinguishable on the wire — it collapses into the same generic
-  401 as every credential failure, so a caller cannot learn that the agent id exists — which
-  makes `remoted.auth.reject.address_not_allowed` the only place it can be told apart. An endpoint's own pre-forward
+  address is not told apart on the wire — it shares the `invalid_signature` class with a bad
+  MAC, a malformed token, an identity mismatch and an unusable key, since none of them is fixed
+  by re-enrolling — which makes `remoted.auth.reject.address_not_allowed` the only place it can be told apart. An endpoint's own pre-forward
   rejection (empty body, payload identity) counts in its `responses.*` (the *what*) and, when
   it is an authentication error, in `remoted.auth.reject.*` too (the *why*).
 - `remoted.http.<endpoint>.responses.*` therefore reads as "every response this endpoint

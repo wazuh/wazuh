@@ -182,6 +182,43 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - PUT /agents/scan/vulnerability
+      enrollment_token:create:
+        description: Mint enrollment tokens (the credential a new agent pastes to enroll over HTTPS)
+        example:
+          actions:
+            - enrollment_token:create
+          resources:
+            - "*:*:*"
+          effect: allow
+        resources:
+          - "*:*"
+        related_endpoints:
+          - POST /agents/enrollment-tokens
+      enrollment_token:read:
+        description: List enrollment tokens (their id, address, dates and uses; never their credential)
+        example:
+          actions:
+            - enrollment_token:read
+          resources:
+            - "*:*:*"
+          effect: allow
+        resources:
+          - "*:*"
+        related_endpoints:
+          - GET /agents/enrollment-tokens
+      enrollment_token:delete:
+        description: Revoke enrollment tokens
+        example:
+          actions:
+            - enrollment_token:delete
+          resources:
+            - "*:*:*"
+          effect: allow
+        resources:
+          - "*:*"
+        related_endpoints:
+          - DELETE /agents/enrollment-tokens
+          - DELETE /agents/enrollment-tokens/{token_id}
       agent:uninstall:
         description: Check user's permission to uninstall agents
         example:
@@ -313,6 +350,21 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /cluster/api/config
+      cluster:read_secrets:
+        description: Read the sensitive configuration values -- the enrollment password and the cluster
+          key -- in clear instead of masked
+        example:
+          actions:
+            - cluster:read_secrets
+          resources:
+            - node:id:master-node
+          effect: allow
+        resources:
+          - node:id
+        related_endpoints:
+          - GET /cluster/local/config
+          - GET /cluster/{node_id}/configuration
+          - GET /cluster/{node_id}/configuration/{component}/{configuration}
       cluster:update_config:
         description: Change the Wazuh's cluster node configuration
         resources:

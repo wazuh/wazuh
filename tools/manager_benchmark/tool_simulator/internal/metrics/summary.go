@@ -7,12 +7,15 @@ import (
 
 // Meta is the reproducibility block of sender_summary.json. The runner fills it.
 type Meta struct {
-	ScenarioName      string  `json:"scenario_name"`
-	ScenarioPath      string  `json:"scenario_path"`
-	Mode              string  `json:"mode"`
-	Manager           string  `json:"manager"`
-	Port              int     `json:"port"`
-	RegPort           int     `json:"reg_port"`
+	ScenarioName string `json:"scenario_name"`
+	ScenarioPath string `json:"scenario_path"`
+	Mode         string `json:"mode"`
+	Manager      string `json:"manager"`
+	Port         int    `json:"port"`
+	RegPort      int    `json:"reg_port"`
+	// How the fleet was enrolled: "enroll-token" | "1515" in agent mode, "" in
+	// uds mode, which enrolls nothing (issue #39054).
+	Bootstrap         string  `json:"bootstrap"`
 	Target            string  `json:"target"`
 	GlobalPrefix      string  `json:"global_prefix"`
 	ClusterName       string  `json:"cluster_name"`
@@ -76,6 +79,16 @@ func bucketJSON(s CountersSnapshot) map[string]any {
 		"scan": map[string]any{
 			"sent": c.ScanSent, "s200": c.Scan200, "s409": c.Scan409,
 			"s503": c.Scan503, "other": c.ScanOther,
+		},
+		// GET /cacerts: s200 = a CA PEM handed out; see RecordCacerts.
+		"cacerts": map[string]any{
+			"sent": c.CacertsSent, "s200": c.Cacerts200, "s404": c.Cacerts404,
+			"s503": c.Cacerts503, "other": c.CacertsOther,
+		},
+		// POST /enroll with an enrollment token: s200 = an agent created; see RecordEnrollHTTPS.
+		"enroll_https": map[string]any{
+			"sent": c.EnrollHTTPSSent, "s200": c.EnrollHTTPS200, "s401": c.EnrollHTTPS401,
+			"s403": c.EnrollHTTPS403, "s409": c.EnrollHTTPS409, "other": c.EnrollHTTPSOther,
 		},
 		"control": map[string]any{
 			"startup_ok": c.StartupOK, "startup_err": c.StartupErr,

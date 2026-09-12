@@ -12,8 +12,15 @@
 
 #include "wdb.h"
 
-int __wrap_wdb_global_insert_agent(
-    wdb_t* wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add);
+int __wrap_wdb_global_insert_agent(wdb_t* wdb,
+                                   int id,
+                                   char* name,
+                                   char* ip,
+                                   char* register_ip,
+                                   char* internal_key,
+                                   char* reenroll_secret,
+                                   char* group,
+                                   int date_add);
 
 int __wrap_wdb_global_update_agent_version(wdb_t* wdb,
                                            int id,
@@ -30,6 +37,9 @@ int __wrap_wdb_global_update_agent_version(wdb_t* wdb,
                                            const char* sync_status);
 
 int __wrap_wdb_global_update_agent_keepalive(wdb_t* wdb, int id, char* connection_status, char* status);
+
+int __wrap_wdb_global_set_agent_credentials(
+    wdb_t* wdb, int id, const char* name, const char* register_ip, const char* internal_key, const char* reenroll_secret);
 
 int __wrap_wdb_global_update_agent_connection_status(
     wdb_t* wdb, int id, char* connection_status, char* sync_status, int status_code);

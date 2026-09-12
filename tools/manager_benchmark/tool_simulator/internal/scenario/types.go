@@ -47,8 +47,8 @@ type Scenario struct {
 
 // Defaults are inherited by every fleet and step unless overridden.
 type Defaults struct {
-	Module      string   `json:"module"`
-	Option      string   `json:"option"`
+	Module string `json:"module"`
+	Option string `json:"option"`
 	// ClusterName is the only cluster field a session declares. cluster_node was
 	// retired: the manager never validated it and is dropping its last consumer,
 	// and the value the tool used to send was read out of the manager's own
@@ -238,6 +238,8 @@ type Expected struct {
 	Control          map[string]Assertion `json:"control"`
 	Deletes          map[string]Assertion `json:"deletes"`
 	Scan             map[string]Assertion `json:"scan"`
+	Cacerts          map[string]Assertion `json:"cacerts"`
+	EnrollHTTPS      map[string]Assertion `json:"enroll_https"`
 	TransportErrors  Assertion            `json:"transport_errors"`
 	RetriesExhausted Assertion            `json:"retries_exhausted"`
 }

@@ -1,0 +1,43 @@
+- name: 'worker_socket_mint_9015'
+  description: 'A worker answers 9015 to token_create over auth.sock instead of minting a token the master does not know'
+  configuration_parameters:
+    FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
+  metadata:
+    action: 'worker_socket_mint_9015'
+    FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
+    cluster_input: ''
+    cluster_output: '{"error":9001,"message":"Internal error"}'
+
+- name: 'worker_cli_mint_9015'
+  description: 'The CLI reports the same 9015 on a worker and names the master node as the place to mint'
+  configuration_parameters:
+    FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
+  metadata:
+    action: 'worker_cli_mint_9015'
+    FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
+    cluster_input: ''
+    cluster_output: '{"error":9001,"message":"Internal error"}'
+
+- name: 'worker_forwards_token_id'
+  description: 'A worker forwards the token id to the master untouched and returns the agent the master created'
+  configuration_parameters:
+    FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
+  metadata:
+    action: 'worker_forwards_token_id'
+    FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
+    local_input: '{"arguments":{"name":"etoken-wk","ip":"any","token_id":"AAECAwQFBgcICQoLDA0ODw"},"function":"add"}'
+    cluster_input: '{"daemon_name":"authd","message":{"arguments":{"name":"etoken-wk","ip":"any","token_id":"AAECAwQFBgcICQoLDA0ODw"},"function":"add"}}'
+    cluster_output: '{"error":0,"data":{"id":"007","name":"etoken-wk","ip":"any","key":"675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"}}'
+    expected_agent_id: '007'
+    expected_token_id: 'AAECAwQFBgcICQoLDA0ODw'
+
+- name: 'worker_reads_synced_store'
+  description: 'A worker lists the tokens of a store that appeared under it, without being restarted'
+  configuration_parameters:
+    FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
+  metadata:
+    action: 'worker_reads_synced_store'
+    FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
+    cluster_input: ''
+    cluster_output: '{"error":9001,"message":"Internal error"}'
+    expected_token_id: 'AAECAwQFBgcICQoLDA0ODw'

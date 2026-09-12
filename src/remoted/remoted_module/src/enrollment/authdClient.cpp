@@ -292,6 +292,14 @@ namespace remoted::enrollment
             {
                 arguments["key_hash"] = *request.keyHash;
             }
+            if (request.tokenId)
+            {
+                arguments["token_id"] = *request.tokenId;
+            }
+            if (request.reenroll)
+            {
+                arguments["reenroll"] = {{"kid", request.reenroll->kid}, {"bearer", request.reenroll->bearer}};
+            }
 
             nlohmann::json payload;
             payload["function"] = "add";
@@ -486,6 +494,7 @@ namespace remoted::enrollment
                     result.name = data.value("name", "");
                     result.ip = data.value("ip", "");
                     result.key = data.value("key", "");
+                    result.reenrollSecret = data.value("reenroll_secret", "");
                 }
                 else
                 {

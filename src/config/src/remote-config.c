@@ -228,9 +228,14 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
     /* legacy: the effective document always carries the block; `enabled: false` is how the schema
      * represents a disabled legacy listener. */
     logr->legacy_enabled = false;
+    /* Defaulted OUTSIDE the block, not just inside it: an absent `legacy` mapping leaves the
+     * listener disabled, and the poller that reads this never runs -- but a caller that reads the
+     * struct anyway (the unit tests do) must not see an uninitialised bool. */
+    logr->legacy_ca_delivery = true;
 
     if (cJSON_IsObject(legacy)) {
         logr->legacy_enabled = w_mconf_json_bool(cJSON_GetObjectItem(legacy, "enabled"), 1) != 0;
+        logr->legacy_ca_delivery = w_mconf_json_bool(cJSON_GetObjectItem(legacy, "ca_delivery"), 1) != 0;
         os_free(logr->lip);
         logr->rids_closing_time = REMOTED_RIDS_CLOSING_TIME_DEFAULT;
 
@@ -327,7 +332,8 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
             w_remoted_json_https_string(https, "global_prefix", REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN, w_remoted_validate_global_prefix, &logr->https.global_prefix) == OS_INVALID ||
             w_remoted_json_https_string(https, "certificate", REMOTED_HTTPS_CERTIFICATE_MAX_LEN, NULL, &logr->https.certificate) == OS_INVALID ||
             w_remoted_json_https_string(https, "key", REMOTED_HTTPS_KEY_MAX_LEN, NULL, &logr->https.key) == OS_INVALID ||
-            w_remoted_json_https_string(https, "ca", REMOTED_HTTPS_CA_MAX_LEN, NULL, &logr->https.ca) == OS_INVALID) {
+            w_remoted_json_https_string(https, "ca", REMOTED_HTTPS_CA_MAX_LEN, NULL, &logr->https.ca) == OS_INVALID ||
+            w_remoted_json_https_string(https, "ca_certificate", REMOTED_HTTPS_CA_CERTIFICATE_MAX_LEN, NULL, &logr->https.ca_certificate) == OS_INVALID) {
             return (OS_INVALID);
         }
 
