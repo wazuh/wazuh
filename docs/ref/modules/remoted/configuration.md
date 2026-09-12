@@ -315,8 +315,10 @@ protocol version.
 
 Maximum accepted HTTP request body size.
 
-- **Default value:** `20MB`
-- **Allowed values:** Size with optional unit suffix (`B`, `KB`, `MB`, `GB`); bare number defaults to bytes.
+- **Default value:** `20M` (20 MiB)
+- **Allowed values:** Positive byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`, case-insensitive). `K`/`M`/`G` are binary multiples; a bare number is bytes. Suffixes such as `MB` are rejected.
+- **Effect:** Raising the limit admits larger wire bodies and increases potential memory use per connection;
+  lowering it rejects larger requests at the transport. The authentication and shared-memory limits still apply.
 
 ---
 
@@ -327,6 +329,16 @@ Maximum accepted HTTP request body size.
 **Internal Options prefix:** `remoted.*`
 
 Internal options provide advanced tuning for performance, threading, memory management, and monitoring.
+
+Three things to know before editing that file:
+
+- **It ships empty.** The installed template carries only comments, so every option below is
+  serving its compiled-in default. Tuning one means adding the `name=value` line yourself.
+- **An out-of-range or non-numeric value is fatal**, not clamped: the daemon refuses to start and
+  logs which option it rejected. Keep the documented range in view when editing.
+  Put comments on separate lines beginning with `#`; an inline comment becomes part of the value.
+- **The file is per node and is never synchronized.** Nothing in a cluster propagates it, so a
+  value set on one manager makes an agent's behavior depend on which node it lands on.
 
 ### remoted.debug
 
@@ -1332,7 +1344,7 @@ Require and validate agent client certificates, including a full IP-to-certifica
       <ca>etc/certs/root-ca.pem</ca>
       <verification_mode>certificate</verification_mode>
       <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
-      <max_body_size>20MB</max_body_size>
+      <max_body_size>20M</max_body_size>
     </https>
     <legacy>
       <port>1514</port>
@@ -1418,24 +1430,30 @@ The stateless metadata cache stores agent metadata extracted from keep-alive mes
 
 **Ephemeral/short-lived agents:**
 ```conf
-remoted.enrich_cache_expire_time=300  # 5 minutes (default)
+# 5 minutes (default)
+remoted.enrich_cache_expire_time=300
 ```
 
 **Stable agents with occasional restarts:**
 ```conf
-remoted.enrich_cache_expire_time=600  # 10 minutes
+# 10 minutes
+remoted.enrich_cache_expire_time=600
 ```
 
 **Long-running stable agents:**
 ```conf
-remoted.enrich_cache_expire_time=1800  # 30 minutes
+# 30 minutes
+remoted.enrich_cache_expire_time=1800
 ```
 
-The cleanup process runs every 60 seconds and removes entries that haven't received a keep-alive in the configured time period.
+The cleanup thread sleeps five seconds between passes. It removes expired entries once their
+pending events have drained; shutdown-marked entries are also removed after their queues drain.
 
 ### Hash Table Tuning
 
-Metadata cache bucket count (requires recompile of `src/remoted/agent_metadata_db.c`):
+Metadata cache bucket count. This is **not** an option: the value is a compile-time constant
+(`OSHash_setSize(agent_meta_map, 2048)` in `src/remoted/src/agent_metadata_db.c`), so changing it
+means rebuilding the manager.
 
 **<10K agents:**
 - Default: 2048 buckets

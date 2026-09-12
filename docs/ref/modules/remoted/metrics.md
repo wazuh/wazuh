@@ -167,12 +167,19 @@ it alone: [timing tuning, invariant 2](timing-tuning.md#3-invariants).
 
 ### Request outcomes — `remoted.http.<endpoint>.responses.<code>`
 
-What each endpoint actually answered its agents. One family per endpoint — `stateless`,
-`stateful`, `stats`, `config`, `enroll` and `cacerts` (the one `GET` route) — each with the same
+What each endpoint actually answered its agents. Six endpoints carry this family — `stateless`,
+`stateful`, `stats`, `config`, `enroll` and `cacerts` (the only `GET` route with this family) — each with the same
 closed set of eight status cells, so a scraper's columns line up across endpoints (some cells
 are structurally zero for a given endpoint, e.g. `/stateless` never answers 409, and
 `/cacerts`'s `404` lands in `other`). Every response is counted exactly once, at the single
 place it is sent. All units are `count`; all are counters.
+
+**`/control`, `/download` and `/scan/vd` have no `responses.*` family.** Do not read their absence
+as "no traffic": each is counted by outcome instead, in its own family, where the cause is more
+useful than the status —
+[`remoted.control.*`](#control-plane--remotedcontrol),
+[`remoted.download.*`](#downloads--remoteddownload) and
+[`remoted.scanvd.*`](#vd-scan-admission--remotedscanvd).
 
 | Cell (`remoted.http.<endpoint>.responses.` + code) | Meaning | Tuning |
 |---|---|---|
@@ -183,7 +190,7 @@ place it is sent. All units are `count`; all are counters.
 | `413` | Body over the accepted size | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
 | `500` | Internal error while building the reply | diagnostic — a bug signal, report it |
 | `503` | Downstream failure or a deferred-limiter shed | [`remoted.max_deferred_requests`](configuration.md#remotedmax_deferred_requests) for the limiter share; the [downstream failures](#downstream-failures--remotedforwarder) family for the rest |
-| `other` | Any status outside the set above | diagnostic |
+| `other` | Any status outside the set above. Includes `/enroll` authentication `401`/encoding `415` responses and `/cacerts`'s `404`; other routes' gateway rejections are excluded | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) for the `415` share, which [`remoted.auth.reject.bad_encoding`](#authentication-rejections--remotedauthreject) counts by cause |
 
 Rejections produced by the **auth gateway** (bad MAC, clock skew, oversized body caught at
 authentication) happen before any endpoint handler runs and are therefore *not* in these
@@ -209,7 +216,6 @@ signal.
 |---|---|---|---|---|
 | `remoted.http.stateless.latency` | histogram | microseconds | The event-ingestion hot path, gateway receipt → response delivery | [`remoted.http_worker_threads`](configuration.md#remotedhttp_worker_threads), [`remoted.http_io_threads`](configuration.md#remotedhttp_io_threads), [`remoted.downstream_post_process_threads`](configuration.md#remoteddownstream_post_process_threads), [`remoted.downstream_io_threads`](configuration.md#remoteddownstream_io_threads) |
 | `remoted.http.stateful.latency` | histogram | microseconds | A sync session indexes within the request, so this is the number that sizes its dedicated deadline. The server-side half of the same span is [`sync.session.duration.*`](../inventory-sync-server/metrics.md#sync-pipeline--syncpipeline-syncshardi-syncsessionduration) on the sync server | [`remoted.downstream_stateful_response_timeout`](configuration.md#remoteddownstream_stateful_response_timeout), plus the thread settings above |
-
 | `remoted.http.enroll.latency` | histogram | microseconds | Handler entry → response delivery, the only measurement that spans the hop to `authd`. Timed from handler entry rather than gateway receipt (`/enroll` does not go through the gateway), and it covers the answer authd's callback delivers asynchronously | [`remoted.authd_connect_timeout`](configuration.md#remotedauthd_connect_timeout), [`remoted.authd_response_timeout`](configuration.md#remotedauthd_response_timeout), [`remoted.authd_worker_threads`](configuration.md#remotedauthd_worker_threads) |
 
 All are bounded by
