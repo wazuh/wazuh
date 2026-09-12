@@ -128,6 +128,14 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
     }
 }
 
+/**
+ * @brief Documents, not implements, the only reset that works today: a fresh bootstrap only
+ *        re-runs once AGENT_ANCHOR_CA is removed, client.keys is emptied or removed, AND a new
+ *        enrollment-token file is placed -- each latch (anchor exists / keys non-empty / no
+ *        token file) independently blocks it otherwise, so clearing any one or two alone is not
+ *        enough. This is today's actual behavior; it has no dedicated interface or name of its
+ *        own.
+ */
 int w_agent_token_bootstrap(int uid, int gid) {
     w_etoken_t token;
     char *token_text = NULL;
@@ -148,6 +156,10 @@ int w_agent_token_bootstrap(int uid, int gid) {
     hc_config_t enroll_config;
     hc_enroll_request_t enroll_request;
     hc_enroll_result_t enroll_result;
+
+    /* Kept for signature symmetry with AgentdStart()'s uid/gid pair (see this function's own
+     * doc comment in token_bootstrap.h): neither file this function writes is chowned to it. */
+    (void)uid;
 
     /* Both latches below discard the token on their way out. It is a one-shot credential, and
      * once either of these is true it can never be used again -- but it was only ever deleted
@@ -397,6 +409,16 @@ int w_agent_token_bootstrap(int uid, int gid) {
 
     w_enroll_request_destroy(&built_request);
 
+    /* Written while still root; without fixing the group, the unprivileged `wazuh` user can't
+     * read it after AgentdStart()'s privilege drop, breaking the first restart. Fixed up on the
+     * temp file, before the rename below: a crash between them would leave AGENT_ANCHOR_CA on
+     * disk with the wrong group, and IsFile(AGENT_ANCHOR_CA) == 0 unconditionally latches the
+     * bootstrap off on every later boot, so it must land before the rename, never after. */
+    if (chown(anchor_file.name, 0, gid) != 0) {
+        merror("Token bootstrap: could not change ownership of '%s': %s (%d).", anchor_file.name,
+               strerror(errno), errno);
+    }
+
     if (OS_MoveFile(anchor_file.name, AGENT_ANCHOR_CA) < 0) {
         merror("Token bootstrap: could not install the trust anchor at '%s'.", AGENT_ANCHOR_CA);
         os_free(anchor_file.name);
@@ -406,27 +428,11 @@ int w_agent_token_bootstrap(int uid, int gid) {
 
     os_free(anchor_file.name);
 
-    /* Both files were just written while still root (this runs before Privsep_SetGroup()/
-     * Privsep_SetUser() in AgentdStart()): without this, they are unreadable by the
-     * unprivileged user once the process drops privileges, silently breaking the very first
-     * restart after a successful bootstrap. Logged, not fatal: the anchor and the enrollment
-     * already succeeded.
-     *
-     * The anchor keeps root as its owner and only hands the group across, so the user the
-     * agent runs as can read the certificate authority it verifies the manager against but
-     * cannot rewrite it -- otherwise anything that took over that user could point the agent
-     * at a manager of its own choosing. client.keys is deliberately different: it is the
-     * agent's own credential, the runtime user rewrites it on every re-enrollment, and the
-     * installer already creates it owned by that user. */
-    if (chown(AGENT_ANCHOR_CA, 0, gid) != 0) {
-        merror("Token bootstrap: could not change ownership of '%s': %s (%d).", AGENT_ANCHOR_CA,
-               strerror(errno), errno);
-    }
-
-    if (chown(KEYS_FILE, uid, gid) != 0) {
-        merror("Token bootstrap: could not change ownership of '%s': %s (%d).", KEYS_FILE,
-               strerror(errno), errno);
-    }
+    /* client.keys is deliberately left untouched here: it is always replaced wholesale via a
+     * TempFile()+OS_MoveFile() rename rather than edited in place (see enrollment.c and
+     * os_crypto/shared/keys.c), so the runtime user only ever needs directory-write and
+     * group-read on it -- both already granted -- never file-level ownership. It stays at
+     * whatever the installer set it to: 0640 root:wazuh, per inst-functions.sh. */
 
     unlink(AGENT_ENROLLMENT_TOKEN_FILE);
     w_etoken_free(&token);
