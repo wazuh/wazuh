@@ -1501,7 +1501,8 @@ INSTANTIATE_TEST_SUITE_P(
                                    R"("shard":0,"status":500,"reason":{"type":"i_o_exception"}}]})"),
                        true),
         // `conflicts: "proceed"` tallies skipped documents HERE, not in `failures` -- the path the
-        // shard-failure check alone misses.
+        // shard-failure check alone misses. Retried first; this mock never stops conflicting, so
+        // the allowance runs out and the caller is told.
         std::make_pair(std::string(R"({"took":5,"deleted":9,"version_conflicts":3,"failures":[]})"), true),
         // Both at once.
         std::make_pair(std::string(R"({"took":5,"deleted":1,"version_conflicts":2,)"
@@ -1511,6 +1512,61 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_pair(std::string("<html>502 Bad Gateway</html>"), true),
         // Neither does an empty body.
         std::make_pair(std::string(), true)));
+
+/// A write the indexer has acknowledged but not yet refreshed makes the delete that follows it
+/// conflict on every document it touched, and the retry's search reads the refreshed index. The two
+/// rows are the whole rule: the retry clears it (2 POSTs, no throw), or the allowance runs out and
+/// the documents left behind become the caller's problem (3 POSTs, throw).
+class IndexerConnectorSyncConflictRetryTest
+    : public IndexerConnectorSyncTest
+    , public ::testing::WithParamInterface<std::pair<bool, int>>
+{
+};
+
+TEST_P(IndexerConnectorSyncConflictRetryTest, ADeleteByQueryRetriesAVersionConflict)
+{
+    const auto& [retryClearsIt, expectedPosts] = GetParam();
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [retryClearsIt, &postCount](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                const auto attempt = ++postCount;
+                const std::string body =
+                    (retryClearsIt && attempt > 1)
+                        ? R"({"took":5,"total":300,"deleted":300,"version_conflicts":0,"failures":[]})"
+                        : R"({"took":5,"total":300,"deleted":0,"version_conflicts":300,"failures":[]})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.deleteByQuery("wazuh-states-inventory-packages", "007", "cluster01");
+
+    if (retryClearsIt)
+    {
+        EXPECT_NO_THROW(connector.flush());
+    }
+    else
+    {
+        EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    }
+    EXPECT_EQ(expectedPosts, postCount.load());
+}
+
+INSTANTIATE_TEST_SUITE_P(ConflictRetry,
+                         IndexerConnectorSyncConflictRetryTest,
+                         ::testing::Values(std::make_pair(true, 2), std::make_pair(false, 3)));
 
 TEST_F(IndexerConnectorSyncTest, DeleteByQueryWithoutBulkDataTriggersNotify)
 {
@@ -2428,6 +2484,7 @@ INSTANTIATE_TEST_SUITE_P(
                                    R"("failures":[{"shard":0,"status":500,"reason":{"type":"i_o_exception"}}]})"),
                        true),
         // conflicts=proceed tallies skipped documents in `version_conflicts`, not in `failures`.
+        // Retried first, and raised because this mock keeps conflicting.
         std::make_pair(std::string(R"({"took":5,"updated":7,"total":10,"version_conflicts":3,"failures":[]})"), true),
         // A body without the documented counters is not an _update_by_query response.
         std::make_pair(std::string(R"({"took":5})"), true),
@@ -2435,6 +2492,45 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_pair(std::string("<html>502 Bad Gateway</html>"), true),
         // Neither does an empty body.
         std::make_pair(std::string(), true)));
+
+/// The same rule on _update_by_query, whose conflicts have the same cause.
+TEST_F(IndexerConnectorSyncTest, AnUpdateByQueryRetriesAVersionConflictUntilItClears)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                const std::string body =
+                    (++postCount == 1)
+                        ? R"({"took":5,"updated":0,"total":10,"version_conflicts":10,"failures":[]})"
+                        : R"({"took":5,"updated":10,"total":10,"noops":0,"version_conflicts":0,"failures":[]})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    bool notifyCalled = false;
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    nlohmann::json updateQuery;
+    updateQuery["query"]["match_all"] = nlohmann::json::object();
+
+    EXPECT_NO_THROW(connector.executeUpdateByQuery({"wazuh-states-sca"}, updateQuery));
+    EXPECT_EQ(2, postCount.load());
+    connector.invokePendingCallbacks();
+    EXPECT_TRUE(notifyCalled) << "the retry that succeeded is the one that completes the session";
+}
 
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQuerySuccess)
 {

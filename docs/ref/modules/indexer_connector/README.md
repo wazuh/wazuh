@@ -97,16 +97,24 @@ achieve leaves documents nothing will ever overwrite:
   `flush()` sends them. Queries are sent with `conflicts: "proceed"`, so a document whose version
   moved between the query's search and delete phases is skipped instead of aborting the whole run.
 - **A `200` is not automatically success.** The response is inspected, and the flush throws when it
-  reports per-shard `failures` or a non-zero `version_conflicts` — the two ways a `200` can leave
-  matching documents in place — or when its body cannot be parsed at all. Callers treat that as
+  reports per-shard `failures`, or when its body cannot be parsed at all. Callers treat that as
   retriable.
+- **A version conflict is retried, not raised.** The skips `proceed` tallies in `version_conflicts`
+  are the other way a `200` leaves matching documents in place, but unlike a shard failure the
+  condition clears itself: a write the indexer has acknowledged but not yet refreshed makes every
+  document it touched conflict, so a delete issued right after a bulk of the same documents collides
+  with it. The operation is re-run, which is idempotent, on its own count of 3 attempts and its own
+  backoff (1s, then up to 2s, against the `2s` `refresh_interval` of the state indices), so the
+  budget above stays intact for a 429 that follows; the wall bound is shared, and one allowance
+  covers a whole flush rather than each index in it. Conflicts that outlive it fail the operation
+  like a shard failure, and so does a stop that cuts a retry wait short.
 - **Staged queries are dropped when a flush fails**, so a later flush cannot re-fire them after the
   caller already retried and succeeded (which would delete documents written in between).
 - HTTP-level `404` is tolerated (a missing index has nothing to delete), `429` is retried with the
   same backoff as the bulk paths, and anything else — a request-level `409` included — fails the
   flush: an unconfirmed delete is never reported as applied.
-- **`executeUpdateByQuery` follows the same contract**: a `200` whose body tallies `failures` or
-  `version_conflicts`, cannot be parsed, or lacks the `updated`/`total` counters fails the call
+- **`executeUpdateByQuery` follows the same contract**, conflict retry included: a `200` whose body
+  tallies `failures`, cannot be parsed, or lacks the `updated`/`total` counters fails the call
   instead of confirming it.
 - **A delete-by-query is a SEARCH**, so it only sees documents that are already searchable. Callers
   that need it to cover writes of the last few seconds must refresh the index themselves — the
