@@ -13,6 +13,7 @@
 #include "https_client_bridge.h"
 #include "os_net.h"
 #include "state.h"
+#include "token_bootstrap.h"
 
 bool needs_config_reload = false;
 void reload_handler(int signum) {
@@ -40,6 +41,39 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     if (!run_foreground) {
         nowDaemon();
         goDaemon();
+    }
+
+    /* Enrollment-token bootstrap: must run while still root, since it writes AGENT_ANCHOR_CA
+     * and (on success) client.keys and needs to fix their ownership before the privilege drop
+     * just below.
+     *
+     * A configured token that could not be honoured ends the start, and deliberately so.
+     * Carrying on would reach start_agent_prepare(), which enrolls over whatever posture is
+     * left -- 'none', because no anchor was written -- so a CA the agent had just refused
+     * would be followed by an unverified enrollment against that same manager. Failing here
+     * is what #38940 means by attempting no enrollment, and the service manager's restart
+     * policy covers the causes that are merely transient.
+     *
+     * Only a token that was present and failed does this. An install with no token at all
+     * returns 0 from the gate, so the legacy password/mTLS enrollment loop still gets its
+     * normal chance -- as do an agent already holding an anchor and one already enrolled. */
+    const bool anchor_before = (IsFile(AGENT_ANCHOR_CA) == 0);
+
+    if (w_agent_token_bootstrap(uid, gid) != 0) {
+        merror_exit("Enrollment-token bootstrap failed; refusing to enroll unverified.");
+    }
+
+    /* Only when this boot is the one that created the anchor. ClientConf() resolved the TLS
+     * posture back in main(), before the bootstrap ran and so before the anchor existed,
+     * settling on 'none'; the bootstrap's own enrollment is unaffected, since it builds a
+     * verified configuration of its own, but everything sent afterwards reads agt->ssl through
+     * bridge_build_transport_config() and would spend the rest of the boot unverified against
+     * an anchor already on disk. Resolving again closes that window. Conditional rather than
+     * unconditional so a boot that had nothing to bootstrap does not re-run a resolution that
+     * can only reach the same answer -- and, when the operator has asked for 'none' outright,
+     * log its warning about that a second time. */
+    if (!anchor_before && IsFile(AGENT_ANCHOR_CA) == 0) {
+        w_agent_resolve_ssl_posture(agt);
     }
 
     /* Set group ID */

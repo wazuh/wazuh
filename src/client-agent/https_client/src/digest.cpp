@@ -21,21 +21,23 @@ namespace
 {
     using MdCtxPtr = std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)>;
 
-    std::string toHex(const unsigned char* bytes, size_t length)
-    {
-        static const char digits[] = "0123456789abcdef";
-        std::string hex;
-        hex.reserve(2 * length);
-
-        for (size_t i = 0; i < length; i++)
-        {
-            hex.push_back(digits[bytes[i] >> 4]);
-            hex.push_back(digits[bytes[i] & 0x0f]);
-        }
-
-        return hex;
-    }
 } // namespace
+
+std::string toHexLower(const void* bytes, size_t length)
+{
+    static const char digits[] = "0123456789abcdef";
+    const auto* octets = static_cast<const unsigned char*>(bytes);
+    std::string hex;
+    hex.reserve(2 * length);
+
+    for (size_t i = 0; i < length; i++)
+    {
+        hex.push_back(digits[octets[i] >> 4]);
+        hex.push_back(digits[octets[i] & 0x0f]);
+    }
+
+    return hex;
+}
 
 std::string sha256Hex(const void* data, size_t length)
 {
@@ -50,7 +52,7 @@ std::string sha256Hex(const void* data, size_t length)
         return {}; // LCOV_EXCL_LINE: EVP failures are not reproducible here.
     }
 
-    return toHex(hash.data(), hashLength);
+    return toHexLower(hash.data(), hashLength);
 }
 
 std::string sha1Hex(const void* data, size_t length)
@@ -66,7 +68,7 @@ std::string sha1Hex(const void* data, size_t length)
         return {}; // LCOV_EXCL_LINE: EVP failures are not reproducible here.
     }
 
-    return toHex(hash.data(), hashLength);
+    return toHexLower(hash.data(), hashLength);
 }
 
 std::optional<std::string> sha256FileHex(const std::string& path)
@@ -106,7 +108,7 @@ std::optional<std::string> sha256FileHex(const std::string& path)
         return std::nullopt; // LCOV_EXCL_LINE: not reproducible.
     }
 
-    return toHex(hash.data(), hashLength);
+    return toHexLower(hash.data(), hashLength);
 }
 
 std::optional<std::string> sha1FileHex(const std::string& path)
@@ -146,5 +148,5 @@ std::optional<std::string> sha1FileHex(const std::string& path)
         return std::nullopt; // LCOV_EXCL_LINE: not reproducible.
     }
 
-    return toHex(hash.data(), hashLength);
+    return toHexLower(hash.data(), hashLength);
 }

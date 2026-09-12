@@ -97,7 +97,8 @@ list(APPEND client-agent_names "test_startup_gate")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_SHA256_File ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_agent_ssl_ca")
-list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,os_find_ca_bundle ${DEBUG_OP_WRAPPERS}")
+list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,os_find_ca_bundle \
+                                -Wl,--wrap,w_x509_load_pem -Wl,--wrap,X509_free ${DEBUG_OP_WRAPPERS}")
 
 # getAgentConfig() reads the agt globals and builds cJSON, nothing else: no wrappers.
 list(APPEND client-agent_names "test_agent_config")
@@ -116,6 +117,22 @@ list(APPEND client-agent_flags " ")
 # tree already follows).
 list(APPEND client-agent_names "test_enrollment")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS}")
+
+# w_agent_token_bootstrap(): mocks only the https_client module boundary it calls
+# through (hc_fetch_cacerts/hc_enroll/hc_spki_pinned_certificate), the same
+# convention test_https_client_bridge uses for that boundary below -- everything else
+# (IsFile/TempFile/OS_MoveFile/w_etoken_*, w_enrollment_build_request/process_response) runs
+# for real against temp files relative to the working directory, same style as
+# test_client_conf_ssl_resolution above.
+# chown/chmod are wrapped rather than left to run for real because what the bootstrap asks
+# for -- an anchor owned by root -- is a privileged operation: unwrapped, the suite passes as
+# root and fails as anyone else, which is the difference between a local run and CI. Wrapping
+# them also makes the ownership assertable instead of merely inspectable.
+list(APPEND client-agent_names "test_token_bootstrap")
+list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll \
+                                -Wl,--wrap,hc_spki_pinned_certificate -Wl,--wrap,OS_IsValidIP \
+                                -Wl,--wrap,chown -Wl,--wrap,chmod -Wl,--wrap,OS_MoveFile \
+                                ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_https_client_bridge")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
@@ -213,6 +230,12 @@ if(TARGET test_enrollment)
     # enrollment.h pulls in https_client.h (hc_enroll_result_t), same as
     # test_https_client_bridge above.
     target_include_directories(test_enrollment PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
+endif()
+
+if(TARGET test_token_bootstrap)
+    # token_bootstrap.c pulls in https_client.h directly (hc_config_t, hc_cacerts_*,
+    # hc_enroll_*), same as test_enrollment/test_https_client_bridge above.
+    target_include_directories(test_token_bootstrap PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
 endif()
 
 # Component test for the durable dedup + IPC round-trip: wires the
