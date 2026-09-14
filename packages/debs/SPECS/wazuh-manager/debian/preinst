@@ -165,10 +165,6 @@ case "$1" in
             touch ${WAZUH_TMP_DIR}/create_conf
         fi
 
-        if [ -d ${DIR}/var/db/agents ]; then
-            rm -rf ${DIR}/var/db/agents
-        fi
-
         # Remove plain-text agent information if exists
         if [ -d ${DIR}/queue/agent-info ]; then
             rm -rf ${DIR}/queue/agent-info/* > /dev/null 2>&1
