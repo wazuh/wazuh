@@ -78,6 +78,6 @@ void w_enroll_request_destroy(w_enroll_request_t *request);
  * crypto method: that stays the orchestrator's job (start_agent.c's
  * try_enroll_to_server()), same as it is today.
  */
-w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result);
+w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result, const char *enroll_kid);
 
 #endif /* ENROLLMENT_H */

@@ -136,9 +136,10 @@ w_enroll_status_t try_enroll_to_server(void) {
     hc_enroll_result_t result;
     w_https_client_enroll(request.body_json, request.password, request.enroll_kid, request.enroll_key_hex,
                           &result);
+    /* Destroyed AFTER the response is read: a 403 names the enrollment token that was refused,
+     * and the id it names is the kid this request signed with. */
+    const w_enroll_status_t status = w_enrollment_process_response(&result, request.enroll_kid);
     w_enroll_request_destroy(&request);
-
-    const w_enroll_status_t status = w_enrollment_process_response(&result);
 
     if (status != W_ENROLL_OK) {
         return status;

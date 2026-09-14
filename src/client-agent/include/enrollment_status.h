@@ -35,18 +35,29 @@ typedef enum {
     W_ENROLL_ERR_TRANSPORT,       /**< No HTTP response at all (invalid transport
                                     *   config, connect/TLS failure). */
     W_ENROLL_ERR_INVALID_REQUEST, /**< 400: malformed request. */
-    W_ENROLL_ERR_AUTH_RETRY,      /**< 401 in a class that may succeed later: a clock the manager
+    W_ENROLL_ERR_AUTH_RETRY,      /**< Any 401 that is not `unknown_agent`. #39064 splits the two
+                                    *   statuses by STATUS, not by how final the class sounds:
+                                    *   "retry 401", because every one of these can be fixed
+                                    *   without the agent doing anything -- a clock the manager
                                     *   refused (`stale_token`), a token the served node has not
-                                    *   synced yet (`token_unknown`), a manager that could not judge
-                                    *   the credential at all (`enrollment_key_unavailable`), no
-                                    *   usable credential presented (`invalid_request`) -- and any
-                                    *   401 whose class could not be read, which is the fail-safe
-                                    *   reading (design §2.9 rule 3). */
-    W_ENROLL_ERR_AUTH_FATAL,      /**< The credential was judged and refused, and retrying the same
-                                    *   one cannot change that: 401 `invalid_signature`, or a 403
-                                    *   carrying authd's own verdict on an enrollment token
-                                    *   (9022 unknown/revoked, 9023 expired, 9024 no uses left).
-                                    *   The caller must stop, not back off. */
+                                    *   synced yet (`token_unknown`, and `token_expired` /
+                                    *   `token_revoked`, which reach a 401 only from remoted's
+                                    *   lagging replica), a manager that could not judge the
+                                    *   credential (`enrollment_key_unavailable`), no usable
+                                    *   credential presented (`invalid_request`), or a credential
+                                    *   the manager refused outright (`invalid_signature`, which
+                                    *   must never re-enroll but is still worth retrying: the fix
+                                    *   is on the manager). Also any 401 whose class could not be
+                                    *   read, which is the fail-safe reading (design §2.9 rule 3). */
+    W_ENROLL_ERR_AUTH_FATAL,      /**< Nothing the agent can retry into success. From the wire that
+                                    *   is a 403 and only a 403: authd's authoritative verdict on a
+                                    *   bearer whose signature the manager already VERIFIED
+                                    *   (9022 unknown/revoked, 9023 expired, 9024 no uses left), so
+                                    *   re-signing cannot help and a new enrollment token has to be
+                                    *   minted. try_enroll_to_server() also reports it for a request
+                                    *   this agent could not even build, which no manager is going
+                                    *   to change its mind about either. The caller must stop, not
+                                    *   back off. */
     W_ENROLL_ERR_IDENTITY_GONE,   /**< 401 `unknown_agent`: the manager has no agent for the
                                     *   identity this request tried to re-enroll. On /enroll that
                                     *   class can only come from authd's 9026, which only a

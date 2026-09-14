@@ -213,7 +213,7 @@ void w_enroll_request_destroy(w_enroll_request_t *request) {
     os_free(request->enroll_key_hex);
 }
 
-w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result) {
+w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result, const char *enroll_kid) {
     assert(result != NULL);
 
     if (result->http_code == 0) {
@@ -325,8 +325,15 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
              *   its own status, as before: an operator can re-enable it, so this one is worth
              *   waiting on. */
             if (authd_code == 9022 || authd_code == 9023 || authd_code == 9024) {
-                merror("Enrollment token refused by the manager (code %d)%s%s. Retrying will not "
-                       "help: a new enrollment token is needed.", authd_code,
+                /* Named with the token id (#39064: "surface 403 to operators with token ID"):
+                 * the whole point of this message is that an operator has to mint a replacement,
+                 * and without the id they cannot tell WHICH token to replace -- a fleet mid-rollout
+                 * may be using several. The kid is the token id for exactly these codes: only an
+                 * enrollment-token bearer can provoke 9022/9023/9024, a re-enrollment bearer's
+                 * verdicts are 9026/9027/9028 and arrive as 401s. */
+                merror("Enrollment token %s refused by the manager (code %d)%s%s. Retrying will "
+                       "not help: a new enrollment token is needed.",
+                       enroll_kid ? enroll_kid : "(id unknown)", authd_code,
                        manager_message ? ": " : "", manager_message ? manager_message : "");
                 status = W_ENROLL_ERR_AUTH_FATAL;
             } else {
@@ -403,13 +410,21 @@ STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_cla
     }
 
     if (strcmp(auth_class, "invalid_signature") == 0) {
-        /* The credential was judged and failed, on something a fresh attempt cannot change: the
-         * signature itself, the token's shape, the identity it claims, or the peer's address. A new
-         * identity does not fix any of those, which is why this must not trigger re-enrollment. */
+        /* The credential was judged and failed on something a fresh attempt cannot change by
+         * itself: the signature, the token's shape, or the identity it claims. So this must never
+         * trigger re-enrollment -- a new identity fixes none of them, and #39064 states the rule
+         * as "preserves credentials and explicitly prevents re-enrollment".
+         *
+         * It does NOT stop the loop, though, which is the other half of the same instruction:
+         * "surface 403 to operators with token ID; retry 401". Only a 403 is authd's
+         * authoritative refusal of a credential it verified. A 401 here can still be fixed
+         * without the agent doing anything -- the manager's own authd.pass corrected to match
+         * this endpoint's, or a re-enrollment secret restored on the master -- and an agent that
+         * stopped would not notice. The retry is bounded by the caller's backoff ramp. */
         merror("Enrollment rejected by the manager: the credential's signature was refused%s%s. "
-               "Retrying will not help; the credential itself has to be corrected.",
-               detail_sep, detail);
-        return W_ENROLL_ERR_AUTH_FATAL;
+               "This will keep failing until the credential is corrected on the manager; the "
+               "agent is keeping the one it has and retrying.", detail_sep, detail);
+        return W_ENROLL_ERR_AUTH_RETRY;
     }
 
     /* stale_token, token_unknown, token_expired, token_revoked, enrollment_key_unavailable,

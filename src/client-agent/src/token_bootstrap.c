@@ -587,7 +587,7 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
         return W_TOKEN_BOOTSTRAP_TRANSIENT;
     }
 
-    w_enroll_status_t enroll_status = w_enrollment_process_response(&enroll_result);
+    w_enroll_status_t enroll_status = w_enrollment_process_response(&enroll_result, built_request.enroll_kid);
 
     if (enroll_status != W_ENROLL_OK) {
         /* w_enrollment_process_response() already logged the specific reason. TRANSPORT/SERVER

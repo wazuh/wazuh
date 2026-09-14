@@ -285,7 +285,7 @@ static void test_process_response_no_http_status_is_transport_error(void **state
     expect_string(__wrap__merror, formatted_msg,
                   "Enrollment request could not be sent: transport or configuration error.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_TRANSPORT);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_TRANSPORT);
 }
 
 static void test_process_response_transport_error_names_the_cause(void **state) {
@@ -300,7 +300,7 @@ static void test_process_response_transport_error_names_the_cause(void **state) 
     expect_string(__wrap__merror, formatted_msg,
                   "Enrollment request could not be sent: (60) SSL peer certificate or SSH remote key was not OK.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_TRANSPORT);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_TRANSPORT);
 }
 
 static void test_process_response_400_is_invalid_request(void **state) {
@@ -310,7 +310,7 @@ static void test_process_response_400_is_invalid_request(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Enrollment rejected by the manager: invalid request.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_INVALID_REQUEST);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_INVALID_REQUEST);
 }
 
 /* A 401 with no readable class is the fail-safe case: retry, never touch the credential
@@ -324,7 +324,7 @@ static void test_process_response_401_without_a_class_is_retryable(void **state)
                   "Enrollment rejected by the manager: invalid or missing authentication, with no "
                   "failure class named. Retrying without changing the credential.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_AUTH_RETRY);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_AUTH_RETRY);
 }
 
 /* #39064: /enroll nests its error envelope, so the class is at error.code -- NOT the top-level
@@ -336,7 +336,7 @@ static void test_process_response_401_reads_the_class_from_the_nested_envelope(v
     set_error_body(&result, 401, "\"unknown_agent\"", "no such agent");
 
     expect_any(__wrap__merror, formatted_msg);
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_IDENTITY_GONE);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_IDENTITY_GONE);
 
     /* The flat shape the other endpoints use must NOT be read here: it is not what /enroll sends,
      * and accepting it would mean trusting a body this endpoint never produces. */
@@ -344,7 +344,7 @@ static void test_process_response_401_reads_the_class_from_the_nested_envelope(v
     flat.http_code = 401;
     strncpy(flat.body, "{\"error\":\"nope\",\"code\":\"unknown_agent\"}", sizeof(flat.body) - 1);
     expect_any(__wrap__merror, formatted_msg);
-    assert_int_equal(w_enrollment_process_response(&flat), W_ENROLL_ERR_AUTH_RETRY);
+    assert_int_equal(w_enrollment_process_response(&flat, NULL), W_ENROLL_ERR_AUTH_RETRY);
 }
 
 /* unknown_agent is the ONLY class that may cost an identity, and on /enroll it can only come from
@@ -358,21 +358,59 @@ static void test_process_response_401_unknown_agent_is_identity_gone(void **stat
                   "The manager does not know the agent this re-enrollment was signed for: agent not "
                   "found. The stored re-enrollment secret is no longer usable.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_IDENTITY_GONE);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_IDENTITY_GONE);
 }
 
-/* invalid_signature is the one 401 worth giving up on: nothing a retry changes -- the signature,
- * the token's shape, the claimed identity, the peer address -- is fixed by a new identity. */
-static void test_process_response_401_invalid_signature_is_fatal(void **state) {
+/* invalid_signature never re-enrolls -- a new identity fixes none of what it reports -- but it is
+ * still a 401, and #39064 splits retry from stop by STATUS: "surface 403 to operators with token
+ * ID; retry 401". The fix for this one lives on the manager (its authd.pass corrected to match
+ * this endpoint's, or a re-enrollment secret restored), and an agent that stopped would never
+ * notice it arriving. */
+static void test_process_response_401_invalid_signature_retries_without_re_enrolling(void **state) {
     (void)state;
     hc_enroll_result_t result = {0};
     set_error_body(&result, 401, "\"invalid_signature\"", "bad signature");
 
     expect_string(__wrap__merror, formatted_msg,
                   "Enrollment rejected by the manager: the credential's signature was refused: bad "
-                  "signature. Retrying will not help; the credential itself has to be corrected.");
+                  "signature. This will keep failing until the credential is corrected on the "
+                  "manager; the agent is keeping the one it has and retrying.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_AUTH_FATAL);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_AUTH_RETRY);
+}
+
+/* The corollary, and the reason the two are worth separating: a 401 never stops the loop, so the
+ * ONLY thing that does is a 403. */
+static void test_process_response_no_401_class_is_ever_fatal(void **state) {
+    (void)state;
+    /* The two that report at ERROR say something an operator has to act on; the rest are ordinary
+     * retries and report at INFO. Queued per class rather than queueing both, because a cmocka
+     * expectation nothing consumes fails the run on its own. */
+    static const struct {
+        const char *name;
+        bool logs_error;
+    } classes[] = {
+        {"unknown_agent", true},  {"invalid_signature", true},
+        {"stale_token", false},   {"invalid_request", false},
+        {"enrollment_key_unavailable", false}, {"token_unknown", false},
+        {"token_expired", false}, {"token_revoked", false},
+    };
+    size_t i;
+
+    for (i = 0; i < sizeof(classes) / sizeof(classes[0]); i++) {
+        hc_enroll_result_t result = {0};
+        char quoted[64];
+
+        snprintf(quoted, sizeof(quoted), "\"%s\"", classes[i].name);
+        set_error_body(&result, 401, quoted, "refused");
+
+        if (classes[i].logs_error) {
+            expect_any(__wrap__merror, formatted_msg);
+        } else {
+            expect_any(__wrap__minfo, formatted_msg);
+        }
+        assert_int_not_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_AUTH_FATAL);
+    }
 }
 
 /* Every other class retries. token_expired and token_revoked included: as a 401 they come from
@@ -393,7 +431,7 @@ static void test_process_response_401_other_classes_are_retryable(void **state) 
         set_error_body(&result, 401, quoted, "refused");
 
         expect_any(__wrap__minfo, formatted_msg);
-        assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_AUTH_RETRY);
+        assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_AUTH_RETRY);
     }
 }
 
@@ -412,8 +450,38 @@ static void test_process_response_403_with_an_authd_code_is_fatal(void **state) 
         set_error_body(&result, 403, code, "token refused");
 
         expect_any(__wrap__merror, formatted_msg);
-        assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_AUTH_FATAL);
+        assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_AUTH_FATAL);
     }
+}
+
+/* "Surface 403 to operators with token ID" (#39064). Without the id an operator cannot tell which
+ * token to mint a replacement for, which is the only action this message exists to prompt -- and a
+ * fleet mid-rollout may be enrolling with several. */
+static void test_process_response_403_names_the_refused_token(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    set_error_body(&result, 403, "9024", "uses exhausted");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment token AAECAwQFBgcICQoLDA0ODw refused by the manager (code 9024): "
+                  "uses exhausted. Retrying will not help: a new enrollment token is needed.");
+
+    assert_int_equal(w_enrollment_process_response(&result, "AAECAwQFBgcICQoLDA0ODw"),
+                     W_ENROLL_ERR_AUTH_FATAL);
+}
+
+/* A 403 can also reach an agent that presented no keyed credential at all (an mTLS or open-mode
+ * enrollment). The message must still be readable rather than printing "(null)". */
+static void test_process_response_403_without_a_token_id_still_reads(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    set_error_body(&result, 403, "9022", "not found");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment token (id unknown) refused by the manager (code 9022): not found. "
+                  "Retrying will not help: a new enrollment token is needed.");
+
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_AUTH_FATAL);
 }
 
 /* The other 403: enrollment administratively disabled, which authd marks with code 0. Still its
@@ -427,7 +495,7 @@ static void test_process_response_403_is_disabled_not_an_error(void **state) {
      * be able to tell this apart from a transport hiccup (#38465 R12). */
     expect_string(__wrap__minfo, formatted_msg, "Enrollment is disabled on the manager.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_DISABLED);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_DISABLED);
 }
 
 /* A prefix mismatch is reported here or nowhere: on a fresh install the /control
@@ -452,7 +520,7 @@ static void test_process_response_409_is_duplicate(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Enrollment rejected by the manager: duplicate agent.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_DUPLICATE);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_DUPLICATE);
 }
 
 static void test_process_response_unrecognized_status_is_server_error(void **state) {
@@ -462,7 +530,7 @@ static void test_process_response_unrecognized_status_is_server_error(void **sta
 
     expect_string(__wrap__merror, formatted_msg, "Enrollment failed with unexpected HTTP status 500.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
 }
 
 static void test_process_response_200_with_malformed_json_is_server_error(void **state) {
@@ -473,7 +541,7 @@ static void test_process_response_200_with_malformed_json_is_server_error(void *
 
     expect_string(__wrap__merror, formatted_msg, "Enrollment response is not valid JSON.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
 }
 
 static void test_process_response_200_missing_field_is_server_error(void **state) {
@@ -484,7 +552,7 @@ static void test_process_response_200_missing_field_is_server_error(void **state
 
     expect_string(__wrap__merror, formatted_msg, "Enrollment response has a missing or invalid field.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
 }
 
 /* ---- the 200 path: client.keys and the re-enrollment secret (#39064) ----
@@ -641,7 +709,7 @@ static void test_process_response_200_stores_the_reenroll_secret(void **state) {
     expect_valid_ip("10.0.0.1");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_OK);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_OK);
 
     assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 1);
     assert_string_equal(id, "001");
@@ -660,7 +728,7 @@ static void test_process_response_200_without_a_secret_still_enrolls(void **stat
     expect_valid_ip("10.0.0.1");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_OK);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_OK);
     assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
     assert_string_equal(read_file_line(KEYS_FILE), "001 agent01 10.0.0.1 abc123\n");
 }
@@ -678,7 +746,7 @@ static void test_process_response_200_malformed_secret_is_server_error(void **st
     expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg, "Enrollment response carries a malformed re-enrollment secret.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
 
     /* And client.keys was never written: the refusal has to come BEFORE the key lands, or the
      * agent is left holding a key whose secret it rejected. */
@@ -698,7 +766,7 @@ static void test_process_response_200_non_string_secret_is_server_error(void **s
     expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg, "Enrollment response carries a malformed re-enrollment secret.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
     assert_int_equal(IsFile(KEYS_FILE), -1);
 }
 
@@ -720,7 +788,7 @@ static void test_process_response_200_refusal_leaves_the_previous_secret_usable(
     expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg, "Enrollment response carries a malformed re-enrollment secret.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
 
     assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 1);
     assert_string_equal(secret, VALID_SECRET);
@@ -744,7 +812,7 @@ static void test_process_response_200_rotates_the_stored_secret(void **state) {
     expect_valid_ip("10.0.0.1");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_OK);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_OK);
 
     assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 1);
     assert_string_equal(secret, rotated);
@@ -771,7 +839,7 @@ static void test_process_response_200_leaves_the_fleet_password_alone(void **sta
     expect_valid_ip("10.0.0.1");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_OK);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_OK);
     assert_int_equal(IsFile(AUTHD_PASS), 0);
 
     unlink(AUTHD_PASS);
@@ -894,9 +962,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_401_without_a_class_is_retryable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_401_reads_the_class_from_the_nested_envelope, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_401_unknown_agent_is_identity_gone, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_process_response_401_invalid_signature_is_fatal, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_401_invalid_signature_retries_without_re_enrolling, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_no_401_class_is_ever_fatal, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_401_other_classes_are_retryable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_with_an_authd_code_is_fatal, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_403_names_the_refused_token, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_403_without_a_token_id_still_reads, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_is_disabled_not_an_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_404_names_the_configured_path, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_409_is_duplicate, setup_test, teardown_test),
