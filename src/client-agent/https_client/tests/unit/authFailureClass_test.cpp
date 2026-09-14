@@ -125,14 +125,17 @@ TEST(AuthFailureClass, NamesMatchTheManagersSpelling)
 /// table really does drive both directions.
 TEST(AuthFailureClass, NamesRoundTrip)
 {
-    for (const auto authClass : {AuthFailClass::UnknownAgent,
-                                 AuthFailClass::StaleToken,
-                                 AuthFailClass::InvalidSignature,
-                                 AuthFailClass::InvalidRequest,
-                                 AuthFailClass::EnrollmentKeyUnavailable,
-                                 AuthFailClass::TokenUnknown,
-                                 AuthFailClass::TokenExpired,
-                                 AuthFailClass::TokenRevoked})
+    for (const auto authClass :
+            {
+                AuthFailClass::UnknownAgent,
+                AuthFailClass::StaleToken,
+                AuthFailClass::InvalidSignature,
+                AuthFailClass::InvalidRequest,
+                AuthFailClass::EnrollmentKeyUnavailable,
+                AuthFailClass::TokenUnknown,
+                AuthFailClass::TokenExpired,
+                AuthFailClass::TokenRevoked
+            })
     {
         EXPECT_EQ(authClass, parseAuthFailClass(managerBody(authFailClassName(authClass))));
     }

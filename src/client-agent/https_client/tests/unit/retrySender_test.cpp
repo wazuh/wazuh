@@ -401,19 +401,21 @@ TEST_F(RetrySenderTest, AuthGateEscalatesOnlyAfterTheRetryAlsoFails)
 /// streams keep the batch for the next tick), but nothing pauses and nothing re-enrolls.
 TEST_F(RetrySenderTest, OnlyUnknownAgentEscalatesToTheAuthGate)
 {
-    for (const auto* code : {"stale_token",
-                             "invalid_signature",
-                             "invalid_request",
-                             "enrollment_key_unavailable",
-                             "token_unknown",
-                             "token_expired",
-                             "token_revoked"})
+    for (const auto* code :
+            {"stale_token",
+             "invalid_signature",
+             "invalid_request",
+             "enrollment_key_unavailable",
+             "token_unknown",
+             "token_expired",
+             "token_revoked"
+            })
     {
         ::testing::NiceMock<MockCallbackSink> sink;
         bool reenrollRequested = false;
         AuthGate gate {sink, [&reenrollRequested] {
-            reenrollRequested = true;
-        }};
+                reenrollRequested = true;
+            }};
         RetrySender guarded {m_performer, m_signer, m_clock, m_backoff, false, nullptr, &gate};
 
         EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(authFail(code))).WillOnce(Return(authFail(code)));
@@ -431,15 +433,18 @@ TEST_F(RetrySenderTest, OnlyUnknownAgentEscalatesToTheAuthGate)
 /// must not cost an agent its key.
 TEST_F(RetrySenderTest, AnUnclassifiedAuthFailureNeverReenrolls)
 {
-    for (const auto& body : {std::string {},
-                             std::string {R"({"error":"Invalid client authentication","code":401})"},
-                             std::string {"<html>401 Unauthorized</html>"}})
+    for (const auto& body :
+            {
+                std::string {},
+                std::string {R"({"error":"Invalid client authentication","code":401})"},
+                std::string {"<html>401 Unauthorized</html>"}
+            })
     {
         ::testing::NiceMock<MockCallbackSink> sink;
         bool reenrollRequested = false;
         AuthGate gate {sink, [&reenrollRequested] {
-            reenrollRequested = true;
-        }};
+                reenrollRequested = true;
+            }};
         RetrySender guarded {m_performer, m_signer, m_clock, m_backoff, false, nullptr, &gate};
 
         auto unclassified = response(TransportStatus::Ok, 401);
