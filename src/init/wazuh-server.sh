@@ -91,6 +91,13 @@ lock()
                 echo "$$" > ${LOCK_PID}
                 return;
             fi
+        else
+            # Lock dir with no pid file: no process ever recorded
+            # ownership of it, so it can't belong to a live run.
+            unlock;
+            mkdir ${LOCK} > /dev/null 2>&1
+            echo "$$" > ${LOCK_PID}
+            return;
         fi
 
         # We tried 10 times to acquire the lock.
