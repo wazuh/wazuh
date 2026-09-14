@@ -241,16 +241,9 @@ if [ "$1" -eq 2 ]; then
   }
 fi
 
-# Remove/relocate existing SQLite databases
-rm -f %{_localstatedir}/var/db/cluster.db* || true
-rm -f %{_localstatedir}/var/db/.profile.db* || true
-rm -rf %{_localstatedir}/var/db/agents || true
-
-if [ -f %{_localstatedir}/var/db/global.db ]; then
-  mv %{_localstatedir}/var/db/global.db %{_localstatedir}/queue/db/
-  rm -f %{_localstatedir}/var/db/global.db* || true
-  rm -f %{_localstatedir}/var/db/.template.db || true
-fi
+# Nothing is cleaned out of var/db/ here: it holds mitre.db and nothing else in
+# 5.x, and %pre refuses an upgrade from an earlier major, so no other file can
+# reach it. Anything left at the old paths is ignored.
 
 if [ -f %{_localstatedir}/queue/db/global.db ]; then
   chmod 660 %{_localstatedir}/queue/db/global.db*

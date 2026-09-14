@@ -61,7 +61,7 @@ query-string parsing or a second client. The liveness probe is the one exception
 | --- | --- | --- |
 | `POST /v1/tasks` | `agent_id`, `task_type`, `create_time`, `payload`, optional `source_id` | `{"task_id": "..."}` |
 | `POST /v1/tasks/bulk` | `{"tasks": [ … ]}` | `{"results": [{"agent_id", "task_id", "created"}, …]}` |
-| `POST /v1/tasks/pending` | `{"agent_id": "001"}` | `{"tasks": [{"task_id", "task_type", "payload"}, …]}` |
+| `POST /v1/tasks/pending` | `{"agent_id": "001"}` | `{"tasks": [{"task_id", "task_type", "payload"}, …]}` — `payload` is the parsed JSON value the producer stored, not a string |
 
 `create_time` must fall within `[now - 1 year, now + 60 s]`. `payload` is capped at
 `max_payload_bytes`; over it the answer is `413`.

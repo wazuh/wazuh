@@ -187,7 +187,7 @@ If wine complains about being a 64 bit installation, remove/rename the directory
 
 #### Set up Python environment
 
-Ensure the correct Python version is installed.  
+Ensure the correct Python version is installed.
 
 The required version is defined in:
 
@@ -222,7 +222,7 @@ python -m pytest framework
 
 #### Set up Python environment
 
-Ensure the correct Python version is installed.  
+Ensure the correct Python version is installed.
 
 The required version is defined in:
 
@@ -280,8 +280,8 @@ tests/integration/results.html
 ```
 ### API
 
-An integration test is used to check that the behavior of the different application modules is the expected one when 
-they are integrated. In other words, the integration tests check the correct interaction between the application 
+An integration test is used to check that the behavior of the different application modules is the expected one when
+they are integrated. In other words, the integration tests check the correct interaction between the application
 components.
 
 The API integration tests are used to verify that the API is working properly in a complete Wazuh environment.
@@ -293,7 +293,7 @@ environment deployment.
 
 #### Set up Python environment
 
-Ensure the correct Python version is installed.  
+Ensure the correct Python version is installed.
 
 The required version is defined in:
 
@@ -319,7 +319,7 @@ files are written in the `yaml` language and their names can follow the followin
 
 `test_{module}_endpoints.tavern.yaml` or `test_rbac_{rbac_mode}_{module}_endpoints.tavern.yaml`
 
-where `module` is the module which the endpoints tested belong; and `rbac_mode` is the RBAC mode (white or black) used 
+where `module` is the module which the endpoints tested belong; and `rbac_mode` is the RBAC mode (white or black) used
 for the test (see [RBAC API integration tests](#RBAC-API-integration-tests)).
 
 #### Docker environment
@@ -349,7 +349,7 @@ with `pytest <test_name>`.
 
 The `conftest.py` file is the one in charge of deploying the API integration tests environment. When a test is
 performed, the `api_test` function is also executed. This function is responsible for setting up the environment and
-cleaning temporary folders, stopping and removing containers; and saving log and environment status, once the test has 
+cleaning temporary folders, stopping and removing containers; and saving log and environment status, once the test has
 finished. The execution of `api_test` is done automatically thanks to the `pytest.fixture` decorator.
 
 In the `conftest.py` file, we can also find functions used to make the HTML report,
@@ -357,9 +357,9 @@ configure [RBAC](#RBAC-API-integration-tests), etc.
 
 The environment is brought up automatically when running an API integration test. As seen in the table, the environment runs in **cluster** mode and tests are executed with `pytest`:
 
-| Command                          | Environment                                          |  
+| Command                          | Environment                                          |
 |----------------------------------|------------------------------------------------------|
-| `pytest TEST_NAME`               | Wazuh cluster environment                            |  
+| `pytest TEST_NAME`               | Wazuh cluster environment                            |
 
 
 Talking about [RBAC API integration tests](#RBAC-API-integration-tests), they don't have any marks, so there is no need
@@ -373,12 +373,12 @@ As said in previous sections, some test names follow the structure
 
 These tests are used to check the proper functioning of a Wazuh environment with RBAC configurations. The `conftest.py`
 file includes functions in charge of changing the RBAC mode and creating the specified RBAC resources for the test in
-execution. The `env/configurations/rbac` directory includes all the specific configurations for each RBAC API 
+execution. The `env/configurations/rbac` directory includes all the specific configurations for each RBAC API
 integration test, for both **white** and **black** modes.
 
 #### Tests execution
 
-To perform a Wazuh API integration test, we need a specific `python3` environment. This python environment includes the 
+To perform a Wazuh API integration test, we need a specific `python3` environment. This python environment includes the
 following dependencies:
 
 ```python
@@ -387,7 +387,7 @@ requests==2.23.0
 pyaml==21.10.1
 tavern==1.0.0
 pykwalify==1.7.0
-pytest-html==2.1.1
+pytest-html==3.1.1
 ```
 
 The `docker-compose` version needed is **1.28.0 or newer**. **It cannot be 2.X.Y** as it includes breaking changes that
@@ -401,7 +401,7 @@ $ python3 -m pytest test_agent_GET_endpoints.tavern.yaml --disable-warnings
 platform linux -- Python 3.9.9, pytest-5.4.3, py-1.11.0, pluggy-0.13.1
 rootdir: /home/user/git/wazuh/api/test/integration, inifile: pytest.ini
 plugins: html-2.1.1, metadata-2.0.1, tavern-1.0.0
-collected 92 items                                                                                       
+collected 92 items
 
 test_agent_GET_endpoints.tavern.yaml ............................................................. [ 66%]
 ...............................                                                                    [100%]
@@ -413,15 +413,15 @@ test_agent_GET_endpoints.tavern.yaml ...........................................
 API integration tests
 
 optional arguments:
-  --build-managers-only            
+  --build-managers-only
                   Recreates only the managers' image once the AIT test environment is built.
   --nobuild
                   Prevents rebuilding the environment when running tests once the images are already created.
-  --disable-warnings 
+  --disable-warnings
                   Disables warnings during test execution.
 ```
 
-We can also use the `wazuh/api/test/integration/run_tests.py` script. This script includes the possibility to collect a 
+We can also use the `wazuh/api/test/integration/run_tests.py` script. This script includes the possibility to collect a
 group of tests to be passed. Script arguments:
 
 ```text
@@ -444,7 +444,7 @@ optional arguments:
                         Specify how many times will every test be run. Default 1.
 ```
 
-The `run_test.py` script does not show the tests' full output. The full reports are saved 
-at `wazuh/api/test/integration/_test_results`. Containers' logs (`ossec.log`, `api.log` and `cluster.log`) are stored 
+The `run_test.py` script does not show the tests' full output. The full reports are saved
+at `wazuh/api/test/integration/_test_results`. Containers' logs (`ossec.log`, `api.log` and `cluster.log`) are stored
 at `_test_results/logs`. Reports in HTML format are also generated and can be found at `_test_results/html_reports`.
 

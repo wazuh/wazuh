@@ -139,6 +139,12 @@ variables:
           <node>wazuh-master</node>
         </nodes>
       </cluster>
+
+      <indexer>
+        <hosts>
+          <host>https://127.0.0.1:9200</host>
+        </hosts>
+      </indexer>
     </wazuh_config>
 
   invalid_wazuh_conf: |

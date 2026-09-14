@@ -603,6 +603,7 @@ stages:
                   max_login_attempts: !anyint
                   block_time: !anyint
                   max_request_per_minute: !anyint
+                  max_unauthenticated_request_per_minute: !anyint
                 drop_privileges: !anybool
                 authentication_pool_size: !anyint
                 upload_configuration:
@@ -1292,6 +1293,23 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
+
+---
+test_name: GET /cluster/{node_id}/status with an unknown node
+
+stages:
+
+  - name: Read the status of a node the cluster does not have
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/nonexistent/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 404
+      json:
+        error: 1730
 
 ---
 test_name: PUT /cluster/restart

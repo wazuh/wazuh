@@ -654,6 +654,35 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendSessionFails)
     EXPECT_EQ(result.failureReason, "Timed out waiting for manager response.");
 }
 
+// runSession() gives up after SYNC_HANDOFF_RETRIES failed hand-offs to the transport
+// without ever setting lastSyncResult, so the caller used to get an empty
+// failureReason (issue #38939: bare "synchronization failed" warning, no reason).
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleHandoffExhaustedHasReason)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+    mockSyncTransport->setAccept(false);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .WillOnce(Return(testData));
+
+    EXPECT_CALL(*mockQueue, resetSyncingItems())
+    .Times(1);
+
+    SyncModuleResult result = protocol->synchronizeModule(
+                                  Mode::DELTA
+                              );
+
+    EXPECT_FALSE(result.success);
+    EXPECT_FALSE(result.failureReason.empty());
+}
+
 TEST_F(AgentSyncProtocolTest, SendStartWaitsUntilMetadataAvailable)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();

@@ -19,6 +19,7 @@
 #include "taskRegistry.hpp"
 #include "task_manager.h"
 
+#include <chrono>
 #include <memory>
 #include <vector>
 
@@ -63,6 +64,50 @@ namespace task_manager::registry
     TaskRegistry buildBuiltinRegistry(const task_manager_config_t& config,
                                       host::IHostOps& hostOps,
                                       const handlers::LocalConfig& localConfig);
+
+    /*
+     * HOW OFTEN A WINDOW IS POLLED, as opposed to how wide the window is. Unrelated to
+     * schedule::Scheduler::Options::sweepInterval, which is how often the scheduler sweeps its own
+     * stale task rows.
+     *
+     * Both AGENT sweeps apply an AGE ("last keepalive older than W") on a PERIOD, and until this
+     * existed the period WAS the window -- so an agent crossing W just after a run waited out a
+     * whole second one, putting the real transition anywhere in [W, 2W]. An operator who raises
+     * agents_disconnection_time to an hour to quieten the log does not get an hour, they get one
+     * to two.
+     *
+     * A quarter is the fraction: it costs four runs per window instead of one and bounds the
+     * overshoot at 25%, which is under the granularity anyone reasons about a keepalive threshold
+     * with. The bounds matter more than the fraction:
+     *
+     *  - the FLOOR keeps a short window from turning into a hot loop against wazuh-db; below it,
+     *    the period is the window itself, which is exactly today's behaviour and no worse.
+     *  - the CEILING caps the absolute lateness rather than the relative one, so a one-hour
+     *    threshold overshoots by five minutes and not by fifteen.
+     *
+     * The two ceilings differ because the two runs cost differently. The disconnection sweep is
+     * one UPDATE whose latency an operator watches in the API, so it is polled tightly. Retention
+     * deletion re-reads the whole disconnected list on every run to delete agents that have
+     * already been silent for hours, so polling it every five minutes would be pure load for
+     * precision nobody asked for.
+     */
+    constexpr long SWEEP_PERIOD_DIVISOR {4};
+    constexpr long MIN_SWEEP_PERIOD_SECONDS {60};
+    constexpr long MAX_DISCONNECT_SWEEP_PERIOD_SECONDS {300};
+    constexpr long MAX_DELETE_OLD_SWEEP_PERIOD_SECONDS {3600};
+
+    /**
+     * @brief The polling period for a sweep that applies @p window as an age.
+     *
+     * Pure, so every boundary is testable without a scheduler.
+     *
+     * @param window    The age the sweep applies. Non-positive yields zero, which the scheduler
+     *                  treats as "never" -- such a schedule is disabled anyway.
+     * @param maxPeriod The ceiling for this particular sweep.
+     * @return A period in [1, window]: never coarser than the window, so this can only ever move
+     *         the transition earlier than the behaviour it replaced.
+     */
+    std::chrono::seconds sweepPeriod(std::chrono::seconds window, std::chrono::seconds maxPeriod);
 
     /// @brief The three recurring schedules, resolved against configuration.
     std::vector<schedule::Schedule> buildBuiltinSchedules(const task_manager_config_t& config);

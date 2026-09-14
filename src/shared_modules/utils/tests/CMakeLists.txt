@@ -75,7 +75,8 @@ file(
   "reflectiveJson_test.cpp"
   "asyncValueDispatcher_test.cpp"
   "asyncFlushController_test.cpp"
-  "certHelper_test.cpp")
+  "certHelper_test.cpp"
+  "monotonicCondition_test.cpp")
 
 file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 

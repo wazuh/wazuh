@@ -43,6 +43,9 @@
     FRIEND_TEST(SyscollectorIdentityTest, ResyncStampsTheIntegrityClockPerTable);                                      \
     FRIEND_TEST(SyscollectorIdentityTest, PlainLaneFailureDoesNotRedoTheVDLaneNextCycle);                              \
     FRIEND_TEST(SyscollectorIdentityTest, DisabledVDLaneDoesNotClaimTheVDMarker);                                      \
+    FRIEND_TEST(SyscollectorIdentityTest, VDRecoveryAttachesTheDataContext);                                           \
+    FRIEND_TEST(SyscollectorIdentityTest, PlainRecoveryLeavesTheVDContextAlone);                                       \
+    FRIEND_TEST(SyscollectorIdentityTest, DeferredVDRecoveryDoesNotAttachContext);                                     \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred);                 \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred);                     \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning)

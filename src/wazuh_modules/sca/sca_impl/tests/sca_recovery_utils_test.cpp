@@ -53,6 +53,66 @@ TEST_F(SCARecoveryUtilsTest, EscapeSqlStringOnlyQuote)
     EXPECT_EQ(result, "''");
 }
 
+// The recovery path reads the same dumped columns as the delta path, so it decodes them the same way.
+TEST_F(SCARecoveryUtilsTest, StringToJsonArraySerialisedJsonArray)
+{
+    const nlohmann::json references = nlohmann::json::array(
+    {
+        "https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/",
+        "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"
+    });
+
+    EXPECT_EQ(sca::recovery::stringToJsonArray(references.dump()), references);
+}
+
+TEST_F(SCARecoveryUtilsTest, StringToJsonArraySerialisedJsonArrayKeepsBackslashesAndCommas)
+{
+    const nlohmann::json rules = nlohmann::json::array(
+    {
+        "d:/etc/modprobe.d -> r:.*\\.conf -> r:blacklist\\t*\\s*squashfs",
+        "f:/etc/security/limits.conf -> r:^\\s*\\*\\s+hard\\s+core\\s+0, tail"
+    });
+
+    EXPECT_EQ(sca::recovery::stringToJsonArray(rules.dump()), rules);
+}
+
+// A row the decoder cannot parse must not abort the caller: synchronizeDatabaseSnapshot() builds
+// these messages after notifyDataClean() has already emptied the index, and its only handler wraps
+// the whole loop, so an escaping exception would leave wazuh-states-sca empty for the cycle.
+TEST_F(SCARecoveryUtilsTest, StringToJsonArrayNumberOverflowFallsBackInsteadOfThrowing)
+{
+    EXPECT_NO_THROW(sca::recovery::stringToJsonArray("1e999"));
+    EXPECT_EQ(sca::recovery::stringToJsonArray("1e999"), nlohmann::json::array({"1e999"}));
+
+    nlohmann::json check = {{"id", "31006"}, {"refs", "1e999"}, {"rules", "[1e999]"}};
+
+    EXPECT_NO_THROW(sca::recovery::normalizeCheckForStateful(check));
+}
+
+TEST_F(SCARecoveryUtilsTest, NormalizeCheckForStatefulSerialisedRefsAndRules)
+{
+    const nlohmann::json references = nlohmann::json::array({"http://tldp.org/HOWTO/LVM-HOWTO/"});
+    const nlohmann::json rules = nlohmann::json::array({"c:findmnt -kn /tmp -> r:\\s*/tmp\\s"});
+
+    nlohmann::json check = {{"id", "31006"}, {"refs", references.dump()}, {"rules", rules.dump()}};
+
+    sca::recovery::normalizeCheckForStateful(check);
+
+    EXPECT_EQ(check["references"], references);
+    EXPECT_EQ(check["rules"], rules);
+}
+
+TEST_F(SCARecoveryUtilsTest, NormalizePolicyForStatefulSerialisedRefs)
+{
+    const nlohmann::json references = nlohmann::json::array({"https://www.cisecurity.org/cis-benchmarks/"});
+
+    nlohmann::json policy = {{"id", "cis_amazon_linux_2023"}, {"refs", references.dump()}};
+
+    sca::recovery::normalizePolicyForStateful(policy);
+
+    EXPECT_EQ(policy["references"], references);
+}
+
 // Tests for stringToJsonArray
 TEST_F(SCARecoveryUtilsTest, StringToJsonArrayEmptyString)
 {
@@ -413,4 +473,75 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageNoVersion)
     // State should still have modified_at but no document_version
     EXPECT_TRUE(result["state"].contains("modified_at"));
     EXPECT_FALSE(result["state"].contains("document_version"));
+}
+
+TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageDropsAnEmptyReason)
+{
+    nlohmann::json check =
+    {
+        {"id", "check1"},
+        {"checksum", "abc123"},
+        {"result", "Passed"},
+        {"reason", ""},
+        {"version", 1}
+    };
+    nlohmann::json policy = {{"id", "policy1"}};
+
+    auto result = sca::recovery::buildStatefulMessage(check, policy);
+
+    EXPECT_FALSE(result["check"].contains("reason"));
+}
+
+TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageKeepsAPopulatedReason)
+{
+    const std::string reason = "Path '/etc/modprobe.d/' does not exist";
+
+    nlohmann::json check =
+    {
+        {"id", "check1"},
+        {"checksum", "abc123"},
+        {"result", "Not applicable"},
+        {"reason", reason},
+        {"version", 1}
+    };
+    nlohmann::json policy = {{"id", "policy1"}};
+
+    auto result = sca::recovery::buildStatefulMessage(check, policy);
+
+    EXPECT_EQ(result["check"]["reason"], reason);
+}
+
+TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageSanitizesAnUndecodableReason)
+{
+    nlohmann::json check =
+    {
+        {"id", "check1"},
+        {"checksum", "abc123"},
+        {"result", "Not applicable"},
+        {"reason", "Path '/tmp/\xff\xfe' does not exist"},
+        {"version", 1}
+    };
+    nlohmann::json policy = {{"id", "policy1"}};
+
+    auto result = sca::recovery::buildStatefulMessage(check, policy);
+
+    EXPECT_EQ(result["check"]["reason"], "Path '/tmp/\?\?' does not exist");
+    EXPECT_NO_THROW(result.dump());
+}
+
+TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageCapsAnOversizedReason)
+{
+    nlohmann::json check =
+    {
+        {"id", "check1"},
+        {"checksum", "abc123"},
+        {"result", "Not applicable"},
+        {"reason", std::string(2000, 'x')},
+        {"version", 1}
+    };
+    nlohmann::json policy = {{"id", "policy1"}};
+
+    auto result = sca::recovery::buildStatefulMessage(check, policy);
+
+    EXPECT_EQ(result["check"]["reason"].get<std::string>().size(), 1024U);
 }

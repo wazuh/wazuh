@@ -98,21 +98,9 @@ WazuhUpgrade()
         fi
     fi
 
-    # Remove/relocate existing SQLite databases
-    rm -f $PREINSTALLEDDIR/var/db/.profile.db*
-    rm -f $PREINSTALLEDDIR/var/db/.template.db*
-    rm -rf $PREINSTALLEDDIR/var/db/agents
-
-    if [ -f "$PREINSTALLEDDIR/var/db/global.db" ]; then
-        cp $PREINSTALLEDDIR/var/db/global.db $PREINSTALLEDDIR/queue/db/
-        if [ -f "$PREINSTALLEDDIR/queue/db/global.db" ]; then
-            chmod 640 $PREINSTALLEDDIR/queue/db/global.db
-            chown $file_permissions:$file_permissions $PREINSTALLEDDIR/queue/db/global.db
-            rm -f $PREINSTALLEDDIR/var/db/global.db*
-        else
-            echo "Unable to move global.db during the upgrade"
-        fi
-    fi
+    # Nothing is cleaned out of var/db/ here: it holds mitre.db and nothing else
+    # in 5.x, and install.sh refuses an upgrade from an earlier major, so no other
+    # file can reach it. Anything left at the old paths is ignored.
 
     # Remove existing SQLite databases for Wazuh DB, only if upgrading from 3.2..3.6
 

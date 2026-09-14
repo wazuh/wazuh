@@ -1629,8 +1629,14 @@ forwards its format to `_log()`'s `vfprintf`, and RESTinio's builders embed clie
 
 ## Metrics catalog
 
-Everything lives on the facade's single `wazuh_metrics` registry and is observable in two
-places: `GET /metrics` on the local admin socket (below) and the debug-log dump on `stop()`.
+Everything lives on the facade's single `wazuh_metrics` registry and is observable in three
+places: `GET /metrics` on the local admin socket (below), the debug-log dump on `stop()`, and
+`GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-manager-remoted`, whose
+`metrics.http_server` object is a nested projection of this catalog built in
+`framework/wazuh/core/stats.py`. That projection hardcodes metric names with no compile-time
+link to this module, so **renaming or removing a metric below silently drops a field from the
+API response** — the mapping tables there (`_REMOTED_METRIC_GROUPS` and its neighbours) must be
+updated in the same change. `remoted.admin.server.*` is deliberately excluded from it.
 Design rules shared by every family: names are the only dimension (closed sets pre-resolved
 into structs, selected by `switch` — the hot path never formats a name); update cost is one
 relaxed atomic op (histogram `observe()` ≈ 2×, and never on a transport I/O thread); a

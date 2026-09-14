@@ -28,6 +28,19 @@ namespace
     {
         60000
     };
+
+    // Path::nextDue stores steady_clock::rep (see reporterStream.hpp for why), not time_point
+    // itself; these convert at the read/write edges so the rest of this file reads in terms of
+    // time_point like every other clock use in the module.
+    std::chrono::steady_clock::rep toRep(std::chrono::steady_clock::time_point tp)
+    {
+        return tp.time_since_epoch().count();
+    }
+
+    std::chrono::steady_clock::time_point fromRep(std::chrono::steady_clock::rep rep)
+    {
+        return std::chrono::steady_clock::time_point {std::chrono::steady_clock::duration {rep}};
+    }
 } // namespace
 
 ReporterStream::ReporterStream(const ModuleConfig& config,
@@ -72,6 +85,26 @@ bool ReporterStream::anyEnabled() const
     return m_stats.enabled || m_config_.enabled;
 }
 
+bool ReporterStream::configReportEnabled() const
+{
+    return m_config_.enabled;
+}
+
+void ReporterStream::forceConfigReportNow()
+{
+    if (!m_config_.enabled)
+    {
+        return;
+    }
+
+    // Called from the https_client_bridge callback thread, not the reporter's own; see
+    // path.mtx's comment in the header for why both fields need one lock, not two atomics.
+    std::lock_guard<std::mutex> lock(m_config_.mtx);
+    // 0 (rep of epoch) => due immediately, picked up by the next tick().
+    m_config_.nextDue = 0;
+    m_config_.forcedSinceLastRun = true;
+}
+
 std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
 {
     // Skip entirely (without advancing nextDue) when not registered or paused,
@@ -84,12 +117,12 @@ std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
 
     const auto now = m_clock.steadyNow();
 
-    if (m_stats.enabled && now >= m_stats.nextDue)
+    if (m_stats.enabled && now >= fromRep(loadNextDue(m_stats)))
     {
         runPath(m_stats, m_statsBackoff, waiter, m_collectors.collectStats());
     }
 
-    if (m_config_.enabled && now >= m_config_.nextDue)
+    if (m_config_.enabled && now >= fromRep(loadNextDue(m_config_)))
     {
         runPath(m_config_, m_configBackoff, waiter, m_collectors.collectConfig());
     }
@@ -100,6 +133,12 @@ std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
 void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::optional<std::string> collected)
 {
     const auto now = m_clock.steadyNow();
+    {
+        // Clear before the possibly-blocking send below, so a concurrent force only counts
+        // as "landed during this run", not a stale flag from whatever made it due already.
+        std::lock_guard<std::mutex> lock(path.mtx);
+        path.forcedSinceLastRun = false;
+    }
     const auto document = stampedDocument(std::move(collected));
 
     if (!document)
@@ -108,7 +147,7 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::
         // gate right after registration, before the local modules unlock. Retry on
         // the same short backoff as a send failure rather than the full interval, so
         // a clean start still gets its first snapshot within seconds, not an hour.
-        path.nextDue = now + backoff.next();
+        commitNextDue(path, now + backoff.next());
         return;
     }
 
@@ -129,20 +168,42 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::
     {
         LOGFN_DEBUG2(m_logFn, "%s snapshot delivered to the manager.", path.target.c_str());
         backoff.reset();
-        path.nextDue = now + path.interval;
+        commitNextDue(path, now + path.interval);
     }
     else if (result.outcome == OutcomeClass::BackPressure)
     {
         const auto serverDelay = std::chrono::milliseconds {result.response.retryAfterSeconds * 1000};
-        path.nextDue =
-            now + std::max(std::chrono::duration_cast<std::chrono::milliseconds>(serverDelay), backoff.next());
+        commitNextDue(
+            path,
+            now + std::max(std::chrono::duration_cast<std::chrono::milliseconds>(serverDelay), backoff.next()));
     }
     else
     {
         // Retryable / auth-paused (the gate is engaged by RetrySender) / other:
         // back off and try a fresh snapshot later.
-        path.nextDue = now + backoff.next();
+        commitNextDue(path, now + backoff.next());
     }
+}
+
+void ReporterStream::commitNextDue(Path& path, std::chrono::steady_clock::time_point desired)
+{
+    // forcedSinceLastRun was cleared at the top of this run, so seeing it true here means a
+    // force landed concurrently and already re-armed nextDue -- leave that in place instead.
+    std::lock_guard<std::mutex> lock(path.mtx);
+
+    if (path.forcedSinceLastRun)
+    {
+        path.forcedSinceLastRun = false;
+        return;
+    }
+
+    path.nextDue = toRep(desired);
+}
+
+std::chrono::steady_clock::rep ReporterStream::loadNextDue(const Path& path) const
+{
+    std::lock_guard<std::mutex> lock(path.mtx);
+    return path.nextDue;
 }
 
 std::optional<std::string> ReporterStream::stampedDocument(std::optional<std::string> collected) const
@@ -173,12 +234,16 @@ std::chrono::milliseconds ReporterStream::sleepHint() const
 
     if (m_stats.enabled)
     {
-        soonest = std::min(soonest, std::chrono::duration_cast<std::chrono::milliseconds>(m_stats.nextDue - now));
+        soonest = std::min(
+                      soonest,
+                      std::chrono::duration_cast<std::chrono::milliseconds>(fromRep(loadNextDue(m_stats)) - now));
     }
 
     if (m_config_.enabled)
     {
-        soonest = std::min(soonest, std::chrono::duration_cast<std::chrono::milliseconds>(m_config_.nextDue - now));
+        soonest = std::min(
+                      soonest,
+                      std::chrono::duration_cast<std::chrono::milliseconds>(fromRep(loadNextDue(m_config_)) - now));
     }
 
     return std::clamp(soonest, MIN_SLEEP, MAX_SLEEP);

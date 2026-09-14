@@ -2,11 +2,14 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import os
 from contextvars import ContextVar
 from unittest.mock import patch
 
 import pytest
+import yaml
 
+from wazuh.core.common import DEFAULT_RBAC_RESOURCES
 from wazuh.tests.test_security import db_setup  # noqa
 
 
@@ -117,3 +120,37 @@ def test_rbac_db_factory_reset(remove_mock, db_integrity_mock, revoke_mock, db_s
     assert remove_mock.call_args[0][0].endswith("rbac.db")
     db_integrity_mock.assert_called_once()
     revoke_mock.assert_called_once()
+
+
+@pytest.mark.parametrize('unchanged_users', [2, 1, 0])
+def test_get_users_with_default_password(db_setup, unchanged_users):
+    """Check that only the default users that keep their shipped password are reported.
+
+    Parameters
+    ----------
+    db_setup: callable
+        This function creates the rbac.db file.
+    unchanged_users : int
+        Number of default users that keep the password shipped with the package.
+    """
+    _, _, core_security = db_setup
+
+    with open(os.path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
+        shipped_passwords = {username: payload['password']
+                             for username, payload in yaml.safe_load(f)['default_users'].items()}
+
+    expected_users = list(shipped_passwords)[:unchanged_users]
+
+    class AuthenticationManagerMock:
+        """Authentication manager whose users kept their password only if they are expected to."""
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc_info):
+            return False
+
+        def check_user(self, username: str, password: str) -> bool:
+            return username in expected_users and password == shipped_passwords[username]
+
+    with patch('wazuh.core.security.AuthenticationManager', AuthenticationManagerMock):
+        assert core_security.get_users_with_default_password() == expected_users

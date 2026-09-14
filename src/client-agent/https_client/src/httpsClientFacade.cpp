@@ -446,6 +446,15 @@ void HttpsClientFacade::notifyNow()
     if (m_started)
     {
         m_controlWaiter.notify(); // Break the Notify cadence for one out-of-cycle send.
+
+        // Also pull the /config reporter's next run in, and wake its own waiter directly --
+        // it sleeps on m_reporterWaiter, not m_controlWaiter, so notifying only that one
+        // above would leave this waiting for the next already-scheduled tick.
+        if (m_reporter.configReportEnabled())
+        {
+            m_reporter.forceConfigReportNow();
+            m_reporterWaiter.notify();
+        }
     }
 }
 

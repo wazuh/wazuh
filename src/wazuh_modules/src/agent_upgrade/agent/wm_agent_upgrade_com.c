@@ -232,7 +232,6 @@ STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     // LCOV_EXCL_STOP
 
     memcpy(dest + length, TEMPLATE, sizeof(TEMPLATE));
-    mode_t old_mask = umask(0022);
 #ifndef WIN32
     int fd;
 
@@ -262,7 +261,6 @@ STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNSIGN_FILE_ERROR, "unsign()", source_j);
         output = -1;
     }
-    umask(old_mask);
     unlink(source);
     return output;
 }
@@ -322,9 +320,9 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
     // name-based open that would reintroduce the same race.
 #ifndef WIN32
     {
-        int fd;
+        int fd = mkstemp(dest);
 
-        if (fd = mkstemp(dest), fd < 0) {
+        if (fd < 0) {
             gzclose(fsource);
             mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMPRESSED_FILE_ERROR, "uncompress()");
             return -1;
@@ -342,7 +340,8 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
             return -1;
         }
 
-        if (ftarget = fdopen(fd, "wb"), !ftarget) {
+        ftarget = fdopen(fd, "wb");
+        if (!ftarget) {
             unlink(dest);
             close(fd);
             gzclose(fsource);
