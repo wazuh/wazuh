@@ -66,9 +66,9 @@ sequenceDiagram
     alt validation fails
         S-->>R: 400 / 403
     else VD session and the CVE feed is still downloading
-        S-->>R: 503 + Retry-After (nothing processed)
+        S-->>R: 503 + Retry-After (configured feed delay; nothing processed)
     else VD session and the scan lane queue is full
-        S-->>R: 503 scan capacity exhausted (nothing processed)
+        S-->>R: 503 scan capacity exhausted + Retry-After (fixed shed delay; nothing processed)
     else non-VD session
         S->>Q: enqueue {request, responder, session} (hash(agentId) → shard)
         Note over S: strand freed, the byte reservation travels with the request
@@ -180,8 +180,8 @@ with **nothing indexed**.
 flowchart LR
     S[Strand: validation + admission gates] -->|non-VD| P[SyncPipeline\nper-agent shards, group commit]
     S -->|"VD option (feed ready)"| L[[Scan lane\nbounded queue, vd_workers\nown connector]]
-    S -->|CVE feed still downloading| RA[503 + Retry-After]
-    S -->|lane queue full| E503[503 scan capacity exhausted]
+    S -->|CVE feed still downloading| RA[503 + Retry-After\nconfigured feed delay]
+    S -->|lane queue full| E503[503 scan capacity exhausted\n+ Retry-After, fixed shed delay]
     L --> W["lane worker: build scan views →\nrun scan → (ok) index + flush → 200"]
     W -->|scan throws| E500[500 — nothing indexed]
     P <-.->|in-flight agent registry\ncross-lane per-agent ordering| L
@@ -193,8 +193,8 @@ The gates, in order:
 
 | Situation | Answer | Why |
 |---|---|---|
-| CVE feed still downloading | `503` + `Retry-After` | Rejected WITHOUT processing, so the re-POST applies scan and ingest together and nothing ever blocks waiting for the feed. The delay is `inventory_sync_server_vd_feed_retry_after_seconds`. |
-| Lane queue full | `503` `{"error":"scan capacity exhausted","code":503}` | The queue is deliberately short (`vd_scan_queue_slots`): scans are slow, and an early 503 beats a late timeout — a timed-out agent re-POSTs and re-does scan+ingest in full. |
+| CVE feed still downloading | `503` + `Retry-After` (configured) | Rejected WITHOUT processing, so the re-POST applies scan and ingest together and nothing ever blocks waiting for the feed. The delay is `inventory_sync_server_vd_feed_retry_after_seconds` — both gates carry the header, so it is the body and the delay's size, not the header's presence, that tells them apart. |
+| Lane queue full | `503` `{"error":"scan capacity exhausted","code":503}` + `Retry-After` (fixed shed value) | The queue is deliberately short (`vd_scan_queue_slots`): scans are slow, and an early 503 beats a late timeout — a timed-out agent re-POSTs and re-does scan+ingest in full. |
 | Scan succeeded | index + flush → `200` | The strong contract: 200 = scanned AND ingested. |
 | Scan threw | `500` `{"error":"vulnerability scan failed","code":500}` | Zero documents indexed; the agent retries next cycle and the re-POST redoes both halves. |
 | Scan legitimately skipped (scanner disabled) | index + `200` | Inventory must keep flowing even with the scanner off. |
@@ -415,8 +415,8 @@ answers to) lives in the module's in-tree developer README,
 | 7 | **A `200` means flushed.** Bulk responses wait for the group commit; immediate sessions flush inside their own execution. | "The agent saw success" and "the indexer has the data" can never diverge. |
 | 8 | **Checksum verification is one attempt, no retry loop.** Mismatch answers `409` and the agent full-resyncs (a cleans + a full delta). | Retrying a deterministic comparison only delays the inevitable resync. |
 | 9 | **VD sessions scan synchronously, and the scan gates indexing** — scan → ok → index → `200`; failure → `500` with nothing indexed. | A VD `200` certifies both halves; there is no window where inventory exists without its scan. |
-| 10 | **Feed not ready ⇒ `503` + `Retry-After`, rejected without processing.** Nobody blocks waiting for the CVE feed. | The re-POST applies ingest and scan together; threads are never parked on a download that can take minutes. |
-| 11 | **A short scan-lane queue** with immediate `503` on overflow, and per-agent cross-lane exclusion through a shared registry. | Early rejection beats late timeout; the pipeline and the lane can never interleave one agent's operations. |
+| 10 | **Feed not ready ⇒ `503` + `Retry-After` (configured, sized to the feed), rejected without processing.** Nobody blocks waiting for the CVE feed. | The re-POST applies ingest and scan together; threads are never parked on a download that can take minutes. |
+| 11 | **A short scan-lane queue** with immediate `503` + `Retry-After` (fixed shed value) on overflow, and per-agent cross-lane exclusion through a shared registry. | Early rejection beats late timeout; the pipeline and the lane can never interleave one agent's operations. |
 | 12 | **The scanner boundary is a neutral view interface** — no FlatBuffers types cross between the modules, in either direction. | The schema can evolve without recompiling the scanner; the adapter is one translation unit. |
 | 13 | **Agent deletion is an endpoint with a visible result**, deferred to the agent's shard. | The caller can retry a failed deletion instead of losing it silently, and deletion orders correctly against the agent's in-flight sessions. |
 | 14 | **Ingress via remoted's authenticated `POST /stateful`** (per-agent `wazuh-agent+jwt` bearer), with the authenticated id cross-checked against the session's claimed identity (`403` on mismatch). | Identity is enforced at the edge AND at the application layer; the body stays opaque to remoted. |

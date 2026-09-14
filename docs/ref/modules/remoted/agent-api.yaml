@@ -881,26 +881,32 @@ paths:
           description: |
             Not accepted; the agent retries on its next notify cycle and its pending state survives.
             The `error` code names the actual cause for an operator reading the exchange. Carries a
-            fixed `Retry-After`: a feed-offset bump reaches the whole fleet at once, so this is the
-            route whose sheds are synchronised by construction.
+            fixed `Retry-After` for every code EXCEPT `vd_not_initialized`, which VD marks
+            `retryable:false` and which does not clear without an operator: a feed-offset bump
+            reaches the whole fleet at once, so this is the route whose sheds are synchronised by
+            construction.
           headers:
             Retry-After:
-              description: Seconds to wait before retrying. Fixed value, identical at every shed point.
+              description: >
+                Seconds to wait before retrying. Fixed value, identical at every shed point.
+                Absent on `vd_not_initialized`.
               schema: { type: integer, minimum: 0 }
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              schema: { $ref: "#/components/schemas/ScanVdError" }
               examples:
                 scanQueueFull:
-                  value: { error: "scan_queue_full", code: 503 }
-                indexerUnavailable:
-                  value: { error: "indexer_unavailable", code: 503 }
+                  summary: Also indexer_unavailable / task_create_failed
+                  value: { error: "scan_queue_full" }
                 feedNotReady:
-                  summary: Also scanner_not_ready / vd_not_initialized
-                  value: { error: "feed_not_ready", code: 503 }
+                  summary: Also scanner_not_ready
+                  value: { error: "feed_not_ready" }
                 vdUnreachable:
-                  summary: Also shutting_down / vd_error
-                  value: { error: "vd_unreachable", code: 503 }
+                  summary: Also vd_error -- the round trip to VD itself failed or its answer was unparseable
+                  value: { error: "vd_unreachable" }
+                vdNotInitialized:
+                  summary: Permanent -- no Retry-After
+                  value: { error: "vd_not_initialized" }
 
   /enroll:
     post:
@@ -1062,13 +1068,15 @@ paths:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
         "503":
           description: |
-            Either `authd` was unreachable / unparseable / timed out (`code: -1`), which carries a
-            fixed `Retry-After`; or `authd` answered `max_agents` (9013), a worker rejected the
-            request (9015) or its forward to the master failed (9016), which are relayed WITHOUT
-            one -- 9013 does not clear until an operator acts.
+            Either `authd` was unreachable / unparseable / timed out (`code: -1`); or `authd`
+            answered `max_agents` (9013), a worker rejected the request (9015), its forward to
+            the master failed (9016), or it could not journal the credential it was about to
+            issue (9031). All but `max_agents` carry a `Retry-After`: a retry can plausibly land
+            once the underlying condition clears, unlike 9013, which does not clear until an
+            operator acts.
           headers:
             Retry-After:
-              description: Seconds to wait before retrying. Present only on the `code: -1` case.
+              description: Seconds to wait before retrying. Absent only on the `max_agents` (9013) case.
               schema: { type: integer, minimum: 0 }
           content:
             application/json:
@@ -1419,6 +1427,25 @@ components:
           format: int64
           description: This node's real current offset, to retry with.
           example: 12345680
+
+    ScanVdError:
+      type: object
+      required: [error]
+      description: |
+        `POST /scan/vd`'s `503` shape. Flat, unlike the general `ErrorResponse`: the body carries
+        no HTTP status duplicate, only the machine-readable cause. `error` is not a closed set:
+        remoted is a pass-through here and relays VD's own error string verbatim, including the
+        transport-level ones its uds_http_server socket can produce on its own (e.g. "Server is
+        shutting down", "Data session limit reached") when VD itself never answers.
+      properties:
+        error:
+          type: string
+          description: >
+            Machine-readable cause. The values below are the ones VD is known to produce; see the
+            `503` response description for which ones carry a `Retry-After`.
+          example: scan_queue_full
+          examples: [scan_queue_full, indexer_unavailable, feed_not_ready, scanner_not_ready,
+                     task_create_failed, vd_not_initialized, vd_unreachable, vd_error, shutting_down]
 
     EnrollRequest:
       type: object

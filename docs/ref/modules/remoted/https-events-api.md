@@ -868,16 +868,21 @@ update), which had no equivalent once agent-manager connections became stateless
   },
   "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
   "tasks": [],
+  "tasks_fetch_failed": false,
   "vd_feed_offset": 12345678
 }
 ```
 
-Every field above is **always present**, `tasks` included — it is an empty array when the manager has
-no work to hand over, never an absent key. `config_hash` is likewise always a string: when the agent's
-selector resolves to no `merged.mg`, or the file cannot be hashed, the manager sends the literal `"0"`
-rather than omitting the field or sending an empty string. `config_token` is always a **non-empty**
-string, including in that unresolved case — the agent still needs something to name on `/download`,
-and the next notify re-triggers the attempt.
+Every field above is **always present**, `tasks` and `tasks_fetch_failed` included — `tasks` is an
+empty array both when the manager has no work to hand over and when it could not check, never an
+absent key. `tasks_fetch_failed` is `true` only in the second case (the Task Manager poll failed), so
+an agent that reads it can tell "checked, none pending" apart from "could not check" instead of
+retrying nothing forever; an agent that does not read it sees exactly the response it saw before this
+field existed. `config_hash` is likewise always a string: when the agent's selector resolves to no
+`merged.mg`, or the file cannot be hashed, the manager sends the literal `"0"` rather than omitting
+the field or sending an empty string. `config_token` is always a **non-empty** string, including in
+that unresolved case — the agent still needs something to name on `/download`, and the next notify
+re-triggers the attempt.
 
 **Response with tasks (`200 OK`):**
 ```json
@@ -889,6 +894,7 @@ and the next notify re-triggers the attempt.
   },
   "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
   "vd_feed_offset": 12345678,
+  "tasks_fetch_failed": false,
   "tasks": [
     {
       "task_id": "a3f5e2d1-4c6b-8a9e-1f2d-3c4b5a6e7d8f",
@@ -1043,12 +1049,15 @@ local value with an older `current_version`.
 | `feed_offset` != current offset                  | `409` | `version_mismatch` (carries `current_version`)                |
 | VD's scan dispatch lane at capacity              | `503` | `scan_queue_full`                                             |
 | Indexer not usable (no healthy host)             | `503` | `indexer_unavailable`                                         |
-| VD not ready (feed mid-update, scanner starting) | `503` | `feed_not_ready` / `scanner_not_ready` / `vd_not_initialized` |
+| VD not ready, feed mid-update or scanner starting| `503` | `feed_not_ready` / `scanner_not_ready`                        |
+| VD not initialized (no scanner on this node)     | `503` | `vd_not_initialized` — permanent, no `Retry-After`            |
 | VD stopping or unreachable, or the relay failed  | `503` | `shutting_down` / `vd_unreachable` / `vd_error`               |
 
-Every `503` means the same thing to the agent — not accepted, retry on the next notify cycle —
-and its pending state survives; the `error` code exists so an operator reading the exchange sees
-the actual cause. During a long indexer outage the agent keeps re-requesting on each notify and
+Every `503` except `vd_not_initialized` means the same thing to the agent — not accepted, retry on
+the next notify cycle — and its pending state survives; the `error` code exists so an operator
+reading the exchange sees the actual cause. `vd_not_initialized` means this node runs no
+vulnerability scanner: VD itself marks it non-retryable, and it will not clear without an operator
+enabling detection here. During a long indexer outage the agent keeps re-requesting on each notify and
 the scan runs once the indexer becomes available again. Auth failures (`401`) reuse the same
 responses as `/stateless`. This endpoint's body cap (4 KiB) is far tighter than `/control`'s
 (64 KiB) since a scan request only ever carries `type` and `feed_offset`.

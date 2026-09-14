@@ -487,17 +487,21 @@ sequenceDiagram
      and never parses it, which is what lets this change without an agent change. Derived from the
      same groups CSV `config_hash` was computed over, so the two can never name different files;
      today that means its value *is* the group selector. Never empty (`"default"` when the CSV is)
-   - Queries task-manager for pending tasks (`status='pending'`); if found, marks as `delivered` (local only, no cluster broadcast)
+   - Queries task-manager for pending tasks (`status='pending'`); if found, marks as `delivered` (local only, no cluster broadcast).
+     `tasks_fetch_failed` is `true` when that poll itself failed (Task Manager down or unresponsive) --
+     `tasks` still comes back `[]` in that case, so the field is what tells an operator or agent
+     "could not check" apart from "checked, none pending" (#38880 finding 10)
    - Reads this node's current Vulnerability Detection feed offset via `VdClient` (cached, see
      `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — always present, 0 if the VD
      module has never completed a feed update or is temporarily unreachable
-   - **Response** (every field always present -- `tasks` is `[]` when there is no work, never an
-     absent key):
+   - **Response** (every field always present -- `tasks` is `[]` when there is no work or the poll
+     failed, never an absent key):
      ```json
      {
        "agent": {"groups": ["web-servers"], "config_token": "web-servers", "config_hash": "e3b0c44..."},
        "settings_hash": "d7a8fbb...",
        "tasks": [],
+       "tasks_fetch_failed": false,
        "vd_feed_offset": 12345678
      }
      ```
