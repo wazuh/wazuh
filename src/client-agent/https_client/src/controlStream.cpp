@@ -156,15 +156,16 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
                              ConfigHashState& configHash, ClusterIdentity& cluster,
                              AuthGate& authGate, CompressionGate& compressionGate,
                              ITaskIdStore& taskStore, IVdOffsetStore& vdOffsetStore,
-                             std::function<std::string()> collectHost)
+                             IFileDecompressor& decompressor, std::function<std::string()> collectHost)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
                config.serverEndpoint)
     , m_clock(clock)
     , m_sink(sink)
-    , m_fetcher(config, performer, signer, clock, random, spoolFactory, authGate, compressionGate)
-    , m_wpkFetcher(config, performer, signer, clock, random, spoolFactory, authGate, compressionGate)
+    , m_fetcher(config, performer, signer, clock, random, spoolFactory, authGate, compressionGate, decompressor)
+    , m_wpkFetcher(config, performer, signer, clock, random, spoolFactory, authGate, compressionGate,
+                   decompressor)
     , m_configHash(configHash)
     , m_cluster(cluster)
     , m_authGate(authGate)

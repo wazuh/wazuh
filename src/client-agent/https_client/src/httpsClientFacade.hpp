@@ -21,6 +21,7 @@
 #include "controlStream.hpp"
 #include "curlPerformer.hpp"
 #include "fileCompressor.hpp"
+#include "fileDecompressor.hpp"
 #include "https_client.h"
 #include "jwtSigner.hpp"
 #include "keyProvider.hpp"
@@ -102,6 +103,7 @@ class HttpsClientFacade final
         JwtSigner m_signer;
         TempSpoolFactory m_spoolFactory;
         ZstdFileCompressor m_fileCompressor; // /stateful only; compresses spooled sessions once, up front.
+        ZstdFileDecompressor m_fileDecompressor; // /download only; decompresses a zstd config response in place.
         CurlPerformer m_performer;
         CallbackDispatcher m_dispatcher;
         ConfigHashState m_configHash;
