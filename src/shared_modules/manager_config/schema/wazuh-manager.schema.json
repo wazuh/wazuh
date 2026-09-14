@@ -269,6 +269,34 @@
             "dual_stack": {
               "type": "boolean",
               "description": "Accept IPv4 on an IPv6 bind address. Absent: module default."
+            },
+            "enroll_rate_limit": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000,
+              "default": 100,
+              "description": "Sustained POST /enroll requests per second this manager serves, counted for the endpoint as a whole and not per agent. 0 disables the limit. Requests over it get 429 without reaching authd."
+            },
+            "enroll_rate_burst": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "default": 200,
+              "description": "POST /enroll requests servable back to back before 'enroll_rate_limit' paces them. 0 means the same value as the rate."
+            },
+            "cacerts_rate_limit": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000,
+              "default": 50,
+              "description": "Sustained GET /cacerts requests per second this manager serves, counted for the endpoint as a whole and not per agent. 0 disables the limit. Requests over it get 429."
+            },
+            "cacerts_rate_burst": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "default": 100,
+              "description": "GET /cacerts requests servable back to back before 'cacerts_rate_limit' paces them. 0 means the same value as the rate."
             }
           }
         },

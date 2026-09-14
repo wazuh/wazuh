@@ -92,6 +92,12 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->connection_overtake_time = 60;
     cfg->rids_closing_time = REMOTED_RIDS_CLOSING_TIME_DEFAULT;
     cfg->https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
+    /* Not 0: that is "no rate limit", a setting an operator can ask for explicitly. UNSET is what
+     * makes an <https> block that never mentions these fall back to the module's own defaults. */
+    cfg->https.enroll_rate_limit = REMOTED_HTTPS_RATE_LIMIT_UNSET;
+    cfg->https.enroll_rate_burst = REMOTED_HTTPS_RATE_LIMIT_UNSET;
+    cfg->https.cacerts_rate_limit = REMOTED_HTTPS_RATE_LIMIT_UNSET;
+    cfg->https.cacerts_rate_burst = REMOTED_HTTPS_RATE_LIMIT_UNSET;
 
     // Initialize all internal options
     receive_chunk = (unsigned)getDefine_Int_default("remoted", "receive_chunk", 1024, 16384, 4096);

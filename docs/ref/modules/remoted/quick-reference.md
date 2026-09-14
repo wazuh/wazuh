@@ -77,6 +77,12 @@ For the HTTPS channel, size the capacity limits instead —
 deployments above 10K agents, and [Metrics](metrics.md) links each limit to the metric that tells you
 whether it is the one binding.
 
+Enrollment has a ceiling of its own: `remote.https.enroll_rate_limit` caps `POST /enroll` at 100
+requests per second **for the whole fleet** (`GET /cacerts` at 50), and agents over it get `429` and
+retry with backoff. Bootstrapping 10K agents therefore takes at least ~100 s of enrollment traffic;
+raise the rate while rolling out if that matters, and watch
+`remoted.enroll.rate_limited` to confirm the limit is what is pacing it.
+
 ## Performance Tips
 
 1. **Increase batch size**: More events per request

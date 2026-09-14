@@ -169,7 +169,7 @@ it alone: [timing tuning, invariant 2](timing-tuning.md#3-invariants).
 
 What each endpoint actually answered its agents. Six endpoints carry this family — `stateless`,
 `stateful`, `stats`, `config`, `enroll` and `cacerts` (the only `GET` route with this family) — each with the same
-closed set of eight status cells, so a scraper's columns line up across endpoints (some cells
+closed set of nine status cells, so a scraper's columns line up across endpoints (some cells
 are structurally zero for a given endpoint, e.g. `/stateless` never answers 409, and
 `/cacerts`'s `404` lands in `other`). Every response is counted exactly once, at the single
 place it is sent. All units are `count`; all are counters.
@@ -188,6 +188,7 @@ useful than the status —
 | `403` | Identity rejection relayed from the sync server (`/stateful` contract), or enrollment administratively disabled (`/enroll`) | diagnostic — the sync server's own view is [`sync.requests.total.*`](../inventory-sync-server/metrics.md#request-outcomes--syncrequeststotalcode); for `/enroll` see [`remoted.enroll.disabled`](#agent-enrollment--remotedenroll) |
 | `409` | Checksum mismatch relayed from the sync server (`/stateful` contract) | diagnostic — same cross-reference as `403` |
 | `413` | Body over the accepted size | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
+| `429` | The endpoint's rate limit refused the request before the handler ran. Structurally zero except on `/enroll` and `/cacerts`, the two unauthenticated routes | [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes); the cause is [`remoted.<endpoint>.rate_limited`](#rate-limits--remotedendpointrate_limit) |
 | `500` | Internal error while building the reply | diagnostic — a bug signal, report it |
 | `503` | Downstream failure or a deferred-limiter shed | [`remoted.max_deferred_requests`](configuration.md#remotedmax_deferred_requests) for the limiter share; the [downstream failures](#downstream-failures--remotedforwarder) family for the rest |
 | `other` | Any status outside the set above. Includes `/enroll` authentication `401`/encoding `415` responses and `/cacerts`'s `404`; other routes' gateway rejections are excluded | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) for the `415` share, which [`remoted.auth.reject.bad_encoding`](#authentication-rejections--remotedauthreject) counts by cause |
@@ -290,6 +291,7 @@ except the pulls at the end (the `authd` queue and the token store).
 | `remoted.enroll.disabled` | Enrollment is administratively off, so the request was answered `403` without touching `authd` | the manager's enrollment setting (the route always exists, so this is distinguishable from a `404`) |
 | `remoted.enroll.authd_error` | `authd` answered, and refused on its own business rules (duplicate name, agent limit, cluster forwarding) — including the `403` it gives a verified enrollment token it will not consume (9022 not found or revoked, 9023 expired, 9024 uses exhausted) | diagnostic — `authd`'s own limits; the mapped status is in the `enroll` response cells |
 | `remoted.enroll.authd_unavailable` | No clean answer from `authd`: a full request queue, an unreachable socket, a timeout, or the module shutting down | see the queue metrics below to tell saturation apart from the rest |
+| `remoted.enroll.rate_limited` | `429`: the endpoint was asked faster than its configured rate, so the request was refused **before** the handler ran — no body decoded, no credential read, no `authd` round trip. In none of the rows above for that reason | [`https.enroll_rate_limit` / `https.enroll_rate_burst`](configuration.md#rate-limits-of-the-unauthenticated-routes) |
 
 The **enrollment-token** subset — requests whose bearer's `kid` named an enrollment token — by
 what happened to the token (the [HTTPS Agent API](https-events-api.md#enrollment-endpoint-post-enroll)
@@ -436,6 +438,23 @@ behind `remoted.http.cacerts.responses.*`; the evaluation that decides the `503`
 | `remoted.cacerts.served` | counter | count | 200: the CA PEM was handed out | — |
 | `remoted.cacerts.not_found` | counter | count | 404: the CA file is missing, unreadable or carries no certificate — agents cannot bootstrap trust until it is restored | diagnostic — restore [`https.ca_certificate`](configuration.md#httpsca_certificate) |
 | `remoted.cacerts.ca_mismatch` | counter | count | 503: refused because the configured CA does not sign the served certificate | diagnostic — make [`https.ca_certificate`](configuration.md#httpsca_certificate) the CA that signed [`https.certificate`](configuration.md#httpscertificate), then restart |
+| `remoted.cacerts.rate_limited` | counter | count | 429: the route was asked faster than its configured rate. The snapshot was never read — in none of the three rows above | [`https.cacerts_rate_limit` / `https.cacerts_rate_burst`](configuration.md#rate-limits-of-the-unauthenticated-routes) |
+
+### Rate limits — `remoted.<endpoint>.rate_limit.*`
+
+The live state of the rate limit on the two routes that carry one (`enroll`, `cacerts`). The
+**refusals** are not here — those are `remoted.enroll.rate_limited` and
+`remoted.cacerts.rate_limited` above, with the rest of each endpoint's outcomes. These three answer
+a different question: how much of the route's budget is left?
+
+All are pull metrics (read at scrape time) and read `0` while the listener is down. Reading them
+never charges the bucket, so scraping cannot cost an agent its enrollment.
+
+| Metric | Unit | Meaning | Tuning |
+|---|---|---|---|
+| `remoted.<endpoint>.rate_limit.limit` | requests_per_second | The configured ceiling for this route, fleet-wide (`0` when the limit is disabled) | [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes) |
+| `remoted.<endpoint>.rate_limit.burst` | requests | What the route serves back to back before the rate paces it | the matching `*_rate_burst` |
+| `remoted.<endpoint>.rate_limit.available` | requests | Allowance left unspent right now. Near zero means the route is at its ceiling and further requests are being refused | read it with `rate_limited`: a climbing counter while `available` sits at 0 is a rate set below what the fleet needs, not necessarily an attack |
 
 ### Admin transport — `remoted.admin.server.*`
 
@@ -495,7 +514,7 @@ legacy daemon counters that same response has always carried:
       "timestamp": "2026-08-19T12:00:00Z",
       "responses": {
         "stateless": { "total": 98220, "2xx": 98213, "400": 2, "403": 0, "409": 0,
-                       "413": 1, "500": 0, "503": 4, "other": 0 },
+                       "413": 1, "429": 0, "500": 0, "503": 4, "other": 0 },
         "stateful":  { "...": 0 }, "stats": { "...": 0 },
         "config":    { "...": 0 }, "enroll": { "...": 0 },
         "cacerts":   { "total": 34, "2xx": 34, "...": 0 }
@@ -506,14 +525,17 @@ legacy daemon counters that same response has always carried:
         "stateful": { "...": 0 }, "enroll": { "...": 0 }
       },
       "auth_rejections": { "total": 5, "unknown_agent": 3, "bad_token": 1, "...": 0 },
-      "enrollment":      { "accepted": 34, "authd_queue": { "depth": 0, "capacity": 128, "...": 0 } },
+      "enrollment":      { "accepted": 34, "authd_queue": { "depth": 0, "capacity": 128, "...": 0 },
+                           "rate_limited": 0,
+                           "rate_limit": { "limit": 100, "burst": 200, "available": 200 } },
       "control":         { "notify": 421337, "registry_agents": 32, "wdb_latency": { "...": 0 } },
       "keystore":        { "agents": 34, "reloads_total": 3, "...": 0 },
       "downstream":      { "errors": { "...": 0 }, "deferred": { "capacity": 512, "...": 0 } },
       "backpressure":    { "available_bytes": 67099136, "inflight_requests": 3, "...": 0 },
       "downloads":       { "started": 12, "bytes_total": 48213004, "...": 0 },
       "tls":             { "cert_expiry_days": 3649, "ca_matches_leaf": 1 },
-      "cacerts":         { "served": 34, "not_found": 0, "ca_mismatch": 0 },
+      "cacerts":         { "served": 34, "not_found": 0, "ca_mismatch": 0, "rate_limited": 0,
+                           "rate_limit": { "limit": 50, "burst": 100, "available": 100 } },
       "vd_scan":         { "requests_total": 8, "accepted": 8, "...": 0 }
     }
   }
@@ -527,14 +549,14 @@ The group names map onto the catalog sections above one-for-one:
 | `responses.<endpoint>` | [`remoted.http.<endpoint>.responses.<code>`](#request-outcomes--remotedhttpendpointresponsescode), plus a `total` rollup |
 | `latency.<endpoint>` | [`remoted.http.<endpoint>.latency`](#request-latency--remotedhttpendpointlatency) |
 | `auth_rejections` | [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject), plus a `total` rollup |
-| `enrollment` | [`remoted.enroll.*`](#agent-enrollment--remotedenroll), with `remoted.enroll.authd.queue.*` under `authd_queue` |
+| `enrollment` | [`remoted.enroll.*`](#agent-enrollment--remotedenroll), with `remoted.enroll.authd.queue.*` under `authd_queue` and [`remoted.enroll.rate_limit.*`](#rate-limits--remotedendpointrate_limit) under `rate_limit` |
 | `control` | [`remoted.control.*`](#control-plane--remotedcontrol), with `registry.agents` as `registry_agents` and `wdb.latency` as `wdb_latency` |
 | `keystore` | [`remoted.auth.keystore.*`](#keystore-health--remotedauthkeystore) |
 | `downstream` | [`remoted.forwarder.*`](#downstream-failures--remotedforwarder), with `error.*` under `errors` and [`deferred.*`](#deferred-forwarding--remotedforwarderdeferred) under `deferred` |
 | `backpressure` | [`remoted.server.budget.*`](#public-transport-backpressure--remotedserverbudget) |
 | `downloads` | [`remoted.download.*`](#downloads--remoteddownload) |
 | `tls` | [`remoted.server.tls.*`](#tls-listener-certificate--remotedservertls) — `cert_expiry_days` is the catalog's one signed integer |
-| `cacerts` | [`remoted.cacerts.*`](#ca-distribution--remotedcacerts) |
+| `cacerts` | [`remoted.cacerts.*`](#ca-distribution--remotedcacerts), with [`remoted.cacerts.rate_limit.*`](#rate-limits--remotedendpointrate_limit) under `rate_limit` |
 | `vd_scan` | [`remoted.scanvd.*`](#vd-scan-admission--remotedscanvd) |
 
 Conventions worth knowing before reading a response:
@@ -573,6 +595,10 @@ These rules say what sums to what — read them before comparing families:
   `budget.rejected.total` is exclusively admission sheds.
 - A **deferred-limiter** shed is the endpoint's answer: it counts **both** as that endpoint's
   `responses.503` and in `remoted.forwarder.deferred.rejected.total`.
+- A **rate-limit** refusal sits with the deferred-limiter shed, not with the budget shed: even
+  though the handler never ran, it counts **both** as that endpoint's `responses.429` and in
+  `remoted.<endpoint>.rate_limited`. It is in none of that endpoint's outcome cells — nothing was
+  decoded, verified or forwarded for it to have an outcome about.
 - **`/enroll` is counted twice on purpose, in two different vocabularies**: once by outcome
   (`remoted.enroll.*` — why it ended that way) and once by HTTP status and latency
   (`remoted.http.enroll.*` — what the agent got, and how long it waited). The two families are

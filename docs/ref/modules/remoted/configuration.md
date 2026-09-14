@@ -320,6 +320,90 @@ Maximum accepted HTTP request body size.
 - **Effect:** Raising the limit admits larger wire bodies and increases potential memory use per connection;
   lowering it rejects larger requests at the transport. The authentication and shared-memory limits still apply.
 
+### Rate limits of the unauthenticated routes
+
+Two of the HTTPS routes cannot be put behind the bearer-token gateway, because their callers do not
+yet have the credential it verifies: `POST /enroll` (an enrolling agent has no `client.keys` entry
+yet) and `GET /cacerts` (a caller fetching the trust anchor does not have one yet by definition).
+For those two, these four options cap how fast the manager serves the route at all.
+
+**They are not written into the shipped `wazuh-manager.conf`** — the defaults below apply without
+any `<https>` block, and an operator only adds a line to change one.
+
+What is being bounded is the **work behind the route**, not the transport. A `/enroll` request costs
+the manager a round trip to authd over its local socket and, on a cluster worker, a further round
+trip to the master; a caller pays one HTTP request for it. The
+[in-flight byte budget](#remotedmax_inflight_bytes) and
+[`remoted.max_parallel_connections`](#remotedmax_parallel_connections) bound the *memory* a request
+holds and shed with a `503`; these bound *how often* the route is served and refuse with a `429` and
+a `Retry-After`.
+
+> **The limit is a ceiling for the endpoint, not an allowance per agent.** One bucket per route,
+> shared by every caller: a single client asking fast enough can consume the whole route's budget,
+> and a fleet-wide burst is paced by the same number. Size these for the fleet — at
+> `enroll_rate_limit` `100`, a bootstrap of 10 000 agents needs at least ~100 seconds of `/enroll`
+> traffic. The agent retries with its own backoff ramp, so a paced rollout completes; it is slower,
+> not broken.
+
+Each limit is a token bucket: the burst is what the route serves back to back, the rate is how fast
+that allowance refills. `remoted.<endpoint>.rate_limit.available` in
+[`GET /metrics`](metrics.md#rate-limits--remotedendpointrate_limit) is the live headroom, and
+`remoted.<endpoint>.rate_limited` counts what was refused.
+
+#### https.enroll_rate_limit
+
+Sustained `POST /enroll` requests per second the manager serves, counted for the endpoint as a
+whole.
+
+- **Default value:** `100`
+- **Allowed values:** Integer from `0` to `100000`. `0` disables the limit.
+- **Effect:** Requests over the limit are answered `429` with `Retry-After` **without reaching
+  authd**, so a peer with no usable credential can no longer turn `/enroll` into an amplifier onto
+  the cluster's internal socket.
+- **Note:** Higher than `/cacerts`'s default even though it is the more expensive route: every agent
+  must pass through it at least once (a bootstrap, or a mass re-enrollment after a credential
+  rotation).
+
+#### https.enroll_rate_burst
+
+`POST /enroll` requests servable back to back before `enroll_rate_limit` paces them.
+
+- **Default value:** `200`
+- **Allowed values:** Integer from `0` to `1000000`. `0` means the same value as the rate.
+- **Note:** A burst *below* the rate is a valid setting, not an error — the bucket refills
+  continuously, so the route still reaches the full sustained rate; the requests just cannot arrive
+  all at once.
+
+#### https.cacerts_rate_limit
+
+Sustained `GET /cacerts` requests per second the manager serves, counted for the endpoint as a
+whole.
+
+- **Default value:** `50`
+- **Allowed values:** Integer from `0` to `100000`. `0` disables the limit.
+- **Note:** The route is cheap — a file read plus a hash, with the parsed result cached while the
+  file's content is unchanged, and no downstream service behind it — but an agent that cannot fetch
+  the anchor cannot complete a handshake at all, so do not set this below the rate at which new
+  agents appear.
+
+#### https.cacerts_rate_burst
+
+`GET /cacerts` requests servable back to back before `cacerts_rate_limit` paces them.
+
+- **Default value:** `100`
+- **Allowed values:** Integer from `0` to `1000000`. `0` means the same value as the rate.
+
+**Example — raising both for a wide rollout:**
+
+```xml
+<remote>
+  <https>
+    <enroll_rate_limit>500</enroll_rate_limit>
+    <enroll_rate_burst>1000</enroll_rate_burst>
+  </https>
+</remote>
+```
+
 ---
 
 ## Internal Options

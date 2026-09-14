@@ -1982,6 +1982,14 @@ components:
                           type: integer
                           format: int64
                           description: "Requests refused because the queue was full"
+                    rate_limited:
+                      type: integer
+                      format: int64
+                      description: "Enrollment requests refused with 429 by the endpoint's rate limit (`remote.https.enroll_rate_limit`), before the enrollment daemon was contacted. Counted in none of the outcomes above, since the request was never processed"
+                    rate_limit:
+                      allOf:
+                        - $ref: '#/components/schemas/RemotedRateLimit'
+                        - description: "The rate limit of `POST /enroll`"
                 control:
                   type: object
                   description: "The control plane: agent connection lifecycle and task dispatch over `POST /control`"
@@ -2174,6 +2182,14 @@ components:
                       type: integer
                       format: int64
                       description: "Requests refused with 503 because the configured CA does not sign the served certificate"
+                    rate_limited:
+                      type: integer
+                      format: int64
+                      description: "Requests refused with 429 by the endpoint's rate limit (`remote.https.cacerts_rate_limit`), before the CA was read. Counted in none of the outcomes above"
+                    rate_limit:
+                      allOf:
+                        - $ref: '#/components/schemas/RemotedRateLimit'
+                        - description: "The rate limit of `GET /cacerts`"
                 vd_scan:
                   type: object
                   description: "On-demand vulnerability scan requests admitted from agents over `POST /scan/vd`"
@@ -2241,6 +2257,10 @@ components:
           type: integer
           format: int64
           description: "The request body exceeded the size the endpoint accepts"
+        '429':
+          type: integer
+          format: int64
+          description: "The request was refused by the endpoint's rate limit before it was handled. Only `enroll` and `cacerts` carry a rate limit, so this cell is `0` for every other endpoint"
         '500':
           type: integer
           format: int64
@@ -2253,6 +2273,27 @@ components:
           type: integer
           format: int64
           description: "Responses with any other status"
+
+    RemotedRateLimit:
+      type: object
+      description: |
+        The live state of one endpoint's rate limit. The bucket belongs to the **endpoint**, not to
+        the caller: `limit` is a ceiling on what this manager serves, shared by every agent, so a
+        single client asking fast enough can consume it. Refusals are reported as that endpoint's
+        `rate_limited` counter and as its `429` response cell.
+      properties:
+        limit:
+          type: integer
+          format: int64
+          description: "Requests per second this manager serves on the endpoint, fleet-wide. `0` when the limit is disabled"
+        burst:
+          type: integer
+          format: int64
+          description: "Requests servable back to back before `limit` paces them"
+        available:
+          type: integer
+          format: int64
+          description: "Allowance left unspent right now. Near `0` means the endpoint is at its ceiling and further requests are being refused"
 
     RemotedHistogramSummary:
       type: object
@@ -6812,11 +6853,11 @@ paths:
                         http_server:
                           timestamp: 2022-07-21T10:48:32Z
                           responses:
-                            stateless: { total: 98220, '2xx': 98213, '400': 2, '403': 0, '409': 0, '413': 1, '500': 0, '503': 4, other: 0 }
-                            stateful: { total: 4102, '2xx': 4100, '400': 0, '403': 0, '409': 2, '413': 0, '500': 0, '503': 0, other: 0 }
-                            stats: { total: 512, '2xx': 512, '400': 0, '403': 0, '409': 0, '413': 0, '500': 0, '503': 0, other: 0 }
-                            config: { total: 512, '2xx': 512, '400': 0, '403': 0, '409': 0, '413': 0, '500': 0, '503': 0, other: 0 }
-                            enroll: { total: 37, '2xx': 34, '400': 1, '403': 2, '409': 0, '413': 0, '500': 0, '503': 0, other: 0 }
+                            stateless: { total: 98220, '2xx': 98213, '400': 2, '403': 0, '409': 0, '413': 1, '429': 0, '500': 0, '503': 4, other: 0 }
+                            stateful: { total: 4102, '2xx': 4100, '400': 0, '403': 0, '409': 2, '413': 0, '429': 0, '500': 0, '503': 0, other: 0 }
+                            stats: { total: 512, '2xx': 512, '400': 0, '403': 0, '409': 0, '413': 0, '429': 0, '500': 0, '503': 0, other: 0 }
+                            config: { total: 512, '2xx': 512, '400': 0, '403': 0, '409': 0, '413': 0, '429': 0, '500': 0, '503': 0, other: 0 }
+                            enroll: { total: 37, '2xx': 34, '400': 1, '403': 2, '409': 0, '413': 0, '429': 0, '500': 0, '503': 0, other: 0 }
                           latency:
                             stateless: { count: 98213, sum: 210394821, min: 312, max: 90210, p50: 1830, p90: 4110, p99: 9920 }
                             stateful: { count: 4100, sum: 31201400, min: 1204, max: 42109, p50: 6810, p90: 12300, p99: 28100 }
@@ -6843,6 +6884,8 @@ paths:
                             authd_error: 0
                             authd_unavailable: 0
                             authd_queue: { depth: 0, capacity: 128, rejected_total: 0 }
+                            rate_limited: 0
+                            rate_limit: { limit: 100, burst: 200, available: 200 }
                           control:
                             startup: 34
                             notify: 421337

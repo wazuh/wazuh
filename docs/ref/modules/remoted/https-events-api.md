@@ -370,12 +370,21 @@ Requests larger than the 20 MiB transport cap are dropped at the TLS/HTTP layer 
 closed) before authentication runs, so they never receive a clean `413`.
 
 The server bounds capacity in two phases and sheds excess load with a plain **`503 Service
-Unavailable`** (server-side load-shedding, not per-client rate-limiting; the connection is closed; no
+Unavailable`** (server-side load-shedding, not rate limiting -- that is the `429` below; the connection is closed; no
 `Retry-After` — the agent runs its own retry/backoff): the **in-flight byte budget** bounds total
 unprocessed payload in memory, and the **deferred-work limiter** bounds how many requests are parked
 awaiting the downstream service. The liveness `GET /` and the trust-bootstrap `GET /cacerts` are
 exempt from the byte budget: its exhaustion does not reject either route. Connection limits and
 TLS checks still apply. See the memory settings below.
+
+Rate limiting is a **separate** mechanism and answers **`429 Too Many Requests`** with a
+`Retry-After`. It applies to the two routes no credential can gate, `POST /enroll` and
+`GET /cacerts`, and only to those: every other route is already bounded by what the presented agent
+key permits. The bucket belongs to the **endpoint**, so the configured rate is a ceiling for the
+whole fleet rather than an allowance per agent — one client asking fast enough can consume the
+route's budget. See
+[the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes)
+for the defaults and for how to size them.
 
 The one `503` that *does* carry a `Retry-After` is relayed, not generated: on `/stateful`, a
 digits-only `Retry-After` from the inventory sync server is passed through, since there the
@@ -1280,7 +1289,8 @@ master node's `authd` predates it.
 | `authd` duplicate ip/name/id (9007/9008/9012) | `409` | |
 | `authd` internal/parse/key-generation failure (9001/9002/9009) | `500` | |
 | `authd` refused a caller-supplied key (9019) | `400` | unreachable from `/enroll` (self-enrollment never sends a key); mapped for completeness |
-| `authd` `max_agents` reached (9013) | `503` | Server-wide capacity condition, not a per-client rate limit. |
+| `authd` `max_agents` reached (9013) | `503` | Server-wide capacity condition, not a rate limit — that one is the `429` row below. |
+| Endpoint rate limit exceeded | `429` | Decided by remoted before the body is decoded, the bearer is examined or `authd` is contacted. Carries `Retry-After` in whole seconds. The ceiling is fleet-wide, so during a mass enrollment many agents can see this at once; each retries with its own backoff. See [`https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit). |
 | Re-enrollment already in progress (9030) | `409` | Retry after the pending rotation is committed; no second rotation is performed. |
 | Identity transition could not be recorded (9031) | `503` | No credential is handed out. See [journal admission and recovery limitations](../authd/architecture.md#the-identity-journal). |
 | Worker rejected the request (9015), or its forward to the master failed (9016, new in 5.0) | `503` | Only reachable via the local-socket bridge — see [Authd's local socket protocol](../authd/README.md#local-socket-enrollment-protocol). |

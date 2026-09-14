@@ -72,18 +72,18 @@ REMOTED_METRICS_DUMP = _load_dump()
 EXPECTED_HTTP_SERVER_METRICS = {
     'timestamp': '2026-09-04T10:48:32Z',
     'responses': {
-        'stateless': {'total': 8836, '2xx': 1101, '400': 1102, '403': 1103, '409': 1104, '413': 1105,
-                      '500': 1106, '503': 1107, 'other': 1108},
-        'stateful': {'total': 9636, '2xx': 1201, '400': 1202, '403': 1203, '409': 1204, '413': 1205,
-                     '500': 1206, '503': 1207, 'other': 1208},
-        'stats': {'total': 10436, '2xx': 1301, '400': 1302, '403': 1303, '409': 1304, '413': 1305,
-                  '500': 1306, '503': 1307, 'other': 1308},
-        'config': {'total': 11236, '2xx': 1401, '400': 1402, '403': 1403, '409': 1404, '413': 1405,
-                   '500': 1406, '503': 1407, 'other': 1408},
-        'enroll': {'total': 12036, '2xx': 1501, '400': 1502, '403': 1503, '409': 1504, '413': 1505,
-                   '500': 1506, '503': 1507, 'other': 1508},
-        'cacerts': {'total': 12836, '2xx': 1601, '400': 1602, '403': 1603, '409': 1604, '413': 1605,
-                    '500': 1606, '503': 1607, 'other': 1608},
+        'stateless': {'total': 9945, '2xx': 1101, '400': 1102, '403': 1103, '409': 1104, '413': 1105,
+                      '429': 1109, '500': 1106, '503': 1107, 'other': 1108},
+        'stateful': {'total': 10845, '2xx': 1201, '400': 1202, '403': 1203, '409': 1204, '413': 1205,
+                     '429': 1209, '500': 1206, '503': 1207, 'other': 1208},
+        'stats': {'total': 11745, '2xx': 1301, '400': 1302, '403': 1303, '409': 1304, '413': 1305,
+                  '429': 1309, '500': 1306, '503': 1307, 'other': 1308},
+        'config': {'total': 12645, '2xx': 1401, '400': 1402, '403': 1403, '409': 1404, '413': 1405,
+                   '429': 1409, '500': 1406, '503': 1407, 'other': 1408},
+        'enroll': {'total': 13545, '2xx': 1501, '400': 1502, '403': 1503, '409': 1504, '413': 1505,
+                   '429': 1509, '500': 1506, '503': 1507, 'other': 1508},
+        'cacerts': {'total': 14445, '2xx': 1601, '400': 1602, '403': 1603, '409': 1604, '413': 1605,
+                    '429': 1609, '500': 1606, '503': 1607, 'other': 1608},
     },
     'latency': {
         'stateless': {'count': 8100, 'sum': 8101, 'min': 8102, 'max': 8103, 'p50': 8104, 'p90': 8105,
@@ -100,7 +100,9 @@ EXPECTED_HTTP_SERVER_METRICS = {
                         'malformed': 1012},
     'enrollment': {'accepted': 2001, 'rejected_auth': 2002, 'rejected_validation': 2003, 'disabled': 2004,
                    'authd_error': 2005, 'authd_unavailable': 2006,
-                   'authd_queue': {'depth': 2007, 'capacity': 2008, 'rejected_total': 2009}},
+                   'authd_queue': {'depth': 2007, 'capacity': 2008, 'rejected_total': 2009},
+                   'rate_limited': 2010,
+                   'rate_limit': {'limit': 2013, 'burst': 2012, 'available': 2011}},
     'control': {'startup': 3001, 'notify': 3002, 'shutdown': 3003, 'rejected': 3004, 'wdb_error': 3005,
                 'task_fetch': 3006, 'task_fetch_error': 3007, 'registry_agents': 3008,
                 'wdb_latency': {'count': 3100, 'sum': 3101, 'min': 3102, 'max': 3103, 'p50': 3104,
@@ -116,7 +118,8 @@ EXPECTED_HTTP_SERVER_METRICS = {
     'downloads': {'started': 7001, 'rejected': 7002, 'not_found': 7003, 'open_error': 7004,
                   'bytes_total': 7005},
     'tls': {'cert_expiry_days': 9001, 'ca_matches_leaf': 9002},
-    'cacerts': {'served': 9101, 'not_found': 9102, 'ca_mismatch': 9103},
+    'cacerts': {'served': 9101, 'not_found': 9102, 'ca_mismatch': 9103, 'rate_limited': 9104,
+                'rate_limit': {'limit': 9107, 'burst': 9106, 'available': 9105}},
     'vd_scan': {'requests_total': 8001, 'accepted': 8002, 'version_mismatch': 8003, 'queue_full': 8004,
                 'invalid_agent': 8005, 'vd_error': 8006, 'indexer_unavailable': 8007},
 }
@@ -162,7 +165,7 @@ def test_build_remoted_http_metrics_omits_missing_fields_instead_of_reporting_ze
     assert result['auth_rejections']['total'] == EXPECTED_HTTP_SERVER_METRICS['auth_rejections']['total'] - 1003
     assert result['downloads']['started'] == 7001
     assert result['enrollment']['authd_queue'] == {'capacity': 2008, 'rejected_total': 2009}
-    assert result['responses']['stateless']['total'] == 8836 - 1107
+    assert result['responses']['stateless']['total'] == 9945 - 1107
 
 
 def test_build_remoted_http_metrics_omits_groups_and_endpoints_that_report_nothing():

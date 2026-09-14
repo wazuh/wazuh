@@ -51,6 +51,7 @@ wazuh-manager-remoted listeners.
 |---|---|---|---|---|
 | `legacy` | mapping | `{"enabled": false}` |  | Classic TCP/UDP agent listener. Absent block = disabled; present block = enabled unless 'enabled: false'. |
 | `legacy.enabled` | boolean | `true` |  | Start the legacy listener. |
+| `legacy.ca_delivery` | boolean | `true` |  | Send the manager's CA certificate to a pre-v5.0.0 agent over the WPK transfer channel during a remote upgrade, so the upgraded agent has a trust anchor. Disable when a corporate PKI or a configuration-management tool distributes the anchor instead. |
 | `legacy.port` | integer | `1514` | 1-65535 | Listening port. |
 | `legacy.protocol` | list of enum | `["tcp"]` | items one of `tcp`, `udp`; at least 1 item; at most 2 items; unique | Transport protocols to listen on. |
 | `legacy.ipv6` | boolean | `false` |  | Listen on IPv6. |
@@ -70,6 +71,10 @@ wazuh-manager-remoted listeners.
 | `https.ciphers` | string |  | `^TLS_[A-Z0-9_]+(:TLS_[A-Z0-9_]+)*$` | TLS 1.3 cipher suites. Absent: library default. |
 | `https.max_body_size` | integer or string |  | >= 1; `^[0-9]+[bBkKmMgG]?$` | Maximum HTTP request body. Absent: module default. |
 | `https.dual_stack` | boolean |  |  | Accept IPv4 on an IPv6 bind address. Absent: module default. |
+| `https.enroll_rate_limit` | integer | `100` | 0-100000 | Sustained POST /enroll requests per second this manager serves, counted for the endpoint as a whole and not per agent. 0 disables the limit. Requests over it get 429 without reaching authd. |
+| `https.enroll_rate_burst` | integer | `200` | 0-1000000 | POST /enroll requests servable back to back before 'enroll_rate_limit' paces them. 0 means the same value as the rate. |
+| `https.cacerts_rate_limit` | integer | `50` | 0-100000 | Sustained GET /cacerts requests per second this manager serves, counted for the endpoint as a whole and not per agent. 0 disables the limit. Requests over it get 429. |
+| `https.cacerts_rate_burst` | integer | `100` | 0-1000000 | GET /cacerts requests servable back to back before 'cacerts_rate_limit' paces them. 0 means the same value as the rate. |
 | `agents` | mapping |  |  | Agent version policy of the connection handlers. |
 | `agents.allow_higher_versions` | boolean | `false` |  | Accept agents whose version is higher than the manager's. |
 

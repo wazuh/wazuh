@@ -52,6 +52,12 @@ _Static_assert(REMOTED_HTTPS_DUAL_STACK_YES == REMOTED_MODULE_HTTPS_DUAL_STACK_Y
 _Static_assert(REMOTED_HTTPS_DUAL_STACK_NO == REMOTED_MODULE_HTTPS_DUAL_STACK_NO,
                "REMOTED_HTTPS_DUAL_STACK_NO must match REMOTED_MODULE_HTTPS_DUAL_STACK_NO");
 
+// Same reasoning again, for the rate-limit "not configured" sentinel: w_remoted_build_module_config()
+// copies the four rate fields across with no translation, and a mismatch would turn "the operator
+// never configured this" into a negative rate the module would have to guess about.
+_Static_assert(REMOTED_HTTPS_RATE_LIMIT_UNSET == REMOTED_MODULE_RATE_LIMIT_UNSET,
+               "REMOTED_HTTPS_RATE_LIMIT_UNSET must match REMOTED_MODULE_RATE_LIMIT_UNSET");
+
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
@@ -414,6 +420,18 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
     rm_config->verification_mode = logr->https.verification_mode;
     rm_config->http_max_body_size = logr->https.max_body_size;
     rm_config->dual_stack = logr->https.dual_stack;
+
+    // The four values are copied verbatim, sentinel included: RemotedConfig() starts them at
+    // REMOTED_HTTPS_RATE_LIMIT_UNSET and Read_Remote_JSON() only overwrites what the document
+    // carries, so "the operator set 0" and "nobody configured this" stay distinguishable all the
+    // way into the module. The flag says the four carry real values at all, which is what keeps a
+    // zeroed struct (or remoted_module_start(NULL)) meaning "module defaults" rather than
+    // "unlimited".
+    rm_config->rate_limit_set = 1;
+    rm_config->enroll_rate_limit = logr->https.enroll_rate_limit;
+    rm_config->enroll_rate_burst = logr->https.enroll_rate_burst;
+    rm_config->cacerts_rate_limit = logr->https.cacerts_rate_limit;
+    rm_config->cacerts_rate_burst = logr->https.cacerts_rate_burst;
 
     if (logr->https.bind_addr) {
         snprintf(rm_config->bind_address, sizeof(rm_config->bind_address), "%s", logr->https.bind_addr);
