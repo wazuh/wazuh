@@ -302,8 +302,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Enrollment-token bootstrap: the one-shot file src/init/register_configure_agent.sh's
  * WAZUH_ENROLLMENT_TOKEN_PATH writes at install time. w_agent_token_bootstrap() reads it once,
- * before AGENT_ANCHOR_CA exists, and deletes it on either a committed success or a permanent
- * failure -- see token_bootstrap.c. Relative, same convention as AGENT_ANCHOR_CA above. */
+ * before AGENT_ANCHOR_CA exists, and deletes it once a committed success is already in place
+ * (an anchor on disk, or a non-empty KEYS_FILE) or once this run's own bootstrap succeeds --
+ * kept on disk through every failure, permanent or transient, since a failure is exactly what
+ * makes a later attempt worth retrying. See token_bootstrap.c. Relative, same convention as
+ * AGENT_ANCHOR_CA above. */
 #ifndef WIN32
 #define AGENT_ENROLLMENT_TOKEN_FILE "etc/enrollment_token"
 #else
