@@ -172,6 +172,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path C:\wazuh\tests | Out-Null
           Copy-Item -Path "$env:GITHUB_WORKSPACE\tests\*" -Destination C:\wazuh\tests -Recurse -Force
+          # Some tests read shipped config templates by a repo-root-relative path
+          # (e.g. test_macos_uls_default_query.py), so etc/ has to be staged too.
+          Copy-Item -Path "$env:GITHUB_WORKSPACE\etc" -Destination C:\wazuh\etc -Recurse -Force
       # ================= EXECUTION =================
       - name: Start Wazuh agent service
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && (inputs.start_service == true || inputs.start_service == 'true') }}
