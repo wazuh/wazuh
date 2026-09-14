@@ -347,7 +347,11 @@ paths:
         `agent.config_token` back verbatim as the `resource_id` -- the token is opaque to the
         agent, which must never derive that identifier from `agent.groups` itself),
         `vd_feed_offset` (a strictly higher value means request a re-scan via `POST /scan/vd`), and
-        `tasks` when the manager has work to dispatch.
+        `tasks` when the manager has work to dispatch. `tasks_fetch_failed` (#38880 finding 10) is
+        `true` when the manager could not reach its Task Manager for this poll -- `tasks` is then an
+        empty array too, but for a different reason than "nothing pending": an agent that reads this
+        field can tell the two apart instead of treating a manager-side outage as "no work exists".
+        An agent that does not read it sees exactly the response it saw before this field existed.
 
         Note the parse asymmetry between the two: `startup` reads `version` at the top level, while
         `notify` reads it at `agent.version`.
@@ -404,6 +408,7 @@ paths:
                     agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
                     settings_hash: "d7a8fbb3..."
                     tasks: []
+                    tasks_fetch_failed: false
                     vd_feed_offset: 12345678
                 notifyWithTasks:
                   value:
@@ -414,6 +419,15 @@ paths:
                       - task_id: "42"
                         task_type: active_response
                         payload: {}
+                    tasks_fetch_failed: false
+                notifyTasksFetchFailed:
+                  summary: Task Manager unreachable for this poll -- `tasks` is empty for a different reason than notifyNoTasks
+                  value:
+                    agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
+                    settings_hash: "d7a8fbb3..."
+                    tasks: []
+                    tasks_fetch_failed: true
+                    vd_feed_offset: 12345678
                 shutdown:
                   value: {}
         "400":
