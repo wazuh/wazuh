@@ -173,7 +173,11 @@ def start(params: dict):
                     'host': params['host'],
                     'port': params['port']},
                 strict_validation=True,
-                validate_responses=False
+                validate_responses=False,
+                # A rejected parameter is reported by this validator instead of by connexion's,
+                # whose message is jsonschema's own exception text: the submitted value followed by
+                # the failing subschema as a Python dict literal.
+                validator_map={'parameter': WazuhParameterValidator}
                 )
 
     # Maximum body size that the API can accept (bytes). This middleware caps a body by wrapping the
@@ -352,6 +356,7 @@ if __name__ == '__main__':
         WazuhAccessLoggerMiddleware,
         CheckExpectHeaderMiddleware,
     )
+    from api.parameter_validator import WazuhParameterValidator
     from api.signals import lifespan_handler
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path

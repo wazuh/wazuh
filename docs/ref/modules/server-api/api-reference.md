@@ -15,7 +15,7 @@ Most `GET` endpoints accept these standard parameters:
 |-----------|------|---------|-------------|
 | `pretty` | boolean | `false` | Human-readable output |
 | `wait_for_complete` | boolean | `false` | Disable timeout response |
-| `offset` | int | `0` | First element to return |
+| `offset` | int | `0` | First element to return (max: 2,147,483,647) |
 | `limit` | int | `500` | Max elements to return (max: 100,000) |
 | `search` | string | — | Free-text search (prefix `-` for complementary) |
 | `sort` | string | — | Sort by fields (`+` asc, `-` desc, dot notation for nested) |
@@ -517,7 +517,7 @@ Errors follow a structured JSON response format.
 | 400       | Bad Request       | Invalid parameters       |
 | 401       | Unauthorized      | Invalid or expired token |
 | 403       | Forbidden         | RBAC denied              |
-| 404       | Not Found         | Invalid endpoint         |
+| 404       | Not Found         | Invalid endpoint, or the named resource (group, cluster node) does not exist |
 | 405       | Method Not Allowed | Invalid HTTP method     |
 | 413       | Payload Too Large | Request body too large   |
 | 429       | Too Many Requests | Rate limit exceeded      |
