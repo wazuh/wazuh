@@ -36,7 +36,8 @@ int w_agent_token_bootstrap(int uid, int gid) {
 STATIC char *w_token_bootstrap_read_token(const char *path);
 STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out);
 STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid);
-STATIC int w_token_bootstrap_chown_keys_file(int gid);
+STATIC int w_token_bootstrap_open_and_chown_keys(int gid);
+STATIC void w_token_bootstrap_chown_keys_file(int gid);
 
 /**
  * @brief Reads the one-shot enrollment token file, mirroring
@@ -136,16 +137,17 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
  *        keep out can otherwise replace client.keys with a symlink to an arbitrary root-owned
  *        file (e.g. /etc/shadow) and have this root-privileged call chown() the link's target
  *        instead, handing its own group write/read access to whatever that target is.
- * @return 0 on success, -1 on error (errno set: from open()/openat() or EINVAL/ELOOP when the
- *         resolved path is not a lone regular file).
+ * @return 0 on success, -1 on error (errno set: from open()/openat(), EINVAL when the resolved
+ *         path is not a regular file, or EMLINK when it is a hard-linked one).
  */
-STATIC int w_token_bootstrap_chown_keys_file(int gid) {
+STATIC int w_token_bootstrap_open_and_chown_keys(int gid) {
     char dir[OS_FLSIZE + 1];
     char *slash;
     const char *filename;
     int dirfd;
     int fd;
     int saved_errno;
+    int flags;
     struct stat statbuf;
 
     strncpy(dir, KEYS_FILE, sizeof(dir) - 1);
@@ -157,13 +159,19 @@ STATIC int w_token_bootstrap_chown_keys_file(int gid) {
     }
 
     *slash = '\0';
-    filename = KEYS_FILE + (slash - dir) + 1;
+    filename = slash + 1;
 
     if ((dirfd = open(dir, O_RDONLY | O_DIRECTORY | O_CLOEXEC)) < 0) {
         return -1;
     }
 
-    fd = openat(dirfd, filename, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+    /* O_NONBLOCK keeps a FIFO planted at this path (etc/ is 0770 root:wazuh, writable by the
+     * very runtime user this hardening targets) from blocking the open indefinitely -- this
+     * function runs synchronously before AgentdStart()'s privilege drop, so a hang here hangs
+     * the whole agent boot. Mirrors w_openat_nofollow_vetted()'s own use of the flag
+     * (file_op.c) for this identical threat model; cleared below once the descriptor is vetted,
+     * since it no longer serves any purpose past that point. */
+    fd = openat(dirfd, filename, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
     saved_errno = errno;
     close(dirfd);
 
@@ -181,7 +189,24 @@ STATIC int w_token_bootstrap_chown_keys_file(int gid) {
 
     if (!S_ISREG(statbuf.st_mode)) {
         close(fd);
-        errno = ELOOP;
+        errno = EINVAL;
+        return -1;
+    }
+
+    /* A hard link to another root-owned regular file already in etc/ is a regular file by
+     * every other measure; O_NOFOLLOW does not stop it, only the link count gives it away.
+     * Same check as w_openat_nofollow_vetted()'s (file_op.c). */
+    if (statbuf.st_nlink != 1) {
+        close(fd);
+        errno = EMLINK;
+        return -1;
+    }
+
+    flags = fcntl(fd, F_GETFL);
+    if (flags < 0 || fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) < 0) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
         return -1;
     }
 
@@ -194,6 +219,17 @@ STATIC int w_token_bootstrap_chown_keys_file(int gid) {
 
     close(fd);
     return 0;
+}
+
+/**
+ * @brief w_token_bootstrap_open_and_chown_keys() plus the merror() every one of its three call
+ *        sites in this file would otherwise have to repeat identically.
+ */
+STATIC void w_token_bootstrap_chown_keys_file(int gid) {
+    if (w_token_bootstrap_open_and_chown_keys(gid) != 0) {
+        merror("Token bootstrap: could not change ownership of '%s': %s (%d).", KEYS_FILE,
+               strerror(errno), errno);
+    }
 }
 
 /**
@@ -244,9 +280,8 @@ int w_agent_token_bootstrap(int uid, int gid) {
          * rename and that chown leaves the anchor committed with client.keys still root:root.
          * Every later boot trips this latch and returns before ever reaching the branch below,
          * so this is the only place left that can retry the fix. */
-        if (FileSize(KEYS_FILE) > 0 && w_token_bootstrap_chown_keys_file(gid) != 0) {
-            merror("Token bootstrap: could not change ownership of '%s': %s (%d).", KEYS_FILE,
-                   strerror(errno), errno);
+        if (FileSize(KEYS_FILE) > 0) {
+            w_token_bootstrap_chown_keys_file(gid);
         }
 
         unlink(AGENT_ENROLLMENT_TOKEN_FILE);
@@ -259,10 +294,7 @@ int w_agent_token_bootstrap(int uid, int gid) {
          * authd, manual registration). Repairs client.keys's group defensively for that case too,
          * since enrollment.c's own replace has the same group-loss gap (see the final chown's own
          * comment); done unconditionally since it's cheap and idempotent. */
-        if (w_token_bootstrap_chown_keys_file(gid) != 0) {
-            merror("Token bootstrap: could not change ownership of '%s': %s (%d).", KEYS_FILE,
-                   strerror(errno), errno);
-        }
+        w_token_bootstrap_chown_keys_file(gid);
 
         unlink(AGENT_ENROLLMENT_TOKEN_FILE);
         return 0;
@@ -522,10 +554,7 @@ int w_agent_token_bootstrap(int uid, int gid) {
      * (e.g. a namespaced container without CAP_CHOWN), the anchor above is already committed, so
      * client.keys stays root:root here -- but the anchor-latch branch above retries this same
      * chown on every later boot, so this is not a one-shot chance to fix it. */
-    if (w_token_bootstrap_chown_keys_file(gid) != 0) {
-        merror("Token bootstrap: could not change ownership of '%s': %s (%d).", KEYS_FILE,
-               strerror(errno), errno);
-    }
+    w_token_bootstrap_chown_keys_file(gid);
 
     unlink(AGENT_ENROLLMENT_TOKEN_FILE);
     w_etoken_free(&token);

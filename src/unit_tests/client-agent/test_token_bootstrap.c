@@ -170,6 +170,8 @@ int __wrap_chown(const char *path, uid_t owner, gid_t group) {
  * directory) must not make a root-privileged chown() follow it to an arbitrary target. The fd
  * is resolved back to a path via /proc/self/fd to keep matching this suite's existing
  * by-path convention. */
+static bool g_keys_fchown_should_fail = false;
+
 int __wrap_fchown(int fd, uid_t owner, gid_t group) {
     char link[64];
     char path[PATH_MAX];
@@ -182,6 +184,11 @@ int __wrap_fchown(int fd, uid_t owner, gid_t group) {
         path[len] = '\0';
 
         if (strstr(path, "/client.keys") != NULL) {
+            if (g_keys_fchown_should_fail) {
+                errno = EACCES;
+                return -1;
+            }
+
             g_keys_chown_uid = owner;
             g_keys_chown_gid = group;
         }
@@ -228,6 +235,7 @@ static void remove_test_paths(void) {
     unlink("etc/enrollment_token");
     unlink("etc/certs/root-ca.pem");
     unlink("etc/client.keys");
+    unlink("etc/other-file");
 }
 
 static int group_setup(void **state) {
@@ -258,6 +266,7 @@ static int setup_test(void **state) {
     g_dir_chown_gid = (gid_t) -1;
     g_keys_chown_uid = (uid_t) -1;
     g_keys_chown_gid = (gid_t) -1;
+    g_keys_fchown_should_fail = false;
     g_dir_chmod_mode = (mode_t) -1;
     g_anchor_chmod_mode = (mode_t) -1;
     g_anchor_chown_recorded_before_move = false;
@@ -406,6 +415,46 @@ static void test_already_enrolled_skips_and_discards_the_token(void **state) {
      * leaving it root:root until a later boot passes through here again. */
     assert_int_equal(g_keys_chown_uid, 0);
     assert_int_equal(g_keys_chown_gid, getgid());
+}
+
+/* Regression test: a hard link is a regular file by every other measure -- O_NOFOLLOW does not
+ * stop it, only its link count gives it away. etc/ is 0770 root:wazuh, so the runtime user could
+ * otherwise hard-link some other root-owned file to client.keys's path and have this
+ * root-privileged repair fchown() it to root:wazuh instead. */
+static void test_client_keys_hard_link_is_not_chowned(void **state) {
+    (void) state;
+    write_file("etc/other-file", "not-client-keys\n");
+    assert_int_equal(link("etc/other-file", "etc/client.keys"), 0);
+    write_token_file(true, true, NULL);
+
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_fetch_call_count, 0);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_int_equal(g_keys_chown_uid, (uid_t) -1);
+    assert_int_equal(g_keys_chown_gid, (gid_t) -1);
+}
+
+/* Regression test: a failing fchown() on client.keys must be logged, not silently swallowed --
+ * neither of the new ownership-repair branches this PR adds was previously exercised with a
+ * failing chown, so a broken merror() call site there would have gone unnoticed. */
+static void test_keys_chown_failure_is_logged(void **state) {
+    (void) state;
+    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_token_file(true, true, NULL);
+    g_keys_fchown_should_fail = true;
+
+    expect_any(__wrap__merror, formatted_msg);
+
+    /* The failure is logged, but does not fail the bootstrap itself: the token is one-shot and
+     * this agent is already enrolled, so there is nothing left to retry here besides the chown
+     * -- and that keeps getting retried on every later boot regardless. */
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_fetch_call_count, 0);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_int_equal(g_keys_chown_uid, (uid_t) -1);
+    assert_int_equal(g_keys_chown_gid, (gid_t) -1);
 }
 
 /* Regression test: client.keys can exist as an empty 0-byte placeholder (the package's own
@@ -663,6 +712,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_no_token_file_is_noop, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_anchor_already_present_skips_and_discards_the_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_already_enrolled_skips_and_discards_the_token, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_client_keys_hard_link_is_not_chowned, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_keys_chown_failure_is_logged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_empty_placeholder_keys_file_is_not_already_enrolled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_malformed_token_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_failure_logs_named_error_and_writes_nothing, setup_test, teardown_test),
