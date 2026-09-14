@@ -710,6 +710,14 @@ nlohmann::json SysInfo::getServices() const
             return 0;
         };
 
+        // The provider renders plist booleans as the words "true"/"false", which std::stoi cannot
+        // parse, so boolean-backed fields need their own conversion.
+        auto stringToBool = [&svc](const std::string & fieldName) -> int
+        {
+            const auto valueStr = svc.value(fieldName, std::string{});
+            return (valueStr == "true" || valueStr == "1") ? 1 : 0;
+        };
+
         // ECS mapping based on the provided table
         serviceItem["service_id"]           = (svc.contains("label") && !svc["label"].get<std::string>().empty()) ? svc["label"] : UNKNOWN_VALUE;
         serviceItem["service_name"]         = svc.value("name",         UNKNOWN_VALUE);
@@ -718,22 +726,17 @@ nlohmann::json SysInfo::getServices() const
         serviceItem["service_state"]        = UNKNOWN_VALUE;
         serviceItem["service_sub_state"]    = UNKNOWN_VALUE;
 
-        if (svc.contains("disabled"))
-        {
-            auto disabledValue = svc["disabled"].get<std::string>();
+        // Disabled is a plist boolean, so the provider yields "true"/"false", but a plist may also
+        // spell it as "0"/"1". An unset key means enabled, which is the launchd default.
+        const auto disabledValue = svc.value("disabled", std::string{});
 
-            if (disabledValue == "0")
-            {
-                serviceItem["service_enabled"] = "1";
-            }
-            else if (disabledValue == "1")
-            {
-                serviceItem["service_enabled"] = "0";
-            }
-            else
-            {
-                serviceItem["service_enabled"] = UNKNOWN_VALUE;
-            }
+        if (disabledValue == "1" || disabledValue == "true")
+        {
+            serviceItem["service_enabled"] = "0";
+        }
+        else if (disabledValue.empty() || disabledValue == "0" || disabledValue == "false")
+        {
+            serviceItem["service_enabled"] = "1";
         }
         else
         {
@@ -743,10 +746,10 @@ nlohmann::json SysInfo::getServices() const
         serviceItem["service_start_type"]                    = svc.value("run_at_load",         UNKNOWN_VALUE);
         serviceItem["service_restart"]                       = svc.value("keep_alive",          UNKNOWN_VALUE);
         serviceItem["service_frequency"]                     = stringToInt("start_interval");
-        serviceItem["service_starts_on_mount"]               = stringToInt("start_on_mount");
+        serviceItem["service_starts_on_mount"]               = stringToBool("start_on_mount");
         serviceItem["service_starts_on_path_modified"]       = svc.value("watch_paths",         UNKNOWN_VALUE);
         serviceItem["service_starts_on_not_empty_directory"] = svc.value("queue_directories",   UNKNOWN_VALUE);
-        serviceItem["service_inetd_compatibility"]           = stringToInt("inetd_compatibility");
+        serviceItem["service_inetd_compatibility"]           = stringToBool("inetd_compatibility");
         serviceItem["process_pid"]                           = 0;
         serviceItem["process_executable"]                    = svc.value("program",             UNKNOWN_VALUE);
         serviceItem["process_args"]                          = svc.value("program_arguments",   UNKNOWN_VALUE);

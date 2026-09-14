@@ -309,6 +309,12 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                         if (keyPair.second == "start_interval") service.startInterval = stringVal;
                     }
                 }
+                else if (CFGetTypeID(value) == CFDictionaryGetTypeID())
+                {
+                    // inetdCompatibility is declared as a dictionary, so its mere presence marks
+                    // the job as inetd compatible.
+                    if (keyPair.second == "inetd_compatibility") service.inetdCompatibility = "true";
+                }
             }
 
             CFRelease(key);
@@ -357,7 +363,17 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
 
                 std::string joinedValue = joinArrayElements(elements);
 
-                if (keyPair.second == "program_arguments") service.programArguments = joinedValue;
+                if (keyPair.second == "program_arguments")
+                {
+                    service.programArguments = joinedValue;
+
+                    // A job may declare its executable either in Program or as the first element of
+                    // ProgramArguments. Fall back to the latter, which is the more common form.
+                    if (service.program.empty() && !elements.empty())
+                    {
+                        service.program = elements.front();
+                    }
+                }
                 else if (keyPair.second == "watch_paths") service.watchPaths = joinedValue;
                 else if (keyPair.second == "queue_directories") service.queueDirectories = joinedValue;
             }
