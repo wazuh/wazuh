@@ -172,6 +172,18 @@ int __wrap_chown(const char *path, uid_t owner, gid_t group) {
  * by-path convention. */
 static bool g_keys_fchown_should_fail = false;
 
+/* Exact match, not a substring one: a loose match (e.g. strstr() on "/client.keys") would also
+ * match a hypothetical "etc/client.keys.XXXXXX" temp variant, silently passing even if a future
+ * refactor mistakenly chowned the temp file instead of the installed path -- exactly the mistake
+ * the sibling anchor guard (is_anchor_path() vs is_anchor_dir_path()) exists to catch. */
+static bool is_keys_file_path(const char *path) {
+    static const char suffix[] = "/client.keys";
+    size_t path_len = path ? strlen(path) : 0;
+
+    return path_len >= sizeof(suffix) - 1 &&
+           strcmp(path + path_len - (sizeof(suffix) - 1), suffix) == 0;
+}
+
 int __wrap_fchown(int fd, uid_t owner, gid_t group) {
     char link[64];
     char path[PATH_MAX];
@@ -183,7 +195,7 @@ int __wrap_fchown(int fd, uid_t owner, gid_t group) {
     if (len > 0) {
         path[len] = '\0';
 
-        if (strstr(path, "/client.keys") != NULL) {
+        if (is_keys_file_path(path)) {
             if (g_keys_fchown_should_fail) {
                 errno = EACCES;
                 return -1;
@@ -641,6 +653,44 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal(g_keys_chown_gid, getgid());
 }
 
+/* Regression test: unlike the two repair call sites (quiet_on_failure=true, covered above), the
+ * fresh-enrollment call site (quiet_on_failure=false) must log at merror() level -- it runs once
+ * per enrollment, not once per boot, so a failure there is a new, one-time event worth surfacing
+ * loudly rather than folded into debug output. */
+static void test_fresh_enrollment_keys_chown_failure_logs_merror(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    g_keys_fchown_should_fail = true;
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    /* Same benign TempFile() FSTAT_ERROR mdebug1 as the happy-path tests, once for
+     * AGENT_ANCHOR_CA and once for KEYS_FILE. */
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+    expect_any(__wrap__merror, formatted_msg);
+
+    /* The chown failure is logged but does not fail the bootstrap: enrollment itself already
+     * succeeded, and the anchor-latch branch will keep retrying this same chown on every later
+     * boot regardless. */
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_keys_chown_uid, (uid_t) -1);
+    assert_int_equal(g_keys_chown_gid, (gid_t) -1);
+}
+
 /* #39028's DoD: "a credential-less token enrolls when the simulator requires no credential,
  * and is not treated as an error." has_key=false must not short-circuit into an error path --
  * enrollment still runs, just with no token_kid/token_key_hex on the wire (and no fallback to
@@ -744,6 +794,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fetch_failure_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_pin_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_pin, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_fresh_enrollment_keys_chown_failure_logs_merror, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_credential_less_token_enrolls_without_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_ca_pem, setup_test, teardown_test),
     };

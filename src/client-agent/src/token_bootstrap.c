@@ -35,6 +35,8 @@ int w_agent_token_bootstrap(int uid, int gid) {
 
 STATIC char *w_token_bootstrap_read_token(const char *path);
 STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out);
+STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, size_t buf_size,
+                                                 const char **filename);
 STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid);
 STATIC int w_token_bootstrap_open_and_chown_keys(int gid);
 STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure);
@@ -92,6 +94,37 @@ STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out) {
 }
 
 /**
+ * @brief Splits @p path into its directory and filename components, using @p buf as backing
+ *        storage for the directory (the last '/' is replaced with '\0' in place). Shared by
+ *        w_token_bootstrap_ensure_parent_dir() and w_token_bootstrap_open_and_chown_keys() so
+ *        this split only has to be kept correct in one place.
+ * @param buf Backing storage for the directory component; must be at least @p buf_size bytes
+ *        and outlives the string @p filename points into.
+ * @param filename When non-NULL, set to the filename component (a pointer into @p buf).
+ * @return 0 on success, -1 if @p path has no '/' (errno set to EINVAL).
+ */
+STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, size_t buf_size,
+                                                 const char **filename) {
+    char *slash;
+
+    strncpy(buf, path, buf_size - 1);
+    buf[buf_size - 1] = '\0';
+
+    if ((slash = strrchr(buf, '/')) == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    *slash = '\0';
+
+    if (filename != NULL) {
+        *filename = slash + 1;
+    }
+
+    return 0;
+}
+
+/**
  * @brief Ensures the directory holding @p path exists, creating it (and any of its own missing
  *        ancestors) if not -- mkdir_ex() creates @a path itself as a directory too, not just its
  *        ancestors, so this trims the final ('/'-separated) component off first. Needed because
@@ -109,24 +142,21 @@ STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out) {
  */
 STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
     char dir[OS_FLSIZE + 1];
-    char *slash;
 
-    strncpy(dir, path, sizeof(dir) - 1);
-    dir[sizeof(dir) - 1] = '\0';
+    if (w_token_bootstrap_split_dir_filename(path, dir, sizeof(dir), NULL) != 0) {
+        return;
+    }
 
-    if ((slash = strrchr(dir, '/')) != NULL) {
-        *slash = '\0';
-        mkdir_ex(dir);
+    mkdir_ex(dir);
 
-        if (chown(dir, 0, gid) != 0) {
-            merror("Token bootstrap: could not set ownership of '%s': %s (%d).", dir,
-                   strerror(errno), errno);
-        }
+    if (chown(dir, 0, gid) != 0) {
+        merror("Token bootstrap: could not set ownership of '%s': %s (%d).", dir,
+               strerror(errno), errno);
+    }
 
-        if (chmod(dir, 0750) == -1) {
-            merror("Token bootstrap: could not set permissions on '%s': %s (%d).", dir,
-                   strerror(errno), errno);
-        }
+    if (chmod(dir, 0750) == -1) {
+        merror("Token bootstrap: could not set permissions on '%s': %s (%d).", dir,
+               strerror(errno), errno);
     }
 }
 
@@ -146,21 +176,13 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
  */
 STATIC int w_token_bootstrap_open_and_chown_keys(int gid) {
     char dir[OS_FLSIZE + 1];
-    char *slash;
     const char *filename;
     int fd;
     int saved_errno;
 
-    strncpy(dir, KEYS_FILE, sizeof(dir) - 1);
-    dir[sizeof(dir) - 1] = '\0';
-
-    if ((slash = strrchr(dir, '/')) == NULL) {
-        errno = EINVAL;
+    if (w_token_bootstrap_split_dir_filename(KEYS_FILE, dir, sizeof(dir), &filename) != 0) {
         return -1;
     }
-
-    *slash = '\0';
-    filename = slash + 1;
 
     if ((fd = w_openat_nofollow_vetted(dir, filename, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, 0)) < 0) {
         return -1;
@@ -256,11 +278,14 @@ int w_agent_token_bootstrap(int uid, int gid) {
     }
 
     if (FileSize(KEYS_FILE) > 0) {
-        /* Reached only when client.keys already has content but no anchor was ever installed --
-         * i.e. the agent was enrolled by some means other than this token bootstrap (classic
-         * authd, manual registration). Repairs client.keys's group defensively for that case too,
-         * since enrollment.c's own replace has the same group-loss gap (see the final chown's own
-         * comment); done unconditionally since it's cheap and idempotent. */
+        /* Reached when client.keys already has content but no anchor was ever installed -- most
+         * often because the agent was enrolled by some means other than this token bootstrap
+         * (classic authd, manual registration), but also reachable from a crash inside this very
+         * flow: if this function dies after enrollment writes client.keys but before the anchor
+         * is renamed into place further down, the next boot lands here too. Either way, repairs
+         * client.keys's group defensively, since enrollment.c's own replace has the same
+         * group-loss gap (see the final chown's own comment); done unconditionally since it's
+         * cheap and idempotent. */
         w_token_bootstrap_chown_keys_file(gid, true);
 
         unlink(AGENT_ENROLLMENT_TOKEN_FILE);

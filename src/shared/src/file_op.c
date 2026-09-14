@@ -2591,6 +2591,16 @@ int w_openat_nofollow_vetted(const char * basedir, const char * filename, int of
     int saved_errno;
     int flags;
 
+    /* Both preconditions this function's own doc comment promises: a bare filename (no '/' to
+     * escape basedir with) and O_NOFOLLOW in oflags (without it, the open below would silently
+     * follow a symlink at the final path component instead of vetting it). Neither is live today
+     * -- both current callers already satisfy them -- but enforcing them here, not just at each
+     * call site, keeps that promise backed for whoever calls this next. */
+    if (!basedir || !w_is_bare_filename(filename) || !(oflags & O_NOFOLLOW)) {
+        errno = EINVAL;
+        return -1;
+    }
+
     if (dirfd = open(basedir, O_RDONLY | O_DIRECTORY | O_CLOEXEC), dirfd < 0) {
         return -1;
     }
