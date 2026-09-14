@@ -18,6 +18,7 @@
 #include "loggerHelper.h"
 #include "reflectiveJson.hpp"
 #include "secureCommunication.hpp"
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -377,6 +378,21 @@ class IndexerConnectorSyncImpl final
     /// template deliberately does not include.
     static constexpr long DEFAULT_MONITORING_INTERVAL_SECONDS {10};
 
+    /// What @p deadline has left, for a budget that must not open a window of its own on top of
+    /// the one the caller is waiting in. Never 0 while the bound is enabled, because
+    /// IndexerRetryBudget reads 0 as "no wall bound", the opposite of a spent operation.
+    std::chrono::milliseconds budgetLeft(const std::chrono::steady_clock::time_point deadline) const
+    {
+        if (m_maxRetryDuration.count() == 0)
+        {
+            return std::chrono::milliseconds {0};
+        }
+
+        return std::max(
+            std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now()),
+            std::chrono::milliseconds {1});
+    }
+
     /// Waits out a by-query version conflict, and answers false once the allowance is spent and
     /// the documents left behind become the caller's problem.
     bool retryAfterVersionConflict(std::size_t conflicts,
@@ -518,12 +534,16 @@ class IndexerConnectorSyncImpl final
         // Track if we have pending deleteByQuery operations that need notification
         const bool hasDeleteByQuery = !m_deleteByQuery.empty();
 
+        // One wall clock for the whole flush, so the deletes, the conflict allowance and the bulk
+        // draw from the same window instead of each opening its own.
+        const auto flushDeadline = std::chrono::steady_clock::now() + m_maxRetryDuration;
+
         // One conflict allowance for the whole flush: the refresh boundary is a property of the
         // flush, so the first index to wait it out clears the rest, and a per-index allowance would
         // only multiply the wait by the number of indices a Cleans staged.
         IndexerExponentialBackoff conflictBackoff {std::chrono::milliseconds {ConflictRetryDelayMs},
                                                    std::chrono::seconds {m_maxRetryDelay}};
-        IndexerRetryBudget conflictBudget {CONFLICT_RETRY_ATTEMPTS, m_maxRetryDuration};
+        IndexerRetryBudget conflictBudget {CONFLICT_RETRY_ATTEMPTS, budgetLeft(flushDeadline)};
 
         for (const auto& [index, query] : m_deleteByQuery)
         {
@@ -531,7 +551,7 @@ class IndexerConnectorSyncImpl final
             {
                 IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                         std::chrono::seconds {m_maxRetryDelay}};
-                IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
+                IndexerRetryBudget retryBudget {m_maxRetryAttempts, budgetLeft(flushDeadline)};
                 do
                 {
                     if (m_stopping.load())
@@ -610,7 +630,7 @@ class IndexerConnectorSyncImpl final
 
         // One budget for the whole bulk operation: the chunks of a 413 split, nested ones
         // included, draw from it too, so a split cannot multiply what a flush may spend.
-        IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
+        IndexerRetryBudget retryBudget {m_maxRetryAttempts, budgetLeft(flushDeadline)};
         const auto onError = [this, &needToRetry, &retryBudget](const std::string& error,
                                                                 const long statusCode,
                                                                 const std::string& responseBody) -> void
@@ -1286,12 +1306,14 @@ public:
             }
         };
 
+        // One wall clock for the call, shared by the transport retries and the conflict allowance.
+        const auto callDeadline = std::chrono::steady_clock::now() + m_maxRetryDuration;
         IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                 std::chrono::seconds {m_maxRetryDelay}};
-        IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
+        IndexerRetryBudget retryBudget {m_maxRetryAttempts, budgetLeft(callDeadline)};
         IndexerExponentialBackoff conflictBackoff {std::chrono::milliseconds {ConflictRetryDelayMs},
                                                    std::chrono::seconds {m_maxRetryDelay}};
-        IndexerRetryBudget conflictBudget {CONFLICT_RETRY_ATTEMPTS, m_maxRetryDuration};
+        IndexerRetryBudget conflictBudget {CONFLICT_RETRY_ATTEMPTS, budgetLeft(callDeadline)};
         do
         {
             if (m_stopping.load())
