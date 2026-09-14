@@ -33,6 +33,7 @@
 #include <chrono>
 #include <csignal>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <memory>
@@ -908,6 +909,16 @@ class FakeManager final
 
                 usleep(50 * 1000);
             }
+
+            // 300s gone and nothing ever answered, so the child never got the port -- almost always
+            // another test in this same binary already holding it. Say so: returning quietly leaves
+            // the test to fail on its first assertion against a server that was never there, which
+            // looks like the code under test hanging and costs an afternoon to trace back to here.
+            std::fprintf(stderr,
+                         "FakeManager: nothing listening on %s after 300s; is port %u already "
+                         "taken by another component test?\n",
+                         base.c_str(),
+                         static_cast<unsigned>(m_port));
         }
 
         pid_t m_pid {-1};

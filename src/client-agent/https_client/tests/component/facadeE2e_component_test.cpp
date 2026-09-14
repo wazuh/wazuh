@@ -38,7 +38,14 @@
 
 namespace
 {
-    constexpr uint16_t TLS_PORT = 44861;
+    // Every test here binds TLS_PORT + n for n in 1..11, so this base owns 44891-44901. Keep it
+    // clear of the other component files' fixed ports -- tlsVerification 44857-44862, enroll
+    // 44870-44874, cacerts 44880-44882 -- because they all run in ONE gtest binary. At 44861 this
+    // range covered 44862-44872 and so collided with four of those: two tests binding the same port
+    // cannot both listen, and the loser spends waitUntilReady()'s full 300s budget probing a
+    // listener that never came up before failing on whatever it asserts first, which reads as a
+    // product hang rather than a port clash.
+    constexpr uint16_t TLS_PORT = 44890;
     const std::string KEY_HEX = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 
     struct Recorder
