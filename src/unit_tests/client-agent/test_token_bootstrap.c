@@ -153,6 +153,22 @@ static bool is_anchor_dir_path(const char *path) {
     return path && strcmp(path, "etc/certs") == 0;
 }
 
+/* The re-enrollment secret. Prefix-matched on the basename for the same reason as the anchor:
+ * w_reenroll_secret_store() chmod()s TempFile()'s name, which appends to it, before renaming. */
+static bool is_secret_path(const char *path) {
+    const char *prefix = "reenroll.secret";
+    const char *base;
+
+    if (!path) {
+        return false;
+    }
+
+    base = strrchr(path, '/');
+    base = base ? base + 1 : path;
+
+    return strncmp(base, prefix, strlen(prefix)) == 0;
+}
+
 int __wrap_chown(const char *path, uid_t owner, gid_t group) {
     if (is_anchor_path(path)) {
         g_anchor_chown_uid = owner;
@@ -216,12 +232,15 @@ int __wrap_fchown(int fd, uid_t owner, gid_t group) {
  * path. Wrapped so an unprivileged run behaves like a privileged one either way. */
 static mode_t g_dir_chmod_mode = (mode_t) -1;
 static mode_t g_anchor_chmod_mode = (mode_t) -1;
+static mode_t g_secret_chmod_mode = (mode_t) -1;
 
 int __wrap_chmod(const char *path, mode_t mode) {
     if (is_anchor_dir_path(path)) {
         g_dir_chmod_mode = mode;
     } else if (is_anchor_path(path)) {
         g_anchor_chmod_mode = mode;
+    } else if (is_secret_path(path)) {
+        g_secret_chmod_mode = mode;
     }
 
     return 0;
@@ -283,6 +302,7 @@ static int setup_test(void **state) {
     g_keys_fchown_should_fail = false;
     g_dir_chmod_mode = (mode_t) -1;
     g_anchor_chmod_mode = (mode_t) -1;
+    g_secret_chmod_mode = (mode_t) -1;
     g_anchor_chown_recorded_before_move = false;
 
     return 0;
@@ -879,9 +899,11 @@ static void test_bootstrap_stores_the_reenroll_secret_from_the_root_path(void **
     assert_string_equal(id, "001");
     assert_string_equal(secret, REENROLL_SECRET);
 
-    /* client.keys's mode, so the daemon can rewrite it after the drop. */
+    /* client.keys's mode, so the daemon can rewrite it after the drop. Read off the wrapper
+     * rather than stat(): __wrap_chmod() records the mode instead of applying it, so the file on
+     * disk keeps mkstemp()'s 0600 and only the recorded value shows what the code asked for. */
     assert_int_equal(stat(AGENT_REENROLL_SECRET, &info), 0);
-    assert_int_equal(info.st_mode & 0777, 0640);
+    assert_int_equal(g_secret_chmod_mode, 0640);
 }
 
 /* A manager that sends no secret must still complete the bootstrap: the token path predates this
