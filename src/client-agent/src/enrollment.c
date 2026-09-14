@@ -320,10 +320,16 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
     cJSON *code = error_obj ? cJSON_GetObjectItem(error_obj, "code") : NULL;
     manager_message = cJSON_GetStringValue(message);
 
-    if (cJSON_IsString(code)) {
-        auth_class = code->valuestring;
-    } else if (cJSON_IsNumber(code)) {
-        authd_code = code->valueint;
+    /* The NULL test is redundant against cJSON -- cJSON_IsString()/cJSON_IsNumber() both return
+     * false for NULL -- but clang's analyser cannot see that: cJSON is a separate translation unit,
+     * so it treats the predicate as opaque and reaches `code->valuestring` on the path where
+     * error_obj was NULL. Spelling the guard out costs nothing and keeps scan-build clean. */
+    if (code != NULL) {
+        if (cJSON_IsString(code)) {
+            auth_class = code->valuestring;
+        } else if (cJSON_IsNumber(code)) {
+            authd_code = code->valueint;
+        }
     }
 
     w_enroll_status_t status;
