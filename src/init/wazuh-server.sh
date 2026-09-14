@@ -80,24 +80,40 @@ lock()
         i=`expr $i + 1`;
         pid=$(cat ${LOCK_PID} 2>/dev/null)
 
-        if [ $? = 0 ]
-        then
-            kill -0 ${pid} >/dev/null 2>&1
-            if [ ! $? = 0 ]; then
-                # Pid is not present.
-                # Unlocking and executing
-                unlock;
-                mkdir ${LOCK} > /dev/null 2>&1
-                echo "$$" > ${LOCK_PID}
-                return;
+        # kill -0 on an empty pid (no pid file) fails just like it does on a
+        # dead one, so a missing pid file takes the same path as a dead pid.
+        kill -0 ${pid} >/dev/null 2>&1
+        if [ ! $? = 0 ]; then
+            # The owner is unreachable. A dead pid proves a prior run
+            # completed its mkdir+pid write; a lock with no pid file yet
+            # could just be one doing that right now (mkdir and the pid
+            # write are two statements), so only reclaim once that has
+            # held for a few rounds.
+            if [ "$i" -gt 2 ]; then
+                # Serialize the reclaim itself: mkdir on a second marker
+                # is exclusive the same way ${LOCK}'s own mkdir is, so
+                # only one caller at a time can be deciding whether to
+                # unlock and recreate ${LOCK}. Without this, two callers
+                # could both pass the check above at different times and
+                # each unlock what the other had already recreated,
+                # believing they both hold it.
+                if mkdir "${LOCK}.reclaim" > /dev/null 2>&1; then
+                    # Re-check inside the marker: another caller may have
+                    # already reclaimed ${LOCK} while we were waiting for
+                    # it, in which case it is no longer stale.
+                    rpid=$(cat ${LOCK_PID} 2>/dev/null)
+                    kill -0 ${rpid} >/dev/null 2>&1
+                    if [ ! $? = 0 ]; then
+                        unlock;
+                        if mkdir ${LOCK} > /dev/null 2>&1; then
+                            echo "$$" > ${LOCK_PID}
+                            rmdir "${LOCK}.reclaim" > /dev/null 2>&1
+                            return;
+                        fi
+                    fi
+                    rmdir "${LOCK}.reclaim" > /dev/null 2>&1
+                fi
             fi
-        else
-            # Lock dir with no pid file: no process ever recorded
-            # ownership of it, so it can't belong to a live run.
-            unlock;
-            mkdir ${LOCK} > /dev/null 2>&1
-            echo "$$" > ${LOCK_PID}
-            return;
         fi
 
         # We tried 10 times to acquire the lock.
