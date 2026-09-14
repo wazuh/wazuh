@@ -38,6 +38,15 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
         return OutcomeClass::AuthFail;
     }
 
+    // 404: nothing at the target. Split out of Permanent because the two
+    // demand opposite treatment -- Permanent says the payload is unacceptable,
+    // while a 404 says nothing about it, so a batch rejected this way must be
+    // kept rather than dropped.
+    if (code == 404)
+    {
+        return OutcomeClass::RouteNotFound;
+    }
+
     // 413: the /stateless batch exceeds what the manager accepts; the stream
     // splits it and resends smaller (#37835), never dropping events.
     if (code == 413)

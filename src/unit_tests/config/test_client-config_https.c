@@ -61,7 +61,7 @@ static int parse_legacy_client(const char *xml_str, OS_XML *xml, xml_node ***nod
         return OS_INVALID;
     }
 
-    return Read_Legacy_Client_Address(xml, *nodes, cfg, NULL);
+    return Read_Legacy_Client(xml, *nodes, cfg, NULL);
 }
 
 static void cleanup(OS_XML *xml, xml_node **nodes, agent *cfg) {
@@ -959,7 +959,7 @@ static void test_legacy_client_endpoint_defaults_port_and_prefix(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_legacy_client_reads_nothing_but_the_address(void **state) {
+static void test_legacy_client_reads_nothing_but_the_address_and_enrollment(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
     agent cfg;
@@ -968,10 +968,21 @@ static void test_legacy_client_reads_nothing_but_the_address(void **state) {
         "<server><address>10.0.0.1</address><port>1514</port><protocol>tcp</protocol></server>"
         "<crypto_method>aes</crypto_method>"
         "<config-profile>ubuntu, ubuntu22</config-profile>"
-        "<notify_time>77</notify_time>"
-        "<enrollment><enabled>yes</enabled></enrollment>";
+        "<notify_time>77</notify_time>";
 
     memset(&cfg, 0, sizeof(cfg));
+
+    /* Queued in document order: cmocka matches per wrapped function, and all three
+     * land on __wrap__mwarn. */
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<crypto_method> inside the legacy <client> block is ignored: only <server> "
+                  "and <enrollment> are read from it.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<config-profile> inside the legacy <client> block is ignored. "
+                  "Configure it under <agent>.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<notify_time> inside the legacy <client> block is ignored. "
+                  "Configure it under <agent>.");
 
     expect_string(__wrap__minfo, formatted_msg,
                   "<agent><manager><endpoint> is not configured. Using <client><server><address> "
@@ -987,10 +998,293 @@ static void test_legacy_client_reads_nothing_but_the_address(void **state) {
     assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
     assert_int_equal(cfg.notify_time, 0);
     assert_null(cfg.profile);
-    /* The legacy <client> parser must not touch <enrollment> at all: despite
-     * the XML above explicitly setting <enabled>yes</enabled>, cfg.enrollment
-     * stays at its zeroed default (#38465: a by-value struct now). */
-    assert_false(cfg.enrollment.enabled);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* The identity an in-place 4.x upgrade has to keep: the whole <enrollment> block is
+ * read out of the legacy <client> spelling, not just the address beside it. */
+static void test_legacy_client_reads_the_enrollment_identity(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<enrollment>"
+        "<enabled>yes</enabled>"
+        "<agent_name>vm-ubuntu</agent_name>"
+        "<groups>web-servers,linux</groups>"
+        "<agent_address>10.0.0.15</agent_address>"
+        "<authorization_pass_path>/var/ossec/etc/custom.pass</authorization_pass_path>"
+        "<delay_after_enrollment>30</delay_after_enrollment>"
+        "</enrollment>";
+
+    memset(&cfg, 0, sizeof(cfg));
+
+    expect_valid_ip("10.0.0.15");
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent><manager><endpoint> is not configured. Using <client><server><address> "
+                  "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
+                  "<client><server> block with a single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
+
+    assert_int_equal(parse_legacy_client(xml_str, &xml, &nodes, &cfg), 0);
+
+    assert_true(cfg.enrollment.enabled);
+    assert_string_equal(cfg.enrollment.agent_name, "vm-ubuntu");
+    assert_string_equal(cfg.enrollment.groups, "web-servers,linux");
+    assert_string_equal(cfg.enrollment.agent_address, "10.0.0.15");
+    assert_string_equal(cfg.enrollment.authorization_pass_path, "/var/ossec/etc/custom.pass");
+    assert_int_equal(cfg.enrollment.delay_after_enrollment, 30);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* The address is the only thing <agent> takes over: an enrollment block it did not
+ * itself carry is still read out of the legacy one. */
+static void test_legacy_client_enrollment_is_read_once_agent_set_the_address(void **state) {
+    OS_XML agent_xml = {0};
+    OS_XML legacy_xml = {0};
+    xml_node **agent_nodes;
+    xml_node **legacy_nodes;
+    agent cfg;
+
+    assert_int_equal(parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>",
+                                 &agent_xml, &agent_nodes, &cfg), 0);
+
+    assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address></server>"
+                                         "<enrollment><agent_name>vm-ubuntu</agent_name></enrollment>",
+                                         &legacy_xml, &legacy_nodes, &cfg), 0);
+
+    assert_string_equal(cfg.server[0].rip, "10.0.0.5");
+    assert_int_equal(cfg.server[0].port, 1600);
+    assert_string_equal(cfg.enrollment.agent_name, "vm-ubuntu");
+
+    OS_ClearNode(legacy_nodes);
+    OS_ClearXML(&legacy_xml);
+    cleanup(&agent_xml, agent_nodes, &cfg);
+}
+
+/* An <enrollment> under <agent> is the whole identity: a legacy block listed after it
+ * is skipped rather than merged, so no field of it can leak into the 5.x one. */
+static void test_agent_enrollment_wins_over_a_legacy_one(void **state) {
+    OS_XML agent_xml = {0};
+    OS_XML legacy_xml = {0};
+    xml_node **agent_nodes;
+    xml_node **legacy_nodes;
+    agent cfg;
+
+    assert_int_equal(parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>"
+                                 "<enrollment><agent_name>from-agent</agent_name></enrollment>",
+                                 &agent_xml, &agent_nodes, &cfg), 0);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<enrollment> inside the legacy <client> block is ignored: <agent> already "
+                  "supplies it. Keep the identity in one of the two blocks.");
+
+    assert_int_equal(parse_legacy_client("<enrollment>"
+                                         "<agent_name>from-client</agent_name>"
+                                         "<groups>leaked</groups>"
+                                         "</enrollment>",
+                                         &legacy_xml, &legacy_nodes, &cfg), 0);
+
+    assert_string_equal(cfg.enrollment.agent_name, "from-agent");
+    assert_null(cfg.enrollment.groups);
+
+    OS_ClearNode(legacy_nodes);
+    OS_ClearXML(&legacy_xml);
+    cleanup(&agent_xml, agent_nodes, &cfg);
+}
+
+/* Read the other way round, an <agent> block still wins every field it sets -- but only
+ * those: the legacy block was already applied, so what <agent> leaves out stays. This is
+ * the one order in which the two do combine, asserted rather than left to chance. */
+static void test_agent_enrollment_overrides_a_legacy_one_read_first(void **state) {
+    OS_XML agent_xml = {0};
+    OS_XML legacy_xml = {0};
+    xml_node **agent_nodes;
+    xml_node **legacy_nodes;
+    agent cfg;
+
+    memset(&cfg, 0, sizeof(cfg));
+
+    assert_int_equal(parse_legacy_client("<enrollment>"
+                                         "<agent_name>from-client</agent_name>"
+                                         "<groups>from-client-too</groups>"
+                                         "</enrollment>",
+                                         &legacy_xml, &legacy_nodes, &cfg), 0);
+
+    assert_int_equal(parse_agent_into("<manager><endpoint>10.0.0.5:1600</endpoint></manager>"
+                                      "<enrollment><agent_name>from-agent</agent_name></enrollment>",
+                                      &agent_xml, &agent_nodes, &cfg), 0);
+
+    assert_string_equal(cfg.enrollment.agent_name, "from-agent");
+    assert_string_equal(cfg.enrollment.groups, "from-client-too");
+
+    OS_ClearNode(legacy_nodes);
+    OS_ClearXML(&legacy_xml);
+    cleanup(&agent_xml, agent_nodes, &cfg);
+}
+
+/* An empty 5.x block still claims the identity: it is how an operator says the
+ * enrollment settings live nowhere, and OS_GetElementsbyNode() hands back NULL for it,
+ * so nothing inside the block's own branch can be what records it. */
+static void test_an_empty_agent_enrollment_still_wins(void **state) {
+    OS_XML agent_xml = {0};
+    OS_XML legacy_xml = {0};
+    xml_node **agent_nodes;
+    xml_node **legacy_nodes;
+    agent cfg;
+
+    assert_int_equal(parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>"
+                                 "<enrollment></enrollment>",
+                                 &agent_xml, &agent_nodes, &cfg), 0);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<enrollment> inside the legacy <client> block is ignored: <agent> already "
+                  "supplies it. Keep the identity in one of the two blocks.");
+
+    assert_int_equal(parse_legacy_client("<enrollment><agent_name>from-client</agent_name></enrollment>",
+                                         &legacy_xml, &legacy_nodes, &cfg), 0);
+
+    assert_null(cfg.enrollment.agent_name);
+
+    OS_ClearNode(legacy_nodes);
+    OS_ClearXML(&legacy_xml);
+    cleanup(&agent_xml, agent_nodes, &cfg);
+}
+
+/* Contradictory addressing is settled against the file, not on every enrollment attempt:
+ * the explicit address stands and the source-IP request is dropped. */
+static void test_enrollment_agent_address_beats_use_source_ip(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+        "<enrollment>"
+        "<agent_address>10.0.0.15</agent_address>"
+        "<use_source_ip>yes</use_source_ip>"
+        "</enrollment>";
+
+    expect_valid_ip("10.0.0.15");
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<use_source_ip> under <enrollment> is ignored: <agent_address> already "
+                  "forces the address '10.0.0.15'. Configure only one of the two.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+
+    assert_string_equal(cfg.enrollment.agent_address, "10.0.0.15");
+    assert_false(cfg.enrollment.use_source_ip);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* The 4.x-only options inside a legacy <enrollment> must not stop the agent: an
+ * upgrade never rewrites ossec.conf, so a file still carrying them is expected. */
+static void test_legacy_client_enrollment_ignores_the_4x_only_options(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<enrollment>"
+        "<auto_method>no</auto_method>"
+        "<manager_address>old-manager.example</manager_address>"
+        "<agent_name>vm-ubuntu</agent_name>"
+        "</enrollment>";
+
+    memset(&cfg, 0, sizeof(cfg));
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<auto_method> under <enrollment> is no longer used: enrollment always "
+                  "negotiates TLS 1.3. Ignoring.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<manager_address> under <enrollment> is no longer used: enrollment reuses "
+                  "<agent><manager>/<agent><ssl>. Ignoring.");
+
+    assert_int_equal(parse_legacy_client(xml_str, &xml, &nodes, &cfg), 0);
+
+    assert_string_equal(cfg.enrollment.agent_name, "vm-ubuntu");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* A key that was invalid in 4.x too stays fatal, so a typo cannot quietly cost the
+ * agent its name. The <server> block comes first, so the address collected before the
+ * rejection has to be released on the way out. */
+static void test_legacy_client_enrollment_unknown_option_is_rejected(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<enrollment><agent_nmae>vm-ubuntu</agent_nmae></enrollment>";
+
+    memset(&cfg, 0, sizeof(cfg));
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'agent_nmae'.");
+
+    assert_int_equal(parse_legacy_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    assert_null(cfg.server);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* Every direct child that is neither <server> nor <enrollment> is named, whether or
+ * not 5.x has somewhere to put it, and none of them reaches the struct. */
+static void test_legacy_client_warns_for_every_ignored_option(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<local_ip>10.0.0.9</local_ip>"
+        "<disable-active-response>yes</disable-active-response>"
+        "<time-reconnect>60</time-reconnect>"
+        "<force_reconnect_interval>0</force_reconnect_interval>"
+        "<ip_update_interval>10</ip_update_interval>"
+        "<auto_restart>yes</auto_restart>"
+        "<port>1514</port>";
+
+    memset(&cfg, 0, sizeof(cfg));
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<local_ip> inside the legacy <client> block is ignored: only <server> "
+                  "and <enrollment> are read from it.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<disable-active-response> inside the legacy <client> block is ignored. "
+                  "Configure it under <agent>.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<time-reconnect> inside the legacy <client> block is ignored: only <server> "
+                  "and <enrollment> are read from it.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<force_reconnect_interval> inside the legacy <client> block is ignored: only "
+                  "<server> and <enrollment> are read from it.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<ip_update_interval> inside the legacy <client> block is ignored. "
+                  "Configure it under <agent>.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<auto_restart> inside the legacy <client> block is ignored. "
+                  "Configure it under <agent>.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<port> inside the legacy <client> block is ignored: only <server> "
+                  "and <enrollment> are read from it.");
+
+    assert_int_equal(parse_legacy_client(xml_str, &xml, &nodes, &cfg), 0);
+
+    assert_null(cfg.server);
+    assert_null(cfg.profile);
+    assert_int_equal(cfg.notify_time, 0);
+    assert_int_equal(cfg.execdq, 0);
+    assert_int_equal(cfg.flags.auto_restart, 0);
+    assert_int_equal(cfg.main_ip_update_interval, 0);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -1025,6 +1319,10 @@ static void test_legacy_client_without_an_address_sets_no_server(void **state) {
     agent cfg;
 
     memset(&cfg, 0, sizeof(cfg));
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<config-profile> inside the legacy <client> block is ignored. "
+                  "Configure it under <agent>.");
 
     assert_int_equal(parse_legacy_client("<config-profile>ubuntu</config-profile>",
                                          &xml, &nodes, &cfg), 0);
@@ -1230,6 +1528,7 @@ static void test_enrollment_legacy_options_are_ignored_not_rejected(void **state
         "<server_ca_path>/etc/wazuh/ca.pem</server_ca_path>"
         "<agent_certificate_path>/etc/wazuh/agent.pem</agent_certificate_path>"
         "<agent_key_path>/etc/wazuh/agent.key</agent_key_path>"
+        "<auto_method>no</auto_method>"
         "</enrollment>";
 
     expect_string(__wrap__minfo, formatted_msg,
@@ -1253,6 +1552,11 @@ static void test_enrollment_legacy_options_are_ignored_not_rejected(void **state
     expect_string(__wrap__minfo, formatted_msg,
                   "<agent_key_path> under <enrollment> is no longer used: enrollment reuses "
                   "<agent><manager>/<agent><ssl>. Ignoring.");
+    /* Removed for its own reason -- TLS 1.3 is not negotiable -- so it carries its own
+     * message, and it is ignored rather than rejected because a 4.x file still has it. */
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<auto_method> under <enrollment> is no longer used: enrollment always "
+                  "negotiates TLS 1.3. Ignoring.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -1827,11 +2131,20 @@ int main(void) {
         cmocka_unit_test(test_legacy_client_address_is_the_fallback),
         cmocka_unit_test(test_legacy_client_reads_an_endpoint),
         cmocka_unit_test(test_legacy_client_endpoint_defaults_port_and_prefix),
-        cmocka_unit_test(test_legacy_client_reads_nothing_but_the_address),
+        cmocka_unit_test(test_legacy_client_reads_nothing_but_the_address_and_enrollment),
         cmocka_unit_test(test_legacy_client_takes_the_last_address),
         cmocka_unit_test(test_legacy_client_without_an_address_sets_no_server),
         cmocka_unit_test(test_agent_block_replaces_a_legacy_address),
         cmocka_unit_test(test_legacy_client_is_ignored_once_agent_set_the_address),
+        cmocka_unit_test(test_legacy_client_reads_the_enrollment_identity),
+        cmocka_unit_test(test_legacy_client_enrollment_is_read_once_agent_set_the_address),
+        cmocka_unit_test(test_agent_enrollment_wins_over_a_legacy_one),
+        cmocka_unit_test(test_agent_enrollment_overrides_a_legacy_one_read_first),
+        cmocka_unit_test(test_an_empty_agent_enrollment_still_wins),
+        cmocka_unit_test(test_enrollment_agent_address_beats_use_source_ip),
+        cmocka_unit_test(test_legacy_client_enrollment_ignores_the_4x_only_options),
+        cmocka_unit_test(test_legacy_client_enrollment_unknown_option_is_rejected),
+        cmocka_unit_test(test_legacy_client_warns_for_every_ignored_option),
         cmocka_unit_test(test_agent_block_reads_the_legacy_client_options),
         cmocka_unit_test(test_fresh_install_template_shape),
         cmocka_unit_test(test_agent_invalid_tag_is_rejected),

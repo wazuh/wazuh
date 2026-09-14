@@ -1241,6 +1241,23 @@ TEST_F(ControlStreamTest, PauseFromAnAnsweredRejectionCarriesNoTransportReason)
     EXPECT_TRUE(reported.empty());
 }
 
+TEST_F(ControlStreamTest, RouteNotFoundNeverPausesProducers)
+{
+    // A 404 is reported and then deliberately left alone: unlike the other answered
+    // rejections it does not arm the producer lock, so the batches it rejects stay
+    // buffered and the buffer's own cap is what bounds a long outage. Not retryable,
+    // so a step is one attempt and no script is needed.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 404)));
+    EXPECT_CALL(m_sink, onProducerPause(_, _)).Times(0);
+
+    m_stream.step(m_waiter); // Startup accepted.
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter); // Well past producer_pause_threshold, still no pause.
+}
+
 TEST_F(ControlStreamTest, LatchedAuthFailurePausesProducersAcrossGatedCycles)
 {
     // WillRepeatedly, so the one-shot fresh-timestamp retry gets a 401 too and

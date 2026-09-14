@@ -54,6 +54,14 @@ int w_enrollment_build_request(w_enroll_request_t *out) {
     if (agt->enrollment.groups) {
         cJSON_AddStringToObject(body, "groups", agt->enrollment.groups);
     }
+
+    /* Names the identity at the moment it is presented: an agent left without
+     * <agent_name> registers under its hostname whenever something triggers a
+     * re-enrollment, unattended and long after any startup warning. */
+    minfo("Enrolling as '%s'%s. Groups: %s.", agent_name,
+          agt->enrollment.agent_name ? "" : " (the local hostname, since <agent_name> is not configured)",
+          agt->enrollment.groups ? agt->enrollment.groups : "none");
+
     if (ip_value) {
         cJSON_AddStringToObject(body, "ip", ip_value);
     }
@@ -180,6 +188,18 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
             merror("Enrollment rejected by the manager: duplicate agent.%s%s",
                    manager_message ? " " : "", manager_message ? manager_message : "");
             status = W_ENROLL_ERR_DUPLICATE;
+            break;
+        case 404:
+            /* The first request an agent ever sends, so a path the manager does not
+             * serve is reported here or nowhere: the /control stream that reports it
+             * for every other endpoint only runs once a key exists. */
+            merror("Enrollment rejected by the manager: it serves no /enroll route under the "
+                   "configured path '/%s'. The path in <endpoint> must match the global prefix "
+                   "the manager serves.%s%s",
+                   (agt->server && agt->server_count > 0 && agt->server[0].endpoint)
+                       ? agt->server[0].endpoint : "",
+                   manager_message ? " " : "", manager_message ? manager_message : "");
+            status = W_ENROLL_ERR_SERVER;
             break;
         default:
             merror("Enrollment failed with unexpected HTTP status %ld.%s%s", result->http_code,

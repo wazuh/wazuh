@@ -117,6 +117,10 @@ typedef struct agent_enrollment {
      * enrollment loops. */
     int retry_max;                    ///< agent.enrollment_retry_max: retry delay ceiling, seconds.
     int retry_delta;                  ///< agent.enrollment_retry_delta: delay growth per failure, seconds.
+    /* Not XML: set when the block was read from <agent>, so the legacy <client> spelling of
+     * it is skipped. Lives here rather than in a parser local because one file may hold
+     * several <ossec_config> roots, each read by its own pass. */
+    bool set_under_agent;
 } agent_enrollment;
 
 /* Configuration structure */
