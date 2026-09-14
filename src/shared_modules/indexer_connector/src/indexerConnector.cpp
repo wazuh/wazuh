@@ -274,6 +274,60 @@ static inline void extractErrorInfo(const std::string& errorBody, std::string& t
     }
 }
 
+/**
+ * @brief Log every per-item rejection inside a `_bulk` response body that still returned HTTP 200 overall.
+ *        OpenSearch reports these inside `errors`/`items[]` rather than as a transport-level error, so
+ * `extractErrorInfo` (which only understands the top-level `{"error": {...}}` shape) doesn't see them.
+ */
+static inline void logBulkItemErrors(const std::string& indexName, const std::string& responseBody) noexcept
+{
+    try
+    {
+        const auto responseJson = nlohmann::json::parse(responseBody);
+        if (!responseJson.value("errors", false) || !responseJson.contains("items"))
+        {
+            return;
+        }
+
+        for (const auto& item : responseJson.at("items"))
+        {
+            for (const auto& entry : item.items())
+            {
+                const auto& itemData = entry.value();
+                if (itemData.contains("error"))
+                {
+                    std::string id, type, reason;
+                    if (itemData.contains("_id"))
+                    {
+                        id = itemData.at("_id").get_ref<const std::string&>();
+                    }
+
+                    const auto& error = itemData.at("error");
+                    if (error.contains("type"))
+                    {
+                        type = error.at("type").get_ref<const std::string&>();
+                    }
+                    if (error.contains("reason"))
+                    {
+                        reason = error.at("reason").get_ref<const std::string&>();
+                    }
+
+                    logWarn(IC_NAME,
+                            "Document '%s' rejected by index '%s' - type: '%s', reason: '%s'",
+                            id.c_str(),
+                            indexName.c_str(),
+                            type.c_str(),
+                            reason.c_str());
+                }
+            }
+        }
+    }
+    catch (const nlohmann::json::exception&)
+    {
+        logError(IC_NAME, "Failed to parse bulk response body JSON.");
+    }
+}
+
 // ------- IndexerConnector methods implementation -------
 
 nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
@@ -407,9 +461,10 @@ void IndexerConnector::sendBulkReactive(const std::vector<std::pair<std::string,
 
     if (!bulkData.empty())
     {
-        const auto onSuccess = [](const std::string& response)
+        const auto onSuccess = [this](const std::string& response)
         {
             logDebug2(IC_NAME, "Response: %s", response.c_str());
+            logBulkItemErrors(m_indexName, response);
         };
 
         const auto onError = [this, &actions, &url, &secureCommunication, depth](
@@ -489,9 +544,13 @@ void IndexerConnector::diff(const nlohmann::json& responseJson,
         }
     }
 
-    // Iterate over the database and check if the element is in the status vector.
-    for (const auto& [key, value] : m_db->seek(agentId))
+    // Iterate over the database and check if the element is in the status vector. The trailing separator keeps
+    // this an exact per-agent scan: without it, a shorter agent ID prefix-matches a longer sibling's keys too
+    // (RocksDBIterator::valid() is a raw prefix check with no key-boundary awareness).
+    std::size_t mirrorEntryCount {0};
+    for (const auto& [key, value] : m_db->seek(agentId + "_"))
     {
+        ++mirrorEntryCount;
         bool found {false};
         for (auto& [id, data] : status)
         {
@@ -512,12 +571,26 @@ void IndexerConnector::diff(const nlohmann::json& responseJson,
     }
 
     // Iterate over the status vector and check if the element is marked as not found.
-    // This means that the element is in the indexer but not in the database. To solve this, the element will be deleted
-    for (const auto& [id, data] : status)
+    // This means that the element is in the indexer but not in the database. To solve this, the element will be deleted.
+    // Skip entirely when the mirror scan came back completely empty while the index reports documents for this
+    // agent: that combination is the signature of a corrupted/gapped local mirror (see #38978), not proof the
+    // agent's real documents should be deleted. A partially-populated mirror is trusted as before.
+    if (mirrorEntryCount == 0 && !status.empty())
     {
-        if (!data)
+        logWarn(IC_NAME,
+                "Skipping deletion for agent '%s': local mirror is empty but the index reports %zu document(s) - "
+                "assuming a corrupted mirror instead of deleting real data.",
+                agentId.c_str(),
+                status.size());
+    }
+    else
+    {
+        for (const auto& [id, data] : status)
         {
-            actions.emplace_back(id, true);
+            if (!data)
+            {
+                actions.emplace_back(id, true);
+            }
         }
     }
 
@@ -980,6 +1053,9 @@ IndexerConnector::IndexerConnector(
                 {
                     if (m_useSeekDelete)
                     {
+                        // Unlike DELETED_BY_QUERY/diff(), the id here is already the full composite key (every
+                        // element's deleteElement() builds it as agentId + "_" + itemId) - no separator needed
+                        // or wanted, since appending one would stop it from matching its own exact key.
                         for (const auto& [key, _] : m_db->seek(id))
                         {
                             logDebug2(IC_NAME, "Added document for deletion with id: %s.", key.c_str());
@@ -1009,7 +1085,7 @@ IndexerConnector::IndexerConnector(
                         builderDeleteByQuery(queryData, id);
                     }
 
-                    for (const auto& [key, _] : m_db->seek(id))
+                    for (const auto& [key, _] : m_db->seek(id + "_"))
                     {
                         m_db->delete_(key);
                     }
@@ -1042,6 +1118,7 @@ IndexerConnector::IndexerConnector(
                 const auto onSuccess = [this, bulkSize](const std::string& response)
                 {
                     logDebug2(IC_NAME, "Response: %s", response.c_str());
+                    logBulkItemErrors(m_indexName, response);
 
                     // If the request was successful and the current bulk size is less than ELEMENTS_PER_BULK, increase
                     // the bulk size if the success count is SUCCESS_COUNT_TO_INCREASE_BULK_SIZE
@@ -1310,6 +1387,8 @@ IndexerConnector::IndexerConnector(
                 {
                     if (m_useSeekDelete)
                     {
+                        // Same as the index-enabled constructor's DELETED branch: id is already the full
+                        // composite key here, not a bare agent id - no separator appended.
                         for (const auto& [key, _] : m_db->seek(id))
                         {
                             m_db->delete_(key);
@@ -1323,7 +1402,7 @@ IndexerConnector::IndexerConnector(
                 // We made the same operation for DELETED_BY_QUERY as for DELETED
                 else if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED_BY_QUERY") == 0)
                 {
-                    for (const auto& [key, _] : m_db->seek(id))
+                    for (const auto& [key, _] : m_db->seek(id + "_"))
                     {
                         m_db->delete_(key);
                     }
