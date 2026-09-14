@@ -65,6 +65,7 @@ lock()
 {
     i=0;
     unreachable=0;
+    marker_busy=0;
 
     # Providing a lock.
     while [ 1 ]; do
@@ -111,6 +112,7 @@ lock()
                 # each unlock what the other had already recreated,
                 # believing they both hold it.
                 if mkdir "${LOCK}.reclaim" > /dev/null 2>&1; then
+                    marker_busy=0
                     # Re-check inside the marker: another caller may have
                     # already reclaimed ${LOCK} while we were waiting for
                     # it, in which case it is no longer stale.
@@ -125,6 +127,23 @@ lock()
                         fi
                     fi
                     rmdir "${LOCK}.reclaim" > /dev/null 2>&1
+                else
+                    # The marker is only held across a handful of local,
+                    # non-blocking statements, so one still busy after
+                    # several consecutive rounds of this caller failing to
+                    # get it was left by a caller killed while holding it.
+                    # Nothing else ever clears it, and leaving it disables
+                    # this reclaim path for good -- the same failure this
+                    # whole fix exists to recover from, one level down.
+                    # "$i"/"$unreachable" would undercount this the same
+                    # way "$i" alone did for the lock itself: a caller
+                    # already past its own gates would treat a marker
+                    # another caller only just grabbed as leaked. Count
+                    # this caller's own consecutive misses instead.
+                    marker_busy=`expr ${marker_busy} + 1`
+                    if [ "${marker_busy}" -gt 4 ]; then
+                        rmdir "${LOCK}.reclaim" > /dev/null 2>&1
+                    fi
                 fi
             fi
         fi
