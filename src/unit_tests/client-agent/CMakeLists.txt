@@ -124,14 +124,17 @@ list(APPEND client-agent_flags "-Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS}")
 # (IsFile/TempFile/OS_MoveFile/w_etoken_*, w_enrollment_build_request/process_response) runs
 # for real against temp files relative to the working directory, same style as
 # test_client_conf_ssl_resolution above.
-# chown/chmod are wrapped rather than left to run for real because what the bootstrap asks
-# for -- an anchor owned by root -- is a privileged operation: unwrapped, the suite passes as
-# root and fails as anyone else, which is the difference between a local run and CI. Wrapping
-# them also makes the ownership assertable instead of merely inspectable.
+# chown/chmod/fchown are wrapped rather than left to run for real because what the bootstrap
+# asks for -- an anchor (and client.keys) owned by root -- is a privileged operation:
+# unwrapped, the suite passes as root and fails as anyone else, which is the difference
+# between a local run and CI. Wrapping them also makes the ownership assertable instead of
+# merely inspectable. client.keys goes through fchown() rather than chown() (see
+# w_token_bootstrap_chown_keys_file() in token_bootstrap.c), so it needs its own wrap.
 list(APPEND client-agent_names "test_token_bootstrap")
 list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll \
                                 -Wl,--wrap,hc_spki_pinned_certificate -Wl,--wrap,OS_IsValidIP \
-                                -Wl,--wrap,chown -Wl,--wrap,chmod -Wl,--wrap,OS_MoveFile \
+                                -Wl,--wrap,chown -Wl,--wrap,chmod -Wl,--wrap,fchown \
+                                -Wl,--wrap,OS_MoveFile \
                                 ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_https_client_bridge")

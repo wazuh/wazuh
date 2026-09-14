@@ -159,9 +159,32 @@ int __wrap_chown(const char *path, uid_t owner, gid_t group) {
     } else if (is_anchor_dir_path(path)) {
         g_dir_chown_uid = owner;
         g_dir_chown_gid = group;
-    } else if (path && strcmp(path, KEYS_FILE) == 0) {
-        g_keys_chown_uid = owner;
-        g_keys_chown_gid = group;
+    }
+
+    return 0;
+}
+
+/* client.keys is chowned via w_token_bootstrap_chown_keys_file() (token_bootstrap.c), which
+ * opens it with O_NOFOLLOW and fchown()s the descriptor instead of calling chown() on the path
+ * -- a symlink planted in etc/ (0770 root:wazuh, unlike the anchor's own 0750 root:gid
+ * directory) must not make a root-privileged chown() follow it to an arbitrary target. The fd
+ * is resolved back to a path via /proc/self/fd to keep matching this suite's existing
+ * by-path convention. */
+int __wrap_fchown(int fd, uid_t owner, gid_t group) {
+    char link[64];
+    char path[PATH_MAX];
+    ssize_t len;
+
+    snprintf(link, sizeof(link), "/proc/self/fd/%d", fd);
+    len = readlink(link, path, sizeof(path) - 1);
+
+    if (len > 0) {
+        path[len] = '\0';
+
+        if (strstr(path, "/client.keys") != NULL) {
+            g_keys_chown_uid = owner;
+            g_keys_chown_gid = group;
+        }
     }
 
     return 0;
@@ -343,6 +366,7 @@ static void test_no_token_file_is_noop(void **state) {
 static void test_anchor_already_present_skips_and_discards_the_token(void **state) {
     (void) state;
     write_file("etc/certs/root-ca.pem", "EXISTING-ANCHOR");
+    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
     write_token_file(true, true, NULL);
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
@@ -353,6 +377,14 @@ static void test_anchor_already_present_skips_and_discards_the_token(void **stat
      * and leaving it would keep a credential on disk that nothing will ever consume. */
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
     assert_string_equal(read_file("etc/certs/root-ca.pem"), "EXISTING-ANCHOR");
+
+    /* Regression guard: this is the only latch a crash between the anchor's rename and
+     * client.keys's own chown (see w_agent_token_bootstrap()'s final chown) can ever reach
+     * again -- once the anchor exists, every later boot returns here, never falling through to
+     * the "already enrolled" branch below. It must repair client.keys's group every time it
+     * fires, not just skip out, or that crash leaves client.keys root:root permanently. */
+    assert_int_equal(g_keys_chown_uid, 0);
+    assert_int_equal(g_keys_chown_gid, getgid());
 }
 
 static void test_already_enrolled_skips_and_discards_the_token(void **state) {
