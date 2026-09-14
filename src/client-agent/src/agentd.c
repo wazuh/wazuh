@@ -22,12 +22,14 @@ void reload_handler(int signum) {
     }
 }
 
+#define SYSTEMD_PIDFILE_NAME "wazuh-agentd.pid"
+
 /* CreatePID()'s file embeds the PID in its name, so it can't back a static PIDFile=;
  * write one with a fixed name so systemd tracks this daemon instead of the whole cgroup. */
 static void write_systemd_pidfile(void)
 {
     char path[256];
-    snprintf(path, sizeof(path), "%s/wazuh-agentd.pid", OS_PIDFILE);
+    snprintf(path, sizeof(path), "%s/%s", OS_PIDFILE, SYSTEMD_PIDFILE_NAME);
 
     FILE *fp = wfopen(path, "w");
     if (!fp) {
@@ -36,7 +38,26 @@ static void write_systemd_pidfile(void)
     }
 
     fprintf(fp, "%d\n", (int)getpid());
-    fclose(fp);
+
+    if (chmod(path, 0640) != 0) {
+        merror(CHMOD_ERROR, path, errno, strerror(errno));
+        fclose(fp);
+        return;
+    }
+
+    if (fclose(fp)) {
+        merror("Could not write PID file '%s': %s (%d)", path, strerror(errno), errno);
+    }
+}
+
+/* Covers exit()-driven shutdown (normal SIGTERM/SIGINT via HandleSIG, and any merror_exit()
+ * path, this one included) -- same reach atexit(w_https_client_stop) below already has.
+ * Like any pidfile, a SIGKILL or a crash leaves it stale until the next start overwrites it. */
+static void remove_systemd_pidfile(void)
+{
+    char path[256];
+    snprintf(path, sizeof(path), "%s/%s", OS_PIDFILE, SYSTEMD_PIDFILE_NAME);
+    unlink(path);
 }
 
 /* Start the agent daemon */
@@ -105,6 +126,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         merror_exit(PID_ERROR);
     }
     write_systemd_pidfile();
+    atexit(remove_systemd_pidfile);
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());

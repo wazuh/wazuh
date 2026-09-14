@@ -1858,8 +1858,6 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
 
 int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsigned long size, logtarget * log_target, char queue_mq) {
     w_message_t *message;
-    static time_t last_warned = 0;
-    static unsigned long dropped_since_warning = 0;
     int result;
 
     w_mutex_lock(&msg->mutex);
@@ -1878,19 +1876,21 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
     }
 
     if (result < 0) {
-        dropped_since_warning++;
+        /* Per-target, guarded by msg->mutex above (held for the whole function) --
+         * not a process-wide static, since each target has its own w_msg_queue_t. */
+        msg->dropped_since_warning++;
 
         time_t now = time(NULL);
-        if (now - last_warned >= W_MSG_QUEUE_FULL_WARN_INTERVAL) {
+        if (now - msg->last_warned >= W_MSG_QUEUE_FULL_WARN_INTERVAL) {
             #ifndef WIN32
                 mwarn("Target '%s' message queue is full (%zu). %lu log line(s) lost since the last warning.",
-                      log_target->log_socket->name, msg->msg_queue->size, dropped_since_warning);
+                      log_target->log_socket->name, msg->msg_queue->size, msg->dropped_since_warning);
             #else
                 mwarn("Target '%s' message queue is full (%u). %lu log line(s) lost since the last warning.",
-                      log_target->log_socket->name, msg->msg_queue->size, dropped_since_warning);
+                      log_target->log_socket->name, msg->msg_queue->size, msg->dropped_since_warning);
             #endif
-            last_warned = now;
-            dropped_since_warning = 0;
+            msg->last_warned = now;
+            msg->dropped_since_warning = 0;
         }
     }
 
