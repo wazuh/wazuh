@@ -52,7 +52,8 @@ from pathlib import Path
 from wazuh_testing.constants.paths.configurations import DEFAULT_AUTHD_PASS_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.tools.simulators.remoted_simulator import CONTROL_ENDPOINT, ENROLL_ENDPOINT
+from wazuh_testing.tools.simulators.remoted_simulator import (CACERTS_ENDPOINT, CONTROL_ENDPOINT,
+                                                              ENROLL_ENDPOINT)
 from wazuh_testing.utils import jwt_enroll
 from wazuh_testing.utils.callbacks import make_callback
 from wazuh_testing.utils.configuration import load_configuration_template
@@ -186,6 +187,16 @@ def test_unknown_agent_re_enrolls_with_the_stored_secret_and_keeps_the_id(
         'The rotated secret was never stored'
     assert stored_agent_id() == AGENT_ID, 'The agent id changed across a re-enrollment'
 
+    # "One request, no second /cacerts fetch" (#39064's DoD). The agent already holds a usable
+    # anchor, so it goes straight to POST /enroll; re-fetching would reopen the provisional-trust
+    # window the bootstrap exists to close, for nothing. True by construction today --
+    # hc_fetch_cacerts() has one caller, on the startup path -- and asserted here so it stays that
+    # way, because nothing else would notice a fetch quietly reappearing.
+    assert manager.get_requests(CACERTS_ENDPOINT) == [], \
+        'The re-enrollment re-fetched /cacerts instead of using the anchor it already had'
+    assert len(enroll_requests(manager)) == 1, \
+        f'A single re-enrollment took {len(enroll_requests(manager))} requests'
+
     # The manager's half rotated with it: the old secret can no longer produce a valid bearer.
     assert manager.reenroll_secret_for(AGENT_ID) == stored_secret()
     assert manager.reenroll_secret_for(AGENT_ID) != AGENT_REENROLL_SECRET
@@ -249,6 +260,42 @@ def test_a_dead_secret_falls_back_to_the_configured_password(
     # Let the fallback attempt happen, then stop refusing so it can succeed.
     assert wait_for(lambda: any(bearer_kid(request) is None for request in enroll_requests(manager)),
                     timeout=SETTLE), 'The agent never fell back to the password credential'
+
+
+@pytest.mark.parametrize('test_configuration', test_configuration, ids=['reenrollment'])
+def test_an_invalid_signature_on_enroll_retries_instead_of_giving_up(
+        test_configuration, set_wazuh_configuration, truncate_monitored_files, enrolled_agent,
+        manager, restart_agentd):
+    '''
+    description: `invalid_signature` must not re-enroll -- a new identity fixes nothing it reports
+                 -- but it must not stop either. #39064 splits the two by status: "retry 401", and
+                 only a `403` is authd's authoritative refusal. The fix for this one lives on the
+                 manager, and an agent that gave up would never see it arrive.
+
+    assertions:
+        - The agent keeps attempting the enrollment.
+        - It never reports that it is giving up.
+        - It recovers once the manager stops refusing, without a restart.
+    '''
+    manager.mode = 'REJECT_AUTH'
+    manager.auth_force_class = 'unknown_agent'
+    manager.enroll_force_auth_class = 'invalid_signature'
+
+    assert wait_for(lambda: len(enroll_requests(manager)) >= 2, timeout=SETTLE), \
+        'An invalid_signature enrollment was not retried'
+
+    monitor = FileMonitor(WAZUH_LOG_PATH)
+    try:
+        monitor.start(timeout=5, callback=make_callback('re-enrollment cannot succeed; giving up',
+                                                        prefix='.*', escape=True))
+        pytest.fail('The agent gave up on a 401, which only a 403 may cause')
+    except Exception:
+        pass
+
+    manager.enroll_force_auth_class = None
+    manager.mode = 'ACCEPT'
+    assert wait_for(lambda: stored_secret() not in (None, AGENT_REENROLL_SECRET), timeout=SETTLE), \
+        'The agent never recovered once the credential was accepted'
 
 
 # ------------------------------------------------------------------ enrollments the manager refuses
@@ -315,17 +362,18 @@ def test_a_token_unknown_401_is_retried_until_the_manager_catches_up(
 # ------------------------------------------------------------------ the fleet-wide password
 
 @pytest.mark.parametrize('test_configuration', test_configuration, ids=['reenrollment'])
-def test_a_successful_enrollment_removes_the_fleet_wide_password(
+def test_the_agent_never_removes_the_fleet_wide_password(
         test_configuration, set_wazuh_configuration, truncate_monitored_files, enrolled_agent,
         manager, restart_agentd):
     '''
-    description: Once this endpoint holds a per-agent secret, the shared password has no reason to
-                 remain on it. The agent removes the file itself, which is what actually retires
-                 the fleet-wide secret from the estate -- a package upgrade never does.
+    description: #39064 puts the removal of `authd.pass` in the 5.0 package upgrade, "not the agent
+                 binary", so it happens once at upgrade instead of on a condition that may never
+                 occur. An earlier revision of this branch had the agent shred the file on the
+                 first enrollment that stored a secret; this is what keeps that from returning,
+                 because two deletion paths are something nobody notices is happening twice.
 
     assertions:
-        - authd.pass is gone after an enrollment that returned a reenroll_secret.
-        - The agent says so, naming the path.
+        - authd.pass is still on disk after an enrollment that stored a reenroll_secret.
     '''
     password = 'FleetWideEnrollmentSecret'
     with open(DEFAULT_AUTHD_PASS_PATH, 'w') as handle:
@@ -335,9 +383,12 @@ def test_a_successful_enrollment_removes_the_fleet_wide_password(
     manager.auth_force_class = 'unknown_agent'
 
     assert wait_for(lambda: enroll_requests(manager), timeout=SETTLE)
-    assert wait_for(lambda: not os.path.exists(DEFAULT_AUTHD_PASS_PATH), timeout=SETTLE), \
-        'The fleet-wide enrollment password survived an enrollment that stored a secret'
-    expect_log('has been removed: this agent now holds its own re-enrollment secret')
+    assert wait_for(lambda: stored_secret() not in (None, AGENT_REENROLL_SECRET), timeout=SETTLE), \
+        'The rotated secret was never stored, so the case proves nothing'
+    time.sleep(QUIET)
+
+    assert os.path.exists(DEFAULT_AUTHD_PASS_PATH), \
+        "The agent removed the fleet-wide password; that is the package upgrade's job"
 
 
 @pytest.mark.parametrize('test_configuration', test_configuration, ids=['reenrollment'])

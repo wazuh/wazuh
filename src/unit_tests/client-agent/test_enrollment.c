@@ -484,6 +484,29 @@ static void test_process_response_403_without_a_token_id_still_reads(void **stat
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_AUTH_FATAL);
 }
 
+/* Only a kid that IS a token id is named. A re-enrollment bearer's kid is the agent's own id, and
+ * printing "Enrollment token 001" would send an operator looking for a token that never existed.
+ * Unreachable against a real manager -- those verdicts come back as 401s -- but the message must
+ * not depend on that to be truthful. */
+static void test_process_response_403_never_names_an_agent_id_as_a_token(void **state) {
+    (void)state;
+    static const char *const not_token_ids[] = {"001", "4294967295", "short",
+                                                "AAECAwQFBgcICQoLDA0OD", "AAECAwQFBgcICQoLDA0OD!"};
+    size_t i;
+
+    for (i = 0; i < sizeof(not_token_ids) / sizeof(not_token_ids[0]); i++) {
+        hc_enroll_result_t result = {0};
+        set_error_body(&result, 403, "9023", "expired");
+
+        expect_string(__wrap__merror, formatted_msg,
+                      "Enrollment token (id unknown) refused by the manager (code 9023): expired. "
+                      "Retrying will not help: a new enrollment token is needed.");
+
+        assert_int_equal(w_enrollment_process_response(&result, not_token_ids[i]),
+                         W_ENROLL_ERR_AUTH_FATAL);
+    }
+}
+
 /* The other 403: enrollment administratively disabled, which authd marks with code 0. Still its
  * own status and still retryable -- an operator can re-enable it. */
 static void test_process_response_403_is_disabled_not_an_error(void **state) {
@@ -968,6 +991,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_403_with_an_authd_code_is_fatal, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_names_the_refused_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_without_a_token_id_still_reads, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_403_never_names_an_agent_id_as_a_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_is_disabled_not_an_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_404_names_the_configured_path, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_409_is_duplicate, setup_test, teardown_test),

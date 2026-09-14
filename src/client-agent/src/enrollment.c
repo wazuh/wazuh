@@ -15,6 +15,7 @@
 #include "cJSON.h"
 #include "enrollment_token.h"
 
+#include <ctype.h>
 #include <openssl/crypto.h>
 
 #ifdef WAZUH_UNIT_TESTING
@@ -36,6 +37,7 @@ STATIC int w_enrollment_load_reenroll_credential(w_enroll_request_t *out);
 STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_class,
                                                             const char *manager_message);
 STATIC int w_enrollment_fallback_credential_exists(void);
+STATIC const char *w_enrollment_token_id_or_unknown(const char *enroll_kid);
 
 int w_enrollment_build_request(w_enroll_request_t *out) {
     assert(out != NULL);
@@ -213,6 +215,35 @@ void w_enroll_request_destroy(w_enroll_request_t *request) {
     os_free(request->enroll_key_hex);
 }
 
+/**
+ * @brief The enrollment token id to name in a 403, or "(id unknown)".
+ *
+ * Only a `kid` that IS a token id is printed. The parameter carries whichever credential the
+ * request signed with, and the two keyed forms are disjoint by shape (jwtEnrollProfileV1.hpp): a
+ * token id is 22 canonical base64url characters, a re-enrolling agent's is its canonical id, at
+ * most ten digits. Against a real manager only the first can reach 9022/9023/9024 -- a
+ * re-enrollment bearer's verdicts are 9026/9027/9028 and arrive as 401s -- but printing "Enrollment
+ * token 001" for the other would name the wrong thing entirely, and an operator acting on it would
+ * go looking for a token that does not exist.
+ */
+STATIC const char *w_enrollment_token_id_or_unknown(const char *enroll_kid) {
+    static const size_t token_kid_chars = 22;
+    size_t i;
+
+    if (enroll_kid == NULL || strlen(enroll_kid) != token_kid_chars) {
+        return "(id unknown)";
+    }
+
+    for (i = 0; i < token_kid_chars; i++) {
+        const char c = enroll_kid[i];
+        if (!isalnum((unsigned char)c) && c != '-' && c != '_') {
+            return "(id unknown)";
+        }
+    }
+
+    return enroll_kid;
+}
+
 w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result, const char *enroll_kid) {
     assert(result != NULL);
 
@@ -333,7 +364,7 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
                  * verdicts are 9026/9027/9028 and arrive as 401s. */
                 merror("Enrollment token %s refused by the manager (code %d)%s%s. Retrying will "
                        "not help: a new enrollment token is needed.",
-                       enroll_kid ? enroll_kid : "(id unknown)", authd_code,
+                       w_enrollment_token_id_or_unknown(enroll_kid), authd_code,
                        manager_message ? ": " : "", manager_message ? manager_message : "");
                 status = W_ENROLL_ERR_AUTH_FATAL;
             } else {
