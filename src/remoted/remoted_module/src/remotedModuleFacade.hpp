@@ -88,7 +88,7 @@ constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 
 // Default cap on requests parked awaiting a downstream service (used when the caller leaves
 // remoted_module_config_t::max_deferred_requests <= 0).
-constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {256};
+constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {128};
 
 // Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status). RELATIVE on
 // purpose: remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
@@ -847,7 +847,7 @@ private:
             m_metricsManager->registerPullMetric(
                 prefix + "limit",
                 [snapshot, enrollment] { return static_cast<uint64_t>(snapshot(enrollment).limitPerSecond); },
-                routeName + " requests per second this manager is willing to serve, fleet-wide "
+                routeName + " requests per second THIS NODE is willing to serve on the route "
                             "(0 when the limit is disabled)",
                 "requests_per_second");
             m_metricsManager->registerPullMetric(
@@ -1374,6 +1374,28 @@ private:
             [snapshot] { return snapshot().budgetRejectedTotal; },
             "Requests the byte budget refused to admit (503, before any route ran)",
             "requests");
+
+        // The connection ceiling is the one capacity limit with NO rejection counter, because
+        // reaching it rejects nothing: the transport postpones the accept and the connection waits
+        // in the kernel backlog. Saturation is therefore invisible as an error and shows up only as
+        // latency -- these two levels are the only way to see it coming, and the only basis on
+        // which 'remoted.max_parallel_connections' can be sized rather than guessed.
+        //
+        // Not the same as budget.inflight.requests: that counts requests holding a byte
+        // reservation, while a connection is held from accept to close -- for a streamed
+        // POST /download, the whole transfer, which is what makes downloads the usual reason this
+        // level climbs.
+        m_metricsManager->registerPullMetric(
+            "remoted.server.connections.open",
+            [snapshot] { return static_cast<uint64_t>(snapshot().connectionsOpen); },
+            "Connections currently open on the public HTTPS listener",
+            "connections");
+        m_metricsManager->registerPullMetric(
+            "remoted.server.connections.max",
+            [snapshot] { return static_cast<uint64_t>(snapshot().connectionsMax); },
+            "Connections the listener accepts at once ('remoted.max_parallel_connections'); over it "
+            "new connections wait in the backlog instead of being refused",
+            "connections");
 
         // The served certificate's health, read from the same weak target: evaluated by the
         // transport at start and every certificateStatusInterval (24 h). Double, not uint64: the

@@ -41,9 +41,7 @@
             "ca": "",
             "ca_certificate": "etc/certs/root-ca.pem",
             "enroll_rate_limit": 100,
-            "enroll_rate_burst": 200,
-            "cacerts_rate_limit": 50,
-            "cacerts_rate_burst": 100
+            "cacerts_rate_limit": 50
         },
         "agents": {
             "allow_higher_versions": false

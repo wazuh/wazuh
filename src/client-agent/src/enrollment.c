@@ -181,19 +181,6 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
                    manager_message ? " " : "", manager_message ? manager_message : "");
             status = W_ENROLL_ERR_DUPLICATE;
             break;
-        case 429:
-            /* The manager's rate limit for the endpoint ('remote.https.enroll_rate_limit'), not
-             * a fault of this agent's request: retrying IS the right response, which
-             * W_ENROLL_ERR_SERVER already produces (both callers loop with a ramping delay). Named
-             * explicitly only so the log says why -- the ceiling is fleet-wide, so during a mass
-             * enrollment many agents see this at once and it must not read as a failure of each.
-             * The manager's Retry-After is deliberately not honoured: the agent keeps its own retry
-             * ramp ('enrollment.retry_delta'/'retry_max'), the same policy it applies to every
-             * other retryable enrollment answer. */
-            minfo("Enrollment is being rate-limited by the manager; retrying.%s%s",
-                  manager_message ? " " : "", manager_message ? manager_message : "");
-            status = W_ENROLL_ERR_SERVER;
-            break;
         default:
             merror("Enrollment failed with unexpected HTTP status %ld.%s%s", result->http_code,
                    manager_message ? " " : "", manager_message ? manager_message : "");

@@ -28,10 +28,14 @@ namespace
     // Floor applied to the nproc-derived fallback only (an explicit config value is never
     // floored): a single-vCPU host/cgroup must not regress below the old fixed default of 2.
     constexpr std::size_t MIN_CONCURRENT_ACCEPTS {2};
-    // Transport hard cap. Kept above the auth middleware's body limit (AuthConfig::maxBodySize,
-    // 10 MiB) so an oversized batch reaches the middleware and gets a clean 413 there, while this
-    // still bounds memory as a backstop.
-    constexpr std::size_t DEFAULT_MAX_BODY_SIZE {20U * 1024U * 1024U};
+    // Transport hard cap. MUST stay above the auth middleware's body limit
+    // (AuthConfig::maxBodySize, 5 MiB) so an oversized batch reaches the middleware and gets a clean
+    // 413 there, while this still bounds memory as a backstop. Breaching THIS one is not a 413: the
+    // parser fails on Content-Length and the connection is closed with no response at all, which an
+    // agent cannot tell apart from a network failure -- so it never splits its batch and retries the
+    // same bytes forever. Setting the two equal would make that the only outcome, because the
+    // Content-Length pre-check always fires first.
+    constexpr std::size_t DEFAULT_MAX_BODY_SIZE {10U * 1024U * 1024U};
     constexpr std::size_t DEFAULT_READ_TIMEOUT_SEC {10};
     constexpr std::size_t DEFAULT_WRITE_TIMEOUT_SEC {10};
     constexpr std::size_t DEFAULT_REQUEST_TIMEOUT_SEC {30};
@@ -52,7 +56,7 @@ namespace
 
     // Max simultaneous TCP connections. With DEFAULT_MAX_BODY_SIZE it bounds the read-phase
     // peak (bodies being received before they reach the budget) to conns * http_max_body_size.
-    constexpr std::size_t DEFAULT_MAX_PARALLEL_CONNECTIONS {512};
+    constexpr std::size_t DEFAULT_MAX_PARALLEL_CONNECTIONS {256};
 
     // Relative to remoted's cwd, which is the chroot root ("/") by the time these paths are
     // opened (Privsep_Chroot() chdir()s there before the HTTPS module starts), so these resolve

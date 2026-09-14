@@ -167,6 +167,8 @@
     {"name": "remoted.server.budget.inflight.bytes", "type": "pull", "enabled": true, "value": 6002.0},
     {"name": "remoted.server.budget.inflight.requests", "type": "pull", "enabled": true, "value": 6003.0},
     {"name": "remoted.server.budget.rejected.total", "type": "counter", "enabled": true, "value": 6004},
+    {"name": "remoted.server.connections.max", "type": "pull", "enabled": true, "value": 6006.0},
+    {"name": "remoted.server.connections.open", "type": "pull", "enabled": true, "value": 6005.0},
 
     {"name": "remoted.server.tls.ca_matches_leaf", "type": "pull", "enabled": true, "value": 9002.0},
     {"name": "remoted.server.tls.cert_expiry_days", "type": "pull", "enabled": true, "value": 9001.0}

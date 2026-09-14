@@ -2130,6 +2130,14 @@ components:
                       type: integer
                       format: int64
                       description: "Requests shed because the budget was exhausted"
+                    connections_open:
+                      type: integer
+                      format: int64
+                      description: "Connections currently open on the HTTPS agent listener. Not the same as `inflight_requests`: a connection is held from accept to close, which for a streamed download is the whole transfer"
+                    connections_max:
+                      type: integer
+                      format: int64
+                      description: "Connections the listener accepts at once. Reaching it refuses nothing — the accept is postponed and the connection waits in the kernel backlog — so there is no rejection counter for this limit, and `connections_open` against this value is the only way to see it being approached"
                 downloads:
                   type: object
                   description: "File downloads served to agents over `POST /download`. Everything is counted when the transfer is offered, so an aborted transfer still counts its offered bytes"
@@ -2285,7 +2293,7 @@ components:
         limit:
           type: integer
           format: int64
-          description: "Requests per second this manager serves on the endpoint, fleet-wide. `0` when the limit is disabled"
+          description: "Requests per second this manager node serves on the endpoint. Each node runs its own limiter, so a cluster of N nodes admits up to N times this rate. `0` when the limit is disabled"
         burst:
           type: integer
           format: int64
@@ -6917,6 +6925,8 @@ paths:
                             available_bytes: 67099136
                             inflight_bytes: 9728
                             inflight_requests: 3
+                            connections_open: 12
+                            connections_max: 256
                             rejected_total: 0
                           downloads:
                             started: 12

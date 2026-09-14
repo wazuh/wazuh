@@ -310,10 +310,10 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     // per chunk, so a client that keeps reading slowly can hold a transfer open indefinitely.
     // A mass upgrade (the whole fleet fetching a WPK at once, many over slow links) is therefore
     // bounded only by this value, which is why it is settable rather than fixed.
-    rm_config->max_parallel_connections = getDefine_Int_default("remoted", "max_parallel_connections", 1, 65536, 512);
+    rm_config->max_parallel_connections = getDefine_Int_default("remoted", "max_parallel_connections", 1, 65536, 256);
     // max_deferred_requests caps requests parked awaiting a downstream service (503 over it).
     // No Retry-After is sent: the agent runs its own retry/backoff on a 503.
-    rm_config->max_deferred_requests = getDefine_Int_default("remoted", "max_deferred_requests", 1, 65536, 256);
+    rm_config->max_deferred_requests = getDefine_Int_default("remoted", "max_deferred_requests", 1, 65536, 128);
 
     // Downstream (async UDS client to the engine's event ingress) tunables.
     rm_config->downstream_connect_timeout = getDefine_Int_default("remoted", "downstream_connect_timeout", 1, 60, 2);
@@ -340,7 +340,7 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->jwt_max_age = getDefine_Int_default("remoted", "jwt_max_age", 1, 43200, 60);
     rm_config->jwt_clock_skew = getDefine_Int_default("remoted", "jwt_clock_skew", 0, 43200, 30);
     rm_config->jwt_clock_skew_set = 1;
-    rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 10485760);
+    rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 5242880);
 }
 
 /**
@@ -421,17 +421,15 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
     rm_config->http_max_body_size = logr->https.max_body_size;
     rm_config->dual_stack = logr->https.dual_stack;
 
-    // The four values are copied verbatim, sentinel included: RemotedConfig() starts them at
+    // Copied verbatim, sentinel included: RemotedConfig() starts them at
     // REMOTED_HTTPS_RATE_LIMIT_UNSET and Read_Remote_JSON() only overwrites what the document
     // carries, so "the operator set 0" and "nobody configured this" stay distinguishable all the
-    // way into the module. The flag says the four carry real values at all, which is what keeps a
+    // way into the module. The flag says the two carry real values at all, which is what keeps a
     // zeroed struct (or remoted_module_start(NULL)) meaning "module defaults" rather than
-    // "unlimited".
+    // "unlimited". The bucket depth is not configurable: the module derives it from the rate.
     rm_config->rate_limit_set = 1;
     rm_config->enroll_rate_limit = logr->https.enroll_rate_limit;
-    rm_config->enroll_rate_burst = logr->https.enroll_rate_burst;
     rm_config->cacerts_rate_limit = logr->https.cacerts_rate_limit;
-    rm_config->cacerts_rate_burst = logr->https.cacerts_rate_burst;
 
     if (logr->https.bind_addr) {
         snprintf(rm_config->bind_address, sizeof(rm_config->bind_address), "%s", logr->https.bind_addr);

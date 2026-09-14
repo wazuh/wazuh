@@ -70,9 +70,7 @@ static remoted *create_remoted() {
     /* Same pre-parse state RemotedConfig() sets, for the same reason: 0 is a real setting here
      * ("no limit"), so the reader must be handed the sentinel, not a zeroed field. */
     logr->https.enroll_rate_limit = REMOTED_HTTPS_RATE_LIMIT_UNSET;
-    logr->https.enroll_rate_burst = REMOTED_HTTPS_RATE_LIMIT_UNSET;
     logr->https.cacerts_rate_limit = REMOTED_HTTPS_RATE_LIMIT_UNSET;
-    logr->https.cacerts_rate_burst = REMOTED_HTTPS_RATE_LIMIT_UNSET;
     return logr;
 }
 
@@ -564,14 +562,11 @@ static void test_Read_Remote_JSON_enum_and_dual_stack(void **state) {
 static void test_Read_Remote_JSON_rate_limits(void **state) {
     test_state *ts = *state;
 
-    cJSON *configured = json_or_fail("{\"https\":{\"enroll_rate_limit\":12,\"enroll_rate_burst\":24,"
-                                     "\"cacerts_rate_limit\":0,\"cacerts_rate_burst\":7}}");
+    cJSON *configured = json_or_fail("{\"https\":{\"enroll_rate_limit\":12,\"cacerts_rate_limit\":0}}");
 
     assert_int_equal(Read_Remote_JSON(configured, ts->logr), 0);
     assert_int_equal(ts->logr->https.enroll_rate_limit, 12);
-    assert_int_equal(ts->logr->https.enroll_rate_burst, 24);
     assert_int_equal(ts->logr->https.cacerts_rate_limit, 0);
-    assert_int_equal(ts->logr->https.cacerts_rate_burst, 7);
 
     cJSON_Delete(configured);
 }
@@ -585,9 +580,7 @@ static void test_Read_Remote_JSON_rate_limits_absent_stay_unset(void **state) {
     assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
 
     assert_int_equal(ts->logr->https.enroll_rate_limit, REMOTED_HTTPS_RATE_LIMIT_UNSET);
-    assert_int_equal(ts->logr->https.enroll_rate_burst, REMOTED_HTTPS_RATE_LIMIT_UNSET);
     assert_int_equal(ts->logr->https.cacerts_rate_limit, REMOTED_HTTPS_RATE_LIMIT_UNSET);
-    assert_int_equal(ts->logr->https.cacerts_rate_burst, REMOTED_HTTPS_RATE_LIMIT_UNSET);
 
     cJSON_Delete(remote);
 }

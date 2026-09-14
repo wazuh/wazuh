@@ -113,9 +113,7 @@ TEST(Load, EffectiveDefaultsFromMinimalDocument)
     // The rate limits are NOT written into the shipped file, but they do have defaults: an absent
     // option must arrive at remoted as a real value, never as "unlimited".
     EXPECT_EQ(rapidjson::Pointer("/remote/https/enroll_rate_limit").Get(effective)->GetInt(), 100);
-    EXPECT_EQ(rapidjson::Pointer("/remote/https/enroll_rate_burst").Get(effective)->GetInt(), 200);
     EXPECT_EQ(rapidjson::Pointer("/remote/https/cacerts_rate_limit").Get(effective)->GetInt(), 50);
-    EXPECT_EQ(rapidjson::Pointer("/remote/https/cacerts_rate_burst").Get(effective)->GetInt(), 100);
     EXPECT_EQ(rapidjson::Pointer("/auth/port").Get(effective)->GetInt(), 1515);
     EXPECT_TRUE(rapidjson::Pointer("/auth/force/disconnected_time/enabled").Get(effective)->GetBool());
     EXPECT_STREQ(rapidjson::Pointer("/wdb/backup/global/interval").Get(effective)->GetString(), "1d");
@@ -148,9 +146,9 @@ TEST(Load, GeneratedManagerFileKeepsUserValuesAndFillsTheRest)
     EXPECT_EQ(rapidjson::Pointer("/legacy/queue_size").Get(remote)->GetInt(), 131072) << "filled default";
     EXPECT_STREQ(rapidjson::Pointer("/https/certificate").Get(remote)->GetString(), "etc/certs/remoted.pem");
     EXPECT_STREQ(rapidjson::Pointer("/https/ca_certificate").Get(remote)->GetString(), "etc/certs/root-ca.pem");
-    EXPECT_EQ(remote["https"].MemberCount(), 11u) << "port, bind_addr, global_prefix, certificate, key, ca, "
-                                                     "ca_certificate and the four rate limits (the three "
-                                                     "no-default options stay absent)";
+    EXPECT_EQ(remote["https"].MemberCount(), 9u) << "port, bind_addr, global_prefix, certificate, key, ca, "
+                                                    "ca_certificate and the two rate limits (the three "
+                                                    "no-default options stay absent)";
     const auto auth = json(doc.sectionJson("auth"));
     EXPECT_TRUE(auth["purge"].GetBool());
     EXPECT_TRUE(auth["use_password"].GetBool());
@@ -451,7 +449,7 @@ TEST(CApi, LoadSectionDocumentValidateFree)
     std::filesystem::remove_all(home);
 }
 
-TEST(Schema, EmbeddedSchemaIsValidJsonWithSeventyOneLeaves)
+TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtyNineLeaves)
 {
     const auto schema = json(std::string {manager_config::schemaJson()});
     std::size_t leaves = 0;
@@ -476,7 +474,6 @@ TEST(Schema, EmbeddedSchemaIsValidJsonWithSeventyOneLeaves)
     };
     walk(schema);
     // Bump this deliberately, never to make the test pass: it is the guard that a schema option was
-    // added or removed on purpose. Last changed by the four remote.https per-client rate limits
-    // (67 -> 71).
-    EXPECT_EQ(leaves, 71u);
+    // added or removed on purpose. Last changed by the two remote.https rate limits (67 -> 69).
+    EXPECT_EQ(leaves, 69u);
 }

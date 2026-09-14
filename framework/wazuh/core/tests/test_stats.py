@@ -114,7 +114,7 @@ EXPECTED_HTTP_SERVER_METRICS = {
                               'response_too_large': 5009},
                    'deferred': {'capacity': 5010, 'inflight': 5011, 'rejected_total': 5012}},
     'backpressure': {'available_bytes': 6001, 'inflight_bytes': 6002, 'inflight_requests': 6003,
-                     'rejected_total': 6004},
+                     'rejected_total': 6004, 'connections_open': 6005, 'connections_max': 6006},
     'downloads': {'started': 7001, 'rejected': 7002, 'not_found': 7003, 'open_error': 7004,
                   'bytes_total': 7005},
     'tls': {'cert_expiry_days': 9001, 'ca_matches_leaf': 9002},

@@ -129,6 +129,10 @@ _REMOTED_METRIC_GROUPS = {
         'inflight_bytes': 'remoted.server.budget.inflight.bytes',
         'inflight_requests': 'remoted.server.budget.inflight.requests',
         'rejected_total': 'remoted.server.budget.rejected.total',
+        # The connection ceiling has no rejection counter: reaching it postpones the accept instead
+        # of refusing, so `open` against `max` is the only way to see it being approached.
+        'connections_open': 'remoted.server.connections.open',
+        'connections_max': 'remoted.server.connections.max',
     },
     'downloads': {
         'started': 'remoted.download.started',

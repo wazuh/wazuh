@@ -92,6 +92,8 @@ never in the per-endpoint `remoted.http.*.responses.*` cells (see
 | `remoted.server.budget.inflight.bytes` | gauge (pull) | bytes | Bytes currently reserved (request payloads plus zstd decompression scratch) | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 | `remoted.server.budget.inflight.requests` | gauge (pull) | requests | Admitted requests currently resident — exactly one per request, compressed or not | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
 | `remoted.server.budget.rejected.total` | counter (pull) | requests | Requests the budget refused to admit (503, admission only) — cumulative | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
+| `remoted.server.connections.open` | gauge | connections | Connections currently open on the listener. **Not** the same as `budget.inflight.requests`: a connection is held from accept to close, which on a streamed `POST /download` is the whole transfer | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections) |
+| `remoted.server.connections.max` | gauge | connections | What that ceiling is set to. Reaching it refuses nothing — the accept is postponed and the connection waits in the kernel backlog — so this pair is the **only** way to see the limit being approached; there is no rejection counter for it | as above; if `open` rides near `max`, raise it or shorten what holds connections (downloads) |
 
 Running with `inflight.bytes` near the configured cap at peak, or `rejected.total` moving,
 means the budget is the active bottleneck: raise
@@ -291,7 +293,7 @@ except the pulls at the end (the `authd` queue and the token store).
 | `remoted.enroll.disabled` | Enrollment is administratively off, so the request was answered `403` without touching `authd` | the manager's enrollment setting (the route always exists, so this is distinguishable from a `404`) |
 | `remoted.enroll.authd_error` | `authd` answered, and refused on its own business rules (duplicate name, agent limit, cluster forwarding) — including the `403` it gives a verified enrollment token it will not consume (9022 not found or revoked, 9023 expired, 9024 uses exhausted) | diagnostic — `authd`'s own limits; the mapped status is in the `enroll` response cells |
 | `remoted.enroll.authd_unavailable` | No clean answer from `authd`: a full request queue, an unreachable socket, a timeout, or the module shutting down | see the queue metrics below to tell saturation apart from the rest |
-| `remoted.enroll.rate_limited` | `429`: the endpoint was asked faster than its configured rate, so the request was refused **before** the handler ran — no body decoded, no credential read, no `authd` round trip. In none of the rows above for that reason | [`https.enroll_rate_limit` / `https.enroll_rate_burst`](configuration.md#rate-limits-of-the-unauthenticated-routes) |
+| `remoted.enroll.rate_limited` | `429`: the endpoint was asked faster than its configured rate, so the request was refused **before** the handler ran — no body decoded, no credential read, no `authd` round trip. In none of the rows above for that reason | [`https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit) |
 
 The **enrollment-token** subset — requests whose bearer's `kid` named an enrollment token — by
 what happened to the token (the [HTTPS Agent API](https-events-api.md#enrollment-endpoint-post-enroll)
@@ -438,7 +440,7 @@ behind `remoted.http.cacerts.responses.*`; the evaluation that decides the `503`
 | `remoted.cacerts.served` | counter | count | 200: the CA PEM was handed out | — |
 | `remoted.cacerts.not_found` | counter | count | 404: the CA file is missing, unreadable or carries no certificate — agents cannot bootstrap trust until it is restored | diagnostic — restore [`https.ca_certificate`](configuration.md#httpsca_certificate) |
 | `remoted.cacerts.ca_mismatch` | counter | count | 503: refused because the configured CA does not sign the served certificate | diagnostic — make [`https.ca_certificate`](configuration.md#httpsca_certificate) the CA that signed [`https.certificate`](configuration.md#httpscertificate), then restart |
-| `remoted.cacerts.rate_limited` | counter | count | 429: the route was asked faster than its configured rate. The snapshot was never read — in none of the three rows above | [`https.cacerts_rate_limit` / `https.cacerts_rate_burst`](configuration.md#rate-limits-of-the-unauthenticated-routes) |
+| `remoted.cacerts.rate_limited` | counter | count | 429: the route was asked faster than its configured rate. The snapshot was never read — in none of the three rows above | [`https.cacerts_rate_limit`](configuration.md#httpscacerts_rate_limit) |
 
 ### Rate limits — `remoted.<endpoint>.rate_limit.*`
 
@@ -453,7 +455,7 @@ never charges the bucket, so scraping cannot cost an agent its enrollment.
 | Metric | Unit | Meaning | Tuning |
 |---|---|---|---|
 | `remoted.<endpoint>.rate_limit.limit` | requests_per_second | The configured ceiling for this route, fleet-wide (`0` when the limit is disabled) | [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes) |
-| `remoted.<endpoint>.rate_limit.burst` | requests | What the route serves back to back before the rate paces it | the matching `*_rate_burst` |
+| `remoted.<endpoint>.rate_limit.burst` | requests | What the route serves back to back before the rate paces it. Derived, not configured: twice the rate | the matching `*_rate_limit` |
 | `remoted.<endpoint>.rate_limit.available` | requests | Allowance left unspent right now. Near zero means the route is at its ceiling and further requests are being refused | read it with `rate_limited`: a climbing counter while `available` sits at 0 is a rate set below what the fleet needs, not necessarily an attack |
 
 ### Admin transport — `remoted.admin.server.*`

@@ -30,9 +30,8 @@ namespace remoted::endpoints::ratelimit
             return instance;
         }
 
-        /// Resolves one rate (or burst) from the ABI's three-way encoding: the whole group unset,
-        /// this field unset, or a real value -- 0 included, which means "no limit" for a rate and
-        /// "same as the rate" for a burst (EndpointRateLimiter applies that second rule itself).
+        /// Resolves one rate from the ABI's three-way encoding: the whole group unset, this field
+        /// unset, or a real value -- 0 included, which means "no limit".
         double resolveRate(int configured, bool groupSet, int moduleDefault)
         {
             if (!groupSet || configured == REMOTED_MODULE_RATE_LIMIT_UNSET)
@@ -47,18 +46,14 @@ namespace remoted::endpoints::ratelimit
 
     remoted::http::EndpointRateLimiter::Settings buildEnrollSettings(const remoted_module_config_t& config)
     {
-        const bool groupSet = config.rate_limit_set != 0;
-        return remoted::http::EndpointRateLimiter::Settings {
-            resolveRate(config.enroll_rate_limit, groupSet, DEFAULT_ENROLL_RATE),
-            resolveRate(config.enroll_rate_burst, groupSet, DEFAULT_ENROLL_BURST)};
+        const auto rate = resolveRate(config.enroll_rate_limit, config.rate_limit_set != 0, DEFAULT_ENROLL_RATE);
+        return remoted::http::EndpointRateLimiter::Settings {rate, rate * BURST_MULTIPLIER};
     }
 
     remoted::http::EndpointRateLimiter::Settings buildCacertsSettings(const remoted_module_config_t& config)
     {
-        const bool groupSet = config.rate_limit_set != 0;
-        return remoted::http::EndpointRateLimiter::Settings {
-            resolveRate(config.cacerts_rate_limit, groupSet, DEFAULT_CACERTS_RATE),
-            resolveRate(config.cacerts_rate_burst, groupSet, DEFAULT_CACERTS_BURST)};
+        const auto rate = resolveRate(config.cacerts_rate_limit, config.rate_limit_set != 0, DEFAULT_CACERTS_RATE);
+        return remoted::http::EndpointRateLimiter::Settings {rate, rate * BURST_MULTIPLIER};
     }
 
     remoted::http::RouteHandler wrap(remoted::http::RouteHandler inner,
@@ -121,8 +116,8 @@ namespace remoted::endpoints::ratelimit
             {
                 LOGFN_WARN(logFn(),
                            "%s refused %llu request(s) in the last %d s with 429: the endpoint is being asked "
-                           "faster than its configured rate, which is a ceiling for the whole fleet and not a "
-                           "per-agent one. Raise the matching 'remote.https' rate if this load is legitimate.",
+                           "faster than its configured rate, which is a ceiling for this whole node and not "
+                           "a per-agent one. Raise the matching 'remote.https' rate if this load is legitimate.",
                            routeName.c_str(),
                            static_cast<unsigned long long>(decision.total),
                            remoted::common::LogThrottle::kDefaultWindowSeconds);

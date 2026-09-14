@@ -288,13 +288,13 @@ TEST_F(AdminServerTest, GetMetricsDumpsTheModuleFamilies)
     }
 
     // Live value, not a quiesced 0: the config left max_deferred_requests unset, so the limiter
-    // runs at (and the pull must report) the module's default cap of 256. Scoped to the entry
+    // runs at (and the pull must report) the module's default cap of 128. Scoped to the entry
     // itself (the dump is sorted by name, one compact object per metric) so a stray "256"
     // elsewhere in the body can't satisfy it.
     const auto capacityAt = response->body.find("remoted.forwarder.deferred.capacity");
     ASSERT_NE(capacityAt, std::string::npos);
     const auto capacityEntry = response->body.substr(capacityAt, 200);
-    EXPECT_NE(capacityEntry.find("\"value\":256"), std::string::npos) << capacityEntry;
+    EXPECT_NE(capacityEntry.find("\"value\":128"), std::string::npos) << capacityEntry;
 }
 
 // Routing is exact-match: an unknown path is a 404, and a known path with the wrong verb is a
@@ -456,5 +456,5 @@ TEST_F(AdminServerTest, StopUnlinksTheSocketAndARestartBringsItBack)
     const auto capacityAt = response->body.find("remoted.forwarder.deferred.capacity");
     ASSERT_NE(capacityAt, std::string::npos) << response->body;
     const auto capacityEntry = response->body.substr(capacityAt, 200);
-    EXPECT_NE(capacityEntry.find("\"value\":256"), std::string::npos) << capacityEntry;
+    EXPECT_NE(capacityEntry.find("\"value\":128"), std::string::npos) << capacityEntry;
 }

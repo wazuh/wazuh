@@ -71,7 +71,7 @@ extern "C"
     };
 
     /**
-     * @brief remote.https.<endpoint>_rate_limit / _rate_burst "not configured" sentinel.
+     * @brief remote.https.<endpoint>_rate_limit "not configured" sentinel.
      *
      * Kept in sync by hand with the config-parser mirror in src/config/include/remote-config.h
      * (REMOTED_HTTPS_RATE_LIMIT_UNSET). Negative because 0 is a meaningful value here ("no rate
@@ -196,15 +196,14 @@ extern "C"
         // which a zeroed struct could not express, the same problem jwt_clock_skew_set solves.
         // remoted always sets it, so a zeroed struct (or a NULL configuration) still means "module
         // defaults" and never an accidental "unlimited".
-        int rate_limit_set;     ///< Non-zero when the four fields below carry configured values.
+        int rate_limit_set;     ///< Non-zero when the two fields below carry configured values.
         int enroll_rate_limit;  ///< POST /enroll sustained requests/second, whole endpoint.
                                 ///< REMOTED_MODULE_RATE_LIMIT_UNSET -> module default, 0 -> no limit.
-        int enroll_rate_burst;  ///< POST /enroll requests servable back to back before the rate paces
-                                ///< them. UNSET -> module default, 0 -> same value as the rate.
         int cacerts_rate_limit; ///< GET /cacerts sustained requests/second, whole endpoint.
                                 ///< UNSET -> module default, 0 -> no limit.
-        int cacerts_rate_burst; ///< GET /cacerts requests servable back to back before the rate paces
-                                ///< them. UNSET -> module default, 0 -> same value as the rate.
+                                ///< The bucket depth is NOT part of this ABI: the module derives it
+                                ///< from the rate, so a short burst is absorbed without giving an
+                                ///< operator a second number to reason about.
 
         // Control endpoint configuration. Defaults apply when <=0 or empty.
         char manager_version[64];        ///< Manager version string.

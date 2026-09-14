@@ -280,11 +280,11 @@ TEST(RateLimitGate, AZeroedConfigStructMeansModuleDefaultsNotUnlimited)
 
     const auto enroll = ratelimit::buildEnrollSettings(config);
     EXPECT_DOUBLE_EQ(enroll.ratePerSecond, static_cast<double>(ratelimit::DEFAULT_ENROLL_RATE));
-    EXPECT_DOUBLE_EQ(enroll.burst, static_cast<double>(ratelimit::DEFAULT_ENROLL_BURST));
+    EXPECT_DOUBLE_EQ(enroll.burst, ratelimit::DEFAULT_ENROLL_RATE * ratelimit::BURST_MULTIPLIER);
 
     const auto cacerts = ratelimit::buildCacertsSettings(config);
     EXPECT_DOUBLE_EQ(cacerts.ratePerSecond, static_cast<double>(ratelimit::DEFAULT_CACERTS_RATE));
-    EXPECT_DOUBLE_EQ(cacerts.burst, static_cast<double>(ratelimit::DEFAULT_CACERTS_BURST));
+    EXPECT_DOUBLE_EQ(cacerts.burst, ratelimit::DEFAULT_CACERTS_RATE * ratelimit::BURST_MULTIPLIER);
 }
 
 TEST(RateLimitGate, ConfiguredZeroMeansNoLimit)
@@ -306,31 +306,29 @@ TEST(RateLimitGate, TheUnsetSentinelFallsBackToTheModuleDefault)
     remoted_module_config_t config {};
     config.rate_limit_set = 1;
     config.enroll_rate_limit = REMOTED_MODULE_RATE_LIMIT_UNSET;
-    config.enroll_rate_burst = REMOTED_MODULE_RATE_LIMIT_UNSET;
     config.cacerts_rate_limit = REMOTED_MODULE_RATE_LIMIT_UNSET;
-    config.cacerts_rate_burst = REMOTED_MODULE_RATE_LIMIT_UNSET;
 
     EXPECT_DOUBLE_EQ(ratelimit::buildEnrollSettings(config).ratePerSecond,
                      static_cast<double>(ratelimit::DEFAULT_ENROLL_RATE));
-    EXPECT_DOUBLE_EQ(ratelimit::buildCacertsSettings(config).burst,
-                     static_cast<double>(ratelimit::DEFAULT_CACERTS_BURST));
+    EXPECT_DOUBLE_EQ(ratelimit::buildCacertsSettings(config).ratePerSecond,
+                     static_cast<double>(ratelimit::DEFAULT_CACERTS_RATE));
 }
 
-TEST(RateLimitGate, ConfiguredValuesAreCarriedThrough)
+TEST(RateLimitGate, ConfiguredValuesAreCarriedThroughAndTheBucketIsDerived)
 {
     remoted_module_config_t config {};
     config.rate_limit_set = 1;
     config.enroll_rate_limit = 5;
-    config.enroll_rate_burst = 9;
     config.cacerts_rate_limit = 7;
-    config.cacerts_rate_burst = 11;
 
+    // The rate is the only configured number; the bucket depth follows from it, so an operator
+    // cannot set a burst that contradicts the rate.
     const auto enroll = ratelimit::buildEnrollSettings(config);
     EXPECT_DOUBLE_EQ(enroll.ratePerSecond, 5.0);
-    EXPECT_DOUBLE_EQ(enroll.burst, 9.0);
+    EXPECT_DOUBLE_EQ(enroll.burst, 10.0);
 
-    // The two routes are independent: one pair of settings each, never a shared bucket.
+    // The two routes are independent: one setting each, never a shared bucket.
     const auto cacerts = ratelimit::buildCacertsSettings(config);
     EXPECT_DOUBLE_EQ(cacerts.ratePerSecond, 7.0);
-    EXPECT_DOUBLE_EQ(cacerts.burst, 11.0);
+    EXPECT_DOUBLE_EQ(cacerts.burst, 14.0);
 }

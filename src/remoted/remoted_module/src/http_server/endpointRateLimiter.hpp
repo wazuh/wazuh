@@ -34,6 +34,10 @@
  * and it means the limit is a shared budget: a single noisy client can spend the whole route's
  * allowance, and a legitimate fleet-wide burst is paced by the same ceiling. Sizing it is therefore
  * a fleet-level decision (`remote.https.<endpoint>_rate_limit`), not a per-agent one.
+ *
+ * Scope note: the bucket is per endpoint PER NODE. Each manager runs its own limiter, so a
+ * load-balanced cluster of N nodes admits up to N times this rate in total, and an agent refused by
+ * one node may be admitted by the next one it is balanced to.
  */
 
 #include <chrono>

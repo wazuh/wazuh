@@ -95,9 +95,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     /* Not 0: that is "no rate limit", a setting an operator can ask for explicitly. UNSET is what
      * makes an <https> block that never mentions these fall back to the module's own defaults. */
     cfg->https.enroll_rate_limit = REMOTED_HTTPS_RATE_LIMIT_UNSET;
-    cfg->https.enroll_rate_burst = REMOTED_HTTPS_RATE_LIMIT_UNSET;
     cfg->https.cacerts_rate_limit = REMOTED_HTTPS_RATE_LIMIT_UNSET;
-    cfg->https.cacerts_rate_burst = REMOTED_HTTPS_RATE_LIMIT_UNSET;
 
     // Initialize all internal options
     receive_chunk = (unsigned)getDefine_Int_default("remoted", "receive_chunk", 1024, 16384, 4096);

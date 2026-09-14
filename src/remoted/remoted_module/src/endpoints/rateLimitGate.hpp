@@ -46,9 +46,9 @@
 namespace remoted::endpoints::ratelimit
 {
     /**
-     * @brief The module's own rate defaults, one pair per endpoint.
+     * @brief The module's own rate defaults, one per endpoint.
      *
-     * They MUST stay equal to the `remote.https.*_rate_limit` / `*_rate_burst` defaults in
+     * They MUST stay equal to the `remote.https.*_rate_limit` defaults in
      * src/shared_modules/manager_config/schema/wazuh-manager.schema.json. The schema fills those
      * into every effective document, so these values are what a manager whose document did NOT go
      * through the schema gets -- and the two answering differently would mean the same
@@ -57,13 +57,22 @@ namespace remoted::endpoints::ratelimit
      * /enroll is allowed the higher rate of the two even though it is the more expensive route:
      * every agent in a fleet must pass through it at least once (a bootstrap, or a mass
      * re-enrollment after a credential rotation), while /cacerts is fetched once per agent and only
-     * to bootstrap trust. The burst is twice the rate in both, so a momentary pile-up is absorbed
-     * rather than refused.
+     * to bootstrap trust.
      */
     constexpr int DEFAULT_ENROLL_RATE {100};
-    constexpr int DEFAULT_ENROLL_BURST {200};
     constexpr int DEFAULT_CACERTS_RATE {50};
-    constexpr int DEFAULT_CACERTS_BURST {100};
+
+    /**
+     * @brief Bucket depth, as a multiple of the configured rate.
+     *
+     * Deliberately NOT a configuration option. Real traffic does not arrive evenly spaced -- a
+     * hundred agents coming back after an outage arrive in the same instant, not one every 10 ms --
+     * so the bucket has to hold more than one second's worth or a perfectly acceptable load would
+     * be refused on arrival pattern alone. Two seconds' worth absorbs that without raising the
+     * sustained ceiling, and deriving it keeps the operator with ONE number per endpoint to reason
+     * about instead of a rate/burst pair whose interaction is easy to get wrong.
+     */
+    constexpr double BURST_MULTIPLIER {2.0};
 
     /// POST /enroll's limiter settings, resolved from the C ABI (rate_limit_set / the UNSET
     /// sentinel / 0 meaning "no limit" -- see remoted_module.h).

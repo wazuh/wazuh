@@ -240,7 +240,7 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.port, 1517);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.workerThreads, 2U * static_cast<std::size_t>(cpp_get_nproc()));
-    EXPECT_EQ(config.maxBodySize, 20U * 1024U * 1024U);
+    EXPECT_EQ(config.maxBodySize, 10U * 1024U * 1024U);
     EXPECT_EQ(config.readTimeoutSec, 10U);
     EXPECT_EQ(config.writeTimeoutSec, 10U);
     EXPECT_EQ(config.requestTimeoutSec, 30U);
@@ -255,7 +255,7 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.bufferSize, 8192U);
     EXPECT_EQ(config.streamChunkSize, 64U * 1024U);
     EXPECT_EQ(config.maxInFlightBytes, 256U * 1024U * 1024U);
-    EXPECT_EQ(config.maxParallelConnections, 512U);
+    EXPECT_EQ(config.maxParallelConnections, 256U);
     EXPECT_EQ(config.certificatePath, "etc/certs/remoted.pem");
     EXPECT_EQ(config.privateKeyPath, "etc/certs/remoted-key.pem");
     EXPECT_EQ(config.caPath, "etc/certs/root-ca.pem");
@@ -309,9 +309,11 @@ TEST(HttpServerConfigTest, MaxConnectionsStructWinsElseDefault)
     raw.max_parallel_connections = 128;
     EXPECT_EQ(buildHttpServerConfig(raw).maxParallelConnections, 128U);
 
-    // Unset (<=0) -> built-in default (this setting is not env-driven).
+    // Unset (<=0) -> built-in default (this setting is not env-driven). Must equal secure.c's own
+    // default for the same option, or an embedder passing a zeroed struct is limited differently
+    // from remoted itself.
     raw.max_parallel_connections = 0;
-    EXPECT_EQ(buildHttpServerConfig(raw).maxParallelConnections, 512U);
+    EXPECT_EQ(buildHttpServerConfig(raw).maxParallelConnections, 256U);
 }
 
 TEST(HttpServerConfigTest, StructValuesWin)
@@ -1404,6 +1406,8 @@ TEST(HttpServerTest, DiagnosticsReportZerosBeforeStartAndTrackTheBudgetAfter)
     EXPECT_EQ(d.budgetInFlightBytes, 0U);
     EXPECT_EQ(d.budgetInFlightCount, 0U);
     EXPECT_EQ(d.budgetRejectedTotal, 0U);
+    EXPECT_EQ(d.connectionsOpen, 0U);
+    EXPECT_EQ(d.connectionsMax, 0U); // no ceiling reported until one is configured
 
     HttpServerConfig config;
     config.port = 0; // ephemeral
@@ -1420,6 +1424,8 @@ TEST(HttpServerTest, DiagnosticsReportZerosBeforeStartAndTrackTheBudgetAfter)
     EXPECT_EQ(d.budgetInFlightBytes, 0U);
     EXPECT_EQ(d.budgetInFlightCount, 0U);
     EXPECT_EQ(d.budgetRejectedTotal, 0U);
+    EXPECT_EQ(d.connectionsOpen, 0U);                           // nobody has connected yet
+    EXPECT_EQ(d.connectionsMax, config.maxParallelConnections); // the ceiling actually in force
 
     {
         auto reservation = server->tryReserveInFlightBytes(10U * MiB);
@@ -1489,6 +1495,52 @@ TEST(HttpServerTest, DiagnosticsCountARealAdmissionShed)
     EXPECT_EQ(d.budgetRejectedTotal, 1U); // exactly the one refused admission
     EXPECT_EQ(d.budgetInFlightCount, 0U);
     EXPECT_EQ(d.budgetAvailableBytes, 50U * MiB);
+}
+
+// The connection ceiling is the one capacity limit that rejects nothing when reached (RESTinio
+// postpones the accept), so `connectionsOpen` is the ONLY evidence an operator gets that it is being
+// approached -- and it is fed by a RESTinio state-listener callback, not by our own request path. A
+// listener that is never notified would leave it reading 0 forever and nothing else would notice,
+// which is exactly what this test exists to catch: it drives a real TLS connection and requires the
+// counter to have moved while the handler was running.
+TEST(HttpServerTest, DiagnosticsCountARealConnection)
+{
+    constexpr std::size_t MiB = 1024U * 1024U;
+    TempCert cert;
+    std::atomic<std::size_t> openDuringRequest {0};
+    auto server = makeHttpServer();
+    auto* serverPtr = server.get();
+
+    server->addRoute(
+        Method::Post,
+        "/events",
+        [serverPtr, &openDuringRequest](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        {
+            // Sampled from inside the handler: the connection serving this very request is open, so
+            // the count cannot legitimately be 0 here.
+            openDuringRequest = serverPtr->diagnostics().connectionsOpen;
+            responder->send(HttpResponse::json(200, "{}"));
+        },
+        /*countAgainstBudget=*/true,
+        ResponseMode::Buffered);
+
+    HttpServerConfig config;
+    config.port = static_cast<std::uint16_t>(21000 + (::getpid() % 5000));
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.maxBodySize = 1U * MiB;
+    config.maxInFlightBytes = 50U * MiB;
+    config.maxParallelConnections = 64U;
+
+    ASSERT_NO_THROW(server->start(config));
+    EXPECT_EQ(server->diagnostics().connectionsMax, 64U);
+
+    const auto raw = remoted::test::sendSignedRequest(config.port, remoted::test::testAgentKey(), "/events", "{}");
+    ASSERT_FALSE(raw.empty()) << "no response from the server";
+
+    EXPECT_GE(openDuringRequest.load(), 1U) << "the state listener never counted the live connection";
+
+    server->stop();
 }
 
 // ---------------------------------------------------------------------------

@@ -392,9 +392,7 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
 
         /* Rate limits of the two unauthenticated routes (POST /enroll, GET /cacerts). */
         if (w_remoted_json_https_rate(https, "enroll_rate_limit", REMOTED_HTTPS_RATE_LIMIT_MAX, &logr->https.enroll_rate_limit) == OS_INVALID ||
-            w_remoted_json_https_rate(https, "enroll_rate_burst", REMOTED_HTTPS_RATE_BURST_MAX, &logr->https.enroll_rate_burst) == OS_INVALID ||
-            w_remoted_json_https_rate(https, "cacerts_rate_limit", REMOTED_HTTPS_RATE_LIMIT_MAX, &logr->https.cacerts_rate_limit) == OS_INVALID ||
-            w_remoted_json_https_rate(https, "cacerts_rate_burst", REMOTED_HTTPS_RATE_BURST_MAX, &logr->https.cacerts_rate_burst) == OS_INVALID) {
+            w_remoted_json_https_rate(https, "cacerts_rate_limit", REMOTED_HTTPS_RATE_LIMIT_MAX, &logr->https.cacerts_rate_limit) == OS_INVALID) {
             return (OS_INVALID);
         }
     }

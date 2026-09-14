@@ -330,24 +330,6 @@ static void test_process_response_unrecognized_status_is_server_error(void **sta
     assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
 }
 
-/* The manager's rate limit for the endpoint. Retryable like any other server-side condition --
- * both enrollment loops ramp and try again -- but logged as INFO with its own wording, since the
- * ceiling is fleet-wide and a mass enrollment would otherwise read as a failure of every agent. */
-static void test_process_response_rate_limited_is_retryable_and_named(void **state) {
-    (void)state;
-    hc_enroll_result_t result = {0};
-    result.http_code = 429;
-    strncpy(result.body,
-            "{\"error\":{\"code\":0,\"message\":\"Enrollment is rate limited on this manager, retry later\"}}",
-            sizeof(result.body) - 1);
-
-    expect_string(__wrap__minfo, formatted_msg,
-                  "Enrollment is being rate-limited by the manager; retrying. "
-                  "Enrollment is rate limited on this manager, retry later");
-
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
-}
-
 static void test_process_response_200_with_malformed_json_is_server_error(void **state) {
     (void)state;
     hc_enroll_result_t result = {0};
@@ -388,7 +370,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_401_is_auth_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_is_disabled_not_an_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_409_is_duplicate, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_process_response_rate_limited_is_retryable_and_named, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_unrecognized_status_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_with_malformed_json_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_missing_field_is_server_error, setup_test, teardown_test),

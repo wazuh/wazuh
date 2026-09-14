@@ -54,7 +54,7 @@
 #define REMOTED_HTTPS_DUAL_STACK_YES   1 ///< Force dual-stack on (IPV6_V6ONLY=0): also accept IPv4
 #define REMOTED_HTTPS_DUAL_STACK_NO    2 ///< Force IPv6-only (IPV6_V6ONLY=1): reject IPv4 on this socket
 
-/* remote.https.<endpoint>_rate_limit / _rate_burst sentinel. Kept in sync by hand with the
+/* remote.https.<endpoint>_rate_limit sentinel. Kept in sync by hand with the
  * C-ABI mirror in src/remoted/remoted_module/include/remoted_module.h
  * (REMOTED_MODULE_RATE_LIMIT_UNSET).
  *
@@ -66,11 +66,10 @@
  * does, and gets the module's defaults rather than an accidental "unlimited". */
 #define REMOTED_HTTPS_RATE_LIMIT_UNSET (-1)
 
-/* Upper bounds of the rate options, kept in sync by hand with the schema's own "maximum"
+/* Upper bound of the rate options, kept in sync by hand with the schema's own "maximum"
  * (src/shared_modules/manager_config/schema/wazuh-manager.schema.json). Repeated here because a
  * document can reach the reader without having gone through the schema. */
 #define REMOTED_HTTPS_RATE_LIMIT_MAX   100000
-#define REMOTED_HTTPS_RATE_BURST_MAX   1000000
 
 /* Maximum lengths for remote.https string options. Kept in sync by hand with the
  * fixed-size C-ABI buffers in src/remoted/remoted_module/include/remoted_module.h
@@ -110,9 +109,7 @@ typedef struct _remoted_https_config {
      * fleet-wide ceilings, not per-caller allowances. REMOTED_HTTPS_RATE_LIMIT_UNSET -> module
      * default, 0 -> no limit, >0 -> requests per second. */
     int enroll_rate_limit;     ///< POST /enroll sustained requests/second, whole endpoint
-    int enroll_rate_burst;     ///< POST /enroll back-to-back requests; 0 -> same as the rate
     int cacerts_rate_limit;    ///< GET /cacerts sustained requests/second, whole endpoint
-    int cacerts_rate_burst;    ///< GET /cacerts back-to-back requests; 0 -> same as the rate
 } remoted_https_config;
 
 /* socklen_t header */
