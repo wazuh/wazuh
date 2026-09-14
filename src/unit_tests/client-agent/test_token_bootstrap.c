@@ -123,7 +123,8 @@ static uid_t g_anchor_chown_uid = (uid_t) -1;
 static gid_t g_anchor_chown_gid = (gid_t) -1;
 static uid_t g_dir_chown_uid = (uid_t) -1;
 static gid_t g_dir_chown_gid = (gid_t) -1;
-static bool g_keys_chown_called = false;
+static uid_t g_keys_chown_uid = (uid_t) -1;
+static gid_t g_keys_chown_gid = (gid_t) -1;
 
 /* The anchor's chown() target is the TempFile()-created temporary file
  * ("etc/certs/root-ca.pem.XXXXXX", a random mkstemp() suffix appended to the destination name --
@@ -159,7 +160,8 @@ int __wrap_chown(const char *path, uid_t owner, gid_t group) {
         g_dir_chown_uid = owner;
         g_dir_chown_gid = group;
     } else if (path && strcmp(path, KEYS_FILE) == 0) {
-        g_keys_chown_called = true;
+        g_keys_chown_uid = owner;
+        g_keys_chown_gid = group;
     }
 
     return 0;
@@ -231,7 +233,8 @@ static int setup_test(void **state) {
     g_anchor_chown_gid = (gid_t) -1;
     g_dir_chown_uid = (uid_t) -1;
     g_dir_chown_gid = (gid_t) -1;
-    g_keys_chown_called = false;
+    g_keys_chown_uid = (uid_t) -1;
+    g_keys_chown_gid = (gid_t) -1;
     g_dir_chmod_mode = (mode_t) -1;
     g_anchor_chmod_mode = (mode_t) -1;
     g_anchor_chown_recorded_before_move = false;
@@ -519,9 +522,13 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal(g_dir_chown_uid, 0);
     assert_int_equal(g_dir_chown_gid, getgid());
 
-    /* Regression guard: client.keys must never be chowned -- it stays at whatever the installer
-     * set it to. */
-    assert_false(g_keys_chown_called);
+    /* client.keys does not keep the installer's ownership across the bootstrap: enrollment
+     * replaces it through a rename, and the new inode belongs to whoever wrote it -- root,
+     * because this runs before the privilege drop. Without handing it to the runtime user the
+     * agent cannot read the credential it just enrolled with, and re-enrolls in a loop. Ordinary
+     * enrollment, running as that user already, produces the same ownership. */
+    assert_int_equal(g_keys_chown_uid, getuid());
+    assert_int_equal(g_keys_chown_gid, getgid());
 }
 
 /* #39028's DoD: "a credential-less token enrolls when the simulator requires no credential,
@@ -610,7 +617,8 @@ static void test_full_happy_path_via_ca_pem(void **state) {
     /* Same regression guard as the pin-path happy test: the anchor's chown() must land before
      * the rename that installs it. */
     assert_true(g_anchor_chown_recorded_before_move);
-    assert_false(g_keys_chown_called);
+    assert_int_equal(g_keys_chown_uid, getuid());
+    assert_int_equal(g_keys_chown_gid, getgid());
 }
 
 int main(void) {
