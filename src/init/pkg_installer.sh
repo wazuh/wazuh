@@ -873,8 +873,18 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking for Wazuh Agent control script." >
 
 if [ -f "./bin/wazuh-control" ]; then
     if [[ "$OS" == "Darwin" ]]; then
-        echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log
-        launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist >> ./logs/upgrade.log 2>&1 || true
+        if launchctl print system/com.wazuh.agent >/dev/null 2>&1; then
+            # packages/macos/package_files/postinstall.sh (embedded in the .pkg) already
+            # restarted the agent via 'launchctl bootstrap' when it found the WAZUH_RESTART
+            # marker preinstall.sh drops for a running agent. Bootstrapping the same label
+            # into the system domain again here fails ("Bootstrap failed: 5: Input/output
+            # error") because it's already loaded, and races this script's own
+            # wait-for-connection loop below against a daemon it never actually restarted.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Wazuh Agent is already running (restarted by the package installer); skipping redundant restart." >> ./logs/upgrade.log
+        else
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log
+            launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist >> ./logs/upgrade.log 2>&1 || true
+        fi
     elif [ "${PACKAGE_MANAGER_HANDLES_RESTART}" = "1" ] && ./bin/wazuh-control status 2>/dev/null | grep -q "wazuh-agentd is running"; then
         # deb's postinst / rpm's %post already stopped the pre-upgrade agent (preinst/%pre)
         # and restarted it after install -- via systemctl when the host runs systemd -- when
