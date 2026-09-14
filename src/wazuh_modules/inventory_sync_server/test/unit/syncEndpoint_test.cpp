@@ -214,16 +214,8 @@ TEST(SyncEndpointTest, AVDSessionWhileTheFeedIsNotReadyGets503WithRetryAfter)
     EXPECT_EQ(503, responder->captured->status);
     EXPECT_NE(std::string::npos, responder->captured->body.find("vulnerability feed not ready"));
 
-    bool hasRetryAfter {false};
-    for (const auto& [name, value] : responder->captured->headers)
-    {
-        if (name == "Retry-After")
-        {
-            hasRetryAfter = true;
-            EXPECT_EQ("120", value) << "the configured Retry-After must reach the wire";
-        }
-    }
-    EXPECT_TRUE(hasRetryAfter);
+    EXPECT_EQ(retryAfter(*responder->captured), std::optional<std::string> {"120"})
+        << "the configured Retry-After must reach the wire";
     static_assert(std::string_view {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS} != std::string_view {"120"},
                   "this case must keep proving the CONFIGURED feed value survives, not the generic shed one");
     EXPECT_TRUE(fixture.events->syncOps().empty()) << "a rejected VD session must not touch the indexer";

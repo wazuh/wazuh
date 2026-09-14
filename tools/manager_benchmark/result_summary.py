@@ -195,6 +195,8 @@ def render_human(summary: dict[str, Any]) -> str:
     L.append(f"    400={sess.get('s400',0)} 403={sess.get('s403',0)} 409={sess.get('s409',0)} "
              f"413={sess.get('s413',0)} 500={sess.get('s500',0)} 503={sess.get('s503',0)} "
              f"other={sess.get('other',0)}")
+    L.append(f"    retries: feed={sess.get('retries_feed',0)} 503={sess.get('retries_503',0)} "
+             f"exhausted={sess.get('retries_exhausted',0)}")
     if stateless.get("sent"):
         L.append("  Engine events (/stateless)")
         L.append(f"    batches={stateless.get('sent',0):,} 202={stateless.get('s202',0):,} "
