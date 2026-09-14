@@ -23,15 +23,15 @@ namespace
     // printed as another. Unclassified is deliberately absent: it is the absence of a class, not a
     // value the manager can send.
     constexpr std::array<std::pair<std::string_view, AuthFailClass>, 8> kClasses {{
-        {"unknown_agent", AuthFailClass::UnknownAgent},
-        {"stale_token", AuthFailClass::StaleToken},
-        {"invalid_signature", AuthFailClass::InvalidSignature},
-        {"invalid_request", AuthFailClass::InvalidRequest},
-        {"enrollment_key_unavailable", AuthFailClass::EnrollmentKeyUnavailable},
-        {"token_unknown", AuthFailClass::TokenUnknown},
-        {"token_expired", AuthFailClass::TokenExpired},
-        {"token_revoked", AuthFailClass::TokenRevoked},
-    }};
+            {"unknown_agent", AuthFailClass::UnknownAgent},
+            {"stale_token", AuthFailClass::StaleToken},
+            {"invalid_signature", AuthFailClass::InvalidSignature},
+            {"invalid_request", AuthFailClass::InvalidRequest},
+            {"enrollment_key_unavailable", AuthFailClass::EnrollmentKeyUnavailable},
+            {"token_unknown", AuthFailClass::TokenUnknown},
+            {"token_expired", AuthFailClass::TokenExpired},
+            {"token_revoked", AuthFailClass::TokenRevoked},
+        }};
 } // namespace
 
 const char* authFailClassName(AuthFailClass authClass)
