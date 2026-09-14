@@ -1043,8 +1043,8 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - "c:getenforce -> r:Enforcing|Permisive"
-      - "f:/etc/selinux/config -> r:^SELINUX=enforcing|^SELINUX=Permisive"
+      - "c:getenforce -> r:Enforcing|Permissive"
+      - "f:/etc/selinux/config -> r:^SELINUX=enforcing|^SELINUX=permissive"
 
   # 1.6.1.5 Ensure the SELinux mode is enforcing. (Automated)
   - id: 31041
