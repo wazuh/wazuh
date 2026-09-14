@@ -157,10 +157,6 @@ int w_agent_token_bootstrap(int uid, int gid) {
     hc_enroll_request_t enroll_request;
     hc_enroll_result_t enroll_result;
 
-    /* Kept for signature symmetry with AgentdStart()'s uid/gid pair (see this function's own
-     * doc comment in token_bootstrap.h): neither file this function writes is chowned to it. */
-    (void)uid;
-
     /* Both latches below discard the token on their way out. It is a one-shot credential, and
      * once either of these is true it can never be used again -- but it was only ever deleted
      * on the success path, so a reinstall over an enrolled agent left it sitting at rest
@@ -428,11 +424,24 @@ int w_agent_token_bootstrap(int uid, int gid) {
 
     os_free(anchor_file.name);
 
-    /* client.keys is deliberately left untouched here: it is always replaced wholesale via a
-     * TempFile()+OS_MoveFile() rename rather than edited in place (see enrollment.c and
-     * os_crypto/shared/keys.c), so the runtime user only ever needs directory-write and
-     * group-read on it -- both already granted -- never file-level ownership. It stays at
-     * whatever the installer set it to: 0640 root:wazuh, per inst-functions.sh. */
+    /* client.keys does NOT keep the installer's 0640 root:wazuh across this. It is replaced
+     * wholesale by w_enrollment_store_key_entry()'s TempFile()+OS_MoveFile(), and a rename
+     * installs a new inode owned by whoever wrote it -- here, root, because the bootstrap
+     * enrols before AgentdStart()'s privilege drop. The result is 0640 root:root, which the
+     * agent cannot read once it drops: OS_ReadKeys() comes back empty, keys.keysize stays 0,
+     * and start_agent_prepare() re-enrols in a loop against the key it just obtained.
+     *
+     * Ordinary enrolment does the same rename as the `wazuh` user and lands on wazuh:wazuh, so
+     * this only restores the ownership every other enrolment path already produces.
+     *
+     * After the rename rather than before it, unlike the anchor above: the temp file belongs to
+     * enrollment.c and is gone by the time control returns here. A crash in that window leaves
+     * a root-owned client.keys and the same loop, which is why the durable fix is for the
+     * writer to carry ownership across its own rename. */
+    if (chown(KEYS_FILE, uid, gid) != 0) {
+        merror("Token bootstrap: could not change ownership of '%s': %s (%d).", KEYS_FILE,
+               strerror(errno), errno);
+    }
 
     unlink(AGENT_ENROLLMENT_TOKEN_FILE);
     w_etoken_free(&token);
