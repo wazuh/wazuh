@@ -78,6 +78,11 @@ namespace invsync::sync
                                           "count");
         m_indexerBulkBytes = m_metrics->getOrCreateCounter(
             invsync::metrics::INDEXER_BULK_BYTES, "NDJSON payload bytes those _bulk requests carried", "bytes");
+        m_indexerConflictRetries =
+            m_metrics->getOrCreateCounter(invsync::metrics::INDEXER_CONFLICT_RETRIES,
+                                          "By-query version conflicts waited out and retried; a conflict that "
+                                          "clears never reaches sync.bulk.flush.failures.documents",
+                                          "count");
         const auto failureCounter = [this](const char* cause, const char* description)
         {
             return m_metrics->getOrCreateCounter(
@@ -350,12 +355,18 @@ namespace invsync::sync
 
         // Drained here, once per flush attempt, so auto-flushes fired during staging are also
         // picked up by the next group commit's drain.
-        const auto requestStats = connector.takeBulkRequestStats();
-        m_indexerBulkRequests->add(requestStats.requests);
-        m_indexerBulkBytes->add(requestStats.bytes);
+        drainConnectorStats(connector);
 
         batch.clear();
         batchBytes = 0;
+    }
+
+    void SyncPipeline::drainConnectorStats(indexer::IIndexerConnectorSync& connector)
+    {
+        const auto requestStats = connector.takeBulkRequestStats();
+        m_indexerBulkRequests->add(requestStats.requests);
+        m_indexerBulkBytes->add(requestStats.bytes);
+        m_indexerConflictRetries->add(requestStats.conflictRetries);
     }
 
     void SyncPipeline::workerLoop(std::size_t index)
@@ -504,6 +515,10 @@ namespace invsync::sync
                     std::vector<Item> just {std::move(item)};
                     respondConnectorFailure(just, connector);
                 }
+
+                // flushAndRespond above returns without draining when the batch is empty, and the
+                // session's own I/O happened after it either way.
+                drainConnectorStats(connector);
                 continue;
             }
 

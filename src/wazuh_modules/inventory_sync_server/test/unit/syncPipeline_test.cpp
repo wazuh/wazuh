@@ -167,6 +167,7 @@ TEST(SyncPipelineTest, TheConnectorsRealBulkRequestsReachTheMetrics)
     auto events = std::make_shared<ConnectorEvents>();
     events->m_bulkStatsRequests = 3;
     events->m_bulkStatsBytes = 4096;
+    events->m_bulkStatsConflictRetries = 2;
 
     std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors {
         std::make_shared<FakeIndexerConnectorSync>(events, "sync")};
@@ -178,8 +179,10 @@ TEST(SyncPipelineTest, TheConnectorsRealBulkRequestsReachTheMetrics)
 
     const auto requests = metrics->getOrCreateCounter(invsync::metrics::INDEXER_BULK_REQUESTS, "", "count");
     const auto bytes = metrics->getOrCreateCounter(invsync::metrics::INDEXER_BULK_BYTES, "", "bytes");
+    const auto conflictRetries = metrics->getOrCreateCounter(invsync::metrics::INDEXER_CONFLICT_RETRIES, "", "count");
     EXPECT_EQ(3U, requests->get());
     EXPECT_EQ(4096U, bytes->get());
+    EXPECT_EQ(2U, conflictRetries->get());
 }
 
 TEST(SyncPipelineTest, GroupCommitBatchesWhateverQueuedBehindABlockedFlush)
