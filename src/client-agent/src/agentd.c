@@ -23,6 +23,44 @@ void reload_handler(int signum) {
     }
 }
 
+#define SYSTEMD_PIDFILE_NAME "wazuh-agentd.pid"
+
+/* CreatePID()'s file embeds the PID in its name, so it can't back a static PIDFile=;
+ * write one with a fixed name so systemd tracks this daemon instead of the whole cgroup. */
+static void write_systemd_pidfile(void)
+{
+    char path[256];
+    snprintf(path, sizeof(path), "%s/%s", OS_PIDFILE, SYSTEMD_PIDFILE_NAME);
+
+    FILE *fp = wfopen(path, "w");
+    if (!fp) {
+        merror("Could not write PID file '%s': %s (%d)", path, strerror(errno), errno);
+        return;
+    }
+
+    fprintf(fp, "%d\n", (int)getpid());
+
+    if (chmod(path, 0640) != 0) {
+        merror(CHMOD_ERROR, path, errno, strerror(errno));
+        fclose(fp);
+        return;
+    }
+
+    if (fclose(fp)) {
+        merror("Could not write PID file '%s': %s (%d)", path, strerror(errno), errno);
+    }
+}
+
+/* Covers exit()-driven shutdown (normal SIGTERM/SIGINT via HandleSIG, and any merror_exit()
+ * path, this one included) -- same reach atexit(w_https_client_stop) below already has.
+ * Like any pidfile, a SIGKILL or a crash leaves it stale until the next start overwrites it. */
+static void remove_systemd_pidfile(void)
+{
+    char path[256];
+    snprintf(path, sizeof(path), "%s/%s", OS_PIDFILE, SYSTEMD_PIDFILE_NAME);
+    unlink(path);
+}
+
 /* Start the agent daemon */
 void AgentdStart(int uid, int gid, const char *user, const char *group)
 {
@@ -121,6 +159,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
     }
+    write_systemd_pidfile();
+    atexit(remove_systemd_pidfile);
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
@@ -150,8 +190,12 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     start_agent_prepare();
 
     /* HTTPS client: the agent's only transport. It owns the connection
-     * lifecycle, the keepalives, the buffering and the shutdown notification. */
-    w_https_client_start();
+     * lifecycle, the keepalives, the buffering and the shutdown notification.
+     * Its own failure paths already logged the reason via merror; exit here
+     * rather than run on with no way to ever reach the manager. */
+    if (!w_https_client_start()) {
+        merror_exit("https_client: startup failed. Exiting.");
+    }
 
     /* Note: Whatever the drain touches must outlive this: exit() unwinds atexit LIFO, so
      * a C++ static lazily initialized on a module thread registers after this line

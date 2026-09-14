@@ -1867,13 +1867,13 @@ static bool bridge_submit_sync_session(const char *session_id, const uint8_t *bu
 }
 #endif
 
-/* No internal-option gate: by the time AgentdStart() (and so this) runs,
- * client-agent/src/main.c has already refused to start the daemon at all
+/* client-agent/src/main.c already refused to start the daemon at all
  * (merror + mlerror_exit, a hard exit) unless agt->server[0] carries a
  * validated address; the port always has a default (DEFAULT_HTTPS_REMOTE_PORT)
- * when unspecified. HTTPS is the only transport on offer, so there is
- * nothing left to gate. */
-void w_https_client_start(void)
+ * when unspecified. That leaves address/port covered, but bridge_build_config()
+ * below still validates the rest of the transport config (e.g. the backoff
+ * base/cap pair), so this can still fail here and the caller must check. */
+bool w_https_client_start(void)
 {
     minfo("https_client: starting.");
 
@@ -1883,7 +1883,7 @@ void w_https_client_start(void)
 
     hc_config_t config;
     if (!bridge_build_config(&config)) {
-        return; /* bridge_build_config already logged the reason. */
+        return false; /* bridge_build_config already logged the reason. */
     }
 
     hc_callbacks_t callbacks;
@@ -1912,18 +1912,20 @@ void w_https_client_start(void)
     g_https_client = hc_create(&config, &callbacks);
     if (!g_https_client) {
         merror("https_client: failed to create the client instance.");
-        return;
+        return false;
     }
     if (!hc_start(g_https_client)) {
         merror("https_client: failed to start (configuration rejected).");
         hc_destroy(g_https_client);
         g_https_client = NULL;
-        return;
+        return false;
     }
 
 #ifdef WIN32
     asp_set_session_sender(bridge_submit_sync_session);
 #endif
+
+    return true;
 }
 
 void w_https_client_stop(void)
