@@ -50,6 +50,9 @@ from pathlib import Path
 
 import pytest
 
+# Marks
+pytestmark = [pytest.mark.agent, pytest.mark.darwin, pytest.mark.tier(level=0)]
+
 TEMPLATE_PATH = Path(__file__).parents[4] / 'etc' / 'templates' / 'config' / 'darwin' / 'localfile-extra.template'
 
 GUI_AUTHENTICATION_CLAUSES = [
