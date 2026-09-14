@@ -746,6 +746,12 @@ TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentIdentityRecovers)
     // The manager rotates its key after 2 notifies: the old key starts getting
     // 401, the module pauses + fires on_reenroll_required once, the callback
     // swaps the key via hc_set_agent_identity, and the client re-registers (#37828).
+    //
+    // Those 401s name `unknown_agent` (FakeManager::authFailBody). Since #39064 the auth gate
+    // escalates on that class alone -- every other class, and an unnamed 401, mean "retry and keep
+    // the identity" -- so a manager that has stopped holding this identity's credential has to say
+    // which of the two it is. Naming anything else here would exercise the narrowing instead, which
+    // is what retrySender_test's OnlyUnknownAgentEscalatesToTheAuthGate covers.
     const uint16_t port = TLS_PORT + 4;
     const std::string oldKey = KEY_HEX;
     const std::string newKey = "0f0e0d0c0b0a090807060504030201001f1e1d1c1b1a19181716151413121110";
