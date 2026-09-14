@@ -8,7 +8,9 @@ import os
 import sys
 
 from wazuh_testing.constants.daemons import AGENT_DAEMON
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, DEFAULT_AUTHD_PASS_PATH
+from wazuh_testing.constants.paths.configurations import (AGENT_REENROLL_SECRET_PATH,
+                                                          DEFAULT_AUTHD_PASS_PATH,
+                                                          WAZUH_CLIENT_KEYS_PATH)
 from wazuh_testing.tools.simulators.remoted_simulator import DEFAULT_MANAGER_ENDPOINT_PREFIX, RemotedSimulator
 from wazuh_testing.utils.file import write_file, remove_file
 from wazuh_testing.utils.services import control_service
@@ -50,10 +52,20 @@ def set_keys(test_metadata):
     the same module enrolled with (daemons_handler_module only restarts the
     daemon set once per module, not per case).
 
+    The re-enrollment secret goes with it, for the same reason and a sharper one:
+    a successful /enroll now hands the agent one (wazuh/wazuh#39064), and
+    w_enrollment_build_request() prefers it over every other credential. A case
+    left holding a previous case's secret therefore does not enroll at all -- it
+    re-enrolls as whatever agent that secret names, which this manager has never
+    heard of, and the run ends at "no enrollment credential left to fall back on"
+    rather than at the behaviour under test. Clearing only client.keys stopped
+    being enough the moment the agent gained a second credential that outranks it.
+
     Args:
         test_metadata (dict): Current test case metadata.
     """
     remove_file(WAZUH_CLIENT_KEYS_PATH)
+    remove_file(AGENT_REENROLL_SECRET_PATH)
 
     for key in test_metadata.get('pre_existent_keys', []):
         write_file(WAZUH_CLIENT_KEYS_PATH, key)
