@@ -47,7 +47,8 @@ void SCAPolicy::Scan(
                 return;
             }
 
-            resultEvaluator.AddResult(RuleEvaluationResult(rule->Evaluate(), rule->GetUnresolvedReason()));
+            const auto ruleResult = rule->Evaluate();
+            resultEvaluator.AddResult(RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason()));
         }
 
         requirementsOk = resultEvaluator.Result();
@@ -75,7 +76,8 @@ void SCAPolicy::Scan(
                     return;
                 }
 
-                resultEvaluator.AddResult(RuleEvaluationResult(rule->Evaluate(), rule->GetUnresolvedReason()));
+                const auto ruleResult = rule->Evaluate();
+                resultEvaluator.AddResult(RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason()));
             }
 
             const auto result = resultEvaluator.Result();

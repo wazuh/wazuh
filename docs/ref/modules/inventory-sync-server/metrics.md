@@ -45,7 +45,7 @@ Reading notes:
   workers set — the shard and lane depths), `pull` (a level read at dump time from a live
   component — the `server.*` block), and `histogram` (its `value` is the observation count,
   its `summary` carries bucket-resolution percentiles with ~12.5% relative error, in
-  microseconds).
+  microseconds, clamped into the exact `[min, max]` of the same snapshot).
 - **Counters accumulate for the life of the process** and survive the module's internal
   restart retries (the registry is created once and never reset). There is no reset endpoint,
   and no rates in the dump: derive events-per-second by diffing counters between polls (the

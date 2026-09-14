@@ -184,6 +184,11 @@ async def test_access_log_reports_a_run_as_body_however_it_was_read(declare_leng
     never upwards, so the bytes have to be handed over through the scope. Without that hand-off the
     chunked attempt reaches the log with an empty body and, worse, with the digest of that empty
     body standing in for the auth context nobody could see.
+
+    The debug level is what makes the handed-over bytes observable: below it the access log writes
+    a placeholder in place of the auth context, since it is arbitrary third-party JSON under names
+    no list of sensitive fields can know. The hash, which is what identifies the context on the log
+    line, is asserted at either level.
     """
     auth_context = {'user_name': 'wazuh', 'agent_id': ['001']}
     body = json.dumps(auth_context).encode()
@@ -192,7 +197,8 @@ async def test_access_log_reports_a_run_as_body_however_it_was_read(declare_leng
     app = _build_app()
     task, queue = await _start(app)
     try:
-        with patch('api.middlewares.custom_logging') as mock_custom_logging:
+        with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+             patch('api.middlewares.logger.isEnabledFor', return_value=True):
             await _post(app, 'good', path=RUN_AS_LOGIN_ENDPOINT, body=body,
                         declare_length=declare_length)
     finally:

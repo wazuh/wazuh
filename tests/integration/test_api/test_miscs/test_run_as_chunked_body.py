@@ -43,8 +43,6 @@ from requests.adapters import HTTPAdapter, Retry
 
 from wazuh_testing.constants.api import (
     WAZUH_API_PROTOCOL,
-    WAZUH_API_USER,
-    WAZUH_API_PASSWORD,
 )
 from wazuh_testing.modules.api.utils import get_base_url
 
@@ -52,6 +50,13 @@ from wazuh_testing.modules.api.utils import get_base_url
 pytestmark = pytest.mark.server
 
 daemons_handler_configuration = {"all_daemons": True}
+
+# The run_as login is only available to a user with `allow_run_as`, which among the default users is
+# `wazuh-wui` alone. It is also the only one whose context resolves against the shipped rules, which
+# `RBAChecker` skips for every other user, so it is what `matching_context` below needs to match.
+# Every default user's shipped password is its own username.
+RUN_AS_API_USER = "wazuh-wui"
+RUN_AS_API_PASSWORD = "wazuh-wui"
 
 
 @pytest.fixture
@@ -125,7 +130,7 @@ def test_run_as_chunked_auth_context(
 
     response = session.post(
         url=url,
-        auth=(WAZUH_API_USER, WAZUH_API_PASSWORD),
+        auth=(RUN_AS_API_USER, RUN_AS_API_PASSWORD),
         data=stream_body(auth_context),
         headers={"Content-Type": "application/json"},
         verify=False,
@@ -183,7 +188,7 @@ def test_run_as_no_auth_context(
 
     response = session.post(
         url=url,
-        auth=(WAZUH_API_USER, WAZUH_API_PASSWORD),
+        auth=(RUN_AS_API_USER, RUN_AS_API_PASSWORD),
         headers={"Content-Type": "application/json"},
         verify=False,
         timeout=30,

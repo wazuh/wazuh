@@ -174,6 +174,31 @@ namespace
             MockStatement::resetTestState();
         }
     };
+
+    /// One row shaped like GET /v1/agents/all's SELECT: the 18 columns in the order
+    /// the endpoint reads them by index, with `group` last. Only the group varies
+    /// across the tests using this, so the rest is fixed.
+    MockStatement::Row agentRow(std::string group)
+    {
+        return {std::int64_t {1},
+                std::string {"agent1"},
+                std::string {"10.0.0.1"},
+                std::string {"active"},
+                std::string {"Ubuntu"},
+                std::string {"22.04"},
+                std::string {"linux"},
+                std::string {"ubuntu"},
+                std::string {"v5.0.0"},
+                std::string {"1787603534"},
+                std::string {"22"},
+                std::string {"04"},
+                std::string {"x86_64"},
+                std::string {"1787603534"},
+                std::string {"any"},
+                std::string {"0"},
+                std::int64_t {0},
+                std::move(group)};
+    }
 } // namespace
 
 // Basic successful round-trip: GET /v1/agents/groups with a valid
@@ -264,8 +289,43 @@ TEST_F(WdbHttpEndpointsTest, GetAllAgentsEmptyDbReturnsEmptyArray)
               "SELECT id, name, coalesce(ip, register_ip) as ip, connection_status as status, "
               "os_name, os_version, os_type, os_platform, version, date_add, "
               "os_major, os_minor, os_arch, last_keepalive, register_ip, "
-              "disconnection_time, status_code "
+              "disconnection_time, status_code, `group` "
               "FROM agent WHERE id > 0 ORDER BY id ASC;");
+}
+
+// The `group` column is a comma-separated list, and the metrics snapshot that
+// consumes this endpoint splits it (framework/wazuh/core/indexer/metrics_snapshot.py).
+// Serializing it verbatim is what lets that consumer report the same groups the
+// /agents API does.
+TEST_F(WdbHttpEndpointsTest, GetAllAgentsSerializesGroupCsv)
+{
+    MockStatement::s_rowsToReturn = {agentRow("default,qa-group")};
+
+    MockConnection db;
+    wazuh::uds_http::HttpRequest req;
+
+    const auto response = TestEndpointGetV1AgentsAll::call(db, req);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_NE(response.body.find(R"("group":"default,qa-group")"), std::string::npos) << response.body;
+}
+
+// An empty `group` value is omitted by reflectiveJson's NOEMPTY default rather than
+// serialized as "". (The real wrapper turns a NULL column into that empty string;
+// this mock feeds the empty string directly, so only the serializer's side is
+// covered here.) The consumer relies on the key being absent: an empty array would
+// assert the agent belongs to no group, which no other source asserts.
+TEST_F(WdbHttpEndpointsTest, GetAllAgentsOmitsEmptyGroup)
+{
+    MockStatement::s_rowsToReturn = {agentRow("")};
+
+    MockConnection db;
+    wazuh::uds_http::HttpRequest req;
+
+    const auto response = TestEndpointGetV1AgentsAll::call(db, req);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(response.body.find(R"("group")"), std::string::npos) << response.body;
 }
 
 // GET /v1/agents/sync against an empty table: all three sync-status queries

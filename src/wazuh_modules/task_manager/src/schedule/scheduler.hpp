@@ -106,6 +106,10 @@ namespace task_manager::schedule
         void reconcileSchedules();
         void spawnDueRuns(Timestamp now);
         void runRetention(Timestamp now);
+
+        /// @brief Truncate the WAL, and say so when a read snapshot is pinning it.
+        void checkpointWal();
+
         Timestamp computeNextWake(Timestamp now);
 
         storage::ITaskStore& m_store;

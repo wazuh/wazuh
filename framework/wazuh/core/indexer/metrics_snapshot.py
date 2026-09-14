@@ -326,14 +326,26 @@ class MetricsSnapshotTasks:
     def _to_iso(value) -> str | None:
         """Convert a value to an ISO 8601 string.
 
-        Handles ``datetime`` objects returned by ``WazuhDBQueryAgents`` as
-        well as plain strings.  Returns *None* for falsy values so that
-        ``_drop_none`` can remove the field.
+        Handles ``datetime`` objects returned by ``WazuhDBQueryAgents``, the
+        epoch seconds the ``/agents/all`` endpoint returns as digit strings
+        (``dateAdd``, ``lastKeepAlive``, ``disconnection_time``) and strings
+        that are already formatted. Returns *None* for absent values and for
+        an epoch of 0, which is how wazuh-db stores "never", so that
+        ``_drop_none`` can remove the field. The index maps these leaves as
+        ``date`` with no format, so a raw digit string would be parsed as
+        epoch milliseconds and land in 1970.
         """
         if value is None:
             return None
         if isinstance(value, datetime):
             return value.strftime("%Y-%m-%dT%H:%M:%SZ")
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, (int, float)) or (isinstance(value, str) and value.isdigit()):
+            epoch = int(value)
+            if epoch <= 0:
+                return None
+            return datetime.fromtimestamp(epoch, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         return str(value) if value else None
 
     @staticmethod
@@ -377,6 +389,17 @@ class MetricsSnapshotTasks:
         raw_id = doc.get("id")
         agent_id = str(raw_id).zfill(3) if raw_id is not None else None
 
+        # Groups come from the agent table's comma-separated `group` column, the same source
+        # the /agents API reads. The /agents/all HTTP endpoint returns it raw; a caller that
+        # already split it (the WazuhDBQueryAgents shape this function also accepts) goes
+        # through the same filter. An agent with no groups leaves the field out instead of
+        # asserting an empty group list.
+        raw_groups = doc.get("group")
+        if isinstance(raw_groups, str):
+            raw_groups = raw_groups.split(",")
+        if raw_groups is not None:
+            raw_groups = [group for group in raw_groups if group]
+
         return MetricsSnapshotTasks._drop_none(
             {
                 "@timestamp": MetricsSnapshotTasks._to_iso(doc.get("@timestamp")),
@@ -385,7 +408,7 @@ class MetricsSnapshotTasks:
                         "id": agent_id,
                         "name": doc.get("name"),
                         "version": doc.get("version"),
-                        "groups": doc.get("group", []),
+                        "groups": raw_groups or None,
                         "status": doc.get("status"),
                         "status_code": doc.get("status_code"),
                         "registered_at": MetricsSnapshotTasks._to_iso(
@@ -399,7 +422,7 @@ class MetricsSnapshotTasks:
                         ),
                         "register": {"ip": register_ip},
                         "host": {
-                            "ip": [ip] if ip else [],
+                            "ip": [ip] if ip else None,
                             "architecture": os_fields.get("arch"),
                             "os": {
                                 "name": os_fields.get("name"),

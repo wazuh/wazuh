@@ -283,7 +283,6 @@ def test_get_cluster_items():
             "worker": {
                 "sync_integrity": 9,
                 "sync_agent_info": 10,
-                "sync_agent_groups": 30,
                 "keep_alive": 60,
                 "connection_retry": 10,
                 "timeout_agent_groups": 40,
@@ -291,7 +290,9 @@ def test_get_cluster_items():
                 "agent_groups_mismatch_limit": 5,
             },
             "common":{
-                "active_response_polling": 30
+                "active_response_polling": 30,
+                "active_response_page_size": 1000,
+                "active_response_event_grace": 120,
             },
             "master": {
                 "timeout_extra_valid": 40,

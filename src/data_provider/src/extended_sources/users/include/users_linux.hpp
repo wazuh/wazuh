@@ -38,6 +38,10 @@ class UsersProvider
         UsersProvider();
 
         /// @brief Collects all user information, optionally including remote users.
+        ///
+        /// @note Selects the enumeration source; it is not a per-user attribute. Each account
+        ///       carries its own "is_remote" flag. False enumerates /etc/passwd only, which drops
+        ///       every directory account.
         /// @param include_remote Whether to include remote users in the collection (default: true).
         /// @return JSON array of user information objects.
         nlohmann::json collect(bool include_remote = true);
@@ -45,7 +49,7 @@ class UsersProvider
         /// @brief Collects user information filtered by usernames and UIDs, optionally including remote users.
         /// @param usernames Set of usernames to filter.
         /// @param uids Set of UIDs to filter.
-        /// @param include_remote Whether to include remote users in the collection.
+        /// @param include_remote Selects the enumeration source; see collect().
         /// @return JSON array of user information objects matching the constraints.
         nlohmann::json collectWithConstraints(const std::set<std::string>& usernames,
                                               const std::set<uid_t>& uids,
@@ -54,9 +58,18 @@ class UsersProvider
     private:
         /// @brief Generates a JSON representation of a user from passwd struct.
         /// @param pwd Pointer to passwd struct representing the user.
-        /// @param include_remote Boolean indicating whether remote users are included.
+        /// @param isRemote Whether this particular account is defined only in a directory service.
         /// @return JSON object representing the user.
-        nlohmann::json genUserJson(const struct passwd* pwd, bool include_remote);
+        nlohmann::json genUserJson(const struct passwd* pwd, bool isRemote);
+
+        /// @brief Size for the getpw_r/fgetpwent_r scratch buffer, clamped to a sane maximum.
+        /// @return Buffer size in bytes.
+        size_t passwdBufferSize() const;
+
+        /// @brief Reads the usernames defined in /etc/passwd, to tell locally defined accounts from
+        ///        directory ones. Never filtered: classification needs the complete local picture.
+        /// @return Set of usernames present in /etc/passwd; empty if it cannot be read.
+        std::set<std::string> collectLocalUsernames();
 
         /// @brief Collects local users filtered by usernames and UIDs.
         /// @param usernames Set of usernames to filter.
@@ -65,10 +78,12 @@ class UsersProvider
         nlohmann::json collectLocalUsers(const std::set<std::string>& usernames,
                                          const std::set<uid_t>& uids);
 
-        /// @brief Collects remote users filtered by usernames and UIDs.
+        /// @brief Collects users from NSS, classifying each one as local or directory-provided.
+        ///        Resolved against /etc/passwd after the enumeration closes; if the file cannot be
+        ///        read every row is reported local.
         /// @param usernames Set of usernames to filter.
         /// @param uids Set of UIDs to filter.
-        /// @return JSON array of remote user information.
+        /// @return JSON array of user information.
         nlohmann::json collectRemoteUsers(const std::set<std::string>& usernames,
                                           const std::set<uid_t>& uids);
 

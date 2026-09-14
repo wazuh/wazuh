@@ -33,6 +33,7 @@ from pathlib import Path
 import re
 import pytest
 
+from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON
 from wazuh_testing.utils import configuration
 from wazuh_testing.utils.database import query_wdb
 
@@ -45,8 +46,32 @@ pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 t_global_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_global_messages.yaml')
 t_global_config_parameters, t_global_config_metadata, t_global_case_ids = configuration.get_test_cases_data(t_global_cases_path)
 
-# Test daemons to restart.
-daemons_handler_configuration = {'all_daemons': True}
+daemons_handler_configuration = {'daemons': [WAZUH_DB_DAEMON]}
+
+# The task manager runs a periodic disconnection sweep that marks every agent whose last keepalive
+# predates <agents_disconnection_time> as disconnected. The cases below set ancient keepalives on
+# purpose and then assert the connection status, so a sweep landing between two stages rewrites rows
+# the test owns. Turn the sweep off: these cases drive `disconnect-agents` through the socket
+# themselves and never rely on the scheduled one.
+local_internal_options = {'wazuh_modules.manager_task_monitor_agents': '0'}
+
+
+@pytest.fixture(scope='module', autouse=True)
+def disable_agent_disconnection_sweep():
+    """Write `local_internal_options` before the daemons are restarted, and restore them afterwards.
+
+    The module-scoped `configure_local_internal_options_module` fixture cannot be used here: it
+    requests `test_metadata`, which this module parametrizes at function scope. Being autouse is
+    what orders this fixture ahead of `daemons_handler_module`, so wazuh-modulesd reads the option
+    on its restart.
+    """
+    backup_local_internal_options = configuration.get_local_internal_options_dict()
+
+    configuration.set_local_internal_options_dict(local_internal_options)
+
+    yield
+
+    configuration.set_local_internal_options_dict(backup_local_internal_options)
 
 
 def regex_match(regex, string):
@@ -96,6 +121,8 @@ def test_wazuh_db_messages_global(test_metadata, daemons_handler_module,
                                   clean_databases, clean_registered_agents):
     '''
     description: Verify every `global ...` message sent to the wazuh-manager-db socket returns the expected response.
+                 The module-level autouse fixture `disable_agent_disconnection_sweep` keeps the task manager's
+                 scheduled disconnection sweep from rewriting the rows these cases assert on.
 
     wazuh_min_version: 5.0.0
 

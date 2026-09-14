@@ -231,12 +231,12 @@ long-disconnected agents and log rotation — have **no `<task-manager>` options
 are configured through the internal options below, and their behaviour is described in
 [Recurring manager tasks](schedules.md).
 
-### Where their intervals come from
+### Where their settings come from
 
 | Setting | Where it lives | Default | Governs |
 | --- | --- | --- | --- |
-| `agents_disconnection_time` | `<global>` in `wazuh-manager.conf` | 900 s | how often the disconnection sweep runs, and how long an agent must be silent |
-| `wazuh_modules.manager_task_delete_old_agents` | internal option | 0 (disabled) | retention window in minutes, and the retention sweep's interval |
+| `agents_disconnection_time` | `<global>` in `wazuh-manager.conf` | 900 s | how long an agent must be silent before it is marked `disconnected` |
+| `wazuh_modules.manager_task_delete_old_agents` | internal option | 0 (disabled) | retention window in minutes, on top of `agents_disconnection_time` |
 | `wazuh_modules.manager_task_monitor_agents` | internal option | 1 | whether the disconnection sweep runs at all (the retention sweep is governed by `manager_task_delete_old_agents`) |
 | `wazuh_modules.manager_task_log_rotate` | internal option | 1 | whether either kind of log rotation happens — `0` disables the daily schedule *and* the size-triggered one |
 | `wazuh_modules.manager_task_log_day_wait` | internal option | 10 s | offset from local midnight for the daily rotation |
@@ -257,6 +257,14 @@ have not written is at the value in this table, and writing one is the only way 
 >
 > **The agent is unaffected.** It keeps `monitord.*` for its own log rotation; see the
 > [Agent configuration reference](../client/configuration.md). Only the manager's keys moved.
+
+**The first two settings are windows, not intervals.** Each names an *age* — how long an agent must
+have been silent — and the schedule that applies it runs on an interval derived from it, at a quarter
+of the window bounded to `[60 s, 300 s]` for the disconnection sweep and `[60 s, 3600 s]` for
+retention deletion. At the default that is a sweep every 225 s against a 900 s window, so an agent is
+marked `disconnected` between 15 and 18 m 45 s after its last keepalive. There is no option for the
+interval; see [Window and interval are not the same
+number](schedules.md#window-and-interval-are-not-the-same-number).
 
 `agents_disconnection_time` is also read by `remoted`, so `<global>` is shared configuration rather
 than something the Task Manager owns.

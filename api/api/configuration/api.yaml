@@ -41,6 +41,7 @@
 #  max_login_attempts: 50
 #  block_time: 300
 #  max_request_per_minute: 300
+#  max_unauthenticated_request_per_minute: 10
 
 # Drop privileges (Run as wazuh-manager user)
 # drop_privileges: yes

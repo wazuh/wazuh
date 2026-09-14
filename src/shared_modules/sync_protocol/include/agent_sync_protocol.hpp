@@ -12,11 +12,11 @@
 
 #include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
+#include "monotonicCondition.hpp"
 #include "sync_socket_transport.hpp"
 
 #include <atomic>
 #include <chrono>
-#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -301,7 +301,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             std::mutex mtx;
 
             /// @brief Condition variable used to signal waiting threads.
-            std::condition_variable cv;
+            MonotonicCondition cv;
 
             /// @brief Indicates whether a terminal response has been received.
             bool responseReceived = false;
@@ -341,7 +341,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             {
                 std::lock_guard<std::mutex> lock(mtx);
                 syncFailed = true;
-                cv.notify_all();
+                cv.notifyAll();
             }
 
             /// @brief Resets all internal flags and clears received ranges.

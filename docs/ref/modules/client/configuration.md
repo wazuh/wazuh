@@ -184,15 +184,16 @@ Interval between agent keep-alive notifications to the manager.
 - **Default value:** `60`
 - **Allowed values:** Positive integer (seconds)
 - **Minimum:** `10`
-- **Note:** Manager considers agent disconnected after 3x this interval
+- **Note:** This is not what decides when the agent is marked `disconnected`. The manager uses
+  `<global><agents_disconnection_time>` (default `15m`) against the last keepalive it recorded, so
+  `notify_time` only has to be comfortably below that figure — see the
+  [manager configuration reference](../../configuration/manager/reference.md#global).
 
 ### time-reconnect
 
-Time to wait before attempting to reconnect after connection loss.
-
-- **Default value:** `60`
-- **Allowed values:** Positive integer (seconds)
-- **Minimum:** `1`
+**DEPRECATED:** parsed but ignored. There is no persistent connection to reconnect under the
+HTTPS transport; the parser accepts the tag so an upgraded configuration does not fail and logs
+that it no longer has any effect.
 
 ### auto_restart
 
@@ -482,15 +483,11 @@ Single manager, standard settings:
 ```xml
 <agent>
   <manager>
-    <address>10.0.0.10</address>
-    <port>1517</port>
-    <protocol>tcp</protocol>
+    <endpoint>10.0.0.10:1517</endpoint>
   </manager>
   <config-profile>webserver,production</config-profile>
   <notify_time>60</notify_time>
-  <time-reconnect>60</time-reconnect>
   <auto_restart>yes</auto_restart>
-  <crypto_method>aes</crypto_method>
 </agent>
 ```
 
@@ -507,9 +504,7 @@ Automatic agent registration:
     <authorization_pass_path>/var/ossec/etc/authd.pass</authorization_pass_path>
   </enrollment>
   <manager>
-    <address>manager.example.com</address>
-    <port>1517</port>
-    <protocol>tcp</protocol>
+    <endpoint>manager.example.com:1517</endpoint>
   </manager>
 </agent>
 ```
@@ -549,14 +544,11 @@ Full example with all sections:
 <ossec_config>
   <agent>
     <manager>
-      <address>manager1.example.com</address>
-      <port>1517</port>
+      <endpoint>manager1.example.com:1517</endpoint>
     </manager>
     <config-profile>webserver,production,linux</config-profile>
     <notify_time>60</notify_time>
-    <time-reconnect>60</time-reconnect>
     <auto_restart>yes</auto_restart>
-    <crypto_method>aes</crypto_method>
     <enrollment>
       <enabled>yes</enabled>
       <groups>webservers,production</groups>
