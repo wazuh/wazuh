@@ -1873,6 +1873,31 @@ def test_filter_array_by_query_typed_fields_bool(q, expected_ids):
     assert [item['id'] for item in result] == expected_ids
 
 
+@pytest.mark.parametrize('q, array', [
+    # A date-shaped literal against a bool field: `=` correctly matches nothing (the case above),
+    # but `!=` used to fall through to Python's default `!=` on mismatched types, which is
+    # unconditionally True -- every record silently "matched" regardless of `revoked`'s real value.
+    ('revoked!=2026-01-01', bool_typed_input_array),
+    # Same mismatch, a None field this time (e.g. `description`, nullable per the API schema).
+    ('description!=2026-01-01',
+     [{'id': 'first', 'description': None}, {'id': 'second', 'description': 'x'}]),
+])
+def test_filter_array_by_query_date_shaped_literal_ne_mismatched_field_raises(q, array):
+    """`!=` against a date-shaped literal for a field that isn't itself a date (bool, None, dict,
+    float -- nothing coerces those) must raise WazuhError(1407), not silently match every record."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query(q, array)
+
+
+def test_filter_array_by_query_date_shaped_literal_eq_mismatched_field_unaffected():
+    """The `=` side of the same mismatch is untouched: it stays a silent no-match, exactly as
+    documented in api-reference.md, since operator.eq (unlike operator.ne) never needs the new
+    raise to avoid a wrong answer."""
+    result = utils.filter_array_by_query('revoked=2026-01-01', bool_typed_input_array)
+
+    assert result == []
+
+
 @pytest.mark.parametrize('q, array, expected_ids', [
     # `~` only cast an int value to str; a bool or datetime value raised TypeError
     # (`value2 in val` on a non-iterable) instead of matching or not.
@@ -1889,6 +1914,29 @@ def test_filter_array_by_query_contains_non_str(q, array, expected_ids):
     result = utils.filter_array_by_query(q, array)
 
     assert [item['id'] for item in result] == expected_ids
+
+
+# Array whose `created` (datetime) and `uses` (int) fields mirror an enrollment token, to exercise
+# a `q` literal that doesn't match either field's type.
+type_mismatch_input_array = [{
+    'id': 'first',
+    'created': datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc),
+    'uses': 0
+}]
+
+
+@pytest.mark.parametrize('q', [
+    'created>foo',
+    'created>1',
+    'created>2026-13-01',
+    'uses=abc',
+    'uses=2026-01-01',
+])
+def test_filter_array_by_query_type_mismatch(q):
+    """Test that a `q` literal incompatible with the target field's type raises WazuhError(1407)
+    instead of an unhandled TypeError/ValueError."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query(q, type_mismatch_input_array)
 
 
 @pytest.mark.parametrize('select, required_fields, expected_result', [

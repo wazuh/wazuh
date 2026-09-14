@@ -979,6 +979,17 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
                 value2 = int(value2) if type(val) == int else value2
                 if type(val) == bool and isinstance(value2, str):
                     value2 = value2.lower() in ('true', '1')
+                if op == '!=' and type(value2) == datetime and type(val) != datetime:
+                    # a date-shaped literal against a field whose value isn't itself a date (bool,
+                    # None, dict, float -- nothing above coerces those) never raises: Python's
+                    # default `!=` on mismatched types is unconditionally True, so every record
+                    # silently "matched" regardless of val's real value. `=` has the same mismatch
+                    # but stays a silent no-match (operator.eq is unconditionally False there),
+                    # which is already the documented behavior for a boolean field and int fields
+                    # already raise symmetrically for both operators via the int() cast above --
+                    # `!=` is the one direction that has to raise here to match that precedent
+                    # instead of quietly disabling the filter it was asked to apply.
+                    raise ValueError(f"'{value2}' is not a valid date to compare '{field_name}' against")
                 if operators[op](val, value2):
                     return True
 
@@ -1061,13 +1072,19 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
                 # check if a clause is satisfied
                 match_candidates = list()
-                if field_subnames and field_name in elem and \
-                        get_match_candidates(deepcopy(elem[field_name]), field_subnames.split('.'), match_candidates):
-                    if any([check_clause(candidate, op, value) for candidate in match_candidates if candidate]):
-                        continue
-                else:
-                    if field_name in elem and check_clause(elem[field_name], op, value):
-                        continue
+                try:
+                    if field_subnames and field_name in elem and \
+                            get_match_candidates(deepcopy(elem[field_name]), field_subnames.split('.'),
+                                                  match_candidates):
+                        if any([check_clause(candidate, op, value) for candidate in match_candidates if candidate]):
+                            continue
+                    else:
+                        if field_name in elem and check_clause(elem[field_name], op, value):
+                            continue
+                except (TypeError, ValueError):
+                    # value is not compatible with the target field's type (e.g. a non-numeric
+                    # literal against an int field, or a non-date literal against a datetime field)
+                    raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
                 match = False
                 break
 
