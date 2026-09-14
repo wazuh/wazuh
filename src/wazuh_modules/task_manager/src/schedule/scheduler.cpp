@@ -320,6 +320,28 @@ namespace task_manager::schedule
                        static_cast<long long>(stats.remaining),
                        m_options.maxRows);
         }
+
+        checkpointWal();
+    }
+
+    void Scheduler::checkpointWal()
+    {
+        // Caps the -wal file on a schedule, on top of the automatic checkpoint that already runs
+        // every 1000 pages. The reason it is worth doing explicitly is the reporting: this module
+        // is the only connection to tasks.db, so a busy checkpoint can only mean the module itself
+        // left a read snapshot open -- the defect that grew the WAL at 5 MB/h for the whole life of
+        // the process, unnoticed, because nothing ever looked.
+        if (m_store.checkpointWal().busy)
+        {
+            LOGFN_WARN(schedulerLogFn(),
+                       "Could not checkpoint the tasks database: an open snapshot still needs its WAL, so "
+                       "queue/tasks/tasks.db-wal will keep growing until that snapshot closes. Nothing "
+                       "else connects to this database, so the snapshot is one this module left behind.");
+        }
+        else
+        {
+            LOGFN_DEBUG2(schedulerLogFn(), "Checkpointed the tasks database; its WAL is back to empty.");
+        }
     }
 
     Timestamp Scheduler::computeNextWake(const Timestamp now)

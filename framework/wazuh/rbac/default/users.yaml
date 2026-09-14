@@ -4,7 +4,12 @@ default_users:
   wazuh:
     description: Superuser of Wazuh.
     password: wazuh
-    allow_run_as: True
+    # Login with an authorization context is how the dashboard maps the indexer user who logged in
+    # onto a Wazuh role, and the dashboard authenticates as `wazuh-wui`. This account has no use for
+    # it: `RBAChecker` evaluates the shipped rules for `wazuh-wui` alone, so a context sent here
+    # resolves against custom rules only, granting whatever role those match regardless of the ones
+    # this account is actually linked to.
+    allow_run_as: False
 
   wazuh-wui:
     description: Superuser of Wazuh UI

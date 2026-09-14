@@ -1067,10 +1067,7 @@ class Master(server.AbstractServer):
         if _indexer_conf:
             self.tasks.append(lambda: self.indexer_task_manager.manage_indexer_tasks(indexer_tasks))
         else:
-            self.logger.warning(
-                "Indexer is not configured in etc/wazuh-manager.conf (indexer.hosts is empty) or it is unavailable; "
-                "Indexer tasks will not be started."
-            )
+            self.logger.warning("Indexer configuration is unavailable; Indexer tasks will not be started.")
 
         # pending API requests waiting for a response
         self.pending_api_requests = {}

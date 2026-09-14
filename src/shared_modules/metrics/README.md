@@ -33,7 +33,7 @@ wazuh::metrics;` and dropping its copy — additive API changes only.
 |---|---|---|
 | RF-1 | Counter / gauge / histogram / pull / sliding-window-rate types behind `IMetric` interfaces, each registered with optional `description`/`unit` metadata | kept |
 | RF-2 | Thread-safe registry: `getOrCreate*` is idempotent (same name → same instance); re-registering a name under a **different type** throws | kept |
-| RF-3 | Histograms answer p50/p90/p99 snapshots with bounded relative error (~12.5%, 128 log-linear buckets); min/max are exact; percentiles are computed only on `snapshot()` | kept |
+| RF-3 | Histograms answer p50/p90/p99 snapshots with bounded relative error (~12.5%, 128 log-linear buckets); min/max are exact and the percentiles are clamped into `[min, max]`, so `min <= p50 <= p90 <= p99 <= max` always holds within a snapshot; percentiles are computed only on `snapshot()` | kept |
 | RF-4 | `dumpJson()` is deterministic: entries sorted by name, exact unsigned integers for counters/counts, `description`/`unit` omitted when not registered, envelope with daemon name + ISO-8601 UTC timestamp | kept |
 | RF-5 | Scalar entries carry the engine-compatible `{name, type, enabled, value}` shape so tooling treats both dumps alike | kept |
 

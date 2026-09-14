@@ -289,6 +289,10 @@ class FakeManager final
             // parent can assert on it via GET /peek/{stats,config}.
             auto lastStats = std::make_shared<std::string>();
             auto lastConfig = std::make_shared<std::string>();
+            // How many /config POSTs landed -- same idea as notifyCount above, so a test can
+            // assert an actual forced report was delivered under contention, not just that the
+            // last one it happened to check looks right.
+            auto configCount = std::make_shared<std::atomic<int>>(0);
 
             for (const auto& kind :
                     {
@@ -298,7 +302,8 @@ class FakeManager final
                 auto store = kind == "stats" ? lastStats : lastConfig;
                 server.Post(
                     "/" + kind,
-                    [verify, kind, store, acceptedMutex](const httplib::Request & request, httplib::Response & response)
+                    [verify, kind, store, acceptedMutex, configCount](const httplib::Request & request,
+                                                                      httplib::Response & response)
                 {
                     if (!verify("/" + kind, request))
                     {
@@ -309,6 +314,11 @@ class FakeManager final
                     {
                         std::lock_guard<std::mutex> lock(*acceptedMutex);
                         *store = request.body;
+                    }
+
+                    if (kind == "config")
+                    {
+                        configCount->fetch_add(1);
                     }
 
                     response.set_content("{}", "application/json");
@@ -322,6 +332,13 @@ class FakeManager final
                     response.set_content(*store, "text/plain");
                 });
             }
+
+            server.Get("/peek/config_count",
+                       [configCount](const httplib::Request&, httplib::Response & response)
+            {
+                response.status = 200;
+                response.set_content(std::to_string(configCount->load()), "text/plain");
+            });
 
             // Size of the session as the manager would see it. Agent builds compile the fake
             // against cpp-httplib 0.10.9 (http-request's EXTERNAL_DEPS_VERSION=19 default), which

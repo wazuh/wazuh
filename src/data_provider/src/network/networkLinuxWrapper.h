@@ -13,6 +13,7 @@
 #define _NETWORK_LINUX_WRAPPER_H
 
 #include <ifaddrs.h>
+#include <net/if.h>
 #include <net/if_arp.h>
 #include <sys/socket.h>
 #include "inetworkWrapper.h"
@@ -107,6 +108,7 @@ static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
     { std::make_pair(ARPHRD_PPP, ARPHRD_PPP),                   "point-to-point"    },
     { std::make_pair(ARPHRD_ATM, ARPHRD_ATM),                   "ATM"               },
     { std::make_pair(ARPHRD_IEEE1394, ARPHRD_IEEE1394),         "firewire"          },
+    { std::make_pair(ARPHRD_LOOPBACK, ARPHRD_LOOPBACK),         "loopback"          },
     { std::make_pair(ARPHRD_TUNNEL, ARPHRD_IRDA),               "tunnel"            },
     { std::make_pair(ARPHRD_FCPP, ARPHRD_FCFABRIC),             "fibrechannel"      },
     { std::make_pair(ARPHRD_IEEE802_TR, ARPHRD_IEEE802154_PHY), "wireless"          },
@@ -536,6 +538,14 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
             if (!operationalState.empty())
             {
                 state = Utils::splitIndex(operationalState, '\n', 0);
+
+                // Drivers that do not implement carrier detection, loopback among them, report
+                // "unknown" instead of an operational state; resolve those from the administrative
+                // flag. Every remaining value means the interface is not carrying traffic.
+                if ("up" != state && "down" != state)
+                {
+                    state = ("unknown" == state && (m_interfaceAddress->ifa_flags & IFF_UP)) ? "up" : "down";
+                }
             }
 
             return state;

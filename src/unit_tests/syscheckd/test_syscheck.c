@@ -105,6 +105,13 @@ void test_fim_initialize(void **state)
     syscheck.sync_max_eps = 3;
 
 #ifdef TEST_WINAGENT
+    // fim_initialize() guards its synced_docs counters with synced_docs_mutex; only the
+    // winagent build wraps pthread_mutex_lock/unlock.
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+#endif
+
+#ifdef TEST_WINAGENT
     expect_wrapper_fim_db_init(FIM_DB_DISK,
                                syscheck_conf->file_entry_limit,
                                syscheck_conf->db_entry_registry_limit);
@@ -192,6 +199,10 @@ void test_Start_win32_Syscheck_no_config_file(void **state) {
 }
 
 void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
+    // fim_initialize() guards its synced_docs counters with synced_docs_mutex.
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
     directory_t EMPTY = { 0 };
     registry_t REGISTRY_EMPTY[] = { { NULL, 0, 0, 0, 0, NULL, NULL } };
 
@@ -230,6 +241,10 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
 }
 
 void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
+    // fim_initialize() guards its synced_docs counters with synced_docs_mutex.
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
     syscheck.directories = NULL;
     syscheck.registry = NULL;
     syscheck.disabled = 0;
@@ -277,6 +292,10 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 }
 
 void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
+    // fim_initialize() guards its synced_docs counters with synced_docs_mutex.
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
     directory_t EMPTY = { 0 };
     char info_msg[OS_MAXSTR];
 

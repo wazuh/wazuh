@@ -28,6 +28,13 @@ void w_https_client_start(void);
 void w_https_client_stop(void);
 
 /**
+ * @brief Pull the /config reporter's next send in now, instead of waiting out its periodic
+ *        cadence. Call once a shared-configuration reload has actually completed (e.g. from
+ *        agentd.c's needs_config_reload handling), not right after dispatching the reload.
+ */
+void w_https_client_notify_config_reload_completed(void);
+
+/**
  * @brief Submit one stateless event frame ("queue:location:message" bytes) into
  *        the HTTPS /stateless accumulator. Non-blocking: appends and returns.
  *        Returns 0 if accepted, -1 if dropped (accumulator full) or the client

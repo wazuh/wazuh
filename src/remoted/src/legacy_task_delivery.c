@@ -174,13 +174,15 @@ typedef enum {
 
 /* One task deferred to a future poll cycle because its push got no response at all -- see the
  * file header comment and LEGACY_TASK_RETRY_LIST_MAX_SIZE/LEGACY_TASK_RETRY_MAX_AGE_SEC. Holds the
- * raw payload string exactly as returned by get_pending_tasks, so retrying it needs no further
- * Task Manager round trip -- it's re-parsed with cJSON_Parse() each time it's retried. */
+ * payload serialized to text, so retrying it needs no further Task Manager round trip -- it's
+ * re-parsed with cJSON_Parse() each time it's retried. Age is counted from deferred_at, the moment
+ * the push got no response, not from the task's creation: a task the Task Manager held for a long
+ * time (its agent was disconnected) still gets its full retry window once it's finally read. */
 typedef struct {
     char *agent_id;
     char *task_id;
     char *payload_json;
-    time_t create_time;
+    time_t deferred_at;
     int attempts;
 } legacy_task_retry_entry_t;
 
@@ -211,7 +213,7 @@ STATIC void legacy_task_retry_list_free_entry(legacy_task_retry_entry_t *entry);
 STATIC void legacy_task_retry_list_remove_at(size_t index);
 STATIC void legacy_task_retry_list_purge_expired(void);
 STATIC bool legacy_task_retry_list_contains(const char *task_id) __attribute__((nonnull));
-STATIC void legacy_task_retry_list_add(const char *agent_id, const char *task_id, const char *payload_json, time_t create_time) __attribute__((nonnull));
+STATIC void legacy_task_retry_list_add(const char *agent_id, const char *task_id, const char *payload_json, time_t deferred_at) __attribute__((nonnull));
 STATIC void legacy_task_retry_list_process(char **connected_agent_ids, size_t agent_count);
 
 void legacy_task_delivery_init(void) {
@@ -876,7 +878,7 @@ STATIC void legacy_task_retry_list_purge_expired(void) {
     time_t now = time(0);
 
     for (size_t i = 0; i < legacy_task_retry_list_count; /* no increment: removal shifts i's slot */) {
-        if (now - legacy_task_retry_list[i]->create_time > LEGACY_TASK_RETRY_MAX_AGE_SEC) {
+        if (now - legacy_task_retry_list[i]->deferred_at > LEGACY_TASK_RETRY_MAX_AGE_SEC) {
             mdebug1("legacy_task_delivery: agent '%s': task '%s' dropped from the retry list, "
                     "older than %ds", legacy_task_retry_list[i]->agent_id,
                     legacy_task_retry_list[i]->task_id, LEGACY_TASK_RETRY_MAX_AGE_SEC);
@@ -907,18 +909,16 @@ STATIC bool legacy_task_retry_list_contains(const char *task_id) {
  * the same task_id twice (it's already 'delivered' after the first read), but a reordering could
  * still hand this function the same task twice within unusual call patterns, and a silent
  * duplicate would otherwise retry it twice per cycle. If the list is already at
- * LEGACY_TASK_RETRY_LIST_MAX_SIZE, the single oldest entry (by create_time) is evicted first to
+ * LEGACY_TASK_RETRY_LIST_MAX_SIZE, the single oldest entry (by deferred_at) is evicted first to
  * make room -- an unbounded list is worse than losing the oldest, presumably least likely to still
  * matter, entry.
  *
  * @param agent_id Agent identifier.
  * @param task_id Task identifier.
- * @param payload_json Raw payload string exactly as returned by get_pending_tasks (copied).
- * @param create_time Task's original creation time (from get_pending_tasks's own "create_time"),
- * not the time it's added to this list -- age is measured from when the Task Manager created the
- * task, not from when this poller first failed to deliver it.
+ * @param payload_json The task's payload serialized to text (copied).
+ * @param deferred_at When the push got no response -- the moment this entry's retry window starts.
  */
-STATIC void legacy_task_retry_list_add(const char *agent_id, const char *task_id, const char *payload_json, time_t create_time) {
+STATIC void legacy_task_retry_list_add(const char *agent_id, const char *task_id, const char *payload_json, time_t deferred_at) {
     if (legacy_task_retry_list_contains(task_id)) {
         mdebug1("legacy_task_delivery: agent '%s': task '%s' is already in the retry list, not duplicating",
                 agent_id, task_id);
@@ -929,7 +929,7 @@ STATIC void legacy_task_retry_list_add(const char *agent_id, const char *task_id
         size_t oldest = 0;
 
         for (size_t i = 1; i < legacy_task_retry_list_count; i++) {
-            if (legacy_task_retry_list[i]->create_time < legacy_task_retry_list[oldest]->create_time) {
+            if (legacy_task_retry_list[i]->deferred_at < legacy_task_retry_list[oldest]->deferred_at) {
                 oldest = i;
             }
         }
@@ -946,7 +946,7 @@ STATIC void legacy_task_retry_list_add(const char *agent_id, const char *task_id
     os_strdup(agent_id, entry->agent_id);
     os_strdup(task_id, entry->task_id);
     os_strdup(payload_json, entry->payload_json);
-    entry->create_time = create_time;
+    entry->deferred_at = deferred_at;
     entry->attempts = 1;
 
     legacy_task_retry_list[legacy_task_retry_list_count++] = entry;
@@ -1073,12 +1073,10 @@ STATIC void legacy_upgrade_poll_cycle(void) {
             cJSON *task_type_obj = cJSON_GetObjectItem(task, "task_type");
             cJSON *task_id_obj = cJSON_GetObjectItem(task, "task_id");
             cJSON *payload_obj = cJSON_GetObjectItem(task, "payload");
-            cJSON *create_time_obj = cJSON_GetObjectItem(task, "create_time");
 
             const char *task_type = cJSON_IsString(task_type_obj) ? task_type_obj->valuestring : NULL;
             bool has_task_id = cJSON_IsString(task_id_obj);
             const char *task_id = has_task_id ? task_id_obj->valuestring : "unknown";
-            time_t create_time = cJSON_IsNumber(create_time_obj) ? (time_t) create_time_obj->valuedouble : time(0);
 
             if (!task_type || strcmp(task_type, LEGACY_TASK_TYPE_REMOTE_UPGRADE) != 0) {
                 minfo("legacy_task_delivery: task type '%s' not supported for legacy agents, not delivered "
@@ -1090,17 +1088,19 @@ STATIC void legacy_upgrade_poll_cycle(void) {
                 continue;
             }
 
-            if (!cJSON_IsString(payload_obj)) {
+            // The Task Manager stores the payload as text but hands it back as the JSON object the
+            // producer created (apiHandlers.cpp, takePendingAgentTasks), nested in the task -- not
+            // as a string carrying that object.
+            if (!cJSON_IsObject(payload_obj)) {
                 merror("legacy_task_delivery: task '%s' for agent '%s' has an invalid payload, not delivered", task_id, agent_id);
                 // The payload shape is wrong regardless of how many times it's read -- logged, not retried.
                 continue;
             }
 
-            cJSON *payload_json = cJSON_Parse(payload_obj->valuestring);
+            cJSON *payload_json = cJSON_Duplicate(payload_obj, 1);
 
             if (!payload_json) {
-                merror("legacy_task_delivery: task '%s' for agent '%s' has an unparsable payload, not delivered", task_id, agent_id);
-                // Same malformed payload string every time -- logged, not retried.
+                merror("legacy_task_delivery: task '%s' for agent '%s': could not copy the payload, not delivered", task_id, agent_id);
                 continue;
             }
 
@@ -1109,7 +1109,15 @@ STATIC void legacy_upgrade_poll_cycle(void) {
 
             if (no_response) {
                 if (has_task_id) {
-                    legacy_task_retry_list_add(agent_id, task_id, payload_obj->valuestring, create_time);
+                    char *payload_str = cJSON_PrintUnformatted(payload_json);
+
+                    if (payload_str) {
+                        legacy_task_retry_list_add(agent_id, task_id, payload_str, time(0));
+                        os_free(payload_str);
+                    } else {
+                        merror("legacy_task_delivery: agent '%s': task '%s' got no response but its payload "
+                               "could not be serialized for the retry list -- it will not be retried", agent_id, task_id);
+                    }
                 } else {
                     // Can't be keyed into legacy_task_retry_list without a task_id. This task is
                     // already 'delivered' in tasks.db (get_pending_tasks's own side effect) and

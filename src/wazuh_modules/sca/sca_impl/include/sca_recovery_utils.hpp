@@ -14,7 +14,8 @@
 #include <dbsync.hpp>
 #include <idbsync.hpp>
 #include <json.hpp>
-#include <sstream>
+#include <sca_field_decoder.hpp>
+#include <sca_utils.hpp>
 #include <string>
 
 #include "stringHelper.h"
@@ -25,27 +26,12 @@ namespace sca
     namespace recovery
     {
 
-        /// @brief Convert comma-separated string to JSON array
-        /// @param input Comma-separated string
-        /// @return JSON array with trimmed values (all whitespace removed from both ends)
+        /// @brief Convert a stored list column to a JSON array
+        /// @param input Serialised JSON array, or a comma-separated string for legacy rows
+        /// @return JSON array of elements
         inline nlohmann::json stringToJsonArray(const std::string& input)
         {
-            nlohmann::json result = nlohmann::json::array();
-            std::istringstream stream(input);
-            std::string token;
-
-            while (std::getline(stream, token, ','))
-            {
-                // Trim all whitespace characters including \n, \r, \t, \v, \f, and spaces
-                token = Utils::trim(token, " \t\n\r\v\f");
-
-                if (!token.empty())
-                {
-                    result.push_back(token);
-                }
-            }
-
-            return result;
+            return sca::DecodeStringListField(input);
         }
 
         /// @brief Normalize check data for stateful message format
@@ -90,6 +76,22 @@ namespace sca
             if (check.contains("policy_id"))
             {
                 check.erase("policy_id");
+            }
+
+            if (check.contains("reason"))
+            {
+                const auto reason = check["reason"].is_string()
+                                    ? sca::SanitizeReason(check["reason"].get<std::string>(), sca::REASON_MAX_LENGTH)
+                                    : std::string {};
+
+                if (reason.empty())
+                {
+                    check.erase("reason");
+                }
+                else
+                {
+                    check["reason"] = reason;
+                }
             }
 
             // Remove internal field not part of indexer schema

@@ -1,6 +1,8 @@
 #include <sca_checksum.hpp>
 #include <sca_event_handler.hpp>
+#include <sca_field_decoder.hpp>
 #include <sca_sync_manager.hpp>
+#include <sca_utils.hpp>
 
 #include <dbsync.hpp>
 #include <hashHelper.h>
@@ -8,7 +10,6 @@
 #include <timeHelper.h>
 
 #include <array>
-#include <sstream>
 
 #include "logging_helper.hpp"
 #include "agent_sync_protocol.hpp"
@@ -227,11 +228,7 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
 
     checkData["result"] = checkResult;
 
-    // Set reason field if provided and check result indicates an invalid check
-    if (!reason.empty() && checkResult == "Not applicable")
-    {
-        checkData["reason"] = reason;
-    }
+    checkData["reason"] = sca::SanitizeReason(reason, sca::REASON_MAX_LENGTH);
 
     try
     {
@@ -684,6 +681,11 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                         continue;
                     }
 
+                    if (key == "reason" && (value.is_null() || value.get<std::string>().empty()))
+                    {
+                        continue;
+                    }
+
                     const auto normalizedKey = (key == "title") ? "name" : key;
                     previous[normalizedKey] = value;
                     changedFields.push_back("check." + normalizedKey);
@@ -821,22 +823,7 @@ void SCAEventHandler::PushStateless(const nlohmann::json& event) const
 
 nlohmann::json SCAEventHandler::StringToJsonArray(const std::string& input) const
 {
-    nlohmann::json result = nlohmann::json::array();
-    std::istringstream stream(input);
-    std::string token;
-
-    while (std::getline(stream, token, ','))
-    {
-        // Trim all whitespace characters including \n, \r, \t, \v, \f, and spaces
-        token = Utils::trim(token, " \t\n\r\v\f");
-
-        if (!token.empty())
-        {
-            result.push_back(token);
-        }
-    }
-
-    return result;
+    return sca::DecodeStringListField(input);
 }
 
 void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
@@ -931,6 +918,11 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
     if (check.contains("policy_id"))
     {
         check.erase("policy_id");
+    }
+
+    if (check.contains("reason") && (check["reason"].is_null() || check["reason"].get<std::string>().empty()))
+    {
+        check.erase("reason");
     }
 
     // Remove internal field not part of indexer schema

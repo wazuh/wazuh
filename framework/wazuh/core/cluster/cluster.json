@@ -50,7 +50,6 @@
         "worker": {
             "sync_integrity": 9,
             "sync_agent_info": 10,
-            "sync_agent_groups": 30,
             "timeout_agent_groups": 40,
             "keep_alive": 60,
             "connection_retry": 10,
@@ -77,7 +76,9 @@
         },
 
         "common":{
-            "active_response_polling": 30
+            "active_response_polling": 30,
+            "active_response_page_size": 1000,
+            "active_response_event_grace": 120
         },
         "communication":{
             "timeout_cluster_request": 20,

@@ -237,6 +237,12 @@ int __wrap_w_ref_parent_folder(const char * path) {
     return mock();
 }
 
+int __wrap_w_is_bare_filename(const char * filename) {
+    check_expected(filename);
+
+    return mock();
+}
+
 int __wrap_cldir_ex(__attribute__((unused)) const char *name) {
     return mock();
 }
