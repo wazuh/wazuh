@@ -82,40 +82,23 @@ lock()
         i=`expr $i + 1`;
         pid=$(cat ${LOCK_PID} 2>/dev/null)
 
-        # kill -0 on an empty pid (no pid file) fails just like it does on a
-        # dead one, so a missing pid file takes the same path as a dead pid.
+        # An empty pid (no pid file) fails kill -0 just like a dead one.
         kill -0 ${pid} >/dev/null 2>&1
         if [ "$?" = "0" ]; then
-            # Owner alive: any earlier unreachable rounds belonged to this
-            # same owner or a different one, not to the current state.
             unreachable=0
         else
-            # The owner is unreachable. "$i" counts rounds this caller has
-            # waited overall, not consecutive unreachable rounds -- a
-            # caller that queued behind a live owner for a while already
-            # has "$i" past any gate the moment that owner is gone, even
-            # though the current unreachable state just started. Count
-            # consecutive rounds separately and reset it whenever the
-            # owner is seen alive.
+            # "$i" counts total rounds waited, not consecutive unreachable
+            # ones; a caller queued behind a live owner would otherwise
+            # inherit an already-open gate the moment that owner is gone.
             unreachable=`expr ${unreachable} + 1`
-            # A dead pid proves a prior run completed its mkdir+pid write,
-            # so it is stale right away. A lock with no pid file yet could
-            # just be one doing that write right now (mkdir and the pid
-            # write are two statements), so only reclaim once that has
-            # held for a few consecutive rounds.
+            # A dead pid is stale right away; a missing one may still be
+            # mid-acquisition, so it needs a few consecutive rounds first.
             if [ -n "${pid}" ] || [ "${unreachable}" -gt 2 ]; then
-                # Serialize the reclaim itself: mkdir on a second marker
-                # is exclusive the same way ${LOCK}'s own mkdir is, so
-                # only one caller at a time can be deciding whether to
-                # unlock and recreate ${LOCK}. Without this, two callers
-                # could both pass the check above at different times and
-                # each unlock what the other had already recreated,
-                # believing they both hold it.
+                # mkdir on this marker is exclusive like ${LOCK}'s own, so
+                # only one caller at a time may unlock and recreate ${LOCK}.
                 if mkdir "${LOCK}.reclaim" > /dev/null 2>&1; then
                     marker_busy=0
-                    # Re-check inside the marker: another caller may have
-                    # already reclaimed ${LOCK} while we were waiting for
-                    # it, in which case it is no longer stale.
+                    # Another caller may have reclaimed ${LOCK} meanwhile.
                     rpid=$(cat ${LOCK_PID} 2>/dev/null)
                     kill -0 ${rpid} >/dev/null 2>&1
                     if [ ! $? = 0 ]; then
@@ -128,18 +111,8 @@ lock()
                     fi
                     rmdir "${LOCK}.reclaim" > /dev/null 2>&1
                 else
-                    # The marker is only held across a handful of local,
-                    # non-blocking statements, so one still busy after
-                    # several consecutive rounds of this caller failing to
-                    # get it was left by a caller killed while holding it.
-                    # Nothing else ever clears it, and leaving it disables
-                    # this reclaim path for good -- the same failure this
-                    # whole fix exists to recover from, one level down.
-                    # "$i"/"$unreachable" would undercount this the same
-                    # way "$i" alone did for the lock itself: a caller
-                    # already past its own gates would treat a marker
-                    # another caller only just grabbed as leaked. Count
-                    # this caller's own consecutive misses instead.
+                    # The marker is held only briefly; one still busy after
+                    # several consecutive rounds was left by a dead caller.
                     marker_busy=`expr ${marker_busy} + 1`
                     if [ "${marker_busy}" -gt 4 ]; then
                         rmdir "${LOCK}.reclaim" > /dev/null 2>&1
