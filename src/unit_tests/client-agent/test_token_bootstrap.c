@@ -427,7 +427,10 @@ static void test_client_keys_hard_link_is_not_chowned(void **state) {
     assert_int_equal(link("etc/other-file", "etc/client.keys"), 0);
     write_token_file(true, true, NULL);
 
-    expect_any(__wrap__merror, formatted_msg);
+    /* This repair runs on every boot for as long as no anchor exists, so its failure is logged
+     * at debug level rather than merror() -- see w_token_bootstrap_chown_keys_file()'s own
+     * comment. */
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
     assert_int_equal(g_fetch_call_count, 0);
@@ -438,14 +441,17 @@ static void test_client_keys_hard_link_is_not_chowned(void **state) {
 
 /* Regression test: a failing fchown() on client.keys must be logged, not silently swallowed --
  * neither of the new ownership-repair branches this PR adds was previously exercised with a
- * failing chown, so a broken merror() call site there would have gone unnoticed. */
+ * failing chown, so a broken log call site there would have gone unnoticed. */
 static void test_keys_chown_failure_is_logged(void **state) {
     (void) state;
     write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
     write_token_file(true, true, NULL);
     g_keys_fchown_should_fail = true;
 
-    expect_any(__wrap__merror, formatted_msg);
+    /* This repair runs on every boot for as long as no anchor exists, so its failure is logged
+     * at debug level rather than merror() -- see w_token_bootstrap_chown_keys_file()'s own
+     * comment. */
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     /* The failure is logged, but does not fail the bootstrap itself: the token is one-shot and
      * this agent is already enrolled, so there is nothing left to retry here besides the chown
@@ -453,6 +459,24 @@ static void test_keys_chown_failure_is_logged(void **state) {
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
     assert_int_equal(g_fetch_call_count, 0);
     assert_int_equal(g_enroll_call_count, 0);
+    assert_int_equal(g_keys_chown_uid, (uid_t) -1);
+    assert_int_equal(g_keys_chown_gid, (gid_t) -1);
+}
+
+/* Regression test: the anchor-latch branch runs on every single boot for as long as no anchor
+ * has ever been removed, so a persistent chown failure there (e.g. a namespaced container
+ * without CAP_CHOWN) must not re-log at merror() level on every boot -- that would flood the
+ * log forever for a condition that will not self-resolve. */
+static void test_anchor_latch_keys_chown_failure_is_quiet(void **state) {
+    (void) state;
+    write_file("etc/certs/root-ca.pem", "EXISTING-ANCHOR");
+    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_token_file(true, true, NULL);
+    g_keys_fchown_should_fail = true;
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
     assert_int_equal(g_keys_chown_uid, (uid_t) -1);
     assert_int_equal(g_keys_chown_gid, (gid_t) -1);
 }
@@ -714,6 +738,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_already_enrolled_skips_and_discards_the_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_client_keys_hard_link_is_not_chowned, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_keys_chown_failure_is_logged, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_anchor_latch_keys_chown_failure_is_quiet, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_empty_placeholder_keys_file_is_not_already_enrolled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_malformed_token_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_failure_logs_named_error_and_writes_nothing, setup_test, teardown_test),
