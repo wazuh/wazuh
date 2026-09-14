@@ -91,8 +91,10 @@ typedef enum {
  *
  * Side effect, on W_ENROLL_ERR_IDENTITY_GONE only: the dead re-enrollment secret is shredded. It
  * can only ever produce the same rejection again, and keeping it would stop the agent from falling
- * back to a credential that still works. Whether a fallback exists is what decides RETRY vs STOP
- * in that case.
+ * back to a credential that still works -- or, where none is configured, from enrolling
+ * credential-less the way it first did. That case then RETRYs regardless: shredding has already
+ * made the next attempt a different request, so it is not the loop #39064 removed. Only
+ * W_ENROLL_ERR_AUTH_FATAL stops.
  */
 w_enroll_action_t w_enrollment_apply_policy(w_enroll_status_t status);
 

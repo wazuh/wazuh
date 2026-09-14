@@ -932,25 +932,33 @@ static void test_policy_falls_back_to_an_unconsumed_enrollment_token(void **stat
     unlink(AGENT_ENROLLMENT_TOKEN_FILE);
 }
 
-/* Nothing left to enroll with: stop, and say what the operator has to do. Looping here is what
- * the DoD forbids -- the agent would ask for an identity nobody can give it, for ever. */
-static void test_policy_stops_when_no_fallback_credential_exists(void **state) {
+/* Nothing configured to enroll with: retry anyway. Shredding the dead secret has already turned the
+ * next attempt into a different request -- a credential-less one, which is exactly how an
+ * open-enrolment agent got its identity in the first place -- so this is not the loop #39064
+ * removed. Stopping here would strand a whole fleet whose manager was rebuilt, on a manager that
+ * would re-enrol every one of them. The refusal that does stop the agent is a 403
+ * (W_ENROLL_ERR_AUTH_FATAL), tested above. */
+static void test_policy_retries_credential_less_when_nothing_is_configured(void **state) {
     (void)state;
 
     ignore_debug_lines();
     assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
 
     expect_any(__wrap__minfo, formatted_msg); /* secret removed */
-    expect_string(__wrap__merror, formatted_msg,
-                  "This agent has no enrollment credential left to fall back on. Operator action is "
-                  "required: re-enroll it with an enrollment token, or provide the enrollment "
-                  "password, and start the agent again.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "No enrollment credential is configured; retrying enrollment without one. "
+                  "This succeeds only where the manager accepts credential-less enrollment.");
 
-    assert_int_equal(w_enrollment_apply_policy(W_ENROLL_ERR_IDENTITY_GONE), W_ENROLL_ACTION_STOP);
+    assert_int_equal(w_enrollment_apply_policy(W_ENROLL_ERR_IDENTITY_GONE), W_ENROLL_ACTION_RETRY);
+
+    /* The retry is only defensible because the dead secret is gone: while it was on disk
+     * build_request() would have signed with it again and earned the same rejection. */
+    assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
 }
 
 /* An empty authd.pass is not a credential: a zero-byte file left behind by a failed install must
- * not make the agent think it has something to fall back on. */
+ * not make the agent announce a fallback it does not have. The action is RETRY either way, so what
+ * this pins is which of the two the operator is told. */
 static void test_policy_treats_an_empty_password_file_as_no_credential(void **state) {
     (void)state;
 
@@ -960,9 +968,11 @@ static void test_policy_treats_an_empty_password_file_as_no_credential(void **st
     write_text_file(AUTHD_PASS, "");
 
     expect_any(__wrap__minfo, formatted_msg); /* secret removed */
-    expect_any(__wrap__merror, formatted_msg); /* operator action required */
+    expect_string(__wrap__minfo, formatted_msg,
+                  "No enrollment credential is configured; retrying enrollment without one. "
+                  "This succeeds only where the manager accepts credential-less enrollment.");
 
-    assert_int_equal(w_enrollment_apply_policy(W_ENROLL_ERR_IDENTITY_GONE), W_ENROLL_ACTION_STOP);
+    assert_int_equal(w_enrollment_apply_policy(W_ENROLL_ERR_IDENTITY_GONE), W_ENROLL_ACTION_RETRY);
 
     unlink(AUTHD_PASS);
 }
@@ -1012,7 +1022,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_policy_stops_on_a_fatal_rejection, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_policy_clears_the_dead_secret_and_falls_back_to_the_password, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_policy_falls_back_to_an_unconsumed_enrollment_token, setup_200_test, teardown_200_test),
-        cmocka_unit_test_setup_teardown(test_policy_stops_when_no_fallback_credential_exists, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_policy_retries_credential_less_when_nothing_is_configured, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_policy_treats_an_empty_password_file_as_no_credential, setup_200_test, teardown_200_test),
     };
 
