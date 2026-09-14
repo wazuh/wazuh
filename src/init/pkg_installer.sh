@@ -873,13 +873,20 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking for Wazuh Agent control script." >
 
 if [ -f "./bin/wazuh-control" ]; then
     if [[ "$OS" == "Darwin" ]]; then
-        if launchctl print system/com.wazuh.agent >/dev/null 2>&1; then
+        if ./bin/wazuh-control status 2>/dev/null | grep -q "wazuh-agentd is running"; then
             # packages/macos/package_files/postinstall.sh (embedded in the .pkg) already
             # restarted the agent via 'launchctl bootstrap' when it found the WAZUH_RESTART
             # marker preinstall.sh drops for a running agent. Bootstrapping the same label
             # into the system domain again here fails ("Bootstrap failed: 5: Input/output
             # error") because it's already loaded, and races this script's own
             # wait-for-connection loop below against a daemon it never actually restarted.
+            #
+            # Checked via wazuh-agentd's own liveness (matching the deb/rpm branch below),
+            # not 'launchctl print system/com.wazuh.agent': the generated LaunchDaemon has no
+            # KeepAlive, and its Wazuh-launcher wrapper swallows a failed 'wazuh-control start'
+            # without exiting (falls straight into its request-polling loop regardless) -- so
+            # the launchd job can read as loaded/running even when wazuh-agentd itself never
+            # came up, which would wrongly skip the restart below.
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Wazuh Agent is already running (restarted by the package installer); skipping redundant restart." >> ./logs/upgrade.log
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log
