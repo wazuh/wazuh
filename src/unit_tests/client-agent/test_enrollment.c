@@ -750,11 +750,14 @@ static void test_process_response_200_rotates_the_stored_secret(void **state) {
     assert_string_equal(secret, rotated);
 }
 
-/* ---- the fleet password is dropped once this endpoint has its own credential (#39064) ---- */
+/* ---- the fleet password is NOT the agent's to remove (#39064) ---- */
 
-/* The mechanism that makes the upgrade policy self-healing: a package upgrade leaves authd.pass
- * alone, and the agent removes it the first time a manager issues a re-enrollment secret. */
-static void test_process_response_200_shreds_the_default_fleet_password(void **state) {
+/* #39064 puts the removal in the package upgrade (DEB postinst, RPM %post, macOS postinstall, the
+ * MSI's RemoveFleetEnrollmentPassword), explicitly "not the agent binary", so it happens once at
+ * upgrade rather than on a condition that may never occur. An earlier revision of this branch had
+ * the agent shred the file on the first enrollment that stored a secret; this test is what keeps
+ * that from coming back, because nothing else would notice a file quietly deleted twice over. */
+static void test_process_response_200_leaves_the_fleet_password_alone(void **state) {
     (void)state;
     hc_enroll_result_t result = {0};
 
@@ -765,54 +768,13 @@ static void test_process_response_200_shreds_the_default_fleet_password(void **s
     set_body(&result,
              "{\"id\":\"001\",\"name\":\"agent01\",\"ip\":\"10.0.0.1\",\"key\":\"abc123\","
              "\"reenroll_secret\":\"" VALID_SECRET "\"}");
-    expect_valid_ip("10.0.0.1");
-    expect_string(__wrap__minfo, formatted_msg,
-                  "The fleet-wide enrollment password at '" AUTHD_PASS "' has been removed: this "
-                  "agent now holds its own re-enrollment secret.");
-    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
-
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_OK);
-    assert_int_equal(IsFile(AUTHD_PASS), -1);
-}
-
-/* No secret in the response means no replacement credential, so removing the only one the
- * endpoint has would leave it with nothing to recover with. */
-static void test_process_response_200_without_a_secret_keeps_the_fleet_password(void **state) {
-    (void)state;
-    hc_enroll_result_t result = {0};
-
-    ignore_debug_lines();
-    os_strdup(AUTHD_PASS, agt->enrollment.authorization_pass_path);
-    write_text_file(AUTHD_PASS, "fleet-secret\n");
-
-    set_body(&result, "{\"id\":\"001\",\"name\":\"agent01\",\"ip\":\"10.0.0.1\",\"key\":\"abc123\"}");
     expect_valid_ip("10.0.0.1");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
 
     assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_OK);
     assert_int_equal(IsFile(AUTHD_PASS), 0);
-}
 
-/* An explicitly configured path is operator-owned -- a shared mount, a templated file, one kept
- * deliberately for re-imaging -- and must never be removed by the agent. */
-static void test_process_response_200_never_shreds_an_operator_configured_password(void **state) {
-    (void)state;
-    hc_enroll_result_t result = {0};
-
-    ignore_debug_lines();
-    os_strdup("etc/operator.pass", agt->enrollment.authorization_pass_path);
-    write_text_file("etc/operator.pass", "fleet-secret\n");
-
-    set_body(&result,
-             "{\"id\":\"001\",\"name\":\"agent01\",\"ip\":\"10.0.0.1\",\"key\":\"abc123\","
-             "\"reenroll_secret\":\"" VALID_SECRET "\"}");
-    expect_valid_ip("10.0.0.1");
-    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
-
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_OK);
-    assert_int_equal(IsFile("etc/operator.pass"), 0);
-
-    unlink("etc/operator.pass");
+    unlink(AUTHD_PASS);
 }
 
 /* ---- w_enrollment_apply_policy: the decision itself (#39064) ---- */
@@ -950,9 +912,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_200_non_string_secret_is_server_error, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_refusal_leaves_the_previous_secret_usable, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_rotates_the_stored_secret, setup_200_test, teardown_200_test),
-        cmocka_unit_test_setup_teardown(test_process_response_200_shreds_the_default_fleet_password, setup_200_test, teardown_200_test),
-        cmocka_unit_test_setup_teardown(test_process_response_200_without_a_secret_keeps_the_fleet_password, setup_200_test, teardown_200_test),
-        cmocka_unit_test_setup_teardown(test_process_response_200_never_shreds_an_operator_configured_password, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_process_response_200_leaves_the_fleet_password_alone, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_policy_retries_every_transient_status, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_policy_stops_on_a_fatal_rejection, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_policy_clears_the_dead_secret_and_falls_back_to_the_password, setup_200_test, teardown_200_test),
