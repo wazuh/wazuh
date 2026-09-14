@@ -248,7 +248,7 @@ STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure) {
  *        enough. This is today's actual behavior; it has no dedicated interface or name of its
  *        own.
  */
-int w_agent_token_bootstrap(int uid, int gid) {
+w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
     w_etoken_t token;
     char *token_text = NULL;
     w_etoken_error_t decode_err;
@@ -299,7 +299,7 @@ int w_agent_token_bootstrap(int uid, int gid) {
         }
 
         unlink(AGENT_ENROLLMENT_TOKEN_FILE);
-        return 0;
+        return W_TOKEN_BOOTSTRAP_DONE;
     }
 
     if (FileSize(KEYS_FILE) > 0) {
@@ -314,18 +314,18 @@ int w_agent_token_bootstrap(int uid, int gid) {
         w_token_bootstrap_chown_keys_file(gid, true);
 
         unlink(AGENT_ENROLLMENT_TOKEN_FILE);
-        return 0;
+        return W_TOKEN_BOOTSTRAP_DONE;
     }
 
     if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) != 0) {
         /* Legacy install, no token provided: not an error. */
-        return 0;
+        return W_TOKEN_BOOTSTRAP_DONE;
     }
 
     if ((token_text = w_token_bootstrap_read_token(AGENT_ENROLLMENT_TOKEN_FILE)) == NULL) {
         merror("Token bootstrap: could not read the enrollment token file '%s'.",
                AGENT_ENROLLMENT_TOKEN_FILE);
-        return -1;
+        return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 
     decode_err = w_etoken_decode(token_text, &token);
@@ -334,14 +334,14 @@ int w_agent_token_bootstrap(int uid, int gid) {
     if (decode_err != ETOKEN_OK) {
         merror("Token bootstrap: could not decode the enrollment token: %s.",
                w_etoken_strerror(decode_err));
-        return -1;
+        return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 
     if (w_parse_agent_endpoint(token.adr, host, sizeof(host), &port, &port_present, endpoint,
                                sizeof(endpoint), &scope_id) != 0) {
         merror("Token bootstrap: the enrollment token's address is invalid.");
         w_etoken_free(&token);
-        return -1;
+        return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 
     memset(&fetch_result, 0, sizeof(fetch_result));
@@ -364,19 +364,40 @@ int w_agent_token_bootstrap(int uid, int gid) {
         fetched = hc_fetch_cacerts(&fetch_config, &fetch_request, &fetch_result);
 
         if (!fetched || fetch_result.http_code != 200) {
-            if (fetch_result.http_code != 0) {
-                merror("Token bootstrap: fetching /cacerts from the manager failed: manager "
-                       "returned HTTP %ld instead of 200%s%s.", fetch_result.http_code,
+            /* The four-way /cacerts taxonomy (#39062): each cause gets its own greppable name,
+             * so a misprovisioned manager (ca_mismatch) is never read as the one abort that
+             * actually is hostile (a pin mismatch, logged separately below once a body is in
+             * hand to compare). adr_unreachable and ca_mismatch may clear on their own (no
+             * response at all, or a 5xx); not_found is the manager's settled answer -- it has
+             * no CA to serve, provisioned or not, and repeating the request cannot change that. */
+            w_token_bootstrap_result_t fetch_class;
+
+            if (fetch_result.http_code == 0) {
+                fetch_class = W_TOKEN_BOOTSTRAP_TRANSIENT;
+                merror("Token bootstrap: /cacerts adr_unreachable -- could not reach the "
+                       "manager to fetch the certificate authority%s%s.",
                        fetch_result.transport_error[0] != '\0' ? ": " : "",
                        fetch_result.transport_error[0] != '\0' ? fetch_result.transport_error : "");
+            } else if (fetch_result.http_code == 404) {
+                fetch_class = W_TOKEN_BOOTSTRAP_PERMANENT;
+                merror("Token bootstrap: /cacerts not_found -- the manager has no certificate "
+                       "authority configured (it may predate this feature).");
+            } else if (fetch_result.http_code == 503) {
+                fetch_class = W_TOKEN_BOOTSTRAP_TRANSIENT;
+                merror("Token bootstrap: /cacerts ca_mismatch -- the manager's configured "
+                       "certificate authority does not sign its own listener certificate "
+                       "(misprovisioned, not necessarily hostile).");
             } else {
-                merror("Token bootstrap: fetching /cacerts from the manager failed%s%s.",
+                fetch_class = (fetch_result.http_code >= 500) ? W_TOKEN_BOOTSTRAP_TRANSIENT
+                                                               : W_TOKEN_BOOTSTRAP_PERMANENT;
+                merror("Token bootstrap: fetching /cacerts from the manager failed: manager "
+                       "returned HTTP %ld instead of 200%s%s.", fetch_result.http_code,
                        fetch_result.transport_error[0] != '\0' ? ": " : "",
                        fetch_result.transport_error[0] != '\0' ? fetch_result.transport_error : "");
             }
 
             w_etoken_free(&token);
-            return -1;
+            return fetch_class;
         }
 
         /* Checked before the pin compare, which cannot tell the two apart: a certificate cut
@@ -388,13 +409,13 @@ int w_agent_token_bootstrap(int uid, int gid) {
                    "this agent can read, so it cannot be checked against the enrollment token's "
                    "pin.", HC_MAX_CACERTS_BODY);
             w_etoken_free(&token);
-            return -1;
+            return W_TOKEN_BOOTSTRAP_PERMANENT;
         }
 
         if ((pin_b64 = w_b64url_encode(token.pin, W_ETOKEN_PIN_BYTES)) == NULL) {
             merror("Token bootstrap: could not encode the enrollment token's pin.");
             w_etoken_free(&token);
-            return -1;
+            return W_TOKEN_BOOTSTRAP_PERMANENT;
         }
 
         candidate_len = strnlen(fetch_result.body, sizeof(fetch_result.body));
@@ -407,11 +428,11 @@ int w_agent_token_bootstrap(int uid, int gid) {
          * accept a chain against. */
         if (!hc_spki_pinned_certificate(fetch_result.body, candidate_len, pin_b64, pinned_pem,
                                         sizeof(pinned_pem))) {
-            merror("Token bootstrap: fetched CA does not match the enrollment token's pin -- "
-                   "refusing to trust it.");
+            merror("Token bootstrap: pin_mismatch -- fetched CA does not match the enrollment "
+                   "token's pin, refusing to trust it.");
             os_free(pin_b64);
             w_etoken_free(&token);
-            return -1;
+            return W_TOKEN_BOOTSTRAP_PERMANENT;
         }
 
         os_free(pin_b64);
@@ -442,14 +463,14 @@ int w_agent_token_bootstrap(int uid, int gid) {
                strerror(errno), errno);
         os_free(anchor_file.name);
         w_etoken_free(&token);
-        return -1;
+        return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 #else
     if (TempFile(&anchor_file, AGENT_ANCHOR_CA, 0) < 0) {
         merror("Token bootstrap: could not create a temporary file for the trust anchor: %s (%d).",
                strerror(errno), errno);
         w_etoken_free(&token);
-        return -1;
+        return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 #endif
 
@@ -469,7 +490,7 @@ int w_agent_token_bootstrap(int uid, int gid) {
         unlink(anchor_file.name);
         os_free(anchor_file.name);
         w_etoken_free(&token);
-        return -1;
+        return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 #endif /* !WIN32 */
 
@@ -479,7 +500,7 @@ int w_agent_token_bootstrap(int uid, int gid) {
         unlink(anchor_file.name);
         os_free(anchor_file.name);
         w_etoken_free(&token);
-        return -1;
+        return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 
     fclose(anchor_file.fp);
@@ -489,7 +510,7 @@ int w_agent_token_bootstrap(int uid, int gid) {
         unlink(anchor_file.name);
         os_free(anchor_file.name);
         w_etoken_free(&token);
-        return -1;
+        return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 
     memset(&enroll_config, 0, sizeof(enroll_config));
@@ -544,7 +565,7 @@ int w_agent_token_bootstrap(int uid, int gid) {
             unlink(anchor_file.name);
             os_free(anchor_file.name);
             w_etoken_free(&token);
-            return -1;
+            return W_TOKEN_BOOTSTRAP_PERMANENT;
         }
     }
 
@@ -558,16 +579,27 @@ int w_agent_token_bootstrap(int uid, int gid) {
         unlink(anchor_file.name);
         os_free(anchor_file.name);
         w_etoken_free(&token);
-        return -1;
+        return W_TOKEN_BOOTSTRAP_TRANSIENT;
     }
 
-    if (w_enrollment_process_response(&enroll_result) != W_ENROLL_OK) {
-        /* w_enrollment_process_response() already logged the specific reason. */
+    w_enroll_status_t enroll_status = w_enrollment_process_response(&enroll_result);
+
+    if (enroll_status != W_ENROLL_OK) {
+        /* w_enrollment_process_response() already logged the specific reason. TRANSPORT/SERVER
+         * are the manager's or the network's problem and may clear on their own; the manager has
+         * already made a final decision about this exact request in every other case (malformed
+         * request, bad credential, enrollment disabled, duplicate agent), and repeating it
+         * verbatim cannot change that. */
+        w_token_bootstrap_result_t enroll_class =
+            (enroll_status == W_ENROLL_ERR_TRANSPORT || enroll_status == W_ENROLL_ERR_SERVER)
+                ? W_TOKEN_BOOTSTRAP_TRANSIENT
+                : W_TOKEN_BOOTSTRAP_PERMANENT;
+
         w_enroll_request_destroy(&built_request);
         unlink(anchor_file.name);
         os_free(anchor_file.name);
         w_etoken_free(&token);
-        return -1;
+        return enroll_class;
     }
 
     w_enroll_request_destroy(&built_request);
@@ -591,7 +623,7 @@ int w_agent_token_bootstrap(int uid, int gid) {
         merror("Token bootstrap: could not install the trust anchor at '%s'.", AGENT_ANCHOR_CA);
         os_free(anchor_file.name);
         w_etoken_free(&token);
-        return -1;
+        return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 
     os_free(anchor_file.name);
@@ -610,5 +642,5 @@ int w_agent_token_bootstrap(int uid, int gid) {
     w_etoken_free(&token);
     minfo("Token bootstrap: enrollment succeeded; the manager's CA is now the agent's trust anchor.");
 
-    return 0;
+    return W_TOKEN_BOOTSTRAP_DONE;
 }
