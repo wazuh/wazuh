@@ -6,28 +6,29 @@
     <frequency>43200</frequency>
 
     <!-- Directories to check  (perform all possible verifications) -->
-    <directories>/etc,/usr/bin,/usr/sbin</directories>
+    <!-- /etc is a symlink to /private/etc on macOS; monitor the resolved path directly -->
+    <directories>/private/etc,/usr/bin,/usr/sbin</directories>
     <directories>/bin,/sbin</directories>
 
     <!-- Files/directories to ignore -->
-    <ignore>/etc/mtab</ignore>
-    <ignore>/etc/hosts.deny</ignore>
-    <ignore>/etc/mail/statistics</ignore>
-    <ignore>/etc/random-seed</ignore>
-    <ignore>/etc/random.seed</ignore>
-    <ignore>/etc/adjtime</ignore>
-    <ignore>/etc/httpd/logs</ignore>
-    <ignore>/etc/utmpx</ignore>
-    <ignore>/etc/wtmpx</ignore>
-    <ignore>/etc/cups/certs</ignore>
-    <ignore>/etc/dumpdates</ignore>
-    <ignore>/etc/svc/volatile</ignore>
+    <ignore>/private/etc/mtab</ignore>
+    <ignore>/private/etc/hosts.deny</ignore>
+    <ignore>/private/etc/mail/statistics</ignore>
+    <ignore>/private/etc/random-seed</ignore>
+    <ignore>/private/etc/random.seed</ignore>
+    <ignore>/private/etc/adjtime</ignore>
+    <ignore>/private/etc/httpd/logs</ignore>
+    <ignore>/private/etc/utmpx</ignore>
+    <ignore>/private/etc/wtmpx</ignore>
+    <ignore>/private/etc/cups/certs</ignore>
+    <ignore>/private/etc/dumpdates</ignore>
+    <ignore>/private/etc/svc/volatile</ignore>
 
     <!-- File types to ignore -->
     <ignore type="sregex">.log$|.swp$</ignore>
 
     <!-- Check the file, but never compute the diff -->
-    <nodiff>/etc/ssl/private.key</nodiff>
+    <nodiff>/private/etc/ssl/private.key</nodiff>
 
     <skip_nfs>yes</skip_nfs>
     <skip_dev>yes</skip_dev>
