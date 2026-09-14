@@ -30,6 +30,8 @@ class MockCurlHandle : public ICurlHandle
             .WillByDefault(::testing::Return(true));
             ON_CALL(*this, setOptionPtr(::testing::_, ::testing::_))
             .WillByDefault(::testing::Return(true));
+            ON_CALL(*this, trustSelfSignedRoot())
+            .WillByDefault(::testing::Return(true));
             // Same rationale as above, now that these five report success/failure
             // too: a real handle accepts them, so default to true and let tests
             // that want to exercise the failure path override it explicitly.
@@ -48,6 +50,7 @@ class MockCurlHandle : public ICurlHandle
         MOCK_METHOD(bool, setOptionLong, (CurlOption option, long value), (override));
         MOCK_METHOD(bool, setOptionString, (CurlOption option, const std::string& value), (override));
         MOCK_METHOD(bool, setOptionPtr, (CurlOption option, const void* value), (override));
+        MOCK_METHOD(bool, trustSelfSignedRoot, (), (override));
         MOCK_METHOD(void, appendHeader, (const std::string& header), (override));
         MOCK_METHOD(bool, captureResponseBody, (std::string* output), (override));
         MOCK_METHOD(bool, captureResponseToFile, (std::FILE* file, uint64_t maxBytes), (override));

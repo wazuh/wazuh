@@ -13,7 +13,9 @@
 
 #include "enrollSigner.hpp"
 #include "fakeSysSeams.hpp"
+#include "jwt/base64Url.hpp"
 #include "jwt/jwtEnrollTokenVerifier.hpp"
+#include "jwt/jwtKeyDecoder.hpp"
 #include "mockFsProbe.hpp"
 #include "mockHttpPerformer.hpp"
 
@@ -90,6 +92,36 @@ namespace
         response.httpCode = code;
         response.body = "{}";
         return response;
+    }
+
+    // A fixed token-kid credential: 16 bytes of id -> 22 canonical base64url chars, and a
+    // 32-byte key as the 64-hex form hc_enroll_request_t::token_key_hex carries.
+    const std::string TOKEN_KID = jwt_profile::v1::base64UrlEncode(std::string(16, '\x01'));
+    const std::string TOKEN_KEY_HEX = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+
+    // Verifies the `Authorization: Bearer <wazuh-enroll+jwt>` header against the token-kid
+    // shared verifier, the same way verifyBearer() above does for the password form.
+    jwt_profile::v1::VerifyError verifyTokenBearer(const std::vector<std::string>& headers, std::time_t at)
+    {
+        const std::string prefix = "Authorization: Bearer ";
+        const auto bearer =
+            std::find_if(headers.begin(), headers.end(), [&](const std::string & h)
+        {
+            return h.rfind(prefix, 0) == 0;
+        });
+        const auto key = jwt_profile::v1::JwtKeyDecoder::decode(TOKEN_KEY_HEX);
+
+        if (bearer == headers.end() || !key)
+        {
+            return jwt_profile::v1::VerifyError::InvalidToken;
+        }
+
+        return jwt_profile::v1::enroll::JwtEnrollTokenVerifier::verifyWithKid(
+                   bearer->substr(prefix.size()),
+                   TOKEN_KID,
+                   *key,
+                   jwt_profile::v1::TimePolicy {},
+                   std::chrono::system_clock::time_point {std::chrono::seconds {at}});
     }
 } // namespace
 
@@ -391,6 +423,141 @@ TEST(EnrollClientTest, DoesNotRetryOn401InOpenModeEvenWithADate)
     const auto response = client.enroll(BODY, "");
     EXPECT_EQ(401, response.httpCode);
     EXPECT_EQ(0, clock.offsetApplyCount());
+}
+
+// Token-kid mode: the enrollment-token bootstrap's bearer.
+
+TEST(EnrollClientTest, TokenKidModeAddsABearerTheSharedVerifierAccepts)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    NiceMock<MockHttpPerformer> performer;
+    FakeClock clock;
+    clock.setWall(1700000000);
+    EnrollClient client {openModeConfig(), performer, fsProbe, clock, TEST_LOG};
+
+    EXPECT_CALL(performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_TRUE(hasHeader(spec.headers, "protocol-version: 1"));
+        EXPECT_EQ(jwt_profile::v1::VerifyError::None, verifyTokenBearer(spec.headers, 1700000000));
+        return okResponse();
+    }));
+
+    client.enroll(BODY, "", TOKEN_KID, TOKEN_KEY_HEX);
+}
+
+TEST(EnrollClientTest, TokenKidTakesPriorityOverAConfiguredPassword)
+{
+    // A token-based enrollment must not also sign with a possibly-unrelated authd.pass: when
+    // both are supplied, only the token-kid bearer is minted.
+    NiceMock<MockFsProbe> fsProbe;
+    NiceMock<MockHttpPerformer> performer;
+    FakeClock clock;
+    clock.setWall(1700000000);
+    EnrollClient client {openModeConfig(), performer, fsProbe, clock, TEST_LOG};
+
+    EXPECT_CALL(performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_EQ(jwt_profile::v1::VerifyError::None, verifyTokenBearer(spec.headers, 1700000000));
+        // The password-derived shared-key verifier must reject it: this is not that token.
+        EXPECT_EQ(jwt_profile::v1::VerifyError::InvalidToken, verifyBearer(spec.headers, "s3cr3t", 1700000000));
+        return okResponse();
+    }));
+
+    client.enroll(BODY, "s3cr3t", TOKEN_KID, TOKEN_KEY_HEX);
+}
+
+TEST(EnrollClientTest, RetriesOnceOn401InTokenKidModeAndCorrectsSkew)
+{
+    // Same one-shot grace-retry as password mode (#38440's self-correction): a 401 in
+    // token-kid mode is not exempt just because it is not the password branch.
+    NiceMock<MockFsProbe> fsProbe;
+    NiceMock<MockHttpPerformer> performer;
+    FakeClock clock;
+    clock.setWall(1700000000);
+    EnrollClient client {openModeConfig(), performer, fsProbe, clock, TEST_LOG};
+
+    const std::time_t serverNow = 1700000000 + 3600;
+
+    ::testing::InSequence sequence;
+
+    EXPECT_CALL(performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec&)
+    {
+        HttpResponse response;
+        response.status = TransportStatus::Ok;
+        response.httpCode = 401;
+        response.serverDateSeconds = serverNow;
+        return response;
+    }));
+
+    EXPECT_CALL(performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_EQ(jwt_profile::v1::VerifyError::None, verifyTokenBearer(spec.headers, serverNow));
+        return okResponse(200);
+    }));
+
+    const auto response = client.enroll(BODY, "", TOKEN_KID, TOKEN_KEY_HEX);
+    EXPECT_EQ(200, response.httpCode);
+    EXPECT_EQ(1, clock.offsetApplyCount());
+}
+
+// Non-regression check: the password-only behavior every test above already exercises via
+// the 2-argument overload should match this 4-argument call with the token fields empty (same
+// target/body/header set; not byte-for-byte, since EnrollSigner::sign() mints a fresh jti
+// every call).
+TEST(EnrollClientTest, PasswordOnlyBehaviorIsUnchangedWhenTokenFieldsAreExplicitlyEmpty)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    NiceMock<MockHttpPerformer> performer;
+    FakeClock clock;
+    clock.setWall(1700000000);
+
+    std::string twoArgTarget, fourArgTarget;
+    std::vector<std::string> twoArgHeaders, fourArgHeaders;
+    std::string twoArgBody, fourArgBody;
+
+    {
+        EnrollClient client {openModeConfig(), performer, fsProbe, clock, TEST_LOG};
+        EXPECT_CALL(performer, perform(_))
+        .WillOnce(Invoke(
+                      [&](const HttpRequestSpec & spec)
+        {
+            twoArgTarget = spec.target;
+            twoArgHeaders = spec.headers;
+            twoArgBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+            return okResponse();
+        }));
+        client.enroll(BODY, "s3cr3t");
+    }
+    {
+        EnrollClient client {openModeConfig(), performer, fsProbe, clock, TEST_LOG};
+        EXPECT_CALL(performer, perform(_))
+        .WillOnce(Invoke(
+                      [&](const HttpRequestSpec & spec)
+        {
+            fourArgTarget = spec.target;
+            fourArgHeaders = spec.headers;
+            fourArgBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+            return okResponse();
+        }));
+        client.enroll(BODY, "s3cr3t", "", "");
+    }
+
+    EXPECT_EQ(twoArgTarget, fourArgTarget);
+    EXPECT_EQ(twoArgBody, fourArgBody);
+    EXPECT_EQ(BODY, twoArgBody);
+    EXPECT_EQ(twoArgHeaders.size(), fourArgHeaders.size());
+    EXPECT_TRUE(hasHeader(twoArgHeaders, "protocol-version: 1"));
+    EXPECT_TRUE(hasHeader(fourArgHeaders, "protocol-version: 1"));
+    EXPECT_EQ(jwt_profile::v1::VerifyError::None, verifyBearer(twoArgHeaders, "s3cr3t", 1700000000));
+    EXPECT_EQ(jwt_profile::v1::VerifyError::None, verifyBearer(fourArgHeaders, "s3cr3t", 1700000000));
 }
 
 TEST(EnrollClientTest, RejectsWithoutSendingWhenTransportConfigIsInvalid)

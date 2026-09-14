@@ -281,6 +281,35 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define ENROLLMENT_TOKENS_FILE "enrollment_tokens.json"
 #endif
 
+/* Agent trust anchor: the CA the agent verifies the manager against when <ssl> does not
+ * name one (#38940 requirement 4). Its presence is the verification state -- see
+ * w_agent_resolve_ssl_posture() -- so it deliberately lives outside ossec.conf, which a
+ * configuration-management run templates and would otherwise overwrite.
+ *
+ * Relative, like KEYS_FILE above: both platforms chdir() into the install directory before
+ * ClientConf() runs (main.c, win_agent.c), and Windows keeps these files without the etc/
+ * prefix. Nothing in the agent packages creates etc/certs -- only the manager's do -- so on a
+ * stock install the directory does not exist and the probe simply finds nothing.
+ *
+ * The same path is hard-coded in the two WPK upgrade gates (src/init/pkg_installer.sh and
+ * src/win32/do_upgrade.ps1), which predate this constant and cannot include it. They also
+ * still mirror the pre-#39025 resolution; reconciling them is #38949 question 6. */
+#ifndef WIN32
+#define AGENT_ANCHOR_CA "etc/certs/root-ca.pem"
+#else
+#define AGENT_ANCHOR_CA "certs/root-ca.pem"
+#endif
+
+/* Enrollment-token bootstrap: the one-shot file src/init/register_configure_agent.sh's
+ * WAZUH_ENROLLMENT_TOKEN_PATH writes at install time. w_agent_token_bootstrap() reads it once,
+ * before AGENT_ANCHOR_CA exists, and deletes it on either a committed success or a permanent
+ * failure -- see token_bootstrap.c. Relative, same convention as AGENT_ANCHOR_CA above. */
+#ifndef WIN32
+#define AGENT_ENROLLMENT_TOKEN_FILE "etc/enrollment_token"
+#else
+#define AGENT_ENROLLMENT_TOKEN_FILE "enrollment_token"
+#endif
+
 /* Timestamp file */
 #define TIMESTAMP_FILE "queue/agents-timestamp"
 

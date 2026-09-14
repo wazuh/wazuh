@@ -13,8 +13,11 @@
 
 #include "bodyCompressor.hpp"
 #include "enrollSigner.hpp"
+#include "jwt/jwtEnrollTokenSigner.hpp"
+#include "jwt/jwtKeyDecoder.hpp"
 #include "requestTarget.hpp"
 
+#include <chrono>
 #include <cstdlib>
 #include <utility>
 
@@ -37,7 +40,8 @@ EnrollClient::EnrollClient(
 {
 }
 
-HttpResponse EnrollClient::enroll(const std::string& bodyJson, const std::string& password)
+HttpResponse EnrollClient::enroll(const std::string& bodyJson, const std::string& password,
+                                  const std::string& tokenKid, const std::string& tokenKeyHex)
 {
     if (!m_config.validateTransport(m_fsProbe, m_logFn))
     {
@@ -46,8 +50,13 @@ HttpResponse EnrollClient::enroll(const std::string& bodyJson, const std::string
         return response;
     }
 
+    // A signed request either signs with the token-kid credential or with the password --
+    // never neither-but-still-retriable: an open-mode 401 has nothing to correct (see the
+    // retry condition below).
+    const bool hasCredential = !password.empty() || (!tokenKid.empty() && !tokenKeyHex.empty());
+
     bool allowCompression = m_config.httpsCompressionEnabled;
-    HttpResponse response = performOnce(bodyJson, password, allowCompression);
+    HttpResponse response = performOnce(bodyJson, password, tokenKid, tokenKeyHex, allowCompression);
 
     bool compressionRetried = false;
     bool authRetried = false;
@@ -68,24 +77,25 @@ HttpResponse EnrollClient::enroll(const std::string& bodyJson, const std::string
         {
             compressionRetried = true;
             allowCompression = false;
-            response = performOnce(bodyJson, password, allowCompression);
+            response = performOnce(bodyJson, password, tokenKid, tokenKeyHex, allowCompression);
             continue;
         }
 
         // One-shot 401 grace-retry (#38440's self-correction, extended here):
-        // a 401 in password mode can be a genuinely dead/wrong password, or a
-        // clock-skewed agent whose timestamp the manager rejects as too far
-        // from its own -- the response alone cannot tell them apart. Correct
-        // for measurable skew (if the response carried the manager's Date)
-        // and re-sign with a fresh timestamp; only a second 401 -- now on an
-        // already skew-corrected clock -- reaches the caller as a real
-        // authentication failure. Open mode sends no signature, so a 401
-        // there cannot be a timestamp issue -- nothing to retry.
-        if (response.httpCode == 401 && !authRetried && !password.empty())
+        // a 401 in a signed mode (password or token-kid) can be a genuinely
+        // dead credential, or a clock-skewed agent whose timestamp the
+        // manager rejects as too far from its own -- the response alone
+        // cannot tell them apart. Correct for measurable skew (if the
+        // response carried the manager's Date) and re-sign with a fresh
+        // timestamp; only a second 401 -- now on an already skew-corrected
+        // clock -- reaches the caller as a real authentication failure. Open
+        // mode sends no signature, so a 401 there cannot be a timestamp
+        // issue -- nothing to retry.
+        if (response.httpCode == 401 && !authRetried && hasCredential)
         {
             authRetried = true;
             correctClockIfSkewed(response);
-            response = performOnce(bodyJson, password, allowCompression);
+            response = performOnce(bodyJson, password, tokenKid, tokenKeyHex, allowCompression);
             continue;
         }
 
@@ -120,7 +130,23 @@ void EnrollClient::correctClockIfSkewed(const HttpResponse& response)
                static_cast<long long>(delta));
 }
 
-HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::string& password, bool allowCompression)
+namespace
+{
+    /// A request that was never sent because the credential it had to carry could not be
+    /// produced. httpCode stays 0, so every caller -- the retry loop here, and hc_enroll()'s
+    /// `httpCode != 0` contract at the C boundary -- reads it as "nothing reached the manager",
+    /// which is exactly what happened.
+    HttpResponse credentialFailure()
+    {
+        HttpResponse response;
+        response.status = TransportStatus::OtherError;
+        return response;
+    }
+} // namespace
+
+HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::string& password,
+                                       const std::string& tokenKid, const std::string& tokenKeyHex,
+                                       bool allowCompression)
 {
     const auto* bodyPtr = reinterpret_cast<const uint8_t*>(bodyJson.data());
     size_t bodyLength = bodyJson.size();
@@ -148,23 +174,49 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
     // bearer below does not bind the target, same as RetrySender::attemptOnce.
     const std::string target = prefixedTarget(m_config.serverEndpoint, "/enroll");
 
-    // Password mode only (#38465 design): mTLS presents its credential at
-    // the TLS layer (CurlPerformer::applyClientCertificate, already wired
-    // through m_config), open mode sends nothing else. The `wazuh-enroll+jwt`
+    // Token-kid mode takes priority over password mode: a token-based
+    // enrollment must not also sign with a possibly-unrelated configured
+    // authd.pass. mTLS presents its credential at the TLS layer
+    // (CurlPerformer::applyClientCertificate, already wired through m_config)
+    // in every mode; open mode sends nothing else. The `wazuh-enroll+jwt`
     // bearer binds time and a fresh jti, not the body: compressed or not, the
     // wire bytes travel under TLS and the same token accompanies them.
-    if (!password.empty())
+    // A credential that cannot be used aborts the request instead of falling through to send
+    // it unsigned. Continuing would silently downgrade an enrollment the operator asked to
+    // authenticate into an anonymous one -- and against a manager that does not require a
+    // password, that downgrade succeeds rather than failing loudly with a 401.
+    if (!tokenKid.empty() && !tokenKeyHex.empty())
+    {
+        const auto key = jwt_profile::v1::JwtKeyDecoder::decode(tokenKeyHex);
+
+        if (!key)
+        {
+            LOGFN_ERROR(m_logFn, "https_client: enrollment token key is not valid hex.");
+            return credentialFailure();
+        }
+
+        const auto token = jwt_profile::v1::enroll::JwtEnrollTokenSigner::signWithKid(
+                               *key, std::chrono::system_clock::time_point {std::chrono::seconds {m_clock.wallSeconds()}}, tokenKid);
+
+        if (!token)
+        {
+            LOGFN_ERROR(m_logFn, "https_client: enrollment token bearer could not be minted.");
+            return credentialFailure();
+        }
+
+        headers.push_back("Authorization: Bearer " + *token);
+    }
+    else if (!password.empty())
     {
         const auto signature = EnrollSigner::sign(password, m_clock.wallSeconds());
 
-        if (signature)
-        {
-            headers.push_back(signature->authorization);
-        }
-        else
+        if (!signature)
         {
             LOGFN_ERROR(m_logFn, "https_client: enrollment bearer token could not be minted.");
+            return credentialFailure();
         }
+
+        headers.push_back(signature->authorization);
     }
 
     HttpRequestSpec spec;

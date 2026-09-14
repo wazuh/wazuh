@@ -507,6 +507,16 @@ typedef struct hc_enroll_request_t
     ///< (mTLS/open enrollment): a client cert (if `config` carries one) and
     ///< a password may both be set; there is no precedence between them,
     ///< each authenticates independently (confirmed with the server team).
+    /// Enrollment-token `kid` bearer: 22 canonical base64url characters (the token's
+    /// id) + NUL, or empty for password/open mode. Both this and token_key_hex must
+    /// be non-empty for the token-kid bearer to be minted; it then takes priority
+    /// over `password` (a token-based enrollment must not also sign with a possibly-
+    /// unrelated configured authd.pass).
+    char token_kid[24];
+    /// The token credential's HKDF-derived 32-byte key, as 64 lowercase hex characters
+    /// + NUL -- same hex convention as hc_config_t::agent_key. Empty means no token-kid
+    /// bearer (see token_kid above).
+    char token_key_hex[65];
     full_log_fnc_t log; ///< This call's log sink. hc_enroll() may run before
     ///< hc_create() ever does (first-boot enrollment has no handle yet), so
     ///< it cannot rely on a sink already being assigned.
@@ -544,6 +554,87 @@ typedef struct hc_enroll_result_t
  */
 HC_EXPORTED bool hc_enroll(const hc_config_t* config, const hc_enroll_request_t* request,
                            hc_enroll_result_t* result);
+
+/* ---- GET /cacerts (unverified bootstrap fetch) ---- */
+
+/// Sized for a small chain (leaf + one intermediate) of PEM certificates;
+/// generous compared to HC_MAX_ENROLL_BODY (4096) since a CA bundle is
+/// larger than an /enroll JSON reply.
+#define HC_MAX_CACERTS_BODY 8192
+
+/**
+ * @brief One GET /cacerts request, built entirely by the C caller.
+ *        Handle-less, exactly like hc_enroll_request_t: this fetch step runs
+ *        before any hc_handle exists (the same first-boot bootstrap moment
+ *        /enroll runs at).
+ */
+typedef struct hc_cacerts_request_t
+{
+    full_log_fnc_t log; ///< This call's log sink; may run before hc_create() ever does.
+} hc_cacerts_request_t;
+
+/** @brief Result of one GET /cacerts attempt. */
+typedef struct hc_cacerts_result_t
+{
+    long http_code;                     ///< 0 = no HTTP response at all (transport/config
+    ///< failure -- see hc_fetch_cacerts()'s return value).
+    char body[HC_MAX_CACERTS_BODY];     ///< Raw response body (the CA bundle on 200).
+    /// Whether the manager's body did not fit in `body` and was cut short. Reported rather
+    /// than left to be inferred: the certificate the token pins can sit past the cut, and a
+    /// caller that just hashed what arrived would call that a pin mismatch -- announcing an
+    /// attack when the real fault is a buffer this end chose.
+    bool body_truncated;
+    /// Same contract as hc_enroll_result_t::transport_error.
+    char transport_error[HC_MAX_TRANSPORT_ERROR];
+} hc_cacerts_result_t;
+
+/**
+ * @brief Perform exactly one GET /cacerts HTTP request, UNVERIFIED: the
+ *        whole point of this call is to fetch a trust anchor the agent does
+ *        not have yet, so there is nothing to verify the connection against.
+ *        This function forces the transport's TLS verification off for this
+ *        one request regardless of what `config->verify_mode` carries --
+ *        callers must treat the returned body as untrusted input until a
+ *        separate pin-compare step (not part of this function) validates it
+ *        against the enrollment token's pin.
+ * @param config Only the transport half is read (host, port, timeout,
+ *        compression toggle); verify_mode/ca_path/client_cert/client_key are
+ *        ignored, since this call always fetches unverified.
+ * @return true once a request was actually sent and answered, whatever the
+ *         HTTP status. false when nothing was ever sent (an invalid
+ *         transport config -- e.g. a mismatched client cert/key pair -- or a
+ *         NULL argument); result->http_code stays 0 in that case.
+ */
+HC_EXPORTED bool hc_fetch_cacerts(const hc_config_t* config, const hc_cacerts_request_t* request,
+                                  hc_cacerts_result_t* result);
+
+/**
+ * @brief Extracts, from a /cacerts PEM bundle, the single certificate whose SPKI matches an
+ *        enrollment token's pin -- the only certificate in that body a caller may trust.
+ *
+ * Deliberately not a "does it match" predicate. hc_fetch_cacerts() answers over a connection
+ * nothing has verified yet, so every byte of that body was chosen by whoever replied; the pin
+ * vouches for one certificate in it and says nothing about the rest. A caller that installed
+ * the whole body as its trust anchor would take a second anchor from an attacker who simply
+ * appended the genuine certificate -- which is published at /cacerts, so it is no secret --
+ * and could then present a chain of its own that verifies. Returning the matched certificate
+ * on its own is what keeps the anchor to exactly what the token named.
+ *
+ * @param cacerts_body The raw /cacerts response body (hc_cacerts_result_t::body).
+ * @param body_len Its length. Must be built with strnlen(body, HC_MAX_CACERTS_BODY), never
+ *        strlen(): the buffer is a fixed char[] with no length field of its own.
+ * @param pin_b64url The token's pin, as 43 canonical unpadded base64url characters.
+ * @param matched_pem Receives the matched certificate alone, re-encoded as PEM and NUL
+ *        terminated. Untouched unless this returns true.
+ * @param matched_pem_size Size of @a matched_pem. HC_MAX_CACERTS_BODY is always enough: one
+ *        certificate cannot exceed the bundle it came from.
+ * @return true when exactly the pinned certificate was found and written. false on no match, a
+ *         malformed pin, an unparseable bundle, a destination too small, or a NULL argument --
+ *         fail closed in every case.
+ */
+HC_EXPORTED bool hc_spki_pinned_certificate(const char* cacerts_body, size_t body_len,
+                                            const char* pin_b64url, char* matched_pem,
+                                            size_t matched_pem_size);
 
 #ifdef __cplusplus
 }

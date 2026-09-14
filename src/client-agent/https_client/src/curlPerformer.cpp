@@ -149,6 +149,14 @@ bool CurlPerformer::configureBody(ICurlHandle& handle, const HttpRequestSpec& sp
 {
     *fileOut = nullptr;
 
+    if (spec.method == HttpMethod::Get)
+    {
+        // No body on GET, by contract: callers must not set bodyFilePath/body for a GET
+        // spec -- this layer does not validate that.
+        handle.setOptionLong(CurlOption::Get, 1L);
+        return true;
+    }
+
     if (spec.bodyFilePath.empty())
     {
         // In-memory body: a fixed-size POST.
@@ -320,8 +328,28 @@ bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle) const
         // An explicit <ca> is the whole trust set; adding the machine's stores
         // on top of it would widen what the agent accepts. (verify_mode=system's
         // Linux trust anchor also flows through here: the constructor resolves it
-        // into caPath once, up front, so this branch needs no mode-awareness.)
-        return setMandatoryOption(handle, CurlOption::CaInfo, m_config.caPath);
+        // into caPath once, up front -- the only place below that has to tell the
+        // two apart is the partial-chain relaxation.)
+        if (!setMandatoryOption(handle, CurlOption::CaInfo, m_config.caPath))
+        {
+            return false;
+        }
+
+        // A configured CA may be a self-signed root the peer echoes in its own chain,
+        // which fails with X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN unless this is set. Not
+        // under 'system': caPath is the OS bundle there, and relaxing chain building
+        // across the whole store widens what the agent accepts.
+        if (m_config.verifyMode != HC_VERIFY_SYSTEM && !handle.trustSelfSignedRoot())
+        {
+            // Unlike the options above, this one isn't in optionMap() (it's set via
+            // CURLOPT_SSL_CTX_FUNCTION, not a plain curl_easy_setopt), so it can't
+            // route through setMandatoryOption()'s optionName() lookup -- name it
+            // directly instead of failing silently.
+            LOGFN_ERROR(m_logFn, "libcurl rejected trustSelfSignedRoot; refusing to connect without it.");
+            return false;
+        }
+
+        return true;
     }
 
 #if defined(WIN32) || defined(__APPLE__)

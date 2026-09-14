@@ -14,6 +14,10 @@ TMP_ENROLLMENT="${INSTALLDIR}/tmp/enrollment-configuration"
 TMP_SERVER="${INSTALLDIR}/tmp/server-configuration"
 TMP_INSERT="${INSTALLDIR}/tmp/insert-output"
 WAZUH_REGISTRATION_PASSWORD_PATH="etc/authd.pass"
+# Where WAZUH_ENROLLMENT_TOKEN is left for the agent to finish the bootstrap with at its
+# first start. Root-only, unlike authd.pass: the agent reads it before dropping privileges,
+# so the wazuh user never needs it.
+WAZUH_ENROLLMENT_TOKEN_PATH="etc/enrollment_token"
 WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
 
 
@@ -611,6 +615,81 @@ delete_auto_enrollment_tag() {
 
 }
 
+# WAZUH_ENROLLMENT_TOKEN: take the manager address out of the token and leave the token
+# itself for the agent, which finishes the bootstrap at its first start by fetching the CA,
+# checking it against the token's pin and writing the trust anchor.
+#
+# Decoding is delegated to the agent's own --show-token rather than done in shell: the token
+# is base64url of a JSON object, and reusing w_etoken_decode() means a token accepted at
+# install time is exactly a token the bootstrap will accept. It goes in on stdin, never as an
+# argument -- the credential would otherwise reach ps output and the shell history. What
+# comes back never contains the credential.
+#
+# 'adr' is written into <endpoint> unchanged, since it is the same grammar that tag takes.
+# That is what lets an operator supply a token and nothing else.
+set_agent_enrollment_token() {
+
+    token_path="${INSTALLDIR}/${WAZUH_ENROLLMENT_TOKEN_PATH}"
+
+    token_description="$(printf '%s' "${WAZUH_ENROLLMENT_TOKEN}" | "${INSTALLDIR}/bin/wazuh-agentd" --show-token)"
+    token_status="$?"
+
+    # A rejected token and a decoder that never ran are different problems and send an
+    # operator to different places, so they are reported apart rather than both as a bad
+    # token. Only the decoder's own exit code says which: a missing binary or an unresolved
+    # shared library exits 127, well away from the status it uses for a token it read and
+    # refused. The reason for a refusal is already on stderr, so only the consequence is
+    # added here.
+    if [ "${token_status}" -eq 2 ]; then
+        echo "wazuh-agent: WAZUH_ENROLLMENT_TOKEN was refused; no manager was configured from it and no token was stored." >&2
+        echo "$(date '+%Y/%m/%d %H:%M:%S') WAZUH_ENROLLMENT_TOKEN was refused by the token decoder; no trust anchor will be bootstrapped." >> "${INSTALLDIR}/logs/ossec.log"
+        return 1
+    elif [ "${token_status}" -ne 0 ]; then
+        echo "wazuh-agent: could not run '${INSTALLDIR}/bin/wazuh-agentd --show-token' (exit ${token_status}); the enrollment token was left unread and no token was stored." >&2
+        echo "$(date '+%Y/%m/%d %H:%M:%S') Could not run the enrollment token decoder (exit ${token_status}); the token was not read and no trust anchor will be bootstrapped." >> "${INSTALLDIR}/logs/ossec.log"
+        return 1
+    fi
+
+    token_adr="$(printf '%s\n' "${token_description}" | sed -n 's/^adr: //p')"
+
+    if [ -z "${token_adr}" ]; then
+        echo "wazuh-agent: WAZUH_ENROLLMENT_TOKEN carries no address; no token was stored." >&2
+        return 1
+    fi
+
+    # Refused on presence, not on value. A token's address is normalised when it is minted --
+    # the default port and prefix are dropped -- while the variable holds whatever was typed,
+    # so 'mgr.example.com' and 'mgr.example.com:1517/wazuh-manager' name one endpoint and would
+    # still compare unequal. Passing both is never useful in any case: either they agree and one
+    # is redundant, or they disagree and the token pins the certificate authority of a manager
+    # the agent will not be talking to.
+    if [ -n "${WAZUH_MANAGER_ENDPOINT+x}" ]; then
+        echo "wazuh-agent: WAZUH_ENROLLMENT_TOKEN already carries the manager address '${token_adr}'; WAZUH_MANAGER_ENDPOINT cannot be set alongside it. Pass one or the other." >&2
+        return 1
+    fi
+
+    # The legacy WAZUH_MANAGER/WAZUH_MANAGER_PORT pair is tolerated rather than refused: it is
+    # what every 4.x-era install command and dashboard snippet still carries, and an operator
+    # pasting one of those together with a token should not have the install fail. The token's
+    # address wins, so the pin and the host the agent dials always name the same manager.
+    if [ -n "${WAZUH_MANAGER}" ]; then
+        echo "$(date '+%Y/%m/%d %H:%M:%S') The enrollment token's address '${token_adr}' takes precedence over WAZUH_MANAGER; the token pins the certificate authority of the manager it names." >> "${INSTALLDIR}/logs/ossec.log"
+    fi
+
+    FINAL_ENDPOINT="${token_adr}"
+    add_adress_block
+
+    # Created and locked down before the token is written into it, so the credential is never
+    # briefly readable -- a reinstall would otherwise keep whatever mode the old file had.
+    : > "${token_path}"
+    chmod 600 "${token_path}"
+    chown root:root "${token_path}"
+    printf '%s' "${WAZUH_ENROLLMENT_TOKEN}" > "${token_path}"
+
+    echo "$(date '+%Y/%m/%d %H:%M:%S') Enrollment token stored; the manager was set to '${token_adr}' and the trust anchor will be bootstrapped at the first agent start." >> "${INSTALLDIR}/logs/ossec.log"
+
+}
+
 # Change address block of the wazuh configuration file
 add_adress_block() {
 
@@ -687,6 +766,7 @@ set_vars () {
     export WAZUH_AGENT_GROUP
     export ENROLLMENT_DELAY
     export SSL_VERIFICATION
+    export WAZUH_ENROLLMENT_TOKEN
     # The following variables are yet supported but all of them are deprecated
     export WAZUH_MANAGER_IP
     export WAZUH_NOTIFY_TIME
@@ -713,7 +793,7 @@ unset_vars() {
           WAZUH_MANAGER WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
           WAZUH_REGISTRATION_PASSWORD WAZUH_KEEP_ALIVE_INTERVAL WAZUH_REGISTRATION_CA \
           WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_GROUP \
-          ENROLLMENT_DELAY SSL_VERIFICATION)
+          ENROLLMENT_DELAY SSL_VERIFICATION WAZUH_ENROLLMENT_TOKEN)
 
     for var in "${vars[@]}"; do
         unset "${var}"
@@ -954,9 +1034,17 @@ main () {
     set_agent_option "notify_time" "${WAZUH_KEEP_ALIVE_INTERVAL}"
     edit_value_tag "time-reconnect" "${WAZUH_TIME_RECONNECT}"
 
+    if [ -n "${WAZUH_ENROLLMENT_TOKEN}" ]; then
+        set_agent_enrollment_token
+    fi
+
     unset_vars
 
 }
 
-# Start script execution
-main "$@"
+# Guarded so this file can be sourced by the test suite without running the full
+# install flow; every packaged caller invokes it directly as its own process, where
+# BASH_SOURCE[0] == $0 either way.
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    main "$@"
+fi

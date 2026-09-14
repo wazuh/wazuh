@@ -19,6 +19,8 @@
 #include "moduleLog.hpp"
 
 #include <curl/curl.h>
+#include <openssl/ssl.h>
+#include <openssl/x509_vfy.h>
 
 #include <cstring>
 #include <map>
@@ -63,6 +65,7 @@ namespace
             {CurlOption::Post, CURLOPT_POST},
             {CurlOption::PostFields, CURLOPT_POSTFIELDS},
             {CurlOption::PostFieldSize, CURLOPT_POSTFIELDSIZE},
+            {CurlOption::Get, CURLOPT_HTTPGET},
             {CurlOption::TimeoutMs, CURLOPT_TIMEOUT_MS},
             {CurlOption::VerifyPeer, CURLOPT_SSL_VERIFYPEER},
             {CurlOption::VerifyHost, CURLOPT_SSL_VERIFYHOST},
@@ -83,6 +86,23 @@ namespace
     }
 
     // curl callbacks are C: nothing may throw across them.
+
+    // CURLOPT_SSL_CTX_FUNCTION callback: sets X509_V_FLAG_PARTIAL_CHAIN on the SSL_CTX's
+    // own verification store. See ICurlHandle::trustSelfSignedRoot() for why this is
+    // needed. No userptr required, so CURLOPT_SSL_CTX_DATA is never set -- libcurl passes
+    // nullptr for it, unused here.
+    CURLcode sslCtxTrustSelfSignedRootTrampoline(CURL* /*curl*/, void* sslCtx, void* /*userptr*/)
+    {
+        auto* store = SSL_CTX_get_cert_store(static_cast<SSL_CTX*>(sslCtx));
+
+        if (store == nullptr || X509_STORE_set_flags(store, X509_V_FLAG_PARTIAL_CHAIN) != 1)
+        {
+            return CURLE_SSL_CERTPROBLEM; // LCOV_EXCL_LINE: OpenSSL misuse, not reachable in practice.
+        }
+
+        return CURLE_OK;
+    }
+
     size_t writeTrampoline(char* data, size_t size, size_t nmemb, void* userData)
     {
         auto* output = static_cast<std::string*>(userData);
@@ -252,6 +272,12 @@ namespace
             bool setOptionPtr(CurlOption option, const void* value) override
             {
                 return curl_easy_setopt(m_handle, optionMap().at(option), value) == CURLE_OK;
+            }
+
+            bool trustSelfSignedRoot() override
+            {
+                return curl_easy_setopt(m_handle, CURLOPT_SSL_CTX_FUNCTION,
+                                        sslCtxTrustSelfSignedRootTrampoline) == CURLE_OK;
             }
 
             void appendHeader(const std::string& header) override

@@ -30,6 +30,8 @@ enum class CurlOption
     Post,           ///< long 1
     PostFields,     ///< ptr to the in-memory body
     PostFieldSize,  ///< long body length
+    Get,            ///< long 1: CURLOPT_HTTPGET. Also clears any prior POST state, but
+    ///< that's moot -- every handle is built fresh per request (CurlHandleFactory).
     TimeoutMs,      ///< long per-request timeout
     VerifyPeer,     ///< long 0/1
     VerifyHost,     ///< long 0/2
@@ -91,6 +93,12 @@ class ICurlHandle
         virtual bool setOptionString(CurlOption option, const std::string& value) = 0;
         virtual bool setOptionPtr(CurlOption option, const void* value) = 0;
         virtual void appendHeader(const std::string& header) = 0;
+
+        /// Sets X509_V_FLAG_PARTIAL_CHAIN so a self-signed CaInfo root echoed back
+        /// in the peer's own chain verifies instead of failing with
+        /// X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN. Trusts nothing beyond CaInfo.
+        /// @return false if the underlying option was rejected by libcurl.
+        virtual bool trustSelfSignedRoot() = 0;
 
         /// @return false if the underlying option(s) were rejected by libcurl;
         ///         the caller must not proceed to perform() in that case, since

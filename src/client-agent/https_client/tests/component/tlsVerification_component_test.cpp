@@ -82,6 +82,27 @@ namespace
         *certOut = cert;
     }
 
+    // A leaf genuinely signed by the given CA (unlike makeSelfSigned(), issuer/signer is
+    // caKey, not the leaf's own key), with a caller-chosen SAN -- lets a test build a
+    // perfectly valid chain for the wrong identity.
+    void makeCaSignedLeaf(X509* caCert, EVP_PKEY* caKey, const char* san, EVP_PKEY** keyOut, X509** certOut)
+    {
+        EVP_PKEY* pkey = EVP_RSA_gen(2048);
+        X509* cert = X509_new();
+        ASN1_INTEGER_set(X509_get_serialNumber(cert), 2);
+        X509_gmtime_adj(X509_get_notBefore(cert), 0);
+        X509_gmtime_adj(X509_get_notAfter(cert), 60L * 60L);
+        X509_set_pubkey(cert, pkey);
+        X509_NAME* name = X509_get_subject_name(cert);
+        X509_NAME_add_entry_by_txt(
+            name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("leaf"), -1, -1, 0);
+        X509_set_issuer_name(cert, X509_get_subject_name(caCert));
+        addExtension(cert, NID_subject_alt_name, san);
+        X509_sign(cert, caKey, EVP_sha256());
+        *keyOut = pkey;
+        *certOut = cert;
+    }
+
     // Writes a cert as PEM to a unique temp path so a client can trust it as a
     // CA. Returns the path (empty on failure).
     std::string writeCertPem(X509* cert, const std::string& tag)
@@ -106,9 +127,17 @@ namespace
     class TlsServer
     {
         public:
-            TlsServer(X509* cert, EVP_PKEY* key, uint16_t port)
+            // extraChainCert, when given, is appended after `cert` via SSL_CTX_add1_chain_cert,
+            // which bumps its own refcount -- the caller still owns/frees its X509* like every
+            // other cert here (e.g. a genuine CA an attacker leaf doesn't actually chain up to).
+            TlsServer(X509* cert, EVP_PKEY* key, uint16_t port, X509* extraChainCert = nullptr)
                 : m_server(cert, key)
             {
+                if (extraChainCert != nullptr)
+                {
+                    SSL_CTX_add1_chain_cert(m_server.ssl_context(), extraChainCert);
+                }
+
                 m_server.Post("/stateless",
                               [](const httplib::Request&, httplib::Response & response)
                 {
@@ -279,6 +308,78 @@ TEST(TlsVerificationTest, FullVerificationRejectsAnUntrustedCertificate)
     EXPECT_EQ(TransportStatus::TlsFail, response.status); // Untrusted: no HTTP status reached.
 
     std::remove(wrongCaPath.c_str());
+}
+
+// A self-signed leaf with the genuine trusted CA appended alongside it in the chain: a
+// verifier that merely checks whether the trusted CA's bytes appear somewhere in the sent
+// chain (instead of validating the signature path from leaf to root) would wrongly accept
+// this, since the leaf's signature only verifies against its own key.
+TEST(TlsVerificationTest, FullVerificationRejectsASelfSignedLeafWithTheGenuineCaAppended)
+{
+    constexpr uint16_t port = 44861;
+    EVP_PKEY* caKey = nullptr;
+    X509* caCert = nullptr;
+    makeSelfSigned(&caKey, &caCert);
+    const std::string caPath = writeCertPem(caCert, "genuine");
+    ASSERT_FALSE(caPath.empty());
+
+    // Unrelated to caCert/caKey: its own self-signed identity, never touches the CA's key.
+    EVP_PKEY* attackerKey = nullptr;
+    X509* attackerCert = nullptr;
+    makeSelfSigned(&attackerKey, &attackerCert);
+
+    // The server's certificate is the attacker's leaf; the genuine CA rides along as an
+    // extra chain cert, exactly as an attacker hoping for a presence-only check would send it.
+    TlsServer server {attackerCert, attackerKey, port, caCert};
+    X509_free(attackerCert);
+    EVP_PKEY_free(attackerKey);
+    X509_free(caCert);
+    EVP_PKEY_free(caKey);
+
+    const auto config = tlsFullConfig(port, caPath);
+    ConfigKeyProvider keyProvider {KEY_HEX};
+    JwtSigner signer {"001", keyProvider};
+    CurlPerformer performer {config, defaultCurlHandleFactory()};
+
+    const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
+    EXPECT_EQ(TransportStatus::TlsFail, response.status);
+
+    std::remove(caPath.c_str());
+}
+
+// A perfectly valid chain (leaf genuinely signed by the trusted CA) for an identity other
+// than the one dialed -- isolates the hostname check from the chain check, since a valid
+// signature chain alone must not be sufficient.
+TEST(TlsVerificationTest, FullVerificationRejectsACaSignedCertForTheWrongHostname)
+{
+    constexpr uint16_t port = 44862;
+    EVP_PKEY* caKey = nullptr;
+    X509* caCert = nullptr;
+    makeSelfSigned(&caKey, &caCert);
+    const std::string caPath = writeCertPem(caCert, "wronghost_ca");
+    ASSERT_FALSE(caPath.empty());
+
+    // Genuinely signed by caKey, but SAN'd for a different address than the one this test
+    // connects to (127.0.0.1) -- the chain is entirely valid, only the identity disagrees.
+    EVP_PKEY* leafKey = nullptr;
+    X509* leafCert = nullptr;
+    makeCaSignedLeaf(caCert, caKey, "IP:10.0.0.99", &leafKey, &leafCert);
+
+    TlsServer server {leafCert, leafKey, port};
+    X509_free(leafCert);
+    EVP_PKEY_free(leafKey);
+    X509_free(caCert);
+    EVP_PKEY_free(caKey);
+
+    const auto config = tlsFullConfig(port, caPath);
+    ConfigKeyProvider keyProvider {KEY_HEX};
+    JwtSigner signer {"001", keyProvider};
+    CurlPerformer performer {config, defaultCurlHandleFactory()};
+
+    const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
+    EXPECT_EQ(TransportStatus::TlsFail, response.status);
+
+    std::remove(caPath.c_str());
 }
 
 // verify_mode=system's Linux path (an injected OS-bundle stand-in, per FixedFsProbe

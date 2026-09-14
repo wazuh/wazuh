@@ -890,6 +890,11 @@ Public Function SetWazuhPermissions()
         remAuthenticatedUsersPermsTmpDir = "icacls """ & home_dir & "tmp" & """ /remove:g *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsTmpDir, 0, True
 
+        ' Same for the certs directory, which holds the manager's trust anchor: stripped
+        ' on the directory because root-ca.pem inherits the grant instead of owning one.
+        remAuthenticatedUsersPermsCertsDir = "icacls """ & home_dir & "certs" & """ /remove:g *S-1-5-11 /q"
+        WshShell.run remAuthenticatedUsersPermsCertsDir, 0, True
+
     End If
 End Function
 

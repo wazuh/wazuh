@@ -11,11 +11,26 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <unistd.h>
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/url_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "agentd.h"
+
+/* The <config_report> tests below run the real ClientConf(), which probes AGENT_ANCHOR_CA
+ * relative to this binary's working directory -- shared with test_client_conf_ssl_resolution,
+ * whose anchor tests create and remove a file there. Nothing here asserts on agt->ssl, so a
+ * stale anchor changes no outcome today; it is cleared anyway because that file arriving
+ * silently changes what ClientConf() resolves, and this binary runs first. */
+static int clear_stale_anchor(void **state) {
+    (void) state;
+
+    unlink(AGENT_ANCHOR_CA);
+    rmdir("etc/certs");
+
+    return 0;
+}
 
 #ifdef TEST_AGENT
 
@@ -487,5 +502,5 @@ int main(void) {
 #endif // TEST_AGENT
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, clear_stale_anchor, NULL);
 }

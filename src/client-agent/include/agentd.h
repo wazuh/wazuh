@@ -21,6 +21,11 @@
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 
+/* Resolve the effective <ssl> posture once ossec.conf has been parsed: settle an unset
+ * <verification_mode>, apply the trust-anchor latch, and default <certificate_authorities>
+ * to the anchor. Called by ClientConf(); exposed for the unit tests. */
+void w_agent_resolve_ssl_posture(agent *cfg);
+
 /* Check <ssl><certificate_authorities> against the configured verification mode.
  * Returns false when the agent must not start. */
 bool w_agent_validate_ssl_ca(const agent *cfg);
