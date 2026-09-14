@@ -134,3 +134,20 @@ def bearer_kid(request):
         return None
     peeked = jwt_enroll.peek_kid(header[len('Bearer '):].strip())
     return peeked.text if peeked is not None else None
+
+
+def is_password_bearer(request):
+    """True when a recorded /enroll carried a shared-password bearer: one that parses as a
+    `wazuh-enroll+jwt` and names no `kid` at all.
+
+    Deliberately not spelled `bearer_kid(request) is None`. A password bearer's kid is the empty
+    string -- `peek_kid()` answers `PeekedKid(KidKind.NONE, '')` for the kid-less header, and only
+    an absent or unparseable Authorization gives None -- so the `is None` spelling is true for the
+    one case this must not accept (no credential at all) and false for the case it is asking about.
+    """
+    headers = {name.lower(): value for name, value in (request or {}).get('headers', {}).items()}
+    header = headers.get('authorization', '')
+    if not header.startswith('Bearer '):
+        return False
+    peeked = jwt_enroll.peek_kid(header[len('Bearer '):].strip())
+    return peeked is not None and peeked.kind is jwt_enroll.KidKind.NONE

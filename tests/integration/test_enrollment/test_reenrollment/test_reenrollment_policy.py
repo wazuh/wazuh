@@ -59,7 +59,8 @@ from wazuh_testing.utils.callbacks import make_callback
 from wazuh_testing.utils.configuration import load_configuration_template
 
 from . import CONFIGS_PATH
-from .conftest import AGENT_ID, AGENT_REENROLL_SECRET, bearer_kid, stored_agent_id, stored_secret
+from .conftest import (AGENT_ID, AGENT_REENROLL_SECRET, bearer_kid, is_password_bearer,
+                       stored_agent_id, stored_secret)
 
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
@@ -258,7 +259,7 @@ def test_a_dead_secret_falls_back_to_the_configured_password(
     expect_log('Falling back to the configured enrollment credential.')
 
     # Let the fallback attempt happen, then stop refusing so it can succeed.
-    assert wait_for(lambda: any(bearer_kid(request) is None for request in enroll_requests(manager)),
+    assert wait_for(lambda: any(is_password_bearer(request) for request in enroll_requests(manager)),
                     timeout=SETTLE), 'The agent never fell back to the password credential'
 
 
@@ -284,13 +285,14 @@ def test_an_invalid_signature_on_enroll_retries_instead_of_giving_up(
     assert wait_for(lambda: len(enroll_requests(manager)) >= 2, timeout=SETTLE), \
         'An invalid_signature enrollment was not retried'
 
+    # FileMonitor.start() returns rather than raising when the pattern never arrives, so the
+    # absence of a match has to be read off callback_result -- wrapping it in try/except would
+    # make the failure unconditional, not conditional.
     monitor = FileMonitor(WAZUH_LOG_PATH)
-    try:
-        monitor.start(timeout=5, callback=make_callback('re-enrollment cannot succeed; giving up',
-                                                        prefix='.*', escape=True))
-        pytest.fail('The agent gave up on a 401, which only a 403 may cause')
-    except Exception:
-        pass
+    monitor.start(timeout=5, callback=make_callback('re-enrollment cannot succeed; giving up',
+                                                    prefix='.*', escape=True))
+    assert monitor.callback_result is None, \
+        'The agent gave up on a 401, which only a 403 may cause'
 
     manager.enroll_force_auth_class = None
     manager.mode = 'ACCEPT'
@@ -321,7 +323,10 @@ def test_a_403_on_enroll_stops_immediately_and_names_the_code(
     manager.enroll_force_error = forced
 
     assert wait_for(lambda: enroll_requests(manager), timeout=SETTLE)
-    expect_log(f'Enrollment token refused by the manager (code {code})')
+    # A re-enrollment bearer's kid is the agent's own id, never a token id, so the guard in
+    # w_enrollment_token_id_or_unknown() renders '(id unknown)' here. Asserting it in full keeps
+    # an agent id from ever being reported to an operator as the token to re-mint.
+    expect_log(f'Enrollment token (id unknown) refused by the manager (code {code})')
     expect_log('https_client: re-enrollment cannot succeed; giving up')
 
     attempted = len(enroll_requests(manager))
