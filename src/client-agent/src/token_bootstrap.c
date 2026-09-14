@@ -174,9 +174,14 @@ int w_agent_token_bootstrap(int uid, int gid) {
     }
 
     if (FileSize(KEYS_FILE) > 0) {
-        /* Already enrolled: nothing left to do. IsFile() alone can't tell this apart from
-         * the empty placeholder client.keys the package installs by default -- only a
-         * non-empty file means a real ID/NAME/IP/KEY entry exists. */
+        /* Already enrolled: also repairs client.keys's group in case a prior boot died after
+         * replacing the file but before this chown ran (see the final chown's own comment) --
+         * done unconditionally since it's cheap and idempotent. */
+        if (chown(KEYS_FILE, 0, gid) != 0) {
+            merror("Token bootstrap: could not change ownership of '%s': %s (%d).", KEYS_FILE,
+                   strerror(errno), errno);
+        }
+
         unlink(AGENT_ENROLLMENT_TOKEN_FILE);
         return 0;
     }
@@ -428,11 +433,14 @@ int w_agent_token_bootstrap(int uid, int gid) {
 
     os_free(anchor_file.name);
 
-    /* client.keys is deliberately left untouched here: it is always replaced wholesale via a
-     * TempFile()+OS_MoveFile() rename rather than edited in place (see enrollment.c and
-     * os_crypto/shared/keys.c), so the runtime user only ever needs directory-write and
-     * group-read on it -- both already granted -- never file-level ownership. It stays at
-     * whatever the installer set it to: 0640 root:wazuh, per inst-functions.sh. */
+    /* enrollment.c's TempFile()+OS_MoveFile() replace only fchmod()s client.keys to the old
+     * mode bits, never its group, so it inherits this root process's group instead of
+     * root:wazuh -- chown to root:gid (not uid:gid, mirroring the anchor's ownership model)
+     * restores read access without handing the credential to the runtime user. */
+    if (chown(KEYS_FILE, 0, gid) != 0) {
+        merror("Token bootstrap: could not change ownership of '%s': %s (%d).", KEYS_FILE,
+               strerror(errno), errno);
+    }
 
     unlink(AGENT_ENROLLMENT_TOKEN_FILE);
     w_etoken_free(&token);

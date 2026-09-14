@@ -123,7 +123,8 @@ static uid_t g_anchor_chown_uid = (uid_t) -1;
 static gid_t g_anchor_chown_gid = (gid_t) -1;
 static uid_t g_dir_chown_uid = (uid_t) -1;
 static gid_t g_dir_chown_gid = (gid_t) -1;
-static bool g_keys_chown_called = false;
+static uid_t g_keys_chown_uid = (uid_t) -1;
+static gid_t g_keys_chown_gid = (gid_t) -1;
 
 /* The anchor's chown() target is the TempFile()-created temporary file
  * ("etc/certs/root-ca.pem.XXXXXX", a random mkstemp() suffix appended to the destination name --
@@ -159,7 +160,8 @@ int __wrap_chown(const char *path, uid_t owner, gid_t group) {
         g_dir_chown_uid = owner;
         g_dir_chown_gid = group;
     } else if (path && strcmp(path, KEYS_FILE) == 0) {
-        g_keys_chown_called = true;
+        g_keys_chown_uid = owner;
+        g_keys_chown_gid = group;
     }
 
     return 0;
@@ -231,7 +233,8 @@ static int setup_test(void **state) {
     g_anchor_chown_gid = (gid_t) -1;
     g_dir_chown_uid = (uid_t) -1;
     g_dir_chown_gid = (gid_t) -1;
-    g_keys_chown_called = false;
+    g_keys_chown_uid = (uid_t) -1;
+    g_keys_chown_gid = (gid_t) -1;
     g_dir_chmod_mode = (mode_t) -1;
     g_anchor_chmod_mode = (mode_t) -1;
     g_anchor_chown_recorded_before_move = false;
@@ -364,6 +367,13 @@ static void test_already_enrolled_skips_and_discards_the_token(void **state) {
     /* Same reasoning as the anchor latch above: an agent that already holds a key will never
      * spend this token, so it does not stay on disk. */
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+
+    /* Regression guard: this latch must still repair client.keys's group every time it fires,
+     * not just skip out -- a prior boot's enrollment call can replace client.keys (via
+     * TempFile()+OS_MoveFile() in enrollment.c) and die before the chown below ever runs,
+     * leaving it root:root until a later boot passes through here again. */
+    assert_int_equal(g_keys_chown_uid, 0);
+    assert_int_equal(g_keys_chown_gid, getgid());
 }
 
 /* Regression test: client.keys can exist as an empty 0-byte placeholder (the package's own
@@ -519,9 +529,11 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal(g_dir_chown_uid, 0);
     assert_int_equal(g_dir_chown_gid, getgid());
 
-    /* Regression guard: client.keys must never be chowned -- it stays at whatever the installer
-     * set it to. */
-    assert_false(g_keys_chown_called);
+    /* client.keys is handed to root:gid too -- not uid:gid -- restoring the group that
+     * enrollment.c's own TempFile()+OS_MoveFile() replace just dropped, without handing
+     * ownership to the runtime user. */
+    assert_int_equal(g_keys_chown_uid, 0);
+    assert_int_equal(g_keys_chown_gid, getgid());
 }
 
 /* #39028's DoD: "a credential-less token enrolls when the simulator requires no credential,
@@ -607,10 +619,11 @@ static void test_full_happy_path_via_ca_pem(void **state) {
     assert_int_equal(IsFile("etc/client.keys"), 0);
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
 
-    /* Same regression guard as the pin-path happy test: the anchor's chown() must land before
-     * the rename that installs it. */
+    /* Same regression guards as the pin-path happy test: the anchor's chown() must land before
+     * the rename that installs it, and client.keys goes to root:gid. */
     assert_true(g_anchor_chown_recorded_before_move);
-    assert_false(g_keys_chown_called);
+    assert_int_equal(g_keys_chown_uid, 0);
+    assert_int_equal(g_keys_chown_gid, getgid());
 }
 
 int main(void) {

@@ -15,10 +15,9 @@
  *        outright), enroll fully verified against that CA, and persist it as
  *        AGENT_ANCHOR_CA -- the agent's own trust anchor from then on.
  *
- * Runs once, before AgentdStart()'s privilege drop: the anchor is created while still root, so
- * its ownership is fixed up (group only, see token_bootstrap.c) before the process becomes the
- * unprivileged `wazuh` user. client.keys is left at whatever the installer set it to -- see
- * token_bootstrap.c's own comment on that.
+ * Runs once, before AgentdStart()'s privilege drop: both the anchor and client.keys are written
+ * while still root, so each needs its group fixed up (see token_bootstrap.c's own comments on
+ * the two) before the process becomes the unprivileged `wazuh` user.
  */
 #ifndef TOKEN_BOOTSTRAP_H
 #define TOKEN_BOOTSTRAP_H
