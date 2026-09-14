@@ -25,7 +25,10 @@
 #include <stdio.h>
 #include <comdef.h>
 #include <codecvt>
+#include <string>
+#include <tlhelp32.h>
 #include "wuapi.h"
+#include "json.hpp"
 
 // Forward declarations for Windows Update API GUIDs (defined in wuguid library)
 extern "C" const GUID CLSID_UpdateSearcher;
@@ -130,3 +133,17 @@ struct ProcessCmdLine
 // Uses WideCharToMultiByte for encoding and CommandLineToArgvW for argument tokenization.
 // Returns empty fields if the input is empty or conversion fails.
 ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW);
+
+// True for the pids Windows reserves: the idle process (0) and the kernel (4).
+bool isSystemProcess(const DWORD pid);
+
+// Builds the process record from the snapshot entry alone, without a process handle: name,
+// pid, and parent_pid except for pid 0, which the snapshot reports as its own parent. The
+// handle-derived fields are left absent so that a process whose handle cannot be opened is
+// still inventoried instead of being dropped.
+nlohmann::json buildProcessSnapshotRecord(const PROCESSENTRY32& processEntry);
+
+// Builds the inventory record for one process: the snapshot fields with handleFields overlaid.
+// An empty or null handleFields is how "no handle could be opened" is passed in. The result is
+// never empty, so every enumerated process reaches the inventory.
+nlohmann::json buildProcessRecord(const PROCESSENTRY32& processEntry, const nlohmann::json& handleFields);
