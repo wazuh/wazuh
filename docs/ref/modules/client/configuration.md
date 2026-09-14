@@ -252,16 +252,21 @@ Path to file containing enrollment authorization password.
 - **Allowed values:** Valid file path
 - **Note:** Password must match manager's authd password. Re-read on every
   enrollment attempt, so rotating the file does not require an agent restart.
-- **Deprecated.** This is a *fleet-wide* secret: one value that enrolls any
-  endpoint, stored at rest on every endpoint that has it. Prefer an enrollment
-  token (`WAZUH_ENROLLMENT_TOKEN` at install time), which is single-use and
-  per-endpoint. The password remains supported for one full release.
-- The agent **deletes the default file by itself** once the manager issues it a
-  per-agent re-enrollment secret (see *Re-enrollment* below), so the fleet
-  secret leaves each endpoint as soon as that endpoint has a narrower
-  credential of its own. A path configured **explicitly** here is treated as
-  operator-owned and is never removed, so a shared or templated file keeps
-  working.
+- **Removed from the endpoint in 5.0.** This is a *fleet-wide* secret: one value
+  that enrolls any endpoint, stored at rest on every endpoint that has it. Use
+  an enrollment token (`WAZUH_ENROLLMENT_TOKEN` at install time), which is
+  single-use and per-endpoint, and the per-agent re-enrollment secret the
+  manager issues thereafter (see *Re-enrollment* below).
+- A **fresh 5.0 install never creates** `etc/authd.pass`. `WAZUH_REGISTRATION_PASSWORD`
+  is accepted but ignored, and says so in `ossec.log`.
+- The **5.0 package upgrade deletes** an existing `etc/authd.pass` — once, at
+  upgrade, in the package scripts rather than in the agent, so it does not
+  depend on the agent ever reaching a manager. It is overwritten before it is
+  unlinked.
+- Only the compiled default path is removed. A path configured **explicitly**
+  here is operator-owned — a shared mount, a templated file, one kept for
+  re-imaging — and is never touched, so an agent that still reads a password
+  from a path of your choosing keeps working.
 
 #### Re-enrollment
 
@@ -281,6 +286,15 @@ unattended recovery capability:
   agent.
 - It must stay writable by the unprivileged agent user: every rotation is
   performed by the running daemon, after the privilege drop.
+
+**Agents enrolled before the 5.0 upgrade.** The secret is only ever issued in an
+`/enroll` response, and an agent that is already enrolled has no way to ask for
+one: the manager refuses an enrollment whose `key_hash` matches an agent it
+already knows, and omitting the hash re-registers the agent under a new id. Such
+an agent keeps working on the key it holds, but the upgrade removes its
+`authd.pass`, so it has no unattended recovery left. If it is ever removed on the
+manager it will stop with *"operator action is required"* and wait. Re-point it
+with an enrollment token.
 
 The agent only discards an identity when the manager explicitly says it is
 unknown. Any other authentication failure — a clock outside the manager's

@@ -300,26 +300,23 @@ check "WAZUH_GROUP still aliases WAZUH_AGENT_GROUP" "1" \
       "$(printf '%s\n' "${actual}" | grep -c "<groups>alpha</groups>")"
 unset WAZUH_GROUP
 
-# ---- #39064: the fleet-wide enrollment password ----
+# ---- #39064: the fleet-wide enrollment password is never created ----
 #
-# The write itself stays (the password is supported for one more release, and on Windows it is
-# still the only credential path). What changed is that <authorization_pass_path> is no longer
-# emitted -- it only ever named the compiled default -- and that an operator is told once what the
-# file is.
+# "Fresh 5.0 installs skip creation" and "no authd.pass is written" (#39064). The variable is
+# IGNORED rather than removed from the accepted set -- #39063 does that -- so a playbook that still
+# sets it is told, instead of quietly enrolling with nothing.
 
 export WAZUH_REGISTRATION_SERVER="10.0.0.2"
 export WAZUH_REGISTRATION_PASSWORD="fleet-secret"
 
 installdir="$(run_target_keep "${NO_ENROLLMENT_CONF}")"
 
-check "the enrollment password is still written" \
-      "fleet-secret" "$(cat "${installdir}/etc/authd.pass" 2>/dev/null)"
-check "the enrollment password file is not world-readable" \
-      "640" "$(stat -c '%a' "${installdir}/etc/authd.pass" 2>/dev/null)"
+check "a password no longer creates authd.pass" \
+      "absent" "$([ -e "${installdir}/etc/authd.pass" ] && echo present || echo absent)"
 check "<authorization_pass_path> is not written into ossec.conf" \
       "0" "$(grep -c 'authorization_pass_path' "${installdir}/etc/ossec.conf")"
-check "the deprecation is recorded in the agent log" \
-      "1" "$(grep -c 'deprecated in favour of WAZUH_ENROLLMENT_TOKEN' "${installdir}/logs/ossec.log")"
+check "the operator is told the variable is ignored" \
+      "1" "$(grep -c 'WAZUH_REGISTRATION_PASSWORD is not supported in 5.0 and was ignored' "${installdir}/logs/ossec.log")"
 
 rm -rf "${installdir}"
 unset WAZUH_REGISTRATION_PASSWORD
