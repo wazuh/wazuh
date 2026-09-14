@@ -57,8 +57,8 @@ def set_keys(test_metadata):
     w_enrollment_build_request() prefers it over every other credential. A case
     left holding a previous case's secret therefore does not enroll at all -- it
     re-enrolls as whatever agent that secret names, which this manager has never
-    heard of, and the run ends at "no enrollment credential left to fall back on"
-    rather than at the behaviour under test. Clearing only client.keys stopped
+    heard of, and the case spends its budget being refused and shredding before
+    it ever reaches the behaviour under test. Clearing only client.keys stopped
     being enough the moment the agent gained a second credential that outranks it.
 
     Args:

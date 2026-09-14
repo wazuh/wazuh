@@ -204,33 +204,54 @@ def test_unknown_agent_re_enrolls_with_the_stored_secret_and_keeps_the_id(
 
 
 @pytest.mark.parametrize('test_configuration', test_configuration, ids=['reenrollment'])
-def test_an_agent_whose_secret_is_also_refused_stops_and_says_so(
+def test_an_agent_whose_secret_is_also_refused_enrolls_without_one(
         test_configuration, set_wazuh_configuration, truncate_monitored_files, enrolled_agent,
         manager, restart_agentd):
     '''
     description: The manager refuses the control channel with `unknown_agent` AND refuses the
-                 re-enrollment the same way. The stored secret is dead, there is no password to
-                 fall back on, and the agent has to stop asking -- the behaviour #39064 exists to
-                 introduce, in place of a loop that re-asked at the top of the ramp for ever.
+                 re-enrollment the same way -- what an agent meets when its manager has been rebuilt,
+                 or restored from a backup predating the fleet. The stored secret is dead and no
+                 password is configured, so the agent shreds the secret and goes on enrolling
+                 without a credential, which is how it obtained its first identity. Stopping here
+                 would strand every agent in an open-enrolling fleet until an operator visited each
+                 endpoint, on a manager that would have taken them all straight back.
+
+                 #39064's rule against looping survives this: shredding makes the next attempt a
+                 genuinely different request, and the refusal that does stop the agent is a 403
+                 (test_a_403_on_enroll_stops_immediately_and_names_the_code).
 
     assertions:
         - The agent shreds the dead secret.
-        - It logs that operator action is required and gives up.
-        - It does not keep sending /enroll after that.
+        - It reports that it is retrying without a credential.
+        - It never reports that it is giving up.
+        - It keeps sending /enroll, and recovers unaided once the manager accepts one.
     '''
     manager.mode = 'REJECT_AUTH'
     manager.auth_force_class = 'unknown_agent'
     manager.enroll_force_auth_class = 'unknown_agent'
 
     assert wait_for(lambda: enroll_requests(manager), timeout=SETTLE)
-    expect_log('This agent has no enrollment credential left to fall back on.')
-    expect_log('https_client: re-enrollment cannot succeed; giving up')
+    expect_log('No enrollment credential is configured; retrying enrollment without one.')
 
     assert stored_secret() is None, 'The dead re-enrollment secret was not shredded'
 
     attempted = len(enroll_requests(manager))
-    time.sleep(QUIET)
-    assert len(enroll_requests(manager)) == attempted, 'The agent kept retrying after giving up'
+    assert wait_for(lambda: len(enroll_requests(manager)) > attempted, timeout=SETTLE), \
+        'The agent stopped enrolling once its secret was refused'
+
+    # Same read-off-callback_result idiom as the invalid_signature case below: FileMonitor.start()
+    # returns rather than raising when the pattern never arrives.
+    monitor = FileMonitor(WAZUH_LOG_PATH)
+    monitor.start(timeout=5, callback=make_callback('re-enrollment cannot succeed; giving up',
+                                                    prefix='.*', escape=True))
+    assert monitor.callback_result is None, \
+        'The agent gave up on a 401, which only a 403 may cause'
+
+    # The recovery the stop used to forbid: no restart, no operator.
+    manager.enroll_force_auth_class = None
+    manager.mode = 'ACCEPT'
+    assert wait_for(lambda: stored_secret() is not None, timeout=SETTLE), \
+        'The agent never re-enrolled once the manager accepted it'
 
 
 @pytest.mark.parametrize('test_configuration', test_configuration, ids=['reenrollment'])

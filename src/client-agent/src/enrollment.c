@@ -468,18 +468,30 @@ w_enroll_action_t w_enrollment_apply_policy(w_enroll_status_t status) {
         case W_ENROLL_ERR_IDENTITY_GONE:
             /* The secret is dead: it can only ever produce this same rejection, and while it is on
              * disk w_enrollment_build_request() keeps preferring it over anything that still works.
-             * Shred it, then continue only if there is something else to enroll with. */
+             * Shred it, then keep going.
+             *
+             * Shredding is what makes the next attempt a different request, and that is why
+             * retrying here is not the loop #39064 set out to remove. With the dead secret gone the
+             * agent is in exactly the state of one that has never enrolled, and an agent in that
+             * state enrolls: it may have a token or a password to present, or it may have nothing
+             * at all -- which, on a manager that accepts credential-less enrollment, is not a dead
+             * end but the ordinary path, and is how most such agents got their first identity.
+             *
+             * Stopping instead would cost an open-enrollment fleet any way to recover from a
+             * rebuilt or restored manager without an operator visiting every endpoint, on a manager
+             * that would have taken them all straight back. The refusal the DoD wanted stopped --
+             * one the manager has already judged authoritatively -- arrives as a 403, and that is
+             * W_ENROLL_ERR_AUTH_FATAL's job; it still stops. */
             w_reenroll_secret_clear();
 
             if (w_enrollment_fallback_credential_exists()) {
                 minfo("Falling back to the configured enrollment credential.");
-                return W_ENROLL_ACTION_RETRY;
+            } else {
+                minfo("No enrollment credential is configured; retrying enrollment without one. "
+                      "This succeeds only where the manager accepts credential-less enrollment.");
             }
 
-            merror("This agent has no enrollment credential left to fall back on. Operator action "
-                   "is required: re-enroll it with an enrollment token, or provide the enrollment "
-                   "password, and start the agent again.");
-            return W_ENROLL_ACTION_STOP;
+            return W_ENROLL_ACTION_RETRY;
 
         case W_ENROLL_ERR_TRANSPORT:
         case W_ENROLL_ERR_INVALID_REQUEST:
@@ -501,6 +513,10 @@ w_enroll_action_t w_enrollment_apply_policy(w_enroll_status_t status) {
  * Presence only -- whether the manager will accept it is the manager's call, and an unreadable or
  * empty file is the same as none. The one-shot enrollment token counts: if it is still on disk the
  * bootstrap has not consumed it, so the next start can use it.
+ *
+ * This chooses a log line, not a decision: the agent retries after shredding a dead secret either
+ * way. An operator reading "retrying without one" needs to know the fleet is open-enrolling; one
+ * reading "falling back" needs to know which credential is now in play.
  */
 STATIC int w_enrollment_fallback_credential_exists(void) {
     if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) == 0 && FileSize(AGENT_ENROLLMENT_TOKEN_FILE) > 0) {
