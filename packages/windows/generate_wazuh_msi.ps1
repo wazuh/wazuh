@@ -9,6 +9,8 @@ param (
     [string]$CERTIFICATE_PATH = "",
     [string]$CERTIFICATE_PASSWORD = "",
     [string]$ALLOCATOR = "no",
+    [ValidateSet("all", "symbols", "msi")]
+    [string]$Stage = "all",
     [switch]$help
     )
 
@@ -28,6 +30,9 @@ if(($help.isPresent)) {
         5. CERTIFICATE_PATH: Path to the .pfx certificate file.
         6. CERTIFICATE_PASSWORD: Password for the .pfx certificate file.
         7. ALLOCATOR: yes or no. By default 'yes'.
+        8. Stage: all, symbols or msi. By default 'all'. Use 'symbols' to only extract debug
+           symbols (e.g. to sign binaries externally in between) and 'msi' to only build the
+           MSI afterwards, instead of running both in the same call.
     USAGE:
 
         * WAZUH:
@@ -153,5 +158,8 @@ function ExtractDebugSymbols(){
 # MAIN
 ############################
 
-ExtractDebugSymbols
-BuildWazuhMsi
+switch ($Stage) {
+    "symbols" { ExtractDebugSymbols }
+    "msi"     { BuildWazuhMsi }
+    default   { ExtractDebugSymbols; BuildWazuhMsi }
+}
