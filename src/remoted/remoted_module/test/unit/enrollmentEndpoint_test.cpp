@@ -32,6 +32,7 @@
 #include "common/requestOutcomeMetrics.hpp"
 #include "decoding/iBodyDecoder.hpp"
 #include "enrollment/enrollmentEndpoint.hpp"
+#include "fakeHttpServer.hpp" // remoted::testutil::headerValue()
 #include "fakeUdsServer.hpp"
 #include "json.hpp"
 #include "jwt/enrollKeyDerivation.hpp"
@@ -1059,3 +1060,35 @@ TEST(EnrollmentEndpointTest, ReenrollmentAuthdBusinessErrorsKeepTheirOwnMapping)
     EXPECT_EQ(run.enrollValue(METRIC_REJECTED_AUTH), 0U);
     EXPECT_EQ(run.enrollValue(METRIC_REENROLL_REJECTED_SIGNATURE), 0U);
 }
+struct TransientAuthdCode
+{
+    int authdCode;
+    bool transient; // whether a retry can plausibly succeed -- 9013 (max_agents) cannot.
+};
+
+class EnrollmentEndpoint503RetryAfterTest : public ::testing::TestWithParam<TransientAuthdCode>
+{
+};
+
+TEST_P(EnrollmentEndpoint503RetryAfterTest, OnlyTheTransientCodesCarryRetryAfter)
+{
+    const auto param = GetParam();
+    nlohmann::json body;
+    body["error"] = param.authdCode;
+    body["message"] = "ERROR: some authd message";
+    auto stub = fixedAuthdServer(body.dump());
+
+    const auto response = run(openModeConfig(), kValidBody, stub.path);
+
+    ASSERT_EQ(response.status, 503) << "authd code " << param.authdCode;
+    EXPECT_EQ(remoted::testutil::headerValue(response, "Retry-After").has_value(), param.transient)
+        << "authd code " << param.authdCode;
+}
+
+INSTANTIATE_TEST_SUITE_P(AuthdCodes,
+                         EnrollmentEndpoint503RetryAfterTest,
+                         ::testing::Values(TransientAuthdCode {9013, false}, // max_agents: permanent
+                                           TransientAuthdCode {9015, true},  // worker rejection: retry may land
+                                           TransientAuthdCode {9016, true},  // cluster forward failed: retry may land
+                                           TransientAuthdCode {
+                                               9031, true})); // credential journal write failed: retry may land

@@ -15,11 +15,14 @@
 
 namespace
 {
-    /// Few attempts per request on purpose, same rationale as ConfigFetcher:
-    /// a request that is still pending after this call gets retried by the
-    /// next Notify (or, for a 409 reporting a newer offset, by this same call
-    /// -- see MAX_ROUNDS below).
-    constexpr uint32_t PER_REQUEST_MAX_ATTEMPTS = 2;
+    /// One attempt per request: requestRescan() runs on the control loop's own thread
+    /// (ControlStream::step() -> handleNotifyBody()), which must never stall waiting out a
+    /// retry -- a second attempt would sit inside RetrySender::send() for
+    /// max(Retry-After, backoff) on a 503, delaying keepalive, task pickup and the
+    /// config_hash check along with the rescan. A request still pending after this call
+    /// gets retried by the next Notify instead (or, for a 409 reporting a newer offset, by
+    /// this same call -- see MAX_ROUNDS below).
+    constexpr uint32_t PER_REQUEST_MAX_ATTEMPTS = 1;
 
     /// Bounds the 409-advance-and-retry loop so a manager that kept answering
     /// with an ever-increasing current_version could not spin this call

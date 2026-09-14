@@ -101,9 +101,9 @@ namespace invsync::vd
 
             if (!scanner.isInitialized())
             {
-                // Skipped, not NotReady: on a node with vulnerability detection disabled there is
-                // nothing to come back for, and reporting it as transient would make the caller
-                // retry a scan that can never run on this manager.
+                // Skipped, not NotReady: this gate is what the QA suite, the operator WARN and
+                // vd.scans.skipped hang off. The startup window is covered below, by the
+                // ScanTriggerResult::NotInitialized case, which does report NotReady.
                 return AgentScanOutcome::Skipped;
             }
 
@@ -117,11 +117,10 @@ namespace invsync::vd
             {
                 case VulnerabilityScannerFacade::ScanTriggerResult::Success: return AgentScanOutcome::Ok;
 
-                // Vulnerability detection is not running here. Same reasoning as the gate above.
-                case VulnerabilityScannerFacade::ScanTriggerResult::NotInitialized: return AgentScanOutcome::Skipped;
-
-                // All transient, and all for reasons outside this request: the feed is still
-                // loading, the scanner is still starting, or no indexer host is healthy.
+                // All transient, and all for reasons outside this request: vulnerability detection
+                // raced back to not-initialized between the gate above and this call, the feed is
+                // still loading, the scanner is still starting, or no indexer host is healthy.
+                case VulnerabilityScannerFacade::ScanTriggerResult::NotInitialized:
                 case VulnerabilityScannerFacade::ScanTriggerResult::FeedNotReady:
                 case VulnerabilityScannerFacade::ScanTriggerResult::ScannerNotReady:
                 case VulnerabilityScannerFacade::ScanTriggerResult::IndexerUnavailable:

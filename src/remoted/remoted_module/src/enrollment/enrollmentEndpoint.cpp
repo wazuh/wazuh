@@ -467,7 +467,16 @@ namespace remoted::enrollment
                                  result.errorCode,
                                  result.message.c_str());
                 }
-                return errorResponse(httpStatusForAuthdError(result.errorCode), result.errorCode, result.message);
+                auto response =
+                    errorResponse(httpStatusForAuthdError(result.errorCode), result.errorCode, result.message);
+                if (result.errorCode == 9015 || result.errorCode == 9016 || result.errorCode == 9031)
+                {
+                    // Transient, unlike the other 503 (9013, max_agents): a worker rejection, a
+                    // failed cluster forward, or authd being unable to journal the credential
+                    // (9031) can all succeed on retry once the underlying condition clears.
+                    response.headers.emplace_back("Retry-After", remoted::http::SHED_RETRY_AFTER_SECONDS);
+                }
+                return response;
             }
 
             incAuthdUnavailable(metrics);

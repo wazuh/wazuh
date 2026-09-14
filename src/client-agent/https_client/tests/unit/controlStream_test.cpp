@@ -1507,6 +1507,38 @@ TEST_F(ControlStreamTest, PendingRescanSurvivesA503AndReRequestsOnTheNextNotify)
     EXPECT_THAT(m_vdOffsetStore.clearPendingCalls(), ::testing::ElementsAre(100u));
 }
 
+// Unlike the test above, this one does NOT rely on the FakeWaiter interrupting the in-request
+// backoff wait: it lets the wait complete (script({true})), so a regression back to
+// PER_REQUEST_MAX_ATTEMPTS > 1 would retry /scan/vd a second time inside this very step() and be
+// caught here, instead of passing by accident the way the test above would.
+TEST_F(ControlStreamTest, ScanVdMakesOnlyOneAttemptPerRequestCycle)
+{
+    const std::string notify = R"({"status":"ok","vd_feed_offset":100})";
+    int scanVdCalls = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}"))) // Startup.
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        if (spec.target == "/control")
+        {
+            return response(TransportStatus::Ok, 200, notify);
+        }
+
+        ++scanVdCalls;
+        return response(TransportStatus::Ok, 503, R"({"error":"indexer_unavailable","retryable":true})");
+    }));
+
+    m_waiter.script({true}); // Would let a second in-request attempt happen, if one were made.
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> pending(100) -> /scan/vd 503.
+
+    EXPECT_EQ(1, scanVdCalls) << "PER_REQUEST_MAX_ATTEMPTS must stay 1: a second in-request attempt "
+                                 "would stall the control loop's own thread waiting out the 503";
+    EXPECT_TRUE(m_waiter.requestedDelays().empty()) << "no in-request retry wait should even be attempted";
+}
+
 TEST_F(ControlStreamTest, NoPendingRescanMeansNoScanVdRequest)
 {
     // VDFirst not done: observe() persists the offset but never marks pending, so no

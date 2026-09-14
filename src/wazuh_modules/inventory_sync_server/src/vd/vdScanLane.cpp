@@ -245,10 +245,6 @@ namespace invsync::vd
             // status is refusing. The caller passes this explicitly -- it already knows which
             // outcome it got, and deciding from the rendered body coupled this to a wire literal
             // instead of the AgentScanOutcome the switch above is built on.
-            // Known imprecision, pre-existing and outside this change: the adapter also reports
-            // Skipped while a configured scanner has not finished initialising, so in that window
-            // this 503 goes out bare and the caller falls back to its own backoff -- the pre-hint
-            // behaviour, not a regression.
             // The feed re-check below does not come through here either: it needs the configured,
             // feed-sized value instead of the generic hint.
             if (status == 503 && transient)
