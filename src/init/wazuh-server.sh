@@ -64,6 +64,7 @@ checkpid()
 lock()
 {
     i=0;
+    unreachable=0;
 
     # Providing a lock.
     while [ 1 ]; do
@@ -83,13 +84,25 @@ lock()
         # kill -0 on an empty pid (no pid file) fails just like it does on a
         # dead one, so a missing pid file takes the same path as a dead pid.
         kill -0 ${pid} >/dev/null 2>&1
-        if [ ! $? = 0 ]; then
-            # The owner is unreachable. A dead pid proves a prior run
-            # completed its mkdir+pid write; a lock with no pid file yet
-            # could just be one doing that right now (mkdir and the pid
+        if [ "$?" = "0" ]; then
+            # Owner alive: any earlier unreachable rounds belonged to this
+            # same owner or a different one, not to the current state.
+            unreachable=0
+        else
+            # The owner is unreachable. "$i" counts rounds this caller has
+            # waited overall, not consecutive unreachable rounds -- a
+            # caller that queued behind a live owner for a while already
+            # has "$i" past any gate the moment that owner is gone, even
+            # though the current unreachable state just started. Count
+            # consecutive rounds separately and reset it whenever the
+            # owner is seen alive.
+            unreachable=`expr ${unreachable} + 1`
+            # A dead pid proves a prior run completed its mkdir+pid write,
+            # so it is stale right away. A lock with no pid file yet could
+            # just be one doing that write right now (mkdir and the pid
             # write are two statements), so only reclaim once that has
-            # held for a few rounds.
-            if [ "$i" -gt 2 ]; then
+            # held for a few consecutive rounds.
+            if [ -n "${pid}" ] || [ "${unreachable}" -gt 2 ]; then
                 # Serialize the reclaim itself: mkdir on a second marker
                 # is exclusive the same way ${LOCK}'s own mkdir is, so
                 # only one caller at a time can be deciding whether to
