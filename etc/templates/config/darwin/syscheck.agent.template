@@ -28,7 +28,7 @@
     <ignore type="sregex">.log$|.swp$</ignore>
 
     <!-- Check the file, but never compute the diff -->
-    <nodiff>/private/etc/ssl/private.key</nodiff>
+    <nodiff type="sregex">^/private/etc/ssl/private/</nodiff>
 
     <skip_nfs>yes</skip_nfs>
     <skip_dev>yes</skip_dev>
