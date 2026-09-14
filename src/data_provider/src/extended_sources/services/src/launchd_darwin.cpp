@@ -314,6 +314,9 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                     // inetdCompatibility is declared as a dictionary, so its mere presence marks
                     // the job as inetd compatible.
                     if (keyPair.second == "inetd_compatibility") service.inetdCompatibility = "true";
+                    // Disabled may hold a feature flag conditional that cannot be evaluated here.
+                    // Flag it so it is not mistaken for an absent key, which means enabled.
+                    else if (keyPair.second == "disabled") service.disabled = "conditional";
                 }
             }
 

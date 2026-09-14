@@ -727,7 +727,8 @@ nlohmann::json SysInfo::getServices() const
         serviceItem["service_sub_state"]    = UNKNOWN_VALUE;
 
         // Disabled is a plist boolean, so the provider yields "true"/"false", but a plist may also
-        // spell it as "0"/"1". An unset key means enabled, which is the launchd default.
+        // spell it as "0"/"1". An unset key means enabled, which is the launchd default, while any
+        // other value is a form we cannot evaluate and must not report either way.
         const auto disabledValue = svc.value("disabled", std::string{});
 
         if (disabledValue == "1" || disabledValue == "true")
