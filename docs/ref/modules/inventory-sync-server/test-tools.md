@@ -122,8 +122,10 @@ inventory_sync_server_testtool --serve [--no-vd] [--config <file>] [--logFile <f
 
 Behavior worth knowing:
 
-- A `503` with `Retry-After` (the CVE feed still downloading) is retried, honoring the header,
-  until `--feed-timeout` expires — so a test run can start before the feed finished seeding.
+- A `503` whose body names the CVE feed gate (`vulnerability feed not ready`) is retried,
+  honoring `Retry-After`, until `--feed-timeout` expires — so a test run can start before the
+  feed finished seeding. Every 503 carries `Retry-After` now, so the header alone no longer
+  identifies the feed gate; any other `503` is ordinary backpressure and is not retried here.
 - A directory input processes every `*.json` in it, sorted, as one session each.
 - The exit code is non-zero if any session did not answer `200`.
 - `--serve` boots the module pair and keeps the socket open until SIGTERM/SIGINT instead of
