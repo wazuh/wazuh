@@ -566,7 +566,7 @@ int w_agent_token_bootstrap(int uid, int gid) {
         return -1;
     }
 
-    if (w_enrollment_process_response(&enroll_result) != W_ENROLL_OK) {
+    if (w_enrollment_process_response(&enroll_result, built_request.enroll_kid) != W_ENROLL_OK) {
         /* w_enrollment_process_response() already logged the specific reason. */
         w_enroll_request_destroy(&built_request);
         unlink(anchor_file.name);
