@@ -157,8 +157,9 @@ public:
  */
 struct IndexerBulkRequestStats
 {
-    uint64_t requests {0}; ///< `_bulk` POSTs sent (full buffers and split chunks alike).
-    uint64_t bytes {0};    ///< NDJSON payload bytes those POSTs carried.
+    uint64_t requests {0};        ///< `_bulk` POSTs sent (full buffers and split chunks alike).
+    uint64_t bytes {0};           ///< NDJSON payload bytes those POSTs carried.
+    uint64_t conflictRetries {0}; ///< by-query version conflict waits spent, delete and update alike.
 };
 
 /**
