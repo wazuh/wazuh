@@ -347,6 +347,10 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | DELETE | `/agents` | Delete agents |
 | POST | `/agents/insert` | Insert agent with key |
 | POST | `/agents/insert/quick` | Quick insertion |
+| POST | `/agents/enrollment-tokens` | Mint an enrollment token (the `token` is returned once) |
+| GET | `/agents/enrollment-tokens` | List enrollment tokens (never their credential) |
+| DELETE | `/agents/enrollment-tokens/{token_id}` | Revoke an enrollment token |
+| DELETE | `/agents/enrollment-tokens` | Purge enrollment tokens: `status=dead` (default) removes the ones that can no longer enrol anybody, `status=all` empties the store |
 | PUT | `/agents/{agent_id}/restart` | Restart agent (v5.0.0+) |
 | PUT | `/agents/{agent_id}/reload` | Reload agent config (v5.0.0+) |
 | GET | `/agents/{agent_id}/key` | Get agent key |
@@ -389,15 +393,15 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | GET | `/cluster/nodes` | List nodes |
 | GET | `/cluster/healthcheck` | Healthcheck |
 | GET | `/cluster/local/info` | Local node info |
-| GET | `/cluster/local/config` | Local node config |
+| GET | `/cluster/local/config` | Local node config. The cluster key comes back masked unless the caller holds `cluster:read_secrets` over this node |
 | GET | `/cluster/api/config` | API config |
 | PUT | `/cluster/restart` | Restart cluster |
 | GET | `/cluster/configuration/validation` | Validate config |
 | GET | `/cluster/{node_id}/status` | Node status |
 | GET | `/cluster/{node_id}/info` | Node info |
-| GET | `/cluster/{node_id}/configuration` | Node config |
+| GET | `/cluster/{node_id}/configuration` | Node config. Sensitive values are masked unless the caller holds `cluster:read_secrets` over that node |
 | PUT | `/cluster/{node_id}/configuration` | Update node config |
-| GET | `/cluster/{node_id}/configuration/{component}/{configuration}` | Active config |
+| GET | `/cluster/{node_id}/configuration/{component}/{configuration}` | Active config. `auth/auth` carries the enrollment password, masked unless the caller holds `cluster:read_secrets` over that node; serving it in clear is logged as `secret_read` in that node's `cluster.log` |
 | GET | `/cluster/{node_id}/daemons/stats` | Daemon stats |
 | GET | `/cluster/{node_id}/logs` | Node logs |
 | GET | `/cluster/{node_id}/logs/summary` | Log summary |

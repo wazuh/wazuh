@@ -19,11 +19,13 @@
 #include "jwt/jwtRequestTokenVerifier.hpp"
 #include "jwt/secureBytes.hpp"
 #include "keyProvider.hpp"
+#include "spkiPin.hpp"
 
 #include "external/cpp-httplib/httplib.h"
 #include "external/nlohmann/json.hpp"
 
 #include <openssl/evp.h>
+#include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <zstd.h>
 
@@ -147,6 +149,14 @@ class FakeManager final
             , m_enrollPassword(std::move(enrollPassword))
             , m_enrollForcedStatus(enrollForcedStatus)
         {
+            // Generated BEFORE fork(), deliberately: the server runs in a child
+            // process that shares no memory with the test, so a certificate made
+            // inside runServer() could never be read back here. Minting it in the
+            // parent means the child inherits these exact bytes through fork() and
+            // cacertsPem()/cacertsPin() answer for what the route actually serves --
+            // which is what lets a test mint a token carrying the matching pin.
+            m_cacertsPem = makeCacertsPem();
+
             m_pid = fork();
 
             if (m_pid == 0)
@@ -169,6 +179,23 @@ class FakeManager final
 
         FakeManager(const FakeManager&) = delete;
         FakeManager& operator=(const FakeManager&) = delete;
+
+        /// The exact PEM the GET /cacerts route serves. Readable in the test
+        /// process because it is minted before fork() (see the constructor).
+        const std::string& cacertsPem() const
+        {
+            return m_cacertsPem;
+        }
+
+        /// That certificate's SPKI pin -- 43 characters of unpadded base64url,
+        /// the form an enrollment token's `pin` field carries. This is how a
+        /// pin-compare test gets a pin that is genuinely expected to match,
+        /// without hardcoding a value for a certificate generated at run time.
+        std::string cacertsPin() const
+        {
+            const auto digest = spkiSha256FromPem(m_cacertsPem);
+            return digest ? spkiPinBase64Url(*digest) : std::string {};
+        }
 
     private:
         /// Authenticates one agent request exactly as the manager does: the SHARED
@@ -761,6 +788,46 @@ class FakeManager final
                 response.status = 200;
                 response.set_content(*lastEnrollBody, "text/plain");
             });
+
+            // GET /cacerts: the unverified-fetch leg of the enrollment-token bootstrap.
+            // Serves m_cacertsPem, minted in the constructor before fork() and so
+            // readable by the test through cacertsPem()/cacertsPin(). It is
+            // deliberately NOT the TLS listener's own certificate: a test asserting on
+            // this body proves the client received exactly the bytes this route served,
+            // not something it could have derived from the handshake it rode in on.
+            //
+            // This fake manager never models global_prefix for any route; prefix-folding
+            // is the client's job (prefixedTarget(), see cacertsClient.hpp), covered at
+            // the unit level, not here.
+            server.Get("/cacerts",
+                       [pem = m_cacertsPem](const httplib::Request&, httplib::Response & response)
+            {
+                response.status = 200;
+                response.set_content(pem, "application/x-pem-file");
+            });
+        }
+
+        /// Mints the certificate GET /cacerts serves and returns it as PEM.
+        static std::string makeCacertsPem()
+        {
+            EVP_PKEY* pkey = nullptr;
+            X509* cert = nullptr;
+            makeSelfSigned(&pkey, &cert);
+            std::string pem = pemEncodeCert(cert);
+            X509_free(cert);
+            EVP_PKEY_free(pkey);
+            return pem;
+        }
+
+        static std::string pemEncodeCert(X509* cert)
+        {
+            BIO* bio = BIO_new(BIO_s_mem());
+            PEM_write_bio_X509(bio, cert);
+            char* data = nullptr;
+            const long len = BIO_get_mem_data(bio, &data);
+            std::string pem(data, static_cast<size_t>(len));
+            BIO_free(bio);
+            return pem;
         }
 
         // Self-signed cert + key generated in-process (no CLI, no files). The
@@ -834,6 +901,9 @@ class FakeManager final
         int m_scanVdRejectFirstNAttempts {0};
         std::string m_enrollPassword;
         int m_enrollForcedStatus {0};
+        /// The certificate GET /cacerts serves, minted before fork() so both
+        /// processes hold the same bytes. See the constructor.
+        std::string m_cacertsPem;
 };
 
 #endif // _HC_FAKE_MANAGER_HPP

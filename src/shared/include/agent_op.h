@@ -93,8 +93,17 @@ int w_request_agent_add_local(int sock,
  * @param key_hash Hash of the key if the agent already has one.
  * @param id ID of the newly generated key.
  * @param key KEY of the newly generated key.
+ * @param reenroll_secret If not NULL, receives (os_strdup'ed) the re-enrollment secret the master generated for the
+ *        new agent (issue #38993) -- an empty string when the master's answer carried none (a master that predates
+ *        the secret), which callers treat as "absent". Left untouched on any failure.
  * @param force Force option to be used during the registration. -1 means disabled. 0 or a positive value means enabled.
  * @param agent_id ID of the agent when requesting a new key for a specific ID.
+ * @param token_id Enrollment token the agent presented (issue #38993), forwarded as `token_id` so the master
+ *        counts the use; NULL when the enrollment carries no token.
+ * @param reenroll_kid Re-enrollment (issue #38993): the agent id the bearer names, forwarded with reenroll_bearer
+ *        as `reenroll` = {kid, bearer} so the master -- the only node holding the agent's secret -- verifies it
+ *        and rotates the agent's credentials in place. NULL for a first enrollment.
+ * @param reenroll_bearer The `wazuh-enroll+jwt` the agent re-enrolls with; NULL with reenroll_kid.
  * @param master_error_code If not NULL, receives the master's own numeric error code when it responds with a
  *        well-formed business rejection (e.g. duplicate name/IP). Left untouched on success, on a transport
  *        failure, or on a malformed/unparseable response from the master -- callers must not assume it was
@@ -108,8 +117,12 @@ int w_request_agent_add_clustered(char *err_response,
                                   const char *key_hash,
                                   char **id,
                                   char **key,
+                                  char **reenroll_secret,
                                   authd_force_options_t *force_options,
                                   const char *agent_id,
+                                  const char *token_id,
+                                  const char *reenroll_kid,
+                                  const char *reenroll_bearer,
                                   int *master_error_code);
 
 // Send a clustered agent remove request.

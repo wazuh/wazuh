@@ -21,15 +21,22 @@ remoted_module/
 │   ├── remotedModule.cpp           # extern "C" shims + facade delegation + log sink definition
 │   ├── remotedModuleFacade.hpp     # worker thread + lifecycle; owns the HTTP server + auth + endpoints
 │   ├── auth/                       # ns remoted::auth — framework-agnostic JWT bearer auth (see below)
-│   │   └── passwordKeySource.hpp/.cpp  # etc/authd.pass -> HKDF key of wazuh-enroll+jwt, see Agent enrollment below
+│   │   ├── passwordKeySource.hpp/.cpp  # etc/authd.pass -> HKDF key of the shared-key wazuh-enroll+jwt, see Agent enrollment below
+│   │   └── tokenKeySource.hpp/.cpp     # etc/enrollment_tokens.json -> per-token HKDF keys (read-only replica of authd's store)
 │   ├── common/                     # ns remoted::common — leaf utilities with no layer of their own:
 │   │                               #   logThrottle.hpp (rate-limited logging), zstdDecoder.hpp/.cpp,
 │   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below),
 │   │                               #   requestOutcomeMetrics.hpp (per-endpoint responses.* + latency)
 │   ├── decoding/                   # ns remoted::decoding — Content-Encoding policy (see below)
-│   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below)
+│   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below);
+│   │                               #   tlsCertificateStatus.hpp/.cpp = served-certificate expiry + CA
+│   │                               #   coherence evaluation and its daily monitor thread;
+│   │                               #   caCertificateSource.hpp/.cpp = the CA file as ONE read:
+│   │                               #   certificates re-serialised + verdict, cached by content hash
 │   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below);
 │   │   │                           #   endpoint.hpp also carries the remoted.auth.reject.* catalog
+│   │   ├── cacertsEndpoint.hpp/.cpp    # GET /cacerts: publishes remote.https.ca_certificate's certificates (see below)
+│   │   ├── cacertsMetrics.hpp          # remoted.cacerts.* + remoted.server.tls.* name catalog
 │   │   ├── controlEndpoint.hpp/.cpp    # POST /control JSON dispatch (see below)
 │   │   ├── downloadMetrics.hpp         # remoted.download.* catalog (POST /download)
 │   │   └── scanVdEndpoint.hpp/.cpp     # POST /scan/vd JSON dispatch (see below)
@@ -41,19 +48,32 @@ remoted_module/
 │   └── downstream/                 # ns remoted::downstream — async UDS forwarding + limiter (see below);
 │                                   #   forwarderMetrics.hpp = remoted.forwarder.* failure catalog
 ├── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
-└── tools/
+└── tools/                          # CLIs for an installed manager; dependencies in requirements.txt
+    ├── wire_jwt.py                 # the shared bearer minter every sender imports; --self-test
+    │                               #   reproduces the frozen vectors the C++ side is pinned to
     ├── send_stateless.py           # CLI to sign + POST /stateless for manual/E2E testing (see below)
     ├── send_agent_json.py          # CLI to sign + POST /stats and /config, and check the answer
     │                               #   (the deletion has no remoted route: see
     │                               #    inventory_sync_server/tools/send_delete_agent.py)
     ├── send_control.py             # CLI to sign + POST /control (startup/notify/shutdown scenarios)
-    └── send_scan_vd.py             # CLI to sign + POST /scan/vd, incl. offset match/mismatch (see below)
+    ├── send_scan_vd.py             # CLI to sign + POST /scan/vd, incl. offset match/mismatch (see below)
+    ├── send_download.py            # CLI to sign + POST /download: config/WPK, the 403 authorization
+    │                               #   case, and a concurrency+RSS check (see below)
+    ├── send_enroll.py              # CLI for POST /enroll in all three modes (open / password / mTLS)
+    ├── monitor.py                  # samples remoted from /proc while a load test runs (connections,
+    │                               #   threads, fds, RSS, CPU as a counter delta) -- pairs with
+    │                               #   send_download.py; NOT the metrics scraper
+    ├── requirements.txt            # requests (HTTP/TLS) and zstandard (compressed payloads)
+    └── load_balancer/              # reproducible proxy lab: NGINX/HAProxy configs (working AND
+                                    #   deliberately broken ones), a second manager node, cert
+                                    #   generation and a PASS/FAIL runner -- its own README.
+                                    #   Operator-facing counterpart: docs/ref/.../load-balancers/
 ```
 
 Each internal concern is a folder under `src/` (namespaced, PRIVATE, reachable by prefix —
-`"auth/...`", `"decoding/...`", `"http_server/...`", `"endpoints/...`", `"control/...`",
-`"downstream/...`", and `"enrollment/...`" — since `src/` is on the include path). New
-endpoints get their own folder under `src/endpoints/<name>/`.
+`"auth/...`", `"common/...`", `"decoding/...`", `"http_server/...`", `"endpoints/...`",
+`"control/...`", `"scanvd/...`", `"downstream/...`", and `"enrollment/...`" — since `src/` is on
+the include path). New endpoints get their own folder under `src/endpoints/<name>/`.
 
 ## HTTP(S) server sub-layer (`src/http_server/`)
 
@@ -62,17 +82,34 @@ the underlying library (today RESTinio, likely `Boost.Beast + Boost.Asio` later)
 without touching any registered endpoint.
 
 Metrics: the transport's backpressure state is published as the `remoted.server.budget.*` pulls
-(via `IHttpServer::diagnostics()`) — see the [Metrics catalog](#metrics-catalog).
+(via `IHttpServer::diagnostics()`), and the served certificate's health as the
+`remoted.server.tls.*` pulls (via `IHttpServer::certificateStatus()`) — see the
+[Metrics catalog](#metrics-catalog).
 
 ```
 src/http_server/
 ├── IHttpServer.hpp          # neutral interface + types (Method/HttpRequest/HttpResponse/
 │                            #   IHttpResponder/HttpServerConfig). No transport types leak here.
 ├── inFlightBudget.hpp       # global in-flight byte budget + RAII Reservation (backpressure/503)
+├── tlsCertificateStatus.hpp/.cpp # served-leaf expiry + "does the configured CA sign it" evaluation
+│                            #   (pure functions over X509 + a PEM path) and TlsCertificateMonitor
 ├── httpServerConfig.hpp/.cpp# buildHttpServerConfig(): C-ABI struct -> HttpServerConfig (+ fallbacks)
 ├── httpServerFactory.hpp    # makeHttpServer() -> the single transport swap point
 └── RestinioHttpServer.hpp/.cpp # RESTinio + OpenSSL implementation (PImpl hides RESTinio in the .cpp)
 ```
+
+- **Certificate status (`tlsCertificateStatus.hpp`, `IHttpServer::certificateStatus()`):** when
+  `start()` builds the TLS context it evaluates the leaf it just loaded — days to `notAfter`
+  (negative once expired) and whether `HttpServerConfig::caCertificatePath` (the CA `GET /cacerts`
+  hands out; any `CERTIFICATE` block of the file counts, so a bundle works) signs it — logs the
+  result (ERROR expired / CA does not sign, WARN < 30 days / CA unreadable) and records it **before**
+  `run_async`, so no request can ever read "not evaluated yet". A `TlsCertificateMonitor` (own
+  thread parked on a `condition_variable::wait_for`, the module's canonical periodic-task shape —
+  RESTinio's `run_async()` keeps its `io_context` private, so no timer there: D45) re-evaluates and
+  re-logs every `HttpServerConfig::certificateStatusInterval` (24 h; tests inject 1 s — it is not a
+  configuration option) and is stopped in `stopAccepting()` before the worker-pool join. The leaf
+  compared is the one in the `SSL_CTX` (constant until restart); the CA is re-read from disk at every
+  tick. `certificateStatus()` is a default `{}` on the interface, so the test fakes need nothing.
 
 - **Endpoint registration:** `addRoute(Method, path, handler)` before `start()`. Paths are
   **logical**: the transport serves every route under `HttpServerConfig::globalPrefix`
@@ -164,7 +201,10 @@ src/http_server/
        `certificate_path`/`private_key_path` are file paths (not PEM content) opened by the
        module itself, after `remoted` has already dropped root privileges (`Privsep_SetUser()`)
        -- so both files (and `ca_path`, when configured) must be readable by the unprivileged
-       user `remoted` runs as.
+       user `remoted` runs as. `secure.c` probes the pair with `access(R_OK)`
+       (`w_remoted_check_tls_files()`) right before `remoted_module_start()` and exits with a
+       deterministic ERROR when either is missing or unreadable, so this module's own load
+       failure only fires for files that exist and are readable but unusable.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
        `max_parallel_connections` (default 512) and `max_deferred_requests` (default 256) --
        populated from the `remoted.max_inflight_bytes`/`remoted.max_parallel_connections`/
@@ -207,9 +247,29 @@ src/endpoints/
 ├── statelessEndpoint.hpp/.cpp # /stateless policy: identity check + downstream target + post-processing
 ├── statefulEndpoint.hpp/.cpp # /stateful policy: opaque inventory-sync sessions, contract passthrough
 ├── statsEndpoint.hpp/.cpp    # /stats policy: forwards to modulesd's inventory sync server
-└── configEndpoint.hpp/.cpp  # /config policy: near-duplicate of statsEndpoint, on purpose
-└── downloadEndpoint.hpp/.cpp  # /download policy: request grammar + resource resolution + file streaming
+├── configEndpoint.hpp/.cpp   # /config policy: near-duplicate of statsEndpoint, on purpose
+├── downloadEndpoint.hpp/.cpp # /download policy: request grammar + resource resolution + file streaming
+├── iAgentGroupSource.hpp     # interface: the selector an authenticated agent may download
+└── cacertsEndpoint.hpp/.cpp  # GET /cacerts: the CA that signs the listener cert, certificates only (no auth)
 ```
+
+- **`GET /cacerts` (`cacertsEndpoint.hpp/.cpp`, ns `remoted::endpoints::cacerts`):** the one route
+  besides the health probe registered as a *raw* `addRoute()` — no `AuthGateway` (the caller holds
+  no credential yet: this is how it gets the CA to trust the manager with), `countAgainstBudget=false`
+  (a trust bootstrap is never shed under memory pressure), `Buffered`, under the global prefix like
+  every route. `makeHandler(caCertificatePath, status, CacertsMetrics, const EndpointHttpMetrics*)`
+  reads the PEM file on **every** request (tiny, cold; no cache to invalidate): unreadable or without a
+  `-----BEGIN CERTIFICATE-----` block ⇒ `404 {"error":"not_found"}` (the transport's unknown-route
+  body); `status().caMatchesLeaf == false` (the transport's evaluation says this CA does not sign the
+  served leaf) ⇒ `503 {"error":"ca_mismatch"}` — refused, because handing it out would make every
+  verifying agent fail against this very listener; `true` **or `nullopt`** (never evaluated, or the CA
+  was unreadable at the last tick and is back) ⇒ `200 Content-Type: application/x-pem-file`, the file
+  byte for byte. Body and headers (an `Authorization`, say) are ignored. One `LogThrottle` per cause.
+  The status function the facade passes locks a `weak_ptr` to the server and calls
+  `certificateStatus()`; the WHAT is counted through a `MeteredResponder` on
+  `remoted.http.cacerts.responses.*` (method label `GET`), the WHY on `remoted.cacerts.*`. Known
+  window: a *different but valid* CA written over the file is served until the next daily tick or a
+  restart (refresh-on-fingerprint is a deferred improvement).
 
 - **Endpoint handler (async):**
   `using AuthenticatedHandler = std::function<void(std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder>)>;`
@@ -315,6 +375,10 @@ src/control/
 ├── metrics.hpp               # ControlMetrics (remoted.control.* registry handles + wdb latency histogram)
 ├── controlHandler.hpp/.cpp   # ControlHandler: core business logic for all three message types
 ├── agentRegistry.hpp/.cpp    # AgentRegistry: thread-safe sharded map (agent metadata cache + eviction)
+├── groupSelector.hpp         # toGroupsCsv()/makeConfigToken(): the group selector /control hands the
+│                             #   agent as config_token, shared so /download resolves the same string
+├── registryAgentGroupSource.hpp/.cpp # RegistryAgentGroupSource: IAgentGroupSource over the registry
+│                             #   (answers "which selector may this agent download?", nullopt = deny)
 ├── wazuhDBClient.hpp/.cpp    # WazuhDBClient: async UDS client to wazuh-db (agent status/data updates)
 ├── taskClient.hpp/.cpp       # TaskClient: async UDS client to task-manager (pending task fetch)
 ├── mergedMgWatcher.hpp/.cpp  # MergedMgWatcher: inotify + poll watcher for var/multigroups/*.mg changes
@@ -619,8 +683,10 @@ and clients, which are all thread-safe internally.
    thread runs periodically (every `agentRegistryEvictionIntervalSec`). Wazuh-db and task-manager
    clients maintain persistent connections (reconnect on error).
 3. **Shutdown**: `RemotedModuleFacade::stop()` stops the HTTP server (drains in-flight requests),
-   then stops the wazuh-db and task-manager clients (drains their queues), then destroys the
-   registry (eviction thread stops automatically on destruction).
+   then resets `ControlHandler` — whose destructor stops and joins the eviction thread first, so
+   nothing can touch the registry afterwards, and then drops the wazuh-db and task-manager clients
+   (draining their queues). The registry itself outlives that reset: `/download` shares it to
+   authorize config requests, so it is released later, with the HTTP server's route table.
 
 ## Scan endpoint (`POST /scan/vd`) — `src/scanvd/`
 
@@ -753,13 +819,18 @@ and the framework already use. Port 1515 is untouched and keeps working exactly 
 legacy 4.x agents that never speak HTTPS. **`/enroll` is the intended long-term enrollment path**;
 1515 stays alive only for that backward-compatibility window, not as a permanent second design.
 
+The same route also serves an agent that already has an identity and wants to keep it
+(**re-enrollment**, issue #38993): the bearer then names the agent, and authd on the master rotates
+that agent's key and re-enrollment secret in place — same id, no removal, no purge.
+
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Ag as New agent (no client.keys entry)
+    participant Ag as Agent (new, or re-enrolling)
     participant EP as POST /enroll<br/>(enrollmentEndpoint)
     participant EA as EnrollmentAuthenticator
     participant PK as PasswordKeySource<br/>(etc/authd.pass)
+    participant TK as TokenKeySource<br/>(etc/enrollment_tokens.json)
     participant AC as AuthdClient
     participant AD as authd<br/>(queue/sockets/auth.sock UDS)
 
@@ -767,42 +838,80 @@ sequenceDiagram
     Note over EP: enrollment_enabled? -- 403 immediately if not, before auth/bridge
     Note over EP: If the listener requires a client cert, TLS already rejected the<br/>connection before this request could ever arrive here
     EP->>EA: authenticate(protocolVersion, authorization, bodySize, now)
-    alt requirePassword
+    Note over EA: protocol-version first, then the body cap, then peekKid() on the bearer's header
+    alt kid = enrollment token id (every mode)
+        EA->>TK: lookup(kid) (+ ONE forced re-read if unknown)
+        TK-->>EA: HKDF key + expires + revoked (or nullopt)
+        Note over EA: verifyWithKid(), then expiry, then revocation
+    else kid = agent id (re-enrollment, every mode)
+        Note over EA: NOT verified here -- handed back as ReenrollmentRequested{kid, bearer}
+    else no kid, requirePassword
         EA->>PK: currentKey()
         PK-->>EA: HKDF-derived HS256 key (or nullopt)
-        Note over EA: verify the wazuh-enroll+jwt bearer (JwtEnrollTokenVerifier)
-    else not requirePassword
+        Note over EA: verify the shared-key wazuh-enroll+jwt bearer (JwtEnrollTokenVerifier)
+    else no kid, not requirePassword
         Note over EA: always-pass -- nothing left for THIS class to check
     end
-    EA-->>EP: ok / AuthError
+    EA-->>EP: EnrollmentGranted{tokenId?} / ReenrollmentRequested / AuthError
     Note over EP: parse JSON, validate name/version/groups/ip
-    EP->>AC: addAgent({name, ip, groups, key_hash})
+    EP->>AC: addAgent({name, ip, groups, key_hash, token_id?, reenroll?})
     AC->>AD: {"function":"add","arguments":{...}} (SizeHeaderProtocol)
-    AD-->>AC: {"error":0,"data":{id,name,ip,key}} or {"error":90xx,...}
+    AD-->>AC: {"error":0,"data":{id,name,ip,key,reenroll_secret}} or {"error":90xx,...}
     AC-->>EP: AuthdResult
-    EP-->>Ag: 200 {id,name,ip,key} / mapped 4xx/5xx
+    EP-->>Ag: 200 {id,name,ip,key,reenroll_secret} / mapped 401/403/4xx/5xx
 ```
 
 ### Two independent authentication gates
 
 Unlike every other route, `/enroll` cannot be gated by `AuthGateway`'s `client.keys` lookup — the
-caller has no key yet. Two checks apply instead, decided once at facade startup from how the HTTPS
+caller has no key yet (or, when re-enrolling, must prove it holds something other than the key it is
+about to replace). Two checks apply instead, decided once at facade startup from how the HTTPS
 listener and authd are each configured — never per request — and, critically, **independently of
-each other**:
+each other**: the TLS listener's client-certificate requirement, and the `wazuh-enroll+jwt` bearer.
+The bearer itself comes in **three forms**, told apart by the JOSE header's `kid` alone
+(`JwtEnrollTokenVerifier::peekKid()`, by shape, before any signature work):
+
+| Header `kid` | Credential | Key (`shared_modules/utils/jwt/enrollKeyDerivation.hpp`) | Verified by | When |
+|---|---|---|---|---|
+| none | the shared enrollment password | HKDF of `etc/authd.pass` (`PasswordKeySource`, `info` label `WAZUH-ENROLL-JWT-KEY`) | remoted | required when `requirePassword` (authd's `use_password`) is set; **ignored** otherwise |
+| 22 canonical base64url chars = a 16-byte **enrollment token id** (issue #38993) | an enrollment token minted by the operator (authd) | HKDF of that token's 16-byte secret (`TokenKeySource`'s replica of `etc/enrollment_tokens.json`, label `WAZUH-ENROLL-TOKEN-KEY`) | remoted, **always, in every mode** — a presented credential is never ignored — in this order: lookup → signature → expiry → revocation; then `token_id` travels to authd, which consumes one use | whenever presented |
+| the canonical **agent id** (`001`) | **re-enrollment** (issue #38993): the agent's own re-enrollment secret | HKDF of the 32-byte `reenroll_secret` (label `WAZUH-REENROLL-KEY`) — the secret lives in the master's `global.db` and nowhere else | **authd on the master** (`local_reenroll()`, `os_auth/src/local-server.c`): remoted does NOT verify it and forwards it verbatim as `arguments.reenroll = {kid, bearer}`; authd answers 9026/9027/9028 | whenever presented, in every mode |
+
+The two `kid` shapes are disjoint (a 22-character base64url string is never a canonical digit
+string), so classification is unambiguous; a `kid` of neither shape, or any other header member,
+is not a `wazuh-enroll+jwt` at all and is rejected before any key store is consulted.
 
 - **Client certificate** — purely a property of the HTTPS listener's `ClientVerificationMode`
   (`Certificate` or `Full`). When set, the TLS handshake validates the agent's client certificate
   against `root-ca.pem` **before the request ever reaches a handler** — `EnrollmentAuthenticator`
   is never even consulted for this; it has no notion of a client certificate at all. Mirrors
   authd's own `agent_ca`/`ssl_verify_host` mode.
-- **Password (`EnrollmentAuthConfig::requirePassword`)** — set whenever authd's `use_password`
-  flag is on, regardless of whether the listener also requires a client certificate. When set, the
-  request must carry `Authorization: Bearer <wazuh-enroll+jwt>`: a JWT of the closed enroll profile
-  (`shared_modules/utils/jwt/jwtEnrollProfileV1.hpp`) — header exactly `{alg: HS256, typ:
-  wazuh-enroll+jwt}` (no `kid`, one shared key), claims exactly `{exp, iat, jti, nbf}` (no
-  `iss`/`sub`, no identity yet), `exp - iat = 60`, verified by the shared
-  `JwtEnrollTokenVerifier` with the `TimePolicy` every route reads
-  (`remoted.jwt_max_age` / `remoted.jwt_clock_skew`).
+- **Bearer (`Authorization: Bearer <wazuh-enroll+jwt>`)** — a JWT of the closed enroll profile
+  (`shared_modules/utils/jwt/jwtEnrollProfileV1.hpp`): header exactly `{alg: HS256, typ:
+  wazuh-enroll+jwt}` plus the optional `kid` of the table above, claims exactly `{exp, iat, jti,
+  nbf}` (no `iss`/`sub` in any form — the re-enrollment identity is the `kid`), `exp - iat = 60`,
+  verified by the shared `JwtEnrollTokenVerifier` (`verify()` for the shared key, `verifyWithKid()`
+  for the two `kid` forms — the header must name exactly the `kid` whose key is used) with the
+  `TimePolicy` every route reads (`remoted.jwt_max_age` / `remoted.jwt_clock_skew`). The
+  **Password** gate (`EnrollmentAuthConfig::requirePassword`) is set whenever authd's `use_password`
+  flag is on, regardless of whether the listener also requires a client certificate, and decides only
+  what happens to a request that presents **no** `kid` credential: with it set, the shared-key bearer
+  is required; without it, a shared-key bearer (or none) passes.
+
+  For an **enrollment token** bearer, `TokenKeySource::lookup(kid)` runs first; an unknown `kid`
+  forces ONE re-read of the store (`reloadIfMissing()`, rate-limited to one per second) before the
+  request is refused as `TokenUnknown` — a token minted on the master moments ago may not have
+  reached this worker's copy yet. The signature is checked BEFORE the token's state, so an
+  `expired`/`revoked` answer is only ever given to a caller that proved it holds the token's secret
+  (ids are 128-bit random values, so an `unknown` answer for a guessed id leaks nothing either).
+  Expiry uses the same rule authd applies when it consumes the use (`now >= expires` is expired),
+  so the two never disagree on the boundary second. Uses/`max_uses` stay authd's business: the
+  verified `token_id` is forwarded and authd is the final word (9022/9023/9024, mapped to `403`).
+
+  For a **re-enrollment** bearer, remoted checks only what it checks for every request (the
+  protocol version and the body cap) and hands `{kid, bearer}` to the endpoint unverified: the
+  secret it is signed with is the master's alone. This holds in Password mode too, even when
+  `etc/authd.pass` is unavailable on this node — the password key is simply not involved.
 
   `EnrollmentAuthenticator::authenticate()` checks the `protocol-version` header first — before the
   body-size cap and before any credential, in **every** mode including the credential-less one — and
@@ -816,14 +925,18 @@ each other**:
   agent doesn't have one. A token of either profile presented to the other's verifier fails on its
   exact header set before the signature is even considered, so the two can never be confused.
 
-  The signing key is not the password itself: `PasswordKeySource` derives a 32-byte key from it
-  with the shared `enrollKeyDerivation.hpp` — **HKDF-SHA256**, salt 32 × 0x00,
+  The signing key is never the secret itself: `PasswordKeySource` derives a 32-byte key from the
+  password with the shared `enrollKeyDerivation.hpp` — **HKDF-SHA256**, salt 32 × 0x00,
   `info = "WAZUH-ENROLL-JWT-KEY\x01"` — the single construction the agent's `EnrollSigner` runs
-  too, so the two cannot drift. HKDF is deterministic and salt-free on purpose (any implementation
-  reproduces it with a handful of standard-library calls); the version byte in `info` reserves room
-  to change the construction later without ambiguity. A memory-hard KDF would add nothing here — the derived
-  key is never persisted, so the offline-guessing surface already matches authd's own
-  plaintext-password-over-TLS on 1515.
+  too, so the two cannot drift. The same construction with a different `info` label derives the
+  other two keys (`deriveEnrollTokenKey()`: `"WAZUH-ENROLL-TOKEN-KEY\x01"` over the 16-byte token
+  secret; `deriveReenrollKey()`: `"WAZUH-REENROLL-KEY\x01"` over the 32-byte re-enrollment secret) —
+  one construction, three domain-separated keys, replicated in C on authd's side
+  (`shared/src/enrollment_token.c`, `os_auth/src/reenroll_verify.cpp`). HKDF is deterministic and
+  salt-free on purpose (any implementation reproduces it with a handful of standard-library calls);
+  the version byte in `info` reserves room to change the construction later without ambiguity. A
+  memory-hard KDF would add nothing here — the derived key is never persisted, so the
+  offline-guessing surface already matches authd's own plaintext-password-over-TLS on 1515.
 
   **Frozen known-answer vector** (shared by every implementation — `test_vectors::enroll` in
   `shared_modules/utils/jwt/testVectors.hpp`, mirrored under `"enroll"` in
@@ -838,7 +951,12 @@ each other**:
 
   (Pinned on the C++ side by `enrollKeyDerivation_test.cpp` / `jwtEnrollSignVerify_test.cpp` /
   `passwordKeySource_test.cpp`, on the agent by `enrollSigner_test.cpp`, and in Python by
-  `wire_jwt.py --self-test`.)
+  `wire_jwt.py --self-test`. The token-`kid` and agent-`kid` forms have their own frozen vectors
+  in the same `testVectors.hpp`, pinned by `enrollKeyDerivation_test.cpp`'s
+  `TokenAndReenrollKeysMatchTheirVectors`, `jwtEnrollSignVerify_test.cpp`'s
+  `ReproducesTheTokenKidVectorByteForByte`/`ReproducesTheAgentKidVectorAndRefusesOtherKids`,
+  `tokenKeySource_test.cpp`'s `LoadsTheStoreAndDerivesTheVectorKey` and, on authd's side, by the
+  cmocka `src/unit_tests/shared/test_enrollment_token.c` / `src/unit_tests/os_auth/test_reenroll_verify.c`.)
 
   The token does not cover the request body (TLS protects it), and there is no replay store: a
   captured token could be replayed inside its window (`jwt_max_age + jwt_clock_skew`, 90 s by
@@ -847,9 +965,13 @@ each other**:
   TLS protecting the transport; `jti` lets a replay cache be added later without changing the wire.
 
 When `requirePassword` is false — whether because the listener requires a client certificate
-instead, or requires nothing at all — `EnrollmentAuthenticator` runs an always-pass check with no
-header required. This is not a new exposure: it reproduces authd's own behavior today, where a
-NULL password makes `w_auth_parse_data` skip the `PASS:` check entirely.
+instead, or requires nothing at all — `EnrollmentAuthenticator` runs an always-pass check for a
+request that presents no `kid` credential (no header, a non-bearer scheme, a shared-key bearer,
+garbage — all alike). This is not a new exposure: it reproduces authd's own behavior today, where a
+NULL password makes `w_auth_parse_data` skip the `PASS:` check entirely. An enrollment-token bearer
+or a re-enrollment bearer still takes its own path in that mode: the operator who minted a token
+with a credential expects it to be checked, and a re-enrollment must reach the master to rotate
+anything.
 
 **Both gates apply simultaneously when both are configured**, exactly as legacy authd already
 behaves: authd's own `check_x509_cert()` (at the TLS handshake) and its `use_password` check (while
@@ -871,6 +993,19 @@ unsynced worker accept anyone. `PasswordKeySource` is **strictly read-only** on 
 or worker alike: only authd's master ever generates the password file (`w_authd_load_password`); a
 worker only reads it, exactly as authd's own `run_authpass_watcher` does.
 
+The token store follows the same discipline, with one deliberate difference in what "absent" means.
+`etc/enrollment_tokens.json` is written only by authd's master (`enrollment_token_store.c`,
+atomically — temp file + rename) and replicated to every worker by the cluster's own file sync
+(`framework/wazuh/core/cluster/cluster.json` lists it next to `client.keys` and `authd.pass`);
+`TokenKeySource` never creates, writes or repairs it. An **absent** file is an **empty replica**, not
+an error — no token has been minted yet, or a worker has not received the sync — and every
+enrollment-token bearer is then `TokenUnknown` (fail closed, one cell). A **malformed** file keeps
+the **previous** replica and counts a reload failure: a store authd wrote is always well-formed, so
+this is corruption or an outside edit, and dropping every token because of it would let a bad edit
+revoke a fleet's enrollment. A torn read is retried a few times like `PasswordKeySource` does. With
+no `TokenKeySource` at all (the facade builds one only when enrollment is enabled), every token
+bearer is `TokenUnknown` too.
+
 ### Components
 
 #### `PasswordKeySource` (`auth/passwordKeySource.hpp/.cpp`)
@@ -884,20 +1019,51 @@ all-whitespace rejected, a 4096-byte cap — otherwise the manager's two enrollm
 about which password is valid. Derivation runs once per file change and is cached — never per
 request.
 
+#### `TokenKeySource` (`auth/tokenKeySource.hpp/.cpp`)
+
+Read-only, in-memory replica of authd's enrollment token store (`etc/enrollment_tokens.json`,
+`ENROLLMENT_TOKENS_FILE` in os_auth's `defs.h`), keyed by token id, with the `wazuh-enroll+jwt`
+HS256 key of every **credential-bearing** token already derived (once per load, through the shared
+`deriveEnrollTokenKey()`). Same operational shape and the same watcher as `PasswordKeySource`
+(inotify + a periodic fallback poll + content-hash change detection, torn reads retried). Per token
+it keeps the id (the `kid` the agent presents), the derived key, `expires` and `revoked`; the rest
+of authd's record (`adr`, `pin`/`ca`, `created`, `uses`, `max_uses`, `description`) is deliberately
+not looked at, so a field authd adds later never breaks this reader. Tokens minted **without** a
+credential (`secret: null` — a public token that only pins the manager's CA) carry nothing an agent
+could authenticate with and are not replicated at all: a `kid` naming one is simply unknown here.
+`reloadIfMissing()` is the cluster-sync mitigation (one forced re-read per unknown `kid`, at most
+one per `kMissingKidReloadMinIntervalMs` = 1000 ms, so a peer probing random ids cannot turn the
+store into a per-request file read); `diagnostics()` feeds the `remoted.enroll.token_store.*` pulls
+and `GET /status`'s `enrollment_tokens`. authd rewrites the store on **every** consumed use (the
+`uses` counter lives in the same file), so a reload that changes nothing this replica recognises
+(ids, expiry, revocation, key) logs at DEBUG1 rather than INFO. Its fallback poll interval is the
+same `remoted.enroll_password_refresh_interval` `PasswordKeySource` reads — both are authd-written,
+cluster-synced secrets the same discipline applies to.
+
 #### `EnrollmentAuthenticator` (`enrollment/enrollmentAuthenticator.hpp/.cpp`)
 
-Implements the Password gate above, and nothing about client certificates at all — that's the TLS
-listener's exclusive concern, checked before any handler runs, which is exactly why this class has
-no "mode" spanning both: `requirePassword` gates the Password check alone, and is independent of
-`timePolicy`/`maxBodySize` (the accepted token age + skew and the body-size cap, sourced from the
-SAME `jwt_max_age`/`jwt_clock_skew`/`auth_max_body_size` internal options the agent<->manager
-scheme reads, so the two never silently disagree). The body-size check runs first and
-unconditionally — in Open mode too — so an unauthenticated peer can never make this endpoint hold
-an arbitrarily large body before being rejected; the token itself is verified from the header
-alone. Reuses the shared `JwtEnrollTokenVerifier`, `toAuthError()` and the `AuthError` taxonomy
-from `auth/authTypes.hpp`, so a bad signature, a stale token, a malformed token and an oversized
-body all collapse through the same `publicErrorFor()` → `401`/`413` path every other route already
-uses — `401`s carry `WWW-Authenticate: Bearer` here too. Because `AuthGateway` bakes the `client.keys`
+Implements the bearer gate above — the three `wazuh-enroll+jwt` forms — and nothing about client
+certificates at all — that's the TLS listener's exclusive concern, checked before any handler runs,
+which is exactly why this class has no "mode" spanning both: `requirePassword` decides the fate of
+a request with no `kid` credential alone, and is independent of `timePolicy`/`maxBodySize` (the
+accepted token age + skew and the body-size cap, sourced from the SAME
+`jwt_max_age`/`jwt_clock_skew`/`auth_max_body_size` internal options the agent<->manager scheme
+reads, so the two never silently disagree). `authenticate()` returns an `EnrollmentDecision`: an
+`EnrollmentGranted` (with the verified `tokenId` when a token was used, `nullopt` for the password
+and credential-less paths), a `ReenrollmentRequested{agentId, bearer}` for authd to judge, or the
+`AuthError` that rejected the request. The protocol-version check runs first and the body-size check
+next, both unconditionally — in Open mode too — so an unauthenticated peer can never make this
+endpoint hold an arbitrarily large body before being rejected; the token itself is verified from the
+header alone. Reuses the shared `JwtEnrollTokenVerifier`, `toAuthError()` and the `AuthError`
+taxonomy from `auth/authTypes.hpp` (the token-specific causes `TokenUnknown`/`TokenExpired`/
+`TokenRevoked` are members of it), so a bad signature, a stale token, a malformed token, an unknown
+or lapsed token and an oversized body all go through the same `publicErrorFor()` → `401`/`413` path
+every other route already uses — `401`s carry the class-naming `WWW-Authenticate` challenge here
+too, and `/enroll`'s nested envelope puts the same class in `error.code` (see
+[401 classes](#401-classes)). A null `TokenKeySource` (the facade passes one only when enrollment is
+enabled) rejects every token bearer as `TokenUnknown`; a null `PasswordKeySource` with
+`requirePassword` set rejects every shared-key bearer as `EnrollmentKeyUnavailable` — fail closed
+on both. Because `AuthGateway` bakes the `client.keys`
 `Keystore` into its middleware with no per-route key-source hook, `/enroll` does **not** go through
 `AuthGateway` at all — it registers directly on `IHttpServer::addRoute` (the same pattern the
 unauthenticated `GET /` liveness probe already uses) and drives this authenticator itself, with
@@ -935,7 +1101,17 @@ distinguishable from a slow one (a fast "could not connect" instead of waiting o
 timeout). The response wait itself is bounded the same way authd's own `OS_SetRecvTimeout` bounds its
 side: `SO_RCVTIMEO`/`SO_SNDTIMEO` set directly on the connected socket.
 
-Wire request: `{"function":"add","arguments":{"name":...,"ip":...,"groups":...,"key_hash":...}}`.
+Wire request: `{"function":"add","arguments":{"name":...,"ip":...,"groups":...,"key_hash":...,"token_id":...,"reenroll":{"kid":...,"bearer":...}}}`,
+where the last two are optional and never sent together (issue #38993): `token_id` is the verified
+enrollment token id, exactly as the bearer's `kid` spelled it, so authd consumes one use of that
+token (`etoken_store_consume()`, answering 9022/9023/9024 when it disagrees with remoted's replica
+about the token's state); `reenroll` is the re-enrollment bearer and the agent id it named, both
+verbatim and **unverified**, for authd on the master to verify against that agent's `reenroll_secret`
+(`local_reenroll()`) and, when it verifies, rotate the agent's key and secret in place (9026/9027/
+9028 otherwise). Neither is present on the password and Open paths, whose wire request stays
+byte-identical to what it was before tokens. authd's reply `data` carries `id`, `name`, `ip`, `key`
+and — for every `add` — `reenroll_secret` (64 hex chars, generated next to the key and stored in
+`global.db`); `AuthdResult::reenrollSecret` is empty when an older authd sent none.
 **`force`, `id`, and `key` are never sent** — self-enrollment always gets an auto-assigned ID and an
 authd-generated key, never a caller-supplied one; `force` stays a manager-config decision, exactly as
 authd's local path already falls back to `config.force_options` from `ossec.conf` when it's absent.
@@ -1013,8 +1189,11 @@ parser does) and would reject it as an invalid IP (9006). Otherwise the body's `
 present; if none of the above applies, `"any"` is sent, matching authd's own literal handling of
 that value.
 
-**Success — `200`**: `{"id":"...","name":"...","ip":"...","key":"..."}`, verbatim from authd's `data`.
-**Failure**: `{"error":{"code":<authd-code-or-0-or--1>,"message":"..."}}`.
+**Success — `200`**: `{"id":"...","name":"...","ip":"...","key":"...","reenroll_secret":"..."}`,
+verbatim from authd's `data` (`reenroll_secret` is omitted, not empty, when authd sent none). For a
+re-enrollment the `id` is the one the bearer named and `key`/`reenroll_secret` are the rotated pair.
+**Failure**: `{"error":{"code":<authd-code-or-0-or--1>,"message":"..."}}`, except that a `401`'s
+`code` is the authentication failure class (a string).
 
 | authd code | meaning | HTTP |
 |---|---|---|
@@ -1024,8 +1203,10 @@ that value.
 | 9013 | `max_agents` reached | 503 |
 | 9015 | worker rejection (`remove`/`get`, or an `add` that supplied a caller-chosen `id`/`key` -- see below) | 503 |
 | 9016 (new) | clustered forward to master failed (transport leg of `w_request_agent_add_clustered`) | 503 |
+| 9022 / 9023 / 9024 | authd refused the use of a **verified** enrollment token: not found or revoked / expired / no uses left (`httpStatusForAuthdError()`). `403`, not `401`: the bearer DID verify, so this is not something the agent fixes by re-signing. 9022/9023 are reachable only when remoted's replica lagged behind authd's store; 9024 only authd can decide (it owns the use counter) | 403, `error.code` = the authd code |
+| 9026 / 9027 / 9028 | authd's verdict on a **re-enrollment** bearer remoted forwarded unverified: unknown agent or no secret on record / invalid credential / outside the accepted time window (`reenrollmentRejection()`) — authentication failures, so they take the uniform 401 through `authErrorResponse()`, never authd's code or text | 401, `error.code` = `unknown_agent` / `invalid_signature` / `stale_token` |
 | transport failure (authd unreachable) | — | 503 |
-| bad/missing/stale credential | — | 401 |
+| bad/missing/stale credential | — | 401, `error.code` = the class (`invalid_signature`, `invalid_request`, `stale_token`, `unknown_agent`, `token_unknown`, `token_expired`, `token_revoked`, `enrollment_key_unavailable`) |
 | local schema or version validation failure | — | 400 |
 | enrollment administratively disabled | — | 403 |
 
@@ -1108,7 +1289,8 @@ no bearing on it whatsoever, and neither flag ever unregisters the route (see ab
 `<disabled>yes</disabled>` is explicit. It used to look tri-state in its header
 (`AD_CONF_UNPARSED`/`AD_CONF_UNDEFINED` sentinels) with a resolution switch in `os_auth/src/config.c`,
 but nothing ever assigned those values, so both were removed. `secure.c` needs no special resolution logic: zero-initialize a local `authd_config_t` the
-normal way, call `ReadConfig(CAUTHD, OSSECCONF, &authd_cfg, NULL)`, and read `flags.disabled` directly.
+normal way, feed it the `auth` section of `wazuh-manager.conf` (`w_mconf_section("auth")` →
+`Read_Authd_JSON()`), and read `flags.disabled` directly.
 
 ### Manager certificate unification
 
@@ -1121,8 +1303,16 @@ listeners now present the *same* identity: the install-time generation step
 to create `authd.pem`/`authd-key.pem` has been removed, and the generated `<auth>` config
 (`auth.template`, and the `<disabled>yes</disabled>` fallback written by `DisableAuthd()`) now
 points `<ssl_manager_cert>`/`<ssl_manager_key>` at `remoted.pem`/`remoted-key.pem` instead — the
-same certificate `GenerateHttpsManagerCert()` already generates for the HTTPS listener. Explicit
-`<auth>` certificate overrides in `ossec.conf` keep working unchanged — only the generated
+listener pair the operator provisions. The manager generates no certificate at all any more:
+`CheckListenerCerts()` in `init/inst-functions.sh` (and the packaging equivalents) only creates
+`etc/certs`, re-applies the pair's ownership and prints a `NOTICE` when it is missing, and the
+manager fails closed without it — `wazuh-manager-conf validate` (run by `wazuh-manager-control
+start`) rejects a missing file with `(1244) … file not found`, and remoted itself probes both paths
+with `access(R_OK)` after dropping privileges (`w_remoted_check_tls_files()` in `secure.c`, right
+before `remoted_module_start()`) and exits with a deterministic message, so this module's own
+exception on an unreadable pair is the last resort, not the first line (see
+[Certificate provisioning and fail-closed start](../../../docs/ref/modules/remoted/https-events-api.md#certificate-provisioning-and-fail-closed-start)).
+Explicit `<auth>` certificate overrides in `ossec.conf` keep working unchanged — only the generated
 defaults change. Port 1515 keeps running with the unified certificate.
 
 Two compiled-in defaults exist alongside the generated config, both now updated to match:
@@ -1141,33 +1331,75 @@ is never reached on a fresh manager install anyway: `auth.template` always write
 ### Configuration
 
 Unlike every other subsystem's tunables in this module, enrollment's *behavioral* flags do not come
-from a new `<https>` block or a new internal option: remoted's C side calls
-`ReadConfig(CAUTHD, OSSECCONF, &authd_cfg, NULL)` — the `config` library is already linked into
-`remoted_lib` — and copies fields straight out of authd's own `<auth>` config (`use_password`,
-`use_source_ip`, `allow_higher_versions`, `remote_enrollment`). This is deliberate: `/enroll` and
-1515 must agree on whether password auth is required and which versions are acceptable, and reading
-the *same* config block is what guarantees that rather than two settings that can drift apart. Only
-operational knobs (password-file poll interval, authd-socket connect/response timeouts, queue size)
-are new C-ABI fields with their own defaults, following this module's usual "`<=0` means default"
-convention. `enrollment_enabled` gates only the response the endpoint gives, never whether the route
-exists (see *Two independent authentication gates* above's `403` discussion).
+from a new `<https>` block or a new internal option: remoted's C side reads the `auth` section of
+`wazuh-manager.conf` through the manager config module (`w_mconf_section("auth")` +
+`Read_Authd_JSON()` in `secure.c` — the `config` library is already linked into `remoted_lib`) and
+copies fields straight out of authd's own `<auth>` config (`use_password`, `use_source_ip`,
+`allow_higher_versions`, `remote_enrollment`). This is deliberate: `/enroll` and 1515 must agree on
+whether password auth is required and which versions are acceptable, and reading the *same* config
+block is what guarantees that rather than two settings that can drift apart. Only operational knobs
+(the secret files' poll interval, authd-socket connect/response timeouts, queue size) are new C-ABI
+fields with their own defaults, following this module's usual "`<=0` means default" convention.
+`enrollment_enabled` gates only the response the endpoint gives, never whether the route exists (see
+*Two independent authentication gates* above's `403` discussion).
+
+The enrollment-token and re-enrollment paths add **no** option of their own: the store path is fixed
+(`etc/enrollment_tokens.json`, relative to the manager home like `etc/authd.pass`); the replica's
+fallback poll reuses `remoted.enroll_password_refresh_interval`; and the accepted age / clock skew
+of all three bearer forms is the one `remoted.jwt_max_age` / `remoted.jwt_clock_skew` pair — for the
+re-enrollment bearer that policy is applied by authd on the master, which reads the **same** two
+internal options (`os_auth/src/config.c`, `authd_config_t::jwt_max_age`/`jwt_clock_skew`), so
+remoted and authd can never accept different windows.
 
 ### Metrics
 
 Following `ControlMetrics`/`ScanVdMetrics`'s pattern (relaxed atomics on the shared `wazuh_metrics`
-registry, a silent no-op on a null-object instance): `remoted.enrollment.requests`,
-`remoted.enrollment.accepted`, `remoted.enrollment.auth_rejected` (401s — a spike here means a
-password rollout is out of sync between managers and agents), `remoted.enrollment.disabled` (403s —
-useful to notice an agent still trying an enrollment path an operator turned off),
-`remoted.enrollment.authd_error` (any 90xx), `remoted.enrollment.authd_unreachable` (transport
-failures).
+registry, a silent no-op on a null-object instance), the `remoted.enroll.*` catalog lives in
+`enrollment/metrics.hpp` and is counted in `enrollmentEndpoint.cpp`:
+
+- **Outcome of every request** — `remoted.enroll.accepted` (a `200`), `remoted.enroll.rejected_auth`
+  (every `401`: the shared-key bearer, an enrollment token remoted refused, and authd's 9026/9027/
+  9028 on a re-enrollment — a spike here means a password rollout out of sync between managers and
+  agents, or tokens that lapsed), `remoted.enroll.rejected_validation` (local rejections:
+  `Content-Encoding`, schema, version), `remoted.enroll.disabled` (`403`s — useful to notice an agent
+  still trying an enrollment path an operator turned off), `remoted.enroll.authd_error` (any 90xx
+  authd business rejection, the token `403`s of 9022/9023/9024 included),
+  `remoted.enroll.authd_unavailable` (no clean answer from authd: queue full, unreachable, timeout,
+  shutdown).
+- **The enrollment-token subset** (issue #38993), by what happened to the TOKEN —
+  `remoted.enroll.token.accepted` (a `200` obtained with a token), `.rejected_unknown`,
+  `.rejected_expired`, `.rejected_revoked` (decided by remoted's replica, `countTokenRejection()`, and
+  also bumped when authd's 9022/9023 disagreed with a replica that lagged, `countTokenOutcome()`),
+  `.rejected_exhausted` (authd's 9024 alone: it owns the use counter).
+- **The re-enrollment subset** (`kid` = agent id) — every cell is authd's verdict on the master:
+  `remoted.enroll.reenroll.accepted` (a `200` that rotated the agent's credentials),
+  `.rejected_unknown` (9026), `.rejected_signature` (9027), `.rejected_stale` (9028). Each rejection
+  also lands in the `remoted.auth.reject.*` cell of the `AuthError` it maps to (`unknown_agent` /
+  `invalid_signature` / `clock_skew`).
+- **The token store's health** (pulls, registered by the facade's
+  `registerTokenKeySourceDiagnostics()` over `TokenKeySource::diagnostics()`) —
+  `remoted.enroll.token_store.tokens` (credential-bearing tokens in the replica right now),
+  `remoted.enroll.token_store.reloads.total` (successful loads, the initial one included),
+  `remoted.enroll.token_store.reload_failures.total` (loads that kept the previous replica). Null
+  target — enrollment disabled — reads 0.
+- **The bridge queue** (pulls) — `remoted.enroll.authd.queue.{depth, capacity, rejected.total}`
+  from `AuthdClient::queueDiagnostics()`.
+
+The per-cause `remoted.auth.reject.*` cells (`token_unknown`, `token_expired`, `token_revoked`, and
+the shared `invalid_signature`/`clock_skew`/…) are bumped by `errorResponseFor()`'s funnel like for
+every other `AuthError`; the status/latency view is `remoted.http.enroll.*`. Operator-facing rows:
+[Metrics](../../../docs/ref/modules/remoted/metrics.md#agent-enrollment--remotedenroll).
 
 ### Lifecycle
 
 Constructed in `RemotedModuleFacade::startHttpServer()` alongside the other endpoint dependencies:
-`PasswordKeySource` only when `requirePassword` is set, `AuthdClient` always (the route is always
-registered, so the client always exists even if `enrollment_enabled` is currently false — it simply
-goes unused while the endpoint short-circuits to `403`). Torn down in the same phase as
+`PasswordKeySource` only when `requirePassword` is set, `TokenKeySource` whenever enrollment is
+administratively enabled at all (an enrollment-token bearer is honoured in every mode, Open
+included), `AuthdClient` always (the route is always registered, so the client always exists even if
+`enrollment_enabled` is currently false — it simply goes unused while the endpoint short-circuits to
+`403`). Both key sources are owned by `m_enrollmentAuthenticator`, so their watcher threads live and
+die with it; their diagnostics are reachable through weak targets repointed per start
+(`registerPasswordKeySourceDiagnostics()`/`registerTokenKeySourceDiagnostics()`). Torn down in the same phase as
 `m_downstreamClient` — `AuthdClient::stop()` before the HTTP transport's final `stop()` releases its
 I/O runtime, matching the ordering documented in *Deferred forwarding* above.
 
@@ -1206,9 +1438,17 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   A `wpk` request names a filename and gets `var/upgrade/<filename>`. The multigroup form is what
   lets an agent in several groups fetch its *effective* configuration rather than one member
   group's, and it needs no database: the selector is hashed exactly as wazuh-db names the directory.
-  There is no group lookup and no membership check (protocol decision on #38022), so **any
-  authenticated agent can fetch any group's or multigroup's merged configuration**. For a `config`
-  request the agent does not pick that value: it relays the `config_token` `/control` handed it (see
+  A `config` request is authorized against the requesting agent's own groups: `resource_id` must
+  equal `makeConfigToken(toGroupsCsv(entry->groups))` for that agent's registry entry -- the same
+  string `/control` handed it as `config_token` -- and anything else is **403**, decided before the
+  path is resolved. The groups come from the registry `/control` already maintains
+  (`control/registryAgentGroupSource.hpp`), so there is no wazuh-db round trip on this path, and an
+  entry whose groups never came from wazuh-db (`groupsRefreshedAtSec == 0`, which is what
+  `/control/shutdown` leaves behind for an unknown agent) is denied rather than treated as
+  "no groups, so default". A `wpk` request is **not** authorized here: its authority is the agent's
+  pending upgrade task, which `/control` does not carry.
+
+  The agent never picks the value it sends: it relays the `config_token` `/control` handed it (see
   the notify response above), so `/control` must report `config_hash` over the file this resolves to
   for the token it handed that agent, or that agent re-downloads on every notify.
 - **Containment differs per form.** The multigroup selector is *hashed, never joined*, so it cannot
@@ -1484,7 +1724,36 @@ implementation. It knows nothing about RESTinio or sockets -- the `AuthGateway` 
 is the only adapter between it and our transport. The token does **not** cover the body: the
 middleware authenticates from the headers alone, the gateway applies the body cap directly, and the
 body is exposed as a zero-copy `Payload` view that the `AuthGateway` attaches from the transport's
-single request buffer. Every credential `401` carries `WWW-Authenticate: Bearer`.
+single request buffer. Every credential `401` carries a `WWW-Authenticate` challenge naming its class.
+
+### 401 classes
+
+Issue #38993 (T10 of its plan): a credential failure is still a `401` with the same generic message,
+but the wire names its **class** twice — as the body's `code` (a string, where every other status
+keeps the numeric status) and as the RFC 6750 challenge's `error_description`. `PublicError`
+(`auth/authTypes.hpp`) carries both as static literals and `publicErrorFor()` (`auth/authMiddleware.cpp`)
+is the one table; `errorResponseFor()` (flat envelope) and `/enroll`'s `authErrorResponse()` (nested
+envelope) render them. The class is deliberately **coarser** than `AuthError`: it is the answer the
+agent acts on, while the fine cause stays in the log and in `remoted.auth.reject.*`.
+
+| Class (`code`) | `WWW-Authenticate` | `AuthError`s | The agent |
+|---|---|---|---|
+| `unknown_agent` | `Bearer error="invalid_token", error_description="unknown_agent"` | `UnknownAgent` | re-enrolls |
+| `stale_token` | `… error_description="stale_token"` | `StaleToken` | fixes its clock (`Date` header) and retries |
+| `invalid_signature` | `… error_description="invalid_signature"` | `InvalidSignature`, `InvalidToken`, `IdentityMismatch`, `AddressNotAllowed`, `MissingKey` | does **not** re-enroll: a new identity fixes none of these |
+| `invalid_request` | `Bearer error="invalid_request"` | `MissingAuthorization`, `MalformedAuthorization` | sends a credential |
+| `token_unknown` / `token_expired` / `token_revoked` | `… error_description="token_…"` | `TokenUnknown` / `TokenExpired` / `TokenRevoked` — the `/enroll` enrollment-token states | asks the operator for a token |
+| `enrollment_key_unavailable` | `Bearer` (bare: the server could not judge the credential) | `EnrollmentKeyUnavailable` | retries later |
+
+On `/enroll`, authd's verdicts on a re-enrollment bearer (9026 unknown agent or no secret on record,
+9027 invalid credential, 9028 outside the accepted time window) are mapped back onto
+`UnknownAgent`/`InvalidSignature`/`StaleToken` before rendering (`reenrollmentRejection()`,
+`enrollment/enrollmentEndpoint.cpp`), so they take the same three classes and the same
+`remoted.auth.reject.*` cells as a native rejection — the wire never carries authd's code or text
+for them.
+
+The 5.x agent classifies a `401` by status alone today (`client-agent/https_client/src/outcomeClassifier.cpp`)
+and corrects its clock from the `Date` header; acting on the class is the agent's follow-up.
 
 `AuthConfig`'s tunables (`timePolicy` -- accepted token age and clock skew -- and `maxBodySize`) are
 populated from the matching C-ABI fields (`jwt_max_age`, `jwt_clock_skew`,
@@ -1529,8 +1798,8 @@ lets a `client.keys` migrated from 4.x authorize the same agents it did there. A
 does not parse is skipped with a warning, like any other malformed line, rather than being loaded
 without a restriction. The peer address is **not** part of the token, so a NAT rewrite
 between agent and manager does not invalidate it. A mismatch resolves to
-`AuthError::AddressNotAllowed`, which `publicErrorFor()` folds into the same generic 401 as the other
-credential failures; `AuthMiddleware` reports it with a throttled warning naming the agent id and the
+`AuthError::AddressNotAllowed`, which `publicErrorFor()` reports as the `invalid_signature` class (the
+agent must not re-enroll over it); `AuthMiddleware` reports it with a throttled warning naming the agent id and the
 peer address, and `endpoints/endpoint.cpp` keeps it at DEBUG2 in its own rejection funnel so the line
 is not emitted twice.
 
@@ -1600,8 +1869,8 @@ to change (`"…Consider increasing the value of 'max_deferred_requests'."`). Th
   decision unit-testable on its own.
 
 `endpoints/endpoint.cpp`'s `errorResponseFor()` is the single funnel for all auth rejections: it logs
-the reason **before** `publicErrorFor()` collapses seven distinct credential failures into one
-generic 401. Downstream failures are logged in `deferredForwarder.cpp`'s completion callback, where
+the fine reason, finer than the class `publicErrorFor()` puts on the wire (five distinct credential
+failures share `invalid_signature`). Downstream failures are logged in `deferredForwarder.cpp`'s completion callback, where
 the raw `DownstreamError` is still available — `stateless::postProcess` turns them all into one 503,
 so by the time the agent is answered the cause is gone.
 
@@ -1653,14 +1922,19 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.control.*` (6 counters + `rejected` + `wdb.latency` histogram) | control-plane health, wazuh-db sizing | `controlHandler`/`controlEndpoint`/`wazuhDBClient`/`taskClient` (see the /control section) |
 | `remoted.control.registry.agents` (pull) | how many agents this node currently tracks — diagnostic only: the registry TTL (6 h) and eviction cadence (5 min) are compile-time constants, not settings | `AgentRegistry::size()` |
 | `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
-| `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed}` | WHY authentication failed, pre-collapse (the wire folds credential failures into one 401) | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
+| `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed, token_unknown, token_expired, token_revoked}` | WHY authentication failed, finer than the class the wire names (see [401 classes](#401-classes)); the three `token_*` cells are `/enroll`'s enrollment-token states | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
 | `remoted.auth.keystore.{agents, entries_skipped, reloads.total, reload_failures.total}` (pulls) | did the client.keys hot-reload pick up re-enrolls; is the file unreadable/unstable; how many lines the load could not use | atomics maintained by `Keystore::reload()`. `agents`/`entries_skipped` are LEVELS of the adopted load (a failed load leaves both untouched); neither counts comments, blanks or removed entries |
-| `remoted.http.<stateless\|stateful\|stats\|config\|enroll>.responses.{2xx,400,403,409,413,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` is not forwarded, so it counts through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`) — one wrap covers its five inline answers AND the one authd's callback delivers on another thread |
+| `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|cacerts>.responses.{2xx,400,403,409,413,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
-| `remoted.download.{rejected, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
+| `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector, or the manager has no established membership for it). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request) and from `not_found` (an *entitled* request whose file is not on disk) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
+| `remoted.cacerts.{served, not_found, ca_mismatch}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, or refused because the configured CA does not sign the served leaf | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch |
+| `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does `remote.https.ca_certificate` sign it (0 also when the CA is unreadable) | `IHttpServer::certificateStatus()` over the transport's `TlsCertificateMonitor` snapshot (start + every 24 h); registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
 | `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above) | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp` |
+| `remoted.enroll.token.{accepted, rejected_unknown, rejected_expired, rejected_revoked, rejected_exhausted}` | the enrollment-token subset of the above, by what happened to the TOKEN: unknown/expired/revoked decided by remoted's replica (and by authd's 9022/9023 when the replica lagged), exhausted by authd alone (9024) | `countTokenRejection()` (remoted's own verdict) + `countTokenOutcome()` (authd's) in `enrollmentEndpoint.cpp` |
+| `remoted.enroll.reenroll.{accepted, rejected_unknown, rejected_signature, rejected_stale}` | the re-enrollment subset (`kid` = agent id): authd's verdict on the master — 9026 / 9027 / 9028 — since remoted forwards that bearer unverified; each rejection also lands in the `remoted.auth.reject.*` cell of the `AuthError` it maps to | `countReenrollOutcome()` in `enrollmentEndpoint.cpp` |
+| `remoted.enroll.token_store.{tokens, reloads.total, reload_failures.total}` (pulls) | does this node recognise the tokens the operator minted (an empty replica on a worker = the sync has not landed); is `etc/enrollment_tokens.json` being picked up, or is a corrupt/hand-edited store making the previous replica serve | `TokenKeySource::diagnostics()` through `registerTokenKeySourceDiagnostics()`; 0 while enrollment is disabled |
 | `remoted.enroll.authd.queue.{depth, capacity, rejected.total}` (pulls) | is `remoted.authd_max_queue_size`/`authd_worker_threads` sized right, and how much of `authd_unavailable` was saturation rather than an unreachable authd | `AuthdClient::queueDiagnostics()` (same lock, dump cadence only); the counter is bumped ONLY on the queue-full branch, never on shutdown |
 | `remoted.forwarder.deferred.{inflight, capacity, rejected.total}` (pulls) | is `remoted.max_deferred_requests` sized right; how much did the limiter shed | the `DeferredWorkLimiter`'s own atomics |
 | `remoted.admin.server.*` (11 pulls) | the admin transport dogfooding itself: 7 levels plus the 4 `rejected.*` shed counters | `IUdsHttpServer::diagnostics()` |
@@ -1696,9 +1970,10 @@ byte budget):
 ### `GET /status`: readiness, not liveness
 
 Unlike `/` and `/metrics`, this route answers a business-logic question: can this node
-currently do Password-mode enrollment, and did its `client.keys` mirror last reload
-successfully. It reads two pieces of state the module already owns in-process — no I/O, no
-KDF, nothing that can block the admin socket's fixed 2-reactor-thread "never block" contract:
+currently do Password-mode enrollment, did its `client.keys` mirror last reload successfully,
+and how many enrollment tokens does it currently recognise. It reads three pieces of state the
+module already owns in-process — no I/O, no KDF, nothing that can block the admin socket's fixed
+2-reactor-thread "never block" contract:
 
 - `Keystore::lastLoadOk()`/`agentsLoaded()`/`entriesSkipped()` (plain atomics, see the
   `remoted.auth.keystore.*` pulls above) through the same `m_keystoreDiagMutex`/
@@ -1709,11 +1984,15 @@ KDF, nothing that can block the admin socket's fixed 2-reactor-thread "never blo
   logged) through a sibling `m_passwordKeySourceDiagMutex`/`m_passwordKeySourceDiagTarget`
   weak_ptr pair, populated right after `EnrollmentAuthenticator` construction and permanently
   expired when Password-mode enrollment is disabled.
+- `TokenKeySource::diagnostics()` (a brief take of the replica lock — `tokens` and `lastLoadOk`)
+  through the sibling `m_tokenKeySourceDiagMutex`/`m_tokenKeySourceDiagTarget` weak_ptr pair the
+  `remoted.enroll.token_store.*` pulls also read, populated at the same point and permanently
+  expired when enrollment is administratively disabled.
 
 Response shape:
 
 ```json
-{"ready":true,"enrollment_password":{"ready":true},"keystore":{"readable":true,"agents_loaded":12,"entries_skipped":0}}
+{"ready":true,"enrollment_password":{"ready":true},"keystore":{"readable":true,"agents_loaded":12,"entries_skipped":0},"enrollment_tokens":{"loaded":3,"last_reload_ok":true}}
 ```
 
 - **`ready`** is the AND of the *gating* components only, and `enrollment_password` (when
@@ -1728,6 +2007,14 @@ Response shape:
   `entries_skipped` mirror the pull metrics. It never gates the top-level `ready`: the module
   cannot distinguish an empty-but-fine `client.keys` from a stale one still serving the old
   table, and gating on either would flap a healthy node in and out of `ready`.
+- **`enrollment_tokens`** is present whenever enrollment is administratively enabled (the
+  `TokenKeySource` exists — Password mode does not matter) and omitted otherwise; it is placed
+  after `keystore` so the `{"ready":...,"keystore":...}` prefix existing consumers match on is
+  kept. Informational only, never folded into `ready`: `loaded` is the number of
+  credential-bearing tokens in the replica right now (`Diagnostics::tokens`) and an empty replica
+  is the normal state of a manager that minted no token (and of a worker still awaiting the
+  master's sync), not a readiness failure; `last_reload_ok` mirrors `Diagnostics::lastLoadOk`
+  (`false` after a load that kept the previous replica — a malformed or torn store).
 - If the `Keystore` diag weak_ptr is expired (only reachable during facade teardown, since
   `Keystore` is otherwise unconditionally constructed), the handler answers `503`, mirroring
   `/metrics`'s `weakManager.lock()` fallback exactly.
@@ -1774,7 +2061,20 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http:
 
 Unit tests (built when `UNIT_TEST` is enabled) live in `test/unit/`: `remotedModule_test.cpp`
 (C-ABI black-box), `httpServer_test.cpp` (transport config incl. in-flight-budget/max-connections
-resolution + responder contract incl. a shared request surviving a deferred handler),
+resolution + responder contract incl. a shared request surviving a deferred handler, plus the
+certificate status: `TlsCertificateStatusTest` drives `daysUntilExpiry()`/`anyCaSignsLeaf()`/
+`evaluateCertificateStatus()` from certificates built in memory — signed by the CA, by a foreign CA,
+CA unreadable, a bundle with the signing CA not first — and `HttpServerTest` pins that the status is
+already evaluated when `start()` returns, re-evaluated on a 1 s `certificateStatusInterval`, and that
+`stopAccepting()` joins the monitor), `cacertsEndpoint_test.cpp` (the `GET /cacerts` decision table
+against a faked status: PEM served byte for byte as `application/x-pem-file`, missing/garbage file
+404, `caMatchesLeaf == false` 503, `nullopt` serves, body/`Authorization` ignored, both metric
+families counted, null metrics count nothing), `cacertsE2E_test.cpp` (a REAL TLS server with a leaf
+signed by a throwaway CA — `testTlsServer.hpp`'s `generateCaSignedCertificate()`: the PEM `/cacerts`
+serves lets a client with `verify_peer` and **only that PEM** complete the handshake against the same
+listener, while a foreign CA does not; prefixed vs bare target; a foreign CA configured as
+`caCertificatePath` is caught by the real start-time evaluation and answered 503; the CA moved away
+is a 404 without a restart),
 `inFlightBudget_test.cpp` (reserve/release accounting, exhaustion, RAII move-once, disabled mode,
 concurrency), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
 release, disabled mode, concurrency), `deferredForwarder_test.cpp` (mock client: slot-full→503,
@@ -1796,7 +2096,120 @@ keep-alive pinning, explicit `release()` + RAII), `authGateway_test.cpp` (gatewa
 view, payload outliving dispatch + release keeping metadata, handler-exception → 500), plus the auth
 core `jwtVerify_test.cpp`/`jwtEnrollSignVerify_test.cpp`, `authMiddleware_test.cpp` (incl. a non-canonical
 `kid` → `InvalidToken`), `keystore_test.cpp` (incl. a non-numeric `client.keys` id line being
-skipped without blocking the rest of the file).
+skipped without blocking the rest of the file), and the three primitives underneath them:
+`jwtHmacSha256_test.cpp` (RFC 4231 case 2 plus the frozen profile signature, and the recorded
+*negative* token produced when the ASCII hex text is used as the key instead of the decoded bytes),
+`jwtKeyDecoder_test.cpp` (exactly 64 lowercase hex characters → 32 bytes; every other length is
+rejected, 16-byte legacy MD5 shapes included) and `jwtProfileTypes_test.cpp` (the frozen profile
+constants, `TimePolicy`'s accepted ranges, `CanonicalAgentId` zero-padding and overflow, `SecureBytes`
+being move-only with empty states after move/clear, and base64url having to be canonical).
+
+Transport, framing and shared plumbing: `authConfig_test.cpp` (C-ABI → `AuthConfig`: a zeroed
+struct yields the profile defaults, and `jwt_clock_skew_set` is what tells "zero tolerance" apart
+from "unset" — an explicitly set negative skew throws, as does an over-maximum value), `downstreamConfig_test.cpp` (default
+socket paths — the inventory-sync literal is pinned against modulesd's own copy — seconds→ms
+conversion, `/stateful`'s dedicated 20 s deadline, and the module's own 11 MiB response cap, chosen
+strictly above the 10 MiB request cap. **Caveat:** that C++ default is unreachable in a running
+manager — `secure.c` always supplies `remoted.downstream_max_response_body_size`, whose own default
+is 10 MiB, so the effective cap equals the request cap and the "strictly above" rationale does not
+hold at runtime. The test pins the constant, not the deployed value),
+`headerUtils_test.cpp` (case-insensitive header lookup: the RFC-canonical `Authorization` the
+transport actually delivers is exactly what a naive exact `find()` misses), `authHeadersE2E_test.cpp`
+(over real TLS: a **duplicated** `Authorization` or `protocol-version` is refused rather than
+first-wins, even when both copies are valid), `globalPrefixE2E_test.cpp` (prefixed targets
+authenticate — query string included, since the bearer binds identity, not target — while
+unprefixed ones `404` *before* auth runs), `handlerBarrier_test.cpp` (a handler throwing a
+non-`std::exception` answers `500` instead of terminating the daemon; a throw *after* responding
+keeps the original answer), `logThrottle_test.cpp` (first occurrence emits, the rest of the window
+is counted not printed, and 8 threads × 10 000 records neither lose nor double-count),
+`strictJsonObject_test.cpp` (exact-allowlist parsing: missing/extra/duplicate/mistyped members,
+non-ASCII bytes and BOMs rejected, and a truncated multi-byte tail never read past the view — the
+ASAN heap-overflow regression), `caCertificateSource_test.cpp` (certificates only, never the key
+from a combined PEM; a file with one undecodable block is refused whole; re-parsed on content change
+despite identical size and mtime).
+
+Body decoding: `bodyDecoder_test.cpp` (only an exact, case-insensitive `zstd` decodes — `gzip`,
+`"zstd, gzip"` and prefixes are refused — the decoded bytes stay charged to the in-flight budget
+until the payload dies, and a `413` there is never counted as a budget shed) and
+`zstdDecoder_test.cpp` (the frame header drives one up-front window reservation; a declared window size above
+the 8 MiB ceiling is refused without consulting the budget at all).
+
+Control-plane coverage: `controlEndpoint_test.cpp` (empty/oversized bodies, non-JSON, non-object
+roots and non-numeric/negative/trailing-garbage agent ids each get their own `400` code, all
+aggregated into `remoted.control.rejected`), `controlHandler_test.cpp` (a malformed version answers
+`400` *and* writes `status_code` with the version sentinelized; `config_token` is the wdb-ordered
+multigroup CSV naming the same `merged.mg` that `config_hash` was computed over; a wazuh-db failure
+answers `500` rather than silently falling back to "default"), `controlConfig_test.cpp` (non-positive
+values fall back instead of casting a negative into a huge unsigned; a malformed `limits_json`
+collapses to `{}`), `controlTypes_test.cpp` (the version grammar and `compareVersions` ordering
+shared with `/enroll`), `agentRegistry_test.cpp` (an updater returning null is a no-op that never
+erases; eviction keys off `max(lastActivity, createdAt)`; concurrent refresh is tolerated),
+`wazuhDBClient_test.cpp` (`"ok"`/`"ok "` accepted but `"okabc"` rejected; `os_major`/`os_minor`
+derived from real strings like `15-SP7`; latency observed only on successful round trips),
+`taskClient_test.cpp` (the request body is the zero-padded agent id with no `action` member; a
+stall maps to `Timeout`, not `Io`; the destructor drains), `hashCache_test.cpp` (the multigroup
+`sha256[:8]` directory rule, and **an empty hash is never cached** — the fresh-install poisoning
+bug), `mergedMgWatcher_test.cpp` (fires for `merged.mg` only — never `agent.conf`/`shared.conf` —
+including arrival by rename, and auto-watches group directories created after startup),
+`groupSelector_test.cpp` (the CSV is joined verbatim in wdb order, duplicates and empties included,
+because that exact string *is* the hashed directory name) and
+`registryAgentGroupSource_test.cpp` (fails closed for malformed ids, unknown agents and a null
+registry, and refuses an entry with no `groupsRefreshedAtSec` — so a `/control/shutdown`-minted
+entry can never claim `default`).
+
+`/download` and `/stateful`: `downloadEndpoint_test.cpp` (the group and WPK grammars reject
+traversal; `FileByteSource` aborts when the file is truncated, grows, or is rewritten at the same
+length; a denied group returns an **identical** `403` whether or not it exists, so there is no
+enumeration oracle; WPKs are deliberately not authorized here) and `statefulEndpoint_test.cpp` (the
+sync socket, the `X-Wazuh-Agent-Id` taken from the verified token, the dedicated deadline, contract
+statuses and bodies passed through untouched, everything off-contract collapsed to a neutral `503`,
+and `Retry-After` relayed only on a `503` and only when digits-only).
+
+Enrollment coverage: `enrollmentConfig_test.cpp` (the C-ABI → `enrollment::Config` resolution:
+sentinels, seconds→milliseconds, the shared time policy and its profile ceiling, the body cap),
+`enrollmentAuthenticator_test.cpp` (the three bearer forms against real `PasswordKeySource`/
+`TokenKeySource` files: the shared-key bearer in Password mode incl. the frozen vector, wrong password →
+`InvalidSignature`, agent-profile token rejected, stale/future tokens, password rotation invalidating
+old tokens, Password mode failing closed without a key file or key source; the enrollment-token bearer
+accepted in Open AND Password mode, unknown id → `TokenUnknown` with exactly one rate-limited forced
+re-read, wrong secret → `InvalidSignature`, expired → `TokenExpired`, revoked → `TokenRevoked`, no
+`TokenKeySource` → `TokenUnknown`; the agent-`kid` bearer handed back as `ReenrollmentRequested` in every
+mode, unverified, even without a token source or a password key; protocol-version before the body cap
+before the credential, in every mode), `enrollmentEndpoint_test.cpp` (the handler against a fake
+authd client: `403` when disabled without touching auth or authd, every `400` of the body schema and
+version policy, `Content-Encoding` handled through the decoder, IP resolution incl. the `src`
+sentinel, `force`/`id`/`key` never sent, the `200` carrying `reenroll_secret` when authd sends it,
+`token_id` forwarded and counted as `token.accepted`, authd's 9024 → `403` + `rejected_exhausted`, a
+revoked/unknown token → `401` with its class counted without reaching authd, the re-enrollment bearer
+forwarded unverified and counted, re-enrollment in Password mode reaching authd without the password
+key, and authd's 9026/9027/9028 mapped to the 401 classes while its other codes keep their mapping;
+plus the `MeteredResponder` status/latency accounting), `authdClient_test.cpp` (a fake authd over a
+real UDS socket: success data incl. `reenroll_secret`, `arguments.reenroll` on the wire, business
+codes preserved, transport failures, the saturated backlog as a fast connect failure, timeouts, queue
+capacity and the worker pool), `passwordKeySource_test.cpp` (parsing byte-matching authd's
+`read_password_line()`, the HKDF vector, hot reload incl. atomic replace and late-appearing files,
+worker grace-window logging), `tokenKeySource_test.cpp` (a missing store is an empty replica and not an
+error, the frozen token vector's key derived from the store, `revoked` replicated, credential-less
+tokens NOT replicated, a malformed file keeping the previous replica, unknown fields ignored,
+`reloadIfMissing()` re-reading once and being rate-limited, hot reload across an atomic replace, a
+file appearing after startup, a removed file emptying the replica), `enrollKeyDerivation_test.cpp`
+(the three HKDF labels against their frozen vectors, determinism, empty/wrong-sized inputs yielding no
+key), `jwtEnrollSignVerify_test.cpp` (the shared `EnrollSigner`/`JwtEnrollTokenVerifier`: the frozen
+vectors of all three forms byte for byte, exact header/claim sets, ASCII-only segments, structural time
+rules, the time policy, compact grammar before decoding, profiles never crossing over, `peekKid()`
+telling token/agent/none apart, `verifyWithKid()` accepting only its own `kid` and key, the shared-key
+`verify()` still rejecting any `kid`), and two end-to-end files over a **real** TLS listener with a
+fake authd: `enrollmentE2E_test.cpp` (Password mode success and wrong signature, Open mode, authd
+down → `503`, a replayed signed request inside the window NOT stopped by remoted itself, a token
+bearer enrolling and forwarding its `token_id`, a revoked token → `401`, a re-enrollment bearer
+reaching authd and the rotated credentials coming back, a missing password file →
+`enrollment_key_unavailable` with a bare `Bearer` challenge) and `enrollmentMtlsE2E_test.cpp` (a
+client certificate as the credential, its absence rejected by the listener before the handler runs,
+and the combined certificate + password case both ways). `metrics_test.cpp` pins that
+`makeEnrollmentMetrics()` registers the whole `remoted.enroll.*` family at zero and that each
+token/re-enrollment helper touches exactly its own cell. authd's side of the same contract is cmocka:
+`src/unit_tests/os_auth/test_enrollment_token_store.c`, `src/unit_tests/os_auth/test_reenroll_verify.c`
+and `src/unit_tests/shared/test_enrollment_token.c`.
 
 VD re-scan coverage: `vdClient_test.cpp` (a real `httplib::Server` fake VD backend — cache hit
 within TTL, single-flight refresh under a concurrent caller with the lock released during the UDS
@@ -1821,20 +2234,46 @@ values for the public-transport pulls), `GET /status` reporting `enrollment_pass
 sole gate on top-level `ready` (present only when Password-mode enrollment is enabled) and
 `keystore.readable` as purely informational — including the case where `client.keys` fails to
 load but Password-mode is disabled, asserting `ready:true` alongside `keystore:{readable:false,...}`
-to prove a keystore failure alone never drags `ready` down, 404/405 exact-match routing, the
+to prove a keystore failure alone never drags `ready` down, and `enrollment_tokens:{loaded:0,
+last_reload_ok:true}` reported whenever enrollment is enabled without ever gating `ready`, 404/405 exact-match routing, the
 warn-and-continue policy when the bind fails with the public listener unaffected, and `stop()`
 unlinking the socket with a restart cycle bringing the plane back).
 
+**Two files in `test/unit/` are spikes, not contracts.** They characterize a third-party library
+fetched by `make deps`; their purpose is to pin observed dependency behaviour, and
+their assertions are *recorded observations*: a dependency bump may change those observations and requires review of any failures.
+
+| File | What it records | What actually guards the feature |
+|---|---|---|
+| `jwtCppSpike_test.cpp` | vendored jwt-cpp 0.7.2 on duplicate JSON members, base64url padding and alphabet, `NumericDate` types, leeway, NUL-containing keys — i.e. which checks the library does **not** do, so the profile verifier owns them | `jwtVerify_test.cpp`, `jwtProfileTypes_test.cpp` |
+| `routerSemanticsSpike_test.cpp` | RESTinio `express_router` matching: `"/p/"` does not match `"/p"` while bare `"/q"` matches `"/q/"`, case-insensitivity, `%2F` left undecoded, handlers seeing the raw target | `globalPrefixE2E_test.cpp`, `httpServer_test.cpp`'s `GlobalPrefixTransportTest` |
+
+Both carry comments marking a hypothesis as confirmed or refuted by the run that produced them.
+Separately, `DISABLED_`-prefixed cases (`jwtCppSpike_test.cpp`'s traits benchmark,
+`handlerBarrier_test.cpp`'s throughput probe) are opt-in measurements, skipped by the normal test
+run. They need `--gtest_also_run_disabled_tests`; use an optimized build for meaningful timing.
+
 ```bash
-ctest --test-dir <build> -R remoted_module_utest -V
+# From the repository root, after configuring src/build with -DUNIT_TEST=ON and building the target:
+ctest --test-dir src/build -R '^remoted_module_utest$' -V
 ```
 
-### Manual / end-to-end (`tools/send_stateless.py`, `tools/send_download.py`)
+<a id="manual--end-to-end-toolssend_statelesspy-toolssend_downloadpy"></a>
+
+### Manual / end-to-end (`tools/send_stateless.py`)
+
+> **Port trap:** `send_stateless.py`, `send_agent_json.py` and `send_enroll.py` default to
+> `https://127.0.0.1:1517`, the product's own port; `send_control.py`, `send_scan_vd.py` and
+> `send_download.py` default to `https://127.0.0.1:9443` (a development listener). Against a
+> default installation the latter three need `--url https://127.0.0.1:1517`.
 
 Mints the `wazuh-agent+jwt` bearer and sends `POST /stateless` requests exactly as `AuthMiddleware`
 expects (shared `tools/wire_jwt.py`, pure standard library; agent key read straight from
-`client.keys`; `python3 wire_jwt.py --self-test` reproduces the frozen vectors). Requires
-`pip install -r tools/requirements.txt`.
+`client.keys`; `python3 tools/wire_jwt.py --self-test` reproduces the frozen vectors).
+Run the sender examples below from `src/remoted/remoted_module/`, with
+`python3 -m pip install -r tools/requirements.txt` installed in your Python environment.
+Use an account that can read the manager's files. `--agent-id` must name an existing entry in
+`client.keys`: most senders default to `1001`, while `send_download.py` defaults to `001`.
 
 Every sender resolves `--global-prefix` the way `run_benchmark.sh` resolves `--cluster`: when the
 flag is absent it reads `<remote><https><global_prefix>` from the local manager's configuration, so
@@ -1842,7 +2281,7 @@ a default installation needs no flag. The prefix is a routing matter only (the b
 the target; a mismatch is a `404`); pass `/` to force the unprefixed paths.
 
 ```bash
-python3 tools/send_stateless.py            # one valid signed request -> 200
+python3 tools/send_stateless.py            # one valid signed request -> 202
 python3 tools/send_stateless.py --tamper   # corrupted token signature -> 401 (invalid_signature)
 python3 tools/send_stateless.py --all      # every success/failure scenario with expected codes,
                                             # incl. payload_agent_mismatch -> 400 (PayloadAgentMismatch)
@@ -1874,7 +2313,7 @@ python3 tools/send_agent_json.py                          # one signed /stats ->
 python3 tools/send_agent_json.py --endpoint config        # same, against /config -> 200 + {}
 python3 tools/send_agent_json.py --body '{"cpu":42}'      # no `modules` object -> 400, both endpoints
 python3 tools/send_agent_json.py --tamper                 # corrupted token signature -> 401 (invalid_signature)
-python3 tools/send_agent_json.py --all                    # 16 scenarios x BOTH endpoints
+python3 tools/send_agent_json.py --all                    # every scenario against BOTH endpoints
 # options: --url, --agent-id, --body, --client-keys, --endpoint {stats,config}, --global-prefix
 ```
 
@@ -1896,17 +2335,109 @@ Same bearer, for the VD re-scan pair: `send_control.py` covers `/control`
 `/scan/vd` specifically.
 
 ```bash
-python3 tools/send_control.py --type notify                # prints the vd_feed_offset it got back
-python3 tools/send_control.py --all                         # every /control success/failure scenario
+python3 tools/send_control.py --url https://127.0.0.1:1517 --type notify                # prints the vd_feed_offset it got back
+python3 tools/send_control.py --url https://127.0.0.1:1517 --all                         # every /control success/failure scenario
 
-python3 tools/send_scan_vd.py --auto-offset                 # looks up the current offset via
+python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --auto-offset                 # looks up the current offset via
                                                               # /control first, then a matching request -> 200
-python3 tools/send_scan_vd.py --feed-offset 1                # a deliberately wrong offset -> 409,
+python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --feed-offset 1                # 409 if the manager's offset differs from 1,
                                                               # prints the manager's real current_version
-python3 tools/send_scan_vd.py --all                          # every /scan/vd success/failure scenario
+python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --all                          # every /scan/vd success/failure scenario
 # options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys, --global-prefix
 ```
 
 `send_scan_vd.py --auto-offset` is the tool doing what a real agent does before ever calling
 `/scan/vd`: read the current offset off a live `/control` notify response rather than requiring you
 to already know it.
+
+### Manual / end-to-end (`tools/send_download.py`, `tools/monitor.py`)
+
+Same bearer, for `POST /download`. A single configuration download checks that the response is
+chunked and compares the received SHA-256 with the local file when readable. It prints
+`Content-Length` but does not assert its absence. A single WPK request checks the status;
+`--all` also requires chunked transfer on successful responses, but does not compare file hashes.
+Simulation checks chunking and compares configuration hashes when local files are readable.
+The expected configuration path comes from `resource_id`,
+without consulting the manager's database. For success, each agent must first have a `/control`
+registry entry with matching groups. The default selector is literally `default`, not a lookup of
+the agent's groups; pass `--resource-id` with the `agent.config_token` returned by `/control`.
+
+```bash
+python3 tools/send_download.py --url https://127.0.0.1:1517                         # config for an agent whose selector is default
+python3 tools/send_download.py --url https://127.0.0.1:1517 --resource-type wpk --resource-id wazuh_agent_v5.0.0_linux_x86_64.wpk   # replace with a staged filename
+python3 tools/send_download.py --url https://127.0.0.1:1517 --all                   # every scenario: bad type, rejected identifier,
+                                                        #   unknown group -> 403, another agent's
+                                                        #   selector -> 403
+python3 tools/send_download.py --url https://127.0.0.1:1517 --simulate 8 --repeat 20 --watch-rss   # concurrency + memory check
+# options: --url (default https://127.0.0.1:9443), --manager-home, --resource-id, --selectors,
+#          --unknown-group, --other-group, --agent-id, --global-prefix
+```
+
+`--wpk` selects the successful WPK case in `--all` only; a single WPK request requires
+`--resource-id`. `--all` also requires a staged WPK and the requested configuration file, and skips
+the other-existing-group scenario if that group has no local `merged.mg`. `--simulate N` uses up
+to N agents already in `client.keys`; it does not enroll agents or assign their groups.
+
+`--watch-rss` samples RSS and file descriptors during the transfer and reports throughput. Compare
+runs with different file sizes to assess memory growth; sampling can miss short-lived RSS peaks.
+CPU time is measured as a `/proc` counter delta over the observation interval.
+
+`tools/monitor.py` is the same observation decoupled from the sender, for a load run driven by
+anything (and it is **not** the metrics scraper — it reads `/proc`, not `GET /metrics`):
+
+```bash
+sudo python3 tools/monitor.py --duration 30 &
+sudo python3 tools/send_download.py --url https://127.0.0.1:1517 --simulate 8 --repeat 20
+# options: --pid, --port (default 1517), --interval, --duration, --quiet
+```
+
+### Manual / end-to-end (`tools/send_enroll.py`)
+
+The one sender with no agent key to borrow: `POST /enroll` is what creates the identity. It drives
+the three modes the manager can be configured for — Open (no credential), Password (mints the
+`wazuh-enroll+jwt` bearer from the manager's actual enrollment password) and mTLS (the client
+certificate is presented during the handshake; without a password option, no `Authorization`
+header is sent). Client certificates and password options can be combined when the listener and
+`use_password` require both.
+
+```bash
+python3 tools/send_enroll.py --name test-agent                 # Open mode -> 200 + id/key/reenroll_secret
+python3 tools/send_enroll.py --password-file /var/wazuh-manager/etc/authd.pass   # Password mode
+python3 tools/send_enroll.py --password-file /var/wazuh-manager/etc/authd.pass --tamper  # corrupted bearer -> 401
+python3 tools/send_enroll.py --client-cert agent.pem --client-key agent-key.pem  # mTLS mode
+python3 tools/send_enroll.py --all                             # every scenario it can drive without
+                                                                #   knowing the configured mode in advance
+# options: --url (default https://127.0.0.1:1517), --version, --groups, --ip, --key-hash,
+#          --password / --password-file, --client-cert, --client-key, --global-prefix
+```
+
+`--all` always runs the body-validation scenarios; the bearer and timing scenarios additionally
+require a password to be supplied, since only then can the tool mint a credential the manager will
+judge.
+
+### Load balancer / reverse proxy lab (`tools/load_balancer/`)
+
+The senders above exercise routes and can repeat requests or run scenarios. This lab adds: a real proxy in front, a second manager node, byte-exact control over the raw
+request target, and request replay. It ships working NGINX and HAProxy configurations *and*
+deliberately broken ones (path rewriting, PROXY-protocol mismatch, retry-on-503 duplication), so a
+regression shows up as a check that stops failing the way it is supposed to.
+
+```bash
+cd tools/load_balancer
+sudo ./setup_lab.sh       # certificates, second node, NGINX; modifies/restarts the installed manager
+sudo ./run_issue_checks.sh  # every check, PASS/FAIL against its documented outcome
+```
+
+It has its own [`README.md`](tools/load_balancer/README.md) (section 6 is the requirement mapping).
+Its operator-facing counterpart is
+[docs/ref/modules/remoted/load-balancers/](../../../docs/ref/modules/remoted/load-balancers/README.md),
+which documents the proxy behaviour exercised by the lab.
+
+### `agent-api-reference.html` (docs/ref) needs no regeneration
+
+`docs/ref/modules/remoted/agent-api-reference.html` is a 638-byte ReDoc shell that loads
+`agent-api.yaml` **in the browser** (CDN bundle `redoc@2.5.2`): editing the yaml is the whole change,
+there is no generated artifact to rebuild and no tool to install (`redocly` is not part of the
+environment). From the repository root, validate the yaml (with PyYAML available:
+`python3 -c "import yaml; yaml.safe_load(open('docs/ref/modules/remoted/agent-api.yaml'))"`)
+and run `docs/build.sh`; that is all.

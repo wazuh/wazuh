@@ -37,9 +37,9 @@
  * 256) for the same reason. */
 #define AGENT_SERVER_HOST_MAX_LEN 255
 
-static int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
-                                  bool *port_present, char *endpoint, size_t endpoint_size,
-                                  uint32_t *scope_id);
+int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
+                           bool *port_present, char *endpoint, size_t endpoint_size,
+                           uint32_t *scope_id);
 
 int Read_Agent_Manager(XML_NODE node, agent *logr);
 int Read_Agent_SSL(XML_NODE node, agent *logr);
@@ -607,9 +607,9 @@ static int w_resolve_ipv6_zone(const char *zone, uint32_t *out)
  * @param scope_id Receives the IPv6 scope id, or 0 when there is no zone id.
  * @return 0 on success, OS_INVALID on any grammar violation.
  */
-static int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
-                                  bool *port_present, char *endpoint, size_t endpoint_size,
-                                  uint32_t *scope_id)
+int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
+                           bool *port_present, char *endpoint, size_t endpoint_size,
+                           uint32_t *scope_id)
 {
     CURLU *url = NULL;
     char *part = NULL;
@@ -1092,6 +1092,11 @@ int Read_Agent_SSL(XML_NODE node, agent * logr)
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);
             }
+
+            /* Recorded because the resolved value cannot answer this on its own: an unset mode
+             * with no trust material resolves to the same 'none' an operator can ask for by
+             * name, and the two have to be told apart once an anchor appears later. */
+            logr->ssl.verification_mode_explicit = true;
         } else if (strcmp(node[j]->element, xml_ciphers) == 0) {
             if (w_client_validate_tls13_ciphers(node[j]->content) == OS_INVALID) {
                 return (OS_INVALID);

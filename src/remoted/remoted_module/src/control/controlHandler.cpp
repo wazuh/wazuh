@@ -12,6 +12,7 @@
 #include "controlHandler.hpp"
 #include "common/logThrottle.hpp"
 #include "common/vdClient.hpp"
+#include "groupSelector.hpp" // toGroupsCsv(), makeConfigToken() -- shared with /download's authorization check
 #include "json.hpp"
 #include "loggerHelper.h"
 #include <atomic>
@@ -91,33 +92,6 @@ namespace remoted::control
                 .count();
         }
 
-        // Rebuild the raw group CSV wdb returned (no URL-encoding, matches wdb).
-        std::string toGroupsCsv(const std::vector<std::string>& groups)
-        {
-            std::string out;
-            for (size_t i = 0; i < groups.size(); ++i)
-            {
-                if (i > 0)
-                    out.push_back(',');
-                out.append(groups[i]);
-            }
-            return out;
-        }
-
-        /// The /download resource_id the agent must use for its shared configuration.
-        ///
-        /// Opaque to the agent by contract: it passes this through verbatim and never parses it,
-        /// which is exactly what lets this value change without shipping a new agent. Today it IS
-        /// the group selector -- the same CSV config_hash was computed over, so the two provably
-        /// name the same merged.mg -- and /download resolves it with no lookup.
-        ///
-        /// Never empty: /download needs some resource to name, and an agent with no groups is
-        /// implicitly in "default". The substitution is defensive only, since every site that
-        /// writes AgentEntry::groups already falls back to {"default"}.
-        std::string makeConfigToken(const std::string& groupsCsv)
-        {
-            return groupsCsv.empty() ? std::string {"default"} : groupsCsv;
-        }
     } // namespace
 
     class ControlHandler::Impl

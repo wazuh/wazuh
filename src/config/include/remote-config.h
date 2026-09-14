@@ -57,8 +57,8 @@
 /* Maximum lengths for remote.https string options. Kept in sync by hand with the
  * fixed-size C-ABI buffers in src/remoted/remoted_module/include/remoted_module.h
  * (bind_address[256], global_prefix[256], certificate_path[512], private_key_path[512],
- * ca_path[512], ciphers[256]) that secure.c's HandleSecure() copies these values into via
- * snprintf. Each limit is one less than its buffer size, to leave room for the NUL terminator.
+ * ca_path[512], ca_certificate_path[512], ciphers[256]) that secure.c's HandleSecure() copies
+ * these values into via snprintf. Each limit is one less than its buffer size, to leave room for the NUL terminator.
  * A value that doesn't fit must be rejected here instead of silently truncated: past
  * this point it is a plain char* with no length limit until it reaches that buffer. */
 #define REMOTED_HTTPS_BIND_ADDR_MAX_LEN     255
@@ -66,6 +66,7 @@
 #define REMOTED_HTTPS_CERTIFICATE_MAX_LEN   511
 #define REMOTED_HTTPS_KEY_MAX_LEN           511
 #define REMOTED_HTTPS_CA_MAX_LEN            511
+#define REMOTED_HTTPS_CA_CERTIFICATE_MAX_LEN 511
 #define REMOTED_HTTPS_CIPHERS_MAX_LEN       255
 
 #include "shared.h"
@@ -80,6 +81,7 @@ typedef struct _remoted_https_config {
     char *certificate;         ///< NULL -> module default
     char *key;                 ///< NULL -> module default
     char *ca;                  ///< NULL -> client-certificate verification disabled
+    char *ca_certificate;      ///< NULL -> module default (CA that signs the listener certificate)
     char *ciphers;             ///< NULL -> library default cipher list
     int verification_mode;     ///< REMOTED_HTTPS_VERIFY_*
     long max_body_size;        ///< bytes; 0 -> module default
@@ -96,6 +98,16 @@ typedef struct _remoted {
 
     bool allow_higher_versions;
     bool legacy_enabled; ///< Whether remote.legacy.enabled is true
+    /**
+     * @brief Whether remote.legacy.ca_delivery is true (default) -- send the manager's CA to a
+     *        pre-v5.0.0 agent over the WPK transfer channel, ahead of the `upgrade` command.
+     *
+     * Read by remoted's own legacy task poller and by nothing else, so a change takes effect on a
+     * remoted restart alone. `legacy_enabled` and `https.verification_mode` are NOT like that:
+     * modulesd caches them at start for the upgrade delivery gates (wm_task_manager_read_remoted()),
+     * so those two need both daemons restarted. Worth keeping straight -- they sit in the same block.
+     */
+    bool legacy_ca_delivery;
 
     int tcp_sock;       ///< This socket is used to receive requests over TCP
     int udp_sock;       ///< This socket is used to receive requests over UDP

@@ -248,6 +248,32 @@ class WazuhException(Exception):
                               'again once the backlog drains; check the indexer is reachable if it '
                               'does not'
                },
+        1767: {'message': 'Enrollment token not found',
+               'remediation': 'Check the token id with GET /agents/enrollment-tokens; a revoked token '
+                              'is still listed'
+               },
+        1768: {'message': 'Enrollment token refused',
+               'remediation': 'The address must be one of the names in the listener certificate '
+                              '(remote.https.certificate) and the certificate must be signed by '
+                              'remote.https.ca_certificate; see the detail'
+               },
+        1769: {'message': 'Enrollment tokens can only be managed on the master node',
+               'remediation': 'Send the request to the master node; workers only replicate the token store'
+               },
+        1770: {'message': 'Invalid enrollment token purge scope',
+               'remediation': 'Valid scopes are `dead` (revoked, expired or exhausted tokens) and `all`'
+               },
+        1771: {'message': 'The enrollment token store could not be written',
+               'remediation': 'The change is applied on this manager and will be written as soon as the '
+                              'store file is writable again; check the disk and the permissions of '
+                              'etc/enrollment_tokens.json, then retry'
+               },
+        1772: {'message': 'The agent credentials could not be recorded',
+               'remediation': 'The manager refused the enrollment instead of handing out credentials it '
+                              'could not write down; check the disk and the permissions of '
+                              'queue/authd, and whether too many enrollments are still waiting for '
+                              'wazuh-db, then retry'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'

@@ -25,30 +25,50 @@ echo ""
 # CLI args
 # ------------------------------------------------------------------------------
 FROM_WORKFLOWS=0
+CERTS_ONLY=0
+REGEN_CERTS=0
+ROTATE_CA=0
 for arg in "$@"; do
   case "$arg" in
     --from-wf|--from-workflow|--from-workflows)
       FROM_WORKFLOWS=1
       ;;
+    --certs-only)
+      CERTS_ONLY=1
+      ;;
+    --regen-certs)
+      REGEN_CERTS=1
+      ;;
+    --rotate-ca)
+      ROTATE_CA=1
+      ;;
     -h|--help)
       cat <<EOF
-Usage: $0 [--from-wf]
+Usage: $0 [--from-wf] [--certs-only] [--regen-certs] [--rotate-ca]
 
-Initializes the E2E environment.
+Initializes the E2E environment: downloads the Wazuh Indexer and Dashboard
+packages and generates the TLS certificates into certs/ with
+scripts/wazuh-certs-tool.sh, driven by scripts/wazuh-certs-tool.yml.
 
-By default, the Wazuh Indexer and Dashboard packages are downloaded from the
-staging nightly artifact URL manifests. If a package is missing from the primary
-manifest, the script tries the nightly backup manifest.
+By default, the packages are downloaded from the staging nightly artifact URL
+manifests. If a package is missing from the primary manifest, the script tries
+the nightly backup manifest.
 
 Options:
   --from-wf, --from-workflow, --from-workflows
                  Download packages from the latest successful GitHub Actions
                  workflows instead of the staging manifests.
+  --certs-only   Skip the package download; only (re)generate the certificates.
+  --regen-certs  Regenerate the certificates without asking when certs/ exists.
+  --rotate-ca    Issue a new root CA instead of reusing certs/root-ca.{pem,key}.
+                 Everything that trusts the current CA must be redeployed after
+                 that (docker compose down -v && up -d, sudo ./wazuh_copy_certs.sh).
   --help, -h     Show this help.
 
 Required tools:
-  default mode:  curl
-  --from-wf:     curl, gh, unzip
+  default mode:  curl, openssl
+  --from-wf:     curl, gh, unzip, openssl
+  --certs-only:  openssl
 EOF
       exit 0
       ;;
@@ -72,6 +92,15 @@ DASHBOARD_PACKAGE_KEY="wazuh_dashboard_amd64_deb"
 DASHBOARD_PACKAGE_FILE="wazuh-dashboard_5.0.0-latest_amd64.deb"
 
 WAZUH_MANAGER_HOME="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
+
+# Certificates: issued by the devcontainer copy of the installation assistant's
+# certificate tool, driven by the YAML next to it (its node names are load-bearing,
+# see the comments in that file). WAZUH_DEV_SCRIPTS is exported by the devcontainer.
+WAZUH_DEV_SCRIPTS="${WAZUH_DEV_SCRIPTS:-${SCRIPT_DIR}/../scripts}"
+WAZUH_DEV_SCRIPTS="${WAZUH_DEV_SCRIPTS%/}"
+CERTS_TOOL="${WAZUH_DEV_SCRIPTS}/wazuh-certs-tool.sh"
+CERTS_CONFIG="${CERTS_CONFIG:-${WAZUH_DEV_SCRIPTS}/wazuh-certs-tool.yml}"
+CERTS_DIR="${SCRIPT_DIR}/certs"
 
 
 # ==============================================================================
@@ -112,68 +141,122 @@ function open_manager_listeners() {
 # ==============================================================================
 #                          Certificates
 # ==============================================================================
+# First "- name:" under "manager:" in the certs YAML. awk rather than yq so the same
+# helper works under sudo in wazuh_copy_certs.sh; comments and blank lines skipped.
+function manager_node_name() {
+  awk '
+    function indent(s) { match(s, /^[ \t]*/); return RLENGTH }
+    /^[ \t]*#/ || /^[ \t]*$/ { next }
+    /^[ \t]*manager:[ \t]*$/ { in_mgr = 1; mgr_indent = indent($0); next }
+    in_mgr && /^[ \t]*[A-Za-z0-9_]+:[ \t]*$/ && indent($0) <= mgr_indent { in_mgr = 0 }
+    in_mgr && /^[ \t]*-[ \t]*name:[ \t]*/ {
+      sub(/^[ \t]*-[ \t]*name:[ \t]*/, ""); gsub(/["'"'"']/, ""); sub(/[ \t]+$/, "")
+      print; exit
+    }
+  ' "$CERTS_CONFIG"
+}
+
 function upsert_certs() {
-    echo "==> Creating certificates..."
+  echo "==> Certificates (${CERTS_DIR})..."
+  need_cmd openssl
 
-    # Check if certs directory already exists
-    if [ -d certs ]; then
-        echo "==> Certificates directory already exists."
-        read -p "Do you want to regenerate the certificates? This will delete the existing certs directory. (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo "==> Skipping certificate generation."
-            return 0
-        fi
-        echo "==> Removing existing certificates directory..."
-        rm -rf certs
+  if [ ! -f "$CERTS_TOOL" ]; then
+    echo "ERROR: certificate tool not found: $CERTS_TOOL (set WAZUH_DEV_SCRIPTS)" >&2
+    return 1
+  fi
+  if [ ! -f "$CERTS_CONFIG" ]; then
+    echo "ERROR: certificate configuration not found: $CERTS_CONFIG" >&2
+    return 1
+  fi
+
+  local manager_name
+  manager_name="$(manager_node_name)"
+  if [ -z "$manager_name" ]; then
+    echo "ERROR: no manager node ('- name:' under 'manager:') in $CERTS_CONFIG" >&2
+    return 1
+  fi
+
+  # Existing certificates: ask before replacing them unless --regen-certs
+  if [ -d "$CERTS_DIR" ] && [ -n "$(ls -A "$CERTS_DIR")" ]; then
+    echo "==> Certificates directory already exists."
+    if (( REGEN_CERTS == 0 )); then
+      read -p "Do you want to regenerate the certificates? This will delete the existing certs directory. (y/N): " -n 1 -r
+      echo
+      if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "==> Skipping certificate generation."
+        return 0
+      fi
     fi
+  fi
 
-    local wazuh_install_script="wazuh-install.sh"
-    local wazuh_install_url="https://packages.wazuh.com/4.14/wazuh-install.sh"
-    local config_file="config.yml"
+  # Root CA: reuse the current one (the indexer/dashboard containers and the
+  # installed manager trust it) unless --rotate-ca. Copied aside first because
+  # certs/ is wiped below; the RETURN trap removes the copy on every exit path.
+  local -a ca_args=()
+  local ca_tmp=""
+  if (( ROTATE_CA == 0 )) && [ -f "$CERTS_DIR/root-ca.pem" ] && [ -f "$CERTS_DIR/root-ca.key" ]; then
+    ca_tmp="$(mktemp -d)"
+    trap "rm -rf '${ca_tmp}'; trap - RETURN" RETURN
+    cp "$CERTS_DIR/root-ca.pem" "$CERTS_DIR/root-ca.key" "$ca_tmp/"
+    ca_args=("$ca_tmp/root-ca.pem" "$ca_tmp/root-ca.key")
+    echo "==> Reusing the existing root CA (${CERTS_DIR}/root-ca.pem); pass --rotate-ca to issue a new one."
+  elif (( ROTATE_CA == 1 )); then
+    echo "==> Rotating the root CA: a new root-ca.pem / root-ca.key will be issued."
+  else
+    echo "==> No reusable root CA in ${CERTS_DIR}; a new one will be issued."
+  fi
 
-    # Download wazuh-install.sh
-    echo "==> Downloading wazuh-install.sh..."
-    curl -sO "${wazuh_install_url}"
-    chmod +x "${wazuh_install_script}"
+  echo "==> Removing existing certificates directory..."
+  rm -rf "$CERTS_DIR"
 
-    # Create config.yml
-    echo "==> Creating config.yml..."
-    cat > "${config_file}" << 'EOF'
-nodes:
-  # Wazuh indexer nodes
-  indexer:
-    - name: node-1
-      ip: "127.0.0.1"
+  echo "==> Generating certificates with ${CERTS_TOOL}..."
+  echo "    config: ${CERTS_CONFIG}"
+  if ! bash "$CERTS_TOOL" -A "${ca_args[@]}" -v -c "$CERTS_CONFIG" -o "$CERTS_DIR"; then
+    echo "ERROR: certificate generation failed (see ${CERTS_DIR}/wazuh-certificates-tool.log)" >&2
+    return 1
+  fi
 
-  # Wazuh server nodes
-  server:
-    - name: wazuh-1
-      ip: "127.0.0.1"
+  # Post-checks: the files the docker entrypoints (node-1*, admin*, dashboard*,
+  # root-ca.pem) and wazuh_copy_certs.sh (<manager>*) copy by name.
+  local -a required=(
+    root-ca.pem root-ca.key
+    admin.pem admin-key.pem
+    node-1.pem node-1-key.pem
+    dashboard.pem dashboard-key.pem
+    "${manager_name}.pem" "${manager_name}-key.pem"
+    "${manager_name}-remoted.pem" "${manager_name}-remoted-key.pem"
+  )
+  local f
+  for f in "${required[@]}"; do
+    if [ ! -s "$CERTS_DIR/$f" ]; then
+      echo "ERROR: expected certificate file missing: $CERTS_DIR/$f" >&2
+      return 1
+    fi
+  done
 
-  # Wazuh dashboard nodes
-  dashboard:
-    - name: dashboard
-      ip: "127.0.0.1"
-EOF
+  echo "==> Verifying the certificates against ${CERTS_DIR}/root-ca.pem..."
+  for f in admin.pem node-1.pem dashboard.pem "${manager_name}.pem" "${manager_name}-remoted.pem"; do
+    if ! openssl verify -CAfile "$CERTS_DIR/root-ca.pem" "$CERTS_DIR/$f" | sed 's/^/    /'; then
+      echo "ERROR: $CERTS_DIR/$f does not verify against root-ca.pem" >&2
+      return 1
+    fi
+  done
 
-    # Generate config files
-    echo "==> Generating configuration files..."
-    bash "${wazuh_install_script}" --generate-config-files
+  echo "==> Agent listener certificate (${manager_name}-remoted.pem, leaf followed by the CA):"
+  openssl x509 -in "$CERTS_DIR/${manager_name}-remoted.pem" -noout -subject -issuer -enddate \
+    -ext subjectAltName,extendedKeyUsage,keyUsage,basicConstraints | sed 's/^/    /'
 
-    # Extract the tar file
-    echo "==> Extracting wazuh-install-files.tar..."
-    tar -xf wazuh-install-files.tar
-
-    # Rename wazuh-install-files to certs
-    echo "==> Renaming wazuh-install-files to certs..."
-    mv wazuh-install-files certs
-
-    # Clean up temporary files
-    echo "==> Cleaning up temporary files..."
-    rm -f "${wazuh_install_script}" "${config_file}" wazuh-install-files.tar
-
-    echo "==> Certificates created successfully."
+  echo "==> Certificates created successfully in ${CERTS_DIR}."
+  echo "    Next steps:"
+  echo "      sudo ./wazuh_copy_certs.sh              # deploy into ${WAZUH_MANAGER_HOME}/etc/certs"
+  echo "      ${WAZUH_MANAGER_HOME}/bin/wazuh-manager-control restart"
+  echo "      docker compose -f ${SCRIPT_DIR}/docker-compose.yml down && docker compose -f ${SCRIPT_DIR}/docker-compose.yml up -d"
+  echo "        (the containers copy the certificates at start; not required while the CA is unchanged)"
+  if (( ROTATE_CA == 1 )); then
+    echo "    The root CA was rotated: everything that trusted the old CA must be redeployed:"
+    echo "      docker compose -f ${SCRIPT_DIR}/docker-compose.yml down -v && docker compose -f ${SCRIPT_DIR}/docker-compose.yml up -d"
+    echo "        (-v drops the indexer volumes so its security index is re-initialised with the new admin certificate)"
+  fi
 }
 
 # ==============================================================================
@@ -556,20 +639,25 @@ function get_dashboard_artifact() {
 #                   MAIN
 ####################################################
 
-need_cmd curl
+if (( CERTS_ONLY == 0 )); then
+  need_cmd curl
 
-# Download the last version of the Wazuh Indexer and Dashboard
-if [[ "$FROM_WORKFLOWS" -eq 1 ]]; then
-  need_cmd gh
-  need_cmd unzip
+  # Download the last version of the Wazuh Indexer and Dashboard
+  if [[ "$FROM_WORKFLOWS" -eq 1 ]]; then
+    need_cmd gh
+    need_cmd unzip
 
-  # Make sure we have a GitHub token
-  gh_token
+    # Make sure we have a GitHub token
+    gh_token
 
-  get_indexer_artifact
-  get_dashboard_artifact
+    get_indexer_artifact
+    get_dashboard_artifact
+  else
+    get_packages_from_manifests
+  fi
 else
-  get_packages_from_manifests
+  echo "==> --certs-only: skipping the package download."
+  echo ""
 fi
 
 # Init certs

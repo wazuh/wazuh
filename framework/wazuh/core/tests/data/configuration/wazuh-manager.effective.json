@@ -22,6 +22,7 @@
     "remote": {
         "legacy": {
             "enabled": false,
+            "ca_delivery": true,
             "port": 1514,
             "protocol": [
                 "tcp"
@@ -37,7 +38,8 @@
             "global_prefix": "/wazuh-manager/",
             "certificate": "etc/certs/remoted.pem",
             "key": "etc/certs/remoted-key.pem",
-            "ca": ""
+            "ca": "",
+            "ca_certificate": "etc/certs/root-ca.pem"
         },
         "agents": {
             "allow_higher_versions": false

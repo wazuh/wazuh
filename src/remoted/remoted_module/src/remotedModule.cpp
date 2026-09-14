@@ -32,6 +32,11 @@ void RemotedModule::stop() const
     RemotedModuleFacade::instance().stop();
 }
 
+int RemotedModule::tlsCaMatchesLeaf() const
+{
+    return RemotedModuleFacade::instance().tlsCaMatchesLeaf();
+}
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -82,6 +87,22 @@ extern "C"
             // also runs from atexit() (see secure.c), where a terminate would turn a clean
             // shutdown into a crash.
             LOGFN_ERROR(LogFn {REMOTED_MODULE_LOGTAG}, "Error stopping remoted module: non-standard exception.");
+        }
+    }
+
+    int remoted_module_tls_ca_matches_leaf(void)
+    {
+        try
+        {
+            return RemotedModule::instance().tlsCaMatchesLeaf();
+        }
+        catch (...)
+        {
+            // Nothing may cross back into C. "Unknown" is also the right answer for a failure to
+            // determine the answer, and the one caller treats it as "proceed" -- see the ABI doc
+            // comment. Silent on purpose: this is polled per upgrade, and a throwing accessor
+            // would otherwise log once per agent per poll cycle.
+            return -1;
         }
     }
 

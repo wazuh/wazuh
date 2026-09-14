@@ -18,4 +18,14 @@ void __wrap_remoted_module_start(const logging_callback_t logCb, const remoted_m
 
 void __wrap_remoted_module_stop(void);
 
+/**
+ * @brief Mock of the CA-signs-leaf accessor the legacy task poller consults before sending a CA.
+ *
+ * Unlike the two above, this one HAS a return value the caller branches on, so it is driven by
+ * mock_type(): a test that exercises the CA path must will_return() 1, 0 or -1 for every call it
+ * expects. Defaults are deliberately absent -- an unset expectation should fail the test loudly
+ * rather than silently pick a branch.
+ */
+int __wrap_remoted_module_tls_ca_matches_leaf(void);
+
 #endif

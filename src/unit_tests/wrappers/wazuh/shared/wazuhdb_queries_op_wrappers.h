@@ -52,6 +52,7 @@ int __wrap_wdb_insert_agent(int id,
                             __attribute__((unused)) const char* ip,
                             const char* register_ip,
                             const char* internal_key,
+                            const char* reenroll_secret,
                             const char* group,
                             int keep_date,
                             __attribute__((unused)) int* sock);

@@ -1,0 +1,12 @@
+- name: Listener key unreadable by the service user
+  description: With etc/certs/remoted-key.pem present but root-owned (0600), the validator passes and remoted refuses to start with its preflight error naming the key
+  configuration_parameters:
+    CERTIFICATE: 'etc/certs/remoted.pem'
+    KEY: 'etc/certs/remoted-key.pem'
+  metadata:
+    certificate: 'etc/certs/remoted.pem'
+    key: 'etc/certs/remoted-key.pem'
+    mutation: unreadable_key
+    # The validator runs as root, so the file passes it; remoted probes the pair after dropping
+    # privileges (w_remoted_check_tls_files() in src/remoted/src/secure.c) and exits with this line.
+    expected_error: ".*Cannot start the HTTPS agent listener: the TLS private key '.*remoted-key\\.pem' is missing or unreadable by the service user.*"

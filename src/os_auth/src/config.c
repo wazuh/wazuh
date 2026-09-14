@@ -69,6 +69,12 @@ int authd_read_config(const char *path) {
     config.max_pending_deletes =
         getDefine_Int_default("wazuh_modules", "manager_task_max_pending_deletes", 0, 1000000, 20000);
 
+    /* remoted's keys, deliberately (see the fields' comment): the re-enrollment bearer is judged here with
+     * the window remoted applies to the agent's every other request. Same bounds, same defaults as
+     * remoted/src/secure.c. */
+    config.jwt_max_age = getDefine_Int_default("remoted", "jwt_max_age", 1, 43200, 60);
+    config.jwt_clock_skew = getDefine_Int_default("remoted", "jwt_clock_skew", 0, 43200, 30);
+
     return 0;
 }
 

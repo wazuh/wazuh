@@ -150,10 +150,15 @@ options) log a notice and are skipped. No script rewrites the file for you.
 
 ## Certificates
 
-The HTTPS listener requires a certificate and key. Manager packages generate a self-signed pair at
-install time, so a default install already satisfies this — but note that starting is **fail-closed**:
-if the certificate or key is missing or invalid, `remoted` does not start at all, rather than coming
-up without the listener.
+The HTTPS listener requires a certificate and key, and the manager does not generate them: they are
+issued with the Wazuh installation assistant's `wazuh-certs-tool` — a `remoted.pem` leaf of the same
+`root-ca.pem` the assistant issues for the rest of the platform, so agents can pin that CA — and
+deployed under `etc/certs` before the first start (see
+[Deploy certificates](../../ref/getting-started/installation.md#deploy-certificates)). Starting is
+**fail-closed**: without them `wazuh-manager-control start` refuses (`(1244): Invalid configuration at
+'/remote/https/certificate': file not found: …`), and a pair the service user cannot read stops
+`remoted` at startup (`Cannot start the HTTPS agent listener: …`) rather than coming up without the
+listener.
 
 `authd` and `remoted` now share one pair, `etc/certs/remoted.pem` and `etc/certs/remoted-key.pem`
 (with `etc/certs/root-ca.pem` as the CA). A 4.x configuration that pointed `<auth><ssl_manager_cert>`

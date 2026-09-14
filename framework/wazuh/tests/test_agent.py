@@ -12,6 +12,7 @@ import pytest
 from grp import getgrnam
 from json import dumps
 from pwd import getpwnam
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch, call
 from typing import Any
 
@@ -26,7 +27,8 @@ with patch('wazuh.core.common.wazuh_uid'):
         del sys.modules['wazuh.rbac.orm']
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh.agent import add_agent, assign_agents_to_group, create_group, delete_agents, delete_groups, \
+        from wazuh.agent import add_agent, assign_agents_to_group, create_group, create_enrollment_token, \
+            delete_agents, delete_enrollment_token, delete_enrollment_tokens, delete_groups, get_enrollment_tokens, \
             get_agent_conf, get_agent_groups, get_agents, get_agents_in_group, get_agents_keys, \
             get_agents_summary, get_agents_summary_os, get_agents_summary_status, \
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
@@ -1546,3 +1548,98 @@ def test_check_uninstall_permission():
     expected = WazuhResult({'message': 'User has permission to uninstall agents'})
 
     assert result == expected
+
+
+# Enrollment tokens (issue #38993): the API's view of authd's token verbs. The core module is mocked
+# here (framework/wazuh/core/tests/test_enrollment_token.py drives the socket protocol).
+
+TOKEN_ID = 'AAECAwQFBgcICQoLDA0ODw'
+
+
+@patch('wazuh.agent.enrollment_token.create_token',
+       return_value={'token': 'eyJ2ZXIiOjF9', 'id': TOKEN_ID, 'address': 'wazuh-master'})
+def test_create_enrollment_token(mock_create):
+    """create_enrollment_token() forwards every option to the core and returns its data (token included, once)."""
+    result = create_enrollment_token(address='wazuh-master', ttl='2h', max_uses=2)
+
+    mock_create.assert_called_once_with(address='wazuh-master', port=None, prefix=None, ttl='2h', max_uses=2,
+                                        description=None, embed_ca=False, no_credential=False)
+    assert isinstance(result, WazuhResult)
+    assert result.dikt['data'] == mock_create.return_value
+
+
+def _token(letter, hours, **overrides):
+    created = datetime(2023, 11, 14, 12 + hours, 0, tzinfo=timezone.utc)
+    token = {'id': letter * 22, 'address': 'wazuh-master', 'created': created,
+             'expires': datetime(2023, 12, 14, 12 + hours, 0, tzinfo=timezone.utc), 'max_uses': 0, 'uses': 1,
+             'revoked': False, 'credential': True, 'description': f'token {letter}'}
+    token.update(overrides)
+    return token
+
+
+ENROLLMENT_TOKENS = [_token('A', 0), _token('B', 1, revoked=True, description='second one'),
+                     _token('C', 2, credential=False, description=None)]
+
+
+@pytest.mark.parametrize('kwargs, expected_ids, expected_total', [
+    ({}, ['A' * 22, 'B' * 22, 'C' * 22], 3),                                       # created ascending by default
+    ({'sort_by': ['created'], 'sort_ascending': False, 'limit': 1}, ['C' * 22], 3),  # total counts before the limit
+    ({'q': 'description=second one'}, ['B' * 22], 1),
+    ({'search_text': 'second'}, ['B' * 22], 1),
+    ({'select': ['id'], 'offset': 2}, ['C' * 22], 3),
+])
+@patch('wazuh.agent.enrollment_token.list_tokens')
+def test_get_enrollment_tokens(mock_list, kwargs, expected_ids, expected_total):
+    """get_enrollment_tokens() pages, sorts, searches, filters and selects over the core's list."""
+    mock_list.return_value = [dict(t) for t in ENROLLMENT_TOKENS]
+
+    result = get_enrollment_tokens(**kwargs)
+
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert [t['id'] for t in result.affected_items] == expected_ids
+    assert result.total_affected_items == expected_total
+    if 'select' in kwargs:
+        assert set(result.affected_items[0]) == {'id'}
+    else:
+        assert 'token' not in result.affected_items[0]
+
+
+@patch('wazuh.agent.enrollment_token.revoke_token')
+def test_delete_enrollment_token(mock_revoke):
+    """delete_enrollment_token() revokes through the core and reports the id."""
+    result = delete_enrollment_token(token_id=TOKEN_ID)
+
+    mock_revoke.assert_called_once_with(TOKEN_ID)
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items == [TOKEN_ID]
+    assert result.total_affected_items == 1
+    assert result.total_failed_items == 0
+
+
+@patch('wazuh.agent.enrollment_token.revoke_token', side_effect=WazuhResourceNotFound(1767))
+def test_delete_enrollment_token_not_found(mock_revoke):
+    """An unknown id is a 1767 (the API answers 404), not a failed item."""
+    with pytest.raises(WazuhResourceNotFound, match='.* 1767 .*'):
+        delete_enrollment_token(token_id='AAAAAAAAAAAAAAAAAAAAAA')
+
+
+@patch('wazuh.agent.enrollment_token.purge_tokens', return_value=[TOKEN_ID, 'B' * 22])
+def test_delete_enrollment_tokens(mock_purge):
+    """delete_enrollment_tokens() purges through the core and reports every id removed."""
+    result = delete_enrollment_tokens(scope='all')
+
+    mock_purge.assert_called_once_with('all')
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items == [TOKEN_ID, 'B' * 22]
+    assert result.total_affected_items == 2
+    assert result.total_failed_items == 0
+
+
+@patch('wazuh.agent.enrollment_token.purge_tokens', return_value=[])
+def test_delete_enrollment_tokens_defaults_to_dead(mock_purge):
+    """Without a scope the purge only removes what can no longer authorise an enrollment."""
+    result = delete_enrollment_tokens()
+
+    mock_purge.assert_called_once_with('dead')
+    assert result.affected_items == []
+    assert result.total_affected_items == 0

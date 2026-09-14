@@ -21,14 +21,18 @@ flowchart TB
         QR[queue_remove\nqueue_insert]
         WR[Writer thread]
         PJ[(deletion journal\nin memory)]
+        IJ[(identity journal\nin memory)]
 
         REMS -->|"under mutex_keys"| KS
         LOCS -->|"under mutex_keys"| KS
+        LOCS -->|"record the credential\nbefore answering"| IJ
         KS --> QR
         QR --> WR
         WR -->|"1. journal the intent"| PJ
+        WR -->|"drop the line\nafter global commit"| IJ
     end
 
+    IJ <-->|"appended, compacted by the writer"| IF[(queue/authd/pending-identities\ncredentials not yet in global.db)]
     PJ <-->|"every change, atomically"| PF[(queue/authd/pending-purges\nwhat a crash is reconciled against)]
 
     WR ==>|"2. rewritten whole, atomically"| CK[(client.keys)]
@@ -40,6 +44,8 @@ flowchart TB
     CK --> REMOTED[wazuh-manager-remoted\nauthenticates agents]
 ```
 
+*Diagram source of truth: `src/os_auth/README.md`.*
+
 The load-bearing property of this layout is that **the writer thread never waits on anything it does
 not own**. It is the only thread that persists `client.keys`, and remoted authenticates agents by
 reading that file, so anything slow in the writer's pass delays every enrollment — including agents
@@ -50,9 +56,9 @@ thread instead of being called inline.
 
 | Thread | Runs on | Role |
 |---|---|---|
-| Remote server | any node with `remote_enrollment` | TLS enrollment on port 1515 |
-| Local server | every node | `queue/sockets/auth.sock`: `add`, `remove`, `get` — for the server API and for remoted's `/enroll` |
-| Writer | master only | persists `client.keys`, removes Wazuh DB rows, records each deletion as a Task Manager task |
+| Remote server | any node with both `remote_enrollment` and `legacy_enrollment` | TLS enrollment on port 1515 |
+| Local server | every node | `queue/sockets/auth.sock`: `add`, `remove`, `get` — for the server API and for remoted's `/enroll` — plus `token_create`, `token_list`, `token_revoke` and `token_purge` for the token CLI and the API |
+| Writer | master only | persists `client.keys`, removes Wazuh DB rows, records each deletion as a Task Manager task, and settles the credentials the [identity journal](#the-identity-journal) still owes — waking on its own clock while any remain |
 | authpass watcher | workers with `use_password` | re-reads `etc/authd.pass` as the cluster syncs it down from the master |
 
 ## The two stores
@@ -93,6 +99,7 @@ sequenceDiagram
     participant C as Caller<br/>(agent · remoted /enroll · server API)
     participant T as Serving thread
     participant KS as In-memory keystore
+    participant IJ as pending-identities
     participant W as Writer thread
     participant CK as client.keys
     participant R as remoted
@@ -107,15 +114,38 @@ sequenceDiagram
             KS-->>T: force rules decide (see below)
         end
         T->>KS: OS_AddNewAgent() — assigns the id, generates the key
-        T->>W: queue_insert += entry, write_pending = 1, signal
+        alt local socket (remoted /enroll · server API)
+            T->>IJ: record the credential (fails ⇒ 9031, nothing handed out)
+            T->>W: queue_insert += entry, signal
+        end
     end
-    T-->>C: id + name + ip + key
+    alt local socket
+        T-->>C: id + name + ip + key + reenroll_secret
+    else port 1515 on this node
+        T-->>C: OSSEC K:'id name ip key' — no reenroll_secret
+        T->>W: queue_insert, only after the answer was sent
+    end
     Note over C: the agent can sign requests NOW…
     W->>CK: rewrite client.keys whole (atomic rename)
     W->>W: wdb_insert_agent + wdb_set_agent_groups_csv
+    W->>W: global commit
+    W->>IJ: drop the line (only after the commit)
     CK-->>R: inotify / periodic reload
     Note over R: …but remoted only accepts it from here on
 ```
+
+Followed step by step, with the token, the bearer and the database writes spelled out:
+[the enrollment lifecycle](enrollment-lifecycle.md).
+
+`/enroll` can also carry one of two credentials the diagram folds into "credential". An **enrollment
+token** arrives as `token_id`: the use is reserved *before* `OS_AddNewAgent()` runs and released if the
+add is refused, so a token is only spent on an agent that exists. A **re-enrollment** arrives as
+`reenroll = {kid, bearer}` and skips the sequence above: the master verifies the bearer against the
+agent's `reenroll_secret` (read from wazuh-db before `mutex_keys`), then rotates the entry in place under
+the **same id** — `OS_DeleteKey(purge = 1)` + `OS_AddNewAgent()` — and the writer runs
+`global set-agent-credentials` instead of an insert. No `add_remove()` runs, so nothing in
+[Agent removal](#agent-removal) applies: the id keeps its documents. Operator view:
+[README](README.md#enrollment-tokens); function-level walk-through: the developer README.
 
 ### Validation
 
@@ -142,6 +172,69 @@ split). A name that clears the floor but not the stricter rule is rejected with 
 
 The looser floor is what lets an operator register a name the self-enrollment path would refuse.
 remoted's `/enroll` applies its own validator, tighter than both, before it ever reaches the socket.
+
+### The identity journal
+
+An enrollment answers with a key, and a re-enrollment with a key and a new re-enrollment secret,
+long before the writer puts either in `global.db`. If that database write failed — wazuh-db down, a
+socket timeout, a crash in between — the agent was left holding credentials the manager had no
+record of: it could talk to remoted once `client.keys` caught up, but it could never re-enroll,
+because the row carried no secret or the previous one.
+
+`queue/authd/pending-identities` records transitions for recovery, subject to the limitations below.
+For a live, pending transition, the normal sequence is:
+
+1. **Record**, on the serving thread, before the answer. Appending is one line with no rewrite,
+   because it sits in front of each local-socket enrollment answer.
+2. **Apply**, on the writer: the insert or the credential update it already performed.
+3. **Commit**, once per cycle, with `global commit`. An `ok` from wazuh-db is not durability on its
+   own: it runs a deferred transaction and commits on its own clock.
+4. **Forget** the line on that commit, and only then release a rotation's reservation.
+
+Four consequences an operator can observe:
+
+- **A transition that cannot be recorded is refused** (`9031`), and no credential is handed out: the
+  new entry is undone in the keystore, and a rotation never starts. A force replacement may already
+  have deleted the previous agent; that deletion is not rolled back. The deletion journal may lose a
+  line and carry on, because its entries can be rebuilt from `client.keys`; a secret exists nowhere
+  else, so the same tolerance here would produce an agent that can never re-enroll.
+- **The writer retries on its own clock** while anything is owed. The delay starts at one second,
+  doubles, and nominally caps at 60 seconds; the current expression reaches 64 once before settling
+  at 60. Retry-only cycles do not rewrite `client.keys`. Database calls can still delay the writer.
+- **At startup the journal's own order is the judge**, not `client.keys`: an id no longer listed
+  there owes nothing, a later entry for the same agent supersedes an earlier one, and anything else
+  is still owed — including the case where `client.keys` names a different key, which is precisely
+  the crash this exists for.
+- **The bound is admission, not eviction**: 5000 transitions in flight, past which new ones are
+  refused rather than older ones dropped, and a file above 8 MiB is not loaded at all. There is no
+  `fsync`: process-crash/database recovery is intended, not power-loss durability. The 8 MiB check
+  applies only when loading; appends do not enforce a byte ceiling.
+
+The file holds the credential in the clear rather than a hash, because the re-enrollment verifier
+derives its signing key from the real secret and `client.keys` does not carry it. A hash would record
+that the transition happened and restore nothing. Treat the file as a secret: it is `0640`, and it is
+normally empty.
+
+**Only `local_add()` and `local_reenroll()` append transitions.** This covers the server API and
+remoted's `POST /enroll`. Direct enrollment on the master's TLS port 1515 queues an insert with no
+secret and no journal sequence. However, port-1515 enrollment received by a **worker** is forwarded
+to the master's local socket and therefore does journal there. The legacy response still returns
+only id/name/IP/key: the worker discards the master's re-enrollment secret, so the agent cannot use
+secret-based re-enrollment.
+
+**Recovery limitations:** a missing id in `client.keys` causes its journal entry to be discarded,
+including a fresh enrollment lost before its first key-file write. A recovered rotation with an old
+key in `client.keys` restores the database secret, allowing another re-enrollment; it does not itself
+rewrite the key file. Credential commits currently proceed even after a failed key-file write, and
+an UPDATE affecting zero rows can be treated as success. Group assignments are not journalled.
+The loader also rejects ids longer than eight digits, although automatic assignment can reach
+`INT_MAX` (ten digits); those otherwise valid journal entries cannot be recovered after restart.
+See [the writer walkthrough](enrollment-lifecycle.md#step-11-the-writer-settles-it) and the developer
+README's recovery notes for these implementation gaps.
+
+Compaction happens during writer cleanup, startup reconciliation and failed-rotation cleanup.
+If compaction fails, already dropped entries are absent from memory but can remain on disk;
+therefore a nonempty file does not by itself prove wazuh-db is unavailable.
 
 ### Id and key assignment
 
@@ -221,12 +314,24 @@ Because of that, on a worker the window between "the agent has its key" and "rem
 property of the cluster sync interval, not of authd's own speed. The `<force>` settings are ignored on
 a worker — the master decides — and a worker that cannot reach the master answers `9016`.
 
+The same sync carries `etc/enrollment_tokens.json`, with the same asymmetry: the master alone mints,
+consumes and revokes (`token_create`/`token_revoke` answer `9015` on a worker; `token_list` reads the
+replica), and `w_request_agent_add_clustered()` forwards `token_id` and `reenroll` with the `add` so the
+master consumes the use or verifies the bearer, then relays the master's `reenroll_secret` to the agent.
+remoted on a worker verifies token bearers against its own read-only replica of the file, which lags by
+the sync interval; the master's re-check on `add` is what makes a revocation immediate.
+
 ## The enrollment password
 
 With `use_password` enabled, `etc/authd.pass` holds the shared secret. The master generates one at
-first start if none exists and logs that it did. Workers receive the file through the same cluster
-sync as `client.keys`, which is why they run the **authpass watcher**: a worker that has not received
-it yet fails closed — it rejects enrollments rather than validating against a null password.
+first start if none exists and logs that it did: `w_generate_random_pass()` takes 32 bytes from the
+CSPRNG (`RAND_bytes`) and hex-encodes them to 64 characters, the same shape and the same fail-closed
+rule as the agent key (`OS_NewAgentKey()`) — a CSPRNG failure aborts the start rather than falling
+back to a weaker generator. Everything downstream treats the value as an opaque line, so a password
+supplied by an administrator keeps working whatever its shape. Workers receive the file through the
+same cluster sync as `client.keys`, which is why they run the **authpass watcher**: a worker that
+has not received it yet fails closed — it rejects enrollments rather than validating against a
+null password.
 
 remoted's `/enroll` route does not present this password as-is; it derives an AES-256-CMAC key from it
 with HKDF-SHA256 and signs the request (`Authorization: WazuhEnroll <timestamp>:<mac>`). See the
@@ -248,6 +353,12 @@ The local socket answers a numeric code that the server API maps onto its own, a
 | 9018 | the id still has a pending deletion | — |
 | 9019 / 9020 | invalid caller-supplied key / id (id outside `[1, 2147483647]`, or `0`) | `400` — unreachable from here in practice: self-enrollment never sends a key or an id, mapped for completeness |
 | 9021 | too many deletions are pending; the agent was NOT deleted (`1766` through the server API) | — |
+| 9022 / 9023 / 9024 | enrollment token unknown or revoked / expired / out of uses (`add` with `token_id`) | `403` — the bearer verified, authd refused the use. Expiry and successfully persisted revocation survive restart; the **use count is best effort**, so `9024` is a best-effort bound — see [the README](README.md#enrollment-tokens) |
+| 9025 | mint refused (`token_create`); the message carries the reason after `Enrollment token refused:` — the address checks against the listener certificate, or the store being full (5000 tokens) or about to cross its 7 MiB ceiling | — |
+| 9026 / 9027 / 9028 | re-enrollment: unknown agent or no secret on record / invalid credential / outside the time window | `401` (`unknown_agent` / `invalid_signature` / `stale_token`) |
+| 9029 | *Enrollment token store write failed* — `token_revoke` could not persist. The token stops being honoured here immediately and the id is retried on the next verb, but the caller is told the write failed rather than given a success or the `9022` of an unknown id | No `/enroll` path; server API `1771` → `500` |
+| 9030 | *Re-enrollment already in progress* — another rotation holds that agent's reservation. A wait, not a credential problem | `409`, counter `remoted.enroll.reenroll.rejected_in_progress` |
+| 9031 | *Identity transition could not be recorded* — the [identity journal](#the-identity-journal) could not take the line, so no credential is handed out at all | `503` (the server API's `1772`) |
 
 ## Agent removal
 
@@ -399,7 +510,12 @@ held their ids before, in the indices they do not resynchronise themselves.
 | `etc/agents-timestamp` | per-agent registration timestamp |
 | `etc/authd.pass` | enrollment password |
 | `queue/authd/pending-purges` | deletions between phase 1 and phase 4, plus the highest id and sequence ever handed out. Normally empty |
+| `queue/authd/pending-identities` | credentials handed out but not yet committed to `global.db` — see [the identity journal](#the-identity-journal). Mode `0640`, one JSON line per transition, **in the clear**. Normally empty; a persistent nonempty file warrants checking database writes and journal-compaction errors |
 | `queue/rids/<id>` | per-agent anti-replay counters, removed with the agent |
+| `etc/enrollment_tokens.json` | the enrollment token store, `{"version":1,"tokens":[…]}`: per token `id`, `secret` (`null` without credential), `adr`, `pin`/`ca`, `created`, `expires`, `max_uses`, `uses`, `revoked`, `description`. Rewritten whole by the master (temporary file, `0640`, rename); a worker's copy comes from the cluster sync, and a momentarily missing file keeps the previous replica. Bounded at 5000 tokens and 7 MiB (one MiB below what remoted's replica accepts), and pruned by `token_purge` — which removes entries, unlike `token_revoke`, and is what a mint into a full store runs by itself before refusing |
+
+The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` and temporarily in
+`pending-identities`; it never appears in `client.keys`.
 
 ## Observability
 

@@ -115,13 +115,20 @@ struct ModuleConfig
         /// pairing), without the serverHost/agentId precondition -- an
         /// enrolling agent has no agentId yet, but the same TLS matrix still
         /// has to hold before its /enroll request goes out (#38465).
-        bool validateTransport(const IFsProbe& fsProbe, const LogFn& logFn) const;
+        /// @param unverifiedByDesign Set only by the enrollment-token bootstrap's GET /cacerts
+        ///        leg, which forces verify_mode=none because the anchor it is about to fetch is
+        ///        the very thing there would be to verify against. Reported as what it is rather
+        ///        than as the "verification is DISABLED" warning, which on that one request
+        ///        describes the design instead of a problem.
+        bool validateTransport(const IFsProbe& fsProbe, const LogFn& logFn,
+                               bool unverifiedByDesign = false) const;
 
         std::string baseUrl() const;
 
     private:
         bool validateTiming(const LogFn& logFn) const;
-        bool validateTls(const IFsProbe& fsProbe, const LogFn& logFn) const;
+        bool validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
+                         bool unverifiedByDesign = false) const;
         bool validateClientCert(const IFsProbe& fsProbe, const LogFn& logFn) const;
 };
 

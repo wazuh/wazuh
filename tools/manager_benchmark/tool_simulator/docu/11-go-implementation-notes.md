@@ -25,7 +25,7 @@ two tools read alike where they do the same thing.
 tool_simulator/
 ├── cmd/benchmark_sender/main.go   # flags, scenario load, runner wiring, signals, exit code
 ├── internal/
-│   ├── wire/        # enrollment (authd), wazuh-agent+jwt bearer minting, HTTPS and UDS transports
+│   ├── wire/        # legacy 1515 enrollment, enrollment-token decoding, bearer minting, HTTPS and UDS transports
 │   ├── control/     # startup / notify / shutdown: build, send, validate-and-discard
 │   ├── fbbuild/     # scenario step -> Message{FullSession} bytes
 │   ├── fb/          # GENERATED bindings (flatc --go); gitignored

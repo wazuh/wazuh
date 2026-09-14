@@ -34,6 +34,10 @@
      "description": "Requests refused because the agent identity is unknown", "unit": "count"},
     {"name": "remoted.auth.reject.unusable_key", "type": "counter", "enabled": true, "value": 1006},
 
+    {"name": "remoted.cacerts.ca_mismatch", "type": "counter", "enabled": true, "value": 9103},
+    {"name": "remoted.cacerts.not_found", "type": "counter", "enabled": true, "value": 9102},
+    {"name": "remoted.cacerts.served", "type": "counter", "enabled": true, "value": 9101},
+
     {"name": "remoted.control.notify", "type": "counter", "enabled": true, "value": 3002},
     {"name": "remoted.control.registry.agents", "type": "pull", "enabled": true, "value": 3008.0},
     {"name": "remoted.control.rejected", "type": "counter", "enabled": true, "value": 3004},
@@ -75,6 +79,14 @@
     {"name": "remoted.forwarder.error.write_timeout", "type": "counter", "enabled": true, "value": 5005},
     {"name": "remoted.forwarder.route_mismatch", "type": "counter", "enabled": true, "value": 5002},
 
+    {"name": "remoted.http.cacerts.responses.2xx", "type": "counter", "enabled": true, "value": 1601},
+    {"name": "remoted.http.cacerts.responses.400", "type": "counter", "enabled": true, "value": 1602},
+    {"name": "remoted.http.cacerts.responses.403", "type": "counter", "enabled": true, "value": 1603},
+    {"name": "remoted.http.cacerts.responses.409", "type": "counter", "enabled": true, "value": 1604},
+    {"name": "remoted.http.cacerts.responses.413", "type": "counter", "enabled": true, "value": 1605},
+    {"name": "remoted.http.cacerts.responses.500", "type": "counter", "enabled": true, "value": 1606},
+    {"name": "remoted.http.cacerts.responses.503", "type": "counter", "enabled": true, "value": 1607},
+    {"name": "remoted.http.cacerts.responses.other", "type": "counter", "enabled": true, "value": 1608},
     {"name": "remoted.http.config.responses.2xx", "type": "counter", "enabled": true, "value": 1401},
     {"name": "remoted.http.config.responses.400", "type": "counter", "enabled": true, "value": 1402},
     {"name": "remoted.http.config.responses.403", "type": "counter", "enabled": true, "value": 1403},
@@ -140,6 +152,9 @@
     {"name": "remoted.server.budget.available.bytes", "type": "pull", "enabled": true, "value": 6001.0},
     {"name": "remoted.server.budget.inflight.bytes", "type": "pull", "enabled": true, "value": 6002.0},
     {"name": "remoted.server.budget.inflight.requests", "type": "pull", "enabled": true, "value": 6003.0},
-    {"name": "remoted.server.budget.rejected.total", "type": "counter", "enabled": true, "value": 6004}
+    {"name": "remoted.server.budget.rejected.total", "type": "counter", "enabled": true, "value": 6004},
+
+    {"name": "remoted.server.tls.ca_matches_leaf", "type": "pull", "enabled": true, "value": 9002.0},
+    {"name": "remoted.server.tls.cert_expiry_days", "type": "pull", "enabled": true, "value": 9001.0}
   ]
 }

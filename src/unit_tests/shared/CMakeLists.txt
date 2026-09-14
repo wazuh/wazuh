@@ -74,6 +74,27 @@ else()
 list(APPEND shared_tests_flags "${STRING_OP_BASE_FLAGS}")
 endif()
 
+# Enrollment token primitives. b64url_op.c is pure C and ships in every target, so its test
+# follows test_string_op; x509_op.c and enrollment_token.c need OpenSSL, which only the
+# manager target links (through WAZUHEXT), so they follow test_ssl_op.
+list(APPEND shared_tests_names "test_b64url_op")
+set(B64URL_OP_BASE_FLAGS "${DEBUG_OP_WRAPPERS} -Wl,--wrap,syscom_dispatch")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "${B64URL_OP_BASE_FLAGS} -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=fim_db_teardown")
+else()
+list(APPEND shared_tests_flags "${B64URL_OP_BASE_FLAGS}")
+endif()
+
+if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_x509_op")
+list(APPEND shared_tests_flags " ")
+
+list(APPEND shared_tests_names "test_enrollment_token")
+list(APPEND shared_tests_flags " ")
+endif()
+
 list(APPEND shared_tests_names "test_expression")
 set(EXPRESSION_BASE_FLAGS "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,OSRegex_Compile \
                            -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile")
@@ -414,22 +435,6 @@ else()
 endif()
 list(APPEND shared_tests_names "test_hash_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
-
-# Not built for winagent. generate_cert() is reachable only from the manager binaries -- remoted
-# and authd call it, nothing on an agent does -- and its hostname lookup cannot be intercepted
-# there: on Windows gethostname() is a dllimport from ws2_32, so the call goes through the import
-# thunk and -Wl,--wrap,gethostname never sees it. The mock is then left unconsumed ("remaining
-# non-returned values") and the runner's real hostname lands in the SAN the assertions compare.
-if(NOT ${TARGET} STREQUAL "winagent")
-list(APPEND shared_tests_names "test_generate_cert")
-list(APPEND shared_tests_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_write_X509 -Wl,--wrap,RSA_generate_key_ex \
-                                -Wl,--wrap,X509_sign -Wl,--wrap,_merror -Wl,--wrap,wfopen \
-                                -Wl,--wrap,gethostname -Wl,--wrap,getpid \
-                                -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread \
-                                -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,fgets \
-                                -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new -Wl,--wrap,popen \
-                                -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap,is_fim_shutdown")
-endif()
 
 list(APPEND shared_tests_names "test_module_report")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")

@@ -217,6 +217,9 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.auth.reject.body_too_large", "auth_reject_body_too_large"),
     ("remoted.auth.reject.bad_encoding", "auth_reject_bad_encoding"),
     ("remoted.auth.reject.malformed", "auth_reject_malformed"),
+    ("remoted.auth.reject.token_unknown", "auth_reject_token_unknown"),
+    ("remoted.auth.reject.token_expired", "auth_reject_token_expired"),
+    ("remoted.auth.reject.token_revoked", "auth_reject_token_revoked"),
     # Keystore health: agents and entries_skipped are levels, the totals are cumulative.
     ("remoted.auth.keystore.agents", "keystore_agents"),
     ("remoted.auth.keystore.entries_skipped", "keystore_entries_skipped"),
@@ -265,6 +268,20 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.http.enroll.responses.500", "http_enroll_responses_500"),
     ("remoted.http.enroll.responses.503", "http_enroll_responses_503"),
     ("remoted.http.enroll.responses.other", "http_enroll_responses_other"),
+    # GET /cacerts (CA distribution): the one GET route, unauthenticated and body-less, so it is
+    # the listener's fixed per-request cost floor. Its 404 (no CA file) lands in `other`.
+    ("remoted.http.cacerts.responses.2xx", "http_cacerts_responses_2xx"),
+    ("remoted.http.cacerts.responses.400", "http_cacerts_responses_400"),
+    ("remoted.http.cacerts.responses.403", "http_cacerts_responses_403"),
+    ("remoted.http.cacerts.responses.409", "http_cacerts_responses_409"),
+    ("remoted.http.cacerts.responses.413", "http_cacerts_responses_413"),
+    ("remoted.http.cacerts.responses.500", "http_cacerts_responses_500"),
+    ("remoted.http.cacerts.responses.503", "http_cacerts_responses_503"),
+    ("remoted.http.cacerts.responses.other", "http_cacerts_responses_other"),
+    # GET /cacerts outcomes ("why"): served, no CA file, refused because the CA does not sign the leaf.
+    ("remoted.cacerts.served", "cacerts_served"),
+    ("remoted.cacerts.not_found", "cacerts_not_found"),
+    ("remoted.cacerts.ca_mismatch", "cacerts_ca_mismatch"),
     # Enrollment outcomes ("why"), the companion of the status cells above. The queue trio is
     # what separates a saturated authd queue from an unreachable authd inside authd_unavailable.
     ("remoted.enroll.accepted", "enroll_accepted"),
@@ -276,6 +293,14 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.enroll.authd.queue.depth", "enroll_authd_queue_depth"),
     ("remoted.enroll.authd.queue.capacity", "enroll_authd_queue_capacity"),
     ("remoted.enroll.authd.queue.rejected.total", "enroll_authd_queue_rejected_total"),
+    ("remoted.enroll.token.accepted", "enroll_token_accepted"),
+    ("remoted.enroll.token.rejected_unknown", "enroll_token_rejected_unknown"),
+    ("remoted.enroll.token.rejected_expired", "enroll_token_rejected_expired"),
+    ("remoted.enroll.token.rejected_revoked", "enroll_token_rejected_revoked"),
+    ("remoted.enroll.token.rejected_exhausted", "enroll_token_rejected_exhausted"),
+    ("remoted.enroll.token_store.tokens", "enroll_token_store_tokens"),
+    ("remoted.enroll.token_store.reloads.total", "enroll_token_store_reloads_total"),
+    ("remoted.enroll.token_store.reload_failures.total", "enroll_token_store_reload_failures_total"),
     # Downstream failure taxonomy ("why the 503s"): aggregate across services -- the per-endpoint
     # 503 columns above already say which path is failing.
     ("remoted.forwarder.error.connect", "forwarder_error_connect"),
@@ -303,6 +328,11 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.forwarder.deferred.inflight", "forwarder_deferred_inflight"),
     ("remoted.forwarder.deferred.capacity", "forwarder_deferred_capacity"),
     ("remoted.forwarder.deferred.rejected.total", "forwarder_deferred_rejected_total"),
+    # The served TLS certificate: days to expiry (the catalog's one signed value -- negative once
+    # expired; _as_int keeps the sign) and whether remote.https.ca_certificate signs it (0/1; 0
+    # also while the listener is down). Levels, re-evaluated by remoted daily.
+    ("remoted.server.tls.cert_expiry_days", "server_tls_cert_expiry_days"),
+    ("remoted.server.tls.ca_matches_leaf", "server_tls_ca_matches_leaf"),
     # The admin server dogfooding its own transport. Both its routes are liveness-class, so
     # the budget and the data/control lanes are structurally zero -- only sessions.live and
     # sessions.liveness ever move. They are kept for symmetry with inventory sync's block.

@@ -35,10 +35,16 @@ typedef struct agent_server {
  * FULL/CERT/NONE/SYSTEM mirror the module ABI's hc_verify_mode_t (bridge_map_verify_mode()
  * translates between them explicitly, so the two enums are free to diverge). UNSET is
  * agent-config-only: it never reaches the bridge, and only ever exists between ClientConf()
- * setting it and ClientConf() resolving it once <ssl> has been parsed -- to
+ * setting it and w_agent_resolve_ssl_posture() resolving it once <ssl> has been parsed -- to
  * AGENT_VERIFY_CERT when <certificate_authorities> was configured without an explicit
- * <verification_mode> (mirrors the manager's own inference, remote-config.c), otherwise to
- * AGENT_VERIFY_SYSTEM, so a default install verifies without requiring any <ssl> block. */
+ * <verification_mode> (mirrors the manager's own inference, remote-config.c), to
+ * AGENT_VERIFY_FULL when the trust anchor AGENT_ANCHOR_CA is on disk, otherwise to
+ * AGENT_VERIFY_NONE -- an install given no trust material has nothing to verify against, and
+ * AGENT_VERIFY_SYSTEM would only refuse to connect to a manager holding its own root-ca.pem.
+ * AGENT_VERIFY_SYSTEM is reached only when <ssl> asks for it by name.
+ *
+ * No other transition exists: an explicit <verification_mode> is carried through untouched,
+ * 'none' included, so the resolver never overrides an operator's choice. */
 typedef enum agent_verify_mode_t {
     AGENT_VERIFY_FULL = 0,   ///< Verify peer against the CA and check the hostname.
     AGENT_VERIFY_CERT = 1,   ///< Verify peer against the CA only.
@@ -52,7 +58,16 @@ typedef struct agent_ssl {
     char * certificate;             ///< <certificate>: optional client (mTLS) certificate.
     char * key;                     ///< <key>: optional client (mTLS) private key.
     char * certificate_authorities; ///< <certificate_authorities>: CA bundle used to verify the manager.
-    int verification_mode;          ///< <verification_mode>: agent_verify_mode_t; default SYSTEM.
+                                    ///< Written by w_agent_resolve_ssl_posture() too, which defaults it
+                                    ///< to AGENT_ANCHOR_CA for a verifying mode that configured no CA.
+    int verification_mode;          ///< <verification_mode>: agent_verify_mode_t. Resolved by
+                                    ///< w_agent_resolve_ssl_posture(): SYSTEM with nothing else
+                                    ///< configured, FULL when a trust anchor is present.
+    bool verification_mode_explicit; ///< Whether <verification_mode> was written in the config,
+                                    ///< as opposed to resolved. Once resolution has run, 'none'
+                                    ///< means either, and only this tells them apart -- which
+                                    ///< decides whether an anchor appearing afterwards may be
+                                    ///< adopted or must be left unused.
     char * ciphers;                 ///< <ciphers>: optional cipher list.
 } agent_ssl;
 
@@ -175,6 +190,29 @@ bool Validate_IPv6_Link_Local_Interface(agent_server *servers);
  * @param batch Limits to fill; each value is left alone when unconfigured.
  */
 void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch *batch);
+
+/**
+ * @brief Parse a combined <endpoint>-grammar value into host, port, prefix and scope id (#38624).
+ *
+ * Exposed (client-config.c's own <agent><manager> parser is its only other caller) so
+ * token_bootstrap.c can split an enrollment token's `adr` field into the same hc_config_t
+ * fields, through the same libcurl-backed parser, without a second implementation of the
+ * <endpoint> grammar to keep in sync. See client-config.c's own doc comment on this function
+ * for the full grammar and the parsing rationale.
+ *
+ * @param raw Raw <endpoint>/`adr` content (never NULL).
+ * @param host Receives the host, brackets and zone id stripped.
+ * @param host_size Size of host, including the terminating NUL.
+ * @param port Receives the port.
+ * @param port_present Set when `raw` carried an explicit port.
+ * @param endpoint Receives the normalized prefix, possibly "".
+ * @param endpoint_size Size of endpoint, including the terminating NUL.
+ * @param scope_id Receives the IPv6 scope id, or 0 when there is no zone id.
+ * @return 0 on success, OS_INVALID on any grammar violation.
+ */
+int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
+                           bool *port_present, char *endpoint, size_t endpoint_size,
+                           uint32_t *scope_id);
 
 #define DEFAULT_MAX_RETRIES 5
 #define DEFAULT_RETRY_INTERVAL 10

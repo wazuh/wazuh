@@ -61,6 +61,7 @@ namespace
     constexpr auto DEFAULT_CERTIFICATE_PATH {"etc/certs/remoted.pem"};
     constexpr auto DEFAULT_PRIVATE_KEY_PATH {"etc/certs/remoted-key.pem"};
     constexpr auto DEFAULT_CA_PATH {"etc/certs/root-ca.pem"};
+    constexpr auto DEFAULT_CA_CERTIFICATE_PATH {"etc/certs/root-ca.pem"};
     constexpr auto DEFAULT_CIPHERS {"TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"};
 
     // A positive caller value wins; otherwise the built-in default. remoted is expected to
@@ -192,6 +193,8 @@ namespace remoted::http
             config.private_key_path[0] != '\0' ? std::string {config.private_key_path} : DEFAULT_PRIVATE_KEY_PATH;
 
         result.caPath = config.ca_path[0] != '\0' ? std::string {config.ca_path} : DEFAULT_CA_PATH;
+        result.caCertificatePath = config.ca_certificate_path[0] != '\0' ? std::string {config.ca_certificate_path}
+                                                                         : DEFAULT_CA_CERTIFICATE_PATH;
         result.ciphers = config.ciphers[0] != '\0' ? std::string {config.ciphers} : DEFAULT_CIPHERS;
         result.verificationMode = resolveVerificationMode(config.verification_mode);
         result.dualStackMode = resolveDualStackMode(config.dual_stack);

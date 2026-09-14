@@ -13,8 +13,14 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include "auth.h"
+#include <openssl/crypto.h>
 #include "os_err.h"
 #include "authd-config.h"
+#include "enrollment_token_store.h"
+#include "enrollment_token_mint.h"
+#include "reenroll_verify.h"
+#include "wazuhdb_queries_op.h"
+#include <time.h>
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -22,6 +28,10 @@
 #else
 #define STATIC static
 #endif
+
+// Longest `reenroll.bearer` accepted on this socket (#38993): a wazuh-enroll+jwt is ~230 bytes, and the
+// verifier has its own, tighter cap; this only keeps an absurd payload from reaching it.
+#define REENROLL_BEARER_MAX_CHARS 4096
 
 typedef enum auth_local_err {
     EINTERNAL = 0,
@@ -44,7 +54,17 @@ typedef enum auth_local_err {
     EPENDINGPURGE,
     EINVALIDKEY,
     EINVALIDID,
-    EDELETEBACKLOG // Append only: ERRORS[] below is indexed directly by these values.
+    EDELETEBACKLOG, // Append only: ERRORS[] below is indexed directly by these values.
+    ETOKENNOTFOUND,
+    ETOKENEXPIRED,
+    ETOKENEXHAUSTED,
+    EMINTREFUSED,
+    EREENROLLUNKNOWN,
+    EREENROLLINVALID,
+    EREENROLLSTALE,
+    ETOKENSTOREFAILED,
+    EREENROLLINPROGRESS,
+    EIDENTITYUNRECORDED
 } auth_local_err;
 
 
@@ -83,11 +103,41 @@ static const struct {
     // remedy is to wait rather than to pick a different id. 9021 rather than 9020: both features
     // appended their code independently, and 9020 was already taken by the id check above -- the
     // framework maps the two to different API errors.
-    { 9021, "Too many agent deletions are pending" }
+    { 9021, "Too many agent deletions are pending" },
+    // Enrollment tokens (#38993). One code for "unknown" and "revoked" on purpose: ids are 128 random
+    // bits, so nothing is protected by telling them apart, and one answer keeps the callers' mapping
+    // simple. remoted's /enroll checks these too before opening this socket; authd is the side that
+    // counts uses, which is why 9024 only exists here.
+    { 9022, "Enrollment token not found or revoked" },
+    { 9023, "Enrollment token expired" },
+    { 9024, "Enrollment token uses exhausted" },
+    // A mint the running listener cannot honour. The response message carries the reason after
+    // this prefix -- "Enrollment token refused: address not in certificate SAN" -- see
+    // local_token_create(): the operator needs the reason, the code alone is not actionable.
+    { 9025, "Enrollment token refused" },
+    // Re-enrollment (#38993): the agent's own bearer, verified here on the master against the secret in its
+    // global.db row. 9026 folds "no such agent" and "no secret on record" on purpose (telling them apart
+    // would let a caller probe ids); remoted answers all three with its uniform 401.
+    { 9026, "Unknown agent or no re-enrollment credential" },
+    { 9027, "Invalid re-enrollment credential" },
+    { 9028, "Re-enrollment credential outside the accepted time window" },
+    // A storage failure, told apart from 9022 on purpose (#39078): the id exists and the operator's
+    // intent stands -- this authd already refuses the token -- but the file could not be written, so
+    // the answer is "retry", not "no such token". Every later verb retries the write on its own.
+    { 9029, "Enrollment token store write failed" },
+    // A rotation for that agent is accepted and not yet persisted (#39078, H02). Not an
+    // authentication failure -- the bearer verified, or never got the chance -- so remoted answers
+    // 409 rather than the uniform 401 of 9026-9028: the caller has to wait, not re-sign.
+    { 9030, "Re-enrollment already in progress" },
+    // The credential could not be journaled, so it is not handed out (#39078, H03). The operation
+    // is not wrong and the caller is not at fault: this manager cannot record it right now --
+    // no room in queue/authd, or the file is unwritable -- so remoted answers 503 and the agent
+    // retries. Performing it anyway is what left agents holding credentials nothing else knew.
+    { 9031, "Identity transition could not be recorded" }
 };
 
-// Dispatch local request
-static char* local_dispatch(const char *input);
+// Dispatch local request. STATIC: the unit tests drive the token verbs and `add` through it.
+STATIC char* local_dispatch(const char *input);
 
 // Per-connection thread body: recv, dispatch, send, close. See run_local_server()'s comment on
 // why this now runs on its own detached thread instead of inline on the accept loop.
@@ -189,14 +239,28 @@ static cJSON* local_remove(const char *id, int purge);
 // Get agent data
 static cJSON* local_get(const char *id);
 
+// Re-enrollment (#38993, master only): verifies `bearer` against the re-enrollment secret of the agent
+// `kid` and rotates that agent's key and secret in place -- same id, no removal, no purge.
+static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups);
+
 // Generates an agent info json response
-static cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key);
+// reenroll_secret may be NULL: the field is then absent (local_get(), and a clustered add whose master
+// predates the secret). Only `add` ever carries it (#38993).
+static cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key, const char *reenroll_secret);
 
 // Generates an agent deleted response
 static cJSON* local_create_agent_delete_response(void);
 
 // Generates an error json response
 static cJSON* local_create_error_response(int code, const char *message);
+// Enrollment token verbs (#38993). On failure they return NULL and set *ierror to the ERRORS[] index,
+// except the 9025 refusal, which is a complete response because its message carries the detail.
+static cJSON* local_token_create(cJSON *arguments, int *ierror);
+static cJSON* local_token_list(void);
+static cJSON* local_token_revoke(cJSON *arguments, int *ierror);
+static cJSON* local_token_purge(cJSON *arguments, int *ierror);
+// Whether `text` has the shape of a token id: exactly ETOKEN_ID_CHARS canonical base64url chars.
+static int is_token_id(const char *text);
 
 // Services one already-accepted connection: set the recv timeout, read one request, dispatch, send
 // the reply, close. Shared by the threaded path and run_local_server()'s at-the-cap inline
@@ -380,7 +444,7 @@ char* local_dispatch(const char *input) {
     cJSON *arguments;
     cJSON *response = NULL;
     char *output = NULL;
-    int ierror;
+    int ierror = EINTERNAL; // every `goto fail` sets its own code; the default only closes the analyzer's path
     char *groups = NULL;
 
     if (input[0] == '{') {
@@ -406,6 +470,9 @@ char* local_dispatch(const char *input) {
             char *ip = NULL;
             char *key_hash = NULL;
             char *key = NULL;
+            char *token_id = NULL;
+            char *reenroll_kid = NULL;
+            char *reenroll_bearer = NULL;
             // Borrowed from the parsed JSON. Kept separate from the enclosing `groups`, which owns
             // wstr_delete_repeated_groups()'s allocation and is what the fail path frees.
             char *groups_arg = NULL;
@@ -458,9 +525,35 @@ char* local_dispatch(const char *input) {
             }
 
             if (get_optional_string_arg(arguments, "key_hash", &key_hash) < 0 ||
-                get_optional_string_arg(arguments, "key", &key) < 0) {
+                get_optional_string_arg(arguments, "key", &key) < 0 ||
+                get_optional_string_arg(arguments, "token_id", &token_id) < 0) {
                 ierror = EJSON;
                 goto fail;
+            }
+
+            // A token id of the wrong shape is "not found" (9022), not a JSON error: the caller
+            // presented a credential and the answer is that no such credential exists. Checked on
+            // both roles so a worker never forwards garbage to the master.
+            if (token_id && !is_token_id(token_id)) {
+                ierror = ETOKENNOTFOUND;
+                goto fail;
+            }
+
+            // Re-enrollment (#38993): `reenroll` = {"kid": <the agent's id>, "bearer": <its wazuh-enroll+jwt>}.
+            // remoted forwards the bearer unverified -- the secret that signs it lives in the master's
+            // global.db and nowhere else -- so the master judges it (local_reenroll()). Malformed, or combined
+            // with another credential or a caller-chosen identity, it is 9027: the caller presented a
+            // credential and that credential is not acceptable. Checked on both roles, so a worker never
+            // forwards garbage to the master.
+            if (item = cJSON_GetObjectItem(arguments, "reenroll"), item && !cJSON_IsNull(item)) {
+                if (!cJSON_IsObject(item) || token_id || id || key ||
+                    get_optional_string_arg(item, "kid", &reenroll_kid) < 0 || !reenroll_kid || !*reenroll_kid ||
+                    !OS_IsValidID(reenroll_kid) ||
+                    get_optional_string_arg(item, "bearer", &reenroll_bearer) < 0 || !reenroll_bearer || !*reenroll_bearer ||
+                    strlen(reenroll_bearer) > REENROLL_BEARER_MAX_CHARS) {
+                    ierror = EREENROLLINVALID;
+                    goto fail;
+                }
             }
 
             if (force = cJSON_GetObjectItem(arguments, "force"), force) {
@@ -517,9 +610,47 @@ char* local_dispatch(const char *input) {
                 }
                 // Self-enrollment shape. force is ignored for workers, as on port 1515: the master
                 // assigns the ID, generates the key, and decides force-replace itself.
-                response = local_add_clustered(name, ip, groups, key_hash);
+                response = local_add_clustered(name, ip, groups, key_hash, token_id, reenroll_kid, reenroll_bearer);
+            } else if (reenroll_kid) {
+                // force is irrelevant here: nothing is replaced, the agent's own entry is rotated in place,
+                // and the secret already proved the caller IS that agent.
+                response = local_reenroll(reenroll_kid, reenroll_bearer, name, ip, groups);
             } else {
+                if (token_id) {
+                    // Reserve the use BEFORE the agent exists: adding first and finding the token
+                    // exhausted would leave an agent to roll back. The reservation is undone below
+                    // when local_add() refuses, so a duplicate name never burns a use.
+                    etoken_store_reload_if_changed();
+                    switch (etoken_store_consume(token_id, time(NULL))) {
+                    case ETOKEN_USE_OK:
+                        break;
+                    case ETOKEN_USE_EXPIRED:
+                        ierror = ETOKENEXPIRED;
+                        goto fail;
+                    case ETOKEN_USE_EXHAUSTED:
+                        ierror = ETOKENEXHAUSTED;
+                        goto fail;
+                    case ETOKEN_USE_NOT_FOUND:
+                    default:
+                        ierror = ETOKENNOTFOUND;
+                        goto fail;
+                    }
+                }
                 response = local_add(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options);
+                if (token_id) {
+                    cJSON *err = response ? cJSON_GetObjectItem(response, "error") : NULL;
+                    // Every path closes the reservation: committed when the agent was created, given
+                    // back otherwise -- including the one where local_add() produces no response at
+                    // all, which used to burn the use and leave the caller nothing to retry with.
+                    // The NULL check is redundant with cJSON_IsNumber(), which refuses NULL: it is
+                    // there because the static analyzer does not model that (same as `j_secret` below).
+                    if (err != NULL && cJSON_IsNumber(err) && err->valueint == 0) {
+                        etoken_store_commit(token_id);
+                        minfo("Enrollment token '%s' consumed by agent '%s'.", token_id, name);
+                    } else {
+                        etoken_store_release(token_id);
+                    }
+                }
             }
 
             os_free(groups);
@@ -566,8 +697,55 @@ char* local_dispatch(const char *input) {
             }
 
             response = local_get(item->valuestring);
+        } else if (!strcmp(function->valuestring, "token_create")) {
+            // Minting writes the store, and only the master writes it (T8): a worker answers the
+            // same 9015 as every other write it cannot perform. Checked before parsing the
+            // arguments so a worker never reads the listener certificate for nothing.
+            if (config.worker_node) {
+                ierror = ENOMASTER;
+                goto fail;
+            }
+            if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
+                ierror = ENOARGUMENT;
+                goto fail;
+            }
+            etoken_store_reload_if_changed();
+            if (response = local_token_create(arguments, &ierror), !response) {
+                goto fail;
+            }
+        } else if (!strcmp(function->valuestring, "token_list")) {
+            // Read-only, so any node answers from its replica (a worker sees what the cluster synced).
+            etoken_store_reload_if_changed();
+            response = local_token_list();
+        } else if (!strcmp(function->valuestring, "token_revoke")) {
+            if (config.worker_node) {
+                ierror = ENOMASTER;
+                goto fail;
+            }
+            if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
+                ierror = ENOARGUMENT;
+                goto fail;
+            }
+            etoken_store_reload_if_changed();
+            if (response = local_token_revoke(arguments, &ierror), !response) {
+                goto fail;
+            }
+        } else if (!strcmp(function->valuestring, "token_purge")) {
+            // Writes the store like the other two, so the same 9015 on a worker; the workers get
+            // the pruned file from the cluster sync. `arguments` is optional here: without it the
+            // purge is the harmless one (dead tokens), and emptying the store always takes an
+            // explicit scope.
+            if (config.worker_node) {
+                ierror = ENOMASTER;
+                goto fail;
+            }
+            arguments = cJSON_GetObjectItem(request, "arguments");
+            etoken_store_reload_if_changed();
+            if (response = local_token_purge(arguments, &ierror), !response) {
+                goto fail;
+            }
         } else {
-            // A valid string, but none of the three above. Without this branch no handler ran and
+            // A valid string, but none of the verbs above. Without this branch no handler ran and
             // the !response check below reported 9001 "Internal error" -- blaming the manager for
             // the caller's typo.
             ierror = ENOFUNCTION;
@@ -614,6 +792,8 @@ cJSON* local_add(const char *id,
     int ierror;
     char* str_result = NULL;
     char _ip[IPSIZE + 1] = {0};
+    char reenroll_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
+    long long journal_seq = 0;
     bool warn = false;
 
     mdebug2("add(%s)", name);
@@ -649,6 +829,16 @@ cJSON* local_add(const char *id,
     if (id && purge_is_pending(id)) {
         mwarn("Agent ID '%s' still has a pending deletion, rejecting the insertion.", id);
         return local_create_error_response(ERRORS[EPENDINGPURGE].code, ERRORS[EPENDINGPURGE].message);
+    }
+
+    /* Phase 0 of the identity journal, and it has to be HERE, before anything is mutated: a
+     * duplicate name or IP resolved by <force> deletes the previous agent inside the checks below
+     * (w_auth_replace_agent() -> add_remove() + OS_DeleteKey()), so a refusal discovered after that
+     * point would answer 9031 with that agent already destroyed and queued for the indexer purge.
+     * The deletion path already reasons this way one line into the same function -- see
+     * purge_backlog_full() -- and this is its twin for credentials. */
+    if (identity_journal_full()) {
+        return local_create_error_response(ERRORS[EIDENTITYUNRECORDED].code, ERRORS[EIDENTITYUNRECORDED].message);
     }
 
     w_mutex_lock(&mutex_keys);
@@ -747,6 +937,15 @@ cJSON* local_add(const char *id,
         }
     }
 
+    /* The per-agent re-enrollment secret (#38993), generated BEFORE the key so a CSPRNG failure leaves
+     * nothing to undo: it never goes to client.keys -- the writer persists it in global.db and this one
+     * answer hands it to the agent -- and an agent without one could never re-enroll, so the enrollment
+     * is refused the same way a failed key generation is (no weaker generator to fall back to). */
+    if (OS_NewReenrollSecret(reenroll_secret, sizeof(reenroll_secret)) != 0) {
+        ierror = EKEY;
+        goto fail;
+    }
+
     index = OS_AddNewAgent(&keys, id, name, _ip, key, config.max_agents);
     if (index == OS_ADDAGENT_LIMIT_REACHED) {
         merror("Unable to add agent: %s. Agent limit (%u) reached.", name, config.max_agents);
@@ -758,13 +957,30 @@ cJSON* local_add(const char *id,
         goto fail;
     }
 
+    /* The credential goes on the record BEFORE it is handed out (issue #39078, H03). The id is not
+     * known any earlier -- OS_AddNewAgent() assigns it when the request brings none -- so this is
+     * the first point at which the entry can be written. A failure undoes the addition in memory,
+     * exactly as the 1515 path does when its answer never reaches the agent (main-server.c), and
+     * the caller is told: an agent whose secret nothing durable holds could never re-enroll. */
+    char assigned_id[16] = {0};
+    strncpy(assigned_id, keys.keyentries[index]->id, sizeof(assigned_id) - 1);
+
+    if (!identity_journal_append(assigned_id, name, _ip, keys.keyentries[index]->raw_key,
+                                 reenroll_secret, false, &journal_seq)) {
+        // Its own copy of the id: OS_DeleteKey() frees the entry this would otherwise point into.
+        OS_DeleteKey(&keys, assigned_id, 1);
+        ierror = EIDENTITYUNRECORDED;
+        goto fail;
+    }
+
     /* Add pending key to write */
-    add_insert(keys.keyentries[index],groups);
+    add_insert(keys.keyentries[index], groups, reenroll_secret, journal_seq);
     write_pending = 1;
     w_cond_signal(&cond_pending);
 
-    response = local_create_agent_response(keys.keyentries[index]->id, name, _ip, keys.keyentries[index]->raw_key);
+    response = local_create_agent_response(keys.keyentries[index]->id, name, _ip, keys.keyentries[index]->raw_key, reenroll_secret);
     w_mutex_unlock(&mutex_keys);
+    OPENSSL_cleanse(reenroll_secret, sizeof(reenroll_secret));
 
     minfo("Agent key generated for agent '%s' (requested locally)", name);
     os_free(str_result);
@@ -772,15 +988,194 @@ cJSON* local_add(const char *id,
 
 fail:
     w_mutex_unlock(&mutex_keys);
+    OPENSSL_cleanse(reenroll_secret, sizeof(reenroll_secret));
     response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
     os_free(str_result);
     return response;
 }
 
+// Re-enrollment (#38993), master only: the agent named by `kid` keeps its id and gets a fresh key and a fresh
+// re-enrollment secret, both rotated in place -- no removal, no purge, its documents survive.
+static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups) {
+    int index;
+    int other;
+    int ierror;
+    int verdict;
+    cJSON *response = NULL;
+    cJSON *agent_info = NULL;
+    cJSON *j_secret = NULL;
+    char _ip[IPSIZE + 1] = {0};
+    char new_key[AGENT_KEY_HEX_CHARS + 1] = {0};
+    char new_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
+    unsigned int generation = 0;
+    long long journal_seq = 0;
+
+    mdebug2("reenroll(%s)", kid);
+
+    /* Before the database is even asked (issue #39078, H02). The row keeps saying the old secret until the
+     * writer replaces it, so two requests carrying the same bearer would both verify and both rotate: two
+     * valid answers for one agent, the first invalidated by the second. Reserving here means the second
+     * request never gets to read that row. From this point every exit must release the reservation. */
+    if (!w_reenroll_reserve(kid, &generation)) {
+        mdebug1("Re-enrollment of agent '%s' refused: another rotation is already in flight.", kid);
+        return local_create_error_response(ERRORS[EREENROLLINPROGRESS].code, ERRORS[EREENROLLINPROGRESS].message);
+    }
+
+    /* The credential first, and BEFORE mutex_keys for the reason purge_is_pending() runs there: this is a
+     * wazuh-db round trip on the request thread, and the keystore lock is the one every enrollment and the
+     * writer take. The row's reenroll_secret is the only thing that can authorise the request; no row, or a
+     * row without one (a worker's mirror of client.keys, an agent enrolled over 1515, a global.db rebuilt
+     * from client.keys -- see wm_database), and there is nothing to verify against: 9026. */
+    agent_info = wdb_get_agent_info(atoi(kid), NULL);
+    if (agent_info) {
+        j_secret = cJSON_GetObjectItem(agent_info->child, "reenroll_secret");
+    }
+    if (j_secret == NULL || !cJSON_IsString(j_secret) || !OS_IsValidReenrollSecret(j_secret->valuestring)) {
+        cJSON_Delete(agent_info);
+        w_reenroll_abandon(kid);
+        mdebug1("Re-enrollment of agent '%s' refused: unknown agent or no re-enrollment credential on record.", kid);
+        return local_create_error_response(ERRORS[EREENROLLUNKNOWN].code, ERRORS[EREENROLLUNKNOWN].message);
+    }
+
+    verdict = w_reenroll_verify(bearer, kid, j_secret->valuestring, (long)time(NULL), config.jwt_max_age, config.jwt_clock_skew);
+    OPENSSL_cleanse(j_secret->valuestring, strlen(j_secret->valuestring));
+    cJSON_Delete(agent_info);
+
+    if (verdict != W_REENROLL_OK) {
+        /* Debug, not warn: remoted forwards these bearers unverified, so anyone who can reach /enroll can make
+         * this line fire at will. remoted's remoted.enroll.reenroll.* counters are the operator's view. */
+        w_reenroll_abandon(kid);
+        mdebug1("Re-enrollment of agent '%s' refused: %s.", kid,
+                verdict == W_REENROLL_STALE ? "credential outside the accepted time window" : "invalid credential");
+        ierror = verdict == W_REENROLL_STALE ? EREENROLLSTALE : EREENROLLINVALID;
+        return local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
+    }
+
+    w_mutex_lock(&mutex_keys);
+
+    /* Belt and braces for the case the reservation alone does not cover: another rotation that was
+     * ALREADY accepted when this request started may have completed while this one was verifying, which
+     * makes the secret it verified against the previous generation's. The reservation would have been
+     * free by then, so only the counter tells (issue #39078, H02). */
+    if (w_reenroll_generation(kid) != generation) {
+        ierror = EREENROLLINPROGRESS;
+        goto fail;
+    }
+
+    /* The row said yes; the keystore has the last word (the agent may have been deleted since, or the row
+     * may be wazuh-db's alone). */
+    if (index = OS_IsAllowedID(&keys, kid), index < 0) {
+        ierror = EREENROLLUNKNOWN;
+        goto fail;
+    }
+
+    if (groups && OS_SUCCESS != w_auth_validate_groups(groups, NULL)) {
+        ierror = EINVGROUP;
+        goto fail;
+    }
+
+    /* The body's name/ip replace the record's, checked against every OTHER agent -- the entry being rotated
+     * may keep its own. No force rules: nothing is replaced, and the secret already proved this caller IS
+     * the agent. */
+    if (strcmp(ip, "any")) {
+        os_ip *aux_ip;
+        os_calloc(1, sizeof(os_ip), aux_ip);
+
+        if (!OS_IsValidIP(ip, aux_ip)) {
+            mwarn("Not valid IP '%s'", ip);
+            w_free_os_ip(aux_ip);
+            ierror = ENOIP;
+            goto fail;
+        }
+
+        strncpy(_ip, aux_ip->ip, IPSIZE);
+        w_free_os_ip(aux_ip);
+
+        if (other = OS_IsAllowedIP(&keys, _ip), other >= 0 && other != index) {
+            mdebug1("Re-enrollment of agent '%s' refused: IP '%s' belongs to agent '%s'.", kid, _ip, keys.keyentries[other]->id);
+            ierror = EDUPIP;
+            goto fail;
+        }
+    } else {
+        strncpy(_ip, ip, IPSIZE);
+    }
+
+    if (other = OS_IsAllowedName(&keys, name), other >= 0 && other != index) {
+        mdebug1("Re-enrollment of agent '%s' refused: name '%s' belongs to agent '%s'.", kid, name, keys.keyentries[other]->id);
+        ierror = EDUPNAME;
+        goto fail;
+    }
+
+    /* Both credentials BEFORE the keystore is touched: a CSPRNG failure then leaves the agent exactly as it
+     * was, instead of deleted and not re-added. */
+    if (OS_NewAgentKey(new_key, sizeof(new_key)) != 0 || OS_NewReenrollSecret(new_secret, sizeof(new_secret)) != 0) {
+        merror("Unable to rotate the credentials of agent '%s': the CSPRNG (RAND_bytes) failed.", kid);
+        ierror = EKEY;
+        goto fail;
+    }
+
+    /* On the record BEFORE the keystore is touched (issue #39078, H03), which is what makes a failure here a
+     * plain rejection: nothing has been mutated and nothing has been answered, so the agent keeps the credentials
+     * it already had and may try again. The entry carries the NEW credential -- the one the answer is about to
+     * hand out -- because that is what the database will owe if the writer cannot reach it. */
+    if (!identity_journal_append(kid, name, _ip, new_key, new_secret, true, &journal_seq)) {
+        ierror = EIDENTITYUNRECORDED;
+        goto fail;
+    }
+
+    /* The rotation itself: delete + add under the same lock, so no reader ever sees the id missing. purge = 1:
+     * no `!id` removal marker is kept (the id is not being retired), and add_remove() is not called -- no
+     * wdb_remove_agent(), no deletion task, no indexer purge. The writer persists this as an UPDATE of the
+     * agent's row (add_rotate()), never as an insert. */
+    if (OS_DeleteKey(&keys, kid, 1) < 0) {
+        ierror = EINTERNAL;
+        goto fail;
+    }
+    /* max_agents 0: the count did not grow, and the limit must not refuse an agent that already counted. */
+    index = OS_AddNewAgent(&keys, kid, name, _ip, new_key, 0);
+    if (index < 0) {
+        /* Not reachable with a validated ip and an explicit key (OS_AddKey() only fails on the ip); logged as
+         * loudly as it deserves, since the entry is gone from memory until the next client.keys reload. */
+        merror("Unable to re-add agent '%s' to the keystore after rotating its credentials.", kid);
+        ierror = EINTERNAL;
+        goto fail;
+    }
+
+    /* The reservation stays taken from here on: it is the writer that releases it, and only when the
+     * new credentials are in the database. Until then the agent's row still names the previous secret,
+     * so anything that verified against it must not be allowed to rotate again */
+    add_rotate(keys.keyentries[index], groups, new_secret, journal_seq);
+    write_pending = 1;
+    w_cond_signal(&cond_pending);
+
+    response = local_create_agent_response(kid, name, _ip, new_key, new_secret);
+    w_mutex_unlock(&mutex_keys);
+    OPENSSL_cleanse(new_key, sizeof(new_key));
+    OPENSSL_cleanse(new_secret, sizeof(new_secret));
+
+    minfo("Agent '%s' (id '%s') re-enrolled: key and re-enrollment secret rotated.", name, kid);
+    return response;
+
+fail:
+    w_mutex_unlock(&mutex_keys);
+    /* Only the two "not reachable" keystore failures can get here with the transition already journaled, and
+     * leaving the entry would make the writer apply a credential the agent was never told. */
+    if (journal_seq > 0) {
+        identity_journal_drop(&journal_seq, 1);
+    }
+    /* Nothing was handed out on this path, so the agent is free to try again at once */
+    w_reenroll_abandon(kid);
+    OPENSSL_cleanse(new_key, sizeof(new_key));
+    OPENSSL_cleanse(new_secret, sizeof(new_secret));
+    return local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
+}
+
 // Forward an "add" request to the master node over the cluster (worker nodes only)
-cJSON* local_add_clustered(const char *name, const char *ip, const char *groups, const char *key_hash) {
+cJSON* local_add_clustered(const char *name, const char *ip, const char *groups, const char *key_hash, const char *token_id,
+                           const char *reenroll_kid, const char *reenroll_bearer) {
     char *new_id = NULL;
     char *new_key = NULL;
+    char *new_secret = NULL;
     char err_response[OS_SIZE_2048] = {0};
     int master_error_code = 0;
     int result;
@@ -790,10 +1185,13 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
     minfo("Dispatching enrollment request to master node");
 
     result = w_request_agent_add_clustered(err_response, name, ip, groups, key_hash,
-                                            &new_id, &new_key, NULL, NULL, &master_error_code);
+                                            &new_id, &new_key, &new_secret, NULL, NULL, token_id, reenroll_kid, reenroll_bearer,
+                                            &master_error_code);
 
     if (result == 0) {
-        response = local_create_agent_response(new_id, name, ip, new_key);
+        // The master's re-enrollment secret travels through untouched (#38993); a master that predates
+        // it hands back none, and this node then answers without the field, as before.
+        response = local_create_agent_response(new_id, name, ip, new_key, new_secret && *new_secret ? new_secret : NULL);
     } else if (master_error_code > 0) {
         // A well-formed business rejection: surface the master's exact code so the bridge can map
         // it precisely. Drop the "ERROR: " prefix w_parse_agent_add_response() always adds -- the
@@ -813,6 +1211,10 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
 
     os_free(new_id);
     os_free(new_key);
+    if (new_secret) {
+        OPENSSL_cleanse(new_secret, strlen(new_secret));
+    }
+    os_free(new_secret);
     return response;
 }
 
@@ -866,15 +1268,253 @@ cJSON* local_get(const char *id) {
         response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
     }
     else {
-        response = local_create_agent_response(id, keys.keyentries[index]->name, keys.keyentries[index]->ip->ip, keys.keyentries[index]->raw_key);
+        // Never the re-enrollment secret: `get` serves manage_agents/the API, and the secret is the
+        // agent's alone (the writer only ever holds it until global.db has it).
+        response = local_create_agent_response(id, keys.keyentries[index]->name, keys.keyentries[index]->ip->ip, keys.keyentries[index]->raw_key, NULL);
     }
 
     w_mutex_unlock(&mutex_keys);
     return response;
 }
 
+// ---------------------------------------------------------------- enrollment tokens (#38993)
+
+static int is_token_id(const char *text) {
+    uint8_t *raw = NULL;
+    size_t raw_len = 0;
+    int ok;
+
+    if (text == NULL || strlen(text) != ETOKEN_ID_CHARS) {
+        return 0;
+    }
+
+    ok = (w_b64url_decode(text, &raw, &raw_len) == 0 && raw_len == W_ETOKEN_ID_BYTES);
+    free(raw);
+
+    return ok;
+}
+
+// Optional non-negative integer argument. 0 = absent, 1 = present (*out set), -1 = wrong type/negative.
+static int get_optional_long_arg(cJSON *arguments, const char *key, long *out) {
+    cJSON *item = cJSON_GetObjectItem(arguments, key);
+
+    if (item == NULL || cJSON_IsNull(item)) {
+        return 0;
+    }
+
+    if (!cJSON_IsNumber(item) || item->valuedouble < 0 || item->valuedouble > (double)LONG_MAX) {
+        return -1;
+    }
+
+    *out = (long)item->valuedouble;
+
+    return 1;
+}
+
+// Optional boolean argument. 0 = absent, 1 = present (*out set), -1 = wrong type.
+static int get_optional_bool_arg(cJSON *arguments, const char *key, int *out) {
+    cJSON *item = cJSON_GetObjectItem(arguments, key);
+
+    if (item == NULL || cJSON_IsNull(item)) {
+        return 0;
+    }
+
+    if (!cJSON_IsBool(item)) {
+        return -1;
+    }
+
+    *out = cJSON_IsTrue(item) ? 1 : 0;
+
+    return 1;
+}
+
+static cJSON* local_token_create(cJSON *arguments, int *ierror) {
+    etoken_mint_request_t req = {0};
+    etoken_mint_t mint = {0};
+    char detail[OS_SIZE_256] = {0};
+    char *prefix = NULL;
+    char *description = NULL;
+    cJSON *item = NULL;
+    cJSON *data = NULL;
+    cJSON *response = NULL;
+    long port = 0;
+    long ttl = 0;
+    long max_uses = 0;
+    int embed_ca = 0;
+    int no_credential = 0;
+    int rc;
+
+    // `address` is the one mandatory argument: the host the agents will connect to.
+    if (item = cJSON_GetObjectItem(arguments, "address"), !cJSON_IsString(item) || item->valuestring[0] == '\0') {
+        *ierror = ENOARGUMENT;
+        return NULL;
+    }
+    req.address = item->valuestring;
+
+    if (get_optional_string_arg(arguments, "prefix", &prefix) < 0 ||
+        get_optional_string_arg(arguments, "description", &description) < 0 ||
+        get_optional_long_arg(arguments, "port", &port) < 0 ||
+        get_optional_long_arg(arguments, "ttl", &ttl) < 0 ||
+        get_optional_long_arg(arguments, "max_uses", &max_uses) < 0 ||
+        get_optional_bool_arg(arguments, "embed_ca", &embed_ca) < 0 ||
+        get_optional_bool_arg(arguments, "no_credential", &no_credential) < 0) {
+        *ierror = EJSON;
+        return NULL;
+    }
+
+    if (max_uses > UINT_MAX) {
+        *ierror = EJSON;
+        return NULL;
+    }
+
+    req.port = port;
+    req.prefix = prefix;
+    req.ttl = ttl;
+    req.max_uses = (unsigned int)max_uses;
+    req.embed_ca = embed_ca;
+    req.no_credential = no_credential;
+    req.description = description;
+
+    rc = etoken_mint_prepare(&req, &mint, detail, sizeof(detail));
+
+    if (rc == -1) {
+        // The one error whose message is built at runtime: the code says "refused", the detail
+        // says why, and the operator fixes the address or the certificates accordingly.
+        char message[OS_SIZE_512];
+
+        snprintf(message, sizeof(message), "%s: %s", ERRORS[EMINTREFUSED].message, detail);
+        mwarn("%s (address '%s').", message, req.address);
+        return local_create_error_response(ERRORS[EMINTREFUSED].code, message);
+    }
+
+    if (rc != 0) {
+        merror("Cannot prepare an enrollment token: %s.", detail);
+        *ierror = EINTERNAL;
+        return NULL;
+    }
+
+    rc = etoken_store_create(&mint, time(NULL), &data);
+    etoken_mint_free(&mint);
+
+    // Both limits answer with the 9025 the operator already knows, and the detail says which one
+    // was hit and what to do about it: the store is a file, and the fix is always a purge.
+    if (rc == ETOKEN_CREATE_FULL || rc == ETOKEN_CREATE_TOOBIG) {
+        char message[OS_SIZE_512];
+
+        if (rc == ETOKEN_CREATE_FULL) {
+            snprintf(message, sizeof(message), "%s: the enrollment token store is full (%d tokens in "
+                     "use); purge it before minting again", ERRORS[EMINTREFUSED].message, ETOKEN_MAX_TOKENS);
+        } else {
+            snprintf(message, sizeof(message), "%s: the enrollment token store would grow past the size "
+                     "the manager replicates; purge it before minting again", ERRORS[EMINTREFUSED].message);
+        }
+
+        mwarn("%s.", message);
+        return local_create_error_response(ERRORS[EMINTREFUSED].code, message);
+    }
+
+    if (rc != 0) {
+        *ierror = EINTERNAL;
+        return NULL;
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddItemToObject(response, "data", data);
+
+    return response;
+}
+
+static cJSON* local_token_list(void) {
+    cJSON *response = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddItemToObject(response, "data", etoken_store_list());
+
+    return response;
+}
+
+static cJSON* local_token_revoke(cJSON *arguments, int *ierror) {
+    cJSON *item = NULL;
+    cJSON *response = NULL;
+
+    if (item = cJSON_GetObjectItem(arguments, "id"), !cJSON_IsString(item)) {
+        *ierror = ENOARGUMENT;
+        return NULL;
+    }
+
+    // Wrong shape or unknown: the same 9022, see ERRORS[].
+    if (!is_token_id(item->valuestring)) {
+        *ierror = ETOKENNOTFOUND;
+        return NULL;
+    }
+
+    switch (etoken_store_revoke(item->valuestring)) {
+    case 0:
+        break;
+    case ETOKEN_STORE_FAILED:
+        // Revoked here and now, but not on disk: saying 9022 would send the operator looking for a
+        // token that does exist, when what they have to do is try again (#39078, H04).
+        *ierror = ETOKENSTOREFAILED;
+        return NULL;
+    default:
+        *ierror = ETOKENNOTFOUND;
+        return NULL;
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddItemToObject(response, "data", cJSON_CreateObject());
+
+    return response;
+}
+
+// Removes tokens instead of marking them: `scope` "dead" (the default, and the only thing a caller
+// that sends no arguments can ask for) drops what can no longer authorise an enrollment, "all"
+// empties the store. Revoking and purging are deliberately different: a revoked token stays listed.
+static cJSON* local_token_purge(cJSON *arguments, int *ierror) {
+    cJSON *item = NULL;
+    cJSON *ids = NULL;
+    cJSON *data = NULL;
+    cJSON *response = NULL;
+    etoken_purge_t scope = ETOKEN_PURGE_DEAD;
+    int removed;
+
+    if (item = cJSON_GetObjectItem(arguments, "scope"), item != NULL) {
+        if (!cJSON_IsString(item)) {
+            *ierror = EJSON;
+            return NULL;
+        }
+
+        if (!strcmp(item->valuestring, "all")) {
+            scope = ETOKEN_PURGE_ALL;
+        } else if (strcmp(item->valuestring, "dead")) {
+            // Naming a scope authd does not know must never be read as the safe one: an operator
+            // who typed "expired" expecting a purge deserves the error, not a silent partial run.
+            *ierror = EJSON;
+            return NULL;
+        }
+    }
+
+    if (removed = etoken_store_purge(scope, time(NULL), &ids), removed < 0) {
+        *ierror = EINTERNAL;
+        return NULL;
+    }
+
+    data = cJSON_CreateObject();
+    cJSON_AddNumberToObject(data, "removed", removed);
+    cJSON_AddNumberToObject(data, "remaining", etoken_store_count());
+    cJSON_AddItemToObject(data, "ids", ids);
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddItemToObject(response, "data", data);
+
+    return response;
+}
+
 // Generates an agent info json response
-cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key) {
+cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key, const char *reenroll_secret) {
     cJSON *response = NULL;
     cJSON *data = NULL;
 
@@ -885,6 +1525,9 @@ cJSON* local_create_agent_response(const char *id, const char *name, const char 
     cJSON_AddStringToObject(data, "name", name);
     cJSON_AddStringToObject(data, "ip", ip);
     cJSON_AddStringToObject(data, "key", key);
+    if (reenroll_secret) {
+        cJSON_AddStringToObject(data, "reenroll_secret", reenroll_secret);
+    }
 
     return response;
 }

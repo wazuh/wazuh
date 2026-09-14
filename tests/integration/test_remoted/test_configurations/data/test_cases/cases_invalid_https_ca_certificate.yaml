@@ -1,0 +1,10 @@
+- name: Empty remote.https.ca_certificate
+  description: An empty <ca_certificate> is rejected by the schema (minLength) before remoted starts
+  configuration_parameters:
+    CA_CERTIFICATE: ''
+  metadata:
+    ca_certificate: ''
+    # The strict loader rejects the empty value with 1244 before remoted starts. The keyword is
+    # part of the assertion on purpose: a manager without this option reports the same pointer
+    # with 'unknown option' (additionalProperties), so the test tells old and new binaries apart.
+    invalid: ".*ERROR: \\(1244\\): Invalid configuration at '/remote/https/ca_certificate': .*minLength.*"

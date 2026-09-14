@@ -26,7 +26,7 @@ the language).
 | RF-2 | Canonical JSON with the schema's types: `yes`/`no` → boolean, digits → integer where allowed, repeated or comma-separated values → arrays, the attribute forms of the dialect (`<backup database="…">`, `<disconnected_time enabled="…">`) → nested objects, lowercase enums normalized | `src/xmlToJson.cpp` |
 | RF-3 | Validation against the embedded draft-04 schema; the first error is reported with its JSON pointer and keyword | `src/schemaValidate.cpp` |
 | RF-4 | Defaults declared in the schema are filled into the effective document (a missing section = its defaults) | `src/defaults.cpp` |
-| RF-5 | Uniform, fatal cross-field rules: certificate/key pairing, no `.`/`..` prefix segments, distinct listener ports, existence of the HTTPS/authd certificate files (relative to the manager home; `indexer.ssl.*` is not checked — the installer never creates those files, the connector reports them at runtime) | `src/semantics.cpp` |
+| RF-5 | Uniform, fatal cross-field rules: certificate/key pairing, no `.`/`..` prefix segments, distinct listener ports, existence of the HTTPS/authd certificate files (relative to the manager home; the manager never generates them — the operator provisions them, e.g. with wazuh-certs-tool — so the `file not found` verdict carries that hint; `indexer.ssl.*` is not checked, the connector reports those files at runtime) | `src/semantics.cpp` |
 | RF-6 | `sectionJson()` / `documentJson()` canonical JSON (cJSON-parseable); C API without exceptions or C++ types across the boundary | `src/manager_config.cpp`, `src/manager_config_c.cpp` |
 | RNF-1 | C++17, STATIC, manager only, pugixml + rapidjson PRIVATE | `CMakeLists.txt` |
 | RNF-2 | Schema embedded at build time (`generated/embeddedSchema.hpp`) | `CMakeLists.txt` |
@@ -35,7 +35,7 @@ the language).
 ## Design decisions
 
 - **Schema as the single source of truth** (`schema/wazuh-manager.schema.json`): types, ranges, enums, defaults and
-  descriptions of the 65 leaf options — byte-identical to the YAML PoC's schema, so the 5.1 XML→YAML conversion is a
+  descriptions of the 66 leaf options — byte-identical to the YAML PoC's schema, so the 5.1 XML→YAML conversion is a
   backend swap. Draft-04 because it is what rapidjson's validator implements and what the Python framework uses
   (`jsonschema.Draft4Validator`). Definitions (`duration`, `size`, `port`…) are reused through `allOf: [{$ref}]`.
 - **Schema-driven typing** over the pugixml DOM: the target type of every element decides the conversion, so

@@ -76,10 +76,13 @@ namespace remoted::metrics
 
         /// Resolves the family for @p endpoint (e.g. "stateless") on @p manager (creating it on
         /// first call; totals carry over on later calls because getOrCreateCounter dedupes by name).
-        static ResponseCounters make(wazuh::metrics::IManager& manager, const char* endpoint)
+        /// @p method only labels the description ("POST /stateless", "GET /cacerts"); it is not part
+        /// of the metric name, which stays `remoted.http.<endpoint>.responses.<code>`.
+        static ResponseCounters
+        make(wazuh::metrics::IManager& manager, const char* endpoint, const char* method = "POST")
         {
             const std::string prefix = std::string {HTTP_METRIC_PREFIX} + endpoint + ".responses.";
-            const std::string description = std::string {"POST /"} + endpoint + " responses sent with this status";
+            const std::string description = std::string {method} + " /" + endpoint + " responses sent with this status";
             const auto counter = [&](const char* code)
             {
                 return manager.getOrCreateCounter(prefix + code, description, "count");
@@ -137,15 +140,18 @@ namespace remoted::metrics
     };
 
     /// Resolves the remoted.http.<endpoint>.* family. @p withLatency additionally resolves the
-    /// latency histogram (see EndpointHttpMetrics).
-    inline EndpointHttpMetrics
-    makeEndpointHttpMetrics(wazuh::metrics::IManager& manager, const char* endpoint, bool withLatency)
+    /// latency histogram (see EndpointHttpMetrics). @p method labels the descriptions only (every
+    /// agent-facing route is a POST except GET /cacerts).
+    inline EndpointHttpMetrics makeEndpointHttpMetrics(wazuh::metrics::IManager& manager,
+                                                       const char* endpoint,
+                                                       bool withLatency,
+                                                       const char* method = "POST")
     {
-        EndpointHttpMetrics m {ResponseCounters::make(manager, endpoint), nullptr};
+        EndpointHttpMetrics m {ResponseCounters::make(manager, endpoint, method), nullptr};
         if (withLatency)
         {
             m.latency = manager.getOrCreateHistogram(std::string {HTTP_METRIC_PREFIX} + endpoint + ".latency",
-                                                     std::string {"POST /"} + endpoint +
+                                                     std::string {method} + " /" + endpoint +
                                                          " end-to-end time, request receipt to response delivery",
                                                      "microseconds");
         }
