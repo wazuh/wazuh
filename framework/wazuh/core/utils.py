@@ -1061,13 +1061,19 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
                 # check if a clause is satisfied
                 match_candidates = list()
-                if field_subnames and field_name in elem and \
-                        get_match_candidates(deepcopy(elem[field_name]), field_subnames.split('.'), match_candidates):
-                    if any([check_clause(candidate, op, value) for candidate in match_candidates if candidate]):
-                        continue
-                else:
-                    if field_name in elem and check_clause(elem[field_name], op, value):
-                        continue
+                try:
+                    if field_subnames and field_name in elem and \
+                            get_match_candidates(deepcopy(elem[field_name]), field_subnames.split('.'),
+                                                  match_candidates):
+                        if any([check_clause(candidate, op, value) for candidate in match_candidates if candidate]):
+                            continue
+                    else:
+                        if field_name in elem and check_clause(elem[field_name], op, value):
+                            continue
+                except (TypeError, ValueError):
+                    # value is not compatible with the target field's type (e.g. a non-numeric
+                    # literal against an int field, or a non-date literal against a datetime field)
+                    raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
                 match = False
                 break
 

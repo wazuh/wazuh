@@ -1891,6 +1891,29 @@ def test_filter_array_by_query_contains_non_str(q, array, expected_ids):
     assert [item['id'] for item in result] == expected_ids
 
 
+# Array whose `created` (datetime) and `uses` (int) fields mirror an enrollment token, to exercise
+# a `q` literal that doesn't match either field's type.
+type_mismatch_input_array = [{
+    'id': 'first',
+    'created': datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc),
+    'uses': 0
+}]
+
+
+@pytest.mark.parametrize('q', [
+    'created>foo',
+    'created>1',
+    'created>2026-13-01',
+    'uses=abc',
+    'uses=2026-01-01',
+])
+def test_filter_array_by_query_type_mismatch(q):
+    """Test that a `q` literal incompatible with the target field's type raises WazuhError(1407)
+    instead of an unhandled TypeError/ValueError."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query(q, type_mismatch_input_array)
+
+
 @pytest.mark.parametrize('select, required_fields, expected_result', [
     (['single_select', 'nested1.nested12.nested121'], {'required'}, {'required': None,
                                                                      'single_select': None,
