@@ -33,6 +33,13 @@ namespace remoted::enrollment
         std::optional<std::string> keyHash;
     };
 
+    /// The request never reached authd: stopping, queue full, or connect failure. Safe to retry.
+    inline constexpr int kAuthdRequestNotSentErrorCode = -1;
+
+    /// The request reached authd but no well-formed answer came back. authd may have processed
+    /// it anyway -- not safe to assume it did not.
+    inline constexpr int kAuthdOutcomeUnknownErrorCode = -2;
+
     /**
      * @brief Outcome of an AuthdClient::addAgent() call.
      *
@@ -40,14 +47,15 @@ namespace remoted::enrollment
      *   - 0: success -- id/name/ip/key are populated, message is empty.
      *   - a positive authd error code (e.g. 9008 "Duplicate name"): authd responded with a
      *     well-formed business rejection -- message carries its (prefix-stripped) text.
-     *   - -1: no well-formed answer was obtained at all -- connect/send/receive failure, a
-     *     response timeout, or a malformed/unparseable reply. The endpoint layer maps this to
-     *     the same HTTP status as authd's own 9016 (clustered-forward failure): both mean
-     *     "the bridge did not get a clean answer", not a specific business outcome.
+     *   - kAuthdRequestNotSentErrorCode (-1): the request never reached authd. Safe to retry.
+     *   - kAuthdOutcomeUnknownErrorCode (-2): the request reached authd but no well-formed
+     *     answer came back. authd may have processed it anyway -- not safe to assume it did not.
      */
     struct AuthdResult
     {
-        int errorCode {-1};
+        // Defaults to the more cautious of the two, so a future path that forgets to set this
+        // explicitly doesn't silently claim "safe to retry".
+        int errorCode {kAuthdOutcomeUnknownErrorCode};
         std::string message;
         std::string id;
         std::string name;
