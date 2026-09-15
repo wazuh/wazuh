@@ -51,6 +51,7 @@ wazuh-manager-remoted listeners.
 |---|---|---|---|---|
 | `legacy` | mapping | `{"enabled": false}` |  | Classic TCP/UDP agent listener. Absent block = disabled; present block = enabled unless 'enabled: false'. |
 | `legacy.enabled` | boolean | `true` |  | Start the legacy listener. |
+| `legacy.ca_delivery` | boolean | `true` |  | Send the manager's CA certificate to a pre-v5.0.0 agent over the WPK transfer channel during a remote upgrade, so the upgraded agent has a trust anchor. Disable when a corporate PKI or a configuration-management tool distributes the anchor instead. |
 | `legacy.port` | integer | `1514` | 1-65535 | Listening port. |
 | `legacy.protocol` | list of enum | `["tcp"]` | items one of `tcp`, `udp`; at least 1 item; at most 2 items; unique | Transport protocols to listen on. |
 | `legacy.ipv6` | boolean | `false` |  | Listen on IPv6. |
