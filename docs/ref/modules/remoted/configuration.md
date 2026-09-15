@@ -367,7 +367,7 @@ its arrival pattern alone. Two seconds' worth absorbs that without raising the s
 is that derived depth), `.burst` reports the depth in force, and `remoted.<endpoint>.rate_limited`
 counts what was refused.
 
-#### https.enroll_rate_limit
+### https.enroll_rate_limit
 
 Sustained `POST /enroll` requests per second the manager serves, counted for the endpoint as a
 whole.
@@ -382,7 +382,7 @@ whole.
   must pass through it at least once (a bootstrap, or a mass re-enrollment after a credential
   rotation).
 
-#### https.cacerts_rate_limit
+### https.cacerts_rate_limit
 
 Sustained `GET /cacerts` requests per second the manager serves, counted for the endpoint as a
 whole.
@@ -404,6 +404,333 @@ whole.
   </https>
 </remote>
 ```
+
+---
+
+## Internal Options
+
+**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`
+
+**Internal Options prefix:** `remoted.*`
+
+Internal options provide advanced tuning for performance, threading, memory management, and monitoring.
+
+Three things to know before editing that file:
+
+- **It ships empty.** The installed template carries only comments, so every option below is
+  serving its compiled-in default. Tuning one means adding the `name=value` line yourself.
+- **An out-of-range or non-numeric value is fatal**, not clamped: the daemon refuses to start and
+  logs which option it rejected. Keep the documented range in view when editing.
+  Put comments on separate lines beginning with `#`; an inline comment becomes part of the value.
+- **The file is per node and is never synchronized.** Nothing in a cluster propagates it, so a
+  value set on one manager makes an agent's behavior depend on which node it lands on.
+
+### remoted.debug
+
+Debug logging level for remoted module.
+
+- **Default value:** `0`
+- **Allowed values:** `0` (disabled), `1` (basic), `2` (verbose)
+- **Note:** Use `debug2` for troubleshooting; generates significant log volume
+- **Note:** Level `2` is also what reveals the HTTPS agent server's per-request rejection reasons
+  (malformed or unauthenticated requests). Those are kept at debug because an unauthenticated client
+  controls how many it can trigger; conditions an operator can act on are logged at info or warning
+  level regardless of this setting — including a rejection caused by the agent's registered address no
+  longer matching. See
+  [Diagnosing rejections and capacity problems](https-events-api.md#diagnosing-rejections-and-capacity-problems).
+
+### remoted.receive_chunk
+
+Network receive buffer size in bytes.
+
+- **Default value:** `4096`
+- **Allowed values:** Positive integer
+- **Note:** Larger values may improve throughput on high-bandwidth networks
+
+### remoted.send_timeout_to_retry
+
+Timeout in seconds before retrying a failed send operation.
+
+- **Default value:** `1`
+- **Allowed values:** Positive integer
+- **Note:** Lower values increase retry frequency; higher values reduce network overhead
+
+### remoted.worker_pool
+
+Number of worker threads for processing agent messages.
+
+- **Default value:** `4`
+- **Allowed values:** Positive integer
+- **Note:** Increase for high-throughput environments (e.g., `8` for >50K events/sec)
+
+### remoted.sender_pool
+
+Number of sender threads for forwarding events to the engine.
+
+- **Default value:** `8`
+- **Allowed values:** Positive integer
+- **Note:** Increase for high-throughput environments (e.g., `16` for >50K events/sec)
+
+### remoted.control_msg_queue_size
+
+Queue size for agent keep-alive and control messages.
+
+- **Default value:** `16384`
+- **Allowed values:** Positive integer
+- **Note:** Increase for large agent counts (e.g., `32768` for >10K agents)
+
+### remoted.batch_events_capacity
+
+Queue capacity for batching events before forwarding to the engine.
+
+- **Default value:** `131072`
+- **Allowed values:** Positive integer
+- **Note:** Increase for high event rates (e.g., `262144` for >50K events/sec)
+
+### remoted.queue_max_bytes
+
+Maximum bytes held in the input message queue (messages received from agents).
+
+- **Default value:** `67108864` (64 MiB)
+- **Allowed values:** `0` (unlimited) or integer from `1024` upward
+- **Note:** Caps memory usage; events exceeding the limit are dropped; set to `0` to disable byte limiting
+
+### remoted.batch_events_max_bytes
+
+Maximum bytes held in the events queue (events forwarded to the engine).
+
+- **Default value:** `33554432` (32 MiB)
+- **Allowed values:** `0` (unlimited) or integer from `1024` upward
+- **Note:** Caps memory usage; events exceeding the limit are dropped; set to `0` to disable byte limiting
+
+### remoted.enrich_cache_expire_time
+
+Agent metadata cache expiration time in seconds.
+
+- **Default value:** `300` (5 minutes)
+- **Allowed values:** Integer from `60` to `86400`
+- **Note:** Entries older than this threshold are cleaned up periodically; adjust based on agent stability (ephemeral: `300`, stable: `600-1800`)
+
+### remoted.legacy_task_polling_interval
+
+Interval in seconds between polls of the Task Manager's pending tasks on behalf of connected
+agents older than v5.0.0. Every cycle, `remoted` checks each connected agent's self-reported
+version and, for agents confirmed below v5.0.0, asks the Task Manager for pending tasks and
+delivers any `remote_upgrade` (WPK) one over the agent's existing session — see
+[Remote agent upgrade](../../../guide/migration/remote-agent-upgrade.md) for the full delivery flow.
+
+- **Default value:** `900` (15 minutes)
+- **Allowed values:** Integer from `300` to `86400`
+- **Note:** Must be configured comfortably smaller than the Task Manager's own `task-manager.task_ttl`
+  (default `3600`s, see [Task Manager configuration](../task_manager/configuration.md)) — a task created just
+  after a poll cycle must still be `pending` when the next cycle runs, or it can flip to `expired` before
+  ever being delivered.
+
+### remoted.keyupdate_interval
+
+Interval in seconds for reloading agent key files. Also governs the HTTPS agent server's
+`remoted_module` C++ `Keystore` (see [HTTPS Agent API](https-events-api.md)): it hot-reloads
+`client.keys` on its own (an `inotify` subscription reacts immediately; this interval is only the
+periodic fallback poll, in case a notification is ever missed), reusing this same option instead of
+introducing a second one for the same concept.
+
+- **Default value:** `10`
+- **Allowed values:** Integer from `1` to `3600`
+- **Note:** Lower values detect new agents faster but increase I/O overhead. Whether the C++
+  keystore's reloads are actually happening (and succeeding) is visible as
+  `remoted.auth.keystore.*` in
+  [`GET /metrics`](metrics.md#keystore-health--remotedauthkeystore)
+
+### remoted.rlimit_nofile
+
+Maximum number of open file descriptors for the remoted process.
+
+- **Default value:** `458752`
+- **Allowed values:** Positive integer
+- **Note:** The default already supports ~200K concurrent connections. Only increase above the default (up to the allowed maximum of `1048576`) if you observe file-descriptor exhaustion under very large agent counts — do not set below the default of `458752`.
+
+### remoted.send_chunk
+
+Maximum bytes to send in a single write operation to an agent.
+
+- **Default value:** `4096` (4 KB)
+- **Allowed values:** Positive integer (bytes)
+- **Note:** Larger values may improve throughput but increase network buffer requirements
+
+### remoted.buffer_relax
+
+Send buffer flushing mode selector.
+
+- **Default value:** `1`
+- **Allowed values:** `0` (strict: flush immediately), `1` (relaxed: allow buffering with timeout), `2` (lazy: maximum batching)
+- **Note:** Controls buffering behavior; `1` balances latency and throughput
+
+### remoted.send_buffer_size
+
+Size of send buffer per agent connection in bytes.
+
+- **Default value:** `131072` (128 KB)
+- **Allowed values:** Positive integer (bytes)
+- **Note:** Larger buffers handle burst traffic better
+
+### remoted.recv_timeout
+
+Timeout in seconds for receiving data from agents.
+
+- **Default value:** `1`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Agent marked as unresponsive if no data received within timeout
+
+### remoted.tcp_keepidle
+
+Time in seconds before sending TCP keepalive probes on idle connections.
+
+- **Default value:** `30`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Helps detect dead connections; platform-specific support required
+
+### remoted.tcp_keepintvl
+
+Interval in seconds between TCP keepalive probes.
+
+- **Default value:** `10`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Works with `tcp_keepidle` and `tcp_keepcnt`
+
+### remoted.tcp_keepcnt
+
+Number of unacknowledged TCP keepalive probes before considering connection dead.
+
+- **Default value:** `3`
+- **Allowed values:** Positive integer
+- **Note:** Total dead detection time = `tcp_keepidle + (tcp_keepintvl × tcp_keepcnt)`
+
+### remoted.merge_shared
+
+Enable merging shared configuration files for agents.
+
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+- **Note:** Combines group-specific configurations; disable for troubleshooting
+
+### remoted.pass_empty_keyfile
+
+Allow remoted to start even if client.keys file is empty.
+
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+- **Note:** Useful for fresh installations; disable in production for security
+
+### remoted.request_pool
+
+Size of the request pool for handling agent communications.
+
+- **Default value:** `1024`
+- **Allowed values:** Positive integer
+- **Note:** Increase for high-concurrency scenarios
+
+### remoted.request_timeout
+
+Timeout in seconds for agent request operations.
+
+- **Default value:** `10`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Maximum time to wait for agent response
+
+### remoted.response_timeout
+
+Timeout in seconds for manager response operations to agents.
+
+- **Default value:** `60`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Maximum time for manager to respond to agent requests
+
+### remoted.request_rto_sec
+
+Retransmission timeout (seconds part) for agent requests.
+
+- **Default value:** `1`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Combined with `request_rto_msec` for total RTO
+
+### remoted.request_rto_msec
+
+Retransmission timeout (milliseconds part) for agent requests.
+
+- **Default value:** `0`
+- **Allowed values:** `0-999` (milliseconds)
+- **Note:** Fine-tune retransmission timing for lossy networks
+
+### remoted.max_attempts
+
+Maximum retry attempts for failed agent communications.
+
+- **Default value:** `4`
+- **Allowed values:** Positive integer
+- **Note:** After this many failures, operation is abandoned
+
+### remoted.shared_reload
+
+Interval in seconds for reloading shared configuration files.
+
+- **Default value:** `10`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** How often remoted checks for changes in `shared/` directory
+
+### remoted.disk_storage
+
+Enable disk-based storage for agent event queue persistence.
+
+- **Default value:** `no`
+- **Allowed values:** `yes`, `no`
+- **Note:** Persists queued events across remoted restarts; impacts I/O performance
+
+### remoted.verify_msg_id
+
+Verify message ID sequence from agents to detect tampering or replay attacks.
+
+- **Default value:** `no`
+- **Allowed values:** `yes`, `no`
+- **Note:** Enable for additional security; may cause issues with clock skew or agent restarts
+
+### remoted.batch_events_per_agent_capacity
+
+Maximum events to batch per agent before forwarding to engine.
+
+- **Default value:** `131072`
+- **Allowed values:** Positive integer
+- **Note:** Higher values improve throughput but increase latency
+
+### remoted.recv_counter_flush
+
+Message count threshold for flushing receive counters to statistics.
+
+- **Default value:** `128`
+- **Allowed values:** Positive integer (message count)
+- **Note:** Counters are flushed after this many messages received; internal monitoring metric
+
+### remoted.comp_average_printout
+
+Event count threshold for logging compression statistics.
+
+- **Default value:** `19999`
+- **Allowed values:** Integer from `10` to `999999` (event count)
+- **Note:** Compression stats logged after this many events processed
+
+### HTTPS Agent Server (`remoted_module`)
+
+Advanced tuning for the HTTPS agent server (see
+[HTTPS Agent API](https-events-api.md)): RESTinio transport settings (`remoted.http_*`) plus the
+downstream UDS client and auth middleware tunables (`remoted.downstream_*`, `remoted.auth_*`,
+further down this section). None of these are part of the regular `<remote>` configuration --
+bind address, port and max body size are regular `<remote>` settings instead (see
+[HTTPS Agent API](https-events-api.md#configuration)). An option present in
+`wazuh-manager-internal-options.conf` but out of its allowed range (or non-numeric) prevents
+`remoted` from starting, same as every other internal option.
+
+The timeout and retry settings below each pair with a deadline on the agent's side of the same
+hop; [Connection timing tuning](timing-tuning.md) covers which pairs must move together and what
+breaks when only one does.
 
 #### remoted.http_io_threads
 
@@ -1119,7 +1446,7 @@ Require and validate agent client certificates, including a full IP-to-certifica
       <ca>etc/certs/root-ca.pem</ca>
       <verification_mode>certificate</verification_mode>
       <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
-      <max_body_size>10M</max_body_size>
+      <max_body_size>20M</max_body_size>
     </https>
     <legacy>
       <port>1514</port>

@@ -100,16 +100,22 @@ namespace remoted::endpoints::ratelimit
                 rejected->add();
             }
 
-            // Wrapped only on the refusal path: on the admitted path the handler wraps the
-            // responder itself, and doing it here too would count every response twice.
-            if (httpMetrics != nullptr)
-            {
-                responder = std::make_shared<remoted::metrics::MeteredResponder>(std::move(responder), *httpMetrics);
-            }
-
             auto response =
                 rejection ? rejection() : remoted::http::HttpResponse::json(429, R"({"error":"too_many_requests"})");
             response.headers.emplace_back("Retry-After", retryAfter);
+
+            // Counted directly, NOT through a MeteredResponder: that decorator also records the
+            // endpoint's latency histogram, and this request never entered the handler. /enroll's
+            // histogram is documented as handler-entry-to-response and is the evidence for sizing
+            // the authd timeouts, so feeding it microsecond-scale refusals would drag the
+            // percentiles down -- and during the very burst the limiter exists for, those samples
+            // would dominate and hide the latency of the requests that were actually served.
+            // The status cell is the only part of that family a refusal belongs in.
+            if (httpMetrics != nullptr)
+            {
+                httpMetrics->responses.count(response.status);
+            }
+
             responder->send(std::move(response));
 
             if (const auto decision = throttle->record())

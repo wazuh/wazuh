@@ -28,9 +28,15 @@
  * question but the limiter's own refill time.
  *
  * Accounting: a refused request is counted in the endpoint's own `remoted.<endpoint>.rate_limited`
- * counter (the WHY) and, through the same MeteredResponder the handler would have used, in
- * `remoted.http.<endpoint>.responses.429` (the WHAT) -- so a 429 is visible in exactly the two
- * families every other answer of that endpoint lands in.
+ * counter (the WHY) and in `remoted.http.<endpoint>.responses.429` (the WHAT) -- so a 429 is visible
+ * in exactly the two families every other answer of that endpoint lands in.
+ *
+ * That status cell is bumped DIRECTLY rather than through a MeteredResponder, unlike the handler's
+ * own answers: the decorator also feeds the endpoint's latency histogram, and a refused request
+ * never entered the handler. `/enroll`'s histogram is documented as handler-entry-to-response and
+ * is what sizes the authd timeouts, so a refusal must not land in it -- during a burst those
+ * near-zero samples would dominate the distribution and hide the latency of the requests that were
+ * actually served.
  */
 
 #include "common/requestOutcomeMetrics.hpp"

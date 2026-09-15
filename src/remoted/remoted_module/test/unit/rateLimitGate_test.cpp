@@ -240,6 +240,45 @@ TEST(RateLimitGate, ARefusalIsCountedInBothMetricFamilies)
     EXPECT_EQ(f.http.responses.c2xx->get(), 0U);
 }
 
+// /enroll carries a latency histogram in production, documented as handler-entry-to-response and
+// used to size the authd timeouts. A refusal never entered the handler, so it must not land in it:
+// the samples would be microsecond-scale and, during exactly the burst the limiter exists for,
+// would dominate the distribution and hide the latency of the requests actually served. The status
+// cell still has to move, so this pins both halves at once.
+TEST(RateLimitGate, ARefusalIsCountedButNeverTimed)
+{
+    wazuh::metrics::Manager manager;
+    // withLatency=true: the production shape for /enroll, and the only one where this can regress.
+    auto http = remoted::metrics::makeEndpointHttpMetrics(manager, "enroll", /*withLatency=*/true);
+    ASSERT_NE(http.latency, nullptr);
+
+    auto inner = [&http](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+    {
+        // Stands in for a real handler: it wraps the responder itself, which is what legitimately
+        // feeds the histogram on the admitted path.
+        auto metered = std::make_shared<remoted::metrics::MeteredResponder>(std::move(responder), http);
+        metered->send(HttpResponse::json(200, "{}"));
+    };
+    auto handler = ratelimit::wrap(inner,
+                                   std::make_shared<EndpointRateLimiter>(settings(1.0, 1.0)),
+                                   &remoted::enrollment::rateLimitedResponse,
+                                   nullptr,
+                                   &http,
+                                   "POST /enroll");
+
+    auto admitted = std::make_shared<CapturingResponder>();
+    handler(requestFrom("10.0.0.1"), admitted);
+    ASSERT_EQ(admitted->response().status, 200);
+    EXPECT_EQ(http.latency->snapshot().count, 1U) << "the admitted request must still be timed";
+
+    auto refused = std::make_shared<CapturingResponder>();
+    handler(requestFrom("10.0.0.1"), refused);
+    ASSERT_EQ(refused->response().status, 429);
+
+    EXPECT_EQ(http.responses.c429->get(), 1U) << "the refusal must still be counted";
+    EXPECT_EQ(http.latency->snapshot().count, 1U) << "the refusal must NOT have been timed";
+}
+
 TEST(RateLimitGate, ADisabledLimiterIsAPlainPassThrough)
 {
     Fixture f;
