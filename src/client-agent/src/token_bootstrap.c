@@ -13,19 +13,6 @@
 #include "enrollment.h"
 #include "enrollment_token.h"
 
-#ifdef WIN32
-
-/* Windows has no privilege-drop step in this codebase, so there is no safe point to fix up
- * ownership of files written here while still elevated -- left unwired on Windows for now, an
- * explicit scope decision (see token_bootstrap.h's own doc comment). */
-int w_agent_token_bootstrap(int uid, int gid) {
-    (void)uid;
-    (void)gid;
-    return 0;
-}
-
-#else /* !WIN32 */
-
 #ifdef WAZUH_UNIT_TESTING
     // Remove static qualifier when unit testing
     #define STATIC
@@ -38,7 +25,9 @@ STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out);
 STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, size_t buf_size,
                                                  const char **filename);
 STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid);
+#ifndef WIN32
 STATIC int w_token_bootstrap_open_and_chown_keys(int gid);
+#endif
 STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure);
 
 /**
@@ -139,9 +128,21 @@ STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, siz
  *        is sitting right there. Group-read rather than group-write for the same reason the
  *        anchor itself is not writable by the runtime user: nothing that runs as that user has
  *        any business replacing the certificate authority it verifies its manager against.
+ *
+ *        Windows has neither half of that reasoning: no privilege drop for the ownership to
+ *        survive, and no uid/gid to express it with. The directory is left with what it
+ *        inherits from the installation directory, which the installer has already narrowed to
+ *        read-and-execute for everyone who is not an administrator -- enough here, since the
+ *        anchor is a public certificate and what has to be prevented is replacing it, not
+ *        reading it. Only mkdir_ex() runs there, and it still has to: the MSI does not ship a
+ *        certs directory either, so TempFile()'s mkstemp() would have nowhere to land.
  */
 STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
     char dir[OS_FLSIZE + 1];
+
+#ifdef WIN32
+    (void)gid;
+#endif
 
     if (w_token_bootstrap_split_dir_filename(path, dir, sizeof(dir), NULL) != 0) {
         return;
@@ -149,6 +150,7 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
 
     mkdir_ex(dir);
 
+#ifndef WIN32
     if (chown(dir, 0, gid) != 0) {
         merror("Token bootstrap: could not set ownership of '%s': %s (%d).", dir,
                strerror(errno), errno);
@@ -158,7 +160,10 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
         merror("Token bootstrap: could not set permissions on '%s': %s (%d).", dir,
                strerror(errno), errno);
     }
+#endif /* !WIN32 */
 }
+
+#ifndef WIN32
 
 /**
  * @brief chown()s KEYS_FILE to root:@p gid without following a symlink planted in its parent
@@ -221,6 +226,20 @@ STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure) {
     }
 }
 
+#else /* WIN32 */
+
+/* Nothing to restore: the Windows agent runs as one service account from start to finish, so
+ * client.keys is never written by a user the process later stops being. The symlink hardening
+ * above has no Windows counterpart either -- w_openat_nofollow_vetted() is itself POSIX-only
+ * (file_op.h). Kept as a real function rather than a macro so the three call sites below read
+ * identically on both platforms. */
+STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure) {
+    (void)gid;
+    (void)quiet_on_failure;
+}
+
+#endif /* WIN32 */
+
 /**
  * @brief Documents, not implements, the only reset that works today: a fresh bootstrap only
  *        re-runs once AGENT_ANCHOR_CA is removed, client.keys is emptied or removed, AND a new
@@ -253,6 +272,12 @@ int w_agent_token_bootstrap(int uid, int gid) {
     /* Kept for signature symmetry with AgentdStart()'s uid/gid pair (see this function's own
      * doc comment in token_bootstrap.h): neither file this function writes is chowned to it. */
     (void)uid;
+
+#ifdef WIN32
+    /* On Windows nothing is chowned at all, so the gid is unused too -- local_start() passes
+     * 0/0 because there is no privilege drop for either file to survive. */
+    (void)gid;
+#endif
 
     /* Both latches below discard the token on their way out. It is a one-shot credential, and
      * once either of these is true it can never be used again -- but it was only ever deleted
@@ -400,17 +425,43 @@ int w_agent_token_bootstrap(int uid, int gid) {
     /* etc/certs doesn't exist on a stock install; see w_token_bootstrap_ensure_parent_dir(). */
     w_token_bootstrap_ensure_parent_dir(AGENT_ANCHOR_CA, gid);
 
+#ifdef WIN32
+    /* TempFile() is unusable on Windows: mkstemp() is stubbed out to a constant 0 there
+     * (file_op.c), so it creates no file, hands fdopen() what is actually stdin, and returns the
+     * template unexpanded -- the enrollment ends up pointed at a literal 'root-ca.pem.XXXXXX'
+     * that does not exist. enrollment.c:309 forks for the same reason when it writes
+     * client.keys. A fixed sibling name keeps what the temp file was for: the anchor is still
+     * committed by the rename below and only after the enrollment succeeded, so a failed
+     * bootstrap leaves nothing for the next boot's anchor latch to trip on. The latch also
+     * guarantees AGENT_ANCHOR_CA does not exist yet, which is what lets the rename work here --
+     * on Windows it would fail over an existing destination. */
+    os_strdup(AGENT_ANCHOR_CA ".tmp", anchor_file.name);
+
+    if ((anchor_file.fp = wfopen(anchor_file.name, "w")) == NULL) {
+        merror("Token bootstrap: could not create a temporary file for the trust anchor: %s (%d).",
+               strerror(errno), errno);
+        os_free(anchor_file.name);
+        w_etoken_free(&token);
+        return -1;
+    }
+#else
     if (TempFile(&anchor_file, AGENT_ANCHOR_CA, 0) < 0) {
         merror("Token bootstrap: could not create a temporary file for the trust anchor: %s (%d).",
                strerror(errno), errno);
         w_etoken_free(&token);
         return -1;
     }
+#endif
 
     /* 0640, not 0644: the anchor is world-readable in neither sense that matters, and the
      * group bit is the whole access the runtime user gets -- read, never write. TempFile()
      * leaves 0600 behind its own umask, so this widens it exactly as far as the drop below
-     * needs and no further. */
+     * needs and no further.
+     *
+     * Skipped on Windows: there is no drop to widen for, and the file's protection there is
+     * the inherited ACL of the directory w_token_bootstrap_ensure_parent_dir() created (see
+     * its own comment), not a mode. */
+#ifndef WIN32
     if (chmod(anchor_file.name, 0640) == -1) {
         merror("Token bootstrap: could not set permissions on '%s': %s (%d).", anchor_file.name,
                strerror(errno), errno);
@@ -420,6 +471,7 @@ int w_agent_token_bootstrap(int uid, int gid) {
         w_etoken_free(&token);
         return -1;
     }
+#endif /* !WIN32 */
 
     if (fwrite(candidate_pem, 1, candidate_len, anchor_file.fp) != candidate_len) {
         merror("Token bootstrap: could not write the trust anchor to '%s'.", anchor_file.name);
@@ -524,11 +576,16 @@ int w_agent_token_bootstrap(int uid, int gid) {
      * read it after AgentdStart()'s privilege drop, breaking the first restart. Fixed up on the
      * temp file, before the rename below: a crash between them would leave AGENT_ANCHOR_CA on
      * disk with the wrong group, and IsFile(AGENT_ANCHOR_CA) == 0 unconditionally latches the
-     * bootstrap off on every later boot, so it must land before the rename, never after. */
+     * bootstrap off on every later boot, so it must land before the rename, never after.
+     *
+     * Skipped on Windows for the same reason as the mode above: one service account throughout,
+     * nothing to hand the file over to. */
+#ifndef WIN32
     if (chown(anchor_file.name, 0, gid) != 0) {
         merror("Token bootstrap: could not change ownership of '%s': %s (%d).", anchor_file.name,
                strerror(errno), errno);
     }
+#endif
 
     if (OS_MoveFile(anchor_file.name, AGENT_ANCHOR_CA) < 0) {
         merror("Token bootstrap: could not install the trust anchor at '%s'.", AGENT_ANCHOR_CA);
@@ -545,7 +602,8 @@ int w_agent_token_bootstrap(int uid, int gid) {
      * restores read access without handing the credential to the runtime user. If this fails
      * (e.g. a namespaced container without CAP_CHOWN), the anchor above is already committed, so
      * client.keys stays root:root here -- but the anchor-latch branch above retries this same
-     * chown on every later boot, so this is not a one-shot chance to fix it. */
+     * chown on every later boot, so this is not a one-shot chance to fix it. A no-op on
+     * Windows, where there is no second user to restore access for. */
     w_token_bootstrap_chown_keys_file(gid, false);
 
     unlink(AGENT_ENROLLMENT_TOKEN_FILE);
@@ -554,5 +612,3 @@ int w_agent_token_bootstrap(int uid, int gid) {
 
     return 0;
 }
-
-#endif /* WIN32 */

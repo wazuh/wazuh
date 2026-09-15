@@ -398,8 +398,8 @@ public function config()
 
         ' Leave the token where the agent picks it up: w_agent_token_bootstrap() reads it once at
         ' the first start, fetches the CA, checks it against the token's pin, writes the trust
-        ' anchor and deletes this file -- except on Windows today, where that bootstrap is a
-        ' WIN32 no-op, so the file is written here and nothing yet reads or removes it.
+        ' anchor and deletes this file. Same implementation on every platform
+        ' (client-agent/src/token_bootstrap.c), reached here through local_start().
         ' SetWazuhPermissions() takes Authenticated Users back off it before this run ends.
         '
         ' token_ok is cleared above if the endpoint could not be written, so this never reports
@@ -686,10 +686,9 @@ Public Function SetWazuhPermissions()
         ' sets WAZUH_REGISTRATION_PASSWORD any more, so the authd.pass line above now only ever
         ' applies to a file placed by hand or by wazuh-agent-auth.
         '
-        ' It also matters longer here than on Linux. There the bootstrap consumes the token at
-        ' the first start and unlinks it, so the file is short-lived; on Windows
-        ' w_agent_token_bootstrap() is still a WIN32 no-op (token_bootstrap.c), so the file
-        ' stays until something removes it.
+        ' The file is short-lived either way -- the bootstrap consumes the token at the first
+        ' start and unlinks it -- but it is at rest between this install and that start, and on
+        ' a machine where the service never starts it stays there.
         remAuthenticatedUsersPermsToken = "icacls """ & home_dir & "enrollment_token" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsToken, 0, True
 

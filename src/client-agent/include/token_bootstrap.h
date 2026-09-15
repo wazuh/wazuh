@@ -15,9 +15,8 @@
  *        outright), enroll fully verified against that CA, and persist it as
  *        AGENT_ANCHOR_CA -- the agent's own trust anchor from then on.
  *
- * Runs once, before AgentdStart()'s privilege drop: both the anchor and client.keys are written
- * while still root, so each needs its group fixed up (see token_bootstrap.c's own comments on
- * the two) before the process becomes the unprivileged `wazuh` user.
+ * Runs once per install, from AgentdStart() on POSIX (agentd.c) and from local_start() on
+ * Windows (win_utils.c).
  */
 #ifndef TOKEN_BOOTSTRAP_H
 #define TOKEN_BOOTSTRAP_H
@@ -41,9 +40,9 @@
  * @param uid The uid AgentdStart() is about to drop privileges to. Currently unused: neither
  *        file this function writes is chowned to it (see token_bootstrap.c's own comments on
  *        the anchor and on client.keys) -- kept for signature symmetry with AgentdStart()'s
- *        uid/gid pair.
+ *        uid/gid pair. Ignored on Windows, which has no privilege drop; local_start() passes 0.
  * @param gid The gid AgentdStart() is about to drop privileges to, so the committed anchor ends
- *        up group-owned by it.
+ *        up group-owned by it. Ignored on Windows for the same reason, which passes 0 too.
  * @return 0 when there was nothing to do, or the bootstrap fully succeeded; -1 when a token was
  *         present and the bootstrap was attempted but failed.
  */

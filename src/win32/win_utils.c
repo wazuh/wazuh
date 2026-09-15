@@ -20,6 +20,7 @@
 #include "os_net.h"
 #include "dll_load_notify.h"
 #include "startup_gate_op.h"
+#include "token_bootstrap.h"
 #include "agent_sync_protocol_c_interface.h"
 #include "os_win.h"
 
@@ -387,6 +388,41 @@ int local_start()
      * inside w_https_client_start(). */
     if (!w_agent_validate_ssl_ca(agt)) {
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
+    }
+
+    /* Enrollment-token bootstrap, the Windows half of AgentdStart()'s (agentd.c). Same slot
+     * relative to the steps both platforms share: after the configuration is read and the
+     * configured CA is validated, before the key read and start_agent_prepare() below, so a
+     * token enrollment has already written client.keys by the time OS_CheckKeys() looks.
+     *
+     * A configured token that could not be honoured ends the start, and deliberately so.
+     * Carrying on would reach start_agent_prepare(), which enrolls over whatever posture is
+     * left -- 'none', because no anchor was written -- so a CA the agent had just refused
+     * would be followed by an unverified enrollment against that same manager.
+     *
+     * Only a token that was present and failed does this. An install with no token at all
+     * returns 0 from the gate, so the normal enrollment loop still gets its chance -- as do an
+     * agent already holding an anchor and one already enrolled.
+     *
+     * 0/0 for uid/gid: Windows runs the service as one account from start to finish, so
+     * neither file the bootstrap writes is handed over to a second user (token_bootstrap.c). */
+    const bool anchor_before = (IsFile(AGENT_ANCHOR_CA) == 0);
+
+    if (w_agent_token_bootstrap(0, 0) != 0) {
+        merror_exit("Enrollment-token bootstrap failed; refusing to enroll unverified.");
+    }
+
+    /* Only when this boot is the one that created the anchor. ClientConf() resolved the TLS
+     * posture above, before the bootstrap ran and so before the anchor existed, settling on
+     * 'none'; the bootstrap's own enrollment is unaffected, since it builds a verified
+     * configuration of its own, but everything sent afterwards reads agt->ssl through
+     * bridge_build_transport_config() and would spend the rest of the boot unverified against
+     * an anchor already on disk. Resolving again closes that window. Conditional rather than
+     * unconditional so a boot that had nothing to bootstrap does not re-run a resolution that
+     * can only reach the same answer -- and, when the operator has asked for 'none' outright,
+     * log its warning about that a second time. */
+    if (!anchor_before && IsFile(AGENT_ANCHOR_CA) == 0) {
+        w_agent_resolve_ssl_posture(agt);
     }
 
     if (agt->notify_time == 0) {
