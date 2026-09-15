@@ -50,6 +50,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the default agent nodiff list not protecting /etc/shadow and real key paths. ([#39124](https://github.com/wazuh/wazuh/pull/39124))
 - Fixed FIM not monitoring user-mounted `tmpfs` directories mistaken for `/dev`. ([#38627](https://github.com/wazuh/wazuh/pull/38627))
 - Fixed the gcloud wodle silently discarding a crashed process's raw output when it produced no recognized log line, and fixed `wm_exec()` (shared by every wodle) reporting exit code 0 for a process killed by a signal, such as an OOM kill or a native segfault, which had made that raw-output fallback unreachable for exactly the crashes it was meant to catch. ([#38943](https://github.com/wazuh/wazuh/pull/38943))
+- Fixed the default Windows FIM configuration monitoring none of its 19 named critical binaries (`cmd.exe`, `lsass.exe`, `sc.exe`, `sethc.exe`, etc.), because duplicate `%WINDIR%\SysNative` / `%WINDIR%\System32` directory declarations collapsed onto the same path once normalized and silently replaced each other's `restrict` list. ([#39198](https://github.com/wazuh/wazuh/issues/39198))
 
 ### Ruleset
 
