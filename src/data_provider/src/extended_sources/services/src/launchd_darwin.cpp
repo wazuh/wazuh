@@ -15,9 +15,21 @@
 
 #include <filesystem_wrapper.hpp>
 
-LaunchdProvider::LaunchdProvider(std::unique_ptr<IFileSystemWrapper> fileSystemWrapper)
+LaunchdProvider::LaunchdProvider(std::unique_ptr<IFileSystemWrapper> fileSystemWrapper,
+                                 const std::vector<std::string>& searchPaths,
+                                 const std::string& overridesPath)
     : m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_unique<file_system::FileSystemWrapper>())
 {
+    if (!searchPaths.empty())
+    {
+        m_launchdSearchPaths = searchPaths;
+        m_userLaunchdSearchPaths.clear();
+    }
+
+    if (!overridesPath.empty())
+    {
+        m_launchdOverridesPath = overridesPath;
+    }
 }
 
 static bool cfStringToStd(CFStringRef value, std::string& out)

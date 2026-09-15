@@ -54,7 +54,13 @@ class LaunchdProvider
     public:
         /// @brief Constructor with filesystem wrapper.
         /// @param fileSystemWrapper Unique pointer to a file system wrapper implementation (optional).
-        explicit LaunchdProvider(std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr);
+        /// @param searchPaths Directories to scan for job plists. When given, they replace the
+        /// system defaults and the per-user scan is skipped. Intended for testing.
+        /// @param overridesPath Directory holding the launchd override database. When given, it
+        /// replaces the system default. Intended for testing.
+        explicit LaunchdProvider(std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr,
+                                 const std::vector<std::string>& searchPaths = {},
+                                 const std::string& overridesPath = {});
 
         /// @brief Collects launchd services information.
         /// @return A JSON object containing the collected launchd services information.
@@ -62,7 +68,7 @@ class LaunchdProvider
 
     private:
         /// @brief Standard launchd search paths.
-        const std::vector<std::string> m_launchdSearchPaths =
+        std::vector<std::string> m_launchdSearchPaths =
         {
             "/System/Library/LaunchDaemons",
             "/Library/LaunchDaemons",
@@ -73,7 +79,7 @@ class LaunchdProvider
         };
 
         /// @brief User-specific launchd search paths.
-        const std::vector<std::string> m_userLaunchdSearchPaths =
+        std::vector<std::string> m_userLaunchdSearchPaths =
         {
             "Library/LaunchAgents",
         };
@@ -108,7 +114,7 @@ class LaunchdProvider
         };
 
         /// @brief Directory holding the launchd override database.
-        const std::string m_launchdOverridesPath = "/var/db/com.apple.xpc.launchd";
+        std::string m_launchdOverridesPath = "/var/db/com.apple.xpc.launchd";
 
         /// @brief Retrieves all launcher plist files from known paths.
         /// @param launchers Vector to store the found plist file paths.
