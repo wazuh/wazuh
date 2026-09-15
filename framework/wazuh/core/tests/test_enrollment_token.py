@@ -114,12 +114,20 @@ def test_revoke_token(mock_socket):
     # A storage failure is the manager's problem, not the caller's: internal, and worth retrying
     # (issue #39078, H04). Told apart from 9022 on purpose -- the token does exist.
     (9029, 'Enrollment token store write failed', WazuhInternalError, 1771, None),
-    # Any other authd-native code (>= 9000) is still the caller's problem: a 1773 carrying authd's
-    # own code and message, instead of the bare exception that used to surface as a 500.
-    (9002, 'Parsing JSON input', WazuhError, 1773, 'authd code 9002: Parsing JSON input'),
+    # An authd-native code nobody mapped yet, and not one of _AUTHD_FRAMEWORK_FAULT_CODES: still the
+    # caller's problem, a 1773 carrying authd's own code and message, instead of the bare exception
+    # that used to surface as a 500. 9007 is not reachable by any token verb today (see the module's
+    # own comment) but stands in for "some future code the catch-all is meant to be a safety net for".
+    (9007, 'Duplicate IP', WazuhError, 1773, 'authd code 9007: Duplicate IP'),
     # AUTHD_INTERNAL (9001) is authd's own fault, not the caller's -- excluded from the 1773
     # catch-all on purpose, so it stays a bare exception (a real 500), not a misleading 400.
     (9001, 'Internal error', WazuhException, 9001, None),
+    # 9002/9003/9016 are also excluded from the 1773 catch-all: none of them can mean the caller did
+    # anything wrong (see _AUTHD_FRAMEWORK_FAULT_CODES's own comment for why), so they stay bare
+    # exceptions too, same as 9001.
+    (9002, 'Parsing JSON input', WazuhException, 9002, None),
+    (9003, 'No such function', WazuhException, 9003, None),
+    (9016, 'Cannot communicate with master node', WazuhException, 9016, None),
     # Below authd's numbering space: a framework socket failure, re-raised untouched.
     (1014, 'Error communicating with socket', WazuhException, 1014, None),
 ])
