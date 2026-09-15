@@ -5,10 +5,19 @@ cp -rf /tmp_volume/config/* /var/wazuh-manager/
 
 # Pre-seed the default 'wazuh'/'wazuh-wui' API passwords: installs no longer ship a known password,
 # but this environment's tavern suites and common.yaml still authenticate with the literal values.
-mkdir -p /var/wazuh-manager/api/configuration/security
-cat <<'EOF' > /var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.json
+# Master only: master/worker1/worker2 share the same 'api_security' volume (the same rbac.db), and
+# 'depends_on' does not wait for master's script to finish, so all three would otherwise race to
+# write this file concurrently - a partial/interleaved write reads back as invalid JSON, which
+# falls back to a real random password instead of the literal the tests expect. Written atomically
+# (temp file + rename) as a second layer of defense against any other concurrent writer.
+if [ "$3" == "master" ]; then
+  mkdir -p /var/wazuh-manager/api/configuration/security
+  preseed_tmp=$(mktemp /var/wazuh-manager/api/configuration/security/.wazuh-preseeded-passwords.XXXXXX)
+  cat <<'EOF' > "$preseed_tmp"
 {"wazuh": "wazuh", "wazuh-wui": "wazuh-wui"}
 EOF
+  mv "$preseed_tmp" /var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.json
+fi
 
 chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/api
 
