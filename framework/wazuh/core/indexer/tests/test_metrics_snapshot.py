@@ -241,6 +241,25 @@ async def test_collect_agents(mock_get_wdb_http_client):
         assert "name" in agent_doc["wazuh"]["agent"]
 
 
+@pytest.mark.asyncio
+@patch("wazuh.core.indexer.metrics_snapshot.get_wdb_http_client")
+async def test_collect_agents_wdb_failure_is_local(mock_get_wdb_http_client):
+    """A wazuh-db failure yields an empty agent list and is logged, instead of
+    propagating out of _collect_and_index()'s asyncio.gather() and skipping the
+    comms and normalization collectors too."""
+    mock_server = _make_server(node_name="node01")
+    mock_get_wdb_http_client.return_value.__aenter__.side_effect = RuntimeError(
+        "wazuh-db unreachable"
+    )
+
+    task = MetricsSnapshotTasks(server=mock_server, cluster_items=CLUSTER_ITEMS)
+
+    result = await task._collect_agents("2026-03-13T10:00:00Z")
+
+    assert result == []
+    task.logger.exception.assert_called_once()
+
+
 # ---------------------------------------------------------------------------
 # _collect_comms_all_nodes
 # ---------------------------------------------------------------------------
@@ -957,6 +976,34 @@ class TestRunMetricsSnapshot:
                 await tasks.run_metrics_snapshot()
 
         mock_sleep.assert_called_with(1200)
+
+    @pytest.mark.asyncio
+    async def test_first_cycle_runs_before_any_sleep(self):
+        """The first _collect_and_index() call happens before the first asyncio.sleep,
+        not after: a manager restart must not wait a full interval for the first
+        snapshot."""
+        tasks = _make_tasks()
+        call_order = []
+
+        async def _record_sleep(*_args, **_kwargs):
+            call_order.append("sleep")
+
+        async def _record_collect():
+            call_order.append("collect")
+            if len(call_order) >= 2:
+                raise asyncio.CancelledError
+
+        with (
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.asyncio.sleep",
+                side_effect=_record_sleep,
+            ),
+            patch.object(tasks, "_collect_and_index", side_effect=_record_collect),
+        ):
+            with pytest.raises(asyncio.CancelledError):
+                await tasks.run_metrics_snapshot()
+
+        assert call_order == ["collect", "sleep", "collect"]
 
     @pytest.mark.asyncio
     async def test_collection_exception_is_caught_and_logged(self):
@@ -1975,36 +2022,32 @@ class TestDropNone:
 
 
 # ---------------------------------------------------------------------------
-# _normalize_agent_doc – no empty config.hash (FR-1 fix)
+# _normalize_agent_doc – no wazuh.agent.config field
 # ---------------------------------------------------------------------------
 
 
-class TestNormalizeAgentDocNoEmptyHash:
-    """config.hash must not appear when configSum is absent from the raw doc."""
+class TestNormalizeAgentDocNoConfigField:
+    """wazuh.agent.config is not emitted: it has no field in the wazuh-metrics-agents
+    index template (dynamic: strict), and configSum is never populated by
+    /agents/all in 5.x, so any document carrying it would be rejected outright."""
 
     @pytest.mark.asyncio
-    async def test_config_hash_absent_when_configsum_missing(self):
-        """wazuh.agent.config.hash is absent from the output when configSum is not in the raw doc."""
-        # AGENT_DOC_FULL does not contain 'configSum', matching real v5.0 agent rows.
+    async def test_config_absent_when_configsum_missing(self):
+        """wazuh.agent.config is absent when configSum is not in the raw doc."""
         tasks = _make_tasks()
         with _agents_http_patch([dict(AGENT_DOC_FULL)]):
             docs = await tasks._collect_agents(TIMESTAMP)
 
-        agent_config = docs[0].get("wazuh", {}).get("agent", {}).get("config", {})
-        assert "hash" not in agent_config, (
-            "wazuh.agent.config.hash should be absent when configSum is not in the raw doc; "
-            f"got: {agent_config.get('hash')}"
-        )
+        assert "config" not in docs[0]["wazuh"]["agent"]
 
     @pytest.mark.asyncio
-    async def test_config_hash_present_when_configsum_provided(self):
-        """wazuh.agent.config.hash.md5 is present and correct when configSum IS supplied."""
+    async def test_config_absent_even_when_configsum_provided(self):
+        """wazuh.agent.config stays absent even if a raw doc happens to carry configSum."""
         tasks = _make_tasks()
         with _agents_http_patch([{**AGENT_DOC_FULL, "configSum": "deadbeef"}]):
             docs = await tasks._collect_agents(TIMESTAMP)
 
-        agent_config = docs[0]["wazuh"]["agent"]["config"]
-        assert agent_config["hash"]["md5"] == "deadbeef"
+        assert "config" not in docs[0]["wazuh"]["agent"]
 
 
 # ---------------------------------------------------------------------------

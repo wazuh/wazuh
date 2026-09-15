@@ -150,19 +150,35 @@ class MetricsSnapshotTasks:
         self._schema_cache: dict[str, dict | None] = {}
 
     async def run_metrics_snapshot(self):
+        if self.frequency == 0:
+            self.logger.info("Metrics snapshot is disabled (metrics_frequency=0).")
+            return
+
+        # Run the first cycle immediately: without this, a manager restart means no
+        # metrics documents for a full interval (at least 10 minutes) even though the
+        # data to snapshot (agents, comms stats, engine metrics) is available right away.
+        first_cycle = True
         while True:
-            if self.frequency == 0:
-                self.logger.info("Metrics snapshot is disabled (metrics_frequency=0).")
-                return
-            await asyncio.sleep(max(self.frequency, self.DEFAULT_METRICS_FREQUENCY))
+            if not first_cycle:
+                await asyncio.sleep(max(self.frequency, self.DEFAULT_METRICS_FREQUENCY))
+            first_cycle = False
             try:
                 await self._collect_and_index()
             except Exception:
                 self.logger.exception("Metrics snapshot failed - skipping cycle")
 
-    async def _collect_agents(self, timestamp: str):
-        async with get_wdb_http_client() as wdb_client:
-            agents_data = await wdb_client.get_all_agents()
+    async def _collect_agents(self, timestamp: str) -> list:
+        # Unlike the comms/normalization collectors, there is only one source here (no
+        # per-node fan-out), but the failure still has to stay local: left unguarded, a
+        # wazuh-db outage propagates through the outer asyncio.gather() and skips comms
+        # and normalization collection too, not just agents.
+        try:
+            async with get_wdb_http_client() as wdb_client:
+                agents_data = await wdb_client.get_all_agents()
+        except Exception:
+            self.logger.exception("Failed to collect agents from wazuh-db")
+            return []
+
         node_name = self.server.configuration.get("node_name", "unknown")
         cluster_name = self.server.configuration.get("name", None)
 
@@ -428,11 +444,7 @@ class MetricsSnapshotTasks:
                                 "name": os_fields.get("name"),
                                 "version": os_fields.get("version"),
                                 "platform": os_fields.get("platform"),
-                                "full": os_fields.get("uname"),
                             },
-                        },
-                        "config": {
-                            "hash": {"md5": doc.get("configSum")},
                         },
                     },
                     "cluster": {
@@ -697,6 +709,7 @@ class MetricsSnapshotTasks:
         return valid_docs
 
     async def _collect_and_index(self):
+        self.logger.info("Starting metrics snapshot cycle.")
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         agent_docs, comms_docs, normalization_docs = await asyncio.gather(
@@ -704,6 +717,11 @@ class MetricsSnapshotTasks:
             self._collect_comms_all_nodes(timestamp),
             self._collect_normalization_all_nodes(timestamp),
         )
+        collected = {
+            "wazuh-metrics-agents": len(agent_docs),
+            "wazuh-metrics-comms-v4": len(comms_docs),
+            "wazuh-metrics-normalization": len(normalization_docs),
+        }
 
         agents_schema = self._load_schema("metrics-agents.json")
         comms_schema = self._load_schema("metrics-comms.json")
@@ -721,9 +739,14 @@ class MetricsSnapshotTasks:
             normalization_docs = self._validate_documents(
                 normalization_docs, normalization_schema, "wazuh-metrics-normalization"
             )
+        validated = {
+            "wazuh-metrics-agents": len(agent_docs),
+            "wazuh-metrics-comms-v4": len(comms_docs),
+            "wazuh-metrics-normalization": len(normalization_docs),
+        }
 
         async with get_indexer_client() as indexer:
-            await asyncio.gather(
+            indexed_agents, indexed_comms, indexed_normalization = await asyncio.gather(
                 indexer.metrics.bulk_index(
                     "wazuh-metrics-agents", agent_docs, self.bulk_size
                 ),
@@ -734,3 +757,13 @@ class MetricsSnapshotTasks:
                     "wazuh-metrics-normalization", normalization_docs, self.bulk_size
                 ),
             )
+        indexed = {
+            "wazuh-metrics-agents": indexed_agents,
+            "wazuh-metrics-comms-v4": indexed_comms,
+            "wazuh-metrics-normalization": indexed_normalization,
+        }
+
+        self.logger.info(
+            "Metrics snapshot cycle completed. Collected/validated/indexed per index: %s",
+            {index: f"{collected[index]}/{validated[index]}/{indexed[index]}" for index in collected},
+        )
