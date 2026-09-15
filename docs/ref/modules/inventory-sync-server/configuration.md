@@ -463,7 +463,10 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_retry_attempts=5
   retry loops that would otherwise let a persistent `429` or an unreachable indexer block the
   flushing worker, and the shard behind it, forever. `0` disables the attempts bound (retries are
   then limited only by `max_retry_duration_seconds`); setting both to `0` makes retries fully
-  unbounded and logs a startup `WARNING`. Use `1` for a single attempt with no retry.
+  unbounded and logs a startup `WARNING`. Use `1` for a single attempt with no retry. This does not
+  cover a by-query version conflict: that has its own fixed allowance of 3 attempts, bounded only by
+  `max_retry_duration_seconds`, so a delete-by-query or update-by-query can still be re-sent with
+  `max_retry_attempts` at `1` (see the [connector reference](../indexer_connector/README.md)).
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_duration_seconds
 
