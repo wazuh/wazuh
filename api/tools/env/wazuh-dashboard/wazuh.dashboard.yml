@@ -50,5 +50,5 @@ wazuh_core.hosts:
     url: https://wazuh.manager
     port: 55000
     username: wazuh-wui
-    password: wazuh-wui
+    password: WazuhWui-Preseed1! # matches api/tools/env/wazuh-manager/entrypoint.sh's pre-seed
     run_as: true

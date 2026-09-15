@@ -145,6 +145,18 @@ async def restore_default_passwords(script_args):
         print(f"\t{exc}")
         sys.exit(1)
 
+    if new_passwords:
+        from wazuh.rbac.orm import check_database_integrity
+
+        # A node whose 'wazuh-manager-apid' has never run (e.g. a worker, since apid is master-only)
+        # has no 'rbac.db' yet, and 'update_user' below would fail against it. Ensure it exists
+        # first, on whichever node this call actually resolves to.
+        ensure_response = await cluster_utils.forward_function(check_database_integrity,
+                                                                request_type="local_master")
+        if isinstance(ensure_response, Exception):
+            print(f"\tCould not ensure the RBAC database exists: {ensure_response}")
+            sys.exit(1)
+
     results = {}
     for username, new_password in new_passwords.items():
         # The default users hold reserved IDs, and `update_user` only lets another reserved user

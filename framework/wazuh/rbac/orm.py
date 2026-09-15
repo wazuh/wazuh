@@ -6,6 +6,8 @@ import json
 import logging
 import os
 import re
+import secrets
+import string
 from datetime import datetime
 from enum import IntEnum
 from shutil import chown
@@ -44,7 +46,75 @@ _DUMMY_HASH = generate_password_hash("wazuh-dummy-constant-never-matches-any-rea
 # Start a session and set the default security elements
 DB_FILE = os.path.join(SECURITY_PATH, "rbac.db")
 DB_FILE_TMP = f"{DB_FILE}.tmp"
+DEFAULT_PASSWORDS_FILE = os.path.join(SECURITY_PATH, "wazuh-api-passwords.txt")
+PRESEEDED_PASSWORDS_FILE = os.path.join(SECURITY_PATH, "wazuh-preseeded-passwords.json")
 CURRENT_ORM_VERSION = 1
+
+# Minimum twelve characters, at least one uppercase letter, one lowercase letter, one number and one special character
+USER_PASSWORD_MIN_LENGTH = 12
+USER_PASSWORD_MAX_LENGTH = 64
+USER_PASSWORD_POLICY = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$')
+_PASSWORD_CHAR_CLASSES = (string.ascii_lowercase, string.ascii_uppercase, string.digits, string.punctuation)
+_PASSWORD_CHARS = ''.join(_PASSWORD_CHAR_CLASSES)
+
+
+def generate_default_password(length: int = 24) -> str:
+    """Generate a random password that always satisfies USER_PASSWORD_POLICY.
+
+    Parameters
+    ----------
+    length : int
+        Length of the generated password.
+
+    Returns
+    -------
+    str
+        Randomly generated password.
+    """
+    if not USER_PASSWORD_MIN_LENGTH <= length <= USER_PASSWORD_MAX_LENGTH:
+        raise ValueError(f"length must be between {USER_PASSWORD_MIN_LENGTH} and {USER_PASSWORD_MAX_LENGTH}")
+
+    password_chars = [secrets.choice(char_class) for char_class in _PASSWORD_CHAR_CLASSES]
+    password_chars += [secrets.choice(_PASSWORD_CHARS) for _ in range(length - len(password_chars))]
+
+    # Fisher-Yates shuffle using a CSPRNG so the guaranteed classes above are not always at the front
+    for i in range(len(password_chars) - 1, 0, -1):
+        j = secrets.randbelow(i + 1)
+        password_chars[i], password_chars[j] = password_chars[j], password_chars[i]
+
+    return ''.join(password_chars)
+
+
+def _load_preseeded_passwords() -> dict:
+    """Read pre-provisioned passwords for the default users, if any.
+
+    Lets automated installers (installation assistant, containers, CI) provision known credentials
+    non-interactively instead of getting a randomly generated one. A missing or invalid file is not
+    an installation error: every entry falls back to a generated password.
+
+    Returns
+    -------
+    dict
+        Username to password mapping. Entries that are not a compliant password are dropped.
+    """
+    try:
+        with open(PRESEEDED_PASSWORDS_FILE) as f:
+            preseeded = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+    if not isinstance(preseeded, dict):
+        return {}
+
+    valid = {}
+    for username, password in preseeded.items():
+        if isinstance(password, str) and USER_PASSWORD_POLICY.match(password):
+            valid[username] = password
+        else:
+            logger.warning(f"Ignoring pre-seeded password for '{username}': it does not satisfy the API "
+                           f"password policy")
+
+    return valid
 _new_columns = {}
 _engine = create_engine(f"sqlite:///{DB_FILE}", pool_size=10, echo=False)
 _Base = declarative_base()
@@ -2080,21 +2150,35 @@ class DatabaseManager:
         """
         return str(self.sessions[database].execute(text("pragma user_version")).first()[0])
 
-    def insert_default_resources(self, database: str):
+    def insert_default_resources(self, database: str) -> dict:
         """Insert default security resources into the given database.
 
         Parameters
         ----------
         database : str
             Name of the stored database.
+
+        Returns
+        -------
+        dict
+            Username to plaintext password mapping for the default users whose password was
+            randomly generated (pre-seeded users are not included, their password is already
+            known to whoever provisioned it).
         """
+        generated_passwords = {}
+
         # Create default users if they don't exist yet
         with open(os.path.join(DEFAULT_RBAC_RESOURCES, "users.yaml"), 'r') as stream:
             default_users = yaml.safe_load(stream)
+            preseeded_passwords = _load_preseeded_passwords()
 
             with AuthenticationManager(self.sessions[database]) as auth:
                 for d_username, payload in default_users[next(iter(default_users))].items():
-                    auth.add_user(username=d_username, password=payload['password'], check_default=False)
+                    password = preseeded_passwords.get(d_username)
+                    if password is None:
+                        password = generate_default_password()
+                        generated_passwords[d_username] = password
+                    auth.add_user(username=d_username, password=password, check_default=False)
                     auth.edit_run_as(user_id=auth.get_user(username=d_username)['id'],
                                      allow_run_as=payload['allow_run_as'])
 
@@ -2152,6 +2236,8 @@ class DatabaseManager:
                     for d_rule_name in payload['rule_ids']:
                         rrum.add_rule_to_role(role_id=rm.get_role(name=d_role_name)['id'],
                                               rule_id=rum.get_rule_by_name(d_rule_name)['id'], force_admin=True)
+
+        return generated_passwords
 
     @staticmethod
     def get_table(session: Session, table: callable):
@@ -2458,7 +2544,7 @@ class DatabaseManager:
         self.sessions[database].execute(text(f'pragma user_version={version}'))
 
 
-def check_database_integrity():
+def check_database_integrity() -> dict:
     """Check RBAC database integrity.
     If the database does not exist, it must be created properly.
     If the database exists, the RBAC DB migration process is applied.
@@ -2469,7 +2555,15 @@ def check_database_integrity():
         Error when trying to retrieve the current RBAC database version.
     Exception
         Generic error during the database migration process.
+
+    Returns
+    -------
+    dict
+        Username to plaintext password mapping for the default users whose password was randomly
+        generated on a fresh install. Empty when the database already existed: a migration
+        preserves the current password of the default users instead of regenerating it.
     """
+    generated_passwords = {}
 
     def _set_permissions_and_ownership(database: str):
         """Set Wazuh ownership and permissions.
@@ -2505,6 +2599,9 @@ def check_database_integrity():
                 db_manager.connect(DB_FILE_TMP)
                 db_manager.create_database(DB_FILE_TMP)
                 _set_permissions_and_ownership(DB_FILE_TMP)
+                # The password generated here is immediately discarded: migrate_data() below
+                # overwrites users WAZUH_USER_ID/WAZUH_WUI_USER_ID with their real, preexisting
+                # password from the old database, so disclosing it would show the wrong one.
                 db_manager.insert_default_resources(DB_FILE_TMP)
 
                 # Migrate data from old database
@@ -2528,7 +2625,7 @@ def check_database_integrity():
             db_manager.connect(DB_FILE)
             db_manager.create_database(DB_FILE)
             _set_permissions_and_ownership(DB_FILE)
-            db_manager.insert_default_resources(DB_FILE)
+            generated_passwords = db_manager.insert_default_resources(DB_FILE)
             db_manager.set_database_version(DB_FILE, CURRENT_ORM_VERSION)
             db_manager.close_sessions()
             logger.info(f"{DB_FILE} database created successfully")
@@ -2546,6 +2643,8 @@ def check_database_integrity():
     finally:
         # Remove tmp database if present
         os.path.exists(DB_FILE_TMP) and os.remove(DB_FILE_TMP)
+
+    return generated_passwords
 
 
 db_manager = DatabaseManager()

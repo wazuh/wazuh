@@ -4,6 +4,7 @@
 
 import os
 from functools import lru_cache
+from shutil import chown
 
 import yaml
 
@@ -12,9 +13,9 @@ from api import __path__ as api_path
 from api.authentication import change_keypair
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
-from wazuh.core.common import DEFAULT_RBAC_RESOURCES
+from wazuh.core.common import wazuh_uid, wazuh_gid
 from wazuh.core.decorators import dapi_allower
-from wazuh.rbac.orm import AuthenticationManager, TokenManager, check_database_integrity, DB_FILE
+from wazuh.rbac.orm import TokenManager, check_database_integrity, DB_FILE, DEFAULT_PASSWORDS_FILE
 
 REQUIRED_FIELDS = ['id']
 SORT_FIELDS = ['id', 'name']
@@ -129,23 +130,85 @@ def rbac_db_factory_reset():
     except FileNotFoundError:
         pass
 
-    check_database_integrity()
+    disclose_default_passwords(check_database_integrity())
     revoke_tokens()
     return {'reset': True}
 
 
+_DEFAULT_PASSWORDS_FILE_HEADER = ("# Generated at installation. Retrieve these once, then change them with\n"
+                                  "# 'bin/rbac_control change-password', and delete this file.\n")
+
+
+def disclose_default_passwords(passwords: dict):
+    """Write the plaintext password of freshly generated default users to a restricted-permission file.
+
+    A no-op when `passwords` is empty: nothing was generated, either because the database already
+    existed (a migration preserves the current password) or every default user was pre-seeded.
+
+    Parameters
+    ----------
+    passwords : dict
+        Username to plaintext password mapping, as returned by `check_database_integrity()`.
+    """
+    if not passwords:
+        return
+
+    content = _DEFAULT_PASSWORDS_FILE_HEADER + ''.join(f"{username}: {password}\n"
+                                                        for username, password in passwords.items())
+
+    # Always start from a clean file: a leftover from a previous disclosure is mode 0o400 (no write
+    # bit), so truncating it in place would fail for the same non-root user that created it.
+    try:
+        os.remove(DEFAULT_PASSWORDS_FILE)
+    except FileNotFoundError:
+        pass
+
+    fd = os.open(DEFAULT_PASSWORDS_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o400)
+    try:
+        os.write(fd, content.encode())
+    finally:
+        os.close(fd)
+
+    # Defensive: covers the API running as root, where os.open()'s mode argument is not final.
+    chown(DEFAULT_PASSWORDS_FILE, wazuh_uid(), wazuh_gid())
+    os.chmod(DEFAULT_PASSWORDS_FILE, 0o400)
+
+
+def clear_disclosed_default_password(username: str):
+    """Remove one username from the disclosure file, deleting it once no password is left in it.
+
+    Called whenever a default user's password is changed, so the file - and the warning it drives -
+    never claims a password is still undisclosed once the operator has already picked their own.
+
+    Parameters
+    ----------
+    username : str
+        Name of the default user whose password was just changed.
+    """
+    if not os.path.exists(DEFAULT_PASSWORDS_FILE):
+        return
+
+    with open(DEFAULT_PASSWORDS_FILE) as f:
+        remaining = {line.split(':', 1)[0].strip(): line.split(':', 1)[1].strip()
+                    for line in f if line.strip() and not line.startswith('#')
+                    and line.split(':', 1)[0].strip() != username}
+
+    os.remove(DEFAULT_PASSWORDS_FILE)
+    disclose_default_passwords(remaining)
+
+
 def get_users_with_default_password() -> list:
-    """Get the default users whose password is still the one shipped with the package.
+    """Get the default users whose randomly generated password has not been retrieved yet.
 
     Returns
     -------
     list
-        Names of the default users that keep their shipped password, in the order they are declared
-        in the default users file.
+        Names of the default users still listed in the disclosure file, in the order they appear
+        in it. Empty once the file has been read and removed, or every default password was
+        pre-seeded or already changed.
     """
-    with open(os.path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
-        default_users = yaml.safe_load(f)['default_users']
+    if not os.path.exists(DEFAULT_PASSWORDS_FILE):
+        return []
 
-    with AuthenticationManager() as auth:
-        return [username for username, payload in default_users.items()
-                if auth.check_user(username, payload['password'])]
+    with open(DEFAULT_PASSWORDS_FILE) as f:
+        return [line.split(':', 1)[0].strip() for line in f if line.strip() and not line.startswith('#')]

@@ -2,14 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
 from contextvars import ContextVar
 from unittest.mock import patch
 
 import pytest
-import yaml
 
-from wazuh.core.common import DEFAULT_RBAC_RESOURCES
 from wazuh.tests.test_security import db_setup  # noqa
 
 
@@ -113,44 +110,99 @@ def test_invalid_users_tokens(db_setup, user_list, expected_users):
 @patch("wazuh.core.security.revoke_tokens")
 @patch("wazuh.core.security.check_database_integrity")
 @patch("wazuh.core.security.os.remove")
-def test_rbac_db_factory_reset(remove_mock, db_integrity_mock, revoke_mock, db_setup):
-    """Check that the RBAC database factory reset is correct."""
+@patch("wazuh.core.security.disclose_default_passwords")
+def test_rbac_db_factory_reset(disclose_mock, remove_mock, db_integrity_mock, revoke_mock, db_setup):
+    """Check that the RBAC database factory reset is correct, and discloses only what was generated."""
     _, _, core_security = db_setup
+
+    db_integrity_mock.return_value = {}
     assert core_security.rbac_db_factory_reset() == {'reset': True}
     assert remove_mock.call_args[0][0].endswith("rbac.db")
     db_integrity_mock.assert_called_once()
     revoke_mock.assert_called_once()
+    disclose_mock.assert_called_once_with({})
+
+    disclose_mock.reset_mock()
+    db_integrity_mock.return_value = {"wazuh": "generated-password"}
+    core_security.rbac_db_factory_reset()
+    disclose_mock.assert_called_once_with({"wazuh": "generated-password"})
 
 
-@pytest.mark.parametrize('unchanged_users', [2, 1, 0])
-def test_get_users_with_default_password(db_setup, unchanged_users):
-    """Check that only the default users that keep their shipped password are reported.
-
-    Parameters
-    ----------
-    db_setup: callable
-        This function creates the rbac.db file.
-    unchanged_users : int
-        Number of default users that keep the password shipped with the package.
-    """
+@pytest.mark.parametrize('undisclosed_users', [["wazuh", "wazuh-wui"], ["wazuh"], []])
+def test_get_users_with_default_password(db_setup, tmp_path, undisclosed_users):
+    """Check that only the users still listed in the disclosure file are reported."""
     _, _, core_security = db_setup
+    passwords_file = tmp_path / "wazuh-api-passwords.txt"
 
-    with open(os.path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
-        shipped_passwords = {username: payload['password']
-                             for username, payload in yaml.safe_load(f)['default_users'].items()}
+    with patch('wazuh.core.security.DEFAULT_PASSWORDS_FILE', new=str(passwords_file)):
+        if undisclosed_users:
+            with patch('wazuh.core.security.chown'):
+                core_security.disclose_default_passwords(
+                    {username: f"{username}-password" for username in undisclosed_users})
 
-    expected_users = list(shipped_passwords)[:unchanged_users]
+        assert core_security.get_users_with_default_password() == undisclosed_users
 
-    class AuthenticationManagerMock:
-        """Authentication manager whose users kept their password only if they are expected to."""
-        def __enter__(self):
-            return self
 
-        def __exit__(self, *exc_info):
-            return False
+def test_get_users_with_default_password_no_file(db_setup, tmp_path):
+    """No disclosure file (nothing generated, or already retrieved) means nothing to report."""
+    _, _, core_security = db_setup
+    with patch('wazuh.core.security.DEFAULT_PASSWORDS_FILE', new=str(tmp_path / "does-not-exist.txt")):
+        assert core_security.get_users_with_default_password() == []
 
-        def check_user(self, username: str, password: str) -> bool:
-            return username in expected_users and password == shipped_passwords[username]
 
-    with patch('wazuh.core.security.AuthenticationManager', AuthenticationManagerMock):
-        assert core_security.get_users_with_default_password() == expected_users
+@patch('wazuh.core.security.chown')
+def test_disclose_default_passwords(chown_mock, db_setup, tmp_path):
+    """The disclosure file is written with the expected content, mode, and a no-op on an empty dict."""
+    _, _, core_security = db_setup
+    passwords_file = tmp_path / "wazuh-api-passwords.txt"
+
+    with patch('wazuh.core.security.DEFAULT_PASSWORDS_FILE', new=str(passwords_file)):
+        core_security.disclose_default_passwords({"wazuh": "Sup3r-Secret!", "wazuh-wui": "An0ther-Secret!"})
+
+        content = passwords_file.read_text()
+        assert "wazuh: Sup3r-Secret!" in content
+        assert "wazuh-wui: An0ther-Secret!" in content
+        assert oct(passwords_file.stat().st_mode)[-3:] == "400"
+        chown_mock.assert_called_once()
+
+        chown_mock.reset_mock()
+        core_security.disclose_default_passwords({})
+        chown_mock.assert_not_called()
+
+
+@patch('wazuh.core.security.chown')
+def test_disclose_default_passwords_overwrites_existing(chown_mock, db_setup, tmp_path):
+    """A stale disclosure file (mode 0o400, no write bit) is replaced rather than truncated in place."""
+    _, _, core_security = db_setup
+    passwords_file = tmp_path / "wazuh-api-passwords.txt"
+    passwords_file.write_text("wazuh: old-password\n")
+    passwords_file.chmod(0o400)
+
+    with patch('wazuh.core.security.DEFAULT_PASSWORDS_FILE', new=str(passwords_file)):
+        core_security.disclose_default_passwords({"wazuh": "new-password"})
+
+    content = passwords_file.read_text()
+    assert "new-password" in content
+    assert "old-password" not in content
+
+
+@patch('wazuh.core.security.chown')
+def test_clear_disclosed_default_password(chown_mock, db_setup, tmp_path):
+    """Removing one username's password leaves the other; removing the last deletes the file."""
+    _, _, core_security = db_setup
+    passwords_file = tmp_path / "wazuh-api-passwords.txt"
+
+    with patch('wazuh.core.security.DEFAULT_PASSWORDS_FILE', new=str(passwords_file)):
+        core_security.disclose_default_passwords({"wazuh": "pass-1", "wazuh-wui": "pass-2"})
+        assert set(core_security.get_users_with_default_password()) == {"wazuh", "wazuh-wui"}
+
+        core_security.clear_disclosed_default_password("wazuh")
+        assert core_security.get_users_with_default_password() == ["wazuh-wui"]
+        assert passwords_file.exists()
+
+        core_security.clear_disclosed_default_password("wazuh-wui")
+        assert core_security.get_users_with_default_password() == []
+        assert not passwords_file.exists()
+
+        # A no-op once the file is already gone.
+        core_security.clear_disclosed_default_password("wazuh-wui")
