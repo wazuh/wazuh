@@ -119,10 +119,8 @@ mep_error() {
 
 }
 
-# Split a combined <endpoint> value (#38624) into MEP_HOST / MEP_PORT / MEP_ENDPOINT.
-# Same logic as parse_manager_endpoint() in register_configure_agent.sh,
-# ParseManagerEndpoint() in inst-functions.sh and its VBScript twin; duplicated because
-# this script ships inside the WPK and runs standalone, with nothing to source.
+# This parser stays because a WPK upgrade still has to read the <endpoint> already in ossec.conf,
+# and this script ships inside the WPK and runs standalone, with nothing to source.
 parse_manager_endpoint() {
 
     mep_raw="$1"
@@ -658,8 +656,22 @@ fi
 
 case "${SSL_VERIFICATION_MODE}" in
     full|certificate)
-        if [ -z "${SSL_CA}" ] || [ ! -f "${SSL_CA}" ] || [ ! -r "${SSL_CA}" ]; then
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is '${SSL_VERIFICATION_MODE}' but <certificate_authorities> ('${SSL_CA}') is missing or unreadable, interrupting upgrade." >> ./logs/upgrade.log
+        # Two different questions, and the anchor only answers the second. A configured
+        # <certificate_authorities> must be usable on its own terms: the agent refuses to
+        # start on a path it cannot read and the anchor does not substitute for one the
+        # operator named, so that still aborts however the anchor looks. With no path
+        # configured the anchor is the CA, which is the row this gate used to abort on while
+        # the upgraded binary started -- the second of the two divergences named above, and
+        # now the default shape, since a clean 5.x config ships
+        # <verification_mode>full</verification_mode> with no <certificate_authorities> and a
+        # token install gets its anchor from the bootstrap rather than from ossec.conf.
+        if [ -n "${SSL_CA}" ]; then
+            if [ ! -f "${SSL_CA}" ] || [ ! -r "${SSL_CA}" ]; then
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is '${SSL_VERIFICATION_MODE}' but <certificate_authorities> ('${SSL_CA}') is missing or unreadable, interrupting upgrade." >> ./logs/upgrade.log
+                abort_upgrade "2"
+            fi
+        elif [ "${ANCHOR_AVAILABLE}" != "1" ]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is '${SSL_VERIFICATION_MODE}' but no <certificate_authorities> is configured and no trust anchor is present at ${DEFAULT_CA_FILE}, interrupting upgrade." >> ./logs/upgrade.log
             abort_upgrade "2"
         fi
         ;;

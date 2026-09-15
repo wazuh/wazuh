@@ -117,7 +117,8 @@ jobs:
             echo "No agent package found in ${PACKAGES_PATH}"
             exit 1
           fi
-          echo "WAZUH_MANAGER='127.0.0.1'" > /tmp/wazuh_envs && sudo installer -pkg "${PACKAGE_PATH}" -target /
+          sudo installer -pkg "${PACKAGE_PATH}" -target /
+          sudo sed -i '' 's/MANAGER_IP/127.0.0.1/g' /Library/Ossec/etc/ossec.conf
 
           sudo awk '
             /<rootcheck>/ { in_block=1; print; next }
