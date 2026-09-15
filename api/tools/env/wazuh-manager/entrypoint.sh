@@ -38,6 +38,14 @@ chmod 500 /var/wazuh-manager/etc/certs
 chmod 400 /var/wazuh-manager/etc/certs/*
 chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
 
+# Pre-seed the default 'wazuh'/'wazuh-wui' API passwords: installs no longer ship a known
+# password, but wazuh.dashboard.yml in this dev environment still authenticates as 'wazuh-wui'.
+mkdir -p /var/wazuh-manager/api/configuration/security
+cat <<'EOF' > /var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.json
+{"wazuh": "wazuh", "wazuh-wui": "wazuh-wui"}
+EOF
+chown wazuh-manager:wazuh-manager /var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.json
+
 echo "Starting Wazuh..."
 /var/wazuh-manager/bin/wazuh-manager-control start
 

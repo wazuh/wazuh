@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 
 # Apply API configuration
-cp -rf /tmp_volume/config/* /var/wazuh-manager/ && chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/api
+cp -rf /tmp_volume/config/* /var/wazuh-manager/
+
+# Pre-seed the default 'wazuh'/'wazuh-wui' API passwords: installs no longer ship a known password,
+# but this environment's tavern suites and common.yaml still authenticate with the literal values.
+mkdir -p /var/wazuh-manager/api/configuration/security
+cat <<'EOF' > /var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.json
+{"wazuh": "wazuh", "wazuh-wui": "wazuh-wui"}
+EOF
+
+chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/api
 
 # Modify wazuh configuration file
 for conf_file in /tmp_volume/configuration_files/*.conf; do
