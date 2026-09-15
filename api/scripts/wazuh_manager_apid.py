@@ -5,13 +5,29 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import argparse
+import errno
 import os
+import random
 import signal
+import socket
 import sys
+import threading
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from functools import partial
 
 logger = None
+
+# Bind retry budget. The worst case waits 2+4+8+16+32 seconds, i.e. roughly a minute, before
+# giving up on a busy port.
+BIND_MAX_RETRIES = 5
+BIND_BACKOFF_BASE_SECONDS = 2
+
+# Exit code uvicorn.run() used when the server never started (uvicorn.main.STARTUP_FAILURE).
+UVICORN_STARTUP_FAILURE = 3
+
+# Set by exit_handler(), so a signal arriving while _bind_listening_sockets() waits to retry
+# aborts the wait instead of running out the backoff clock with the pidfiles already deleted.
+_shutdown_event = threading.Event()
 
 
 def assign_wazuh_ownership(filepath: str):
@@ -112,18 +128,103 @@ def warn_about_default_passwords():
                        f"'{os.path.join(common.WAZUH_PATH, 'bin', 'rbac_control')} change-password'")
 
 
+def _bind_listening_sockets(hosts, port: int, retries: int = BIND_MAX_RETRIES,
+                            backoff: int = BIND_BACKOFF_BASE_SECONDS) -> list:
+    """Bind one listening socket per configured host, retrying while the port is still in use.
+
+    The bind is done here rather than inside uvicorn because uvicorn turns a failed bind into
+    sys.exit(1) from within its own startup, leaving nothing to retry: apid stayed down until
+    restarted by hand even when the port freed up seconds later.
+
+    An attempt is all-or-nothing: if any host in the list fails, every socket opened by that
+    attempt is closed before retrying, so the API is never left serving on only one address
+    family.
+
+    Parameters
+    ----------
+    hosts : str or list of str
+        Host or hosts to bind on. A host containing ':' is taken as an IPv6 address.
+    port : int
+        Port to bind on every host.
+    retries : int
+        Number of retries after the first attempt.
+    backoff : int
+        Base wait time, in seconds, for the exponential backoff between attempts.
+
+    Returns
+    -------
+    list of socket.socket
+        The bound sockets, one per host, in the order the hosts were given.
+
+    Raises
+    ------
+    OSError
+        'hosts' is empty, the bind failed for a reason other than the address being in use, or
+        every attempt failed with the address in use.
+    SystemExit
+        A shutdown was requested while waiting to retry.
+    """
+    hosts = [hosts] if isinstance(hosts, str) else list(hosts)
+    if not hosts:
+        # api.yaml's schema accepts an empty 'host' list. asyncio.loop.create_server(), which
+        # bound these sockets before this function existed, raised for it rather than running a
+        # server that listens on nothing; the same message is kept.
+        raise OSError(f'could not bind on any address out of {hosts}')
+
+    for attempt in range(retries + 1):
+        sockets = []
+        try:
+            for host in hosts:
+                family = socket.AF_INET6 if ':' in host else socket.AF_INET
+                sock = socket.socket(family, socket.SOCK_STREAM)
+                # Tracked before it is bound, so the cleanup below also closes the socket whose
+                # own bind is the one that failed.
+                sockets.append(sock)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                if family == socket.AF_INET6:
+                    # asyncio.loop.create_server() -- which bound these sockets before this
+                    # function existed -- sets this for every IPv6 server socket it opens.
+                    # Without it, the IPv6 socket also serves IPv4 clients, and their remote
+                    # address reaches the API as a v4-mapped '::ffff:1.2.3.4' instead of
+                    # '1.2.3.4'.
+                    sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+                sock.bind((host, port))
+            return sockets
+        except OSError as exc:
+            for sock in sockets:
+                sock.close()
+            if exc.errno != errno.EADDRINUSE or attempt == retries:
+                raise
+
+            # Exponential backoff with jitter, mirroring create_indexer()'s retry loop in
+            # framework/wazuh/core/indexer/indexer.py.
+            wait_time = (backoff * 2 ** attempt) + random.random()  # nosec B311
+            logger.warning(f'Could not bind {hosts}:{port} (attempt {attempt + 1}/{retries + 1}): '
+                           f'{exc}. Retrying in {wait_time:.2f}s.')
+            if _shutdown_event.wait(wait_time):
+                logger.info('Shutdown requested while waiting to retry the bind. Aborting startup')
+                raise SystemExit(0) from exc
+
+
 def start(params: dict):
     """Run the Wazuh API.
 
-    If another Wazuh API is running, this function will fail because uvicorn server will
-    not be able to create server processes in the same port.
     The function creates the pool processes, the AsyncApp instance, setups the API spec.yaml,
-    the middleware classes, the error_handlers, the lifespan, and runs the uvicorn ASGI server.
+    the middleware classes, the error_handlers, the lifespan, binds the listening sockets and
+    runs the uvicorn ASGI server on them.
 
     Parameters
     ----------
     params : dict
         uvicorn parameter configuration dictionary.
+
+    Raises
+    ------
+    APIError
+        Code 2012 if the RBAC database integrity check fails, or code 2010 if the configured
+        port is still in use after every bind attempt.
+    SystemExit
+        A shutdown was requested while waiting to retry the bind, or the server never started.
     """
     try:
         check_database_integrity()
@@ -197,19 +298,29 @@ def start(params: dict):
     logger.debug(f'Loaded API configuration: {api_conf}')
     logger.debug(f'Loaded security API configuration: {security_conf}')
 
-    # Start uvicorn server
-
+    # Start uvicorn server on sockets this process bound itself, so a transient EADDRINUSE is
+    # retried here instead of ending the process inside uvicorn's own startup.
     try:
-        uvicorn.run(app, **params)
-
+        sockets = _bind_listening_sockets(params['host'], params['port'])
     except OSError as exc:
-        if exc.errno == 98:
+        if exc.errno == errno.EADDRINUSE:
             error = APIError(2010)
             logger.error(error)
-            raise error
-        else:
-            logger.error(exc)
-            raise exc
+            raise error from exc
+        logger.error(exc)
+        raise exc
+
+    config = uvicorn.Config(app, **{key: value for key, value in params.items()
+                                    if key not in ('host', 'port')})
+    server = uvicorn.Server(config)
+    server.run(sockets=sockets)
+
+    if not server.started:
+        # uvicorn.run() ended the process with this code when the server never started, for
+        # example because the ASGI lifespan startup raised. Server.run() on its own returns
+        # normally instead, which would make a failed startup look like a clean shutdown.
+        logger.error('The API server did not start')
+        sys.exit(UVICORN_STARTUP_FAILURE)
 
 
 def print_version():
@@ -240,7 +351,13 @@ def version():
 
 
 def exit_handler(signum, frame):
-    """Try to kill API child processes and remove their PID files."""
+    """Release a pending bind retry, then try to kill API child processes and remove their PID files."""
+    # Before the pidfiles go away: a bind retry still waiting would otherwise keep this process
+    # alive and invisible to wazuh-manager-control for the rest of its backoff budget.
+    # Event.set() takes the Event's own condition lock, which Event.wait() holds only while
+    # arming and disarming its waiter, not for the timeout itself -- so replacing this with a
+    # plain flag plus a signal-safe wakeup buys nothing and loses the interruptible wait.
+    _shutdown_event.set()
     api_pid = os.getpid()
     pyDaemonModule.delete_child_pids(pyDaemonModule.API_MAIN_PROCESS, api_pid, logger)
     pyDaemonModule.delete_pid(pyDaemonModule.API_MAIN_PROCESS, api_pid)
