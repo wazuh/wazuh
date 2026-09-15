@@ -118,9 +118,9 @@ class LinuxPortWrapper final : public IPortWrapper
         explicit LinuxPortWrapper(const PortType type, const std::string& row)
             : m_fields{ Utils::split(row, ' ') }
             , m_type { type }
-            , m_remoteAddresses { std::move(Utils::split(m_fields.at(REMOTE_ADDRESS), ':')) }
-            , m_localAddresses { std::move(Utils::split(m_fields.at(LOCAL_ADDRESS), ':')) }
-            , m_queue { std::move(Utils::split(m_fields.at(QUEUE), ':')) }
+            , m_remoteAddresses { Utils::split(m_fields.at(REMOTE_ADDRESS), ':') }
+            , m_localAddresses { Utils::split(m_fields.at(LOCAL_ADDRESS), ':') }
+            , m_queue { Utils::split(m_fields.at(QUEUE), ':') }
         { }
 
         ~LinuxPortWrapper() = default;

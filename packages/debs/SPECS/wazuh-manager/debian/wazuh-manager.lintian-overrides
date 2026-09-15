@@ -5,5 +5,3 @@ wazuh-manager: new-package-should-close-itp-bug
 wazuh-manager: possibly-insecure-handling-of-tmp-files-in-maintainer-script
 wazuh-manager: non-standard-dir-in-var
 wazuh-manager: file-in-unusual-dir
-wazuh-manager: hardening-no-fortify-functions
-wazuh-manager: hardening-no-relro

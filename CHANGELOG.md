@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
+#### Changed
+
+- Added the missing compiler hardening flags (stack canary, PIE, full RELRO and FORTIFY_SOURCE) to the Linux binaries. ([#38571](https://github.com/wazuh/wazuh/pull/38571))
+
 #### Fixed
 
 - Bounded the agent control message copy to the source string length in `wazuh-remoted`. ([#38427](https://github.com/wazuh/wazuh/pull/38427))
@@ -14,23 +18,51 @@ All notable changes to this project will be documented in this file.
 - Restricted the Azure Graph wodle pagination to the Microsoft Graph endpoint, so the authentication token is not sent to another host. ([#38594](https://github.com/wazuh/wazuh/pull/38594))
 - Fixed false positive vulnerability reports for Debian packages installed from backports suites. ([#38474](https://github.com/wazuh/wazuh/pull/38474))
 - Added Fluentd server identity verification to the `fluent-forward` module: the certificate name is now checked against the configured address and the shared key digest returned by the server is verified. ([#38686](https://github.com/wazuh/wazuh/pull/38686))
+- Aligned the API `force` parameter with its OpenAPI schema: `POST /agents` now declares it, and `POST /agents/insert` no longer sends a `force` object that the request did not carry. ([#38804](https://github.com/wazuh/wazuh/pull/38804))
+- Escaped control characters in the request path of the API plain-text access log, so an unauthenticated request can no longer forge access log entries. ([#38894](https://github.com/wazuh/wazuh/pull/38894))
 
 ### Agent
 
 #### Changed
 
 - Raised from 64 to 1024 the number of active response commands that `wazuh-execd` can load from `etc/shared/ar.conf`. ([#38509](https://github.com/wazuh/wazuh/pull/38509))
+- Added the missing compiler hardening flags (stack canary, PIE, full RELRO and FORTIFY_SOURCE) to the Linux binaries. ([#38571](https://github.com/wazuh/wazuh/pull/38571))
 
 #### Fixed
 
+- Fixed missing Windows FIM inventory for file names with non-ANSI characters. ([#38301](https://github.com/wazuh/wazuh/pull/38301))
 - Fixed the Windows agent MSI upgrade leaving the agent broken after the next reboot, and the silent `/q` upgrade hanging, when a system restart was pending. ([#38277](https://github.com/wazuh/wazuh/pull/38277))
 - Fixed syscollector sometimes keeping excluded macOS packages in the inventory. ([#38340](https://github.com/wazuh/wazuh/pull/38340))
 - Fixed `wazuh-execd` crashing when more active response commands than supported are defined. ([#38410](https://github.com/wazuh/wazuh/pull/38410))
 - Fixed WPK upgrade failing on agents without the `find` binary. ([#38431](https://github.com/wazuh/wazuh/pull/38431))
 - Bounded the `snort-full` log record appends to the available buffer space and sized the queued preprocessor message from its own line in `wazuh-logcollector`. ([#38472](https://github.com/wazuh/wazuh/pull/38472))
 - Fixed `wazuh-syscheckd` leaving the Auditd plugin configuration file `af_wazuh.conf` on disk when who-data via Audit is not enabled. ([#38763](https://github.com/wazuh/wazuh/pull/38763))
+- Fixed FIM whodata falling back to audit on arm64 kernels where the BPF-LSM hooks cannot load or attach, by retrying with the kprobe program set. ([#38545](https://github.com/wazuh/wazuh/pull/38545))
 - Restricted the GitHub, Office 365 and MS Graph wodles pagination and content retrieval to the configured API host, so the authentication token is not sent to another host. ([#38688](https://github.com/wazuh/wazuh/pull/38688))
 - Fixed whodata (audit) holding the audisp socket undrained at startup when the manager is unreachable, starving other audit plugins. ([#38382](https://github.com/wazuh/wazuh/pull/38382))
+- Fixed the `disable-account` active response reporting success when the account was not disabled, and stopped `is_valid_username()` from rejecting valid usernames containing consecutive dots. ([#38637](https://github.com/wazuh/wazuh/pull/38637))
+- Fixed the `disable-account` active response returning success when the account command was missing or the system was not supported. ([#38645](https://github.com/wazuh/wazuh/pull/38645))
+- Fixed the gcloud wodle masking missing-dependency errors as an unrelated `AttributeError`. ([#38856](https://github.com/wazuh/wazuh/pull/38856))
+- Restricted active response usernames to an allowlist, rejecting quotes, shell metacharacters, control characters and non-ASCII bytes. ([#38651](https://github.com/wazuh/wazuh/pull/38651))
+- Fixed process names truncated to fifteen characters in the syscollector inventory. ([#38969](https://github.com/wazuh/wazuh/pull/38969))
+- Fixed the gcloud wodle's Pub/Sub integration failing to start whenever the bucket integration's dependencies (e.g. `google-cloud-storage`) were broken, by deferring each integration's imports so a failure in one no longer blocks the other. ([#38868](https://github.com/wazuh/wazuh/pull/38868))
+- Fixed the macOS agent's default FIM configuration monitoring `/etc`, which macOS resolves as a symlink to `/private/etc`; without `follow_symbolic_link` enabled, syscheck only recorded the symlink itself, leaving every file under it (`sudoers`, `sshd_config`, `pam.d`, `hosts`) uncovered. The default `<directories>`, `<ignore>`, and `<nodiff>` entries now target `/private/etc` directly. ([#39119](https://github.com/wazuh/wazuh/issues/39119))
+- Fixed the default agent nodiff list not protecting /etc/shadow and real key paths. ([#39124](https://github.com/wazuh/wazuh/pull/39124))
+- Fixed FIM not monitoring user-mounted `tmpfs` directories mistaken for `/dev`. ([#38627](https://github.com/wazuh/wazuh/pull/38627))
+
+### Ruleset
+
+#### Fixed
+- Fixed multiple checks with deprecated commands in Apple macOS 26.0 SCA file. ([#38669](https://github.com/wazuh/wazuh/pull/38669))
+- Fixed false-pass on the CIS Amazon Linux 2023 and Ubuntu 18.04 minimum password-days checks. ([#39047](https://github.com/wazuh/wazuh/pull/39047))
+- Fixed a `Permisive` typo failing the SELinux mode check on compliant hosts across 5 SCA policies. ([#39166](https://github.com/wazuh/wazuh/pull/39166))
+
+### Other
+
+#### Changed
+
+- Updated embedded Python to 3.10.21 and dependencies `cryptography`, `pip`, `pyasn1` and `setuptools`. ([#39148](https://github.com/wazuh/wazuh/pull/39148))
+- Updated the Google Cloud dependencies (`google-cloud-storage`, `google-cloud-core`, `google-auth` and `google-resumable-media`), which relied on the `pkg_resources` module removed in `setuptools` 82. ([#39148](https://github.com/wazuh/wazuh/pull/39148))
 
 ## [v4.14.8]
 

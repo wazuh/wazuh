@@ -476,3 +476,32 @@ def test_GSCAccessLogs_load_information_from_file(mock_client, file_path):
         assert set(header) == set(keys)
         for key in keys:
             assert event[key] == "gcp_bucket" if key == "source" else event[key] == f'{key}_value'
+
+
+# ---------------------------------------------------------------------------
+# Module-level import error
+# ---------------------------------------------------------------------------
+
+def test_bucket_import_error_raises_GCloudError():
+    """Importing bucket.py without a required dependency hits the except ImportError block."""
+    import runpy
+    import sys
+
+    bucket_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets', 'bucket.py')
+
+    # Block 'pytz' so that 'import pytz' raises ImportError with e.name == 'pytz'.
+    _sentinel = object()
+    saved_pytz = sys.modules.get('pytz', _sentinel)
+    sys.modules['pytz'] = None
+
+    try:
+        with pytest.raises(exceptions.GCloudError) as exc_info:
+            runpy.run_path(bucket_path, run_name='bucket_import_error_test')
+    finally:
+        if saved_pytz is _sentinel:
+            sys.modules.pop('pytz', None)
+        else:
+            sys.modules['pytz'] = saved_pytz
+
+    assert exc_info.value.errcode == 1003
+    assert "'pytz' module is required" in str(exc_info.value)

@@ -19,6 +19,8 @@ with patch('wazuh.core.common.wazuh_uid'):
         sys.modules['api.authentication'] = MagicMock()
         from api.models import base_model_ as bm
         from api.models import event_ingest_model
+        from api.models.agent_added_model import AgentAddedModel
+        from api.models.agent_inserted_model import AgentInsertedModel
         from api.util import deserialize_model
         from wazuh import WazuhError
 
@@ -302,3 +304,54 @@ async def test_event_ingest_model_validation(size, raises):
         assert exc.value.title == 'Events bulk size exceeded'
     else:
         await event_ingest_model.EventIngestModel.get_kwargs(request)
+
+
+INSERT_BODY = {'name': 'test_agent', 'ip': 'any', 'id': '123', 'key': 'k' * 64}
+SCHEMA_DEFAULT_FORCE = {'enabled': True,
+                        'disconnected_time': {'enabled': True, 'value': '1h'},
+                        'after_registration_time': '1h'}
+
+
+@pytest.mark.asyncio
+async def test_agent_inserted_model_force_omitted():
+    """Check that an omitted `force` is not replaced by the model defaults.
+
+    A request that does not carry `force` must reach authd without one, so the manager
+    configuration applies instead of a value the caller never sent.
+    """
+    f_kwargs = await AgentInsertedModel.get_kwargs(dict(INSERT_BODY))
+
+    assert f_kwargs['force'] is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('force,expected', [
+    ({}, SCHEMA_DEFAULT_FORCE),
+    ({'enabled': True}, SCHEMA_DEFAULT_FORCE),
+    ({'enabled': True, 'disconnected_time': {'enabled': False}, 'after_registration_time': '0'},
+     {'enabled': True,
+      'disconnected_time': {'enabled': False, 'value': '1h'},
+      'after_registration_time': '0'}),
+])
+async def test_agent_inserted_model_force_provided(force, expected):
+    """Check that a `force` object sent by the caller is honored, filling in the schema defaults."""
+    f_kwargs = await AgentInsertedModel.get_kwargs(dict(INSERT_BODY, force=force))
+
+    assert f_kwargs['force'] == expected
+
+
+@pytest.mark.asyncio
+async def test_agent_added_model_force_disabled_by_default():
+    """Check that `POST /agents` does not enable replacement unless it is requested."""
+    f_kwargs = await AgentAddedModel.get_kwargs({'name': 'test_agent', 'ip': 'any'})
+
+    assert f_kwargs['force']['enabled'] is False
+
+
+@pytest.mark.asyncio
+async def test_agent_added_model_force_provided():
+    """Check that `POST /agents` honors a `force` object, which its schema now declares."""
+    f_kwargs = await AgentAddedModel.get_kwargs(
+        {'name': 'test_agent', 'ip': 'any', 'force': {'enabled': True}})
+
+    assert f_kwargs['force'] == SCHEMA_DEFAULT_FORCE

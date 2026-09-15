@@ -3449,7 +3449,7 @@ checks:
       - nist_sp_800-53: ["IA-5 (1)"]
     condition: all
     rules:
-      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS\s*\t*(\d+) compare >= 7'
 
   # 5.5.1.2 Ensure password expiration is 365 days or less (Automated)
   - id: 18673

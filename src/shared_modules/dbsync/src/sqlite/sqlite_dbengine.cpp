@@ -1012,6 +1012,8 @@ bool SQLiteDBEngine::getPrimaryKeysFromTable(const std::string& table,
     auto retVal { false };
     const auto tableFields { m_tableFields[table] };
 
+    primaryKeyList.reserve(tableFields.size());
+
     for (const auto& value : tableFields)
     {
         if (std::get<TableHeader::PK>(value) == true)
