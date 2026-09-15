@@ -408,6 +408,8 @@ agent.https_wpk_max_download_bytes=209715200
 agent.https_control_attempts=4
 agent.https_stateless_attempts=5
 agent.https_stateful_attempts=5
+# POST /download for WPK only; the config download always makes one attempt (it runs on
+# the control loop's thread, which must never stall waiting out a retry).
 agent.https_download_attempts=2
 
 # Consecutive undeliverable /control steps before event producers pause;

@@ -36,7 +36,7 @@ namespace remoted::endpoints::config
         if (error != DownstreamError::None)
         {
             // Could not reach modulesd / no timely answer -> the agent retries.
-            return HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+            return HttpResponse::serviceUnavailable();
         }
 
         const int status = response.status;
@@ -57,7 +57,7 @@ namespace remoted::endpoints::config
             return HttpResponse::json(413, R"({"error":"Request payload is too large","code":413})");
         }
         // 5xx / unexpected -> treat as a transient server-side failure.
-        return HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+        return HttpResponse::serviceUnavailable();
     }
 
     remoted::endpoints::AuthenticatedHandler makeHandler(remoted::downstream::DeferredForwarder& forwarder,

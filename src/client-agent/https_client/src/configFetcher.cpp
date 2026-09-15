@@ -74,7 +74,14 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
     LOGFN_DEBUG2(m_logFn, "Sending /download (resource_type=config, resource_id='%s').",
                  resourceId.c_str());
 
-    const auto result = m_sender.send(spec, waiter, m_config.downloadMaxAttempts);
+    // One attempt: this runs on the control loop's own thread (ControlStream::step() ->
+    // handleNotifyBody() -> maybeDownloadConfig()), which must never stall waiting out a
+    // retry -- a second attempt would sit inside RetrySender::send() for max(Retry-After,
+    // backoff) on a 503, delaying keepalive, task pickup and the config_hash check. A
+    // download still failing after this call gets retried by the next notify instead (see
+    // the DEBUG1 log below). WpkFetcher keeps m_config.downloadMaxAttempts as-is: it sends
+    // from its own thread, not this one.
+    const auto result = m_sender.send(spec, waiter, 1);
 
     if (result.outcome != OutcomeClass::Ok)
     {

@@ -44,7 +44,7 @@ func run() int {
 				"comparing the two paths; it needs a password-free authd (prepare_manager.sh --open-1515)")
 		output       = flag.String("output", "bench.csv", "per-second metrics CSV")
 		summaryJSON  = flag.String("summary-json", "sender_summary.json", "run summary JSON")
-		feedTimeout  = flag.Duration("feed-timeout", 300*time.Second, "budget for feed-not-ready (503+Retry-After) retries")
+		feedTimeout  = flag.Duration("feed-timeout", 300*time.Second, "budget for feed-not-ready retries (the 503 whose body names the feed gate)")
 		drainTimeout = flag.Duration("drain-timeout", 60*time.Second, "bounded shutdown window")
 		timeout      = flag.Duration("timeout", 120*time.Second, "per-request timeout")
 		enrollSettle = flag.Duration("enroll-settle", 12*time.Second,
@@ -200,8 +200,9 @@ func printFinal(rn *runner.Runner, meta metrics.Meta, code int, verdictRes *verd
 	fmt.Printf("\n--- run summary ---\n")
 	fmt.Printf("mode=%s agents=%d/%d duration=%.1fs\n",
 		meta.Mode, meta.AgentsEnrolled, meta.AgentsRequested, meta.DurationSec)
-	fmt.Printf("sessions: sent=%d ok=%d noop=%d 400=%d 403=%d 409=%d 413=%d 500=%d 503=%d(retry_after=%d) other=%d\n",
-		c.SessionsSent, c.SessionsOK, c.SessionsNoop, c.S400, c.S403, c.S409, c.S413, c.S500, c.S503, c.S503RetryAfter, c.SessOther)
+	fmt.Printf("sessions: sent=%d ok=%d noop=%d 400=%d 403=%d 409=%d 413=%d 500=%d 503=%d other=%d\n",
+		c.SessionsSent, c.SessionsOK, c.SessionsNoop, c.S400, c.S403, c.S409, c.S413, c.S500, c.S503, c.SessOther)
+	fmt.Printf("    retries: feed=%d 503=%d exhausted=%d\n", c.RetriesFeed, c.Retries503, c.RetriesExhausted)
 	if c.StatelessSent > 0 {
 		fmt.Printf("stateless: sent=%d 202=%d 400=%d 413=%d 503=%d events=%d\n",
 			c.StatelessSent, c.St202, c.StBad400, c.StBad413, c.St503, c.EventsSent)

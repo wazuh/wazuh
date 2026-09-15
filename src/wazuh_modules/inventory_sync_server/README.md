@@ -62,7 +62,7 @@ below. Status: **kept** = the module provides it; **superseded by D-n** = delibe
 |---|---|---|
 | RNF-1 | Preserve the 9 security controls: anti-spoofing, index allowlists, authoritative `wazuh.*` overlay, strict JSON, `external_gte` guard, idempotency, admission quota, cluster isolation | [Validation](#validation-syncfullsessionvalidator), [the allowlist](#the-allowlist-syncstateindexallowlisthpp), the overlay in `sessionProcessor` |
 | RNF-2 | No head-of-line blocking: no sleeps or unbounded waits on the completion path | sharding + the VD lane; a slow agent/scan delays only its shard/lane |
-| RNF-3 | Explicit backpressure at admission and ingestion (no silent drops) | the four `503` gates; every refusal is an HTTP answer |
+| RNF-3 | Explicit backpressure at admission and ingestion (no silent drops) | the four `503` gates; every refusal is an HTTP answer, and each of these carries a `Retry-After` (the module's other endpoints never put this `503` in front of an agent: `/metrics`, `/_internal/agents/delete` and `/_internal/vd/scan` have manager-internal callers only, and on `/config` and `/stats` remoted substitutes its own `503` — so this module's own header is moot there) |
 | RNF-4 | Every abort observable by the agent | deferred responders always answer (weak captures → `503`; batch abandoned on stop → `503`) |
 | RNF-5 | Deterministic teardown; no half-built startup states | [Lifecycle](#lifecycle-the-facade): phased build, reverse teardown, startup gate |
 | RNF-6 | Unit-testability of the orchestration | seams: `IIndexerConnectorSync`, `IVdScanner`, test hooks ([Tests](#tests)) |
@@ -322,7 +322,7 @@ sequenceDiagram
         alt feed still downloading (D17)
             S-->>R: 503 + Retry-After, NOTHING processed
         else lane queue full (vd_scan_queue_slots, D22)
-            S-->>R: 503 scan capacity exhausted
+            S-->>R: 503 + Retry-After, scan capacity exhausted
         else
             S->>VQ: enqueue on the scan lane
             VQ->>VQ: scan (synchronous, gates everything)
@@ -331,7 +331,7 @@ sequenceDiagram
         end
     else everything else
         alt pipeline admission queue over sync_queue_bytes (GLOBAL)
-            S-->>R: 503 shed (sync.pipeline.shed.total)
+            S-->>R: 503 + Retry-After, shed (sync.pipeline.shed.total)
         else
             S->>Q: enqueue on hash(agentId) % workers
             Q->>IDX: stage / execute + flush (group commit)
@@ -870,8 +870,10 @@ target); and `Item::enqueuedAt` is stamped by the endpoint, so a default (epoch)
 - **Why is the byte-queue `503` body generic while the VD `503`s carry a reason?** Which
   admission gate fired (budget, queue, indexer, shutdown) is an operator concern — visible in
   logs and `GET /metrics` — and the agent's reaction is identical: retry later. The two VD gates
-  differ because the AGENT reacts differently: `Retry-After` schedules the re-POST, and "scan
-  capacity exhausted" is a normal-cycle retry.
+  now both carry `Retry-After`; they differ in its SIZE, not its presence: the feed gate schedules
+  a retry sized to the CVE feed's own state (`inventory_sync_server_vd_feed_retry_after_seconds`),
+  while "scan capacity exhausted" carries the same fixed value every other shed does — a
+  normal-cycle retry, not one dimensioned to its cause.
 - **Why one connector per worker + group commit?** A shared connector is a shared staging buffer,
   which is a lock, which is REQ-SYNC-2's root cause (HTTP under the staging mutex — the legacy's
   deadlock family). Private connectors make ordering topological, and the group commit amortizes

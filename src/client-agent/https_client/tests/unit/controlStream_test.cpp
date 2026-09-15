@@ -788,15 +788,13 @@ TEST_F(ControlStreamTest, FailedDownloadRetriesOnTheNextNotify)
     }));
     EXPECT_CALL(m_sink, onConfigDownloaded(_, _)).Times(0);
 
-    // One backoff wait happens between the two attempts of each failed
-    // download; let both proceed (an unscripted FakeWaiter reads as stop).
-    m_waiter.script({true, true});
-
     m_stream.step(m_waiter); // Startup.
-    m_stream.step(m_waiter); // Notify -> download fails (2 attempts).
+    m_stream.step(m_waiter); // Notify -> download fails (one attempt).
     m_stream.step(m_waiter); // Notify -> re-armed, fails again.
 
-    EXPECT_EQ(4, downloads); // 2 notifies x DOWNLOAD_MAX_ATTEMPTS(2).
+    // One attempt per notify: maybeDownloadConfig() runs on the control loop's own thread, so
+    // ConfigFetcher::fetch() never waits out an in-request retry (configFetcher.cpp:77-84).
+    EXPECT_EQ(2, downloads);
     EXPECT_EQ("abc", m_configHash.get());
 }
 
@@ -1505,6 +1503,38 @@ TEST_F(ControlStreamTest, PendingRescanSurvivesA503AndReRequestsOnTheNextNotify)
     EXPECT_EQ(2, scanVdCalls) << "the next notify re-fires the request without any new offset";
     EXPECT_FALSE(m_vdOffsetStore.pending());
     EXPECT_THAT(m_vdOffsetStore.clearPendingCalls(), ::testing::ElementsAre(100u));
+}
+
+// Unlike the test above, this one does NOT rely on the FakeWaiter interrupting the in-request
+// backoff wait: it lets the wait complete (script({true})), so a regression back to
+// PER_REQUEST_MAX_ATTEMPTS > 1 would retry /scan/vd a second time inside this very step() and be
+// caught here, instead of passing by accident the way the test above would.
+TEST_F(ControlStreamTest, ScanVdMakesOnlyOneAttemptPerRequestCycle)
+{
+    const std::string notify = R"({"status":"ok","vd_feed_offset":100})";
+    int scanVdCalls = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}"))) // Startup.
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        if (spec.target == "/control")
+        {
+            return response(TransportStatus::Ok, 200, notify);
+        }
+
+        ++scanVdCalls;
+        return response(TransportStatus::Ok, 503, R"({"error":"indexer_unavailable","retryable":true})");
+    }));
+
+    m_waiter.script({true}); // Would let a second in-request attempt happen, if one were made.
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> pending(100) -> /scan/vd 503.
+
+    EXPECT_EQ(1, scanVdCalls) << "PER_REQUEST_MAX_ATTEMPTS must stay 1: a second in-request attempt "
+                                 "would stall the control loop's own thread waiting out the 503";
+    EXPECT_TRUE(m_waiter.requestedDelays().empty()) << "no in-request retry wait should even be attempted";
 }
 
 TEST_F(ControlStreamTest, NoPendingRescanMeansNoScanVdRequest)

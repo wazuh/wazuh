@@ -52,12 +52,23 @@ namespace remoted::endpoints::scanvd
 
         constexpr std::size_t kMaxScanVdBodySize = 4U * 1024U;
 
-        remoted::http::HttpResponse errorJson(int status, std::string_view code)
+        remoted::http::HttpResponse errorJson(int status, std::string_view code, bool retryable = true)
         {
-            std::string body = R"({"error":")";
-            body.append(code);
-            body.append(R"("})");
-            return remoted::http::HttpResponse::json(status, std::move(body));
+            nlohmann::json body;
+            body["error"] = code;
+            auto response = remoted::http::HttpResponse::json(status, body.dump());
+            if (status == 503 && retryable)
+            {
+                // Capacity, like every other shed: `scan_queue_full` is the dispatcher refusing
+                // work. This route is the one that is synchronised fleet-wide by construction --
+                // a feed-offset bump reaches every agent through /control, so they all re-scan at
+                // once -- so leaving it unqualified is exactly the storm the hint exists for.
+                // `retryable` comes straight from VD's own answer (see ScanVdResponse), not from
+                // a code comparison here: a permanent cause such as `vd_not_initialized` opts out
+                // by marking itself `retryable:false`, and remoted only relays that flag.
+                response.headers.emplace_back("Retry-After", remoted::http::SHED_RETRY_AFTER_SECONDS);
+            }
+            return response;
         }
 
         remoted::http::HttpResponse errorJsonWithOffset(int status, std::string_view code, uint64_t currentOffset)
@@ -178,8 +189,8 @@ namespace remoted::endpoints::scanvd
                             // pending state survives a 503 -- its next notify re-requests.
                             // The body carries VD's own error code, so the log reader sees
                             // the actual cause instead of a catch-all label.
-                            responder->send(
-                                errorJson(503, response.errorCode.empty() ? "vd_error" : response.errorCode));
+                            responder->send(errorJson(
+                                503, response.errorCode.empty() ? "vd_error" : response.errorCode, response.retryable));
                             break;
                         case ScanVdOutcome::InvalidAgent: responder->send(errorJson(400, "invalid_agent_id")); break;
                     }

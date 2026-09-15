@@ -18,8 +18,9 @@
  *
  * Everything the legacy tool needed is gone by design: no router, no acks, no End, no response
  * sockets. The HTTP status IS the outcome, and D22 makes a 200 mean "scan ran AND the inventory
- * was flushed", so there is no scan-completion polling either. A 503 with Retry-After (the CVE
- * feed still downloading) is retried until --feed-timeout expires.
+ * was flushed", so there is no scan-completion polling either. A 503 whose body names the CVE
+ * feed gate is retried until --feed-timeout expires; every other 503 (Retry-After or not) is
+ * ordinary backpressure and is not retried here.
  *
  * CLI (kept compatible with the legacy tool so the QA driver changes only the binary name):
  *   inventory_sync_server_testtool <input.json>|<directory> [--config <file>]
@@ -634,13 +635,19 @@ int main(int argc, char* argv[])
             // sleeps, the feed can finish loading and its offset can move off the 0 it had at
             // the first attempt, so a stale session built before the wait would now get rejected
             // with 409 version_mismatch instead of the retry ever landing.
+            //
+            // Every capacity shed carries Retry-After too now, so the header alone no longer
+            // tells the feed gate apart from ordinary backpressure -- discriminate by BODY, the
+            // way tool_simulator's session.go does: only the feed gate's response names itself.
             const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(config.feedTimeoutSecs);
             HttpResult result;
             while (true)
             {
                 const auto session = buildFullSession(testData, clusterName, vulnerabilityScanner.currentFeedOffset());
                 result = postSession(DEFAULT_SOCKET_PATH, agentId, session);
-                if (result.status != 503 || result.retryAfter.empty() || std::chrono::steady_clock::now() >= deadline)
+                const bool feedNotReady =
+                    result.status == 503 && result.body.find("vulnerability feed not ready") != std::string::npos;
+                if (!feedNotReady || std::chrono::steady_clock::now() >= deadline)
                 {
                     break;
                 }

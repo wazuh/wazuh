@@ -13,6 +13,7 @@
 #include "downstream/deferredForwarder.hpp"
 #include "downstream/deferredWorkLimiter.hpp"
 #include "downstream/forwarderMetrics.hpp"
+#include "fakeHttpServer.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -200,7 +201,12 @@ TEST(DeferredForwarderTest, SlotFullShedsWith503WithoutCallingClient)
     forwarder.forward(second.req, secondResponder, sampleTarget(), sampleMapper);
 
     ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
-    EXPECT_EQ(fut.get().status, 503);
+    const auto shed = fut.get();
+    EXPECT_EQ(shed.status, 503);
+    // #38880: slot exhaustion is capacity, not a broken downstream -- the agent is told to come
+    // back rather than left to guess, so it does not retry straight into a full queue.
+    EXPECT_EQ(remoted::testutil::headerValue(shed, "Retry-After"),
+              std::optional<std::string> {remoted::http::SHED_RETRY_AFTER_SECONDS});
 }
 
 TEST(DeferredForwarderTest, PassesTargetAndBodyToClient)

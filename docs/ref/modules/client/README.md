@@ -176,6 +176,11 @@ If events are being dropped due to buffer overflow:
 
 1. Check the accumulator limits in `<agent><batch>` (`size`, `interval`)
 2. Verify network connectivity is stable
+3. Under sustained manager back-pressure, a `503`'s `Retry-After` (10 s by default) can widen the
+   window before a stalled `/stateless` flush succeeds, since 5xx/429/413/400 responses are
+   deliberately excluded from `agent.https_producer_pause_threshold` and never pause intake
+   (see [timing-tuning.md](../remoted/timing-tuning.md)). Size `agent.https_batch_size_bytes`
+   for the back-pressure duration you expect if this is a factor.
 
 ### Anti-Tampering Alerts
 

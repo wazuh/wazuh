@@ -493,18 +493,25 @@ namespace remoted::control
                 [this, id, refreshedEntry, callback = std::move(callback)](SocketError err,
                                                                            std::vector<Task> tasks) mutable
                 {
-                    // DEBUG1: the task client already reports every cause, and its drain answers
-                    // Io for every in-flight request on shutdown.
-                    if (err != SocketError::None)
+                    // #38880 finding 10: was DEBUG1 -- a poll failure and a genuinely empty queue
+                    // were the same event to both the agent and, at the default log level, the
+                    // operator. WARN, matching the throttled-misconfiguration pattern used
+                    // elsewhere in this change -- but only for a real failure: a clean shutdown's
+                    // drain answers SocketError::Stopping, which taskFetchFailed below still
+                    // reports to the agent, but which stays at the task client's own DEBUG1
+                    // ("Task client is stopping...") instead of warning the operator on every
+                    // restart.
+                    const bool taskFetchFailed = err != SocketError::None;
+                    if (err != SocketError::None && err != SocketError::Stopping)
                     {
                         if (const auto throttle = taskFetchErrorThrottle().record())
                         {
-                            LOGFN_DEBUG1(logFn(),
-                                         "Agent %u: pending-task fetch failed, answering with no tasks: %llu "
-                                         "failure(s) in the last %d s.",
-                                         id,
-                                         throttle.total,
-                                         remoted::common::LogThrottle::kDefaultWindowSeconds);
+                            LOGFN_WARN(logFn(),
+                                       "Agent %u: pending-task fetch failed, answering with no tasks: %llu "
+                                       "failure(s) in the last %d s.",
+                                       id,
+                                       throttle.total,
+                                       remoted::common::LogThrottle::kDefaultWindowSeconds);
                         }
                     }
 
@@ -536,6 +543,10 @@ namespace remoted::control
                         tasksJson.push_back(std::move(taskJson));
                     }
                     response["tasks"] = std::move(tasksJson);
+                    // Additive: an agent that does not read this field sees exactly the response it
+                    // saw before (D10 decision 3) -- but one that does can tell "checked, none
+                    // pending" apart from "could not check", instead of retrying nothing forever.
+                    response["tasks_fetch_failed"] = taskFetchFailed;
                     response["vd_feed_offset"] = this->getVdFeedOffset();
 
                     HttpResponse httpResp;

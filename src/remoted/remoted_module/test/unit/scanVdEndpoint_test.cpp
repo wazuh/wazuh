@@ -16,6 +16,7 @@
  */
 
 #include "endpoints/scanVdEndpoint.hpp"
+#include "fakeHttpServer.hpp"
 
 #include <gtest/gtest.h>
 
@@ -306,6 +307,29 @@ TEST_F(ScanVdEndpointTest, VdRejectedReturns503WithVdsOwnErrorCode)
     ASSERT_TRUE(responder.done());
     EXPECT_EQ(responder.captured().status, 503);
     EXPECT_EQ(responder.captured().body, R"({"error":"scan_queue_full"})");
+    // A feed-offset bump reaches the whole fleet through /control, so every agent re-scans at once
+    // and this queue is the one that fills by construction. Without the hint the agent retries on
+    // the cadence of a broken link, which is the storm the header exists for.
+    EXPECT_EQ(remoted::testutil::headerValue(responder.captured(), "Retry-After"),
+              std::optional<std::string> {remoted::http::SHED_RETRY_AFTER_SECONDS})
+        << "a capacity 503 on /scan/vd must carry Retry-After";
+}
+
+TEST_F(ScanVdEndpointTest, VdNotInitializedCarriesNoRetryAfter)
+{
+    // Unlike scan_queue_full, vd_not_initialized is the scanner's own retryable:false code (D19):
+    // a node running no vulnerability detection will still be running none in 10s, so a hint here
+    // would invite exactly the retry the status is refusing. The endpoint decides purely off the
+    // retryable flag it was handed, not off this string -- it is set explicitly here the same way
+    // the real handler sets it, from VD's own JSON.
+    handler.setResponse({ScanVdOutcome::VdRejected, 0, "vd_not_initialized", /*retryable=*/false});
+    dispatch("001", feedUpdateBody(100));
+
+    ASSERT_TRUE(responder.done());
+    EXPECT_EQ(responder.captured().status, 503);
+    EXPECT_EQ(responder.captured().body, R"({"error":"vd_not_initialized"})");
+    EXPECT_EQ(remoted::testutil::headerValue(responder.captured(), "Retry-After"), std::nullopt)
+        << "a permanent rejection on /scan/vd must not carry Retry-After";
 }
 
 TEST_F(ScanVdEndpointTest, VdRejectedWithoutACodeFallsBackToVdError)

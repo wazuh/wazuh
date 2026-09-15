@@ -41,9 +41,15 @@ namespace
     /// One body for every 503 cause on purpose: "stopping", "indexer unreachable" and "no
     /// capacity" are all "retry later" to the agent, and telling them apart would leak internal
     /// state. The causes are distinguished in the logs instead.
+    ///
+    /// The `Retry-After` does not weaken that: it is a delay, identical at every shed point, so it
+    /// says "later" without saying which limit tripped. remoted forwards it to the agent verbatim
+    /// (statefulEndpoint's forwardRetryAfter), which waits `max(hint, its own backoff)`.
     wazuh::uds_http::HttpResponse serviceUnavailable()
     {
-        return wazuh::uds_http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+        auto response = wazuh::uds_http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+        response.headers.emplace_back("Retry-After", wazuh::uds_http::SHED_RETRY_AFTER_SECONDS);
+        return response;
     }
 } // namespace
 
@@ -146,8 +152,8 @@ namespace invsync::endpoints::sync
                     if (const auto decision = vdThrottle.record())
                     {
                         LOGFN_DEBUG1(logFn(),
-                                     "Answered 503 + Retry-After to %llu vulnerability-detection session(s) in the "
-                                     "last %d s: the CVE feed is not ready.",
+                                     "Rejected %llu vulnerability-detection session(s) with 503 in the last %d s: "
+                                     "the CVE feed is not ready.",
                                      static_cast<unsigned long long>(decision.total),
                                      wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
                     }
@@ -183,7 +189,15 @@ namespace invsync::endpoints::sync
                         }
                         // The lane itself counts vd.capacity.503.total at the refusal.
                         deps.requestCounters.count(503);
-                        responder->send(errorResponse(503, "scan capacity exhausted"));
+                        {
+                            // Keeps its own body (the lane queue is a distinct, actionable cause in
+                            // the logs) but sheds like every other capacity refusal, so it carries
+                            // the same hint. Not the feed's Retry-After above: the feed IS ready
+                            // here, it is the scan queue that is full.
+                            auto response = errorResponse(503, "scan capacity exhausted");
+                            response.headers.emplace_back("Retry-After", wazuh::uds_http::SHED_RETRY_AFTER_SECONDS);
+                            responder->send(std::move(response));
+                        }
                         return;
                     case invsync::vd::VdScanLane::Admission::Stopping:
                     default:

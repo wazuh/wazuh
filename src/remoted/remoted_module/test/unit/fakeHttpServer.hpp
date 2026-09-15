@@ -91,6 +91,20 @@ namespace remoted::testutil
         std::map<std::pair<remoted::http::Method, std::string>, remoted::http::ResponseMode> m_modes;
     };
 
+    /// @brief Looks up a response header by name. Shared so every suite that asserts on
+    ///        Retry-After (or any other header) spells the lookup the same way once.
+    inline std::optional<std::string> headerValue(const remoted::http::HttpResponse& response, const std::string& name)
+    {
+        for (const auto& [headerName, value] : response.headers)
+        {
+            if (headerName == name)
+            {
+                return value;
+            }
+        }
+        return std::nullopt;
+    }
+
 } // namespace remoted::testutil
 
 #endif // _REMOTED_MODULE_TEST_FAKE_HTTP_SERVER_HPP

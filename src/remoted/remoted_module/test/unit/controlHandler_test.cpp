@@ -490,8 +490,33 @@ TEST(ControlHandlerTest, NotifyReturnsGroupsSettingsHashAndTasks)
     ASSERT_EQ(j["tasks"].size(), 1U);
     EXPECT_EQ(j["tasks"][0]["task_id"], "T1");
     EXPECT_EQ(j["tasks"][0]["task_type"], "upgrade");
+    EXPECT_FALSE(j["tasks_fetch_failed"].get<bool>()) << "a successful poll must not read as a failed one";
 
     EXPECT_GE(h.metrics.notify->get(), 1U);
+}
+
+TEST(ControlHandlerTest, NotifyReportsTasksFetchFailedWhenThePollFails)
+{
+    // #38880 finding 10: a failed poll and a genuinely empty queue used to be the same response.
+    // Tearing down the fake Task Manager before the request forces the real SocketError path
+    // (connection refused), the same one a stalled or stopped task manager produces in production.
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+    h.taskServer.reset();
+
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(7, notifyWithHost(), [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+
+    // Additive field, not a status change (D10 decision 3): the response is still 200 with an
+    // empty task list -- an agent that does not read the new field sees the pre-fix response.
+    EXPECT_EQ(w.value.status, 200);
+    auto j = nlohmann::json::parse(w.value.body);
+    ASSERT_TRUE(j["tasks"].is_array());
+    EXPECT_TRUE(j["tasks"].empty());
+    EXPECT_TRUE(j["tasks_fetch_failed"].get<bool>());
 }
 
 TEST(ControlHandlerTest, NotifyReturnsRealConfigHashWhenMergedMgExists)

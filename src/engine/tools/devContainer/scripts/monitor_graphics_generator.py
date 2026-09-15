@@ -397,7 +397,7 @@ INVSYNC_METRICS = [
     ("vd_scans_ok",             "VD Scans Completed",                "Count"),
     ("vd_scans_failed",         "VD Scans Failed",                   "Count"),
     ("vd_scans_skipped",        "VD Scans Skipped (legitimately)",   "Count"),
-    ("vd_retry_after_total",    "VD 503s with Retry-After (feed not ready)", "Count"),
+    ("vd_retry_after_total",    "VD 503s: CVE feed not ready",       "Count"),
     ("vd_offset_mismatch_total", "VD Sessions Rejected (feed-offset mismatch)", "Count"),
     ("session_duration_bulk_p99",      "Session Duration p99 (bulk)",      "microseconds"),
     ("session_duration_immediate_p99", "Session Duration p99 (immediate)", "microseconds"),

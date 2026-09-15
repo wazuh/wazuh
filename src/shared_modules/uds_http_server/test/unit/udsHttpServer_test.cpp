@@ -594,6 +594,9 @@ TEST(UdsHttpServerTest, ConnectionCapAnswersAnExplicit503)
 
     const auto refused = sendRaw(path, peerRequest("POST", "/inventory/sync", "refused"));
     EXPECT_EQ(503, refused.status);
+    // #38880: an unqualified 503 reads to the peer like a transport failure, so it retries on the
+    // same cadence it would use for a broken link. Every shed carries the delay instead.
+    EXPECT_EQ(std::string {wazuh::uds_http::SHED_RETRY_AFTER_SECONDS}, refused.header("Retry-After"));
 
     {
         std::lock_guard<std::mutex> lock {parkedMutex};
@@ -603,6 +606,35 @@ TEST(UdsHttpServerTest, ConnectionCapAnswersAnExplicit503)
         }
     }
     held.get();
+}
+
+// The header means "this was capacity, come back". On a rejection that will never succeed on retry
+// it would invite exactly the retry the status is refusing, so it is confined to the 503s.
+TEST(UdsHttpServerTest, OnlyShed503sCarryRetryAfter)
+{
+    const auto path = uniqueSocketPath("retryafter");
+    auto config = configFor(path);
+    config.maxBodySize = 32;
+
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post, "/inventory/sync", echoHandler());
+    server->start(config);
+
+    const auto notFound = sendRaw(path, peerRequest("POST", "/nope", "x"));
+    EXPECT_EQ(404, notFound.status);
+    EXPECT_FALSE(notFound.hasHeader("Retry-After"));
+
+    const auto wrongMethod = sendRaw(path, peerRequest("GET", "/inventory/sync", ""));
+    EXPECT_EQ(405, wrongMethod.status);
+    EXPECT_FALSE(wrongMethod.hasHeader("Retry-After"));
+
+    const auto tooLarge = sendRaw(path, peerRequest("POST", "/inventory/sync", std::string(64, 'x')));
+    EXPECT_EQ(413, tooLarge.status);
+    EXPECT_FALSE(tooLarge.hasHeader("Retry-After"));
+
+    const auto ok = sendRaw(path, peerRequest("POST", "/inventory/sync", "x"));
+    EXPECT_EQ(200, ok.status);
+    EXPECT_FALSE(ok.hasHeader("Retry-After"));
 }
 
 // A handler bug must produce a status, never take the I/O thread -- and therefore the daemon -- down.

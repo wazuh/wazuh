@@ -304,8 +304,13 @@ paths:
           description: |
             The server is temporarily out of capacity (its in-flight byte budget is exhausted or too
             many requests are already parked awaiting the downstream service), or the downstream engine
-            was unreachable / errored. Server-side load-shedding, not per-client rate-limiting: no
-            `Retry-After` is sent — the agent applies its own retry/backoff. The connection is closed.
+            was unreachable / errored. Server-side load-shedding, not per-client rate-limiting.
+            Carries a `Retry-After` so a shed request is distinguishable from a network failure; the
+            agent waits the longer of that hint and its own backoff. The connection is closed.
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying. Fixed value, identical at every shed point.
+              schema: { type: integer, minimum: 0 }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -342,7 +347,11 @@ paths:
         `agent.config_token` back verbatim as the `resource_id` -- the token is opaque to the
         agent, which must never derive that identifier from `agent.groups` itself),
         `vd_feed_offset` (a strictly higher value means request a re-scan via `POST /scan/vd`), and
-        `tasks` when the manager has work to dispatch.
+        `tasks` when the manager has work to dispatch. `tasks_fetch_failed` (#38880 finding 10) is
+        `true` when the manager could not reach its Task Manager for this poll -- `tasks` is then an
+        empty array too, but for a different reason than "nothing pending": an agent that reads this
+        field can tell the two apart instead of treating a manager-side outage as "no work exists".
+        An agent that does not read it sees exactly the response it saw before this field existed.
 
         Note the parse asymmetry between the two: `startup` reads `version` at the top level, while
         `notify` reads it at `agent.version`.
@@ -399,6 +408,7 @@ paths:
                     agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
                     settings_hash: "d7a8fbb3..."
                     tasks: []
+                    tasks_fetch_failed: false
                     vd_feed_offset: 12345678
                 notifyWithTasks:
                   value:
@@ -409,6 +419,15 @@ paths:
                       - task_id: "42"
                         task_type: active_response
                         payload: {}
+                    tasks_fetch_failed: false
+                notifyTasksFetchFailed:
+                  summary: Task Manager unreachable for this poll -- `tasks` is empty for a different reason than notifyNoTasks
+                  value:
+                    agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
+                    settings_hash: "d7a8fbb3..."
+                    tasks: []
+                    tasks_fetch_failed: true
+                    vd_feed_offset: 12345678
                 shutdown:
                   value: {}
         "400":
@@ -493,7 +512,8 @@ paths:
 
         Because the downstream answer **is** the session result, this is the one route whose
         statuses and bodies are passed through as produced by the sync server, and the one route
-        that can return a `Retry-After` (digits-only, on a `503`). The sync server cross-checks the
+        that can relay the sync server's own `Retry-After` (digits-only, on a `503`) rather than
+        remoted's fixed shed value. The sync server cross-checks the
         FlatBuffer's `Start.agentid` against the forwarded header and answers `403` on a mismatch.
 
         It also carries its own, longer response deadline
@@ -543,11 +563,16 @@ paths:
         "503":
           description: |
             Out of capacity, the sync server was unreachable or did not answer in time, or it shed
-            the session itself. The only route that may carry a `Retry-After`, relayed from the sync
-            server when it sends a digits-only value.
+            the session itself. Carries a `Retry-After`: relayed verbatim from the sync server when
+            the 503 is the session result and its value is digits-only (so a not-ready CVE feed sends
+            its own, feed-sized value), otherwise remoted's own fixed shed value. A contract 503
+            whose relayed value is malformed is forwarded WITHOUT the header rather than with a
+            substituted one -- remoted does not paper over a misbehaving downstream.
           headers:
             Retry-After:
-              description: Seconds to wait before retrying. Relayed from the sync server only.
+              description: |
+                Seconds to wait before retrying. Relayed from the sync server when the 503 is the
+                session result; otherwise remoted's fixed shed value.
               schema: { type: integer, minimum: 0 }
           content:
             application/json:
@@ -855,21 +880,33 @@ paths:
         "503":
           description: |
             Not accepted; the agent retries on its next notify cycle and its pending state survives.
-            The `error` code names the actual cause for an operator reading the exchange.
+            The `error` code names the actual cause for an operator reading the exchange. Carries a
+            fixed `Retry-After` for every code EXCEPT `vd_not_initialized`, which VD marks
+            `retryable:false` and which does not clear without an operator: a feed-offset bump
+            reaches the whole fleet at once, so this is the route whose sheds are synchronised by
+            construction.
+          headers:
+            Retry-After:
+              description: >
+                Seconds to wait before retrying. Fixed value, identical at every shed point.
+                Absent on `vd_not_initialized`.
+              schema: { type: integer, minimum: 0 }
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              schema: { $ref: "#/components/schemas/ScanVdError" }
               examples:
                 scanQueueFull:
-                  value: { error: "scan_queue_full", code: 503 }
-                indexerUnavailable:
-                  value: { error: "indexer_unavailable", code: 503 }
+                  summary: Also indexer_unavailable / task_create_failed
+                  value: { error: "scan_queue_full" }
                 feedNotReady:
-                  summary: Also scanner_not_ready / vd_not_initialized
-                  value: { error: "feed_not_ready", code: 503 }
+                  summary: Also scanner_not_ready
+                  value: { error: "feed_not_ready" }
                 vdUnreachable:
-                  summary: Also shutting_down / vd_error
-                  value: { error: "vd_unreachable", code: 503 }
+                  summary: Also vd_error -- the round trip to VD itself failed or its answer was unparseable
+                  value: { error: "vd_unreachable" }
+                vdNotInitialized:
+                  summary: Permanent -- no Retry-After
+                  value: { error: "vd_not_initialized" }
 
   /enroll:
     post:
@@ -1031,8 +1068,16 @@ paths:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
         "503":
           description: |
-            `authd` reached `max_agents` (9013), a worker rejected the request (9015) or its forward
-            to the master failed (9016), or `authd` was unreachable / unparseable / timed out.
+            Either `authd` was unreachable / unparseable / timed out (`code: -1`); or `authd`
+            answered `max_agents` (9013), a worker rejected the request (9015), its forward to
+            the master failed (9016), or it could not journal the credential it was about to
+            issue (9031). All but `max_agents` carry a `Retry-After`: a retry can plausibly land
+            once the underlying condition clears, unlike 9013, which does not clear until an
+            operator acts.
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying. Absent only on the `max_agents` (9013) case.
+              schema: { type: integer, minimum: 0 }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
@@ -1170,8 +1215,13 @@ components:
       description: |
         The server is temporarily out of capacity (its in-flight byte budget is exhausted or too many
         requests are already parked awaiting a downstream service), or the downstream service was
-        unreachable or errored. Server-side load-shedding, not per-client rate-limiting: no
-        `Retry-After` is sent on this route -- the agent applies its own retry/backoff.
+        unreachable or errored. Server-side load-shedding, not per-client rate-limiting. Carries a
+        `Retry-After` so the agent can tell a shed apart from a network failure; it waits the longer
+        of that hint and its own backoff, so the hint can only defer a retry, never hurry one.
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying. Fixed value, identical at every shed point.
+          schema: { type: integer, minimum: 0 }
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -1377,6 +1427,25 @@ components:
           format: int64
           description: This node's real current offset, to retry with.
           example: 12345680
+
+    ScanVdError:
+      type: object
+      required: [error]
+      description: |
+        `POST /scan/vd`'s `503` shape. Flat, unlike the general `ErrorResponse`: the body carries
+        no HTTP status duplicate, only the machine-readable cause. `error` is not a closed set:
+        remoted is a pass-through here and relays VD's own error string verbatim, including the
+        transport-level ones its uds_http_server socket can produce on its own (e.g. "Server is
+        shutting down", "Data session limit reached") when VD itself never answers.
+      properties:
+        error:
+          type: string
+          description: >
+            Machine-readable cause. The values below are the ones VD is known to produce; see the
+            `503` response description for which ones carry a `Retry-After`.
+          example: scan_queue_full
+          examples: [scan_queue_full, indexer_unavailable, feed_not_ready, scanner_not_ready,
+                     task_create_failed, vd_not_initialized, vd_unreachable, vd_error, shutting_down]
 
     EnrollRequest:
       type: object

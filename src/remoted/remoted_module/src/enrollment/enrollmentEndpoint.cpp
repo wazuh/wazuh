@@ -467,7 +467,19 @@ namespace remoted::enrollment
                                  result.errorCode,
                                  result.message.c_str());
                 }
-                return errorResponse(httpStatusForAuthdError(result.errorCode), result.errorCode, result.message);
+                auto response =
+                    errorResponse(httpStatusForAuthdError(result.errorCode), result.errorCode, result.message);
+                if (response.status == 503 && result.errorCode != 9013)
+                {
+                    // Transient, unlike the other 503 (9013, max_agents): a worker rejection, a
+                    // failed cluster forward, or authd being unable to journal the credential
+                    // (9031) can all succeed on retry once the underlying condition clears. Reads
+                    // the status httpStatusForAuthdError() already computed instead of
+                    // re-enumerating its codes, so a future transient code added there is covered
+                    // here for free.
+                    response.headers.emplace_back("Retry-After", remoted::http::SHED_RETRY_AFTER_SECONDS);
+                }
+                return response;
             }
 
             incAuthdUnavailable(metrics);
@@ -480,7 +492,11 @@ namespace remoted::enrollment
                            remoted::common::LogThrottle::kDefaultWindowSeconds,
                            result.message.c_str());
             }
-            return errorResponse(503, -1, "Enrollment service temporarily unavailable");
+            // Downstream unavailable, not a rejection of this request: same contract as every
+            // other endpoint's collapse of an unreachable service, so it carries the same hint.
+            auto unavailable = errorResponse(503, -1, "Enrollment service temporarily unavailable");
+            unavailable.headers.emplace_back("Retry-After", remoted::http::SHED_RETRY_AFTER_SECONDS);
+            return unavailable;
         }
 
     } // namespace
