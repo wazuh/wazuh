@@ -20,9 +20,158 @@ LaunchdProvider::LaunchdProvider(std::unique_ptr<IFileSystemWrapper> fileSystemW
 {
 }
 
+static bool cfStringToStd(CFStringRef value, std::string& out)
+{
+    const CFIndex length = CFStringGetLength(value);
+    const CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+
+    if (maxSize <= 0 || maxSize == kCFNotFound + 1)
+    {
+        return false;
+    }
+
+    std::vector<char> buffer(maxSize);
+
+    if (!CFStringGetCString(value, buffer.data(), maxSize, kCFStringEncodingUTF8))
+    {
+        return false;
+    }
+
+    out.assign(buffer.data());
+    return true;
+}
+
+void LaunchdProvider::loadDisabledOverrides()
+{
+    m_disabledOverrides.clear();
+
+    std::vector<std::string> overrideFiles;
+
+    try
+    {
+        if (!m_fileSystemWrapper->is_directory(m_launchdOverridesPath))
+        {
+            return;
+        }
+
+        for (const auto& entry : m_fileSystemWrapper->list_directory(m_launchdOverridesPath))
+        {
+            const auto name = std::filesystem::path(entry).filename().string();
+
+            // "disabled.plist" for the system domain, "disabled.<uid>.plist" per user domain.
+            if (name.rfind("disabled", 0) == 0 && std::filesystem::path(name).extension() == ".plist")
+            {
+                overrideFiles.push_back(std::filesystem::path(m_launchdOverridesPath) / name);
+            }
+        }
+    }
+    catch (...)
+    {
+        return;
+    }
+
+    for (const auto& file : overrideFiles)
+    {
+        CFURLRef fileURL = CFURLCreateFromFileSystemRepresentation(
+                               kCFAllocatorDefault,
+                               reinterpret_cast<const UInt8*>(file.c_str()),
+                               file.length(),
+                               false
+                           );
+
+        if (!fileURL)
+        {
+            continue;
+        }
+
+        CFReadStreamRef stream = CFReadStreamCreateWithFile(kCFAllocatorDefault, fileURL);
+        CFRelease(fileURL);
+
+        if (!stream)
+        {
+            continue;
+        }
+
+        if (!CFReadStreamOpen(stream))
+        {
+            CFRelease(stream);
+            continue;
+        }
+
+        CFPropertyListRef plist = CFPropertyListCreateWithStream(
+                                      kCFAllocatorDefault,
+                                      stream,
+                                      0,
+                                      kCFPropertyListImmutable,
+                                      nullptr,
+                                      nullptr
+                                  );
+
+        CFReadStreamClose(stream);
+        CFRelease(stream);
+
+        if (!plist)
+        {
+            continue;
+        }
+
+        if (CFGetTypeID(plist) != CFDictionaryGetTypeID())
+        {
+            CFRelease(plist);
+            continue;
+        }
+
+        CFDictionaryRef dict = static_cast<CFDictionaryRef>(plist);
+        const CFIndex count = CFDictionaryGetCount(dict);
+
+        if (count > 0)
+        {
+            std::vector<const void*> keys(count);
+            std::vector<const void*> values(count);
+            CFDictionaryGetKeysAndValues(dict, keys.data(), values.data());
+
+            for (CFIndex i = 0; i < count; ++i)
+            {
+                if (!keys[i] || !values[i] ||
+                        CFGetTypeID(static_cast<CFTypeRef>(keys[i])) != CFStringGetTypeID() ||
+                        CFGetTypeID(static_cast<CFTypeRef>(values[i])) != CFBooleanGetTypeID())
+                {
+                    continue;
+                }
+
+                std::string label;
+
+                if (!cfStringToStd(static_cast<CFStringRef>(keys[i]), label) || label.empty())
+                {
+                    continue;
+                }
+
+                const bool disabled = CFBooleanGetValue(static_cast<CFBooleanRef>(values[i]));
+
+                // A label may appear in more than one domain. Any domain that disables it wins,
+                // since a single row cannot express a per-domain state.
+                auto it = m_disabledOverrides.find(label);
+
+                if (it == m_disabledOverrides.end())
+                {
+                    m_disabledOverrides.emplace(label, disabled);
+                }
+                else if (disabled)
+                {
+                    it->second = true;
+                }
+            }
+        }
+
+        CFRelease(plist);
+    }
+}
+
 nlohmann::json LaunchdProvider::collect()
 {
     nlohmann::json result = nlohmann::json::array();
+
+    loadDisabledOverrides();
 
     std::vector<std::string> launchers;
     getLauncherPaths(launchers);
@@ -40,6 +189,18 @@ nlohmann::json LaunchdProvider::collect()
 
             if (parsePlistFile(path, service))
             {
+                // launchctl enable/disable records the state in the override database rather
+                // than in the job plist, so it is authoritative over whatever the plist says.
+                if (!service.label.empty())
+                {
+                    const auto overrideEntry = m_disabledOverrides.find(service.label);
+
+                    if (overrideEntry != m_disabledOverrides.end())
+                    {
+                        service.disabled = overrideEntry->second ? "true" : "false";
+                    }
+                }
+
                 nlohmann::json serviceJson;
                 serviceJson["path"] = service.path;
                 serviceJson["name"] = service.name;
@@ -307,6 +468,7 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                         std::string stringVal = std::to_string(intValue);
 
                         if (keyPair.second == "start_interval") service.startInterval = stringVal;
+                        else if (keyPair.second == "disabled") service.disabled = stringVal;
                     }
                 }
                 else if (CFGetTypeID(value) == CFDictionaryGetTypeID())

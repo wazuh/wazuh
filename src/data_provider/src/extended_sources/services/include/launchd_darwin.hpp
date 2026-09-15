@@ -103,9 +103,16 @@ class LaunchdProvider
             {"QueueDirectories", "queue_directories"},
         };
 
+        /// @brief Directory holding the launchd override database.
+        const std::string m_launchdOverridesPath = "/var/db/com.apple.xpc.launchd";
+
         /// @brief Retrieves all launcher plist files from known paths.
         /// @param launchers Vector to store the found plist file paths.
         void getLauncherPaths(std::vector<std::string>& launchers);
+
+        /// @brief Loads the launchd override database into m_disabledOverrides.
+        /// launchctl enable/disable records the state there rather than in the job plist.
+        void loadDisabledOverrides();
 
         /// @brief Parses a plist file and extracts service information.
         /// @param path Path to the plist file.
@@ -117,6 +124,9 @@ class LaunchdProvider
         /// @param arrayElements Vector of strings to join.
         /// @return Joined string.
         std::string joinArrayElements(const std::vector<std::string>& arrayElements);
+
+        /// @brief Disabled state by launchd label, as recorded in the override database.
+        std::map<std::string, bool> m_disabledOverrides;
 
         /// @brief Pointer to the file system wrapper implementation.
         std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper;
