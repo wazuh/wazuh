@@ -27,27 +27,10 @@ constexpr std::string_view STANDARD_RULESET_CONSUMER_ID = "cti:catalog:consumer:
 /// @brief Consumer document ID for the IOC enrichment data in `.wazuh-cti-consumers`
 constexpr std::string_view IOC_ENRICHMENT_CONSUMER_ID = "cti:catalog:consumer:iocs";
 
-/**
- * @brief Structure to hold policy resources retrieved from the indexer.
- *
- * This structure encapsulates the various components of a policy,
- * including KVDBs, decoders, integration decoders, and the policy itself.
- */
-struct PolicyResources
-{
-    std::vector<json::Json> kvdbs {};       ///< List of KVDB
-    std::vector<json::Json> decoders {};    ///< List of decoder
-    std::vector<json::Json> filters {};     ///< List of filters
-    std::vector<json::Json> integration {}; ///< List of integration decoder
-    json::Json policy {};                   ///< The policy
-};
-
 class IWIndexerConnector
 {
 
 public:
-    using IocRecordCallback = std::function<void(const std::string&, const std::string&)>;
-
     virtual ~IWIndexerConnector() = default;
 
     /**
@@ -57,43 +40,6 @@ public:
      * @param data The data content to be indexed as a string view (JSON format)
      */
     virtual void index(std::string_view index, std::string_view data) = 0;
-
-    /**
-     * @brief Retrieves policy resources associated with the specified space.
-     *
-     * @param space The name of the space from which to retrieve policy resources
-     * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
-     *        When provided, the PIT will include `.wazuh-cti-consumers` and the consumer document
-     *        will be verified as `ready` within the PIT snapshot to ensure consistency.
-     * @return An optional PolicyResources. Returns std::nullopt if the consumer is provided and is not ready.
-     * @throws std::invalid_argument if the space name is empty or invalid
-     * @throws IndexerConnectorException if there is an error during retrieval
-     * @throws std::exception for other unexpected errors
-     */
-    virtual std::optional<PolicyResources>
-    getPolicy(std::string_view space, const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) = 0;
-
-    /**
-     * @brief Retrieves the policy hash and enabled status for the specified space.
-     *
-     * Queries the wazuh-threatintel-policies index to retrieve the SHA-256 hash stored in
-     * the space.hash.sha256 field and the enabled status from document.enabled
-     * for the given space name.
-     *
-     * @param space The name of the space to retrieve the information for
-     * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
-     *        When provided, a PIT will include `.wazuh-cti-consumers` and the consumer document
-     *        will be verified as `ready` within the PIT snapshot to ensure consistency.
-     * @return An optional pair containing the SHA-256 hash and enabled status.
-     *         Returns std::nullopt if the consumer is provided and is not ready.
-     * @throws std::invalid_argument if the space name is empty
-     * @throws IndexerConnectorException if the query returns zero or more than one result, or if required fields are
-     * missing
-     * @throws std::exception for other unexpected errors
-     */
-    virtual std::optional<std::pair<std::string, bool>>
-    getPolicyHashAndEnabled(std::string_view space,
-                            const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) = 0;
 
     /**
      * @brief Checks if a policy exists for the specified space.
@@ -114,44 +60,6 @@ public:
      * @return true if IOC index is available, false otherwise
      */
     virtual bool existsIocDataIndex() = 0;
-
-    /**
-     * @brief Retrieves per-type IOC hashes from the IOC hashes manifest.
-     *
-     * Reads `__ioc_type_hashes__` from `wazuh-threatintel-enrichments` and returns all available
-     * `hash.sha256` values for the supported IOC types.
-     *
-     * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
-     *        When provided, a PIT will include `.wazuh-cti-consumers` and the consumer document
-     *        will be verified as `ready` within the PIT snapshot to ensure consistency.
-     * @return An optional map(type -> sha256 hash). Returns std::nullopt if the consumer is provided and is not ready.
-     * @throws IndexerConnectorException if the manifest is missing or invalid
-     */
-    virtual std::optional<std::unordered_map<std::string, std::string>>
-    getIocTypeHashes(const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) = 0;
-
-    /**
-     * @brief Streams IOC documents for a specific IOC type.
-     *
-     * The connector handles query creation and pagination. For each valid
-     * IOC record, it invokes `onIoc` with key (`document.name`) and serialized
-     * value (`document` JSON).
-     *
-     * @param iocType IOC type (e.g. connection, url_domain, url_full, hash_md5, hash_sha1, hash_sha256)
-     * @param batchSize Number of documents requested per page
-     * @param onIoc Callback invoked for each valid IOC record
-     * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
-     *        When provided, the PIT will include `.wazuh-cti-consumers` and the consumer document
-     *        will be verified as `ready` within the PIT snapshot to ensure consistency.
-     * @return An optional number of IOC documents delivered to the callback.
-     *         Returns std::nullopt if the consumer is provided and is not ready.
-     * @throws IndexerConnectorException if there is an indexer/query error
-     */
-    virtual std::optional<std::size_t>
-    streamIocsByType(std::string_view iocType,
-                     std::size_t batchSize,
-                     const IocRecordCallback& onIoc,
-                     const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) = 0;
 
     /**
      * @brief Pre-flight check: is the consumer ready for synchronization?

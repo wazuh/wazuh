@@ -80,6 +80,10 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // CM Sync
     addUnit<size_t>(key::CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES, "WAZUH_CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES", 3);
     addUnit<size_t>(key::CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL, "WAZUH_CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL", 5);
+    // Content manager (shared by the ruleset and IOC topics)
+    addUnit<std::string>(key::CONTENT_PIT_KEEP_ALIVE, "WAZUH_CONTENT_PIT_KEEP_ALIVE", "5m");
+    addUnit<size_t>(key::CONTENT_CONSUMER_CACHE_SECONDS, "WAZUH_CONTENT_CONSUMER_CACHE_SECONDS", 5);
+    addUnit<size_t>(key::CONTENT_CONSUMER_RETRY_INTERVAL, "WAZUH_CONTENT_CONSUMER_RETRY_INTERVAL", 60);
     // Remote Configuration Sync
     addUnit<size_t>(
         key::REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES, "WAZUH_REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES", 3);

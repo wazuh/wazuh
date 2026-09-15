@@ -322,6 +322,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/fastqueue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/dumper)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wiconnector)
+add_subdirectory(${ENGINE_SOURCE_DIR}/cmcontent)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmstore)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmcrud)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmsync)
@@ -360,6 +361,7 @@ target_link_libraries(wazuh-engine
     cmstore::cmstore
     cmcrud::cmcrud
     cmsync::cmsync
+    cmcontent::cmcontent
     rawevtindexer::rawevtindexer
     confremote::confremote
 )
