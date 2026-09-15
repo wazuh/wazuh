@@ -159,9 +159,18 @@ int w_token_cli_parse_opt(token_cli_opts_t *opts, int c, const char *arg, FILE *
         return 1;
     case OPT_TTL:
         opts->requested = 1;
-        /* The same N[d|h|m|s] grammar as the <force> timers of the configuration */
+        /* The same N[d|h|m|s] grammar as the <force> timers of the configuration. get_time_interval()
+         * refuses a duration whose unit would not fit in a time_t, so "999999999999999d" is an error
+         * here and not a number that wrapped on the way in */
         if (arg == NULL || get_time_interval((char *) arg, &interval) != 0 || interval <= 0) {
             fprintf(err, "ERROR: --ttl must be a positive duration such as 30d, 12h, 45m or 90s\n");
+            return -1;
+        }
+        /* authd refuses it as well (etoken_mint_prepare()), but an operator should not have to send
+         * a request and read a 9025 back to find out that a lifetime is out of range */
+        if ((long) interval > ETOKEN_MAX_TTL) {
+            fprintf(err, "ERROR: --ttl must not exceed %ld seconds (%ld days)\n",
+                    ETOKEN_MAX_TTL, ETOKEN_MAX_TTL / 86400);
             return -1;
         }
         opts->ttl = (long) interval;

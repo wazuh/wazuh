@@ -29,6 +29,11 @@ _REFUSED_PREFIX = 'Enrollment token refused: '
 # The API's `timeframe` format (api/validator.py _timeframe_type), narrower than what
 # get_timeframe_in_seconds() takes: a single unit group, so `30d` but not `1d12h`.
 _TIMEFRAME = re.compile(r'^\d+[dhms]?$')
+# authd's own ceiling on a lifetime (ETOKEN_MAX_TTL, os_auth/include/enrollment_token_store.h): 3650 days.
+# A token's expiry is an absolute time in a signed time_t, so a lifetime past this cannot be stored --
+# authd refuses it too, and answering here means the caller reads "not a valid timeframe" instead of a
+# refusal that travelled through the socket.
+_MAX_TTL_SECONDS = 315360000
 
 # What purge_tokens() accepts, mirroring authd's own scopes (etoken_purge_t)
 _PURGE_SCOPES = ('dead', 'all')
@@ -134,7 +139,7 @@ def create_token(address: str, port: int = None, prefix: str = None, ttl: str = 
     Raises
     ------
     WazuhError(1411)
-        `ttl` is not a valid timeframe.
+        `ttl` is not a valid timeframe, or is longer than the 3650 days authd accepts.
 
     Returns
     -------
@@ -148,7 +153,7 @@ def create_token(address: str, port: int = None, prefix: str = None, ttl: str = 
     if prefix is not None:
         arguments['prefix'] = prefix
     if ttl is not None:
-        if not _TIMEFRAME.match(str(ttl)) or get_timeframe_in_seconds(str(ttl)) <= 0:
+        if not _TIMEFRAME.match(str(ttl)) or not 0 < get_timeframe_in_seconds(str(ttl)) <= _MAX_TTL_SECONDS:
             raise WazuhError(1411, extra_message=str(ttl))
         arguments['ttl'] = get_timeframe_in_seconds(str(ttl))
     if max_uses is not None:

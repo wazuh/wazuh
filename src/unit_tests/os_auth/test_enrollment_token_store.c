@@ -97,9 +97,10 @@ static int teardown_group(void **state) {
  *            yet, an absent store logs one, and every refusal of a token is one
  *   minfo    any case that mints or revokes
  *   mdebug2  only where a use is consumed or released
- *   mwarn    only where a load fails
- *   merror   only on an I/O or CSPRNG failure, which no case injects -- so it is never declared,
- *            and a case that starts emitting one will say so loudly instead of hiding it
+ *   mwarn    only where a load fails, or where an entry of the file is dropped
+ *   merror   the storage failures (break_storage(), which points the store at a path that cannot be
+ *            written) and the mint refusals that come from the request itself. Still NOT declared
+ *            anywhere else, so a case that starts emitting one says so loudly instead of hiding it
  */
 #define expect_any_mdebug1() expect_any_always(__wrap__mdebug1, formatted_msg)
 #define expect_any_mdebug2() expect_any_always(__wrap__mdebug2, formatted_msg)
@@ -956,8 +957,9 @@ static void test_a_pending_revocation_of_a_vanished_token_is_dropped(void **stat
 static void test_a_store_above_the_token_cap_is_not_loaded(void **state) {
     (void)state;
     cJSON *data = NULL;
+    cJSON *root = NULL;
+    cJSON *array = NULL;
     char id[ETOKEN_ID_CHARS + 1] = {0};
-    FILE *fp = NULL;
     int i;
 
     expect_any_mdebug1();
@@ -968,19 +970,40 @@ static void test_a_store_above_the_token_cap_is_not_loaded(void **state) {
     copy_string(id, sizeof(id), data, "id");
     cJSON_Delete(data);
 
-    /* A file inherited from somewhere else with more tokens than this authd can ever write back */
-    fp = fopen(STORE_PATH, "w");
-    assert_non_null(fp);
-    fprintf(fp, "{\"version\":1,\"tokens\":[");
+    /* A file inherited from somewhere else with more tokens than this authd can ever write back.
+     * Every id has to be a real one -- canonical base64url of 16 bytes -- or the entries would be
+     * dropped one at a time and the file would load empty, which says nothing about the cap */
+    root = cJSON_CreateObject();
+    cJSON_AddNumberToObject(root, "version", 1);
+    array = cJSON_AddArrayToObject(root, "tokens");
+
     for (i = 0; i <= ETOKEN_MAX_TOKENS; i++) {
-        fprintf(fp,
-                "%s{\"id\":\"%022d\",\"secret\":null,\"adr\":\"wazuh-1\",\"pin\":null,"
-                "\"ca\":\"x\",\"created\":1,\"expires\":99999999999,\"max_uses\":0,\"uses\":0,"
-                "\"revoked\":false,\"description\":null}",
-                i ? "," : "", i);
+        cJSON *item = cJSON_CreateObject();
+        uint8_t id_bytes[W_ETOKEN_ID_BYTES];
+        char *token_id = NULL;
+
+        memset(id_bytes, 0, sizeof(id_bytes));
+        memcpy(id_bytes, &i, sizeof(i));
+        token_id = w_b64url_encode(id_bytes, sizeof(id_bytes));
+        assert_non_null(token_id);
+
+        cJSON_AddStringToObject(item, "id", token_id);
+        cJSON_AddNullToObject(item, "secret");
+        cJSON_AddStringToObject(item, "adr", "wazuh-1");
+        cJSON_AddNullToObject(item, "pin");
+        cJSON_AddStringToObject(item, "ca", "x");
+        cJSON_AddNumberToObject(item, "created", 1);
+        cJSON_AddNumberToObject(item, "expires", 99999999999.0);
+        cJSON_AddNumberToObject(item, "max_uses", 0);
+        cJSON_AddNumberToObject(item, "uses", 0);
+        cJSON_AddBoolToObject(item, "revoked", 0);
+        cJSON_AddNullToObject(item, "description");
+        cJSON_AddItemToArray(array, item);
+        os_free(token_id);
     }
-    fprintf(fp, "]}");
-    assert_int_equal(fclose(fp), 0);
+
+    assert_int_equal(json_fwrite(STORE_PATH, root), 0);
+    cJSON_Delete(root);
 
     /* Refused, and what was already loaded is kept: the alternative is an authd holding a store it
      * cannot persist (issue #39078, H08) */
@@ -1171,6 +1194,128 @@ static void test_mint_is_refused_when_the_store_would_be_too_big(void **state) {
     assert_int_equal(store_inode(), before);
 }
 
+/* --- Lifetimes and records the loader cannot read ----------------------------------------------- */
+
+static void test_a_lifetime_that_would_overflow_the_expiry_is_refused(void **state) {
+    (void)state;
+    etoken_mint_t mint;
+    cJSON *data = NULL;
+    struct stat statbuf;
+
+    expect_any_merror();
+
+    /* LONG_MAX seconds from now is not a far-off expiry, it is a NEGATIVE one: `now + ttl` wraps,
+     * and a negative `expires` is precisely what etoken_parse_entry() refuses. Minting it would
+     * write a file this very store cannot read back -- so the request never gets that far, and it
+     * is refused before an identifier or a secret is drawn */
+    build_mint(&mint, "wazuh-1", LONG_MAX, 0, NULL, 0);
+    assert_int_equal(etoken_store_create(&mint, time(NULL), &data), -1);
+    etoken_mint_free(&mint);
+    assert_null(data);
+
+    /* One second above the ceiling: the same refusal, and the reason it exists */
+    build_mint(&mint, "wazuh-1", ETOKEN_MAX_TTL + 1, 0, NULL, 0);
+    assert_int_equal(etoken_store_create(&mint, time(NULL), &data), -1);
+    etoken_mint_free(&mint);
+    assert_null(data);
+
+    /* Nothing in memory, and no file at all: a refused mint leaves the store as it found it */
+    assert_int_equal(etoken_store_count(), 0);
+    assert_int_equal(stat(STORE_PATH, &statbuf), -1);
+}
+
+static void test_the_longest_accepted_lifetime_is_minted_and_reloads(void **state) {
+    (void)state;
+    cJSON *data = NULL;
+    cJSON *root = NULL;
+    cJSON *array = NULL;
+    char id[ETOKEN_ID_CHARS + 1] = {0};
+    time_t now = time(NULL);
+    double expires;
+
+    expect_any_mdebug1();
+    expect_any_mdebug2();
+    expect_any_minfo();
+
+    /* The ceiling itself is a lifetime like any other: what the bound refuses is what cannot be
+     * represented, not a long-lived token */
+    data = mint_token("wazuh-1", ETOKEN_MAX_TTL, 0, NULL, 0);
+    copy_string(id, sizeof(id), data, "id");
+    cJSON_Delete(data);
+
+    array = read_store_file(&root);
+    expires = cJSON_GetObjectItem(cJSON_GetArrayItem(array, 0), "expires")->valuedouble;
+    cJSON_Delete(root);
+
+    assert_true(expires > 0);
+    assert_true(expires >= (double)(now + ETOKEN_MAX_TTL));
+
+    /* And the file is one the loader accepts, which is the whole point of the bound */
+    assert_int_equal(etoken_store_load(), 0);
+    assert_int_equal(etoken_store_count(), 1);
+    assert_int_equal(etoken_store_consume(id, time(NULL)), ETOKEN_USE_OK);
+}
+
+static void test_an_entry_with_a_negative_expiry_is_dropped_and_the_others_load(void **state) {
+    (void)state;
+    cJSON *data = NULL;
+    cJSON *root = NULL;
+    cJSON *array = NULL;
+    cJSON *poisoned = NULL;
+    char first[ETOKEN_ID_CHARS + 1] = {0};
+    char second[ETOKEN_ID_CHARS + 1] = {0};
+    char *text = NULL;
+    FILE *fp = NULL;
+
+    expect_any_mdebug1();
+    expect_any_mdebug2();
+    expect_any_minfo();
+    expect_any_mwarn();
+
+    data = mint_token("wazuh-1", 3600, 0, NULL, 0);
+    copy_string(first, sizeof(first), data, "id");
+    cJSON_Delete(data);
+
+    data = mint_token("wazuh-2", 3600, 0, NULL, 0);
+    copy_string(second, sizeof(second), data, "id");
+    cJSON_Delete(data);
+
+    /* The record a wrapped lifetime used to leave behind, put BETWEEN the two good tokens: a copy
+     * of a real entry with another id and the negative expiry the addition produced. Refusing the
+     * whole file over it is what turned one bad record into "no token enrolls anybody", on the
+     * master at its next restart and on every worker the file is synchronised to */
+    array = read_store_file(&root);
+    poisoned = cJSON_Duplicate(cJSON_GetArrayItem(array, 0), 1);
+    assert_non_null(poisoned);
+    assert_true(cJSON_ReplaceItemInObject(poisoned, "id", cJSON_CreateString(UNKNOWN_ID)));
+    assert_true(cJSON_ReplaceItemInObject(poisoned, "expires", cJSON_CreateNumber(-9223372035074776832.0)));
+    assert_true(cJSON_InsertItemInArray(array, 1, poisoned));
+
+    text = cJSON_PrintUnformatted(root);
+    assert_non_null(text);
+    cJSON_Delete(root);
+
+    fp = fopen(STORE_PATH, "w");
+    assert_non_null(fp);
+    assert_true(fputs(text, fp) >= 0);
+    fclose(fp);
+    free(text);
+    touch_store_file(time(NULL) + 2);
+
+    /* The file loads. The only thing lost is the record nobody could have used anyway */
+    assert_int_equal(etoken_store_reload_if_changed(), 1);
+    assert_int_equal(etoken_store_count(), 2);
+    assert_int_equal(etoken_store_consume(first, time(NULL)), ETOKEN_USE_OK);
+    assert_int_equal(etoken_store_consume(second, time(NULL)), ETOKEN_USE_OK);
+    assert_int_equal(etoken_store_consume(UNKNOWN_ID, time(NULL)), ETOKEN_USE_NOT_FOUND);
+
+    /* Those uses were persisted, so the file has been rewritten from memory: the entry the loader
+     * could not read is gone from it too, and the store stays self-consistent */
+    array = read_store_file(&root);
+    assert_int_equal(cJSON_GetArraySize(array), 2);
+    cJSON_Delete(root);
+}
+
 /* --- The endpoint the token carries ------------------------------------------------------------ */
 
 static void test_adr_build_drops_the_defaults(void **state) {
@@ -1239,6 +1384,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_mint_is_refused_when_the_store_is_full_of_live_tokens, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_mint_purges_the_dead_to_make_room, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_mint_is_refused_when_the_store_would_be_too_big, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_a_lifetime_that_would_overflow_the_expiry_is_refused, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_the_longest_accepted_lifetime_is_minted_and_reloads, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_an_entry_with_a_negative_expiry_is_dropped_and_the_others_load, setup_store, teardown_store),
         cmocka_unit_test(test_adr_build_drops_the_defaults),
     };
 

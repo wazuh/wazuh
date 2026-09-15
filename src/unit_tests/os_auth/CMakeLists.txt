@@ -42,6 +42,12 @@ list(APPEND os_auth_names "test_enrollment_token_store")
 # Real files in a temporary directory: the store's file IS its contract (mode, atomicity, and what
 # it never contains), so nothing about the I/O is stubbed away here.
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
+# The store under concurrent enrollments. Deliberately WITHOUT the logging wrappers: cmocka keeps
+# their expectations in thread-local storage, so a log line emitted from a spawned thread would take
+# the process down instead of failing a case. With the real logger the threads behave as authd's do
+# and cmocka is only ever reached from the main thread.
+list(APPEND os_auth_names "test_enrollment_token_concurrency")
+list(APPEND os_auth_flags " ")
 # The token CLI is a client of auth.sock: the three socket calls are wrapped so the JSON it sends and the
 # answer it reads are both under test; --show-token runs the real codec.
 list(APPEND os_auth_names "test_token_cli")

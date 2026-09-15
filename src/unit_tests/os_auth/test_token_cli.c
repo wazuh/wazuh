@@ -160,6 +160,18 @@ static void test_parse_actions_and_suboptions(void **state) {
     assert_int_equal(parse_argv(&opts, s.err, 4, ttl_zero), -1);
     char *ttl_bad[] = {"authd", "--create-enrollment-token", "--ttl", "x"};
     assert_int_equal(parse_argv(&opts, s.err, 4, ttl_bad), -1);
+    // A duration whose unit does not fit a time_t: get_time_interval() refuses the multiplication
+    // instead of wrapping it into a number that no longer says what was typed.
+    char *ttl_overflow[] = {"authd", "--create-enrollment-token", "--ttl", "999999999999999d"};
+    assert_int_equal(parse_argv(&opts, s.err, 4, ttl_overflow), -1);
+    // Representable, but past what a token's expiry may be: refused here so the operator does not
+    // have to send the request and read a 9025 back.
+    char *ttl_over_cap[] = {"authd", "--create-enrollment-token", "--ttl", "3651d"};
+    assert_int_equal(parse_argv(&opts, s.err, 4, ttl_over_cap), -1);
+    // The ceiling itself is accepted: what is refused is what cannot be stored, not a long life.
+    char *ttl_cap[] = {"authd", "--create-enrollment-token", "--ttl", "3650d"};
+    assert_int_equal(parse_argv(&opts, s.err, 4, ttl_cap), 1);
+    assert_int_equal(opts.ttl, ETOKEN_MAX_TTL);
     char *port_bad[] = {"authd", "--create-enrollment-token", "--port", "70000"};
     assert_int_equal(parse_argv(&opts, s.err, 4, port_bad), -1);
     char *uses_bad[] = {"authd", "--create-enrollment-token", "--max-uses", "-1"};
@@ -169,6 +181,7 @@ static void test_parse_actions_and_suboptions(void **state) {
 
     streams_close(&s);
     assert_non_null(strstr(s.err_buf, "--ttl must be a positive duration"));
+    assert_non_null(strstr(s.err_buf, "--ttl must not exceed 315360000 seconds"));
     assert_non_null(strstr(s.err_buf, "--port must be between 1 and 65535"));
     assert_non_null(strstr(s.err_buf, "--max-uses needs a numeric argument"));
     assert_non_null(strstr(s.err_buf, "only one of"));
