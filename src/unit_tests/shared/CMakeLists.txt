@@ -374,7 +374,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap,audit_send -Wl,--wrap,popen \
 endif()
 
 list(APPEND shared_tests_names "test_privsep_op")
-list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getgrnam_r,--wrap=getpid")
+list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getgrnam_r,--wrap=getpid \
+                                -Wl,--wrap=getrlimit,--wrap=setrlimit ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_mq_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,sleep \
