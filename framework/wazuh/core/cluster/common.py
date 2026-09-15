@@ -2090,6 +2090,11 @@ class IndexerTaskManager:
 
             except Exception as e:
                 self.logger.warning(f"Indexer is not configured or unavailable: {e}.")
+                # The warning above is deliberately terse (it fires on every transient
+                # unavailability, e.g. the indexer still starting up), but a deterministic
+                # bug hides behind the same message with no way to tell them apart. The
+                # traceback is one debug line away instead of invisible.
+                self.logger.debug("Indexer availability check failed.", exc_info=True)
 
                 if active_tasks:
                     await self._stop_indexer_tasks(active_tasks)
