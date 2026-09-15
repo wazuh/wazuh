@@ -10,9 +10,9 @@
   - agent:id:012
   effect: allow
 
-# 012 holds agent:read and not agent:read_key: GET /agents/012/key must be denied.
+# 012 holds agent:read and not agent:read_secrets: GET /agents/012/key must be denied.
 - actions:
-  - agent:read_key
+  - agent:read_secrets
   resources:
   - agent:id:002
   - agent:id:004

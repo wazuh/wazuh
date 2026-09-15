@@ -346,6 +346,31 @@ def test_secret_read_is_audited_through_the_fallback_logger(db_setup):
     assert 'secret_read' in audit.info.call_args[0][0]
 
 
+def test_agent_keys_read_is_audited(db_setup):
+    """The key endpoint answers with the secret itself, so it records its own disclosure."""
+    db_setup.current_user.set('auditor')
+    audit = MagicMock()
+
+    with patch.object(db_setup.logger, 'hasHandlers', return_value=False), \
+            patch.object(db_setup, 'framework_logger', audit):
+        db_setup.audit_agent_keys_read(['001', '003'])
+
+    audit.info.assert_called_once()
+    line = audit.info.call_args[0][0]
+    assert 'secret_read' in line and "user='auditor'" in line and 'agent.key (001, 003)' in line
+
+
+def test_no_agent_key_served_is_not_audited(db_setup):
+    """A denied or empty read discloses nothing, so it must not leave a disclosure line."""
+    audit = MagicMock()
+
+    with patch.object(db_setup.logger, 'hasHandlers', return_value=False), \
+            patch.object(db_setup, 'framework_logger', audit):
+        db_setup.audit_agent_keys_read([])
+
+    audit.info.assert_not_called()
+
+
 def test_mask_sensitive_config_raw_xml_with_deny_rule(db_setup):
     """Verifies that cluster.key is masked when the read-secrets action is denied."""
     db_setup.rbac.set({

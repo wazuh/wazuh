@@ -1,7 +1,7 @@
 ---
 - actions:
   - agent:read
-  - agent:read_key
+  - agent:read_secrets
   - agent:delete
   - agent:restart
   - agent:upgrade
@@ -21,9 +21,9 @@
   - agent:id:011
   effect: allow
 
-# 011 holds agent:read and not agent:read_key: GET /agents/011/key must be denied.
+# 011 holds agent:read and not agent:read_secrets: GET /agents/011/key must be denied.
 - actions:
-  - agent:read_key
+  - agent:read_secrets
   resources:
   - agent:id:001
   - agent:id:003

@@ -649,6 +649,27 @@ def _audit_secret_read(payload):
         _audit_logger().warning(f"Could not audit a read of sensitive configuration values: {exception}")
 
 
+def audit_agent_keys_read(agent_ids: list):
+    """Record that agents' pre-shared keys were served in clear, naming the agents and never a key.
+
+    The configuration endpoints get this from `mask_sensitive_config`, which never sees this
+    disclosure: the key endpoint answers with the secret itself instead of a payload to mask. Best
+    effort for the same reason as `_audit_secret_read`: the caller is entitled to the answer, so a
+    failure here must not turn a permitted read into an error.
+
+    Parameters
+    ----------
+    agent_ids : list
+        Agents whose key was served. Nothing is recorded when empty.
+    """
+    try:
+        if agent_ids:
+            _audit_logger().info(f"secret_read: user='{current_user.get()}' served in clear: "
+                                 f"agent.key ({', '.join(agent_ids)})")
+    except Exception as exception:  # pragma: no cover - defensive
+        _audit_logger().warning(f"Could not audit a read of agent keys: {exception}")
+
+
 def _build_xml_mask_pattern(path: str) -> re.Pattern:
     """Build a compiled regex pattern to locate a value in a nested XML structure.
 

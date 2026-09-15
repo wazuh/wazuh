@@ -353,7 +353,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | DELETE | `/agents/enrollment-tokens` | Purge enrollment tokens: `status=dead` (default) removes the ones that can no longer enrol anybody, `status=all` empties the store |
 | PUT | `/agents/{agent_id}/restart` | Restart agent (v5.0.0+) |
 | PUT | `/agents/{agent_id}/reload` | Reload agent config (v5.0.0+) |
-| GET | `/agents/{agent_id}/key` | Get agent key |
+| GET | `/agents/{agent_id}/key` | Get agent key. Requires `agent:read_secrets` over that agent, not `agent:read`; serving the key is logged as `secret_read` |
 | DELETE | `/agents/{agent_id}/group` | Remove from all groups |
 | PUT | `/agents/{agent_id}/group/{group_id}` | Assign to group |
 | DELETE | `/agents/{agent_id}/group/{group_id}` | Remove from group |

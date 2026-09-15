@@ -87,14 +87,14 @@ get_rbac_actions:
           - GET /agents/summary/status
           - GET /groups/{group_id}/agents
           - GET /overview/agents
-      agent:read_key:
-        description: Access the key of agents (the pre-shared secret stored in client.keys)
+      agent:read_secrets:
+        description: Read the agents' pre-shared keys -- the secrets stored in client.keys -- in clear
         resources:
           - agent:id
           - agent:group
         example:
           actions:
-            - agent:read_key
+            - agent:read_secrets
           resources:
             - agent:id:*
           effect: allow

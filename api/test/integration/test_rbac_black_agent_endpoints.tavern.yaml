@@ -140,7 +140,7 @@ stages:
    response:
       <<: *permission_denied
 
- - name: Try get key agent 011, which has agent:read but not agent:read_key (Denied)
+ - name: Try get key agent 011, which has agent:read but not agent:read_secrets (Denied)
    request:
      verify: False
      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/011/key"
