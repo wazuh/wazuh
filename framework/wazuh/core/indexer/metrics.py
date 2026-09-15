@@ -66,6 +66,11 @@ class MetricsIndex:
             raise_on_error=False,
         )
         if failed:
+            # async_bulk() with the default stats_only=False returns failed as the list of
+            # per-document error responses, not a count: formatting it with %d raises inside
+            # the logging module itself, which silently discards the message instead of
+            # reporting the real indexer rejection reason.
             self._logger.warning(
-                "Metrics bulk index on '%s': %d indexed, %d failed", index, success, failed
+                "Metrics bulk index on '%s': %d indexed, %d failed. First errors: %s",
+                index, success, len(failed), failed[:5],
             )
