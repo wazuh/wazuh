@@ -824,6 +824,22 @@ All notable changes to this project will be documented in this file.
 - Added the `security:revoke` action to the `PUT /security/user/revoke` endpoint. ([#26255](https://github.com/wazuh/wazuh/pull/26255))
 
 
+## [v4.10.5]
+
+### Manager
+
+#### Fixed
+
+- Hardened RSA decryption to reject malformed ciphertext blobs. ([#36243](https://github.com/wazuh/wazuh/issues/36243))
+- Improved cluster merged file parameter validation to prevent directory escape. ([#38375](https://github.com/wazuh/wazuh/pull/38375))
+- Improved `tmp_file` path validation in cluster DAPI. ([#38376](https://github.com/wazuh/wazuh/pull/38376))
+- Improved cluster non-merged file path validation during worker file processing. ([#38377](https://github.com/wazuh/wazuh/pull/38377))
+- Improved cluster worker file path validation. ([#38378](https://github.com/wazuh/wazuh/pull/38378))
+- Improved destination path validation when uploading CDB list, rule, and decoder files. ([#38379](https://github.com/wazuh/wazuh/pull/38379))
+- Improved cluster master validation of the files received from worker nodes. ([#38380](https://github.com/wazuh/wazuh/pull/38380))
+- Fixed a remote-command configuration validation bypass where upper- or mixed-case XML element names let command `localfile` and `wodle` blocks pass the `remote_commands` restriction. ([#38381](https://github.com/wazuh/wazuh/pull/38381))
+
+
 ## [v4.10.4]
 
 ### Manager
