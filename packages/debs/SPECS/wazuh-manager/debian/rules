@@ -63,6 +63,11 @@ override_dh_install:
 	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-manager.service
 	install -m 0644 src/init/templates/wazuh-manager.service ${TARGET_DIR}/usr/lib/systemd/system/
 
+	# Copying healthcheck timer and its oneshot service
+	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-manager-healthcheck.service
+	install -m 0644 src/init/templates/wazuh-manager-healthcheck.service ${TARGET_DIR}/usr/lib/systemd/system/
+	install -m 0644 src/init/templates/wazuh-manager-healthcheck.timer ${TARGET_DIR}/usr/lib/systemd/system/
+
 	# Generating permission restoration file for postinstall
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
 

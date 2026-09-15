@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodic Wazuh manager daemon healthcheck
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+Unit=wazuh-manager-healthcheck.service
+
+[Install]
+WantedBy=timers.target

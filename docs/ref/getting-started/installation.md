@@ -186,6 +186,28 @@ Verify the server is running:
 sudo systemctl status wazuh-manager
 ```
 
+### Daemon healthcheck
+
+`wazuh-manager.service` is `Type=forking` with `KillMode=process` and `RemainAfterExit=yes`, and it supervises seven independent daemons. Its unit state stays `active` once the start command has succeeded, whether one daemon has since died or all seven have. A dead `wazuh-manager-apid` is therefore invisible to `systemctl status wazuh-manager`.
+
+The package installs a separate timer for that. `wazuh-manager-healthcheck.timer` runs the `Type=oneshot` `wazuh-manager-healthcheck.service` every minute, which is `bin/wazuh-manager-control status`. That command exits non-zero when any daemon it checks is not running, which leaves the oneshot unit `failed` until a later run succeeds:
+
+```bash
+systemctl list-timers wazuh-manager-healthcheck.timer
+systemctl is-failed wazuh-manager-healthcheck
+systemctl status wazuh-manager-healthcheck
+```
+
+The check skips `wazuh-manager-apid` on a node whose `node_type` is not `master`, since the API only runs on the master node. The timer itself behaves identically on master and worker nodes.
+
+The package enables and starts the timer, so no action is needed beyond the commands above to inspect it. The check does not distinguish a daemon that died from a manager that was never started or was stopped on purpose: it reports a failure in both cases, including on a fresh install before `systemctl start wazuh-manager` has been run for the first time. Disable the timer on a host where the manager is deliberately kept stopped:
+
+```bash
+sudo systemctl disable --now wazuh-manager-healthcheck.timer
+```
+
+`wazuh-manager-control status` runs under the same `var/start-script-lock` that `start`, `stop` and `restart` take, and waits up to 40 seconds for it before giving up with `ERROR: Another instance is locking this process.` and a non-zero exit. A healthcheck run that overlaps a manager restart or a package upgrade can therefore wait on that lock and then report a failure that reflects the lock, not the daemons; in the other direction, a healthcheck holding the lock delays an operator's `start` or `stop` by up to the length of one status sweep.
+
 ### Change the default API passwords
 
 The manager ships two Server API users. Both are linked to the `administrator` role and both are created with a password equal to the username the first time the API starts (`framework/wazuh/rbac/default/users.yaml`):

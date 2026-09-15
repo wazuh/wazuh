@@ -265,6 +265,13 @@ case "$1" in
         fi
     done
 
+    # Enable and start the periodic healthcheck timer that surfaces a dead daemon through systemd.
+    if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
+        systemctl daemon-reload > /dev/null 2>&1
+        systemctl enable wazuh-manager-healthcheck.timer > /dev/null 2>&1
+        systemctl start wazuh-manager-healthcheck.timer > /dev/null 2>&1
+    fi
+
     # Remove old service file /etc/systemd/system/wazuh-manager.service if present
     if [ -f /etc/systemd/system/wazuh-manager.service ]; then
         rm -f /etc/systemd/system/wazuh-manager.service

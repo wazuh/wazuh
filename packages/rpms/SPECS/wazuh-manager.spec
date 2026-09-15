@@ -87,6 +87,9 @@ install -m 0755 src/init/templates/wazuh-manager-rh.init ${RPM_BUILD_ROOT}%{_ini
 mkdir -p ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-manager.service
 install -m 0644 src/init/templates/wazuh-manager.service ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
+sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-manager-healthcheck.service
+install -m 0644 src/init/templates/wazuh-manager-healthcheck.service ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
+install -m 0644 src/init/templates/wazuh-manager-healthcheck.timer ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
 
 # Add configuration scripts
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/
@@ -424,6 +427,12 @@ fi
 
 if [ $1 = 0 ]; then
 
+  # Stop the healthcheck timer first: it runs wazuh-manager-control status, which would report
+  # every daemon down once the services below are stopped.
+  if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
+    systemctl disable --now wazuh-manager-healthcheck.timer > /dev/null 2>&1 || true
+  fi
+
   # Stop the services before uninstall the package
   # Check for systemd
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
@@ -513,6 +522,13 @@ if [ -f %{_sysconfdir}/systemd/system/wazuh-manager.service ]; then
   systemctl daemon-reload > /dev/null 2>&1
 fi
 
+# Enable and start the periodic healthcheck timer that surfaces a dead daemon through systemd.
+if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
+  systemctl daemon-reload > /dev/null 2>&1
+  systemctl enable wazuh-manager-healthcheck.timer > /dev/null 2>&1
+  systemctl start wazuh-manager-healthcheck.timer > /dev/null 2>&1
+fi
+
 if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   rm -f %{_localstatedir}/tmp/wazuh.restart
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
@@ -545,6 +561,8 @@ rm -fr %{buildroot}
 %defattr(-,root,wazuh-manager)
 %config(missingok) %{_initrddir}/wazuh-manager
 /usr/lib/systemd/system/wazuh-manager.service
+/usr/lib/systemd/system/wazuh-manager-healthcheck.service
+/usr/lib/systemd/system/wazuh-manager-healthcheck.timer
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}
 %attr(440, root, wazuh-manager) %{_localstatedir}/VERSION.json
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/api
