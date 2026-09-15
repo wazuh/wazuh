@@ -428,11 +428,7 @@ class MetricsSnapshotTasks:
                                 "name": os_fields.get("name"),
                                 "version": os_fields.get("version"),
                                 "platform": os_fields.get("platform"),
-                                "full": os_fields.get("uname"),
                             },
-                        },
-                        "config": {
-                            "hash": {"md5": doc.get("configSum")},
                         },
                     },
                     "cluster": {

@@ -1975,36 +1975,32 @@ class TestDropNone:
 
 
 # ---------------------------------------------------------------------------
-# _normalize_agent_doc – no empty config.hash (FR-1 fix)
+# _normalize_agent_doc – no wazuh.agent.config field
 # ---------------------------------------------------------------------------
 
 
-class TestNormalizeAgentDocNoEmptyHash:
-    """config.hash must not appear when configSum is absent from the raw doc."""
+class TestNormalizeAgentDocNoConfigField:
+    """wazuh.agent.config is not emitted: it has no field in the wazuh-metrics-agents
+    index template (dynamic: strict), and configSum is never populated by
+    /agents/all in 5.x, so any document carrying it would be rejected outright."""
 
     @pytest.mark.asyncio
-    async def test_config_hash_absent_when_configsum_missing(self):
-        """wazuh.agent.config.hash is absent from the output when configSum is not in the raw doc."""
-        # AGENT_DOC_FULL does not contain 'configSum', matching real v5.0 agent rows.
+    async def test_config_absent_when_configsum_missing(self):
+        """wazuh.agent.config is absent when configSum is not in the raw doc."""
         tasks = _make_tasks()
         with _agents_http_patch([dict(AGENT_DOC_FULL)]):
             docs = await tasks._collect_agents(TIMESTAMP)
 
-        agent_config = docs[0].get("wazuh", {}).get("agent", {}).get("config", {})
-        assert "hash" not in agent_config, (
-            "wazuh.agent.config.hash should be absent when configSum is not in the raw doc; "
-            f"got: {agent_config.get('hash')}"
-        )
+        assert "config" not in docs[0]["wazuh"]["agent"]
 
     @pytest.mark.asyncio
-    async def test_config_hash_present_when_configsum_provided(self):
-        """wazuh.agent.config.hash.md5 is present and correct when configSum IS supplied."""
+    async def test_config_absent_even_when_configsum_provided(self):
+        """wazuh.agent.config stays absent even if a raw doc happens to carry configSum."""
         tasks = _make_tasks()
         with _agents_http_patch([{**AGENT_DOC_FULL, "configSum": "deadbeef"}]):
             docs = await tasks._collect_agents(TIMESTAMP)
 
-        agent_config = docs[0]["wazuh"]["agent"]["config"]
-        assert agent_config["hash"]["md5"] == "deadbeef"
+        assert "config" not in docs[0]["wazuh"]["agent"]
 
 
 # ---------------------------------------------------------------------------
