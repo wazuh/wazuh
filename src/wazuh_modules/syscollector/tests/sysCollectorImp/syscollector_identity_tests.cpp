@@ -180,6 +180,33 @@ class SyscollectorIdentityTest : public ::testing::Test
             sqlite3_close(db);
         }
 
+        /// @brief Seeds one OS row, so a packages recovery has a real DataContext to attach.
+        /// Written from outside the module for the same reason seedMarker() is: DBSync holds the
+        /// database open while it is initialized.
+        static void seedOsRow()
+        {
+            sqlite3* db = nullptr;
+            ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+            const std::string statement =
+                "INSERT OR REPLACE INTO dbsync_osinfo (hostname, architecture, os_name, os_version, "
+                "os_codename, os_major, os_minor, os_patch, os_platform, os_type, os_kernel_name, "
+                "os_kernel_release, os_kernel_version, sync, checksum, version) VALUES "
+                "('test-host', 'x86_64', 'Ubuntu', '22.04.2 LTS', 'jammy', '22', '04', '2', 'ubuntu', "
+                "'linux', 'Linux', '5.15.0-69-generic', '#76-Ubuntu', 1, 'seedchecksum', 1);";
+
+            char* errMsg = nullptr;
+            ASSERT_EQ(sqlite3_exec(db, statement.c_str(), nullptr, nullptr, &errMsg), SQLITE_OK)
+                    << (errMsg ? errMsg : "");
+
+            if (errMsg)
+            {
+                sqlite3_free(errMsg);
+            }
+
+            sqlite3_close(db);
+        }
+
         /// @brief Writes a row straight into table_metadata, which is where the marker lives.
         static void seedMarker(int64_t agentId)
         {
@@ -473,4 +500,92 @@ TEST_F(SyscollectorIdentityTest, DisabledVDLaneDoesNotClaimTheVDMarker)
     EXPECT_TRUE(Syscollector::instance().getMetadataValue("vd_synced_agent_id", vdMarker));
     EXPECT_EQ(vdMarker, 0);
     EXPECT_EQ(readMarker(), 1);
+}
+
+// A recovery session has to carry the same DataContext a scan would attach, and
+// processVDDataContext() is the only thing that builds it. It runs once per scan cycle -- a path
+// recovery never takes -- so before this it was simply never invoked for a recovered VD table,
+// and the session left with one table's rows and nothing else.
+//
+// Observed through the two calls processVDDataContext() always makes on the VD protocol before it
+// can decide there is anything to attach: the wipe of any stale context, and the read of the
+// pending DataValues it derives the required tables from.
+TEST_F(SyscollectorIdentityTest, VDRecoveryAttachesTheDataContext)
+{
+    // Seeded between two init()s: DBSync owns the database while the module is up, and the row has
+    // to exist before processVDDataContext() reads it.
+    initModule(true, true, /* os */ true);
+    Syscollector::instance().destroy();
+    seedOsRow();
+    initModule(true, true, /* os */ true);
+
+    // processVDDataContext() declines to build context until the first VD sync has landed, which
+    // on a real agent is long past by the time an integrity check can find a mismatch.
+    ASSERT_TRUE(Syscollector::instance().updateMetadataValue("vd_first_sync_completed", 1));
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+
+    // The recovered packages row, as the queue would hand it back. getDataContextTables() maps a
+    // packages CREATE to the OS table, so this is what makes the OS row above required context.
+    PersistedData pendingPackage;
+    pendingPackage.id = "seeded-package-id";
+    pendingPackage.index = SYSCOLLECTOR_SYNC_INDEX_PACKAGES;
+    pendingPackage.operation = Operation::CREATE;
+    pendingPackage.is_data_context = false;
+    EXPECT_CALL(*vdProtocol, fetchPendingItems(true))
+    .WillRepeatedly(Return(std::vector<PersistedData> {pendingPackage}));
+
+    EXPECT_CALL(*vdProtocol, clearAllDataContext()).Times(::testing::AtLeast(1));
+
+    // The assertion that matters: the OS row goes out tagged as DataContext on the system index.
+    // Without it the session would carry the packages and nothing to evaluate them against.
+    EXPECT_CALL(*vdProtocol,
+                persistDifference(_, _, SYSCOLLECTOR_SYNC_INDEX_SYSTEM, _, _, /* isDataContext */ true))
+    .Times(::testing::AtLeast(1));
+
+    // The context rides the lane its DataValues do, so the plain protocol stays out of it.
+    EXPECT_CALL(*plainProtocol, clearAllDataContext()).Times(0);
+    EXPECT_CALL(*plainProtocol, fetchPendingItems(_)).Times(0);
+
+    EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
+                    PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ true));
+}
+
+// The context step belongs to the VD lane only. A plain table has no DataContext rule to honour,
+// and running the step for one would clear the context of a VD session still queued beside it.
+TEST_F(SyscollectorIdentityTest, PlainRecoveryLeavesTheVDContextAlone)
+{
+    initModule(true, true, /* os */ true);
+    ASSERT_TRUE(Syscollector::instance().updateMetadataValue("vd_first_sync_completed", 1));
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+
+    EXPECT_CALL(*vdProtocol, clearAllDataContext()).Times(0);
+    EXPECT_CALL(*plainProtocol, clearAllDataContext()).Times(0);
+
+    EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
+                    USERS_TABLE, SYSCOLLECTOR_SYNC_INDEX_USERS, /* syncNow */ true));
+}
+
+// A deferred recovery is the identity path: checkAgentIdentity() queues every VD table and clears
+// the first-sync marker, so what finally goes out is a VDFirst carrying the whole inventory. There
+// is no context to add there, and building it per table would only wipe what the previous table
+// queued.
+TEST_F(SyscollectorIdentityTest, DeferredVDRecoveryDoesNotAttachContext)
+{
+    initModule(true, true, /* os */ true);
+    ASSERT_TRUE(Syscollector::instance().updateMetadataValue("vd_first_sync_completed", 1));
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*vdProtocol, clearAllDataContext()).Times(0);
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).Times(0);
+    EXPECT_CALL(*plainProtocol, clearAllDataContext()).Times(0);
+
+    EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
+                    PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ false));
 }

@@ -22,7 +22,8 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          # Full history: the filter below diffs the merge commit against its parent.
+          fetch-depth: 0
 
       - name: Check version skip
         id: check_version
@@ -39,6 +40,10 @@ jobs:
         uses: dorny/paths-filter@v3
         id: filter
         with:
+          # An empty token forces the action to diff the PR's merge commit with git.
+          # With a token it always asks the API for the file list, and on a merge this
+          # large the API answers "this diff is taking too long to generate".
+          token: ''
           filters: |
             rbac_defaults:
               - 'framework/wazuh/rbac/default/**'

@@ -12,6 +12,7 @@
 #include "ipersistent_queue.hpp"
 #include "ipersistent_queue_storage.hpp"
 #include "agent_sync_protocol_types.hpp"
+#include "monotonicCondition.hpp"
 
 #include <string>
 #include <array>
@@ -19,7 +20,6 @@
 #include <vector>
 #include <optional>
 #include <mutex>
-#include <condition_variable>
 #include <thread>
 #include <chrono>
 #include <memory>
@@ -100,7 +100,7 @@ class PersistentQueue : public IPersistentQueue
         std::mutex m_storageMutex;
 
         /// @brief Condition variable signalling the flush thread.
-        std::condition_variable m_cv;
+        MonotonicCondition m_cv;
 
         /// @brief Double buffer (ping-pong): producers write to m_buffers[m_currentIdx],
         ///        the flush thread swaps the index and drains the old slot.

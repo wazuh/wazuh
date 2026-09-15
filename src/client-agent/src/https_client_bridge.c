@@ -872,7 +872,12 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
         return;
     }
 
-    if (w_ref_parent_folder(wpk_file)) {
+    /* w_ref_parent_folder() alone only rejects ".." components: a value with a subdirectory
+     * separator (e.g. "sub/file.wpk") would pass it, reach the unlink() below, and only get caught
+     * afterwards by w_fopen_nofollow()'s internal w_is_bare_filename() check on the destination
+     * open -- by which point the unlink() has already run against that subdirectory path. Requiring
+     * a bare filename here closes that gap before the unlink(). */
+    if (!w_is_bare_filename(wpk_file)) {
         merror("https_client: remote_upgrade task %s: wpk_file '%s' is not a safe filename; aborting.",
                task_id, wpk_file);
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
@@ -886,9 +891,72 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
     snprintf(dest_path, sizeof(dest_path), "%s\\%s", INCOMING_DIR, wpk_file);
 #endif
 
-    if (w_copy_file(wpk_path, dest_path, 'b', NULL, 0) < 0) {
+    /* A prior legacy-path upgrade (delivered by wazuh-execd, running as root) can leave a
+     * same-named WPK behind in INCOMING_DIR, owned by root and not writable by the unprivileged
+     * user this process runs as. Unlinking first turns the write into a fresh file creation --
+     * which only needs write permission on the directory, not on whatever pre-existing file may
+     * already be sitting at this path -- instead of an open-for-write on a file this process may
+     * not own (#38833). */
+    if (unlink(dest_path) < 0 && errno != ENOENT) {
+        merror("https_client: remote_upgrade task %s: could not remove stale WPK at '%s': %s (%d); aborting.",
+               task_id, dest_path, strerror(errno), errno);
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        return;
+    }
+
+    FILE *fsrc = wfopen(wpk_path, "rb");
+    if (!fsrc) {
+        merror("https_client: remote_upgrade task %s: could not open downloaded WPK '%s'; aborting.",
+               task_id, wpk_path);
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        return;
+    }
+
+    /* Not w_copy_file()/fopen(dst, "wb"): a symlink left under INCOMING_DIR would be followed and
+     * its target overwritten with the WPK contents. Mirrors the hardening already applied to the
+     * legacy path's WCOM uncompress() (os_execd/src/wcom.c, #38200). */
+    FILE *fdst = w_fopen_nofollow(INCOMING_DIR, wpk_file, "wb");
+    if (!fdst) {
+        const int open_errno = errno;
+        fclose(fsrc);
+        if (open_errno == ELOOP) {
+            merror("https_client: remote_upgrade task %s: refused to stage the WPK at '%s': the path is a symbolic link; aborting.",
+                   task_id, dest_path);
+        } else {
+            merror("https_client: remote_upgrade task %s: could not stage the WPK at '%s'; aborting.",
+                   task_id, dest_path);
+        }
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        return;
+    }
+
+    char copy_buffer[4096];
+    size_t nread;
+    bool copy_ok = true;
+
+    while (nread = fread(copy_buffer, 1, sizeof(copy_buffer), fsrc), nread > 0) {
+        if (fwrite(copy_buffer, 1, nread, fdst) != nread) {
+            copy_ok = false;
+            break;
+        }
+    }
+
+    if (ferror(fsrc)) {
+        copy_ok = false;
+    }
+
+    fclose(fsrc);
+
+    /* A write failure that only surfaces at flush time (e.g. disk full right on close) must not
+     * be swallowed: fclose()'s return value is the only place that shows up. */
+    if (fclose(fdst) != 0) {
+        copy_ok = false;
+    }
+
+    if (!copy_ok) {
         merror("https_client: remote_upgrade task %s: could not stage the WPK at '%s'; aborting.",
                task_id, dest_path);
+        unlink(dest_path);
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
         return;
     }
@@ -1103,6 +1171,11 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
         minfo("Agent is reloading due to shared configuration changes.");
     }
 
+    /* reloadAgent() only dispatches the reload and returns immediately -- it says nothing about
+     * whether the daemons actually restarted yet. Forcing a /config report here would race that
+     * and could report the still-running old configuration under a falsely fresh timestamp. The
+     * real "new config is live" signal is agentd.c's needs_config_reload (set from the SIGUSR1
+     * wazuh-control sends once reloaded), so that's where the forced report belongs instead. */
     if (!reloadAgent()) {
         mdebug1("Could not dispatch the reload chain; releasing "
                 "the startup gate directly instead (no restart will arrive to do it).");
@@ -1875,6 +1948,20 @@ void w_https_client_stop(void)
         hc_destroy(g_https_client); /* Implies stop + join. */
         g_https_client = NULL;
     }
+}
+
+void w_https_client_notify_config_reload_completed(void)
+{
+    /* Hold the lock across the read+call, same as w_https_client_submit_event(): without it,
+     * w_https_client_stop() running on another thread could destroy the handle between our
+     * read of g_https_client and the hc_notify_now() call below. */
+    w_mutex_lock(&g_https_client_lock);
+
+    if (g_https_client != NULL && !g_https_client_stopping) {
+        hc_notify_now(g_https_client);
+    }
+
+    w_mutex_unlock(&g_https_client_lock);
 }
 
 int w_https_client_submit_event(const char *frame, size_t length)

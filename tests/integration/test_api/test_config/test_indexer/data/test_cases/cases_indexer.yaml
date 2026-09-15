@@ -12,6 +12,14 @@
             <port>1514</port>
           </legacy>
         </remote>
+        <cluster>
+          <key>0123456789abcdef0123456789abcdef</key>
+        </cluster>
+        <indexer>
+          <hosts>
+            <host>https://198.51.100.10:9200</host>
+          </hosts>
+        </indexer>
       </wazuh_config>
 
 - name: UPLOAD_TWO_BLOCKS_CONFIG_FIRST_BLOCK_NOT_ALLOWED
@@ -28,6 +36,14 @@
             <port>1514</port>
           </legacy>
         </remote>
+        <cluster>
+          <key>0123456789abcdef0123456789abcdef</key>
+        </cluster>
+        <indexer>
+          <hosts>
+            <host>https://198.51.100.10:9200</host>
+          </hosts>
+        </indexer>
       </wazuh_config>
 
 - name: UPLOAD_TWO_BLOCKS_CONFIG_SECOND_NOT_ALLOWED
@@ -44,4 +60,12 @@
             <port>1514</port>
           </legacy>
         </remote>
+        <cluster>
+          <key>0123456789abcdef0123456789abcdef</key>
+        </cluster>
+        <indexer>
+          <hosts>
+            <host>https://198.51.100.10:9200</host>
+          </hosts>
+        </indexer>
       </wazuh_config>

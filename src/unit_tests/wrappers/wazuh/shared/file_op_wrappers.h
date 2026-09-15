@@ -81,6 +81,8 @@ void expect_mkdir_ex(const char *path, int ret);
 
 int __wrap_w_ref_parent_folder(const char * path);
 
+int __wrap_w_is_bare_filename(const char * filename);
+
 int __wrap_cldir_ex(const char *name);
 
 int __wrap_cldir_ex_ignore(const char *name, const char ** ignore);

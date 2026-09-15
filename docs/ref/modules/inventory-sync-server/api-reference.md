@@ -271,7 +271,7 @@ Entries are sorted by name and every one carries its `description` and `unit`. F
 strings appear in a real dump: `counter`, `gauge_int` (the shard/lane depth levels), `pull`
 (the `server.*` transport levels, read at dump time), and `histogram` — a histogram's `value`
 is its observation count and its `summary` carries bucket-resolution percentiles (~12.5%
-relative error). The full metric catalog — each metric with the setting it helps size — is in
+relative error, clamped into the exact `[min, max]` of the same snapshot). The full metric catalog — each metric with the setting it helps size — is in
 [Metrics](metrics.md); where each sits in the pipeline is in the
 [architecture page](architecture.md#statistics-get-metrics). Counters accumulate for the life
 of the process (they survive the module's internal restart retries); there is no reset

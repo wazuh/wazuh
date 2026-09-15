@@ -63,7 +63,7 @@ monitoring — is now the Task Manager's, and its internal options were renamed 
 `wazuh_modules.manager_task_*`. An override left under the old name is **silently ignored**: the
 lookup compares the part before the first `.` as well as the part after it, so the old key simply
 never matches. The full list is in the
-[Task Manager configuration reference](../../ref/modules/task_manager/configuration.md#where-their-intervals-come-from).
+[Task Manager configuration reference](../../ref/modules/task_manager/configuration.md#where-their-settings-come-from).
 The agent keeps its own `monitord.*` keys.
 
 ---
@@ -205,7 +205,7 @@ For agents below v5.0.0, `remoted` streams the WPK bytes to the agent directly, 
 **Step 1: Authenticate:**
 
 ```bash
-TOKEN=$(curl -sk -u wazuh-wui:wazuh-wui -X POST \
+TOKEN=$(curl -sk -u <user>:<password> -X POST \
   "https://<manager_ip>:55000/security/user/authenticate?raw=true")
 ```
 

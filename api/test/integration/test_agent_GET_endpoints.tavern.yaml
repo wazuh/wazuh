@@ -239,10 +239,8 @@ stages:
     response:
       status_code: 400
       json:
-        error: 2003
-        # wazuh-db's raw backend error text (e.g. SQL fragments) must never reach the caller;
-        # only the generic wazuhdb-request message is expected here.
-        detail: 'Error in wazuhdb request'
+        <<: *error_spec
+        detail: "Invalid value for query parameter 'offset': must be less than or equal to 2147483647"
 
   - name: Try to show agents with a search value over the 1024-char limit
     request:
@@ -262,6 +260,8 @@ stages:
     response:
       status_code: 400
       json:
+        # wazuh-db's raw backend error text (e.g. SQL fragments) must never reach the caller;
+        # only the generic wazuhdb-request message is expected here.
         error: 2003
         detail: 'Error in wazuhdb request'
 
@@ -1562,21 +1562,17 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show groups with offset too large 99999999999 (valid)
+  - name: Try show groups with offset too large 99999999999
     request:
       verify: False
       <<: *get_agents_groups
       params:
         offset: 99999999999
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          affected_items: []
-          failed_items: []
-          total_affected_items: 4
-          total_failed_items: 0
+        <<: *error_spec
+        detail: "Invalid value for query parameter 'offset': must be less than or equal to 2147483647"
 
   - name: Try show groups with limit 0
     request:
@@ -1910,7 +1906,8 @@ stages:
     response:
       status_code: 400
       json:
-        error: 2003
+        <<: *error_spec
+        detail: "Invalid value for query parameter 'offset': must be less than or equal to 2147483647"
 
   - name: Try show agents with limit 0
     request:
@@ -2400,12 +2397,10 @@ stages:
       params:
         offset: 9999999999999999999
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          affected_items: []
-          total_affected_items: 1
+        <<: *error_spec
+        detail: "Invalid value for query parameter 'offset': must be less than or equal to 2147483647"
 
   - name: Try show agents with limit 0
     request:
@@ -2519,14 +2514,10 @@ stages:
       params:
         offset: 9999999999999999999
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          affected_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
-          failed_items: []
+        <<: *error_spec
+        detail: "Invalid value for query parameter 'offset': must be less than or equal to 2147483647"
 
   - name: Try get the files of a group with limit 0
     request:
@@ -3028,7 +3019,8 @@ stages:
     response:
       status_code: 400
       json:
-        error: 2003
+        <<: *error_spec
+        detail: "Invalid value for query parameter 'offset': must be less than or equal to 2147483647"
 
   - name: Try show agents with limit 0
     request:
@@ -3318,7 +3310,8 @@ stages:
     response:
       status_code: 400
       json:
-        error: 2003
+        <<: *error_spec
+        detail: "Invalid value for query parameter 'offset': must be less than or equal to 2147483647"
 
   - name: Try show agents with limit 0
     request:
@@ -3592,7 +3585,8 @@ stages:
     response:
       status_code: 400
       json:
-        error: 2003
+        <<: *error_spec
+        detail: "Invalid value for query parameter 'offset': must be less than or equal to 2147483647"
 
   - name: Try to show agents with limit 0
     request:

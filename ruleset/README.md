@@ -12,7 +12,7 @@ The ruleset includes compliance mapping with PCI DSS v3.1 and CIS.
 ## Directory structure
 
     ├── wazuh/ruleset
-    │ ├── mitre                # MITRE ATT&CK framework data (enterprise-attack.json)
+    │ ├── mitre                # MITRE ATT&CK Enterprise dataset (enterprise-attack.json, ATT&CK v19.2 from github.com/mitre/cti)
     │ ├── sca                 # Security Configuration Assessment created/updated by Wazuh
     │ ├── README.md
 

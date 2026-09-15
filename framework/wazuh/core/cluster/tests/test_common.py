@@ -825,6 +825,20 @@ async def test_handler_update_chunks_wdb(send_request_mock):
                                                         call('Wazuh-db response for chunk 1/5 was not "ok": 0'),
                                                         call('Wazuh-db response for chunk 2/5 was not "ok": 1')])
 
+    # Test chunk errors logged with debug level when 'chunk_errors_as_debug' is enabled
+    with patch('wazuh.core.cluster.common.send_data_to_wdb', new_callable=AsyncMock) as send_data_to_wdb_mock:
+        with patch.object(LoggerMock, "debug") as logger_debug_mock:
+            with patch.object(LoggerMock, "error") as logger_error_mock:
+                send_data_to_wdb_mock.return_value = {
+                    'updated_chunks': 2, 'time_spent': 6,
+                    'error_messages': {'chunks': [[0, 0], [1, 1]], 'others': ['other1']}}
+                await handler.update_chunks_wdb(
+                    data={'chunks': [0, 1, 2, 3, 4]}, info_type='agent-groups', logger=logger,
+                    error_command=b'ERROR', timeout=10, chunk_errors_as_debug=True)
+                logger_debug_mock.assert_has_calls([call('Wazuh-db response for chunk 1/5 was not "ok": 0'),
+                                                    call('Wazuh-db response for chunk 2/5 was not "ok": 1')])
+                logger_error_mock.assert_called_once_with('other1')
+
     # Test Exception
     send_request_mock.reset_mock()
     error_message = 'error'
@@ -1837,6 +1851,21 @@ def test_end_sending_agent_information(perf_counter_mock, json_loads_mock):
                 ) == (b'ok', b'Thanks')
             logger_error_mock.assert_called_once_with(
                 "Finished in 0.000s. Updated 10 chunks. There were 5 chunks with errors: error")
+
+        # A peer that keeps and retries the rejected chunks reports progress, not a failure.
+        with patch.object(logger, "info") as logger_info_mock:
+            with patch.object(logger, "error") as logger_error_mock:
+                json_loads_mock.return_value = {"updated_chunks": 10, "error_messages": "error",
+                                                "retrying_chunks": True}
+                assert cluster_common.end_sending_agent_information(
+                    logger,
+                    datetime.fromtimestamp(0),
+                    "response"
+                    ) == (b'ok', b'Thanks')
+                logger_info_mock.assert_called_once_with(
+                    "Finished in 0.000s. Updated 10 chunks. 5 chunks could not be applied yet and are being "
+                    "retried on the peer.")
+                logger_error_mock.assert_not_called()
 
 
 def test_error_receiving_agent_information():

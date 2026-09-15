@@ -672,8 +672,10 @@ async def test_worker_check_agent_groups_checksums(send_request_mock, event_loop
 @patch("wazuh.core.cluster.worker.WorkerHandler.recalculate_group_hash", return_value=AsyncMock())
 @patch('wazuh.core.cluster.worker.WorkerHandler.check_agent_groups_checksums', return_value='')
 @patch('wazuh.core.cluster.common.Handler.send_request', return_value='check')
-@patch('wazuh.core.cluster.common.Handler.update_chunks_wdb', return_value={'updated_chunks': 1})
-@patch('wazuh.core.cluster.common.Handler.get_chunks_in_task_id', return_value='chunks')
+@patch('wazuh.core.cluster.common.Handler.update_chunks_wdb',
+       return_value={'updated_chunks': 1, 'error_messages': []})
+@patch('wazuh.core.cluster.common.Handler.get_chunks_in_task_id',
+       return_value={'chunks': ['[{"data":[{"id":1,"group":["default"]}]}]']})
 async def test_worker_handler_recv_agent_groups_information(get_chunks_in_task_id_mock, update_chunks_wdb_mock,
                                                             send_request_mock, check_agent_groups_checksums_mock,
                                                             recalculate_group_hash_mock, event_loop):
@@ -697,24 +699,137 @@ async def test_worker_handler_recv_agent_groups_information(get_chunks_in_task_i
     worker_handler = get_worker_handler(event_loop)
     worker_handler.task_loggers['Agent-groups recv'] = logger
     worker_handler.task_loggers['Agent-groups recv full'] = logger_c
+    data = get_chunks_in_task_id_mock.return_value
 
     assert await worker_handler.recv_agent_groups_periodic_information(task_id=b'17',
                                                                        info_type='agent-groups') == 'check'
     get_chunks_in_task_id_mock.assert_called_once_with(b'17', b'syn_w_g_err')
-    update_chunks_wdb_mock.assert_called_once_with('chunks', 'agent-groups', logger, b'syn_w_g_err', 0)
-    send_request_mock.assert_called_once_with(command=b'syn_w_g_e', data=b'{"updated_chunks": 1}')
-    check_agent_groups_checksums_mock.assert_called_once_with('chunks', logger)
+    update_chunks_wdb_mock.assert_called_once_with(data, 'agent-groups', logger, b'syn_w_g_err', 0,
+                                                   chunk_errors_as_debug=True)
+    send_request_mock.assert_called_once_with(command=b'syn_w_g_e',
+                                              data=b'{"updated_chunks": 1, "error_messages": []}')
+    check_agent_groups_checksums_mock.assert_called_once_with(data, logger)
     assert 'Starting.' in logger._info
     assert 'Finished in 0.000s. Updated 1 chunks.' in logger._info
+    assert worker_handler.agent_groups_recv_generation == 1
+    assert worker_handler.agent_groups_generation_by_agent == {1: 1}
     reset_mock()
 
     assert await worker_handler.recv_agent_groups_entire_information(task_id=b'17', info_type='agent-groups') == 'check'
     get_chunks_in_task_id_mock.assert_called_once_with(b'17', b'syn_wgc_err')
-    update_chunks_wdb_mock.assert_called_once_with('chunks', 'agent-groups', logger_c, b'syn_wgc_err', 0)
-    send_request_mock.assert_called_once_with(command=b'syn_wgc_e', data=b'{"updated_chunks": 1}')
-    check_agent_groups_checksums_mock.assert_called_once_with('chunks', logger_c)
+    update_chunks_wdb_mock.assert_called_once_with(data, 'agent-groups', logger_c, b'syn_wgc_err', 0,
+                                                   chunk_errors_as_debug=True)
+    send_request_mock.assert_called_once_with(command=b'syn_wgc_e',
+                                              data=b'{"updated_chunks": 1, "error_messages": []}')
+    check_agent_groups_checksums_mock.assert_called_once_with(data, logger_c)
     assert 'Starting.' in logger_c._info
     assert 'Finished in 0.000s. Updated 1 chunks.' in logger_c._info
+    assert worker_handler.agent_groups_recv_generation == 2
+    assert worker_handler.agent_groups_generation_by_agent == {1: 2}
+
+    # When wazuh-manager-db rejects chunks, the retry is scheduled in the background with the first
+    # result, and the 'Finished' log already reflects that first attempt.
+    reset_mock()
+    with patch('wazuh.core.cluster.worker.WorkerHandler.retry_agent_groups_chunks',
+               return_value={'updated_chunks': 1, 'error_messages': []}) as retry_mock:
+        update_chunks_wdb_mock.return_value = {'updated_chunks': 0, 'error_messages': ['error']}
+        assert await worker_handler.recv_agent_groups_periodic_information(task_id=b'17',
+                                                                           info_type='agent-groups') == 'check'
+        # The retry runs detached; awaiting its task is deterministic, unlike polling the mock while
+        # asyncio.sleep advances (freezegun freezes the clock the plain asyncio loop reads).
+        await worker_handler.agent_groups_retry_task
+        retry_mock.assert_called_once_with(data, 'agent-groups', logger, b'syn_w_g_err', 0, 3,
+                                           {'updated_chunks': 0, 'error_messages': ['error']})
+        # The master is told the chunks are being retried, so it does not report them as failed.
+        send_request_mock.assert_called_once_with(
+            command=b'syn_w_g_e',
+            data=b'{"updated_chunks": 0, "error_messages": ["error"], "retrying_chunks": true}')
+        assert 'Finished in 0.000s. Updated 0 chunks.' in logger._info
+
+
+@pytest.mark.asyncio
+@patch('wazuh.core.cluster.worker.asyncio.sleep', new_callable=AsyncMock)
+async def test_worker_handler_retry_agent_groups_chunks(sleep_mock, event_loop):
+    """Check that rejected agent-groups chunks are retried until applied, aborted or exhausted."""
+
+    class LoggerMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self._info = []
+            self._warning = []
+
+        def info(self, info):
+            self._info.append(info)
+
+        def warning(self, warning):
+            self._warning.append(warning)
+
+    logger = LoggerMock()
+    worker_handler = get_worker_handler(event_loop)
+    data = {'chunks': ['[{"data":[{"id":1,"group":["default"]}]}]']}
+    first_result = {'updated_chunks': 0, 'error_messages': ['error']}
+
+    # The chunks are applied on the second retry.
+    worker_handler.agent_groups_generation_by_agent = {1: 1}
+    with patch('wazuh.core.cluster.common.Handler.update_chunks_wdb',
+               side_effect=[{'updated_chunks': 0, 'error_messages': ['error']},
+                            {'updated_chunks': 1, 'error_messages': []}]) as update_chunks_wdb_mock:
+        result = await worker_handler.retry_agent_groups_chunks(data, 'agent-groups', logger, b'syn_w_g_err',
+                                                                0, 1, first_result)
+        assert result == {'updated_chunks': 1, 'error_messages': []}
+        assert update_chunks_wdb_mock.call_count == 2
+        update_chunks_wdb_mock.assert_called_with(data, 'agent-groups', logger, b'syn_w_g_err', 0,
+                                                  chunk_errors_as_debug=True)
+        assert sleep_mock.await_args == call(2)
+        assert 'Agent-groups information was successfully applied on retry 2.' in logger._info
+
+    # A newer reception carrying data for the same agent stops the retries before any attempt.
+    logger._info.clear()
+    worker_handler.agent_groups_generation_by_agent = {1: 2}
+    with patch('wazuh.core.cluster.common.Handler.update_chunks_wdb') as update_chunks_wdb_mock:
+        result = await worker_handler.retry_agent_groups_chunks(data, 'agent-groups', logger, b'syn_w_g_err',
+                                                                0, 1, first_result)
+        assert result == first_result
+        update_chunks_wdb_mock.assert_not_called()
+        assert 'More recent agent-groups information was received for one of these agents. Stopping retries.' \
+               in logger._info
+
+    # A newer reception for an unrelated agent does not stop the retries.
+    logger._info.clear()
+    worker_handler.agent_groups_generation_by_agent = {1: 1, 2: 2}
+    with patch('wazuh.core.cluster.common.Handler.update_chunks_wdb',
+               side_effect=[{'updated_chunks': 0, 'error_messages': ['error']},
+                            {'updated_chunks': 1, 'error_messages': []}]) as update_chunks_wdb_mock:
+        result = await worker_handler.retry_agent_groups_chunks(data, 'agent-groups', logger, b'syn_w_g_err',
+                                                                0, 1, first_result)
+        assert result == {'updated_chunks': 1, 'error_messages': []}
+        assert update_chunks_wdb_mock.call_count == 2
+
+    # All the retries are exhausted: every attempt keeps chunk errors at debug level and a single
+    # warning naming the affected agents is logged instead.
+    logger._info.clear()
+    worker_handler.agent_groups_generation_by_agent = {1: 1}
+    with patch('wazuh.core.cluster.common.Handler.update_chunks_wdb',
+               return_value=first_result) as update_chunks_wdb_mock:
+        result = await worker_handler.retry_agent_groups_chunks(data, 'agent-groups', logger, b'syn_w_g_err',
+                                                                0, 1, first_result)
+        assert result == first_result
+        assert update_chunks_wdb_mock.call_count == worker_handler.agent_groups_mismatch_limit
+        assert update_chunks_wdb_mock.call_args_list == \
+               [call(data, 'agent-groups', logger, b'syn_w_g_err', 0, chunk_errors_as_debug=True)] * \
+               worker_handler.agent_groups_mismatch_limit
+        assert len(logger._warning) == 1
+        assert f'agent(s) 001 after {worker_handler.agent_groups_mismatch_limit} retries' in logger._warning[0]
+
+    # A successful retry does not log any warning.
+    logger._warning.clear()
+    worker_handler.agent_groups_generation_by_agent = {1: 1}
+    with patch('wazuh.core.cluster.common.Handler.update_chunks_wdb',
+               return_value={'updated_chunks': 1, 'error_messages': []}):
+        await worker_handler.retry_agent_groups_chunks(data, 'agent-groups', logger, b'syn_w_g_err',
+                                                       0, 1, first_result)
+        assert logger._warning == []
 
 
 @freeze_time('1970-01-01')

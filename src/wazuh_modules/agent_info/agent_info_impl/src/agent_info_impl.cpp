@@ -181,7 +181,7 @@ AgentInfoImpl::~AgentInfoImpl()
     m_logFunction(LOG_INFO, "AgentInfo destroyed.");
 }
 
-void AgentInfoImpl::start(int interval, int integrityInterval, std::function<bool()> shouldContinue)
+void AgentInfoImpl::start(int interval, int integrityInterval, const std::function<bool()>& shouldContinue)
 {
     m_logFunction(LOG_DEBUG,
                   "AgentInfo module started with interval: " + std::to_string(interval) +
@@ -189,8 +189,6 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
 
     // Load sync flags from database at startup
     loadSyncFlags();
-
-    std::unique_lock<std::mutex> lock(m_mutex);
 
     // Do NOT clear a stop that arrived while the module was still starting up. The
     // shutdown loop signals every module before joining any of them, so a stop can
@@ -208,27 +206,34 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
     // in that case, and the injected predicate is the only way to observe it.
     if (isShutdownInProgress())
     {
-        lock.unlock();
         m_logFunction(LOG_INFO, "AgentInfo start aborted: shutdown already in progress.");
         return;
     }
 
-    // Reset sync protocol stop flag to allow restarting operations
-    if (m_spSyncProtocol)
+    // Reset sync protocol stop flag to allow restarting operations. Under
+    // m_syncProtocolMutex and re-checked: stop() sets m_stopped and then takes this same
+    // mutex to call m_spSyncProtocol->stop(), so without both the reset can land after
+    // that stop() and leave the protocol permanently uninterruptible.
     {
-        m_spSyncProtocol->reset();
+        std::lock_guard<std::mutex> protocolLock(m_syncProtocolMutex);
+
+        if (m_spSyncProtocol && !isShutdownInProgress())
+        {
+            m_spSyncProtocol->reset();
+        }
     }
 
     // Initial delay before first run to allow other modules to start
-    m_cv.wait_for(lock, std::chrono::seconds(5), [this] { return m_stopped.load(); });
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_cv.wait_for(lock, std::chrono::seconds(5), [this] { return m_stopped.load(); });
+    }
 
     // Run at least once
     m_runLoopActive.store(true);
 
     do
     {
-        lock.unlock();
-
         try
         {
             populateAgentMetadata();
@@ -290,14 +295,13 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
         // (a different object entirely, in agent_info.cpp) with no synchronization at all.
         cleanupExpiredTasks(m_taskRegistryTtlSeconds, m_taskRegistryMaxEntries);
 
-        lock.lock();
-
         // If no shouldContinue function provided, use default behavior (continue until stopped)
         bool shouldLoop = shouldContinue ? shouldContinue() : !m_stopped;
 
         if (shouldLoop && !isShutdownInProgress())
         {
             // Wait for the interval or until stop is signaled
+            std::unique_lock<std::mutex> lock(m_mutex);
             m_cv.wait_for(lock, std::chrono::seconds(interval), [this] { return m_stopped.load(); });
         }
 

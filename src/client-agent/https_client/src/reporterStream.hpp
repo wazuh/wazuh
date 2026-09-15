@@ -24,6 +24,7 @@
 #include "sysSeams.hpp"
 
 #include <chrono>
+#include <mutex>
 #include <optional>
 #include <string>
 
@@ -50,9 +51,17 @@ class ReporterStream final
         /// the worker then).
         bool anyEnabled() const;
 
+        /// Whether forceConfigReportNow() and waking the reporter thread are worth calling
+        /// at all -- both are no-ops while this is false.
+        bool configReportEnabled() const;
+
         /// One iteration: run every due path when registered and not paused.
         /// Returns the delay until the next tick should run.
         std::chrono::milliseconds tick(Waiter& waiter, bool registered);
+
+        /// Makes the /config path due on the next tick instead of waiting out its full
+        /// interval. A no-op while the /config path itself is disabled.
+        void forceConfigReportNow();
 
     private:
         struct Path
@@ -60,10 +69,35 @@ class ReporterStream final
             std::string target;
             bool enabled {false};
             std::chrono::seconds interval {0};
-            std::chrono::steady_clock::time_point nextDue; // epoch => due immediately.
+
+            // Written together by forceConfigReportNow() (the callback thread) and read/written
+            // together by commitNextDue() (the reporter thread). Two independent atomics can't
+            // make "check forcedSinceLastRun, then decide whether to overwrite nextDue" one
+            // indivisible step -- a thread can always be preempted between its own check and
+            // store -- so this pair needs a real lock, not atomics. Low-frequency path, so the
+            // lock's cost doesn't matter.
+            //
+            // 0 => epoch => due immediately; toRep()/fromRep() (reporterStream.cpp) convert
+            // to/from steady_clock::time_point at the read/write edges.
+            std::chrono::steady_clock::rep nextDue {0};
+
+            /// Set by forceConfigReportNow() to flag a force that landed mid-send, so
+            /// commitNextDue() leaves the forced due-now in place instead of overwriting it.
+            bool forcedSinceLastRun {false};
+
+            /// Protects nextDue + forcedSinceLastRun as a single unit; see the comment above.
+            mutable std::mutex mtx;
         };
 
         void runPath(Path& path, Backoff& backoff, Waiter& waiter, std::optional<std::string> collected);
+
+        /// Commits `desired` to path.nextDue unless a concurrent forceConfigReportNow()
+        /// already re-armed it -- see path.mtx's comment for why this needs that lock.
+        void commitNextDue(Path& path, std::chrono::steady_clock::time_point desired);
+
+        /// Reads path.nextDue under path.mtx, for callers that don't also need forcedSinceLastRun.
+        std::chrono::steady_clock::rep loadNextDue(const Path& path) const;
+
         std::optional<std::string> stampedDocument(std::optional<std::string> collected) const;
         std::chrono::milliseconds sleepHint() const;
 

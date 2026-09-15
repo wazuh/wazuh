@@ -76,6 +76,17 @@ cat > "$NODE2/etc/wazuh-manager.conf" <<CONFIG
       <queue_size>131072</queue_size>
     </legacy>
   </remote>
+
+  <cluster>
+    <key>0123456789abcdef0123456789abcdef</key>
+    <port>1526</port>
+  </cluster>
+
+  <indexer>
+    <hosts>
+      <host>https://127.0.0.1:9200</host>
+    </hosts>
+  </indexer>
 </wazuh_config>
 CONFIG
 

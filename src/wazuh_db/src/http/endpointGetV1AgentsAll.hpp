@@ -43,6 +43,7 @@ class TEndpointGetV1AgentsAll final
         std::string register_ip;
         std::string disconnection_time;
         int64_t status_code;
+        std::string group;
 
         REFLECTABLE(MAKE_FIELD("id", &AgentData::id),
                     MAKE_FIELD("name", &AgentData::name),
@@ -60,7 +61,8 @@ class TEndpointGetV1AgentsAll final
                     MAKE_FIELD("lastKeepAlive", &AgentData::last_keepalive),
                     MAKE_FIELD("registerIP", &AgentData::register_ip),
                     MAKE_FIELD("disconnection_time", &AgentData::disconnection_time),
-                    MAKE_FIELD("status_code", &AgentData::status_code))
+                    MAKE_FIELD("status_code", &AgentData::status_code),
+                    MAKE_FIELD("group", &AgentData::group))
     };
 
 public:
@@ -81,7 +83,7 @@ public:
             "SELECT id, name, coalesce(ip, register_ip) as ip, connection_status as status, "
             "os_name, os_version, os_type, os_platform, version, date_add, "
             "os_major, os_minor, os_arch, last_keepalive, register_ip, "
-            "disconnection_time, status_code "
+            "disconnection_time, status_code, `group` "
             "FROM agent WHERE id > 0 ORDER BY id ASC;";
 
         DBStatement stmt(db, query);
@@ -108,6 +110,7 @@ public:
             agent.register_ip = stmt.template value<std::string>(14);
             agent.disconnection_time = stmt.template value<std::string>(15);
             agent.status_code = stmt.template value<std::int64_t>(16);
+            agent.group = stmt.template value<std::string>(17);
 
             agents.push_back(std::move(agent));
         }

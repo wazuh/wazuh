@@ -103,16 +103,9 @@ case "$1" in
         fi
     fi
 
-    # Remove/relocate existing SQLite databases
-    rm -f ${DIR}/var/db/cluster.db* || true
-    rm -f ${DIR}/var/db/.profile.db* || true
-    rm -rf ${DIR}/var/db/agents || true
-
-    if [ -f ${DIR}/var/db/global.db ]; then
-        mv ${DIR}/var/db/global.db ${DIR}/queue/db/
-        rm -f ${DIR}/var/db/global.db* || true
-        rm -f ${DIR}/var/db/.template.db || true
-    fi
+    # Nothing is cleaned out of var/db/ here: it holds mitre.db and nothing else
+    # in 5.x, and preinst refuses an upgrade from an earlier major, so no other
+    # file can reach it. Anything left at the old paths is ignored.
 
     if [ -f ${DIR}/queue/db/global.db ]; then
         chmod 660 ${DIR}/queue/db/global.db*

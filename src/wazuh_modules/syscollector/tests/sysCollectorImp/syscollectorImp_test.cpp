@@ -13,7 +13,9 @@
 #include <cstdio>
 #include <functional>
 #include <future>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <sqlite3.h>
 #include <thread>
 
@@ -111,7 +113,7 @@ void populateTestDb()
 }
 
 // Defines to replace inline JSON in EXPECT_CALLs
-#define EXPECT_CALL_HARDWARE_JSON R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})"
+#define EXPECT_CALL_HARDWARE_JSON R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":1000000,"memory_total":4000000,"memory_used":3000000})"
 #define EXPECT_CALL_OS_JSON R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601","os_type":"windows"})"
 #define EXPECT_CALL_NETWORKS_JSON R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})"
 #define EXPECT_CALL_PORTS_JSON R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])"
@@ -126,7 +128,7 @@ void populateTestDb()
 
 const auto expected_dbsync_hwinfo
 {
-    R"({"collector":"dbsync_hwinfo","data":{"event":{"changed_fields":[],"type":"created"},"host":{"cpu":{"cores":2,"name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","speed":2904},"memory":{"free":2257872,"total":4972208,"used":54},"serial_number":"Intel Corporation"}},"module":"inventory"})"
+    R"({"collector":"dbsync_hwinfo","data":{"event":{"changed_fields":[],"type":"created"},"host":{"cpu":{"cores":2,"name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","speed":2904},"memory":{"free":1000000,"total":4000000,"usage":0.75,"used":3000000},"serial_number":"Intel Corporation"}},"module":"inventory"})"
 };
 const auto expected_dbsync_osinfo
 {
@@ -351,7 +353,7 @@ static bool waitUntil(const std::function<bool()>& predicate,
 // Expected results for persist callback - shared across all tests
 static const auto expectedPersistHW
 {
-    R"({"checksum":{"hash":{"sha1":"06e5046d8e8b1605f81b648e1289a2cb2ad6e7b3"}},"host":{"cpu":{"cores":2,"name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","speed":2904},"memory":{"free":2257872,"total":4972208,"used":54},"serial_number":"Intel Corporation"}})"
+    R"({"checksum":{"hash":{"sha1":"05de049f5eaaf072b338a135039930089535cdc4"}},"host":{"cpu":{"cores":2,"name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","speed":2904},"memory":{"free":1000000,"total":4000000,"usage":0.75,"used":3000000},"serial_number":"Intel Corporation"}})"
 };
 static const auto expectedPersistOS
 {
@@ -2590,7 +2592,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"serial_number":" Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":" Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz ", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
+                                                                      R"({"serial_number":" Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":" Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz ", "memory_free":1000000,"memory_total":4000000,"memory_used":3000000})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":" x86_64", "hostname":" UBUNTU ","os_build":"  7601","os_major":"6  ","os_minor":"  1  ","os_name":" Microsoft Windows 7 ","os_distribution_release":"   sp1","os_version":"6.1.7601   ","os_type":" windows "})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -4458,7 +4460,7 @@ TEST_F(SyscollectorImpTest, schemaValidationAcceptsValidDataAfterCorrections)
 
     // Return valid hardware data (cpu_speed as integer, which our correction handles)
     const std::string validHardwareJson =
-        R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400","memory_free":2257872,"memory_total":4972208,"memory_used":54})";
+        R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400","memory_free":1000000,"memory_total":4000000,"memory_used":3000000})";
 
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(validHardwareJson)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
@@ -4703,23 +4705,189 @@ TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 }
 
-// End-to-end check that the per-table "ignore" lists (HW_IGNORED_FIELDS, PROCESSES_IGNORED_FIELDS,
-// NET_IFACE_IGNORED_FIELDS) actually suppress dbsync MODIFIED events across several scan cycles.
-// Hardware memory, process CPU times and network byte/packet counters change on every scan below
-// (as real monotonic counters do), while every other field stays constant: each collector must
-// still persist exactly once (the initial insert), never again on the following cycles.
-TEST_F(SyscollectorImpTest, ignoredCountersDoNotTriggerModifiedEventsAcrossScans)
+// host.memory.usage is not collected: it is derived from memory_used over memory_total. The schema
+// stores it as a fraction between 0 and 1, not as a 0-100 percentage.
+TEST_F(SyscollectorImpTest, hardwareMemoryUsageIsComputedAsFraction)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    const std::string hardwareJson =
+        R"({"serial_number":"Intel","cpu_speed":2688.0,"cpu_cores":2,"cpu_name":"Intel i5","memory_free":1000000,"memory_total":4000000,"memory_used":3000000})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(hardwareJson)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            if (index == "wazuh-states-inventory-hardware")
+            {
+                auto jsonData = nlohmann::json::parse(data);
+
+                EXPECT_TRUE(jsonData["host"]["memory"]["usage"].is_number());
+                EXPECT_DOUBLE_EQ(jsonData["host"]["memory"]["usage"].get<double>(), 0.75);
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+// A zero memory_total (reported by collectors that cannot read the value) must not divide.
+TEST_F(SyscollectorImpTest, hardwareMemoryUsageIsNullWhenTotalIsZero)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    const std::string hardwareJson =
+        R"({"serial_number":"Intel","cpu_speed":2688.0,"cpu_cores":2,"cpu_name":"Intel i5","memory_free":0,"memory_total":0,"memory_used":0})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(hardwareJson)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            if (index == "wazuh-states-inventory-hardware")
+            {
+                auto jsonData = nlohmann::json::parse(data);
+
+                EXPECT_TRUE(jsonData["host"]["memory"]["usage"].is_null());
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+// End-to-end check that the volatile counters stay current without being reported as changes.
+// Hardware memory, process CPU times and network byte/packet counters change on every scan below
+// (as real monotonic counters do), while every other field stays constant: each collector must
+// keep refreshing its state document on every cycle, and must report none of those cycles as a
+// change on the stateless path.
+TEST_F(SyscollectorImpTest, volatileCountersRefreshStateWithoutStatelessNoise)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    constexpr int64_t FIRST_MEMORY_FREE {1000000};
 
     int hwCallCount{0};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(testing::Invoke(
                                                                [&hwCallCount]()
     {
         auto data = nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON);
-        data["memory_free"] = 2257872 + (hwCallCount * 4096);
-        data["memory_used"] = 54 + hwCallCount;
+        data["memory_free"] = FIRST_MEMORY_FREE + (hwCallCount * 4096);
+        data["memory_used"] = 3000000 + hwCallCount;
         // dbsync_hwinfo.cpu_speed is a DOUBLE column; the shared fixture's plain "2904"
         // literal parses as a JSON integer, which permanently mismatches the DB-stored
         // value on every diff comparison. Force it to the float type the column expects.
@@ -4773,39 +4941,50 @@ TEST_F(SyscollectorImpTest, ignoredCountersDoNotTriggerModifiedEventsAcrossScans
     EXPECT_CALL(*spInfoWrapper, services()).Times(0);
     EXPECT_CALL(*spInfoWrapper, browserExtensions()).Times(0);
 
-    CallbackMockPersist wrapperPersist;
+    std::mutex countsMutex;
+    std::map<std::string, int> statefulCount;
+    std::map<std::string, int> statelessCount;
+    std::map<std::string, nlohmann::json> lastStateful;
+
     std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        [&countsMutex, &statefulCount, &lastStateful](const std::string&, Operation_t, const std::string & index,
+                                                      const std::string & data, uint64_t)
         {
-            wrapperPersist.callbackMock(id, operation, index, data, version);
+            std::lock_guard<std::mutex> lock{countsMutex};
+            ++statefulCount[index];
+            lastStateful[index] = nlohmann::json::parse(data);
         }
     };
 
-    // Exactly one persisted event per collector: the initial insert. None of the following
-    // scan cycles - which only ever change ignored fields - may produce a second (MODIFIED) event.
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-processes"), testing::_, testing::_)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-interfaces"), testing::_, testing::_)).Times(1);
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&countsMutex, &statelessCount](const std::string & payload)
+        {
+            const auto parsed = nlohmann::json::parse(payload);
+            std::lock_guard<std::mutex> lock{countsMutex};
+            ++statelessCount[parsed.at("collector").get<std::string>()];
+        }
+    };
 
     std::thread t
     {
-        [&spInfoWrapper, &callbackDataPersist]()
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
         {
             Syscollector::instance().init(spInfoWrapper,
-                                          reportFunction,
+                                          callbackDataDelta,
                                           callbackDataPersist,
                                           logFunction,
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          1, true, true, false, true, false, false, false, true, false, false, false, false, false, false);
+                                          1, true, true, false, true, false, false, false, true, false, false, false, false, false, true);
 
             Syscollector::instance().start();
         }
     };
 
-    // interval=1s: initial scan at t=0, second (noise-only-change) scan at ~t=1s.
+    // interval=1s: initial scan at t=0, further counter-only scans roughly once per second.
     std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
@@ -4813,6 +4992,28 @@ TEST_F(SyscollectorImpTest, ignoredCountersDoNotTriggerModifiedEventsAcrossScans
     {
         t.join();
     }
+
+    // Sanity check: more than one scan actually ran, otherwise the rest proves nothing.
+    ASSERT_GT(hwCallCount, 1);
+    ASSERT_GT(procCallCount, 1);
+    ASSERT_GT(netCallCount, 1);
+
+    // Every scan refreshes the state document, so the inventory keeps up with the host.
+    EXPECT_GT(statefulCount["wazuh-states-inventory-hardware"], 1);
+    EXPECT_GT(statefulCount["wazuh-states-inventory-processes"], 1);
+    EXPECT_GT(statefulCount["wazuh-states-inventory-interfaces"], 1);
+
+    // notifyOnFirstScan is enabled, so the initial insert is reported. Every scan after it only
+    // moves the volatile counters, and none of those is reported.
+    EXPECT_EQ(statelessCount["dbsync_hwinfo"], 1);
+    EXPECT_EQ(statelessCount["dbsync_processes"], 1);
+    EXPECT_EQ(statelessCount["dbsync_network_iface"], 1);
+
+    // The last state document carries a later value than the first scan's, which is the whole
+    // point: before this behavior the document stayed pinned to the first-scan snapshot.
+    ASSERT_TRUE(lastStateful.count("wazuh-states-inventory-hardware"));
+    EXPECT_GT(lastStateful["wazuh-states-inventory-hardware"]["host"]["memory"]["free"].get<int64_t>(),
+              FIRST_MEMORY_FREE);
 }
 
 // Windows reports interface_mtu as 4294967295 (UINT32_MAX) when the MTU is not available;
@@ -4995,7 +5196,7 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
 
     // Return any hardware data (content doesn't matter, mock will force failure)
     const std::string hardwareJson =
-        R"({"serial_number":"Intel Corporation", "cpu_speed":2688,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400","memory_free":2257872,"memory_total":4972208,"memory_used":54})";
+        R"({"serial_number":"Intel Corporation", "cpu_speed":2688,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400","memory_free":1000000,"memory_total":4000000,"memory_used":3000000})";
 
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(hardwareJson)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
@@ -5130,7 +5331,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsWhenValidatorNotFound)
     EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     const std::string hardwareJson =
-        R"({"serial_number":"Intel Corporation", "cpu_speed":2688,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400","memory_free":2257872,"memory_total":4972208,"memory_used":54})";
+        R"({"serial_number":"Intel Corporation", "cpu_speed":2688,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400","memory_free":1000000,"memory_total":4000000,"memory_used":3000000})";
 
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(hardwareJson)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));

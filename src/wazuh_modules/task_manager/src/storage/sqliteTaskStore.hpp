@@ -55,6 +55,13 @@ namespace task_manager::storage
      * The one consequence worth stating: a statement that throws rolls back the whole open batch,
      * so writes batched alongside it are lost too. They are re-derivable from the rows' own state
      * for the same reason, and the failure is logged loudly by the caller.
+     *
+     * WAL. Every operation releases its cursors before it returns -- see Session::releaseStatements(),
+     * which exists because leaving one open is an open read snapshot, and a snapshot stops SQLite
+     * from ever recycling a WAL frame. Two things back that up rather than depend on it:
+     * journal_size_limit, so a checkpointed WAL is truncated instead of kept at its high-water
+     * mark, and checkpointWal(), which the scheduler runs on its retention cadence and which
+     * reports a snapshot that is pinning the file instead of letting it grow in silence.
      */
     class SqliteTaskStore final : public ITaskStore
     {
@@ -117,6 +124,7 @@ namespace task_manager::storage
 
         // ---- maintenance ---------------------------------------------------------------------
         void flushWrites() override;
+        CheckpointStats checkpointWal() override;
         void vacuum() override;
         std::optional<std::string> getMetadata(const std::string& key) override;
         void setMetadata(const std::string& key, const std::string& value) override;
@@ -147,10 +155,50 @@ namespace task_manager::storage
             SQLite3Wrapper::Connection connection;
             std::array<std::unique_ptr<SQLite3Wrapper::Statement>, STATEMENT_COUNT> statements;
 
-            /// @brief Reset and return a statement, ready to be bound. Resetting on the way IN
-            ///        rather than out means a statement left mid-cursor by an early return or an
-            ///        exception is still clean for the next caller.
+            /// @brief Reset and return a statement, ready to be bound. Kept as a reset on the way
+            ///        IN, on top of releaseStatements() on the way out, so that a statement is
+            ///        clean for its next caller even if something ever slips past the release.
             SQLite3Wrapper::Statement& stmt(Stmt id);
+
+            /// @brief Reset every statement handed out since the last call, ending the cursors an
+            ///        operation opened.
+            ///
+            /// Resetting only on the way IN would keep the NEXT caller correct while leaving the
+            /// LAST one's cursor live, and most reads here stop as soon as they have their row --
+            /// every `step() != SQLITE_ROW` early return parks its statement mid-scan. Under WAL a
+            /// live cursor outside an explicit transaction IS an open read snapshot, and SQLite
+            /// will not recycle WAL frames a snapshot might still need.
+            ///
+            /// The scheduler's pass ends in minScheduleNextRun(), so the snapshot it left spanned
+            /// the whole sleep and every COMMIT of the following pass. The automatic checkpoint is
+            /// a wal hook that calls sqlite3_wal_checkpoint() on this same connection, which
+            /// declines with SQLITE_LOCKED while the connection has any read transaction of its
+            /// own open -- and the hook's result is discarded. So nothing was ever written back
+            /// into tasks.db, nothing complained, and the -wal file grew for the life of the
+            /// process: ~5 MB/h on an idle manager, reclaimed only by a restart.
+            void releaseStatements();
+
+            std::array<bool, STATEMENT_COUNT> handedOut {};
+        };
+
+        /// @brief Releases an operation's cursors however it leaves -- return or throw.
+        class ReleaseOnExit
+        {
+        public:
+            explicit ReleaseOnExit(Session& session) noexcept
+                : m_session {session}
+            {
+            }
+            ~ReleaseOnExit()
+            {
+                m_session.releaseStatements();
+            }
+
+            ReleaseOnExit(const ReleaseOnExit&) = delete;
+            ReleaseOnExit& operator=(const ReleaseOnExit&) = delete;
+
+        private:
+            Session& m_session;
         };
 
         /// @brief Run `fn` inside a transaction, holding the connection mutex.

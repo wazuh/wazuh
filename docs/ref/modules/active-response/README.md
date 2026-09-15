@@ -1,6 +1,6 @@
 # Active Response
 
-The **Active Response** module enables automated response actions triggered by security events detected by the Wazuh manager. When specific rules are triggered, the manager can execute scripts on agents to block IPs, disable accounts, or perform other security-relevant actions.
+The **Active Response** module enables automated response actions triggered by security events detected in the Wazuh Indexer. When an Alerting monitor matches, the response reaches the agent as a task and the agent executes a script to block IPs, disable accounts, or perform other security-relevant actions.
 
 Active Response is implemented through `wazuh-execd`, which receives commands from the manager, executes response scripts on the agent, and manages response lifecycle including timeouts for stateful responses.
 
@@ -18,15 +18,15 @@ Active Response is implemented through `wazuh-execd`, which receives commands fr
 
 Active Response operates in a manager-agent communication model:
 
-1. **Event Detection**: Manager's analysis engine detects events matching specific rules
-2. **Command Generation**: Manager generates an Active Response command with WCS metadata
+1. **Event Detection**: an Alerting monitor in the Wazuh Indexer matches an indexed event
+2. **Command Generation**: the monitor's Active Response channel writes a response document to `wazuh-active-responses`; `wazuh-manager-clusterd` reads it and creates one Task Manager task per target agent (see [Manager-side ingestion](architecture.md#manager-side-ingestion))
 3. **Agent Execution**: Agent's `wazuh-execd` receives the command and executes the appropriate script
 4. **Lifecycle Management**: For stateful responses, execd manages timeouts and automatic reversion
 
 ```
 ┌─────────────┐         ┌──────────────┐         ┌─────────────┐
 │   Manager   │ ──────> │ wazuh-execd  │ ──────> │  AR Script  │
-│  (Analysis) │  JSON   │   (Agent)    │  stdin  │ (block-ip)  │
+│ (Task relay)│  JSON   │   (Agent)    │  stdin  │ (block-ip)  │
 └─────────────┘         └──────────────┘         └─────────────┘
                                │                         │
                                │ Timeout Management      │ Firewall
@@ -165,7 +165,7 @@ Active Response uses a **metadata-driven approach** where all execution metadata
 - **No ar.conf needed**: Executable name, type, and timeout are embedded in the `wazuh.active_response` object
 - **WCS Compatibility**: Field names aligned with Wazuh Cloud Standards
 - **Simplified Configuration**: Reduces agent-side configuration complexity
-- **Centralized Metadata**: All execution parameters controlled by manager
+- **Centralized Metadata**: All execution parameters come from the notification channel
 
 ## Deduplication Mechanism
 
@@ -183,7 +183,7 @@ This prevents multiple concurrent blocks of the same IP or account.
 
 ### Configuration
 
-Active Response is configured from the Wazuh dashboard.
+Active Response is configured from the Wazuh dashboard: a notification channel of the Active Response type says what to run, and an Alerting monitor says when. There is no `<active-response>` section in the manager configuration; see [Configuration](configuration.md).
 
 ### Agent Execution
 
@@ -229,6 +229,7 @@ Log format:
 | Document | Description |
 |----------|-------------|
 | [Architecture](architecture.md) | Technical architecture, implementation details, and protocol specifications |
+| [Configuration](configuration.md) | Agent-side options, and where the manager-side settings live |
 | [Executables Reference](executables.md) | Complete inventory of Active Response executables with platform details |
 
 ## See Also

@@ -13,20 +13,47 @@ Size-based log rotation is the exception. It is not a task; see
 
 ## The three schedules
 
-| Schedule | Task type | Interval source | Default | Node scope |
+| Schedule | Task type | Window it applies | How often it runs | Node scope |
 | --- | --- | --- | --- | --- |
-| `agent_disconnect_sweep` | `agent_disconnect_sweep` | `<global><agents_disconnection_time>` | 900 s | master |
-| `agent_delete_old` | `agent_delete_old` | `wazuh_modules.manager_task_delete_old_agents` × 60 | 0 — **disabled** | master |
-| `log_rotate_daily` | `log_rotate_daily` | daily, at `00:00` + `wazuh_modules.manager_task_log_day_wait` | 00:00:10 local | any node |
+| `agent_disconnect_sweep` | `agent_disconnect_sweep` | `<global><agents_disconnection_time>` — 900 s | window ÷ 4, in [60 s, 300 s] — **225 s** at the default | master |
+| `agent_delete_old` | `agent_delete_old` | `agents_disconnection_time` + `wazuh_modules.manager_task_delete_old_agents` × 60 — **disabled** at 0 | the retention minutes ÷ 4, in [60 s, 3600 s] | master |
+| `log_rotate_daily` | `log_rotate_daily` | — | daily, at `00:00` + `wazuh_modules.manager_task_log_day_wait` — 00:00:10 local | any node |
 
-Note that the sweep's interval **is** `agents_disconnection_time`, which merely *defaults* to 900 —
-it is not a hardcoded fifteen minutes, and `remoted` reads the same `<global>` value for its own
+Note that the sweep's **window** is `agents_disconnection_time`, which merely *defaults* to 900 — it
+is not a hardcoded fifteen minutes, and `remoted` reads the same `<global>` value for its own
 purposes, so it is shared configuration rather than something this module owns.
 
-Interval and staleness threshold being one value has a consequence for the detection SLA: an agent
-that goes silent right after a sweep is not seen until the next one, so detection lands anywhere
-between one and two times `agents_disconnection_time`. Plan for `2 x agents_disconnection_time`, up
-to 30 minutes at the default.
+### Window and interval are not the same number
+
+The window is an *age* — how long an agent must have been silent. The interval is how often that age
+is applied. Keeping them apart is what bounds the detection SLA.
+
+They used to be one value, and the cost was a detection window of `[T, 2T]`: an agent that went
+silent just after a run waited out a whole second one, so a configured fifteen minutes delivered
+anywhere from fifteen to thirty. The interval is now derived from the window instead of being it:
+
+```
+interval = clamp(window / 4, 60 s, ceiling)   # then never coarser than the window itself
+```
+
+with a ceiling of 300 s for the disconnection sweep and 3600 s for retention deletion — the sweep is
+one `UPDATE` whose latency is visible in the API, while retention deletion re-reads the whole
+disconnected list per run to delete agents that have already been silent for hours.
+
+| `agents_disconnection_time` | Interval | An agent is marked `disconnected` within |
+| --- | --- | --- |
+| `4m` | 60 s | 4 m – 5 m |
+| `15m` (default) | 225 s | 15 m – 18 m 45 s |
+| `1h` | 300 s | 1 h – 1 h 5 m |
+
+The quarter bounds the overshoot at 25 %; the ceiling bounds it in absolute terms instead, so raising
+the threshold to quieten the log costs five minutes of imprecision rather than fifteen. Below the
+floor the interval collapses back to the window, which is the old behaviour and no worse than it.
+
+**The window itself is unchanged by any of this.** Which agents cross the threshold is decided by
+`agents_disconnection_time` alone; the interval decides only how promptly crossing it is noticed. The
+same derivation applies to `agent_delete_old`, whose window remains
+`agents_disconnection_time + delete_old_agents × 60`.
 
 The internal options are not shipped in any file: the manager reads only an empty overrides file, so
 the defaults above are the whole of their contract. Every option, including the ones that bound the
@@ -58,12 +85,15 @@ interacts with `agent_delete_old`'s batching, and the interaction is intended**:
 retention sweep holds a pending instance for the whole sweep, which suppresses its own next
 scheduled run until it finishes. Correct — a retention sweep should not start again while the
 previous one is still walking — but it means the effective interval under a large backlog is *however
-long the sweep takes*, not `delete_old_agents × 60`.
+long the sweep takes*, not the derived one.
+
+Overlap-skip is also why the shorter derived intervals cannot pile work up: a slot that comes due
+while the previous run is still going is forfeited, not queued.
 
 ### Missed runs coalesce
 
 After downtime spanning several slots, one instance is spawned and the next run advances to the next
-*future* slot. A manager down for a day does not wake up owing ninety-six disconnect sweeps.
+*future* slot. A manager down for a day does not wake up owing 384 disconnect sweeps.
 
 The slot grid itself survives the outage: the next run is computed from the missed slot, not from
 the moment the manager came back, so the cadence does not drift with every restart.
@@ -94,7 +124,8 @@ transition can straddle a restart.
 - **Lowering an interval** takes effect at the next restart. A stored next run that is further out
   than one whole interval from now cannot have been produced by the interval configured today, so it
   is recomputed. Raising an interval needs no correction: the stored slot merely falls sooner than
-  the new interval would place it, so it fires once early and re-anchors.
+  the new interval would place it, so it fires once early and re-anchors. Lowering
+  `agents_disconnection_time` lowers the derived interval with it, and the same rule applies.
 
 ---
 
