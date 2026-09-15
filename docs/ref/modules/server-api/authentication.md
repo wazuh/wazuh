@@ -54,10 +54,10 @@ The flag on its own does not grant the shipped mappings, which is easy to miss. 
 Both users are created with **the password shipped in `rbac/default/users.yaml`**, which is the username itself. They are reserved IDs (`<= MAX_ID_RESERVED`), so only another reserved user can change their password — `update_user` needs a `current_user` naming who is asking, which the API takes from the token's `sub`.
 
 The `administrator` role these two users carry is also the only one that receives `secrets_read`,
-the policy behind `cluster:read_secrets`. An `rbac.db` seeded **before** that policy existed does not
+the policy behind `cluster:read_secrets` and `agent:read_secrets`. An `rbac.db` seeded **before** that policy existed does not
 gain it — the defaults are only re-inserted when the ORM version changes — so on such an installation
-even `wazuh` sees the enrollment password and the cluster key masked until the database is recreated
-or the policy is added by hand.
+even `wazuh` sees the enrollment password and the cluster key masked, and is denied an agent's key,
+until the database is recreated or the policy is added by hand.
 
 That is the general rule, not an exception: **RBAC policies are not migrated.** There is no upgrade
 path from 4.x, and an `rbac.db` left by an earlier 5.0 development build keeps whatever defaults it
@@ -119,10 +119,28 @@ a later `deny` over the node being served wins, and in `rbac_mode: black` the va
 clear unless a policy denies them, as everything else does in that mode. The default policy grants
 it over `node:id:*`, so an `administrator` sees them on every node.
 
+### Agent keys
+
+An agent's pre-shared key — the `client.keys` line that authenticates it — is the third secret behind
+`secrets_read`, through an action of its own, **`agent:read_secrets`**. `GET /agents/{agent_id}/key`
+requires it and answers `403` without it; unlike the configuration values there is nothing to mask,
+since the key is the whole answer. It is scoped per agent and per group, so a policy may uncover one
+agent's key and not another's.
+
+`agent:read` no longer grants it. The boundary worth remembering is *existing* versus *new*:
+`agent:create` still answers `POST /agents` with the key of the agent it just created, because an
+agent cannot be created without one, and that is not the same risk as reading the credential of an
+agent that already exists and may be running. An operator who provisions agents therefore keeps
+`agents_all` — `POST /agents`, or minting an enrollment token — and only re-reading an existing
+agent's key needs `administrator`.
+
+### Auditing a disclosure
+
 Every disclosure is recorded as a `secret_read` line naming the user and the fields, never the value.
 It lands in `logs/api.log` for `GET /cluster/local/config`, which the API process serves, and in
 `logs/cluster.log` for the two node-configuration endpoints, which run inside the answering node's
-`wazuh-manager-clusterd`. If the masking itself fails, the request fails: a response nobody could
+`wazuh-manager-clusterd`. `GET /agents/{agent_id}/key` records its own line the same way, naming the
+agents served rather than a field. If the masking itself fails, the request fails: a response nobody could
 mask is not served.
 
 ### RBAC Components

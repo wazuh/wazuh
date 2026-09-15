@@ -22,7 +22,7 @@ from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException,
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, process_array, clear_temporary_caches, \
     full_copy
-from wazuh.rbac.decorators import expose_resources, async_list_handler
+from wazuh.rbac.decorators import audit_agent_keys_read, expose_resources, async_list_handler
 
 logger = logging.getLogger('wazuh')
 
@@ -491,7 +491,7 @@ def get_agents_in_group(group_list: list, offset: int = 0, limit: int = common.D
      distinct=distinct)
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
+@expose_resources(actions=["agent:read_secrets"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701]})
 def get_agents_keys(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Get the key of existing agents.
@@ -520,6 +520,7 @@ def get_agents_keys(agent_list: list = None) -> AffectedItemsWazuhResult:
             result.add_failed_item(id_=agent_id, error=e)
     result.total_affected_items = len(result.affected_items)
     result.affected_items.sort(key=lambda i: i['id'])
+    audit_agent_keys_read([item['id'] for item in result.affected_items])
 
     return result
 

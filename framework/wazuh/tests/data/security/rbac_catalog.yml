@@ -79,7 +79,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /agents
-          - GET /agents/{agent_id}/key
           - GET /agents/no_group
           - GET /agents/outdated
           - GET /agents/stats/distinct
@@ -88,6 +87,19 @@ get_rbac_actions:
           - GET /agents/summary/status
           - GET /groups/{group_id}/agents
           - GET /overview/agents
+      agent:read_secrets:
+        description: Read the agents' pre-shared keys -- the secrets stored in client.keys -- in clear
+        resources:
+          - agent:id
+          - agent:group
+        example:
+          actions:
+            - agent:read_secrets
+          resources:
+            - agent:id:*
+          effect: allow
+        related_endpoints:
+          - GET /agents/{agent_id}/key
       agent:create:
         description: Create new agents
         resources:

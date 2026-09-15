@@ -128,6 +128,7 @@ The following RBAC actions control agent operations:
 | Action | Resources | Description |
 |--------|-----------|-------------|
 | `agent:read` | `agent:id`, `agent:group` | Read agent information |
+| `agent:read_secrets` | `agent:id`, `agent:group` | Read the agents' pre-shared keys (the secrets stored in `client.keys`) in clear |
 | `agent:create` | `*` | Register new agents |
 | `agent:delete` | `agent:id`, `agent:group` | Delete agents |
 | `agent:modify_group` | `agent:id`, `agent:group` | Assign/remove agents from groups |
@@ -140,3 +141,5 @@ The following RBAC actions control agent operations:
 The `agent:reload` action was introduced in v5.0.0 alongside a task-based restart/reload dispatch mechanism (agents are grouped into chunks and reloaded via `create_reload_tasks`), replacing the previous Active Response-based restart approach.
 
 The `agent:scan_vulnerability` action was introduced in v5.0.0 alongside `PUT /agents/scan/vulnerability`, the operator-facing endpoint to trigger an on-demand Vulnerability Detection scan, complementing the previous agent-initiated-only scan trigger.
+
+The `agent:read_secrets` action was introduced in v5.0.0 to gate `GET /agents/{agent_id}/key`, which returns the agent's pre-shared key. That endpoint previously required only `agent:read`, so any role able to list agents could also export the secret used to impersonate them. `agent:read` no longer grants key export: it covers agent information (id, name, group, last keep alive, OS, status) and nothing else. The action is scopable per agent and per group, exactly like `agent:read`, and it sits in the `secrets_read` policy alongside `cluster:read_secrets`, so the only built-in role that holds it is `administrator`. `agents_admin` and `wazuh_indexer_admin`, which manage agents through `agents_all`, do not export their keys; neither do `readonly` and `agents_readonly`. That division holds in `rbac_mode: white`, the shipped mode; under `black` mode every action no policy explicitly denies is allowed, so `agent:read_secrets` is granted there by default, as is any newly added action. Provisioning is unaffected either way: `agent:create` stays in `agents_all` and `POST /agents` still answers with the key of the agent it just created, because an agent cannot be created without one, so what now needs `administrator` is re-reading the key of an agent that already exists. Every key served is recorded as a `secret_read` audit line naming the caller and the agents, never a key.
