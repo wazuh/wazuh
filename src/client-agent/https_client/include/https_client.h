@@ -177,7 +177,9 @@ typedef struct hc_config_t
     uint32_t control_max_attempts;    ///< /control; 0 -> 4.
     uint32_t stateless_max_attempts;  ///< /stateless; 0 -> 5.
     uint32_t stateful_max_attempts;   ///< /stateful; 0 -> 5.
-    uint32_t download_max_attempts;   ///< POST /download, config and WPK alike; 0 -> 2.
+    uint32_t download_max_attempts;   ///< POST /download for WPK only; the config download always
+                                      ///< makes one attempt (it runs on the control loop's thread).
+                                      ///< 0 -> 2.
 
     /// Consecutive undeliverable /control steps before event producers are
     /// paused; a single deliverable step resets the streak. 0 -> 2.

@@ -469,11 +469,14 @@ namespace remoted::enrollment
                 }
                 auto response =
                     errorResponse(httpStatusForAuthdError(result.errorCode), result.errorCode, result.message);
-                if (result.errorCode == 9015 || result.errorCode == 9016 || result.errorCode == 9031)
+                if (response.status == 503 && result.errorCode != 9013)
                 {
                     // Transient, unlike the other 503 (9013, max_agents): a worker rejection, a
                     // failed cluster forward, or authd being unable to journal the credential
-                    // (9031) can all succeed on retry once the underlying condition clears.
+                    // (9031) can all succeed on retry once the underlying condition clears. Reads
+                    // the status httpStatusForAuthdError() already computed instead of
+                    // re-enumerating its codes, so a future transient code added there is covered
+                    // here for free.
                     response.headers.emplace_back("Retry-After", remoted::http::SHED_RETRY_AFTER_SECONDS);
                 }
                 return response;

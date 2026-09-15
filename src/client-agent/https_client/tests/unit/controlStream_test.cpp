@@ -788,15 +788,13 @@ TEST_F(ControlStreamTest, FailedDownloadRetriesOnTheNextNotify)
     }));
     EXPECT_CALL(m_sink, onConfigDownloaded(_, _)).Times(0);
 
-    // One backoff wait happens between the two attempts of each failed
-    // download; let both proceed (an unscripted FakeWaiter reads as stop).
-    m_waiter.script({true, true});
-
     m_stream.step(m_waiter); // Startup.
-    m_stream.step(m_waiter); // Notify -> download fails (2 attempts).
+    m_stream.step(m_waiter); // Notify -> download fails (one attempt).
     m_stream.step(m_waiter); // Notify -> re-armed, fails again.
 
-    EXPECT_EQ(4, downloads); // 2 notifies x DOWNLOAD_MAX_ATTEMPTS(2).
+    // One attempt per notify: maybeDownloadConfig() runs on the control loop's own thread, so
+    // ConfigFetcher::fetch() never waits out an in-request retry (configFetcher.cpp:77-84).
+    EXPECT_EQ(2, downloads);
     EXPECT_EQ("abc", m_configHash.get());
 }
 

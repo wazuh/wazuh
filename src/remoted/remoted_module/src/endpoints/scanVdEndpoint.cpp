@@ -54,10 +54,9 @@ namespace remoted::endpoints::scanvd
 
         remoted::http::HttpResponse errorJson(int status, std::string_view code, bool retryable = true)
         {
-            std::string body = R"({"error":")";
-            body.append(code);
-            body.append(R"("})");
-            auto response = remoted::http::HttpResponse::json(status, std::move(body));
+            nlohmann::json body;
+            body["error"] = code;
+            auto response = remoted::http::HttpResponse::json(status, body.dump());
             if (status == 503 && retryable)
             {
                 // Capacity, like every other shed: `scan_queue_full` is the dispatcher refusing

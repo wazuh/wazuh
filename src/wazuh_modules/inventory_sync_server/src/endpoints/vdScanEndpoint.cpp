@@ -31,8 +31,15 @@ namespace
 
     wazuh::uds_http::HttpResponse errorResponse(int status, const std::string& reason)
     {
-        return wazuh::uds_http::HttpResponse::json(
+        auto response = wazuh::uds_http::HttpResponse::json(
             status, std::string {R"({"error":")"} + reason + R"(","code":)" + std::to_string(status) + "}");
+        if (status == 503)
+        {
+            // Every 503 this route answers on admission is a capacity shed, like every other one
+            // in this module: the worker's own 503s (VdScanLane::respond()) already carry this.
+            response.headers.emplace_back("Retry-After", wazuh::uds_http::SHED_RETRY_AFTER_SECONDS);
+        }
+        return response;
     }
 
     /// The in-flight interlock's answer. `retryable` is redundant against a 409 -- the dispatcher
