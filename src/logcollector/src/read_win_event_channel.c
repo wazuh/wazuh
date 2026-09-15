@@ -31,6 +31,7 @@
 /* Audit types */
 #define WINEVENT_AUDIT_FAILURE 0x10000000000000LL
 #define WINEVENT_AUDIT_SUCCESS 0x20000000000000LL
+#define MAX_SID_STRING_LENGTH 256
 
 #include "shared.h"
 #include "logcollector.h"
@@ -45,6 +46,7 @@
 #ifdef WAZUH_UNIT_TESTING
 #include "../../unit_tests/wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/sddl_wrappers.h"
 #include "../../unit_tests/wrappers/windows/winbase_wrappers.h"
 #include "../../unit_tests/wrappers/windows/winevt_wrappers.h"
 
@@ -81,6 +83,334 @@ typedef struct _os_channel {
 } os_channel;
 
 STATIC EVT_HANDLE read_bookmark(os_channel *channel);
+
+STATIC int find_event_data(const char *xml,
+                           const char *name,
+                           const char **value_start,
+                           const char **value_end,
+                           int *self_closing)
+{
+    const char *event_data;
+    const char *event_data_end;
+    const char *data;
+    size_t name_length = strlen(name);
+    int found = 0;
+
+    if ((event_data = strstr(xml, "<EventData>")) == NULL ||
+        (event_data_end = strstr(event_data + strlen("<EventData>"), "</EventData>")) == NULL) {
+        return 0;
+    }
+
+    data = event_data + strlen("<EventData>");
+    while ((data = strstr(data, "<Data")) != NULL && data < event_data_end) {
+        const char *tag_end;
+        const char *attributes_end;
+        const char *self_closing_start = NULL;
+        const char *cursor;
+        const char *closing_tag = NULL;
+        const char *nested_data;
+        int matches_name = 0;
+        int is_self_closing = 0;
+
+        if (data[5] != ' ' && data[5] != '\t' && data[5] != '\r' && data[5] != '\n') {
+            data += 5;
+            continue;
+        }
+
+        if ((tag_end = strchr(data, '>')) == NULL || tag_end >= event_data_end) {
+            return 0;
+        }
+
+        attributes_end = tag_end;
+        while (attributes_end > data && isspace((unsigned char)attributes_end[-1])) {
+            --attributes_end;
+        }
+        if (attributes_end > data && attributes_end[-1] == '/') {
+            is_self_closing = 1;
+            self_closing_start = attributes_end - 1;
+            --attributes_end;
+            while (attributes_end > data && isspace((unsigned char)attributes_end[-1])) {
+                --attributes_end;
+            }
+        }
+
+        cursor = data + strlen("<Data");
+        while (cursor < attributes_end) {
+            const char *attribute_name_start;
+            const char *attribute_name_end;
+            const char *attribute_value_start;
+            const char *attribute_value_end;
+            char quote;
+
+            while (cursor < attributes_end && isspace((unsigned char)*cursor)) {
+                ++cursor;
+            }
+
+            if (cursor == attributes_end) {
+                break;
+            }
+
+            attribute_name_start = cursor;
+            while (cursor < attributes_end && !isspace((unsigned char)*cursor) && *cursor != '=') {
+                ++cursor;
+            }
+            attribute_name_end = cursor;
+
+            while (cursor < attributes_end && isspace((unsigned char)*cursor)) {
+                ++cursor;
+            }
+            if (cursor == attributes_end || *cursor++ != '=') {
+                return 0;
+            }
+
+            while (cursor < attributes_end && isspace((unsigned char)*cursor)) {
+                ++cursor;
+            }
+            if (cursor == attributes_end || (*cursor != '\'' && *cursor != '"')) {
+                return 0;
+            }
+
+            quote = *cursor++;
+            attribute_value_start = cursor;
+            if ((attribute_value_end = memchr(cursor, quote, attributes_end - cursor)) == NULL) {
+                return 0;
+            }
+
+            if ((size_t)(attribute_name_end - attribute_name_start) == strlen("Name") &&
+                strncmp(attribute_name_start, "Name", strlen("Name")) == 0 &&
+                (size_t)(attribute_value_end - attribute_value_start) == name_length &&
+                strncmp(attribute_value_start, name, name_length) == 0) {
+                matches_name = 1;
+            }
+
+            cursor = attribute_value_end + 1;
+        }
+
+        if (!is_self_closing) {
+            if ((closing_tag = strstr(tag_end + 1, "</Data>")) == NULL || closing_tag > event_data_end) {
+                return 0;
+            }
+
+            nested_data = strstr(tag_end + 1, "<Data");
+            if (nested_data != NULL && nested_data < closing_tag) {
+                return 0;
+            }
+        }
+
+        if (matches_name) {
+            if (found) {
+                return 0;
+            }
+            if (is_self_closing) {
+                *value_start = self_closing_start;
+                *value_end = tag_end + 1;
+            } else {
+                *value_start = tag_end + 1;
+                *value_end = closing_tag;
+            }
+            *self_closing = is_self_closing;
+            found = 1;
+        }
+
+        data = is_self_closing ? tag_end + 1 : closing_tag + strlen("</Data>");
+    }
+
+    return found;
+}
+
+STATIC char *escape_xml_text(const char *text)
+{
+    size_t length = 0;
+    char *escaped;
+    char *output;
+
+    for (const char *current = text; *current; ++current) {
+        size_t addition = 1;
+
+        if (*current == '&') {
+            addition = 5;
+        } else if (*current == '<' || *current == '>') {
+            addition = 4;
+        }
+
+        if (length > SIZE_MAX - addition - 1) {
+            return NULL;
+        }
+
+        length += addition;
+    }
+
+    if ((escaped = malloc(length + 1)) == NULL) {
+        return NULL;
+    }
+
+    output = escaped;
+    for (const char *current = text; *current; ++current) {
+        if (*current == '&') {
+            memcpy(output, "&amp;", 5);
+            output += 5;
+        } else if (*current == '<') {
+            memcpy(output, "&lt;", 4);
+            output += 4;
+        } else if (*current == '>') {
+            memcpy(output, "&gt;", 4);
+            output += 4;
+        } else {
+            *output++ = *current;
+        }
+    }
+    *output = '\0';
+
+    return escaped;
+}
+
+STATIC void enrich_member_name(char **xml_event)
+{
+    const char *member_name_start;
+    const char *member_name_end;
+    const char *member_sid_start;
+    const char *member_sid_end;
+    int member_name_self_closing;
+    int member_sid_self_closing;
+    size_t member_name_length;
+    size_t member_sid_length;
+    char *member_sid = NULL;
+    PSID sid = NULL;
+    char *account = NULL;
+    char *domain = NULL;
+    char *resolved = NULL;
+    char *escaped = NULL;
+    char *updated_xml = NULL;
+    SID_NAME_USE sid_type;
+    size_t account_length;
+    size_t domain_length;
+    size_t separator_length;
+    size_t resolved_length;
+    size_t prefix_length;
+    size_t opening_length;
+    size_t escaped_length;
+    size_t closing_length;
+    size_t suffix_length;
+    size_t updated_length;
+
+    if (xml_event == NULL || *xml_event == NULL) {
+        return;
+    }
+
+    if (!find_event_data(*xml_event,
+                         "MemberName",
+                         &member_name_start,
+                         &member_name_end,
+                         &member_name_self_closing) ||
+        !find_event_data(*xml_event,
+                         "MemberSid",
+                         &member_sid_start,
+                         &member_sid_end,
+                         &member_sid_self_closing)) {
+        return;
+    }
+
+    member_name_length = member_name_self_closing ? 0 : member_name_end - member_name_start;
+    if (member_name_length != 0 && (member_name_length != 1 || member_name_start[0] != '-')) {
+        return;
+    }
+
+    if (member_sid_self_closing) {
+        return;
+    }
+
+    member_sid_length = member_sid_end - member_sid_start;
+    if (member_sid_length == 0 || member_sid_length > MAX_SID_STRING_LENGTH ||
+        (member_sid_length == 1 && member_sid_start[0] == '-')) {
+        return;
+    }
+
+    if (member_sid_length == SIZE_MAX || (member_sid = malloc(member_sid_length + 1)) == NULL) {
+        goto cleanup;
+    }
+    memcpy(member_sid, member_sid_start, member_sid_length);
+    member_sid[member_sid_length] = '\0';
+
+    if (!ConvertStringSidToSidA(member_sid, &sid) || sid == NULL) {
+        goto cleanup;
+    }
+
+    if (!utf8_LookupAccountSid(NULL, sid, &account, NULL, &domain, NULL, &sid_type) ||
+        account == NULL || account[0] == '\0' || domain == NULL) {
+        goto cleanup;
+    }
+
+    account_length = strlen(account);
+    domain_length = strlen(domain);
+    separator_length = domain_length ? 1 : 0;
+
+    if (domain_length > SIZE_MAX - separator_length ||
+        domain_length + separator_length > SIZE_MAX - account_length ||
+        domain_length + separator_length + account_length == SIZE_MAX) {
+        goto cleanup;
+    }
+    resolved_length = domain_length + separator_length + account_length;
+
+    if ((resolved = malloc(resolved_length + 1)) == NULL) {
+        goto cleanup;
+    }
+
+    if (domain_length) {
+        memcpy(resolved, domain, domain_length);
+        resolved[domain_length] = '\\';
+    }
+    memcpy(resolved + domain_length + separator_length, account, account_length + 1);
+
+    if ((escaped = escape_xml_text(resolved)) == NULL) {
+        goto cleanup;
+    }
+
+    prefix_length = member_name_start - *xml_event;
+    opening_length = member_name_self_closing ? 1 : 0;
+    escaped_length = strlen(escaped);
+    closing_length = member_name_self_closing ? strlen("</Data>") : 0;
+    suffix_length = strlen(member_name_end);
+
+    if (prefix_length > SIZE_MAX - opening_length ||
+        prefix_length + opening_length > SIZE_MAX - escaped_length ||
+        prefix_length + opening_length + escaped_length > SIZE_MAX - closing_length ||
+        prefix_length + opening_length + escaped_length + closing_length > SIZE_MAX - suffix_length ||
+        prefix_length + opening_length + escaped_length + closing_length + suffix_length == SIZE_MAX) {
+        goto cleanup;
+    }
+    updated_length = prefix_length + opening_length + escaped_length + closing_length + suffix_length;
+
+    if ((updated_xml = malloc(updated_length + 1)) == NULL) {
+        goto cleanup;
+    }
+
+    memcpy(updated_xml, *xml_event, prefix_length);
+    if (member_name_self_closing) {
+        updated_xml[prefix_length] = '>';
+        memcpy(updated_xml + prefix_length + opening_length, escaped, escaped_length);
+        memcpy(updated_xml + prefix_length + opening_length + escaped_length, "</Data>", closing_length);
+    } else {
+        memcpy(updated_xml + prefix_length, escaped, escaped_length);
+    }
+    memcpy(updated_xml + prefix_length + opening_length + escaped_length + closing_length,
+           member_name_end,
+           suffix_length + 1);
+
+    os_free(*xml_event);
+    *xml_event = updated_xml;
+    updated_xml = NULL;
+
+cleanup:
+    os_free(updated_xml);
+    os_free(escaped);
+    os_free(resolved);
+    os_free(domain);
+    os_free(account);
+    if (sid != NULL) {
+        LocalFree(sid);
+    }
+    os_free(member_sid);
+}
 
 wchar_t *convert_unix_string(char *string)
 {
@@ -351,6 +681,10 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 
     if (!xml_event) {
         goto cleanup;
+    }
+
+    if (_stricmp(channel->evt_log, "Security") == 0) {
+        enrich_member_name(&xml_event);
     }
 
     win_format_event_string(xml_event);

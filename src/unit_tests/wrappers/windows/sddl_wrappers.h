@@ -12,12 +12,19 @@
 #define SDDL_WRAPPERS_H
 
 #include <windows.h>
+#include <sddl.h>
 
 #undef  ConvertSidToStringSid
 #define ConvertSidToStringSid wrap_ConvertSidToStringSid
+#undef  ConvertStringSidToSidA
+#define ConvertStringSidToSidA wrap_ConvertStringSidToSidA
 
 WINBOOL wrap_ConvertSidToStringSid(PSID Sid, LPSTR *StringSid);
 
 void expect_ConvertSidToStringSid_call(LPSTR StringSid, int ret_value);
+
+BOOL WINAPI wrap_ConvertStringSidToSidA(LPCSTR StringSid, PSID *Sid);
+
+void expect_ConvertStringSidToSidA_call(const char *string_sid, PSID sid, BOOL result);
 
 #endif
