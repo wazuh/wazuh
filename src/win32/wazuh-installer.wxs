@@ -133,6 +133,8 @@
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
         <CustomAction Id="SetWazuhPermissions" BinaryKey="InstallerScripts" VBScriptCall="SetWazuhPermissions" Return="check" Execute="commit" Impersonate="no"/>
 
+        <CustomAction Id="SetCustomActionDataRemoveFleetPassword" Return="check" Property="RemoveFleetEnrollmentPassword" Value="&quot;[APPLICATIONFOLDER]&quot;" />
+        <CustomAction Id="RemoveFleetEnrollmentPassword" BinaryKey="InstallerScripts" VBScriptCall="RemoveFleetEnrollmentPassword" Return="check" Execute="deferred" Impersonate="no" />
         <CustomAction Id="SetCustomActionDataCleanupLegacyDBs" Return="check" Property="CleanupLegacyDatabases" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="CleanupLegacyDatabases" BinaryKey="InstallerScripts" VBScriptCall="CleanupLegacyDatabases" Return="check" Execute="deferred" Impersonate="no" />
 
@@ -190,6 +192,11 @@
             <!-- Set Wazuh permissions on upgrade -->
             <Custom Action="SetCustomActionDataForSetWazuhPermissions" After="InstallInitialize">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
             <Custom Action="SetWazuhPermissions" After="SetCustomActionDataForSetWazuhPermissions">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
+
+            <!-- #39064: the fleet-wide enrollment password has no role in 5.0. Every upgrade, not
+                 only one from prior to 5.x: an early 5.0 install could still have written one. -->
+            <Custom Action="SetCustomActionDataRemoveFleetPassword" After="InstallInitialize">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
+            <Custom Action="RemoveFleetEnrollmentPassword" After="InstallFiles">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
 
             <!-- If upgrading from prior to 5.x, remove legacy DBs before service start -->
             <Custom Action="SetCustomActionDataCleanupLegacyDBs" After="AppSearch">IS_UPGRADING_FROM_PRIOR_TO_5X</Custom>

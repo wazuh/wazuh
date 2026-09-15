@@ -22,6 +22,7 @@
 #include "enrollment.h"
 #include "enrollment_token.h"
 #include "https_client.h"
+#include "reenroll_secret.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 
@@ -123,6 +124,8 @@ static uid_t g_anchor_chown_uid = (uid_t) -1;
 static gid_t g_anchor_chown_gid = (gid_t) -1;
 static uid_t g_dir_chown_uid = (uid_t) -1;
 static gid_t g_dir_chown_gid = (gid_t) -1;
+static uid_t g_secret_chown_uid = (uid_t) -1;
+static gid_t g_secret_chown_gid = (gid_t) -1;
 static uid_t g_keys_chown_uid = (uid_t) -1;
 static gid_t g_keys_chown_gid = (gid_t) -1;
 
@@ -152,8 +155,44 @@ static bool is_anchor_dir_path(const char *path) {
     return path && strcmp(path, "etc/certs") == 0;
 }
 
+/* The re-enrollment secret. Prefix-matched on the basename for the same reason as the anchor:
+ * w_reenroll_secret_store() chmod()s TempFile()'s name, which appends to it, before renaming. */
+static bool is_secret_path(const char *path) {
+    const char *prefix = "reenroll.secret";
+    const char *base;
+
+    if (!path) {
+        return false;
+    }
+
+    base = strrchr(path, '/');
+    base = base ? base + 1 : path;
+
+    return strncmp(base, prefix, strlen(prefix)) == 0;
+}
+
+/* The re-enrollment secret's own exact match, for the same reason as is_keys_file_path(): the
+ * store is written through TempFile() too, so a prefix match would also accept
+ * "etc/reenroll.secret.XXXXXX" and pass even if a refactor chowned the temp file instead of the
+ * installed path. Distinct from is_secret_path() above, which is deliberately a prefix match
+ * because the chmod it guards DOES land on the temp name. */
+static bool is_secret_file_path(const char *path) {
+    static const char suffix[] = "/reenroll.secret";
+    size_t path_len = path ? strlen(path) : 0;
+
+    return path_len >= sizeof(suffix) - 1 &&
+           strcmp(path + path_len - (sizeof(suffix) - 1), suffix) == 0;
+}
+
 int __wrap_chown(const char *path, uid_t owner, gid_t group) {
-    if (is_anchor_path(path)) {
+    if (is_secret_file_path(path)) {
+        /* Recorded on the PATH-based entry point as well as the fd-based one below, deliberately:
+         * this is the call the hardening exists to remove, so a regression that goes back to
+         * chown(path, ...) has to show up here rather than leave the fd recorder untouched and
+         * the "was not chowned" assertion passing for the wrong reason. */
+        g_secret_chown_uid = owner;
+        g_secret_chown_gid = group;
+    } else if (is_anchor_path(path)) {
         g_anchor_chown_uid = owner;
         g_anchor_chown_gid = group;
     } else if (is_anchor_dir_path(path)) {
@@ -195,7 +234,10 @@ int __wrap_fchown(int fd, uid_t owner, gid_t group) {
     if (len > 0) {
         path[len] = '\0';
 
-        if (is_keys_file_path(path)) {
+        if (is_secret_file_path(path)) {
+            g_secret_chown_uid = owner;
+            g_secret_chown_gid = group;
+        } else if (is_keys_file_path(path)) {
             if (g_keys_fchown_should_fail) {
                 errno = EACCES;
                 return -1;
@@ -215,12 +257,15 @@ int __wrap_fchown(int fd, uid_t owner, gid_t group) {
  * path. Wrapped so an unprivileged run behaves like a privileged one either way. */
 static mode_t g_dir_chmod_mode = (mode_t) -1;
 static mode_t g_anchor_chmod_mode = (mode_t) -1;
+static mode_t g_secret_chmod_mode = (mode_t) -1;
 
 int __wrap_chmod(const char *path, mode_t mode) {
     if (is_anchor_dir_path(path)) {
         g_dir_chmod_mode = mode;
     } else if (is_anchor_path(path)) {
         g_anchor_chmod_mode = mode;
+    } else if (is_secret_path(path)) {
+        g_secret_chmod_mode = mode;
     }
 
     return 0;
@@ -248,6 +293,7 @@ static void remove_test_paths(void) {
     unlink("etc/certs/root-ca.pem");
     unlink("etc/client.keys");
     unlink("etc/other-file");
+    unlink(AGENT_REENROLL_SECRET);
 }
 
 static int group_setup(void **state) {
@@ -276,11 +322,14 @@ static int setup_test(void **state) {
     g_anchor_chown_gid = (gid_t) -1;
     g_dir_chown_uid = (uid_t) -1;
     g_dir_chown_gid = (gid_t) -1;
+    g_secret_chown_uid = (uid_t) -1;
+    g_secret_chown_gid = (gid_t) -1;
     g_keys_chown_uid = (uid_t) -1;
     g_keys_chown_gid = (gid_t) -1;
     g_keys_fchown_should_fail = false;
     g_dir_chmod_mode = (mode_t) -1;
     g_anchor_chmod_mode = (mode_t) -1;
+    g_secret_chmod_mode = (mode_t) -1;
     g_anchor_chown_recorded_before_move = false;
 
     return 0;
@@ -371,6 +420,13 @@ static void expect_valid_ip(const char *ip) {
 #define VALID_ENROLL_BODY \
     "{\"id\":\"001\",\"name\":\"test-agent\",\"ip\":\"10.0.0.5\"," \
     "\"key\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}"
+
+/* The same 200, with the fifth field a 5.0 manager actually sends (#39064). */
+#define REENROLL_SECRET "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+#define VALID_ENROLL_BODY_WITH_SECRET \
+    "{\"id\":\"001\",\"name\":\"test-agent\",\"ip\":\"10.0.0.5\"," \
+    "\"key\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"," \
+    "\"reenroll_secret\":\"" REENROLL_SECRET "\"}"
 
 /* ---- tests ---- */
 
@@ -624,8 +680,8 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal(g_enroll_config.verify_mode, HC_VERIFY_FULL);
     assert_true(strlen(g_enroll_config.ca_path) > 0);
     assert_string_equal(g_enroll_request.password, "");
-    assert_int_equal((int) strlen(g_enroll_request.token_kid), 22);
-    assert_int_equal((int) strlen(g_enroll_request.token_key_hex), 64);
+    assert_int_equal((int) strlen(g_enroll_request.enroll_kid), 22);
+    assert_int_equal((int) strlen(g_enroll_request.enroll_key_hex), 64);
 
     /* The anchor is handed to root and only shares its group, so the user the agent drops to
      * can read the certificate authority it verifies against without being able to replace
@@ -693,7 +749,7 @@ static void test_fresh_enrollment_keys_chown_failure_logs_merror(void **state) {
 
 /* #39028's DoD: "a credential-less token enrolls when the simulator requires no credential,
  * and is not treated as an error." has_key=false must not short-circuit into an error path --
- * enrollment still runs, just with no token_kid/token_key_hex on the wire (and no fallback to
+ * enrollment still runs, just with no enroll_kid/enroll_key_hex on the wire (and no fallback to
  * a configured password either, per token_bootstrap.c's own comment on that branch --
  * g_enroll_request.password stays empty exactly as it does on the keyed happy path). */
 static void test_credential_less_token_enrolls_without_error(void **state) {
@@ -739,8 +795,8 @@ static void test_credential_less_token_enrolls_without_error(void **state) {
      * either -- the request goes out with no credential at all (see the comment next to this
      * branch in token_bootstrap.c). */
     assert_string_equal(g_enroll_request.password, "");
-    assert_int_equal((int) strlen(g_enroll_request.token_kid), 0);
-    assert_int_equal((int) strlen(g_enroll_request.token_key_hex), 0);
+    assert_int_equal((int) strlen(g_enroll_request.enroll_kid), 0);
+    assert_int_equal((int) strlen(g_enroll_request.enroll_key_hex), 0);
 }
 
 static void test_full_happy_path_via_ca_pem(void **state) {
@@ -781,6 +837,145 @@ static void test_full_happy_path_via_ca_pem(void **state) {
     assert_int_equal(g_keys_chown_gid, getgid());
 }
 
+/* #39064: the bootstrap runs as ROOT, before the privilege drop, and w_enrollment_process_response()
+ * writes the re-enrollment secret from here. So the secret is created by a root-owned process and
+ * then has to be handed to the unprivileged user like the anchor and client.keys are -- and unlike
+ * those two it must end up WRITABLE by that user, because every later rotation happens in the
+ * running daemon. A root-owned secret would survive exactly one enrollment and then fail every
+ * rotation silently, which is the same shape of defect 65215f70bf had to fix for client.keys.
+ *
+ * chown() to the caller's own uid/gid is a no-op here (the suite does not run as root), so what
+ * this pins is that the store is written on the root path, with client.keys's mode, and that no
+ * ownership error is logged along the way -- an unexpected merror() would fail the test on the
+ * strict cmocka log expectations. */
+static void test_bootstrap_stores_the_reenroll_secret_from_the_root_path(void **state) {
+    (void) state;
+    char id[W_REENROLL_ID_SIZE];
+    char secret[W_REENROLL_SECRET_SIZE];
+    struct stat info;
+
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY_WITH_SECRET);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    /* One more TempFile() FSTAT_ERROR debug line than the happy path above (the secret is written
+     * through one too), plus w_reenroll_secret_store()'s own confirmation. Declared uninteresting
+     * rather than counted: the count is not what this test is about. */
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+
+    assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 1);
+    assert_string_equal(id, "001");
+    assert_string_equal(secret, REENROLL_SECRET);
+
+    /* client.keys's mode, so the daemon can rewrite it after the drop. Read off the wrapper
+     * rather than stat(): __wrap_chmod() records the mode instead of applying it, so the file on
+     * disk keeps mkstemp()'s 0600 and only the recorded value shows what the code asked for. */
+    assert_int_equal(stat(AGENT_REENROLL_SECRET, &info), 0);
+    assert_int_equal(g_secret_chmod_mode, 0640);
+
+    /* And handed to the runtime user, not left root-owned: unlike client.keys (root:gid) the
+     * daemon has to WRITE this one after the privilege drop. Recorded off __wrap_fchown(), which
+     * also proves the chown went through the vetted descriptor rather than the path. */
+    assert_int_equal(g_secret_chown_uid, getuid());
+    assert_int_equal(g_secret_chown_gid, getgid());
+}
+
+/* The re-enrollment secret shares client.keys's 0770 root:wazuh directory, so the same link swap
+ * applies -- and lands harder, because this chown names the unprivileged user as the OWNER rather
+ * than only its group: following a planted link would hand that user outright ownership of
+ * whatever it points at. A linked path must be refused, not followed.
+ *
+ * Driven with a manager response that carries no secret, so the link planted below is still in
+ * place when the chown runs: a response WITH a secret would have TempFile()+OS_MoveFile() replace
+ * the link with a real file first, which is the very thing that makes the real-world window a
+ * race rather than a standing hole. */
+static void test_reenroll_secret_link_is_not_chowned(void **state) {
+    (void) state;
+    /* A *valid* store ("<id> <secret>\n", see w_reenroll_secret_store()), not arbitrary bytes:
+     * the bootstrap reads the existing store on its way through, and junk here would log a
+     * "malformed" merror of its own and blur what this test is actually pinning. */
+    write_file("etc/other-file", "001 " REENROLL_SECRET "\n");
+    assert_int_equal(link("etc/other-file", AGENT_REENROLL_SECRET), 0);
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    /* A valid store on disk means w_enrollment_build_request() prefers it over every other
+     * credential (#39064), so this is the re-enrollment path, not the password one. */
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Re-enrolling with this agent's own re-enrollment secret.");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+    /* The refusal is reported and the bootstrap still succeeds -- enrollment already happened,
+     * same disposition as client.keys's own chown failure. EMLINK is what w_openat_nofollow_vetted()
+     * returns for a hard-linked path. */
+    expect_string(__wrap__merror, formatted_msg,
+                  "Token bootstrap: could not change ownership of 'etc/reenroll.secret': "
+                  "Too many links (31).");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+
+    /* Nothing was chowned: the vetted open refused the link before fchown() was reached. */
+    assert_int_equal(g_secret_chown_uid, (uid_t) -1);
+    assert_int_equal(g_secret_chown_gid, (gid_t) -1);
+}
+
+/* A manager that sends no secret must still complete the bootstrap: the token path predates this
+ * field and an older manager is not an error. */
+static void test_bootstrap_without_a_secret_leaves_no_store(void **state) {
+    (void) state;
+
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile(AGENT_REENROLL_SECRET), 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_no_token_file_is_noop, setup_test, teardown_test),
@@ -797,6 +992,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fresh_enrollment_keys_chown_failure_logs_merror, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_credential_less_token_enrolls_without_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_ca_pem, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bootstrap_stores_the_reenroll_secret_from_the_root_path, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_bootstrap_without_a_secret_leaves_no_store, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reenroll_secret_link_is_not_chowned, setup_test, teardown_test),
     };
 
     return cmocka_run_group_tests(tests, group_setup, NULL);

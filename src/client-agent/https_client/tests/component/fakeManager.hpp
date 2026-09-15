@@ -33,6 +33,7 @@
 #include <chrono>
 #include <csignal>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <memory>
@@ -258,6 +259,29 @@ class FakeManager final
                 const bool rotated = rotateAfter > 0 && !rotatedKey.empty() && notifyCount->load() >= rotateAfter;
                 return verifyBearer(rotated ? rotatedKey : keyHex, target, request);
             };
+            // #39040/#39064: a 5.0 manager names the authentication failure class on every 401,
+            // and the agent's auth gate escalates to re-enrollment on `unknown_agent` alone -- a
+            // bodyless 401 reads as Unclassified, which means "retry and keep the identity". A test
+            // that rotates the key is modelling a manager that no longer holds this identity's
+            // credential, so its refusals have to say so or the re-enrollment path is unreachable.
+            // Rotation is what arms this: with none configured the body stays empty and every other
+            // test sees the same bodyless 401 it always did.
+            std::string authFailBody;
+
+            if (rotateAfter > 0 && !rotatedKey.empty())
+            {
+                authFailBody = R"({"error":"Invalid client authentication","code":"unknown_agent"})";
+            }
+
+            const auto refuseAuth = [authFailBody](httplib::Response & response)
+            {
+                response.status = 401;
+
+                if (!authFailBody.empty())
+                {
+                    response.set_content(authFailBody, "application/json");
+                }
+            };
             // Accumulates accepted /stateless bodies so the fork parent can
             // read them back via GET /peek/stateless (fork servers share no
             // memory; a peek endpoint is the observability channel).
@@ -265,12 +289,12 @@ class FakeManager final
             auto acceptedMutex = std::make_shared<std::mutex>();
 
             server.Post("/stateless",
-                        [verify, backpressureArmed, statelessMaxBody, acceptedEvents, acceptedMutex](
+                        [verify, refuseAuth, backpressureArmed, statelessMaxBody, acceptedEvents, acceptedMutex](
                             const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/stateless", request))
                 {
-                    response.status = 401;
+                    refuseAuth(response);
                     return;
                 }
 
@@ -329,12 +353,12 @@ class FakeManager final
                 auto store = kind == "stats" ? lastStats : lastConfig;
                 server.Post(
                     "/" + kind,
-                    [verify, kind, store, acceptedMutex, configCount](const httplib::Request & request,
-                                                                      httplib::Response & response)
+                    [verify, refuseAuth, kind, store, acceptedMutex, configCount](const httplib::Request & request,
+                                                                                  httplib::Response & response)
                 {
                     if (!verify("/" + kind, request))
                     {
-                        response.status = 401;
+                        refuseAuth(response);
                         return;
                     }
 
@@ -399,12 +423,12 @@ class FakeManager final
             };
 
             server.Post("/stateful",
-                        [verify, lastSession, holdFile, statefulBytes](const httplib::Request & request,
-                                                                       httplib::Response & response)
+                        [verify, refuseAuth, lastSession, holdFile, statefulBytes](const httplib::Request & request,
+                                                                                   httplib::Response & response)
             {
                 if (!verify("/stateful", request))
                 {
-                    response.status = 401;
+                    refuseAuth(response);
                     return;
                 }
 
@@ -431,11 +455,11 @@ class FakeManager final
 
             server.Post(
                 "/download",
-                [verify, configBlob](const httplib::Request & request, httplib::Response & response)
+                [verify, refuseAuth, configBlob](const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/download", request))
                 {
-                    response.status = 401;
+                    refuseAuth(response);
                     return;
                 }
 
@@ -499,19 +523,19 @@ class FakeManager final
 
             server.Post(
                 "/control",
-                [verify,
-                 settingsFlipAfter,
-                 notifyCount,
-                 configHash,
-                 controlTypes,
-                 controlContentTypes,
-                 lastNotifyBody,
-                 controlMutex,
-                 vdFeedOffset](const httplib::Request & request, httplib::Response & response)
+                [verify, refuseAuth,
+                         settingsFlipAfter,
+                         notifyCount,
+                         configHash,
+                         controlTypes,
+                         controlContentTypes,
+                         lastNotifyBody,
+                         controlMutex,
+                         vdFeedOffset](const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/control", request))
                 {
-                    response.status = 401;
+                    refuseAuth(response);
                     return;
                 }
 
@@ -637,12 +661,12 @@ class FakeManager final
             auto scanVdMutex = std::make_shared<std::mutex>();
 
             server.Post("/scan/vd",
-                        [verify, vdFeedOffset, scanVdRejectFirstNAttempts, scanVdAttempts, lastScanVdBody, scanVdMutex](
+                        [verify, refuseAuth, vdFeedOffset, scanVdRejectFirstNAttempts, scanVdAttempts, lastScanVdBody, scanVdMutex](
                             const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/scan/vd", request))
                 {
-                    response.status = 401;
+                    refuseAuth(response);
                     return;
                 }
 
@@ -885,6 +909,16 @@ class FakeManager final
 
                 usleep(50 * 1000);
             }
+
+            // 300s gone and nothing ever answered, so the child never got the port -- almost always
+            // another test in this same binary already holding it. Say so: returning quietly leaves
+            // the test to fail on its first assertion against a server that was never there, which
+            // looks like the code under test hanging and costs an afternoon to trace back to here.
+            std::fprintf(stderr,
+                         "FakeManager: nothing listening on %s after 300s; is port %u already "
+                         "taken by another component test?\n",
+                         base.c_str(),
+                         static_cast<unsigned>(m_port));
         }
 
         pid_t m_pid {-1};

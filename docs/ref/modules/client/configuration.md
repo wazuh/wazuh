@@ -248,10 +248,60 @@ Comma-separated list of groups to assign during enrollment.
 
 Path to file containing enrollment authorization password.
 
-- **Default value:** None
+- **Default value:** `etc/authd.pass` (`authd.pass` on Windows)
 - **Allowed values:** Valid file path
 - **Note:** Password must match manager's authd password. Re-read on every
   enrollment attempt, so rotating the file does not require an agent restart.
+- **Removed from the endpoint in 5.0.** This is a *fleet-wide* secret: one value
+  that enrolls any endpoint, stored at rest on every endpoint that has it. Use
+  an enrollment token (`WAZUH_ENROLLMENT_TOKEN` at install time), which is
+  single-use and per-endpoint, and the per-agent re-enrollment secret the
+  manager issues thereafter (see *Re-enrollment* below).
+- A **fresh 5.0 install never creates** `etc/authd.pass`. `WAZUH_REGISTRATION_PASSWORD`
+  is accepted but ignored, and says so in `ossec.log`.
+- The **5.0 package upgrade deletes** an existing `etc/authd.pass` — once, at
+  upgrade, in the package scripts rather than in the agent, so it does not
+  depend on the agent ever reaching a manager. It is overwritten before it is
+  unlinked.
+- Only the compiled default path is removed. A path configured **explicitly**
+  here is operator-owned — a shared mount, a templated file, one kept for
+  re-imaging — and is never touched, so an agent that still reads a password
+  from a path of your choosing keeps working.
+
+#### Re-enrollment
+
+An agent that enrolls against a 5.0 manager receives a **per-agent
+re-enrollment secret** in the `/enroll` response and stores it at
+`etc/reenroll.secret` (`reenroll.secret` on Windows), as `<id> <secret>`. It is
+rotated on every subsequent enrollment.
+
+The secret is what the agent re-enrolls with when the manager reports that its
+key is no longer known, and it replaces the fleet password as the endpoint's
+unattended recovery capability:
+
+- It is **narrower**: it rotates the key of that one agent id and cannot mint a
+  new identity. A stolen secret is worth one endpoint, not the fleet.
+- It gets `client.keys`'s protection (mode `0640`, same owner), because it has
+  `client.keys`'s power. A process that can rewrite the key already owns the
+  agent.
+- It must stay writable by the unprivileged agent user: every rotation is
+  performed by the running daemon, after the privilege drop.
+
+**Agents enrolled before the 5.0 upgrade.** The secret is only ever issued in an
+`/enroll` response, and an agent that is already enrolled has no way to ask for
+one: the manager refuses an enrollment whose `key_hash` matches an agent it
+already knows, and omitting the hash re-registers the agent under a new id. Such
+an agent keeps working on the key it holds, but the upgrade removes its
+`authd.pass`, so it has no unattended recovery left. If it is ever removed on the
+manager it will stop with *"operator action is required"* and wait. Re-point it
+with an enrollment token.
+
+The agent only discards an identity when the manager explicitly says it is
+unknown. Any other authentication failure — a clock outside the manager's
+accepted window, an enrollment key that has not synced to the node serving the
+request, or a response whose failure class cannot be read — is retried with the
+existing credential. A credential the manager has judged and refused stops the
+retry loop instead of repeating for ever.
 
 #### agent_address
 
@@ -501,7 +551,6 @@ Automatic agent registration:
     <enabled>yes</enabled>
     <agent_name>web-server-prod-01</agent_name>
     <groups>webservers,production</groups>
-    <authorization_pass_path>/var/ossec/etc/authd.pass</authorization_pass_path>
   </enrollment>
   <manager>
     <endpoint>manager.example.com:1517</endpoint>

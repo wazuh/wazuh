@@ -302,12 +302,33 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Enrollment-token bootstrap: the one-shot file src/init/register_configure_agent.sh's
  * WAZUH_ENROLLMENT_TOKEN_PATH writes at install time. w_agent_token_bootstrap() reads it once,
- * before AGENT_ANCHOR_CA exists, and deletes it on either a committed success or a permanent
- * failure -- see token_bootstrap.c. Relative, same convention as AGENT_ANCHOR_CA above. */
+ * before AGENT_ANCHOR_CA exists, and deletes it once the enrollment has committed -- see
+ * token_bootstrap.c. A failed attempt deliberately leaves it in place for the next boot to
+ * retry: a manager that is down or unreachable at first boot must not burn the token.
+ * Relative, same convention as AGENT_ANCHOR_CA above. */
 #ifndef WIN32
 #define AGENT_ENROLLMENT_TOKEN_FILE "etc/enrollment_token"
 #else
 #define AGENT_ENROLLMENT_TOKEN_FILE "enrollment_token"
+#endif
+
+/* Per-agent re-enrollment secret (issue #39064): the credential this agent re-enrolls with when
+ * the manager says its key is unknown, replacing the fleet-wide etc/authd.pass as the endpoint's
+ * recovery capability. Written from the `reenroll_secret` field of an /enroll 200 and rotated by
+ * every subsequent one; holds "<id> <secret>", because the bearer's `kid` is the agent's own id
+ * and an agent that has lost client.keys still has to know which id to present.
+ *
+ * Given client.keys's protection (0640, owned by the same user), NOT the anchor's: the secret's
+ * power is exactly client.keys's power -- it rotates the key of the same id and cannot mint a new
+ * identity -- so a process that can rewrite client.keys already owns the agent. It also has to be
+ * writable by the unprivileged user, because rotation happens in the running daemon, after the
+ * privilege drop. See reenroll_secret.h for the full argument.
+ *
+ * Relative, same convention as AGENT_ANCHOR_CA above. */
+#ifndef WIN32
+#define AGENT_REENROLL_SECRET "etc/reenroll.secret"
+#else
+#define AGENT_REENROLL_SECRET "reenroll.secret"
 #endif
 
 /* Timestamp file */

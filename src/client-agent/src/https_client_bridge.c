@@ -126,10 +126,10 @@ static bool bridge_stopping(void)
 void *bridge_reenroll_thread(void *arg)
 {
     hc_handle *handle = (hc_handle *)arg;
-    int enroll_result = -1;
+    w_enroll_status_t enroll_result = W_ENROLL_ERR_TRANSPORT;
     int delay_sleep = 0;
 
-    while (enroll_result != 0) {
+    while (enroll_result != W_ENROLL_OK) {
         if (bridge_stopping()) {
             mdebug1("https_client: agent shutting down; abandoning re-enrollment.");
             return NULL;
@@ -137,7 +137,24 @@ void *bridge_reenroll_thread(void *arg)
 
         enroll_result = try_enroll_to_server();
 
-        if (enroll_result != 0) {
+        if (enroll_result != W_ENROLL_OK) {
+            /* #39064: this loop used to run for ever on any failure, which is exactly the
+             * behaviour the issue exists to remove -- an agent whose credential the manager has
+             * definitively refused would re-ask at the top of the ramp until someone noticed.
+             * Same policy function as the initial-enrollment loop, so the two answer identically;
+             * it also shreds a dead re-enrollment secret, which is what lets the next attempt fall
+             * back to the configured credential. */
+            if (w_enrollment_apply_policy(enroll_result) == W_ENROLL_ACTION_STOP) {
+                /* The agent keeps running: it still holds whatever key it had, and the AuthGate
+                 * keeps traffic paused. That is a state an operator can see and fix -- unlike a
+                 * silent retry loop, and unlike tearing the daemon down over a manager-side
+                 * decision. The gate is deliberately NOT released: nothing has changed that would
+                 * make the paused traffic succeed. */
+                merror("https_client: re-enrollment cannot succeed; giving up until the agent is "
+                       "restarted or an operator intervenes. Traffic stays paused.");
+                return NULL;
+            }
+
             /* Same ramp as the initial-enrollment loop (start_agent.c), from the values
              * ClientConf() resolved, so the two cannot drift apart. */
             if (delay_sleep < agt->enrollment.retry_max) {
@@ -2002,7 +2019,8 @@ int w_https_client_submit_event(const char *frame, size_t length)
  * whether the full client is running (re-enroll, from bridge_reenroll_thread())
  * or does not exist yet (first boot, from start_agent.c, before
  * w_https_client_start() ever runs). */
-bool w_https_client_enroll(const char *body_json, const char *password, hc_enroll_result_t *result)
+bool w_https_client_enroll(const char *body_json, const char *password, const char *enroll_kid,
+                           const char *enroll_key_hex, hc_enroll_result_t *result)
 {
     hc_config_t config;
     bridge_build_transport_config(&config);
@@ -2016,6 +2034,14 @@ bool w_https_client_enroll(const char *body_json, const char *password, hc_enrol
     if (password) {
         strncpy(request.password, password, sizeof(request.password) - 1);
     }
+
+    /* Both or neither: the module mints the keyed bearer only when it has a `kid` AND a key, and
+     * half a credential would silently fall through to the password instead (#39064). */
+    if (enroll_kid && enroll_key_hex) {
+        strncpy(request.enroll_kid, enroll_kid, sizeof(request.enroll_kid) - 1);
+        strncpy(request.enroll_key_hex, enroll_key_hex, sizeof(request.enroll_key_hex) - 1);
+    }
+
     request.log = mtLoggingFunctionsWrapper;
 
     return hc_enroll(&config, &request, result);

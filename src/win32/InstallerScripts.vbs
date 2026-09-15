@@ -670,7 +670,8 @@ Public Function SetWazuhPermissions()
         grantAuthenticatedUsersPermFolder = "icacls """ & install_dir & """ /grant *S-1-5-11:RX"
         WshShell.run grantAuthenticatedUsersPermFolder, 0, True
 
-        ' Remove Authenticated Users group for ossec.conf, last-ossec.conf, client.keys and authd.pass
+        ' Remove Authenticated Users group for ossec.conf, last-ossec.conf, client.keys,
+        ' authd.pass and reenroll.secret
         remAuthenticatedUsersPermsConf = "icacls """ & home_dir & "*ossec.conf" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsConf, 0, True
 
@@ -691,6 +692,14 @@ Public Function SetWazuhPermissions()
         ' a machine where the service never starts it stays there.
         remAuthenticatedUsersPermsToken = "icacls """ & home_dir & "enrollment_token" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsToken, 0, True
+
+        ' The per-agent re-enrollment secret (#39064) gets client.keys's treatment, because it has
+        ' client.keys's power: it rotates the key of that one agent id. Written by the agent at
+        ' enrollment time rather than by this installer, so this only runs against an existing file
+        ' on a reinstall or upgrade -- icacls on a missing path is a harmless no-op, and the ACL is
+        ' inherited from the (already hardened) install directory when the agent creates it later.
+        remAuthenticatedUsersPermsReenroll = "icacls """ & home_dir & "reenroll.secret" & """ /remove *S-1-5-11 /q"
+        WshShell.run remAuthenticatedUsersPermsReenroll, 0, True
 
         ' Remove the Authenticated Users group from the tmp directory to avoid
         ' inherited permissions on client.keys and ossec.conf when using win32ui.
@@ -734,6 +743,44 @@ Public Function CreateDumpRegistryKey()
 End Function
 
 ' Deletes legacy DBs when upgrading from pre-5.x; WiX filters the version.
+' #39064: drop the fleet-wide enrollment password on upgrade. It is one secret that enrols any
+' endpoint, left at rest on every one of them; 5.0 replaces it with an enrollment token for the
+' first credential and a per-agent re-enrollment secret thereafter. A fresh 5.0 install never
+' creates the file, so without this an upgraded host -- the longest-running one in the estate,
+' which is exactly where the exposure matters most -- would keep it for ever.
+'
+' Overwritten before it is deleted, because the bytes are a secret. Best-effort throughout: an
+' upgrade must not fail over this.
+Public Function RemoveFleetEnrollmentPassword()
+    On Error Resume Next
+    Dim strArgs, args, home_dir, passPath
+    Dim fso, objFile, size, i
+
+    ' Read CustomActionData: "[APPLICATIONFOLDER]"
+    strArgs = Session.Property("CustomActionData")
+    args = Split(strArgs, "/+/")
+    home_dir = Replace(args(0), Chr(34), "")
+    passPath = home_dir & "authd.pass"
+
+    Set fso = CreateObject("Scripting.FileSystemObject")
+
+    If fso.FileExists(passPath) Then
+        size = fso.GetFile(passPath).Size
+        If size > 0 Then
+            Set objFile = fso.OpenTextFile(passPath, 2)
+            For i = 1 To size
+                objFile.Write "0"
+            Next
+            objFile.Close
+        End If
+        fso.DeleteFile passPath, True
+    End If
+
+    Set fso = Nothing
+
+    RemoveFleetEnrollmentPassword = 0
+End Function
+
 Public Function CleanupLegacyDatabases()
     On Error Resume Next
     Dim strArgs, args, home_dir

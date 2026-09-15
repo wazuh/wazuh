@@ -10,8 +10,13 @@
 #include "shared.h"
 #include "agentd.h"
 #include "enrollment.h"
+#include "reenroll_secret.h"
 #include "sec.h"
 #include "cJSON.h"
+#include "enrollment_token.h"
+
+#include <ctype.h>
+#include <openssl/crypto.h>
 
 #ifdef WAZUH_UNIT_TESTING
     // Remove static qualifier when unit testing
@@ -28,11 +33,18 @@ STATIC char *w_enrollment_extract_agent_name(void);
 STATIC int w_enrollment_resolve_ip(const char **ip_value);
 STATIC char *w_enrollment_load_password(const char *path);
 STATIC int w_enrollment_store_key_entry(const char *line);
+STATIC int w_enrollment_load_reenroll_credential(w_enroll_request_t *out);
+STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_class,
+                                                            const char *manager_message);
+STATIC int w_enrollment_fallback_credential_exists(void);
+STATIC const char *w_enrollment_token_id_or_unknown(const char *enroll_kid);
 
 int w_enrollment_build_request(w_enroll_request_t *out) {
     assert(out != NULL);
     out->body_json = NULL;
     out->password = NULL;
+    out->enroll_kid = NULL;
+    out->enroll_key_hex = NULL;
 
     char *agent_name = w_enrollment_extract_agent_name();
     if (!agent_name) {
@@ -84,6 +96,13 @@ int w_enrollment_build_request(w_enroll_request_t *out) {
 
     out->body_json = json_str;
 
+    /* This agent's own credential first (#39064). Re-read per attempt like the password below,
+     * and for the same reason: a rotation replaces the file while the daemon is running. */
+    if (w_enrollment_load_reenroll_credential(out) == 1) {
+        minfo("Re-enrolling with this agent's own re-enrollment secret.");
+        return 0;
+    }
+
     /* Re-read on every attempt (#38465 D6), never cached: rotating
      * etc/authd.pass this way doesn't need an agent restart. */
     out->password = w_enrollment_load_password(agt->enrollment.authorization_pass_path);
@@ -96,15 +115,128 @@ int w_enrollment_build_request(w_enroll_request_t *out) {
     return 0;
 }
 
+/**
+ * @brief Loads the re-enrollment secret and turns it into the `kid` + derived key the transport
+ *        mints the bearer from.
+ *
+ * The `kid` is the agent's own canonical id, taken from the SECRET STORE and not from
+ * client.keys: the store is what the manager verifies against, and the case this credential
+ * exists for is precisely the one where client.keys is gone. When both exist and disagree, the
+ * store wins and the disagreement is logged -- presenting the other id would only ever be
+ * refused as `unknown_agent`.
+ *
+ * Deriving here rather than in the module keeps the label with the credential that chose it: the
+ * transport is handed a finished key and a `kid`, and has no notion of which of the two
+ * `wazuh-enroll+jwt` credential kinds it is carrying.
+ *
+ * @param out Receives enroll_kid/enroll_key_hex on success.
+ * @return 1 when a credential was loaded, 0 when this agent holds none (never an error: the
+ *         normal state of a first enrollment, a legacy install, or a manager that issues none).
+ */
+STATIC int w_enrollment_load_reenroll_credential(w_enroll_request_t *out) {
+    char id[W_REENROLL_ID_SIZE];
+    char secret_hex[W_REENROLL_SECRET_SIZE];
+    uint8_t secret[W_REENROLL_SECRET_BYTES];
+    uint8_t key[W_ETOKEN_KEY_BYTES];
+    char key_hex[W_ETOKEN_KEY_BYTES * 2 + 1];
+    int result = 0;
+    size_t i;
+
+    if (!w_reenroll_secret_load(id, sizeof(id), secret_hex, sizeof(secret_hex))) {
+        return 0;
+    }
+
+    if (keys.keysize > 0 && keys.keyentries && keys.keyentries[0] && keys.keyentries[0]->id &&
+            strcmp(keys.keyentries[0]->id, id) != 0) {
+        mwarn("The re-enrollment secret is stored for agent '%s' but client.keys holds '%s'; "
+              "re-enrolling as '%s', which is the id the manager verifies the secret against.",
+              id, keys.keyentries[0]->id, id);
+    }
+
+    /* The store validated the shape on the way out, so this only fails on a hex digit the
+     * validator accepts and the decoder does not -- which cannot happen, but is not worth
+     * assuming. */
+    for (i = 0; i < sizeof(secret); i++) {
+        unsigned int byte;
+
+        if (sscanf(secret_hex + (i * 2), "%2x", &byte) != 1) {
+            merror("Could not decode the stored re-enrollment secret.");
+            goto end;
+        }
+
+        secret[i] = (uint8_t)byte;
+    }
+
+    if (w_reenroll_derive_key(secret, key) != 0) {
+        merror("Could not derive the re-enrollment signing key.");
+        goto end;
+    }
+
+    for (i = 0; i < sizeof(key); i++) {
+        snprintf(key_hex + (i * 2), 3, "%02x", key[i]);
+    }
+
+    os_strdup(id, out->enroll_kid);
+    os_strdup(key_hex, out->enroll_key_hex);
+    result = 1;
+
+end:
+    OPENSSL_cleanse(secret_hex, sizeof(secret_hex));
+    OPENSSL_cleanse(secret, sizeof(secret));
+    OPENSSL_cleanse(key, sizeof(key));
+    OPENSSL_cleanse(key_hex, sizeof(key_hex));
+
+    return result;
+}
+
 void w_enroll_request_destroy(w_enroll_request_t *request) {
     if (!request) {
         return;
     }
     os_free(request->body_json);
     os_free(request->password);
+
+    /* Wiped before it is freed: unlike the password (which the agent keeps on disk anyway while
+     * it is configured), this is a derived signing key that exists only for the length of one
+     * attempt, and leaving it in a freed heap block would outlive the reason it was created. */
+    if (request->enroll_key_hex) {
+        OPENSSL_cleanse(request->enroll_key_hex, strlen(request->enroll_key_hex));
+    }
+
+    os_free(request->enroll_kid);
+    os_free(request->enroll_key_hex);
 }
 
-w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result) {
+/**
+ * @brief The enrollment token id to name in a 403, or "(id unknown)".
+ *
+ * Only a `kid` that IS a token id is printed. The parameter carries whichever credential the
+ * request signed with, and the two keyed forms are disjoint by shape (jwtEnrollProfileV1.hpp): a
+ * token id is 22 canonical base64url characters, a re-enrolling agent's is its canonical id, at
+ * most ten digits. Against a real manager only the first can reach 9022/9023/9024 -- a
+ * re-enrollment bearer's verdicts are 9026/9027/9028 and arrive as 401s -- but printing "Enrollment
+ * token 001" for the other would name the wrong thing entirely, and an operator acting on it would
+ * go looking for a token that does not exist.
+ */
+STATIC const char *w_enrollment_token_id_or_unknown(const char *enroll_kid) {
+    static const size_t token_kid_chars = 22;
+    size_t i;
+
+    if (enroll_kid == NULL || strlen(enroll_kid) != token_kid_chars) {
+        return "(id unknown)";
+    }
+
+    for (i = 0; i < token_kid_chars; i++) {
+        const char c = enroll_kid[i];
+        if (!isalnum((unsigned char)c) && c != '-' && c != '_') {
+            return "(id unknown)";
+        }
+    }
+
+    return enroll_kid;
+}
+
+w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result, const char *enroll_kid) {
     assert(result != NULL);
 
     if (result->http_code == 0) {
@@ -127,11 +259,36 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
         cJSON *name = cJSON_GetObjectItem(response, "name");
         cJSON *ip = cJSON_GetObjectItem(response, "ip");
         cJSON *key = cJSON_GetObjectItem(response, "key");
+        /* Optional fifth field (#38993): omitted, not empty, when the manager issues none -- an
+         * older manager, or a path that does not mint one. */
+        cJSON *reenroll_secret = cJSON_GetObjectItem(response, "reenroll_secret");
 
         if (!cJSON_IsString(id) || !cJSON_IsString(name) || !cJSON_IsString(ip) || !cJSON_IsString(key) ||
                 !OS_IsValidID(id->valuestring) || !OS_IsValidName(name->valuestring) ||
                 !OS_IsValidIP(ip->valuestring, NULL) || !OS_IsValidName(key->valuestring)) {
             merror("Enrollment response has a missing or invalid field.");
+            cJSON_Delete(response);
+            return W_ENROLL_ERR_SERVER;
+        }
+
+        /* A field that is present but unusable is refused outright, unlike an absent one:
+         * accepting the key while dropping the secret is exactly how an agent ends up enrolled
+         * but unrecoverable, and the manager has already rotated its own copy by the time it
+         * answers, so a secret we cannot store is one nobody holds any more. */
+        if (reenroll_secret != NULL &&
+                (!cJSON_IsString(reenroll_secret) || !OS_IsValidReenrollSecret(reenroll_secret->valuestring))) {
+            merror("Enrollment response carries a malformed re-enrollment secret.");
+            cJSON_Delete(response);
+            return W_ENROLL_ERR_SERVER;
+        }
+
+        /* Before client.keys, never after (#39064). The manager rotated both when it answered, so
+         * the only crash window that leaves the agent recoverable is one where the secret landed
+         * and the key did not: it re-enrolls with the secret and gets a fresh key. The reverse
+         * leaves a usable key and a dead secret, and the next recovery needs an operator. */
+        if (reenroll_secret != NULL &&
+                w_reenroll_secret_store(id->valuestring, reenroll_secret->valuestring) != 0) {
+            /* w_reenroll_secret_store() logged the reason. */
             cJSON_Delete(response);
             return W_ENROLL_ERR_SERVER;
         }
@@ -149,13 +306,31 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
         return W_ENROLL_OK;
     }
 
-    /* {"error":{"code":N,"message":"..."}} per the #38438 contract -- logged
-     * when present, but the status mapping is driven by http_code alone. */
+    /* {"error":{"code":N,"message":"..."}} per the #38438 contract. /enroll nests its envelope,
+     * unlike every other route -- those use endpoints/endpoint.cpp's flat
+     * {"error":"<msg>","code":<class>} -- so `code` is read from inside the error object here. The
+     * VALUE vocabulary is shared: on a 401 it is the authentication failure class as a string
+     * (#39040), and on everything else authd's numeric code, or 0 when there is none. */
     const char *manager_message = NULL;
+    const char *auth_class = NULL;
+    int authd_code = 0;
     cJSON *error_response = cJSON_Parse(result->body);
     cJSON *error_obj = error_response ? cJSON_GetObjectItem(error_response, "error") : NULL;
     cJSON *message = error_obj ? cJSON_GetObjectItem(error_obj, "message") : NULL;
+    cJSON *code = error_obj ? cJSON_GetObjectItem(error_obj, "code") : NULL;
     manager_message = cJSON_GetStringValue(message);
+
+    /* The NULL test is redundant against cJSON -- cJSON_IsString()/cJSON_IsNumber() both return
+     * false for NULL -- but clang's analyser cannot see that: cJSON is a separate translation unit,
+     * so it treats the predicate as opaque and reaches `code->valuestring` on the path where
+     * error_obj was NULL. Spelling the guard out costs nothing and keeps scan-build clean. */
+    if (code != NULL) {
+        if (cJSON_IsString(code)) {
+            auth_class = code->valuestring;
+        } else if (cJSON_IsNumber(code)) {
+            authd_code = code->valueint;
+        }
+    }
 
     w_enroll_status_t status;
     switch (result->http_code) {
@@ -165,16 +340,38 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
             status = W_ENROLL_ERR_INVALID_REQUEST;
             break;
         case 401:
-            merror("Enrollment rejected by the manager: invalid or missing authentication.%s%s",
-                   manager_message ? " " : "", manager_message ? manager_message : "");
-            status = W_ENROLL_ERR_AUTH;
+            status = w_enrollment_classify_auth_failure(auth_class, manager_message);
             break;
         case 403:
-            /* Administratively disabled, not a transport hiccup -- the
-             * caller must not blind-retry this the same way (#38465 R12). */
-            minfo("Enrollment is disabled on the manager.%s%s", manager_message ? " " : "",
-                  manager_message ? manager_message : "");
-            status = W_ENROLL_ERR_DISABLED;
+            /* Two different 403s, told apart by whether authd put a code in the body:
+             *
+             *   9022/9023/9024 -- authd's verdict on an enrollment token whose SIGNATURE remoted
+             *   already verified. Unknown/revoked, expired, or out of uses: an authoritative "no"
+             *   about this credential, so retrying with it is pointless and only the operator can
+             *   fix it (mint a new token).
+             *
+             *   no code (0)    -- enrollment is administratively disabled on this manager. Kept as
+             *   its own status, as before: an operator can re-enable it, so this one is worth
+             *   waiting on. */
+            if (authd_code == 9022 || authd_code == 9023 || authd_code == 9024) {
+                /* Named with the token id (#39064: "surface 403 to operators with token ID"):
+                 * the whole point of this message is that an operator has to mint a replacement,
+                 * and without the id they cannot tell WHICH token to replace -- a fleet mid-rollout
+                 * may be using several. The kid is the token id for exactly these codes: only an
+                 * enrollment-token bearer can provoke 9022/9023/9024, a re-enrollment bearer's
+                 * verdicts are 9026/9027/9028 and arrive as 401s. */
+                merror("Enrollment token %s refused by the manager (code %d)%s%s. Retrying will "
+                       "not help: a new enrollment token is needed.",
+                       w_enrollment_token_id_or_unknown(enroll_kid), authd_code,
+                       manager_message ? ": " : "", manager_message ? manager_message : "");
+                status = W_ENROLL_ERR_AUTH_FATAL;
+            } else {
+                /* Administratively disabled, not a transport hiccup -- the
+                 * caller must not blind-retry this the same way (#38465 R12). */
+                minfo("Enrollment is disabled on the manager.%s%s", manager_message ? " " : "",
+                      manager_message ? manager_message : "");
+                status = W_ENROLL_ERR_DISABLED;
+            }
             break;
         case 409:
             merror("Enrollment rejected by the manager: duplicate agent.%s%s",
@@ -193,6 +390,149 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
     }
 
     return status;
+}
+
+/**
+ * @brief Maps a 401's failure class onto the three answers the agent has.
+ *
+ * The class strings are the manager's own (remoted's authMiddleware.cpp), and the mapping is the
+ * one the design fixes in §2.9: only `unknown_agent` may cost an identity, only `invalid_signature`
+ * is worth giving up on, and everything else -- including a class this agent does not recognise and
+ * a 401 with no readable class at all -- retries without touching the credential.
+ *
+ * @param auth_class The body's `error.code` as a string, or NULL when it was absent or numeric.
+ * @param manager_message The body's `error.message`, or NULL.
+ */
+STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_class,
+                                                            const char *manager_message) {
+    const char *detail_sep = manager_message ? ": " : "";
+    const char *detail = manager_message ? manager_message : "";
+
+    if (auth_class == NULL) {
+        /* Fail-safe, never fail-closed (design §2.9 rule 3): an older manager, an intermediary that
+         * replaced the body, or a class this build does not know. A manager that cannot say why it
+         * refused us has not told us to throw away our credential. */
+        merror("Enrollment rejected by the manager: invalid or missing authentication, with no "
+               "failure class named%s%s. Retrying without changing the credential.", detail_sep, detail);
+        return W_ENROLL_ERR_AUTH_RETRY;
+    }
+
+    if (strcmp(auth_class, "unknown_agent") == 0) {
+        /* Only reachable from authd's 9026, and only a re-enrollment bearer can provoke it: a
+         * password or token enrollment asserts no identity for the manager to fail to find. So the
+         * secret this attempt signed with names an agent the manager no longer has. */
+        merror("The manager does not know the agent this re-enrollment was signed for%s%s. The "
+               "stored re-enrollment secret is no longer usable.", detail_sep, detail);
+        return W_ENROLL_ERR_IDENTITY_GONE;
+    }
+
+    if (strcmp(auth_class, "invalid_signature") == 0) {
+        /* The credential was judged and failed on something a fresh attempt cannot change by
+         * itself: the signature, the token's shape, or the identity it claims. So this must never
+         * trigger re-enrollment -- a new identity fixes none of them, and #39064 states the rule
+         * as "preserves credentials and explicitly prevents re-enrollment".
+         *
+         * It does NOT stop the loop, though, which is the other half of the same instruction:
+         * "surface 403 to operators with token ID; retry 401". Only a 403 is authd's
+         * authoritative refusal of a credential it verified. A 401 here can still be fixed
+         * without the agent doing anything -- the manager's own authd.pass corrected to match
+         * this endpoint's, or a re-enrollment secret restored on the master -- and an agent that
+         * stopped would not notice. The retry is bounded by the caller's backoff ramp. */
+        merror("Enrollment rejected by the manager: the credential's signature was refused%s%s. "
+               "This will keep failing until the credential is corrected on the manager; the "
+               "agent is keeping the one it has and retrying.", detail_sep, detail);
+        return W_ENROLL_ERR_AUTH_RETRY;
+    }
+
+    /* stale_token, token_unknown, token_expired, token_revoked, enrollment_key_unavailable,
+     * invalid_request, and anything this build has not heard of.
+     *
+     * token_expired and token_revoked look final, and against authd they are -- but they arrive
+     * here as a 401 only from remoted's own replica of the token store, which can lag the master
+     * (the same window that makes token_unknown retryable). authd's authoritative refusal of the
+     * same token comes back as the 403 handled above, and THAT is the one that stops the loop. */
+    minfo("Enrollment rejected by the manager: %s%s%s. Retrying.", auth_class, detail_sep, detail);
+    return W_ENROLL_ERR_AUTH_RETRY;
+}
+
+w_enroll_action_t w_enrollment_apply_policy(w_enroll_status_t status) {
+    switch (status) {
+        case W_ENROLL_OK:
+            return W_ENROLL_ACTION_STOP;
+
+        case W_ENROLL_ERR_AUTH_FATAL:
+            /* w_enrollment_process_response() already named the reason and said retrying will not
+             * help; nothing to add here. */
+            return W_ENROLL_ACTION_STOP;
+
+        case W_ENROLL_ERR_IDENTITY_GONE:
+            /* The secret is dead: it can only ever produce this same rejection, and while it is on
+             * disk w_enrollment_build_request() keeps preferring it over anything that still works.
+             * Shred it, then keep going.
+             *
+             * Shredding is what makes the next attempt a different request, and that is why
+             * retrying here is not the loop #39064 set out to remove. With the dead secret gone the
+             * agent is in exactly the state of one that has never enrolled, and an agent in that
+             * state enrolls: it may have a token or a password to present, or it may have nothing
+             * at all -- which, on a manager that accepts credential-less enrollment, is not a dead
+             * end but the ordinary path, and is how most such agents got their first identity.
+             *
+             * Stopping instead would cost an open-enrollment fleet any way to recover from a
+             * rebuilt or restored manager without an operator visiting every endpoint, on a manager
+             * that would have taken them all straight back. The refusal the DoD wanted stopped --
+             * one the manager has already judged authoritatively -- arrives as a 403, and that is
+             * W_ENROLL_ERR_AUTH_FATAL's job; it still stops. */
+            w_reenroll_secret_clear();
+
+            if (w_enrollment_fallback_credential_exists()) {
+                minfo("Falling back to the configured enrollment credential.");
+            } else {
+                minfo("No enrollment credential is configured; retrying enrollment without one. "
+                      "This succeeds only where the manager accepts credential-less enrollment.");
+            }
+
+            return W_ENROLL_ACTION_RETRY;
+
+        case W_ENROLL_ERR_TRANSPORT:
+        case W_ENROLL_ERR_INVALID_REQUEST:
+        case W_ENROLL_ERR_AUTH_RETRY:
+        case W_ENROLL_ERR_DISABLED:
+        case W_ENROLL_ERR_DUPLICATE:
+        case W_ENROLL_ERR_SERVER:
+        default:
+            /* Everything else is or may be transient: a manager that is down, one whose operator
+             * has not enabled enrollment yet, a worker whose copy of the token store is catching
+             * up. These are what the retry ramp exists for. */
+            return W_ENROLL_ACTION_RETRY;
+    }
+}
+
+/**
+ * @brief Is there any credential left to enroll with, other than the re-enrollment secret?
+ *
+ * Presence only -- whether the manager will accept it is the manager's call, and an unreadable or
+ * empty file is the same as none. The one-shot enrollment token counts: if it is still on disk the
+ * bootstrap has not consumed it, so the next start can use it.
+ *
+ * This chooses a log line, not a decision: the agent retries after shredding a dead secret either
+ * way. An operator reading "retrying without one" needs to know the fleet is open-enrolling; one
+ * reading "falling back" needs to know which credential is now in play.
+ */
+STATIC int w_enrollment_fallback_credential_exists(void) {
+    if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) == 0 && FileSize(AGENT_ENROLLMENT_TOKEN_FILE) > 0) {
+        return 1;
+    }
+
+    if (agt->enrollment.authorization_pass_path != NULL) {
+        char *password = w_enrollment_load_password(agt->enrollment.authorization_pass_path);
+
+        if (password != NULL) {
+            os_free(password);
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 /**
