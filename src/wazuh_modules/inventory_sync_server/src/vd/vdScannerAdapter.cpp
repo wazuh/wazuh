@@ -26,7 +26,10 @@ namespace invsync::vd
      * Translates a ValidatedSession into the scanner's NEUTRAL views (no FlatBuffers cross this
      * boundary; the views alias the request body, which the lane keeps alive for the whole call)
      * and reproduces the legacy gate decision:
-     *  - scanner not initialized (disabled, or still starting) -> legitimate skip, index anyway.
+     *  - never going to run here (disabled, or a harness that never started it) -> legitimate
+     *    skip, index anyway.
+     *  - enabled but still starting -> deferred: the feed-not-ready gate answers a retryable 503
+     *    instead, since this node is expected to run a scanner soon (#38880 finding F17).
      *
      * There is no manager-initiated "feed-update fleet scan" to coordinate with anymore -- feed
      * updates no longer trigger an automatic rescan of every agent; agents detect the offset
@@ -40,9 +43,22 @@ namespace invsync::vd
         bool feedReady() const override
         {
             auto& scanner = VulnerabilityScannerFacade::instance();
-            // An uninitialized scanner is not a "feed not ready" condition: those sessions skip
-            // the scan and index (D22's legitimate-skip row), so they must pass this gate.
-            return !scanner.isInitialized() || scanner.isFeedReady();
+            if (!scanner.hasStarted() || !scanner.isEnabled())
+            {
+                // Never going to run here -- start() was never invoked at all (a test harness
+                // that skips it, e.g. the testtool's --no-vd), or it ran and found vulnerability
+                // detection disabled. Neither is a "feed not ready" condition: those sessions
+                // skip the scan and index (D22's legitimate-skip row), so they must pass this
+                // gate rather than wait on a feed that will never load.
+                return true;
+            }
+            // Enabled and started: either still validating (isInitialized() false) or fully up,
+            // in which case the real feed-readiness signal decides. Distinguishing "still
+            // starting" from "disabled" here is what lets the D17 gate -- and the /scan/vd
+            // on-demand path, which re-checks this same gate before scanAgent() -- defer the
+            // startup window with a retryable 503 instead of routing it through Skipped as if
+            // this node would never run a scanner.
+            return scanner.isInitialized() && scanner.isFeedReady();
         }
 
         bool scannerRunning() const override
@@ -101,9 +117,11 @@ namespace invsync::vd
 
             if (!scanner.isInitialized())
             {
-                // Skipped, not NotReady: this gate is what the QA suite, the operator WARN and
-                // vd.scans.skipped hang off. The startup window is covered below, by the
-                // ScanTriggerResult::NotInitialized case, which does report NotReady.
+                // Reached only for "never going to run here" (disabled, or a harness that never
+                // started it): the lane's feedReady() re-check, one level up, already deferred
+                // the enabled-but-starting case with a retryable 503 before calling scanAgent()
+                // at all. Skipped, not NotReady: this gate is what the QA suite, the operator
+                // WARN and vd.scans.skipped hang off.
                 return AgentScanOutcome::Skipped;
             }
 
