@@ -41,6 +41,15 @@ The main API configuration file defines:
 | `api/configuration/api.yaml` | Main API configuration |
 | `api/configuration/security/` | Security configuration directory |
 
+### port
+
+TCP port the API listens on, bound once per entry in `host`.
+
+- **Default value:** `55000`
+- **Allowed values:** The schema only checks that this is a number; a value outside `1`-`65535` is accepted here and fails later, when the socket is bound
+- **Note:** The manager package ships `/usr/lib/sysctl.d/60-wazuh-manager-api-port.conf`, which sets `net.ipv4.ip_local_reserved_ports` to `55000` so the kernel never hands that port out as an ephemeral source port for an unrelated outbound connection. Two caveats: the reservation names `55000` literally and does not follow this setting, so changing `port` leaves the reservation on a port nothing listens on and none on the port actually in use; and `net.ipv4.ip_local_reserved_ports` holds a single whole value rather than a set each package contributes to, so this drop-in replaces any other reservation for that key and a drop-in sorting after it replaces this one. Override it with a file of the same name in `/etc/sysctl.d/`.
+- **Note:** A port that is busy at startup is retried with a backoff for roughly a minute before the API gives up: see [Startup and socket binding](architecture.md).
+
 ### max_upload_size
 
 Maximum size, in bytes, of a request body the API accepts.

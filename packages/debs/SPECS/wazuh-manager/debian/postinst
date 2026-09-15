@@ -265,7 +265,11 @@ case "$1" in
         fi
     done
 
-    # Enable and start the periodic healthcheck timer that surfaces a dead daemon through systemd.
+    # Apply the API port reservation shipped in /usr/lib/sysctl.d, and enable the periodic
+    # healthcheck timer that surfaces a dead daemon through systemd.
+    if command -v sysctl > /dev/null 2>&1; then
+        sysctl --system > /dev/null 2>&1 || true
+    fi
     if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
         systemctl daemon-reload > /dev/null 2>&1
         systemctl enable wazuh-manager-healthcheck.timer > /dev/null 2>&1

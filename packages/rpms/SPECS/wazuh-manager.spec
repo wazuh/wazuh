@@ -90,6 +90,10 @@ install -m 0644 src/init/templates/wazuh-manager.service ${RPM_BUILD_ROOT}/usr/l
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-manager-healthcheck.service
 install -m 0644 src/init/templates/wazuh-manager-healthcheck.service ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
 install -m 0644 src/init/templates/wazuh-manager-healthcheck.timer ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
+# /usr/lib/sysctl.d is the vendor directory: an administrator overrides this reservation with a
+# file of the same name in /etc/sysctl.d.
+mkdir -p ${RPM_BUILD_ROOT}/usr/lib/sysctl.d/
+install -m 0644 src/init/templates/60-wazuh-manager-api-port.conf ${RPM_BUILD_ROOT}/usr/lib/sysctl.d/
 
 # Add configuration scripts
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/
@@ -522,7 +526,11 @@ if [ -f %{_sysconfdir}/systemd/system/wazuh-manager.service ]; then
   systemctl daemon-reload > /dev/null 2>&1
 fi
 
-# Enable and start the periodic healthcheck timer that surfaces a dead daemon through systemd.
+# Apply the API port reservation shipped in /usr/lib/sysctl.d, and enable the periodic
+# healthcheck timer that surfaces a dead daemon through systemd.
+if command -v sysctl > /dev/null 2>&1; then
+  sysctl --system > /dev/null 2>&1 || true
+fi
 if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
   systemctl daemon-reload > /dev/null 2>&1
   systemctl enable wazuh-manager-healthcheck.timer > /dev/null 2>&1
@@ -563,6 +571,7 @@ rm -fr %{buildroot}
 /usr/lib/systemd/system/wazuh-manager.service
 /usr/lib/systemd/system/wazuh-manager-healthcheck.service
 /usr/lib/systemd/system/wazuh-manager-healthcheck.timer
+/usr/lib/sysctl.d/60-wazuh-manager-api-port.conf
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}
 %attr(440, root, wazuh-manager) %{_localstatedir}/VERSION.json
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/api
