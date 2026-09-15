@@ -103,8 +103,10 @@ achieve leaves documents nothing will ever overwrite:
   are the other way a `200` leaves matching documents in place, but unlike a shard failure the
   condition clears itself: a write the indexer has acknowledged but not yet refreshed makes every
   document it touched conflict, so a delete issued right after a bulk of the same documents collides
-  with it. The operation is re-run, which is idempotent, on its own count of 3 attempts and its own
-  backoff (1s, then up to 2s, against the `2s` `refresh_interval` of the state indices), so the
+  with it. `refresh_interval` is not uniform across the state indices: 2s for most of them, 5s for
+  `wazuh-states-sca`. The operation is re-run, which is idempotent, on its own count of 3 attempts
+  and its own backoff (3s, then up to 6s: the second delay is drawn uniformly from `[base, 2*base]`,
+  so the base has to be 3s for the cumulative wait to clear a 5s segment on every draw), so the
   budget above stays intact for a 429 that follows; the wall bound is shared, and one allowance
   covers a whole flush rather than each index in it. Conflicts that outlive it fail the operation
   like a shard failure, and so does a stop that cuts a retry wait short.

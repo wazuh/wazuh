@@ -314,7 +314,7 @@ template<typename TSelector,
          size_t RetryDelay = 1,
          size_t FlushInterval = 20,
          size_t MaxRetryDelay = 15,
-         size_t ConflictRetryDelayMs = 1000>
+         size_t ConflictRetryDelayMs = 3000>
 class IndexerConnectorSyncImpl final
 {
     static_assert(RetryDelay > 0, "RetryDelay must be greater than 0");
@@ -350,8 +350,13 @@ class IndexerConnectorSyncImpl final
 
     /// A by-query version conflict clears itself after one index refresh, so it retries on its own
     /// attempt count and its own backoff, leaving the budget above intact for a 429 that follows.
-    /// Three attempts wait 1s and then up to 2s, over the 2s `refresh_interval` of the state
-    /// indices, and no longer: the wait is on the caller's request and on the shard queue behind
+    /// `refresh_interval` is not uniform across the state indices: 2s for most of them, but 5s for
+    /// `wazuh-states-sca`, which this same retry also covers (isAgentScopedStateIndex,
+    /// AGENT_DELETION_SCOPE_BY_QUERY). Three attempts wait 3s and then up to 6s: the second delay is
+    /// drawn uniformly from [base, 2*base], so the base has to be 3s for the cumulative wait to clear
+    /// a 5s segment on EVERY draw -- at 2s the range is 4s to 6s and the low half of it exhausts the
+    /// allowance before the refresh, failing the caller exactly as it did before the retry existed.
+    /// And no longer than that: the wait is on the caller's request and on the shard queue behind
     /// it. The wall bound is shared, because the window the caller has to answer in is absolute.
     static constexpr size_t CONFLICT_RETRY_ATTEMPTS {3};
     static constexpr size_t DEFAULT_MAX_RETRY_DURATION_SECONDS {15};
