@@ -154,7 +154,11 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
 
         filtered_files = super()._filter_bucket_files(bucket_files, **kwargs)
 
-        sorted_files = sorted(filtered_files, key=lambda x: extract_date_from_key(x['Key']))
+        # extract_date_from_key returns None for keys without a /YYYY/M/D/ segment
+        # (e.g. AWS Config writability-check objects). Fall back to datetime.min so the
+        # sort key is totally ordered; comparing datetime to None raises TypeError and
+        # aborts the whole Config ingestion run.
+        sorted_files = sorted(filtered_files, key=lambda x: extract_date_from_key(x['Key']) or datetime.min)
 
         if self.only_logs_after is None:
             for sorted_file in sorted_files:
