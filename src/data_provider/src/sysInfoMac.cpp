@@ -9,6 +9,7 @@
  * Foundation.
  */
 #include "sysInfo.hpp"
+#include <optional>
 #include "cmdHelper.h"
 #include "stringHelper.h"
 #include <filesystem_wrapper.hpp>
@@ -710,12 +711,28 @@ nlohmann::json SysInfo::getServices() const
             return 0;
         };
 
-        // The provider renders plist booleans as the words "true"/"false", which std::stoi cannot
-        // parse, so boolean-backed fields need their own conversion.
-        auto stringToBool = [&svc](const std::string & fieldName) -> int
+        auto field = [&svc](const std::string & fieldName)
         {
-            const auto valueStr = svc.value(fieldName, std::string{});
-            return (valueStr == "true" || valueStr == "1") ? 1 : 0;
+            return svc.value(fieldName, std::string{});
+        };
+
+        // The provider renders plist booleans as the words "true"/"false", and as "0"/"1" when the
+        // plist spells them as numbers. std::stoi parses neither vocabulary, so boolean-backed
+        // fields go through this one normalization. An unrecognised spelling has no boolean
+        // meaning, which includes LAUNCHD_UNEVALUATED_VALUE.
+        auto launchdBool = [](const std::string & value) -> std::optional<bool>
+        {
+            if (value == "true" || value == "1")
+            {
+                return true;
+            }
+
+            if (value == "false" || value == "0")
+            {
+                return false;
+            }
+
+            return std::nullopt;
         };
 
         // ECS mapping based on the provided table
@@ -726,16 +743,17 @@ nlohmann::json SysInfo::getServices() const
         serviceItem["service_state"]        = UNKNOWN_VALUE;
         serviceItem["service_sub_state"]    = UNKNOWN_VALUE;
 
-        // Disabled is a plist boolean, so the provider yields "true"/"false", but a plist may also
-        // spell it as "0"/"1". An unset key means enabled, which is the launchd default, while any
-        // other value is a form we cannot evaluate and must not report either way.
-        const auto disabledValue = svc.value("disabled", std::string{});
+        // An unset Disabled key means enabled, which is the launchd default. Anything the
+        // normalization above cannot read as a boolean, such as a feature flag conditional, is a
+        // form we cannot evaluate and must not report either way.
+        const auto disabledValue = field("disabled");
+        const auto disabled = launchdBool(disabledValue);
 
-        if (disabledValue == "1" || disabledValue == "true")
+        if (disabled.has_value())
         {
-            serviceItem["service_enabled"] = "0";
+            serviceItem["service_enabled"] = disabled.value() ? "0" : "1";
         }
-        else if (disabledValue.empty() || disabledValue == "0" || disabledValue == "false")
+        else if (disabledValue.empty())
         {
             serviceItem["service_enabled"] = "1";
         }
@@ -747,10 +765,10 @@ nlohmann::json SysInfo::getServices() const
         serviceItem["service_start_type"]                    = svc.value("run_at_load",         UNKNOWN_VALUE);
         serviceItem["service_restart"]                       = svc.value("keep_alive",          UNKNOWN_VALUE);
         serviceItem["service_frequency"]                     = stringToInt("start_interval");
-        serviceItem["service_starts_on_mount"]               = stringToBool("start_on_mount");
+        serviceItem["service_starts_on_mount"]               = launchdBool(field("start_on_mount")).value_or(false) ? 1 : 0;
         serviceItem["service_starts_on_path_modified"]       = svc.value("watch_paths",         UNKNOWN_VALUE);
         serviceItem["service_starts_on_not_empty_directory"] = svc.value("queue_directories",   UNKNOWN_VALUE);
-        serviceItem["service_inetd_compatibility"]           = stringToBool("inetd_compatibility");
+        serviceItem["service_inetd_compatibility"]           = launchdBool(field("inetd_compatibility")).value_or(false) ? 1 : 0;
         serviceItem["process_pid"]                           = 0;
         serviceItem["process_executable"]                    = svc.value("program",             UNKNOWN_VALUE);
         serviceItem["process_args"]                          = svc.value("program_arguments",   UNKNOWN_VALUE);

@@ -25,7 +25,7 @@ static bool cfStringToStd(CFStringRef value, std::string& out)
     const CFIndex length = CFStringGetLength(value);
     const CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
 
-    if (maxSize <= 0 || maxSize == kCFNotFound + 1)
+    if (maxSize <= 0)
     {
         return false;
     }
@@ -39,6 +39,62 @@ static bool cfStringToStd(CFStringRef value, std::string& out)
 
     out.assign(buffer.data());
     return true;
+}
+
+/// Reads a plist file and returns its root dictionary, or nullptr if it cannot be read or is not
+/// a dictionary. The caller owns the result and must CFRelease it.
+static CFDictionaryRef readPlistDictionary(const std::string& path)
+{
+    CFURLRef fileURL = CFURLCreateFromFileSystemRepresentation(
+                           kCFAllocatorDefault,
+                           reinterpret_cast<const UInt8*>(path.c_str()),
+                           path.length(),
+                           false
+                       );
+
+    if (!fileURL)
+    {
+        return nullptr;
+    }
+
+    CFReadStreamRef stream = CFReadStreamCreateWithFile(kCFAllocatorDefault, fileURL);
+    CFRelease(fileURL);
+
+    if (!stream)
+    {
+        return nullptr;
+    }
+
+    if (!CFReadStreamOpen(stream))
+    {
+        CFRelease(stream);
+        return nullptr;
+    }
+
+    CFPropertyListRef plist = CFPropertyListCreateWithStream(
+                                  kCFAllocatorDefault,
+                                  stream,
+                                  0,
+                                  kCFPropertyListImmutable,
+                                  nullptr,
+                                  nullptr
+                              );
+
+    CFReadStreamClose(stream);
+    CFRelease(stream);
+
+    if (!plist)
+    {
+        return nullptr;
+    }
+
+    if (CFGetTypeID(plist) != CFDictionaryGetTypeID())
+    {
+        CFRelease(plist);
+        return nullptr;
+    }
+
+    return static_cast<CFDictionaryRef>(plist);
 }
 
 void LaunchdProvider::loadDisabledOverrides()
@@ -72,56 +128,13 @@ void LaunchdProvider::loadDisabledOverrides()
 
     for (const auto& file : overrideFiles)
     {
-        CFURLRef fileURL = CFURLCreateFromFileSystemRepresentation(
-                               kCFAllocatorDefault,
-                               reinterpret_cast<const UInt8*>(file.c_str()),
-                               file.length(),
-                               false
-                           );
+        CFDictionaryRef dict = readPlistDictionary(file);
 
-        if (!fileURL)
+        if (!dict)
         {
             continue;
         }
 
-        CFReadStreamRef stream = CFReadStreamCreateWithFile(kCFAllocatorDefault, fileURL);
-        CFRelease(fileURL);
-
-        if (!stream)
-        {
-            continue;
-        }
-
-        if (!CFReadStreamOpen(stream))
-        {
-            CFRelease(stream);
-            continue;
-        }
-
-        CFPropertyListRef plist = CFPropertyListCreateWithStream(
-                                      kCFAllocatorDefault,
-                                      stream,
-                                      0,
-                                      kCFPropertyListImmutable,
-                                      nullptr,
-                                      nullptr
-                                  );
-
-        CFReadStreamClose(stream);
-        CFRelease(stream);
-
-        if (!plist)
-        {
-            continue;
-        }
-
-        if (CFGetTypeID(plist) != CFDictionaryGetTypeID())
-        {
-            CFRelease(plist);
-            continue;
-        }
-
-        CFDictionaryRef dict = static_cast<CFDictionaryRef>(plist);
         const CFIndex count = CFDictionaryGetCount(dict);
 
         if (count > 0)
@@ -163,7 +176,7 @@ void LaunchdProvider::loadDisabledOverrides()
             }
         }
 
-        CFRelease(plist);
+        CFRelease(dict);
     }
 }
 
@@ -347,57 +360,13 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
     service.path = path;
     service.name = std::filesystem::path(path).filename().string();
 
-    // Read the plist file
-    CFURLRef fileURL = CFURLCreateFromFileSystemRepresentation(
-                           kCFAllocatorDefault,
-                           reinterpret_cast<const UInt8*>(path.c_str()),
-                           path.length(),
-                           false
-                       );
+    CFDictionaryRef dict = readPlistDictionary(path);
 
-    if (!fileURL)
+    if (!dict)
     {
         return false;
     }
 
-    CFReadStreamRef stream = CFReadStreamCreateWithFile(kCFAllocatorDefault, fileURL);
-    CFRelease(fileURL);
-
-    if (!stream)
-    {
-        return false;
-    }
-
-    if (!CFReadStreamOpen(stream))
-    {
-        CFRelease(stream);
-        return false;
-    }
-
-    CFPropertyListRef plist = CFPropertyListCreateWithStream(
-                                  kCFAllocatorDefault,
-                                  stream,
-                                  0,
-                                  kCFPropertyListImmutable,
-                                  nullptr,
-                                  nullptr
-                              );
-
-    CFReadStreamClose(stream);
-    CFRelease(stream);
-
-    if (!plist)
-    {
-        return false;
-    }
-
-    if (CFGetTypeID(plist) != CFDictionaryGetTypeID())
-    {
-        CFRelease(plist);
-        return false;
-    }
-
-    CFDictionaryRef dict = static_cast<CFDictionaryRef>(plist);
 
     // Extract string values
     for (const auto& keyPair : m_launchdTopLevelStringKeys)
@@ -412,23 +381,10 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
             {
                 if (CFGetTypeID(value) == CFStringGetTypeID())
                 {
-                    CFStringRef stringValue = static_cast<CFStringRef>(value);
-                    CFIndex length = CFStringGetLength(stringValue);
-                    CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+                    std::string stringVal;
 
-                    // Validate maxSize to prevent buffer allocation issues
-                    if (maxSize <= 0 || maxSize == kCFNotFound + 1)
+                    if (cfStringToStd(static_cast<CFStringRef>(value), stringVal))
                     {
-                        CFRelease(key);
-                        continue;
-                    }
-
-                    std::vector<char> buffer(maxSize);
-
-                    if (CFStringGetCString(stringValue, buffer.data(), maxSize, kCFStringEncodingUTF8))
-                    {
-                        std::string stringVal(buffer.data());
-
                         if (keyPair.second == "label") service.label = stringVal;
                         else if (keyPair.second == "run_at_load") service.runAtLoad = stringVal;
                         else if (keyPair.second == "keep_alive") service.keepAlive = stringVal;
@@ -467,7 +423,12 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                     {
                         std::string stringVal = std::to_string(intValue);
 
+                        // A plist may spell any of these as a number instead of a boolean.
                         if (keyPair.second == "start_interval") service.startInterval = stringVal;
+                        else if (keyPair.second == "run_at_load") service.runAtLoad = stringVal;
+                        else if (keyPair.second == "keep_alive") service.keepAlive = stringVal;
+                        else if (keyPair.second == "start_on_mount") service.startOnMount = stringVal;
+                        else if (keyPair.second == "on_demand") service.onDemand = stringVal;
                         else if (keyPair.second == "disabled") service.disabled = stringVal;
                     }
                 }
@@ -478,7 +439,7 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                     if (keyPair.second == "inetd_compatibility") service.inetdCompatibility = "true";
                     // Disabled may hold a feature flag conditional that cannot be evaluated here.
                     // Flag it so it is not mistaken for an absent key, which means enabled.
-                    else if (keyPair.second == "disabled") service.disabled = "conditional";
+                    else if (keyPair.second == "disabled") service.disabled = LAUNCHD_UNEVALUATED_VALUE;
                 }
             }
 
@@ -507,21 +468,11 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
 
                     if (element && CFGetTypeID(element) == CFStringGetTypeID())
                     {
-                        CFStringRef stringElement = static_cast<CFStringRef>(element);
-                        CFIndex length = CFStringGetLength(stringElement);
-                        CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+                        std::string elementVal;
 
-                        // Validate maxSize to prevent buffer allocation issues
-                        if (maxSize <= 0 || maxSize == kCFNotFound + 1)
+                        if (cfStringToStd(static_cast<CFStringRef>(element), elementVal))
                         {
-                            continue;
-                        }
-
-                        std::vector<char> buffer(maxSize);
-
-                        if (CFStringGetCString(stringElement, buffer.data(), maxSize, kCFStringEncodingUTF8))
-                        {
-                            elements.push_back(std::string(buffer.data()));
+                            elements.push_back(std::move(elementVal));
                         }
                     }
                 }
@@ -547,7 +498,7 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
         }
     }
 
-    CFRelease(plist);
+    CFRelease(dict);
     return true;
 }
 

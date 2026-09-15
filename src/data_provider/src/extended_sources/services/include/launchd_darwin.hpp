@@ -16,6 +16,10 @@
 
 #include <ifilesystem_wrapper.hpp>
 
+/// @brief Value the provider emits for a key whose plist form it cannot evaluate, such as a
+/// feature flag conditional. Consumers must not read it as a boolean.
+constexpr auto LAUNCHD_UNEVALUATED_VALUE {"conditional"};
+
 /// @brief Structure to hold information about a launchd service.
 struct LaunchdService
 {
