@@ -270,7 +270,7 @@ namespace remoted::http
         DualStackMode dualStackMode {DualStackMode::Unset}; ///< IPV6_V6ONLY override (IPv6 bind only).
         std::size_t ioThreads {2};                          ///< RESTinio/asio I/O threads (accept + read/write).
         std::size_t workerThreads {4};                      ///< Handler worker-pool size (blocking work offload).
-        std::size_t maxBodySize {20U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
+        std::size_t maxBodySize {10U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
         std::size_t readTimeoutSec {10};               ///< Time to receive a full request on a connection (also covers
                                                        ///< the TLS handshake window).
         std::size_t writeTimeoutSec {10};              ///< Time allowed to write a response.
@@ -313,6 +313,17 @@ namespace remoted::http
         std::size_t budgetInFlightBytes {0};   ///< Bytes currently reserved by admitted requests.
         std::size_t budgetInFlightCount {0};   ///< Requests currently holding a reservation.
         std::uint64_t budgetRejectedTotal {0}; ///< Requests the budget has shed (cumulative).
+        /// Connections currently open on the listener, and the ceiling they are counted against
+        /// (`remoted.max_parallel_connections`). Distinct from budgetInFlightCount, which counts
+        /// REQUESTS holding a byte reservation: a connection is open from the accept until it
+        /// closes, which on a streamed response (POST /download) is the whole transfer.
+        ///
+        /// This is the only visibility into that ceiling. Reaching it does NOT produce an error:
+        /// the transport postpones the accept and the connection waits in the kernel's backlog,
+        /// so saturation shows up as latency, never as a counted rejection -- which is exactly
+        /// why the level has to be observable.
+        std::size_t connectionsOpen {0};
+        std::size_t connectionsMax {0};
     };
 
     /**

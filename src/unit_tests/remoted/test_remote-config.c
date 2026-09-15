@@ -67,6 +67,10 @@ static remoted *create_remoted() {
     logr->connection_overtake_time = 60;
     logr->lip = NULL;
     logr->https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
+    /* Same pre-parse state RemotedConfig() sets, for the same reason: 0 is a real setting here
+     * ("no limit"), so the reader must be handed the sentinel, not a zeroed field. */
+    logr->https.enroll_rate_limit = REMOTED_HTTPS_RATE_LIMIT_UNSET;
+    logr->https.cacerts_rate_limit = REMOTED_HTTPS_RATE_LIMIT_UNSET;
     return logr;
 }
 
@@ -551,6 +555,57 @@ static void test_Read_Remote_JSON_enum_and_dual_stack(void **state) {
     cJSON_Delete(off);
 }
 
+/* The two endpoint rate limits (POST /enroll, GET /cacerts). The reader sets no default of its
+ * own: what the document does not carry stays at REMOTED_HTTPS_RATE_LIMIT_UNSET so the module
+ * applies its own -- and an explicit 0 ("no limit") survives as 0, which is the whole reason the
+ * sentinel is negative rather than 0. */
+static void test_Read_Remote_JSON_rate_limits(void **state) {
+    test_state *ts = *state;
+
+    cJSON *configured = json_or_fail("{\"https\":{\"enroll_rate_limit\":12,\"cacerts_rate_limit\":0}}");
+
+    assert_int_equal(Read_Remote_JSON(configured, ts->logr), 0);
+    assert_int_equal(ts->logr->https.enroll_rate_limit, 12);
+    assert_int_equal(ts->logr->https.cacerts_rate_limit, 0);
+
+    cJSON_Delete(configured);
+}
+
+static void test_Read_Remote_JSON_rate_limits_absent_stay_unset(void **state) {
+    test_state *ts = *state;
+    /* An <https> block that never mentions them (or a document loaded without the schema defaults)
+     * must reach the module as "not configured", never as "unlimited". */
+    cJSON *remote = json_or_fail("{\"https\":{}}");
+
+    assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
+
+    assert_int_equal(ts->logr->https.enroll_rate_limit, REMOTED_HTTPS_RATE_LIMIT_UNSET);
+    assert_int_equal(ts->logr->https.cacerts_rate_limit, REMOTED_HTTPS_RATE_LIMIT_UNSET);
+
+    cJSON_Delete(remote);
+}
+
+static void test_Read_Remote_JSON_rate_limit_rejects_out_of_range(void **state) {
+    test_state *ts = *state;
+    /* The schema bounds these, but a document can reach the reader without it -- and a negative
+     * value in particular would arrive at the module as the very sentinel meaning "unset". */
+    cJSON *negative = json_or_fail("{\"https\":{\"enroll_rate_limit\":-1}}");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'enroll_rate_limit': -1.");
+
+    assert_int_equal(Read_Remote_JSON(negative, ts->logr), OS_INVALID);
+    cJSON_Delete(negative);
+
+    cJSON *too_big = json_or_fail("{\"https\":{\"cacerts_rate_limit\":100001}}");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'cacerts_rate_limit': 100001.");
+
+    assert_int_equal(Read_Remote_JSON(too_big, ts->logr), OS_INVALID);
+    cJSON_Delete(too_big);
+}
+
 static void test_Read_Remote_JSON_https_string_too_long(void **state) {
     test_state *ts = *state;
     char address[REMOTED_HTTPS_BIND_ADDR_MAX_LEN + 2];
@@ -676,6 +731,9 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_durations_and_sizes_int_or_string, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_ca_infers_certificate_mode, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_enum_and_dual_stack, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_rate_limits, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_rate_limits_absent_stay_unset, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_rate_limit_rejects_out_of_range, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_https_string_too_long, setup, teardown),
 
         /* RemotedConfig() and getconfig over the mocked document (global logr, no fixture) */

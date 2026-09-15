@@ -3648,6 +3648,10 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
     test_logr.https.max_body_size = 12345;
     test_logr.https.dual_stack = REMOTED_HTTPS_DUAL_STACK_YES;
+    test_logr.https.enroll_rate_limit = 12;
+    // 0 is a real setting ("no limit"), not an absent one: it must survive the crossing as 0 and
+    // arrive with rate_limit_set, or the module would read it as "apply your default" instead.
+    test_logr.https.cacerts_rate_limit = 0;
 
     // http_*
     will_return(__wrap_getDefine_Int_default, 0);
@@ -3721,6 +3725,13 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_int_equal(rm_config.authd_response_timeout, 0);
     assert_int_equal(rm_config.authd_max_queue_size, 256);
     assert_int_equal(rm_config.authd_worker_threads, 8);
+
+    // The two rate fields cross verbatim, explicit 0 included, and rate_limit_set says they are
+    // real values -- that flag is what stops a zeroed struct from reading as "unlimited" on the
+    // module side. The bucket depth is not in the ABI: the module derives it from the rate.
+    assert_int_equal(rm_config.rate_limit_set, 1);
+    assert_int_equal(rm_config.enroll_rate_limit, 12);
+    assert_int_equal(rm_config.cacerts_rate_limit, 0);
 }
 
 /* Tests remoted_module_control_config: the eight control_* options plus the two vd_scan_*

@@ -226,13 +226,16 @@ TEST(ResponseCountersTest, MakeRegistersFamilyAtZero)
     wazuh::metrics::Manager manager;
     const auto c = remoted::metrics::ResponseCounters::make(manager, "stateless");
 
-    for (const auto* code : {"2xx", "400", "403", "409", "413", "500", "503", "other"})
+    for (const auto* code : {"2xx", "400", "403", "409", "413", "429", "500", "503", "other"})
     {
         const std::string name = std::string {"remoted.http.stateless.responses."} + code;
         EXPECT_TRUE(manager.exists(name)) << name;
         EXPECT_EQ(static_cast<uint64_t>(manager.get(name)->value()), 0U) << name;
     }
-    EXPECT_EQ(manager.count(), 8U);
+    // 9 since the per-client rate limit's 429 got a cell of its own: every endpoint registers the
+    // whole vocabulary, including the cells that are structurally zero for it (only /enroll and
+    // /cacerts can ever answer 429), so a scraper's columns stay uniform.
+    EXPECT_EQ(manager.count(), 9U);
     EXPECT_EQ(c.c2xx->get(), 0U);
 }
 
@@ -345,12 +348,13 @@ TEST(EnrollmentMetricsTest, MakeRegistersFamilyAtZero)
                              remoted::enrollment::METRIC_REENROLL_REJECTED_UNKNOWN,
                              remoted::enrollment::METRIC_REENROLL_REJECTED_SIGNATURE,
                              remoted::enrollment::METRIC_REENROLL_REJECTED_STALE,
-                             remoted::enrollment::METRIC_REENROLL_REJECTED_IN_PROGRESS})
+                             remoted::enrollment::METRIC_REENROLL_REJECTED_IN_PROGRESS,
+                             remoted::enrollment::METRIC_RATE_LIMITED})
     {
         EXPECT_TRUE(manager.exists(name)) << name;
         EXPECT_EQ(static_cast<uint64_t>(manager.get(name)->value()), 0U) << name;
     }
-    EXPECT_EQ(manager.count(), 16U);
+    EXPECT_EQ(manager.count(), 17U);
 
     // Each token inc helper touches exactly its own cell.
     remoted::enrollment::incTokenAccepted(m);

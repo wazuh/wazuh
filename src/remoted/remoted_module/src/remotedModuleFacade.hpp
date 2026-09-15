@@ -49,6 +49,7 @@
 #include "endpoints/controlEndpoint.hpp"
 #include "endpoints/downloadEndpoint.hpp"
 #include "endpoints/endpoint.hpp"
+#include "endpoints/rateLimitGate.hpp"
 #include "endpoints/scanVdEndpoint.hpp"
 #include "endpoints/statefulEndpoint.hpp"
 #include "endpoints/statelessEndpoint.hpp"
@@ -87,7 +88,7 @@ constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 
 // Default cap on requests parked awaiting a downstream service (used when the caller leaves
 // remoted_module_config_t::max_deferred_requests <= 0).
-constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {256};
+constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {128};
 
 // Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status). RELATIVE on
 // purpose: remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
@@ -285,6 +286,11 @@ public:
             m_downstreamClient.reset();
             m_deferredLimiter.reset();
             m_authdClient.reset();
+            {
+                std::lock_guard<std::mutex> lock {m_rateLimitDiagMutex};
+                m_enrollRateLimiter.reset();
+                m_cacertsRateLimiter.reset();
+            }
 
             // Phase 4: NOW it's safe to fully tear down the transport (releases the I/O
             // runtime). Nothing can still be touching a responder: worker pool B was drained in
@@ -425,21 +431,40 @@ private:
         // bytes) and refuses with 503 a CA agents could not chain this listener to. Weak server
         // pointer: the route must not keep the server alive, and after stop() resets m_httpServer
         // the snapshot is empty, which answers 404.
-        m_httpServer->addRoute(remoted::http::Method::Get,
-                               "/cacerts",
-                               remoted::endpoints::cacerts::makeHandler(
-                                   [weak = std::weak_ptr<remoted::http::IHttpServer>(
-                                        m_httpServer)]() -> remoted::http::CaCertificateSnapshot
-                                   {
-                                       if (const auto server = weak.lock())
-                                       {
-                                           return server->caCertificateSnapshot();
-                                       }
-                                       return {};
-                                   },
-                                   m_cacertsMetrics,
-                                   &m_cacertsHttpMetrics),
-                               /*countAgainstBudget=*/false);
+        //
+        // Budget-exempt does NOT mean unbounded: the route is wrapped in its own rate limit
+        // ('remote.https.cacerts_rate_limit'), a ceiling on how fast this endpoint is served at
+        // all. The two bounds answer different questions and are complementary, not alternatives:
+        // the byte budget is about the memory a request holds (and this route is exempt so a trust
+        // bootstrap is never shed under memory pressure), the rate limit is about how often the
+        // route may be served.
+        {
+            std::lock_guard<std::mutex> lock {m_rateLimitDiagMutex};
+            m_cacertsRateLimiter = std::make_shared<remoted::http::EndpointRateLimiter>(
+                remoted::endpoints::ratelimit::buildCacertsSettings(m_config));
+        }
+
+        m_httpServer->addRoute(
+            remoted::http::Method::Get,
+            "/cacerts",
+            remoted::endpoints::ratelimit::wrap(remoted::endpoints::cacerts::makeHandler(
+                                                    [weak = std::weak_ptr<remoted::http::IHttpServer>(
+                                                         m_httpServer)]() -> remoted::http::CaCertificateSnapshot
+                                                    {
+                                                        if (const auto server = weak.lock())
+                                                        {
+                                                            return server->caCertificateSnapshot();
+                                                        }
+                                                        return {};
+                                                    },
+                                                    m_cacertsMetrics,
+                                                    &m_cacertsHttpMetrics),
+                                                m_cacertsRateLimiter,
+                                                &remoted::endpoints::cacerts::rateLimitedResponse,
+                                                m_cacertsMetrics.rateLimited,
+                                                &m_cacertsHttpMetrics,
+                                                "GET /cacerts"),
+            /*countAgainstBudget=*/false);
 
         // /stateless: the gateway runs the full bearer-token validation and only calls this handler once
         // auth succeeds; makeHandler() then cross-checks the payload's claimed wazuh.agent.id against
@@ -671,14 +696,37 @@ private:
 
         registerAuthdQueueDiagnostics(m_authdClient);
 
-        m_httpServer->addRoute(remoted::http::Method::Post,
-                               "/enroll",
-                               remoted::enrollment::makeHandler(*m_enrollmentAuthenticator,
-                                                                *m_authdClient,
-                                                                enrollConfig,
-                                                                m_enrollmentMetrics,
-                                                                enrollBodyDecoder,
-                                                                m_enrollHttpMetrics));
+        // Rate limit in front of the handler ('remote.https.enroll_rate_limit'). This is the route
+        // with the largest gap between what a request costs the CALLER (one HTTP request, no
+        // credential required to reach the bridge in Open mode) and what it costs the MANAGER (an
+        // authd round trip over the local socket and, on a worker, a cluster round trip to the
+        // master). The AuthdClient queue already bounds the damage, but only once the work has been
+        // queued; this refuses the excess before the bridge is touched at all, which is what keeps
+        // an unauthenticated caller from turning /enroll into an amplifier onto the cluster's
+        // internal socket. The bucket is the endpoint's, so this ceiling is shared by the whole
+        // fleet -- see endpointRateLimiter.hpp on what that does and does not buy.
+        {
+            std::lock_guard<std::mutex> lock {m_rateLimitDiagMutex};
+            m_enrollRateLimiter = std::make_shared<remoted::http::EndpointRateLimiter>(
+                remoted::endpoints::ratelimit::buildEnrollSettings(m_config));
+        }
+
+        m_httpServer->addRoute(
+            remoted::http::Method::Post,
+            "/enroll",
+            remoted::endpoints::ratelimit::wrap(remoted::enrollment::makeHandler(*m_enrollmentAuthenticator,
+                                                                                 *m_authdClient,
+                                                                                 enrollConfig,
+                                                                                 m_enrollmentMetrics,
+                                                                                 enrollBodyDecoder,
+                                                                                 m_enrollHttpMetrics),
+                                                m_enrollRateLimiter,
+                                                &remoted::enrollment::rateLimitedResponse,
+                                                m_enrollmentMetrics.rateLimited,
+                                                &m_enrollHttpMetrics,
+                                                "POST /enroll"));
+
+        registerRateLimitDiagnostics();
 
         // Same sanity check the other four endpoints get (see warnIfDownstreamBudgetExceedsRequestTimeout's
         // own comment) -- /enroll's downstream is AuthdClient, not the DeferredForwarder pair those
@@ -758,6 +806,65 @@ private:
             "Enrollment requests refused because the authd queue was full (the saturation share of "
             "remoted.enroll.authd_unavailable)",
             "requests");
+    }
+
+    /**
+     * @brief Publishes both endpoint rate limiters as remoted.<endpoint>.rate_limit.* pulls.
+     *
+     * The REFUSALS are not here: those are the plain remoted.enroll.rate_limited /
+     * remoted.cacerts.rate_limited counters the gate bumps, which belong with the rest of each
+     * endpoint's outcomes. What is here is the headroom, which only a pull can answer: the
+     * configured ceiling, and how much of this second's allowance is still unspent. `available`
+     * hovering near zero is the route running at its limit -- the reading that says whether a
+     * climbing `rate_limited` is a flood to investigate or simply a rate set too low for the fleet.
+     *
+     * Reading them never charges the bucket (EndpointRateLimiter::diagnostics() observes without
+     * consuming), so scraping cannot cost an agent its enrollment.
+     *
+     * Same wiring as registerAuthdQueueDiagnostics(): registered once, re-read per start, and
+     * quiescing to 0 once stop() drops the facade's handles.
+     */
+    void registerRateLimitDiagnostics()
+    {
+        if (m_rateLimitPullsRegistered)
+        {
+            return;
+        }
+        m_rateLimitPullsRegistered = true;
+
+        const auto snapshot = [this](bool enrollment)
+        {
+            std::lock_guard<std::mutex> lock {m_rateLimitDiagMutex};
+            const auto& limiter = enrollment ? m_enrollRateLimiter : m_cacertsRateLimiter;
+            return limiter ? limiter->diagnostics() : remoted::http::EndpointRateLimiter::Diagnostics {};
+        };
+
+        const auto registerFor = [this, snapshot](bool enrollment, const char* endpoint, const char* route)
+        {
+            const std::string prefix = std::string {"remoted."} + endpoint + ".rate_limit.";
+            const std::string routeName {route};
+
+            m_metricsManager->registerPullMetric(
+                prefix + "limit",
+                [snapshot, enrollment] { return static_cast<uint64_t>(snapshot(enrollment).limitPerSecond); },
+                routeName + " requests per second THIS NODE is willing to serve on the route "
+                            "(0 when the limit is disabled)",
+                "requests_per_second");
+            m_metricsManager->registerPullMetric(
+                prefix + "burst",
+                [snapshot, enrollment] { return static_cast<uint64_t>(snapshot(enrollment).burst); },
+                routeName + " requests servable back to back before the rate paces them",
+                "requests");
+            m_metricsManager->registerPullMetric(
+                prefix + "available",
+                [snapshot, enrollment] { return static_cast<uint64_t>(snapshot(enrollment).available); },
+                routeName + " allowance left unspent right now: near zero means the route is at its "
+                            "ceiling and further requests are being refused with 429",
+                "requests");
+        };
+
+        registerFor(/*enrollment=*/true, "enroll", "POST /enroll");
+        registerFor(/*enrollment=*/false, "cacerts", "GET /cacerts");
     }
 
     void registerKeystoreDiagnostics(const std::shared_ptr<remoted::auth::Keystore>& keystore)
@@ -1268,6 +1375,28 @@ private:
             "Requests the byte budget refused to admit (503, before any route ran)",
             "requests");
 
+        // The connection ceiling is the one capacity limit with NO rejection counter, because
+        // reaching it rejects nothing: the transport postpones the accept and the connection waits
+        // in the kernel backlog. Saturation is therefore invisible as an error and shows up only as
+        // latency -- these two levels are the only way to see it coming, and the only basis on
+        // which 'remoted.max_parallel_connections' can be sized rather than guessed.
+        //
+        // Not the same as budget.inflight.requests: that counts requests holding a byte
+        // reservation, while a connection is held from accept to close -- for a streamed
+        // POST /download, the whole transfer, which is what makes downloads the usual reason this
+        // level climbs.
+        m_metricsManager->registerPullMetric(
+            "remoted.server.connections.open",
+            [snapshot] { return static_cast<uint64_t>(snapshot().connectionsOpen); },
+            "Connections currently open on the public HTTPS listener",
+            "connections");
+        m_metricsManager->registerPullMetric(
+            "remoted.server.connections.max",
+            [snapshot] { return static_cast<uint64_t>(snapshot().connectionsMax); },
+            "Connections the listener accepts at once ('remoted.max_parallel_connections'); over it "
+            "new connections wait in the backlog instead of being refused",
+            "connections");
+
         // The served certificate's health, read from the same weak target: evaluated by the
         // transport at start and every certificateStatusInterval (24 h). Double, not uint64: the
         // day count is NEGATIVE once expired, the whole point of alerting on it. Both read 0 while
@@ -1499,6 +1628,16 @@ private:
     std::mutex m_authdDiagMutex;
     std::weak_ptr<remoted::enrollment::AuthdClient> m_authdDiagTarget;
     bool m_authdPullsRegistered {false};
+
+    /// The two endpoint rate limiters (POST /enroll, GET /cacerts). Rebuilt on every start and
+    /// dropped in stop()'s phase 3, like m_deferredLimiter: the routes that use them hold their own
+    /// shared_ptr copies until the transport goes away in phase 4, so dropping these only quiesces
+    /// the rate_limit.* pulls -- it never pulls the limiter out from under a request in flight.
+    /// Guarded because those pulls are served on the admin server's threads.
+    std::mutex m_rateLimitDiagMutex;
+    std::shared_ptr<remoted::http::EndpointRateLimiter> m_enrollRateLimiter;
+    std::shared_ptr<remoted::http::EndpointRateLimiter> m_cacertsRateLimiter;
+    bool m_rateLimitPullsRegistered {false};
 
     std::mutex m_keystoreDiagMutex;
     std::weak_ptr<remoted::auth::Keystore> m_keystoreDiagTarget;

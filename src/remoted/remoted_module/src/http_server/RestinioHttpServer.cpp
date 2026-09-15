@@ -259,14 +259,34 @@ namespace
          *                 RESTinio needs an instance whenever the traits name a listener type
          *                 (it throws otherwise), so the listener is always installed and this is
          *                 what makes it inert.
+         * @param open     Live connection count, maintained in EVERY verification mode -- unlike
+         *                 the peer-address check, which only runs in Full. Shared with the server
+         *                 so diagnostics() can read it.
          */
-        explicit FullModeListener(std::shared_ptr<RejectedConnections> rejected = nullptr)
+        explicit FullModeListener(std::shared_ptr<RejectedConnections> rejected = nullptr,
+                                  std::shared_ptr<std::atomic<std::size_t>> open = nullptr)
             : m_rejected {std::move(rejected)}
+            , m_open {std::move(open)}
         {
         }
 
         void state_changed(const restinio::connection_state::notice_t& notice) noexcept
         {
+            // Counted before the Full-mode gate below: the level must be observable in every
+            // verification mode, and a connection rejected by that check was still accepted by the
+            // transport and still holds one of max_parallel_connections' slots until it closes.
+            if (m_open)
+            {
+                if (std::holds_alternative<restinio::connection_state::accepted_t>(notice.cause()))
+                {
+                    m_open->fetch_add(1, std::memory_order_relaxed);
+                }
+                else if (std::holds_alternative<restinio::connection_state::closed_t>(notice.cause()))
+                {
+                    m_open->fetch_sub(1, std::memory_order_relaxed);
+                }
+            }
+
             if (!m_rejected)
             {
                 return;
@@ -339,6 +359,7 @@ namespace
         }
 
         std::shared_ptr<RejectedConnections> m_rejected;
+        std::shared_ptr<std::atomic<std::size_t>> m_open;
     };
 
     struct ServerTraits : public restinio::tls_traits_t<restinio::asio_timer_manager_t, WazuhRestinioLogger, Router>
@@ -1033,6 +1054,17 @@ namespace remoted::http
         /// null in the other modes, which is what keeps the listener inert.
         std::shared_ptr<RejectedConnections> m_rejectedConnections;
 
+        /// Connections currently open on the listener, maintained by FullModeListener in EVERY
+        /// verification mode. Allocated once and never reset: the listener RESTinio holds outlives
+        /// a stop(), so handing it a pointer that start() replaces would leave the old listener
+        /// decrementing a counter nobody reads. Shared (not a plain member) for the same reason --
+        /// RESTinio copies the listener around.
+        std::shared_ptr<std::atomic<std::size_t>> m_openConnections {std::make_shared<std::atomic<std::size_t>>(0)};
+
+        /// The ceiling m_openConnections is counted against (config.maxParallelConnections),
+        /// captured at start() so diagnostics() can report the level AND its limit together.
+        std::size_t m_maxConnections {0};
+
         /// The certificate the SSL_CTX serves (our own reference), constant until the next start():
         /// the leaf side of every certificate evaluation. The CA side is re-read from
         /// m_caCertificatePath at each one, so a rotated CA file is noticed at the next tick.
@@ -1303,6 +1335,8 @@ namespace remoted::http
         d.budgetInFlightBytes = budget->maxBytes() - budget->availableBytes();
         d.budgetInFlightCount = budget->inFlightCount();
         d.budgetRejectedTotal = budget->rejectedTotal();
+        d.connectionsOpen = m_impl->m_openConnections->load(std::memory_order_relaxed);
+        d.connectionsMax = m_impl->m_maxConnections;
         return d;
     }
 
@@ -1390,6 +1424,9 @@ namespace remoted::http
             maxInFlight = config.maxBodySize + PER_REQUEST_OVERHEAD;
         }
         m_impl->m_budget = std::make_unique<InFlightBudget>(maxInFlight);
+        // Captured here, next to the budget, so diagnostics() reports the level against the ceiling
+        // actually in force for this run rather than a compile-time default.
+        m_impl->m_maxConnections = config.maxParallelConnections;
 
         auto requestRouter = m_impl->buildRouter();
 
@@ -1407,7 +1444,8 @@ namespace remoted::http
         // Always provided, even when it has nothing to do: RESTinio throws
         // ("connection state listener is not specified") if the traits name a listener type and no
         // instance is set. A null registry inside makes it inert for None/Certificate.
-        settings.connection_state_listener(std::make_shared<FullModeListener>(m_impl->m_rejectedConnections));
+        settings.connection_state_listener(
+            std::make_shared<FullModeListener>(m_impl->m_rejectedConnections, m_impl->m_openConnections));
 
         settings.address(config.bindAddress)
             .port(config.port)
@@ -1449,7 +1487,10 @@ namespace remoted::http
             .max_pipelined_requests(config.maxPipelinedRequests)
             .concurrent_accepts_count(config.concurrentAccepts)
             // Bound simultaneous connections so the read-phase peak (bodies still being
-            // received, before they reach the in-flight budget) can't grow unbounded.
+            // received, before they reach the in-flight budget) can't grow unbounded. Reaching it
+            // does NOT reject anything: RESTinio postpones the accept and the connection waits in
+            // the kernel backlog, so the level is published as remoted.server.connections.* --
+            // saturation here is latency, and nothing else would make it visible.
             .max_parallel_connections(config.maxParallelConnections)
             .separate_accept_and_create_connect(true)
             .incoming_http_msg_limits(restinio::incoming_http_msg_limits_t {}

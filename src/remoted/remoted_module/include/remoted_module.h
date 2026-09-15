@@ -71,6 +71,18 @@ extern "C"
     };
 
     /**
+     * @brief remote.https.<endpoint>_rate_limit "not configured" sentinel.
+     *
+     * Kept in sync by hand with the config-parser mirror in src/config/include/remote-config.h
+     * (REMOTED_HTTPS_RATE_LIMIT_UNSET). Negative because 0 is a meaningful value here ("no rate
+     * limit"), exactly like REMOTED_MODULE_HTTPS_VERIFY_UNSET vs _NONE.
+     */
+    enum
+    {
+        REMOTED_MODULE_RATE_LIMIT_UNSET = -1
+    };
+
+    /**
      * @brief Configuration passed from remoted (C) to the C++ module.
      *
      * POD struct with fixed-size buffers so the ABI is stable and it compiles
@@ -167,6 +179,31 @@ extern "C"
                                        ///< empty -> library default).
         int verification_mode;         ///< REMOTED_MODULE_HTTPS_VERIFY_* (client-certificate verification).
         int dual_stack;                ///< REMOTED_MODULE_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind address.
+
+        // Rate limits of the two UNAUTHENTICATED routes. Regular remote.https settings
+        // (wazuh-manager.conf), not internal options: an enrolling agent has no client.keys entry
+        // and a trust-bootstrapping one has no anchor yet, so neither route can sit behind the
+        // bearer-token gateway that bounds every other one. What they bound is the WORK BEHIND the
+        // route (an authd round trip, and on a worker a cluster round trip to the master), not the
+        // transport: the in-flight byte budget and max_parallel_connections remain the memory
+        // bounds.
+        //
+        // The bucket is per ENDPOINT, not per caller: one ceiling for the route as a whole, so
+        // these are fleet-wide budgets -- a single noisy client can spend the route's whole
+        // allowance, and a mass enrollment is paced by the same number. Size them for the fleet.
+        //
+        // Read only when rate_limit_set is non-zero -- 0 is a VALID setting here ("no limit"),
+        // which a zeroed struct could not express, the same problem jwt_clock_skew_set solves.
+        // remoted always sets it, so a zeroed struct (or a NULL configuration) still means "module
+        // defaults" and never an accidental "unlimited".
+        int rate_limit_set;     ///< Non-zero when the two fields below carry configured values.
+        int enroll_rate_limit;  ///< POST /enroll sustained requests/second, whole endpoint.
+                                ///< REMOTED_MODULE_RATE_LIMIT_UNSET -> module default, 0 -> no limit.
+        int cacerts_rate_limit; ///< GET /cacerts sustained requests/second, whole endpoint.
+                                ///< UNSET -> module default, 0 -> no limit.
+                                ///< The bucket depth is NOT part of this ABI: the module derives it
+                                ///< from the rate, so a short burst is absorbed without giving an
+                                ///< operator a second number to reason about.
 
         // Control endpoint configuration. Defaults apply when <=0 or empty.
         char manager_version[64];        ///< Manager version string.

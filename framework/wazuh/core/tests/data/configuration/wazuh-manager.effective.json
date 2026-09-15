@@ -39,7 +39,9 @@
             "certificate": "etc/certs/remoted.pem",
             "key": "etc/certs/remoted-key.pem",
             "ca": "",
-            "ca_certificate": "etc/certs/root-ca.pem"
+            "ca_certificate": "etc/certs/root-ca.pem",
+            "enroll_rate_limit": 100,
+            "cacerts_rate_limit": 50
         },
         "agents": {
             "allow_higher_versions": false

@@ -71,6 +71,8 @@ wazuh-manager-remoted listeners.
 | `https.ciphers` | string |  | `^TLS_[A-Z0-9_]+(:TLS_[A-Z0-9_]+)*$` | TLS 1.3 cipher suites. Absent: library default. |
 | `https.max_body_size` | integer or string |  | >= 1; `^[0-9]+[bBkKmMgG]?$` | Maximum HTTP request body. Absent: module default. |
 | `https.dual_stack` | boolean |  |  | Accept IPv4 on an IPv6 bind address. Absent: module default. |
+| `https.enroll_rate_limit` | integer | `100` | 0-100000 | Sustained POST /enroll requests per second this manager serves, counted for the endpoint as a whole and not per agent. 0 disables the limit. Requests over it get 429 without reaching authd. Short bursts are absorbed: the endpoint may serve twice this value back to back before the rate paces it. |
+| `https.cacerts_rate_limit` | integer | `50` | 0-100000 | Sustained GET /cacerts requests per second this manager serves, counted for the endpoint as a whole and not per agent. 0 disables the limit. Requests over it get 429. Short bursts are absorbed: the endpoint may serve twice this value back to back before the rate paces it. |
 | `agents` | mapping |  |  | Agent version policy of the connection handlers. |
 | `agents.allow_higher_versions` | boolean | `false` |  | Accept agents whose version is higher than the manager's. |
 

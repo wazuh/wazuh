@@ -38,6 +38,9 @@ namespace remoted::endpoints::cacerts
     constexpr auto METRIC_CACERTS_SERVED {"remoted.cacerts.served"};
     constexpr auto METRIC_CACERTS_NOT_FOUND {"remoted.cacerts.not_found"};
     constexpr auto METRIC_CACERTS_CA_MISMATCH {"remoted.cacerts.ca_mismatch"};
+    // Refused by the endpoint's rate limit (endpoints/rateLimitGate.hpp) before the handler ran,
+    // so it is in none of the three outcomes above -- the CA snapshot was never even read.
+    constexpr auto METRIC_CACERTS_RATE_LIMITED {"remoted.cacerts.rate_limited"};
 
     // The remoted.server.tls.* pulls (registered by the facade, read from the transport).
     constexpr auto METRIC_TLS_CERT_EXPIRY_DAYS {"remoted.server.tls.cert_expiry_days"};
@@ -50,11 +53,13 @@ namespace remoted::endpoints::cacerts
      */
     struct CacertsMetrics
     {
-        std::shared_ptr<wazuh::metrics::ICounter> served;     ///< 200s: the CA PEM was handed out.
-        std::shared_ptr<wazuh::metrics::ICounter> notFound;   ///< 404s: the CA file is missing, unreadable
-                                                              ///< or carries no certificate.
-        std::shared_ptr<wazuh::metrics::ICounter> caMismatch; ///< 503s: the CA on disk does not sign the
-                                                              ///< served certificate (refused, not served).
+        std::shared_ptr<wazuh::metrics::ICounter> served;      ///< 200s: the CA PEM was handed out.
+        std::shared_ptr<wazuh::metrics::ICounter> notFound;    ///< 404s: the CA file is missing, unreadable
+                                                               ///< or carries no certificate.
+        std::shared_ptr<wazuh::metrics::ICounter> caMismatch;  ///< 503s: the CA on disk does not sign the
+                                                               ///< served certificate (refused, not served).
+        std::shared_ptr<wazuh::metrics::ICounter> rateLimited; ///< 429s: the route was asked faster than
+                                                               ///< 'remote.https.cacerts_rate_limit'.
     };
 
     /// Resolves the remoted.cacerts.* family on @p manager (creating it on first call; totals
@@ -67,6 +72,10 @@ namespace remoted::endpoints::cacerts
                 METRIC_CACERTS_NOT_FOUND, "404s: the CA file is missing, unreadable or has no certificate", "count"),
             manager.getOrCreateCounter(METRIC_CACERTS_CA_MISMATCH,
                                        "503s: refused because the configured CA does not sign the served certificate",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_CACERTS_RATE_LIMITED,
+                                       "429s: refused by the endpoint's rate limit "
+                                       "('remote.https.cacerts_rate_limit')",
                                        "count")};
     }
 
@@ -91,6 +100,13 @@ namespace remoted::endpoints::cacerts
         if (m.caMismatch)
         {
             m.caMismatch->add();
+        }
+    }
+    inline void incRateLimited(const CacertsMetrics& m)
+    {
+        if (m.rateLimited)
+        {
+            m.rateLimited->add();
         }
     }
 
