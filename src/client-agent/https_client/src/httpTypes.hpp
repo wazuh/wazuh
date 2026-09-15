@@ -13,6 +13,7 @@
 #define _HC_HTTP_TYPES_HPP
 
 #include "https_client.h"
+#include "tlsCertDiagnostics.hpp"
 
 #include <atomic>
 #include <cstddef>
@@ -195,6 +196,11 @@ struct HttpResponse
     std::string body;
     std::string curlError;      ///< libcurl's own wording for a failed attempt, empty
     ///< otherwise (success, or a failure that never reached libcurl).
+    TlsFailureDetail tlsFailure; ///< Populated (kind != None) only when status == TlsFail
+    ///< AND the failure was classified as a hostname mismatch or a certificate-date
+    ///< problem; default-constructed (kind == None) otherwise, including for every
+    ///< other TlsFail cause (chain/CA trust), which stays generic. See
+    ///< tlsCertDiagnostics.hpp.
 };
 
 #endif // _HC_HTTP_TYPES_HPP

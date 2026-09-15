@@ -64,9 +64,19 @@ namespace cert_fixtures
     /// @param reuseKey When non-null, this key is used instead of a fresh one --
     ///        which is how the "same key, different certificate, same pin"
     ///        property gets its second certificate.
+    /// @param san When non-null, an X509v3 subjectAltName extension value (e.g.
+    ///        "DNS:foo,IP:10.0.0.1") added on top of the basic-constraints one --
+    ///        tlsCertDiagnostics_test.cpp's SAN-extraction cases, not needed by
+    ///        anything that only cares about the SPKI digest.
+    /// @param notBeforeOffsetSeconds,notAfterOffsetSeconds Validity window relative to
+    ///        now; defaults match the original "valid now, for an hour" shape.
+    ///        tlsCertDiagnostics_test.cpp's date-formatting cases pass explicit values.
     /// @return The certificate and the key that signed it. Null on failure.
     inline std::pair<X509Ptr, EvpPkeyPtr> makeSelfSignedEc(const char* subjectCn, long serial,
-                                                           EVP_PKEY* reuseKey = nullptr)
+                                                           EVP_PKEY* reuseKey = nullptr,
+                                                           const char* san = nullptr,
+                                                           long notBeforeOffsetSeconds = 0,
+                                                           long notAfterOffsetSeconds = 60L * 60L)
     {
         EvpPkeyPtr key {reuseKey != nullptr ? nullptr : EVP_EC_gen("P-256"), EVP_PKEY_free};
         EVP_PKEY* signing = reuseKey != nullptr ? reuseKey : key.get();
@@ -78,8 +88,8 @@ namespace cert_fixtures
 
         X509Ptr certificate {X509_new(), X509_free};
         ASN1_INTEGER_set(X509_get_serialNumber(certificate.get()), serial);
-        X509_gmtime_adj(X509_get_notBefore(certificate.get()), 0);
-        X509_gmtime_adj(X509_get_notAfter(certificate.get()), 60L * 60L);
+        X509_gmtime_adj(X509_get_notBefore(certificate.get()), notBeforeOffsetSeconds);
+        X509_gmtime_adj(X509_get_notAfter(certificate.get()), notAfterOffsetSeconds);
         X509_set_pubkey(certificate.get(), signing);
 
         X509_NAME* name = X509_get_subject_name(certificate.get());
@@ -87,6 +97,12 @@ namespace cert_fixtures
                                    -1, 0);
         X509_set_issuer_name(certificate.get(), name);
         addExtension(certificate.get(), NID_basic_constraints, "critical,CA:TRUE");
+
+        if (san != nullptr)
+        {
+            addExtension(certificate.get(), NID_subject_alt_name, san);
+        }
+
         X509_sign(certificate.get(), signing, EVP_sha256());
 
         return {std::move(certificate), std::move(key)};

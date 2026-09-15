@@ -85,19 +85,35 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
      * and (on success) client.keys and needs to fix their ownership before the privilege drop
      * just below.
      *
-     * A configured token that could not be honoured ends the start, and deliberately so.
-     * Carrying on would reach start_agent_prepare(), which enrolls over whatever posture is
-     * left -- 'none', because no anchor was written -- so a CA the agent had just refused
-     * would be followed by an unverified enrollment against that same manager. Failing here
-     * is what #38940 means by attempting no enrollment, and the service manager's restart
-     * policy covers the causes that are merely transient.
+     * A permanent failure ends the start, deliberately: carrying on would reach
+     * start_agent_prepare(), which enrolls over whatever posture is left -- 'none', because no
+     * anchor was written -- so a CA the agent had just refused would be followed by an
+     * unverified enrollment against that same manager. Failing here is what #38940 means by
+     * attempting no enrollment.
      *
-     * Only a token that was present and failed does this. An install with no token at all
-     * returns 0 from the gate, so the legacy password/mTLS enrollment loop still gets its
-     * normal chance -- as do an agent already holding an anchor and one already enrolled. */
+     * A transient failure (the manager unreachable, a 5xx from /cacerts or /enroll, or the
+     * verified enroll's own transport failing) is retried in place, using the same backoff ramp
+     * the legacy enrollment loop below uses (agt->enrollment.retry_delta/retry_max, see
+     * w_agentd_keys_init()) -- rather than falling through to that loop, which enrolls
+     * unverified and would defeat the whole point of the token path.
+     *
+     * Only a token that was present and (after any transient retries) still failed does this.
+     * An install with no token at all returns W_TOKEN_BOOTSTRAP_DONE from the gate, so the
+     * legacy password/mTLS enrollment loop still gets its normal chance -- as do an agent
+     * already holding an anchor and one already enrolled. */
     const bool anchor_before = (IsFile(AGENT_ANCHOR_CA) == 0);
+    int token_bootstrap_delay = 0;
+    w_token_bootstrap_result_t token_bootstrap_result;
 
-    if (w_agent_token_bootstrap(uid, gid) != 0) {
+    while ((token_bootstrap_result = w_agent_token_bootstrap(uid, gid)) == W_TOKEN_BOOTSTRAP_TRANSIENT) {
+        if (token_bootstrap_delay < agt->enrollment.retry_max) {
+            token_bootstrap_delay += agt->enrollment.retry_delta;
+        }
+        mdebug1("Token bootstrap: transient failure, retrying in %d seconds.", token_bootstrap_delay);
+        sleep(token_bootstrap_delay);
+    }
+
+    if (token_bootstrap_result == W_TOKEN_BOOTSTRAP_PERMANENT) {
         merror_exit("Enrollment-token bootstrap failed; refusing to enroll unverified.");
     }
 

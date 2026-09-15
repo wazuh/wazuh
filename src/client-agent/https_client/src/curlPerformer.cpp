@@ -141,6 +141,7 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
     response.httpCode = handle->responseCode();
     response.localIp = handle->localIp();
     response.curlError = handle->curlError();
+    response.tlsFailure = handle->tlsFailureDetail();
     return response;
 }
 

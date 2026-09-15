@@ -17,6 +17,7 @@
 
 #include "curlHandle.hpp"
 #include "moduleLog.hpp"
+#include "tlsCertDiagnostics.hpp"
 
 #include <curl/curl.h>
 #include <openssl/ssl.h>
@@ -25,6 +26,7 @@
 #include <cstring>
 #include <map>
 #include <mutex>
+#include <vector>
 
 #include <strings.h>
 
@@ -87,20 +89,28 @@ namespace
 
     // curl callbacks are C: nothing may throw across them.
 
-    // CURLOPT_SSL_CTX_FUNCTION callback: sets X509_V_FLAG_PARTIAL_CHAIN on the SSL_CTX's
-    // own verification store. See ICurlHandle::trustSelfSignedRoot() for why this is
-    // needed. No userptr required, so CURLOPT_SSL_CTX_DATA is never set -- libcurl passes
-    // nullptr for it, unused here.
-    CURLcode sslCtxTrustSelfSignedRootTrampoline(CURL* /*curl*/, void* sslCtx, void* /*userptr*/)
+    /// What the OpenSSL verify callback below observes about the leaf (depth 0)
+    /// certificate during one handshake -- purely observational, never fed back into the
+    /// accept/reject decision. See tlsCertDiagnostics.hpp's classifyTlsVerifyFailure() for
+    /// why no second, independent hostname/date check is performed here instead.
+    struct TlsVerifyCapture
     {
-        auto* store = SSL_CTX_get_cert_store(static_cast<SSL_CTX*>(sslCtx));
+        bool sawDepth0 {false};
+        int depth0Error {X509_V_OK};
+        std::vector<std::string> certNames;
+        std::string notBefore;
+        std::string notAfter;
+    };
 
-        if (store == nullptr || X509_STORE_set_flags(store, X509_V_FLAG_PARTIAL_CHAIN) != 1)
-        {
-            return CURLE_SSL_CERTPROBLEM; // LCOV_EXCL_LINE: OpenSSL misuse, not reachable in practice.
-        }
-
-        return CURLE_OK;
+    /// One process-wide SSL_CTX ex_data slot: each CurlHandle's own sslCtxSetupTrampoline()
+    /// invocation stashes ITS OWN &m_tlsCapture there (a fresh SSL_CTX per handle, since
+    /// CurlHandleFactory builds a new handle per request), so the index only needs
+    /// allocating once, not the data behind it. Never destroyed, like optionMap() above:
+    /// OpenSSL's own ex_data registry outlives any one handle.
+    int tlsCaptureExIndex()
+    {
+        static const int index = SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+        return index;
     }
 
     size_t writeTrampoline(char* data, size_t size, size_t nmemb, void* userData)
@@ -276,8 +286,8 @@ namespace
 
             bool trustSelfSignedRoot() override
             {
-                return curl_easy_setopt(m_handle, CURLOPT_SSL_CTX_FUNCTION,
-                                        sslCtxTrustSelfSignedRootTrampoline) == CURLE_OK;
+                m_wantsPartialChain = true;
+                return installSslCtxSetup();
             }
 
             void appendHeader(const std::string& header) override
@@ -329,6 +339,18 @@ namespace
             TransportStatus perform() override
             {
                 m_lastError.clear();
+                m_tlsCapture = TlsVerifyCapture {};
+                m_tlsFailureDetail = TlsFailureDetail {};
+
+                // Installed unconditionally, not just when trustSelfSignedRoot() is called
+                // (verify_mode=system's applyTrustAnchors() never calls it): the diagnostics
+                // capture below must run for every request that verifies the peer, not only
+                // when a configured CA additionally needs the partial-chain relaxation. A no-op
+                // re-set when trustSelfSignedRoot() already installed it for this same handle.
+                if (!installSslCtxSetup())
+                {
+                    return TransportStatus::OtherError; // LCOV_EXCL_LINE: a function-pointer/userptr option cannot fail in practice.
+                }
 
                 if (m_headers != nullptr &&
                         curl_easy_setopt(m_handle, CURLOPT_HTTPHEADER, m_headers) != CURLE_OK)
@@ -373,6 +395,23 @@ namespace
                                  "libcurl failed on %s: %s",
                                  url != nullptr ? url : "unknown URL",
                                  m_lastError.c_str());
+
+                    // Narrowed from the generic TlsFail above: a hostname mismatch or a
+                    // certificate-date problem is reported at normal level, unlike every other
+                    // transport failure here (ordinary chain/CA-trust TlsFail included), which
+                    // stays DEBUG1-only above -- see tlsCertDiagnostics.hpp's
+                    // classifyTlsVerifyFailure() for why the other causes are left alone.
+                    const auto kind = classifyTlsVerifyFailure(m_tlsCapture.sawDepth0, m_tlsCapture.depth0Error,
+                                                               code == CURLE_PEER_FAILED_VERIFICATION);
+
+                    if (kind != TlsFailureKind::None)
+                    {
+                        m_tlsFailureDetail.kind = kind;
+                        m_tlsFailureDetail.certNames = m_tlsCapture.certNames;
+                        m_tlsFailureDetail.notBefore = m_tlsCapture.notBefore;
+                        m_tlsFailureDetail.notAfter = m_tlsCapture.notAfter;
+                        logTlsFailure(kind, url != nullptr ? url : "unknown URL", m_tlsFailureDetail);
+                    }
                 }
 
                 // libcurl kept the pointer rather than copying it, so drop it
@@ -424,13 +463,158 @@ namespace
                 return m_lastError;
             }
 
+            TlsFailureDetail tlsFailureDetail() override
+            {
+                return m_tlsFailureDetail;
+            }
+
         private:
+            /// Installs the combined CURLOPT_SSL_CTX_FUNCTION (sslCtxSetupTrampoline) and its
+            /// CURLOPT_SSL_CTX_DATA (this), idempotently -- both trustSelfSignedRoot() and
+            /// perform() call this, and setting the same function pointer and userptr twice on
+            /// one handle is a no-op the second time.
+            bool installSslCtxSetup()
+            {
+                return curl_easy_setopt(m_handle, CURLOPT_SSL_CTX_FUNCTION, sslCtxSetupTrampoline) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_SSL_CTX_DATA, this) == CURLE_OK;
+            }
+
+            /// CURLOPT_SSL_CTX_FUNCTION callback: sets X509_V_FLAG_PARTIAL_CHAIN on the SSL_CTX's
+            /// own verification store when trustSelfSignedRoot() requested it (see that method for
+            /// why), and always installs tlsVerifyCaptureTrampoline as the OpenSSL verify callback
+            /// so perform() can classify a TlsFail afterward. Defined after the class body: it
+            /// reaches into a CurlHandle instance via userptr, so needs the full definition.
+            static CURLcode sslCtxSetupTrampoline(CURL* curl, void* sslCtx, void* userptr);
+
+            /// The OpenSSL verify callback itself: observes the leaf (depth 0) certificate into
+            /// whichever CurlHandle's m_tlsCapture the SSL_CTX's ex_data names, and ALWAYS returns
+            /// preverifyOk unchanged -- it never overrides curl/OpenSSL's own accept/reject
+            /// decision. Defined after the class body, same reason as above.
+            static int tlsVerifyCaptureTrampoline(int preverifyOk, X509_STORE_CTX* storeCtx);
+
+            /// Builds and emits the normal-level log line for a classified TlsFail (issue #39062,
+            /// objective requirement 6 and its notBefore/notAfter counterpart) -- pulled out of
+            /// perform() only because the two message shapes (hostname vs. date) are each a few
+            /// lines on their own.
+            static void logTlsFailure(TlsFailureKind kind, const std::string& dialedUrl,
+                                      const TlsFailureDetail& detail);
+
             CURL* m_handle {nullptr};
             curl_slist* m_headers {nullptr};
             FileSink m_fileSink {};
             HeaderCapture m_headerCapture {};
             std::string m_lastError {}; ///< Last perform()'s reason, empty when it succeeded.
+            bool m_wantsPartialChain {false}; ///< Set by trustSelfSignedRoot(); consumed by
+            ///< sslCtxSetupTrampoline().
+            TlsVerifyCapture m_tlsCapture {}; ///< Filled by tlsVerifyCaptureTrampoline() during
+            ///< perform(); reset at the top of every perform() (one CurlHandle is never reused
+            ///< across requests, but resetting costs nothing and removes the assumption).
+            TlsFailureDetail m_tlsFailureDetail {}; ///< classifyTlsVerifyFailure()'s verdict on
+            ///< m_tlsCapture, computed once per perform(); returned by tlsFailureDetail().
     };
+
+    CURLcode CurlHandle::sslCtxSetupTrampoline(CURL* /*curl*/, void* sslCtx, void* userptr)
+    {
+        auto* self = static_cast<CurlHandle*>(userptr);
+        auto* ctx = static_cast<SSL_CTX*>(sslCtx);
+
+        if (self->m_wantsPartialChain)
+        {
+            auto* store = SSL_CTX_get_cert_store(ctx);
+
+            if (store == nullptr || X509_STORE_set_flags(store, X509_V_FLAG_PARTIAL_CHAIN) != 1)
+            {
+                return CURLE_SSL_CERTPROBLEM; // LCOV_EXCL_LINE: OpenSSL misuse, not reachable in practice.
+            }
+        }
+
+        if (SSL_CTX_set_ex_data(ctx, tlsCaptureExIndex(), &self->m_tlsCapture) != 1)
+        {
+            return CURLE_SSL_CERTPROBLEM; // LCOV_EXCL_LINE: ex_data on a valid index cannot fail in practice.
+        }
+
+        // Preserves whatever verify MODE curl already configured from
+        // CURLOPT_SSL_VERIFYPEER/VERIFYHOST -- curl invokes CURLOPT_SSL_CTX_FUNCTION after its
+        // own SSL_CTX_set_verify, precisely so a caller can layer more onto it. Only the
+        // callback changes, purely to observe: tlsVerifyCaptureTrampoline() always returns
+        // preverifyOk unchanged, so this can never soften or override the decision curl/OpenSSL
+        // already made.
+        SSL_CTX_set_verify(ctx, SSL_CTX_get_verify_mode(ctx), tlsVerifyCaptureTrampoline);
+        return CURLE_OK;
+    }
+
+    int CurlHandle::tlsVerifyCaptureTrampoline(int preverifyOk, X509_STORE_CTX* storeCtx)
+    {
+        if (X509_STORE_CTX_get_error_depth(storeCtx) != 0)
+        {
+            return preverifyOk; // Only the leaf (depth 0) is captured -- see TlsVerifyCapture.
+        }
+
+        auto* ssl = static_cast<SSL*>(X509_STORE_CTX_get_ex_data(storeCtx, SSL_get_ex_data_X509_STORE_CTX_idx()));
+
+        if (ssl == nullptr)
+        {
+            return preverifyOk; // LCOV_EXCL_LINE: curl always wires this; unreachable in practice.
+        }
+
+        auto* capture = static_cast<TlsVerifyCapture*>(
+                            SSL_CTX_get_ex_data(SSL_get_SSL_CTX(ssl), tlsCaptureExIndex()));
+
+        if (capture == nullptr)
+        {
+            return preverifyOk; // LCOV_EXCL_LINE: sslCtxSetupTrampoline() always sets this first.
+        }
+
+        capture->sawDepth0 = true;
+        capture->depth0Error = X509_STORE_CTX_get_error(storeCtx);
+
+        X509* leaf = X509_STORE_CTX_get_current_cert(storeCtx);
+
+        if (leaf != nullptr)
+        {
+            // Extracted now, not retained: X509_STORE_CTX_get_current_cert()'s pointer does not
+            // outlive this callback.
+            capture->certNames = tlsCertSanNames(leaf);
+            capture->notBefore = tlsCertTimeString(X509_get0_notBefore(leaf));
+            capture->notAfter = tlsCertTimeString(X509_get0_notAfter(leaf));
+        }
+
+        return preverifyOk; // Never overridden: this hook only observes.
+    }
+
+    void CurlHandle::logTlsFailure(TlsFailureKind kind, const std::string& dialedUrl,
+                                   const TlsFailureDetail& detail)
+    {
+        if (kind == TlsFailureKind::HostnameMismatch)
+        {
+            std::string names;
+
+            for (const auto& name : detail.certNames)
+            {
+                if (!names.empty())
+                {
+                    names += ", ";
+                }
+
+                names += name;
+            }
+
+            LOGFN_ERROR(handleLogFn(),
+                        "TLS verification failed connecting to %s: the certificate does not include "
+                        "that name (subject alternative names: %s).",
+                        dialedUrl.c_str(), names.empty() ? "none" : names.c_str());
+            return;
+        }
+
+        const bool notYetValid = kind == TlsFailureKind::CertNotYetValid;
+        LOGFN_ERROR(handleLogFn(),
+                    "TLS verification failed connecting to %s: the certificate %s (%s %s); no "
+                    "clock-skew tolerance applies to this check (remoted.jwt_clock_skew covers only "
+                    "the post-enrollment JWT).",
+                    dialedUrl.c_str(), notYetValid ? "is not valid yet" : "has expired",
+                    notYetValid ? "not valid before" : "not valid after",
+                    (notYetValid ? detail.notBefore : detail.notAfter).c_str());
+    }
 } // namespace
 
 CurlHandleFactory defaultCurlHandleFactory()
