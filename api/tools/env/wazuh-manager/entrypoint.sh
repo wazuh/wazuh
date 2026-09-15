@@ -40,9 +40,11 @@ chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
 
 # Pre-seed the default 'wazuh'/'wazuh-wui' API passwords: installs no longer ship a known
 # password, but wazuh.dashboard.yml in this dev environment still authenticates as 'wazuh-wui'.
+# The values must satisfy the API password policy themselves, or orm.py's pre-seed loader drops
+# them and a real random password gets generated instead.
 mkdir -p /var/wazuh-manager/api/configuration/security
 cat <<'EOF' > /var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.json
-{"wazuh": "wazuh", "wazuh-wui": "wazuh-wui"}
+{"wazuh": "Wazuh-Preseed1!", "wazuh-wui": "WazuhWui-Preseed1!"}
 EOF
 chown wazuh-manager:wazuh-manager /var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.json
 
