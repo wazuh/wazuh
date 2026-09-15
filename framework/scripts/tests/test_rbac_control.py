@@ -73,7 +73,11 @@ async def test_restore_default_passwords(forward_mock: AsyncMock, safe_load_mock
 async def test_restore_default_passwords_from_file(forward_mock: AsyncMock, safe_load_mock, print_mock, tmp_path,
                                                    db_setup):
     """Check that `restore_default_passwords` applies every password of a passwords file."""
-    security, _, core_security = db_setup
+    security, _, _ = db_setup
+    # A fresh import, not `core_security.check_database_integrity`: `db_setup` reloads
+    # `wazuh.rbac.orm` per test, and an earlier test's import of `wazuh.core.security` can still
+    # hold a function object from a previous reload.
+    from wazuh.rbac.orm import check_database_integrity
     passwords_file = tmp_path / 'passwords.json'
     passwords_file.write_text(json.dumps({'other_user': 'NewPassword1!', 'testing_user': 'NewPassword2!'}))
 
@@ -81,8 +85,7 @@ async def test_restore_default_passwords_from_file(forward_mock: AsyncMock, safe
 
     # The RBAC database is ensured to exist first (a no-op on a node where it already does), then
     # each user is updated with its own password and ID, which is its position in the defaults file.
-    assert forward_mock.call_args_list[0] == call(core_security.check_database_integrity,
-                                                   request_type="local_master")
+    assert forward_mock.call_args_list[0] == call(check_database_integrity, request_type="local_master")
     assert [c.kwargs['f_kwargs'] for c in forward_mock.call_args_list[1:]] == [
         {'user_id': '2', 'password': 'NewPassword1!', 'current_user': 'other_user'},
         {'user_id': '1', 'password': 'NewPassword2!', 'current_user': 'testing_user'},
@@ -147,9 +150,13 @@ async def test_restore_default_passwords_invalid_arguments(forward_mock: AsyncMo
 async def test_restore_default_passwords_exceptions(safe_load_mock, getpass_mock, print_mock):
     """Check the `restore_default_passwords` function behaviour when the update itself fails."""
     exception_message = "Random exception message"
-    # First call (ensure the RBAC database exists) succeeds; the update call fails.
+    # First call (ensure the RBAC database exists) succeeds; the update call fails. A callable
+    # side_effect is used, not a plain list: with a list, unittest.mock raises an Exception item
+    # instead of returning it, which does not match forward_function's real contract of returning
+    # the exception rather than propagating it.
+    responses = iter([MagicMock(), Exception(exception_message)])
     with patch("scripts.rbac_control.cluster_utils.forward_function",
-              side_effect=[MagicMock(), Exception(exception_message)]):
+              side_effect=lambda *args, **kwargs: next(responses)):
         # A failed update must be reported through the exit status, not only printed.
         with pytest.raises(SystemExit) as exit_error:
             await rbac_control.restore_default_passwords(Arguments())
