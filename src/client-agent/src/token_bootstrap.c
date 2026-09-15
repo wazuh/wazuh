@@ -35,7 +35,11 @@ int w_agent_token_bootstrap(int uid, int gid) {
 
 STATIC char *w_token_bootstrap_read_token(const char *path);
 STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out);
+STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, size_t buf_size,
+                                                 const char **filename);
 STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid);
+STATIC int w_token_bootstrap_open_and_chown_keys(int gid);
+STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure);
 
 /**
  * @brief Reads the one-shot enrollment token file, mirroring
@@ -90,6 +94,37 @@ STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out) {
 }
 
 /**
+ * @brief Splits @p path into its directory and filename components, using @p buf as backing
+ *        storage for the directory (the last '/' is replaced with '\0' in place). Shared by
+ *        w_token_bootstrap_ensure_parent_dir() and w_token_bootstrap_open_and_chown_keys() so
+ *        this split only has to be kept correct in one place.
+ * @param buf Backing storage for the directory component; must be at least @p buf_size bytes
+ *        and outlives the string @p filename points into.
+ * @param filename When non-NULL, set to the filename component (a pointer into @p buf).
+ * @return 0 on success, -1 if @p path has no '/' (errno set to EINVAL).
+ */
+STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, size_t buf_size,
+                                                 const char **filename) {
+    char *slash;
+
+    strncpy(buf, path, buf_size - 1);
+    buf[buf_size - 1] = '\0';
+
+    if ((slash = strrchr(buf, '/')) == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    *slash = '\0';
+
+    if (filename != NULL) {
+        *filename = slash + 1;
+    }
+
+    return 0;
+}
+
+/**
  * @brief Ensures the directory holding @p path exists, creating it (and any of its own missing
  *        ancestors) if not -- mkdir_ex() creates @a path itself as a directory too, not just its
  *        ancestors, so this trims the final ('/'-separated) component off first. Needed because
@@ -107,22 +142,80 @@ STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out) {
  */
 STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
     char dir[OS_FLSIZE + 1];
-    char *slash;
 
-    strncpy(dir, path, sizeof(dir) - 1);
-    dir[sizeof(dir) - 1] = '\0';
+    if (w_token_bootstrap_split_dir_filename(path, dir, sizeof(dir), NULL) != 0) {
+        return;
+    }
 
-    if ((slash = strrchr(dir, '/')) != NULL) {
-        *slash = '\0';
-        mkdir_ex(dir);
+    mkdir_ex(dir);
 
-        if (chown(dir, 0, gid) != 0) {
-            merror("Token bootstrap: could not set ownership of '%s': %s (%d).", dir,
-                   strerror(errno), errno);
-        }
+    if (chown(dir, 0, gid) != 0) {
+        merror("Token bootstrap: could not set ownership of '%s': %s (%d).", dir,
+               strerror(errno), errno);
+    }
 
-        if (chmod(dir, 0750) == -1) {
-            merror("Token bootstrap: could not set permissions on '%s': %s (%d).", dir,
+    if (chmod(dir, 0750) == -1) {
+        merror("Token bootstrap: could not set permissions on '%s': %s (%d).", dir,
+               strerror(errno), errno);
+    }
+}
+
+/**
+ * @brief chown()s KEYS_FILE to root:@p gid without following a symlink planted in its parent
+ *        directory. Unlike AGENT_ANCHOR_CA's own directory (0750 root:gid), KEYS_FILE lives in
+ *        INSTALLDIR/etc, which is 0770 root:wazuh -- the runtime user this chown is trying to
+ *        keep out can otherwise replace client.keys with a symlink to an arbitrary root-owned
+ *        file (e.g. /etc/shadow) and have this root-privileged call chown() the link's target
+ *        instead, handing its own group write/read access to whatever that target is. The open
+ *        and vetting (O_NOFOLLOW, regular-file and hard-link checks) is delegated to
+ *        w_openat_nofollow_vetted() (file_op.c), the same helper w_fopen_nofollow() and
+ *        w_gzopen_nofollow() use, so this hardening logic only has to be kept correct in one
+ *        place.
+ * @return 0 on success, -1 on error (errno set: from open()/openat(), EINVAL when the resolved
+ *         path is not a regular file, or EMLINK when it is a hard-linked one).
+ */
+STATIC int w_token_bootstrap_open_and_chown_keys(int gid) {
+    char dir[OS_FLSIZE + 1];
+    const char *filename;
+    int fd;
+    int saved_errno;
+
+    if (w_token_bootstrap_split_dir_filename(KEYS_FILE, dir, sizeof(dir), &filename) != 0) {
+        return -1;
+    }
+
+    if ((fd = w_openat_nofollow_vetted(dir, filename, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, 0)) < 0) {
+        return -1;
+    }
+
+    if (fchown(fd, 0, gid) != 0) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+        return -1;
+    }
+
+    close(fd);
+    return 0;
+}
+
+/**
+ * @brief w_token_bootstrap_open_and_chown_keys() plus the error log every one of its three call
+ *        sites in this file would otherwise have to repeat identically.
+ * @param quiet_on_failure When true, a failure is logged at debug level instead of merror(). Set
+ *        by the two repair call sites that run on every single boot for as long as the failure's
+ *        cause (e.g. a namespaced container without CAP_CHOWN) persists -- an unqualified
+ *        merror() there would flood the log forever for a condition that will not self-resolve.
+ *        The fresh-enrollment call site passes false: that chown runs once per enrollment, not
+ *        once per boot, so a failure there stays a one-time, visible error.
+ */
+STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure) {
+    if (w_token_bootstrap_open_and_chown_keys(gid) != 0) {
+        if (quiet_on_failure) {
+            mdebug1("Token bootstrap: could not change ownership of '%s' (will retry on a later "
+                    "boot): %s (%d).", KEYS_FILE, strerror(errno), errno);
+        } else {
+            merror("Token bootstrap: could not change ownership of '%s': %s (%d).", KEYS_FILE,
                    strerror(errno), errno);
         }
     }
@@ -157,6 +250,10 @@ int w_agent_token_bootstrap(int uid, int gid) {
     hc_enroll_request_t enroll_request;
     hc_enroll_result_t enroll_result;
 
+    /* Kept for signature symmetry with AgentdStart()'s uid/gid pair (see this function's own
+     * doc comment in token_bootstrap.h): neither file this function writes is chowned to it. */
+    (void)uid;
+
     /* Both latches below discard the token on their way out. It is a one-shot credential, and
      * once either of these is true it can never be used again -- but it was only ever deleted
      * on the success path, so a reinstall over an enrolled agent left it sitting at rest
@@ -164,15 +261,33 @@ int w_agent_token_bootstrap(int uid, int gid) {
      * having used it; it is conditional on it no longer being usable. */
     if (IsFile(AGENT_ANCHOR_CA) == 0) {
         /* Latch: an anchor already on disk means a previous boot already completed the
-         * bootstrap. Never re-fetch once one is committed. */
+         * bootstrap. Never re-fetch once one is committed.
+         *
+         * Also repairs client.keys's group here, not just in the "already enrolled" branch
+         * below: enrollment writes client.keys, the anchor is renamed into place, and only then
+         * is client.keys chowned (see the final chown's own comment) -- so a crash between the
+         * rename and that chown leaves the anchor committed with client.keys still root:root.
+         * Every later boot trips this latch and returns before ever reaching the branch below,
+         * so this is the only place left that can retry the fix. */
+        if (FileSize(KEYS_FILE) > 0) {
+            w_token_bootstrap_chown_keys_file(gid, true);
+        }
+
         unlink(AGENT_ENROLLMENT_TOKEN_FILE);
         return 0;
     }
 
     if (FileSize(KEYS_FILE) > 0) {
-        /* Already enrolled: nothing left to do. IsFile() alone can't tell this apart from
-         * the empty placeholder client.keys the package installs by default -- only a
-         * non-empty file means a real ID/NAME/IP/KEY entry exists. */
+        /* Reached when client.keys already has content but no anchor was ever installed -- most
+         * often because the agent was enrolled by some means other than this token bootstrap
+         * (classic authd, manual registration), but also reachable from a crash inside this very
+         * flow: if this function dies after enrollment writes client.keys but before the anchor
+         * is renamed into place further down, the next boot lands here too. Either way, repairs
+         * client.keys's group defensively, since enrollment.c's own replace has the same
+         * group-loss gap (see the final chown's own comment); done unconditionally since it's
+         * cheap and idempotent. */
+        w_token_bootstrap_chown_keys_file(gid, true);
+
         unlink(AGENT_ENROLLMENT_TOKEN_FILE);
         return 0;
     }
@@ -424,24 +539,14 @@ int w_agent_token_bootstrap(int uid, int gid) {
 
     os_free(anchor_file.name);
 
-    /* client.keys does NOT keep the installer's 0640 root:wazuh across this. It is replaced
-     * wholesale by w_enrollment_store_key_entry()'s TempFile()+OS_MoveFile(), and a rename
-     * installs a new inode owned by whoever wrote it -- here, root, because the bootstrap
-     * enrols before AgentdStart()'s privilege drop. The result is 0640 root:root, which the
-     * agent cannot read once it drops: OS_ReadKeys() comes back empty, keys.keysize stays 0,
-     * and start_agent_prepare() re-enrols in a loop against the key it just obtained.
-     *
-     * Ordinary enrolment does the same rename as the `wazuh` user and lands on wazuh:wazuh, so
-     * this only restores the ownership every other enrolment path already produces.
-     *
-     * After the rename rather than before it, unlike the anchor above: the temp file belongs to
-     * enrollment.c and is gone by the time control returns here. A crash in that window leaves
-     * a root-owned client.keys and the same loop, which is why the durable fix is for the
-     * writer to carry ownership across its own rename. */
-    if (chown(KEYS_FILE, uid, gid) != 0) {
-        merror("Token bootstrap: could not change ownership of '%s': %s (%d).", KEYS_FILE,
-               strerror(errno), errno);
-    }
+    /* enrollment.c's TempFile()+OS_MoveFile() replace only chmod()s client.keys to a fixed 0640
+     * on the temp file, never its group, so it inherits this root process's group instead of
+     * root:wazuh -- chown to root:gid (not uid:gid, mirroring the anchor's ownership model)
+     * restores read access without handing the credential to the runtime user. If this fails
+     * (e.g. a namespaced container without CAP_CHOWN), the anchor above is already committed, so
+     * client.keys stays root:root here -- but the anchor-latch branch above retries this same
+     * chown on every later boot, so this is not a one-shot chance to fix it. */
+    w_token_bootstrap_chown_keys_file(gid, false);
 
     unlink(AGENT_ENROLLMENT_TOKEN_FILE);
     w_etoken_free(&token);

@@ -2582,29 +2582,24 @@ static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * fi
     return hFile;
 }
 #else
-/**
- * Opens @p filename inside @p basedir without following symlinks, and vets the resulting descriptor as
- * a lone regular file — rejecting hard links, FIFOs, devices, and directories — before handing it back.
- * Shared by w_fopen_nofollow() and w_gzopen_nofollow() so a future hardening fix only has to be applied
- * once instead of needing to be kept in sync across both.
- *
- * @param basedir Base directory holding the file.
- * @param filename Bare file name inside @p basedir.
- * @param oflags open()/openat() flags; must include O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK (the latter to
- *               keep a FIFO from blocking the open) on top of whichever of O_RDONLY/O_WRONLY/O_CREAT the
- *               caller needs. Deliberately never includes O_TRUNC: truncating at open time would destroy
- *               the target before anything about it can be checked, which is precisely how a hard link
- *               slips through — it is a regular file, so no file type test can tell it apart. A caller
- *               that needs the file truncated must do so only after this returns a vetted descriptor.
- * @param mode Permission bits, used only when oflags includes O_CREAT.
- * @return A vetted file descriptor, with O_NONBLOCK already cleared, on success; -1 on error (sets errno).
- */
-static int w_openat_nofollow_vetted(const char * basedir, const char * filename, int oflags, mode_t mode) {
+/* See file_op.h for the full doc comment. Declared there (non-static) so callers outside this file --
+ * e.g. client-agent's token_bootstrap.c -- can reuse this vetting logic instead of duplicating it. */
+int w_openat_nofollow_vetted(const char * basedir, const char * filename, int oflags, mode_t mode) {
     struct stat statbuf;
     int dirfd;
     int fd;
     int saved_errno;
     int flags;
+
+    /* Both preconditions this function's own doc comment promises: a bare filename (no '/' to
+     * escape basedir with) and O_NOFOLLOW in oflags (without it, the open below would silently
+     * follow a symlink at the final path component instead of vetting it). Neither is live today
+     * -- both current callers already satisfy them -- but enforcing them here, not just at each
+     * call site, keeps that promise backed for whoever calls this next. */
+    if (!basedir || !w_is_bare_filename(filename) || !(oflags & O_NOFOLLOW)) {
+        errno = EINVAL;
+        return -1;
+    }
 
     if (dirfd = open(basedir, O_RDONLY | O_DIRECTORY | O_CLOEXEC), dirfd < 0) {
         return -1;

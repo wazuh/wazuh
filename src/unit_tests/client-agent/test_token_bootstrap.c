@@ -159,9 +159,51 @@ int __wrap_chown(const char *path, uid_t owner, gid_t group) {
     } else if (is_anchor_dir_path(path)) {
         g_dir_chown_uid = owner;
         g_dir_chown_gid = group;
-    } else if (path && strcmp(path, KEYS_FILE) == 0) {
-        g_keys_chown_uid = owner;
-        g_keys_chown_gid = group;
+    }
+
+    return 0;
+}
+
+/* client.keys is chowned via w_token_bootstrap_chown_keys_file() (token_bootstrap.c), which
+ * opens it with O_NOFOLLOW and fchown()s the descriptor instead of calling chown() on the path
+ * -- a symlink planted in etc/ (0770 root:wazuh, unlike the anchor's own 0750 root:gid
+ * directory) must not make a root-privileged chown() follow it to an arbitrary target. The fd
+ * is resolved back to a path via /proc/self/fd to keep matching this suite's existing
+ * by-path convention. */
+static bool g_keys_fchown_should_fail = false;
+
+/* Exact match, not a substring one: a loose match (e.g. strstr() on "/client.keys") would also
+ * match a hypothetical "etc/client.keys.XXXXXX" temp variant, silently passing even if a future
+ * refactor mistakenly chowned the temp file instead of the installed path -- exactly the mistake
+ * the sibling anchor guard (is_anchor_path() vs is_anchor_dir_path()) exists to catch. */
+static bool is_keys_file_path(const char *path) {
+    static const char suffix[] = "/client.keys";
+    size_t path_len = path ? strlen(path) : 0;
+
+    return path_len >= sizeof(suffix) - 1 &&
+           strcmp(path + path_len - (sizeof(suffix) - 1), suffix) == 0;
+}
+
+int __wrap_fchown(int fd, uid_t owner, gid_t group) {
+    char link[64];
+    char path[PATH_MAX];
+    ssize_t len;
+
+    snprintf(link, sizeof(link), "/proc/self/fd/%d", fd);
+    len = readlink(link, path, sizeof(path) - 1);
+
+    if (len > 0) {
+        path[len] = '\0';
+
+        if (is_keys_file_path(path)) {
+            if (g_keys_fchown_should_fail) {
+                errno = EACCES;
+                return -1;
+            }
+
+            g_keys_chown_uid = owner;
+            g_keys_chown_gid = group;
+        }
     }
 
     return 0;
@@ -205,6 +247,7 @@ static void remove_test_paths(void) {
     unlink("etc/enrollment_token");
     unlink("etc/certs/root-ca.pem");
     unlink("etc/client.keys");
+    unlink("etc/other-file");
 }
 
 static int group_setup(void **state) {
@@ -235,6 +278,7 @@ static int setup_test(void **state) {
     g_dir_chown_gid = (gid_t) -1;
     g_keys_chown_uid = (uid_t) -1;
     g_keys_chown_gid = (gid_t) -1;
+    g_keys_fchown_should_fail = false;
     g_dir_chmod_mode = (mode_t) -1;
     g_anchor_chmod_mode = (mode_t) -1;
     g_anchor_chown_recorded_before_move = false;
@@ -343,6 +387,7 @@ static void test_no_token_file_is_noop(void **state) {
 static void test_anchor_already_present_skips_and_discards_the_token(void **state) {
     (void) state;
     write_file("etc/certs/root-ca.pem", "EXISTING-ANCHOR");
+    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
     write_token_file(true, true, NULL);
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
@@ -353,6 +398,14 @@ static void test_anchor_already_present_skips_and_discards_the_token(void **stat
      * and leaving it would keep a credential on disk that nothing will ever consume. */
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
     assert_string_equal(read_file("etc/certs/root-ca.pem"), "EXISTING-ANCHOR");
+
+    /* Regression guard: this is the only latch a crash between the anchor's rename and
+     * client.keys's own chown (see w_agent_token_bootstrap()'s final chown) can ever reach
+     * again -- once the anchor exists, every later boot returns here, never falling through to
+     * the "already enrolled" branch below. It must repair client.keys's group every time it
+     * fires, not just skip out, or that crash leaves client.keys root:root permanently. */
+    assert_int_equal(g_keys_chown_uid, 0);
+    assert_int_equal(g_keys_chown_gid, getgid());
 }
 
 static void test_already_enrolled_skips_and_discards_the_token(void **state) {
@@ -367,6 +420,77 @@ static void test_already_enrolled_skips_and_discards_the_token(void **state) {
     /* Same reasoning as the anchor latch above: an agent that already holds a key will never
      * spend this token, so it does not stay on disk. */
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+
+    /* Regression guard: this latch must still repair client.keys's group every time it fires,
+     * not just skip out -- a prior boot's enrollment call can replace client.keys (via
+     * TempFile()+OS_MoveFile() in enrollment.c) and die before the chown below ever runs,
+     * leaving it root:root until a later boot passes through here again. */
+    assert_int_equal(g_keys_chown_uid, 0);
+    assert_int_equal(g_keys_chown_gid, getgid());
+}
+
+/* Regression test: a hard link is a regular file by every other measure -- O_NOFOLLOW does not
+ * stop it, only its link count gives it away. etc/ is 0770 root:wazuh, so the runtime user could
+ * otherwise hard-link some other root-owned file to client.keys's path and have this
+ * root-privileged repair fchown() it to root:wazuh instead. */
+static void test_client_keys_hard_link_is_not_chowned(void **state) {
+    (void) state;
+    write_file("etc/other-file", "not-client-keys\n");
+    assert_int_equal(link("etc/other-file", "etc/client.keys"), 0);
+    write_token_file(true, true, NULL);
+
+    /* This repair runs on every boot for as long as no anchor exists, so its failure is logged
+     * at debug level rather than merror() -- see w_token_bootstrap_chown_keys_file()'s own
+     * comment. */
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_fetch_call_count, 0);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_int_equal(g_keys_chown_uid, (uid_t) -1);
+    assert_int_equal(g_keys_chown_gid, (gid_t) -1);
+}
+
+/* Regression test: a failing fchown() on client.keys must be logged, not silently swallowed --
+ * neither of the new ownership-repair branches this PR adds was previously exercised with a
+ * failing chown, so a broken log call site there would have gone unnoticed. */
+static void test_keys_chown_failure_is_logged(void **state) {
+    (void) state;
+    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_token_file(true, true, NULL);
+    g_keys_fchown_should_fail = true;
+
+    /* This repair runs on every boot for as long as no anchor exists, so its failure is logged
+     * at debug level rather than merror() -- see w_token_bootstrap_chown_keys_file()'s own
+     * comment. */
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    /* The failure is logged, but does not fail the bootstrap itself: the token is one-shot and
+     * this agent is already enrolled, so there is nothing left to retry here besides the chown
+     * -- and that keeps getting retried on every later boot regardless. */
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_fetch_call_count, 0);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_int_equal(g_keys_chown_uid, (uid_t) -1);
+    assert_int_equal(g_keys_chown_gid, (gid_t) -1);
+}
+
+/* Regression test: the anchor-latch branch runs on every single boot for as long as no anchor
+ * has ever been removed, so a persistent chown failure there (e.g. a namespaced container
+ * without CAP_CHOWN) must not re-log at merror() level on every boot -- that would flood the
+ * log forever for a condition that will not self-resolve. */
+static void test_anchor_latch_keys_chown_failure_is_quiet(void **state) {
+    (void) state;
+    write_file("etc/certs/root-ca.pem", "EXISTING-ANCHOR");
+    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_token_file(true, true, NULL);
+    g_keys_fchown_should_fail = true;
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_keys_chown_uid, (uid_t) -1);
+    assert_int_equal(g_keys_chown_gid, (gid_t) -1);
 }
 
 /* Regression test: client.keys can exist as an empty 0-byte placeholder (the package's own
@@ -522,13 +646,49 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal(g_dir_chown_uid, 0);
     assert_int_equal(g_dir_chown_gid, getgid());
 
-    /* client.keys does not keep the installer's ownership across the bootstrap: enrollment
-     * replaces it through a rename, and the new inode belongs to whoever wrote it -- root,
-     * because this runs before the privilege drop. Without handing it to the runtime user the
-     * agent cannot read the credential it just enrolled with, and re-enrolls in a loop. Ordinary
-     * enrollment, running as that user already, produces the same ownership. */
-    assert_int_equal(g_keys_chown_uid, getuid());
+    /* client.keys is handed to root:gid too -- not uid:gid -- restoring the group that
+     * enrollment.c's own TempFile()+OS_MoveFile() replace just dropped, without handing
+     * ownership to the runtime user. */
+    assert_int_equal(g_keys_chown_uid, 0);
     assert_int_equal(g_keys_chown_gid, getgid());
+}
+
+/* Regression test: unlike the two repair call sites (quiet_on_failure=true, covered above), the
+ * fresh-enrollment call site (quiet_on_failure=false) must log at merror() level -- it runs once
+ * per enrollment, not once per boot, so a failure there is a new, one-time event worth surfacing
+ * loudly rather than folded into debug output. */
+static void test_fresh_enrollment_keys_chown_failure_logs_merror(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    g_keys_fchown_should_fail = true;
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    /* Same benign TempFile() FSTAT_ERROR mdebug1 as the happy-path tests, once for
+     * AGENT_ANCHOR_CA and once for KEYS_FILE. */
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+    expect_any(__wrap__merror, formatted_msg);
+
+    /* The chown failure is logged but does not fail the bootstrap: enrollment itself already
+     * succeeded, and the anchor-latch branch will keep retrying this same chown on every later
+     * boot regardless. */
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_keys_chown_uid, (uid_t) -1);
+    assert_int_equal(g_keys_chown_gid, (gid_t) -1);
 }
 
 /* #39028's DoD: "a credential-less token enrolls when the simulator requires no credential,
@@ -614,10 +774,10 @@ static void test_full_happy_path_via_ca_pem(void **state) {
     assert_int_equal(IsFile("etc/client.keys"), 0);
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
 
-    /* Same regression guard as the pin-path happy test: the anchor's chown() must land before
-     * the rename that installs it. */
+    /* Same regression guards as the pin-path happy test: the anchor's chown() must land before
+     * the rename that installs it, and client.keys goes to root:gid. */
     assert_true(g_anchor_chown_recorded_before_move);
-    assert_int_equal(g_keys_chown_uid, getuid());
+    assert_int_equal(g_keys_chown_uid, 0);
     assert_int_equal(g_keys_chown_gid, getgid());
 }
 
@@ -626,11 +786,15 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_no_token_file_is_noop, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_anchor_already_present_skips_and_discards_the_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_already_enrolled_skips_and_discards_the_token, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_client_keys_hard_link_is_not_chowned, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_keys_chown_failure_is_logged, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_anchor_latch_keys_chown_failure_is_quiet, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_empty_placeholder_keys_file_is_not_already_enrolled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_malformed_token_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_failure_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_pin_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_pin, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_fresh_enrollment_keys_chown_failure_logs_merror, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_credential_less_token_enrolls_without_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_ca_pem, setup_test, teardown_test),
     };
