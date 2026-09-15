@@ -660,6 +660,88 @@ def test_databasemanager_insert_default_resources(fresh_in_memory_db):
                == len(default_rules[next(iter(default_rules))])
 
 
+def test_databasemanager_insert_default_resources_generates_passwords(fresh_in_memory_db):
+    """Default users get a random, policy-compliant password when none is pre-seeded."""
+    generated = fresh_in_memory_db.db_manager.insert_default_resources(in_memory_db_path)
+
+    assert set(generated) == {"wazuh", "wazuh-wui"}
+    assert generated["wazuh"] != generated["wazuh-wui"]
+    for password in generated.values():
+        assert fresh_in_memory_db.USER_PASSWORD_POLICY.match(password)
+
+    with fresh_in_memory_db.AuthenticationManager(
+            fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as auth:
+        for username, password in generated.items():
+            assert auth.check_user(username, password)
+
+
+def test_databasemanager_insert_default_resources_preseeded(fresh_in_memory_db, tmp_path):
+    """A pre-seeded, policy-compliant password is used instead of a generated one."""
+    preseed_file = tmp_path / "wazuh-preseeded-passwords.json"
+    preseed_file.write_text(json.dumps({"wazuh": "Pr3seeded-Passw0rd!"}))
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(preseed_file)):
+        generated = fresh_in_memory_db.db_manager.insert_default_resources(in_memory_db_path)
+
+    # The pre-seeded user must not be reported as generated: its password is already known to
+    # whoever provisioned it.
+    assert "wazuh" not in generated
+    assert "wazuh-wui" in generated
+
+    with fresh_in_memory_db.AuthenticationManager(
+            fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as auth:
+        assert auth.check_user("wazuh", "Pr3seeded-Passw0rd!")
+
+
+def test_databasemanager_insert_default_resources_preseeded_invalid(fresh_in_memory_db, tmp_path):
+    """A pre-seeded password that violates the API password policy is ignored, generation applies."""
+    preseed_file = tmp_path / "wazuh-preseeded-passwords.json"
+    preseed_file.write_text(json.dumps({"wazuh": "too-short"}))
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(preseed_file)):
+        generated = fresh_in_memory_db.db_manager.insert_default_resources(in_memory_db_path)
+
+    assert "wazuh" in generated
+    assert fresh_in_memory_db.USER_PASSWORD_POLICY.match(generated["wazuh"])
+
+
+@pytest.mark.parametrize("content", [None, "not json", "[]", '{"wazuh": 123}'])
+def test_load_preseeded_passwords_invalid(fresh_in_memory_db, tmp_path, content):
+    """A missing, malformed, or non-dict pre-seed file never raises: it resolves to no passwords."""
+    preseed_file = tmp_path / "wazuh-preseeded-passwords.json"
+    if content is not None:
+        preseed_file.write_text(content)
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(preseed_file)):
+        assert fresh_in_memory_db._load_preseeded_passwords() == {}
+
+
+def test_generate_default_password(fresh_in_memory_db):
+    """`generate_default_password` always satisfies the API password policy, with no collisions."""
+    passwords = {fresh_in_memory_db.generate_default_password() for _ in range(1000)}
+
+    assert len(passwords) == 1000
+    for password in passwords:
+        assert fresh_in_memory_db.USER_PASSWORD_POLICY.match(password)
+        assert fresh_in_memory_db.USER_PASSWORD_MIN_LENGTH <= len(password) \
+               <= fresh_in_memory_db.USER_PASSWORD_MAX_LENGTH
+
+
+def test_generate_default_password_min_length(fresh_in_memory_db):
+    """Every required character class is present even at the minimum allowed length."""
+    password = fresh_in_memory_db.generate_default_password(length=fresh_in_memory_db.USER_PASSWORD_MIN_LENGTH)
+
+    assert len(password) == fresh_in_memory_db.USER_PASSWORD_MIN_LENGTH
+    assert fresh_in_memory_db.USER_PASSWORD_POLICY.match(password)
+
+
+@pytest.mark.parametrize("length", [1, 1000])
+def test_generate_default_password_invalid_length(fresh_in_memory_db, length):
+    """An out-of-bounds length is rejected."""
+    with pytest.raises(ValueError):
+        fresh_in_memory_db.generate_default_password(length=length)
+
+
 def test_databasemanager_get_table(fresh_in_memory_db):
     """Test `get_table` method for class `DatabaseManager`."""
     class EnhancedUser(fresh_in_memory_db.User):
@@ -744,6 +826,31 @@ def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move
             call.set_database_version(fresh_in_memory_db.DB_FILE, fresh_in_memory_db.CURRENT_ORM_VERSION),
             call.close_sessions()
         ], any_order=True)
+
+
+@patch("wazuh.rbac.orm.safe_move")
+@patch("wazuh.rbac.orm.os.remove")
+@patch("wazuh.rbac.orm.chown")
+@patch("wazuh.rbac.orm.os.chmod")
+def test_check_database_integrity_generated_passwords(chmod_mock, chown_mock, remove_mock, safe_move_mock,
+                                                       fresh_in_memory_db):
+    """A fresh install returns the generated passwords for disclosure; a migration returns none, since
+    `migrate_data` immediately overwrites the default users with their real, preexisting password."""
+    db_mock = MagicMock()
+    db_mock.insert_default_resources.return_value = {"wazuh": "generated-password", "wazuh-wui": "another-one"}
+
+    with patch("wazuh.rbac.orm.db_manager", new=db_mock):
+        with patch("wazuh.rbac.orm.os.path.exists", return_value=True):
+            with patch("wazuh.rbac.orm.CURRENT_ORM_VERSION", new=99999):
+                # DB exists and a migration is needed: whatever was generated for the throwaway tmp db
+                # is about to be overwritten by `migrate_data`, so it must not be disclosed.
+                assert fresh_in_memory_db.check_database_integrity() == {}
+
+        # DB does not exist: a fresh install discloses what was actually generated.
+        with patch("wazuh.rbac.orm.os.path.exists", return_value=False):
+            assert fresh_in_memory_db.check_database_integrity() == {
+                "wazuh": "generated-password", "wazuh-wui": "another-one"
+            }
 
 
 @pytest.mark.parametrize("exception", [ValueError, Exception])
