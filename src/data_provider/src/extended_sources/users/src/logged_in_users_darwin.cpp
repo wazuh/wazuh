@@ -52,6 +52,13 @@ nlohmann::json LoggedInUsersProvider::collect()
             continue;
         }
 
+        // Only USER_PROCESS entries represent a live session; other types
+        // (e.g. DEAD_PROCESS) describe sessions that have already ended.
+        if (entry->ut_type != USER_PROCESS)
+        {
+            continue;
+        }
+
         nlohmann::json row;
         auto it = loginTypes.find(entry->ut_type);
         row["type"] = (it != loginTypes.end()) ? it->second : "unknown";
