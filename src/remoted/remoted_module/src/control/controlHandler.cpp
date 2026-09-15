@@ -496,11 +496,13 @@ namespace remoted::control
                     // #38880 finding 10: was DEBUG1 -- a poll failure and a genuinely empty queue
                     // were the same event to both the agent and, at the default log level, the
                     // operator. WARN, matching the throttled-misconfiguration pattern used
-                    // elsewhere in this change: the task client already reports every cause (its
-                    // drain answers Io for every in-flight request on shutdown), so this is the
-                    // one place that tells the OPERATOR a poll came back empty, not none.
+                    // elsewhere in this change -- but only for a real failure: a clean shutdown's
+                    // drain answers SocketError::Stopping, which taskFetchFailed below still
+                    // reports to the agent, but which stays at the task client's own DEBUG1
+                    // ("Task client is stopping...") instead of warning the operator on every
+                    // restart.
                     const bool taskFetchFailed = err != SocketError::None;
-                    if (taskFetchFailed)
+                    if (err != SocketError::None && err != SocketError::Stopping)
                     {
                         if (const auto throttle = taskFetchErrorThrottle().record())
                         {
