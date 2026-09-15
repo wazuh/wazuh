@@ -320,9 +320,9 @@ migrated fleet:
     `/var/wazuh-manager/etc/certs/root-ca.pem` at `/var/ossec/etc/certs/root-ca.pem` on Linux and
     macOS, or `<installdir>\certs\root-ca.pem` on Windows, before upgrading.
 
-  An agent that holds the anchor verifies the manager against it, whatever
-  `<agent><ssl><verification_mode>` says; an agent upgraded without one starts but does not
-  connect.
+  An upgraded agent that holds the anchor and states no `<verification_mode>` of its own comes up
+  verifying with `full` against it. One upgraded without an anchor connects and verifies nothing:
+  the upgrade is not blocked, so this is a state to check for rather than one you are warned about.
 - **Identity.** The upgraded agent keeps `client.keys` and `ossec.conf`, reads the manager address
   from the legacy `<client>` block and connects over HTTPS on `1517` with the same id and key. No
   enrollment happens.
