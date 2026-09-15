@@ -399,12 +399,32 @@ def test_get_values(object, fields):
     assert isinstance(result[0], str)
 
 
+@pytest.mark.parametrize('object, expected', [
+    ({'revoked': True}, ['true']),
+    ({'revoked': False}, ['false']),
+    ({'count': 3}, ['3']),
+    # None renders as '', not the string 'none' -- otherwise search=no/none would match
+    # every record with a null field.
+    ({'description': None}, [''])
+])
+def test_get_values_non_str(object, expected):
+    """Test that get_values lowercases non-str values, which search_array compares against a
+    lowercased query, and that a None value never becomes a searchable substring."""
+    assert utils.get_values(o=object) == expected
+
+
 @pytest.mark.parametrize('array, text, negation, length', [
     (['test', 'name'], 'e', False, 2),
     (['test', 'name'], 'name', False, 1),
     (['test', 'name'], 'unknown', False, 0),
     (['test', 'name'], 'test', True, 1),
-    (['test', 'name'], 'unknown', True, 2)
+    (['test', 'name'], 'unknown', True, 2),
+    # Boolean field values: search_array lowercases the query, so the candidates must be
+    # lowercased too for a bool to be searchable at all.
+    ([{'revoked': True}, {'revoked': False}], 'true', False, 1),
+    ([{'revoked': True}, {'revoked': False}], 'True', False, 1),
+    ([{'revoked': True}, {'revoked': False}], 'false', False, 1),
+    ([{'revoked': True}, {'revoked': False}], 'true', True, 1)
 ])
 def test_search_array(array, text, negation, length):
     """Test search_array function."""
@@ -1790,6 +1810,154 @@ def test_filter_array_by_query(q, return_length):
         assert (item_keys == set(input_array[0].keys()))
 
     assert (len(result) == return_length)
+
+
+# Array whose `created` field is a real `datetime`, the shape enrollment tokens' `created`/`expires`
+# reach filter_array_by_query with.
+typed_input_array = [
+    {
+        'id': 'first',
+        'created': datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
+    },
+    {
+        'id': 'second',
+        'created': datetime.datetime(2026, 6, 1, tzinfo=datetime.timezone.utc)
+    }]
+
+
+@pytest.mark.parametrize('q, expected_ids', [
+    ('created>2026-03-01', ['second']),
+    ('created<2026-03-01', ['first']),
+    ('created=2026-01-01', ['first']),
+    ('created!=2026-01-01', ['second']),
+    ('created>2026-01-01T00:00:00Z', ['second'])
+])
+def test_filter_array_by_query_typed_fields(q, expected_ids):
+    """Test filtering by query on a field whose value is a real datetime object."""
+    result = utils.filter_array_by_query(q, typed_input_array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
+# Array whose `revoked` field is a real `bool`, the shape enrollment tokens' `revoked`/`credential`
+# reach filter_array_by_query with. Also carries `created` so a combined date+bool query can be
+# exercised without needing a third fixture.
+bool_typed_input_array = [
+    {
+        'id': 'first',
+        'created': datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc),
+        'revoked': False
+    },
+    {
+        'id': 'second',
+        'created': datetime.datetime(2026, 6, 1, tzinfo=datetime.timezone.utc),
+        'revoked': True
+    }]
+
+
+@pytest.mark.parametrize('q, expected_ids', [
+    ('revoked=true', ['second']),
+    ('revoked=false', ['first']),
+    ('revoked!=true', ['first']),
+    ('revoked=1', ['second']),
+    ('revoked=0', ['first']),
+    ('revoked=true;created>2026-03-01', ['second']),
+    # A date-shaped literal is parsed as a date before the boolean coercion, so it matches
+    # nothing at all -- but it no longer raises.
+    ('revoked=2026-01-01', [])
+])
+def test_filter_array_by_query_typed_fields_bool(q, expected_ids):
+    """Test filtering by query on a field whose value is a real bool object."""
+    result = utils.filter_array_by_query(q, bool_typed_input_array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
+def test_filter_array_by_query_typed_fields_bool_rejects_unrecognized_literal():
+    """A literal other than true/false/1/0 against a bool field raises WazuhError(1407) instead
+    of silently being read as false (the complement of what was asked)."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query('revoked=maybe', bool_typed_input_array)
+
+
+@pytest.mark.parametrize('q, array, expected_ids', [
+    # `~` only cast an int value to str; a bool or datetime value raised TypeError
+    # (`value2 in val` on a non-iterable) instead of matching or not.
+    ('revoked~True', [{'id': 'a', 'revoked': True}, {'id': 'b', 'revoked': False}], ['a']),
+    ('revoked~alse', [{'id': 'a', 'revoked': True}, {'id': 'b', 'revoked': False}], ['b']),
+    ('created~2026-01',
+     [{'id': 'a', 'created': datetime.datetime(2026, 1, 1)},
+      {'id': 'b', 'created': datetime.datetime(2027, 1, 1)}],
+     ['a']),
+])
+def test_filter_array_by_query_contains_non_str(q, array, expected_ids):
+    """Test that `~` no longer raises TypeError on a field whose value is a real bool or
+    datetime object -- it now casts any non-str value to str, the same as it already did for int."""
+    result = utils.filter_array_by_query(q, array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
+# Array whose `created` (datetime) and `uses` (int) fields mirror an enrollment token, to exercise
+# a `q` literal that doesn't match either field's type.
+type_mismatch_input_array = [{
+    'id': 'first',
+    'created': datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc),
+    'uses': 0
+}]
+
+
+@pytest.mark.parametrize('q', [
+    'created>foo',
+    'created>1',
+    'created>2026-13-01',
+    'uses=abc',
+    'uses=2026-01-01',
+])
+def test_filter_array_by_query_type_mismatch(q):
+    """Test that a `q` literal incompatible with the target field's type raises WazuhError(1407)
+    instead of an unhandled TypeError/ValueError."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query(q, type_mismatch_input_array)
+
+
+# One record has a null `description`; the other has a real one. Used to check that a present-but-
+# null field under an ordering operator doesn't poison the whole query -- it should just not match,
+# the same as a record missing the field entirely, instead of raising WazuhError(1407) for every
+# record because ONE of them can't satisfy the comparison.
+null_field_input_array = [
+    {'id': 'null_description', 'description': None},
+    {'id': 'has_description', 'description': 'b'},
+]
+
+
+@pytest.mark.parametrize('q, expected_ids', [
+    ('description>a', ['has_description']),
+    ('description<c', ['has_description']),
+    # `=`/`!=` never raise on None to begin with (operator.eq/ne accept any types), so a null
+    # field already behaved correctly for these -- kept here to pin that it still does.
+    ('description=b', ['has_description']),
+    ('description!=b', ['null_description']),
+])
+def test_filter_array_by_query_null_field_ordering(q, expected_ids):
+    """A null field under `<`/`>` is excluded like a missing field, not a query-wide 400."""
+    result = utils.filter_array_by_query(q, null_field_input_array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
+def test_filter_array_by_query_nested_falsy_candidate():
+    """A nested field's `False`/`0`/`''` value must still reach check_clause -- only a `None`
+    candidate (the nested field is itself null) should be dropped before comparing."""
+    array = [
+        {'id': 'disabled', 'config': {'enabled': False}},
+        {'id': 'enabled', 'config': {'enabled': True}},
+        {'id': 'null_nested', 'config': {'enabled': None}},
+    ]
+
+    result = utils.filter_array_by_query('config.enabled=false', array)
+
+    assert [item['id'] for item in result] == ['disabled']
 
 
 @pytest.mark.parametrize('select, required_fields, expected_result', [

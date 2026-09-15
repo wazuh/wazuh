@@ -492,6 +492,24 @@ field operator value[;connector field operator value]
 | `;` | AND |
 | `,` | OR |
 
+### Value types on in-memory collections
+
+Endpoints whose records are filtered in memory rather than in SQL — `/agents/enrollment-tokens`
+among them — accept `=`, `!=`, `<`, `>` and `~` only, and read the literal as the type of the field
+it is compared against. With `=`, `!=`, `<` and `>`, a date field takes `YYYY-MM-DD`,
+`YYYY-MM-DDTHH:MM:SSZ`, `YYYY-MM-DD HH:MM:SS` or `YYYY-MM-DDTHH:MM:SS.ffffffZ`
+(`q=created>2026-01-01`). A date's stored value keeps second-level precision, so `=`/`!=` need the
+full timestamp to match a specific record (`q=created=2026-01-01T00:00:00Z`); a bare `YYYY-MM-DD`
+parses as exact midnight UTC and matches only a record created at that instant. Bound a whole day
+with `<`/`>` instead.
+
+With `=` and `!=`, a boolean field takes `true`, `false`, `1` or `0` (`q=revoked=true`; any other
+literal is rejected with a 400, except a date-shaped one, which is read as a date and so matches
+nothing against a boolean field). The `search` parameter is case-insensitive and matches the
+rendered value, so `search=true` also finds records
+whose boolean field is set. `~` is case-sensitive on a boolean field, unlike `=`/`!=`/`search`: it
+matches the exact rendered value (`q=revoked~True`, `q=revoked~False`), not `true`/`false`.
+
 ### Examples
 
 ```bash
