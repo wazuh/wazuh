@@ -458,11 +458,17 @@ introducing a second one for the same concept.
 
 ### remoted.rlimit_nofile
 
-Maximum number of open file descriptors for the remoted process.
+Soft file descriptor limit remoted raises itself to at start.
 
-- **Default value:** `458752`
-- **Allowed values:** Positive integer
-- **Note:** The default already supports ~200K concurrent connections. Only increase above the default (up to the allowed maximum of `1048576`) if you observe file-descriptor exhaustion under very large agent counts — do not set below the default of `458752`.
+- **Default value:** `65536`
+- **Allowed values:** Integer from `1024` to `1048576`
+- **Note:** The daemon never raises its hard limit, which belongs to whatever starts the manager
+  (`LimitNOFILE=65536` in the service unit, the init script, or the container's `ulimits.nofile`),
+  and never lowers a soft limit that is already higher. A hard limit below this value is kept and
+  logged once as a warning; raise that limit first to go higher. HTTPS connections are bounded by
+  `remoted.max_parallel_connections` (default `512`), far below this value; only a large 4.x fleet
+  on the legacy TCP listener needs more. `GET /manager/configuration` reports the effective value.
+  See [File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits).
 
 ### remoted.send_chunk
 
@@ -1199,11 +1205,11 @@ Internal options (`/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`):
 ```conf
 remoted.control_msg_queue_size=32768
 remoted.keyupdate_interval=30
-remoted.rlimit_nofile=524288
 ```
 
-Only raise `rlimit_nofile` above its default (`458752`) if you observe file-descriptor exhaustion
-under very large fleets; do not set it lower than the default for a scale-up scenario.
+`rlimit_nofile` stays at its default (`65536`); a higher value only takes effect if the hard limit
+the manager is started with is raised as well (see
+[File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits)).
 
 ### High Throughput (>50K events/sec)
 

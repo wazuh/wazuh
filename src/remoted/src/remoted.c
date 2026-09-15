@@ -25,13 +25,13 @@ char* cluster_name;
 /* Handle remote connections */
 void HandleRemote(int uid)
 {
-    // Set resource limit for file descriptors
+    // Raise the soft file descriptor limit; the hard limit belongs to whoever started the manager
 
     {
-        struct rlimit rlimit = { nofile, nofile };
+        const long effective = w_raise_nofile_limit((long)nofile, "remoted.rlimit_nofile");
 
-        if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
-            merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
+        if (effective >= 0) {
+            nofile = (rlim_t)effective;
         }
     }
 

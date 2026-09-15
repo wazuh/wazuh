@@ -108,7 +108,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     pass_empty_keyfile = getDefine_Int_default("remoted", "pass_empty_keyfile", 0, 1, 1);
     ctrl_msg_queue_size = (size_t)getDefine_Int_default("remoted", "control_msg_queue_size", 4096, 0x1 << 20, 16384);
     keyupdate_interval = getDefine_Int_default("remoted", "keyupdate_interval", 1, 3600, 10);
-    nofile = getDefine_Int_default("remoted", "rlimit_nofile", 1024, 1048576, 458752);
+    nofile = getDefine_Int_default("remoted", "rlimit_nofile", 1024, 1048576, 65536);
     sender_pool = getDefine_Int_default("remoted", "sender_pool", 1, 64, 8);
     request_pool = getDefine_Int_default("remoted", "request_pool", 1, 4096, 1024);
     request_timeout = getDefine_Int_default("remoted", "request_timeout", 1, 600, 10);
