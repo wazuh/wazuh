@@ -1,0 +1,6 @@
+[Unit]
+Description=Wazuh manager daemon healthcheck
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control status

@@ -185,6 +185,53 @@ Example: `GET /agents?status=active`
 
 ---
 
+## Startup and socket binding
+
+`api/scripts/wazuh_manager_apid.py` opens the API's listening sockets itself, before uvicorn is started, and hands them to `uvicorn.Server(config).run(sockets=...)`. uvicorn never binds anything on its own.
+
+One socket is bound per entry in `api.yaml`'s `host`, which is a list (`['0.0.0.0', '::']` by default). An entry containing `:` is bound as IPv6, and every IPv6 socket is bound `IPV6_V6ONLY`, so an IPv4 client is always served by the IPv4 socket and its address reaches the access log and the brute-force IP blocking as `1.2.3.4` rather than the v4-mapped `::ffff:1.2.3.4`.
+
+Binding is all-or-nothing per attempt. If any host in the list fails, every socket opened by that attempt is closed before the next one, so the API is never left serving on one address family only.
+
+```
+                  ┌──────────────────────────────────────────────┐
+                  │  bind one socket per api.yaml 'host' entry   │
+                  └──────────────────────────────────────────────┘
+                        │                          │
+                 EADDRINUSE                   all bound
+                        │                          │
+       ┌────────────────▼───────────────┐          │
+       │ attempts left?                 │          │
+       │  yes -> WARNING in api.log,    │          │
+       │         wait 2^n * 2s + jitter │          │
+       │  no  -> ERROR 2010, exit       │          │
+       └────────────────┬───────────────┘          │
+                        │ retry                    ▼
+                        └──────────────► uvicorn.Server.run(sockets=...)
+                                            │
+                                            ▼
+                                         ASGI lifespan startup
+                                         logs "Listening on ..."
+```
+
+### Retry on a busy port
+
+A bind that fails with `EADDRINUSE` is retried 5 times on top of the first attempt, with an exponential backoff of `2 ** attempt * 2` seconds plus up to a second of jitter, i.e. roughly 62 seconds of waiting in the worst case. This covers a port that is momentarily held by something else, for example an unrelated outbound connection that was given it as an ephemeral source port.
+
+- Each failed attempt is logged in `api.log` at `WARNING` level with the hosts, the port, the attempt number and the wait before the next one.
+- Any other `OSError` (for example `EACCES` on a privileged port) is not retried: retrying cannot change the outcome.
+- Exhausting every attempt logs error `2010`, *Error while attempting to bind on address: address already in use*, at `ERROR` level, and the process exits. **This failure is only visible in `api.log`**: it is not written to `logs/wazuh-manager.log`, and it does not change `wazuh-manager.service`'s own unit state, which stays `active` because the other manager daemons are still running. The `wazuh-manager-healthcheck.timer` unit is what surfaces it through systemd: see [Manager installation](../../getting-started/installation.md).
+
+Because the bind succeeds before uvicorn is started, the `Listening on ...` line emitted from the ASGI lifespan startup hook (`api/api/signals.py`) can only be logged once a real socket exists. uvicorn's own `Uvicorn running on http://...` line is not logged at all when it is given pre-bound sockets.
+
+The process daemonizes and writes its PID files before it reaches this point, so for as long as the retry loop keeps waiting the daemon exists and `wazuh-manager-control status` reports `wazuh-manager-apid is running...` while nothing is bound and the API answers nothing. `api.log`'s retry warnings are what distinguish that window from a served API.
+
+### Shutdown during a retry
+
+The retry wait is backed by a `threading.Event` that `exit_handler`, the `SIGTERM` handler, sets before it removes the API's PID files. A stop issued while apid is still waiting to retry therefore ends the process immediately, instead of leaving it retrying in the background with its PID files already gone and `wazuh-manager-control status` reporting it stopped.
+
+---
+
 ## Distributed API (DAPI)
 
 In cluster deployments, not all requests can be handled by the node receiving them.

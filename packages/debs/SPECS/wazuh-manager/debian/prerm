@@ -10,6 +10,12 @@ case "$1" in
     ;;
 
     remove)
+      # Stop the healthcheck timer first: it runs wazuh-manager-control status, which would
+      # report every daemon down once the services below are stopped.
+      if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
+          systemctl disable --now wazuh-manager-healthcheck.timer > /dev/null 2>&1 || true
+      fi
+
       # Stop the services before uninstalling the package
       # Check for systemd
       if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
