@@ -95,20 +95,21 @@ def configure_ssl(params):
 
 
 def warn_about_default_passwords():
-    """Log a warning for each default API user that still has the password shipped with the package.
+    """Log a warning for each default API user whose generated password has not been retrieved yet.
 
-    The API is started either way: the default credentials are documented, and refusing to serve
-    would break the deployments that configure them after the first start.
+    The API is started either way: the disclosure file is documented, and refusing to serve would
+    break the deployments that read it and change the password after the first start.
     """
     try:
         users = get_users_with_default_password()
     except Exception as exc:
-        logger.debug(f'Could not check whether the default API users keep their default password: {exc}')
+        logger.debug(f'Could not check whether the default API users still have an undisclosed '
+                     f'generated password: {exc}')
         return
 
     for username in users:
-        logger.warning(f"The '{username}' API user still has its default password. Anyone able to reach the API "
-                       f"can use it. Change it with "
+        logger.warning(f"The '{username}' API user has a generated password that has not been retrieved yet. "
+                       f"Read it from '{DEFAULT_PASSWORDS_FILE}', then change it with "
                        f"'{os.path.join(common.WAZUH_PATH, 'bin', 'rbac_control')} change-password'")
 
 
@@ -126,7 +127,8 @@ def start(params: dict):
         uvicorn parameter configuration dictionary.
     """
     try:
-        check_database_integrity()
+        generated_passwords = check_database_integrity()
+        disclose_default_passwords(generated_passwords)
     except Exception as db_integrity_exc:
         raise APIError(2012, details=str(db_integrity_exc)) from db_integrity_exc
 
@@ -306,8 +308,8 @@ if __name__ == '__main__':
     from connexion.options import SwaggerUIOptions
     from content_size_limit_asgi.errors import ContentSizeExceeded
     from wazuh.core import common, pyDaemonModule, utils
-    from wazuh.core.security import get_users_with_default_password
-    from wazuh.rbac.orm import check_database_integrity
+    from wazuh.core.security import get_users_with_default_password, disclose_default_passwords
+    from wazuh.rbac.orm import check_database_integrity, DEFAULT_PASSWORDS_FILE
 
     from api import __path__ as api_path
     from api import error_handler

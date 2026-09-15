@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import re
 from copy import deepcopy
 from functools import lru_cache
 
@@ -12,15 +11,14 @@ from wazuh.core.decorators import dapi_allower
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens, \
-    load_spec, sanitize_rbac_policy, update_security_conf, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
+    load_spec, sanitize_rbac_policy, update_security_conf, clear_disclosed_default_password, \
+    REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
-from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
+from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED, WAZUH_USER_ID, WAZUH_WUI_USER_ID
 from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
-
-# Minimum twelve characters, at least one uppercase letter, one lowercase letter, one number and one special character:
-_user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$')
+from wazuh.rbac.orm import USER_PASSWORD_POLICY as _user_password
 
 @dapi_allower()
 def get_user_me(token: dict) -> AffectedItemsWazuhResult:
@@ -246,9 +244,12 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
         if query is False:
             result.add_failed_item(id_=int(user_id[0]), error=WazuhError(5001))
         else:
-            result.affected_items.append(auth.get_user_id(int(user_id[0])))
+            updated_user = auth.get_user_id(int(user_id[0]))
+            result.affected_items.append(updated_user)
             result.total_affected_items += 1
             invalid_users_tokens(users=user_id)
+            if int(user_id[0]) in (WAZUH_USER_ID, WAZUH_WUI_USER_ID):
+                clear_disclosed_default_password(updated_user['username'])
 
     return result
 
