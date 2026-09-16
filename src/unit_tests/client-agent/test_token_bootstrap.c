@@ -205,7 +205,7 @@ int __wrap_chown(const char *path, uid_t owner, gid_t group) {
 
 /* client.keys is chowned via w_token_bootstrap_chown_keys_file() (token_bootstrap.c), which
  * opens it with O_NOFOLLOW and fchown()s the descriptor instead of calling chown() on the path
- * -- a symlink planted in etc/ (0770 root:wazuh, unlike the anchor's own 0750 root:gid
+ * -- a symlink planted in etc/ (0770 root:wazuh, like the anchor's own 01770 root:gid
  * directory) must not make a root-privileged chown() follow it to an arbitrary target. The fd
  * is resolved back to a path via /proc/self/fd to keep matching this suite's existing
  * by-path convention. */
@@ -556,6 +556,34 @@ static void test_anchor_latch_keys_chown_failure_is_quiet(void **state) {
     assert_int_equal(g_keys_chown_gid, (gid_t) -1);
 }
 
+/* An agent that bootstrapped before #39321 holds a root-owned anchor under a 0750 directory, so
+ * it could never adopt a published CA bundle: the refresh runs unprivileged and would fail at
+ * mkstemp() every time, which reads as a manager problem rather than a local one. The latch --
+ * the only branch an already-bootstrapped agent reaches -- repairs it on the next boot, while
+ * still root, so an upgrade fixes itself with no operator action. */
+static void test_anchor_latch_repairs_pre_39321_ownership(void **state) {
+    (void) state;
+    write_file("etc/certs/root-ca.pem", "EXISTING-ANCHOR");
+    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_token_file(true, true, NULL);
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+
+    /* The latch still holds: repairing permissions is not an excuse to re-fetch anything. */
+    assert_int_equal(g_fetch_call_count, 0);
+    assert_int_equal(g_enroll_call_count, 0);
+
+    /* The anchor moves to the runtime user, because the sticky bit below lets only the owner
+     * rename over it. */
+    assert_int_equal(g_anchor_chown_uid, getuid());
+    assert_int_equal(g_anchor_chown_gid, getgid());
+
+    /* The directory stays root-owned and gains group write plus the sticky bit. */
+    assert_int_equal(g_dir_chown_uid, 0);
+    assert_int_equal(g_dir_chown_gid, getgid());
+    assert_int_equal(g_dir_chmod_mode, 01770);
+}
+
 /* Regression test: client.keys can exist as an empty 0-byte placeholder (the package's own
  * conffile default) that no prior test here modeled -- every existing test either unlinked
  * the file or wrote a real, non-empty entry. */
@@ -796,10 +824,10 @@ static void test_full_happy_path_via_pin(void **state) {
      * would fail authentication in the field while passing a length check here. */
     assert_int_equal((int) strspn(g_enroll_request.enroll_key_hex, "0123456789abcdef"), 64);
 
-    /* The anchor is handed to root and only shares its group, so the user the agent drops to
-     * can read the certificate authority it verifies against without being able to replace
-     * it. */
-    assert_int_equal(g_anchor_chown_uid, 0);
+    /* The anchor is handed to the runtime user, not to root: under the sticky etc/certs only the
+     * owner may rename over a file, so a root-owned anchor is one the agent could never replace
+     * when the manager publishes a new CA bundle (#39321). The mode below is still 0640. */
+    assert_int_equal(g_anchor_chown_uid, getuid());
     assert_int_equal(g_anchor_chown_gid, getgid());
 
     /* Regression guard: the anchor's chown() must land before OS_MoveFile() renames the temp
@@ -807,11 +835,14 @@ static void test_full_happy_path_via_pin(void **state) {
      * AGENT_ANCHOR_CA permanently latching the bootstrap off. */
     assert_true(g_anchor_chown_recorded_before_move);
 
-    /* Both the anchor and its parent directory get their mode fixed up while still root. */
+    /* Both the anchor and its parent directory get their mode fixed up while still root. The
+     * directory is 01770, not 0750: group write is what rename(2) needs to replace the anchor
+     * (it never consults the target file's own mode), and the sticky bit keeps that from
+     * reaching anything root-owned that shares the directory. */
     assert_int_equal(g_anchor_chmod_mode, 0640);
-    assert_int_equal(g_dir_chmod_mode, 0750);
+    assert_int_equal(g_dir_chmod_mode, 01770);
 
-    /* The parent directory is handed to root:gid, same reasoning as the anchor itself. */
+    /* The parent directory itself stays root-owned: only its group gains write. */
     assert_int_equal(g_dir_chown_uid, 0);
     assert_int_equal(g_dir_chown_gid, getgid());
 
@@ -1103,6 +1134,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_client_keys_hard_link_is_not_chowned, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_keys_chown_failure_is_logged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_anchor_latch_keys_chown_failure_is_quiet, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_anchor_latch_repairs_pre_39321_ownership, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_empty_placeholder_keys_file_is_not_already_enrolled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_malformed_token_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_adr_unreachable_logs_named_error_and_writes_nothing, setup_test, teardown_test),

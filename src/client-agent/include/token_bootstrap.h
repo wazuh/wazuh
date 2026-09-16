@@ -60,10 +60,12 @@ typedef enum {
  * mismatch, or the verified enroll itself), classifies it (see w_token_bootstrap_result_t), and
  * leaves nothing behind -- a later boot, or a retry within the same boot, can retry cleanly.
  *
- * @param uid The uid AgentdStart() is about to drop privileges to. Currently unused: neither
- *        file this function writes is chowned to it (see token_bootstrap.c's own comments on
- *        the anchor and on client.keys) -- kept for signature symmetry with AgentdStart()'s
- *        uid/gid pair. Ignored on Windows, which has no privilege drop; local_start() passes 0.
+ * @param uid The uid AgentdStart() is about to drop privileges to. The committed anchor is
+ *        chowned to it so the agent can replace the anchor itself when the manager publishes a
+ *        new CA bundle (#39321) -- under the sticky etc/certs only the file's owner may rename
+ *        over it. client.keys is deliberately NOT chowned to it; see token_bootstrap.c's own
+ *        comments on the two. Ignored on Windows, which has no privilege drop; local_start()
+ *        passes 0.
  * @param gid The gid AgentdStart() is about to drop privileges to, so the committed anchor ends
  *        up group-owned by it. Ignored on Windows for the same reason, which passes 0 too.
  * @return See w_token_bootstrap_result_t.

@@ -216,3 +216,4 @@
 | [#38914](https://github.com/wazuh/wazuh/issues/38914) | Fixed the default agent nodiff list not protecting `/etc/shadow` and real key paths. |
 | [#39309](https://github.com/wazuh/wazuh/issues/39309) | Fixed SCA HIPAA compliance values using parenthesized notation, which the dashboard's Regulatory Compliance catalogue doesn't recognize; converted to the dotted notation the catalogue expects. |
 | [#39321](https://github.com/wazuh/wazuh/issues/39321) | Fixed the agent starting with a multi-certificate `<certificate_authorities>` file whose later certificates are unusable, which failed at the first handshake instead of at startup. |
+| [#39321](https://github.com/wazuh/wazuh/issues/39321) | The agent's trust anchor and its directory are now owned so the agent can replace the anchor itself, which a CA rotation requires. Existing installs are corrected on the next start. |
