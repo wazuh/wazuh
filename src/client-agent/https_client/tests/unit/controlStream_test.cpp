@@ -265,19 +265,37 @@ TEST_F(ControlStreamTest, VersionRejectionGoesRejected)
     EXPECT_EQ(HC_STATE_REJECTED, m_stream.connState());
 }
 
-TEST_F(ControlStreamTest, PersistentAuthFailureGoesAuthError)
+TEST_F(ControlStreamTest, RetryableAuthFailureDoesNotGoAuthError)
 {
-    EXPECT_CALL(m_sink, onStateChange(HC_STATE_AUTH_ERROR));
-    // A 401 gets one fresh-timestamp retry; a second 401 escalates to AUTH_ERROR.
+    // A 401 the AuthGate did not latch must not reach AUTH_ERROR (#39064). AUTH_ERROR sends
+    // nothing (nextAction() is Idle), slows the cadence, drops an armed settings refresh, and can
+    // only be left through CredentialRenewed -- "a new key is in place" -- which would be false
+    // here, since nothing was renewed. Going there and self-healing back cost a full
+    // re-registration and an AUTH_ERROR -> REGISTERED flap on every retryable 401, which is the
+    // disruption this issue set out to remove for the seven non-`unknown_agent` classes.
+    //
+    // Deliberately a CLASSLESS 401 (no body): the fail-safe reading. A manager that will not say
+    // why it refused us has not told us to throw the identity away.
+    EXPECT_CALL(m_sink, onStateChange(HC_STATE_AUTH_ERROR)).Times(0);
+    // A 401 gets one fresh-timestamp retry; the second is what would have escalated.
     EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
 
     EXPECT_FALSE(m_stream.step(m_waiter));
-    EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
-    // Deliberately a CLASSLESS 401 (no body): the state still reports what was observed, but the
-    // gate must not latch and no re-enrollment may be asked for (#39064). AUTH_ERROR is a
-    // description of the last attempt; only `unknown_agent` is an instruction to throw the
-    // identity away.
+    // Still Starting: the retry loop owns this, and the session is kept.
+    EXPECT_EQ(HC_STATE_STARTING, m_stream.connState());
     EXPECT_FALSE(m_authGate.paused());
+}
+
+TEST_F(ControlStreamTest, UnknownAgentAuthFailureStillGoesAuthError)
+{
+    // The other half of the rule: the one class that DOES cost the agent its identity still
+    // latches the gate and still converges the machine to AUTH_ERROR.
+    EXPECT_CALL(m_sink, onStateChange(HC_STATE_AUTH_ERROR));
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFail()));
+
+    EXPECT_FALSE(m_stream.step(m_waiter));
+    EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
+    EXPECT_TRUE(m_authGate.paused());
 }
 
 TEST_F(ControlStreamTest, PausedGateSkipsHttpAndReleaseResumesWithAFreshStartup)

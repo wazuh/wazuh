@@ -647,12 +647,16 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
                     "prefix the manager serves.", target.c_str());
     }
 
-    // Undeliverable with nothing already in motion to change it. AuthFail only
-    // surfaces once the timestamp-corrected retry has also failed, so the key is
-    // genuinely bad and only re-enrollment can recover it; VersionRejected needs
-    // one side upgraded. Excluded: answers that clear on their own (5xx, 429/503,
-    // 413), a plain 400, and a 404 -- which does not clear on its own but is left
-    // to the buffer's own cap rather than the producer lock.
+    // Undeliverable with nothing already in motion to change it. AuthFail only surfaces once the
+    // timestamp-corrected retry has also failed, so the manager is refusing this credential and
+    // nothing the stream can do by itself will change that; VersionRejected needs one side
+    // upgraded. Deliberately ALL eight 401 classes, not just the identity-fatal one: the back
+    // pressure is about whether /control is getting through, which it is not either way, so a
+    // retryable class still has to hold the producers rather than let the queues grow behind a
+    // channel that is refusing everything. What the class decides is whether the identity is
+    // thrown away (eventFor()), not whether the data is flowing. Excluded: answers that clear on
+    // their own (5xx, 429/503, 413), a plain 400, and a 404 -- which does not clear on its own but
+    // is left to the buffer's own cap rather than the producer lock.
     const bool blocksDelivery = outcome == OutcomeClass::Unreachable ||
                                 outcome == OutcomeClass::AuthFail ||
                                 outcome == OutcomeClass::VersionRejected;
@@ -817,7 +821,20 @@ ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const
 
     if (outcome == OutcomeClass::AuthFail)
     {
-        return ControlStateMachine::Event::AuthFailed;
+        // Since #39064 only `unknown_agent` costs the agent its identity, and the AuthGate is where
+        // that decision is made (RetrySender::send reads the class off the body). So the gate, not
+        // the status, is what says whether this 401 was fatal: OutcomeClass::AuthFail is still
+        // "a 401 was observed" for all eight classes.
+        //
+        // A 401 the gate did not latch is retryable -- the credential is intact and the very next
+        // attempt may work -- and must NOT reach AuthError, which sends nothing (nextAction() is
+        // Idle there), slows the cadence, drops an armed settings refresh, and can only be left
+        // through CredentialRenewed: an event meaning "a new key is in place", which would be a
+        // lie when nothing was renewed. The net effect was a full re-registration and an
+        // AUTH_ERROR -> REGISTERED flap on every retryable 401 -- the disruption #39064 set out to
+        // remove for exactly these classes.
+        return m_authGate.paused() ? ControlStateMachine::Event::AuthFailed
+               : ControlStateMachine::Event::TransientFailure;
     }
 
     if (outcome == OutcomeClass::VersionRejected)
