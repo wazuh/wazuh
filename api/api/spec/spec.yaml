@@ -1042,8 +1042,9 @@ components:
         max_uses:
           description: "Enrollments the token allows. 0 (the default) means unlimited"
           type: integer
-          format: int32
+          format: int64
           minimum: 0
+          maximum: 4294967295
         description:
           description: "Free text shown when listing the tokens. Control characters (a newline included)
           are refused: the description is written to the manager's log when the token is minted"
