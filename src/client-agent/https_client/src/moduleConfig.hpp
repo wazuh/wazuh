@@ -12,6 +12,7 @@
 #ifndef _HC_MODULE_CONFIG_HPP
 #define _HC_MODULE_CONFIG_HPP
 
+#include "caPublicationState.hpp"
 #include "https_client.h"
 #include "loggerHelper.h"
 #include "sysSeams.hpp"
@@ -70,6 +71,7 @@ struct ModuleConfig
 
         std::string version;
         std::string configChecksum;
+        std::int64_t caPublication {CA_PUBLICATION_UNKNOWN};
 
         uint32_t requestTimeoutMs {10000};
         uint32_t statefulTimeoutMs {90000};

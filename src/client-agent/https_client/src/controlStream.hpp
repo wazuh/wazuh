@@ -16,6 +16,7 @@
 #include "callbackSink.hpp"
 #include "clusterIdentity.hpp"
 #include "configFetcher.hpp"
+#include "caPublicationState.hpp"
 #include "configHashState.hpp"
 #include "controlStateMachine.hpp"
 #include "moduleConfig.hpp"
@@ -29,7 +30,9 @@
 #include "vdOffsetStore.hpp"
 #include "wpkFetcher.hpp"
 
+#include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -49,6 +52,7 @@ class ControlStream final
         ControlStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
                       IClock& clock, IRandom& random, ICallbackSink& sink,
                       ISpoolFileFactory& spoolFactory, ConfigHashState& configHash,
+                      CaPublicationState& caPublication,
                       ClusterIdentity& cluster, AuthGate& authGate, CompressionGate& compressionGate,
                       ITaskIdStore& taskStore, IVdOffsetStore& vdOffsetStore,
                       std::function<std::string()> collectHost = {});
@@ -120,6 +124,9 @@ class ControlStream final
         void maybeDownloadConfig(const std::string& managerHash, const std::string& resourceId,
                                  Waiter& waiter);
         void maybeReportAgentGroups(const std::string& csv);
+        /// Rule 3 of #39321 applied to one notify: arms a refresh when the advertised
+        /// publication is one this agent should adopt. std::nullopt means the field was absent.
+        void maybeAdoptCaPublication(std::optional<std::int64_t> advertised);
         void maybeRequestVdRescan(uint64_t offset, Waiter& waiter);
         void updateConnectionInfo(const HttpResponse& response);
         ControlStateMachine::Event eventFor(OutcomeClass outcome) const;
@@ -132,6 +139,7 @@ class ControlStream final
         ConfigFetcher m_fetcher;
         WpkFetcher m_wpkFetcher;
         ConfigHashState& m_configHash;
+        CaPublicationState& m_caPublication;
         ClusterIdentity& m_cluster;
         AuthGate& m_authGate;
         ControlStateMachine m_machine;

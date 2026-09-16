@@ -17,6 +17,7 @@
 #include "clusterIdentity.hpp"
 #include "collectorSource.hpp"
 #include "compressionGate.hpp"
+#include "caPublicationState.hpp"
 #include "configHashState.hpp"
 #include "controlStream.hpp"
 #include "curlPerformer.hpp"
@@ -105,6 +106,7 @@ class HttpsClientFacade final
         CurlPerformer m_performer;
         CallbackDispatcher m_dispatcher;
         ConfigHashState m_configHash;
+        CaPublicationState m_caPublication;
         ClusterIdentity m_cluster;
         TaskIdStoreAdapter m_taskStore;
         VdOffsetStoreAdapter m_vdOffsetStore;
