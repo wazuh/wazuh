@@ -11,12 +11,17 @@ set -euo pipefail
 # Usage:
 #   ./cleanup_agents.sh                 # delete bench-* agents
 #   ./cleanup_agents.sh --all           # delete ALL agents except 000 (manager)
-# Environment: WAZUH_API_URL WAZUH_API_USER WAZUH_API_PASS
+# Environment: WAZUH_API_URL WAZUH_API_USER WAZUH_API_PASS WAZUH_PASSWORDS_FILE
 # ---------------------------------------------------------------------------
 
 API_URL="${WAZUH_API_URL:-https://localhost:55000}"
 API_USER="${WAZUH_API_USER:-wazuh}"
-API_PASS="${WAZUH_API_PASS:-wazuh}"
+# Installs no longer ship a known password: fall back to the one disclosed at install time.
+PASSWORDS_FILE="${WAZUH_PASSWORDS_FILE:-/var/wazuh-manager/api/configuration/security/wazuh-api-passwords.txt}"
+API_PASS="${WAZUH_API_PASS:-}"
+if [[ -z "$API_PASS" && -r "$PASSWORDS_FILE" ]]; then
+    API_PASS=$(sed -n "s/^${API_USER}: //p" "$PASSWORDS_FILE" | head -1)
+fi
 PYTHON="${PYTHON:-python3}"
 REMOVE_ALL=false
 
@@ -26,7 +31,8 @@ TOKEN=$(curl -s -k -X POST "${API_URL}/security/user/authenticate" \
     -u "${API_USER}:${API_PASS}" | "$PYTHON" -c 'import sys,json; print(json.load(sys.stdin)["data"]["token"])' 2>/dev/null || true)
 
 if [[ -z "$TOKEN" ]]; then
-    echo "Error: could not authenticate with the Wazuh API at ${API_URL}" >&2
+    echo "Error: could not authenticate with the Wazuh API at ${API_URL} as '${API_USER}'." >&2
+    echo "Set WAZUH_API_PASS, or read the password generated at install time from ${PASSWORDS_FILE}." >&2
     exit 1
 fi
 

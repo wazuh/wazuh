@@ -1,7 +1,28 @@
 #!/usr/bin/env bash
 
 # Apply API configuration
-cp -rf /tmp_volume/config/* /var/wazuh-manager/ && chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/api
+cp -rf /tmp_volume/config/* /var/wazuh-manager/
+
+# Pre-seed the default 'wazuh'/'wazuh-wui' API passwords: installs no longer ship a known password,
+# but this environment's tavern suites and common.yaml still authenticate with known literal values.
+# Those values must satisfy the API password policy themselves - orm.py's pre-seed loader validates
+# every entry against it and silently falls back to a real random password for one that doesn't,
+# which is what a plain "wazuh"/"wazuh-wui" literal would hit.
+# Master only: master/worker1/worker2 share the same 'api_security' volume (the same rbac.db), and
+# 'depends_on' does not wait for master's script to finish, so all three would otherwise race to
+# write this file concurrently - a partial/interleaved write reads back as invalid JSON, which also
+# falls back to a random password. Written atomically (temp file + rename) as a second layer of
+# defense against any other concurrent writer.
+if [ "$3" == "master" ]; then
+  mkdir -p /var/wazuh-manager/api/configuration/security
+  preseed_tmp=$(mktemp /var/wazuh-manager/api/configuration/security/.wazuh-preseeded-passwords.XXXXXX)
+  cat <<'EOF' > "$preseed_tmp"
+{"wazuh": "Wazuh-Preseed1!", "wazuh-wui": "WazuhWui-Preseed1!"}
+EOF
+  mv "$preseed_tmp" /var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.json
+fi
+
+chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/api
 
 # Modify wazuh configuration file
 for conf_file in /tmp_volume/configuration_files/*.conf; do

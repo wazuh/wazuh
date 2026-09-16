@@ -34,6 +34,7 @@ tags:
     - recursion
 """
 
+import os
 import pytest
 import requests
 import sys
@@ -43,6 +44,7 @@ from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.api import (
     WAZUH_API_PROTOCOL,
 )
+from wazuh_testing.constants.paths.api import WAZUH_API_SECURITY_FOLDER_PATH
 from wazuh_testing.modules.api.utils import get_base_url
 
 
@@ -50,11 +52,37 @@ pytestmark = pytest.mark.server
 
 daemons_handler_configuration = {"all_daemons": True}
 
+
+def _resolve_default_password(username: str, shipped_fallback: str) -> str:
+    """Read a default API user's randomly generated password, disclosed once at install time.
+
+    Falls back to `shipped_fallback` when the disclosure file is gone: the password was already
+    retrieved and changed, or the target was pre-seeded with that same value at install time.
+    """
+    passwords_file = os.path.join(WAZUH_API_SECURITY_FOLDER_PATH, 'wazuh-api-passwords.txt')
+    try:
+        with open(passwords_file) as f:
+            for line in f:
+                if line.startswith(f"{username}:"):
+                    return line.split(':', 1)[1].strip()
+    except OSError:
+        pass
+    return shipped_fallback
+
+
 # This test drives the run_as login, which is only available to a user with `allow_run_as`. Among
-# the default users that is `wazuh-wui` alone, and every default user's shipped password is its own
-# username.
+# the default users that is `wazuh-wui` alone.
 RUN_AS_API_USER = "wazuh-wui"
-RUN_AS_API_PASSWORD = "wazuh-wui"
+
+
+@pytest.fixture
+def run_as_api_password(daemons_handler) -> str:
+    """Resolve `wazuh-wui`'s password once the API has started.
+
+    A fixture, not a module constant: the disclosure file is written on the first `apid` start, which
+    `daemons_handler` triggers. Resolving it at import runs during collection, before any daemon is up.
+    """
+    return _resolve_default_password(RUN_AS_API_USER, shipped_fallback="wazuh-wui")
 
 
 @pytest.fixture
@@ -87,6 +115,7 @@ def test_json_nesting_depth(
     truncate_monitored_files,
     daemons_handler,
     wait_for_api_start,
+    run_as_api_password,
 ):
     """
     description: Validate API behavior with different JSON nesting depths.
@@ -137,7 +166,7 @@ def test_json_nesting_depth(
 
     response = session.post(
         url=url,
-        auth=(RUN_AS_API_USER, RUN_AS_API_PASSWORD),
+        auth=(RUN_AS_API_USER, run_as_api_password),
         json=payload,
         verify=False,
         timeout=30,

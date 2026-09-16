@@ -82,6 +82,11 @@ case "$1" in
         find ${DIR}/etc/ -type f ! -name *shared* -exec mv {} {}.save \;
 
         if [ -d "${DIR}/api" ]; then
+            # Plaintext credentials: preserving them as .save would leave an administrator password behind.
+            rm -f ${DIR}/api/configuration/security/wazuh-api-passwords.txt
+            rm -f ${DIR}/api/configuration/security/wazuh-preseeded-passwords.json
+            rm -f ${DIR}/api/configuration/security/.wazuh-api-passwords-generated
+
             find "${DIR}/api/" -type f -name "*save" -exec rm -f {} \;
             find "${DIR}/api/" -type f -exec mv {} {}.save \;
         fi
