@@ -12,6 +12,7 @@
 #include "enrollClient.hpp"
 
 #include "bodyCompressor.hpp"
+#include "clockSkew.hpp"
 #include "enrollSigner.hpp"
 #include "jwt/jwtEnrollTokenSigner.hpp"
 #include "jwt/jwtKeyDecoder.hpp"
@@ -20,15 +21,6 @@
 #include <chrono>
 #include <cstdlib>
 #include <utility>
-
-namespace
-{
-    // Mirrors RetrySender::kSkewNoiseFloorSeconds -- kept as a separate
-    // constant (not shared via a header) since the two call sites have no
-    // other coupling, but the two values must stay equal: below this, a
-    // Date-vs-local gap is plausibly latency/rounding, not real skew.
-    constexpr std::int64_t kSkewNoiseFloorSeconds = 5;
-} // namespace
 
 EnrollClient::EnrollClient(
     const ModuleConfig& config, IHttpPerformer& performer, const IFsProbe& fsProbe, IClock& clock, LogFn logFn)
@@ -107,23 +99,16 @@ HttpResponse EnrollClient::enroll(const std::string& bodyJson, const std::string
 
 void EnrollClient::correctClockIfSkewed(const HttpResponse& response)
 {
-    // Date is not itself authenticated (see RetrySender::correctClockIfSkewed
-    // for the full trust argument, identical here): trusting it is no
-    // different from trusting the 401 status/body it arrived with.
-    if (response.serverDateSeconds == 0)
+    // Same decision as RetrySender's, so it is made in one place (clockSkew.hpp), which also owns
+    // the noise floor: two copies of that constant are two things that have to be changed
+    // together, and the one that is missed is the one nobody notices.
+    const auto delta = correctClockFromServerDate(m_clock, response.serverDateSeconds);
+
+    if (delta == 0)
     {
-        return; // No Date captured/parsed: nothing to measure skew against.
+        return; // No Date, or inside the floor: the 401 is likely a dead password, not the clock.
     }
 
-    const auto delta =
-        static_cast<std::int64_t>(response.serverDateSeconds) - static_cast<std::int64_t>(m_clock.wallSeconds());
-
-    if (std::abs(delta) < kSkewNoiseFloorSeconds)
-    {
-        return; // Aligned enough: leave the clock alone, the 401 is likely a dead password.
-    }
-
-    m_clock.correctToServerTime(response.serverDateSeconds);
     LOGFN_INFO(m_logFn,
                "https_client: clock skew of %lld s detected against the manager's response "
                "(Date header) during enrollment; correcting the signing timestamp and retrying.",
