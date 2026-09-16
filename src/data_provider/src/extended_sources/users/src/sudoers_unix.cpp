@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <sstream>
 #include <iostream>
+#include <map>
 #include <regex>
 #include <locale>
 #include <vector>
@@ -192,4 +193,226 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
             genSudoersFile(ruleDetails, level + 1, results);
         }
     }
+}
+
+namespace
+{
+    // Caps User_Alias indirection, which also stops aliases defined in terms of each other from
+    // looping forever.
+    constexpr unsigned int MAX_ALIAS_DEPTH = 16;
+
+    bool isDirectiveHeader(const std::string& header)
+    {
+        static const std::set<std::string> DIRECTIVE_HEADERS
+        {
+            "User_Alias", "Runas_Alias", "Host_Alias", "Cmnd_Alias",
+            "#include", "@include", "#includedir", "@includedir"
+        };
+
+        // "Defaults" also takes the qualified forms Defaults@host, Defaults:user, Defaults!cmnd
+        // and Defaults>runas, none of which grant anything either.
+        return DIRECTIVE_HEADERS.count(header) > 0 || header.rfind("Defaults", 0) == 0;
+    }
+
+    // A ':' separates alias definitions on one line, unless it follows a '%', which opens a
+    // non-Unix group name ("%:group").
+    std::vector<std::string> splitAliasDefinitions(const std::string& ruleDetails)
+    {
+        std::vector<std::string> definitions;
+        std::string current;
+
+        for (size_t i = 0; i < ruleDetails.size(); ++i)
+        {
+            if (ruleDetails[i] == ':' && (i == 0 || ruleDetails[i - 1] != '%'))
+            {
+                definitions.push_back(current);
+                current.clear();
+            }
+            else
+            {
+                current.push_back(ruleDetails[i]);
+            }
+        }
+
+        definitions.push_back(current);
+
+        return definitions;
+    }
+
+    std::map<std::string, std::string> collectUserAliases(const nlohmann::json& sudoers)
+    {
+        std::map<std::string, std::string> aliases;
+
+        for (const auto& rule : sudoers)
+        {
+            if (!rule.is_object() || rule.value("header", "") != "User_Alias")
+            {
+                continue;
+            }
+
+            for (const auto& definition : splitAliasDefinitions(rule.value("rule_details", "")))
+            {
+                const auto separator = definition.find('=');
+
+                if (separator == std::string::npos)
+                {
+                    continue;
+                }
+
+                auto name = definition.substr(0, separator);
+                auto members = definition.substr(separator + 1);
+                Utils::trimSpaces(name);
+                Utils::trimSpaces(members);
+
+                if (!name.empty())
+                {
+                    aliases[name] = members;
+                }
+            }
+        }
+
+        return aliases;
+    }
+
+    // genSudoersFile() cuts the header at the first whitespace token, so a user list written with
+    // spaces after its commas continues at the start of the body. A trailing comma says the list
+    // goes on, and the first entry without one closes it.
+    std::string ruleUserList(const std::string& header, const std::string& ruleDetails)
+    {
+        std::string userList = header;
+        size_t position = 0;
+
+        while (!userList.empty() && userList.back() == ',')
+        {
+            const auto start = ruleDetails.find_first_not_of("\t\v ", position);
+
+            if (start == std::string::npos)
+            {
+                break;
+            }
+
+            const auto end = ruleDetails.find_first_of("\t\v ", start);
+            userList += ruleDetails.substr(start, end == std::string::npos ? std::string::npos : end - start);
+            position = (end == std::string::npos) ? ruleDetails.size() : end;
+        }
+
+        return userList;
+    }
+
+    bool userListMatches(const std::string& userList,
+                         const std::string& userName,
+                         const std::set<std::string>& userGroups,
+                         const std::map<std::string, std::string>& userAliases,
+                         unsigned int depth);
+
+    bool entryMatches(const std::string& entry,
+                      const std::string& userName,
+                      const std::set<std::string>& userGroups,
+                      const std::map<std::string, std::string>& userAliases,
+                      unsigned int depth)
+    {
+        // A netgroup cannot be resolved from the endpoint, and a negated entry takes a grant away
+        // rather than giving one, so neither can be read as "this user is a sudoer".
+        if (entry.empty() || entry.front() == '+' || entry.front() == '!')
+        {
+            return false;
+        }
+
+        // "ALL" as the user list of a rule grants that rule to every account on the host.
+        if (entry == "ALL")
+        {
+            return true;
+        }
+
+        if (entry.front() == '%')
+        {
+            auto groupName = entry.substr(1);
+
+            // "%#gid" names a group by id, which group names cannot answer.
+            if (!groupName.empty() && groupName.front() == '#')
+            {
+                return false;
+            }
+
+            // "%:group" names a non-Unix group; the name after the colon is the one that shows up
+            // among the user's groups.
+            if (!groupName.empty() && groupName.front() == ':')
+            {
+                groupName.erase(0, 1);
+            }
+
+            return userGroups.count(groupName) > 0;
+        }
+
+        // "#uid" names a user by id, which a name cannot answer.
+        if (entry.front() == '#')
+        {
+            return false;
+        }
+
+        const auto alias = userAliases.find(entry);
+
+        if (alias != userAliases.end())
+        {
+            return depth < MAX_ALIAS_DEPTH
+                   && userListMatches(alias->second, userName, userGroups, userAliases, depth + 1);
+        }
+
+        return entry == userName;
+    }
+
+    bool userListMatches(const std::string& userList,
+                         const std::string& userName,
+                         const std::set<std::string>& userGroups,
+                         const std::map<std::string, std::string>& userAliases,
+                         unsigned int depth)
+    {
+        for (auto& entry : Utils::split(userList, ','))
+        {
+            Utils::trimSpaces(entry);
+
+            if (entryMatches(entry, userName, userGroups, userAliases, depth))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+bool SudoersProvider::isUserSudoer(const nlohmann::json& sudoers,
+                                   const std::string& userName,
+                                   const std::set<std::string>& userGroups)
+{
+    if (userName.empty() || !sudoers.is_array())
+    {
+        return false;
+    }
+
+    const auto userAliases = collectUserAliases(sudoers);
+
+    for (const auto& rule : sudoers)
+    {
+        if (!rule.is_object())
+        {
+            continue;
+        }
+
+        const auto header = rule.value("header", "");
+
+        if (isDirectiveHeader(header))
+        {
+            continue;
+        }
+
+        const auto userList = ruleUserList(header, rule.value("rule_details", ""));
+
+        if (userListMatches(userList, userName, userGroups, userAliases, 0))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }

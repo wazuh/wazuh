@@ -561,6 +561,9 @@ nlohmann::json SysInfo::getUsers() const
         std::set<uid_t> uid {static_cast<uid_t>(user["uid"].get<int>())};
         auto collectedUsersGroups = userGroupsProvider.getGroupNamesByUid(uid);
 
+        // The sudoers lookup needs the group names one by one, not concatenated.
+        std::set<std::string> userGroupNames;
+
         if (collectedUsersGroups.empty())
         {
             userItem["user_groups"] = UNKNOWN_VALUE;
@@ -576,7 +579,9 @@ nlohmann::json SysInfo::getUsers() const
                     accumGroups += secondaryArraySeparator;
                 }
 
-                accumGroups += group.get<std::string>();
+                const auto groupName = group.get<std::string>();
+                accumGroups += groupName;
+                userGroupNames.insert(groupName);
             }
 
             userItem["user_groups"] = accumGroups;
@@ -656,20 +661,12 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_password_min_days_between_changes"] = NOT_COLLECTED_VALUE;
         userItem["user_password_warning_days_before_expiration"] = NOT_COLLECTED_VALUE;
 
-        // By default, user is not sudoer.
         userItem["user_roles"] = UNKNOWN_VALUE;
 
-        for (auto& singleSudoer : collectedSudoers)
+        if (SudoersProvider::isUserSudoer(collectedSudoers, username, userGroupNames))
         {
-            // Searching in content of header
-            auto header = singleSudoer["header"].get<std::string>();
-
-            if (header.find(username) != std::string::npos)
-            {
-                //TODO: user_roles_sudo_sudo_rule_details has more detailed information.
-                userItem["user_roles"] = "sudo";
-
-            }
+            //TODO: user_roles_sudo_sudo_rule_details has more detailed information.
+            userItem["user_roles"] = "sudo";
         }
 
         result.push_back(std::move(userItem));
