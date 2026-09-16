@@ -145,6 +145,22 @@ async def restore_default_passwords(script_args):
         print(f"\t{exc}")
         sys.exit(1)
 
+    # `local_master` resolves to the master from anywhere, which is where the credential in use lives.
+    # `--local` targets this node instead: a worker's `rbac.db` is never synchronized, and only becomes
+    # live if the node is promoted.
+    request_type = "local_any" if script_args.local else "local_master"
+
+    if new_passwords:
+        from wazuh.core.security import ensure_rbac_database
+
+        # A node whose apid has never run (a worker: apid is master-only) has no 'rbac.db', and
+        # 'update_user' would fail against it. Not `check_database_integrity` directly: that would discard
+        # the generated password of every default user this run does not overwrite.
+        ensure_response = await cluster_utils.forward_function(ensure_rbac_database, request_type=request_type)
+        if isinstance(ensure_response, Exception):
+            print(f"\tCould not ensure the RBAC database exists: {ensure_response}")
+            sys.exit(1)
+
     results = {}
     for username, new_password in new_passwords.items():
         # The default users hold reserved IDs, and `update_user` only lets another reserved user
@@ -152,7 +168,7 @@ async def restore_default_passwords(script_args):
         response = await cluster_utils.forward_function(update_user, f_kwargs={'user_id': user_ids[username],
                                                                                'password': new_password,
                                                                                'current_user': username},
-                                                        request_type="local_master")
+                                                        request_type=request_type)
 
         results[username] = f'FAILED | {str(response)}' if isinstance(response, Exception) else 'UPDATED'
 
@@ -194,15 +210,21 @@ def get_script_arguments():
     change_password_parser.add_argument("-p", "--password-file", action="store", dest="password_file", default=None,
                                         help="Read the new password from the first line of this file, or from the "
                                              "standard input if it is '-'. Requires '--user'.")
+    change_password_parser.add_argument("--local", action="store_true", dest="local", default=False,
+                                        help="Apply the change to this node's own RBAC database instead of the "
+                                             "master's. Needed to align a worker, whose database is not "
+                                             "synchronized and only becomes live if it is promoted to master.")
     change_password_parser.add_argument("--passwords-file", action="store", dest="passwords_file", default=None,
                                         help="Read a JSON object mapping default usernames to their new passwords "
                                              "from this file, or from the standard input if it is '-', and change "
                                              "all of them in a single execution.")
     change_password_parser.set_defaults(func=restore_default_passwords)
     reset_parser = arg_subparsers.add_parser("factory-reset",
-                                             help="Reset the RBAC database to its default state. This will completely"
-                                                  " wipe your custom RBAC information, and restore the default users'"
-                                                  " shipped passwords.")
+                                             help="Reset the RBAC database to its default state. This will "
+                                                  "completely wipe your custom RBAC information, and generate a new "
+                                                  "random password for each default user. A pre-seeded passwords "
+                                                  "file present at that moment supplies them instead, and is "
+                                                  "consumed.")
     reset_parser.add_argument("-f", "--force", action="store_true", dest="reset_force", default=False,
                               help="Do not ask for confirmation for the RBAC database factory reset.")
     reset_parser.set_defaults(func=reset_rbac_database)
