@@ -36,6 +36,7 @@ import struct
 import sys
 import time
 import threading
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -183,10 +184,12 @@ _INVSYNC_SCALARS: tuple[tuple[str, str], ...] = (
 #
 # The http_<endpoint>_responses_* blocks share one closed status vocabulary across the four
 # forwarded endpoints so their columns line up; some cells are structurally zero for a given
-# endpoint (e.g. /stateless never answers 409) -- kept for symmetry, like the admin lanes.
+# endpoint (e.g. /stateless never answers 409, and 429 only ever moves on /enroll and /cacerts,
+# the two rate-limited routes) -- kept for symmetry, like the admin lanes.
 # Budget sheds never reach those cells (they are refused before any route runs); they are
 # server_budget_rejected_total's alone. A deferred-limiter shed counts BOTH as the endpoint's
-# 503 and in forwarder_deferred_rejected_total.
+# 503 and in forwarder_deferred_rejected_total, and a rate-limit refusal counts BOTH as the
+# endpoint's 429 and in <endpoint>_rate_limited even though the handler never ran.
 _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.control.startup", "control_startup"),
     ("remoted.control.notify", "control_notify"),
@@ -231,6 +234,7 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.http.stateless.responses.403", "http_stateless_responses_403"),
     ("remoted.http.stateless.responses.409", "http_stateless_responses_409"),
     ("remoted.http.stateless.responses.413", "http_stateless_responses_413"),
+    ("remoted.http.stateless.responses.429", "http_stateless_responses_429"),
     ("remoted.http.stateless.responses.500", "http_stateless_responses_500"),
     ("remoted.http.stateless.responses.503", "http_stateless_responses_503"),
     ("remoted.http.stateless.responses.other", "http_stateless_responses_other"),
@@ -239,6 +243,7 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.http.stateful.responses.403", "http_stateful_responses_403"),
     ("remoted.http.stateful.responses.409", "http_stateful_responses_409"),
     ("remoted.http.stateful.responses.413", "http_stateful_responses_413"),
+    ("remoted.http.stateful.responses.429", "http_stateful_responses_429"),
     ("remoted.http.stateful.responses.500", "http_stateful_responses_500"),
     ("remoted.http.stateful.responses.503", "http_stateful_responses_503"),
     ("remoted.http.stateful.responses.other", "http_stateful_responses_other"),
@@ -247,6 +252,7 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.http.stats.responses.403", "http_stats_responses_403"),
     ("remoted.http.stats.responses.409", "http_stats_responses_409"),
     ("remoted.http.stats.responses.413", "http_stats_responses_413"),
+    ("remoted.http.stats.responses.429", "http_stats_responses_429"),
     ("remoted.http.stats.responses.500", "http_stats_responses_500"),
     ("remoted.http.stats.responses.503", "http_stats_responses_503"),
     ("remoted.http.stats.responses.other", "http_stats_responses_other"),
@@ -255,6 +261,7 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.http.config.responses.403", "http_config_responses_403"),
     ("remoted.http.config.responses.409", "http_config_responses_409"),
     ("remoted.http.config.responses.413", "http_config_responses_413"),
+    ("remoted.http.config.responses.429", "http_config_responses_429"),
     ("remoted.http.config.responses.500", "http_config_responses_500"),
     ("remoted.http.config.responses.503", "http_config_responses_503"),
     ("remoted.http.config.responses.other", "http_config_responses_other"),
@@ -265,6 +272,7 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.http.enroll.responses.403", "http_enroll_responses_403"),
     ("remoted.http.enroll.responses.409", "http_enroll_responses_409"),
     ("remoted.http.enroll.responses.413", "http_enroll_responses_413"),
+    ("remoted.http.enroll.responses.429", "http_enroll_responses_429"),
     ("remoted.http.enroll.responses.500", "http_enroll_responses_500"),
     ("remoted.http.enroll.responses.503", "http_enroll_responses_503"),
     ("remoted.http.enroll.responses.other", "http_enroll_responses_other"),
@@ -275,13 +283,21 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.http.cacerts.responses.403", "http_cacerts_responses_403"),
     ("remoted.http.cacerts.responses.409", "http_cacerts_responses_409"),
     ("remoted.http.cacerts.responses.413", "http_cacerts_responses_413"),
+    ("remoted.http.cacerts.responses.429", "http_cacerts_responses_429"),
     ("remoted.http.cacerts.responses.500", "http_cacerts_responses_500"),
     ("remoted.http.cacerts.responses.503", "http_cacerts_responses_503"),
     ("remoted.http.cacerts.responses.other", "http_cacerts_responses_other"),
-    # GET /cacerts outcomes ("why"): served, no CA file, refused because the CA does not sign the leaf.
+    # GET /cacerts outcomes ("why"): served, no CA file, refused because the CA does not sign the
+    # leaf, or refused by the route's rate limit before the CA was even read -- that last one is in
+    # none of the other three for that reason. The rate_limit trio is the route's live budget:
+    # available pinned at 0 while rate_limited climbs is a rate set below what the fleet needs.
     ("remoted.cacerts.served", "cacerts_served"),
     ("remoted.cacerts.not_found", "cacerts_not_found"),
     ("remoted.cacerts.ca_mismatch", "cacerts_ca_mismatch"),
+    ("remoted.cacerts.rate_limited", "cacerts_rate_limited"),
+    ("remoted.cacerts.rate_limit.limit", "cacerts_rate_limit_limit"),
+    ("remoted.cacerts.rate_limit.burst", "cacerts_rate_limit_burst"),
+    ("remoted.cacerts.rate_limit.available", "cacerts_rate_limit_available"),
     # Enrollment outcomes ("why"), the companion of the status cells above. The queue trio is
     # what separates a saturated authd queue from an unreachable authd inside authd_unavailable.
     ("remoted.enroll.accepted", "enroll_accepted"),
@@ -293,6 +309,13 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.enroll.authd.queue.depth", "enroll_authd_queue_depth"),
     ("remoted.enroll.authd.queue.capacity", "enroll_authd_queue_capacity"),
     ("remoted.enroll.authd.queue.rejected.total", "enroll_authd_queue_rejected_total"),
+    # Refused by the endpoint's rate limit BEFORE the handler ran: no body decoded, no credential
+    # read, no authd round trip -- so it is in none of the outcomes above, and the three authd_*
+    # families staying flat while this climbs is the amplification being prevented.
+    ("remoted.enroll.rate_limited", "enroll_rate_limited"),
+    ("remoted.enroll.rate_limit.limit", "enroll_rate_limit_limit"),
+    ("remoted.enroll.rate_limit.burst", "enroll_rate_limit_burst"),
+    ("remoted.enroll.rate_limit.available", "enroll_rate_limit_available"),
     ("remoted.enroll.token.accepted", "enroll_token_accepted"),
     ("remoted.enroll.token.rejected_unknown", "enroll_token_rejected_unknown"),
     ("remoted.enroll.token.rejected_expired", "enroll_token_rejected_expired"),
@@ -318,9 +341,15 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.download.open_error", "download_open_error"),
     ("remoted.download.started", "download_started"),
     ("remoted.download.bytes.total", "download_bytes_total"),
-    # Backpressure of the PUBLIC transport: the byte budget (levels + a cumulative shed total)
-    # and the deferred-work limiter. These are the numbers that size 'max_inflight_bytes' and
-    # 'max_deferred_requests'.
+    # Backpressure of the PUBLIC transport: the byte budget (levels + a cumulative shed total),
+    # the deferred-work limiter and the connection level. These are the numbers that size
+    # 'max_inflight_bytes', 'max_deferred_requests' and 'max_parallel_connections'.
+    #
+    # connections.{open,max} is the odd one and has NO rejection counter, because reaching that
+    # ceiling rejects nothing: the transport postpones the accept and the connection waits in the
+    # kernel backlog, so saturation shows up as latency and this level is the only way to see it
+    # coming. Not the same as budget.inflight.requests -- a connection is held from accept to
+    # close, which for a streamed POST /download is the whole transfer.
     ("remoted.server.budget.available.bytes", "server_budget_available_bytes"),
     ("remoted.server.budget.inflight.bytes", "server_budget_inflight_bytes"),
     ("remoted.server.budget.inflight.requests", "server_budget_inflight_requests"),
@@ -328,6 +357,8 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.forwarder.deferred.inflight", "forwarder_deferred_inflight"),
     ("remoted.forwarder.deferred.capacity", "forwarder_deferred_capacity"),
     ("remoted.forwarder.deferred.rejected.total", "forwarder_deferred_rejected_total"),
+    ("remoted.server.connections.open", "server_connections_open"),
+    ("remoted.server.connections.max", "server_connections_max"),
     # The served TLS certificate: days to expiry (the catalog's one signed value -- negative once
     # expired; _as_int keeps the sign) and whether remote.https.ca_certificate signs it (0/1; 0
     # also while the listener is down). Levels, re-evaluated by remoted daily.
@@ -740,10 +771,65 @@ def sample(proc: psutil.Process, interval: float, start_time: float) -> dict | N
 
 
 # ---------------------------------------------------------------------------
+# CSV schema safety
+# ---------------------------------------------------------------------------
+def needs_header(csv_path: str, header: Sequence[str]) -> bool:
+    """Whether the caller must write the header row, rotating a mismatched file first.
+
+    Every writer below APPENDS and writes the header only for a new file, so reusing a path whose
+    CSV an older monitor.py produced would put today's fields under yesterday's header:
+    `csv.DictWriter` emits values in `fieldnames` order, so each appended row lands shifted, and
+    the chart generator then either dies on the field count or silently reads the wrong column.
+    The column set grows whenever a metric is added -- module-standards asks for exactly that on
+    every instrumented change -- so this is routine, not exotic.
+
+    The existing file is ROTATED, never rewritten or deleted: its rows stay chartable on their own
+    and the run still gets a valid file. A header we cannot read is left alone (appending to it is
+    no worse than failing the run for an unreadable byte).
+
+    The rotated name deliberately does NOT end in `.csv`: the rotated file lands next to the
+    original, and monitor_graphics_generator.py discovers per-process samples by walking the
+    results directory and taking every `*.csv` that is not one of the known stats names
+    (STATS_CSV_NAMES, an exact-name set), so a `.csv` suffix here would get the old file plotted
+    as if it were a monitored process. Keep any future suffix off `.csv` for the same reason.
+    """
+    if not os.path.isfile(csv_path) or os.path.getsize(csv_path) == 0:
+        return True
+
+    try:
+        with open(csv_path, newline="") as fh:
+            existing = next(csv.reader(fh), [])
+    except OSError as e:
+        logger.warning("Could not read the header of %s (%s); appending without rotating.",
+                       csv_path, e)
+        return False
+
+    if list(existing) == list(header):
+        return False
+
+    rotated = f"{csv_path}.{time.strftime('%Y%m%d-%H%M%S')}.oldschema"
+    try:
+        os.replace(csv_path, rotated)
+    except OSError as e:
+        logger.warning("%s has a different column set but could not be rotated (%s); appending "
+                       "anyway -- its rows will be misaligned.", csv_path, e)
+        return False
+
+    logger.warning(
+        "%s was written with a different column set (%d columns, this build writes %d): moved it "
+        "to %s (CSV content, renamed off .csv so the chart generator does not read it as a "
+        "process sample) and started a fresh file. Appending would have written the new fields "
+        "under the old header.",
+        csv_path, len(existing), len(header), rotated,
+    )
+    return True
+
+
+# ---------------------------------------------------------------------------
 # Main monitoring loop
 # ---------------------------------------------------------------------------
 def monitor_loop(proc: psutil.Process, csv_path: str, interval: float) -> None:
-    write_header = not os.path.isfile(csv_path) or os.path.getsize(csv_path) == 0
+    write_header = needs_header(csv_path, BASE_CSV_HEADER)
     start_time = time.monotonic()
 
     with open(csv_path, "a", newline="") as fh:
@@ -789,7 +875,7 @@ def disk_monitor_loop(csv_path: str, interval: float,
     """Periodically measure directory sizes and write to a dedicated CSV."""
     header = ["timestamp", "elapsed_s"] + [disk_col_name(p) for p in disk_paths]
 
-    write_header = not os.path.isfile(csv_path) or os.path.getsize(csv_path) == 0
+    write_header = needs_header(csv_path, header)
     start_time = time.monotonic()
 
     with open(csv_path, "a", newline="") as fh:
@@ -953,7 +1039,7 @@ def _flatten_remoted_stats(raw: dict[str, object], timestamp: str, elapsed_s: fl
 def remoted_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
                              stop_event: threading.Event | None = None) -> None:
     """Poll remoted getstats over framed unix socket and write per-second CSV."""
-    write_header = not os.path.isfile(csv_path) or os.path.getsize(csv_path) == 0
+    write_header = needs_header(csv_path, REMOTED_HEADER)
     start_time = time.monotonic()
 
     with open(csv_path, "a", newline="") as fh:
@@ -1087,7 +1173,7 @@ def _flatten_analysisd_stats(raw: dict[str, object], timestamp: str, elapsed_s: 
 def analysisd_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
                                stop_event: threading.Event | None = None) -> None:
     """Poll analysisd /metrics/dump over HTTP Unix socket and write per-second CSV."""
-    write_header = not os.path.isfile(csv_path) or os.path.getsize(csv_path) == 0
+    write_header = needs_header(csv_path, ANALYSISD_HEADER)
     start_time = time.monotonic()
 
     with open(csv_path, "a", newline="") as fh:
@@ -1248,7 +1334,7 @@ def _flatten_invsync_stats(raw: dict[str, object], timestamp: str,
 def invsync_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
                              stop_event: threading.Event | None = None) -> None:
     """Poll inventory_sync_server's GET /metrics and write per-second CSV."""
-    write_header = not os.path.isfile(csv_path) or os.path.getsize(csv_path) == 0
+    write_header = needs_header(csv_path, INVSYNC_HEADER)
     start_time = time.monotonic()
 
     with open(csv_path, "a", newline="") as fh:
@@ -1338,7 +1424,7 @@ def remoted_module_api_monitor_loop(csv_path: str, interval: float, socket_path:
     an absent socket must degrade to query_ok=0 rows rather than take the monitor down. Those
     rows are themselves the evidence that the plane was not observable during the run.
     """
-    write_header = not os.path.isfile(csv_path) or os.path.getsize(csv_path) == 0
+    write_header = needs_header(csv_path, REMOTED_MODULE_HEADER)
     start_time = time.monotonic()
 
     with open(csv_path, "a", newline="") as fh:

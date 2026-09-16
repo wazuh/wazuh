@@ -2122,7 +2122,18 @@ listener, while a foreign CA does not; prefixed vs bare target; a foreign CA con
 is a 404 without a restart),
 `inFlightBudget_test.cpp` (reserve/release accounting, exhaustion, RAII move-once, disabled mode,
 concurrency), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
-release, disabled mode, concurrency), `deferredForwarder_test.cpp` (mock client: slot-full→503,
+release, disabled mode, concurrency), `endpointRateLimiter_test.cpp` (the third limiter, a token
+bucket per endpoint: burst spent before the rate paces it, refill over time, saturation at the
+burst, one bucket shared by every caller, **the bucket starting full** — an empty one would refuse
+the first requests after every restart — a `diagnostics()` read that never charges it, and
+`Retry-After` rounded up and never 0), `rateLimitGate_test.cpp` (the wrapper around a route:
+an admitted request reaching the inner handler untouched and a refused one **never reaching it at
+all** — asserted on the handler, not on the status code, which a gate doing the work first would
+satisfy too —, each route's own 429 envelope plus the gate's `Retry-After`, a refusal counted in
+both metric families but **never timed** into the endpoint's latency histogram, a disabled or null
+limiter handed back as a plain pass-through, and the three-way C-ABI resolution: a zeroed struct
+and the `UNSET` sentinel both mean module defaults while a configured `0` means no limit),
+`deferredForwarder_test.cpp` (mock client: slot-full→503,
 target/body forwarded, post-processor result delivered + slot released, keep-alive release),
 `statelessEndpoint_test.cpp` (endpoint policy: `target()` + `postProcess()` mapping 202/400/413/503;
 `validatePayloadIdentity()` mismatch/malformed-header/non-numeric/leading-zero-normalization cases;
