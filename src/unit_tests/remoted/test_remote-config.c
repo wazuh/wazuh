@@ -524,10 +524,25 @@ static void test_Read_Remote_JSON_ca_infers_certificate_mode(void **state) {
     expect_string(__wrap__mwarn, formatted_msg,
                   "The 'remote.https.ca' option is configured but 'verification_mode' is not; "
                   "defaulting 'verification_mode' to 'certificate'.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The 'remote.https.verification_mode' is not 'none'; remote upgrades to v5.0.0 or newer "
+                  "will be rejected unless the upgrade request sets 'force_upgrade' (repository path only "
+                  "-- the custom-WPK path cannot be forced).");
 
     assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
     assert_string_equal(ts->logr->https.ca, "ca.pem");
     assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_CERTIFICATE);
+
+    cJSON_Delete(remote);
+}
+
+static void test_Read_Remote_JSON_verification_mode_none_does_not_warn_about_upgrades(void **state) {
+    test_state *ts = *state;
+    cJSON *remote = json_or_fail("{\"https\":{\"verification_mode\":\"none\"}}");
+
+    /* No expect_string(__wrap__mwarn, ...): "none" must not trigger the upgrade/mTLS warning. */
+    assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
+    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_NONE);
 
     cJSON_Delete(remote);
 }
@@ -539,9 +554,21 @@ static void test_Read_Remote_JSON_enum_and_dual_stack(void **state) {
 
     expect_valid_ip("::");
 
+    /* verification_mode resolves to "full" here and stays there through the second call
+     * below (nothing in `off` overrides it), so the upgrade/mTLS warning fires both times. */
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The 'remote.https.verification_mode' is not 'none'; remote upgrades to v5.0.0 or newer "
+                  "will be rejected unless the upgrade request sets 'force_upgrade' (repository path only "
+                  "-- the custom-WPK path cannot be forced).");
+
     assert_int_equal(Read_Remote_JSON(full, ts->logr), 0);
     assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_FULL);
     assert_int_equal(ts->logr->https.dual_stack, REMOTED_HTTPS_DUAL_STACK_YES);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The 'remote.https.verification_mode' is not 'none'; remote upgrades to v5.0.0 or newer "
+                  "will be rejected unless the upgrade request sets 'force_upgrade' (repository path only "
+                  "-- the custom-WPK path cannot be forced).");
 
     /* bind_addr stays "::" from the first document, so no "only applies to IPv6" warning */
     assert_int_equal(Read_Remote_JSON(off, ts->logr), 0);
@@ -675,6 +702,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_protocol_list_and_ipv6_without_local_ip, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_durations_and_sizes_int_or_string, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_ca_infers_certificate_mode, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_verification_mode_none_does_not_warn_about_upgrades, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_enum_and_dual_stack, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_https_string_too_long, setup, teardown),
 

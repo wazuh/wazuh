@@ -402,6 +402,15 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
         logr->https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
     }
 
+    // Surface the upgrade/mTLS interaction at config time rather than only when an upgrade
+    // request later fails: see task_manager's checkRemotedDelivery() (deliveryGate.hpp).
+    if (logr->https.verification_mode != REMOTED_HTTPS_VERIFY_UNSET &&
+        logr->https.verification_mode != REMOTED_HTTPS_VERIFY_NONE) {
+        mwarn("The 'remote.https.verification_mode' is not 'none'; remote upgrades to v5.0.0 or newer "
+              "will be rejected unless the upgrade request sets 'force_upgrade' (repository path only "
+              "-- the custom-WPK path cannot be forced).");
+    }
+
     if (logr->https.dual_stack != REMOTED_HTTPS_DUAL_STACK_UNSET &&
         (logr->https.bind_addr == NULL || strchr(logr->https.bind_addr, ':') == NULL)) {
         mwarn("The 'remote.https.dual_stack' option only applies to an IPv6 'bind_addr'; ignoring it.");
