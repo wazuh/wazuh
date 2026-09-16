@@ -13,6 +13,7 @@
 
 #include <openssl/err.h>
 #include <openssl/sha.h>
+#include <openssl/x509.h>
 
 #include <array>
 #include <utility>
@@ -37,11 +38,22 @@ namespace remoted::http
             }
             return hex;
         }
+
+        /// A reference of our own on @p leaf (null stays null). X509_up_ref takes a non-const X509*;
+        /// it only bumps the reference count.
+        X509Ptr retain(const X509* leaf)
+        {
+            if (leaf == nullptr || X509_up_ref(const_cast<X509*>(leaf)) != 1)
+            {
+                return {};
+            }
+            return X509Ptr {const_cast<X509*>(leaf)};
+        }
     } // namespace
 
     CaCertificateSource::CaCertificateSource(std::string path, const X509* leaf, FileReader reader)
         : m_path {std::move(path)}
-        , m_leaf {leaf}
+        , m_leaf {retain(leaf)}
         , m_reader {reader ? std::move(reader) : FileReader {readFileBounded}}
     {
     }
@@ -63,14 +75,14 @@ namespace remoted::http
 
         // With no leaf to check against (a server that has not started) the answer is "unknown",
         // not "mismatch": anyCaSignsLeaf() would say false, and false is what refuses to serve.
-        if (m_leaf != nullptr)
+        if (m_leaf)
         {
-            snapshot.matchesLeaf = anyCaSignsLeaf(m_leaf, parsed.certificates);
+            snapshot.matchesLeaf = anyCaSignsLeaf(m_leaf.get(), parsed.certificates);
 
             // Separately from the signature: does the leaf VALIDATE with this bundle as its trust
             // store (chain, dates, CA constraints, server purpose)? Information for the logs, never
             // for the 503 -- see chainValidates().
-            const auto chain = chainValidates(m_leaf, parsed.certificates);
+            const auto chain = chainValidates(m_leaf.get(), parsed.certificates);
             snapshot.chainValid = chain.valid;
             snapshot.chainError = chain.error;
         }

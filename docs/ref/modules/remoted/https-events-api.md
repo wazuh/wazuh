@@ -421,8 +421,9 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
   listener certificate), served as re-serialised certificates with
   `Content-Type: application/x-pem-file`, so an agent can bootstrap trust in the manager before it
   holds any credential. Returns **`200`** with the PEM,
-  **`404`** `{"error":"not_found"}` when the file is missing, unreadable or carries no certificate,
-  or **`503`** `{"error":"ca_mismatch"}` when the configured CA does not sign the certificate this
+  **`404`** `{"error":"not_found"}` when the file was never readable or is readable but carries no
+  certificate (a file that stops being readable after it was served keeps the last good bundle in
+  service), or **`503`** `{"error":"ca_mismatch"}` when the configured CA does not sign the certificate this
   listener serves — refusing to hand out a CA that would make every verifying agent fail. See
   [CA certificate endpoint](#ca-certificate-endpoint-get-cacerts) below.
 - **`POST /stateless`** — authenticated event ingestion. Once the signature is verified, the module
@@ -1578,7 +1579,9 @@ read keeps the last good bundle in service and logs the failure; only a file tha
 answers `404`, and a file that reads but carries no certificate answers `404` at once. A replacement
 CA that does not sign the loaded leaf answers `503` on the next request. Separately, the certificate
 monitor runs at startup and every 24 hours, logging expiry and coherence findings. Rotate the CA and
-listener certificate together and restart remoted to load the new leaf.
+listener certificate together and restart remoted to load the new leaf. Replace the CA file
+atomically (write a sibling, then rename it over the path): a file caught half-written is readable,
+and a readable file with no certificate answers `404` at once.
 
 **Trust on first use.** The channel the CA travels over is, by definition, not yet verified. An
 agent that already holds a CA MUST NOT replace it from this route, and a deployment that can

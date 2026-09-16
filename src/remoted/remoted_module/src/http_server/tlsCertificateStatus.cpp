@@ -222,14 +222,10 @@ namespace remoted::http
 
         for (const auto& ca : cas)
         {
+            // OpenSSL 1.1+ accepts a certificate already in the store and returns 1; the only
+            // failures left are allocation and locking, which no verdict about the bundle can absorb.
             if (X509_STORE_add_cert(store.get(), ca.get()) != 1)
             {
-                // The same certificate twice in a bundle is untidy, not a reason to distrust it.
-                if (ERR_GET_REASON(ERR_peek_last_error()) == X509_R_CERT_ALREADY_IN_HASH_TABLE)
-                {
-                    ERR_clear_error();
-                    continue;
-                }
                 ERR_clear_error();
                 return {false, "internal error"};
             }

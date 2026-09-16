@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cerrno>
+#include <chrono>
 #include <cstdio>
 #include <fstream>
 #include <memory>
@@ -654,6 +655,69 @@ TEST(CaCertificateSource, ConcurrentReadersPublishTheNewestContent)
     EXPECT_LE(source.parses(), 21U);
 }
 
+TEST(CaCertificateSource, ReadsNeverOverlapUnderTheMutex)
+{
+    // The direct proof of "the whole call, read included, runs under the mutex": a reader that
+    // counts how many calls are inside it at once. With the read outside the lock, eight threads
+    // hammering snapshot() would overlap inside the reader almost immediately; under the lock the
+    // count can never exceed one. (ConcurrentReadersPublishTheNewestContent above checks
+    // coherence, which the lock also guarantees but which a lock-free implementation could fake.)
+    auto pki = makePki("casource-nooverlap");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    struct Counters
+    {
+        std::atomic<int> inFlight {0};
+        std::atomic<int> maxInFlight {0};
+        std::string contents;
+    };
+    auto counters = std::make_shared<Counters>();
+    counters->contents = readAll(pki->files.caCertPath);
+
+    remoted::http::FileReader reader =
+        [counters](const std::string& /*path*/, std::size_t /*maxBytes*/, std::string& out)
+    {
+        const int now = ++counters->inFlight;
+        int seen = counters->maxInFlight.load();
+        while (seen < now && !counters->maxInFlight.compare_exchange_weak(seen, now))
+        {
+        }
+        // Hold the "file" open for a while, so that a reader running outside the lock would be
+        // caught overlapping for certain rather than by luck.
+        const auto until = std::chrono::steady_clock::now() + std::chrono::microseconds {200};
+        while (std::chrono::steady_clock::now() < until)
+        {
+            std::this_thread::yield();
+        }
+        out = counters->contents;
+        --counters->inFlight;
+        return remoted::http::ReadResult {};
+    };
+
+    CaCertificateSource source {pki->files.caCertPath, pki->leaf.get(), reader};
+    std::vector<std::thread> readers;
+    for (int i = 0; i < 8; ++i)
+    {
+        readers.emplace_back(
+            [&source]
+            {
+                for (int call = 0; call < 100; ++call)
+                {
+                    (void)source.snapshot();
+                }
+            });
+    }
+    for (auto& readerThread : readers)
+    {
+        readerThread.join();
+    }
+
+    EXPECT_EQ(counters->maxInFlight.load(), 1);
+    EXPECT_EQ(counters->inFlight.load(), 0);
+    EXPECT_EQ(source.parses(), 1U); // same bytes every time: one parse, 799 cache hits
+}
+
 TEST(CaCertificateSource, WithoutALeafTheVerdictIsUnknownRatherThanMismatch)
 {
     auto pki = makePki("casource-noleaf");
@@ -760,4 +824,20 @@ TEST(FileRead, DescribesEachCause)
     EXPECT_EQ(describeReadFailure(ReadFailure {ReadStatus::TooLarge, 0, 1}, 1024U * 1024U),
               "is larger than the 1 MiB cap");
     EXPECT_EQ(describeReadFailure(ReadFailure {ReadStatus::TooLarge, 0, 1}, 4096U), "is larger than the 4096-byte cap");
+}
+
+TEST(ReadFileBounded, RefusesANonRegularFile)
+{
+    // A FIFO with no writer: a blocking open() would park the caller -- and, since the source reads
+    // under its mutex, every other caller with it. O_NONBLOCK gets the descriptor at once and the
+    // fstat() check refuses anything that is not a regular file before the first read.
+    const auto fifo = "/tmp/casource-fifo_" + std::to_string(::getpid());
+    ASSERT_EQ(::mkfifo(fifo.c_str(), 0600), 0);
+    remoted::test::ScratchFileCleanup cleanup {{fifo}};
+
+    std::string contents;
+    const auto result = readFileBounded(fifo, 4096, contents);
+    EXPECT_EQ(result.status, ReadStatus::ReadError);
+    EXPECT_EQ(result.error, ENOTSUP);
+    EXPECT_TRUE(contents.empty());
 }

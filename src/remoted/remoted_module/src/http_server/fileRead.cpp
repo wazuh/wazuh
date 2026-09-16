@@ -12,12 +12,14 @@
 #include "fileRead.hpp"
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <algorithm>
 #include <array>
 #include <cerrno>
-#include <cstring>
+#include <cstdint>
+#include <system_error>
 
 namespace remoted::http
 {
@@ -55,11 +57,35 @@ namespace remoted::http
     {
         contents.clear();
 
+        if (maxBytes == SIZE_MAX)
+        {
+            return {ReadStatus::ReadError, EINVAL}; // maxBytes + 1 would wrap; no caller means that
+        }
+
         // O_CLOEXEC: remoted forks helpers, and a descriptor on the CA file has no business in them.
-        const FileDescriptor file {::open(path.c_str(), O_RDONLY | O_CLOEXEC)};
+        // O_NONBLOCK: this runs under the source's mutex, so a FIFO with no writer or a terminal at
+        // the configured path must fail here instead of parking every caller forever.
+        const FileDescriptor file {::open(path.c_str(), O_RDONLY | O_CLOEXEC | O_NONBLOCK)};
         if (file.get() < 0)
         {
             return {ReadStatus::CannotOpen, errno};
+        }
+
+        // Only a regular file is a CA bundle. A directory opens fine and fails at read(2) with
+        // EISDIR; anything else that is not a regular file (a FIFO, a device) would read as empty
+        // or block, which is not a verdict about the operator's CA.
+        struct stat attributes {};
+        if (::fstat(file.get(), &attributes) != 0)
+        {
+            return {ReadStatus::ReadError, errno};
+        }
+        if (S_ISDIR(attributes.st_mode))
+        {
+            return {ReadStatus::ReadError, EISDIR};
+        }
+        if (!S_ISREG(attributes.st_mode))
+        {
+            return {ReadStatus::ReadError, ENOTSUP};
         }
 
         // One byte past the cap is the whole trick: if it ever arrives the file is too large, and
@@ -105,8 +131,12 @@ namespace remoted::http
     {
         switch (failure.status)
         {
-            case ReadStatus::CannotOpen: return std::string {"cannot be opened ("} + std::strerror(failure.error) + ")";
-            case ReadStatus::ReadError: return std::string {"cannot be read ("} + std::strerror(failure.error) + ")";
+            // generic_category().message() is thread-safe on every libstdc++ we build with, unlike
+            // strerror() on older glibc; the text is the same.
+            case ReadStatus::CannotOpen:
+                return "cannot be opened (" + std::generic_category().message(failure.error) + ")";
+            case ReadStatus::ReadError:
+                return "cannot be read (" + std::generic_category().message(failure.error) + ")";
             case ReadStatus::TooLarge:
             {
                 static constexpr std::size_t kMiB {1024U * 1024U};

@@ -2199,7 +2199,7 @@ components:
                     ca_matches_leaf:
                       type: integer
                       format: int64
-                      description: "`1` when the configured CA (`remote.https.ca_certificate`, served on `GET /cacerts`) signs the served certificate; `0` when it does not, or when no certificate could ever be read from the file. A read that fails after a good one keeps that bundle's verdict"
+                      description: "`1` when the configured CA (`remote.https.ca_certificate`, served on `GET /cacerts`) signs the served certificate; `0` when it does not, or when the last successful read yielded no certificate. A read that fails after a good one keeps that bundle's verdict"
                 cacerts:
                   type: object
                   description: "Outcomes of `GET /cacerts`, the unauthenticated route that hands agents the CA that signs the listener certificate"

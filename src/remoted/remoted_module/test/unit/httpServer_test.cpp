@@ -1134,8 +1134,10 @@ TEST(HttpServerTest, StartUpStatusComesFromTheSharedSource)
 }
 
 // A read failure mid-flight (not just at start) is a window, not a decision: the monitor keeps
-// reporting the last good verdict while it names the fresh cause on every tick that observes it.
-TEST(HttpServerTest, MonitorTickRepeatsTheReadFailure)
+// ticking through it and the status keeps the last good verdict next to the fresh cause. What the
+// tick LOGS on each pass is not observable from this binary (testLogRecorder.hpp), so this pins the
+// state the status reports and that the monitor did not stop -- not the log line itself.
+TEST(HttpServerTest, MonitorTickKeepsEvaluatingThroughAReadFailure)
 {
     TempCert cert {10};
 

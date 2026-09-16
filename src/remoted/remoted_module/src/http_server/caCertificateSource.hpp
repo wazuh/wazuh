@@ -31,11 +31,13 @@
  * in the request that notices it.
  *
  * A read that fails does not erase what was being served (issue #39318). A permission change after
- * an upgrade, a non-atomic replacement or an I/O error is a window, not a decision, and the agents
- * that need the CA during that window are exactly the ones a 404 would strand: the snapshot keeps
- * the last good bundle and records the failure (its cause, the errno, how many in a row) so the
+ * an upgrade, a file moved away or an I/O error is a window, not a decision, and the agents that
+ * need the CA during that window are exactly the ones a 404 would strand: the snapshot keeps the
+ * last good bundle and records the failure (its cause, the errno, how many in a row) so the
  * callers that own a logger can say so. Stopping without a restart is deliberate instead: a readable
- * file that carries no certificate (an emptied one) clears the snapshot at once. The read is bounded
+ * file that carries no certificate (an emptied one) clears the snapshot at once -- which is also why
+ * the file must be REPLACED atomically (write a sibling, rename it over the path): a file caught
+ * half-written is readable, and reads as emptied or as refused whole. The read is bounded
  * for real -- never more than kMaxBytes + 1 bytes are requested, whatever the file's size -- and it is
  * injectable, so every failure path is testable without permission tricks that root ignores. The whole
  * call, read included, runs under the source's mutex, so two readers can never publish out of order.
@@ -88,7 +90,9 @@ namespace remoted::http
 
         /**
          * @param path Configured CA path; an empty one yields an empty snapshot forever.
-         * @param leaf Certificate the listener serves, owned by the caller and outliving this object.
+         * @param leaf Certificate the listener serves. The source takes its own reference (X509_up_ref),
+         *             so a later start() replacing the listener's leaf cannot free it under a caller
+         *             that still holds this source (the metrics scrape, the legacy poller).
          * @param reader How the bytes are read: readFileBounded() unless a test says otherwise. An
          *               empty function falls back to the default rather than being called.
          */
@@ -111,7 +115,7 @@ namespace remoted::http
         CaCertificateSnapshot buildLocked(std::string_view pem) const;
 
         const std::string m_path;
-        const X509* m_leaf {nullptr};
+        X509Ptr m_leaf; ///< Our own reference to the served leaf; null when the caller passed none.
         const FileReader m_reader;
 
         mutable std::mutex m_mutex;
