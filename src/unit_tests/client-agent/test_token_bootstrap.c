@@ -582,7 +582,7 @@ static void test_empty_placeholder_keys_file_is_not_already_enrolled(void **stat
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,
-                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "Enrollment succeeded; the manager's CA is now the agent's "
                   "trust anchor.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
@@ -597,7 +597,7 @@ static void test_malformed_token_logs_named_error_and_writes_nothing(void **stat
     write_file("etc/enrollment_token", "not-a-valid-token!!!");
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: could not decode the enrollment token: malformed token.");
+                  "Could not decode the enrollment token: malformed token.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
     assert_int_equal(g_fetch_call_count, 0);
@@ -615,7 +615,7 @@ static void test_fetch_adr_unreachable_logs_named_error_and_writes_nothing(void 
     will_return(__wrap_hc_fetch_cacerts, 0);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: /cacerts adr_unreachable -- could not reach the manager to "
+                  "/cacerts adr_unreachable -- could not reach the manager to "
                   "fetch the certificate authority.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_TRANSIENT);
@@ -634,7 +634,7 @@ static void test_fetch_not_found_logs_named_error_and_writes_nothing(void **stat
     will_return(__wrap_hc_fetch_cacerts, 1);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: /cacerts not_found -- the manager has no certificate "
+                  "/cacerts not_found -- the manager has no certificate "
                   "authority configured (it may predate this feature).");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
@@ -653,7 +653,7 @@ static void test_fetch_ca_mismatch_logs_named_error_and_writes_nothing(void **st
     will_return(__wrap_hc_fetch_cacerts, 1);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: /cacerts ca_mismatch -- the manager's configured certificate "
+                  "/cacerts ca_mismatch -- the manager's configured certificate "
                   "authority does not sign its own listener certificate (misprovisioned, not "
                   "necessarily hostile).");
 
@@ -674,7 +674,7 @@ static void test_pin_mismatch_logs_named_error_and_writes_nothing(void **state) 
     will_return(__wrap_hc_spki_pinned_certificate, NULL);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: pin_mismatch -- fetched CA does not match the enrollment "
+                  "pin_mismatch -- fetched CA does not match the enrollment "
                   "token's pin, refusing to trust it.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
@@ -769,7 +769,7 @@ static void test_full_happy_path_via_pin(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,
-                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "Enrollment succeeded; the manager's CA is now the agent's "
                   "trust anchor.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
@@ -849,7 +849,7 @@ static void test_fresh_enrollment_keys_chown_failure_logs_merror(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,
-                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "Enrollment succeeded; the manager's CA is now the agent's "
                   "trust anchor.");
     expect_any(__wrap__merror, formatted_msg);
 
@@ -888,7 +888,7 @@ static void test_credential_less_token_enrolls_without_error(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,
-                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "Enrollment succeeded; the manager's CA is now the agent's "
                   "trust anchor.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
@@ -932,7 +932,7 @@ static void test_full_happy_path_via_ca_pem(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,
-                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "Enrollment succeeded; the manager's CA is now the agent's "
                   "trust anchor.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
@@ -990,7 +990,7 @@ static void test_bootstrap_stores_the_reenroll_secret_from_the_root_path(void **
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,
-                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "Enrollment succeeded; the manager's CA is now the agent's "
                   "trust anchor.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
@@ -1048,13 +1048,13 @@ static void test_reenroll_secret_link_is_not_chowned(void **state) {
                   "Re-enrolling with this agent's own re-enrollment secret.");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,
-                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "Enrollment succeeded; the manager's CA is now the agent's "
                   "trust anchor.");
     /* The refusal is reported and the bootstrap still succeeds -- enrollment already happened,
      * same disposition as client.keys's own chown failure. EMLINK is what w_openat_nofollow_vetted()
      * returns for a hard-linked path. */
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: could not change ownership of 'etc/reenroll.secret': "
+                  "Could not change ownership of 'etc/reenroll.secret': "
                   "Too many links (31).");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
@@ -1087,7 +1087,7 @@ static void test_bootstrap_without_a_secret_leaves_no_store(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,
-                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "Enrollment succeeded; the manager's CA is now the agent's "
                   "trust anchor.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);

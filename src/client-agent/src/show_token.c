@@ -7,10 +7,15 @@
  * Foundation
  */
 
-/* --show-token, shared by the two agent entry points. POSIX main() and the Windows agent have
- * separate main()s in separate files, and this has to answer identically on both: the installers
- * parse its output, and Linux and Windows accepting different tokens is exactly the drift the
- * single shared codec exists to prevent. */
+/* --show-token, shared by every agent entry point that answers it. POSIX main(), the Windows
+ * agent and wazuh-agent-auth have separate main()s in separate files, and this has to answer
+ * identically from all of them: the installers parse its output, and two of them accepting
+ * different tokens is exactly the drift the single shared codec exists to prevent.
+ *
+ * Streams are parameters rather than stdin/stdout because wazuh-agent-auth also reads a token
+ * from --token-file, and because a function that writes to fixed streams cannot be asserted on
+ * from a unit test. w_agent_show_enrollment_token() is the stdin form the two agent entry points
+ * use. */
 
 #include "shared.h"
 #include "agentd.h"
@@ -41,21 +46,29 @@
  * Returns 0 on success, ETOKEN_SHOW_REJECTED when the token is bad, and 1 when it could not
  * be read at all.
  */
-int w_agent_show_enrollment_token(void)
+int w_agent_show_token(FILE *in, FILE *out, FILE *err, const char *progname)
 {
     char text[W_ETOKEN_MAX_FILE_BYTES + 1] = {'\0'};
-    size_t length = fread(text, 1, sizeof(text) - 1, stdin);
+
+    /* A terminal will never produce a token, so blocking on it reads as a hang. */
+    if (isatty(fileno(in))) {
+        fprintf(err, "%s: no token given. Redirect one in, or pipe it:\n", progname);
+        fprintf(err, "      %s --show-token < /path/to/token\n", progname);
+        return 1;
+    }
+
+    size_t length = fread(text, 1, sizeof(text) - 1, in);
     w_etoken_t token;
     w_etoken_error_t error;
     char *description = NULL;
 
-    if (ferror(stdin)) {
-        fprintf(stderr, "%s: could not read the enrollment token from stdin.\n", ARGV0);
+    if (ferror(in)) {
+        fprintf(err, "%s: could not read the enrollment token.\n", progname);
         return 1;
     }
 
     if (length == sizeof(text) - 1) {
-        fprintf(stderr, "%s: the enrollment token does not fit in %d bytes.\n", ARGV0, W_ETOKEN_MAX_FILE_BYTES);
+        fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", progname, W_ETOKEN_MAX_FILE_BYTES);
         return 1;
     }
 
@@ -67,7 +80,7 @@ int w_agent_show_enrollment_token(void)
     }
 
     if ((error = w_etoken_decode(text, &token)) != ETOKEN_OK) {
-        fprintf(stderr, "%s: invalid enrollment token: %s.\n", ARGV0, w_etoken_strerror(error));
+        fprintf(err, "%s: invalid enrollment token: %s.\n", progname, w_etoken_strerror(error));
         return ETOKEN_SHOW_REJECTED;
     }
 
@@ -75,12 +88,17 @@ int w_agent_show_enrollment_token(void)
     w_etoken_free(&token);
 
     if (description == NULL) {
-        fprintf(stderr, "%s: could not render the enrollment token.\n", ARGV0);
+        fprintf(err, "%s: could not render the enrollment token.\n", progname);
         return 1;
     }
 
-    printf("%s", description);
+    fputs(description, out);
     os_free(description);
 
     return 0;
+}
+
+int w_agent_show_enrollment_token(void)
+{
+    return w_agent_show_token(stdin, stdout, stderr, ARGV0);
 }

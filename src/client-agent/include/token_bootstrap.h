@@ -9,17 +9,163 @@
 
 /**
  * @file token_bootstrap.h
- * @brief Agent-side bootstrap from a one-shot enrollment token: read the token installed at
- *        AGENT_ENROLLMENT_TOKEN_FILE, decode it, learn the manager's CA
- *        (fetching /cacerts unverified and SPKI-pin-comparing it, or trusting an embedded CA
- *        outright), enroll fully verified against that CA, and persist it as
- *        AGENT_ANCHOR_CA -- the agent's own trust anchor from then on.
+ * @brief Agent-side enrollment from a one-shot enrollment token: decode it, learn the manager's
+ *        CA (fetching /cacerts unverified and SPKI-pin-comparing it, or trusting an embedded CA
+ *        outright), enroll fully verified against that CA, and persist it as AGENT_ANCHOR_CA --
+ *        the agent's own trust anchor from then on.
  *
- * Runs once per install, from AgentdStart() on POSIX (agentd.c) and from local_start() on
- * Windows (win_utils.c).
+ * Two entry points, because two callers want opposite things from the same sequence:
+ *
+ *  - w_agent_token_bootstrap() is the first-boot path, run once per install from AgentdStart()
+ *    on POSIX (agentd.c) and from local_start() on Windows (win_utils.c). It is latched: an
+ *    anchor already on disk, a non-empty client.keys, or no token file each independently make
+ *    it a no-op. On POSIX it runs before AgentdStart()'s privilege drop, so the files it writes
+ *    are owned while still root and handed to the runtime user before the process stops being
+ *    able to.
+ *
+ *  - w_agent_token_enroll() is the same sequence with no latches and no opinion about where the
+ *    token came from or what happens to it afterwards. It is what lets an operator enroll,
+ *    re-enroll or move an agent that is already installed, long after the only boot that
+ *    w_agent_token_bootstrap() would have acted on.
  */
 #ifndef TOKEN_BOOTSTRAP_H
 #define TOKEN_BOOTSTRAP_H
+
+#include <stdbool.h>
+#include "https_client.h"
+
+/* Largest enrollment token this agent will read, wherever it comes from. Shared so the
+ * installer's --show-token and the first-boot bootstrap agree: when --show-token accepted more
+ * than the bootstrap could read, a token between the two sizes passed the install and then
+ * failed at the first start, with nothing at install time to warn about it. A token carrying a
+ * pin is a couple of hundred bytes and one embedding a CA a few KB, so this is a sanity bound
+ * rather than a tight one.
+ *
+ * Note this is NOT the manager CLI's ceiling: os_auth/src/token_cli.c caps at 16384, so a token
+ * between the two sizes is described happily by wazuh-manager-authd --show-token and then
+ * refused by every agent-side reader. Worth reconciling; until then, the agent's is the one that
+ * decides whether a token can actually be used. */
+#define W_ETOKEN_MAX_FILE_BYTES 8192
+
+/**
+ * @brief Which step of the token enrollment failed. Each value maps to one named merror() the
+ *        core has already logged, so a caller can classify the failure without re-deriving it
+ *        from the log.
+ */
+typedef enum {
+    W_TOKEN_ENROLL_OK = 0,         /**< Committed: the anchor is installed AND client.keys written */
+    W_TOKEN_ENROLL_ERR_TOKEN,      /**< Undecodable token, or an `adr` outside the endpoint grammar */
+    W_TOKEN_ENROLL_ERR_ANCHOR,     /**< /cacerts fetch, truncation, pin mismatch, or anchor write */
+    W_TOKEN_ENROLL_ERR_CREDENTIAL, /**< The token carries a credential that could not be prepared */
+    W_TOKEN_ENROLL_ERR_REQUEST,    /**< w_enrollment_build_request() refused */
+    W_TOKEN_ENROLL_ERR_ENROLL,     /**< Transport failure, non-200, or a refusal by the manager */
+    W_TOKEN_ENROLL_ERR_STORE,      /**< The manager accepted, but its answer could not be stored */
+    W_TOKEN_ENROLL_ERR_COMMIT      /**< Enrolled, but the on-disk commit failed -- see `rolled_back` */
+} w_token_enroll_status_t;
+
+/**
+ * @brief What to enroll with, and what to leave behind.
+ */
+typedef struct {
+    /** The token TEXT, never a path: acquiring it and disposing of it belong to the caller.
+     *  w_agent_token_bootstrap() reads and unlinks a file; an operator's token file is neither
+     *  the core's to read nor its to delete. */
+    const char *token_text;
+    /** The runtime user the agent will drop to. The ONLY file handed to it is the
+     *  re-enrollment secret, which the daemon has to rewrite on every rotation after that drop;
+     *  the anchor and client.keys stay root-owned. -1 means "leave ownership alone", which is
+     *  what a tool running long after the install passes: there is no drop to prepare for. */
+    int uid;
+    /** Group for the anchor and client.keys, both of which are left owned by root and shared
+     *  with this group -- the runtime user reads them and can replace neither.
+     *  -1 leaves ownership alone. */
+    int gid;
+    /** Snapshot whatever anchor and client.keys are already on disk, and put them back if the
+     *  commit fails. agentd's first boot has nothing to snapshot and passes false; a re-enrollment
+     *  over a working agent passes true, because the alternative is an agent holding the new
+     *  manager's key against the old manager's anchor -- able to reach neither. */
+    bool transactional;
+    /** Install the trust anchor and stop, without enrolling. For a manager that rotated its CA:
+     *  it refreshes what the agent verifies against while leaving the registration alone, which
+     *  a full enrollment cannot do -- that always yields a new agent id. */
+    bool anchor_only;
+} w_token_enroll_opts_t;
+
+/**
+ * @brief What the enrollment did, for a caller that has to explain it to an operator.
+ *        Fully populated on success; on failure, whatever was known before the failing step.
+ */
+typedef struct {
+    char host[HC_MAX_HOST];          /**< Manager host the token named */
+    int port;                        /**< Resolved port (1517 unless the token said otherwise) */
+    char endpoint[HC_MAX_ENDPOINT];  /**< Resolved URL prefix */
+    bool used_pin;                   /**< false when the token embedded the CA and nothing was fetched */
+    bool had_anchor;                 /**< An anchor existed before this call */
+    bool had_keys;                   /**< client.keys was non-empty before this call */
+    bool anchor_changed;             /**< The committed anchor differs from what was there before */
+    bool rolled_back;                /**< ERR_COMMIT only: the previous state was restored */
+    /** The failure may clear on its own: no response at all, or a 5xx, from /cacerts or /enroll.
+     *  Meaningless when the status is OK. It is the whole of what w_agent_token_bootstrap()
+     *  needs to decide between retrying and giving up (see w_token_bootstrap_result_t); an
+     *  operator driving a single attempt from a terminal has no use for it. */
+    bool transient;
+    /** The manager finally refused the token itself: unknown, revoked, or out of uses. Its
+     *  signature verified, so this is authd's verdict on the credential rather than on the
+     *  request, and re-presenting it cannot change the answer. Acted on only by the caller,
+     *  which is the only party that owns the token and can dispose of it. */
+    bool token_rejected;
+    /** The named reason the failing step logged, verbatim. The command runs with the log's stderr
+     *  echo off (main-agent-auth.c's nowDaemon()), so without this an operator is shown the
+     *  failure class and not the cause -- "the CA could not be established" reads identically for
+     *  an address that does not resolve and a pin that does not match, and those want opposite
+     *  responses. Empty when the step logged nothing of its own. */
+    char detail[256];
+    char keys_backup[PATH_MAX];      /**< Non-empty only when a rollback itself failed */
+    char agent_id[16];               /**< Agent id the manager assigned */
+    char agent_name[256];            /**< Agent name the manager registered */
+    long http_code;                  /**< Last HTTP status from /enroll */
+    /** What the manager said when it refused, verbatim from the response's error.message.
+     *  Empty when it did not refuse or said nothing: the reason for a refusal is the manager's
+     *  to give, and repeating it is the difference between "refused" and "refused because this
+     *  name is taken by an agent too new to replace". */
+    char manager_message[256];
+} w_token_enroll_report_t;
+
+/**
+ * @brief Enroll from an already-acquired enrollment token.
+ *
+ * Unconditional: it does not consult AGENT_ANCHOR_CA, client.keys or
+ * AGENT_ENROLLMENT_TOKEN_FILE for permission, and it never unlinks a token. Every failed step
+ * logs its own named merror() before returning.
+ *
+ * Requires ClientConf() to have run: w_enrollment_build_request() reads agt->enrollment.*.
+ * Deliberately does NOT read client.keys, so no `key_hash` reaches the manager -- a matching
+ * hash makes the manager refuse the enrollment rather than preserve the agent's id.
+ *
+ * @param opts What to enroll with. Must not be NULL, and opts->token_text must not be NULL.
+ * @param report Filled in with what happened. May be NULL.
+ * @return W_TOKEN_ENROLL_OK when the anchor and client.keys are both committed.
+ */
+w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
+                                             w_token_enroll_report_t *report);
+
+/**
+ * @brief A short, operator-facing sentence for a status. Never NULL.
+ */
+const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status);
+
+/**
+ * @brief Reads an enrollment token out of a file: its first line, trimmed, bounded by
+ *        W_ETOKEN_MAX_FILE_BYTES.
+ *
+ * Shared so the installer's token file and an operator's --token-file are read by one function
+ * under one ceiling, rather than by two that can drift apart.
+ *
+ * @param path File to read.
+ * @return Newly allocated token text the caller must free, or NULL when the file is missing,
+ *         empty, or unreadable.
+ */
+char *w_agent_token_read_file(const char *path);
 
 /**
  * @brief Outcome of w_agent_token_bootstrap(): whether the caller should give up or retry.
@@ -48,34 +194,28 @@ typedef enum {
 } w_token_bootstrap_result_t;
 
 /**
- * @brief Runs the enrollment-token bootstrap, if one is configured and nothing has already
- *        superseded it.
+ * @brief Runs the first-boot enrollment-token bootstrap, if one is configured and nothing has
+ *        already superseded it.
  *
- * W_TOKEN_BOOTSTRAP_DONE in every case where the token path is simply not applicable:
- * AGENT_ANCHOR_CA already exists (a previous run already committed one -- the bootstrap never
- * re-fetches once an anchor is on disk), KEYS_FILE already exists (already enrolled), or
- * AGENT_ENROLLMENT_TOKEN_FILE does not exist (a legacy install with no token) -- and also when a
- * present token bootstraps fully. Any attempted bootstrap that does not fully succeed logs a
- * distinct, named merror() for whichever step failed (decode, address, /cacerts fetch, pin
- * mismatch, or the verified enroll itself), classifies it (see w_token_bootstrap_result_t), and
- * leaves nothing behind -- a later boot, or a retry within the same boot, can retry cleanly.
+ * W_TOKEN_BOOTSTRAP_DONE in every case where the token path is simply not applicable: AGENT_ANCHOR_CA
+ * already exists (a previous run already committed one -- the bootstrap never re-fetches once
+ * an anchor is on disk), client.keys is already non-empty (already enrolled), or
+ * AGENT_ENROLLMENT_TOKEN_FILE does not exist (a legacy install with no token). The first two
+ * also discard the token on their way out: it is a one-shot credential, and once either is true
+ * it can never be used again.
  *
- * @param uid The uid AgentdStart() is about to drop privileges to. Currently unused: neither
- *        file this function writes is chowned to it (see token_bootstrap.c's own comments on
- *        the anchor and on client.keys) -- kept for signature symmetry with AgentdStart()'s
- *        uid/gid pair. Ignored on Windows, which has no privilege drop; local_start() passes 0.
- * @param gid The gid AgentdStart() is about to drop privileges to, so the committed anchor ends
- *        up group-owned by it. Ignored on Windows for the same reason, which passes 0 too.
+ * Each latch independently blocks a re-run, so this is not the way to re-enroll or to move an
+ * agent -- w_agent_token_enroll() is, and wazuh-agent-auth is what drives it.
+ *
+ * @param uid Unused; kept for signature symmetry with AgentdStart()'s uid/gid pair. Neither
+ *        file this writes is chowned to the runtime user. Ignored on Windows, which has no
+ *        privilege drop; local_start() passes 0.
+ * @param gid The gid AgentdStart() is about to drop privileges to, so the committed anchor and
+ *        client.keys end up root-owned and group-owned by it -- readable after the drop, and
+ *        replaceable by nothing that runs as that user. Ignored on Windows for the same reason,
+ *        which passes 0 too.
  * @return See w_token_bootstrap_result_t.
  */
-/* Largest enrollment token this agent will read, wherever it comes from. Shared so the
- * installer's --show-token and the first-boot bootstrap agree: when --show-token accepted more
- * than the bootstrap could read, a token between the two sizes passed the install and then
- * failed at the first start, with nothing at install time to warn about it. A token carrying a
- * pin is a couple of hundred bytes and one embedding a CA a few KB, so this is a sanity bound
- * rather than a tight one. */
-#define W_ETOKEN_MAX_FILE_BYTES 8192
-
 w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid);
 
 #endif /* TOKEN_BOOTSTRAP_H */
