@@ -308,7 +308,7 @@ nlohmann::json SysInfo::getOsInfo() const
     return ret;
 }
 
-static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_ptr<socket_fdinfo>>>& processSocket)
+static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<socket_fdinfo>>& processSocket)
 {
     int32_t maxProcess { 0 };
     auto maxProcessLen { sizeof(maxProcess) };
@@ -343,11 +343,11 @@ static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_p
                         {
                             if (PROX_FDTYPE_SOCKET == processFDInformation[j].proc_fdtype)
                             {
-                                auto socketInfo { std::make_shared<socket_fdinfo>() };
+                                socket_fdinfo socketInfo {};
 
-                                if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, socketInfo.get(), PROC_PIDFDSOCKETINFO_SIZE))
+                                if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, &socketInfo, PROC_PIDFDSOCKETINFO_SIZE))
                                 {
-                                    if (socketInfo && std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo->psi.soi_kind) != s_validFDSock.end())
+                                    if (std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo.psi.soi_kind) != s_validFDSock.end())
                                     {
                                         processSocket[processData].push_back(socketInfo);
                                     }
@@ -364,19 +364,20 @@ static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_p
 nlohmann::json SysInfo::getPorts() const
 {
     nlohmann::json ports;
-    std::map<ProcessInfo, std::vector<std::shared_ptr<socket_fdinfo>>> fdMap;
+    std::map<ProcessInfo, std::vector<socket_fdinfo>> fdMap;
     getProcessesSocketFD(fdMap);
 
     for (const auto& processInfo : fdMap)
     {
-        for (const auto& fdSocket : processInfo.second )
+        for (const auto& fdSocket : processInfo.second)
         {
             nlohmann::json port;
-            std::make_unique<PortImpl>(std::make_shared<BSDPortWrapper>(processInfo.first, fdSocket))->buildPortData(port);
+            const BSDPortWrapper wrapper(processInfo.first, fdSocket);
+            PortImpl(wrapper).buildPortData(port);
 
             if (ports.end() == std::find(ports.begin(), ports.end(), port))
             {
-                ports.push_back(port);
+                ports.push_back(std::move(port));
             }
         }
     }
