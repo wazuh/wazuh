@@ -45,22 +45,6 @@ MAX_ITERATION="40"
 
 MAX_KILL_TRIES=30
 
-checkpid()
-{
-    for i in ${CDAEMONS}; do
-        daemon_name="$i"
-        for j in `cat ${DIR}/var/run/${daemon_name}-*.pid 2>/dev/null`; do
-            ps -p $j >/dev/null 2>&1
-            if [ ! $? = 0 ]; then
-                if [ $USE_JSON = false ]; then
-                    echo "Deleting PID file '${DIR}/var/run/${daemon_name}-${j}.pid' not used..."
-                fi
-                rm ${DIR}/var/run/${daemon_name}-${j}.pid
-            fi
-        done
-    done
-}
-
 lock()
 {
     i=0;
@@ -121,7 +105,7 @@ lock()
             fi
         fi
 
-        # We tried 10 times to acquire the lock.
+        # We tried MAX_ITERATION times to acquire the lock.
         if [ "$i" = "${MAX_ITERATION}" ]; then
             echo "ERROR: Another instance is locking this process."
             echo "If you are sure that no other instance is running, please remove ${LOCK}"
@@ -139,7 +123,7 @@ help()
 {
     # Help message
     echo ""
-    echo "Usage: $0 [-j] {start|stop|restart|status|enable|disable|info [-v -r -t]}";
+    echo "Usage: $0 [-j] {start|stop|restart|reload|status|enable|disable|info [-v -r -t]}";
     echo ""
     echo "    -j    Use JSON output."
     exit 1;
@@ -208,8 +192,6 @@ status()
 {
     RETVAL=0
     first=true
-
-    checkpid;
 
     node_type=$(get_node_type);
 
@@ -306,33 +288,6 @@ testconfig()
         fi
     done
 }
-# Check if the system uses systemd
-is_systemd() {
-    [ -d /run/systemd/system ]
-}
-
-# Add daemons to the manager cgroup if systemd is used in legacy systems.
-add_to_cgroup()
-{
-    CGROUP_PATH="/sys/fs/cgroup/systemd/system.slice/wazuh-manager.service/cgroup.procs"
-
-    # Check if cgroup path exists
-    if [ ! -f "$CGROUP_PATH" ]; then
-        echo "Warning: cgroup path does not exist: $CGROUP_PATH" >&2
-    else
-        for pidfile in ${DIR}/var/run/wazuh-manager-*.pid; do
-            [ -f "$pidfile" ] || continue
-            pid=$(cat "$pidfile" 2>/dev/null)
-            [ -z "$pid" ] && continue
-
-            # Try to write to cgroup, capture any errors
-            if ! echo "$pid" >> "$CGROUP_PATH" 2>/dev/null; then
-                echo "Warning: Failed to add PID $pid to cgroup ($(basename "$pidfile"))" >&2
-            fi
-        done
-    fi
-}
-
 get_wazuh_engine_pid()
 {
     local max_ticks=100
@@ -397,8 +352,6 @@ start_service()
         echo "Starting Wazuh $VERSION..."
     fi
 
-    checkpid;
-
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp"
     find "$TO_DELETE" -mindepth 1 -delete
@@ -440,26 +393,12 @@ start_service()
             touch ${DIR}/var/run/${i}.start
             daemon_name="$i"
 
-            if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
-                if command -v systemd-run >/dev/null 2>&1; then
-                    # safe to use systemd-run
-                    if [ $USE_JSON = true ]; then
-                        systemd-run --scope --slice=system.slice ${DIR}/bin/${daemon_name} ${DEBUG_CLI} > /dev/null 2>&1
-                    else
-                        systemd-run --scope --slice=system.slice ${DIR}/bin/${daemon_name} ${DEBUG_CLI}
-                    fi
-                else
-                    echo "ERROR: systemd is in use but systemd-run is not available" >&2
-                    exit 1
-                fi
+            if [ "$i" = "wazuh-manager-analysisd" ]; then
+                wait_for_wazuh_engine_ready
+            elif [ $USE_JSON = true ]; then
+                ${DIR}/bin/${daemon_name} ${DEBUG_CLI} > /dev/null 2>&1;
             else
-                if [ "$i" = "wazuh-manager-analysisd" ]; then
-                    wait_for_wazuh_engine_ready
-                elif [ $USE_JSON = true ]; then
-                    ${DIR}/bin/${daemon_name} ${DEBUG_CLI} > /dev/null 2>&1;
-                else
-                    ${DIR}/bin/${daemon_name} ${DEBUG_CLI};
-                fi
+                ${DIR}/bin/${daemon_name} ${DEBUG_CLI};
             fi
 
             if [ $? != 0 ]; then
@@ -496,11 +435,6 @@ start_service()
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
-
-    # Add daemons to the manager cgroup if systemd is used.
-    if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
-        add_to_cgroup
-    fi
 
     if [ $USE_JSON = true ]; then
         echo -n ']}'
@@ -561,8 +495,6 @@ wait_pid() {
 
 stop_service()
 {
-    checkpid;
-
     # First pass: send kill signal to all running daemons
     for i in ${DAEMONS}; do
         daemon_name="$i"
@@ -696,12 +628,6 @@ restart)
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-manager-remoted//')
     SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
-    if is_systemd; then
-        SYSTEMD_VERSION=$(systemctl --version | awk 'NR==1 {print $2}')
-        if [ "$SYSTEMD_VERSION" -le 237 ]; then
-            LEGACY_SYSTEMD_VERSION=1
-        fi
-    fi
     restart_service
     ;;
 status)
