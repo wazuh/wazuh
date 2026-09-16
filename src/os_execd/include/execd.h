@@ -69,7 +69,6 @@ size_t wcom_getconfig(const char * section, char ** output);
  * @return Length of *output.
  */
 size_t wcom_getallconfig(char ** output);
-size_t wcom_check_manager_config(char **output);
 
 #ifndef WIN32
 // Com request thread dispatcher
