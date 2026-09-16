@@ -554,8 +554,8 @@ above.
 | Setting                                             | Default   | Source                                    |
 | --------------------------------------------------- | --------- | ----------------------------------------- |
 | Max in-flight payload bytes (→ `503`)               | `256 MiB` | remoted config `max_inflight_bytes`       |
-| Max simultaneous connections                        | `512`     | remoted config `max_parallel_connections` |
-| Max deferred requests awaiting downstream (→ `503`) | `256`     | remoted config `max_deferred_requests`    |
+| Max simultaneous connections                        | `256`     | remoted config `max_parallel_connections` |
+| Max deferred requests awaiting downstream (→ `503`) | `128`     | remoted config `max_deferred_requests`    |
 
 The capacity limits are **layered**: the transport max body size caps a single request's peak
 (RESTinio rejects an oversized `Content-Length` early by closing the connection), the max connections

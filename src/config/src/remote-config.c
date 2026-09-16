@@ -195,7 +195,7 @@ static int w_remoted_json_https_string(const cJSON *https, const char *key, size
     return 1;
 }
 
-/* Rate option of remote.https (a rate or a burst) from the effective document: absent
+/* One of the two remote.https endpoint rate options from the effective document: absent
  * leaves the caller's field at REMOTED_HTTPS_RATE_LIMIT_UNSET, so the module applies its own
  * default. The schema bounds these already; the range is re-checked here both for a document that
  * reached the reader without it and because a negative value would otherwise arrive at the module

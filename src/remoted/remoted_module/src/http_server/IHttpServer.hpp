@@ -288,7 +288,7 @@ namespace remoted::http
         /// Max in-flight (unprocessed) request payload bytes before new requests get 503. 0 disables the limit.
         std::size_t maxInFlightBytes {256U * 1024U * 1024U};
         /// Max simultaneous TCP connections (bounds the read-phase peak: maxParallelConnections * maxBodySize).
-        std::size_t maxParallelConnections {512};
+        std::size_t maxParallelConnections {256};
         /// How often the served certificate is re-evaluated (expiry, and whether caCertificatePath
         /// signs it) after the start-time evaluation -- see IHttpServer::certificateStatus(). Not a
         /// configuration option: buildHttpServerConfig() leaves the default, tests inject a short one.

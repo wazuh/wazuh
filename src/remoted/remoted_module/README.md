@@ -208,7 +208,7 @@ src/http_server/
        deterministic ERROR when either is missing or unreadable, so this module's own load
        failure only fires for files that exist and are readable but unusable.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
-       `max_parallel_connections` (default 512) and `max_deferred_requests` (default 256) --
+       `max_parallel_connections` (default 256) and `max_deferred_requests` (default 128) --
        populated from the `remoted.max_inflight_bytes`/`remoted.max_parallel_connections`/
        `remoted.max_deferred_requests` internal options in `secure.c` (same pattern as group 1).
        The transport still clamps the in-flight budget up to at least one max-size request at

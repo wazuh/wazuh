@@ -302,7 +302,7 @@ paths:
                   value: { error: "Invalid client authentication", code: invalid_signature }
         "413":
           description: |
-            The request body exceeds the configured auth body limit (10 MiB). For
+            The request body exceeds the configured auth body limit (5 MiB). For
             `Content-Encoding: zstd`, it instead means the frame didn't fit in the server's live
             in-flight memory capacity -- either the decoder's buffers (refused up front, from the
             frame header) or the decompressed output as it was produced. Retryable: the same request
@@ -1042,7 +1042,7 @@ paths:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
         "413":
           description: |
-            Body exceeds `remoted.auth_max_body_size` (10 MiB default). Checked before the bearer is
+            Body exceeds `remoted.auth_max_body_size` (5 MiB default). Checked before the bearer is
             examined, in every mode including the credential-less one.
           content:
             application/json:
@@ -1190,7 +1190,7 @@ components:
 
     PayloadTooLarge:
       description: |
-        The request body exceeds the configured auth body limit (10 MiB default). For
+        The request body exceeds the configured auth body limit (5 MiB default). For
         `Content-Encoding: zstd` it instead means the frame did not fit in the server's live
         in-flight memory capacity. Retryable.
       content:

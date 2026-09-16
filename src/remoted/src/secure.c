@@ -53,7 +53,7 @@ _Static_assert(REMOTED_HTTPS_DUAL_STACK_NO == REMOTED_MODULE_HTTPS_DUAL_STACK_NO
                "REMOTED_HTTPS_DUAL_STACK_NO must match REMOTED_MODULE_HTTPS_DUAL_STACK_NO");
 
 // Same reasoning again, for the rate-limit "not configured" sentinel: w_remoted_build_module_config()
-// copies the four rate fields across with no translation, and a mismatch would turn "the operator
+// copies the two rate fields across with no translation, and a mismatch would turn "the operator
 // never configured this" into a negative rate the module would have to guess about.
 _Static_assert(REMOTED_HTTPS_RATE_LIMIT_UNSET == REMOTED_MODULE_RATE_LIMIT_UNSET,
                "REMOTED_HTTPS_RATE_LIMIT_UNSET must match REMOTED_MODULE_RATE_LIMIT_UNSET");

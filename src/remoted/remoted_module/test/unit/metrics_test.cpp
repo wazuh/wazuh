@@ -232,7 +232,7 @@ TEST(ResponseCountersTest, MakeRegistersFamilyAtZero)
         EXPECT_TRUE(manager.exists(name)) << name;
         EXPECT_EQ(static_cast<uint64_t>(manager.get(name)->value()), 0U) << name;
     }
-    // 9 since the per-client rate limit's 429 got a cell of its own: every endpoint registers the
+    // 9 since the per-endpoint rate limit's 429 got a cell of its own: every endpoint registers the
     // whole vocabulary, including the cells that are structurally zero for it (only /enroll and
     // /cacerts can ever answer 429), so a scraper's columns stay uniform.
     EXPECT_EQ(manager.count(), 9U);
