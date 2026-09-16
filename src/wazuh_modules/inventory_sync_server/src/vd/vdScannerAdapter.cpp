@@ -20,13 +20,25 @@
 namespace invsync::vd
 {
 
+    bool feedGateOpen(bool started, bool enabled, bool initialized, bool feedReady)
+    {
+        if (!started || !enabled)
+        {
+            return true;
+        }
+        return initialized && feedReady;
+    }
+
     /**
      * @brief Production IVdScanner: the scan lane's bridge to the vulnerability scanner module.
      *
      * Translates a ValidatedSession into the scanner's NEUTRAL views (no FlatBuffers cross this
      * boundary; the views alias the request body, which the lane keeps alive for the whole call)
      * and reproduces the legacy gate decision:
-     *  - scanner not initialized (disabled, or still starting) -> legitimate skip, index anyway.
+     *  - never going to run here (disabled, or a harness that never started it) -> legitimate
+     *    skip, index anyway.
+     *  - enabled but still starting -> deferred: the feed-not-ready gate answers a retryable 503
+     *    instead, since this node is expected to run a scanner soon.
      *
      * There is no manager-initiated "feed-update fleet scan" to coordinate with anymore -- feed
      * updates no longer trigger an automatic rescan of every agent; agents detect the offset
@@ -39,10 +51,20 @@ namespace invsync::vd
     public:
         bool feedReady() const override
         {
+            // Never going to run here -- start() was never invoked at all (a test harness that
+            // skips it, e.g. the testtool's --no-vd), or it ran and found vulnerability detection
+            // disabled. Neither is a "feed not ready" condition: those sessions skip the scan and
+            // index (D22's legitimate-skip row), so they must pass this gate rather than wait on
+            // a feed that will never load.
+            //
+            // Otherwise: enabled and started -- either still validating (isInitialized() false)
+            // or fully up, in which case the real feed-readiness signal decides. Distinguishing
+            // "still starting" from "disabled" here is what lets this gate defer the startup
+            // window with a retryable 503 instead of routing it through Skipped as if this node
+            // would never run a scanner.
             auto& scanner = VulnerabilityScannerFacade::instance();
-            // An uninitialized scanner is not a "feed not ready" condition: those sessions skip
-            // the scan and index (D22's legitimate-skip row), so they must pass this gate.
-            return !scanner.isInitialized() || scanner.isFeedReady();
+            return feedGateOpen(scanner.hasStarted(), scanner.isEnabled(), scanner.isInitialized(),
+                                scanner.isFeedReady());
         }
 
         bool scannerRunning() const override
@@ -99,12 +121,21 @@ namespace invsync::vd
         {
             auto& scanner = VulnerabilityScannerFacade::instance();
 
+            if (!scanner.hasStarted() || !scanner.isEnabled())
+            {
+                // Reached only for "never going to run here" (disabled, or a harness that never
+                // started it): nothing to come back for, and reporting it as transient would make
+                // the caller retry a scan that can never run on this manager.
+                return AgentScanOutcome::Skipped;
+            }
+
             if (!scanner.isInitialized())
             {
-                // Skipped, not NotReady: on a node with vulnerability detection disabled there is
-                // nothing to come back for, and reporting it as transient would make the caller
-                // retry a scan that can never run on this manager.
-                return AgentScanOutcome::Skipped;
+                // Enabled and started, but still validating (schema/DB/content-updater) -- the
+                // lane's feedReady() re-check, one level up, already defers this case with a
+                // retryable 503 before calling scanAgent() at all; reached directly here (e.g. a
+                // caller that doesn't gate on feedReady() first) it means the same thing.
+                return AgentScanOutcome::NotReady;
             }
 
             // LCOV_EXCL_START - integration-only, same as scan() above: everything below drives
@@ -117,11 +148,12 @@ namespace invsync::vd
             {
                 case VulnerabilityScannerFacade::ScanTriggerResult::Success: return AgentScanOutcome::Ok;
 
-                // Vulnerability detection is not running here. Same reasoning as the gate above.
-                case VulnerabilityScannerFacade::ScanTriggerResult::NotInitialized: return AgentScanOutcome::Skipped;
-
-                // All transient, and all for reasons outside this request: the feed is still
-                // loading, the scanner is still starting, or no indexer host is healthy.
+                // All transient, and all for reasons outside this request: vulnerability
+                // detection is not initialized yet -- kept here defensively even though the gate
+                // above already returns NotReady for that case, since this switch also covers
+                // callers that reach triggerAgentScan() directly -- the feed is still loading,
+                // the scanner is still starting, or no indexer host is healthy.
+                case VulnerabilityScannerFacade::ScanTriggerResult::NotInitialized:
                 case VulnerabilityScannerFacade::ScanTriggerResult::FeedNotReady:
                 case VulnerabilityScannerFacade::ScanTriggerResult::ScannerNotReady:
                 case VulnerabilityScannerFacade::ScanTriggerResult::IndexerUnavailable:

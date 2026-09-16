@@ -28,6 +28,21 @@ namespace invsync::vd
      */
     std::shared_ptr<IVdScanner> makeProductionVdScanner();
 
+    /**
+     * @brief Pure decision for feedReady(): open (legitimate skip / never gate) vs. deferred.
+     *
+     * Extracted out of VdScannerAdapter so the startup gate can be pinned by a unit test without a
+     * live VulnerabilityScannerFacade.
+     *
+     * @param started Facade's hasStarted(): start() has begun executing at least once.
+     * @param enabled Facade's isEnabled(): vulnerability detection is enabled on this node.
+     * @param initialized Facade's isInitialized(): start() ran to completion.
+     * @param feedReady Facade's isFeedReady(): the CVE feed is loaded and ready to scan against.
+     * @return true if the gate is open (legitimate skip, or never going to run here), false if the
+     *         caller should defer with a retryable 503.
+     */
+    bool feedGateOpen(bool started, bool enabled, bool initialized, bool feedReady);
+
 } // namespace invsync::vd
 
 #endif // _INVSYNC_VD_VD_SCANNER_FACTORY_HPP

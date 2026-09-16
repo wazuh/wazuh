@@ -394,7 +394,11 @@ paths:
                     cluster: { name: wazuh-cluster }
                     agent: { groups: [default, web-servers] }
                 notifyNoTasks:
-                  summary: No pending work -- `tasks` is an empty array, never an absent key
+                  summary: |
+                    No pending work -- `tasks` is an empty array, never an absent key. Also the
+                    answer when a poll of the manager's own task store failed: those tasks stay
+                    `pending` and are delivered on the next successful poll, so nothing is lost,
+                    only delayed by one notify interval.
                   value:
                     agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
                     settings_hash: "d7a8fbb3..."

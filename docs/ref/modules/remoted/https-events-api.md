@@ -424,6 +424,12 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
   return the errors above. Note the agent sends **no `Content-Type`** on this route — nothing on
   the manager side reads one, and the `application/x-ndjson` label exists only on the downstream hop
   to the engine. Do not configure an intermediary to require or rewrite it.
+
+  A `202` here means the engine *accepted* the batch, not that every event in it was processed: if
+  the engine's own internal router is at capacity, it drops events silently and still answers
+  success — the same drop-on-full behavior the legacy 4.x channel has always had. That drop is
+  invisible to the agent by design (matching 4.x parity) and does not go through this route's `503`;
+  it is not something this endpoint's status codes are meant to surface.
 - **`POST /control`** — authenticated agent lifecycle and control messages. Once the signature is
   verified, the module processes the agent's control message (`startup`, `notify`, or `shutdown`),
   updates agent metadata in wazuh-db, retrieves pending tasks from task-manager, and returns
