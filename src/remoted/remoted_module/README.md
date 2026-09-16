@@ -105,7 +105,8 @@ src/http_server/
   `start()` builds the TLS context it evaluates the leaf it just loaded — days to `notAfter`
   (negative once expired) and whether `HttpServerConfig::caCertificatePath` (the CA `GET /cacerts`
   hands out; any `CERTIFICATE` block of the file counts, so a bundle works) signs it — logs the
-  result (ERROR expired / CA does not sign, WARN < 30 days / CA unreadable) and records it **before**
+  result (ERROR expired / CA does not sign, WARN < 30 days / CA unreadable, WARN/INFO for the chain
+  verdict from `chainValidates()`, the bundle as sole trust store) and records it **before**
   `run_async`, so no request can ever read "not evaluated yet". A `TlsCertificateMonitor` (own
   thread parked on a `condition_variable::wait_for`, the module's canonical periodic-task shape —
   RESTinio's `run_async()` keeps its `io_context` private, so no timer there: D45) re-evaluates and
@@ -318,7 +319,10 @@ src/endpoints/
   otherwise "carries no usable certificate"), 503 (unchanged, `ERROR`), and a `WARN` that fires while
   a request is answered from the last good snapshot because the file itself cannot be read right
   now. The WHAT is counted through a `MeteredResponder` on `remoted.http.cacerts.responses.*`
-  (method label `GET`), the WHY on `remoted.cacerts.*`.
+  (method label `GET`), the WHY on `remoted.cacerts.*`. The snapshot also carries
+  `chainValid`/`chainError` from `chainValidates()` (the bundle as trust store, `PARTIAL_CHAIN`,
+  SSL-server purpose), which play no part in this response and which the transport logs
+  (`WARN`/`INFO`) in `logCertificateStatus()`.
 
 - **Endpoint handler (async):**
   `using AuthenticatedHandler = std::function<void(std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder>)>;`

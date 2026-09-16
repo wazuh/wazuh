@@ -66,6 +66,13 @@ namespace remoted::http
         if (m_leaf != nullptr)
         {
             snapshot.matchesLeaf = anyCaSignsLeaf(m_leaf, parsed.certificates);
+
+            // Separately from the signature: does the leaf VALIDATE with this bundle as its trust
+            // store (chain, dates, CA constraints, server purpose)? Information for the logs, never
+            // for the 503 -- see chainValidates().
+            const auto chain = chainValidates(m_leaf, parsed.certificates);
+            snapshot.chainValid = chain.valid;
+            snapshot.chainError = chain.error;
         }
 
         for (const auto& certificate : parsed.certificates)

@@ -1562,16 +1562,22 @@ memory pressure, and it is served under the [global prefix](#endpoints) like eve
 the listener started (constant until a restart); the CA is re-read from disk at each evaluation,
 and every `CERTIFICATE` block in the file counts — the CA is coherent when *any* of them signed the
 leaf, so a bundle carrying the signing CA plus others passes. It is a signature check, not a full
-chain validation: dates and constraints are the agent's verifier's business.
+chain validation, and that decision does not change: the manager separately validates the served
+certificate's full chain — dates, every CA's `basicConstraints`/`keyUsage`, and server purpose —
+using the bundle as its sole trust store (the anchor need not be self-signed), and logs the result
+at startup and on every daily evaluation: a `WARN` when the bundle signs the leaf but the chain does
+not validate (an expired CA, or one missing `CA:TRUE`, would serve no verifying agent), an
+informational line when the chain validates without a direct signature. Neither outcome changes this
+endpoint's response.
 
 **Cadence.** Each request reads the CA file and obtains the certificate bundle and coherence verdict
 from the same snapshot. Parsing and signature checks are cached by a hash of those bytes; a changed
 file is re-evaluated even if its size and modification time stay the same. A CA file that cannot be
 read keeps the last good bundle in service and logs the failure; only a file that was never readable
 answers `404`, and a file that reads but carries no certificate answers `404` at once. A replacement
-CA that does not sign the loaded leaf answers `503` on the next request. Separately, the certificate monitor runs at startup and every 24 hours, logging
-expiry and coherence findings. Rotate the CA and listener certificate together and restart remoted
-to load the new leaf.
+CA that does not sign the loaded leaf answers `503` on the next request. Separately, the certificate
+monitor runs at startup and every 24 hours, logging expiry and coherence findings. Rotate the CA and
+listener certificate together and restart remoted to load the new leaf.
 
 **Trust on first use.** The channel the CA travels over is, by definition, not yet verified. An
 agent that already holds a CA MUST NOT replace it from this route, and a deployment that can

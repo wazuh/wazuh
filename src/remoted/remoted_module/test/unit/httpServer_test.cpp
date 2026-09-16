@@ -17,6 +17,7 @@
 #include "http_server/tlsCertificateStatus.hpp"
 #include "proc.hpp"
 
+#include "testCertificates.hpp"
 #include "testTlsServer.hpp"
 
 #include <gtest/gtest.h>
@@ -88,73 +89,15 @@ namespace
         return config;
     }
 
-    using EvpPkeyPtr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
+    // EvpPkeyPtr, makeTestKey(), makeCertificate() and writePemFile() moved to testCertificates.hpp
+    // (shared with caCertificateSource_test.cpp): using-declarations, not a new namespace import, so
+    // this stays unambiguous next to `using namespace remoted::http;` above.
+    using remoted::test::EvpPkeyPtr;
+    using remoted::test::makeCertificate;
+    using remoted::test::makeTestKey;
+    using remoted::test::writePemFile;
     // X509Ptr is remoted::http's (tlsCertificateStatus.hpp), so certificates built here feed the
     // status functions directly.
-
-    EvpPkeyPtr makeTestKey()
-    {
-        EvpPkeyPtr pkey {EVP_PKEY_Q_keygen(nullptr, nullptr, "EC", "prime256v1"), &EVP_PKEY_free};
-        if (!pkey)
-        {
-            throw std::runtime_error("Failed to generate test EC key pair");
-        }
-        return pkey;
-    }
-
-    // Builds a minimal X509v3 certificate in memory: CN @p commonName, valid from @p notBeforeSeconds
-    // to @p notAfterSeconds relative to now (either may be negative, for an expired one), public key
-    // @p subjectKey, signed with @p signerKey and naming @p issuer (null = self-signed). An optional
-    // comma-separated subjectAltName (e.g. "IP:203.0.113.5") for the peer-address tests. No socket,
-    // TLS handshake or on-disk fixture required.
-    X509Ptr makeCertificate(const char* commonName,
-                            long notBeforeSeconds,
-                            long notAfterSeconds,
-                            EVP_PKEY* subjectKey,
-                            EVP_PKEY* signerKey,
-                            const X509* issuer,
-                            const char* subjectAltName = nullptr)
-    {
-        X509Ptr certificate {X509_new()};
-        if (!certificate)
-        {
-            throw std::runtime_error("Failed to allocate test X509 certificate");
-        }
-
-        X509_set_version(certificate.get(), 2); // X509v3
-        ASN1_INTEGER_set(X509_get_serialNumber(certificate.get()), 1);
-        X509_gmtime_adj(X509_get_notBefore(certificate.get()), notBeforeSeconds);
-        X509_gmtime_adj(X509_get_notAfter(certificate.get()), notAfterSeconds);
-
-        X509_NAME* name = X509_get_subject_name(certificate.get());
-        X509_NAME_add_entry_by_txt(
-            name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>(commonName), -1, -1, 0);
-        X509_set_issuer_name(certificate.get(), issuer != nullptr ? X509_get_subject_name(issuer) : name);
-
-        X509_set_pubkey(certificate.get(), subjectKey);
-
-        if (subjectAltName != nullptr)
-        {
-            X509V3_CTX ctx;
-            X509V3_set_ctx_nodb(&ctx);
-            X509V3_set_ctx(&ctx, certificate.get(), certificate.get(), nullptr, nullptr, 0);
-
-            X509_EXTENSION* extension = X509V3_EXT_conf_nid(nullptr, &ctx, NID_subject_alt_name, subjectAltName);
-            if (extension == nullptr)
-            {
-                throw std::runtime_error("Failed to build test subjectAltName extension");
-            }
-            X509_add_ext(certificate.get(), extension, -1);
-            X509_EXTENSION_free(extension);
-        }
-
-        if (X509_sign(certificate.get(), signerKey, EVP_sha256()) == 0)
-        {
-            throw std::runtime_error("Failed to sign test certificate");
-        }
-
-        return certificate;
-    }
 
     // Builds a minimal self-signed certificate with the given comma-separated subjectAltName value
     // (e.g. "IP:203.0.113.5" or "IP:203.0.113.5,IP:2001:db8::1"), so certificateMatchesPeerIp() can
@@ -165,17 +108,6 @@ namespace
     {
         const auto key = makeTestKey();
         return makeCertificate("remoted-test", 0, 60L * 60L, key.get(), key.get(), nullptr, subjectAltName);
-    }
-
-    // Writes certificates to a PEM file (in order), for the CA-file side of the status functions.
-    void writePemFile(const std::string& path, const std::vector<const X509*>& certificates)
-    {
-        std::unique_ptr<BIO, decltype(&BIO_free)> bio {BIO_new_file(path.c_str(), "w"), &BIO_free};
-        ASSERT_TRUE(bio) << "cannot create " << path;
-        for (const auto* certificate : certificates)
-        {
-            ASSERT_EQ(PEM_write_bio_X509(bio.get(), const_cast<X509*>(certificate)), 1);
-        }
     }
 
     std::string scratchPath(const char* name)
@@ -639,17 +571,32 @@ namespace
 {
     constexpr long kDay {24L * 60L * 60L};
 
-    // A CA, a leaf it signed, and an unrelated CA -- the whole cast of the coherence tests.
+    // A CA, a leaf it signed, and an unrelated CA -- the whole cast of the coherence tests. `ca` and
+    // `foreignCa` carry CA:TRUE (isCa) so the chainValidates() tests can use them as trust anchors;
+    // `leaf` stays without it -- a served certificate is never itself a CA.
     struct StatusPki
     {
         EvpPkeyPtr caKey {makeTestKey()};
-        X509Ptr ca {makeCertificate("status-ca", -kDay, 30 * kDay, caKey.get(), caKey.get(), nullptr)};
+        X509Ptr ca {makeCertificate("status-ca", -kDay, 30 * kDay, caKey.get(), caKey.get(), nullptr, nullptr, true)};
         EvpPkeyPtr leafKey {makeTestKey()};
         X509Ptr leaf {makeCertificate("localhost", -kDay, 10 * kDay, leafKey.get(), caKey.get(), ca.get())};
         EvpPkeyPtr foreignKey {makeTestKey()};
-        X509Ptr foreignCa {
-            makeCertificate("foreign-ca", -kDay, 30 * kDay, foreignKey.get(), foreignKey.get(), nullptr)};
+        X509Ptr foreignCa {makeCertificate(
+            "foreign-ca", -kDay, 30 * kDay, foreignKey.get(), foreignKey.get(), nullptr, nullptr, true)};
     };
+
+    // Duplicates an owning reference to an already-built certificate, so the SAME X509 object can
+    // sit in two independent bundles (std::vector<X509Ptr>) without a double free -- needed when a
+    // test reuses one StatusPki's `ca` across two chainValidates() calls.
+    X509Ptr upRef(const X509Ptr& certificate)
+    {
+        X509* raw = certificate.get();
+        if (raw != nullptr)
+        {
+            X509_up_ref(raw);
+        }
+        return X509Ptr {raw};
+    }
 } // namespace
 
 TEST(TlsCertificateStatusTest, DaysUntilExpiryOfTestCert)
@@ -862,6 +809,150 @@ TEST(TlsCertificateStatusTest, BundleWithTheSigningCaMatches)
 }
 
 // ---------------------------------------------------------------------------
+// chainValidates(): does the served leaf VALIDATE with the bundle as its trust store (issue
+// #39318) -- a stricter, separate question from anyCaSignsLeaf()'s plain signature check. Every
+// GTEST_LOG_(INFO) line below is deliberate: the exact OpenSSL wording is what the operator-facing
+// WARN/INFO lines in RestinioHttpServer.cpp quote, so it belongs in the test output, not only in a
+// failure diagnostic.
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    // root (CA) -> intermediate (CA, signed by root) -> leaf (signed by intermediate): the shape
+    // that lets ChainValidWithAnIntermediateAnchor and ChainValidRootOnlyWithMissingIntermediate
+    // show the difference between "some CA in the bundle signs the leaf" and "the leaf's own chain
+    // is complete against the bundle".
+    struct IntermediatePki
+    {
+        EvpPkeyPtr rootKey {makeTestKey()};
+        X509Ptr root {
+            makeCertificate("status-root", -kDay, 30 * kDay, rootKey.get(), rootKey.get(), nullptr, nullptr, true)};
+        EvpPkeyPtr intermediateKey {makeTestKey()};
+        X509Ptr intermediate {makeCertificate(
+            "status-intermediate", -kDay, 30 * kDay, intermediateKey.get(), rootKey.get(), root.get(), nullptr, true)};
+        EvpPkeyPtr leafKey {makeTestKey()};
+        X509Ptr leaf {
+            makeCertificate("localhost", -kDay, 10 * kDay, leafKey.get(), intermediateKey.get(), intermediate.get())};
+    };
+} // namespace
+
+TEST(TlsCertificateStatusTest, ChainValidWithAnIntermediateAnchor)
+{
+    IntermediatePki pki;
+    std::vector<X509Ptr> cas;
+    cas.push_back(std::move(pki.intermediate));
+
+    // X509_V_FLAG_PARTIAL_CHAIN makes the intermediate itself a trust anchor: the root need not be
+    // in the bundle for the chain to be complete.
+    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), cas));
+    const auto verdict = chainValidates(pki.leaf.get(), cas);
+    GTEST_LOG_(INFO) << "ChainValidWithAnIntermediateAnchor chainError: \"" << verdict.error << "\"";
+    ASSERT_TRUE(verdict.valid.has_value());
+    EXPECT_TRUE(*verdict.valid) << verdict.error;
+    EXPECT_TRUE(verdict.error.empty()) << verdict.error;
+}
+
+TEST(TlsCertificateStatusTest, ChainValidRootOnlyWithMissingIntermediate)
+{
+    IntermediatePki pki;
+    std::vector<X509Ptr> cas;
+    cas.push_back(std::move(pki.root));
+
+    // The root does not sign the leaf directly (the intermediate does), and it is not the leaf's
+    // named issuer either: the chain cannot be completed from the root alone.
+    EXPECT_FALSE(anyCaSignsLeaf(pki.leaf.get(), cas));
+    const auto verdict = chainValidates(pki.leaf.get(), cas);
+    GTEST_LOG_(INFO) << "ChainValidRootOnlyWithMissingIntermediate chainError: \"" << verdict.error << "\"";
+    ASSERT_TRUE(verdict.valid.has_value());
+    EXPECT_FALSE(*verdict.valid);
+    EXPECT_EQ(verdict.error, "unable to get local issuer certificate");
+}
+
+TEST(TlsCertificateStatusTest, ChainValidExpiredCa)
+{
+    auto caKey = makeTestKey();
+    auto ca = makeCertificate("status-expired-ca", -3 * kDay, -kDay, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    auto leafKey = makeTestKey();
+    // The LEAF is still within its validity window; only the CA that signed it has expired.
+    auto leaf = makeCertificate("localhost", -kDay, 10 * kDay, leafKey.get(), caKey.get(), ca.get());
+
+    std::vector<X509Ptr> cas;
+    cas.push_back(std::move(ca));
+
+    EXPECT_TRUE(anyCaSignsLeaf(leaf.get(), cas));
+    const auto verdict = chainValidates(leaf.get(), cas);
+    GTEST_LOG_(INFO) << "ChainValidExpiredCa chainError: \"" << verdict.error << "\"";
+    ASSERT_TRUE(verdict.valid.has_value());
+    EXPECT_FALSE(*verdict.valid);
+    EXPECT_EQ(verdict.error, "certificate has expired");
+}
+
+TEST(TlsCertificateStatusTest, ChainValidNonCaSigner)
+{
+    // A plain leaf-shaped certificate (no isCa: no basicConstraints/keyUsage at all) used as a
+    // signer -- exactly what makeCertificate() has always built. It still signs the leaf; the
+    // exact OpenSSL wording for why the CHAIN then fails is left to the test's own log line rather
+    // than pinned here.
+    auto signerKey = makeTestKey();
+    auto signer = makeCertificate("status-non-ca-signer", -kDay, 30 * kDay, signerKey.get(), signerKey.get(), nullptr);
+    auto leafKey = makeTestKey();
+    auto leaf = makeCertificate("localhost", -kDay, 10 * kDay, leafKey.get(), signerKey.get(), signer.get());
+
+    std::vector<X509Ptr> cas;
+    cas.push_back(std::move(signer));
+
+    EXPECT_TRUE(anyCaSignsLeaf(leaf.get(), cas));
+    const auto verdict = chainValidates(leaf.get(), cas);
+    GTEST_LOG_(INFO) << "ChainValidNonCaSigner chainError: \"" << verdict.error << "\"";
+    ASSERT_TRUE(verdict.valid.has_value());
+    EXPECT_FALSE(*verdict.valid);
+    EXPECT_FALSE(verdict.error.empty());
+}
+
+TEST(TlsCertificateStatusTest, ChainValidSelfSignedCa)
+{
+    StatusPki pki;
+
+    std::vector<X509Ptr> singleCa;
+    singleCa.push_back(upRef(pki.ca));
+
+    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), singleCa));
+    const auto singleVerdict = chainValidates(pki.leaf.get(), singleCa);
+    GTEST_LOG_(INFO) << "ChainValidSelfSignedCa (ca only) chainError: \"" << singleVerdict.error << "\"";
+    ASSERT_TRUE(singleVerdict.valid.has_value());
+    EXPECT_TRUE(*singleVerdict.valid) << singleVerdict.error;
+    EXPECT_TRUE(singleVerdict.error.empty()) << singleVerdict.error;
+
+    // Same self-signed CA, now alongside an unrelated one: an extra, irrelevant bundle entry must
+    // not change the verdict.
+    std::vector<X509Ptr> bundleWithForeign;
+    bundleWithForeign.push_back(upRef(pki.foreignCa));
+    bundleWithForeign.push_back(upRef(pki.ca));
+
+    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), bundleWithForeign));
+    const auto bundleVerdict = chainValidates(pki.leaf.get(), bundleWithForeign);
+    GTEST_LOG_(INFO) << "ChainValidSelfSignedCa (foreignCa+ca) chainError: \"" << bundleVerdict.error << "\"";
+    ASSERT_TRUE(bundleVerdict.valid.has_value());
+    EXPECT_TRUE(*bundleVerdict.valid) << bundleVerdict.error;
+    EXPECT_TRUE(bundleVerdict.error.empty()) << bundleVerdict.error;
+}
+
+TEST(TlsCertificateStatusTest, ChainValidUnknownWithoutLeafOrBundle)
+{
+    StatusPki pki;
+    std::vector<X509Ptr> cas;
+    cas.push_back(upRef(pki.ca));
+
+    const auto noLeaf = chainValidates(nullptr, cas);
+    EXPECT_FALSE(noLeaf.valid.has_value());
+    EXPECT_TRUE(noLeaf.error.empty());
+
+    const auto noBundle = chainValidates(pki.leaf.get(), {});
+    EXPECT_FALSE(noBundle.valid.has_value());
+    EXPECT_TRUE(noBundle.error.empty());
+}
+
+// ---------------------------------------------------------------------------
 // The transport's own evaluation: at start (before listening) and on the monitor's ticks
 // ---------------------------------------------------------------------------
 
@@ -896,6 +987,31 @@ TEST(HttpServerTest, CertificateStatusIsEvaluatedBeforeListening)
     EXPECT_GE(*status.expiryDays, 0);
     EXPECT_LE(*status.expiryDays, 1);
     EXPECT_EQ(status.caMatchesLeaf, true);
+
+    server->stop();
+}
+
+TEST(HttpServerTest, StartUpStatusCarriesTheChainVerdict)
+{
+    // openssl req -x509 stamps basicConstraints=critical,CA:TRUE by default (OpenSSL 3,
+    // testTlsServer.hpp), so this self-signed certificate validates as its own CA, not merely
+    // "matches" it.
+    TempCert cert;
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = cert.certPath(); // self-signed: its own CA
+
+    ASSERT_NO_THROW(server->start(config));
+
+    const auto status = server->certificateStatus();
+    EXPECT_EQ(status.caMatchesLeaf, true);
+    ASSERT_TRUE(status.chainValid.has_value());
+    EXPECT_TRUE(*status.chainValid) << status.chainError;
+    EXPECT_TRUE(status.chainError.empty()) << status.chainError;
 
     server->stop();
 }

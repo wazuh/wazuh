@@ -202,6 +202,74 @@ namespace remoted::http
         return false;
     }
 
+    ChainVerdict chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas)
+    {
+        if (leaf == nullptr || cas.empty())
+        {
+            return {};
+        }
+
+        using StorePtr = std::unique_ptr<X509_STORE, decltype(&X509_STORE_free)>;
+        using StoreCtxPtr = std::unique_ptr<X509_STORE_CTX, decltype(&X509_STORE_CTX_free)>;
+
+        StorePtr store {X509_STORE_new(), &X509_STORE_free};
+        StoreCtxPtr ctx {X509_STORE_CTX_new(), &X509_STORE_CTX_free};
+        if (!store || !ctx)
+        {
+            ERR_clear_error();
+            return {false, "internal error"};
+        }
+
+        for (const auto& ca : cas)
+        {
+            if (X509_STORE_add_cert(store.get(), ca.get()) != 1)
+            {
+                // The same certificate twice in a bundle is untidy, not a reason to distrust it.
+                if (ERR_GET_REASON(ERR_peek_last_error()) == X509_R_CERT_ALREADY_IN_HASH_TABLE)
+                {
+                    ERR_clear_error();
+                    continue;
+                }
+                ERR_clear_error();
+                return {false, "internal error"};
+            }
+        }
+
+        // PARTIAL_CHAIN: a certificate in the store is a trust anchor even when it is not self-signed,
+        // which is what lets root-ca.pem carry a purchased intermediate that signed the leaf. The
+        // purpose pins the one use this listener has for its certificate.
+        X509_STORE_set_flags(store.get(), X509_V_FLAG_PARTIAL_CHAIN);
+        X509_STORE_set_purpose(store.get(), X509_PURPOSE_SSL_SERVER);
+
+        // No untrusted chain: the bundle has to suffice on its own, because it is all an agent
+        // bootstrapping from GET /cacerts will ever hold. X509_STORE_CTX_init takes a non-const
+        // X509*; verification does not modify the certificate observably.
+        if (X509_STORE_CTX_init(ctx.get(), store.get(), const_cast<X509*>(leaf), nullptr) != 1)
+        {
+            ERR_clear_error();
+            return {false, "internal error"};
+        }
+
+        ChainVerdict verdict;
+        const int verified = X509_verify_cert(ctx.get());
+        if (verified == 1)
+        {
+            verdict.valid = true;
+        }
+        else if (verified == 0)
+        {
+            verdict.valid = false;
+            verdict.error = X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx.get()));
+        }
+        else
+        {
+            verdict.valid = false;
+            verdict.error = "internal error";
+        }
+        ERR_clear_error();
+        return verdict;
+    }
+
     std::vector<std::string> localHostNames()
     {
         std::vector<std::string> names {"localhost", "localhost.localdomain"};

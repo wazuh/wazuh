@@ -22,6 +22,7 @@
 
 #include "http_server/caCertificateSource.hpp"
 #include "http_server/fileRead.hpp"
+#include "testCertificates.hpp"
 #include "testTlsServer.hpp"
 
 #include <algorithm>
@@ -405,7 +406,7 @@ TEST(CaCertificateSource, StatusFromCarriesTheReadFailure)
 
     EXPECT_EQ(status.caMatchesLeaf, true);
     EXPECT_FALSE(status.caSubjects.empty());
-    EXPECT_FALSE(status.chainValid.has_value());
+    EXPECT_EQ(status.chainValid, true); // the CLI CA carries CA:TRUE and signed the leaf: it validates too
     EXPECT_TRUE(status.chainError.empty());
     EXPECT_FALSE(status.caReadFailure.has_value());
     EXPECT_EQ(status.evaluations, 0U); // counting is the monitor's job, not statusFrom()'s
@@ -664,6 +665,29 @@ TEST(CaCertificateSource, WithoutALeafTheVerdictIsUnknownRatherThanMismatch)
 
     EXPECT_EQ(snapshot.certificates, 1U);
     EXPECT_FALSE(snapshot.matchesLeaf.has_value()); // unknown serves; false would refuse
+}
+
+TEST(CaCertificateSource, SnapshotCarriesChainValid)
+{
+    auto pki = makePki("casource-chainvalid");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    // generateCaSignedCertificate()'s CA is `openssl req -x509`, which OpenSSL 3 stamps
+    // `basicConstraints = critical, CA:TRUE` on by default (testTlsServer.hpp), so the leaf it
+    // signed VALIDATES against it as a trust anchor -- not just matches its signature.
+    CaCertificateSource source {pki->files.caCertPath, pki->leaf.get()};
+    const auto snapshot = source.snapshot();
+
+    EXPECT_EQ(snapshot.matchesLeaf, true);
+    ASSERT_TRUE(snapshot.chainValid.has_value());
+    EXPECT_TRUE(*snapshot.chainValid) << snapshot.chainError;
+    EXPECT_TRUE(snapshot.chainError.empty()) << snapshot.chainError;
+
+    // Without a leaf there is nothing to validate against: buildLocked() never calls
+    // chainValidates() in that case, so chainValid stays nullopt (tlsCertificateStatus.cpp).
+    CaCertificateSource noLeaf {pki->files.caCertPath, nullptr};
+    EXPECT_FALSE(noLeaf.snapshot().chainValid.has_value());
 }
 
 TEST(CaCertificateSource, AnEmptyPathNeverReadsAnything)

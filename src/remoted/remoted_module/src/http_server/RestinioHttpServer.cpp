@@ -614,6 +614,28 @@ namespace
                         status.caSubjects.c_str(),
                         status.leafSubject.c_str());
         }
+
+        // The chain verdict is information, not the decision (issue #39318): a CA that signs the leaf
+        // but could never be used by a verifying agent deserves a line, and so does the converse.
+        if (status.caMatchesLeaf == true && status.chainValid == false)
+        {
+            LOGFN_WARN(logFn(),
+                       "The configured CA '%s' signs the served certificate '%s' but the chain does not validate (%s); "
+                       "a verifying agent that pins this CA will reject the handshake -- check the validity dates and "
+                       "the CA constraints of the certificates involved.",
+                       caPath.c_str(),
+                       leafPath.c_str(),
+                       status.chainError.c_str());
+        }
+        else if (status.caMatchesLeaf == false && status.chainValid == true)
+        {
+            LOGFN_INFO(logFn(),
+                       "The configured CA '%s' does not sign the served certificate '%s' directly, though the "
+                       "certificate validates through it; GET /cacerts refuses it all the same: the bundle must carry "
+                       "the certificate's issuer.",
+                       caPath.c_str(),
+                       leafPath.c_str());
+        }
     }
 
     // What building the TLS context yields besides the context itself: the leaf the context will

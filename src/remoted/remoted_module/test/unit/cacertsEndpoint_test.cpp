@@ -272,6 +272,32 @@ TEST(CacertsEndpoint, CaMismatchAnswers503)
     EXPECT_EQ(f.http.responses.c2xx->get(), 0U);
 }
 
+TEST(CacertsEndpoint, ChainValidDoesNotDecideTheAnswer)
+{
+    // The chain verdict is information for the logs (issue #39318), never the 503 decision: a CA
+    // that signs the leaf but whose chain does not validate must still serve, and a CA that does
+    // not sign the leaf must still be refused even when the chain happens to validate through it.
+    {
+        Fixture f;
+        auto matches = snapshotOf(true);
+        matches.chainValid = false;
+        matches.chainError = "certificate has expired";
+
+        const auto response = f.run(matches);
+        EXPECT_EQ(response.status, 200);
+        EXPECT_EQ(f.metrics.served->get(), 1U);
+    }
+    {
+        Fixture f;
+        auto mismatches = snapshotOf(false);
+        mismatches.chainValid = true;
+
+        const auto response = f.run(mismatches);
+        EXPECT_EQ(response.status, 503);
+        EXPECT_EQ(f.metrics.caMismatch->get(), 1U);
+    }
+}
+
 TEST(CacertsEndpoint, UnverifiedSnapshotStillServes)
 {
     Fixture f;

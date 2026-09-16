@@ -103,9 +103,33 @@ namespace remoted::http
      * A signature check, not a chain validation: no dates, no name constraints, no basicConstraints.
      * That is deliberate -- the question `GET /cacerts` needs answered is "would the PEM I am about
      * to hand out let an agent trust the certificate I am serving", and the issuer signature is the
-     * one property that decides it. A self-signed leaf listed as its own CA matches.
+     * one property that decides it. A self-signed leaf listed as its own CA matches. The chain
+     * question is chainValidates()'s, and it informs the logs, not the 503 (issue #39318).
      */
     bool anyCaSignsLeaf(const X509* leaf, const std::vector<X509Ptr>& cas);
+
+    /// What chainValidates() found: nullopt when there was nothing to validate against.
+    struct ChainVerdict
+    {
+        std::optional<bool> valid;
+        std::string error; ///< OpenSSL's reason (X509_verify_cert_error_string) when valid is false; empty otherwise.
+    };
+
+    /**
+     * @brief Whether @p leaf VALIDATES with @p cas as its trust store: chain building, validity
+     *        dates, basicConstraints/keyUsage of every CA on the path, and server purpose.
+     *
+     * The store holds the bundle and nothing else -- no intermediates borrowed from the listener's
+     * own certificate file -- because the bundle is all an agent bootstrapping from `GET /cacerts`
+     * will ever hold. `X509_V_FLAG_PARTIAL_CHAIN` makes any certificate of the bundle a trust anchor
+     * even when it is not self-signed, so `root-ca.pem` may carry a purchased intermediate that
+     * signed the leaf as well as a private self-signed CA. Evaluated against the current time.
+     *
+     * Not what decides the 503: anyCaSignsLeaf() is. This is information for the operator -- a CA
+     * that signs the leaf but has expired, or lacks `CA:TRUE`, still "matches" and yet no verifying
+     * agent could use it -- surfaced through the snapshots and the certificate log lines.
+     */
+    ChainVerdict chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas);
 
     /**
      * @brief The names that describe this host to itself, and to nobody else.
