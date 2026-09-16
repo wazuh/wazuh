@@ -273,6 +273,7 @@ TEST(CurlPerformerTest, ResponseBodyAndRetryAfterFlowBack)
         *bodyOut = "{\"ok\":true}";
         *captureOut.retryAfter = 7;
         *captureOut.serverDate = 1755000000;
+        *captureOut.caGeneration = 1789000012;
         return TransportStatus::Ok;
     }));
     EXPECT_CALL(*handle, responseCode()).WillOnce(Return(503));
@@ -284,6 +285,9 @@ TEST(CurlPerformerTest, ResponseBodyAndRetryAfterFlowBack)
     EXPECT_EQ("{\"ok\":true}", response.body);
     EXPECT_EQ(7, response.retryAfterSeconds);
     EXPECT_EQ(1755000000, response.serverDateSeconds);
+    // Wazuh-CA-Generation rides the same single HEADERFUNCTION slot as the other two: libcurl
+    // allows only one per handle, which is why HeaderCapture exists at all.
+    EXPECT_EQ(1789000012, response.caGeneration);
     EXPECT_EQ(503, response.httpCode);
 }
 

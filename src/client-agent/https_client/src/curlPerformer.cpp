@@ -597,7 +597,13 @@ bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
 
     handle.appendHeader("Expect:"); // Disable 100-continue; keep a fixed Content-Length.
 
-    if (!handle.captureResponseHeaders({&response.retryAfterSeconds, &response.serverDateSeconds}))
+    // One HEADERFUNCTION slot per handle, so every captured header shares this struct.
+    HeaderCapture capture;
+    capture.retryAfter = &response.retryAfterSeconds;
+    capture.serverDate = &response.serverDateSeconds;
+    capture.caGeneration = &response.caGeneration;
+
+    if (!handle.captureResponseHeaders(capture))
     {
         return false;
     }

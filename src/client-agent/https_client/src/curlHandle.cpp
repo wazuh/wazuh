@@ -174,9 +174,20 @@ namespace
         constexpr size_t retryAfterPrefixLength = 12; // "Retry-After:"
         constexpr size_t datePrefixLength = 5;        // "Date:"
 
+        constexpr size_t caGenerationPrefixLength = 20; // "Wazuh-CA-Generation:"
+
         if (total > retryAfterPrefixLength && strncasecmp(data, "Retry-After:", retryAfterPrefixLength) == 0)
         {
             *capture->retryAfter = std::strtol(data + retryAfterPrefixLength, nullptr, 10);
+        }
+        else if (capture->caGeneration != nullptr && total > caGenerationPrefixLength &&
+                 strncasecmp(data, "Wazuh-CA-Generation:", caGenerationPrefixLength) == 0)
+        {
+            // strtoll stops at the first non-digit, so the header's trailing CRLF needs no
+            // trimming. A value that is not a positive integer stays 0 and is refused by the
+            // caller exactly as an absent header is -- there is no reading of a malformed
+            // publication that is safer than declining to adopt.
+            *capture->caGeneration = std::strtoll(data + caGenerationPrefixLength, nullptr, 10);
         }
         else if (total > datePrefixLength && strncasecmp(data, "Date:", datePrefixLength) == 0)
         {

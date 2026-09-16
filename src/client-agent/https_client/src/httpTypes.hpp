@@ -199,6 +199,8 @@ struct HttpResponse
     TransportStatus status {TransportStatus::OtherError};
     long httpCode {0};
     long retryAfterSeconds {0}; ///< Parsed Retry-After header (0 = absent).
+    std::int64_t caGeneration {0}; ///< Parsed Wazuh-CA-Generation header (0 = absent or
+    ///< not a positive integer). Only ever set on GET /cacerts.
     std::time_t serverDateSeconds {0}; ///< Parsed Date header, manager's clock at
     ///< response time (0 = absent/unparsed). Every response the manager's
     ///< transport builds carries one, including every 401 -- RetrySender's
