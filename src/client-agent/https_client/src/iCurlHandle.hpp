@@ -72,6 +72,10 @@ struct HeaderCapture
 {
     long* retryAfter {nullptr};
     std::time_t* serverDate {nullptr};
+    /// Wazuh-CA-Generation on a GET /cacerts: the publication the answering node vouches for.
+    /// Left at 0 when the header is absent, which is what a manager predating #39321 sends and
+    /// is never adopted either way.
+    std::int64_t* caGeneration {nullptr};
 };
 
 /**

@@ -16,17 +16,18 @@
 #include <utility>
 
 CacertsClient::CacertsClient(const ModuleConfig& config, IHttpPerformer& performer, const IFsProbe& fsProbe,
-                             LogFn logFn)
+                             LogFn logFn, bool unverifiedByDesign)
     : m_config(config)
     , m_performer(performer)
     , m_fsProbe(fsProbe)
     , m_logFn(std::move(logFn))
+    , m_unverifiedByDesign(unverifiedByDesign)
 {
 }
 
 HttpResponse CacertsClient::fetch()
 {
-    if (!m_config.validateTransport(m_fsProbe, m_logFn, /*unverifiedByDesign=*/true))
+    if (!m_config.validateTransport(m_fsProbe, m_logFn, m_unverifiedByDesign))
     {
         HttpResponse response;
         response.status = TransportStatus::TlsFail;
