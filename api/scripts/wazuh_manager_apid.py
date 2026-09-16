@@ -95,21 +95,37 @@ def configure_ssl(params):
 
 
 def warn_about_default_passwords():
-    """Log a warning for each default API user that still has the password shipped with the package.
+    """Log a warning for each default API user whose generated password has not been retrieved yet.
 
-    The API is started either way: the default credentials are documented, and refusing to serve
-    would break the deployments that configure them after the first start.
+    The API is started either way: the disclosure file is documented, and refusing to serve would
+    break the deployments that read it and change the password after the first start.
     """
+    change_password = f"'{os.path.join(common.WAZUH_PATH, 'bin', 'rbac_control')} change-password'"
+
+    # Independent checks: an unreadable disclosure file must not suppress the shipped-password warning.
     try:
         users = get_users_with_default_password()
     except Exception as exc:
-        logger.debug(f'Could not check whether the default API users keep their default password: {exc}')
-        return
+        logger.debug(f'Could not check whether the default API users still have an undisclosed '
+                     f'generated password: {exc}')
+        users = []
 
     for username in users:
-        logger.warning(f"The '{username}' API user still has its default password. Anyone able to reach the API "
-                       f"can use it. Change it with "
-                       f"'{os.path.join(common.WAZUH_PATH, 'bin', 'rbac_control')} change-password'")
+        logger.warning(f"The '{username}' API user has a generated password that has not been retrieved yet. "
+                       f"Read it from '{DEFAULT_PASSWORDS_FILE}', then change it with {change_password}")
+
+    try:
+        legacy_users = get_users_with_legacy_password()
+    except Exception as exc:
+        logger.debug(f'Could not check whether the default API users keep a shipped password: {exc}')
+        legacy_users = []
+
+    # The migration preserves the default users, so an installation predating generation keeps its shipped
+    # password and never gets a disclosure file for the check above to report on.
+    for username in legacy_users:
+        logger.warning(f"The '{username}' API user still has the password this installation shipped with, "
+                       f"which is public. Anyone able to reach the API can use it. Change it with "
+                       f"{change_password}")
 
 
 def start(params: dict):
@@ -125,10 +141,34 @@ def start(params: dict):
     params : dict
         uvicorn parameter configuration dictionary.
     """
+    # Decides what can be rolled back below: the migration branch replaces the database in place.
+    database_existed = os.path.exists(DB_FILE)
+
     try:
-        check_database_integrity()
+        generated_passwords = check_database_integrity()
     except Exception as db_integrity_exc:
         raise APIError(2012, details=str(db_integrity_exc)) from db_integrity_exc
+
+    if not database_existed and not generated_passwords:
+        # Every default user was pre-seeded, so a leftover file would name passwords that no longer work.
+        clear_stale_disclosure()
+
+    try:
+        disclose_default_passwords(generated_passwords)
+    except Exception as disclosure_exc:
+        # A fresh database holds passwords nobody has seen; leaving it makes the next start serve with
+        # credentials recorded nowhere. Only ever on that branch: a migration has already replaced the old
+        # database through `safe_move`, so dropping the result would destroy the RBAC it just carried over.
+        if generated_passwords and not database_existed:
+            try:
+                os.remove(DB_FILE)
+            except OSError as remove_exc:
+                logger.error(f"Could not remove '{DB_FILE}' after failing to disclose the generated "
+                             f"passwords. It holds credentials that were never written down; remove it "
+                             f"before starting again, or set them with "
+                             f"'{os.path.join(common.WAZUH_PATH, 'bin', 'rbac_control')} change-password'. "
+                             f"Error: {remove_exc}")
+        raise APIError(2012, details=str(disclosure_exc)) from disclosure_exc
 
     warn_about_default_passwords()
 
@@ -306,8 +346,9 @@ if __name__ == '__main__':
     from connexion.options import SwaggerUIOptions
     from content_size_limit_asgi.errors import ContentSizeExceeded
     from wazuh.core import common, pyDaemonModule, utils
-    from wazuh.core.security import get_users_with_default_password
-    from wazuh.rbac.orm import check_database_integrity
+    from wazuh.core.security import get_users_with_default_password, get_users_with_legacy_password, \
+        disclose_default_passwords, clear_stale_disclosure
+    from wazuh.rbac.orm import check_database_integrity, DB_FILE, DEFAULT_PASSWORDS_FILE
 
     from api import __path__ as api_path
     from api import error_handler
