@@ -304,9 +304,11 @@ https://www.gnu.org/licenses/gpl.html\n"
  * WAZUH_ENROLLMENT_TOKEN_PATH writes at install time. w_agent_token_bootstrap() reads it once,
  * before AGENT_ANCHOR_CA exists, and deletes it once a committed success is already in place
  * (an anchor on disk, or a non-empty KEYS_FILE) or once this run's own bootstrap succeeds --
- * kept on disk through every failure, permanent or transient, since a failure is exactly what
- * makes a later attempt worth retrying. See token_bootstrap.c. Relative, same convention as
- * AGENT_ANCHOR_CA above. */
+ * kept on disk through almost every failure, permanent or transient, since a failure is usually
+ * exactly what makes a later attempt worth retrying. The one exception is a 403 in which authd
+ * names this token itself unknown, revoked or out of uses (#39064): no later attempt can turn
+ * that into a success, so it is deleted rather than re-presented to the same refusal on every
+ * restart. See token_bootstrap.c. Relative, same convention as AGENT_ANCHOR_CA above. */
 #ifndef WIN32
 #define AGENT_ENROLLMENT_TOKEN_FILE "etc/enrollment_token"
 #else

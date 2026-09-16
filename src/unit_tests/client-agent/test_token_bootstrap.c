@@ -708,7 +708,7 @@ static void test_fatal_token_refusal_discards_the_dead_token(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_any(__wrap__merror, formatted_msg);
 
-    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), -1);
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
     assert_int_equal(g_enroll_call_count, 1);
 
     /* The point of the test. */
@@ -740,7 +740,7 @@ static void test_disabled_enrollment_keeps_the_token(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_any(__wrap__minfo, formatted_msg);
 
-    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), -1);
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
     assert_int_equal(g_enroll_call_count, 1);
 
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
