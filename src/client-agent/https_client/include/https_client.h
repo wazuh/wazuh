@@ -165,6 +165,14 @@ typedef struct hc_config_t
     ///< agent.config_hash on every Notify;
     ///< a mismatch triggers /download.
 
+    int64_t ca_publication;       ///< Publication recorded with the installed CA bundle, or -1
+    ///< when it carries none (a fresh install, a store placed
+    ///< out of band, or one written before #39321). Compared
+    ///< against the manager-reported ca_generation on every
+    ///< Notify; a higher one triggers a verified /cacerts
+    ///< refresh. The seed only: the module tracks it from
+    ///< here on, since it changes when a bundle is adopted.
+
     uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
     uint32_t stateful_timeout_ms; ///< Large transfers (/stateful, /download);
     ///< 0 -> 90000.

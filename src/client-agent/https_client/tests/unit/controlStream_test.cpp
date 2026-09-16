@@ -92,6 +92,7 @@ namespace
                 , m_config(makeConfig())
                 , m_spoolFactory(::testing::TempDir())
                 , m_configHash("abc")
+                , m_caPublication(1789000010)
                 , m_authGate(m_sink, [] {})
             , m_stream(m_config,
                        m_performer,
@@ -101,6 +102,7 @@ namespace
                        m_sink,
                        m_spoolFactory,
                        m_configHash,
+                       m_caPublication,
                        m_cluster,
                        m_authGate,
                        m_compressionGate,
@@ -130,6 +132,7 @@ namespace
             MockHttpPerformer m_performer;
             TempSpoolFactory m_spoolFactory;
             ConfigHashState m_configHash;
+            CaPublicationState m_caPublication;
             ClusterIdentity m_cluster;
             AuthGate m_authGate;
             CompressionGate m_compressionGate;
@@ -1406,6 +1409,83 @@ TEST_F(ControlStreamTest, AFailingShutdownDoesNotCountTowardTheThreshold)
 
     m_stream.step(m_waiter);
     EXPECT_EQ(1, pauses); // Two real steps are still what arms it.
+}
+
+/* The fixture's agent holds publication 1789000010, so a higher one is a refresh to arm. */
+TEST_F(ControlStreamTest, NotifyWithAHigherCaGenerationArmsARefresh)
+{
+    const std::string notify = R"({"status":"ok","ca_generation":1789000012})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify.
+
+    EXPECT_EQ(1789000012, m_caPublication.pending());
+    EXPECT_EQ(1789000010, m_caPublication.local()); // Nothing is installed by observing.
+}
+
+TEST_F(ControlStreamTest, NotifyWithALowerCaGenerationIsIgnored)
+{
+    const std::string notify = R"({"status":"ok","ca_generation":1789000009})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
+
+    EXPECT_EQ(0, m_caPublication.pending());
+}
+
+/* A manager predating #39321 says nothing about CA bundles, which is not the same as a manager
+ * reporting that nobody has published one -- but both leave the trust store alone. */
+TEST_F(ControlStreamTest, NotifyWithoutCaGenerationArmsNothing)
+{
+    const std::string notify = R"({"status":"ok"})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
+
+    EXPECT_EQ(0, m_caPublication.pending());
+}
+
+TEST_F(ControlStreamTest, NotifyWithAZeroOrNullCaGenerationArmsNothing)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"status":"ok","ca_generation":0})")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"status":"ok","ca_generation":null})")))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter); // 0: a bundle nobody published.
+    m_stream.step(m_waiter); // null: no servable bundle at all.
+
+    EXPECT_EQ(0, m_caPublication.pending());
+}
+
+/* Tolerant like the rest of the Notify body: a field of the wrong type is the absence it
+ * effectively is, and must not stop the agent reading the tasks alongside it. */
+TEST_F(ControlStreamTest, NotifyWithANonIntegerCaGenerationArmsNothing)
+{
+    const std::string notify = R"({"status":"ok","ca_generation":"latest"})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
+
+    EXPECT_EQ(0, m_caPublication.pending());
 }
 
 TEST_F(ControlStreamTest, NotifyWithVdFeedOffsetObservesIt)

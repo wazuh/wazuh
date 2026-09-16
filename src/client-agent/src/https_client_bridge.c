@@ -43,6 +43,7 @@
 
 #include "agentd.h" /* pulls defs.h (__wazuh_version), sec.h (keys), client-config.h (agt) */
 #include "https_client.h"
+#include "ca_publication.h"
 #include "sha256_op.h" /* OS_SHA256_File(): config_checksum seed, matching the module's own hash space */
 #include "syscheck_op.h" /* ag_send_syscheck: the FIM leg of the sync answer */
 #include "wmodules.h"    /* wmcom_send: the leg for every other module */
@@ -1914,6 +1915,17 @@ static bool bridge_build_config(hc_config_t *config)
     if (OS_SHA256_File(SHAREDCFG_FILE, config_sha256, OS_BINARY) == 0) {
         strncpy(config->config_checksum, config_sha256, sizeof(config->config_checksum) - 1);
     }
+
+    /* Seeds CaPublicationState the same way: the publication recorded in the trust store the
+     * agent is about to verify against, read from the same path the transport will hand libcurl
+     * so the two can never disagree about which file is meant. Read fresh here rather than
+     * cached, because a fresh module instance is exactly the moment a bundle adopted by the
+     * previous one has to be picked up.
+     *
+     * W_CA_PUBLICATION_UNKNOWN for a store carrying none -- a bootstrapped anchor, one placed
+     * out of band, or one written before #39321 -- which is what makes the agent re-anchor on
+     * the first publication the manager advertises instead of never updating again. */
+    config->ca_publication = w_ca_publication_read(config->ca_path);
 
     /* Stateful sync sessions arrive on a separate STREAM socket so a whole
      * (multi-MB) session bypasses the 64 KB DGRAM event queue; the module

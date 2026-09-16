@@ -60,6 +60,9 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.configReportIntervalS = orDefault<uint32_t>(config.config_report_interval_s, 3600);
     typed.version = boundedString(config.version, sizeof(config.version));
     typed.configChecksum = boundedString(config.config_checksum, sizeof(config.config_checksum));
+    // Anything but a positive publication means none is recorded; the module treats them
+    // alike and re-anchors on the first one the manager advertises.
+    typed.caPublication = config.ca_publication > 0 ? config.ca_publication : CA_PUBLICATION_UNKNOWN;
     typed.requestTimeoutMs = orDefault<uint32_t>(config.request_timeout_ms, 10000);
     typed.statefulTimeoutMs = orDefault<uint32_t>(config.stateful_timeout_ms, 90000);
     typed.backoffBaseMs = orDefault<uint32_t>(config.backoff_base_ms, 1000);

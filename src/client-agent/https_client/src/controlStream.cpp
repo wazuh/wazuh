@@ -154,7 +154,8 @@ namespace
 ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& performer,
                              const ISigner& signer, IClock& clock, IRandom& random,
                              ICallbackSink& sink, ISpoolFileFactory& spoolFactory,
-                             ConfigHashState& configHash, ClusterIdentity& cluster,
+                             ConfigHashState& configHash, CaPublicationState& caPublication,
+                             ClusterIdentity& cluster,
                              AuthGate& authGate, CompressionGate& compressionGate,
                              ITaskIdStore& taskStore, IVdOffsetStore& vdOffsetStore,
                              std::function<std::string()> collectHost)
@@ -167,6 +168,7 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
     , m_fetcher(config, performer, signer, clock, random, spoolFactory, authGate, compressionGate)
     , m_wpkFetcher(config, performer, signer, clock, random, spoolFactory, authGate, compressionGate)
     , m_configHash(configHash)
+    , m_caPublication(caPublication)
     , m_cluster(cluster)
     , m_authGate(authGate)
     , m_taskStore(taskStore)
@@ -473,6 +475,27 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
         maybeReportAgentGroups(rawGroupsCsv(*agent));
     }
 
+    // Top-level (not nested under "agent"), like settings_hash: the publication of the CA
+    // bundle this node serves and vouches for. Absent means a manager predating #39321, which
+    // is a different thing from a manager reporting 0 (a bundle nobody published) -- the first
+    // says nothing about CA bundles at all, so both are inaction but neither is an error.
+    const auto caGeneration = parsed.find("ca_generation");
+
+    if (caGeneration == parsed.end() || caGeneration->is_null())
+    {
+        maybeAdoptCaPublication(std::nullopt);
+    }
+    else if (caGeneration->is_number_integer())
+    {
+        maybeAdoptCaPublication(caGeneration->get<std::int64_t>());
+    }
+    else
+    {
+        // Present but not an integer: not something to guess a publication out of, and treated
+        // as the absence it effectively is rather than as a reason to stop reading the body.
+        maybeAdoptCaPublication(std::nullopt);
+    }
+
     // Top-level (not nested under "agent"): the manager's current VD feed
     // offset, when VD is enabled on the node that answered. Absent is left
     // alone -- unlike config_hash/settings_hash, a missing field must NOT be
@@ -484,6 +507,22 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
     {
         maybeRequestVdRescan(vdFeedOffset->get<uint64_t>(), waiter);
     }
+}
+
+void ControlStream::maybeAdoptCaPublication(std::optional<std::int64_t> advertised)
+{
+    if (!m_caPublication.observe(advertised))
+    {
+        return;
+    }
+
+    // Logged on the observation that arms the refresh, not on every notify that raises the
+    // target: at the keepalive cadence the latter would be a line every ten seconds for as long
+    // as a rotation is in flight.
+    LOGFN_INFO(m_logFn,
+               "Manager advertises CA bundle publication %lld; the agent holds %lld. A refresh is due.",
+               static_cast<long long>(m_caPublication.pending()),
+               static_cast<long long>(m_caPublication.local()));
 }
 
 void ControlStream::maybeRequestVdRescan(uint64_t offset, Waiter& waiter)
