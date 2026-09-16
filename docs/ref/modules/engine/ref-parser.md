@@ -1423,7 +1423,7 @@ deny from <src.ip>
 >[!NOTE]
 > Both forms are used to parse logs like `deny from 66.249.66.167` to extract and store the IP address in src.ip.
 
-### Example withot explicit storage (Common case)
+### Example without explicit storage (Common case)
 
 **Parser configuration**
 
@@ -1875,7 +1875,7 @@ Windows event logs which often contain complex and repetitive tag structures.
 - XML attributes are prefixed with '@' and integrated into their respective JSON objects.
 - Text within XML elements is identified with a '#text' key in the JSON output. If no text is present, the key is ignored.
 - Ignores the root 'Event' object and maps 'Data' elements using their 'Name' attributes as keys, avoiding array
-  tructures for multiple data elements and directly integrating their values into the JSON output.
+  structures for multiple data elements and directly integrating their values into the JSON output.
 
 - End token is required.
 

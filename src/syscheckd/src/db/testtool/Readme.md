@@ -44,5 +44,5 @@ Where:
 ```
 ./fimdb_test_tool -c config.json -a input1.json,input2.json,input3.json -o ./output
 ```
-5) Considering the example above all actions outpus will be located in ./output folder in the following format: action_1.json, action_2.json ... action_n.json where 'n' will be the number of json files passed as part of the argument "-a".
+5) Considering the example above all actions outputs will be located in ./output folder in the following format: action_1.json, action_2.json ... action_n.json where 'n' will be the number of json files passed as part of the argument "-a".
 
