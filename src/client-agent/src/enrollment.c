@@ -180,9 +180,7 @@ STATIC int w_enrollment_load_reenroll_credential(w_enroll_request_t *out) {
         goto end;
     }
 
-    for (i = 0; i < sizeof(key); i++) {
-        snprintf(key_hex + (i * 2), 3, "%02x", key[i]);
-    }
+    print_hex_string((const char *) key, (unsigned int) sizeof(key), key_hex, (unsigned int) sizeof(key_hex));
 
     os_strdup(id, out->enroll_kid);
     os_strdup(key_hex, out->enroll_key_hex);

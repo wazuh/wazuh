@@ -782,6 +782,10 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_string_equal(g_enroll_request.password, "");
     assert_int_equal((int) strlen(g_enroll_request.enroll_kid), 22);
     assert_int_equal((int) strlen(g_enroll_request.enroll_key_hex), 64);
+    /* Content, not just length: the manager verifies the bearer against a key it derives itself, so
+     * an encoder that emitted the right number of wrong characters -- uppercase, most plausibly --
+     * would fail authentication in the field while passing a length check here. */
+    assert_int_equal((int) strspn(g_enroll_request.enroll_key_hex, "0123456789abcdef"), 64);
 
     /* The anchor is handed to root and only shares its group, so the user the agent drops to
      * can read the certificate authority it verifies against without being able to replace

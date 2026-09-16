@@ -102,19 +102,6 @@ static int buf_append_str(etoken_buf *buf, const char *text)
     return buf_append(buf, text, strlen(text));
 }
 
-/* Lowercase hexadecimal of a byte string. `out` needs 2 * len + 1 bytes */
-static void etoken_hex(const uint8_t *in, size_t len, char *out)
-{
-    static const char digits[] = "0123456789abcdef";
-    size_t i;
-
-    for (i = 0; i < len; i++) {
-        out[i * 2] = digits[in[i] >> 4];
-        out[i * 2 + 1] = digits[in[i] & 0x0F];
-    }
-
-    out[len * 2] = '\0';
-}
 
 /* Characters allowed in a path prefix segment and in an IPv6 zone identifier */
 static int adr_is_prefix_char(char c)
@@ -673,7 +660,7 @@ static int describe_append_fingerprint(etoken_buf *buf, X509 *cert)
 
     SHA256(der, (size_t) der_len, digest);
     OPENSSL_free(der);
-    etoken_hex(digest, sizeof(digest), hex);
+    print_hex_string((const char *) digest, (unsigned int) sizeof(digest), hex, (unsigned int) sizeof(hex));
 
     if (buf_append_str(buf, "ca sha256: ") != 0 || buf_append_str(buf, hex) != 0) {
         return -1;
@@ -733,7 +720,7 @@ char *w_etoken_describe(const w_etoken_t *token)
     if (token->has_pin) {
         char hex[W_ETOKEN_PIN_BYTES * 2 + 1];
 
-        etoken_hex(token->pin, W_ETOKEN_PIN_BYTES, hex);
+        print_hex_string((const char *) token->pin, W_ETOKEN_PIN_BYTES, hex, (unsigned int) sizeof(hex));
 
         if (buf_append_str(&buf, "pin: ") != 0 || buf_append_str(&buf, hex) != 0 ||
             buf_append_str(&buf, "\n") != 0) {

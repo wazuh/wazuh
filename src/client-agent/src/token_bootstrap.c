@@ -22,7 +22,6 @@
 #endif
 
 STATIC char *w_token_bootstrap_read_token(const char *path);
-STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out);
 STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, size_t buf_size,
                                                  const char **filename);
 STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid);
@@ -67,21 +66,6 @@ STATIC char *w_token_bootstrap_read_token(const char *path) {
     char *token;
     os_strdup(buf, token);
     return token;
-}
-
-/* Lowercase hexadecimal of a byte string. `out` needs 2 * len + 1 bytes. Not worth pulling in a
- * shared helper for: enrollment_token.c has an identical static one of its own, scoped the same
- * way. */
-STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out) {
-    static const char digits[] = "0123456789abcdef";
-    size_t i;
-
-    for (i = 0; i < len; i++) {
-        out[i * 2] = digits[in[i] >> 4];
-        out[i * 2 + 1] = digits[in[i] & 0x0F];
-    }
-
-    out[len * 2] = '\0';
 }
 
 /**
@@ -569,7 +553,8 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
         } else {
             strncpy(enroll_request.enroll_kid, kid, sizeof(enroll_request.enroll_kid) - 1);
             os_free(kid);
-            w_token_bootstrap_hex(derived_key, sizeof(derived_key), enroll_request.enroll_key_hex);
+            print_hex_string((const char *) derived_key, (unsigned int) sizeof(derived_key),
+                             enroll_request.enroll_key_hex, (unsigned int) sizeof(enroll_request.enroll_key_hex));
             credential_ready = true;
         }
 
