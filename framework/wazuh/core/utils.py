@@ -346,7 +346,8 @@ def get_values(o: object, fields: list = None) -> list:
             if not fields or key in fields:
                 strings.extend(get_values(obj[key]))
     else:
-        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode) else str(obj).lower())
+        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode)
+                       else ('' if obj is None else str(obj).lower()))
 
     return strings
 
@@ -967,17 +968,31 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
         value1 = [value1] if not isinstance(value1, list) else value1
         for val in value1:
             if op == '~':
-                # value1 should be str if operator is '~'
-                val = val if isinstance(val, str) else str(val)
+                # value1 should be str if operator is '~'. None never matches a substring search,
+                # and a dict/list keeps its own '~' semantics (key/element membership) -- only the
+                # scalar types that would otherwise raise inside `in` (bool, int, float, datetime)
+                # need casting to str.
+                if val is None:
+                    continue
+                if isinstance(val, (bool, int, float, datetime)):
+                    val = str(val)
                 if value2 in val:
                     return True
             else:
+                if val is None and op in ('<', '>'):
+                    # a present-but-null field can never satisfy an ordering comparison; skip it
+                    # instead of letting operator.lt/gt raise and failing the whole query for every
+                    # other, well-typed record. `=`/`!=` don't need this -- None == x / None != x
+                    # never raise, they just correctly evaluate to False/True.
+                    continue
                 # cast value2 to integer if value1 is integer
                 value2 = check_date_format(value2)
                 if type(value2) == datetime:
                     val = check_date_format(val)
                 value2 = int(value2) if type(val) == int else value2
                 if type(val) == bool and isinstance(value2, str):
+                    if value2.lower() not in ('true', 'false', '1', '0'):
+                        raise ValueError(f"'{value2}' is not a boolean")
                     value2 = value2.lower() in ('true', '1')
                 if op == '!=' and type(value2) == datetime and type(val) != datetime:
                     # a date-shaped literal against a field whose value isn't itself a date (bool,
@@ -1072,15 +1087,40 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
                 # check if a clause is satisfied
                 match_candidates = list()
+                # get_match_candidates/deepcopy run outside the try below: a failure here is a bug
+                # in candidate lookup itself, not a type-mismatched query literal, so it must not be
+                # relabeled as a WazuhError(1407) client error.
+                has_nested_match = field_subnames and field_name in elem and \
+                    get_match_candidates(deepcopy(elem[field_name]), field_subnames.split('.'), match_candidates)
                 try:
-                    if field_subnames and field_name in elem and \
-                            get_match_candidates(deepcopy(elem[field_name]), field_subnames.split('.'),
-                                                  match_candidates):
-                        if any([check_clause(candidate, op, value) for candidate in match_candidates if candidate]):
+                    if has_nested_match:
+                        # a sibling candidate the literal's type cannot address (e.g. an int
+                        # candidate against a str literal) must not abort a match already found,
+                        # or still reachable, through another candidate -- it should be treated as
+                        # "this candidate doesn't match" the same way a None candidate already is.
+                        # 1407 is only raised below when every non-null candidate hit that case, so
+                        # a genuinely malformed query (no candidate of the right type exists at all)
+                        # is still reported instead of silently excluding the record.
+                        matched, evaluated, saw_type_mismatch = False, False, False
+                        for candidate in match_candidates:
+                            if candidate is None:
+                                continue
+                            try:
+                                candidate_matches = check_clause(candidate, op, value)
+                            except (TypeError, ValueError):
+                                saw_type_mismatch = True
+                                continue
+                            evaluated = True
+                            if candidate_matches:
+                                matched = True
+                                break
+                        if matched:
                             continue
-                    else:
-                        if field_name in elem and check_clause(elem[field_name], op, value):
-                            continue
+                        if saw_type_mismatch and not evaluated:
+                            raise ValueError(f"'{value}' is not compatible with any candidate of "
+                                              f"'{field_name}.{field_subnames}'")
+                    elif field_name in elem and check_clause(elem[field_name], op, value):
+                        continue
                 except (TypeError, ValueError):
                     # value is not compatible with the target field's type (e.g. a non-numeric
                     # literal against an int field, or a non-date literal against a datetime field)

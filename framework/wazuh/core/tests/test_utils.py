@@ -403,11 +403,13 @@ def test_get_values(object, fields):
     ({'revoked': True}, ['true']),
     ({'revoked': False}, ['false']),
     ({'count': 3}, ['3']),
-    ({'description': None}, ['none'])
+    # None renders as '', not the string 'none' -- otherwise search=no/none would match
+    # every record with a null field.
+    ({'description': None}, [''])
 ])
 def test_get_values_non_str(object, expected):
     """Test that get_values lowercases non-str values, which search_array compares against a
-    lowercased query."""
+    lowercased query, and that a None value never becomes a searchable substring."""
     assert utils.get_values(o=object) == expected
 
 
@@ -1860,8 +1862,6 @@ bool_typed_input_array = [
     ('revoked=1', ['second']),
     ('revoked=0', ['first']),
     ('revoked=true;created>2026-03-01', ['second']),
-    # Any literal other than true/false/1/0 is read as false, so it matches the unset records.
-    ('revoked=maybe', ['first']),
     # A date-shaped literal is parsed as a date before the boolean coercion, so it matches
     # nothing at all -- but it no longer raises.
     ('revoked=2026-01-01', [])
@@ -1871,6 +1871,13 @@ def test_filter_array_by_query_typed_fields_bool(q, expected_ids):
     result = utils.filter_array_by_query(q, bool_typed_input_array)
 
     assert [item['id'] for item in result] == expected_ids
+
+
+def test_filter_array_by_query_typed_fields_bool_rejects_unrecognized_literal():
+    """A literal other than true/false/1/0 against a bool field raises WazuhError(1407) instead
+    of silently being read as false (the complement of what was asked)."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query('revoked=maybe', bool_typed_input_array)
 
 
 @pytest.mark.parametrize('q, array', [
@@ -1909,8 +1916,8 @@ def test_filter_array_by_query_date_shaped_literal_eq_mismatched_field_unaffecte
      ['a']),
 ])
 def test_filter_array_by_query_contains_non_str(q, array, expected_ids):
-    """Test that `~` no longer raises TypeError on a field whose value is a real bool or
-    datetime object -- it now casts any non-str value to str, the same as it already did for int."""
+    """Test that `~` renders a bool or datetime value as text before the substring match, the way
+    it already does for an int; a dict or a list keeps its own membership semantics."""
     result = utils.filter_array_by_query(q, array)
 
     assert [item['id'] for item in result] == expected_ids
@@ -1937,6 +1944,69 @@ def test_filter_array_by_query_type_mismatch(q):
     instead of an unhandled TypeError/ValueError."""
     with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
         utils.filter_array_by_query(q, type_mismatch_input_array)
+
+
+# One record has a null `description`; the other has a real one. Used to check that a present-but-
+# null field under an ordering operator doesn't poison the whole query -- it should just not match,
+# the same as a record missing the field entirely, instead of raising WazuhError(1407) for every
+# record because ONE of them can't satisfy the comparison.
+null_field_input_array = [
+    {'id': 'null_description', 'description': None},
+    {'id': 'has_description', 'description': 'b'},
+]
+
+
+@pytest.mark.parametrize('q, expected_ids', [
+    ('description>a', ['has_description']),
+    ('description<c', ['has_description']),
+    # `=`/`!=` never raise on None to begin with (operator.eq/ne accept any types), so a null
+    # field already behaved correctly for these -- kept here to pin that it still does.
+    ('description=b', ['has_description']),
+    ('description!=b', ['null_description']),
+])
+def test_filter_array_by_query_null_field_ordering(q, expected_ids):
+    """A null field under `<`/`>` is excluded like a missing field, not a query-wide 400."""
+    result = utils.filter_array_by_query(q, null_field_input_array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
+def test_filter_array_by_query_nested_falsy_candidate():
+    """A nested field's `False`/`0`/`''` value must still reach check_clause -- only a `None`
+    candidate (the nested field is itself null) should be dropped before comparing."""
+    array = [
+        {'id': 'disabled', 'config': {'enabled': False}},
+        {'id': 'enabled', 'config': {'enabled': True}},
+        {'id': 'null_nested', 'config': {'enabled': None}},
+    ]
+
+    result = utils.filter_array_by_query('config.enabled=false', array)
+
+    assert [item['id'] for item in result] == ['disabled']
+
+
+@pytest.mark.parametrize('array', [
+    # matching candidate first
+    [{'id': 'a', 'x': [{'y': 'abc'}, {'y': 0}]}],
+    # matching candidate last
+    [{'id': 'a', 'x': [{'y': 0}, {'y': 'abc'}]}],
+])
+def test_filter_array_by_query_nested_mixed_type_candidates_matches(array):
+    """A sibling candidate the literal's type cannot address (int vs. a str literal) must not
+    abort a match still reachable through another, differently-typed candidate, regardless of
+    which one is evaluated first."""
+    result = utils.filter_array_by_query('x.y=abc', array)
+
+    assert [item['id'] for item in result] == ['a']
+
+
+def test_filter_array_by_query_nested_mixed_type_candidates_no_match_still_raises():
+    """When every non-null candidate's type mismatches the literal, the clause is still
+    malformed -- WazuhError(1407) is raised rather than silently excluding the record."""
+    array = [{'id': 'a', 'x': [{'y': 0}, {'y': 5}]}]
+
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query('x.y=abc', array)
 
 
 @pytest.mark.parametrize('select, required_fields, expected_result', [

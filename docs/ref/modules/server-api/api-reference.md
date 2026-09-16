@@ -498,12 +498,27 @@ Endpoints whose records are filtered in memory rather than in SQL — `/agents/e
 among them — accept `=`, `!=`, `<`, `>` and `~` only, and read the literal as the type of the field
 it is compared against. With `=`, `!=`, `<` and `>`, a date field takes `YYYY-MM-DD`,
 `YYYY-MM-DDTHH:MM:SSZ`, `YYYY-MM-DD HH:MM:SS` or `YYYY-MM-DDTHH:MM:SS.ffffffZ`
-(`q=created>2026-01-01`).
+(`q=created>2026-01-01`). A date's stored value keeps second-level precision, so `=`/`!=` need the
+full timestamp to match a specific record (`q=created=2026-01-01T00:00:00Z`); a bare `YYYY-MM-DD`
+parses as exact midnight UTC and matches only a record created at that instant. Bound a whole day
+with `<`/`>` instead. None of these patterns accept a numeric UTC offset, so a timestamp read back
+from a response body (`2026-01-01T00:00:00+00:00`) has to be rewritten with a literal `Z`
+(`2026-01-01T00:00:00Z`) before it is usable in `q` — passed back as-is, it is left as a plain
+string and compared against the field's real `datetime` value: `<`/`>` fail with a 400 (the
+comparison itself raises), `=` silently matches nothing, and `!=` silently matches every record
+instead of failing. This three-way inconsistency is a known gap in how an unparseable literal is
+handled here, separate from the type-mismatch case below.
 
 With `=` and `!=`, a boolean field takes `true`, `false`, `1` or `0` (`q=revoked=true`; any other
-literal is read as `false`, except a date-shaped one, which matches nothing). The `search`
-parameter is case-insensitive and matches the rendered value, so `search=true` also finds records
-whose boolean field is set.
+literal is rejected with a 400). A date-shaped literal against a boolean field is read as a date
+rather than an unrecognized literal, so it takes a different path than that 400: `=` matches
+nothing (a boolean is never a date), and `!=` is rejected with a 400 -- the same "field and literal
+are different types, so `!=` can't be evaluated safely" reasoning `<`/`>` already use for any
+non-date field, rather than falling through to Python's own unconditionally-true `!=` on mismatched
+types. The `search` parameter is case-insensitive and matches the
+rendered value, so `search=true` also finds records
+whose boolean field is set. `~` is case-sensitive on a boolean field, unlike `=`/`!=`/`search`: it
+matches the exact rendered value (`q=revoked~True`, `q=revoked~False`), not `true`/`false`.
 
 ### Examples
 

@@ -29,6 +29,25 @@ AUTHD_INTERNAL = 9001         # authd's own fault (a prep step failed, a dispatc
 # authd's own codes for these verbs start at 9000; anything below it comes from the framework's
 # socket layer (1013, 1014...), a different numbering space entirely.
 _AUTHD_CODE_FLOOR = 9000
+# Codes >= _AUTHD_CODE_FLOOR that are never the caller's fault even though they fall in the
+# native-code range, so the catch-all below must not turn them into a 400. Traced every *ierror
+# assignment local_dispatch()/local_token_create()/local_token_list()/local_token_revoke()/
+# local_token_purge() (local-server.c) can reach for these four verbs specifically:
+#   - 9001 (AUTHD_INTERNAL, above) is authd's own fault, not this set (kept as its own named check).
+#   - 9002 "Parsing JSON input" is raised at the top-level JSON envelope (an unparseable request or a
+#     missing/non-string `function`) and inside local_token_create()/local_token_purge() for an
+#     argument shape authd didn't expect. By the time a request reaches authd, connexion's own
+#     schema validation has already guaranteed every argument's type and `max_uses`'s bound, and
+#     `purge_tokens()` validates `scope` before calling authd at all -- so if this ever fires, the
+#     framework built a bad payload, not the caller.
+#   - 9003 "No such function" only fires for a `function` value none of the four verb branches
+#     recognize; every call site in this module sends one of the four hardcoded verb strings, never
+#     anything caller-influenced.
+#   - 9016 "Cannot communicate with master node" is raised only by add_clustered() (the *agent*-add
+#     forwarding path) -- no token verb's dispatch branch calls it, so it cannot occur here at all;
+#     excluded anyway since its meaning (a manager-side transport failure) would never be the
+#     caller's fault if some future refactor ever did wire it in.
+_AUTHD_FRAMEWORK_FAULT_CODES = frozenset({9002, 9003, 9016})
 _REFUSED_PREFIX = 'Enrollment token refused: '
 # The API's `timeframe` format (api/validator.py _timeframe_type), narrower than what
 # get_timeframe_in_seconds() takes: a single unit group, so `30d` but not `1d12h`.
@@ -65,8 +84,8 @@ def _authd_request(function: str, arguments: dict = None):
     WazuhInternalError(1771)
         authd applied the change in memory but could not write the store file.
     WazuhError(1773)
-        Any other authd-native code (>= 9000) that isn't authd's own internal fault, with the code
-        and authd's message as extra message.
+        Any other authd-native code (>= 9000) that isn't authd's own internal fault and isn't one of
+        _AUTHD_FRAMEWORK_FAULT_CODES, with the code and authd's message as extra message.
     WazuhException
         A framework-level failure talking to the socket, or `AUTHD_INTERNAL` (authd's own fault),
         as the socket layer or authd reported it.
@@ -101,12 +120,13 @@ def _authd_request(function: str, arguments: dict = None):
             # holds the intent and retries the write on its own, so this is an internal error the
             # caller should retry, not a 4xx (issue #39078, H04).
             raise WazuhInternalError(1771)
-        if e.code != AUTHD_INTERNAL and e.code >= _AUTHD_CODE_FLOOR:
+        if (e.code >= _AUTHD_CODE_FLOOR and e.code != AUTHD_INTERNAL
+                and e.code not in _AUTHD_FRAMEWORK_FAULT_CODES):
             # An authd-native code nobody mapped yet: the request reached authd and authd refused it,
             # so it is the caller's problem, not a communication failure. The raw code and message
-            # travel in `extra_message` so the specific condition stays visible. AUTHD_INTERNAL is
-            # excluded on purpose: it means authd's own dispatch failed, not that anything about the
-            # request was wrong, so it falls through to `raise e` below like any other communication
+            # travel in `extra_message` so the specific condition stays visible. AUTHD_INTERNAL and
+            # _AUTHD_FRAMEWORK_FAULT_CODES are excluded on purpose: neither means anything about the
+            # request was wrong, so both fall through to `raise e` below like any other communication
             # failure -- a generic 500, not a misleading 400.
             raise WazuhError(1773, extra_message=f'authd code {e.code}: {e.message}')
         raise e
