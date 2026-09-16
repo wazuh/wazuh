@@ -31,3 +31,4 @@ C:\Program Files (x86)\ossec-agent\active-response\bin\block-ip.exe,,,777,file,-
 C:\Program Files (x86)\ossec-agent\queue\syscollector\norm_config.json,,,666,file,-rw-rw-rw-,,
 C:\Program Files (x86)\ossec-agent\ruleset\sca\cis_win10_enterprise.yml,,,666,file,-rw-rw-rw-,,
 C:\Program Files (x86)\ossec-agent\VERSION.json,,,666,file,-rw-rw-rw-,,
+C:\Program Files (x86)\ossec-agent\ossec.log,,,666,file,-rw-rw-rw-,,
