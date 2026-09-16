@@ -186,25 +186,47 @@ Verify the server is running:
 sudo systemctl status wazuh-manager
 ```
 
-### Change the default API passwords
+### Retrieve and change the API passwords
 
-The manager ships two Server API users. Both are linked to the `administrator` role and both are created with a password equal to the username the first time the API starts (`framework/wazuh/rbac/default/users.yaml`):
+The manager creates two Server API users the first time the API starts, both linked to the `administrator` role:
 
-| User        | Default password | Used by                                                      |
-| ----------- | ---------------- | ------------------------------------------------------------ |
-| `wazuh`     | `wazuh`          | Operators and automation calling the Server API              |
-| `wazuh-wui` | `wazuh-wui`      | The Wazuh dashboard, to reach the Server API on port 55000   |
+| User        | Used by                                                      |
+| ----------- | ------------------------------------------------------------ |
+| `wazuh`     | Operators and automation calling the Server API              |
+| `wazuh-wui` | The Wazuh dashboard, to reach the Server API on port 55000   |
 
-While a user keeps its shipped password, `wazuh-manager-apid` says so on every start:
+Neither has a password until then. Each one gets a different randomly generated password, written **once** to `/var/wazuh-manager/api/configuration/security/wazuh-api-passwords.txt`, owned by `wazuh-manager` with mode `0400`:
+
+```bash
+sudo cat /var/wazuh-manager/api/configuration/security/wazuh-api-passwords.txt
+```
 
 ```
-WARNING: The 'wazuh' API user still has its default password. Anyone able to reach the API can use it.
-Change it with '/var/wazuh-manager/bin/rbac_control change-password'
+# Generated at installation. Retrieve these once, then change them with
+# 'bin/rbac_control change-password', and delete this file.
+wazuh: k4Tn-0rQeAs.7mLdV2xW1pBg
+wazuh-wui: 9fUzP_3hRmXq.tEwN6yA0sJv
 ```
 
-Change both right after the first start. A password must be 12 to 64 characters long and contain at least one uppercase letter, one lowercase letter, one digit and one non-alphanumeric character; the API rejects anything else with error `5009` (length) or `5007` (character classes).
+While that file exists, `wazuh-manager-apid` says so on every start:
 
-Run the following on the **master node**: authentication is always resolved there, so that is the database the API reads. Every node keeps its own `api/configuration/security/rbac.db` and the cluster does not synchronize it, so a worker still holds the shipped defaults; they stay unused while it is a worker, but they become live the moment it is promoted to master. Repeat the change on any node that may take that role.
+```
+WARNING: The 'wazuh' API user has a generated password that has not been retrieved yet. Read it from
+'/var/wazuh-manager/api/configuration/security/wazuh-api-passwords.txt', then change it with
+'/var/wazuh-manager/bin/rbac_control change-password'
+```
+
+Read it, then delete it. Keeping a plaintext administrator credential on disk is the only thing that file is for.
+
+**The password cannot be recovered once the file is gone.** `rbac.db` stores a scrypt hash, so there is no copy of the plaintext anywhere and nothing can reproduce it. If the file is lost before it was read, the API keeps serving with a password nobody knows; the way back in is `rbac_control change-password`, below, which never asks for the current one. Nothing regenerates the password on its own: doing so would rotate the credential the dashboard is already using and lock it out unasked.
+
+An installation upgraded from a version that shipped `wazuh`/`wazuh` and `wazuh-wui`/`wazuh-wui` keeps those passwords, because the RBAC migration preserves the default users. Such an installation gets no disclosure file, and `wazuh-manager-apid` warns about the shipped password itself on every start until it is changed.
+
+#### Changing them
+
+A password must be 12 to 64 characters long and contain at least one uppercase letter, one lowercase letter, one digit and one non-alphanumeric character; the API rejects anything else with error `5009` (length) or `5007` (character classes).
+
+Run the following on the **master node**: authentication is always resolved there, so that is the database the API reads. Every node keeps its own `api/configuration/security/rbac.db` and the cluster does not synchronize it. A worker's own database stays unused while it is a worker, but it becomes live the moment the node is promoted to master, with a password generated on that node and disclosed in its own file. Add `--local` to align a worker, which targets that node's database instead of the master's.
 
 ```bash
 sudo /var/wazuh-manager/bin/rbac_control change-password
@@ -230,10 +252,10 @@ echo '{"wazuh": "<NEW_WAZUH_PASSWORD>", "wazuh-wui": "<NEW_WAZUH_WUI_PASSWORD>"}
     | sudo /var/wazuh-manager/bin/rbac_control change-password --passwords-file -
 ```
 
-The same change can be made through the API, which is the option for automation. `wazuh` has ID `1` and `wazuh-wui` has ID `2` (`GET /security/users`). Change `wazuh-wui` first: changing a user's password invalidates every token that user holds, so once `wazuh`'s own password changes the token obtained below stops working.
+The same change can be made through the API, which is the option for automation. `wazuh` has ID `1` and `wazuh-wui` has ID `2` (`GET /security/users`). Change `wazuh-wui` first: changing a user's password invalidates every token that user holds, so once `wazuh`'s own password changes the token obtained below stops working. `WAZUH_API_PASSWORD` is `wazuh`'s current password, read from the disclosure file above.
 
 ```bash
-TOKEN=$(curl -s -k -u wazuh:wazuh -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+TOKEN=$(curl -s -k -u wazuh:"$WAZUH_API_PASSWORD" -X POST "https://localhost:55000/security/user/authenticate?raw=true")
 curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
     -d '{"password":"<NEW_WAZUH_WUI_PASSWORD>"}' "https://localhost:55000/security/users/2"
 curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
