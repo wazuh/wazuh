@@ -5,6 +5,7 @@
 import json
 import os
 import re
+import string
 from importlib import reload
 from unittest.mock import patch, call, MagicMock
 
@@ -40,7 +41,7 @@ def db_setup():
 
 
 @pytest.fixture(scope="function")
-def fresh_in_memory_db():
+def fresh_in_memory_db(tmp_path):
     # Clear mappers
     sqlalchemy_orm.clear_mappers()
 
@@ -53,7 +54,10 @@ def fresh_in_memory_db():
         orm.db_manager.connect(in_memory_db_path)
         orm.db_manager.create_database(in_memory_db_path)
 
-    yield orm
+    # Applied after the reload, which would otherwise restore the installed path: `check_database_integrity`
+    # reads the pre-seed file and removes it, and this host may have a manager installed.
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(tmp_path / "no-preseed.json")):
+        yield orm
 
     orm.db_manager.close_sessions()
 
@@ -660,6 +664,167 @@ def test_databasemanager_insert_default_resources(fresh_in_memory_db):
                == len(default_rules[next(iter(default_rules))])
 
 
+def test_databasemanager_insert_default_resources_generates_passwords(fresh_in_memory_db):
+    """Default users get a random, policy-compliant password when none is pre-seeded."""
+    generated = fresh_in_memory_db.db_manager.insert_default_resources(in_memory_db_path)
+
+    assert set(generated) == {"wazuh", "wazuh-wui"}
+    assert generated["wazuh"] != generated["wazuh-wui"]
+    for password in generated.values():
+        assert fresh_in_memory_db.USER_PASSWORD_POLICY.match(password)
+
+    with fresh_in_memory_db.AuthenticationManager(
+            fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as auth:
+        for username, password in generated.items():
+            assert auth.check_user(username, password)
+
+
+def test_databasemanager_insert_default_resources_preseeded(fresh_in_memory_db, tmp_path):
+    """A pre-seeded password is used instead of a generated one, and the file is consumed."""
+    preseed_file = tmp_path / "wazuh-preseeded-passwords.json"
+    preseed_file.write_text(json.dumps({"wazuh": "Pr3seeded-Passw0rd!"}))
+    preseed_file.chmod(0o600)
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(preseed_file)), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()):
+        preseeded = fresh_in_memory_db._load_preseeded_passwords(["wazuh", "wazuh-wui"])
+        generated = fresh_in_memory_db.db_manager.insert_default_resources(in_memory_db_path, preseeded)
+
+    # A partial pre-seed is valid: the user it does not name still gets a generated password
+    assert "wazuh" not in generated
+    assert "wazuh-wui" in generated
+
+    with fresh_in_memory_db.AuthenticationManager(
+            fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as auth:
+        assert auth.check_user("wazuh", "Pr3seeded-Passw0rd!")
+
+
+def test_consume_preseeded_passwords(fresh_in_memory_db, tmp_path):
+    """The pre-seed file is removed once used, and removing a missing one is not an error.
+
+    It carries a plaintext administrator credential, so keeping it would leave that credential on disk for
+    the life of the installation and re-apply it on any later reseed.
+    """
+    preseed_file = tmp_path / "wazuh-preseeded-passwords.json"
+    preseed_file.write_text("{}")
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(preseed_file)):
+        fresh_in_memory_db._consume_preseeded_passwords()
+        assert not preseed_file.exists()
+        fresh_in_memory_db._consume_preseeded_passwords()
+
+
+def test_load_preseeded_passwords_absent(fresh_in_memory_db, tmp_path):
+    """No pre-seed file at all is the normal case, and resolves to no passwords."""
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(tmp_path / "absent.json")):
+        assert fresh_in_memory_db._load_preseeded_passwords(["wazuh", "wazuh-wui"]) == {}
+
+
+@pytest.mark.parametrize("content,reason", [
+    ("not json", "not valid UTF-8 JSON"),
+    (b'\xff\xfe{\x00}\x00', "not valid UTF-8 JSON"),
+    ("[]", "does not hold a JSON object"),
+    ('{"wazuh": 123}', "does not satisfy the API password policy"),
+    ('{"wazuh": "too-short"}', "does not satisfy the API password policy"),
+    ('{"wazuh-wu": "Pr3seeded-Passw0rd!"}', "is not a default user"),
+])
+def test_load_preseeded_passwords_invalid(fresh_in_memory_db, tmp_path, content, reason):
+    """A pre-seed file that is present but unusable is an installation error, never a silent fallback.
+
+    Degrading to a generated password would leave whoever wrote the file convinced they had provisioned a
+    credential that does not exist, and the failure would only surface as a 401 much later.
+    """
+    preseed_file = tmp_path / "wazuh-preseeded-passwords.json"
+    preseed_file.write_bytes(content if isinstance(content, bytes) else content.encode())
+    preseed_file.chmod(0o600)
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(preseed_file)), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()):
+        with pytest.raises(fresh_in_memory_db.PreseededPasswordsError, match=reason):
+            fresh_in_memory_db._load_preseeded_passwords(["wazuh", "wazuh-wui"])
+
+
+def test_load_preseeded_passwords_untrusted_owner(fresh_in_memory_db, tmp_path):
+    """A pre-seed file owned by somebody other than root or the Wazuh user is refused.
+
+    It decides the administrator password of a fresh installation and lives in a group-writable directory.
+    """
+    preseed_file = tmp_path / "wazuh-preseeded-passwords.json"
+    preseed_file.write_text(json.dumps({"wazuh": "Pr3seeded-Passw0rd!"}))
+    preseed_file.chmod(0o600)
+
+    # Any uid that is neither 0 nor the file's real owner stands in for "written by somebody else"
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(preseed_file)), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid() + 1):
+        with pytest.raises(fresh_in_memory_db.PreseededPasswordsError, match="not owned by root"):
+            fresh_in_memory_db._load_preseeded_passwords(["wazuh", "wazuh-wui"])
+
+
+@pytest.mark.parametrize("mode", [0o620, 0o602, 0o666])
+def test_load_preseeded_passwords_untrusted_mode(fresh_in_memory_db, tmp_path, mode):
+    """A pre-seed file writable by its group or by others is refused, whoever owns it."""
+    preseed_file = tmp_path / "wazuh-preseeded-passwords.json"
+    preseed_file.write_text(json.dumps({"wazuh": "Pr3seeded-Passw0rd!"}))
+    preseed_file.chmod(mode)
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(preseed_file)), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()):
+        with pytest.raises(fresh_in_memory_db.PreseededPasswordsError, match="writable by its group"):
+            fresh_in_memory_db._load_preseeded_passwords(["wazuh", "wazuh-wui"])
+
+
+def test_generate_default_password(fresh_in_memory_db):
+    """`generate_default_password` always satisfies the API password policy, with no collisions."""
+    passwords = {fresh_in_memory_db.generate_default_password() for _ in range(1000)}
+
+    assert len(passwords) == 1000
+    for password in passwords:
+        assert fresh_in_memory_db.USER_PASSWORD_POLICY.match(password)
+        assert fresh_in_memory_db.USER_PASSWORD_MIN_LENGTH <= len(password) \
+               <= fresh_in_memory_db.USER_PASSWORD_MAX_LENGTH
+
+
+def test_generate_default_password_min_length(fresh_in_memory_db):
+    """The policy still holds at the minimum allowed length, where rejection sampling retries most often."""
+    for _ in range(100):
+        password = fresh_in_memory_db.generate_default_password(length=fresh_in_memory_db.USER_PASSWORD_MIN_LENGTH)
+
+        assert len(password) == fresh_in_memory_db.USER_PASSWORD_MIN_LENGTH
+        assert fresh_in_memory_db.USER_PASSWORD_POLICY.match(password)
+
+
+def test_generate_default_password_alphabet(fresh_in_memory_db):
+    """Generated passwords never leave the quoting-safe alphabet.
+
+    A character that is special in a YAML scalar, a shell word or a `sed` replacement is a provisioning
+    failure, not a stronger password. Nothing else pins this.
+    """
+    expected = set(string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_.+=')
+
+    for _ in range(1000):
+        password = fresh_in_memory_db.generate_default_password()
+
+        assert set(password) <= expected, f"unexpected character in {password!r}"
+
+
+def test_generate_default_password_starts_alphanumeric(fresh_in_memory_db):
+    """The first character is never punctuation: several YAML indicators are only special in that position."""
+    for _ in range(1000):
+        assert fresh_in_memory_db.generate_default_password()[0].isalnum()
+
+
+def test_generate_default_password_default_length(fresh_in_memory_db):
+    """The default length is the one the entropy figure in the design notes is computed from."""
+    assert len(fresh_in_memory_db.generate_default_password()) == 24
+
+
+@pytest.mark.parametrize("length", [1, 1000])
+def test_generate_default_password_invalid_length(fresh_in_memory_db, length):
+    """An out-of-bounds length is rejected."""
+    with pytest.raises(ValueError):
+        fresh_in_memory_db.generate_default_password(length=length)
+
+
 def test_databasemanager_get_table(fresh_in_memory_db):
     """Test `get_table` method for class `DatabaseManager`."""
     class EnhancedUser(fresh_in_memory_db.User):
@@ -740,11 +905,73 @@ def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move
         db_mock.assert_has_calls([
             call.connect(fresh_in_memory_db.DB_FILE),
             call.create_database(fresh_in_memory_db.DB_FILE),
-            call.insert_default_resources(fresh_in_memory_db.DB_FILE),
+            # The pre-seed is loaded by the caller and handed over, so that an unusable file stops the
+            # installation before any database is created
+            call.insert_default_resources(fresh_in_memory_db.DB_FILE, {}),
             call.set_database_version(fresh_in_memory_db.DB_FILE, fresh_in_memory_db.CURRENT_ORM_VERSION),
             call.close_sessions()
         ], any_order=True)
 
+
+@patch("wazuh.rbac.orm.safe_move")
+@patch("wazuh.rbac.orm.os.remove")
+@patch("wazuh.rbac.orm.chown")
+@patch("wazuh.rbac.orm.os.chmod")
+def test_check_database_integrity_generated_passwords(chmod_mock, chown_mock, remove_mock, safe_move_mock,
+                                                       fresh_in_memory_db):
+    """Only the passwords that ended up in effect are returned for disclosure.
+
+    With a simulated `db_manager` there is no database to ask, so each branch is given the answer it
+    would really produce.
+    """
+    db_mock = MagicMock()
+    db_mock.insert_default_resources.return_value = {"wazuh": "generated-password", "wazuh-wui": "another-one"}
+
+    with patch("wazuh.rbac.orm.db_manager", new=db_mock):
+        # Migration: `migrate_data` restores the preexisting password, so none of the generated survives.
+        with patch("wazuh.rbac.orm.os.path.exists", return_value=True), \
+                patch("wazuh.rbac.orm.CURRENT_ORM_VERSION", new=99999), \
+                patch("wazuh.rbac.orm._generated_passwords_still_in_use", return_value={}):
+            assert fresh_in_memory_db.check_database_integrity() == {}
+
+        # An unreadable source leaves the generated ones in place instead, and they must be disclosed
+        with patch("wazuh.rbac.orm.os.path.exists", return_value=True), \
+                patch("wazuh.rbac.orm.CURRENT_ORM_VERSION", new=99999), \
+                patch("wazuh.rbac.orm._generated_passwords_still_in_use",
+                      side_effect=lambda _db, passwords: passwords):
+            assert fresh_in_memory_db.check_database_integrity() == {
+                "wazuh": "generated-password", "wazuh-wui": "another-one"
+            }
+
+        # DB does not exist: a fresh install discloses what was actually generated
+        with patch("wazuh.rbac.orm.os.path.exists", return_value=False), \
+                patch("wazuh.rbac.orm._generated_passwords_still_in_use",
+                      side_effect=lambda _db, passwords: passwords):
+            assert fresh_in_memory_db.check_database_integrity() == {
+                "wazuh": "generated-password", "wazuh-wui": "another-one"
+            }
+
+
+def test_check_database_integrity_invalid_preseed(fresh_in_memory_db, tmp_path):
+    """An unusable pre-seed stops a fresh installation before any database is created.
+
+    The file is left untouched so that it can be corrected, and no password is generated behind the back of
+    whoever wrote it.
+    """
+    preseed_file = tmp_path / "wazuh-preseeded-passwords.json"
+    preseed_file.write_text(json.dumps({"wazuh": "too-short"}))
+    preseed_file.chmod(0o600)
+
+    db_mock = MagicMock()
+    with patch("wazuh.rbac.orm.db_manager", new=db_mock), \
+            patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(preseed_file)), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()), \
+            patch("wazuh.rbac.orm.os.path.exists", return_value=False):
+        with pytest.raises(fresh_in_memory_db.PreseededPasswordsError, match="password policy"):
+            fresh_in_memory_db.check_database_integrity()
+
+    db_mock.create_database.assert_not_called()
+    assert preseed_file.exists()
 
 @pytest.mark.parametrize("exception", [ValueError, Exception])
 @patch("wazuh.rbac.orm.DatabaseManager.close_sessions")

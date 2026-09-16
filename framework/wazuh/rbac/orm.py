@@ -6,9 +6,12 @@ import json
 import logging
 import os
 import re
+import secrets
+import string
 from datetime import datetime
 from enum import IntEnum
 from shutil import chown
+from stat import S_IWGRP, S_IWOTH
 from time import time
 from typing import Union
 
@@ -44,7 +47,169 @@ _DUMMY_HASH = generate_password_hash("wazuh-dummy-constant-never-matches-any-rea
 # Start a session and set the default security elements
 DB_FILE = os.path.join(SECURITY_PATH, "rbac.db")
 DB_FILE_TMP = f"{DB_FILE}.tmp"
+DEFAULT_PASSWORDS_FILE = os.path.join(SECURITY_PATH, "wazuh-api-passwords.txt")
+PRESEEDED_PASSWORDS_FILE = os.path.join(SECURITY_PATH, "wazuh-preseeded-passwords.json")
+# Records that a password was generated here at least once. The disclosure file cannot: it is meant to be
+# deleted once read.
+GENERATED_MARKER_FILE = os.path.join(SECURITY_PATH, ".wazuh-api-passwords-generated")
 CURRENT_ORM_VERSION = 1
+
+# Minimum twelve characters, at least one uppercase letter, one lowercase letter, one number and one special character.
+# `\Z` rather than `$`, which would also match before a trailing newline.
+USER_PASSWORD_MIN_LENGTH = 12
+USER_PASSWORD_MAX_LENGTH = 64
+USER_PASSWORD_POLICY = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}\Z')
+
+# Punctuation restricted to characters that are inert in a YAML scalar, a JSON string, a shell word and a
+# `sed` replacement, and an alphanumeric first character for the indicators that are only special in leading
+# position. Costs 12 bits against full printable ASCII; 24 characters still give 145.
+_PASSWORD_ALPHANUMERIC = string.ascii_lowercase + string.ascii_uppercase + string.digits
+_PASSWORD_PUNCTUATION = '-_.+='  # nosec B105 - an alphabet to draw from, not a password
+_PASSWORD_CHARS = _PASSWORD_ALPHANUMERIC + _PASSWORD_PUNCTUATION
+_GENERATED_PASSWORD_LENGTH = 24
+
+
+def generate_default_password(length: int = _GENERATED_PASSWORD_LENGTH) -> str:
+    """Generate a random password that always satisfies USER_PASSWORD_POLICY.
+
+    Drawn uniformly and redrawn whole until it satisfies the policy, so the result is uniform over the
+    compliant subset and its entropy is exactly that of the alphabet. The loop is unbounded on purpose:
+    acceptance is 81% at the default length, 48% at the minimum.
+
+    Parameters
+    ----------
+    length : int
+        Length of the generated password.
+
+    Raises
+    ------
+    ValueError
+        If `length` is outside the range the password policy accepts.
+
+    Returns
+    -------
+    str
+        Randomly generated password.
+    """
+    if not USER_PASSWORD_MIN_LENGTH <= length <= USER_PASSWORD_MAX_LENGTH:
+        raise ValueError(f"length must be between {USER_PASSWORD_MIN_LENGTH} and {USER_PASSWORD_MAX_LENGTH}")
+
+    while True:
+        password = secrets.choice(_PASSWORD_ALPHANUMERIC) + \
+                   ''.join(secrets.choice(_PASSWORD_CHARS) for _ in range(length - 1))
+        if USER_PASSWORD_POLICY.match(password):
+            return password
+
+
+class PreseededPasswordsError(Exception):
+    """A pre-seed file is present but cannot be used as written."""
+
+
+def _assert_preseed_source_is_trusted(fileno: int):
+    """Check that an already-open pre-seed file could only have been written by root or the Wazuh user.
+
+    Stat'd through the descriptor that will be read rather than through the path: the file decides the
+    administrator password of a fresh installation and lives in a group-writable directory, so checking the
+    path first would leave a window to swap what gets read.
+
+    Parameters
+    ----------
+    fileno : int
+        Descriptor of the open pre-seed file.
+
+    Raises
+    ------
+    PreseededPasswordsError
+        When the file is owned by somebody else, or its group or others can write it.
+    """
+    stat = os.fstat(fileno)
+
+    if stat.st_uid not in (0, wazuh_uid()):
+        raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' is not owned by root or by the Wazuh user")
+
+    if stat.st_mode & (S_IWGRP | S_IWOTH):
+        raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' is writable by its group or by others")
+
+
+def _load_preseeded_passwords(known_usernames: list) -> dict:
+    """Read pre-provisioned passwords for the default users, if any.
+
+    Lets automated installers (installation assistant, containers, CI) provision known credentials
+    non-interactively instead of getting a randomly generated one. A file that is present but unusable is an
+    installation error, not something to fall back from: silently generating a random password there would
+    leave the installer convinced it had provisioned a credential that does not exist.
+
+    The file must be readable by the user `wazuh-manager-apid` runs as, which is `wazuh-manager` unless
+    privileges are kept. `root:root 0600` is therefore not a valid combination; `wazuh-manager:wazuh-manager
+    0600` and `root:wazuh-manager 0640` are.
+
+    Parameters
+    ----------
+    known_usernames : list
+        Names of the default users, to reject a key that matches none of them.
+
+    Raises
+    ------
+    PreseededPasswordsError
+        When the file exists but is unreadable, is not UTF-8 JSON, is not an object, names an unknown user,
+        or carries a value that is not a password the API would accept.
+
+    Returns
+    -------
+    dict
+        Username to password mapping. Empty when there is no pre-seed file at all.
+    """
+    try:
+        source = open(PRESEEDED_PASSWORDS_FILE)
+    except FileNotFoundError:
+        return {}
+    except OSError as exc:
+        # Includes the case of a file the Wazuh user cannot read, such as `root:root 0600`
+        raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' cannot be opened: {exc}") from exc
+
+    with source:
+        _assert_preseed_source_is_trusted(source.fileno())
+        try:
+            preseeded = json.load(source)
+        # ValueError rather than json.JSONDecodeError: a file that is not valid UTF-8 raises
+        # UnicodeDecodeError, which is the former but not the latter.
+        except ValueError as exc:
+            raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' is not valid UTF-8 JSON: {exc}") from exc
+
+    if not isinstance(preseeded, dict):
+        raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' does not hold a JSON object")
+
+    for username, password in preseeded.items():
+        if username not in known_usernames:
+            raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' names '{username}', which is not a "
+                                          f"default user. Default users: {', '.join(known_usernames)}")
+        # Length too: `wazuh.security` enforces it separately from the pattern (error 5009). The value itself
+        # is never logged.
+        if not isinstance(password, str) or not USER_PASSWORD_MIN_LENGTH <= len(password) \
+                <= USER_PASSWORD_MAX_LENGTH or not USER_PASSWORD_POLICY.match(password):
+            raise PreseededPasswordsError(f"the pre-seeded password of '{username}' in "
+                                          f"'{PRESEEDED_PASSWORDS_FILE}' does not satisfy the API password "
+                                          f"policy")
+
+    # A partial pre-seed is valid on purpose: the users it does not name get a generated password, disclosed
+    # as usual, so an installer can provision only the credential it actually needs.
+    return preseeded
+
+
+def _consume_preseeded_passwords():
+    """Remove the pre-seed file once it has served its purpose.
+
+    It is a one-shot input carrying a plaintext administrator credential: keeping it would leave that
+    credential on disk for the life of the installation, and would silently re-apply on any later reseed.
+    """
+    try:
+        os.remove(PRESEEDED_PASSWORDS_FILE)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        logger.warning(f"Could not remove '{PRESEEDED_PASSWORDS_FILE}' after using it: {exc}")
+
+
 _new_columns = {}
 _engine = create_engine(f"sqlite:///{DB_FILE}", pool_size=10, echo=False)
 _Base = declarative_base()
@@ -2080,21 +2245,39 @@ class DatabaseManager:
         """
         return str(self.sessions[database].execute(text("pragma user_version")).first()[0])
 
-    def insert_default_resources(self, database: str):
+    def insert_default_resources(self, database: str, preseeded_passwords: dict = None) -> dict:
         """Insert default security resources into the given database.
 
         Parameters
         ----------
         database : str
             Name of the stored database.
+        preseeded_passwords : dict
+            Passwords provisioned for the default users, already validated. The users it does not name get
+            a generated one. Loaded by the caller rather than here, so that an unusable file stops the
+            installation before any database is created.
+
+        Returns
+        -------
+        dict
+            Username to plaintext password mapping for the default users whose password was
+            randomly generated (pre-seeded users are not included, their password is already
+            known to whoever provisioned it).
         """
+        generated_passwords = {}
+        preseeded_passwords = preseeded_passwords or {}
+
         # Create default users if they don't exist yet
         with open(os.path.join(DEFAULT_RBAC_RESOURCES, "users.yaml"), 'r') as stream:
             default_users = yaml.safe_load(stream)
 
             with AuthenticationManager(self.sessions[database]) as auth:
                 for d_username, payload in default_users[next(iter(default_users))].items():
-                    auth.add_user(username=d_username, password=payload['password'], check_default=False)
+                    password = preseeded_passwords.get(d_username)
+                    if password is None:
+                        password = generate_default_password()
+                        generated_passwords[d_username] = password
+                    auth.add_user(username=d_username, password=password, check_default=False)
                     auth.edit_run_as(user_id=auth.get_user(username=d_username)['id'],
                                      allow_run_as=payload['allow_run_as'])
 
@@ -2152,6 +2335,8 @@ class DatabaseManager:
                     for d_rule_name in payload['rule_ids']:
                         rrum.add_rule_to_role(role_id=rm.get_role(name=d_role_name)['id'],
                                               rule_id=rum.get_rule_by_name(d_rule_name)['id'], force_admin=True)
+
+        return generated_passwords
 
     @staticmethod
     def get_table(session: Session, table: callable):
@@ -2458,7 +2643,31 @@ class DatabaseManager:
         self.sessions[database].execute(text(f'pragma user_version={version}'))
 
 
-def check_database_integrity():
+def _generated_passwords_still_in_use(database: str, candidates: dict) -> dict:
+    """Filter a generated password mapping down to the entries that are actually in effect.
+
+    Parameters
+    ----------
+    database : str
+        Name of the stored database to check against.
+    candidates : dict
+        Username to plaintext password mapping to test.
+
+    Returns
+    -------
+    dict
+        The subset of `candidates` whose password still authenticates, so the caller has to disclose it.
+        Empty when every one of them was overwritten, which is the normal outcome of a migration.
+    """
+    if not candidates:
+        return {}
+
+    with AuthenticationManager(db_manager.sessions[database]) as auth:
+        return {username: password for username, password in candidates.items()
+                if auth.check_user(username, password)}
+
+
+def check_database_integrity() -> dict:
     """Check RBAC database integrity.
     If the database does not exist, it must be created properly.
     If the database exists, the RBAC DB migration process is applied.
@@ -2469,7 +2678,15 @@ def check_database_integrity():
         Error when trying to retrieve the current RBAC database version.
     Exception
         Generic error during the database migration process.
+
+    Returns
+    -------
+    dict
+        Username to plaintext password mapping for the default users whose password was randomly
+        generated on a fresh install. Empty when the database already existed: a migration
+        preserves the current password of the default users instead of regenerating it.
     """
+    generated_passwords = {}
 
     def _set_permissions_and_ownership(database: str):
         """Set Wazuh ownership and permissions.
@@ -2488,6 +2705,15 @@ def check_database_integrity():
         if os.path.exists(DB_FILE):
             # If db exists, fix permissions and ownership and connect to it
             logger.info(f"{DB_FILE} file was detected")
+
+            # A pre-seed file is only ever consumed when the database is created. Left here it is a
+            # plaintext credential that can no longer take effect, so it is reported and removed.
+            if os.path.exists(PRESEEDED_PASSWORDS_FILE):
+                logger.warning(f"Ignoring and removing '{PRESEEDED_PASSWORDS_FILE}': '{DB_FILE}' already "
+                               f"exists, so it can no longer be applied. Use "
+                               f"'bin/rbac_control change-password' instead")
+                _consume_preseeded_passwords()
+
             _set_permissions_and_ownership(DB_FILE)
             db_manager.connect(DB_FILE)
             current_version = int(db_manager.get_database_version(DB_FILE))
@@ -2505,7 +2731,8 @@ def check_database_integrity():
                 db_manager.connect(DB_FILE_TMP)
                 db_manager.create_database(DB_FILE_TMP)
                 _set_permissions_and_ownership(DB_FILE_TMP)
-                db_manager.insert_default_resources(DB_FILE_TMP)
+                # Normally discarded: migrate_data() below restores the real preexisting password.
+                tmp_generated = db_manager.insert_default_resources(DB_FILE_TMP)
 
                 # Migrate data from old database
                 db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=WAZUH_USER_ID,
@@ -2513,6 +2740,13 @@ def check_database_integrity():
                 db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=CLOUD_RESERVED_RANGE,
                                         to_id=MAX_ID_RESERVED)
                 db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=MAX_ID_RESERVED + 1)
+
+                # `get_data` answers an unreadable source with an empty list, not an error, so a corrupt
+                # `rbac.db` gets here having restored nothing and the generated password survives unnoticed.
+                generated_passwords = _generated_passwords_still_in_use(DB_FILE_TMP, tmp_generated)
+                if generated_passwords:
+                    logger.warning(f"The previous {DB_FILE} held no usable default users, so their password "
+                                   f"could not be preserved and has been regenerated")
 
                 # Apply changes and replace database
                 db_manager.set_database_version(DB_FILE_TMP, expected_version)
@@ -2525,13 +2759,29 @@ def check_database_integrity():
         # If the database does not exist, it means this is a fresh installation and must be created properly
         else:
             logger.info("RBAC database not found. Initializing")
+
+            # Loaded before anything is created: an unusable pre-seed file must stop the installation
+            # without leaving a half-seeded database behind, and must never degrade to a random password
+            # that whoever wrote the file does not know about.
+            with open(os.path.join(DEFAULT_RBAC_RESOURCES, "users.yaml")) as stream:
+                default_users = yaml.safe_load(stream)
+            preseeded_passwords = _load_preseeded_passwords(list(default_users[next(iter(default_users))]))
+
             db_manager.connect(DB_FILE)
             db_manager.create_database(DB_FILE)
             _set_permissions_and_ownership(DB_FILE)
-            db_manager.insert_default_resources(DB_FILE)
+            # `add_user` reports a failed insert by returning False, so never disclose without checking.
+            generated_passwords = _generated_passwords_still_in_use(
+                DB_FILE, db_manager.insert_default_resources(DB_FILE, preseeded_passwords))
             db_manager.set_database_version(DB_FILE, CURRENT_ORM_VERSION)
             db_manager.close_sessions()
+            _consume_preseeded_passwords()
             logger.info(f"{DB_FILE} database created successfully")
+    except PreseededPasswordsError as e:
+        logger.error(f"Cannot seed the RBAC database: {e}. No database has been created. Correct the file "
+                     f"or remove it, then start the API again")
+        db_manager.close_sessions()
+        raise e
     except ValueError as e:
         logger.error("Error retrieving the current Wazuh RBAC database version. Aborting database integrity check")
         db_manager.close_sessions()
@@ -2546,6 +2796,8 @@ def check_database_integrity():
     finally:
         # Remove tmp database if present
         os.path.exists(DB_FILE_TMP) and os.remove(DB_FILE_TMP)
+
+    return generated_passwords
 
 
 db_manager = DatabaseManager()
