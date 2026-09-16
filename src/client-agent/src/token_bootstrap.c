@@ -597,7 +597,13 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
         return W_TOKEN_BOOTSTRAP_TRANSIENT;
     }
 
-    w_enroll_status_t enroll_status = w_enrollment_process_response(&enroll_result, built_request.enroll_kid);
+    /* The kid this request actually signed with is the one on enroll_request: the enrollment
+     * token's, derived and set above. built_request.enroll_kid is the RE-ENROLLMENT secret's, which
+     * w_enrollment_build_request() leaves NULL whenever there is no secret on disk -- which is
+     * always true here, since this is the first-boot token path and a secret only exists after an
+     * enrollment has succeeded. Passing it named "unknown" in the one 403 an operator most needs to
+     * act on: the one telling them which enrollment token to re-mint. */
+    w_enroll_status_t enroll_status = w_enrollment_process_response(&enroll_result, enroll_request.enroll_kid);
 
     if (enroll_status != W_ENROLL_OK) {
         /* w_enrollment_process_response() already logged the specific reason. TRANSPORT/SERVER
