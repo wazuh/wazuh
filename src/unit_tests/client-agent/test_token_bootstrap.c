@@ -430,6 +430,13 @@ static void expect_valid_ip(const char *ip) {
 
 /* ---- tests ---- */
 
+/* w_enrollment_build_request() announces the identity it is about to present before it picks a
+ * credential (#38678, merged from 5.0.0), so it is the first minfo() any test that reaches it sees.
+ * Declared once here rather than repeated literally: what these tests assert is the credential
+ * choice that follows, and this line is only in the way of it. */
+#define expect_enrolling_as_line() \
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.")
+
 static void test_no_token_file_is_noop(void **state) {
     (void) state;
 
@@ -697,6 +704,7 @@ static void test_fatal_token_refusal_discards_the_dead_token(void **state) {
     will_return(__wrap_hc_enroll, 1);
 
     expect_any(__wrap__mdebug1, formatted_msg);
+    expect_enrolling_as_line();
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_any(__wrap__merror, formatted_msg);
 
@@ -728,6 +736,7 @@ static void test_disabled_enrollment_keeps_the_token(void **state) {
     will_return(__wrap_hc_enroll, 1);
 
     expect_any(__wrap__mdebug1, formatted_msg);
+    expect_enrolling_as_line();
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_any(__wrap__minfo, formatted_msg);
 
@@ -977,6 +986,7 @@ static void test_bootstrap_stores_the_reenroll_secret_from_the_root_path(void **
      * rather than counted: the count is not what this test is about. */
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
+    expect_enrolling_as_line();
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,
@@ -1033,6 +1043,7 @@ static void test_reenroll_secret_link_is_not_chowned(void **state) {
 
     /* A valid store on disk means w_enrollment_build_request() prefers it over every other
      * credential (#39064), so this is the re-enrollment path, not the password one. */
+    expect_enrolling_as_line();
     expect_string(__wrap__minfo, formatted_msg,
                   "Re-enrolling with this agent's own re-enrollment secret.");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
@@ -1072,6 +1083,7 @@ static void test_bootstrap_without_a_secret_leaves_no_store(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
     expect_any(__wrap__mdebug1, formatted_msg);
 
+    expect_enrolling_as_line();
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,

@@ -103,6 +103,13 @@ static void expect_invalid_ip(const char *ip) {
 
 /* w_enrollment_build_request */
 
+/* w_enrollment_build_request() announces the identity it is about to present before it picks a
+ * credential (#38678, merged from 5.0.0), so it is the first minfo() any test that reaches it sees.
+ * Declared once here rather than repeated literally: what these tests assert is the credential
+ * choice that follows, and this line is only in the way of it. */
+#define expect_enrolling_as_line() \
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.")
+
 static void test_build_request_minimal_body(void **state) {
     (void)state;
     w_enroll_request_t request;
@@ -533,7 +540,7 @@ static void test_process_response_404_names_the_configured_path(void **state) {
                   "configured path '/'. The path in <endpoint> must match the global prefix "
                   "the manager serves.");
 
-    assert_int_equal(w_enrollment_process_response(&result), W_ENROLL_ERR_SERVER);
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
 }
 
 static void test_process_response_409_is_duplicate(void **state) {
@@ -664,6 +671,7 @@ static void test_build_request_prefers_the_reenroll_secret_over_the_password(voi
     os_strdup(AUTHD_PASS, agt->enrollment.authorization_pass_path);
     write_text_file(AUTHD_PASS, "fleet-secret\n");
 
+    expect_enrolling_as_line();
     expect_string(__wrap__minfo, formatted_msg, "Re-enrolling with this agent's own re-enrollment secret.");
 
     assert_int_equal(w_enrollment_build_request(&request), 0);
@@ -686,6 +694,7 @@ static void test_build_request_without_a_secret_uses_the_password(void **state) 
     os_strdup(AUTHD_PASS, agt->enrollment.authorization_pass_path);
     write_text_file(AUTHD_PASS, "fleet-secret\n");
 
+    expect_enrolling_as_line();
     expect_string(__wrap__minfo, formatted_msg, "Using password specified on file: etc/authd.pass");
 
     assert_int_equal(w_enrollment_build_request(&request), 0);
@@ -711,6 +720,7 @@ static void test_build_request_kid_comes_from_the_store_not_client_keys(void **s
     expect_string(__wrap__mwarn, formatted_msg,
                   "The re-enrollment secret is stored for agent '007' but client.keys holds '001'; "
                   "re-enrolling as '007', which is the id the manager verifies the secret against.");
+    expect_enrolling_as_line();
     expect_string(__wrap__minfo, formatted_msg, "Re-enrolling with this agent's own re-enrollment secret.");
 
     assert_int_equal(w_enrollment_build_request(&request), 0);
