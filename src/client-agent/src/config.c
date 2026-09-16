@@ -292,18 +292,32 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
      * startup. An operator's own <certificate_authorities> gets the same check, since a file
      * nothing can parse is no more usable for them.
      *
-     * The first certificate is enough: PEM_read_bio_X509() scans past comments and
-     * non-certificate blocks, so a bundle, or a combined key-and-certificate file, still
-     * answers here -- this asks whether there is a certificate at all, not whether every
-     * block in the file is one. */
-    X509 *parsed = w_x509_load_pem(ca);
+     * Every certificate, not just the first: a CA rotation hands this file more than one
+     * anchor, and w_x509_load_pem() stops at the first block -- so a bundle whose second
+     * certificate is truncated used to start, and then failed at a handshake against
+     * whichever anchor the manager had rotated to. w_x509_load_all_pem() reads the file to
+     * its end and yields nothing when any block fails to decode, which is the check this
+     * was always meant to be (issue #39321).
+     *
+     * Text before the first -----BEGIN CERTIFICATE----- is still fine: the reader skips it,
+     * so the publication block the agent records alongside its anchor (RFC 7468 section 2)
+     * parses here exactly as a bare bundle does. */
+    size_t ca_count = 0;
+    X509 **parsed = w_x509_load_all_pem(ca, &ca_count);
 
     if (parsed == NULL) {
         merror(AG_SSL_CA_UNPARSEABLE, ca);
         return false;
     }
 
-    X509_free(parsed);
+    /* Only worth a line when there is more than one: a single anchor is the ordinary case and
+     * saying so on every start is noise, while two or more means a rotation is in flight and
+     * an operator reading the log wants to know the agent picked both up. */
+    if (ca_count > 1) {
+        minfo(AG_SSL_CA_BUNDLE_LOADED, ca, ca_count);
+    }
+
+    w_x509_free_all(parsed, ca_count);
 
     return true;
 }

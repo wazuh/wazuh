@@ -93,5 +93,6 @@
 #define AG_UNINSTALL_VALIDATION_START       "(9500): Starting user validation to uninstall the Wazuh agent package."
 #define AG_UNINSTALL_VALIDATION_GRANTED     "(9501): Validation of the uninstallation of the Wazuh agent package granted."
 #define AG_UNINSTALL_VALIDATION_DENIED      "(9502): Validation of the uninstallation of the Wazuh agent package denied."
+#define AG_SSL_CA_BUNDLE_LOADED             "(9503): <certificate_authorities> '%s' holds %zu certificates: the agent will verify the manager against any of them."
 
 #endif /* INFO_MESSAGES_H */
