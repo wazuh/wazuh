@@ -753,45 +753,66 @@ End Function
 ' upgrade must not fail over this.
 Public Function RemoveFleetEnrollmentPassword()
     On Error Resume Next
-    Dim strArgs, args, home_dir, passPath
-    Dim fso, objFile, size, i
+    Dim strArgs, args, home_dir, passPath, agentExe
+    Dim fso, shell, rc, objFile, size, i
 
     ' Read CustomActionData: "[APPLICATIONFOLDER]"
     strArgs = Session.Property("CustomActionData")
     args = Split(strArgs, "/+/")
     home_dir = Replace(args(0), Chr(34), "")
     passPath = home_dir & "authd.pass"
+    agentExe = home_dir & "wazuh-agent.exe"
 
     Set fso = CreateObject("Scripting.FileSystemObject")
 
-    If fso.FileExists(passPath) Then
-        size = fso.GetFile(passPath).Size
-        If size > 0 Then
-            ' Overwrite the same path with the same number of bytes before unlinking. Read this as
-            ' weaker than the POSIX siblings and do not assume otherwise: the DEB postinst, the RPM
-            ' %post and the macOS postinstall use `dd conv=notrunc`, which writes over the file's
-            ' existing allocation, and FSO has no equivalent -- OpenTextFile's only modes are
-            ' ForReading/ForWriting/ForAppending, and ForWriting (2) TRUNCATES on open. So the
-            ' original bytes are released first and these zeros are written into a fresh
-            ' allocation. For a file this small NTFS keeps it resident in its MFT record, which a
-            ' same-length rewrite reuses, so in practice the secret is usually overwritten -- but
-            ' that is a property of the filesystem's allocator, not a guarantee this code makes.
-            '
-            ' Closing that gap needs OPEN_EXISTING + WriteFile, i.e. a compiled custom action;
-            ' it is not reachable from VBScript. Overwriting anyway because it costs nothing and
-            ' covers the common case, and deleting regardless, which is what actually removes the
-            ' fleet-wide credential from the endpoint.
-            Set objFile = fso.OpenTextFile(passPath, 2)
-            For i = 1 To size
-                objFile.Write "0"
-            Next
-            objFile.Close
+    If Not fso.FileExists(passPath) Then
+        Set fso = Nothing
+        RemoveFleetEnrollmentPassword = 0
+        Exit Function
+    End If
+
+    ' Overwrite the password in the file's own allocation and unlink it -- what the DEB postinst,
+    ' the RPM %post and the macOS postinstall do with `dd conv=notrunc`. The agent does that part:
+    ' no write mode reachable from a script host opens a file without truncating it first, so
+    ' FileSystemObject would release the secret's bytes and write the zeros into a fresh
+    ' allocation. wazuh-agent.exe is already run from this file for --show-token, it is on disk by
+    ' now (this action is deferred, After="InstallFiles"), and it ships signed -- which for a
+    ' security product's installer is the argument against the other route to OPEN_EXISTING from
+    ' VBScript, spawning powershell.exe with -ExecutionPolicy Bypass.
+    '
+    ' Initialised to "never ran" rather than left Empty, for the same reason DecodeEnrollmentToken
+    ' initialises to 127: this file runs under On Error Resume Next, and a Run that throws would
+    ' otherwise leave rc equal to 0, which is the one value that means the job is done.
+    rc = -1
+
+    If fso.FileExists(agentExe) Then
+        Set shell = CreateObject("WScript.Shell")
+        rc = shell.Run(Chr(34) & agentExe & Chr(34) & " --shred-enrollment-password", 0, True)
+        Set shell = Nothing
+    End If
+
+    If rc <> 0 Then
+        ' The agent could not be run, or reported that it did not finish. Fall back to what a
+        ' script can do on its own: a same-length rewrite, which does NOT overwrite the original
+        ' allocation -- worth doing, never worth mistaking for the guarantee above -- and the
+        ' delete, which is what actually takes the fleet-wide credential off the endpoint.
+        If fso.FileExists(passPath) Then
+            size = fso.GetFile(passPath).Size
+            If size > 0 Then
+                Set objFile = fso.OpenTextFile(passPath, 2)
+                For i = 1 To size
+                    objFile.Write "0"
+                Next
+                objFile.Close
+            End If
+            fso.DeleteFile passPath, True
         End If
-        fso.DeleteFile passPath, True
     End If
 
     Set fso = Nothing
 
+    ' Always 0: the custom action is Return="check", and a password that could not be removed must
+    ' not roll back an upgrade that has otherwise succeeded.
     RemoveFleetEnrollmentPassword = 0
 End Function
 

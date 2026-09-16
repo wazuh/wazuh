@@ -24,6 +24,12 @@
  * Returns 0, 2 when the token itself was rejected, or 1 when it could not be read. */
 int w_agent_show_enrollment_token(void);
 
+/* Overwrite the compiled default enrollment password (AUTHD_PASS) in its own allocation and
+ * unlink it. Shared by both agent entry points so the MSI has the same primitive the POSIX
+ * package scripts get from `dd conv=notrunc`. Returns 0 when the password is gone -- including
+ * when there was none -- and 1 when any part of that failed. */
+int w_agent_shred_enrollment_password(void);
+
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 

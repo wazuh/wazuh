@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "reenroll_secret.h"
+#include "shred_file.h"
 
 #include <openssl/crypto.h>
 
@@ -180,27 +181,17 @@ end:
 }
 
 void w_reenroll_secret_clear(void) {
-    FILE *fp;
-    off_t size = FileSize(AGENT_REENROLL_SECRET);
-
-    if (size < 0) {
+    if (FileSize(AGENT_REENROLL_SECRET) < 0) {
         return; /* Nothing to clear. */
     }
 
     /* Best-effort overwrite before the unlink: it removes the obvious plaintext copy, and that is
-     * all it does -- see w_reenroll_secret_clear()'s doc comment on why this is not erasure. */
-    if ((fp = wfopen(AGENT_REENROLL_SECRET, "r+")) != NULL) {
-        off_t written;
-
-        for (written = 0; written < size; written++) {
-            if (fputc('0', fp) == EOF) {
-                break;
-            }
-        }
-
-        fflush(fp);
-        fclose(fp);
-    }
+     * all it does -- see w_reenroll_secret_clear()'s doc comment on why this is not erasure. The
+     * result is deliberately ignored: the unlink below is what takes the credential off the disk,
+     * and w_shred_file_in_place() has already logged anything worth knowing. It is shared with the
+     * MSI's --shred-enrollment-password rather than written twice -- two copies of "overwrite
+     * without truncating" are two places to get the open mode wrong, and the wrong one is silent. */
+    (void) w_shred_file_in_place(AGENT_REENROLL_SECRET);
 
     if (unlink(AGENT_REENROLL_SECRET) != 0) {
         merror(UNLINK_ERROR, AGENT_REENROLL_SECRET, errno, strerror(errno));
