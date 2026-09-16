@@ -24,6 +24,7 @@
 STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, size_t buf_size,
                                                  const char **filename);
 STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid);
+STATIC void w_token_bootstrap_mark_anchor_committed(int gid);
 #ifndef WIN32
 STATIC int w_token_bootstrap_open_and_chown(const char *path, uid_t owner, gid_t group);
 STATIC int w_token_bootstrap_open_and_chown_keys(int gid);
@@ -292,6 +293,50 @@ const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status) {
     }
 }
 
+/**
+ * @brief Records that this install has committed a trust anchor, by creating AGENT_ANCHOR_MARKER
+ *        if it is not already there.
+ *
+ * Root-owned 0640 in a sticky etc/certs, so the runtime user cannot remove it even though it
+ * owns the anchor beside it. Only existence matters, so the file is left empty and an existing
+ * one is never rewritten.
+ *
+ * Best effort: a marker that could not be written costs the deletion guard in
+ * w_agent_validate_ssl_ca(), not the bootstrap, so a failure is logged and swallowed. Called
+ * both after a fresh commit and from the latch, so an install that predates #39321 -- or one
+ * whose marker write failed once -- picks one up on a later boot.
+ */
+STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
+    int fd;
+
+    if (IsFile(AGENT_ANCHOR_MARKER) == 0) {
+        return;
+    }
+
+    if (fd = open(AGENT_ANCHOR_MARKER, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0640), fd < 0) {
+        /* EEXIST is the benign race of two starts at once, not a problem worth a line. */
+        if (errno != EEXIST) {
+            mdebug1("Token bootstrap: could not write '%s': %s (%d).", AGENT_ANCHOR_MARKER,
+                    strerror(errno), errno);
+        }
+
+        return;
+    }
+
+#ifndef WIN32
+    if (fchown(fd, 0, gid) != 0) {
+        mdebug1("Token bootstrap: could not set ownership of '%s': %s (%d).", AGENT_ANCHOR_MARKER,
+                strerror(errno), errno);
+    }
+#else
+    /* No second user to hand it to: the installation directory's own ACL already keeps
+     * non-administrators out of certs\\, which is the whole protection the marker needs. */
+    (void)gid;
+#endif
+
+    close(fd);
+}
+
 #ifndef WIN32
 
 /**
@@ -328,6 +373,9 @@ STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid) {
         mdebug1("Token bootstrap: could not repair permissions on '%s': %s (%d).", dir,
                 strerror(errno), errno);
     }
+
+    /* Last, so the marker only appears once the directory can actually hold it root-owned. */
+    w_token_bootstrap_mark_anchor_committed(gid);
 }
 
 #endif /* !WIN32 */
@@ -803,6 +851,11 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 
         os_free(anchor_file.name);
         w_etoken_free(&token);
+
+        /* Only now: the marker says an anchor has been committed, so it must not appear before
+         * one has. */
+        w_token_bootstrap_mark_anchor_committed(opts->gid);
+
         minfo("The manager's CA is now the agent's trust anchor.");
 
         return W_TOKEN_ENROLL_OK;
@@ -1015,6 +1068,10 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     }
 
     os_free(anchor_file.name);
+
+    /* Only now: the marker says an anchor has been committed, so it must not appear before one
+     * has. */
+    w_token_bootstrap_mark_anchor_committed(opts->gid);
 
     /* enrollment.c's TempFile()+OS_MoveFile() replace only chmod()s client.keys to a fixed 0640
      * on the temp file, never its group, so it inherits this root process's group instead of

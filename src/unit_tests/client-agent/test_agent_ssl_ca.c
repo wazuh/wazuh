@@ -104,6 +104,20 @@ static void expect_ca_parses(const char *path, int ok)
     expect_ca_parses_count(path, ok ? 1 : 0);
 }
 
+/* The deletion guard w_agent_validate_ssl_ca() runs before it will accept an INFERRED 'none':
+ * the anchor first, then the marker only when the anchor is gone -- && short-circuits, so an
+ * anchor that is still there costs one probe, not two. An explicit 'none' skips both. */
+static void expect_anchor_deletion_guard(int anchor_present, int marker_present)
+{
+    expect_string(__wrap_w_is_file, file, AGENT_ANCHOR_CA);
+    will_return(__wrap_w_is_file, anchor_present);
+
+    if (!anchor_present) {
+        expect_string(__wrap_w_is_file, file, AGENT_ANCHOR_MARKER);
+        will_return(__wrap_w_is_file, marker_present);
+    }
+}
+
 /* Same queue as expect_ca_readable(), named apart so a call site says which probe it is. */
 static void expect_anchor(int present)
 {
@@ -135,6 +149,9 @@ static void test_none_without_ca_starts_quietly(void **state)
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
 
+    /* Nothing was ever committed here, so the guard finds no marker and stands aside. */
+    expect_anchor_deletion_guard(0, 0);
+
     assert_true(w_agent_validate_ssl_ca(&cfg));
 }
 
@@ -144,6 +161,9 @@ static void test_none_with_readable_ca_is_not_probed(void **state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, "etc/operator-ca.pem");
+
+    /* Nothing was ever committed here, so the guard finds no marker and stands aside. */
+    expect_anchor_deletion_guard(0, 0);
 
     assert_true(w_agent_validate_ssl_ca(&cfg));
 }
@@ -155,6 +175,9 @@ static void test_none_with_unreadable_ca_is_not_probed_either(void **state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, "PATH");
+
+    /* Nothing was ever committed here, so the guard finds no marker and stands aside. */
+    expect_anchor_deletion_guard(0, 0);
 
     assert_true(w_agent_validate_ssl_ca(&cfg));
 }
@@ -168,6 +191,37 @@ static void test_full_with_readable_ca_starts(void **state)
 
     expect_ca_readable("etc/operator-ca.pem", 1);
     expect_ca_parses("etc/operator-ca.pem", 1);
+
+    assert_true(w_agent_validate_ssl_ca(&cfg));
+}
+
+/* The case the marker exists for: an agent that has committed an anchor, and no longer has one.
+ * Nobody asked for 'none' -- the resolver inferred it from the absence the deletion created --
+ * so starting would mean this agent silently stopped verifying its manager. */
+static void test_inferred_none_with_a_marker_but_no_anchor_refuses_to_start(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
+
+    expect_anchor_deletion_guard(0, 1);
+    expect_string(__wrap__merror, formatted_msg,
+                  "(4125): the trust anchor 'etc/certs/root-ca.pem' is gone but this agent has "
+                  "held one ('etc/certs/.anchor-committed' is still there). Verification would "
+                  "silently fall back to 'none', so the start is refused. Restore the anchor, or "
+                  "set <ssl><verification_mode> explicitly to say what was intended.");
+
+    assert_false(w_agent_validate_ssl_ca(&cfg));
+}
+
+/* An operator who writes 'none' has said what they want, and 4122 already warns them about an
+ * anchor they are ignoring. The guard is about a 'none' nobody chose, so it does not probe at
+ * all here -- an unqueued w_is_file() would fail this test, which is the point. */
+static void test_explicit_none_with_a_marker_but_no_anchor_still_starts(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
+
+    cfg.ssl.verification_mode_explicit = true;
 
     assert_true(w_agent_validate_ssl_ca(&cfg));
 }
@@ -761,6 +815,8 @@ int main(void)
         cmocka_unit_test(test_none_with_readable_ca_is_not_probed),
         cmocka_unit_test(test_none_with_unreadable_ca_is_not_probed_either),
         cmocka_unit_test(test_full_with_readable_ca_starts),
+        cmocka_unit_test(test_inferred_none_with_a_marker_but_no_anchor_refuses_to_start),
+        cmocka_unit_test(test_explicit_none_with_a_marker_but_no_anchor_still_starts),
         cmocka_unit_test(test_full_with_unparseable_ca_fails),
         cmocka_unit_test(test_full_with_a_two_certificate_bundle_starts),
         cmocka_unit_test(test_full_with_a_bundle_whose_second_block_is_corrupt_fails),

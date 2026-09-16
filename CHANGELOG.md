@@ -222,3 +222,4 @@
 | [#39192](https://github.com/wazuh/wazuh/issues/39192) | Fixed the `block-ip` active response not blocking IPs on a default macOS install. |
 | [#39321](https://github.com/wazuh/wazuh/issues/39321) | Fixed the agent starting with a multi-certificate `<certificate_authorities>` file whose later certificates are unusable, which failed at the first handshake instead of at startup. |
 | [#39321](https://github.com/wazuh/wazuh/issues/39321) | The agent's trust anchor and its directory are now owned so the agent can replace the anchor itself, which a CA rotation requires. Existing installs are corrected on the next start. |
+| [#39321](https://github.com/wazuh/wazuh/issues/39321) | The agent now refuses to start when its trust anchor has been removed, instead of silently falling back to unverified connections. |
