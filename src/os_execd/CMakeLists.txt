@@ -70,8 +70,9 @@ if(UNIT_TEST)
   target_compile_options(execd_lib PRIVATE -O0 -g)
 endif()
 
-target_link_libraries(execd_lib PUBLIC wazuhext pthread config
-                                       wazuh_modulesd_lib wazuh)
+target_link_libraries(execd_lib PUBLIC wazuhext pthread
+    $<$<NOT:$<PLATFORM_ID:Darwin>>:-Wl,--start-group> config wazuh_modulesd_lib wazuh
+    $<$<NOT:$<PLATFORM_ID:Darwin>>:-Wl,--end-group>)
 
 if(UNIX)
   target_link_libraries(execd_lib PUBLIC dl)
@@ -87,8 +88,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   if(UNIT_TEST)
     target_compile_definitions(wazuh-execd PRIVATE WAZUH_UNIT_TESTING)
   endif()
-  target_link_libraries(wazuh-execd PRIVATE wazuhext pthread config
-                                            wazuh_modulesd_lib wazuh)
+  target_link_libraries(wazuh-execd PRIVATE wazuhext pthread
+      "-Wl,--start-group" config wazuh_modulesd_lib wazuh "-Wl,--end-group")
   # Only build Unix executable when not running unit tests
 elseif(NOT UNIT_TEST)
   add_executable(${WAZUH_EXECD_DAEMON_NAME}
