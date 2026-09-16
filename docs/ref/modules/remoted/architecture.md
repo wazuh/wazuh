@@ -127,9 +127,15 @@ bounded in two phases, and excess load is shed with a plain `503`:
    cause either route to return `503`. Connection limits and TLS checks still apply.
 2. **Deferred-work limiter** — bounds how many requests are parked awaiting a downstream service.
 
-Neither sends `Retry-After`: this is server-side load-shedding, not per-client rate-limiting, and the
+Neither sends `Retry-After`: this is server-side load-shedding, not rate limiting, and the
 agent runs its own retry/backoff. See [Configuration](configuration.md) for the sizing knobs and
 [Metrics](metrics.md) for what to watch.
+
+Rate limiting is the third, separate bound: a token bucket per **endpoint** in front of
+`POST /enroll` and `GET /cacerts`, the two routes whose callers hold no credential to gate them
+with. It caps how fast each route is served at all — a fleet-wide ceiling, not a per-caller
+allowance — and answers `429` with a `Retry-After` —
+[the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes).
 
 ### Local admin plane
 

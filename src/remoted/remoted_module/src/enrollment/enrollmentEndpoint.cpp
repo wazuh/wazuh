@@ -485,6 +485,11 @@ namespace remoted::enrollment
 
     } // namespace
 
+    remoted::http::HttpResponse rateLimitedResponse()
+    {
+        return errorResponse(429, 0, "Enrollment is rate limited on this manager, retry later");
+    }
+
     remoted::http::RouteHandler makeHandler(const EnrollmentAuthenticator& authenticator,
                                             AuthdClient& authdClient,
                                             const Config& config,

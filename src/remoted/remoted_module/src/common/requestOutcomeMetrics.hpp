@@ -32,7 +32,10 @@
  * transport's I/O thread BEFORE any route handler runs, so it is counted ONLY by
  * `remoted.server.budget.rejected.total` -- it never reaches these per-endpoint cells. A 503
  * shed by the deferred-work limiter happens inside the endpoint's forward path and therefore
- * counts here (responses.503) AND in `remoted.forwarder.deferred.rejected.total`.
+ * counts here (responses.503) AND in `remoted.forwarder.deferred.rejected.total`. A 429 from the
+ * endpoint rate limiter sits with the second group, not the first: the gate wrapping the route
+ * (endpoints/rateLimitGate.hpp) counts it here AND in `remoted.<endpoint>.rate_limited`, even
+ * though the handler itself never ran.
  */
 
 #include <chrono>
@@ -70,6 +73,9 @@ namespace remoted::metrics
         std::shared_ptr<wazuh::metrics::ICounter> c403;
         std::shared_ptr<wazuh::metrics::ICounter> c409;
         std::shared_ptr<wazuh::metrics::ICounter> c413;
+        std::shared_ptr<wazuh::metrics::ICounter> c429; ///< Rate-limit refusals (the two unauthenticated
+                                                        ///< routes only; structurally zero everywhere
+                                                        ///< else).
         std::shared_ptr<wazuh::metrics::ICounter> c500; ///< Includes "the PostProcessor threw" fallback.
         std::shared_ptr<wazuh::metrics::ICounter> c503; ///< Downstream failures and limiter sheds -- NOT budget sheds.
         std::shared_ptr<wazuh::metrics::ICounter> other;
@@ -92,6 +98,7 @@ namespace remoted::metrics
                                      counter("403"),
                                      counter("409"),
                                      counter("413"),
+                                     counter("429"),
                                      counter("500"),
                                      counter("503"),
                                      counter("other")};
@@ -112,6 +119,7 @@ namespace remoted::metrics
                     case 403: return c403;
                     case 409: return c409;
                     case 413: return c413;
+                    case 429: return c429;
                     case 500: return c500;
                     case 503: return c503;
                     default: return other;

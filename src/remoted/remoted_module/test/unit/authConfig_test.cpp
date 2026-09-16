@@ -35,7 +35,7 @@ TEST(AuthConfigTest, DefaultsWhenEmpty)
     const auto config = buildAuthConfig(zeroedConfig());
 
     EXPECT_EQ(config.supportedProtocolVersion, "1");
-    EXPECT_EQ(config.maxBodySize, 10U * 1024U * 1024U);
+    EXPECT_EQ(config.maxBodySize, 5U * 1024U * 1024U);
     // A zeroed C-ABI struct means "unset": the bearer profile's maxima apply -- for the skew too,
     // because "configured" is a separate flag (jwt_clock_skew_set), not the value itself.
     EXPECT_EQ(config.timePolicy.maxAgeSec(), 60);
@@ -96,7 +96,7 @@ TEST(AuthConfigTest, NegativeValuesFallBackToDefaultsOrAreRejected)
 
     EXPECT_EQ(config.timePolicy.maxAgeSec(), 60);
     EXPECT_EQ(config.timePolicy.skewSec(), 30);
-    EXPECT_EQ(config.maxBodySize, 10U * 1024U * 1024U);
+    EXPECT_EQ(config.maxBodySize, 5U * 1024U * 1024U);
 
     raw.jwt_clock_skew = -1;
     raw.jwt_clock_skew_set = 1;

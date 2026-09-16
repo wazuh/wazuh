@@ -67,8 +67,16 @@ type enrollResponse struct {
 // 200 (agent created), 401 (the manager refused the bearer: unknown, expired
 // or revoked token, or a clock/key problem), 403 (authd refused the use of a
 // bearer remoted had verified: no uses left, or revoked/expired between the two
-// checks) and 409 (duplicate name) are ORDINARY results the caller records; a
+// checks), 409 (duplicate name) and 429 (the route's rate limit,
+// `remote.https.enroll_rate_limit`) are ORDINARY results the caller records; a
 // scenario's `expected` block decides which are acceptable for the run.
+//
+// The 429 is deliberately not an ErrProtocol: the limit is per endpoint and
+// fleet-wide, so a healthy manager answers it to anything asking faster than the
+// configured rate, and a run that aborted on it would measure nothing. It is
+// refused BEFORE authd is contacted, so it costs the manager almost nothing —
+// which is why it must not be read as a slow or failing enrollment either.
+// prepare_manager.sh clears the limits by default (--keep-rate-limits keeps them).
 func Request(c *wire.Client, key []byte, kid, name, version string, now int64) (Result, error) {
 	body, err := json.Marshal(map[string]string{"name": name, "version": version})
 	if err != nil {
@@ -96,7 +104,7 @@ func Request(c *wire.Client, key []byte, kid, name, version string, now int64) (
 		result.AgentID = record.ID
 		result.Key = record.Key
 		result.ReenrollSecret = record.ReenrollSecret
-	case 401, 403, 409:
+	case 401, 403, 409, 429:
 		// Contract outcomes, recorded as such.
 	default:
 		return result, &ErrProtocol{fmt.Sprintf("enroll answered %d: %s", resp.Status, truncate(resp.Body))}

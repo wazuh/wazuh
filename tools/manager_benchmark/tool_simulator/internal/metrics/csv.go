@@ -14,8 +14,8 @@ const csvHeader = "timestamp,elapsed_s,mode,agents_active," +
 	"sessions_sent,sessions_ok,sessions_noop,sessions_409,sessions_400,sessions_401,sessions_403,sessions_413,sessions_500,sessions_503,sessions_503_retry_after,sessions_other," +
 	"stateless_sent,stateless_202,stateless_400,stateless_413,stateless_503,stateless_other,events_sent," +
 	"scan_sent,scan_200,scan_409,scan_503,scan_other," +
-	"cacerts_sent,cacerts_200,cacerts_404,cacerts_503,cacerts_other," +
-	"enroll_https_sent,enroll_https_200,enroll_https_401,enroll_https_403,enroll_https_409,enroll_https_other," +
+	"cacerts_sent,cacerts_200,cacerts_404,cacerts_503,cacerts_429,cacerts_other," +
+	"enroll_https_sent,enroll_https_200,enroll_https_401,enroll_https_403,enroll_https_409,enroll_https_429,enroll_https_other," +
 	"retries_feed,retries_503,retries_exhausted,transport_errors," +
 	"bytes_sent,documents_sent," +
 	"control_startup_ok,control_startup_err,control_notify_ok,control_notify_err,control_shutdown_ok,control_shutdown_err," +
@@ -96,8 +96,8 @@ func (w *CSVWriter) writeRow() {
 		u(c.SessionsSent), u(c.SessionsOK), u(c.SessionsNoop), u(c.S409), u(c.S400), u(c.S401), u(c.S403), u(c.S413), u(c.S500), u(c.S503), u(c.S503RetryAfter), u(c.SessOther),
 		u(c.StatelessSent), u(c.St202), u(c.StBad400), u(c.StBad413), u(c.St503), u(c.StOther), u(c.EventsSent),
 		u(c.ScanSent), u(c.Scan200), u(c.Scan409), u(c.Scan503), u(c.ScanOther),
-		u(c.CacertsSent), u(c.Cacerts200), u(c.Cacerts404), u(c.Cacerts503), u(c.CacertsOther),
-		u(c.EnrollHTTPSSent), u(c.EnrollHTTPS200), u(c.EnrollHTTPS401), u(c.EnrollHTTPS403), u(c.EnrollHTTPS409), u(c.EnrollHTTPSOther),
+		u(c.CacertsSent), u(c.Cacerts200), u(c.Cacerts404), u(c.Cacerts503), u(c.Cacerts429), u(c.CacertsOther),
+		u(c.EnrollHTTPSSent), u(c.EnrollHTTPS200), u(c.EnrollHTTPS401), u(c.EnrollHTTPS403), u(c.EnrollHTTPS409), u(c.EnrollHTTPS429), u(c.EnrollHTTPSOther),
 		u(c.RetriesFeed), u(c.Retries503), u(c.RetriesExhausted), u(c.TransportErrors),
 		u(c.BytesSent), u(c.DocumentsSent),
 		u(c.StartupOK), u(c.StartupErr), u(c.NotifyOK), u(c.NotifyErr), u(c.ShutdownOK), u(c.ShutdownErr),

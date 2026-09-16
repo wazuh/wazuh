@@ -3393,10 +3393,12 @@ void test_remoted_module_https_config_defaults(void** state)
     will_return(__wrap_getDefine_Int_default, 8192);
     will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
     will_return(__wrap_getDefine_Int_default, 1);     // http_content_encoding_enabled (1 = enabled)
-    // memory-management
+    // memory-management. These mirror secure.c's own defaults deliberately: the wrapper is a plain
+    // FIFO that ignores the default_val argument, so this test cannot VERIFY a default -- carrying
+    // the real numbers at least stops it reading as if 512/256 were still the ones in force.
     will_return(__wrap_getDefine_Int_default, 268435456);
-    will_return(__wrap_getDefine_Int_default, 512);
     will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 128);
     // downstream_*
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
@@ -3408,7 +3410,7 @@ void test_remoted_module_https_config_defaults(void** state)
     // jwt_* / auth_*
     will_return(__wrap_getDefine_Int_default, 60); // jwt_max_age
     will_return(__wrap_getDefine_Int_default, 30); // jwt_clock_skew
-    will_return(__wrap_getDefine_Int_default, 10485760);
+    will_return(__wrap_getDefine_Int_default, 5242880); // auth_max_body_size
 
     remoted_module_https_config(&rm_config);
 
@@ -3429,8 +3431,8 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.http_concurrent_accepts, 2);
     assert_int_equal(rm_config.http_buffer_size, 8192);
     assert_int_equal(rm_config.max_inflight_bytes, 268435456);
-    assert_int_equal(rm_config.max_parallel_connections, 512);
-    assert_int_equal(rm_config.max_deferred_requests, 256);
+    assert_int_equal(rm_config.max_parallel_connections, 256);
+    assert_int_equal(rm_config.max_deferred_requests, 128);
     assert_int_equal(rm_config.downstream_connect_timeout, 2);
     assert_int_equal(rm_config.downstream_write_timeout, 5);
     assert_int_equal(rm_config.downstream_response_timeout, 5);
@@ -3441,7 +3443,7 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.jwt_max_age, 60);
     assert_int_equal(rm_config.jwt_clock_skew, 30);
     assert_int_equal(rm_config.jwt_clock_skew_set, 1);
-    assert_int_equal(rm_config.auth_max_body_size, 10485760);
+    assert_int_equal(rm_config.auth_max_body_size, 5242880);
     assert_true(rm_config.http_content_encoding_enabled);
 }
 
@@ -3648,6 +3650,10 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
     test_logr.https.max_body_size = 12345;
     test_logr.https.dual_stack = REMOTED_HTTPS_DUAL_STACK_YES;
+    test_logr.https.enroll_rate_limit = 12;
+    // 0 is a real setting ("no limit"), not an absent one: it must survive the crossing as 0 and
+    // arrive with rate_limit_set, or the module would read it as "apply your default" instead.
+    test_logr.https.cacerts_rate_limit = 0;
 
     // http_*
     will_return(__wrap_getDefine_Int_default, 0);
@@ -3721,6 +3727,13 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_int_equal(rm_config.authd_response_timeout, 0);
     assert_int_equal(rm_config.authd_max_queue_size, 256);
     assert_int_equal(rm_config.authd_worker_threads, 8);
+
+    // The two rate fields cross verbatim, explicit 0 included, and rate_limit_set says they are
+    // real values -- that flag is what stops a zeroed struct from reading as "unlimited" on the
+    // module side. The bucket depth is not in the ABI: the module derives it from the rate.
+    assert_int_equal(rm_config.rate_limit_set, 1);
+    assert_int_equal(rm_config.enroll_rate_limit, 12);
+    assert_int_equal(rm_config.cacerts_rate_limit, 0);
 }
 
 /* Tests remoted_module_control_config: the eight control_* options plus the two vd_scan_*

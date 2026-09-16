@@ -41,7 +41,7 @@ _HTTP_ENDPOINTS = ('stateless', 'stateful', 'stats', 'config', 'enroll', 'cacert
 
 # The closed status set of that family; some cells are structurally zero for a given endpoint
 # but are kept so every endpoint reports the same vocabulary.
-_HTTP_STATUS_CELLS = ('2xx', '400', '403', '409', '413', '500', '503', 'other')
+_HTTP_STATUS_CELLS = ('2xx', '400', '403', '409', '413', '429', '500', '503', 'other')
 
 # Endpoints that additionally resolve a `remoted.http.<endpoint>.latency` histogram.
 _HTTP_LATENCY_ENDPOINTS = ('stateless', 'stateful', 'enroll')
@@ -78,6 +78,15 @@ _REMOTED_METRIC_GROUPS = {
             'depth': 'remoted.enroll.authd.queue.depth',
             'capacity': 'remoted.enroll.authd.queue.capacity',
             'rejected_total': 'remoted.enroll.authd.queue.rejected.total',
+        },
+        # Refused by the endpoint's rate limit before the handler ran, so it is in none of the
+        # outcome counters above. `rate_limit` is the route's live budget: `available` at 0 while
+        # `rate_limited` climbs is a ceiling set below what the fleet needs.
+        'rate_limited': 'remoted.enroll.rate_limited',
+        'rate_limit': {
+            'limit': 'remoted.enroll.rate_limit.limit',
+            'burst': 'remoted.enroll.rate_limit.burst',
+            'available': 'remoted.enroll.rate_limit.available',
         },
     },
     'control': {
@@ -120,6 +129,10 @@ _REMOTED_METRIC_GROUPS = {
         'inflight_bytes': 'remoted.server.budget.inflight.bytes',
         'inflight_requests': 'remoted.server.budget.inflight.requests',
         'rejected_total': 'remoted.server.budget.rejected.total',
+        # The connection ceiling has no rejection counter: reaching it postpones the accept instead
+        # of refusing, so `open` against `max` is the only way to see it being approached.
+        'connections_open': 'remoted.server.connections.open',
+        'connections_max': 'remoted.server.connections.max',
     },
     'downloads': {
         'started': 'remoted.download.started',
@@ -138,6 +151,12 @@ _REMOTED_METRIC_GROUPS = {
         'served': 'remoted.cacerts.served',
         'not_found': 'remoted.cacerts.not_found',
         'ca_mismatch': 'remoted.cacerts.ca_mismatch',
+        'rate_limited': 'remoted.cacerts.rate_limited',
+        'rate_limit': {
+            'limit': 'remoted.cacerts.rate_limit.limit',
+            'burst': 'remoted.cacerts.rate_limit.burst',
+            'available': 'remoted.cacerts.rate_limit.available',
+        },
     },
     'vd_scan': {
         'requests_total': 'remoted.scanvd.requests.total',

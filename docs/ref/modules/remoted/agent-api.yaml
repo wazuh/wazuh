@@ -103,7 +103,10 @@ paths:
         blocks) is served as a bundle. No authentication and no `protocol-version` header -- by
         construction the caller holds no credential yet; a body or an `Authorization` header, if
         sent, is ignored. Exempt from the server's in-flight byte budget like `GET /`, so the trust
-        bootstrap is never shed with `503` under memory pressure.
+        bootstrap is never shed with `503` under memory pressure. It is NOT exempt from the route's
+        own rate limit (`<remote><https><cacerts_rate_limit>`, 50/s with a burst of 100 by default),
+        which caps how fast this endpoint is served at all. That limit is a ceiling for the whole
+        fleet, not an allowance per agent.
 
         The file is read on every request, so a CA that goes missing on the manager answers `404`
         immediately. Coherence with the served certificate is evaluated when the listener starts and
@@ -158,6 +161,26 @@ paths:
               examples:
                 caMismatch:
                   value: { error: "ca_mismatch" }
+        "429":
+          description: |
+            The endpoint was asked faster than `<remote><https><cacerts_rate_limit>` allows. The
+            bucket belongs to the route, so this ceiling is shared by every caller: it is not a
+            statement about this particular client. Carries `Retry-After` in whole seconds; retry
+            with backoff.
+          headers:
+            Retry-After:
+              description: Whole seconds to wait before retrying.
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [rate_limited] }
+              examples:
+                rateLimited:
+                  value: { error: "rate_limited" }
 
   /stateless:
     post:
@@ -279,7 +302,7 @@ paths:
                   value: { error: "Invalid client authentication", code: invalid_signature }
         "413":
           description: |
-            The request body exceeds the configured auth body limit (10 MiB). For
+            The request body exceeds the configured auth body limit (5 MiB). For
             `Content-Encoding: zstd`, it instead means the frame didn't fit in the server's live
             in-flight memory capacity -- either the decoder's buffers (refused up front, from the
             frame header) or the decompressed output as it was produced. Retryable: the same request
@@ -304,7 +327,7 @@ paths:
           description: |
             The server is temporarily out of capacity (its in-flight byte budget is exhausted or too
             many requests are already parked awaiting the downstream service), or the downstream engine
-            was unreachable / errored. Server-side load-shedding, not per-client rate-limiting: no
+            was unreachable / errored. Server-side load-shedding, not rate limiting: no
             `Retry-After` is sent — the agent applies its own retry/backoff. The connection is closed.
           content:
             application/json:
@@ -1019,11 +1042,33 @@ paths:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
         "413":
           description: |
-            Body exceeds `remoted.auth_max_body_size` (10 MiB default). Checked before the bearer is
+            Body exceeds `remoted.auth_max_body_size` (5 MiB default). Checked before the bearer is
             examined, in every mode including the credential-less one.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
+        "429":
+          description: |
+            The endpoint was asked faster than `<remote><https><enroll_rate_limit>` allows (100/s
+            with a burst of 200 by default). Decided **before** the body is decoded, the bearer is
+            examined or `authd` is contacted -- which is the point: without it, a caller holding no
+            usable credential still costs the manager an `authd` round trip and, on a cluster
+            worker, a further round trip to the master.
+
+            The bucket belongs to the route, so this ceiling is shared by the whole fleet: during a
+            mass enrollment many agents can see it at once, and each simply retries with its own
+            backoff until it is served. Carries `Retry-After` in whole seconds.
+          headers:
+            Retry-After:
+              description: Whole seconds to wait before retrying.
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
+              examples:
+                rateLimited:
+                  value:
+                    error: { code: 0, message: "Enrollment is rate limited on this manager, retry later" }
         "500":
           description: "`authd` internal, parse or key-generation failure (9001/9002/9009)."
           content:
@@ -1145,7 +1190,7 @@ components:
 
     PayloadTooLarge:
       description: |
-        The request body exceeds the configured auth body limit (10 MiB default). For
+        The request body exceeds the configured auth body limit (5 MiB default). For
         `Content-Encoding: zstd` it instead means the frame did not fit in the server's live
         in-flight memory capacity. Retryable.
       content:
@@ -1170,7 +1215,7 @@ components:
       description: |
         The server is temporarily out of capacity (its in-flight byte budget is exhausted or too many
         requests are already parked awaiting a downstream service), or the downstream service was
-        unreachable or errored. Server-side load-shedding, not per-client rate-limiting: no
+        unreachable or errored. Server-side load-shedding, not rate limiting: no
         `Retry-After` is sent on this route -- the agent applies its own retry/backoff.
       content:
         application/json:

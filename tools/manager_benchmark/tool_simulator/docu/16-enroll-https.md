@@ -112,22 +112,32 @@ time. The step takes **only** the timing fields; anything describing a payload i
 | The manager refused the bearer: unknown, expired or revoked token; wrong key; clock outside the window | `401` (generic body, `WWW-Authenticate: Bearer`) | `enroll_https_401` | no |
 | `authd` refused the use of a bearer remoted had verified: no uses left (`9024`), or revoked/expired between remoted's check and `authd`'s (`9022`/`9023`) | `403 {"error":{"code":902x,…}}` | `enroll_https_403` | no |
 | Duplicate name (`9008`) | `409` | `enroll_https_409` | no |
+| The route's rate limit refused it before `authd` was contacted (`remote.https.enroll_rate_limit`, `100` req/s for the whole endpoint by default) | `429 {"error":{"code":0,…}}` + `Retry-After` | `enroll_https_429` | no |
 | A `200` without the agent record (or for another name) | `200` | `enroll_https_other` | **yes** |
 | Any other status (`400`: the sender built a body remoted rejects; `5xx`) | — | `enroll_https_other` | **yes** |
 
-`401`/`403`/`409` are **ordinary results**: they are what a fleet meets with a stale or exhausted
-token, and a scenario's `expected` block decides whether they are acceptable
-(`scenarios/enroll_https.json` says no to all three). The `other` bucket is different: the sender is
+`401`/`403`/`409`/`429` are **ordinary results**: they are what a fleet meets with a stale or
+exhausted token, or against a manager already serving enrollments at its configured rate, and a
+scenario's `expected` block decides whether they are acceptable
+(`scenarios/enroll_https.json` says no to all four).
+
+The `429` is refused **before** any `authd` round trip, so it costs the manager almost nothing and
+must not be read as a slow or failing enrollment — its latency is kept out of
+`enroll_https_latency_ms_p50/p99` for that reason. The limit is per endpoint and fleet-wide: this
+scenario's 100 requests currently fit inside the default burst (twice the `100` req/s rate), so it
+passes as written, but with no margin — a larger fleet or a higher `repeat_count` crosses it.
+`prepare_manager.sh` clears the limit by default; `--keep-rate-limits` keeps it, and `s429` is then
+the counter to assert. The `other` bucket is different: the sender is
 not exercising the path it claims to, and the measurement is invalid (docu/10). The step never
 retries, so requests and attempts are the same number.
 
 ## Metrics
 
 `enroll_https_sent`, `enroll_https_200`, `enroll_https_401`, `enroll_https_403`,
-`enroll_https_409`, `enroll_https_other` and `enroll_https_latency_ms_p50/p99` in `bench.csv`; the
+`enroll_https_409`, `enroll_https_429`, `enroll_https_other` and `enroll_https_latency_ms_p50/p99` in `bench.csv`; the
 `enroll_https` block of `totals`/`by_fleet`/`by_lane` and the `enroll_https` histogram in
 `latency_ms` in `sender_summary.json`; the `enroll_https` group of `expected` (`sent`, `s200`,
-`s401`, `s403`, `s409`, `other`) — see [09](09-metrics-and-output.md) and [07](07-scenario-schema.md).
+`s401`, `s403`, `s409`, `s429`, `other`) — see [09](09-metrics-and-output.md) and [07](07-scenario-schema.md).
 
 On the manager side, the matching families are `remoted.http.enroll.responses.*` (what it
 answered), `remoted.enroll.*` (why: `accepted`, `rejected_auth`, `authd_error`…), the token

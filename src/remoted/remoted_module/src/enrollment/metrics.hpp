@@ -46,6 +46,11 @@ namespace remoted::enrollment
     constexpr auto METRIC_REENROLL_REJECTED_SIGNATURE {"remoted.enroll.reenroll.rejected_signature"};
     constexpr auto METRIC_REENROLL_REJECTED_STALE {"remoted.enroll.reenroll.rejected_stale"};
     constexpr auto METRIC_REENROLL_REJECTED_IN_PROGRESS {"remoted.enroll.reenroll.rejected_in_progress"};
+    // Refused by the endpoint's rate limit (endpoints/rateLimitGate.hpp) BEFORE the handler ran:
+    // no body was decoded, no credential was looked at, no authd round trip was spent. It is
+    // therefore in none of the outcome families above -- those describe requests that were actually
+    // processed -- and only here and in remoted.http.enroll.responses.429.
+    constexpr auto METRIC_RATE_LIMITED {"remoted.enroll.rate_limited"};
 
     struct EnrollmentMetrics
     {
@@ -65,6 +70,7 @@ namespace remoted::enrollment
         std::shared_ptr<wazuh::metrics::ICounter> reenrollRejectedSignature;
         std::shared_ptr<wazuh::metrics::ICounter> reenrollRejectedStale;
         std::shared_ptr<wazuh::metrics::ICounter> reenrollRejectedInProgress;
+        std::shared_ptr<wazuh::metrics::ICounter> rateLimited;
     };
 
     inline EnrollmentMetrics makeEnrollmentMetrics(wazuh::metrics::IManager& manager)
@@ -119,6 +125,10 @@ namespace remoted::enrollment
                                        "Re-enrollments authd refused because a rotation for that agent is already "
                                        "accepted and not yet persisted (9030): the caller retries, it does not "
                                        "re-sign",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_RATE_LIMITED,
+                                       "Enrollment requests refused by the endpoint's rate limit "
+                                       "('remote.https.enroll_rate_limit'), before any authd round trip",
                                        "count")};
     }
 

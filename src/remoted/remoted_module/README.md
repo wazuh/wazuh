@@ -32,13 +32,15 @@ remoted_module/
 │   │                               #   tlsCertificateStatus.hpp/.cpp = served-certificate expiry + CA
 │   │                               #   coherence evaluation and its daily monitor thread;
 │   │                               #   caCertificateSource.hpp/.cpp = the CA file as ONE read:
-│   │                               #   certificates re-serialised + verdict, cached by content hash
+│   │                               #   certificates re-serialised + verdict, cached by content hash;
+│   │                               #   endpointRateLimiter.hpp/.cpp = token bucket per endpoint
 │   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below);
 │   │   │                           #   endpoint.hpp also carries the remoted.auth.reject.* catalog
 │   │   ├── cacertsEndpoint.hpp/.cpp    # GET /cacerts: publishes remote.https.ca_certificate's certificates (see below)
 │   │   ├── cacertsMetrics.hpp          # remoted.cacerts.* + remoted.server.tls.* name catalog
 │   │   ├── controlEndpoint.hpp/.cpp    # POST /control JSON dispatch (see below)
 │   │   ├── downloadMetrics.hpp         # remoted.download.* catalog (POST /download)
+│   │   ├── rateLimitGate.hpp/.cpp      # wraps a route in an EndpointRateLimiter; 429 + Retry-After (see below)
 │   │   └── scanVdEndpoint.hpp/.cpp     # POST /scan/vd JSON dispatch (see below)
 │   ├── control/                    # ns remoted::control — 5.x agent control messages (/control);
 │   │                               #   metrics.hpp = remoted.control.* catalog
@@ -136,7 +138,7 @@ src/http_server/
     1. **In-flight byte budget** — the transport reserves each request's payload (`body + a small
        per-request overhead`) against a global budget *before* handing it to the worker pool. When
        the budget is exhausted the request is shed with a plain **`503 Service Unavailable`**
-       (server-capacity load-shedding, not per-client rate-limiting; no `Retry-After` — the agent
+       (server-capacity load-shedding, not rate-limiting; no `Retry-After` — the agent
        runs its own retry/backoff) instead of queueing, giving the backpressure the raw asio pool lacks. The reservation is an RAII token living in the request's
        shared context alongside the single payload copy; it is released the instant the context's
        last owner drops it. The **handler controls that**: dropping the request shared_ptr (or calling
@@ -206,7 +208,7 @@ src/http_server/
        deterministic ERROR when either is missing or unreadable, so this module's own load
        failure only fires for files that exist and are readable but unusable.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
-       `max_parallel_connections` (default 512) and `max_deferred_requests` (default 256) --
+       `max_parallel_connections` (default 256) and `max_deferred_requests` (default 128) --
        populated from the `remoted.max_inflight_bytes`/`remoted.max_parallel_connections`/
        `remoted.max_deferred_requests` internal options in `secure.c` (same pattern as group 1).
        The transport still clamps the in-flight budget up to at least one max-size request at
@@ -250,8 +252,47 @@ src/endpoints/
 ├── configEndpoint.hpp/.cpp   # /config policy: near-duplicate of statsEndpoint, on purpose
 ├── downloadEndpoint.hpp/.cpp # /download policy: request grammar + resource resolution + file streaming
 ├── iAgentGroupSource.hpp     # interface: the selector an authenticated agent may download
-└── cacertsEndpoint.hpp/.cpp  # GET /cacerts: the CA that signs the listener cert, certificates only (no auth)
+├── cacertsEndpoint.hpp/.cpp  # GET /cacerts: the CA that signs the listener cert, certificates only (no auth)
+└── rateLimitGate.hpp/.cpp    # per-endpoint rate limit in front of the two unauthenticated routes
 ```
+
+- **`rateLimitGate.hpp/.cpp` (ns `remoted::endpoints::ratelimit`):** `wrap()` takes a
+  `RouteHandler` and returns one that consults an `EndpointRateLimiter`
+  (`http_server/endpointRateLimiter.hpp`) first, answering `429` + `Retry-After` when the bucket is
+  empty and otherwise calling straight through. Applied at route registration in the facade to
+  `POST /enroll` and `GET /cacerts` — **the two routes no credential can gate**: an enrolling agent
+  has no `client.keys` entry and a trust-bootstrapping one has no anchor, so neither can sit behind
+  the bearer-token gateway that bounds every other route.
+
+  The bucket is per **endpoint**, not per caller: `allow()` takes no argument at all, so the
+  configured rate is a ceiling on what the manager serves rather than an allowance each client gets.
+  That is what keeps it free of per-client state — no table, no eviction, nothing that grows with
+  the number of peers — and it is also its cost: one noisy client can spend the route's whole
+  budget, and a fleet-wide burst is paced by the same number.
+  `TheAllowanceIsTheEndpointsNotTheCallers` in the unit test pins that down so it cannot drift back
+  to per-client by accident.
+
+  A wrapper rather than a guard clause inside each handler, for the same reason `MeteredResponder`
+  is a decorator: "nothing in this route runs until the limiter says so" becomes structural instead
+  of one refactor away from being stepped over. The test asserts on the **inner handler**, not only
+  on the status code — "it answered 429" would also be true of a gate that did the work first.
+
+  The 429 **body** comes from the route (`cacerts::rateLimitedResponse()`,
+  `enrollment::rateLimitedResponse()`), because the two use different error envelopes and the gate
+  has no business choosing; the gate owns only `Retry-After`, which is the limiter's refill time.
+  A disabled limiter (rate `0`) makes `wrap()` hand back the original handler, so "no limit" costs
+  nothing per request — not even the wrapper's indirection.
+
+  `buildEnrollSettings()`/`buildCacertsSettings()` resolve the C ABI's three-way encoding:
+  `rate_limit_set == 0` (a zeroed struct, or `remoted_module_start(NULL)`) means module defaults,
+  `REMOTED_MODULE_RATE_LIMIT_UNSET` means the same for one field, and `0` means **no limit** — a
+  real setting that a zeroed struct could not otherwise express, which is why the flag exists (the
+  same problem `jwt_clock_skew_set` solves). `DEFAULT_ENROLL_RATE` and friends must stay equal to
+  the schema's own defaults, or the same unconfigured manager would be limited differently
+  depending on how its configuration was loaded.
+
+  `EndpointRateLimiter::diagnostics()` reads the bucket **without charging it** — the facade
+  publishes `available` as a pull metric, and a scrape must never cost an agent its enrollment.
 
 - **`GET /cacerts` (`cacertsEndpoint.hpp/.cpp`, ns `remoted::endpoints::cacerts`):** the one route
   besides the health probe registered as a *raw* `addRoute()` — no `AuthGateway` (the caller holds
@@ -1924,14 +1965,15 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
 | `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed, token_unknown, token_expired, token_revoked}` | WHY authentication failed, finer than the class the wire names (see [401 classes](#401-classes)); the three `token_*` cells are `/enroll`'s enrollment-token states | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
 | `remoted.auth.keystore.{agents, entries_skipped, reloads.total, reload_failures.total}` (pulls) | did the client.keys hot-reload pick up re-enrolls; is the file unreadable/unstable; how many lines the load could not use | atomics maintained by `Keystore::reload()`. `agents`/`entries_skipped` are LEVELS of the adopted load (a failed load leaves both untouched); neither counts comments, blanks or removed entries |
-| `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|cacerts>.responses.{2xx,400,403,409,413,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
+| `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|cacerts>.responses.{2xx,400,403,409,413,429,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
 | `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector, or the manager has no established membership for it). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request) and from `not_found` (an *entitled* request whose file is not on disk) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
-| `remoted.cacerts.{served, not_found, ca_mismatch}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, or refused because the configured CA does not sign the served leaf | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch |
+| `remoted.cacerts.{served, not_found, ca_mismatch, rate_limited}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, refused because the configured CA does not sign the served leaf, or refused by the route's rate limit before the CA was even read | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch; `rate_limited` is bumped by the gate (`endpoints/rateLimitGate.cpp`), which runs before the handler |
 | `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does `remote.https.ca_certificate` sign it (0 also when the CA is unreadable) | `IHttpServer::certificateStatus()` over the transport's `TlsCertificateMonitor` snapshot (start + every 24 h); registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
-| `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above) | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp` |
+| `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable, rate_limited}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above). `rate_limited` is the odd one: the request was refused before the handler ran, so it has no outcome among the others | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp`; `rate_limited` by the gate (`endpoints/rateLimitGate.cpp`) |
+| `remoted.<enroll\|cacerts>.rate_limit.{limit, burst, available}` (pulls) | is the route's ceiling sized right: `available` pinned at 0 while `rate_limited` climbs is a rate below what the fleet needs, not necessarily an attack | `EndpointRateLimiter::diagnostics()` through `registerRateLimitDiagnostics()`; reads the bucket WITHOUT charging it, so scraping never costs an agent its enrollment |
 | `remoted.enroll.token.{accepted, rejected_unknown, rejected_expired, rejected_revoked, rejected_exhausted}` | the enrollment-token subset of the above, by what happened to the TOKEN: unknown/expired/revoked decided by remoted's replica (and by authd's 9022/9023 when the replica lagged), exhausted by authd alone (9024) | `countTokenRejection()` (remoted's own verdict) + `countTokenOutcome()` (authd's) in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.reenroll.{accepted, rejected_unknown, rejected_signature, rejected_stale}` | the re-enrollment subset (`kid` = agent id): authd's verdict on the master — 9026 / 9027 / 9028 — since remoted forwards that bearer unverified; each rejection also lands in the `remoted.auth.reject.*` cell of the `AuthError` it maps to | `countReenrollOutcome()` in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.token_store.{tokens, reloads.total, reload_failures.total}` (pulls) | does this node recognise the tokens the operator minted (an empty replica on a worker = the sync has not landed); is `etc/enrollment_tokens.json` being picked up, or is a corrupt/hand-edited store making the previous replica serve | `TokenKeySource::diagnostics()` through `registerTokenKeySourceDiagnostics()`; 0 while enrollment is disabled |
@@ -1945,7 +1987,10 @@ the transport I/O thread BEFORE any route runs — it appears ONLY in
 an *admitted* compressed request whose decode does not fit the budget is answered `413` and
 counted only in `remoted.auth.reject.body_too_large` — never as a budget shed. A deferred-limiter shed
 is the endpoint's answer, so it counts BOTH as that endpoint's `responses.503` and in
-`remoted.forwarder.deferred.rejected.total`. Auth-gateway rejections happen before any handler
+`remoted.forwarder.deferred.rejected.total`; a rate-limit refusal sits with that second group, not
+the first — the handler never ran, yet it counts BOTH as `responses.429` and in
+`remoted.<endpoint>.rate_limited`, and in none of that endpoint's outcome cells (nothing was
+decoded, verified or forwarded for it to have an outcome about). Auth-gateway rejections happen before any handler
 and appear only in `remoted.auth.reject.*`; a handler's own pre-forward rejection (empty body,
 payload identity) counts in its `responses.*` (the "what") and, where it is an AuthError, in
 `remoted.auth.reject.*` too (the "why"). EPS/rates are deliberately NOT computed in-process —
@@ -2077,7 +2122,18 @@ listener, while a foreign CA does not; prefixed vs bare target; a foreign CA con
 is a 404 without a restart),
 `inFlightBudget_test.cpp` (reserve/release accounting, exhaustion, RAII move-once, disabled mode,
 concurrency), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
-release, disabled mode, concurrency), `deferredForwarder_test.cpp` (mock client: slot-full→503,
+release, disabled mode, concurrency), `endpointRateLimiter_test.cpp` (the third limiter, a token
+bucket per endpoint: burst spent before the rate paces it, refill over time, saturation at the
+burst, one bucket shared by every caller, **the bucket starting full** — an empty one would refuse
+the first requests after every restart — a `diagnostics()` read that never charges it, and
+`Retry-After` rounded up and never 0), `rateLimitGate_test.cpp` (the wrapper around a route:
+an admitted request reaching the inner handler untouched and a refused one **never reaching it at
+all** — asserted on the handler, not on the status code, which a gate doing the work first would
+satisfy too —, each route's own 429 envelope plus the gate's `Retry-After`, a refusal counted in
+both metric families but **never timed** into the endpoint's latency histogram, a disabled or null
+limiter handed back as a plain pass-through, and the three-way C-ABI resolution: a zeroed struct
+and the `UNSET` sentinel both mean module defaults while a configured `0` means no limit),
+`deferredForwarder_test.cpp` (mock client: slot-full→503,
 target/body forwarded, post-processor result delivered + slot released, keep-alive release),
 `statelessEndpoint_test.cpp` (endpoint policy: `target()` + `postProcess()` mapping 202/400/413/503;
 `validatePayloadIdentity()` mismatch/malformed-header/non-numeric/leading-zero-normalization cases;

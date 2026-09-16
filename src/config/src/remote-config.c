@@ -195,6 +195,27 @@ static int w_remoted_json_https_string(const cJSON *https, const char *key, size
     return 1;
 }
 
+/* One of the two remote.https endpoint rate options from the effective document: absent
+ * leaves the caller's field at REMOTED_HTTPS_RATE_LIMIT_UNSET, so the module applies its own
+ * default. The schema bounds these already; the range is re-checked here both for a document that
+ * reached the reader without it and because a negative value would otherwise arrive at the module
+ * as the very sentinel that means "unset". Returns 0 on success, OS_INVALID on a bad value. */
+static int w_remoted_json_https_rate(const cJSON *https, const char *key, int max_value, int *dest) {
+    const cJSON *item = cJSON_GetObjectItem(https, key);
+
+    if (item == NULL) {
+        return 0;
+    }
+
+    if (!cJSON_IsNumber(item) || item->valuedouble < 0 || item->valuedouble > max_value) {
+        w_mconf_json_invalid(key, item);
+        return (OS_INVALID);
+    }
+
+    *dest = item->valueint;
+    return 0;
+}
+
 /* OS_IsValidIP() as a plain string validator for w_remoted_json_https_string(). */
 static int w_remoted_json_valid_ip(const char *address) {
     if (OS_IsValidIP(address, NULL) != 1) {
@@ -367,6 +388,12 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
 
         if (item = cJSON_GetObjectItem(https, "dual_stack"), cJSON_IsBool(item)) {
             logr->https.dual_stack = cJSON_IsTrue(item) ? REMOTED_HTTPS_DUAL_STACK_YES : REMOTED_HTTPS_DUAL_STACK_NO;
+        }
+
+        /* Rate limits of the two unauthenticated routes (POST /enroll, GET /cacerts). */
+        if (w_remoted_json_https_rate(https, "enroll_rate_limit", REMOTED_HTTPS_RATE_LIMIT_MAX, &logr->https.enroll_rate_limit) == OS_INVALID ||
+            w_remoted_json_https_rate(https, "cacerts_rate_limit", REMOTED_HTTPS_RATE_LIMIT_MAX, &logr->https.cacerts_rate_limit) == OS_INVALID) {
+            return (OS_INVALID);
         }
     }
 

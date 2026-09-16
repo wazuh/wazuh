@@ -47,7 +47,7 @@ The listener is built on RESTinio + OpenSSL and authenticates every request with
   `remoted` at startup (see
   [Diagnosing rejections and capacity problems](#diagnosing-rejections-and-capacity-problems)).
 - **Message limits and timeouts:** max URL 2048 B, max header name 256 B, max header value 8192 B,
-  max 64 header fields, and a transport body cap of 20 MiB by default (`<remote><https><max_body_size>`);
+  max 64 header fields, and a transport body cap of 10 MiB by default (`<remote><https><max_body_size>`);
   read/handshake timeout 10 s, write timeout 10 s, request timeout 30 s. The header/URL/timeout
   limits are tunable via `remoted.http_*` internal options -- see [Configuration](#configuration)
   below.
@@ -292,7 +292,7 @@ two test matrices for a codec that is dominated on this workload.
 - On routes using the agent bearer, decompression happens **after** authentication succeeds: the bearer token is verified
   from the headers alone (the body is not part of it — TLS protects it), so an unauthenticated
   request never reaches that decoder. `/enroll` can be open and has its own 16 KiB decoded-body cap.
-- `remoted.auth_max_body_size` caps the **wire body** at 10 MiB by default, including a compressed
+- `remoted.auth_max_body_size` caps the **wire body** at 5 MiB by default, including a compressed
   body. It does not cap the decoded output on authenticated agent routes. **Both** of the decoder's memory costs are charged as real
   reservations against the **in-flight byte budget** (`max_inflight_bytes`, see
   [Configuration](#configuration)) — the same pool that bounds unprocessed request payloads. So a
@@ -354,7 +354,7 @@ Everything below the `401` rows keeps a numeric `code` equal to the HTTP status.
 | Unknown agent (class `unknown_agent`)                                                                                                                                                   | `401` | `Invalid client authentication`             |
 | Stale token: expired, older than the accepted age, or issued in the future (class `stale_token`)                                                                                        | `401` | `Invalid client authentication`             |
 | Bad signature, invalid token (grammar, header or claims), identity mismatch, peer address not allowed by the agent's `ip` column, unusable key (class `invalid_signature`)               | `401` | `Invalid client authentication`             |
-| Body exceeds the auth body limit (10 MiB) -- or, for `Content-Encoding: zstd`, the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large`              |
+| Body exceeds the auth body limit (5 MiB) -- or, for `Content-Encoding: zstd`, the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large`              |
 | `Content-Encoding` present but not (case-insensitively) `zstd`                                                                                                                          | `415` | `Unsupported Content-Encoding`              |
 | `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame                                                                                                                | `400` | `Malformed compressed body`                 |
 | Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, or doesn't match the authenticated `agent-id`                                                                        | `400` | `Invalid event batch`                       |
@@ -366,16 +366,25 @@ The payload-identity check runs **before** the batch is forwarded: a mismatch ne
 engine at all, and (by design) shares the same `400 Invalid event batch` message as a batch the
 engine itself rejects, so a client cannot distinguish the two causes.
 
-Requests larger than the 20 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
+Requests larger than the 10 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
 closed) before authentication runs, so they never receive a clean `413`.
 
 The server bounds capacity in two phases and sheds excess load with a plain **`503 Service
-Unavailable`** (server-side load-shedding, not per-client rate-limiting; the connection is closed; no
+Unavailable`** (server-side load-shedding, not rate limiting -- that is the `429` below; the connection is closed; no
 `Retry-After` — the agent runs its own retry/backoff): the **in-flight byte budget** bounds total
 unprocessed payload in memory, and the **deferred-work limiter** bounds how many requests are parked
 awaiting the downstream service. The liveness `GET /` and the trust-bootstrap `GET /cacerts` are
 exempt from the byte budget: its exhaustion does not reject either route. Connection limits and
 TLS checks still apply. See the memory settings below.
+
+Rate limiting is a **separate** mechanism and answers **`429 Too Many Requests`** with a
+`Retry-After`. It applies to the two routes no credential can gate, `POST /enroll` and
+`GET /cacerts`, and only to those: every other route is already bounded by what the presented agent
+key permits. The bucket belongs to the **endpoint**, so the configured rate is a ceiling for the
+whole fleet rather than an allowance per agent — one client asking fast enough can consume the
+route's budget. See
+[the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes)
+for the defaults and for how to size them.
 
 The one `503` that *does* carry a `Retry-After` is relayed, not generated: on `/stateful`, a
 digits-only `Retry-After` from the inventory sync server is passed through, since there the
@@ -526,7 +535,7 @@ above).
 | Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr`         | `0.0.0.0`                                                                                     |
 | Dual-stack override (IPv6 `bind_addr` only)                                      | `dual_stack`        | `no` (force IPv6-only)                                                                        |
 | Port                                                                             | `port`              | `1517`                                                                                        |
-| Transport max body size                                                          | `max_body_size`     | `20 MiB`                                                                                      |
+| Transport max body size                                                          | `max_body_size`     | `10 MiB`                                                                                      |
 | TLS certificate chain                                                            | `certificate`       | `etc/certs/remoted.pem`                                                                       |
 | TLS private key                                                                  | `key`               | `etc/certs/remoted-key.pem`                                                                   |
 | Client CA bundle                                                                 | `ca`                | `etc/certs/root-ca.pem`                                                                       |
@@ -545,8 +554,8 @@ above.
 | Setting                                             | Default   | Source                                    |
 | --------------------------------------------------- | --------- | ----------------------------------------- |
 | Max in-flight payload bytes (→ `503`)               | `256 MiB` | remoted config `max_inflight_bytes`       |
-| Max simultaneous connections                        | `512`     | remoted config `max_parallel_connections` |
-| Max deferred requests awaiting downstream (→ `503`) | `256`     | remoted config `max_deferred_requests`    |
+| Max simultaneous connections                        | `256`     | remoted config `max_parallel_connections` |
+| Max deferred requests awaiting downstream (→ `503`) | `128`     | remoted config `max_deferred_requests`    |
 
 The capacity limits are **layered**: the transport max body size caps a single request's peak
 (RESTinio rejects an oversized `Content-Length` early by closing the connection), the max connections
@@ -576,7 +585,7 @@ milliseconds internally.
 | Max downstream response body       | `10 MiB`          | `remoted.downstream_max_response_body_size` |
 | JWT max accepted token age         | `60 s`            | `remoted.jwt_max_age`                       |
 | JWT clock skew                     | `30 s`            | `remoted.jwt_clock_skew`                    |
-| Auth max body size                 | `10 MiB`          | `remoted.auth_max_body_size`                |
+| Auth max body size                 | `5 MiB`           | `remoted.auth_max_body_size`                |
 
 The two thread-count fields above resolve a `<=0` value via `cpp_get_nproc()` the same way
 `http_io_threads`/`http_worker_threads` do (no `2x` oversubscription here -- both pools are either
@@ -1161,7 +1170,7 @@ apart by their header's `kid`:
 
   A token of either profile presented to the other's verifier is rejected on its header set before
   the signature is even considered. The request body is capped by the same
-  `remoted.auth_max_body_size` (10 MiB default) the agent scheme enforces — checked before anything
+  `remoted.auth_max_body_size` (5 MiB default) the agent scheme enforces — checked before anything
   else, in **every** mode including Open, so an oversized body is rejected with `413` before the
   credential is looked at. The body is not part of the token (TLS protects it).
 
@@ -1273,14 +1282,15 @@ master node's `authd` predates it.
 | Missing/invalid credential | `401` | Same generic message for every class; `error.code` and the `WWW-Authenticate` challenge name the class: `invalid_request` (Password mode, no usable `Authorization`), `invalid_signature` (a bearer that does not verify with its key: wrong password, wrong token secret, a token of the agent profile, a malformed token), `stale_token` (outside the accepted time window), `token_unknown` / `token_expired` / `token_revoked` (the enrollment token's own state, decided from this manager's replica of the store), `enrollment_key_unavailable` (Password mode and the enrollment password is not available on this node — bare `Bearer` challenge, retry later). See Authentication above. |
 | Re-enrollment refused by `authd` on the master (9026 unknown agent or no re-enrollment credential on record / 9027 invalid credential / 9028 outside the accepted time window) | `401` | The bearer travels to `authd` unverified, so its verdict is an authentication failure: mapped onto the classes `unknown_agent` / `invalid_signature` / `stale_token` respectively, with the same generic message and challenge — `authd`'s code and text never reach the wire. |
 | `authd` refused the use of a **verified** enrollment token: 9022 not found or revoked, 9023 expired, 9024 uses exhausted | `403` | `{"error":{"code":9022,"message":"Enrollment token not found or revoked"}}`, `{"error":{"code":9023,"message":"Enrollment token expired"}}`, `{"error":{"code":9024,"message":"Enrollment token uses exhausted"}}`. `403` rather than `401` because the bearer did verify — re-signing fixes nothing; the operator has to mint a new token. 9022/9023 are reachable only when this manager's replica lagged behind `authd`'s store (a revocation or expiry landing between the two checks, a worker copy not yet synchronized); 9024 is decided by `authd` alone, which owns the use counter. |
-| Body exceeds `remoted.auth_max_body_size` (10 MiB default) | `413` | Checked once the protocol version is accepted, BEFORE the bearer is checked (and before a credential check, in Open mode too) -- an oversized body is rejected without ever reaching `parseAndValidateBody()`'s own smaller (16 KiB) schema check. |
+| Body exceeds `remoted.auth_max_body_size` (5 MiB default) | `413` | Checked once the protocol version is accepted, BEFORE the bearer is checked (and before a credential check, in Open mode too) -- an oversized body is rejected without ever reaching `parseAndValidateBody()`'s own smaller (16 KiB) schema check. |
 | Malformed body, missing `name`/`version`, invalid `ip` | `400` | Rejected before `authd` is ever contacted. |
 | Agent version newer than allowed | `400` | See `version` in the request table above. |
 | `authd` bad function/args/name/ip/groups (9003–9006, 9014, 9017) | `400` | Passed through with `authd`'s own message. `9017` ("Invalid agent name") is unreachable from this endpoint in practice: `isValidName()` above is strictly tighter than the local socket's storage-safety floor, so any name `authd` would reject with `9017` was already refused locally with a `400`. It is mapped for completeness, not as a path clients should expect. |
 | `authd` duplicate ip/name/id (9007/9008/9012) | `409` | |
 | `authd` internal/parse/key-generation failure (9001/9002/9009) | `500` | |
 | `authd` refused a caller-supplied key (9019) | `400` | unreachable from `/enroll` (self-enrollment never sends a key); mapped for completeness |
-| `authd` `max_agents` reached (9013) | `503` | Server-wide capacity condition, not a per-client rate limit. |
+| `authd` `max_agents` reached (9013) | `503` | Server-wide capacity condition, not a rate limit — that one is the `429` row below. |
+| Endpoint rate limit exceeded | `429` | Decided by remoted before the body is decoded, the bearer is examined or `authd` is contacted. Carries `Retry-After` in whole seconds. The ceiling is fleet-wide, so during a mass enrollment many agents can see this at once; each retries with its own backoff. See [`https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit). |
 | Re-enrollment already in progress (9030) | `409` | Retry after the pending rotation is committed; no second rotation is performed. |
 | Identity transition could not be recorded (9031) | `503` | No credential is handed out. See [journal admission and recovery limitations](../authd/architecture.md#the-identity-journal). |
 | Worker rejected the request (9015), or its forward to the master failed (9016, new in 5.0) | `503` | Only reachable via the local-socket bridge — see [Authd's local socket protocol](../authd/README.md#local-socket-enrollment-protocol). |

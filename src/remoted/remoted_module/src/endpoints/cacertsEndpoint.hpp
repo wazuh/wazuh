@@ -70,6 +70,16 @@ namespace remoted::endpoints::cacerts
                                             CacertsMetrics metrics,
                                             const remoted::metrics::EndpointHttpMetrics* httpMetrics);
 
+    /**
+     * @brief The 429 body this route answers when the endpoint's rate limit refuses a request.
+     *
+     * Lives here, not in the gate that sends it (endpoints/rateLimitGate.hpp), so this endpoint's
+     * error envelope stays defined in one place: the flat `{"error":"..."}` shape its 404 and 503
+     * already use. `Retry-After` is the gate's to add -- that one is the limiter's refill time,
+     * not an envelope decision.
+     */
+    remoted::http::HttpResponse rateLimitedResponse();
+
 } // namespace remoted::endpoints::cacerts
 
 #endif // _REMOTED_ENDPOINTS_CACERTS_ENDPOINT_HPP

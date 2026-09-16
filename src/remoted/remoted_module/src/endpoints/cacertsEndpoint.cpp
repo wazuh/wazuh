@@ -55,6 +55,11 @@ namespace remoted::endpoints::cacerts
         }
     } // namespace
 
+    remoted::http::HttpResponse rateLimitedResponse()
+    {
+        return remoted::http::HttpResponse::json(429, R"({"error":"rate_limited"})");
+    }
+
     remoted::http::RouteHandler makeHandler(std::function<remoted::http::CaCertificateSnapshot()> snapshotOf,
                                             CacertsMetrics metrics,
                                             const remoted::metrics::EndpointHttpMetrics* httpMetrics)

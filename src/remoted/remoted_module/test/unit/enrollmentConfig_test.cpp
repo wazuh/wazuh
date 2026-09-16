@@ -170,5 +170,5 @@ TEST(EnrollmentConfigTest, NonPositiveMaxBodySizeFallsBackToTenMebibytes)
     c.auth_max_body_size = 0;
 
     const auto cfg = buildEnrollmentConfig(c);
-    EXPECT_EQ(cfg.maxBodySize, 10u * 1024u * 1024u);
+    EXPECT_EQ(cfg.maxBodySize, 5u * 1024u * 1024u);
 }

@@ -48,13 +48,13 @@ namespace remoted::enrollment
         /// `remoted.jwt_clock_skew` policy the agent<->manager profile uses (enrollmentConfig.hpp).
         jwt_profile::v1::TimePolicy timePolicy {};
 
-        /// Same `auth_max_body_size` internal option (and the same 10 MiB default) the
+        /// Same `auth_max_body_size` internal option (and the same 5 MiB default) the
         /// agent<->manager AuthConfig enforces (authTypes.cpp) -- checked BEFORE the credential, in
         /// BOTH Open and Password mode, so an unauthenticated peer can't hold an arbitrarily large
         /// body (up to the transport's own cap) in the in-flight budget, and so an oversized body
         /// gets the same 413 every other endpoint returns instead of falling through to
         /// parseAndValidateBody()'s 400.
-        std::size_t maxBodySize {10U * 1024U * 1024U};
+        std::size_t maxBodySize {5U * 1024U * 1024U};
 
         /// The accepted `protocol-version` header value, shared with the agent<->manager scheme via
         /// remoted::auth::kSupportedProtocolVersion so the two can never accept different versions.

@@ -313,12 +313,97 @@ protocol version.
 
 ### https.max_body_size
 
-Maximum accepted HTTP request body size.
+Maximum accepted HTTP request body size, enforced by the transport.
 
-- **Default value:** `20M` (20 MiB)
+- **Default value:** `10M` (10 MiB)
 - **Allowed values:** Positive byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`, case-insensitive). `K`/`M`/`G` are binary multiples; a bare number is bytes. Suffixes such as `MB` are rejected.
 - **Effect:** Raising the limit admits larger wire bodies and increases potential memory use per connection;
   lowering it rejects larger requests at the transport. The authentication and shared-memory limits still apply.
+- **Note:** Keep it **above** [`remoted.auth_max_body_size`](#remotedauth_max_body_size) (5 MiB by
+  default). Breaching *this* cap is not a `413`: the parser fails on `Content-Length` and the
+  connection is closed with no response at all, which an agent cannot tell apart from a network
+  failure — so it never splits its batch and retries the same bytes indefinitely. The auth limit is
+  what produces the `413` the agent acts on. Setting the two equal makes the closed connection the
+  only outcome, because the `Content-Length` check always fires first.
+
+### Rate limits of the unauthenticated routes
+
+Two of the HTTPS routes cannot be put behind the bearer-token gateway, because their callers do not
+yet have the credential it verifies: `POST /enroll` (an enrolling agent has no `client.keys` entry
+yet) and `GET /cacerts` (a caller fetching the trust anchor does not have one yet by definition).
+For those two, these two options cap how fast the manager serves the route at all.
+
+**Neither is written into the shipped `wazuh-manager.conf`** — the defaults below apply without any
+`<https>` block, and an operator only adds a line to change one.
+
+What is being bounded is the **work behind the route**, not the transport. A `/enroll` request costs
+the manager a round trip to authd over its local socket and, on a cluster worker, a further round
+trip to the master; a caller pays one HTTP request for it. The
+[in-flight byte budget](#remotedmax_inflight_bytes) and
+[`remoted.max_parallel_connections`](#remotedmax_parallel_connections) bound the *memory* a request
+holds and shed with a `503`; these bound *how often* the route is served and refuse with a `429` and
+a `Retry-After`.
+
+> **The limit is a ceiling for the endpoint, not an allowance per agent.** One bucket per route,
+> shared by every caller: a single client asking fast enough can consume the whole route's budget,
+> and a fleet-wide burst is paced by the same number. Size these for the fleet — at
+> `enroll_rate_limit` `100`, a bootstrap of 10 000 agents needs at least ~100 seconds of `/enroll`
+> traffic. The agent retries with its own backoff ramp, so a paced rollout completes; it is slower,
+> not broken.
+>
+> **In a cluster the ceiling is per node.** Every manager runs its own limiter, so N nodes behind a
+> load balancer admit up to N times the configured rate between them, and an agent refused by one
+> node may be admitted by the next one it is balanced to. Size the value for what a single node
+> should serve, not for the cluster total.
+
+Each limit is a token bucket, and the configured rate is the only number: **the bucket depth is
+derived from it, at twice the rate, and is not configurable.** Real traffic does not arrive evenly
+spaced — a hundred agents coming back after an outage arrive in the same instant, not one every
+10 ms — so a bucket holding exactly one second's worth would refuse a perfectly acceptable load on
+its arrival pattern alone. Two seconds' worth absorbs that without raising the sustained ceiling.
+
+`remoted.<endpoint>.rate_limit.available` in
+[`GET /metrics`](metrics.md#rate-limits--remotedendpointrate_limit) is the live headroom (its maximum
+is that derived depth), `.burst` reports the depth in force, and `remoted.<endpoint>.rate_limited`
+counts what was refused.
+
+### https.enroll_rate_limit
+
+Sustained `POST /enroll` requests per second the manager serves, counted for the endpoint as a
+whole.
+
+- **Default value:** `100`
+- **Allowed values:** Integer from `0` to `100000`. `0` disables the limit.
+- **Note:** Short bursts of up to twice this value are absorbed before the rate paces them.
+- **Effect:** Requests over the limit are answered `429` with `Retry-After` **without reaching
+  authd**, so a peer with no usable credential can no longer turn `/enroll` into an amplifier onto
+  the cluster's internal socket.
+- **Note:** Higher than `/cacerts`'s default even though it is the more expensive route: every agent
+  must pass through it at least once (a bootstrap, or a mass re-enrollment after a credential
+  rotation).
+
+### https.cacerts_rate_limit
+
+Sustained `GET /cacerts` requests per second the manager serves, counted for the endpoint as a
+whole.
+
+- **Default value:** `50`
+- **Allowed values:** Integer from `0` to `100000`. `0` disables the limit.
+- **Note:** Short bursts of up to twice this value are absorbed before the rate paces them.
+- **Note:** The route is cheap — a file read plus a hash, with the parsed result cached while the
+  file's content is unchanged, and no downstream service behind it — but an agent that cannot fetch
+  the anchor cannot complete a handshake at all, so do not set this below the rate at which new
+  agents appear.
+
+**Example — raising the enrollment ceiling for a wide rollout:**
+
+```xml
+<remote>
+  <https>
+    <enroll_rate_limit>500</enroll_rate_limit>
+  </https>
+</remote>
+```
 
 ---
 
@@ -774,8 +859,13 @@ Maximum in-flight (unprocessed) request payload bytes before the HTTPS server sh
 
 Maximum simultaneous HTTPS connections.
 
-- **Default value:** `512`
+- **Default value:** `256`
 - **Allowed values:** Integer from `1` to `65536`
+- **Note:** Reaching this limit **rejects nothing**: the transport postpones the accept and the
+  connection waits in the kernel's listen backlog, so saturation shows up as added latency rather
+  than as an error the agent can see. There is consequently no rejection counter for it — watch
+  [`remoted.server.connections.open`](metrics.md#public-transport-backpressure--remotedserverbudget)
+  against `.max` instead, which is the only visibility into how close the listener is running to it.
 - **Note:** Bounds the read-phase memory peak (~`max_parallel_connections` × `max_body_size`). Also
   the only bound on concurrent streamed responses (`POST /download`): chunked output rearms
   `remoted.http_write_timeout` per chunk and there is no per-stream limiter, so a fast reader holds
@@ -790,7 +880,13 @@ Maximum simultaneous HTTPS connections.
 
 Maximum requests parked awaiting a downstream service before replying with HTTP 503.
 
-- **Default value:** `256`
+- **Default value:** `128`
+- **Note:** Deliberately kept **below**
+  [`remoted.max_parallel_connections`](#remotedmax_parallel_connections). A forwarded request holds
+  a connection *and* a deferred slot, so whichever limit is lower is the one that binds. Keeping
+  this one lower means saturation is shed as an explicit, counted `503` the agent retries on,
+  instead of as invisible accept-queue latency. Raising it to or above the connection cap makes it
+  effectively unreachable.
 - **Allowed values:** Integer from `1` to `65536`
 - **Note:** No `Retry-After` header is sent; the agent runs its own retry/backoff on a 503. If you
   see warnings about this limit being reached, consider increasing it or investigating why the
@@ -948,8 +1044,14 @@ see [HTTPS Agent API](https-events-api.md#content-encoding-zstd). Rejections aga
 are visible as `remoted.auth.reject.body_too_large` in
 [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject).
 
-- **Default value:** `10485760` (10 MiB)
+- **Default value:** `5242880` (5 MiB)
 - **Allowed values:** Integer from `1048576` (1 MiB) to `67108864` (64 MiB)
+- **Note:** This is the cap that answers a `413`, and the agent acts on it: it splits an oversized
+  `/stateless` batch and resends it smaller without dropping events, then ramps back up. Keep it
+  **below** [`https.max_body_size`](#httpsmax_body_size) so an oversized body reaches this check
+  instead of being cut at the transport with no response at all. The agent's own ceiling is
+  `<client><batch><size>` (1 MiB by default), which also bounds `/stateful` sessions, so the
+  default leaves 5x headroom — raise this one if that setting is raised.
 
 #### remoted.control_keepalive_throttle
 

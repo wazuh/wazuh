@@ -267,7 +267,7 @@ namespace remoted::auth
         /// options change them, within the profile ceiling (43200 s / 43200 s -- C-ABI `jwt_max_age`
         /// / `jwt_clock_skew`, see buildAuthConfig()).
         jwt_profile::v1::TimePolicy timePolicy {};
-        std::size_t maxBodySize = 10 * 1024 * 1024; ///< Hard cap on the authenticated body size (10 MiB).
+        std::size_t maxBodySize = 5 * 1024 * 1024; ///< Hard cap on the authenticated body size (5 MiB).
     };
 
     /**
