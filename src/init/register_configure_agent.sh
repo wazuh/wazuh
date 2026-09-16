@@ -414,7 +414,7 @@ set_agent_verification_mode() {
         echo "    </ssl>"
     } > "${TMP_SERVER}"
     # "agent" only, never the default agent|client: a 4.x <client> block is read by
-    # Read_Legacy_Client_Address(), which never looks at <ssl>, so a block pinned there would
+    # Read_Legacy_Client(), which never looks at <ssl>, so a block pinned there would
     # report success while staying inert.
     if ! insert_into_agent_block "${TMP_SERVER}" "agent"; then
         echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_SSL_VERIFICATION into a fresh <ssl> block: no <agent> opening tag found to insert after." >> "${INSTALLDIR}/logs/ossec.log"

@@ -603,7 +603,7 @@ fi
 
 # Whether the currently-installed (pre-upgrade) agent predates 5.0, queried now
 # because the package below replaces it. A genuine 4.x config is always
-# <client>-only -- Read_Legacy_Client_Address() (config.c) never reads <ssl> under
+# <client>-only -- Read_Legacy_Client() (config.c) never reads <ssl> under
 # <client> -- so that agent cannot express TLS verification via ossec.conf, edit or
 # not. It also does not need to for safety: under implicit 'system' mode,
 # w_agent_validate_ssl_ca() (config.c) only refuses to start when no OS CA bundle

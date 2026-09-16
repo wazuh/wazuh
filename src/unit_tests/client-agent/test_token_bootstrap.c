@@ -515,6 +515,7 @@ static void test_empty_placeholder_keys_file_is_not_already_enrolled(void **stat
      * doesn't fire twice. */
     expect_any(__wrap__mdebug1, formatted_msg);
 
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,
@@ -601,6 +602,7 @@ static void test_full_happy_path_via_pin(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
     expect_any(__wrap__mdebug1, formatted_msg);
 
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,
@@ -676,6 +678,7 @@ static void test_fresh_enrollment_keys_chown_failure_logs_merror(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
     expect_any(__wrap__mdebug1, formatted_msg);
 
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,
@@ -714,6 +717,7 @@ static void test_credential_less_token_enrolls_without_error(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
     expect_any(__wrap__mdebug1, formatted_msg);
 
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,
@@ -757,6 +761,7 @@ static void test_full_happy_path_via_ca_pem(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
     expect_any(__wrap__mdebug1, formatted_msg);
 
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
     expect_string(__wrap__minfo, formatted_msg,
