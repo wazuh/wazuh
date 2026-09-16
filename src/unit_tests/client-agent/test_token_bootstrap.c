@@ -678,6 +678,65 @@ static void test_pin_mismatch_logs_named_error_and_writes_nothing(void **state) 
     assert_int_not_equal(IsFile("etc/client.keys"), 0);
 }
 
+/* #39064: a 403 carrying 9022/9023/9024 is authd's verdict on a token whose signature the manager
+ * already verified -- unknown, revoked, or out of uses. Nothing else on this path clears the token:
+ * the anchor is never installed and client.keys is never written, so neither latch trips next boot,
+ * and the caller turns the -1 into merror_exit(). Keeping it would hand the same dead credential to
+ * the same refusal on every restart -- the retry loop this issue exists to end, measured in process
+ * lifetimes instead of HTTP attempts. */
+static void test_fatal_token_refusal_discards_the_dead_token(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 403L);
+    will_return(__wrap_hc_enroll, "{\"error\":{\"code\":9022,\"message\":\"revoked\"}}");
+    will_return(__wrap_hc_enroll, 1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), -1);
+    assert_int_equal(g_enroll_call_count, 1);
+
+    /* The point of the test. */
+    assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+
+    /* Nothing was committed: the next boot takes the "no token provided" path, not this one. */
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+}
+
+/* The other 403: enrollment administratively disabled, which carries no authd code and is
+ * W_ENROLL_ERR_DISABLED rather than fatal. An operator can re-enable it, so the one-shot token must
+ * survive -- discarding it here would need a newly minted token to undo a condition that clears
+ * itself. This is the case that makes the fix a check on the STATUS and not on the 403. */
+static void test_disabled_enrollment_keeps_the_token(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 403L);
+    will_return(__wrap_hc_enroll, "{\"error\":{\"message\":\"disabled\"}}");
+    will_return(__wrap_hc_enroll, 1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_any(__wrap__minfo, formatted_msg);
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), -1);
+    assert_int_equal(g_enroll_call_count, 1);
+
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
 static void test_full_happy_path_via_pin(void **state) {
     (void) state;
     write_token_file(true, true, NULL);
@@ -1034,6 +1093,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fetch_not_found_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_ca_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_pin_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_fatal_token_refusal_discards_the_dead_token, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_disabled_enrollment_keeps_the_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_pin, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fresh_enrollment_keys_chown_failure_logs_merror, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_credential_less_token_enrolls_without_error, setup_test, teardown_test),

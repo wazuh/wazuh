@@ -796,12 +796,17 @@ Public Function RemoveFleetEnrollmentPassword()
         ' script can do on its own: a same-length rewrite, which does NOT overwrite the original
         ' allocation -- worth doing, never worth mistaking for the guarantee above -- and the
         ' delete, which is what actually takes the fleet-wide credential off the endpoint.
+        '
+        ' Chr(0), not the digit "0": either destroys the plaintext equally well, but every other
+        ' path writes NUL (the agent's own overwrite, and `dd if=/dev/zero` in the three POSIX
+        ' scripts), and a fallback that leaves a file full of 0x30 reads as a different operation
+        ' to anyone who looks at the bytes afterwards.
         If fso.FileExists(passPath) Then
             size = fso.GetFile(passPath).Size
             If size > 0 Then
                 Set objFile = fso.OpenTextFile(passPath, 2)
                 For i = 1 To size
-                    objFile.Write "0"
+                    objFile.Write Chr(0)
                 Next
                 objFile.Close
             End If

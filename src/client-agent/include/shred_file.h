@@ -15,12 +15,16 @@
  *
  * The file is left in place at its original length; unlinking it is the caller's business.
  *
- * "In its own allocation" is the point of this function, and it is a property of the open mode
- * rather than of the loop: wfopen()'s "r+b" is CreateFile(OPEN_EXISTING, GENERIC_READ |
- * GENERIC_WRITE) on Windows and a plain fopen() without O_TRUNC everywhere else -- the same thing
- * `dd conv=notrunc` gets the POSIX package scripts. Opening with "w" would release the original
- * blocks first and write the zeros into a fresh allocation, which is the bug this exists not to
- * have.
+ * "In its own allocation" is the point of this function, and it is a property of the open rather
+ * than of the loop: w_fopen_nofollow_update() opens OPEN_EXISTING / O_RDWR with no truncation on
+ * either platform -- the same thing `dd conv=notrunc` gets the POSIX package scripts. An opening
+ * mode that truncated would release the original blocks first and write the zeros into a fresh
+ * allocation, which is the bug this exists not to have.
+ *
+ * That helper is also why the open does not follow links. This runs over credential paths, and one
+ * caller runs privileged (the MSI custom action, as SYSTEM), so a symlink or hard link swapped in
+ * at the target would otherwise be written through -- zeroing whatever it points at rather than
+ * the credential.
  *
  * It is not erasure, and nothing that calls it should claim otherwise: a journalling or
  * copy-on-write filesystem, an SSD's remapping layer, a snapshot or a backup can each still hold

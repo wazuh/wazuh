@@ -73,6 +73,18 @@ static void write_file(const char *path, const char *contents, size_t length) {
     fclose(fp);
 }
 
+static const char *read_all(const char *path) {
+    static char buffer[256];
+    FILE *fp = fopen(path, "rb");
+    size_t n;
+
+    assert_non_null(fp);
+    n = fread(buffer, 1, sizeof(buffer) - 1, fp);
+    fclose(fp);
+    buffer[n] = '\0';
+    return buffer;
+}
+
 static off_t size_of(const char *path) {
     struct stat info;
     assert_int_equal(stat(path, &info), 0);
@@ -160,6 +172,46 @@ static void test_overwrite_reports_a_file_that_is_not_there(void **state) {
     assert_int_equal(w_shred_file_in_place(SCRATCH_FILE), 1);
 }
 
+/* ---- the vetted, no-follow open ---- */
+
+/* The shredder runs over credential paths, and one caller (the MSI's --shred-enrollment-password)
+ * runs privileged, so a link swapped in at the target must be refused rather than written through.
+ * Without the vetted open, this test would zero `decoy` instead of failing. */
+static void test_overwrite_refuses_a_symlink(void **state) {
+    (void) state;
+    const char *decoy = "etc/shred_decoy";
+    char expected[OS_SIZE_256];
+
+    write_file(decoy, SECRET_LINE, strlen(SECRET_LINE));
+    assert_int_equal(symlink("shred_decoy", SCRATCH_FILE), 0);
+
+    snprintf(expected, sizeof(expected), FOPEN_ERROR, SCRATCH_FILE, ELOOP, strerror(ELOOP));
+    expect_string(__wrap__merror, formatted_msg, expected);
+
+    assert_int_equal(w_shred_file_in_place(SCRATCH_FILE), 1);
+
+    /* The decoy is what a following open would have destroyed. */
+    assert_string_equal(read_all(decoy), SECRET_LINE);
+    unlink(decoy);
+}
+
+/* A hard link is a regular file, so no file-type test can tell it apart -- the link count is what
+ * rejects it. Worth its own case: it is the one a truncating open would already have destroyed
+ * before anything could be checked. */
+static void test_overwrite_refuses_a_hard_link(void **state) {
+    (void) state;
+    const char *decoy = "etc/shred_decoy";
+
+    write_file(decoy, SECRET_LINE, strlen(SECRET_LINE));
+    assert_int_equal(link(decoy, SCRATCH_FILE), 0);
+
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_shred_file_in_place(SCRATCH_FILE), 1);
+
+    assert_string_equal(read_all(decoy), SECRET_LINE);
+    unlink(decoy);
+}
+
 /* ---- w_agent_shred_enrollment_password() ---- */
 
 static void test_shred_removes_the_enrollment_password(void **state) {
@@ -197,6 +249,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_overwrite_of_an_empty_file_succeeds, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_overwrite_leaves_the_file_in_place, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_overwrite_reports_a_file_that_is_not_there, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_overwrite_refuses_a_symlink, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_overwrite_refuses_a_hard_link, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_shred_removes_the_enrollment_password, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_shred_without_a_password_is_a_silent_no_op, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_shred_removes_an_empty_password_file, setup_test, teardown_test),

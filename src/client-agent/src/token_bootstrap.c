@@ -616,6 +616,30 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
                 ? W_TOKEN_BOOTSTRAP_TRANSIENT
                 : W_TOKEN_BOOTSTRAP_PERMANENT;
 
+        /* A fatal refusal is authd's verdict on a bearer whose signature the manager already
+         * verified: the token is unknown, revoked, or out of uses, and re-presenting it cannot
+         * change any of that. Nothing else on this path clears it -- the anchor is never installed
+         * (OS_MoveFile is further down) and client.keys is never written, so neither latch at the
+         * top of this function trips on the next boot -- and a PERMANENT result ends the start.
+         * Keeping the token would therefore hand the same dead credential to the same fatal
+         * refusal on every restart, which is the retry loop #39064 exists to end, only measured in
+         * process lifetimes instead of HTTP attempts.
+         *
+         * Keyed on the status, deliberately, and NOT on the classification just above: every
+         * fatal refusal is PERMANENT, but so is a malformed request, an enrollment the manager has
+         * disabled, and a duplicate agent -- all of which must keep their token. Those can succeed
+         * on a later boot without anyone touching the endpoint (enrollment re-enabled, a manager
+         * still syncing the token, a clock that resyncs), and discarding a one-shot credential
+         * over a condition that clears itself is the more expensive mistake: it needs an operator
+         * and a newly minted token to undo.
+         *
+         * The result stays PERMANENT either way -- this boot refuses to enroll unverified, exactly
+         * as before. What changes is that the next one starts with no token at all and takes the
+         * "legacy install" path instead of repeating this. */
+        if (enroll_status == W_ENROLL_ERR_AUTH_FATAL) {
+            unlink(AGENT_ENROLLMENT_TOKEN_FILE);
+        }
+
         w_enroll_request_destroy(&built_request);
         unlink(anchor_file.name);
         os_free(anchor_file.name);

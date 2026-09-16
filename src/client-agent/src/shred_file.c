@@ -22,7 +22,10 @@
  *
  * The agent already had the primitive the script lacked -- w_reenroll_secret_clear() has opened
  * "r+" to overwrite the re-enrollment secret since #39064 -- so the fix is to let the installer
- * call it rather than to reimplement it a third time. It is reached through a binary
+ * call it rather than to reimplement it a third time. Both callers now go through
+ * w_fopen_nofollow_update(), which opens for update without truncating on either platform and
+ * refuses a symlink at the target -- something `dd conv=notrunc` in the POSIX scripts does not do,
+ * and which matters here because the MSI custom action runs as SYSTEM. It is reached through a binary
  * InstallerScripts.vbs is already running for --show-token, and one that ships signed, which for a
  * security product's installer is the real argument against the other route to OPEN_EXISTING from
  * VBScript: `powershell.exe -ExecutionPolicy Bypass`.
@@ -43,23 +46,101 @@
 #include <unistd.h>
 #endif
 
+#include <limits.h>
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
+#ifdef WAZUH_UNIT_TESTING
+    // Remove static qualifier when unit testing
+    #define STATIC
+#else
+    #define STATIC static
+#endif
+
 /* Written in one pass for the credential files this serves, which hold a single line. Sized as a
  * fixed buffer rather than from the file's own length so an unexpectedly large file cannot turn
  * into an unbounded stack allocation. */
 #define W_SHRED_CHUNK 4096
 
+/* Split @p path into the directory and bare filename w_fopen_nofollow_update() needs.
+ *
+ * AUTHD_PASS and AGENT_REENROLL_SECRET are "etc/<name>" on POSIX but a bare "<name>" on Windows
+ * (defs.h), and both platforms chdir() into the installation directory before anything here runs,
+ * so a path with no separator at all is the normal Windows case rather than an error -- it means
+ * the working directory.
+ *
+ * @param buf Backing storage for the directory; @p filename points into it, so it must outlive it.
+ * @return 0 on success, -1 when @p path does not fit in @p buf (errno set to ENAMETOOLONG).
+ */
+STATIC int w_shred_split_dir_filename(const char *path, char *buf, size_t buf_size, const char **filename)
+{
+    const char *separator = strrchr(path, '/');
+
+#ifdef WIN32
+    const char *backslash = strrchr(path, '\\');
+
+    if (backslash != NULL && (separator == NULL || backslash > separator)) {
+        separator = backslash;
+    }
+#endif
+
+    if (separator == NULL) {
+        if (strlen(path) == 0) {
+            errno = EINVAL;
+            return -1;
+        }
+
+        if ((size_t) snprintf(buf, buf_size, ".") >= buf_size) {
+            errno = ENAMETOOLONG;
+            return -1;
+        }
+
+        *filename = path;
+        return 0;
+    }
+
+    if ((size_t) (separator - path) >= buf_size) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    memcpy(buf, path, (size_t) (separator - path));
+    buf[separator - path] = '\0';
+
+    /* An absolute path whose only separator is the leading one: the directory is the root itself,
+     * not the empty string, which openat() would reject. */
+    if (buf[0] == '\0') {
+        buf[0] = '/';
+        buf[1] = '\0';
+    }
+
+    *filename = separator + 1;
+    return 0;
+}
+
 int w_shred_file_in_place(const char *path)
 {
     char zeros[W_SHRED_CHUNK] = {0};
+    char dir[PATH_MAX];
+    const char *filename;
     FILE *fp;
     long size;
     long written;
 
-    /* "r+b", and the order matters: wfopen() walks the mode string, so 'r' sets OPEN_EXISTING and
-     * '+' then adds GENERIC_WRITE. A mode that put '+' first, or a "w", would still open the file
-     * and would silently stop overwriting the original allocation -- the one failure this whole
-     * function exists to prevent, and one no return value reports. */
-    if (fp = wfopen(path, "r+b"), fp == NULL) {
+    if (w_shred_split_dir_filename(path, dir, sizeof(dir), &filename) != 0) {
+        merror(FOPEN_ERROR, path, errno, strerror(errno));
+        return 1;
+    }
+
+    /* Opened through the vetted no-follow helper rather than wfopen(): this runs over a credential
+     * path, and one caller (the MSI's --shred-enrollment-password) runs privileged, so a symlink or
+     * hard link swapped in at the target would otherwise be written through -- zeroing whatever it
+     * points at. The helper opens for update WITHOUT truncating, which is the whole point here: a
+     * truncating open would release the secret's bytes and write the zeros into a fresh allocation,
+     * silently, with nothing in the return value to say so. */
+    if (fp = w_fopen_nofollow_update(dir, filename), fp == NULL) {
         merror(FOPEN_ERROR, path, errno, strerror(errno));
         return 1;
     }
