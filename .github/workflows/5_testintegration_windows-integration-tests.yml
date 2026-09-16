@@ -196,12 +196,28 @@ jobs:
             exit $pytestExitCode
           }
       # ================= RESULTS =================
+      # results.html carries pytest's own captured output, which does not include the agent's
+      # ossec.log -- and for the reconnection tests that log is the only place the agent says why
+      # it did not reconnect. The framework already preserves it on failure instead of truncating
+      # it (conftest.py's truncate_monitored_files), so it is still on disk here.
+      - name: Collect agent diagnostics
+        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && failure() }}
+        shell: pwsh
+        run: |
+          $dest = "C:\wazuh\it-diagnostics"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Copy-Item "C:\wazuh\tests\integration\results.html" $dest -ErrorAction SilentlyContinue
+          foreach ($f in @("ossec.log", "wazuh-agent.state", "ossec.conf", "local_internal_options.conf")) {
+              Copy-Item "C:\Program Files (x86)\ossec-agent\$f" $dest -ErrorAction SilentlyContinue
+          }
+          Get-ChildItem $dest | Format-Table Name, Length
+
       - name: Upload failed test results
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && failure() }}
         uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ inputs.module_name }}-win-${{ inputs.shard_name }}-test-results-${{ github.run_id }}
-          path: C:\wazuh\tests\integration\results.html
+          path: C:\wazuh\it-diagnostics
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}

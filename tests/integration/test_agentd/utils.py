@@ -40,8 +40,24 @@ def wait_keepalive(timeout=100, poll_interval=1):
     assert last_keepalive, f'Sending keep alive not found'
 
 
-def _wait_for_pattern_since(pattern, timeout=150, poll_interval=0.1):
-    """Scan ossec.log for `pattern`, anchored to a byte offset captured before the wait starts.
+def log_position():
+    """ossec.log's current size, to anchor a later wait to.
+
+    Capture this BEFORE the event you are waiting for can possibly happen -- before the
+    RemotedSimulator that provokes it is even constructed -- and hand it to wait_connect() or
+    wait_enrollment() as `since`. Letting those anchor themselves is a window, not a fix: they
+    take the offset when they are called, which is already after the listener came up, so an
+    agent whose retry loop reconnects in the microseconds before the call still writes its
+    once-only line below the anchor and is never seen. See _wait_for_pattern_since().
+    """
+    try:
+        return os.path.getsize(WAZUH_LOG_PATH)
+    except OSError:
+        return 0
+
+
+def _wait_for_pattern_since(pattern, timeout=150, poll_interval=0.1, since=None):
+    """Scan ossec.log for `pattern` from `since`, or from a byte offset captured on entry.
 
     Deliberately not FileMonitor(only_new_events=True), which seeks to whatever the file's end
     is at the moment .start() runs: for a message that is logged exactly once and never repeats
@@ -52,10 +68,7 @@ def _wait_for_pattern_since(pattern, timeout=150, poll_interval=0.1):
     AGENTD_HTTPS_STARTUP_ACCEPTED and AGENTD_RECEIVED_VALID_KEY: the line landed before the
     monitor attached, then never recurred, timing out the wait despite having already happened.
     """
-    try:
-        start_pos = os.path.getsize(WAZUH_LOG_PATH)
-    except OSError:
-        start_pos = 0
+    start_pos = log_position() if since is None else since
 
     callback = callbacks.generate_callback(pattern)
     encoding = file.get_file_encoding(WAZUH_LOG_PATH)
@@ -74,13 +87,17 @@ def _wait_for_pattern_since(pattern, timeout=150, poll_interval=0.1):
     return False
 
 
-def wait_connect(timeout=150, poll_interval=0.1):
+def wait_connect(timeout=150, poll_interval=0.1, since=None):
     """
         Watch ossec.log until the HTTPS startup is accepted (the legacy "Connected to the
         server" line has no equivalent under the /control path; see
         AGENTD_HTTPS_STARTUP_ACCEPTED's own comment, agentd/patterns.py).
+
+        Pass `since` from log_position(), taken before the simulator this is waiting on was
+        started, whenever the agent may already be looping fast enough to connect the instant
+        the listener appears.
     """
-    matched = _wait_for_pattern_since(AGENTD_HTTPS_STARTUP_ACCEPTED, timeout, poll_interval)
+    matched = _wait_for_pattern_since(AGENTD_HTTPS_STARTUP_ACCEPTED, timeout, poll_interval, since)
     assert matched, f'Connected to the server message not found'
 
 
@@ -93,11 +110,11 @@ def wait_state_update():
     assert (wazuh_log_monitor.callback_result != None), f'State file update not found'
 
 
-def wait_enrollment(timeout=150, poll_interval=0.1):
+def wait_enrollment(timeout=150, poll_interval=0.1, since=None):
     """
-        Watch ossec.log until "Valid key received" message is found
+        Watch ossec.log until "Valid key received" message is found. `since` as wait_connect().
     """
-    matched = _wait_for_pattern_since(AGENTD_RECEIVED_VALID_KEY, timeout, poll_interval)
+    matched = _wait_for_pattern_since(AGENTD_RECEIVED_VALID_KEY, timeout, poll_interval, since)
     assert matched, 'Agent never enrolled'
 
 

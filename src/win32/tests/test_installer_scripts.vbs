@@ -114,8 +114,9 @@ Sub RemoveDir(dir)
     On Error Goto 0
 End Sub
 
-' Load config() with the three seams patched, and run it against `dir` with `payload`.
-Sub RunConfig(dir, payload)
+' Load InstallerScripts.vbs with the three seams patched. Shared by the two drivers below so the
+' seams are described -- and fixed -- in one place rather than once per entry point.
+Sub LoadInstallerScripts(payload)
     Dim code
     code = ReadAllText(targetSource)
     code = Replace(code, "Session.Property(""CustomActionData"")", """" & payload & """")
@@ -127,7 +128,19 @@ Sub RunConfig(dir, payload)
     code = code & vbCrLf & "Public Function SetWazuhPermissions()" & vbCrLf & "End Function" & vbCrLf
     code = Replace(code, """wazuh-agent.exe""", """wazuh-agent.cmd""")
     ExecuteGlobal code
+End Sub
+
+' Run config() against `dir` with `payload`.
+Sub RunConfig(dir, payload)
+    LoadInstallerScripts payload
     config()
+End Sub
+
+' Run RemoveFleetEnrollmentPassword(), the MSI's own custom action for the 5.0 upgrade, which
+' Windows Installer calls with the same CustomActionData.
+Sub RunRemoveFleetPassword(dir, payload)
+    LoadInstallerScripts payload
+    RemoveFleetEnrollmentPassword()
 End Sub
 
 ' The payload config() splits on "/+/", in the order wazuh-installer.wxs packs it. Only the
@@ -183,6 +196,26 @@ End Function
 Function Exists(dir, name)
     If objFSO.FileExists(dir & name) Then Exists = "present" Else Exists = "absent"
 End Function
+
+' Replace the stub decoder with one standing in for `wazuh-agent.exe --shred-enrollment-password`:
+' it exits `status`, and removes authd.pass first only when `removes` says so. What the real agent
+' does to the file's bytes is not what these cases are about -- test_shred_file.c covers that --
+' so the stub only has to make the installer's two branches distinguishable.
+Sub MakeShredStub(dir, removes, status)
+    Dim f
+    Set f = objFSO.CreateTextFile(dir & "wazuh-agent.cmd", True)
+    f.WriteLine "@echo off"
+    If removes Then f.WriteLine "del /f /q " & Chr(34) & dir & "authd.pass" & Chr(34)
+    f.WriteLine "exit /b " & status
+    f.Close
+End Sub
+
+Sub WritePassword(dir)
+    Dim f
+    Set f = objFSO.CreateTextFile(dir & "authd.pass", True)
+    f.Write "S3cr3t-fleet-pw"
+    f.Close
+End Sub
 
 ' ---------------------------------------------------------------- A token on its own
 
@@ -283,6 +316,51 @@ Check "SSL_VERIFICATION is reported as renamed, not merely removed", True, _
       (InStr(ReadAllText(dir & "ossec.log"), "renamed to WAZUH_SSL_VERIFICATION; the old name is not read.") > 0)
 Check "SSL_VERIFICATION under its old name reaches no <verification_mode>", False, _
       (InStr(ReadAllText(dir & "ossec.conf"), "<verification_mode>") > 0)
+RemoveDir dir
+
+' ------------------------------------------- RemoveFleetEnrollmentPassword (the 5.0 upgrade)
+
+' The agent does the work and says so.
+dir = MakeHomeDir("", 0)
+MakeShredStub dir, True, 0
+WritePassword dir
+RunRemoveFleetPassword dir, Payload(dir, "", "", "", "", "")
+Check "an agent that shreds the password leaves it gone", "absent", Exists(dir, "authd.pass")
+RemoveDir dir
+
+' A stub that exits 0 without touching the file is not a case that occurs in the field -- the agent
+' returns 0 only once the file is unlinked or was never there. It is how the seam makes "the exit
+' code is believed" observable at all: under the old unconditional path the file would be deleted
+' here anyway, and the two branches would be indistinguishable in every other case.
+dir = MakeHomeDir("", 0)
+MakeShredStub dir, False, 0
+WritePassword dir
+RunRemoveFleetPassword dir, Payload(dir, "", "", "", "", "")
+Check "an agent that reports success is not second-guessed", "present", Exists(dir, "authd.pass")
+RemoveDir dir
+
+' Whatever went wrong in the agent, the credential still has to come off the endpoint.
+dir = MakeHomeDir("", 0)
+MakeShredStub dir, False, 1
+WritePassword dir
+RunRemoveFleetPassword dir, Payload(dir, "", "", "", "", "")
+Check "an agent that fails is fallen back on", "absent", Exists(dir, "authd.pass")
+RemoveDir dir
+
+' No agent to run at all -- the .wxs sequences this After="InstallFiles", so it should be there,
+' but the fallback is what stands between a missing binary and a password left on the endpoint.
+dir = MakeHomeDir("", 0)
+objFSO.DeleteFile dir & "wazuh-agent.cmd", True
+WritePassword dir
+RunRemoveFleetPassword dir, Payload(dir, "", "", "", "", "")
+Check "no agent on disk still removes the password", "absent", Exists(dir, "authd.pass")
+RemoveDir dir
+
+' The ordinary upgrade: there is no password, and nothing must go wrong over it.
+dir = MakeHomeDir("", 0)
+MakeShredStub dir, False, 1
+RunRemoveFleetPassword dir, Payload(dir, "", "", "", "", "")
+Check "no password to remove is not an error", "absent", Exists(dir, "authd.pass")
 RemoveDir dir
 
 WScript.Echo ""

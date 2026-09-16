@@ -127,6 +127,12 @@
 | [#29533](https://github.com/wazuh/wazuh/issues/29533) [#31838](https://github.com/wazuh/wazuh/issues/31838) | Added local state persistence for agent modules (FIM, System Inventory, SCA), removing the dependency on `rsync` with the Wazuh Server and reducing network traffic and server-side processing overhead. |
 | [#37828](https://github.com/wazuh/wazuh/issues/37828) [#37830](https://github.com/wazuh/wazuh/issues/37830) [#37832](https://github.com/wazuh/wazuh/issues/37832) [#37833](https://github.com/wazuh/wazuh/issues/37833) [#37834](https://github.com/wazuh/wazuh/issues/37834) [#37835](https://github.com/wazuh/wazuh/issues/37835) [#37836](https://github.com/wazuh/wazuh/issues/37836) | Added an agent HTTPS client covering the `/control` lifecycle, the `/stateless` and `/stateful` data planes, `/download` for centralized configuration and WPK packages, task dispatch with durable deduplication, and remote upgrade, with AES-CMAC request signing and fail-closed TLS validation. |
 | [#37843](https://github.com/wazuh/wazuh/issues/37843) | Added periodic `/stats` and `/config` push, reporting every module's statistics and configuration in a single aggregated document per endpoint, behind two `ossec.conf` toggles that are off by default. |
+| [#39064](https://github.com/wazuh/wazuh/issues/39064) | Agents now re-enroll with a per-agent secret stored at `etc/reenroll.secret`, keeping their agent id. |
+| [#39064](https://github.com/wazuh/wazuh/issues/39064) | An agent re-enrolls only when the manager reports that it no longer knows the agent; every other authentication failure is retried with the credential the agent already holds. |
+| [#39064](https://github.com/wazuh/wazuh/issues/39064) | An enrollment token the manager refuses is now logged with its token id, so operators know which one to re-mint. |
+| [#39064](https://github.com/wazuh/wazuh/issues/39064) | An agent no longer restarts repeatedly when its enrollment token has been revoked or used up. |
+| [#39064](https://github.com/wazuh/wazuh/issues/39064) | An agent keeps its enrollment token when the manager reports only that enrollment is disabled. |
+| [#39064](https://github.com/wazuh/wazuh/issues/39064) | An agent whose re-enrollment secret the manager refuses falls back to the configured credential, so a rebuilt manager does not require visiting every endpoint. |
 
 #### Changed
 
@@ -146,6 +152,12 @@
 | [#35880](https://github.com/wazuh/wazuh/issues/35880) | Reduced `wazuh-agent` Debian package dependencies, removed `adduser`, `lsb-release`, and `debconf`. |
 | [#35471](https://github.com/wazuh/wazuh/issues/35471) | Standardized agent-start and buffer-status events to a WCS-aligned JSON format. |
 | [#39274](https://github.com/wazuh/wazuh/issues/39274) | Extended the Windows agent's default FIM registry ignore list to exclude the OS telemetry under `HKLM\System\CurrentControlSet\Services`. |
+| [#39064](https://github.com/wazuh/wazuh/issues/39064) | The 5.0 package upgrade deletes `etc/authd.pass` from the endpoint. **Operators who rotate it should know it disappears at upgrade.** |
+| [#39064](https://github.com/wazuh/wazuh/issues/39064) | A fresh 5.0 install no longer creates `etc/authd.pass`. |
+| [#39064](https://github.com/wazuh/wazuh/issues/39064) | `WAZUH_REGISTRATION_PASSWORD` is no longer used; the installer logs that it was ignored. |
+| [#39064](https://github.com/wazuh/wazuh/issues/39064) | An enrollment password stored outside the default path is left in place. |
+| [#39064](https://github.com/wazuh/wazuh/issues/39064) | The installers no longer add an `<authorization_pass_path>` element naming the default password file. |
+| [#39064](https://github.com/wazuh/wazuh/issues/39064) | An agent enrolled before the upgrade keeps working on its existing key, but must be re-pointed with an enrollment token to obtain a re-enrollment secret. |
 
 #### Removed
 

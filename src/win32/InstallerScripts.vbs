@@ -670,7 +670,8 @@ Public Function SetWazuhPermissions()
         grantAuthenticatedUsersPermFolder = "icacls """ & install_dir & """ /grant *S-1-5-11:RX"
         WshShell.run grantAuthenticatedUsersPermFolder, 0, True
 
-        ' Remove Authenticated Users group for ossec.conf, last-ossec.conf, client.keys and authd.pass
+        ' Remove Authenticated Users group for ossec.conf, last-ossec.conf, client.keys,
+        ' authd.pass and reenroll.secret
         remAuthenticatedUsersPermsConf = "icacls """ & home_dir & "*ossec.conf" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsConf, 0, True
 
@@ -691,6 +692,14 @@ Public Function SetWazuhPermissions()
         ' a machine where the service never starts it stays there.
         remAuthenticatedUsersPermsToken = "icacls """ & home_dir & "enrollment_token" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsToken, 0, True
+
+        ' The per-agent re-enrollment secret (#39064) gets client.keys's treatment, because it has
+        ' client.keys's power: it rotates the key of that one agent id. Written by the agent at
+        ' enrollment time rather than by this installer, so this only runs against an existing file
+        ' on a reinstall or upgrade -- icacls on a missing path is a harmless no-op, and the ACL is
+        ' inherited from the (already hardened) install directory when the agent creates it later.
+        remAuthenticatedUsersPermsReenroll = "icacls """ & home_dir & "reenroll.secret" & """ /remove *S-1-5-11 /q"
+        WshShell.run remAuthenticatedUsersPermsReenroll, 0, True
 
         ' Remove the Authenticated Users group from the tmp directory to avoid
         ' inherited permissions on client.keys and ossec.conf when using win32ui.
@@ -734,6 +743,84 @@ Public Function CreateDumpRegistryKey()
 End Function
 
 ' Deletes legacy DBs when upgrading from pre-5.x; WiX filters the version.
+' #39064: drop the fleet-wide enrollment password on upgrade. It is one secret that enrols any
+' endpoint, left at rest on every one of them; 5.0 replaces it with an enrollment token for the
+' first credential and a per-agent re-enrollment secret thereafter. A fresh 5.0 install never
+' creates the file, so without this an upgraded host -- the longest-running one in the estate,
+' which is exactly where the exposure matters most -- would keep it for ever.
+'
+' Overwritten before it is deleted, because the bytes are a secret. Best-effort throughout: an
+' upgrade must not fail over this.
+Public Function RemoveFleetEnrollmentPassword()
+    On Error Resume Next
+    Dim strArgs, args, home_dir, passPath, agentExe
+    Dim fso, shell, rc, objFile, size, i
+
+    ' Read CustomActionData: "[APPLICATIONFOLDER]"
+    strArgs = Session.Property("CustomActionData")
+    args = Split(strArgs, "/+/")
+    home_dir = Replace(args(0), Chr(34), "")
+    passPath = home_dir & "authd.pass"
+    agentExe = home_dir & "wazuh-agent.exe"
+
+    Set fso = CreateObject("Scripting.FileSystemObject")
+
+    If Not fso.FileExists(passPath) Then
+        Set fso = Nothing
+        RemoveFleetEnrollmentPassword = 0
+        Exit Function
+    End If
+
+    ' Overwrite the password in the file's own allocation and unlink it -- what the DEB postinst,
+    ' the RPM %post and the macOS postinstall do with `dd conv=notrunc`. The agent does that part:
+    ' no write mode reachable from a script host opens a file without truncating it first, so
+    ' FileSystemObject would release the secret's bytes and write the zeros into a fresh
+    ' allocation. wazuh-agent.exe is already run from this file for --show-token, it is on disk by
+    ' now (this action is deferred, After="InstallFiles"), and it ships signed -- which for a
+    ' security product's installer is the argument against the other route to OPEN_EXISTING from
+    ' VBScript, spawning powershell.exe with -ExecutionPolicy Bypass.
+    '
+    ' Initialised to "never ran" rather than left Empty, for the same reason DecodeEnrollmentToken
+    ' initialises to 127: this file runs under On Error Resume Next, and a Run that throws would
+    ' otherwise leave rc equal to 0, which is the one value that means the job is done.
+    rc = -1
+
+    If fso.FileExists(agentExe) Then
+        Set shell = CreateObject("WScript.Shell")
+        rc = shell.Run(Chr(34) & agentExe & Chr(34) & " --shred-enrollment-password", 0, True)
+        Set shell = Nothing
+    End If
+
+    If rc <> 0 Then
+        ' The agent could not be run, or reported that it did not finish. Fall back to what a
+        ' script can do on its own: a same-length rewrite, which does NOT overwrite the original
+        ' allocation -- worth doing, never worth mistaking for the guarantee above -- and the
+        ' delete, which is what actually takes the fleet-wide credential off the endpoint.
+        '
+        ' Chr(0), not the digit "0": either destroys the plaintext equally well, but every other
+        ' path writes NUL (the agent's own overwrite, and `dd if=/dev/zero` in the three POSIX
+        ' scripts), and a fallback that leaves a file full of 0x30 reads as a different operation
+        ' to anyone who looks at the bytes afterwards.
+        If fso.FileExists(passPath) Then
+            size = fso.GetFile(passPath).Size
+            If size > 0 Then
+                Set objFile = fso.OpenTextFile(passPath, 2)
+                For i = 1 To size
+                    objFile.Write Chr(0)
+                Next
+                objFile.Close
+            End If
+            fso.DeleteFile passPath, True
+        End If
+    End If
+
+    Set fso = Nothing
+
+    ' Always 0: the custom action is Return="check", and a password that could not be removed must
+    ' not roll back an upgrade that has otherwise succeeded.
+    RemoveFleetEnrollmentPassword = 0
+End Function
+
 Public Function CleanupLegacyDatabases()
     On Error Resume Next
     Dim strArgs, args, home_dir

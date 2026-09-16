@@ -45,6 +45,8 @@ static void help_agentd(char *home_path)
     print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF);
     print_out("    --show-token  Decode the enrollment token on stdin and print what it");
     print_out("                  carries, without its credential.");
+    print_out("    --shred-enrollment-password");
+    print_out("                  Overwrite %s in place and delete it.", AUTHD_PASS);
     print_out(" ");
     os_free(home_path);
     exit(1);
@@ -76,6 +78,7 @@ int main(int argc, char **argv)
     const char *uninstall_auth_token = NULL;
     const char *uninstall_auth_host = NULL;
     bool ssl_verify = true;
+    bool shred_enrollment_password = false;
 
     uid_t uid;
     gid_t gid;
@@ -135,6 +138,7 @@ int main(int argc, char **argv)
         {"uninstall-auth-token", required_argument, NULL, 2},
         {"uninstall-auth-host", required_argument, NULL, 3},
         {"uninstall-ssl-verify", optional_argument, NULL, 4},
+        {"shred-enrollment-password", no_argument, NULL, 5},
         {NULL, no_argument, NULL, 0}
     };
 
@@ -201,10 +205,25 @@ int main(int argc, char **argv)
                     merror_exit("--uninstall-ssl-verify accepts 'true'/'false' or '1'/'0' as arguments");
                 }
                 break;
+            case 5:
+                shred_enrollment_password = true;
+                break;
             default:
                 help_agentd(home_path);
                 break;
         }
+    }
+
+    /* Answered here rather than in the --show-token pre-scan above: AUTHD_PASS is relative to
+     * the installation directory (see defs.h), so it needs the chdir() that has now run. The
+     * POSIX packages shred the password from their own postinst with `dd conv=notrunc` and never
+     * call this; it is wired on both entry points so the code the MSI runs is the code this
+     * tree's unit tests exercise, and so the two agents answer the same command line -- the same
+     * reason --show-token is shared. */
+    if (shred_enrollment_password) {
+        const int shred_rc = w_agent_shred_enrollment_password();
+        os_free(home_path);
+        exit(shred_rc);
     }
 
     /* Anti tampering functionality */

@@ -12,6 +12,7 @@
 #include "token_bootstrap.h"
 #include "enrollment.h"
 #include "enrollment_token.h"
+#include "reenroll_secret.h"
 
 #ifdef WAZUH_UNIT_TESTING
     // Remove static qualifier when unit testing
@@ -21,11 +22,11 @@
 #endif
 
 STATIC char *w_token_bootstrap_read_token(const char *path);
-STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out);
 STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, size_t buf_size,
                                                  const char **filename);
 STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid);
 #ifndef WIN32
+STATIC int w_token_bootstrap_open_and_chown(const char *path, uid_t owner, gid_t group);
 STATIC int w_token_bootstrap_open_and_chown_keys(int gid);
 #endif
 STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure);
@@ -65,21 +66,6 @@ STATIC char *w_token_bootstrap_read_token(const char *path) {
     char *token;
     os_strdup(buf, token);
     return token;
-}
-
-/* Lowercase hexadecimal of a byte string. `out` needs 2 * len + 1 bytes. Not worth pulling in a
- * shared helper for: enrollment_token.c has an identical static one of its own, scoped the same
- * way. */
-STATIC void w_token_bootstrap_hex(const uint8_t *in, size_t len, char *out) {
-    static const char digits[] = "0123456789abcdef";
-    size_t i;
-
-    for (i = 0; i < len; i++) {
-        out[i * 2] = digits[in[i] >> 4];
-        out[i * 2 + 1] = digits[in[i] & 0x0F];
-    }
-
-    out[len * 2] = '\0';
 }
 
 /**
@@ -166,26 +152,26 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
 #ifndef WIN32
 
 /**
- * @brief chown()s KEYS_FILE to root:@p gid without following a symlink planted in its parent
- *        directory. Unlike AGENT_ANCHOR_CA's own directory (0750 root:gid), KEYS_FILE lives in
- *        INSTALLDIR/etc, which is 0770 root:wazuh -- the runtime user this chown is trying to
- *        keep out can otherwise replace client.keys with a symlink to an arbitrary root-owned
+ * @brief chown()s @p path to @p owner:@p group without following a symlink planted in its parent
+ *        directory. Both files this is used for live in INSTALLDIR/etc, which is 0770 root:wazuh
+ *        -- unlike AGENT_ANCHOR_CA's own directory (0750 root:gid), the runtime user can create
+ *        entries there. So it can replace the target with a symlink to an arbitrary root-owned
  *        file (e.g. /etc/shadow) and have this root-privileged call chown() the link's target
- *        instead, handing its own group write/read access to whatever that target is. The open
- *        and vetting (O_NOFOLLOW, regular-file and hard-link checks) is delegated to
- *        w_openat_nofollow_vetted() (file_op.c), the same helper w_fopen_nofollow() and
- *        w_gzopen_nofollow() use, so this hardening logic only has to be kept correct in one
- *        place.
+ *        instead, handing its own group -- or, where @p owner is that user, itself outright --
+ *        access to whatever that target is. The open and vetting (O_NOFOLLOW, regular-file and
+ *        hard-link checks) is delegated to w_openat_nofollow_vetted() (file_op.c), the same
+ *        helper w_fopen_nofollow() and w_gzopen_nofollow() use, so this hardening logic only has
+ *        to be kept correct in one place.
  * @return 0 on success, -1 on error (errno set: from open()/openat(), EINVAL when the resolved
  *         path is not a regular file, or EMLINK when it is a hard-linked one).
  */
-STATIC int w_token_bootstrap_open_and_chown_keys(int gid) {
+STATIC int w_token_bootstrap_open_and_chown(const char *path, uid_t owner, gid_t group) {
     char dir[OS_FLSIZE + 1];
     const char *filename;
     int fd;
     int saved_errno;
 
-    if (w_token_bootstrap_split_dir_filename(KEYS_FILE, dir, sizeof(dir), &filename) != 0) {
+    if (w_token_bootstrap_split_dir_filename(path, dir, sizeof(dir), &filename) != 0) {
         return -1;
     }
 
@@ -193,7 +179,7 @@ STATIC int w_token_bootstrap_open_and_chown_keys(int gid) {
         return -1;
     }
 
-    if (fchown(fd, 0, gid) != 0) {
+    if (fchown(fd, owner, group) != 0) {
         saved_errno = errno;
         close(fd);
         errno = saved_errno;
@@ -202,6 +188,15 @@ STATIC int w_token_bootstrap_open_and_chown_keys(int gid) {
 
     close(fd);
     return 0;
+}
+
+/**
+ * @brief w_token_bootstrap_open_and_chown() for KEYS_FILE, to root:@p gid. Named so the three
+ *        client.keys call sites read as one operation rather than repeating the owner pair.
+ * @return 0 on success, -1 on error (errno set as w_token_bootstrap_open_and_chown()).
+ */
+STATIC int w_token_bootstrap_open_and_chown_keys(int gid) {
+    return w_token_bootstrap_open_and_chown(KEYS_FILE, 0, (gid_t) gid);
 }
 
 /**
@@ -525,7 +520,11 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
     strncpy(enroll_request.body_json, built_request.body_json, sizeof(enroll_request.body_json) - 1);
     enroll_request.log = mtLoggingFunctionsWrapper;
     /* Never the configured authd.pass here: a token-based enrollment must not sign with a
-     * possibly-unrelated password (built_request.password is discarded below, unused).
+     * possibly-unrelated password. Nor any credential w_enrollment_build_request() resolved for
+     * itself -- its password AND the re-enrollment credential it may have loaded (#39064) are
+     * both discarded, and only body_json is taken from it. The token is the only thing that may
+     * authenticate this request: it is the one credential the operator handed to this endpoint
+     * for this purpose.
      *
      * A credential-less token (token.has_key == false) does NOT fall back to
      * WAZUH_REGISTRATION_PASSWORD/authd.pass either -- enrollment goes out with no credential
@@ -543,7 +542,7 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
         bool credential_ready = false;
 
         /* A credential the token carries but the agent cannot prepare aborts the bootstrap. It
-         * used to log and carry on, which left token_kid and token_key_hex empty and enrolled
+         * used to log and carry on, which left enroll_kid and enroll_key_hex empty and enrolled
          * anonymously instead -- and against a manager that does not require a password that
          * succeeds, so the agent would be enrolled without the credential the operator issued
          * it, with only a log line to say so. */
@@ -552,9 +551,10 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
         } else if ((kid = w_b64url_encode(token.id, W_ETOKEN_ID_BYTES)) == NULL) {
             merror("Token bootstrap: could not encode the enrollment token's identifier.");
         } else {
-            strncpy(enroll_request.token_kid, kid, sizeof(enroll_request.token_kid) - 1);
+            strncpy(enroll_request.enroll_kid, kid, sizeof(enroll_request.enroll_kid) - 1);
             os_free(kid);
-            w_token_bootstrap_hex(derived_key, sizeof(derived_key), enroll_request.token_key_hex);
+            print_hex_string((const char *) derived_key, (unsigned int) sizeof(derived_key),
+                             enroll_request.enroll_key_hex, (unsigned int) sizeof(enroll_request.enroll_key_hex));
             credential_ready = true;
         }
 
@@ -582,7 +582,13 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
         return W_TOKEN_BOOTSTRAP_TRANSIENT;
     }
 
-    w_enroll_status_t enroll_status = w_enrollment_process_response(&enroll_result);
+    /* The kid this request actually signed with is the one on enroll_request: the enrollment
+     * token's, derived and set above. built_request.enroll_kid is the RE-ENROLLMENT secret's, which
+     * w_enrollment_build_request() leaves NULL whenever there is no secret on disk -- which is
+     * always true here, since this is the first-boot token path and a secret only exists after an
+     * enrollment has succeeded. Passing it named "unknown" in the one 403 an operator most needs to
+     * act on: the one telling them which enrollment token to re-mint. */
+    w_enroll_status_t enroll_status = w_enrollment_process_response(&enroll_result, enroll_request.enroll_kid);
 
     if (enroll_status != W_ENROLL_OK) {
         /* w_enrollment_process_response() already logged the specific reason. TRANSPORT/SERVER
@@ -594,6 +600,30 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
             (enroll_status == W_ENROLL_ERR_TRANSPORT || enroll_status == W_ENROLL_ERR_SERVER)
                 ? W_TOKEN_BOOTSTRAP_TRANSIENT
                 : W_TOKEN_BOOTSTRAP_PERMANENT;
+
+        /* A fatal refusal is authd's verdict on a bearer whose signature the manager already
+         * verified: the token is unknown, revoked, or out of uses, and re-presenting it cannot
+         * change any of that. Nothing else on this path clears it -- the anchor is never installed
+         * (OS_MoveFile is further down) and client.keys is never written, so neither latch at the
+         * top of this function trips on the next boot -- and a PERMANENT result ends the start.
+         * Keeping the token would therefore hand the same dead credential to the same fatal
+         * refusal on every restart, which is the retry loop #39064 exists to end, only measured in
+         * process lifetimes instead of HTTP attempts.
+         *
+         * Keyed on the status, deliberately, and NOT on the classification just above: every
+         * fatal refusal is PERMANENT, but so is a malformed request, an enrollment the manager has
+         * disabled, and a duplicate agent -- all of which must keep their token. Those can succeed
+         * on a later boot without anyone touching the endpoint (enrollment re-enabled, a manager
+         * still syncing the token, a clock that resyncs), and discarding a one-shot credential
+         * over a condition that clears itself is the more expensive mistake: it needs an operator
+         * and a newly minted token to undo.
+         *
+         * The result stays PERMANENT either way -- this boot refuses to enroll unverified, exactly
+         * as before. What changes is that the next one starts with no token at all and takes the
+         * "legacy install" path instead of repeating this. */
+        if (enroll_status == W_ENROLL_ERR_AUTH_FATAL) {
+            unlink(AGENT_ENROLLMENT_TOKEN_FILE);
+        }
 
         w_enroll_request_destroy(&built_request);
         unlink(anchor_file.name);
@@ -637,6 +667,34 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
      * chown on every later boot, so this is not a one-shot chance to fix it. A no-op on
      * Windows, where there is no second user to restore access for. */
     w_token_bootstrap_chown_keys_file(gid, false);
+
+    /* The re-enrollment secret (#39064) is written here too, as root, by
+     * w_enrollment_process_response() on the way through. Unlike the anchor it also has to be
+     * WRITABLE by the unprivileged user afterwards, since every rotation happens in the running
+     * daemon after the privilege drop -- a root-owned secret would survive exactly one
+     * enrollment and then fail every rotation, with nothing to show for it in a log. FileSize()
+     * rather than IsFile() for the same reason client.keys needs it: only a non-empty file is a
+     * real store.
+     *
+     * Through the same vetted open as client.keys, and for a sharper version of the same reason.
+     * This file shares client.keys's 0770 root:wazuh directory, so the runtime user can plant a
+     * symlink here too -- and where client.keys's chown hands that user's GROUP access to the
+     * link's target, this one names the user itself as the owner, so following a link would hand
+     * it outright ownership of whatever the link points at. FileSize() above still resolves the
+     * path, but it only decides whether to try: the vetted open is what refuses the link.
+     *
+     * Guarded like the anchor chown above, and for the same reason: one service account
+     * throughout on Windows, so there is nobody to hand the file to. The guard is on the call and
+     * not only on the definition -- w_token_bootstrap_open_and_chown() takes uid_t/gid_t and lives
+     * inside the same #ifndef, so an unguarded call here links on Linux and fails at link time on
+     * winagent, which no Linux-side test can catch. */
+#ifndef WIN32
+    if (FileSize(AGENT_REENROLL_SECRET) > 0 &&
+            w_token_bootstrap_open_and_chown(AGENT_REENROLL_SECRET, (uid_t) uid, (gid_t) gid) != 0) {
+        merror("Token bootstrap: could not change ownership of '%s': %s (%d).",
+               AGENT_REENROLL_SECRET, strerror(errno), errno);
+    }
+#endif
 
     unlink(AGENT_ENROLLMENT_TOKEN_FILE);
     w_etoken_free(&token);

@@ -2722,6 +2722,63 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 }
 
 
+FILE * w_fopen_nofollow_update(const char * basedir, const char * filename) {
+    if (!basedir || !w_is_bare_filename(filename)) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+#ifdef WIN32
+    int fd;
+    FILE * fp;
+
+    // OPEN_EXISTING, and no SetEndOfFile() unlike w_fopen_nofollow(): the caller is overwriting the
+    // file's own allocation, so it must not be truncated at any point -- not at open time, which
+    // would destroy a hard link's target before it can be vetted, and not after either.
+    HANDLE hFile = w_createfile_nofollow_vetted(basedir, filename, GENERIC_READ | GENERIC_WRITE, OPEN_EXISTING);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        return NULL;
+    }
+
+    if (fd = _open_osfhandle((intptr_t)hFile, 0), fd < 0) {
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    // From here on the descriptor owns the handle, so it has to be closed through the CRT: calling
+    // CloseHandle() would release the handle while leaving the descriptor allocated forever.
+    if (fp = _fdopen(fd, "r+b"), fp == NULL) {
+        const int fdopen_errno = errno;
+        _close(fd);
+        errno = fdopen_errno;
+        return NULL;
+    }
+
+    return fp;
+#else
+    FILE * fp;
+    int saved_errno;
+    // O_RDWR rather than O_WRONLY so the "r+b" handed to fdopen() below matches the descriptor's
+    // access mode. No O_CREAT: there is nothing to overwrite in a file that did not exist, and
+    // creating one would turn a vanished target into a fresh empty file the caller then "shreds".
+    int fd = w_openat_nofollow_vetted(basedir, filename, O_RDWR | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, 0);
+
+    if (fd < 0) {
+        return NULL;
+    }
+
+    if (fp = fdopen(fd, "r+b"), fp == NULL) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+    }
+
+    return fp;
+#endif
+}
+
+
 gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char * mode) {
     if (!basedir || !mode || (strcmp(mode, "r") && strcmp(mode, "rb")) || !w_is_bare_filename(filename)) {
         errno = EINVAL;

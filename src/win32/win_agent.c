@@ -183,7 +183,14 @@ int main(int argc, char **argv)
     snprintf(myfinalpath, OS_MAXSTR, "\"%s\\%s\"", mypath, myfile);
 
     if (argc > 1) {
-        if (strcmp(argv[1], "install-service") == 0) {
+        if (strcmp(argv[1], "--shred-enrollment-password") == 0) {
+            /* Handled here rather than in the pre-chdir loop above, unlike --show-token:
+             * AUTHD_PASS is relative to the installation directory (see defs.h), so it only
+             * resolves once the chdir() has run. The MSI's RemoveFleetEnrollmentPassword custom
+             * action invokes this, deferred and After="InstallFiles", so this binary is already
+             * on disk by the time it is asked to do it. */
+            return (w_agent_shred_enrollment_password());
+        } else if (strcmp(argv[1], "install-service") == 0) {
             return (InstallService(myfinalpath));
         } else if (strcmp(argv[1], "uninstall-service") == 0) {
             return (UninstallService());
