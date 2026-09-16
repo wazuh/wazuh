@@ -260,6 +260,33 @@ async def test_collect_agents_wdb_failure_is_local(mock_get_wdb_http_client):
     task.logger.exception.assert_called_once()
 
 
+@pytest.mark.asyncio
+@patch("wazuh.core.indexer.metrics_snapshot.get_wdb_http_client")
+async def test_collect_agents_normalization_failure_is_local(mock_get_wdb_http_client):
+    """A raw row that blows up _normalize_agent_doc() costs that row only: the other
+    agents are still returned, the failure is logged, and nothing propagates out of
+    _collect_and_index()'s asyncio.gather()."""
+    mock_server = _make_server(node_name="node01")
+    mock_wdb_client = AsyncMock()
+    # _to_iso() falls through to str(value) on odd input, so a bad row would not raise
+    # by itself. Force the failure directly in the normalization loop instead.
+    mock_wdb_client.get_all_agents.return_value = [{"id": "001"}, {"id": "002"}]
+    mock_get_wdb_http_client.return_value.__aenter__.return_value = mock_wdb_client
+
+    task = MetricsSnapshotTasks(server=mock_server, cluster_items=CLUSTER_ITEMS)
+    good_doc = {"wazuh": {"agent": {"id": "002"}}}
+
+    with patch.object(
+        task,
+        "_normalize_agent_doc",
+        side_effect=[RuntimeError("malformed agent row"), good_doc],
+    ):
+        result = await task._collect_agents("2026-03-13T10:00:00Z")
+
+    assert result == [good_doc]
+    task.logger.exception.assert_called_once_with("Failed to normalize agent %s", "001")
+
+
 # ---------------------------------------------------------------------------
 # _collect_comms_all_nodes
 # ---------------------------------------------------------------------------
@@ -1482,6 +1509,32 @@ class TestCollectAndIndex:
         ts = captured_timestamps[0]
         parsed = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
         assert parsed is not None
+
+    @pytest.mark.asyncio
+    async def test_cycle_summary_marks_skipped_validation(self):
+        """With no schema available the documents go out unvalidated; the summary must
+        say so instead of repeating the collected count as if validation had run."""
+        mock_indexer = AsyncMock()
+        mock_indexer.metrics.bulk_index = AsyncMock(
+            side_effect=lambda index, docs, bulk_size: len(docs)
+        )
+        tasks = _make_tasks()
+        agent_docs = [{"wazuh": {"agent": {"id": "001"}}}, {"wazuh": {"agent": {"id": "002"}}}]
+
+        with (
+            _patch_collect_and_index(tasks, mock_indexer, agent_docs=agent_docs),
+            patch.object(tasks, "_load_schema", return_value=None),
+        ):
+            await tasks._collect_and_index()
+
+        tasks.logger.info.assert_called_with(
+            "Metrics snapshot cycle completed. Collected/validated/indexed per index: %s",
+            {
+                "wazuh-metrics-agents": "2/-/2",
+                "wazuh-metrics-comms-v4": "0/-/0",
+                "wazuh-metrics-normalization": "0/-/0",
+            },
+        )
 
 
 # ---------------------------------------------------------------------------

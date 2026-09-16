@@ -2305,10 +2305,10 @@ async def test_sync_files_sync_ko(send_request_mock):
 
 
 @pytest.mark.asyncio
-async def test_manage_indexer_tasks_logs_debug_traceback_on_failure():
+async def test_manage_indexer_tasks_logs_traceback_on_failure():
     """A deterministic bug in get_indexer_client() (e.g. a config-shape mismatch) and a
-    transient indexer outage produce the exact same terse warning; the traceback must be
-    one debug line away instead of indistinguishable from the other."""
+    transient indexer outage produce the same one-line warning; the traceback has to go
+    with it at a level that reaches cluster.log on a default install."""
     manager = cluster_common.IndexerTaskManager()
     manager.logger = MagicMock()
 
@@ -2325,7 +2325,8 @@ async def test_manage_indexer_tasks_logs_debug_traceback_on_failure():
         with pytest.raises(asyncio.CancelledError):
             await manager.manage_indexer_tasks([])
 
-    manager.logger.warning.assert_called_once()
-    manager.logger.debug.assert_called_once_with(
-        "Indexer availability check failed.", exc_info=True
+    manager.logger.warning.assert_called_once_with(
+        "Indexer is not configured or unavailable: 'str' object has no attribute 'get'.",
+        exc_info=True,
     )
+    manager.logger.debug.assert_not_called()

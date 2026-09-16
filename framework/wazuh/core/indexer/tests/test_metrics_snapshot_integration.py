@@ -7,10 +7,11 @@ Integration and regression tests for the manager metrics snapshot indexing pipel
 
 Integration tests require a real OpenSearch instance reachable with the credentials the
 manager itself would use (TLS + basic auth, matching indexer.ssl in wazuh-manager.conf;
-plain HTTP OpenSearch is not a config this pipeline ever runs against). They are skipped
-automatically when OpenSearch is not reachable. Configure via:
+plain HTTP OpenSearch is not a config this pipeline ever runs against). They write into the
+real wazuh-metrics-* data streams, so they only run when OPENSEARCH_URL is set explicitly;
+with it unset they are skipped, whatever is listening on localhost. Configure via:
 
-    OPENSEARCH_URL        default https://localhost:9200
+    OPENSEARCH_URL        e.g. https://localhost:9200 (no default: opt-in)
     OPENSEARCH_USER       default admin
     OPENSEARCH_PASSWORD   default admin
     OPENSEARCH_VERIFY_CERTS  "1" to verify TLS certs (default: unverified, devcontainer
@@ -36,26 +37,51 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # Optional OpenSearch availability check
 # ---------------------------------------------------------------------------
 
-OPENSEARCH_URL = os.environ.get("OPENSEARCH_URL", "https://localhost:9200")
+OPENSEARCH_URL = os.environ.get("OPENSEARCH_URL")
 OPENSEARCH_USER = os.environ.get("OPENSEARCH_USER", "admin")
 OPENSEARCH_PASSWORD = os.environ.get("OPENSEARCH_PASSWORD", "admin")
 OPENSEARCH_VERIFY_CERTS = os.environ.get("OPENSEARCH_VERIFY_CERTS", "") == "1"
 OPENSEARCH_AVAILABLE = False
 
-try:
-    resp = requests.get(
-        OPENSEARCH_URL,
-        auth=(OPENSEARCH_USER, OPENSEARCH_PASSWORD),
-        verify=OPENSEARCH_VERIFY_CERTS,
-        timeout=3,
-    )
-    OPENSEARCH_AVAILABLE = resp.status_code == 200
-except Exception:
-    pass
+if OPENSEARCH_URL:
+    try:
+        resp = requests.get(
+            OPENSEARCH_URL,
+            auth=(OPENSEARCH_USER, OPENSEARCH_PASSWORD),
+            verify=OPENSEARCH_VERIFY_CERTS,
+            timeout=3,
+        )
+        OPENSEARCH_AVAILABLE = resp.status_code == 200
+    except Exception:
+        pass
+
+# Real index templates, as downloaded by `make deps` into src/external/indexer-plugins
+# (see src/Makefile's INDEXER_PLUGINS_DIR) and installed under etc/indexer-plugins/ on a
+# real manager. Used to exercise the same schema validation _load_schema() runs in
+# production, not a stand-in.
+INDEXER_TEMPLATES_PATH = os.environ.get(
+    "INDEXER_TEMPLATES_PATH", "src/external/indexer-plugins"
+)
+INDEXER_TEMPLATES_AVAILABLE = all(
+    os.path.isfile(os.path.join(INDEXER_TEMPLATES_PATH, name))
+    for name in ("metrics-agents.json", "metrics-comms.json", "metrics-normalization.json")
+)
+requires_indexer_templates = pytest.mark.skipif(
+    not INDEXER_TEMPLATES_AVAILABLE,
+    reason=(
+        f"Real index templates not found under {INDEXER_TEMPLATES_PATH} — run `make deps` "
+        "or set INDEXER_TEMPLATES_PATH, otherwise schema validation is not exercised"
+    ),
+)
 
 requires_opensearch = pytest.mark.skipif(
     not OPENSEARCH_AVAILABLE,
-    reason=f"OpenSearch not reachable at {OPENSEARCH_URL} — skipping integration tests",
+    reason=(
+        f"OpenSearch not reachable at {OPENSEARCH_URL} — skipping integration tests"
+        if OPENSEARCH_URL
+        else "OPENSEARCH_URL not set — integration tests write into the real metrics "
+        "data streams and only run on explicit opt-in"
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -107,29 +133,6 @@ _indexer_pkg.metrics_snapshot = _metrics_snapshot_module
 CLUSTER_ITEMS = {
     "intervals": {"master": {"metrics_frequency": 600, "metrics_bulk_size": 100}}
 }
-
-# Values correspond to normalized fields (ECS mapping)
-AGENT_DOCS = [
-    {
-        "wazuh.agent.id": "001",
-        "wazuh.agent.name": "ubuntu-agent",
-        "wazuh.agent.host.ip": "10.0.0.1",
-        "wazuh.agent.status": "active",
-        "wazuh.agent.version": "Wazuh v5.0.0",
-        "wazuh.agent.groups": ["default"],
-        "wazuh.agent.config.group.hash.md5": "def456",
-        "wazuh.agent.registered_at": "2026-01-01T00:00:00Z",
-        "wazuh.agent.last_seen": "2026-03-19T10:00:00Z",
-        "wazuh.agent.disconnected_at": 0,
-        "wazuh.agent.register.ip": "0.0.0.0/0",
-        "wazuh.agent.config.group.synced": True,
-        "wazuh.agent.status_code": 0,
-        "wazuh.agent.host.os.name": "Ubuntu",
-        "wazuh.agent.host.os.version": "22.04",
-        "wazuh.agent.host.os.platform": "ubuntu",
-        "wazuh.agent.host.architecture": "x86_64",
-    }
-]
 
 # Values correspond to normalized fields (ECS mapping)
 COMMS_DOCS = [
@@ -184,9 +187,10 @@ class TestMetricsPipelineIntegration:
 
     Collection (_collect_agents / _collect_comms_all_nodes /
     _collect_normalization_all_nodes) is mocked — this test's job is the last mile:
-    normalization, schema validation and bulk-index against a live indexer, tagged
-    under a unique node name so it never collides with a real cluster node and is
-    cleaned up afterwards.
+    normalization, schema validation against the real downloaded templates (skipped,
+    not silently bypassed, when they are not present — see requires_indexer_templates)
+    and bulk-index against a live indexer, tagged under a unique node name so it never
+    collides with a real cluster node and is cleaned up afterwards.
     """
 
     NODE_NAME = f"itest-{uuid.uuid4().hex[:8]}"
@@ -206,23 +210,34 @@ class TestMetricsPipelineIntegration:
         )
         yield client
 
-        # Teardown: remove only this run's own documents, never a broad delete.
-        try:
-            for index in (
-                "wazuh-metrics-agents",
-                "wazuh-metrics-comms-v4",
-                "wazuh-metrics-normalization",
-            ):
+        # Teardown: remove only this run's own documents, never a broad delete. Each
+        # index is cleaned up independently — one failing must not skip the other two.
+        # The refresh makes documents written moments ago visible to delete_by_query,
+        # which otherwise misses them when the test failed before its own refresh.
+        cleanup_errors = []
+        for index in (
+            "wazuh-metrics-agents",
+            "wazuh-metrics-comms-v4",
+            "wazuh-metrics-normalization",
+        ):
+            try:
+                await client.indices.refresh(index=index, ignore_unavailable=True)
                 await client.delete_by_query(
                     index=index,
                     body={"query": {"term": {"wazuh.cluster.node": self.NODE_NAME}}},
                     ignore_unavailable=True,
                     conflicts="proceed",
                 )
-        except Exception:
-            pass
-        finally:
-            await client.close()
+            except Exception as exc:
+                cleanup_errors.append(f"{index}: {exc}")
+        await client.close()
+        if cleanup_errors:
+            # Loud on purpose: these are the real data streams the environment's own
+            # metrics live in, so leftover synthetic documents must not go unnoticed.
+            pytest.fail(
+                f"could not clean up documents tagged {self.NODE_NAME}: "
+                + "; ".join(cleanup_errors)
+            )
 
     @staticmethod
     def _patch_real_indexer_client(client):
@@ -239,6 +254,7 @@ class TestMetricsPipelineIntegration:
         )
 
     @requires_opensearch
+    @requires_indexer_templates
     @pytest.mark.asyncio
     async def test_pipeline_indexes_documents_into_the_three_real_data_streams(
         self, indexer_client
@@ -295,14 +311,20 @@ class TestMetricsPipelineIntegration:
                 return_value=[normalization_doc],
             ),
             self._patch_real_indexer_client(indexer_client),
-            # common is module-mocked at the top of this file for import isolation;
-            # give _load_schema() a real (nonexistent) path so it degrades gracefully
-            # to "schema not found, skip local validation" instead of TypeError-ing on
-            # os.path.join(MagicMock(), ...). The real templates are still enforced by
-            # the live indexer itself, which is this test's actual point.
+            # common is module-mocked at the top of this file for import isolation, so
+            # _load_schema() needs a real INDEXER_PLUGINS_PATH pointed at it explicitly
+            # instead of os.path.join(MagicMock(), ...). requires_indexer_templates
+            # guarantees this path exists and holds the three real templates, so
+            # _validate_documents() actually runs against them instead of being
+            # bypassed. Note this only catches top-level shape mismatches:
+            # _opensearch_template_to_jsonschema() sets additionalProperties: False
+            # only at levels whose own template node declares dynamic: strict, not
+            # recursively, so an extra *nested* field (the exact shape of the
+            # wazuh.agent.config/host.os.full mismatch this PR removes) would still
+            # pass local validation and only be caught by the live indexer itself.
             patch(
                 "wazuh.core.indexer.metrics_snapshot.common.INDEXER_PLUGINS_PATH",
-                "/nonexistent/indexer-plugins",
+                INDEXER_TEMPLATES_PATH,
             ),
         ):
             await tasks._collect_and_index()
@@ -317,9 +339,28 @@ class TestMetricsPipelineIntegration:
                 index=index,
                 body={"query": {"term": {"wazuh.cluster.node": self.NODE_NAME}}},
             )
-            assert result["hits"]["total"]["value"] >= 1, (
+            hits = result["hits"]["hits"]
+            assert hits, (
                 f"No document with wazuh.cluster.node={self.NODE_NAME} found in {index}"
             )
+            source = hits[0]["_source"]
+
+            # Parse the stored @timestamp the same way the index template's `date`
+            # mapping (no explicit format) would. Checked against the indexed document,
+            # not the normalizer's own return value — comparing to that would just
+            # replay a _to_iso() regression instead of catching one, since both sides
+            # would carry the same bad value.
+            datetime.strptime(source["@timestamp"], "%Y-%m-%dT%H:%M:%SZ")
+
+            if index == "wazuh-metrics-agents":
+                assert source["wazuh"]["agent"]["id"] == "999"
+                assert source["wazuh"]["agent"]["name"] == "itest-agent"
+            elif index == "wazuh-metrics-comms-v4":
+                assert source["event"]["module"] == "remoted"
+                assert source["network"]["egress"]["bytes"] == 1
+            else:
+                assert source["metric"]["name"] == "itest.metric"
+                assert source["metric"]["value"] == 1
 
 
 # ---------------------------------------------------------------------------

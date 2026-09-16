@@ -17,6 +17,11 @@ from wazuh.core.indexer.indexer import get_indexer_client
 from wazuh.core.wdb_http import get_wdb_http_client
 from wazuh.stats import get_daemons_stats, get_engine_metrics
 
+# Data stream names, as declared by the wazuh-indexer-plugins templates.
+AGENTS_INDEX = "wazuh-metrics-agents"
+COMMS_INDEX = "wazuh-metrics-comms-v4"
+NORMALIZATION_INDEX = "wazuh-metrics-normalization"
+
 # Mapping from OpenSearch field types to JSON Schema type definitions.
 _OPENSEARCH_TO_JSONSCHEMA_TYPE: dict[str, dict] = {
     "keyword": {"type": "string"},
@@ -168,10 +173,9 @@ class MetricsSnapshotTasks:
                 self.logger.exception("Metrics snapshot failed - skipping cycle")
 
     async def _collect_agents(self, timestamp: str) -> list:
-        # Unlike the comms/normalization collectors, there is only one source here (no
-        # per-node fan-out), but the failure still has to stay local: left unguarded, a
-        # wazuh-db outage propagates through the outer asyncio.gather() and skips comms
-        # and normalization collection too, not just agents.
+        # Failures stay local, as in the comms/normalization collectors: left unguarded,
+        # a wazuh-db outage propagates through the outer asyncio.gather() and skips comms
+        # and normalization collection too. A malformed row costs that row, not the index.
         try:
             async with get_wdb_http_client() as wdb_client:
                 agents_data = await wdb_client.get_all_agents()
@@ -187,7 +191,10 @@ class MetricsSnapshotTasks:
             agent["@timestamp"] = timestamp
             agent["wazuh.cluster.node"] = node_name
             agent["wazuh.cluster.name"] = cluster_name
-            normalized.append(self._normalize_agent_doc(agent))
+            try:
+                normalized.append(self._normalize_agent_doc(agent))
+            except Exception:
+                self.logger.exception("Failed to normalize agent %s", agent.get("id"))
 
         return normalized
 
@@ -326,9 +333,9 @@ class MetricsSnapshotTasks:
         """Recursively drop None values and empty dicts from a dictionary.
 
         Empty dicts can arise when all child values were None and got removed
-        during recursion (e.g. ``{"hash": {"md5": None}}`` → ``{"hash": {}}``).
+        during recursion (e.g. ``{"os": {"name": None}}`` -> ``{"os": {}}``).
         Keeping those empty objects would produce spurious empty fields in the
-        indexed document (e.g. ``wazuh.agent.config.hash = {}``).
+        indexed document (e.g. ``wazuh.agent.host.os = {}``).
         """
         cleaned = {}
         for k, v in doc.items():
@@ -718,9 +725,9 @@ class MetricsSnapshotTasks:
             self._collect_normalization_all_nodes(timestamp),
         )
         collected = {
-            "wazuh-metrics-agents": len(agent_docs),
-            "wazuh-metrics-comms-v4": len(comms_docs),
-            "wazuh-metrics-normalization": len(normalization_docs),
+            AGENTS_INDEX: len(agent_docs),
+            COMMS_INDEX: len(comms_docs),
+            NORMALIZATION_INDEX: len(normalization_docs),
         }
 
         agents_schema = self._load_schema("metrics-agents.json")
@@ -729,38 +736,36 @@ class MetricsSnapshotTasks:
 
         if agents_schema:
             agent_docs = self._validate_documents(
-                agent_docs, agents_schema, "wazuh-metrics-agents"
+                agent_docs, agents_schema, AGENTS_INDEX
             )
         if comms_schema:
             comms_docs = self._validate_documents(
-                comms_docs, comms_schema, "wazuh-metrics-comms-v4"
+                comms_docs, comms_schema, COMMS_INDEX
             )
         if normalization_schema:
             normalization_docs = self._validate_documents(
-                normalization_docs, normalization_schema, "wazuh-metrics-normalization"
+                normalization_docs, normalization_schema, NORMALIZATION_INDEX
             )
+        # "-" marks an index whose schema could not be loaded: its documents went to the
+        # indexer unvalidated, and _load_schema() only warns about that once per process.
         validated = {
-            "wazuh-metrics-agents": len(agent_docs),
-            "wazuh-metrics-comms-v4": len(comms_docs),
-            "wazuh-metrics-normalization": len(normalization_docs),
+            AGENTS_INDEX: len(agent_docs) if agents_schema else "-",
+            COMMS_INDEX: len(comms_docs) if comms_schema else "-",
+            NORMALIZATION_INDEX: len(normalization_docs) if normalization_schema else "-",
         }
 
         async with get_indexer_client() as indexer:
             indexed_agents, indexed_comms, indexed_normalization = await asyncio.gather(
+                indexer.metrics.bulk_index(AGENTS_INDEX, agent_docs, self.bulk_size),
+                indexer.metrics.bulk_index(COMMS_INDEX, comms_docs, self.bulk_size),
                 indexer.metrics.bulk_index(
-                    "wazuh-metrics-agents", agent_docs, self.bulk_size
-                ),
-                indexer.metrics.bulk_index(
-                    "wazuh-metrics-comms-v4", comms_docs, self.bulk_size
-                ),
-                indexer.metrics.bulk_index(
-                    "wazuh-metrics-normalization", normalization_docs, self.bulk_size
+                    NORMALIZATION_INDEX, normalization_docs, self.bulk_size
                 ),
             )
         indexed = {
-            "wazuh-metrics-agents": indexed_agents,
-            "wazuh-metrics-comms-v4": indexed_comms,
-            "wazuh-metrics-normalization": indexed_normalization,
+            AGENTS_INDEX: indexed_agents,
+            COMMS_INDEX: indexed_comms,
+            NORMALIZATION_INDEX: indexed_normalization,
         }
 
         self.logger.info(
