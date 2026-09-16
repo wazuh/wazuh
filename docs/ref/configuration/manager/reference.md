@@ -99,7 +99,7 @@ wazuh-manager-authd enrollment service (also read by remoted for HTTPS enrollmen
 | `ssl_manager_cert` | string | `etc/certs/remoted.pem` |  | Manager certificate (PEM). |
 | `ssl_manager_key` | string | `etc/certs/remoted-key.pem` |  | Manager private key (PEM). |
 | `remote_enrollment` | boolean | `true` |  | Accept enrollment through the HTTPS listener. |
-| `legacy_enrollment` | boolean | `true` |  | Accept enrollment through the legacy TLS port. |
+| `legacy_enrollment` | boolean |  |  | Accept enrollment through the legacy TLS port (1515), used only by 4.x agents. No default of its own: when absent it follows remote.legacy.enabled, so a configuration without the remote.legacy block has no legacy enrollment either. An explicit value always wins. |
 | `agents` | mapping |  |  | Agent version policy of the enrollment service. |
 | `agents.allow_higher_versions` | boolean | `false` |  | Enroll agents whose version is higher than the manager's. |
 

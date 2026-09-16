@@ -37,7 +37,8 @@ typedef struct authd_flags_t {
     unsigned short remote_enrollment:1;
     unsigned short legacy_enrollment:1;  ///< Gates only the legacy TCP/TLS listener (port 1515);
                                           ///< remote_enrollment is the master switch for all remote
-                                          ///< self-enrollment. Defaults to enabled.
+                                          ///< self-enrollment. Unset, it follows remote.legacy.enabled
+                                          ///< (w_authd_resolve_legacy_enrollment()).
 } authd_flags_t;
 
 typedef struct authd_config_t {
@@ -102,5 +103,19 @@ int get_time_interval(char *source, time_t *interval);
  * @retval OS_INVALID if any token is not a recognized TLS 1.3 ciphersuite name. 0 otherwise.
  */
 int w_authd_validate_ciphers(const char *ciphers);
+
+struct cJSON;
+
+/**
+ * @brief Resolve `legacy_enrollment` when the `auth` section does not set it.
+ *
+ * Unset, the flag follows `remote.legacy.enabled` (false when the `legacy` block is absent), so a
+ * manager without `<remote><legacy>` opens no legacy port at all. An explicit value in `auth` is kept.
+ *
+ * @param config Configuration already filled by Read_Authd_JSON().
+ * @param auth   Effective `auth` section (may be NULL).
+ * @param remote Effective `remote` section (may be NULL).
+ */
+void w_authd_resolve_legacy_enrollment(authd_config_t *config, const struct cJSON *auth, const struct cJSON *remote);
 
 #endif

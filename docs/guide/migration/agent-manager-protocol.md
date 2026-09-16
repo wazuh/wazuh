@@ -31,7 +31,7 @@ to**. Anything that relied on that mapping is gone or reworked.
 | --- | --- | --- |
 | `1517` | Remoted HTTPS agent API | **Default.** Always enabled. Serves 5.x agents, enrollment included. |
 | `1514` | Remoted legacy AES TCP/UDP | Opt-in. Only bound when `<remote><legacy>` is present and enabled. Serves 4.x agents. |
-| `1515` | `authd` TLS enrollment | Opt-in. Gated by `<auth><legacy_enrollment>`. Only needed by 4.x agents. |
+| `1515` | `authd` TLS enrollment | Opt-in. Follows `<remote><legacy>` unless `<auth><legacy_enrollment>` sets it explicitly. Only needed by 4.x agents. |
 
 Open `1517/tcp` on the manager before migrating any agent. If your fleet is fully on 5.x, `1514` and
 `1515` can both be closed — see [Retiring the legacy channel](#retiring-the-legacy-channel).
@@ -188,7 +188,8 @@ Once no 4.x agents remain:
 
 1. Remove the `<remote><legacy>` block (or set `<enabled>no</enabled>`). The legacy listener, keystore,
    metadata cache, event queue and dispatcher threads are then never created.
-2. Set `<auth><legacy_enrollment>no</legacy_enrollment>` to stop listening on `1515`.
+2. Port `1515` closes with it: an unset `<auth><legacy_enrollment>` follows `<remote><legacy>`. If your
+   configuration sets `<legacy_enrollment>yes</legacy_enrollment>` explicitly, remove it or set it to `no`.
 3. Close `1514` and `1515` on the firewall.
 
 Verify with the manager log at startup: it reports either

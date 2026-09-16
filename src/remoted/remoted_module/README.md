@@ -1271,13 +1271,13 @@ Three flags in the existing `<auth>` config block, in order of precedence:
 |---|---|---|---|---|
 | yes | – | – | off | off |
 | no | no | – | off | off |
-| no | yes | yes (default) | on | on |
-| no | yes | no | off | **on** |
+| no | yes | yes, or unset with `<remote><legacy>` enabled | on | on |
+| no | yes | no, or unset with `<remote><legacy>` absent/disabled | off | **on** |
 
 `<remote_enrollment>` is broadened from its current, narrower meaning ("start authd's TCP 1515
 listener") to a master switch for **all** remote self-enrollment, `/enroll` included — a deliberate,
 release-noted behavior change for any deployment already running with `remote_enrollment=no`. The new
-`<legacy_enrollment>` flag (default `yes`, so nothing changes for anyone who doesn't set it) is what
+`<legacy_enrollment>` flag (no default of its own: unset, it follows `remote.legacy.enabled`) is what
 lets an operator retire 1515 specifically while keeping HTTPS enrollment: `main-server.c`'s
 `thread_remote_server` (the 1515 listener) becomes gated by `remote_enrollment && legacy_enrollment`;
 `thread_local_server` (the UDS socket this bridge uses) stays gated only by `disabled`, unconditional

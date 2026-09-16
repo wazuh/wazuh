@@ -123,14 +123,19 @@ legacy 1515 while keeping `/enroll` — the manager's intended long-term enrollm
 Has no effect when `remote_enrollment` is `no` (both paths are already off), and no effect on
 `/enroll` at all, which this flag exists specifically to leave alone.
 
-| `disabled` | `remote_enrollment` | `legacy_enrollment`  | Port 1515 | `POST /enroll` |
-| ---------- | -------------------- | --------------------- | --------- | -------------- |
-| `yes`      | –                    | –                     | off       | off            |
-| `no`       | `no`                 | –                     | off       | off            |
-| `no`       | `yes`                | `yes` (default)       | on        | on             |
-| `no`       | `yes`                | `no`                  | off       | **on**         |
+When not set, it follows the legacy agent listener: port 1515 opens while `<remote><legacy>` is
+present and enabled ([`remote.legacy.enabled`](../remoted/configuration.md#legacyenabled)) and stays
+closed when that block is absent or disabled, so removing `<remote><legacy>` retires both legacy
+ports at once. An explicit `yes` or `no` always wins over the listener state.
 
-- **Default value:** `yes`
+| `disabled` | `remote_enrollment` | `legacy_enrollment`                                  | Port 1515 | `POST /enroll` |
+| ---------- | -------------------- | ----------------------------------------------------- | --------- | -------------- |
+| `yes`      | –                    | –                                                     | off       | off            |
+| `no`       | `no`                 | –                                                     | off       | off            |
+| `no`       | `yes`                | `yes`, or unset with `<remote><legacy>` enabled       | on        | on             |
+| `no`       | `yes`                | `no`, or unset with `<remote><legacy>` absent/disabled | off       | **on**         |
+
+- **Default value:** none of its own; follows `remote.legacy.enabled` when unset
 - **Allowed values:** `yes`, `no`
 
 ### ciphers
