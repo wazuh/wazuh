@@ -291,6 +291,10 @@ int __wrap_OS_MoveFile(const char *src, const char *dst) {
 static void remove_test_paths(void) {
     unlink("etc/enrollment_token");
     unlink("etc/certs/root-ca.pem");
+    /* Must be cleared with the anchor: w_token_bootstrap_mark_anchor_committed() is a no-op when
+     * one already exists, so a marker left behind by an earlier test would make every later
+     * assertion about it pass without anything having written one. */
+    unlink("etc/certs/.anchor-committed");
     unlink("etc/client.keys");
     unlink("etc/other-file");
     unlink(AGENT_REENROLL_SECRET);
@@ -582,6 +586,10 @@ static void test_anchor_latch_repairs_pre_39321_ownership(void **state) {
     assert_int_equal(g_dir_chown_uid, 0);
     assert_int_equal(g_dir_chown_gid, getgid());
     assert_int_equal(g_dir_chmod_mode, 01770);
+
+    /* The marker is minted here too: an install from before #39321 has an anchor but no marker,
+     * and without one the deletion guard could never fire for it. */
+    assert_int_equal(IsFile("etc/certs/.anchor-committed"), 0);
 }
 
 /* Regression test: client.keys can exist as an empty 0-byte placeholder (the package's own
@@ -813,6 +821,10 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal(IsFile("etc/client.keys"), 0);
     /* The one-shot token is discarded on success. */
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+
+    /* And the marker is laid down beside the anchor, so a later boot can tell "this agent has
+     * never held an anchor" from "this agent has lost the one it had". */
+    assert_int_equal(IsFile("etc/certs/.anchor-committed"), 0);
 
     assert_int_equal(g_enroll_config.verify_mode, HC_VERIFY_FULL);
     assert_true(strlen(g_enroll_config.ca_path) > 0);

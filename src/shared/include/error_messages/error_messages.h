@@ -297,6 +297,10 @@
 #define AG_SSL_CA_FORBIDDEN_SYSTEM "(4120): <ssl><verification_mode> is 'system' but <certificate_authorities> is set: '%s'. Remove it, or choose a different verification_mode; the OS trust store is used instead."
 #define AG_SSL_SYSTEM_NO_BUNDLE    "(4121): <ssl><verification_mode> is 'system' but no OS CA bundle was found on this host."
 #define AG_SSL_CA_UNPARSEABLE      "(4123): <certificate_authorities> '%s' is readable but holds no certificate this agent can parse. Nothing would verify against it, so the start is refused here rather than at the first handshake."
+#define AG_SSL_ANCHOR_VANISHED     "(4124): the trust anchor '%s' is gone but this agent has held " \
+                                   "one ('%s' is still there). Verification would silently fall back " \
+                                   "to 'none', so the start is refused. Restore the anchor, or set " \
+                                   "<ssl><verification_mode> explicitly to say what was intended."
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."

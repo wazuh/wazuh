@@ -247,6 +247,27 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
      * surfaces the moment verification is actually turned on, as (4118), which is the point
      * at which it starts to matter. */
     if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE) {
+        /* ...unless this install has verified before. Since #39321 the agent owns its anchor so
+         * it can replace it on a CA rotation, and anything that can replace a file can delete
+         * one -- at which point w_agent_resolve_ssl_posture() sees no anchor, no configured CA
+         * and no explicit mode, and resolves to 'none' exactly as it would on a stock install
+         * that never had an anchor. Losing one file would then quietly turn manager verification
+         * off, which is the one way this agent can stop verifying without anyone saying so.
+         *
+         * The marker distinguishes the two, because it is root-owned in a sticky directory and
+         * the runtime user cannot remove it. Only an inferred 'none' is refused: an operator who
+         * writes <verification_mode>none</verification_mode> has said what they want, and 4122
+         * already warns them about the anchor they are ignoring.
+         *
+         * This is not a defence against that user REPLACING the anchor with a CA of its own --
+         * nothing here could be, once the agent adopts rotations unaided. It closes the cheaper
+         * attack and the commoner accident: ending up with no verification at all. */
+        if (!cfg->ssl.verification_mode_explicit && w_is_file(AGENT_ANCHOR_CA) == 0
+                && w_is_file(AGENT_ANCHOR_MARKER) != 0) {
+            merror(AG_SSL_ANCHOR_VANISHED, AGENT_ANCHOR_CA, AGENT_ANCHOR_MARKER);
+            return false;
+        }
+
         return true;
     }
 
