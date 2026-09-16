@@ -767,6 +767,20 @@ Public Function RemoveFleetEnrollmentPassword()
     If fso.FileExists(passPath) Then
         size = fso.GetFile(passPath).Size
         If size > 0 Then
+            ' Overwrite the same path with the same number of bytes before unlinking. Read this as
+            ' weaker than the POSIX siblings and do not assume otherwise: the DEB postinst, the RPM
+            ' %post and the macOS postinstall use `dd conv=notrunc`, which writes over the file's
+            ' existing allocation, and FSO has no equivalent -- OpenTextFile's only modes are
+            ' ForReading/ForWriting/ForAppending, and ForWriting (2) TRUNCATES on open. So the
+            ' original bytes are released first and these zeros are written into a fresh
+            ' allocation. For a file this small NTFS keeps it resident in its MFT record, which a
+            ' same-length rewrite reuses, so in practice the secret is usually overwritten -- but
+            ' that is a property of the filesystem's allocator, not a guarantee this code makes.
+            '
+            ' Closing that gap needs OPEN_EXISTING + WriteFile, i.e. a compiled custom action;
+            ' it is not reachable from VBScript. Overwriting anyway because it costs nothing and
+            ' covers the common case, and deleting regardless, which is what actually removes the
+            ' fleet-wide credential from the endpoint.
             Set objFile = fso.OpenTextFile(passPath, 2)
             For i = 1 To size
                 objFile.Write "0"
