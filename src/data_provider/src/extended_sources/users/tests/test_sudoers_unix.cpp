@@ -11,7 +11,9 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
+#include <algorithm>
 #include <fstream>
+#include <filesystem>
 
 static std::string getTempFilePath()
 {
@@ -282,4 +284,62 @@ TEST(SudoersIsUserSudoerTest, EmptyInputsGrantNothing)
 {
     EXPECT_FALSE(SudoersProvider::isUserSudoer(R"([])"_json, "root", {}));
     EXPECT_FALSE(SudoersProvider::isUserSudoer(R"([{"header": "root", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"}])"_json, "", {}));
+}
+
+// Regression for genSudoersFile() joining enumerateDir()'s bare basenames with the
+// includedir before recursing.
+class SudoersIncludeDirTest : public ::testing::Test
+{
+    protected:
+
+        SudoersIncludeDirTest() = default;
+        virtual ~SudoersIncludeDirTest() = default;
+
+        void SetUp() override
+        {
+            m_tempDir = std::filesystem::temp_directory_path() / "sudoers_includedir_test";
+            m_includeDir = m_tempDir / "sudoers.d";
+            std::filesystem::remove_all(m_tempDir);
+            std::filesystem::create_directories(m_includeDir);
+
+            m_mainFile = (m_tempDir / "sudoers").string();
+            m_dropInFile = (m_includeDir / "bobby-test-39165").string();
+
+            std::ofstream mainOut(m_mainFile);
+            mainOut << "#includedir " << m_includeDir.string() << "\n";
+            mainOut.close();
+
+            std::ofstream dropInOut(m_dropInFile);
+            dropInOut << "bobby ALL=(ALL) ALL\n";
+            dropInOut.close();
+        };
+
+        void TearDown() override
+        {
+            std::filesystem::remove_all(m_tempDir);
+        };
+
+        std::filesystem::path m_tempDir;
+        std::filesystem::path m_includeDir;
+        std::string m_mainFile;
+        std::string m_dropInFile;
+};
+
+TEST_F(SudoersIncludeDirTest, DropInFileIsReadFromItsActualIncludeDir)
+{
+    SudoersProvider provider(m_mainFile);
+    auto result = provider.collect();
+
+    ASSERT_TRUE(result.is_array());
+
+    const auto dropInEntry = std::find_if(result.begin(), result.end(), [this](const nlohmann::json & entry)
+    {
+        return entry.value("header", "") == "bobby";
+    });
+
+    ASSERT_NE(dropInEntry, result.end());
+    EXPECT_EQ((*dropInEntry)["source"], m_dropInFile);
+    EXPECT_EQ((*dropInEntry)["rule_details"], "ALL=(ALL) ALL");
+
+    EXPECT_TRUE(SudoersProvider::isUserSudoer(result, "bobby", {}));
 }

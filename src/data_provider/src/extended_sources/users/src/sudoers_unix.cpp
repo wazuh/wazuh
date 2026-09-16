@@ -178,7 +178,18 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
                     continue;
                 }
 
-                genSudoersFile(incFile, level + 1, results);
+                // enumerateDir() returns bare basenames; join with the includedir or
+                // drop-ins resolve against the process CWD instead of it and are never read.
+                std::string incFullPath = ruleDetails;
+
+                if (!incFullPath.empty() && incFullPath.back() != '/')
+                {
+                    incFullPath += '/';
+                }
+
+                incFullPath += incBasename;
+
+                genSudoersFile(incFullPath, level + 1, results);
             }
         }
 
