@@ -163,6 +163,41 @@ void test_load_all_pem_reads_every_certificate_of_a_bundle(void **state)
     free(bundle);
 }
 
+/* The agent records the manager's CA publication as explanatory text ahead of the certificates
+ * (RFC 7468 section 2, see ca_publication.h), so its own trust store is a bundle with a comment
+ * block on top. That file has to keep parsing as a plain bundle, here and in OpenSSL's own
+ * CAINFO reader -- otherwise recording the publication would cost the agent its trust store. */
+void test_load_all_pem_skips_a_leading_comment_block(void **state)
+{
+    (void) state;
+
+    const char *header = "## wazuh-ca-bundle\n## generation: 1789000012\n";
+    char *bundle = (char *) calloc(strlen(header) + strlen(LEAF_PEM) + strlen(ROOT_CA_PEM) + 1,
+                                   sizeof(char));
+    char *path = NULL;
+    X509 **certs = NULL;
+    size_t count = 0;
+
+    assert_non_null(bundle);
+    strcat(bundle, header);
+    strcat(bundle, LEAF_PEM);
+    strcat(bundle, ROOT_CA_PEM);
+    path = write_temp_pem(bundle);
+
+    certs = w_x509_load_all_pem(path, &count);
+
+    /* Both certificates, exactly as without the header: the reader skips anything before the
+     * first encapsulation boundary. */
+    assert_non_null(certs);
+    assert_int_equal(count, 2);
+    assert_true(w_x509_signed_by(certs[0], certs[1]));
+
+    w_x509_free_all(certs, count);
+    unlink(path);
+    free(path);
+    free(bundle);
+}
+
 void test_load_all_pem_skips_a_private_key_and_refuses_a_corrupt_block(void **state)
 {
     (void) state;
@@ -389,6 +424,7 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_load_all_pem_reads_every_certificate_of_a_bundle),
+        cmocka_unit_test(test_load_all_pem_skips_a_leading_comment_block),
         cmocka_unit_test(test_load_all_pem_skips_a_private_key_and_refuses_a_corrupt_block),
         cmocka_unit_test(test_certificates_pem_publishes_only_certificates),
         cmocka_unit_test(test_spki_sha256_matches_the_frozen_pin),
