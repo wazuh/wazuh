@@ -72,25 +72,36 @@ static void expect_ca_readable(const char *path, int readable)
 
 /* The parse check w_agent_validate_ssl_ca() makes after w_is_file(): wrapped because the paths
  * in this suite are names, not files on disk, so the real loader would refuse every one of them.
- * X509_free comes along because the sentinel below is not a certificate to free. */
-X509 *__wrap_w_x509_load_pem(const char *path)
+ * w_x509_free_all comes along because the sentinels below are not certificates to free. */
+X509 **__wrap_w_x509_load_all_pem(const char *path, size_t *count)
 {
     check_expected(path);
-    return mock_ptr_type(X509 *);
+    *count = (size_t)mock();
+    return mock_ptr_type(X509 **);
 }
 
-void __wrap_X509_free(X509 *cert)
+void __wrap_w_x509_free_all(X509 **certs, size_t count)
 {
-    (void)cert;
+    (void)certs;
+    (void)count;
 }
 
-/* A non-NULL sentinel: the code only tests it against NULL and hands it straight to X509_free. */
-static X509 *const PARSED_OK = (X509 *)0x1;
+/* Non-NULL sentinels: the code only tests the array against NULL, reads the count, and hands
+ * the pair straight to w_x509_free_all(). */
+static X509 *PARSED_OK[2] = {(X509 *)0x1, (X509 *)0x2};
+
+/* @param count How many certificates the loader reports; 0 means it refused the file outright,
+ *              which is the only way w_x509_load_all_pem() reports a malformed block. */
+static void expect_ca_parses_count(const char *path, size_t count)
+{
+    expect_string(__wrap_w_x509_load_all_pem, path, path);
+    will_return(__wrap_w_x509_load_all_pem, count);
+    will_return(__wrap_w_x509_load_all_pem, count > 0 ? PARSED_OK : NULL);
+}
 
 static void expect_ca_parses(const char *path, int ok)
 {
-    expect_string(__wrap_w_x509_load_pem, path, path);
-    will_return(__wrap_w_x509_load_pem, ok ? PARSED_OK : NULL);
+    expect_ca_parses_count(path, ok ? 1 : 0);
 }
 
 /* Same queue as expect_ca_readable(), named apart so a call site says which probe it is. */
@@ -178,6 +189,54 @@ static void test_full_with_unparseable_ca_fails(void **state)
                   "start is refused here rather than at the first handshake.");
 
     assert_false(w_agent_validate_ssl_ca(&cfg));
+}
+
+/* A rotation hands the agent two anchors in one file. Before #39321 the check stopped at the
+ * first certificate, so this passed for the wrong reason -- it never looked at the second. */
+static void test_full_with_a_two_certificate_bundle_starts(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_FULL, "etc/certs/root-ca.pem");
+
+    expect_ca_readable("etc/certs/root-ca.pem", 1);
+    expect_ca_parses_count("etc/certs/root-ca.pem", 2);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "(9503): <certificate_authorities> 'etc/certs/root-ca.pem' holds 2 certificates: "
+                  "the agent will verify the manager against any of them.");
+
+    assert_true(w_agent_validate_ssl_ca(&cfg));
+}
+
+/* The case the old single-certificate check got wrong in the dangerous direction: a bundle whose
+ * FIRST block is a good certificate and whose second is truncated used to start, then failed at a
+ * handshake against whichever anchor the manager had rotated to. w_x509_load_all_pem() reads to
+ * the end of the file and yields nothing when any block fails to decode, so it is refused here. */
+static void test_full_with_a_bundle_whose_second_block_is_corrupt_fails(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_FULL, "etc/certs/root-ca.pem");
+
+    expect_ca_readable("etc/certs/root-ca.pem", 1);
+    expect_ca_parses_count("etc/certs/root-ca.pem", 0);
+    expect_string(__wrap__merror, formatted_msg,
+                  "(4123): <certificate_authorities> 'etc/certs/root-ca.pem' is readable but holds "
+                  "no certificate this agent can parse. Nothing would verify against it, so the "
+                  "start is refused here rather than at the first handshake.");
+
+    assert_false(w_agent_validate_ssl_ca(&cfg));
+}
+
+/* One certificate is the ordinary case and says nothing: (9503) is reserved for a real bundle,
+ * so a single-anchor start stays as quiet as it was. */
+static void test_full_with_a_single_certificate_logs_nothing(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_FULL, "etc/certs/root-ca.pem");
+
+    expect_ca_readable("etc/certs/root-ca.pem", 1);
+    expect_ca_parses_count("etc/certs/root-ca.pem", 1);
+
+    assert_true(w_agent_validate_ssl_ca(&cfg));
 }
 
 static void test_full_with_unreadable_ca_fails(void **state)
@@ -703,6 +762,9 @@ int main(void)
         cmocka_unit_test(test_none_with_unreadable_ca_is_not_probed_either),
         cmocka_unit_test(test_full_with_readable_ca_starts),
         cmocka_unit_test(test_full_with_unparseable_ca_fails),
+        cmocka_unit_test(test_full_with_a_two_certificate_bundle_starts),
+        cmocka_unit_test(test_full_with_a_bundle_whose_second_block_is_corrupt_fails),
+        cmocka_unit_test(test_full_with_a_single_certificate_logs_nothing),
         cmocka_unit_test(test_full_with_unreadable_ca_fails),
         cmocka_unit_test(test_full_without_ca_fails),
         cmocka_unit_test(test_certificate_with_unreadable_ca_fails),

@@ -220,3 +220,4 @@
 | [#39309](https://github.com/wazuh/wazuh/issues/39309) | Fixed SCA HIPAA compliance values using parenthesized notation, which the dashboard's Regulatory Compliance catalogue doesn't recognize; converted to the dotted notation the catalogue expects. |
 | [#39514](https://github.com/wazuh/wazuh/pull/39514) | Fixed SCA ISO 27001 compliance mappings, remapped from the superseded 2013 numbering to 2022 Annex A. |
 | [#39192](https://github.com/wazuh/wazuh/issues/39192) | Fixed the `block-ip` active response not blocking IPs on a default macOS install. |
+| [#39321](https://github.com/wazuh/wazuh/issues/39321) | Fixed the agent starting with a multi-certificate `<certificate_authorities>` file whose later certificates are unusable, which failed at the first handshake instead of at startup. |
