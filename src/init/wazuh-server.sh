@@ -52,9 +52,7 @@ lock()
 
     # Providing a lock.
     while [ 1 ]; do
-        mkdir ${LOCK} > /dev/null 2>&1
-        MSL=$?
-        if [ "${MSL}" = "0" ]; then
+        if mkdir ${LOCK} > /dev/null 2>&1; then
             # Lock acquired (setting the pid)
             echo "$$" > ${LOCK_PID}
             return;
@@ -259,8 +257,7 @@ testconfig()
 
     # Then each daemon checks what is not configuration (files, sockets, keys).
     for i in ${SDAEMONS}; do
-        daemon_name="$i"
-        ${DIR}/bin/${daemon_name} -t ${DEBUG_CLI};
+        ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
             if [ $USE_JSON = true ]; then
                 echo -n '{"error":20,"message":"'${i}': Configuration error."}'
@@ -381,14 +378,13 @@ start_service()
             ## Create starting flag
             failed=false
             touch ${DIR}/var/run/${i}.start
-            daemon_name="$i"
 
             if [ "$i" = "wazuh-manager-analysisd" ]; then
                 wait_for_wazuh_engine_ready
             elif [ $USE_JSON = true ]; then
-                ${DIR}/bin/${daemon_name} ${DEBUG_CLI} > /dev/null 2>&1;
+                ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1;
             else
-                ${DIR}/bin/${daemon_name} ${DEBUG_CLI};
+                ${DIR}/bin/${i} ${DEBUG_CLI};
             fi
 
             if [ $? != 0 ]; then
@@ -443,16 +439,15 @@ pstatus()
         return 0;
     fi
 
-    daemon_name="$pfile"
-    ls ${DIR}/var/run/${daemon_name}-*.pid > /dev/null 2>&1
+    ls ${DIR}/var/run/${pfile}-*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
-        for pid in `cat ${DIR}/var/run/${daemon_name}-*.pid 2>/dev/null`; do
+        for pid in `cat ${DIR}/var/run/${pfile}-*.pid 2>/dev/null`; do
             ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ] && [ -z "${_pstatus_quiet}" ]; then
                     echo "${pfile}: Process ${pid} not used by Wazuh, removing..."
                 fi
-                rm -f ${DIR}/var/run/${daemon_name}-${pid}.pid
+                rm -f ${DIR}/var/run/${pfile}-${pid}.pid
                 continue;
             fi
 
@@ -487,14 +482,13 @@ stop_service()
 {
     # First pass: send kill signal to all running daemons
     for i in ${DAEMONS}; do
-        daemon_name="$i"
         pstatus ${i};
         if [ $? = 1 ]; then
             if [ $USE_JSON != true ]
             then
                 echo "Killing ${i}...";
             fi
-            pid=`cat ${DIR}/var/run/${daemon_name}-*.pid`
+            pid=`cat ${DIR}/var/run/${i}-*.pid`
             kill $pid
         else
             if [ $USE_JSON != true ]
@@ -510,7 +504,6 @@ stop_service()
         echo -n '{"error":0,"data":['
     fi
     for i in ${DAEMONS}; do
-        daemon_name="$i"
         if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
         else
@@ -520,7 +513,7 @@ stop_service()
         pstatus ${i} "quiet";
 
         if [ $? = 1 ]; then
-            pid=`cat ${DIR}/var/run/${daemon_name}-*.pid`
+            pid=`cat ${DIR}/var/run/${i}-*.pid`
 
             if wait_pid $pid
             then
@@ -540,7 +533,7 @@ stop_service()
                 echo -n '{"daemon":"'${i}'","status":"stopped"}'
             fi
         fi
-        rm -f ${DIR}/var/run/${daemon_name}-*.pid
+        rm -f ${DIR}/var/run/${i}-*.pid
     done
 
     if [ $USE_JSON = true ]; then
