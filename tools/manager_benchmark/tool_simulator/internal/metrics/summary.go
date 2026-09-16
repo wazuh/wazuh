@@ -83,12 +83,13 @@ func bucketJSON(s CountersSnapshot) map[string]any {
 		// GET /cacerts: s200 = a CA PEM handed out; see RecordCacerts.
 		"cacerts": map[string]any{
 			"sent": c.CacertsSent, "s200": c.Cacerts200, "s404": c.Cacerts404,
-			"s503": c.Cacerts503, "other": c.CacertsOther,
+			"s503": c.Cacerts503, "s429": c.Cacerts429, "other": c.CacertsOther,
 		},
 		// POST /enroll with an enrollment token: s200 = an agent created; see RecordEnrollHTTPS.
 		"enroll_https": map[string]any{
 			"sent": c.EnrollHTTPSSent, "s200": c.EnrollHTTPS200, "s401": c.EnrollHTTPS401,
-			"s403": c.EnrollHTTPS403, "s409": c.EnrollHTTPS409, "other": c.EnrollHTTPSOther,
+			"s403": c.EnrollHTTPS403, "s409": c.EnrollHTTPS409, "s429": c.EnrollHTTPS429,
+			"other": c.EnrollHTTPSOther,
 		},
 		"control": map[string]any{
 			"startup_ok": c.StartupOK, "startup_err": c.StartupErr,

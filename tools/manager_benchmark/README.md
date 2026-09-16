@@ -150,13 +150,22 @@ show up in the manager's log as `reason=feed_update`. Full contract in
 
 Agent-mode runs enroll a synthetic fleet the way a 5.x agent handed an enrollment token does — `POST
 /enroll` on 1517 with a `wazuh-enroll+jwt` bearer — so the manager under test keeps the **enrollment
-policy it was installed with**. `prepare_manager.sh` does two things and softens nothing:
+policy it was installed with**. `prepare_manager.sh` does three things; the first two soften
+nothing, and the third removes a rate ceiling deliberately:
 
 1. makes remote enrollment reachable: `<auth>` gets `disabled=no`, `remote_enrollment=yes`
    (optionally `max_agents=N`) — remoted serves `/enroll` only while both hold;
 2. mints **one multi-use enrollment token** for the fleet (`wazuh-manager-authd
    --create-enrollment-token`, authd's defaults: 30 days, unlimited uses) and writes it to
-   `.enrollment_token` next to the script, which `run_benchmark.sh` picks up by itself.
+   `.enrollment_token` next to the script, which `run_benchmark.sh` picks up by itself;
+3. sets `<remote><https>`'s `enroll_rate_limit` and `cacerts_rate_limit` to `0` — the documented
+   "no limit" (issue #39129). Those two routes ship with a rate limit (100 and 50 req/s), counted
+   **for the endpoint as a whole rather than per agent**, so a harness asking faster than a fleet's
+   steady state — which is the whole point of a capacity run — gets `429`s from a perfectly healthy
+   manager: the `cacerts` scenario's 200 unpaced requests would spend the burst and see roughly half
+   refused. `--keep-rate-limits` leaves the shipped values in place, which is how you benchmark the
+   limiter itself; the sender counts a `429` as an ordinary outcome either way (`cacerts_429`,
+   `enroll_https_429`, assertable as `s429`).
 
 `<use_password>` and `etc/authd.pass` are left exactly as installed. That is the point of issue
 #39054: benchmarking used to require `use_password=no`, a configuration no production manager has,
@@ -220,7 +229,7 @@ run exits. Pair it with `--keep-agents` so the documents survive after that too:
 | Script | What it does |
 |---|---|
 | `run_benchmark.sh` | Orchestrates one run end to end (monitor + sender + summary + charts) |
-| `prepare_manager.sh` | Makes remote enrollment reachable and mints the fleet's enrollment token (idempotent); `--open-1515` for the legacy bootstrap |
+| `prepare_manager.sh` | Makes remote enrollment reachable, mints the fleet's enrollment token and clears the two unauthenticated routes' rate limits (idempotent); `--open-1515` for the legacy bootstrap, `--keep-rate-limits` to benchmark the limiter |
 | `scrape_metrics.sh` | Standalone `GET /metrics` poller (long format). Only used as a fallback when the monitor cannot run |
 | `cleanup_agents.sh` | Deletes only `bench-*` agents via the Wazuh API (never a real one) |
 | `indexer_control.sh` | Start/stop/health the local `wazuh-indexer` (e.g. an indexer-down scenario) |

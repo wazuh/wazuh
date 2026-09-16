@@ -81,23 +81,29 @@ var scanCounters = map[string]func(metrics.Counters) uint64{
 
 // cacertsCounters are the GET /cacerts outcomes. "s200" asserts how many
 // requests were handed the CA PEM -- the property a fleet needs to bootstrap
-// trust; s404/s503 pin the manager's refusal contract (docu/15-cacerts.md).
+// trust; s404/s503 pin the manager's refusal contract, and s429 the route's rate
+// limit (docu/15-cacerts.md). A capacity scenario asserts "s429": 0 and relies on
+// prepare_manager.sh having cleared the limit; a scenario written to exercise the
+// limiter asserts it the other way round.
 var cacertsCounters = map[string]func(metrics.Counters) uint64{
 	"sent":  func(c metrics.Counters) uint64 { return c.CacertsSent },
 	"s200":  func(c metrics.Counters) uint64 { return c.Cacerts200 },
 	"s404":  func(c metrics.Counters) uint64 { return c.Cacerts404 },
 	"s503":  func(c metrics.Counters) uint64 { return c.Cacerts503 },
+	"s429":  func(c metrics.Counters) uint64 { return c.Cacerts429 },
 	"other": func(c metrics.Counters) uint64 { return c.CacertsOther },
 }
 
 // enrollHTTPSCounters are the POST /enroll (enrollment token) outcomes. "s200"
 // asserts how many fresh agents the token enrolled -- the property a fleet's
-// first contact relies on; s401/s403/s409 pin the manager's refusal contract
+// first contact relies on; s401/s403/s409 pin the manager's refusal contract and
+// s429 the route's rate limit, refused before authd is contacted
 // (docu/16-enroll-https.md).
 var enrollHTTPSCounters = map[string]func(metrics.Counters) uint64{
 	"sent":  func(c metrics.Counters) uint64 { return c.EnrollHTTPSSent },
 	"s200":  func(c metrics.Counters) uint64 { return c.EnrollHTTPS200 },
 	"s401":  func(c metrics.Counters) uint64 { return c.EnrollHTTPS401 },
+	"s429":  func(c metrics.Counters) uint64 { return c.EnrollHTTPS429 },
 	"s403":  func(c metrics.Counters) uint64 { return c.EnrollHTTPS403 },
 	"s409":  func(c metrics.Counters) uint64 { return c.EnrollHTTPS409 },
 	"other": func(c metrics.Counters) uint64 { return c.EnrollHTTPSOther },

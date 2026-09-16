@@ -48,11 +48,19 @@ func (e *ErrProtocol) Error() string { return e.msg }
 
 // Request sends one GET /cacerts.
 //
-// 200 (PEM served), 404 (the manager has no CA file) and 503 (the manager
-// refuses to hand out a CA that does not sign its own certificate) are all
-// ORDINARY results the caller records: the last two are contract outcomes a
-// real fleet can meet, not failures of the measurement. Do() adds the bearer in
-// agent mode; the route ignores it, so it is harmless.
+// 200 (PEM served), 404 (the manager has no CA file), 503 (the manager refuses
+// to hand out a CA that does not sign its own certificate) and 429 (the route's
+// rate limit, `remote.https.cacerts_rate_limit`) are all ORDINARY results the
+// caller records: they are contract outcomes a real fleet can meet, not failures
+// of the measurement. Do() adds the bearer in agent mode; the route ignores it,
+// so it is harmless.
+//
+// The 429 in particular must NOT be an ErrProtocol. The limit is per endpoint and
+// fleet-wide, so a harness asking faster than it — which is what a capacity run
+// does — earns 429s from a perfectly healthy manager; treating them as protocol
+// errors would abort the run instead of measuring it. prepare_manager.sh clears
+// the two limits by default so a capacity scenario never meets them; keeping them
+// (--keep-rate-limits) is how you benchmark the limiter itself.
 func Request(c *wire.Client, now int64) (Result, error) {
 	resp, err := c.Do("GET", path, nil, "", "", now, false)
 	if err != nil {
@@ -70,7 +78,7 @@ func Request(c *wire.Client, now int64) (Result, error) {
 		if !bytes.Contains(resp.Body, []byte(pemMarker)) {
 			return result, &ErrProtocol{fmt.Sprintf("cacerts: 200 without a certificate block: %s", truncate(resp.Body))}
 		}
-	case 404, 503:
+	case 404, 503, 429:
 		// Contract outcomes, recorded as such.
 	default:
 		return result, &ErrProtocol{fmt.Sprintf("cacerts answered %d: %s", resp.Status, truncate(resp.Body))}

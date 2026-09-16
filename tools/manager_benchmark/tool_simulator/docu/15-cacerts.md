@@ -51,22 +51,33 @@ at load time, exactly like an `engine` or `scan_vd` step. The step takes **only*
 | CA served | `200`, `application/x-pem-file`, body with a `-----BEGIN CERTIFICATE-----` block | `cacerts_200` | no |
 | No CA file on the manager (missing, unreadable, or without a certificate block) | `404 {"error":"not_found"}` | `cacerts_404` | no |
 | The configured CA does not sign the listener's certificate; the manager refuses to hand it out | `503 {"error":"ca_mismatch"}` | `cacerts_503` | no |
+| The route's rate limit refused it before the CA was read (`remote.https.cacerts_rate_limit`, `50` req/s for the whole endpoint by default) | `429 {"error":"rate_limited"}` + `Retry-After` | `cacerts_429` | no |
 | A `200` without the PEM media type or without a certificate block | `200` | `cacerts_other` | **yes** |
 | Any other status | — | `cacerts_other` | **yes** |
 
-`404` and `503` are **ordinary results**: they are what a real fleet meets against a misprovisioned
-manager, and a scenario's `expected` block decides whether they are acceptable for the run
-(`scenarios/cacerts.json` says no). The `other` bucket is different: a `200` that would not let an
+`404`, `503` and `429` are **ordinary results**: they are what a real fleet meets against a
+misprovisioned or a rate-limited manager, and a scenario's `expected` block decides whether they are
+acceptable for the run (`scenarios/cacerts.json` says no).
+
+The `429` deserves its own note, because it is the one an unmodified manager produces against this
+scenario: the limit is **per endpoint and fleet-wide**, not per agent, so 20 agents × 10 unpaced
+fetches spend the burst (twice the rate) and the rest are refused — by a perfectly healthy manager.
+`prepare_manager.sh` therefore sets `cacerts_rate_limit` to `0` ("no limit") by default, so a
+capacity run measures the listener's cost instead of the ceiling; `--keep-rate-limits` leaves the
+shipped defaults in place to benchmark the limiter itself, and `s429` is then the counter to assert.
+Its latency is deliberately **not** in `cacerts_latency_ms_p50/p99`: a refusal never reached the
+handler, so its microsecond-scale samples would drag the percentiles away from what a served request
+actually costs — the same reason remoted keeps a `429` out of its own histogram. The `other` bucket is different: a `200` that would not let an
 agent trust anything means the sender is not talking to remoted's `/cacerts` (a proxy answered, a
 prefix mismatch reached something else) and the measurement is invalid (docu/10). The step never
 retries, so requests and attempts are the same number.
 
 ## Metrics
 
-`cacerts_sent`, `cacerts_200`, `cacerts_404`, `cacerts_503`, `cacerts_other` and
+`cacerts_sent`, `cacerts_200`, `cacerts_404`, `cacerts_503`, `cacerts_429`, `cacerts_other` and
 `cacerts_latency_ms_p50/p99` in `bench.csv`; the `cacerts` block of `totals`/`by_fleet`/`by_lane`
 and the `cacerts` histogram in `latency_ms` in `sender_summary.json`; the `cacerts` group of
-`expected` (`sent`, `s200`, `s404`, `s503`, `other`) — see [09](09-metrics-and-output.md) and
+`expected` (`sent`, `s200`, `s404`, `s503`, `s429`, `other`) — see [09](09-metrics-and-output.md) and
 [07](07-scenario-schema.md).
 
 On the manager side, the matching families are `remoted.http.cacerts.responses.*` (what it answered),

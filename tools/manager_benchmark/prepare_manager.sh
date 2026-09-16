@@ -5,8 +5,9 @@ set -euo pipefail
 #
 # Agent-mode runs enroll a synthetic fleet, and they do it the way a 5.x agent
 # handed an enrollment token does: POST /enroll on 1517 with a `wazuh-enroll+jwt`
-# bearer. So this script does two things and NEITHER of them weakens the
-# manager's enrollment policy:
+# bearer. So this script does three things. The first two do NOT weaken the
+# manager's enrollment policy; the third removes a rate ceiling on purpose and
+# says so:
 #
 #   1. makes remote enrollment reachable:
 #          <disabled>no</disabled>
@@ -17,6 +18,20 @@ set -euo pipefail
 #      --token-file (default: .enrollment_token next to this script), which
 #      run_benchmark.sh picks up by itself. authd's defaults apply: 30 days,
 #      unlimited uses.
+#
+#   3. takes the two UNAUTHENTICATED routes' rate limits out of the way:
+#          <remote><https><enroll_rate_limit>0</enroll_rate_limit>
+#          <remote><https><cacerts_rate_limit>0</cacerts_rate_limit>
+#      0 is the documented "no limit" (issue #39129). Unlike 1 and 2 this DOES
+#      remove a bound the shipped defaults apply -- 100 req/s on /enroll and 50
+#      on /cacerts, counted for the endpoint as a whole rather than per agent --
+#      and it is removed on purpose: those ceilings are sized for a fleet's
+#      steady state, while the harness deliberately asks faster than that to
+#      measure capacity and the listener's per-request cost. Left in place, the
+#      `cacerts` scenario's 200 unpaced requests spend the burst and then get
+#      429s, which is not what it is measuring. Use --keep-rate-limits to
+#      benchmark the limiter itself; the sender counts a 429 either way
+#      (docu/15-cacerts.md, docu/16-enroll-https.md).
 #
 # <use_password> and etc/authd.pass are left exactly as installed: the token
 # bearer is verified in every mode, so a benchmark now runs against the same
@@ -44,7 +59,7 @@ set -euo pipefail
 # Usage:
 #   sudo ./prepare_manager.sh [--conf PATH] [--max-agents N] [--address HOST]
 #                             [--token-file PATH] [--no-mint] [--open-1515]
-#                             [--no-restart]
+#                             [--keep-rate-limits] [--no-restart]
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -53,6 +68,7 @@ MAX_AGENTS=""
 RESTART=true
 OPEN_1515=false
 MINT=true
+KEEP_RATE_LIMITS=false
 ADDRESS=""
 TOKEN_FILE="$SCRIPT_DIR/.enrollment_token"
 PYTHON="${PYTHON:-python3}"
@@ -65,6 +81,7 @@ while [[ $# -gt 0 ]]; do
         --token-file)  TOKEN_FILE="$2"; shift 2 ;;
         --no-mint)     MINT=false; shift ;;
         --open-1515)   OPEN_1515=true; shift ;;
+        --keep-rate-limits) KEEP_RATE_LIMITS=true; shift ;;
         --no-restart)  RESTART=false; shift ;;
         -h|--help)
             grep '^#' "$0" | sed 's/^# \{0,1\}//'
@@ -86,7 +103,7 @@ CONTROL="$WAZUH_HOME/bin/wazuh-manager-control"
 AUTHD="$WAZUH_HOME/bin/wazuh-manager-authd"
 
 echo "Configuring reachable remote enrollment in $CONF ..."
-MAX_AGENTS="$MAX_AGENTS" OPEN_1515="$OPEN_1515" "$PYTHON" - "$CONF" <<'PY'
+MAX_AGENTS="$MAX_AGENTS" OPEN_1515="$OPEN_1515" KEEP_RATE_LIMITS="$KEEP_RATE_LIMITS" "$PYTHON" - "$CONF" <<'PY'
 import os, re, sys
 
 path = sys.argv[1]
@@ -96,18 +113,76 @@ with open(path, "r", encoding="utf-8") as fh:
     original = fh.read()
 text = original
 
-def set_child(block, tag, value):
-    """Set <tag>value</tag> inside an <auth> block string, adding it if absent."""
-    pat = re.compile(rf"<{tag}>.*?</{tag}>", re.DOTALL)
-    if pat.search(block):
-        return pat.sub(f"<{tag}>{value}</{tag}>", block)
-    # insert just before </auth>, preserving indentation of the closing tag
-    return re.sub(r"([ \t]*)</auth>", rf"    <{tag}>{value}</{tag}>\n\1</auth>", block, count=1)
+def mask_comments(s):
+    """A same-length copy of s with every XML comment blanked out.
+
+    A manager config legitimately carries commented-out examples -- the installed one ships
+    `<!-- <ssl_agent_ca></ssl_agent_ca> -->` -- and a plain regex happily matches inside them:
+    rewriting a value there leaves the option commented out while this script reports success,
+    so the run measures a manager that still has the shipped ceilings.
+
+    Blanked rather than deleted so every offset still addresses the same character of the
+    original: callers match on the mask and slice the original. And MASKED rather than
+    "match, then discard the ones inside comments", because a discarded match has already
+    consumed the text it spans -- a comment holding an unbalanced `<https>` would let
+    `<https>.*?</https>` start inside the comment and run past the REAL block's closing tag,
+    hiding the real element and making this script add a second one. That is a valid config
+    turned into `(1244) duplicate element`, so the tags inside a comment must never be visible
+    to the regex at all.
+    """
+    if "<!--" not in s:
+        return s
+    out = list(s)
+    for m in re.finditer(r"<!--.*?-->", s, re.DOTALL):
+        for i in range(m.start(), m.end()):
+            if out[i] != "\n":  # keep the line structure so offsets stay easy to eyeball
+                out[i] = " "
+    return "".join(out)
+
+
+def live_search(pattern, s):
+    """First match of pattern in s, ignoring anything inside an XML comment.
+
+    NOTE: group(0) comes from the masked copy, so slice s with start()/end() whenever you need
+    the real text.
+    """
+    return re.search(pattern, mask_comments(s), re.DOTALL)
+
+
+def indent_before(s, pos):
+    """The run of spaces/tabs immediately before pos, read from the ORIGINAL text.
+
+    Taken from s and not from a capture group on the mask: a blanked comment looks exactly like
+    indentation, so `([ \t]*)</auth>` on the mask can match characters that are really comment
+    body -- and cutting there would split `<!-- ... -->` in half and leave the comment
+    unterminated. Walking back over real spaces/tabs only can never enter a comment, because the
+    character before a comment's body is always its `>`.
+    """
+    i = pos
+    while i > 0 and s[i - 1] in " \t":
+        i -= 1
+    return i, s[i:pos]
+
+
+def set_child(block, tag, value, parent="auth"):
+    """Set <tag>value</tag> inside a <parent> block string, adding it if absent."""
+    m = live_search(rf"<{tag}>.*?</{tag}>", block)
+    if m:
+        return block[:m.start()] + f"<{tag}>{value}</{tag}>" + block[m.end():]
+    # insert just before </parent>, indented one level in from the closing tag, so this works
+    # for <auth> at any depth and for the more deeply nested <remote><https>
+    close = live_search(rf"</{parent}>", block)
+    if close is None:
+        return block
+    cut, indent = indent_before(block, close.start())
+    return (block[:cut]
+            + f"{indent}  <{tag}>{value}</{tag}>\n{indent}</{parent}>"
+            + block[close.end():])
 
 auth_pat = re.compile(r"<auth>.*?</auth>", re.DOTALL)
-m = auth_pat.search(text)
+m = live_search(auth_pat.pattern, text)
 if m:
-    block = m.group(0)
+    block = text[m.start():m.end()]
 else:
     # No <auth> block: create one before the closing root tag. The 5.x manager
     # config root is <wazuh_config>; older configs use <ossec_config>.
@@ -124,8 +199,8 @@ else:
         sys.stderr.write("no </wazuh_config> or </ossec_config> found; is this a manager config?\n")
         sys.exit(2)
     text = text[:idx] + "  " + block + "\n" + text[idx:]
-    m = auth_pat.search(text)
-    block = m.group(0)
+    m = live_search(auth_pat.pattern, text)
+    block = text[m.start():m.end()]
 
 new_block = block
 new_block = set_child(new_block, "disabled", "no")
@@ -140,6 +215,49 @@ if open_1515:
 if new_block != block:
     text = text[:m.start()] + new_block + text[m.end():]
 
+# The two unauthenticated routes' rate limits (see the header, item 3). 0 is "no limit".
+# <https> is unique in the manager schema (only remote.https defines it) and the installer
+# always writes the block, so a plain search is enough; an <https>-less config still gets one
+# inside <remote> rather than silently keeping the shipped ceilings.
+rate_note = "kept as configured (--keep-rate-limits)"
+if os.environ.get("KEEP_RATE_LIMITS", "") != "true":
+    hm = live_search(r"<https>.*?</https>", text)
+    if hm is None:
+        # An EMPTY block is written <https/>: it is still the one element the schema allows, so it
+        # has to be grown rather than joined by a second one (that is a 1244 "duplicate element").
+        sm = live_search(r"<https\s*/>", text)
+        if sm is not None:
+            cut, indent = indent_before(text, sm.start())
+            text = text[:cut] + f"{indent}<https>\n{indent}</https>" + text[sm.end():]
+        else:
+            rm = live_search(r"<remote>.*?</remote>", text)
+            if rm is None:
+                sys.stderr.write("no <remote> block found; cannot clear the endpoint rate limits\n")
+                sys.exit(2)
+            remote_text = text[rm.start():rm.end()]
+            close = live_search(r"</remote>", remote_text)
+            if close is None:
+                sys.stderr.write("malformed <remote> block; cannot clear the endpoint rate limits\n")
+                sys.exit(2)
+            cut, indent = indent_before(remote_text, close.start())
+            remote_block = (remote_text[:cut]
+                            + f"{indent}  <https>\n{indent}  </https>\n"
+                            + f"{indent}</remote>"
+                            + remote_text[close.end():])
+            text = text[:rm.start()] + remote_block + text[rm.end():]
+        hm = live_search(r"<https>.*?</https>", text)
+        if hm is None:
+            sys.stderr.write("could not open a <remote><https> block to clear the rate limits\n")
+            sys.exit(2)
+
+    https_block = text[hm.start():hm.end()]
+    new_https = set_child(https_block, "enroll_rate_limit", "0", parent="https")
+    new_https = set_child(new_https, "cacerts_rate_limit", "0", parent="https")
+    if new_https != https_block:
+        text = text[:hm.start()] + new_https + text[hm.end():]
+    rate_note = "enroll_rate_limit=0 cacerts_rate_limit=0 (no limit, so the harness measures "
+    rate_note += "capacity and not the ceiling)"
+
 # One-time backup, then write.
 bak = path + ".bak"
 if not os.path.exists(bak):
@@ -148,6 +266,7 @@ if not os.path.exists(bak):
 with open(path, "w", encoding="utf-8") as fh:
     fh.write(text)
 print("  auth block updated")
+print(f"  remote.https rate limits: {rate_note}")
 PY
 
 if $OPEN_1515; then

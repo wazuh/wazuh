@@ -20,8 +20,8 @@ timestamp,elapsed_s,mode,agents_active,
 sessions_sent,sessions_ok,sessions_noop,sessions_409,sessions_400,sessions_401,sessions_403,sessions_413,sessions_500,sessions_503,sessions_503_retry_after,sessions_other,
 stateless_sent,stateless_202,stateless_400,stateless_413,stateless_503,stateless_other,events_sent,
 scan_sent,scan_200,scan_409,scan_503,scan_other,
-cacerts_sent,cacerts_200,cacerts_404,cacerts_503,cacerts_other,
-enroll_https_sent,enroll_https_200,enroll_https_401,enroll_https_403,enroll_https_409,enroll_https_other,
+cacerts_sent,cacerts_200,cacerts_404,cacerts_503,cacerts_429,cacerts_other,
+enroll_https_sent,enroll_https_200,enroll_https_401,enroll_https_403,enroll_https_409,enroll_https_429,enroll_https_other,
 retries_feed,retries_503,retries_exhausted,transport_errors,
 bytes_sent,documents_sent,
 control_startup_ok,control_startup_err,control_notify_ok,control_notify_err,control_shutdown_ok,control_shutdown_err,
@@ -54,10 +54,13 @@ enroll_https_latency_ms_p50,enroll_https_latency_ms_p99
   so requests and attempts are the same number here.
 - `cacerts_*` are the `GET /cacerts` counters ([15](15-cacerts.md)): the CA-distribution requests a
   `cacerts` step sends. `cacerts_200` counts CA PEMs handed out; `cacerts_404` (the manager has no
-  CA file) and `cacerts_503` (the manager refused a CA that does not sign its own certificate) are
-  the manager's contract outcomes; `cacerts_other` holds what invalidates the run (a `200` without a
-  PEM body, a status the contract does not name). `cacerts_latency_ms_*` is the cost of the cheapest
-  route on the listener — TLS plus a file read, no downstream. A `cacerts` step never retries.
+  CA file), `cacerts_503` (the manager refused a CA that does not sign its own certificate) and
+  `cacerts_429` (the route's own rate limit, `remote.https.cacerts_rate_limit`) are the manager's
+  contract outcomes; `cacerts_other` holds what invalidates the run (a `200` without a PEM body, a
+  status the contract does not name) — the `429` has a column of its own so a rate-limited manager is
+  not mistaken for one answering something unexpected. `cacerts_latency_ms_*` is the cost of the
+  cheapest route on the listener — TLS plus a file read, no downstream — and **excludes** the `429`s,
+  which never reached the handler. A `cacerts` step never retries.
 - `meta.bootstrap` is how the fleet obtained its identities: `"enroll-token"` (`POST /enroll` with
   an enrollment token, the default) or `"1515"` (authd's legacy listener) in agent mode, and `""` in
   uds mode, which enrolls nothing. The bootstrap's own requests appear in NO counter: they are setup,
@@ -66,11 +69,15 @@ enroll_https_latency_ms_p50,enroll_https_latency_ms_p99
   one fresh agent enrolled per request with the enrollment token's bearer. `enroll_https_200` counts
   agents created; `enroll_https_401` (the manager refused the bearer: unknown, expired or revoked
   token, or a clock/key problem), `enroll_https_403` (authd refused the use of a bearer remoted had
-  verified — no uses left, or revoked/expired between the two checks) and `enroll_https_409` (a
-  duplicate name) are the manager's contract outcomes; `enroll_https_other` holds what invalidates
-  the run (a `200` without the agent record, a status the contract does not name).
-  `enroll_https_latency_ms_*` spans remoted's verification, the hop to `authd` and `authd`'s
-  `client.keys` write — a fleet's first-contact cost. The step never retries.
+  verified — no uses left, or revoked/expired between the two checks), `enroll_https_409` (a
+  duplicate name) and `enroll_https_429` (the route's rate limit,
+  `remote.https.enroll_rate_limit`, refused before `authd` was contacted at all) are the manager's
+  contract outcomes; `enroll_https_other` holds what invalidates the run (a `200` without the agent
+  record, a status the contract does not name). `enroll_https_latency_ms_*` spans remoted's
+  verification, the hop to `authd` and `authd`'s `client.keys` write — a fleet's first-contact cost —
+  and **excludes** the `429`s, which paid none of it. The step never retries.
+  `prepare_manager.sh` clears both rate limits by default, so these two `429` columns stay at `0`
+  unless you pass `--keep-rate-limits` to benchmark the limiter itself.
 - `sessions_401` has its own column rather than living in `sessions_other`: a `401` means remoted has
   not loaded that fleet's keys yet, so those requests measured nothing. It also **invalidates the
   run** — a run full of unauthenticated requests must never read as a result.
