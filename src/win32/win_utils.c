@@ -395,20 +395,38 @@ int local_start()
      * configured CA is validated, before the key read and start_agent_prepare() below, so a
      * token enrollment has already written client.keys by the time OS_CheckKeys() looks.
      *
-     * A configured token that could not be honoured ends the start, and deliberately so.
-     * Carrying on would reach start_agent_prepare(), which enrolls over whatever posture is
-     * left -- 'none', because no anchor was written -- so a CA the agent had just refused
-     * would be followed by an unverified enrollment against that same manager.
+     * A permanent failure ends the start, and deliberately so. Carrying on would reach
+     * start_agent_prepare(), which enrolls over whatever posture is left -- 'none', because no
+     * anchor was written -- so a CA the agent had just refused would be followed by an
+     * unverified enrollment against that same manager.
      *
-     * Only a token that was present and failed does this. An install with no token at all
-     * returns 0 from the gate, so the normal enrollment loop still gets its chance -- as do an
-     * agent already holding an anchor and one already enrolled.
+     * A transient failure (the manager unreachable, a 5xx from /cacerts or /enroll, or the
+     * verified enroll's own transport failing) is retried in place, using the same backoff ramp
+     * the legacy enrollment loop uses on POSIX (agt->enrollment.retry_delta/retry_max) -- mirrors
+     * agentd.c's own gate exactly, since w_agent_token_bootstrap()'s classification is shared
+     * across both platforms and this caller must not collapse TRANSIENT and PERMANENT into the
+     * same outcome the way a bare "!= 0" check would.
+     *
+     * Only a token that was present and (after any transient retries) still failed does this. An
+     * install with no token at all returns W_TOKEN_BOOTSTRAP_DONE from the gate, so the normal
+     * enrollment loop still gets its chance -- as do an agent already holding an anchor and one
+     * already enrolled.
      *
      * 0/0 for uid/gid: Windows runs the service as one account from start to finish, so
      * neither file the bootstrap writes is handed over to a second user (token_bootstrap.c). */
     const bool anchor_before = (IsFile(AGENT_ANCHOR_CA) == 0);
+    int token_bootstrap_delay = 0;
+    w_token_bootstrap_result_t token_bootstrap_result;
 
-    if (w_agent_token_bootstrap(0, 0) != 0) {
+    while ((token_bootstrap_result = w_agent_token_bootstrap(0, 0)) == W_TOKEN_BOOTSTRAP_TRANSIENT) {
+        if (token_bootstrap_delay < agt->enrollment.retry_max) {
+            token_bootstrap_delay += agt->enrollment.retry_delta;
+        }
+        mdebug1("Token bootstrap: transient failure, retrying in %d seconds.", token_bootstrap_delay);
+        sleep(token_bootstrap_delay);
+    }
+
+    if (token_bootstrap_result == W_TOKEN_BOOTSTRAP_PERMANENT) {
         merror_exit("Enrollment-token bootstrap failed; refusing to enroll unverified.");
     }
 

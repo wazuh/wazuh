@@ -536,14 +536,52 @@ static void test_malformed_token_logs_named_error_and_writes_nothing(void **stat
     expect_string(__wrap__merror, formatted_msg,
                   "Token bootstrap: could not decode the enrollment token: malformed token.");
 
-    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), -1);
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
     assert_int_equal(g_fetch_call_count, 0);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
     assert_int_not_equal(IsFile("etc/client.keys"), 0);
 }
 
-static void test_fetch_failure_logs_named_error_and_writes_nothing(void **state) {
+static void test_fetch_adr_unreachable_logs_named_error_and_writes_nothing(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 0L);
+    will_return(__wrap_hc_fetch_cacerts, NULL);
+    will_return(__wrap_hc_fetch_cacerts, 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Token bootstrap: /cacerts adr_unreachable -- could not reach the manager to "
+                  "fetch the certificate authority.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(g_fetch_call_count, 1);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+}
+
+static void test_fetch_not_found_logs_named_error_and_writes_nothing(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 404L);
+    will_return(__wrap_hc_fetch_cacerts, NULL);
+    will_return(__wrap_hc_fetch_cacerts, 1);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Token bootstrap: /cacerts not_found -- the manager has no certificate "
+                  "authority configured (it may predate this feature).");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_equal(g_fetch_call_count, 1);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+}
+
+static void test_fetch_ca_mismatch_logs_named_error_and_writes_nothing(void **state) {
     (void) state;
     write_token_file(true, true, NULL);
 
@@ -552,10 +590,11 @@ static void test_fetch_failure_logs_named_error_and_writes_nothing(void **state)
     will_return(__wrap_hc_fetch_cacerts, 1);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: fetching /cacerts from the manager failed: manager returned "
-                  "HTTP 503 instead of 200.");
+                  "Token bootstrap: /cacerts ca_mismatch -- the manager's configured certificate "
+                  "authority does not sign its own listener certificate (misprovisioned, not "
+                  "necessarily hostile).");
 
-    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), -1);
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_TRANSIENT);
     assert_int_equal(g_fetch_call_count, 1);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
@@ -572,10 +611,10 @@ static void test_pin_mismatch_logs_named_error_and_writes_nothing(void **state) 
     will_return(__wrap_hc_spki_pinned_certificate, NULL);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: fetched CA does not match the enrollment token's pin -- "
-                  "refusing to trust it.");
+                  "Token bootstrap: pin_mismatch -- fetched CA does not match the enrollment "
+                  "token's pin, refusing to trust it.");
 
-    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), -1);
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
     assert_int_equal(g_fetch_call_count, 1);
     assert_int_equal(g_spki_call_count, 1);
     assert_int_equal(g_enroll_call_count, 0);
@@ -796,7 +835,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_anchor_latch_keys_chown_failure_is_quiet, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_empty_placeholder_keys_file_is_not_already_enrolled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_malformed_token_logs_named_error_and_writes_nothing, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_fetch_failure_logs_named_error_and_writes_nothing, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_fetch_adr_unreachable_logs_named_error_and_writes_nothing, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_fetch_not_found_logs_named_error_and_writes_nothing, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_fetch_ca_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_pin_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_pin, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fresh_enrollment_keys_chown_failure_logs_merror, setup_test, teardown_test),

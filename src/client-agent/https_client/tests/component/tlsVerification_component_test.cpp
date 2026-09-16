@@ -84,14 +84,17 @@ namespace
 
     // A leaf genuinely signed by the given CA (unlike makeSelfSigned(), issuer/signer is
     // caKey, not the leaf's own key), with a caller-chosen SAN -- lets a test build a
-    // perfectly valid chain for the wrong identity.
-    void makeCaSignedLeaf(X509* caCert, EVP_PKEY* caKey, const char* san, EVP_PKEY** keyOut, X509** certOut)
+    // perfectly valid chain for the wrong identity. notBefore/notAfter default to "valid
+    // now, for an hour" (the original shape); the date-failure tests below override them
+    // to isolate a certificate-validity-period failure from the hostname check.
+    void makeCaSignedLeaf(X509* caCert, EVP_PKEY* caKey, const char* san, EVP_PKEY** keyOut, X509** certOut,
+                          long notBeforeOffsetSeconds = 0, long notAfterOffsetSeconds = 60L * 60L)
     {
         EVP_PKEY* pkey = EVP_RSA_gen(2048);
         X509* cert = X509_new();
         ASN1_INTEGER_set(X509_get_serialNumber(cert), 2);
-        X509_gmtime_adj(X509_get_notBefore(cert), 0);
-        X509_gmtime_adj(X509_get_notAfter(cert), 60L * 60L);
+        X509_gmtime_adj(X509_get_notBefore(cert), notBeforeOffsetSeconds);
+        X509_gmtime_adj(X509_get_notAfter(cert), notAfterOffsetSeconds);
         X509_set_pubkey(cert, pkey);
         X509_NAME* name = X509_get_subject_name(cert);
         X509_NAME_add_entry_by_txt(
@@ -306,6 +309,10 @@ TEST(TlsVerificationTest, FullVerificationRejectsAnUntrustedCertificate)
 
     const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
     EXPECT_EQ(TransportStatus::TlsFail, response.status); // Untrusted: no HTTP status reached.
+    // Not one of the two classified causes: proves the hostname-mismatch elimination fallback
+    // (chain clean + CURLE_PEER_FAILED_VERIFICATION => HostnameMismatch) does NOT misfire here,
+    // where the chain itself is what failed.
+    EXPECT_EQ(TlsFailureKind::None, response.tlsFailure.kind);
 
     std::remove(wrongCaPath.c_str());
 }
@@ -343,6 +350,10 @@ TEST(TlsVerificationTest, FullVerificationRejectsASelfSignedLeafWithTheGenuineCa
 
     const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
     EXPECT_EQ(TransportStatus::TlsFail, response.status);
+    // Same elimination-fallback concern as FullVerificationRejectsAnUntrustedCertificate above:
+    // this must not read as a hostname mismatch, since the identity check never even runs on a
+    // chain that fails first.
+    EXPECT_EQ(TlsFailureKind::None, response.tlsFailure.kind);
 
     std::remove(caPath.c_str());
 }
@@ -378,6 +389,85 @@ TEST(TlsVerificationTest, FullVerificationRejectsACaSignedCertForTheWrongHostnam
 
     const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
     EXPECT_EQ(TransportStatus::TlsFail, response.status);
+    // #39062 objective requirement 6: a name mismatch is classified (and, in curlHandle.cpp,
+    // logged at normal level) rather than reading as a generic Unreachable/TlsFail -- the chain
+    // was entirely valid, so this proves the classifier is not just echoing a chain failure.
+    EXPECT_EQ(TlsFailureKind::HostnameMismatch, response.tlsFailure.kind);
+    // The dialed address (127.0.0.1) is not among the leaf's SANs -- only the one this leaf
+    // was actually minted for.
+    ASSERT_EQ(1u, response.tlsFailure.certNames.size());
+    EXPECT_EQ("IP Address:10.0.0.99", response.tlsFailure.certNames.front());
+
+    std::remove(caPath.c_str());
+}
+
+// Isolates a certificate-date failure from both the chain and hostname checks: a leaf
+// genuinely signed by the trusted CA, correctly SAN'd for the dialed address, whose notBefore
+// is still in the future.
+TEST(TlsVerificationTest, FullVerificationRejectsACertificateNotYetValid)
+{
+    constexpr uint16_t port = 44863;
+    EVP_PKEY* caKey = nullptr;
+    X509* caCert = nullptr;
+    makeSelfSigned(&caKey, &caCert);
+    const std::string caPath = writeCertPem(caCert, "notyetvalid_ca");
+    ASSERT_FALSE(caPath.empty());
+
+    // notBefore one day from now, notAfter two days from now: a well-formed window, just not
+    // open yet.
+    EVP_PKEY* leafKey = nullptr;
+    X509* leafCert = nullptr;
+    makeCaSignedLeaf(caCert, caKey, "IP:127.0.0.1", &leafKey, &leafCert, 24L * 60L * 60L, 48L * 60L * 60L);
+
+    TlsServer server {leafCert, leafKey, port};
+    X509_free(leafCert);
+    EVP_PKEY_free(leafKey);
+    X509_free(caCert);
+    EVP_PKEY_free(caKey);
+
+    const auto config = tlsFullConfig(port, caPath);
+    ConfigKeyProvider keyProvider {KEY_HEX};
+    JwtSigner signer {"001", keyProvider};
+    CurlPerformer performer {config, defaultCurlHandleFactory()};
+
+    const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
+    EXPECT_EQ(TransportStatus::TlsFail, response.status);
+    EXPECT_EQ(TlsFailureKind::CertNotYetValid, response.tlsFailure.kind);
+    EXPECT_FALSE(response.tlsFailure.notBefore.empty());
+
+    std::remove(caPath.c_str());
+}
+
+// As above, isolating the opposite date failure: a leaf whose notAfter has already passed.
+TEST(TlsVerificationTest, FullVerificationRejectsAnExpiredCertificate)
+{
+    constexpr uint16_t port = 44864;
+    EVP_PKEY* caKey = nullptr;
+    X509* caCert = nullptr;
+    makeSelfSigned(&caKey, &caCert);
+    const std::string caPath = writeCertPem(caCert, "expired_ca");
+    ASSERT_FALSE(caPath.empty());
+
+    // notBefore two days ago, notAfter one day ago: a well-formed window that already closed.
+    EVP_PKEY* leafKey = nullptr;
+    X509* leafCert = nullptr;
+    makeCaSignedLeaf(caCert, caKey, "IP:127.0.0.1", &leafKey, &leafCert, -48L * 60L * 60L, -24L * 60L * 60L);
+
+    TlsServer server {leafCert, leafKey, port};
+    X509_free(leafCert);
+    EVP_PKEY_free(leafKey);
+    X509_free(caCert);
+    EVP_PKEY_free(caKey);
+
+    const auto config = tlsFullConfig(port, caPath);
+    ConfigKeyProvider keyProvider {KEY_HEX};
+    JwtSigner signer {"001", keyProvider};
+    CurlPerformer performer {config, defaultCurlHandleFactory()};
+
+    const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
+    EXPECT_EQ(TransportStatus::TlsFail, response.status);
+    EXPECT_EQ(TlsFailureKind::CertExpired, response.tlsFailure.kind);
+    EXPECT_FALSE(response.tlsFailure.notAfter.empty());
 
     std::remove(caPath.c_str());
 }
@@ -447,6 +537,7 @@ TEST(TlsVerificationTest, SystemVerificationRejectsACertificateNotInTheOsBundle)
 
     const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
     EXPECT_EQ(TransportStatus::TlsFail, response.status);
+    EXPECT_EQ(TlsFailureKind::None, response.tlsFailure.kind);
 
     std::remove(bundlePath.c_str());
 }

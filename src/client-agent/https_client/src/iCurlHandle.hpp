@@ -128,6 +128,13 @@ class ICurlHandle
         /// The error class plus, when libcurl supplied one, the TLS/OpenSSL detail
         /// behind it -- the part TransportStatus cannot carry.
         virtual std::string curlError() = 0;
+
+        /// The classified cause behind the last perform(), when it failed with
+        /// TransportStatus::TlsFail and the OpenSSL verify callback identified it as a
+        /// hostname mismatch or a certificate-date problem (see tlsCertDiagnostics.hpp).
+        /// Default-constructed (kind == None) after a success, after any other failure,
+        /// and after an ordinary chain/CA-trust TlsFail, which stays generic.
+        virtual TlsFailureDetail tlsFailureDetail() = 0;
 };
 
 using CurlHandleFactory = std::function<std::unique_ptr<ICurlHandle>()>;
