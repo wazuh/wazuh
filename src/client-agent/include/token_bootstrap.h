@@ -71,14 +71,16 @@ typedef struct {
      *  w_agent_token_bootstrap() reads and unlinks a file; an operator's token file is neither
      *  the core's to read nor its to delete. */
     const char *token_text;
-    /** The runtime user the agent will drop to. The ONLY file handed to it is the
-     *  re-enrollment secret, which the daemon has to rewrite on every rotation after that drop;
-     *  the anchor and client.keys stay root-owned. -1 means "leave ownership alone", which is
-     *  what a tool running long after the install passes: there is no drop to prepare for. */
+    /** The runtime user the agent will drop to. Two files are handed to it: the re-enrollment
+     *  secret, which the daemon rewrites on every rotation after that drop, and since #39321 the
+     *  trust anchor, which the daemon replaces when the manager publishes a new CA bundle --
+     *  under the sticky etc/certs only the file's owner may rename over it. client.keys stays
+     *  root-owned. -1 means "leave ownership alone", which is what a tool running long after the
+     *  install passes: there is no drop to prepare for. */
     int uid;
-    /** Group for the anchor and client.keys, both of which are left owned by root and shared
-     *  with this group -- the runtime user reads them and can replace neither.
-     *  -1 leaves ownership alone. */
+    /** Group for the anchor and client.keys. client.keys is left owned by root and shared with
+     *  this group -- the runtime user reads it and cannot replace it; the anchor is owned by
+     *  `uid` and shared with this group. -1 leaves ownership alone. */
     int gid;
     /** Snapshot whatever anchor and client.keys are already on disk, and put them back if the
      *  commit fails. agentd's first boot has nothing to snapshot and passes false; a re-enrollment
@@ -207,13 +209,16 @@ typedef enum {
  * Each latch independently blocks a re-run, so this is not the way to re-enroll or to move an
  * agent -- w_agent_token_enroll() is, and wazuh-agent-auth is what drives it.
  *
- * @param uid Unused; kept for signature symmetry with AgentdStart()'s uid/gid pair. Neither
- *        file this writes is chowned to the runtime user. Ignored on Windows, which has no
- *        privilege drop; local_start() passes 0.
+ * @param uid The uid AgentdStart() is about to drop privileges to. The committed anchor is
+ *        chowned to it so the agent can replace the anchor itself when the manager publishes a
+ *        new CA bundle (#39321) -- under the sticky etc/certs only the file's owner may rename
+ *        over it. client.keys is deliberately NOT chowned to it. Ignored on Windows, which has
+ *        no privilege drop; local_start() passes 0.
  * @param gid The gid AgentdStart() is about to drop privileges to, so the committed anchor and
- *        client.keys end up root-owned and group-owned by it -- readable after the drop, and
- *        replaceable by nothing that runs as that user. Ignored on Windows for the same reason,
- *        which passes 0 too.
+ *        client.keys end up group-owned by it and readable after the drop. client.keys stays
+ *        root-owned and replaceable by nothing that runs as that user; the anchor is owned by
+ *        @p uid, for the reason given above. Ignored on Windows for the same reason, which
+ *        passes 0 too.
  * @return See w_token_bootstrap_result_t.
  */
 w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid);
