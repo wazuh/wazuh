@@ -46,11 +46,16 @@ STATIC char *w_token_bootstrap_read_token(const char *path) {
         return NULL;
     }
 
-    char buf[W_ETOKEN_MAX_FILE_BYTES];
-    char *read_ok = fgets(buf, sizeof(buf) - 1, fp);
+    /* Heap, not stack: the bound is sized for an embedded-CA token (see its own comment) and
+     * that is far too much to put on a frame. */
+    char *buf;
+    os_calloc(W_ETOKEN_MAX_FILE_BYTES, sizeof(char), buf);
+
+    char *read_ok = fgets(buf, W_ETOKEN_MAX_FILE_BYTES - 1, fp);
     fclose(fp);
 
     if (!read_ok) {
+        os_free(buf);
         return NULL;
     }
 
@@ -61,11 +66,13 @@ STATIC char *w_token_bootstrap_read_token(const char *path) {
     }
 
     if (len == 0) {
+        os_free(buf);
         return NULL;
     }
 
     char *token;
     os_strdup(buf, token);
+    os_free(buf);
     return token;
 }
 

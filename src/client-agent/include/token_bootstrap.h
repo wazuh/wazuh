@@ -73,10 +73,15 @@ typedef enum {
 /* Largest enrollment token this agent will read, wherever it comes from. Shared so the
  * installer's --show-token and the first-boot bootstrap agree: when --show-token accepted more
  * than the bootstrap could read, a token between the two sizes passed the install and then
- * failed at the first start, with nothing at install time to warn about it. A token carrying a
- * pin is a couple of hundred bytes and one embedding a CA a few KB, so this is a sanity bound
- * rather than a tight one. */
-#define W_ETOKEN_MAX_FILE_BYTES 8192
+ * failed at the first start, with nothing at install time to warn about it.
+ *
+ * A token carrying a pin is a couple of hundred bytes; one embedding a CA is bounded by what
+ * authd is willing to mint, which is ETOKEN_CA_MAX_BYTES (64 KiB) of PEM. That PEM is escaped
+ * into JSON, where every newline costs two bytes, and the whole object is then base64url'd at
+ * 4/3 -- so authd's own ceiling lands near 88 KB and this has to clear it. At 8192 it did not:
+ * a six-certificate bundle, which is the largest #39321 lets a manager publish, mints cleanly
+ * at roughly 9 KB and was then refused at the agent's first boot. */
+#define W_ETOKEN_MAX_FILE_BYTES 98304
 
 w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid);
 

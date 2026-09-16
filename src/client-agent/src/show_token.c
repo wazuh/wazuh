@@ -43,19 +43,26 @@
  */
 int w_agent_show_enrollment_token(void)
 {
-    char text[W_ETOKEN_MAX_FILE_BYTES + 1] = {'\0'};
-    size_t length = fread(text, 1, sizeof(text) - 1, stdin);
+    /* Heap, not stack: the bound is sized for an embedded-CA token (see W_ETOKEN_MAX_FILE_BYTES)
+     * and that is far too much to put on a frame. */
+    char *text;
     w_etoken_t token;
     w_etoken_error_t error;
     char *description = NULL;
+    size_t length;
+
+    os_calloc(W_ETOKEN_MAX_FILE_BYTES + 1, sizeof(char), text);
+    length = fread(text, 1, W_ETOKEN_MAX_FILE_BYTES, stdin);
 
     if (ferror(stdin)) {
         fprintf(stderr, "%s: could not read the enrollment token from stdin.\n", ARGV0);
+        os_free(text);
         return 1;
     }
 
-    if (length == sizeof(text) - 1) {
+    if (length == W_ETOKEN_MAX_FILE_BYTES) {
         fprintf(stderr, "%s: the enrollment token does not fit in %d bytes.\n", ARGV0, W_ETOKEN_MAX_FILE_BYTES);
+        os_free(text);
         return 1;
     }
 
@@ -66,7 +73,10 @@ int w_agent_show_enrollment_token(void)
         text[--length] = '\0';
     }
 
-    if ((error = w_etoken_decode(text, &token)) != ETOKEN_OK) {
+    error = w_etoken_decode(text, &token);
+    os_free(text);
+
+    if (error != ETOKEN_OK) {
         fprintf(stderr, "%s: invalid enrollment token: %s.\n", ARGV0, w_etoken_strerror(error));
         return ETOKEN_SHOW_REJECTED;
     }
