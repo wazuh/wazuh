@@ -1555,7 +1555,7 @@ memory pressure, and it is served under the [global prefix](#endpoints) like eve
 | Outcome | HTTP | Body | Meaning |
 | --- | --- | --- | --- |
 | Served | `200` | re-serialised certificates, `Content-Type: application/x-pem-file` | The CA the listener chains to. A bundle is served as a bundle; private keys and other non-certificate material are omitted |
-| No CA | `404` | `{"error":"not_found"}` | The configured file is missing, unreadable, too large, or contains no usable certificates (including an undecodable certificate block). Same body as an unknown route; the manager logs the failure |
+| No CA | `404` | `{"error":"not_found"}` | The configured file was never readable -- missing, unreadable, too large, or otherwise unparsable -- or it is readable but contains no usable certificates (an emptied file). A file that stops being readable after it was served keeps serving the last good bundle instead. Same body as an unknown route; the manager logs the failure |
 | Incoherent CA | `503` | `{"error":"ca_mismatch"}` | The configured CA does **not** sign the certificate this listener is serving. Refused rather than served: handing it out would make every verifying agent fail its handshake against this very manager |
 
 **What the coherence check compares.** The leaf is the certificate loaded into the TLS context when
@@ -1566,9 +1566,10 @@ chain validation: dates and constraints are the agent's verifier's business.
 
 **Cadence.** Each request reads the CA file and obtains the certificate bundle and coherence verdict
 from the same snapshot. Parsing and signature checks are cached by a hash of those bytes; a changed
-file is re-evaluated even if its size and modification time stay the same. A missing CA therefore
-answers `404` immediately, and a replacement CA that does not sign the loaded leaf answers `503`
-on the next request. Separately, the certificate monitor runs at startup and every 24 hours, logging
+file is re-evaluated even if its size and modification time stay the same. A CA file that cannot be
+read keeps the last good bundle in service and logs the failure; only a file that was never readable
+answers `404`, and a file that reads but carries no certificate answers `404` at once. A replacement
+CA that does not sign the loaded leaf answers `503` on the next request. Separately, the certificate monitor runs at startup and every 24 hours, logging
 expiry and coherence findings. Rotate the CA and listener certificate together and restart remoted
 to load the new leaf.
 

@@ -24,15 +24,26 @@
 #include "testTlsServer.hpp"
 
 #include <algorithm>
+#include <atomic>
+#include <cerrno>
+#include <cstdio>
 #include <fstream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <thread>
+#include <unistd.h>
 #include <utime.h>
+#include <vector>
 
 using remoted::http::CaCertificateSource;
 using remoted::http::loadCertificates;
 using remoted::http::parseCertificates;
+using remoted::http::readFileBounded;
+using remoted::http::ReadResult;
+using remoted::http::ReadStatus;
 using remoted::http::serializeCertificates;
 
 namespace
@@ -49,6 +60,15 @@ namespace
     {
         std::ofstream file {path, std::ios::binary | std::ios::trunc};
         file << contents;
+    }
+
+    /// Replaces @p path atomically (write to a sibling, then rename over it), so a concurrent
+    /// reader sees the old content or the new one -- never a truncated or half-written file.
+    void replaceAtomically(const std::string& path, const std::string& contents)
+    {
+        const auto temporary = path + ".tmp";
+        write(temporary, contents);
+        ASSERT_EQ(std::rename(temporary.c_str(), path.c_str()), 0);
     }
 
     /// Trailing newlines outside a PEM block change nothing for the reader, so padding is how two
@@ -77,6 +97,50 @@ namespace
         ASSERT_EQ(before.st_size, after.st_size);
         ASSERT_EQ(before.st_mtime, after.st_mtime);
     }
+
+    /**
+     * @brief A FileReader with every failure programmable, so the failure paths of
+     *        CaCertificateSource are testable without permission tricks that root ignores.
+     *
+     * The state lives behind a shared_ptr: the copy std::function makes when the reader is
+     * installed and the copy the test keeps both point at it, so the test can flip the status
+     * an already-constructed CaCertificateSource sees on its next snapshot() call.
+     */
+    struct FakeReader
+    {
+        struct State
+        {
+            std::string contents; ///< Returned verbatim on ReadStatus::Ok.
+            ReadStatus status {ReadStatus::Ok};
+            int error {0};
+            std::optional<std::size_t> declaredSize;    ///< Set to fake a file bigger than maxBytes:
+                                                        ///< TooLarge comes back without contents ever
+                                                        ///< being materialised, whatever `contents` holds.
+            std::vector<std::size_t> requestedMaxBytes; ///< One entry per call, in order.
+        };
+
+        std::shared_ptr<State> state {std::make_shared<State>()};
+
+        ReadResult operator()(const std::string& /*path*/, std::size_t maxBytes, std::string& contents) const
+        {
+            state->requestedMaxBytes.push_back(maxBytes);
+
+            if (state->declaredSize.has_value() && *state->declaredSize > maxBytes)
+            {
+                contents.clear();
+                return {ReadStatus::TooLarge, 0};
+            }
+
+            if (state->status != ReadStatus::Ok)
+            {
+                contents.clear();
+                return {state->status, state->error};
+            }
+
+            contents = state->contents;
+            return {};
+        }
+    };
 
     struct Pki
     {
@@ -233,27 +297,315 @@ TEST(CaCertificateSource, RevalidatesWhenTheContentChangesEvenWithTheSameSizeAnd
     EXPECT_EQ(source.parses(), 3U);
 }
 
-TEST(CaCertificateSource, MissingFileClearsThePreviousSnapshot)
+TEST(CaCertificateSource, AMissingFileKeepsThePreviousSnapshot)
 {
     auto pki = makePki("casource-vanish");
     ASSERT_TRUE(pki.has_value());
     remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
 
     const auto path = pki->files.caCertPath + ".vanishing";
+    const auto contents = readAll(pki->files.caCertPath);
+    write(path, contents);
+
+    CaCertificateSource source {path, pki->leaf.get()};
+    const auto served = source.snapshot();
+    ASSERT_EQ(served.certificates, 1U);
+    ASSERT_FALSE(served.lastReadFailure.has_value());
+
+    ::remove(path.c_str());
+
+    // A failed read is a window, not a decision (issue #39318): the last good snapshot keeps
+    // being served, with the failure recorded alongside it for the callers that own a logger.
+    const auto firstFailure = source.snapshot();
+    EXPECT_EQ(firstFailure.certificates, 1U);
+    EXPECT_EQ(firstFailure.pem, served.pem);
+    ASSERT_TRUE(firstFailure.lastReadFailure.has_value());
+    EXPECT_EQ(firstFailure.lastReadFailure->status, ReadStatus::CannotOpen);
+    EXPECT_EQ(firstFailure.lastReadFailure->error, ENOENT);
+    EXPECT_EQ(firstFailure.lastReadFailure->consecutive, 1U);
+
+    const auto secondFailure = source.snapshot();
+    ASSERT_TRUE(secondFailure.lastReadFailure.has_value());
+    EXPECT_EQ(secondFailure.lastReadFailure->status, ReadStatus::CannotOpen);
+    EXPECT_EQ(secondFailure.lastReadFailure->error, ENOENT);
+    EXPECT_EQ(secondFailure.lastReadFailure->consecutive, 2U);
+
+    // Repaired with the exact same bytes: a cache hit, so the failure it recovered from is no
+    // longer news, and it costs no reparse.
+    write(path, contents);
+    const auto restored = source.snapshot();
+    EXPECT_EQ(restored.certificates, 1U);
+    EXPECT_FALSE(restored.lastReadFailure.has_value());
+    EXPECT_EQ(source.parses(), 1U);
+
+    ::remove(path.c_str());
+}
+
+TEST(CaCertificateSource, ReadFailureKeepsThePreviousSnapshot)
+{
+    auto pki = makePki("casource-readfail");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    FakeReader reader;
+    reader.state->contents = readAll(pki->files.caCertPath);
+
+    // The path is never actually opened -- the FakeReader stands in for the whole filesystem --
+    // so any non-empty path does; the real one is at hand and already cleaned up.
+    CaCertificateSource source {pki->files.caCertPath, pki->leaf.get(), reader};
+    const auto served = source.snapshot();
+    ASSERT_EQ(served.certificates, 1U);
+    ASSERT_EQ(source.parses(), 1U);
+
+    reader.state->status = ReadStatus::ReadError;
+    reader.state->error = EIO;
+
+    const auto firstFailure = source.snapshot();
+    EXPECT_EQ(firstFailure.certificates, 1U);
+    EXPECT_EQ(firstFailure.pem, served.pem);
+    ASSERT_TRUE(firstFailure.lastReadFailure.has_value());
+    EXPECT_EQ(firstFailure.lastReadFailure->status, ReadStatus::ReadError);
+    EXPECT_EQ(firstFailure.lastReadFailure->error, EIO);
+    EXPECT_EQ(firstFailure.lastReadFailure->consecutive, 1U);
+
+    const auto secondFailure = source.snapshot();
+    ASSERT_TRUE(secondFailure.lastReadFailure.has_value());
+    EXPECT_EQ(secondFailure.lastReadFailure->status, ReadStatus::ReadError);
+    EXPECT_EQ(secondFailure.lastReadFailure->error, EIO);
+    EXPECT_EQ(secondFailure.lastReadFailure->consecutive, 2U);
+
+    EXPECT_EQ(source.parses(), 1U);
+}
+
+TEST(CaCertificateSource, ADirectoryAtThePathIsAReadError)
+{
+    auto pki = makePki("casource-isdir");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    const auto path = pki->files.caCertPath + ".isdir";
     write(path, readAll(pki->files.caCertPath));
 
     CaCertificateSource source {path, pki->leaf.get()};
-    EXPECT_EQ(source.snapshot().certificates, 1U);
+    const auto served = source.snapshot();
+    ASSERT_EQ(served.certificates, 1U);
 
+    // open(2) succeeds on a directory; it is read(2) that refuses it (EISDIR) -- the case the
+    // reader's own doc comment calls out.
     ::remove(path.c_str());
-    const auto gone = source.snapshot();
-    EXPECT_EQ(gone.certificates, 0U);
-    EXPECT_TRUE(gone.pem.empty());
+    ASSERT_EQ(::mkdir(path.c_str(), 0755), 0);
 
-    // And it comes back without a restart.
+    const auto failed = source.snapshot();
+    EXPECT_EQ(failed.certificates, 1U);
+    EXPECT_EQ(failed.pem, served.pem);
+    ASSERT_TRUE(failed.lastReadFailure.has_value());
+    EXPECT_EQ(failed.lastReadFailure->status, ReadStatus::ReadError);
+    EXPECT_EQ(failed.lastReadFailure->error, EISDIR);
+
+    ::rmdir(path.c_str());
+}
+
+TEST(CaCertificateSource, AFileThatWasNeverReadableYieldsNothing)
+{
+    auto pki = makePki("casource-neverreadable");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    CaCertificateSource source {pki->files.caCertPath + ".nope", pki->leaf.get()};
+    const auto snapshot = source.snapshot();
+
+    EXPECT_EQ(snapshot.certificates, 0U);
+    EXPECT_TRUE(snapshot.pem.empty());
+    ASSERT_TRUE(snapshot.lastReadFailure.has_value());
+    EXPECT_EQ(snapshot.lastReadFailure->status, ReadStatus::CannotOpen);
+    EXPECT_EQ(snapshot.lastReadFailure->error, ENOENT);
+    EXPECT_EQ(snapshot.lastReadFailure->consecutive, 1U);
+}
+
+TEST(CaCertificateSource, AnEmptiedFileClearsThePreviousSnapshot)
+{
+    auto pki = makePki("casource-emptied");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    const auto path = pki->files.caCertPath + ".emptied";
     write(path, readAll(pki->files.caCertPath));
-    EXPECT_EQ(source.snapshot().certificates, 1U);
+
+    CaCertificateSource source {path, pki->leaf.get()};
+    ASSERT_EQ(source.snapshot().certificates, 1U);
+    ASSERT_EQ(source.parses(), 1U);
+
+    // Readable but carrying nothing: the operator's way of saying "stop serving", and it takes
+    // effect at once -- a read that SUCCEEDS, not one that fails.
+    write(path, "");
+    const auto emptied = source.snapshot();
+    EXPECT_EQ(emptied.certificates, 0U);
+    EXPECT_TRUE(emptied.pem.empty());
+    EXPECT_FALSE(emptied.lastReadFailure.has_value());
+    EXPECT_EQ(source.parses(), 2U);
+
     ::remove(path.c_str());
+}
+
+TEST(CaCertificateSource, TooLargeIsRejectedWithoutReadingItWhole)
+{
+    auto pki = makePki("casource-toolarge-fake");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    FakeReader reader;
+    reader.state->contents = readAll(pki->files.caCertPath);
+
+    CaCertificateSource source {pki->files.caCertPath, pki->leaf.get(), reader};
+    const auto served = source.snapshot();
+    ASSERT_EQ(served.certificates, 1U);
+    ASSERT_EQ(source.parses(), 1U);
+
+    // 100 MiB is never produced by the FakeReader (see its operator()): only declared, which is
+    // exactly the point -- CaCertificateSource must refuse on the declared size alone.
+    reader.state->declaredSize = 100U * 1024U * 1024U;
+
+    const auto rejected = source.snapshot();
+    EXPECT_EQ(rejected.certificates, 1U);
+    EXPECT_EQ(rejected.pem, served.pem);
+    ASSERT_TRUE(rejected.lastReadFailure.has_value());
+    EXPECT_EQ(rejected.lastReadFailure->status, ReadStatus::TooLarge);
+    EXPECT_EQ(source.parses(), 1U);
+
+    ASSERT_FALSE(reader.state->requestedMaxBytes.empty());
+    EXPECT_EQ(reader.state->requestedMaxBytes.back(), CaCertificateSource::kMaxBytes);
+}
+
+TEST(CaCertificateSource, ARealFileOverTheCapKeepsThePreviousSnapshot)
+{
+    auto pki = makePki("casource-toolarge-real");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    const auto path = pki->files.caCertPath + ".huge";
+    write(path, readAll(pki->files.caCertPath));
+
+    CaCertificateSource source {path, pki->leaf.get()};
+    const auto served = source.snapshot();
+    ASSERT_EQ(served.certificates, 1U);
+
+    // One byte past the cap, whatever it contains: readFileBounded() must refuse it without
+    // caring what is inside -- the errno it hands back for this case is an implementation detail.
+    write(path, std::string(CaCertificateSource::kMaxBytes + 1, 'x'));
+
+    const auto rejected = source.snapshot();
+    EXPECT_EQ(rejected.certificates, 1U);
+    EXPECT_EQ(rejected.pem, served.pem);
+    ASSERT_TRUE(rejected.lastReadFailure.has_value());
+    EXPECT_EQ(rejected.lastReadFailure->status, ReadStatus::TooLarge);
+
+    ::remove(path.c_str());
+}
+
+TEST(CaCertificateSource, IdenticalContentAfterAFailureIsACacheHit)
+{
+    auto pki = makePki("casource-cachehit-afterfail");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    FakeReader reader;
+    reader.state->contents = readAll(pki->files.caCertPath);
+
+    CaCertificateSource source {pki->files.caCertPath, pki->leaf.get(), reader};
+    ASSERT_EQ(source.snapshot().certificates, 1U);
+    ASSERT_EQ(source.parses(), 1U);
+
+    reader.state->status = ReadStatus::ReadError;
+    reader.state->error = EIO;
+    const auto failed = source.snapshot();
+    ASSERT_TRUE(failed.lastReadFailure.has_value());
+
+    // Repaired with the exact same bytes: still the same hash, so it is a cache hit -- no
+    // reparse -- and the failure it recovered from is cleared.
+    reader.state->status = ReadStatus::Ok;
+    const auto recovered = source.snapshot();
+    EXPECT_EQ(source.parses(), 1U);
+    EXPECT_FALSE(recovered.lastReadFailure.has_value());
+    EXPECT_EQ(recovered.certificates, 1U);
+}
+
+TEST(CaCertificateSource, ConcurrentReadersPublishTheNewestContent)
+{
+    auto a = makePki("casource-concurrent-a");
+    auto b = makePki("casource-concurrent-b");
+    ASSERT_TRUE(a.has_value());
+    ASSERT_TRUE(b.has_value());
+    remoted::test::ScratchFileCleanup cleanupA {a->files.files()};
+    remoted::test::ScratchFileCleanup cleanupB {b->files.files()};
+
+    const auto rawA = readAll(a->files.caCertPath);
+    const auto rawB = readAll(b->files.caCertPath);
+    const auto size = std::max(rawA.size(), rawB.size()) + 8;
+    const auto paddedA = paddedTo(rawA, size);
+    const auto paddedB = paddedTo(rawB, size);
+
+    // The canonical form each content must reserialise to: what proves a snapshot read one of
+    // the two whole, never a torn mix of both.
+    const auto pemA = serializeCertificates(parseCertificates(paddedA).certificates);
+    const auto pemB = serializeCertificates(parseCertificates(paddedB).certificates);
+    ASSERT_FALSE(pemA.empty());
+    ASSERT_FALSE(pemB.empty());
+    const std::string cnA = "CN=casource-concurrent-a-ca";
+    const std::string cnB = "CN=casource-concurrent-b-ca";
+
+    const auto path = a->files.caCertPath + ".rotating";
+    write(path, paddedA);
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, a->leaf.get()};
+    std::atomic<std::size_t> violations {0};
+
+    std::vector<std::thread> readers;
+    for (int i = 0; i < 8; ++i)
+    {
+        readers.emplace_back(
+            [&]()
+            {
+                for (int call = 0; call < 200; ++call)
+                {
+                    const auto snapshot = source.snapshot();
+                    const bool looksLikeA = snapshot.subjects.find(cnA) != std::string::npos;
+                    const bool looksLikeB = snapshot.subjects.find(cnB) != std::string::npos;
+                    if (looksLikeA && snapshot.pem != pemA)
+                    {
+                        ++violations;
+                    }
+                    if (looksLikeB && snapshot.pem != pemB)
+                    {
+                        ++violations;
+                    }
+                }
+            });
+    }
+
+    // Rotates the file while the readers above are hammering snapshot(): the property under
+    // test is that no reader ever sees B's subject paired with A's bytes or the other way
+    // around -- not any particular interleaving, so there is nothing here worth a sleep for.
+    // Each replacement is atomic (rename over the path): a truncated or half-written file would
+    // be a legitimate third content -- empty, or refused whole -- and would count as a parse of
+    // its own, which is not what the bound below is about.
+    for (int i = 0; i < 20; ++i)
+    {
+        replaceAtomically(path, (i % 2 == 0) ? paddedA : paddedB);
+    }
+
+    for (auto& reader : readers)
+    {
+        reader.join();
+    }
+
+    EXPECT_EQ(violations.load(), 0U);
+
+    // i = 19 (odd) wrote B last.
+    const auto final = source.snapshot();
+    EXPECT_EQ(final.pem, pemB);
+    EXPECT_NE(final.subjects.find(cnB), std::string::npos);
+    EXPECT_LE(source.parses(), 21U);
 }
 
 TEST(CaCertificateSource, WithoutALeafTheVerdictIsUnknownRatherThanMismatch)
@@ -296,4 +648,34 @@ TEST(PemCertificates, SerialisationRoundTripsAndDropsEverythingElse)
     EXPECT_TRUE(reparsed.wellFormed);
     EXPECT_EQ(reparsed.certificates.size(), 1U);
     EXPECT_EQ(serializeCertificates(reparsed.certificates), serialised);
+}
+
+TEST(ReadFileBounded, ReadsUpToTheCapAndFlagsMore)
+{
+    const auto path = "/tmp/casource-readfilebounded_" + std::to_string(::getpid());
+    remoted::test::ScratchFileCleanup cleanup {{path}};
+
+    constexpr std::size_t n = 4096;
+    write(path, std::string(n, 'x'));
+
+    std::string contents;
+    auto result = readFileBounded(path, n, contents);
+    EXPECT_EQ(result.status, ReadStatus::Ok);
+    EXPECT_EQ(contents.size(), n);
+
+    // One byte over: TooLarge, not a truncated Ok.
+    write(path, std::string(n + 1, 'x'));
+    result = readFileBounded(path, n, contents);
+    EXPECT_EQ(result.status, ReadStatus::TooLarge);
+
+    result = readFileBounded(path + ".nope", n, contents);
+    EXPECT_EQ(result.status, ReadStatus::CannotOpen);
+    EXPECT_EQ(result.error, ENOENT);
+
+    const auto dirPath = path + ".dir";
+    ASSERT_EQ(::mkdir(dirPath.c_str(), 0755), 0);
+    result = readFileBounded(dirPath, n, contents);
+    EXPECT_EQ(result.status, ReadStatus::ReadError);
+    EXPECT_EQ(result.error, EISDIR);
+    ::rmdir(dirPath.c_str());
 }

@@ -108,8 +108,13 @@ paths:
         which caps how fast this endpoint is served at all. That limit is a ceiling for the whole
         fleet, not an allowance per agent.
 
-        The file is read on every request, so a CA that goes missing on the manager answers `404`
-        immediately. Coherence with the served certificate is evaluated when the listener starts and
+        The file is read on every request. When it cannot be read -- missing, unreadable, a read
+        error, or larger than the size cap -- the listener keeps serving the last good bundle it
+        read and logs the failure (file and cause); only a file that was never readable answers
+        `404`. A file that is readable but yields no certificate (for example, emptied to zero
+        bytes) answers `404` at once and stops serving the previous bundle -- this is how an
+        operator halts a CA without restarting; restoring the file serves it again on the next
+        request. Coherence with the served certificate is evaluated when the listener starts and
         once a day afterwards: when the CA on disk does **not** sign the certificate this very
         listener is serving, the route answers `503 ca_mismatch` instead of handing out a CA that
         would make every verifying agent fail its handshake against this manager (RF-27). The
@@ -133,9 +138,11 @@ paths:
                   -----END CERTIFICATE-----
         "404":
           description: |
-            No CA to serve: the configured file is missing, unreadable, or carries no `CERTIFICATE`
-            block. Same body as an unknown route (an agent cannot tell them apart, and does not need
-            to -- neither is a CA it can use; the manager's log names the file).
+            No CA to serve: the configured file was never readable, or it is readable but carries no
+            `CERTIFICATE` block (an emptied file). A file that becomes unreadable after it was served
+            does **not** produce this answer: the last good bundle keeps being served. Same body as
+            an unknown route (an agent cannot tell them apart, and does not need to -- neither is a
+            CA it can use; the manager's log names the file and the cause).
           content:
             application/json:
               schema:

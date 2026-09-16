@@ -299,9 +299,10 @@ src/endpoints/
   no credential yet: this is how it gets the CA to trust the manager with), `countAgainstBudget=false`
   (a trust bootstrap is never shed under memory pressure), `Buffered`, under the global prefix like
   every route. `makeHandler(caCertificatePath, status, CacertsMetrics, const EndpointHttpMetrics*)`
-  reads the PEM file on **every** request (tiny, cold; no cache to invalidate): unreadable or without a
-  `-----BEGIN CERTIFICATE-----` block ⇒ `404 {"error":"not_found"}` (the transport's unknown-route
-  body); `status().caMatchesLeaf == false` (the transport's evaluation says this CA does not sign the
+  reads the PEM file on **every** request (tiny, cold; no cache to invalidate): never readable, or
+  readable without a `-----BEGIN CERTIFICATE-----` block ⇒ `404 {"error":"not_found"}` (the transport's
+  unknown-route body); a file that fails to read after it was served keeps the last good snapshot
+  instead (the failure is recorded in the snapshot and logged); `status().caMatchesLeaf == false` (the transport's evaluation says this CA does not sign the
   served leaf) ⇒ `503 {"error":"ca_mismatch"}` — refused, because handing it out would make every
   verifying agent fail against this very listener; `true` **or `nullopt`** (never evaluated, or the CA
   was unreadable at the last tick and is back) ⇒ `200 Content-Type: application/x-pem-file`, the file

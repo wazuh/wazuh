@@ -14,8 +14,12 @@
 #include <openssl/err.h>
 #include <openssl/sha.h>
 
+#include <fcntl.h>
+#include <unistd.h>
+
+#include <algorithm>
 #include <array>
-#include <fstream>
+#include <cerrno>
 #include <utility>
 
 namespace remoted::http
@@ -39,35 +43,88 @@ namespace remoted::http
             return hex;
         }
 
-        /**
-         * @brief Read at most @p maxBytes of @p path.
-         *
-         * false when the file cannot be opened or is larger than the cap; the caller treats both as
-         * "nothing to serve". The cap is the difference from the old per-request read, which pulled
-         * in whatever size the file happened to be.
-         */
-        bool readBounded(const std::string& path, std::size_t maxBytes, std::string& contents)
+        /// Owns the descriptor for the duration of one read.
+        class FileDescriptor final
         {
-            std::ifstream file {path, std::ios::binary};
-            if (!file.is_open())
+        public:
+            explicit FileDescriptor(int fd) noexcept
+                : m_fd {fd}
             {
-                return false;
+            }
+            ~FileDescriptor()
+            {
+                if (m_fd >= 0)
+                {
+                    ::close(m_fd);
+                }
+            }
+            FileDescriptor(const FileDescriptor&) = delete;
+            FileDescriptor& operator=(const FileDescriptor&) = delete;
+
+            int get() const noexcept
+            {
+                return m_fd;
             }
 
-            contents.assign(std::istreambuf_iterator<char> {file}, std::istreambuf_iterator<char> {});
-            if (contents.size() > maxBytes)
-            {
-                contents.clear();
-                return false;
-            }
-
-            return true;
-        }
+        private:
+            int m_fd;
+        };
     } // namespace
 
-    CaCertificateSource::CaCertificateSource(std::string path, const X509* leaf)
+    ReadResult readFileBounded(const std::string& path, std::size_t maxBytes, std::string& contents)
+    {
+        contents.clear();
+
+        // O_CLOEXEC: remoted forks helpers, and a descriptor on the CA file has no business in them.
+        const FileDescriptor file {::open(path.c_str(), O_RDONLY | O_CLOEXEC)};
+        if (file.get() < 0)
+        {
+            return {ReadStatus::CannotOpen, errno};
+        }
+
+        // One byte past the cap is the whole trick: if it ever arrives the file is too large, and
+        // nothing beyond it is ever requested -- so the memory this costs is the file's real size
+        // up to the cap, never whatever size the file happens to be. Small chunks, because the
+        // common case is a few KB and a per-request megabyte buffer would be its own regression.
+        static constexpr std::size_t kChunk {16U * 1024U};
+        const std::size_t limit = maxBytes + 1;
+        std::array<char, kChunk> chunk {};
+        std::size_t total = 0;
+
+        while (total < limit)
+        {
+            const std::size_t wanted = std::min(kChunk, limit - total);
+            const ssize_t got = ::read(file.get(), chunk.data(), wanted);
+            if (got < 0)
+            {
+                if (errno == EINTR)
+                {
+                    continue;
+                }
+                contents.clear();
+                return {ReadStatus::ReadError, errno};
+            }
+            if (got == 0)
+            {
+                break; // EOF: the whole file fit under the cap.
+            }
+            contents.append(chunk.data(), static_cast<std::size_t>(got));
+            total += static_cast<std::size_t>(got);
+        }
+
+        if (total > maxBytes)
+        {
+            contents.clear();
+            return {ReadStatus::TooLarge, 0};
+        }
+
+        return {};
+    }
+
+    CaCertificateSource::CaCertificateSource(std::string path, const X509* leaf, FileReader reader)
         : m_path {std::move(path)}
         , m_leaf {leaf}
+        , m_reader {reader ? std::move(reader) : FileReader {readFileBounded}}
     {
     }
 
@@ -78,8 +135,8 @@ namespace remoted::http
         auto parsed = parseCertificates(pem);
         if (parsed.certificates.empty())
         {
-            // Missing, empty, unparsable or carrying no certificate: all of them mean the same
-            // thing to every caller -- there is nothing an agent could bootstrap trust from.
+            // Empty, unparsable or carrying no certificate: all of them mean the same thing to
+            // every caller -- there is nothing an agent could bootstrap trust from.
             return snapshot;
         }
 
@@ -119,24 +176,38 @@ namespace remoted::http
             return {};
         }
 
-        std::string contents;
-        const bool read = readBounded(m_path, kMaxBytes, contents);
-
+        // The read runs under the lock too. The file is a few KB and the callers are a rate-limited
+        // route, a daily monitor, a metrics scrape and the legacy poller, so serialising them costs
+        // nothing measurable -- and it is what makes publication monotonic: with the read outside,
+        // the caller that read the OLDER bytes could take the lock last and publish them over the
+        // newer ones (issue #39318).
         std::lock_guard<std::mutex> lock {m_mutex};
 
-        if (!read)
+        std::string contents;
+        const ReadResult read = m_reader(m_path, kMaxBytes, contents);
+
+        if (read.status != ReadStatus::Ok)
         {
-            m_hash.clear();
-            m_snapshot = CaCertificateSnapshot {};
+            // A failed read is a window, not a decision: whatever was being served keeps being
+            // served (nothing, if nothing ever was), and the failure travels with the snapshot for
+            // the callers that own a logger. m_hash stays as it is, so the same bytes read again
+            // once the file is back are still a cache hit.
+            ++m_consecutiveFailures;
+            m_snapshot.lastReadFailure = ReadFailure {read.status, read.error, m_consecutiveFailures};
             return m_snapshot;
         }
+
+        m_consecutiveFailures = 0;
 
         auto hash = digestOf(contents);
         if (hash == m_hash)
         {
+            m_snapshot.lastReadFailure.reset();
             return m_snapshot;
         }
 
+        // Rebuilt from these bytes, whatever they hold: a readable file with no certificate in it is
+        // the operator's way of saying "stop serving", and it clears the snapshot at once.
         m_snapshot = buildLocked(contents);
         m_hash = std::move(hash);
         ++m_parses;
