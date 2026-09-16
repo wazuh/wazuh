@@ -68,8 +68,10 @@
         {
             "label": "E2E Scripts: [Manager] Copy wazuh-manager certs",
             "type": "shell",
-            "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_copy_certs.sh",
-            "args": [],
+            "command": "sudo",
+            "args": [
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_copy_certs.sh"
+            ],
             "problemMatcher": []
         },
         {
@@ -81,6 +83,31 @@
                 "--regen-certs"
             ],
             "problemMatcher": []
+        },
+        {
+            "label": "E2E Scripts: [Manager] Fresh install from branch (purge!)",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_install_manager.sh",
+                "--yes",
+                "--mode",
+                "fresh",
+                "--api"
+            ],
+            "problemMatcher": [],
+            "detail": "Stops and PURGES /var/wazuh-manager, installs this checkout with install.sh, copies the certificates, starts it and runs wazuh_verify_manager.sh. Evidence under $TMPDIR/wazuh-e2e-evidence/<timestamp>."
+        },
+        {
+            "label": "E2E Scripts: [Manager] Verify installed manager",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_verify_manager.sh",
+                "--api"
+            ],
+            "problemMatcher": [],
+            "detail": "PASS/FAIL per check: daemons, conf validate, GET /cacerts, new ERROR/CRITICAL lines, API login."
         },
         {
             "label": "E2E Scripts: [Agent] Init setup (download pkgs)",
