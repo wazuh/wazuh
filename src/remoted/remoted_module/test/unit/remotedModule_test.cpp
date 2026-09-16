@@ -29,6 +29,7 @@
 #include <openssl/x509.h>
 #include <string>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <thread>
 #include <unistd.h>
 #include <vector>
@@ -382,4 +383,69 @@ TEST_F(RemotedModuleTest, StartStopStartAgainWorks)
         << "the module refused to restart after a clean stop";
 
     remoted_module_stop();
+}
+
+// GET /cacerts, end to end through the real module (issue #39318): a read failure is a window,
+// not a decision -- the last good bundle keeps being served, and the module names the cause in
+// wazuh-manager.log. This is the only place that WARN is observable at all (testLogRecorder.hpp).
+// The route's log throttles belong to the handler makeHandler() builds, so the module started here
+// has fresh windows: the first degraded request emits the line, whatever ran before in this binary.
+TEST_F(RemotedModuleTest, CacertsWarnsWhileServingTheLastGoodBundle)
+{
+    auto pki = remoted::test::generateCaSignedCertificate("rmt-cacerts-lastgood");
+    ASSERT_TRUE(pki.has_value()) << "could not generate the throwaway CA-signed certificate";
+    remoted::test::ScratchFileCleanup cleanup {pki->files()};
+
+    auto cfg = makeConfig();
+    std::snprintf(cfg.certificate_path, sizeof(cfg.certificate_path), "%s", pki->certPath.c_str());
+    std::snprintf(cfg.private_key_path, sizeof(cfg.private_key_path), "%s", pki->keyPath.c_str());
+    std::snprintf(cfg.ca_certificate_path, sizeof(cfg.ca_certificate_path), "%s", pki->caCertPath.c_str());
+
+    remoted_module_start(testLogCallback, &cfg);
+    const auto port = static_cast<std::uint16_t>(cfg.port);
+
+    const auto first = remoted::test::sendGetRequest(port, "/cacerts");
+    ASSERT_NE(first.find(" 200 "), std::string::npos) << first;
+    const auto firstBody = remoted::test::splitResponse(first).second;
+
+    // Move the CA file away: the file is read per request, so this is a window, not a decision --
+    // the module must keep serving the last good bundle rather than 404 every agent that asks.
+    const auto moved = pki->caCertPath + ".off";
+    ASSERT_EQ(std::rename(pki->caCertPath.c_str(), moved.c_str()), 0);
+
+    const auto degraded = remoted::test::sendGetRequest(port, "/cacerts");
+    ASSERT_NE(degraded.find(" 200 "), std::string::npos) << degraded;
+    EXPECT_EQ(remoted::test::splitResponse(degraded).second, firstBody);
+    EXPECT_TRUE(LogRecorder::waitForMessageContaining("from the last good read of the configured CA certificate"))
+        << "the module never warned while serving the last good CA bundle";
+
+    ASSERT_EQ(std::rename(moved.c_str(), pki->caCertPath.c_str()), 0);
+    remoted_module_stop();
+}
+
+TEST_F(RemotedModuleTest, CacertsNotFoundNamesTheReadCause)
+{
+    TempTlsFiles tls;
+    auto cfg = makeConfig(tls);
+
+    // A directory at the configured CA path: open(2) succeeds, read(2) refuses it with EISDIR --
+    // the same case CaCertificateSource's own tests cover, observed here end to end. Logged
+    // unconditionally at start (logCertificateStatus() is not throttled), so this assertion does
+    // not race any sibling test's use of the shared cacertsEndpoint.cpp throttles.
+    char dirTemplate[] = "/tmp/rmt-cacerts-dirXXXXXX";
+    const std::string caDir = ::mkdtemp(dirTemplate);
+    ASSERT_FALSE(caDir.empty());
+    std::snprintf(cfg.ca_certificate_path, sizeof(cfg.ca_certificate_path), "%s", caDir.c_str());
+
+    remoted_module_start(testLogCallback, &cfg);
+    const auto port = static_cast<std::uint16_t>(cfg.port);
+
+    const auto response = remoted::test::sendGetRequest(port, "/cacerts");
+    ASSERT_NE(response.find(" 404 "), std::string::npos) << response;
+
+    EXPECT_TRUE(LogRecorder::waitForMessageContaining("cannot be read (Is a directory)"))
+        << "the module did not name the CA read failure cause";
+
+    remoted_module_stop();
+    ::rmdir(caDir.c_str());
 }

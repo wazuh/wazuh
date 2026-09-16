@@ -11,6 +11,7 @@
 
 #include "http_server/IHttpServer.hpp"
 #include "http_server/RestinioHttpServer.hpp"
+#include "http_server/caCertificateSource.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
 #include "http_server/tlsCertificateStatus.hpp"
@@ -34,15 +35,19 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include <sys/stat.h>
+
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <cerrno>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <istream>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -176,6 +181,21 @@ namespace
     std::string scratchPath(const char* name)
     {
         return "/tmp/httpServerTest_" + std::string {name} + "_" + std::to_string(::getpid()) + ".pem";
+    }
+
+    // loadCertificates()/evaluateCertificateStatus() are gone (issue #39318): CaCertificateSource
+    // is the one reader now. This is the read-only half a plain loadCertificates() call used to
+    // give the CA-coherence tests below -- the bounded/failure-aware half is CaCertificateSource's
+    // own job and is exercised through it (statusFrom(leaf, CaCertificateSource{...}.snapshot())).
+    std::vector<X509Ptr> readPemCertificates(const std::string& path)
+    {
+        std::ifstream in {path, std::ios::binary};
+        if (!in)
+        {
+            return {};
+        }
+        std::string pem {std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {}};
+        return parseCertificates(pem).certificates;
     }
 
     // Generates a throwaway self-signed cert/key pair (via the `openssl` CLI, already a
@@ -667,11 +687,11 @@ TEST(TlsCertificateStatusTest, CaSignsLeafTrue)
     remoted::test::ScratchFileCleanup cleanup {{caPath}};
     writePemFile(caPath, {pki.ca.get()});
 
-    std::vector<X509Ptr> cas = loadCertificates(caPath);
+    std::vector<X509Ptr> cas = readPemCertificates(caPath);
     ASSERT_EQ(cas.size(), 1U);
     EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), cas));
 
-    const auto status = evaluateCertificateStatus(pki.leaf.get(), caPath);
+    const auto status = statusFrom(pki.leaf.get(), CaCertificateSource {caPath, pki.leaf.get()}.snapshot());
     EXPECT_EQ(status.caMatchesLeaf, true);
     ASSERT_TRUE(status.expiryDays.has_value());
     EXPECT_GE(*status.expiryDays, 9);
@@ -687,10 +707,10 @@ TEST(TlsCertificateStatusTest, CaSignsLeafFalse)
     remoted::test::ScratchFileCleanup cleanup {{caPath}};
     writePemFile(caPath, {pki.foreignCa.get()});
 
-    EXPECT_FALSE(anyCaSignsLeaf(pki.leaf.get(), loadCertificates(caPath)));
-    EXPECT_EQ(evaluateCertificateStatus(pki.leaf.get(), caPath).caMatchesLeaf, false);
+    EXPECT_FALSE(anyCaSignsLeaf(pki.leaf.get(), readPemCertificates(caPath)));
+    EXPECT_EQ(statusFrom(pki.leaf.get(), CaCertificateSource {caPath, pki.leaf.get()}.snapshot()).caMatchesLeaf, false);
     // A null leaf never matches anything either.
-    EXPECT_FALSE(anyCaSignsLeaf(nullptr, loadCertificates(caPath)));
+    EXPECT_FALSE(anyCaSignsLeaf(nullptr, readPemCertificates(caPath)));
 }
 
 TEST(TlsCertificateStatusTest, CaSignsLeafUnreadable)
@@ -698,25 +718,32 @@ TEST(TlsCertificateStatusTest, CaSignsLeafUnreadable)
     StatusPki pki;
     const auto missing = "/nonexistent/remoted-tests/root-ca.pem";
 
-    EXPECT_TRUE(loadCertificates(missing).empty());
-    EXPECT_TRUE(loadCertificates("").empty());
+    EXPECT_TRUE(readPemCertificates(missing).empty());
+    EXPECT_TRUE(readPemCertificates("").empty());
 
     // Unknown, not mismatch: the caller must be able to tell "cannot read the CA" from "the CA is
-    // the wrong one" (GET /cacerts serves on the former, refuses on the latter).
-    const auto status = evaluateCertificateStatus(pki.leaf.get(), missing);
+    // the wrong one" (GET /cacerts serves on the former, refuses on the latter). A missing file is
+    // also a read FAILURE (issue #39318): the source could not open it, and says so.
+    const auto status = statusFrom(pki.leaf.get(), CaCertificateSource {missing, pki.leaf.get()}.snapshot());
     EXPECT_FALSE(status.caMatchesLeaf.has_value());
     EXPECT_TRUE(status.caSubjects.empty());
     ASSERT_TRUE(status.expiryDays.has_value()); // the leaf side is still evaluated
+    ASSERT_TRUE(status.caReadFailure.has_value());
+    EXPECT_EQ(status.caReadFailure->status, ReadStatus::CannotOpen);
+    EXPECT_EQ(status.caReadFailure->error, ENOENT);
 
-    // A file with no CERTIFICATE block is the same as no file.
+    // A file with no CERTIFICATE block is the same as no file for the verdict -- but unlike the
+    // missing path above, the READ itself succeeded, so there is no failure to report.
     const auto garbage = scratchPath("ca_garbage");
     remoted::test::ScratchFileCleanup cleanup {{garbage}};
     {
         std::ofstream out {garbage};
         out << "not a pem\n";
     }
-    EXPECT_TRUE(loadCertificates(garbage).empty());
-    EXPECT_FALSE(evaluateCertificateStatus(pki.leaf.get(), garbage).caMatchesLeaf.has_value());
+    EXPECT_TRUE(readPemCertificates(garbage).empty());
+    const auto garbageStatus = statusFrom(pki.leaf.get(), CaCertificateSource {garbage, pki.leaf.get()}.snapshot());
+    EXPECT_FALSE(garbageStatus.caMatchesLeaf.has_value());
+    EXPECT_FALSE(garbageStatus.caReadFailure.has_value());
 }
 
 // ---------------------------------------------------------------------------
@@ -825,10 +852,10 @@ TEST(TlsCertificateStatusTest, BundleWithTheSigningCaMatches)
     // The signing CA is NOT the first block: every block must be tried.
     writePemFile(bundlePath, {pki.foreignCa.get(), pki.ca.get()});
 
-    const auto cas = loadCertificates(bundlePath);
+    const auto cas = readPemCertificates(bundlePath);
     ASSERT_EQ(cas.size(), 2U);
     EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), cas));
-    const auto status = evaluateCertificateStatus(pki.leaf.get(), bundlePath);
+    const auto status = statusFrom(pki.leaf.get(), CaCertificateSource {bundlePath, pki.leaf.get()}.snapshot());
     EXPECT_EQ(status.caMatchesLeaf, true);
     EXPECT_NE(status.caSubjects.find("foreign-ca"), std::string::npos) << status.caSubjects;
     EXPECT_NE(status.caSubjects.find("status-ca"), std::string::npos) << status.caSubjects;
@@ -950,6 +977,89 @@ TEST(HttpServerTest, StopAcceptingJoinsTheCertificateMonitor)
     }
 
     server->stop();
+}
+
+// The shared CaCertificateSource (issue #39318): the start-time verdict comes from the same
+// reader GET /cacerts answers from, so a broken CA at start is visible through both entry points
+// at once, each describing the exact failure rather than a bare "unreadable".
+TEST(HttpServerTest, StartUpStatusComesFromTheSharedSource)
+{
+    TempCert cert; // valid leaf/key; only the configured CA path is broken
+
+    char dirTemplate[] = "/tmp/httpServerTestCaDirXXXXXX";
+    const std::string caDir = ::mkdtemp(dirTemplate);
+    ASSERT_FALSE(caDir.empty());
+
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = caDir; // open(2) succeeds on a directory; read(2) refuses it (EISDIR)
+
+    ASSERT_NO_THROW(server->start(config));
+
+    const auto status = server->certificateStatus();
+    EXPECT_EQ(status.evaluations, 1U);
+    EXPECT_FALSE(status.caMatchesLeaf.has_value());
+    ASSERT_TRUE(status.caReadFailure.has_value());
+    EXPECT_EQ(status.caReadFailure->status, ReadStatus::ReadError);
+    EXPECT_EQ(status.caReadFailure->error, EISDIR);
+
+    const auto caSnapshot = server->caCertificateSnapshot();
+    EXPECT_EQ(caSnapshot.certificates, 0U);
+    ASSERT_TRUE(caSnapshot.lastReadFailure.has_value());
+    EXPECT_EQ(caSnapshot.lastReadFailure->status, ReadStatus::ReadError);
+    EXPECT_EQ(caSnapshot.lastReadFailure->error, EISDIR);
+
+    server->stop();
+    ::rmdir(caDir.c_str());
+}
+
+// A read failure mid-flight (not just at start) is a window, not a decision: the monitor keeps
+// reporting the last good verdict while it names the fresh cause on every tick that observes it.
+TEST(HttpServerTest, MonitorTickRepeatsTheReadFailure)
+{
+    TempCert cert {10};
+
+    // A copy of the leaf under its own path: TempCert's destructor removes cert.certPath() itself,
+    // and the configured CA path below is about to be replaced by a directory, so it must not be
+    // the same file the listener's own certificate lives at.
+    const auto caPath = scratchPath("ca_monitor_tick");
+    {
+        std::ifstream in {cert.certPath(), std::ios::binary};
+        std::ofstream out {caPath, std::ios::binary};
+        out << in.rdbuf();
+    }
+
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = caPath;
+    config.certificateStatusInterval = std::chrono::seconds {1};
+
+    ASSERT_NO_THROW(server->start(config));
+    EXPECT_EQ(server->certificateStatus().caMatchesLeaf, true);
+
+    // Replace the CA file with a directory: same "open succeeds, read(2) fails EISDIR" case as
+    // CaCertificateSource's own tests, observed here through the monitor's tick.
+    ASSERT_EQ(std::remove(caPath.c_str()), 0);
+    ASSERT_EQ(::mkdir(caPath.c_str(), 0700), 0);
+
+    ASSERT_TRUE(waitForEvaluations(*server, 2, std::chrono::seconds {5}));
+    const auto status = server->certificateStatus();
+    ASSERT_TRUE(status.caReadFailure.has_value());
+    EXPECT_EQ(status.caReadFailure->status, ReadStatus::ReadError);
+    EXPECT_EQ(status.caReadFailure->error, EISDIR);
+    EXPECT_EQ(status.caMatchesLeaf, true); // the last good verdict, kept through the failed read
+    EXPECT_GE(status.evaluations, 2U);
+
+    server->stop();
+    ::rmdir(caPath.c_str());
 }
 
 // ---------------------------------------------------------------------------

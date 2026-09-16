@@ -41,6 +41,7 @@
  * call, read included, runs under the source's mutex, so two readers can never publish out of order.
  */
 
+#include "fileRead.hpp"
 #include "tlsCertificateStatus.hpp"
 
 #include <cstddef>
@@ -54,42 +55,6 @@
 
 namespace remoted::http
 {
-    /// Outcome of one bounded read of the CA file.
-    enum class ReadStatus
-    {
-        Ok,         ///< `contents` holds the whole file, at most `maxBytes` long.
-        CannotOpen, ///< open(2) failed: the file is missing, or not ours to read (ENOENT, EACCES, ...).
-        ReadError,  ///< read(2) failed after the open succeeded (EISDIR for a directory, EIO, ...).
-        TooLarge    ///< More than `maxBytes` bytes were available; nothing past the cap was requested.
-    };
-
-    /// What a FileReader hands back.
-    struct ReadResult
-    {
-        ReadStatus status {ReadStatus::Ok};
-        int error {0}; ///< errno of the failed call for CannotOpen and ReadError; 0 otherwise.
-    };
-
-    /**
-     * @brief Reads @p path into @p contents, requesting at most @p maxBytes + 1 bytes from it.
-     *
-     * The seam CaCertificateSource reads through. Production uses readFileBounded(); a test passes a
-     * reader that fails on demand, or one that records what was asked of it. Must not throw; on
-     * anything but Ok, @p contents is left empty.
-     */
-    using FileReader = std::function<ReadResult(const std::string& path, std::size_t maxBytes, std::string& contents)>;
-
-    /// The default FileReader: POSIX open/read, so the cause of a failure is the exact errno.
-    ReadResult readFileBounded(const std::string& path, std::size_t maxBytes, std::string& contents);
-
-    /// The latest read that failed, remembered for as long as the failure lasts.
-    struct ReadFailure
-    {
-        ReadStatus status {ReadStatus::CannotOpen};
-        int error {0};                 ///< errno of that read; 0 for TooLarge.
-        std::uint64_t consecutive {0}; ///< Failed reads in a row since the last good one: 1 on the first.
-    };
-
     /// Everything `GET /cacerts` and the TLS status need about the CA file, from a single read.
     struct CaCertificateSnapshot
     {
@@ -155,6 +120,16 @@ namespace remoted::http
         std::uint64_t m_parses {0};
         std::uint64_t m_consecutiveFailures {0}; ///< Reset by every successful read.
     };
+
+    /**
+     * @brief The TLS status a CA snapshot implies for @p leaf: expiry from the leaf, everything
+     *        about the CA -- verdicts, subjects, chain, the last read failure -- from @p ca.
+     *
+     * The one way the transport builds its status, at start and on every monitor tick, so the two
+     * can never describe the same file differently. `evaluations` is left at 0: counting is the
+     * monitor's job. Pure, so the tests drive it from certificates built in memory.
+     */
+    TlsCertificateSnapshot statusFrom(const X509* leaf, const CaCertificateSnapshot& ca);
 } // namespace remoted::http
 
 #endif // _REMOTED_HTTP_SERVER_CA_CERTIFICATE_SOURCE_HPP

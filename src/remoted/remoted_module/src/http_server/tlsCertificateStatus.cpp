@@ -152,32 +152,6 @@ namespace remoted::http
         return (data != nullptr && length > 0) ? std::string {data, static_cast<std::size_t>(length)} : std::string {};
     }
 
-    std::vector<X509Ptr> loadCertificates(const std::string& pemPath)
-    {
-        if (pemPath.empty())
-        {
-            return {};
-        }
-
-        BioPtr bio {BIO_new_file(pemPath.c_str(), "r"), &BIO_free};
-        if (!bio)
-        {
-            ERR_clear_error();
-            return {};
-        }
-
-        std::string contents;
-        char buffer[4096];
-        for (int read = BIO_read(bio.get(), buffer, sizeof(buffer)); read > 0;
-             read = BIO_read(bio.get(), buffer, sizeof(buffer)))
-        {
-            contents.append(buffer, static_cast<std::size_t>(read));
-        }
-        ERR_clear_error();
-
-        return parseCertificates(contents).certificates;
-    }
-
     std::optional<int> daysUntilExpiry(const X509* certificate)
     {
         if (certificate == nullptr)
@@ -311,28 +285,6 @@ namespace remoted::http
     bool leafHasUsableSan(const X509* leaf)
     {
         return leafHasUsableSan(leaf, localHostNames());
-    }
-
-    TlsCertificateSnapshot evaluateCertificateStatus(const X509* leaf, const std::string& caPath)
-    {
-        TlsCertificateSnapshot snapshot;
-        snapshot.expiryDays = daysUntilExpiry(leaf);
-        snapshot.leafSubject = subjectOfCertificate(leaf);
-
-        const auto cas = loadCertificates(caPath);
-        if (!cas.empty())
-        {
-            snapshot.caMatchesLeaf = anyCaSignsLeaf(leaf, cas);
-            for (const auto& ca : cas)
-            {
-                if (!snapshot.caSubjects.empty())
-                {
-                    snapshot.caSubjects += ", ";
-                }
-                snapshot.caSubjects += subjectOfCertificate(ca.get());
-            }
-        }
-        return snapshot;
     }
 
     TlsCertificateMonitor::~TlsCertificateMonitor()

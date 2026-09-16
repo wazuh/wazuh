@@ -14,12 +14,7 @@
 #include <openssl/err.h>
 #include <openssl/sha.h>
 
-#include <fcntl.h>
-#include <unistd.h>
-
-#include <algorithm>
 #include <array>
-#include <cerrno>
 #include <utility>
 
 namespace remoted::http
@@ -42,84 +37,7 @@ namespace remoted::http
             }
             return hex;
         }
-
-        /// Owns the descriptor for the duration of one read.
-        class FileDescriptor final
-        {
-        public:
-            explicit FileDescriptor(int fd) noexcept
-                : m_fd {fd}
-            {
-            }
-            ~FileDescriptor()
-            {
-                if (m_fd >= 0)
-                {
-                    ::close(m_fd);
-                }
-            }
-            FileDescriptor(const FileDescriptor&) = delete;
-            FileDescriptor& operator=(const FileDescriptor&) = delete;
-
-            int get() const noexcept
-            {
-                return m_fd;
-            }
-
-        private:
-            int m_fd;
-        };
     } // namespace
-
-    ReadResult readFileBounded(const std::string& path, std::size_t maxBytes, std::string& contents)
-    {
-        contents.clear();
-
-        // O_CLOEXEC: remoted forks helpers, and a descriptor on the CA file has no business in them.
-        const FileDescriptor file {::open(path.c_str(), O_RDONLY | O_CLOEXEC)};
-        if (file.get() < 0)
-        {
-            return {ReadStatus::CannotOpen, errno};
-        }
-
-        // One byte past the cap is the whole trick: if it ever arrives the file is too large, and
-        // nothing beyond it is ever requested -- so the memory this costs is the file's real size
-        // up to the cap, never whatever size the file happens to be. Small chunks, because the
-        // common case is a few KB and a per-request megabyte buffer would be its own regression.
-        static constexpr std::size_t kChunk {16U * 1024U};
-        const std::size_t limit = maxBytes + 1;
-        std::array<char, kChunk> chunk {};
-        std::size_t total = 0;
-
-        while (total < limit)
-        {
-            const std::size_t wanted = std::min(kChunk, limit - total);
-            const ssize_t got = ::read(file.get(), chunk.data(), wanted);
-            if (got < 0)
-            {
-                if (errno == EINTR)
-                {
-                    continue;
-                }
-                contents.clear();
-                return {ReadStatus::ReadError, errno};
-            }
-            if (got == 0)
-            {
-                break; // EOF: the whole file fit under the cap.
-            }
-            contents.append(chunk.data(), static_cast<std::size_t>(got));
-            total += static_cast<std::size_t>(got);
-        }
-
-        if (total > maxBytes)
-        {
-            contents.clear();
-            return {ReadStatus::TooLarge, 0};
-        }
-
-        return {};
-    }
 
     CaCertificateSource::CaCertificateSource(std::string path, const X509* leaf, FileReader reader)
         : m_path {std::move(path)}
@@ -219,5 +137,18 @@ namespace remoted::http
     {
         std::lock_guard<std::mutex> lock {m_mutex};
         return m_parses;
+    }
+
+    TlsCertificateSnapshot statusFrom(const X509* leaf, const CaCertificateSnapshot& ca)
+    {
+        TlsCertificateSnapshot status;
+        status.expiryDays = daysUntilExpiry(leaf);
+        status.leafSubject = subjectOfCertificate(leaf);
+        status.caMatchesLeaf = ca.matchesLeaf;
+        status.chainValid = ca.chainValid;
+        status.chainError = ca.chainError;
+        status.caSubjects = ca.subjects;
+        status.caReadFailure = ca.lastReadFailure;
+        return status;
     }
 } // namespace remoted::http

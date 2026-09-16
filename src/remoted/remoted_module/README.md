@@ -33,6 +33,7 @@ remoted_module/
 │   │                               #   coherence evaluation and its daily monitor thread;
 │   │                               #   caCertificateSource.hpp/.cpp = the CA file as ONE read:
 │   │                               #   certificates re-serialised + verdict, cached by content hash;
+│   │                               #   fileRead.hpp/.cpp = bounded, injectable POSIX read + failure cause;
 │   │                               #   endpointRateLimiter.hpp/.cpp = token bucket per endpoint
 │   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below);
 │   │   │                           #   endpoint.hpp also carries the remoted.auth.reject.* catalog
@@ -298,20 +299,26 @@ src/endpoints/
   besides the health probe registered as a *raw* `addRoute()` — no `AuthGateway` (the caller holds
   no credential yet: this is how it gets the CA to trust the manager with), `countAgainstBudget=false`
   (a trust bootstrap is never shed under memory pressure), `Buffered`, under the global prefix like
-  every route. `makeHandler(caCertificatePath, status, CacertsMetrics, const EndpointHttpMetrics*)`
-  reads the PEM file on **every** request (tiny, cold; no cache to invalidate): never readable, or
-  readable without a `-----BEGIN CERTIFICATE-----` block ⇒ `404 {"error":"not_found"}` (the transport's
-  unknown-route body); a file that fails to read after it was served keeps the last good snapshot
-  instead (the failure is recorded in the snapshot and logged); `status().caMatchesLeaf == false` (the transport's evaluation says this CA does not sign the
-  served leaf) ⇒ `503 {"error":"ca_mismatch"}` — refused, because handing it out would make every
-  verifying agent fail against this very listener; `true` **or `nullopt`** (never evaluated, or the CA
-  was unreadable at the last tick and is back) ⇒ `200 Content-Type: application/x-pem-file`, the file
-  byte for byte. Body and headers (an `Authorization`, say) are ignored. One `LogThrottle` per cause.
-  The status function the facade passes locks a `weak_ptr` to the server and calls
-  `certificateStatus()`; the WHAT is counted through a `MeteredResponder` on
-  `remoted.http.cacerts.responses.*` (method label `GET`), the WHY on `remoted.cacerts.*`. Known
-  window: a *different but valid* CA written over the file is served until the next daily tick or a
-  restart (refresh-on-fingerprint is a deferred improvement).
+  every route. `makeHandler(std::function<CaCertificateSnapshot()> snapshotOf, CacertsMetrics,
+  const EndpointHttpMetrics*)` never touches the filesystem itself: it calls `snapshotOf()`, the
+  lambda the facade passes that locks a `weak_ptr` to the server and calls `caCertificateSnapshot()`,
+  which reads through `CaCertificateSource` (`http_server/caCertificateSource.{hpp,cpp}`) — one read
+  and one hash per call, bounded by the injectable POSIX reader in `fileRead.hpp` (at most 1 MiB + 1
+  byte, under the source's own mutex); the parsed certificates, their reserialised PEM and the
+  leaf-match verdict are cached by the SHA-256 of the bytes, so a same-size, same-mtime replacement
+  is still reparsed. `certificates == 0 || pem.empty()` ⇒ `404 {"error":"not_found"}`; a read
+  failure (missing, unreadable, a read error, or over the cap) leaves the last good snapshot being
+  served and records the cause instead of clearing it — only a readable file with nothing in it
+  clears the snapshot; `matchesLeaf == false` (no certificate in the CA signs the served leaf) ⇒
+  `503 {"error":"ca_mismatch"}` — refused, because handing it out would make every verifying agent
+  fail against this very listener; `true` **or `nullopt`** (no leaf to check against: a server
+  that has not started) ⇒ `200 Content-Type: application/x-pem-file`, the snapshot's PEM (certificates this
+  process reserialised, never the file's own bytes). Body and headers (an `Authorization`, say) are
+  ignored. Three `LogThrottle`s, one per cause: 404 (names the read-failure cause when there is one,
+  otherwise "carries no usable certificate"), 503 (unchanged, `ERROR`), and a `WARN` that fires while
+  a request is answered from the last good snapshot because the file itself cannot be read right
+  now. The WHAT is counted through a `MeteredResponder` on `remoted.http.cacerts.responses.*`
+  (method label `GET`), the WHY on `remoted.cacerts.*`.
 
 - **Endpoint handler (async):**
   `using AuthenticatedHandler = std::function<void(std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder>)>;`
@@ -2109,11 +2116,11 @@ Unit tests (built when `UNIT_TEST` is enabled) live in `test/unit/`: `remotedMod
 (C-ABI black-box), `httpServer_test.cpp` (transport config incl. in-flight-budget/max-connections
 resolution + responder contract incl. a shared request surviving a deferred handler, plus the
 certificate status: `TlsCertificateStatusTest` drives `daysUntilExpiry()`/`anyCaSignsLeaf()`/
-`evaluateCertificateStatus()` from certificates built in memory — signed by the CA, by a foreign CA,
+`statusFrom()` from certificates built in memory — signed by the CA, by a foreign CA,
 CA unreadable, a bundle with the signing CA not first — and `HttpServerTest` pins that the status is
 already evaluated when `start()` returns, re-evaluated on a 1 s `certificateStatusInterval`, and that
 `stopAccepting()` joins the monitor), `cacertsEndpoint_test.cpp` (the `GET /cacerts` decision table
-against a faked status: PEM served byte for byte as `application/x-pem-file`, missing/garbage file
+against a faked snapshot: the snapshot's PEM served as `application/x-pem-file`, missing/garbage file
 404, `caMatchesLeaf == false` 503, `nullopt` serves, body/`Authorization` ignored, both metric
 families counted, null metrics count nothing), `cacertsE2E_test.cpp` (a REAL TLS server with a leaf
 signed by a throwaway CA — `testTlsServer.hpp`'s `generateCaSignedCertificate()`: the PEM `/cacerts`
@@ -2183,7 +2190,11 @@ is counted not printed, and 8 threads × 10 000 records neither lose nor double-
 non-ASCII bytes and BOMs rejected, and a truncated multi-byte tail never read past the view — the
 ASAN heap-overflow regression), `caCertificateSource_test.cpp` (certificates only, never the key
 from a combined PEM; a file with one undecodable block is refused whole; re-parsed on content change
-despite identical size and mtime).
+despite identical size and mtime; a read failure -- missing, a directory, a read error, or over the
+1 MiB cap with both a fake and a real file -- keeps the previous snapshot and records the cause,
+while an emptied but readable file clears it; 8 threads racing 20 atomic file rotations never
+publish a torn mix of two CAs' bytes and subjects; and `fileRead`'s `readFileBounded()` gets its own
+`Ok`/`TooLarge`/`CannotOpen`/`ReadError` cases with the matching errno).
 
 Body decoding: `bodyDecoder_test.cpp` (only an exact, case-insensitive `zstd` decodes — `gzip`,
 `"zstd, gzip"` and prefixes are refused — the decoded bytes stay charged to the in-flight budget

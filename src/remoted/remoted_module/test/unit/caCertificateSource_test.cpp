@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "http_server/caCertificateSource.hpp"
+#include "http_server/fileRead.hpp"
 #include "testTlsServer.hpp"
 
 #include <algorithm>
@@ -39,12 +40,14 @@
 #include <vector>
 
 using remoted::http::CaCertificateSource;
-using remoted::http::loadCertificates;
+using remoted::http::describeReadFailure;
 using remoted::http::parseCertificates;
+using remoted::http::ReadFailure;
 using remoted::http::readFileBounded;
 using remoted::http::ReadResult;
 using remoted::http::ReadStatus;
 using remoted::http::serializeCertificates;
+using remoted::http::statusFrom;
 
 namespace
 {
@@ -142,6 +145,14 @@ namespace
         }
     };
 
+    // loadCertificates() is gone (issue #39318): CaCertificateSource is the one reader now. This is
+    // the read-only half a plain loadCertificates() call used to give makePki() below -- the
+    // bounded/failure-aware half is what CaCertificateSource itself is under test for.
+    std::vector<remoted::http::X509Ptr> readPemCertificates(const std::string& path)
+    {
+        return parseCertificates(readAll(path)).certificates;
+    }
+
     struct Pki
     {
         remoted::test::TestCaSignedCertificate files;
@@ -156,7 +167,7 @@ namespace
             return std::nullopt;
         }
 
-        auto leaves = loadCertificates(generated->certPath);
+        auto leaves = readPemCertificates(generated->certPath);
         if (leaves.empty())
         {
             return std::nullopt;
@@ -375,6 +386,40 @@ TEST(CaCertificateSource, ReadFailureKeepsThePreviousSnapshot)
     EXPECT_EQ(secondFailure.lastReadFailure->consecutive, 2U);
 
     EXPECT_EQ(source.parses(), 1U);
+}
+
+TEST(CaCertificateSource, StatusFromCarriesTheReadFailure)
+{
+    // statusFrom() is the one place a CaCertificateSnapshot becomes a TlsCertificateSnapshot (at
+    // start and on every monitor tick): what it copies from a good read, and that a read failure
+    // travels through it too, without erasing the last good verdict (issue #39318).
+    auto pki = makePki("casource-statusfrom");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    FakeReader reader;
+    reader.state->contents = readAll(pki->files.caCertPath);
+
+    CaCertificateSource source {pki->files.caCertPath, pki->leaf.get(), reader};
+    const auto status = statusFrom(pki->leaf.get(), source.snapshot());
+
+    EXPECT_EQ(status.caMatchesLeaf, true);
+    EXPECT_FALSE(status.caSubjects.empty());
+    EXPECT_FALSE(status.chainValid.has_value());
+    EXPECT_TRUE(status.chainError.empty());
+    EXPECT_FALSE(status.caReadFailure.has_value());
+    EXPECT_EQ(status.evaluations, 0U); // counting is the monitor's job, not statusFrom()'s
+    EXPECT_TRUE(status.expiryDays.has_value());
+
+    reader.state->status = ReadStatus::ReadError;
+    reader.state->error = EIO;
+
+    const auto failedStatus = statusFrom(pki->leaf.get(), source.snapshot());
+    ASSERT_TRUE(failedStatus.caReadFailure.has_value());
+    EXPECT_EQ(failedStatus.caReadFailure->status, ReadStatus::ReadError);
+    EXPECT_EQ(failedStatus.caReadFailure->error, EIO);
+    EXPECT_EQ(failedStatus.caReadFailure->consecutive, 1U);
+    EXPECT_EQ(failedStatus.caMatchesLeaf, true); // the last good verdict, kept through the failure
 }
 
 TEST(CaCertificateSource, ADirectoryAtThePathIsAReadError)
@@ -678,4 +723,17 @@ TEST(ReadFileBounded, ReadsUpToTheCapAndFlagsMore)
     EXPECT_EQ(result.status, ReadStatus::ReadError);
     EXPECT_EQ(result.error, EISDIR);
     ::rmdir(dirPath.c_str());
+}
+
+TEST(FileRead, DescribesEachCause)
+{
+    // The log-line fragment describeReadFailure() completes "the file ...", one per ReadStatus --
+    // and, for TooLarge, worded off the actual cap rather than a hardcoded "1 MiB".
+    EXPECT_EQ(describeReadFailure(ReadFailure {ReadStatus::CannotOpen, ENOENT, 1}, 1024U * 1024U),
+              "cannot be opened (No such file or directory)");
+    EXPECT_EQ(describeReadFailure(ReadFailure {ReadStatus::ReadError, EISDIR, 1}, 1024U * 1024U),
+              "cannot be read (Is a directory)");
+    EXPECT_EQ(describeReadFailure(ReadFailure {ReadStatus::TooLarge, 0, 1}, 1024U * 1024U),
+              "is larger than the 1 MiB cap");
+    EXPECT_EQ(describeReadFailure(ReadFailure {ReadStatus::TooLarge, 0, 1}, 4096U), "is larger than the 4096-byte cap");
 }
