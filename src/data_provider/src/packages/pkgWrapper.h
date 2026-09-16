@@ -298,7 +298,7 @@ class PKGWrapper final : public IPackageWrapper
                     m_priority = UNKNOWN_VALUE;
                     m_size = 0;
                     m_installTime = UNKNOWN_VALUE;
-                    m_source = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
+                    m_source = filePath.find(UTILITIES_FOLDER) != std::string::npos ? "utilities" : "applications";
                     m_location = filePath;
                 }
             };
