@@ -223,3 +223,4 @@
 | [#39321](https://github.com/wazuh/wazuh/issues/39321) | Fixed the agent starting with a multi-certificate `<certificate_authorities>` file whose later certificates are unusable, which failed at the first handshake instead of at startup. |
 | [#39321](https://github.com/wazuh/wazuh/issues/39321) | The agent's trust anchor and its directory are now owned so the agent can replace the anchor itself, which a CA rotation requires. Existing installs are corrected on the next start. |
 | [#39321](https://github.com/wazuh/wazuh/issues/39321) | The agent now refuses to start when its trust anchor has been removed, instead of silently falling back to unverified connections. |
+| [#39321](https://github.com/wazuh/wazuh/issues/39321) | Fixed an enrollment token embedding a CA bundle being accepted at install time and then refused at the agent's first start for being too large. |

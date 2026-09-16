@@ -1017,6 +1017,45 @@ static void test_credential_less_token_enrolls_without_error(void **state) {
     assert_int_equal((int) strlen(g_enroll_request.enroll_key_hex), 0);
 }
 
+/* The bound has to clear what authd is willing to mint, not what a pin-only token happens to
+ * need. A six-certificate bundle -- the largest #39321 lets a manager publish -- embeds to
+ * roughly 9 KB of token, so at the old 8192 it minted cleanly and was then refused at the
+ * agent's first boot, with nothing at install time having warned about it. */
+static void test_embedded_ca_token_larger_than_the_old_cap_is_read(void **state) {
+    (void) state;
+
+    /* ~12 KB of body: past the old 8192 once base64url'd, far inside the new bound. */
+    char big_ca[12288];
+    memset(big_ca, 'A', sizeof(big_ca) - 1);
+    big_ca[sizeof(big_ca) - 1] = '\0';
+
+    write_token_file(false, true, big_ca);
+    /* The guard this test exists for: the encoded token really is past the old limit. */
+    assert_true(FileSize("etc/enrollment_token") > 8192);
+
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_enroll_call_count, 1);
+
+    /* The whole embedded bundle reached disk, not a truncated prefix of it. */
+    assert_int_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_equal(FileSize("etc/certs/root-ca.pem"), (long) strlen(big_ca));
+}
+
 static void test_full_happy_path_via_ca_pem(void **state) {
     (void) state;
     write_token_file(false, true, "FAKE-EMBEDDED-CA");
@@ -1414,6 +1453,7 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_a_token_that_fills_the_buffer_exactly_is_read_whole, setup_test,
                                         teardown_test),
+        cmocka_unit_test_setup_teardown(test_embedded_ca_token_larger_than_the_old_cap_is_read, setup_test, teardown_test),
     };
 
     return cmocka_run_group_tests(tests, group_setup, NULL);

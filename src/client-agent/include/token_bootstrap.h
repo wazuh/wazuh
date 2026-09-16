@@ -37,15 +37,20 @@
 /* Largest enrollment token this agent will read, wherever it comes from. Shared so the
  * installer's --show-token and the first-boot bootstrap agree: when --show-token accepted more
  * than the bootstrap could read, a token between the two sizes passed the install and then
- * failed at the first start, with nothing at install time to warn about it. A token carrying a
- * pin is a couple of hundred bytes and one embedding a CA a few KB, so this is a sanity bound
- * rather than a tight one.
+ * failed at the first start, with nothing at install time to warn about it.
  *
- * Note this is NOT the manager CLI's ceiling: os_auth/src/token_cli.c caps at 16384, so a token
- * between the two sizes is described happily by wazuh-manager-authd --show-token and then
- * refused by every agent-side reader. Worth reconciling; until then, the agent's is the one that
- * decides whether a token can actually be used. */
-#define W_ETOKEN_MAX_FILE_BYTES 8192
+ * A token carrying a pin is a couple of hundred bytes; one embedding a CA is bounded by what
+ * authd is willing to mint, which is ETOKEN_CA_MAX_BYTES (64 KiB) of PEM. That PEM is escaped
+ * into JSON, where every newline costs two bytes, and the whole object is then base64url'd at
+ * 4/3 -- so authd's own ceiling lands near 88 KB and this has to clear it. At 8192 it did not:
+ * a six-certificate bundle, which is the largest #39321 lets a manager publish, mints cleanly
+ * at roughly 9 KB and was then refused at the agent's first boot.
+ *
+ * Note this is NOT the manager CLI's ceiling: os_auth/src/token_cli.c caps at 16384. Since
+ * #39321 that mismatch runs the safe way round -- anything --show-token will describe, an agent
+ * can read -- where before it ran the other way and produced exactly the failure above. Still
+ * worth reconciling. */
+#define W_ETOKEN_MAX_FILE_BYTES 98304
 
 /**
  * @brief Which step of the token enrollment failed. Each value maps to one named merror() the

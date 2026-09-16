@@ -46,8 +46,14 @@ char *w_agent_token_read_file(const char *path) {
         return NULL;
     }
 
-    char buf[W_ETOKEN_MAX_FILE_BYTES];
-    char *read_ok = fgets(buf, sizeof(buf), fp);
+    /* Heap, not stack: since #39321 this bound is sized for an embedded-CA token (see its own
+     * comment) and 96 KB is far too much to put on a frame. Capacity is the bound itself, as it
+     * was when this was an array of that size, so the longest line fgets() will return whole is
+     * still W_ETOKEN_MAX_FILE_BYTES - 1 characters. */
+    char *buf;
+    os_calloc(W_ETOKEN_MAX_FILE_BYTES, sizeof(char), buf);
+
+    char *read_ok = fgets(buf, W_ETOKEN_MAX_FILE_BYTES, fp);
 
     /* fgets() stops at a newline, at end of file, or because the buffer filled, and reports all
      * three the same way. Only the last is a problem: the token arrives quietly cut short and is
@@ -59,6 +65,7 @@ char *w_agent_token_read_file(const char *path) {
     fclose(fp);
 
     if (!read_ok || truncated) {
+        os_free(buf);
         return NULL;
     }
 
@@ -69,11 +76,13 @@ char *w_agent_token_read_file(const char *path) {
     }
 
     if (len == 0) {
+        os_free(buf);
         return NULL;
     }
 
     char *token;
     os_strdup(buf, token);
+    os_free(buf);
     return token;
 }
 
