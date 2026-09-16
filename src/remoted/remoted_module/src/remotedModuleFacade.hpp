@@ -1397,11 +1397,13 @@ private:
             "new connections wait in the backlog instead of being refused",
             "connections");
 
-        // The served certificate's health, read from the same weak target: evaluated by the
-        // transport at start and every certificateStatusInterval (24 h). Double, not uint64: the
-        // day count is NEGATIVE once expired, the whole point of alerting on it. Both read 0 while
-        // the listener is down (the documented quiescent value), so a flat 0 on ca_matches_leaf
-        // with the listener up is the mismatch signal.
+        // The served certificate's health, read from the same weak target. Expiry is the
+        // monitor's: evaluated by the transport at start and every certificateStatusInterval
+        // (24 h). The CA half comes from the same CaCertificateSource GET /cacerts answers from,
+        // re-read on every scrape, so it never lags the endpoint (issue #39078, H06). Double, not
+        // uint64: the day count is NEGATIVE once expired, the whole point of alerting on it. Both
+        // read 0 while the listener is down (the documented quiescent value), so a flat 0 on
+        // ca_matches_leaf with the listener up is the mismatch signal.
         const auto certificateStatus = [this]() -> remoted::http::TlsCertificateSnapshot
         {
             std::lock_guard<std::mutex> lock {m_publicDiagMutex};

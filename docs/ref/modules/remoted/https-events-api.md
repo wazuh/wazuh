@@ -418,8 +418,9 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
   `{"status":"ok","module":"remoted"}`.
 - **`GET /cacerts`** — unauthenticated CA distribution: the PEM configured as
   [`remote.https.ca_certificate`](configuration.md#httpsca_certificate) (the CA that signs the
-  listener certificate), byte for byte, as `Content-Type: application/x-pem-file`, so an agent can
-  bootstrap trust in the manager before it holds any credential. Returns **`200`** with the PEM,
+  listener certificate), served as re-serialised certificates with
+  `Content-Type: application/x-pem-file`, so an agent can bootstrap trust in the manager before it
+  holds any credential. Returns **`200`** with the PEM,
   **`404`** `{"error":"not_found"}` when the file is missing, unreadable or carries no certificate,
   or **`503`** `{"error":"ca_mismatch"}` when the configured CA does not sign the certificate this
   listener serves — refusing to hand out a CA that would make every verifying agent fail. See
