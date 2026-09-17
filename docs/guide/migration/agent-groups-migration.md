@@ -120,6 +120,13 @@ With the group folders in place and each agent's group configured, start each ag
 > ```
 >
 > Without this file the enrollment request will be rejected. See [`use_password`](../../ref/modules/authd/configuration.md#use_password) for details.
+>
+> This is the path for an agent that already exists and has to enroll again. An agent **installed**
+> fresh against a 5.0 manager takes an enrollment token instead, which carries the credential along
+> with the manager address and its CA, and needs no password file: see
+> [Agent enrollment lifecycle](../../ref/modules/authd/enrollment-lifecycle.md). Note also that the
+> 5.0 package upgrade deletes `etc/authd.pass` from the endpoint, so an agent upgraded after you
+> place it here needs it placed again.
 
 Clear its key first, then start it:
 

@@ -172,6 +172,18 @@ How strictly the agent verifies the manager's TLS certificate.
     paths (e.g. `/etc/ssl/certs/ca-certificates.crt` on Debian-family systems,
     `/etc/pki/tls/certs/ca-bundle.crt` on RHEL-family systems) and fails closed at startup if
     none is found on the host.
+- **Note:** an explicit `none` is honoured even with an anchor on disk, and warns, since that is the
+  one combination an operator is most likely to have reached by accident:
+
+  ```console
+  WARNING: (4122): <ssl><verification_mode> is 'none' and the trust anchor 'etc/certs/root-ca.pem' is present: TLS verification stays disabled, as configured, and the anchor is not used. Remove <verification_mode>none</verification_mode> to verify against it.
+  ```
+
+- **Note:** the resolution runs once, at startup. An anchor written while the agent is running is
+  picked up on its next start, except during the enrollment-token bootstrap, which is sequenced to
+  take effect on the same start.
+- **Note:** `<ssl>` cannot be set through centralized configuration. A group's `agent.conf` rejects
+  it, so an agent's verification posture is never remotely settable by the manager it verifies.
 - **Note:** Any value other than the four above is rejected at config-parse time.
 - **Note:** An explicit mode always wins, and that includes turning verification off on a host
   that could verify. An explicit `none` with a trust anchor present keeps `none` and logs
