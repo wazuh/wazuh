@@ -754,6 +754,7 @@ stages:
       status_code: 400
       json:
         title: Bad Request
+        detail: !re_search "is too long"
 
     # POST /agents/enrollment-tokens
   - name: Try to mint a token with a description longer than the schema allows
@@ -767,6 +768,7 @@ stages:
       status_code: 400
       json:
         title: Bad Request
+        detail: !re_search "is too long"
 
     # POST /agents/enrollment-tokens
   - name: Try to mint a token with max_uses above the schema's maximum

@@ -1880,26 +1880,27 @@ def test_filter_array_by_query_typed_fields_bool_rejects_unrecognized_literal():
         utils.filter_array_by_query('revoked=maybe', bool_typed_input_array)
 
 
-@pytest.mark.parametrize('q, array', [
-    # A date-shaped literal against a bool field: `=` correctly matches nothing (the case above),
-    # but `!=` used to fall through to Python's default `!=` on mismatched types, which is
-    # unconditionally True -- every record silently "matched" regardless of `revoked`'s real value.
-    ('revoked!=2026-01-01', bool_typed_input_array),
+@pytest.mark.parametrize('q, array, expected_ids', [
+    # A date-shaped literal against a field that is not itself a date falls through to Python's
+    # own cross-type comparison: `!=` is unconditionally True, so every record matches.
+    ('revoked!=2026-01-01', bool_typed_input_array, ['first', 'second']),
     # Same mismatch, a None field this time (e.g. `description`, nullable per the API schema).
     ('description!=2026-01-01',
-     [{'id': 'first', 'description': None}, {'id': 'second', 'description': 'x'}]),
+     [{'id': 'first', 'description': None}, {'id': 'second', 'description': 'x'}],
+     ['first', 'second']),
 ])
-def test_filter_array_by_query_date_shaped_literal_ne_mismatched_field_raises(q, array):
-    """`!=` against a date-shaped literal for a field that isn't itself a date (bool, None, dict,
-    float -- nothing coerces those) must raise WazuhError(1407), not silently match every record."""
-    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
-        utils.filter_array_by_query(q, array)
+def test_filter_array_by_query_date_shaped_literal_ne_mismatched_field(q, array, expected_ids):
+    """`!=` with a date-shaped literal against a non-date field matches every record. A literal
+    whose type the field cannot address is not on its own a malformed query: it only becomes one
+    when no record in the array can evaluate the clause at all."""
+    result = utils.filter_array_by_query(q, array)
+
+    assert [item['id'] for item in result] == expected_ids
 
 
-def test_filter_array_by_query_date_shaped_literal_eq_mismatched_field_unaffected():
-    """The `=` side of the same mismatch is untouched: it stays a silent no-match, exactly as
-    documented in api-reference.md, since operator.eq (unlike operator.ne) never needs the new
-    raise to avoid a wrong answer."""
+def test_filter_array_by_query_date_shaped_literal_eq_mismatched_field():
+    """The `=` side of the same mismatch is a silent no-match, as documented in api-reference.md:
+    operator.eq on mismatched types is unconditionally False."""
     result = utils.filter_array_by_query('revoked=2026-01-01', bool_typed_input_array)
 
     assert result == []
@@ -1930,6 +1931,15 @@ type_mismatch_input_array = [{
     'created': datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc),
     'uses': 0
 }]
+
+
+@pytest.mark.parametrize('q', ['uses>=1', 'uses<=5', 'uses==0', 'uses<>1'])
+def test_filter_array_by_query_unsupported_operator(q):
+    """The clause regex matches any two operator characters, so `>=`, `<=`, `==` and `<>` parse as
+    an operator `check_clause` has no entry for. That is a malformed query, reported as
+    WazuhError(1407) whatever the collection holds, not a KeyError escaping as a 500."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query(q, [{'id': 'first', 'uses': 0}])
 
 
 @pytest.mark.parametrize('q', [

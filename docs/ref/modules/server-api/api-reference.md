@@ -511,11 +511,12 @@ handled here, separate from the type-mismatch case below.
 
 With `=` and `!=`, a boolean field takes `true`, `false`, `1` or `0` (`q=revoked=true`; any other
 literal is rejected with a 400). A date-shaped literal against a boolean field is read as a date
-rather than an unrecognized literal, so it takes a different path than that 400: `=` matches
-nothing (a boolean is never a date), and `!=` is rejected with a 400 -- the same "field and literal
-are different types, so `!=` can't be evaluated safely" reasoning `<`/`>` already use for any
-non-date field, rather than falling through to Python's own unconditionally-true `!=` on mismatched
-types. The `search` parameter is case-insensitive and matches the
+rather than an unrecognized literal, so it takes a different path than that 400 and falls through
+to Python's own cross-type comparison: `=` matches nothing and `!=` matches everything. A literal
+whose type the field cannot address is a property of the record, not of the query -- the same
+clause evaluates normally against a differently-typed record -- so it excludes only its own record,
+and `q` is reported invalid with a 400 once, after the whole collection, only when no record could
+evaluate the clause at all. The `search` parameter is case-insensitive and matches the
 rendered value, so `search=true` also finds records
 whose boolean field is set. `~` is case-sensitive on a boolean field, unlike `=`/`!=`/`search`: it
 matches the exact rendered value (`q=revoked~True`, `q=revoked~False`), not `true`/`false`.
