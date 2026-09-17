@@ -1,11 +1,18 @@
-# Needed by test_win_utils.c/test_win_agent.c's #include "os_win.h" -- this
-# directory is otherwise absent from the standalone unit_tests project's
-# include path (unlike the main build's src/CMakeLists.txt).
+# Needed by test_win_utils.c/test_win_agent.c's #include "os_win.h", and by
+# test_win32ui_common.c's #include "os_win32ui.h" -- these directories are
+# otherwise absent from the standalone unit_tests project's include path
+# (unlike the main build's src/CMakeLists.txt, which adds ui/ only to the
+# win32_ui target via target_include_directories).
 include_directories(${SRC_FOLDER}/win32)
+include_directories(${SRC_FOLDER}/win32/ui)
 
 # Generate win32 library
+# win32_ui's sources are declared as ui/os_win32ui.c and ui/common.c
+# (src/win32/CMakeLists.txt), so CMake mirrors that relative path under the
+# build dir: the objects land in win32_ui.dir/ui/*.obj, not win32_ui.dir/*.obj.
 file(GLOB win32_files
-    ${SRC_FOLDER}/build/win32/CMakeFiles/win32_common.dir/*.obj)
+    ${SRC_FOLDER}/build/win32/CMakeFiles/win32_common.dir/*.obj
+    ${SRC_FOLDER}/build/win32/CMakeFiles/win32_ui.dir/ui/*.obj)
 
 add_library(WIN32 STATIC ${win32_files})
 
@@ -43,6 +50,11 @@ list(APPEND win32_flags "-Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetArra
                         ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND win32_names "test_win_agent")
+list(APPEND win32_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                        -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                        -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND win32_names "test_win32ui_common")
 list(APPEND win32_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                         -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                         -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
