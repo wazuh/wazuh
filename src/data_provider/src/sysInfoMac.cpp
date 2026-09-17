@@ -316,7 +316,7 @@ static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_p
     if (!sysctlbyname("kern.maxproc", &maxProcess, &maxProcessLen, nullptr, 0))
     {
         auto pids { std::make_unique<pid_t[]>(maxProcess) };
-        const auto processesCount { proc_listallpids(pids.get(), maxProcess) };
+        const auto processesCount { proc_listallpids(pids.get(), maxProcess * static_cast<int32_t>(sizeof(pid_t))) };
 
         for (auto i = 0 ; i < processesCount ; ++i)
         {
@@ -410,7 +410,7 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
     }
 
     const auto spPids         { std::make_unique<pid_t[]>(maxProc) };
-    const auto processesCount { proc_listallpids(spPids.get(), maxProc) };
+    const auto processesCount { proc_listallpids(spPids.get(), maxProc * static_cast<int32_t>(sizeof(pid_t))) };
 
     for (int index = 0; index < processesCount; ++index)
     {
