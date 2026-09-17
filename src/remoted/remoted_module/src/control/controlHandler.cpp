@@ -493,9 +493,13 @@ namespace remoted::control
                 [this, id, refreshedEntry, callback = std::move(callback)](SocketError err,
                                                                            std::vector<Task> tasks) mutable
                 {
-                    // DEBUG1: the task client already reports every cause, and its drain answers
-                    // Io for every in-flight request on shutdown.
-                    if (err != SocketError::None)
+                    // DEBUG1: taskClient.cpp already reports every reachable cause (timeout,
+                    // connect/IO, bad status, malformed body, queue full) at WARN or ERROR on its
+                    // own, with more specific detail than this generic line could add -- warning
+                    // here too would just double the log line for the same event. Stopping is
+                    // excluded because a clean shutdown drain isn't a failure at all: it stays at
+                    // the task client's own DEBUG1 ("Task client is stopping...").
+                    if (err != SocketError::None && err != SocketError::Stopping)
                     {
                         if (const auto throttle = taskFetchErrorThrottle().record())
                         {
