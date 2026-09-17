@@ -352,7 +352,7 @@ void wm_aws_check() {
     // Check if there are buckets or services
 
     if (!aws_config->buckets && !aws_config->services && !aws_config->subscribers) {
-        mtwarn(WM_AWS_LOGTAG, "No AWS buckets, services or subscribers defined. Exiting...");
+        mtwarn(WM_AWS_LOGTAG, "No buckets, services or subscribers definitions found at module 'aws-s3'.");
         pthread_exit(NULL);
     }
 
