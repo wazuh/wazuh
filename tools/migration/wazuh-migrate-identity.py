@@ -51,15 +51,15 @@ SOURCE_DB_VERSIONS_CHECKED = (7, 8, 9, 10, 11, 12)
 # Group folders the target ships itself: restoring the 4.x copy would replace 5.0 content.
 RESERVED_GROUPS = ("default",)
 
-# Files carried verbatim, with the ownership each 5.0 daemon needs.
+# Files carried verbatim, with the ownership and mode a 5.0 installation ships for each.
 #   key: bundle name
 #   value: (target relative path, owner, group, mode, required)
-# client.keys is rewritten by wazuh-manager-authd after it drops privileges, so root ownership
-# stops enrollment. authd.pass is only read, and stays root-owned so the service user cannot
-# replace the fleet credential.
+# All three belong to the service account: authd reopens client.keys for append and creates
+# authd.pass itself, both after dropping privileges, and the API rewrites rbac.db as that user.
+# Modes follow the installer (client.keys 0660, inst-functions.sh) and the daemons' own umask.
 PLAIN_FILES = {
-    "client.keys": ("etc/client.keys", "wazuh-manager", "wazuh-manager", 0o640, True),
-    "authd.pass": ("etc/authd.pass", "root", "wazuh-manager", 0o640, False),
+    "client.keys": ("etc/client.keys", "wazuh-manager", "wazuh-manager", 0o660, True),
+    "authd.pass": ("etc/authd.pass", "wazuh-manager", "wazuh-manager", 0o640, False),
     "rbac.db": ("api/configuration/security/rbac.db", "wazuh-manager", "wazuh-manager", 0o640, False),
 }
 
