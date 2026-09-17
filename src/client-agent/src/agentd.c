@@ -23,6 +23,15 @@ void reload_handler(int signum) {
     }
 }
 
+/* A signalled stop is not a failure: systemd tracks this process through PIDFile=.
+ * Not HandleSIG(), whose exit(1) is shared with the manager daemons. */
+void agentd_shutdown(int sig)
+{
+    minfo(SIGNAL_RECV, sig, strsignal(sig));
+
+    exit(0);
+}
+
 #define SYSTEMD_PIDFILE_NAME "wazuh-agentd.pid"
 
 /* CreatePID()'s file embeds the PID in its name, so it can't back a static PIDFile=;
