@@ -50,13 +50,6 @@ namespace remoted::http
             return hex;
         }
 
-        std::string sha256Hex(std::string_view bytes)
-        {
-            std::array<unsigned char, SHA256_DIGEST_LENGTH> digest {};
-            SHA256(reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size(), digest.data());
-            return hexOf(digest.data(), digest.size());
-        }
-
         /// RFC 2253, except that non-ASCII stays UTF-8 instead of becoming \XX escapes: the value is
         /// shown to an operator, never parsed back.
         std::string nameOf(const X509_NAME* name)
@@ -195,6 +188,13 @@ namespace remoted::http
             return bytes;
         }
     } // namespace
+
+    std::string sha256Hex(std::string_view bytes)
+    {
+        std::array<unsigned char, SHA256_DIGEST_LENGTH> digest {};
+        SHA256(reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size(), digest.data());
+        return hexOf(digest.data(), digest.size());
+    }
 
     std::string fingerprintOf(const X509* certificate)
     {

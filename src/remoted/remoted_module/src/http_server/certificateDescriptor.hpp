@@ -84,6 +84,9 @@ namespace remoted::http
 
     /// `YYYY-MM-DDTHH:MM:SSZ` for an epoch second, UTC. Empty when the value cannot be broken down.
     std::string rfc3339Utc(std::int64_t epochSeconds);
+
+    /// Bare lowercase hex SHA-256 of @p bytes: the digest every identity and cache key of this module is built from.
+    std::string sha256Hex(std::string_view bytes);
 } // namespace remoted::http
 
 #endif // _REMOTED_HTTP_SERVER_CERTIFICATE_DESCRIPTOR_HPP
