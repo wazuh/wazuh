@@ -227,8 +227,12 @@ RESULTS_DIR="$SCRIPT_DIR/results_${LABEL}"
 mkdir -p "$RESULTS_DIR"
 BENCH_CSV="$RESULTS_DIR/bench.csv"
 SENDER_JSON="$RESULTS_DIR/sender_summary.json"
-SERVER_METRICS_CSV="$RESULTS_DIR/server_metrics.csv"
 MONITOR_DIR="$RESULTS_DIR/monitor"
+# The run's lossless server-side artifact: every daemon's statistics, one JSON object
+# per scrape. The per-daemon CSVs under monitor/ are DERIVED from it and kept only while
+# consumers migrate off them.
+SAMPLES_DIR="$RESULTS_DIR/samples"
+SAMPLES_NDJSON="$SAMPLES_DIR/metrics.ndjson"
 SUMMARY_JSON="$RESULTS_DIR/summary.json"
 cp "$SCENARIO" "$RESULTS_DIR/scenario.json"
 
@@ -286,9 +290,10 @@ fi
 MONITOR_PID=""
 MONITOR_RUNNING=false
 if $DO_MONITOR && [[ -f "$MONITOR_PY" ]] && "$PYTHON" -c 'import psutil' 2>/dev/null; then
-    mkdir -p "$MONITOR_DIR"
+    mkdir -p "$MONITOR_DIR" "$SAMPLES_DIR"
     echo "Starting process + API monitor..."
     "$PYTHON" "$MONITOR_PY" --output-dir "$MONITOR_DIR" -s 1.0 \
+        --ndjson "$SAMPLES_NDJSON" --run-label "$LABEL" \
         --pidfile "$MONITOR_DIR/monitor.pid" --timeout 30 &
     MONITOR_PID=$!
     MONITOR_RUNNING=true
@@ -303,8 +308,9 @@ fi
 SCRAPER_PID=""
 if $DO_METRICS && ! $MONITOR_RUNNING && [[ -S "$SOCKET" ]]; then
     echo "Monitor unavailable; falling back to scrape_metrics.sh for GET /metrics..."
-    PYTHON="$PYTHON" "$SCRIPT_DIR/scrape_metrics.sh" \
-        --socket "$SOCKET" --out "$SERVER_METRICS_CSV" --interval "$METRICS_INTERVAL" &
+    mkdir -p "$SAMPLES_DIR"
+    PYTHON="$PYTHON" RUN_LABEL="$LABEL" "$SCRIPT_DIR/scrape_metrics.sh" \
+        --socket "$SOCKET" --out "$SAMPLES_NDJSON" --interval "$METRICS_INTERVAL" &
     SCRAPER_PID=$!
 elif $DO_METRICS && ! $MONITOR_RUNNING; then
     echo "Note: metrics socket $SOCKET not present; no server metrics for this run."
@@ -349,16 +355,11 @@ trap - EXIT
 echo ""
 echo "Generating summary.json..."
 SUMMARY_ARGS=( --bench "$BENCH_CSV" --out "$SUMMARY_JSON" )
-[[ -f "$SENDER_JSON" ]]         && SUMMARY_ARGS+=( --sender-json "$SENDER_JSON" )
-# The monitor's wide CSV is preferred; the fallback scraper's long-format file is
-# used only when the monitor could not run. result_summary.py detects which is which.
-MONITOR_INVSYNC_CSV="$MONITOR_DIR/stats-api-inventory-sync.csv"
-if [[ -f "$MONITOR_INVSYNC_CSV" ]]; then
-    SUMMARY_ARGS+=( --server-metrics "$MONITOR_INVSYNC_CSV" )
-elif [[ -f "$SERVER_METRICS_CSV" ]]; then
-    SUMMARY_ARGS+=( --server-metrics "$SERVER_METRICS_CSV" )
-fi
-[[ -f "$MONITOR_DIR/wazuh-manager-modulesd.csv" ]] && SUMMARY_ARGS+=( --monitor "$MONITOR_DIR/wazuh-manager-modulesd.csv" )
+[[ -f "$SENDER_JSON" ]] && SUMMARY_ARGS+=( --sender-json "$SENDER_JSON" )
+# One artifact for every daemon's statistics, so there is nothing to choose between.
+[[ -f "$SAMPLES_NDJSON" ]] && SUMMARY_ARGS+=( --samples "$SAMPLES_NDJSON" )
+# Every process the monitor sampled, not just modulesd.
+[[ -d "$MONITOR_DIR" ]] && SUMMARY_ARGS+=( --monitor-dir "$MONITOR_DIR" )
 [[ -f "$RESULTS_DIR/params.json" ]] && SUMMARY_ARGS+=( --params "$RESULTS_DIR/params.json" )
 "$PYTHON" "$SCRIPT_DIR/result_summary.py" "${SUMMARY_ARGS[@]}" || echo "  (summary generation had a warning)"
 
@@ -393,8 +394,9 @@ echo ""
 echo "======================================================="
 echo "  Done — artifacts in $RESULTS_DIR/"
 echo "    bench.csv, sender_summary.json, summary.json"
-[[ -f "$SERVER_METRICS_CSV" ]] && echo "    server_metrics.csv"
-[[ -d "$MONITOR_DIR" ]] && echo "    monitor/"
+[[ -f "$SAMPLES_NDJSON" ]] && echo "    samples/metrics.ndjson  (every daemon's statistics, lossless)"
+[[ -d "$MONITOR_DIR" ]] && echo "    monitor/  (process, disk and log samples)"
+echo "    (CSV of any daemon's metrics: python3 \$WAZUH_DEV_SCRIPTS/bench_samples.py $RESULTS_DIR)"
 # Sender exit contract: 0 ok, 1 measurement invalid, 2 setup failure,
 # 3 measurement VALID but the scenario's expected block failed.
 case "$SENDER_RC" in
