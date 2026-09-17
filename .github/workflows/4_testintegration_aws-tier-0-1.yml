@@ -191,8 +191,20 @@ jobs:
       - name: Run Parser related tests
         if: steps.filter.outputs.parser == 'true'
         run: |
+          # DEBUG(30480): the tests truncate ossec.log on every teardown, so mirror it from a
+          # background tail to keep the lines the failing test never got to see.
+          sudo sh -c 'nohup tail -F -n +1 /var/ossec/logs/ossec.log > /tmp/ossec_mirror.log 2>/dev/null &'
           cd tests/integration
           sudo GITHUB_RUN_ID="${GITHUB_RUN_ID}" AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 test_aws/test_parser.py
+
+      - name: Dump the mirrored manager log
+        if: always() && steps.filter.outputs.parser == 'true'
+        run: |
+          echo "===== ossec.log mirror ====="
+          sudo head -n 200 /tmp/ossec_mirror.log || true
+          echo "===== systemd ====="
+          sudo systemctl status wazuh-manager --no-pager -l || true
+          sudo journalctl -u wazuh-manager --no-pager -n 100 || true
 
       - name: Run every test due to base WazuhIntegration class change or manual dispatch
         if: steps.filter.outputs.integration == 'true' || github.event_name == 'workflow_dispatch'
