@@ -12,6 +12,8 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from connexion import AsyncApp
+from connexion.middleware import MiddlewarePosition
+from content_size_limit_asgi import ContentSizeLimitMiddleware
 from connexion.testing import TestContext
 from connexion.exceptions import ProblemException, OAuthProblem
 
@@ -21,7 +23,7 @@ from api.middlewares import check_rate_limit, check_blocked_ip, settle_login_att
     MAX_REQUESTS_EVENTS_DEFAULT, LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, \
     CheckAuthContextSizeMiddleware, CheckRateLimitsMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, \
     SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log, get_declared_content_length, \
-    read_capped_body, CACHED_BODY_KEY
+    read_capped_body, CACHED_BODY_KEY, setup_middlewares
 from api.alogging import MAX_LOGGED_BODY_SIZE
 from api.api_exception import ExpectFailedException, PayloadTooLargeException
 
@@ -975,12 +977,70 @@ async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
     call_next_mock = AsyncMock(return_value=Response("Success"))
 
     with patch('api.middlewares.configuration.api_conf', new={'max_upload_size': 5}):
-        with pytest.raises(ExpectFailedException) as exc_info:
+        with pytest.raises(PayloadTooLargeException) as exc_info:
             await middleware.dispatch(mock_request, call_next_mock)
 
     call_next_mock.assert_not_called()
-    assert exc_info.value.status == 417
+    # The expectation is understood; it is the body it announces that is refused, so this is a 413
+    # like every other size ceiling in the API, not the 417 an unmeetable expectation gets.
+    assert exc_info.value.status == 413
     assert "Maximum content size limit (5) exceeded" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_check_expect_header_middleware_no_limit():
+    """A `max_upload_size` of 0 disables the ceiling, so no declared length is refused at the header."""
+    middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
+
+    mock_request = MagicMock(headers={
+        'Expect': '100-continue',
+        'Content-Length': str(10 * 1024 * 1024 * 1024)
+    })
+    response = Response("Success")
+    call_next_mock = AsyncMock(return_value=response)
+
+    with patch('api.middlewares.configuration.api_conf', new={'max_upload_size': 0}):
+        returned_response = await middleware.dispatch(mock_request, call_next_mock)
+
+    call_next_mock.assert_called_once_with(mock_request)
+    assert returned_response == response
+
+
+@pytest.mark.parametrize('max_upload_size', [0, 10485760])
+def test_setup_middlewares_registers_the_ceiling_last(max_upload_size):
+    """The size ceiling is the last middleware registered, at BEFORE_VALIDATION, and only when enabled.
+
+    Any BaseHTTPMiddleware registered after it would sit below it and turn its 413 into a 500.
+    """
+    app = MagicMock()
+    api_conf = {'max_upload_size': max_upload_size, 'access': {'max_request_per_minute': 300},
+                'cors': {'enabled': False}}
+
+    with patch('api.middlewares.configuration.api_conf', new=api_conf):
+        setup_middlewares(app)
+
+    calls = app.add_middleware.call_args_list
+    registered = [c.args[0] for c in calls]
+
+    # Every middleware sits at the exact position the fix depends on. Moving any of the readers
+    # (validation-level or below) above the ceiling, or the ceiling itself off BEFORE_VALIDATION,
+    # is the regression this guards; asserting presence alone would not catch it.
+    assert call(CheckRateLimitsMiddleware, MiddlewarePosition.BEFORE_SECURITY) in calls
+    assert call(CheckExpectHeaderMiddleware, MiddlewarePosition.BEFORE_VALIDATION) in calls
+    assert call(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY) in calls
+    assert call(CheckAuthContextSizeMiddleware, MiddlewarePosition.BEFORE_SECURITY) in calls
+    assert call(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION) in calls
+    assert call(SecureHeadersMiddleware, MiddlewarePosition.BEFORE_EXCEPTION) in calls
+
+    if max_upload_size:
+        # The ceiling is strictly the last middleware registered, so no BaseHTTPMiddleware can end
+        # up beneath it and turn its ContentSizeExceeded into a 500.
+        assert registered[-1] is ContentSizeLimitMiddleware
+        assert calls[-1] == call(ContentSizeLimitMiddleware, MiddlewarePosition.BEFORE_VALIDATION,
+                                 max_content_size=max_upload_size)
+        assert ContentSizeLimitMiddleware not in registered[:-1]
+    else:
+        assert ContentSizeLimitMiddleware not in registered
 
 
 @pytest.mark.asyncio
