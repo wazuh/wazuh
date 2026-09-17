@@ -14,12 +14,12 @@
 
 /**
  * macOS-specific block-ip implementation
- * Uses pf (Packet Filter) as primary method
- * Falls back to hosts.deny if pf is unavailable
+ * Method chain: pf (Packet Filter) -> hosts.deny -> route (blackhole fallback)
  */
 
 firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, const char *argv0);
 firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_version, const char *argv0);
+firewall_result_t try_route_macos(const char *srcip, int action, int ip_version, const char *argv0);
 
 int main(int argc, char **argv) {
     (void)argc;
@@ -73,59 +73,20 @@ int main(int argc, char **argv) {
         return OS_INVALID;
     }
 
-    // macOS tries pf first, then falls back to hostsdeny
-    log_firewall_action(argv[0], LOG_LEVEL_INFO, "pf", "start", "Attempting pf method");
+    // macOS method chain, same pattern as the other Unix/BSD platforms:
+    // pf -> hosts.deny -> route (blackhole), so a stock install with neither
+    // pf enabled nor /etc/hosts.deny present still has a working fallback.
+    const firewall_method_t methods[] = {
+        {"pf", try_pf_macos, false},
+        {"hostsdeny", try_hostsdeny_macos, false},
+        {"route", try_route_macos, false},
+        {NULL, NULL, false}  // Sentinel
+    };
 
-    firewall_result_t result = try_pf_macos(srcip, action, ip_version, argv[0]);
-
-    if (result == FIREWALL_SUCCESS) {
-        log_firewall_action(argv[0], LOG_LEVEL_INFO, "pf", "success",
-                          action == ENABLE_COMMAND ? "IP blocked successfully" : "IP unblocked successfully");
-        write_debug_file(argv[0], "Ended");
-        cJSON_Delete(input_json);
-        return OS_SUCCESS;
-    }
-
-    // PF failed, try hostsdeny as fallback
-    switch (result) {
-        case FIREWALL_NOT_AVAILABLE:
-            log_firewall_action(argv[0], LOG_LEVEL_WARNING, "pf", "unavailable",
-                              "pfctl binary not found, trying hostsdeny");
-            break;
-
-        case FIREWALL_INVALID_STATE:
-            log_firewall_action(argv[0], LOG_LEVEL_WARNING, "pf", "invalid_state",
-                              "PF is not enabled, trying hostsdeny");
-            break;
-
-        case FIREWALL_EXECUTION_FAILED:
-            log_firewall_action(argv[0], LOG_LEVEL_WARNING, "pf", "failed",
-                              "pfctl failed, trying hostsdeny");
-            break;
-
-        default:
-            break;
-    }
-
-    log_firewall_action(argv[0], LOG_LEVEL_INFO, "hostsdeny", "start", "Attempting hostsdeny method");
-    result = try_hostsdeny_macos(srcip, action, ip_version, argv[0]);
-
-    if (result == FIREWALL_SUCCESS) {
-        log_firewall_action(argv[0], LOG_LEVEL_INFO, "hostsdeny", "success",
-                          action == ENABLE_COMMAND ? "IP blocked successfully" : "IP unblocked successfully");
-        write_debug_file(argv[0], "Ended");
-        cJSON_Delete(input_json);
-        return OS_SUCCESS;
-    }
-
-    // Both methods failed
-    log_firewall_action(argv[0], LOG_LEVEL_WARNING, "all", "failed",
-                      "All blocking methods failed - IP not blocked");
-    write_debug_file(argv[0], "WARNING: All methods failed - IP not blocked");
-    write_debug_file(argv[0], "Ended");
+    int result = execute_firewall_chain(methods, srcip, action, ip_version, argv[0]);
 
     cJSON_Delete(input_json);
-    return OS_INVALID;
+    return result;
 }
 
 firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, const char *argv0) {
@@ -476,6 +437,42 @@ firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_vers
     }
 
     release_ar_lock(&lock_ctx);
+    return FIREWALL_SUCCESS;
+}
+
+// ============================================================================
+// macOS: route (blackhole) implementation
+// ============================================================================
+// Needs no firewall to be configured or enabled: it works on a stock
+// install, same as the route fallback on Linux/FreeBSD/OpenBSD/NetBSD.
+// macOS route is BSD-derived and takes the same -blackhole syntax as
+// FreeBSD/OpenBSD/NetBSD in block-ip-unix.c's try_route().
+
+firewall_result_t try_route_macos(const char *srcip, int action, int ip_version, const char *argv0) {
+    (void)ip_version;  // route works for both IPv4 and IPv6
+    char *route_path = NULL;
+
+    if (check_binary_available("route", &route_path, argv0) != FIREWALL_SUCCESS) {
+        return FIREWALL_NOT_AVAILABLE;
+    }
+
+    wfd_t *wfd = NULL;
+
+    if (action == ENABLE_COMMAND) {
+        char *exec_cmd[] = {route_path, "-q", "add", (char *)srcip, "127.0.0.1", "-blackhole", NULL};
+        wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+    } else {
+        char *exec_cmd[] = {route_path, "-q", "delete", (char *)srcip, "127.0.0.1", "-blackhole", NULL};
+        wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+    }
+
+    os_free(route_path);
+
+    if (!wfd) {
+        return FIREWALL_EXECUTION_FAILED;
+    }
+
+    wpclose(wfd);
     return FIREWALL_SUCCESS;
 }
 
