@@ -2234,7 +2234,10 @@ Response shape (`http_server/tlsInventory.cpp` renders it, keys in this order):
   its **only** trust store (path building, dates, `basicConstraints`/`keyUsage`, server purpose).
   They disagree on purpose for an expired CA, or one without `CA:TRUE`, that still signs the leaf:
   `signs_active_leaf: true`, `chain_valid: false` plus `chain_error` (present only when false).
-  `chain_valid` is `null` when there is nothing to validate against.
+  `chain_valid` is `null` when there is nothing to validate against. It is judged against the clock on
+  every request — hit or miss of the content-hash cache, and against the last good bundle while the
+  file is unreadable — so a CA that expires with the file untouched flips it on the next request and
+  fires the monitor's WARN on its next tick; only the parse is cached, never the verdict.
 - **`last_read_failure`** (present only while the bundle cannot be read): the CA fields then describe
   the **last good read** — the certificates, hash and sizes of the file as it was — next to `cause`
   (the `describeReadFailure()` fragment, e.g. `"cannot be opened (No such file or directory)"`),

@@ -104,7 +104,9 @@ They disagree on purpose in the cases an operator most needs to see: a CA that s
 but has expired, or that lacks `CA:TRUE`, reads `signs_active_leaf: true` and `chain_valid: false`
 with `chain_error` saying why (`certificate has expired`, `invalid CA certificate`). During a
 rotation the new CA typically reads `signs_active_leaf: false` until the listener is reissued under
-it: that is the expected intermediate state, not a fault.
+it: that is the expected intermediate state, not a fault. `chain_valid` is evaluated at request time:
+a CA that expires while the file stays untouched reads `false` on the next request, and the daily
+log line says the same.
 
 ## When the bundle cannot be read
 
@@ -113,8 +115,9 @@ successfully, and this document keeps describing it. While that lasts, `ca_bundl
 `last_read_failure` with the `cause` (for example `cannot be opened (No such file or directory)`,
 `cannot be read (Is a directory)`, `is larger than the 1 MiB cap`), the `errno`, and how many reads
 in a row have failed (`consecutive`). The certificate list, sizes and hash next to it are those of
-the **last good read**. A bundle that never read successfully shows `certificates_count: 0`
-**and** the failure, so an empty list can never be mistaken for "no certificates to worry about".
+the **last good read**, and `chain_valid` is still judged as of now against that bundle. A bundle that
+never read successfully shows `certificates_count: 0` **and** the failure, so an empty list can never be
+mistaken for "no certificates to worry about".
 
 ## Identities
 

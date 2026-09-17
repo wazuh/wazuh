@@ -49,6 +49,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <ctime>
 #include <functional>
 #include <mutex>
 #include <optional>
@@ -101,6 +102,9 @@ namespace remoted::http
     class CaCertificateSource final
     {
     public:
+        /// The instant the chain verdict is evaluated at. Empty means OpenSSL's own clock (production).
+        using Clock = std::function<std::time_t()>;
+
         /// Largest CA file served. A bundle is a few KB; past this the file is refused as TooLarge,
         /// and never more than kMaxBytes + 1 bytes of it are requested from the reader.
         static constexpr std::size_t kMaxBytes {1024U * 1024U};
@@ -120,8 +124,9 @@ namespace remoted::http
          *             that still holds this source (the metrics scrape, the legacy poller).
          * @param reader How the bytes are read: readFileBounded() unless a test says otherwise. An
          *               empty function falls back to the default rather than being called.
+         * @param clock  What the chain verdict is evaluated against; empty for the current time.
          */
-        CaCertificateSource(std::string path, const X509* leaf, FileReader reader = readFileBounded);
+        CaCertificateSource(std::string path, const X509* leaf, FileReader reader = readFileBounded, Clock clock = {});
 
         /**
          * @brief Current state of the file: cached while its content hash is unchanged.
@@ -129,6 +134,10 @@ namespace remoted::http
          * When the read fails, the last good snapshot comes back unchanged with `lastReadFailure`
          * set; when it succeeds, `lastReadFailure` is cleared, and identical bytes are still a cache
          * hit even across a failure in between.
+         *
+         * The chain verdict (`chainValid`/`chainError`) is the one thing the cache does not hold: it has
+         * a date term, so it is re-evaluated against the clock on every call -- hit, miss or failed
+         * read -- for the certificates of the snapshot being returned.
          */
         CaCertificateSnapshot snapshot();
 
@@ -137,15 +146,20 @@ namespace remoted::http
         std::uint64_t parses() const;
 
     private:
-        CaCertificateSnapshot buildLocked(std::string_view pem) const;
+        /// Everything about @p certificates except the chain verdict, which validateChainLocked() owns.
+        CaCertificateSnapshot buildLocked(const std::vector<X509Ptr>& certificates) const;
+        /// chainValid/chainError of m_snapshot from m_leaf and m_certificates, as of m_clock (or now).
+        void validateChainLocked();
 
         const std::string m_path;
         X509Ptr m_leaf; ///< Our own reference to the served leaf; null when the caller passed none.
         const FileReader m_reader;
+        const Clock m_clock;
 
         mutable std::mutex m_mutex;
         std::string m_hash; ///< SHA-256 of the bytes behind m_snapshot; empty before the first good read.
         CaCertificateSnapshot m_snapshot;
+        std::vector<X509Ptr> m_certificates; ///< The parsed certificates behind m_snapshot, kept for the verdict.
         std::uint64_t m_parses {0};
         std::uint64_t m_consecutiveFailures {0}; ///< Reset by every successful read.
     };
