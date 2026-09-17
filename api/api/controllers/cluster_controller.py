@@ -381,6 +381,45 @@ async def get_daemon_stats_node(node_id: str, pretty: bool = False, wait_for_com
     return json_response(data, pretty=pretty)
 
 
+async def get_remoted_tls_node(node_id: str, pretty: bool = False,
+                               wait_for_complete: bool = False) -> ConnexionResponse:
+    """Get the TLS certificate material remoted serves on a specified cluster node.
+
+    The listener certificate and the CA bundle handed out to agents, with their validity, identities
+    and which CA signs the leaf. Per node (`distributed_master`): certificate material is node
+    specific and nodes legitimately differ during a rotation. One affected item, `available: false`
+    with a `reason` when remoted on that node cannot describe itself.
+
+    Parameters
+    ----------
+    node_id : str
+        Cluster node name.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'node_id': node_id}
+
+    nodes = raise_if_exc(await get_system_nodes())
+    dapi = DistributedAPI(f=manager.get_remoted_tls,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          nodes=nodes)
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
 async def get_log_node(node_id: str, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                        limit: int = None, sort: str = None, search: str = None, tag: str = None, level: str = None,
                        q: str = None, select: str = None, distinct: bool = False) -> ConnexionResponse:
