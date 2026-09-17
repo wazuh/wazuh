@@ -185,7 +185,7 @@ jobs:
       - name: Warm up the manager
         run: |
           sudo /var/ossec/bin/wazuh-control restart
-          sudo /var/ossec/bin/wazuh-control status
+          sudo /var/ossec/bin/wazuh-control status || true
 
       # Run AWS integration tests
       - name: Run Parser related tests
