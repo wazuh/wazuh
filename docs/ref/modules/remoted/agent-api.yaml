@@ -893,18 +893,20 @@ paths:
             The `error` code names the actual cause for an operator reading the exchange.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              schema: { $ref: "#/components/schemas/ScanVdError" }
               examples:
                 scanQueueFull:
-                  value: { error: "scan_queue_full", code: 503 }
-                indexerUnavailable:
-                  value: { error: "indexer_unavailable", code: 503 }
+                  summary: Also indexer_unavailable / task_create_failed
+                  value: { error: "scan_queue_full" }
                 feedNotReady:
-                  summary: Also scanner_not_ready / vd_not_initialized
-                  value: { error: "feed_not_ready", code: 503 }
+                  summary: Also scanner_not_ready
+                  value: { error: "feed_not_ready" }
                 vdUnreachable:
-                  summary: Also shutting_down / vd_error
-                  value: { error: "vd_unreachable", code: 503 }
+                  summary: Also vd_error -- the round trip to VD itself failed or its answer was unparseable
+                  value: { error: "vd_unreachable" }
+                vdNotInitialized:
+                  summary: Permanent
+                  value: { error: "vd_not_initialized" }
 
   /enroll:
     post:
@@ -1576,6 +1578,23 @@ components:
           format: int64
           description: This node's real current offset, to retry with.
           example: 12345680
+
+    ScanVdError:
+      type: object
+      required: [error]
+      description: |
+        `POST /scan/vd`'s `503` shape. Flat, unlike the general `ErrorResponse`: the body carries
+        no HTTP status duplicate, only the machine-readable cause. `error` is not a closed set:
+        remoted is a pass-through here and relays VD's own error string verbatim, including the
+        transport-level ones its uds_http_server socket can produce on its own (e.g. "Server is
+        shutting down", "Data session limit reached") when VD itself never answers.
+      properties:
+        error:
+          type: string
+          description: Machine-readable cause. The values below are the ones VD is known to produce.
+          example: scan_queue_full
+          examples: [scan_queue_full, indexer_unavailable, feed_not_ready, scanner_not_ready,
+                     task_create_failed, vd_not_initialized, vd_unreachable, vd_error, shutting_down]
 
     EnrollRequest:
       type: object
