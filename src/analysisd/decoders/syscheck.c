@@ -256,6 +256,8 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_AUDIT_PCWD] = "parent_cwd";
     fim_decoder->fields[FIM_AUDIT_ID] = "audit_uid";
     fim_decoder->fields[FIM_AUDIT_NAME] = "audit_name";
+    fim_decoder->fields[FIM_AUDIT_GID] = "audit_gid";
+    fim_decoder->fields[FIM_AUDIT_GROUP_NAME] = "audit_group_name";
     fim_decoder->fields[FIM_EFFECTIVE_UID] = "effective_uid";
     fim_decoder->fields[FIM_EFFECTIVE_NAME] = "effective_name";
     fim_decoder->fields[FIM_PPID] = "ppid";
@@ -1250,6 +1252,8 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
      *       cwd:               string
      *       audit_uid:         string
      *       audit_name:        string
+     *       audit_gid:         string
+     *       audit_group_name:  string
      *       effective_uid:     string
      *       effective_name:    string
      *       parent_name:       string
@@ -1592,10 +1596,16 @@ static int fim_generate_alert(Eventinfo *lf, syscheck_event_t event_type, cJSON 
                 os_strdup(object->valuestring, lf->fields[FIM_AUDIT_ID].value);
             } else if (strcmp(object->string, "audit_name") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_AUDIT_NAME].value);
+            } else if (strcmp(object->string, "audit_gid") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_AUDIT_GID].value);
+            } else if (strcmp(object->string, "audit_group_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_AUDIT_GROUP_NAME].value);
             } else if (strcmp(object->string, "effective_uid") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_EFFECTIVE_UID].value);
             } else if (strcmp(object->string, "effective_name") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_EFFECTIVE_NAME].value);
+            } else {
+                mdebug2("Agent '%s' Unrecognized audit field '%s'", lf->agent_id, object->string);
             }
         }
     }
