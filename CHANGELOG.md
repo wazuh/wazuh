@@ -55,6 +55,8 @@ All notable changes to this project will be documented in this file.
 - Fixed the AWS wodle rejecting the `us-gov-east-1` and `us-gov-west-1` regions as invalid. ([#30480](https://github.com/wazuh/wazuh/issues/30480))
 - Fixed the macOS agent not reporting the password status and hash algorithm of local users. ([#39356](https://github.com/wazuh/wazuh/pull/39356))
 - Fixed the macOS agent reporting zeroed password aging values for local users, where macOS defines no such policy. ([#39356](https://github.com/wazuh/wazuh/pull/39356))
+- Fixed the users inventory misreporting sudoers, missing group-based grants (e.g. macOS's `%admin`, Linux's `%sudo`/`%wheel`) and flagging unrelated accounts. ([#39165](https://github.com/wazuh/wazuh/issues/39165))
+- Fixed the users inventory never reading sudo grants placed in sudoers drop-in files (`/etc/sudoers.d/*`). ([#39165](https://github.com/wazuh/wazuh/issues/39165))
 
 ### Ruleset
 
