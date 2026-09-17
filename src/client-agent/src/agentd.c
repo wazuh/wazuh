@@ -23,6 +23,7 @@ void reload_handler(int signum) {
     }
 }
 
+/* CI control for #39408: no behaviour change, only selects the same test modules. */
 #define SYSTEMD_PIDFILE_NAME "wazuh-agentd.pid"
 
 /* CreatePID()'s file embeds the PID in its name, so it can't back a static PIDFile=;
