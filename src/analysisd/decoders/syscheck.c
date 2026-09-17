@@ -1541,6 +1541,7 @@ static int fim_generate_alert(Eventinfo *lf, syscheck_event_t event_type, cJSON 
     int path_len = 0;
     char path_buffer[757] = "";
     char *path = path_buffer;
+    char alert[OS_MAXSTR];
 
     /* Dynamic Fields */
     lf->nfields = FIM_NFIELDS;
@@ -1677,12 +1678,10 @@ static int fim_generate_alert(Eventinfo *lf, syscheck_event_t event_type, cJSON 
         }
     }
 
-    /* full_log was sized from the input length in cleanevent.c; resize it to the
-     * OS_MAXSTR bound used below before writing the generated alert. */
-    os_realloc(lf->full_log, OS_MAXSTR, lf->full_log);
-    lf->log = lf->full_log;
-
-    snprintf(lf->full_log, OS_MAXSTR,
+    /* Format into a scratch buffer and size full_log to the alert: cleanevent.c
+     * allocated it from the input length, which may be shorter than the alert,
+     * and growing it to OS_MAXSTR on every event inflates the allocator footprint. */
+    snprintf(alert, OS_MAXSTR,
             "%s '%s' %s\n"
             "%s"
             "Mode: %s\n"
@@ -1706,6 +1705,13 @@ static int fim_generate_alert(Eventinfo *lf, syscheck_event_t event_type, cJSON 
             change_win_attributes
             //lf->fields[FIM_SYM_PATH].value
     );
+
+    free(lf->full_log);
+    os_strdup(alert, lf->full_log);
+    lf->log = lf->full_log;
+    /* Predecoder pointers may alias the freed buffer. */
+    lf->program_name = NULL;
+    lf->dec_timestamp = NULL;
 
     cJSON_Delete(tmp);
 
