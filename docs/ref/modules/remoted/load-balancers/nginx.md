@@ -120,8 +120,8 @@ http {
         # This side may be permissive: it is a different connection from the backend one.
         ssl_protocols TLSv1.2 TLSv1.3;
 
-        # [!] remoted accepts 20 MB; NGINX defaults to 1 MB -- see 3.2.
-        client_max_body_size 20m;
+        # [!] remoted accepts `<remote><https><max_body_size>`, 10 MiB by default; NGINX defaults to 1 MB -- see 3.2.
+        client_max_body_size 10m;
 
         location / {
             # ---- connection 2: what NGINX opens TOWARDS REMOTED ----
@@ -206,7 +206,7 @@ forwarded target as long as `proxy_pass` has no URI component. There is no need 
 
 ### 3.2. The 1 MB default body limit
 
-Without `client_max_body_size 20m`, NGINX answers `413 Request Entity Too Large` to events remoted
+Without raising `client_max_body_size`, NGINX answers `413 Request Entity Too Large` to events remoted
 would have accepted. The giveaway is that the error page is NGINX's own, not a JSON response from
 the manager.
 
@@ -308,7 +308,7 @@ What each status code tells you:
 | `202` | token valid **and** the event was ingested |
 | `401` | token rejected — unknown agent, wrong key or clock drift; a rewritten target shows as `404`, not here |
 | `404` | no such route — if it is *every* request, suspect a rewritten target (3.1) or a prefix mismatch |
-| `413` | body too large — the proxy's limit (3.2) or the manager's 20 MB |
+| `413` | body too large — the proxy's limit (3.2) or the manager's cap |
 | `502` | the proxy could not talk to the manager — suspect TLS 1.3 (3.3) or certificate verification |
 | `503` | the manager accepted the request but could not process it right now |
 

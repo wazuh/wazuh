@@ -146,7 +146,7 @@ backend remoted_nodes_http
 ```
 
 Note what the configuration does **not** contain: there is no body-size limit (HAProxy has none by
-default, so remoted's own 20 MB applies) and no path handling, because HAProxy forwards the request
+default, so remoted's own `<remote><https><max_body_size>` (10 MiB by default) applies) and no path handling, because HAProxy forwards the request
 target unchanged unless you explicitly tell it not to.
 
 ## 3. HAProxy specifics
@@ -284,7 +284,7 @@ What each status code tells you:
 | `202` | token valid **and** the event was ingested |
 | `401` | token rejected — unknown agent, wrong key or clock drift |
 | `404` | no such route — if it is *every* request, something is rewriting the target |
-| `413` | body too large — remoted's own 20 MB limit |
+| `413` | body too large — remoted's own body cap |
 | `502` / `503` | HAProxy could not get an answer — suspect TLS 1.3, certificate verification, or every manager being down |
 
 ## 6. Reference configurations

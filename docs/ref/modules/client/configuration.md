@@ -136,7 +136,7 @@ Path to the CA bundle used to verify the manager's certificate.
 How strictly the agent verifies the manager's TLS certificate.
 
 - **Default value:** There is no single default. The mode is resolved at startup from what
-  `<ssl>` says and whether a trust anchor is on disk:
+  `<ssl>` says and whether a trust anchor is on disk (`w_agent_resolve_ssl_posture()`):
 
   | What is configured | Resolved mode |
   |---|---|
@@ -144,6 +144,19 @@ How strictly the agent verifies the manager's TLS certificate.
   | `<certificate_authorities>`, no explicit mode | `certificate` (mirrors the manager's own inference for `<remote><https><ca>`), logged as a warning |
   | Neither, but the trust anchor is present | `full`, with the anchor as the CA |
   | Nothing at all | `none` |
+
+  Two consequences worth reading twice:
+
+  * **A stock install with no trust material verifies nothing**, and logs
+    `TLS verification is DISABLED (verify_mode=none)` at warning level. `none` is never chosen over
+    a usable anchor, but it *is* what an agent given nothing falls back to, because `system` could
+    only ever refuse: the manager's certificate is signed by its own `root-ca.pem`, which is in no
+    OS trust store.
+  * **Placing a CA at `etc/certs/root-ca.pem` promotes the agent to `full`**, which includes the
+    hostname check, without any configuration change. Behind a load balancer in TLS passthrough that
+    requires every manager node's certificate to carry the address the agent dials; see
+    [A Wazuh server cluster behind a load balancer](../cluster/lb.md). If it does not, the agent
+    fails with a TLS error and no HTTP status.
 
 - **Allowed values:**
   - `full` -- verify the certificate against the CA AND check that it matches the manager's
