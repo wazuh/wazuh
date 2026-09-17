@@ -643,6 +643,21 @@ components:
                   - $ref: '#/components/schemas/WazuhDBStatsItem'
         - $ref: '#/components/schemas/AllItemsResponse'
 
+    AllItemsResponseWazuhRemotedTls:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Exactly one item: the node's TLS certificate document, or its unavailability"
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/WazuhRemotedTls'
+                  - $ref: '#/components/schemas/WazuhRemotedTlsUnavailable'
+        - $ref: '#/components/schemas/AllItemsResponse'
+
     AllItemsResponseGroups:
       allOf:
         - type: object
@@ -1702,6 +1717,174 @@ components:
           description: "User's JWT token"
 
     # Cluster and manager models
+    WazuhCertificateInfo:
+      type: object
+      description: |
+        One X.509 certificate as remoted describes it. Every timestamp comes twice: RFC 3339 UTC and
+        `_ts` epoch seconds. `fingerprint` is the SHA-256 of the certificate's DER encoding, written
+        `x509-sha256:` followed by 64 lowercase hex digits without separators — the identity of that
+        exact certificate (a reissue with the same key reads as a different one), not a public-key pin.
+        `openssl x509 -noout -fingerprint -sha256` prints the same digest uppercase with colons.
+      properties:
+        subject:
+          type: string
+          description: "Subject, RFC 2253 one-line form"
+        issuer:
+          type: string
+          description: "Issuer, RFC 2253 one-line form"
+        not_before:
+          type: string
+          format: date-time
+        not_before_ts:
+          type: integer
+          format: int64
+          description: "Epoch seconds of `not_before`"
+        not_after:
+          type: string
+          format: date-time
+        not_after_ts:
+          type: integer
+          format: int64
+          description: "Epoch seconds of `not_after`"
+        seconds_until_expiry:
+          type: integer
+          format: int64
+          description: "`not_after_ts - evaluated_at_ts`. Signed: negative once expired. No threshold is applied by the manager"
+        fingerprint:
+          type: string
+          description: "`x509-sha256:` + 64 lowercase hex digits (SHA-256 of the DER)"
+        serial:
+          type: string
+          description: "Serial number, `0x` + lowercase hex"
+
+    WazuhRemotedTls:
+      type: object
+      description: |
+        The TLS certificate material `wazuh-manager-remoted` serves on one node, from its admin
+        `GET /tls`. The listener half is the certificate loaded when remoted started — `loaded_at`
+        dates it, and a replaced file shows only after a restart. The CA half is read on this very
+        request from the same source `GET /cacerts` answers from, so replacing the bundle on disk is
+        reflected immediately. No `warning`/`critical` verdicts: thresholds belong to the consumer.
+      properties:
+        node:
+          type: string
+          description: "Cluster node name"
+        available:
+          type: boolean
+          enum: [true]
+          description: "remoted answered; the document below is current"
+        evaluated_at:
+          type: string
+          format: date-time
+          description: "When remoted built this document (the request time)"
+        evaluated_at_ts:
+          type: integer
+          format: int64
+        listener:
+          allOf:
+            - $ref: '#/components/schemas/WazuhCertificateInfo'
+            - type: object
+              properties:
+                sans:
+                  type: array
+                  items:
+                    type: string
+                  description: "subjectAltName dNSName and iPAddress entries, bare, in certificate order"
+                path:
+                  type: string
+                  description: "Configured `remote.https.certificate` path, relative to the installation directory"
+                loaded_at:
+                  type: string
+                  format: date-time
+                  description: "When remoted loaded this certificate (its last start). The certificate cannot change until the next one"
+                loaded_at_ts:
+                  type: integer
+                  format: int64
+        ca_bundle:
+          type: object
+          description: "The CA bundle `GET /cacerts` hands out to agents (`remote.https.ca_certificate`)"
+          properties:
+            path:
+              type: string
+            publication:
+              type: integer
+              format: int64
+              description: "Publication timestamp stamped by `wazuh-manager-certs` in the bundle's `##` metadata block; 0 when the block is missing or its hash does not match the content"
+            publication_vouched:
+              type: boolean
+              description: "Whether the `##` block's hash matched the bundle content"
+            content_sha256:
+              type: string
+              description: "Bare-hex SHA-256 over the DER encodings of every certificate, sorted and concatenated: the bundle's identity, independent of certificate order"
+            certificates_count:
+              type: integer
+            certificates_limit:
+              type: integer
+              description: "Most certificates a bundle may carry and still reach every agent (6)"
+            serialized_bytes:
+              type: integer
+              description: "Size of the PEM `GET /cacerts` serves"
+            serialized_bytes_limit:
+              type: integer
+              description: "Largest bundle an agent accepts (8191 bytes)"
+            chain_valid:
+              type: boolean
+              nullable: true
+              description: |
+                Whether the listener certificate validates with this bundle as its ONLY trust store
+                (chain building, validity dates, `basicConstraints`/`keyUsage` of every CA, TLS server
+                purpose) — what a verifying agent would conclude. `null` when there is nothing to
+                validate against. Distinct from each certificate's `signs_active_leaf`.
+            chain_error:
+              type: string
+              description: "OpenSSL's reason when `chain_valid` is false; absent otherwise"
+            certificates:
+              type: array
+              items:
+                allOf:
+                  - $ref: '#/components/schemas/WazuhCertificateInfo'
+                  - type: object
+                    properties:
+                      signs_active_leaf:
+                        type: boolean
+                        description: "Whether THIS certificate directly signed the listener certificate (a signature check, no dates, no constraints) — the check `GET /cacerts` uses to refuse a mismatched bundle. An expired CA that signed the leaf reads true here and false in `chain_valid`"
+            last_read_failure:
+              type: object
+              description: "Present only while the bundle file cannot be read; the fields above then describe the LAST GOOD read of it (or are empty when there never was one)"
+              properties:
+                cause:
+                  type: string
+                  description: "e.g. `cannot be opened (No such file or directory)`"
+                errno:
+                  type: integer
+                consecutive:
+                  type: integer
+                  description: "Failed reads in a row since the last good one"
+
+    WazuhRemotedTlsUnavailable:
+      type: object
+      description: |
+        remoted on this node could not describe its certificates. Reported as the node's affected
+        item — never as a failed item or an empty certificate list — so a consumer renders the node as
+        unknown rather than as healthy or failing.
+      properties:
+        node:
+          type: string
+        available:
+          type: boolean
+          enum: [false]
+        reason:
+          type: string
+          enum:
+            - remoted not running
+            - admin socket unreachable
+            - listener not started
+            - timeout
+            - invalid response
+            - unexpected response
+            - request failed
+            - admin client unavailable
+
     WazuhRemotedStatsItem:
       type: object
       description: |
@@ -6986,6 +7169,101 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /cluster/{node_id}/daemons/remoted/tls:
+    get:
+      tags:
+        - Cluster
+      summary: "Get remoted's TLS certificate validity from a cluster node"
+      description: "Return the certificate wazuh-manager-remoted's HTTPS listener serves to agents and the CA bundle it hands out on GET /cacerts, as that node's remoted describes them: subjects, issuers, validity windows in RFC 3339 and epoch forms, signed seconds until expiry (negative once expired), x509-sha256 identities, bundle sizes against their limits, and per CA whether it signs the served certificate. The CA half is read at request time; the listener certificate is the one loaded when remoted started (listener.loaded_at) and changes only after a restart. No thresholds are applied. When remoted on the node cannot answer (not running, admin socket unreachable, listener not started, timeout, invalid response) the single affected item is {node, available: false, reason} rather than an error or an empty certificate list."
+      operationId: api.controllers.cluster_controller.get_remoted_tls_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: "remoted TLS certificate validity"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseWazuhRemotedTls'
+              example:
+                data:
+                  affected_items:
+                    - node: worker-01
+                      available: true
+                      evaluated_at: 2026-09-15T10:00:00Z
+                      evaluated_at_ts: 1789466400
+                      listener:
+                        subject: CN=manager-01
+                        issuer: CN=Corp Root CA
+                        sans: [manager-01.example.com, 10.0.0.5]
+                        not_before: 2026-01-01T00:00:00Z
+                        not_before_ts: 1767225600
+                        not_after: 2027-01-01T00:00:00Z
+                        not_after_ts: 1798761600
+                        seconds_until_expiry: 9295200
+                        fingerprint: x509-sha256:3f9c1e5a0b7d2c4e6f8a9b0c1d2e3f405162738495a6b7c8d9e0f1a2b3c4d5e6
+                        serial: 0x1a2b3c4d
+                        path: etc/certs/remoted.pem
+                        loaded_at: 2026-09-14T08:12:31Z
+                        loaded_at_ts: 1789373551
+                      ca_bundle:
+                        path: etc/certs/root-ca.pem
+                        publication: 0
+                        publication_vouched: false
+                        content_sha256: b7e1a2c3d4e5f60718293a4b5c6d7e8f9011223344556677889900aabbccddee
+                        certificates_count: 2
+                        certificates_limit: 6
+                        serialized_bytes: 2428
+                        serialized_bytes_limit: 8191
+                        chain_valid: true
+                        certificates:
+                          - subject: CN=Corp Root CA
+                            issuer: CN=Corp Root CA
+                            not_before: 2020-01-01T00:00:00Z
+                            not_before_ts: 1577836800
+                            not_after: 2030-01-01T00:00:00Z
+                            not_after_ts: 1893456000
+                            seconds_until_expiry: 103989600
+                            fingerprint: x509-sha256:9a8b7c6d5e4f30211203f4e5d6c7b8a9908172635445362718090a1b2c3d4e5f
+                            serial: 0x01
+                            signs_active_leaf: true
+                          - subject: CN=Corp Root CA 2027
+                            issuer: CN=Corp Root CA 2027
+                            not_before: 2026-09-01T00:00:00Z
+                            not_before_ts: 1788220800
+                            not_after: 2036-09-01T00:00:00Z
+                            not_after_ts: 2103753600
+                            seconds_until_expiry: 314287200
+                            fingerprint: x509-sha256:0c1d2e3f405162738495a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091
+                            serial: 0x02
+                            signs_active_leaf: false
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "TLS certificate information was successfully read in specified node"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
