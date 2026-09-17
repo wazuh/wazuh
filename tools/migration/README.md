@@ -38,7 +38,7 @@ sudo ./wazuh-migrate-identity.py check /root/wazuh-4x-bundle
 
 | Data | 4.x | 5.0 | Notes |
 |---|---|---|---|
-| Agent keys | `etc/client.keys` | `etc/client.keys` | `wazuh-manager:wazuh-manager 0640`. `wazuh-manager-authd` rewrites this file after dropping privileges, so the 4.x `root:wazuh` ownership stops enrollment. |
+| Agent keys | `etc/client.keys` | `etc/client.keys` | `wazuh-manager:wazuh-manager 0660`, the mode the installer ships. `wazuh-manager-authd` reopens this file for append after dropping privileges, so root ownership stops enrollment. |
 | Agent registry | `queue/db/global.db` | rows copied into the target's `queue/db/global.db` | The 4.x file cannot replace the target's: 5.0 stamps `PRAGMA user_version` and refuses anything else. |
 | Group folders | `etc/shared/<group>/` | same | `default` is excluded: 5.0 ships its own. `merged.mg` is regenerated. |
 | Enrollment password | `etc/authd.pass` | `etc/authd.pass` | `--with-password`. Optional by default: only 4.x agents use it. See the guide before deciding. |
