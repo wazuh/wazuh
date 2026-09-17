@@ -179,6 +179,14 @@ jobs:
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
 
+      # The first restart after a fresh install is the slow one (daemons initializing their
+      # databases and sockets), and the first test of the suite is the one paying for it.
+      # Absorb it here so the tests always restart an already warm manager.
+      - name: Warm up the manager
+        run: |
+          sudo /var/ossec/bin/wazuh-control restart
+          sudo /var/ossec/bin/wazuh-control status
+
       # Run AWS integration tests
       - name: Run Parser related tests
         if: steps.filter.outputs.parser == 'true'
