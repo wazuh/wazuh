@@ -39,6 +39,11 @@ constexpr auto APK_DB_PATH {"/lib/apk/db/installed"};
 constexpr auto SNAP_PATH {"/var/lib/snapd"};
 
 constexpr auto UNKNOWN_VALUE {" "};
+
+// Reported for a numeric field the platform provides no source for, so that consumers can tell
+// it apart from a genuine zero. The manager stores it as NULL.
+constexpr int NOT_COLLECTED_VALUE = -1;
+
 constexpr auto MAC_ADDRESS_COUNT_SEGMENTS
 {
     6ull
