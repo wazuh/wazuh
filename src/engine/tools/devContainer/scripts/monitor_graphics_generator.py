@@ -637,8 +637,6 @@ def generate_charts(
         if not os.path.isfile(logs_path):
             logs_path = os.path.join(path, "logs.csv")
 
-        # Remoted API stats: prefer monitor/ subdir, fall back to root
-
         if os.path.isfile(bench_path):
             benches[label] = load_bench(bench_path)
         if os.path.isfile(disk_path):

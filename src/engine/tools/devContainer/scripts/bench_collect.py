@@ -180,12 +180,9 @@ def _query_uds_metrics(socket_path: str, max_size: int, timeout: float = 5.0) ->
 # constant; what actually differs between them is the socket, the wire protocol and
 # which numbers are worth putting in the log, so those are the only parameters.
 #
-# Each scrape is written TWICE, on purpose and to different files:
-#   - one line in samples/metrics.ndjson, lossless, every metric the dump carried;
-#   - one row in the daemon's CSV, the short-named projection of that same line.
-# The CSV is derived, not collected: it is bench_samples.wide_row() of the line just
-# written, so the two can never disagree, and it is kept only while consumers migrate
-# off it. Deleting the CSV writer here does not lose a number.
+# Each scrape is written once to samples/metrics.ndjson, keeping every metric the
+# dump carried. Per-daemon CSVs can be derived on demand with
+# `python3 bench_samples.py <results_dir>`; the collector does not write them.
 # ---------------------------------------------------------------------------
 def _v(sample: dict, name: str) -> int:
     """One metric of a sample as an int, 0 when it is not there.

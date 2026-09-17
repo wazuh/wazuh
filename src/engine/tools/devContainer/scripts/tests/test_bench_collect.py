@@ -8,8 +8,8 @@
 
 Drives bench_collect.api_monitor_loop against a real Unix socket serving a real response,
 because the parts worth testing here are the ones a unit test on the format cannot reach:
-that both artifacts are written for the same scrape, that they agree, that an endpoint
-answering an ERROR is recorded as a failed scrape rather than an empty successful one, and
+that scrapes reach the samples file and can be projected, that an endpoint answering an
+ERROR is recorded as a failed scrape rather than an empty successful one, and
 that an endpoint which is not there degrades into failed-scrape lines instead of taking the
 collector down mid-run.
 

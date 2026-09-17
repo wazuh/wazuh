@@ -229,8 +229,7 @@ BENCH_CSV="$RESULTS_DIR/bench.csv"
 SENDER_JSON="$RESULTS_DIR/sender_summary.json"
 MONITOR_DIR="$RESULTS_DIR/monitor"
 # The run's lossless server-side artifact: every daemon's statistics, one JSON object
-# per scrape. The per-daemon CSVs under monitor/ are DERIVED from it and kept only while
-# consumers migrate off them.
+# per scrape. Per-daemon CSVs can be exported on demand with bench_samples.py.
 SAMPLES_DIR="$RESULTS_DIR/samples"
 SAMPLES_NDJSON="$SAMPLES_DIR/metrics.ndjson"
 SUMMARY_JSON="$RESULTS_DIR/summary.json"

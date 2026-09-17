@@ -758,8 +758,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--ndjson", type=str, default=None,
         help="Samples file for every daemon's statistics (default: <output-dir>/samples/"
-             "metrics.ndjson). This is the lossless artifact; the per-daemon CSVs next to "
-             "it are derived from it and kept only while consumers migrate.",
+             "metrics.ndjson). Per-daemon CSVs can be exported on demand with bench_samples.py.",
     )
     p.add_argument("-d", "--debug", action="store_true", help="Debug logging")
     return p.parse_args()
