@@ -160,3 +160,63 @@ def test_custom_logging_escapes_control_chars(user, path, expected_prefix):
     # The JSON record keeps the raw values; its formatter escapes them.
     assert json_record['user'] == user
     assert json_record['uri'] == f'GET {path}'
+
+def test_custom_logging_events_summary_matches_in_both_logs():
+    """For /events at INFO both api.log and api.json record the event count, not the full batch.
+
+    body_dump feeds the plain-text line and json_info['body'] feeds the JSON line; if the batch is
+    summarised after body_dump is taken, api.log leaks every event while api.json shows the count.
+    A large batch also exercises that the summary, not the payload, is what the size cap sees.
+    """
+    body = {'events': [{'n': i} for i in range(1000)]}
+
+    with patch('api.alogging.logger') as logger_mock:
+        logger_mock.level = 20
+        logger_mock.info = MagicMock()
+        logger_mock.debug2 = MagicMock()
+        alogging.custom_logging(user='wazuh', remote='1.1.1.1', method='POST', path='/events',
+                                query={}, body=copy(body), elapsed_time=0.01, status=200)
+
+    plain_line, json_record = (c.args[0] for c in logger_mock.info.call_args_list)
+    assert json_record['body'] == {'events': 1000}
+    assert 'and body {"events": 1000} ' in plain_line
+    # The full batch never reaches either line.
+    assert '"n": 0' not in plain_line
+    assert 'body_omitted' not in plain_line
+
+
+@pytest.mark.parametrize("body", [None, ['a', 'b'], 'a string', 42])
+def test_custom_logging_non_dict_events_body(body):
+    """A non-dict body on /events is not summarised and does not raise."""
+    with patch('api.alogging.logger') as logger_mock:
+        logger_mock.level = 20
+        logger_mock.info = MagicMock()
+        logger_mock.debug2 = MagicMock()
+        alogging.custom_logging(user='wazuh', remote='1.1.1.1', method='POST', path='/events',
+                                query={}, body=body, elapsed_time=0.01, status=200)
+
+    json_record = logger_mock.info.call_args_list[1].args[0]
+    assert json_record['body'] == body
+
+
+def test_custom_logging_omits_oversized_body():
+    """Check that a body too large to log is replaced by a marker in both log lines.
+
+    The same payload is written once to api.log and again to api.json, so an oversized body turns
+    one request into several times its size on disk.
+    """
+    body = {'field': 'a' * (alogging.MAX_LOGGED_BODY_SIZE + 1)}
+    expected_body = {'body_omitted': f'body of {len(json.dumps(body))} serialised bytes exceeds '
+                                     f'the {alogging.MAX_LOGGED_BODY_SIZE} byte logging limit'}
+
+    with patch('api.alogging.logger') as log_info_mock:
+        log_info_mock.info = MagicMock()
+        log_info_mock.debug2 = MagicMock()
+        alogging.custom_logging(user='wazuh', remote='1.1.1.1', method='POST', path='/agents',
+                                query={}, body=body, elapsed_time=1.01, status=200, headers={})
+
+        log_line, json_line = [called.args[0] for called in log_info_mock.info.call_args_list]
+
+    assert json_line['body'] == expected_body
+    assert json.dumps(expected_body) in log_line
+    assert 'aaaa' not in log_line
