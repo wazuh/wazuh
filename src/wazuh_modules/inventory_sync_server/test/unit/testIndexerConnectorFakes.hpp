@@ -22,6 +22,11 @@
 #include "vd/IVdScanner.hpp"
 #include "vd/vdScannerFactory.hpp"
 
+// Not used in this header itself: several sibling *_test.cpp files include this header for its
+// fakes and then reach for wazuh::uds_http types (HttpRequest/HttpResponse/...) unqualified,
+// relying on it transitively -- removing it breaks their build, not this file's.
+#include <uds_http_server/IUdsHttpServer.hpp>
+
 #include <json.hpp>
 
 #include <atomic>
@@ -500,7 +505,7 @@ namespace invsync::test
     /// Installs a FakeVdScanner (sharing @p events) as the module's scan lane seam.
     inline void installFakeVdScanner(const std::shared_ptr<ConnectorEvents>& events)
     {
-        invsync::test_hooks::setVdScannerFactoryForTests([events]() -> std::shared_ptr<invsync::vd::IVdScanner>
+        invsync::test_hooks::setVdScannerFactoryForTests([events](bool) -> std::shared_ptr<invsync::vd::IVdScanner>
                                                          { return std::make_shared<FakeVdScanner>(events); });
     }
 
@@ -628,7 +633,8 @@ namespace invsync::test
                 return std::make_unique<invsync::indexer::IndexerConnectorAsyncAdapter>(
                     config, adapter.session(), std::move(logging));
             });
-        invsync::test_hooks::setVdScannerFactoryForTests([]() { return invsync::vd::makeProductionVdScanner(); });
+        invsync::test_hooks::setVdScannerFactoryForTests(
+            [](bool vdConfiguredEnabled) { return invsync::vd::makeProductionVdScanner(vdConfiguredEnabled); });
     }
 
 } // namespace invsync::test
