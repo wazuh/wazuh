@@ -158,10 +158,10 @@ rm -rf ${DIR}/packages_files
 # Remove old ossec user and group if exists and change ownwership of files
 if [[ $(dscl . -read /Groups/ossec) ]]; then
     echo "Changing group from Ossec to Wazuh"
-    find ${DIR}/ -group ossec -user root -exec chown root:wazuh {} \ > /dev/null 2>&1 || true
+    find ${DIR}/ -group ossec -user root -exec chown root:wazuh {} \; > /dev/null 2>&1 || true
     if [[ $(dscl . -read /Users/ossec) ]]; then
         echo "Changing user from Ossec to Wazuh"
-        find ${DIR}/ -group ossec -user ossec -exec chown wazuh:wazuh {} \ > /dev/null 2>&1 || true
+        find ${DIR}/ -group ossec -user ossec -exec chown wazuh:wazuh {} \; > /dev/null 2>&1 || true
         echo "Removing Ossec user"
         sudo /usr/bin/dscl . -delete "/Users/ossec"
     fi
