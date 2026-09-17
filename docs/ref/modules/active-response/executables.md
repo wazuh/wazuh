@@ -87,6 +87,7 @@ Wazuh provides **5 Active Response executables** covering IP blocking and accoun
 |----------|--------|------|-----------------|
 | 1 | pf | `pfctl` | `pfctl -t wazuh_fwtable -T add 192.168.1.100` |
 | 2 | hosts.deny | edit file | `ALL: 192.168.1.100` (appended to `/etc/hosts.deny`) |
+| 3 | route | `route` | `route -q add 192.168.1.100 127.0.0.1 -blackhole` |
 
 **Input Fields**:
 ```json
@@ -108,21 +109,16 @@ Wazuh provides **5 Active Response executables** covering IP blocking and accoun
 **macOS-Specific Details**:
 - **PF Table**: Uses table name `wazuh_fwtable`
 - **Connection Killing**: When blocking, also kills existing connections: `pfctl -k 192.168.1.100`
-- **Anchor Configuration**: Requires PF anchor `wazuh_anchor` to be configured in `/etc/pf.conf`
+- **Self-Configuring pf.conf**: Does not use a PF anchor file. If the `wazuh_fwtable` table doesn't exist yet, `block-ip` appends it directly to `/etc/pf.conf` and reloads PF with `pfctl -f /etc/pf.conf` — see wazuh/wazuh#39189 for the risk this self-modification raises.
+- **Fallback**: Falls back to `hosts.deny`, then to a `route` blackhole if `pf` is unavailable or not enabled — the same no-configuration-needed fallback the Unix/Linux chain has, so a stock macOS install (pf disabled, no `/etc/hosts.deny`) still blocks the address
 - **Permissions**: Requires root privileges
 
-**Example pf.conf setup**:
+**Example pf.conf entry `block-ip` appends when `wazuh_fwtable` is missing**:
 ```
-# /etc/pf.conf
-anchor "wazuh_anchor"
-load anchor "wazuh_anchor" from "/etc/pf.anchors/wazuh_anchor"
-```
-
-**Example anchor file**:
-```
-# /etc/pf.anchors/wazuh_anchor
+# Wazuh active response table
 table <wazuh_fwtable> persist
-block in quick from <wazuh_fwtable>
+block in quick from <wazuh_fwtable> to any
+block out quick from any to <wazuh_fwtable>
 ```
 
 **Return Codes**:

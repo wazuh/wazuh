@@ -114,20 +114,14 @@ execd.max_restart_lock=10
 
 ### Command Format
 
-Active response commands sent from manager to agent follow this format:
+Active response scripts receive their parameters as WCS-compliant JSON on stdin, not as positional arguments — see [Input Fields](executables.md) for the exact schema per executable. The `command` field carries the action:
 
-```
-<action> <command> <timeout> <parameters>
-```
+- `enable` - Execute the response action (e.g., block IP, disable user)
+- `disable` - Reverse the response action (e.g., unblock IP, re-enable user)
 
-**Actions:**
-- `add` - Execute the response action (e.g., block IP, disable user)
-- `delete` - Reverse the response action (e.g., unblock IP, re-enable user)
-
-**Example commands:**
-```
-add firewall-drop 600 192.168.1.100
-delete firewall-drop 0 192.168.1.100
+**Example (`block-ip`):**
+```json
+{"wazuh":{"active_response":{"name":"block-ip","executable":"block-ip","type":"stateless"}},"source":{"ip":"192.168.1.100"},"command":"enable"}
 ```
 
 ### Script Execution Environment
@@ -148,11 +142,8 @@ Active response scripts run with:
 - Windows: `C:\Program Files (x86)\ossec-agent\active-response\bin\`
 
 **Common scripts:**
-- `firewall-drop` - Block IP address at firewall level
-- `host-deny` - Add IP to `/etc/hosts.deny`
-- `disable-account` - Disable user account
-- `restart-wazuh` - Restart Wazuh agent
-- `route-null` - Null-route IP address
+- `block-ip` - Block or unblock an IP address, trying the platform's available firewall methods in order (see [Executables Reference](executables.md) for the per-platform method chain)
+- `disable-account` - Disable a user account
 
 ### Script Requirements
 

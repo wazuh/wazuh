@@ -125,7 +125,7 @@ Active Response provides the following executables:
 ### IP Blocking (Cross-Platform)
 
 - **block-ip** (Unix/Linux): Blocks IPs using iptables, firewalld, pf, ipfw, npf, route, or hosts.deny
-- **block-ip** (macOS): Blocks IPs using pf or hosts.deny
+- **block-ip** (macOS): Blocks IPs using pf, hosts.deny, or route
 - **block-ip** (Windows): Blocks IPs using netsh or route
 
 ### Account Management
