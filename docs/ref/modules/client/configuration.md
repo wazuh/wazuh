@@ -118,30 +118,51 @@ Path to the private key matching `<certificate>`.
 
 Path to the CA bundle used to verify the manager's certificate.
 
-- **Default value:** None
+- **Default value:** the trust anchor `etc/certs/root-ca.pem` when it exists and the resolved
+  `<verification_mode>` is `full` or `certificate`; otherwise none. See
+  [`verification_mode`](#verification_mode).
 - **Allowed values:** Path to a PEM-encoded CA bundle file, readable by the agent
 - **Required:** Yes, when `<verification_mode>` is `full` or `certificate` -- the agent fails
   closed (refuses to start) without a readable CA file in that case.
 - **Note:** Must NOT be set when `<verification_mode>` is `system` -- the agent fails closed if
   it is, since the OS trust store is used as the anchor instead and a configured CA would go
-  silently unused. Ignored (with a warning if set but unreadable) when `<verification_mode>` is
-  `none`.
+  silently unused. Under `none` it is inert: the value is neither read nor probed, and nothing
+  is logged about it, so a path left behind from an earlier configuration stays silent until the
+  mode changes.
 
 #### verification_mode
 
 How strictly the agent verifies the manager's TLS certificate.
 
-- **Default value:** `system` when `<certificate_authorities>` is not set, `certificate` when it
-  is set without an explicit `<verification_mode>` (mirrors the manager's own inference for
-  `<remote><https><ca>`/`<verification_mode>` in `remote-config.c`). `none` is never the default —
-  it is only reached via an explicit `<verification_mode>none</verification_mode>`.
+There is no single default. The mode is resolved once at startup from two inputs -- what `<ssl>`
+says and whether a trust anchor is on disk at `etc/certs/root-ca.pem` (`certs\root-ca.pem` on
+Windows) -- as a ladder, of which `none` is only the last rung:
+
+| `<ssl>` says | Anchor on disk | Resolved mode |
+|---|---|---|
+| `<verification_mode>` is set | either | that mode, `none` included |
+| only `<certificate_authorities>` is set | either | `certificate`, against that file |
+| nothing | present | `full`, with the anchor as the CA |
+| nothing | absent | `none` |
+
+The last rung is `none` rather than `system` because a stock installation has nothing for the OS
+trust store to succeed against: the manager's certificate is signed by its own `root-ca.pem`, which
+is in no OS store. An agent given no trust material verifies nothing and says so; an agent given the
+anchor takes the rung above it and verifies. `system` stays available as an explicit choice, for a
+fleet whose manager is fronted by a publicly trusted certificate.
+
+The anchor reaches the agent either from an enrollment token, whose bootstrap writes it, or by being
+placed there -- during a remote upgrade the manager delivers it over the upgrade channel. It is also
+the default `<certificate_authorities>`: under `full` and `certificate`, an explicit path always
+wins, and the anchor fills the gap when none is configured.
+
 - **Allowed values:**
-  - `full` — verify the certificate against `<certificate_authorities>` AND check that it
+  - `full` -- verify the certificate against `<certificate_authorities>` AND check that it
     matches the manager's hostname (strictest).
-  - `certificate` — verify the certificate against `<certificate_authorities>`, but do not
+  - `certificate` -- verify the certificate against `<certificate_authorities>`, but do not
     check the hostname.
-  - `none` — no TLS verification at all. Insecure; intended for quick testing only.
-  - `system` — verify the certificate (and hostname, like `full`) against the operating
+  - `none` -- no TLS verification at all. Insecure; intended for quick testing only.
+  - `system` -- verify the certificate (and hostname, like `full`) against the operating
     system's own trusted CA store instead of `<certificate_authorities>`, the way a web
     browser trusts a public website. Useful when the manager's certificate is issued by a
     publicly (or OS-) trusted CA, so a CA bundle does not need to be distributed to every
@@ -150,6 +171,18 @@ How strictly the agent verifies the manager's TLS certificate.
     paths (e.g. `/etc/ssl/certs/ca-certificates.crt` on Debian-family systems,
     `/etc/pki/tls/certs/ca-bundle.crt` on RHEL-family systems) and fails closed at startup if
     none is found on the host.
+- **Note:** an explicit `none` is honoured even with an anchor on disk, and warns, since that is the
+  one combination an operator is most likely to have reached by accident:
+
+  ```console
+  WARNING: (4122): <ssl><verification_mode> is 'none' and the trust anchor 'etc/certs/root-ca.pem' is present: TLS verification stays disabled, as configured, and the anchor is not used. Remove <verification_mode>none</verification_mode> to verify against it.
+  ```
+
+- **Note:** the resolution runs once, at startup. An anchor written while the agent is running is
+  picked up on its next start, except during the enrollment-token bootstrap, which is sequenced to
+  take effect on the same start.
+- **Note:** `<ssl>` cannot be set through centralized configuration. A group's `agent.conf` rejects
+  it, so an agent's verification posture is never remotely settable by the manager it verifies.
 - **Note:** Any value other than the four above is rejected at config-parse time.
 
 #### ciphers

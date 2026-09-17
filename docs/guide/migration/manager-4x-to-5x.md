@@ -37,8 +37,8 @@ indexer.
   requires it to be on 4.14.0 or later first.
 - **Ports.** Agents need `1514/tcp` and `1515/tcp` (legacy channel and enrollment) while any 4.x
   agent remains, and `1517/tcp` (HTTPS) for every agent that has been upgraded to 5.0.
-- **Certificates.** The 5.0 manager does not generate any, and refuses to start without the agent
-  listener pair. Issue them with the installation assistant's `wazuh-certs-tool` before you install,
+- **Certificates.** The 5.0 manager issues none of the material agents and the indexer depend on,
+  and refuses to start without the agent listener pair. Issue them with the installation assistant's `wazuh-certs-tool` before you install,
   and make sure the certificate's subjectAltName carries every address agents dial, which for a
   migration is the address the 4.x fleet already uses. See [Step 2](#2-install-the-50-manager).
 - **Tools.** The `sqlite3` command-line tool on the 5.0 host for [Step 3](#3-restore-the-identity-data).
@@ -84,13 +84,19 @@ set are different, see [Back up and restore](../../ref/backup-restore.md).
 
 Uninstall 4.x and install 5.0 following the installation documentation.
 
-Unlike 4.x, the 5.0 manager generates no TLS material. Issue it with the installation assistant's
-`wazuh-certs-tool` and deploy it under `etc/certs/` before the first start, as
-[Deploy certificates](../../ref/getting-started/installation.md#deploy-certificates) describes: the
-indexer material (`root-ca.pem`, `indexer-connector.pem`, `indexer-connector-key.pem`) and the agent
-listener pair `remoted.pem`/`remoted-key.pem`, a leaf of that same `root-ca.pem`, owned
-`wazuh-manager:wazuh-manager 640`. Two requirements come from the fleet rather than from the
-installer:
+Unlike 4.x, the 5.0 manager does not issue the certificates agents and the indexer verify it by.
+Issue them with the installation assistant's `wazuh-certs-tool` and deploy them under `etc/certs/`
+before the first start, as
+[Deploy certificates](../../ref/getting-started/installation.md#deploy-certificates) describes:
+
+- the indexer material, `root-ca.pem`, `indexer-connector.pem` and `indexer-connector-key.pem`,
+  owned `root:wazuh-manager 640`, so the manager can read it but not replace its own trust anchor;
+- the agent listener pair `remoted.pem`/`remoted-key.pem`, a leaf of that same `root-ca.pem`, owned
+  `wazuh-manager:wazuh-manager 640` because remoted and authd open it after dropping privileges.
+
+The API listener is the exception: `wazuh-manager-apid` still issues its own self-signed certificate
+on first start, and needs nothing from you. Two requirements come from the fleet rather than from
+the installer:
 
 - **The subjectAltName must carry every address agents dial.** For a migration that is the address
   the 4.x agents already have in their `ossec.conf`, plus the cluster VIP and any NAT address. The
@@ -118,15 +124,16 @@ Do not connect any agent yet.
 
 ## 3. Restore the identity data
 
-Run everything in this step as root on the 5.0 host with the manager stopped. Ownership matters:
-in 4.x the daemons ran as root and read files owned by `root:wazuh`; in 5.0 they run as
-`wazuh-manager`, and `wazuh-manager-authd` rewrites `client.keys` itself. A `client.keys` owned by
-root stops authd with `ERROR: Unable to open etc/client.keys (key file)`.
+Run everything in this step as root on the 5.0 host with the manager stopped. Ownership matters,
+because the accounts were renamed: what 4.x installed as `wazuh:wazuh` belongs to `wazuh-manager` on
+5.0, and `wazuh-manager-authd` reopens `client.keys` for append after dropping privileges. A
+`client.keys` left owned by root stops it with `ERROR: Unable to open etc/client.keys (key file)`.
+The commands below reproduce the ownership and modes a 5.0 installation ships.
 
 ### Agent keys
 
 ```bash
-install -m 640 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/client.keys /var/wazuh-manager/etc/client.keys
+install -m 660 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/client.keys /var/wazuh-manager/etc/client.keys
 ```
 
 The file format is unchanged and the 4.x key is exactly the key the 5.0 protocol uses, so no agent
@@ -177,13 +184,15 @@ chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/shared/
 Group membership came with `global.db`: an agent assigned to a group from the dashboard, the API
 or `agent_groups` in 4.x is in the same group on 5.0, even though its `ossec.conf` never mentioned
 it. Review every `agent.conf` against the 5.0 agent configuration reference before starting: a
-deprecated option makes the group's configuration fail to compile. With the manager stopped there
-is no window in which `wazuh-manager-modulesd` sees a half-extracted folder and drops the group.
+deprecated option makes the group's configuration fail to compile. Do the extraction with the
+manager stopped: `wazuh-manager-modulesd` drops a group whose directory it cannot open, and between
+the extraction and the `chown` these carry the 4.x owner, which is exactly that. The group comes
+back on the next synchronization, after a `delete-group` has already gone out to its agents.
 
 ### Enrollment password
 
 ```bash
-install -m 640 -o root -g wazuh-manager /root/wazuh-4x-backup/authd.pass /var/wazuh-manager/etc/authd.pass
+install -m 640 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/authd.pass /var/wazuh-manager/etc/authd.pass
 ```
 
 **This step is conditional.** Carry the password only if 4.x agents will still have to enroll
@@ -199,9 +208,10 @@ The asymmetry is the reason to think about it rather than copy it by reflex:
   first start, which rejects every 4.x agent still holding the old one. In a cluster the file
   belongs to the master and is distributed to the workers.
 - **5.0 agents do not.** They enroll with an enrollment token and re-enroll with a per-agent secret.
-  Nothing on a 5.0 endpoint writes or reads `authd.pass`, `WAZUH_REGISTRATION_PASSWORD` is no longer
-  a supported install variable, and the 5.0 package upgrade **deletes** any `authd.pass` it finds on
-  the endpoint.
+  Nothing on a 5.0 endpoint writes `authd.pass` any more: `WAZUH_REGISTRATION_PASSWORD` is no longer
+  a supported install variable, and the package upgrade **deletes** any file it finds. The agent
+  still reads one placed there by hand, which is what makes the recovery below work, but it is no
+  longer part of how an agent is deployed.
 
 So carrying it extends the life of a fleet-wide shared secret that 5.0 is retiring. There is one
 reason to keep it beyond the enrollment window: it is the only credential an *upgraded* agent can be
@@ -306,14 +316,14 @@ retry, authenticates with its existing key and is marked `active`. Otherwise edi
 
 A 4.x agent on the legacy channel keeps:
 
-- events (they appear in the 5.0 `wazuh-events-*` and `wazuh-findings-*` indices, attributed to
-  its original agent id);
+- events (they appear in the 5.0 `wazuh-events-v5-*` and `wazuh-findings-v5-*` indices, attributed
+  to its original agent id);
 - keepalives, so version, OS and status stay current in the agent list;
 - centralized configuration (`agent.conf` of its groups);
 - remote upgrade through the manager.
 
 It does not get active response, inventory or FIM state synchronization, or vulnerability
-detection: the `wazuh-states-*` indices stay empty for it until it runs 5.0. See
+detection: 5.0's `wazuh-states-*` indices stay empty for it until it runs 5.0. See
 [Agent-manager protocol](agent-manager-protocol.md#what-the-legacy-channel-still-carries).
 The API endpoints that served that data in 4.x (`/syscollector/{agent_id}/*`, `PUT /active-response`)
 no longer exist in 5.0.
@@ -348,7 +358,7 @@ migrated fleet:
   restart the agent while the package is half installed: until the postinst runs, the
   configuration and keys on disk are the package placeholders.
 - **State rebuild.** Within minutes of connecting over HTTPS the agent's inventory, FIM, SCA and
-  vulnerability state appears in the `wazuh-states-*` indices. The 4.x history is not carried.
+  vulnerability state appears in 5.0's own `wazuh-states-*` indices. The 4.x history is not carried.
 
 ### What the upgrade does to the agent's credentials
 
@@ -381,10 +391,11 @@ in that position re-enrolls with its re-enrollment secret. An upgraded one has n
 and stays disconnected until an operator intervenes on the endpoint.
 
 The intervention is the enrollment password, not a token. An enrollment token is consumed only by
-the bootstrap that runs at the agent's first start, and that bootstrap latches: an agent that
-already holds a trust anchor — which is exactly what the upgrade gave it — discards a token without
-using it. So recovery means putting the manager's password back on the endpoint the upgrade took it
-from:
+the bootstrap that runs at the agent's first start, and that bootstrap has two independent latches:
+a trust anchor on disk, and a `client.keys` with anything in it. An upgraded agent trips the second
+whatever path it took, and the first as well when the upgrade delivered the CA. Either way the token
+file is deleted without being read. So recovery means putting the manager's password back on the
+endpoint the upgrade took it from:
 
 ```bash
 sudo cat /var/wazuh-manager/etc/authd.pass        # on the manager
@@ -442,12 +453,13 @@ was renamed to `WAZUH_SSL_VERIFICATION` with no alias, and the old spelling is r
 
 ## Historical data
 
-- **Alerts.** 5.0 writes events and findings to `wazuh-events-*` and `wazuh-findings-*`. The 4.x
-  `wazuh-alerts-4.x-*` indices are not read or migrated; keep them in the indexer for as long as
+- **Alerts.** 5.0 writes events and findings to `wazuh-events-v5-*` and `wazuh-findings-v5-*`. The
+  4.x `wazuh-alerts-4.x-*` indices are not read or migrated; keep them in the indexer for as long as
   you need to consult them, and expect dashboards built on them to need new index patterns.
-- **Inventory, FIM, SCA, vulnerabilities.** 5.0 keeps this state in its own `wazuh-states-*`
-  indices, rebuilt from each agent after it is upgraded. The 4.x `wazuh-states-*` indices are not
-  updated by 5.0.
+- **Inventory, FIM, SCA, vulnerabilities.** Both versions write `wazuh-states-*`, so the two
+  generations sit side by side under one pattern: 4.x appends its cluster name to the index, 5.0
+  does not. 5.0 populates its own indices from each agent once that agent runs 5.0, and never reads
+  or updates the 4.x ones. Check the suffix before concluding an index is current.
 - **Agent ids.** Because ids are preserved, historical documents in the 4.x indices and new
   documents in the 5.0 ones refer to the same agent by the same id. Re-enrolling agents instead
   of carrying `client.keys` breaks that: ids are reassigned in enrollment order.
