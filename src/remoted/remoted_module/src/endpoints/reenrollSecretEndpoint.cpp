@@ -118,7 +118,15 @@ namespace remoted::endpoints::reenrollsecret
                 // had client.keys lost the agent one moment earlier. The row-not-rebuilt-yet case
                 // (wm_database mirrors client.keys asynchronously) lands here too, and the agent
                 // simply retries on its next start.
-                if (result.errorCode == 9026)
+                // 9032 joins it for the same reason, one step further along: the bearer verified
+                // against a key that is no longer the agent's, which authd -- the only node whose
+                // keystore is authoritative -- is the one to notice. Same 401 envelope, because
+                // from the agent's side the answer is the same ("the credential you presented is
+                // not current"), and a legitimate agent that has just rotated asks again with the
+                // key it now holds. Deliberately NOT a distinct public code: telling a caller
+                // apart "wrong agent" from "right agent, superseded key" tells it which half of a
+                // stale replica it is talking to, which is a probe this route need not offer.
+                if (result.errorCode == 9026 || result.errorCode == 9032)
                 {
                     return remoted::endpoints::errorResponseFor(remoted::auth::AuthError::UnknownAgent, agentId);
                 }
@@ -180,6 +188,13 @@ namespace remoted::endpoints::reenrollsecret
             // so a future field is not a breaking change for an older manager.
             remoted::enrollment::AuthdSecretRequest request;
             request.id = authReq->agentId;
+            // The id says WHO; this says WITH WHICH KEY (#39315). remoted authenticates against its
+            // own copy of client.keys, which on a worker is a replica that can lag the master by a
+            // sync interval -- so without this, a key the master has already rotated away from
+            // still authenticates here, and authd, seeing only an id, would mint a fresh secret for
+            // the CURRENT identity and hand it to the holder of the superseded key. authd compares
+            // this against its own entry under the same lock that guards the mint.
+            request.keyFingerprint = authReq->keyFingerprint;
 
             authdClient.issueReenrollSecret(
                 std::move(request),

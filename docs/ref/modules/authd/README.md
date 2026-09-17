@@ -470,16 +470,24 @@ A request is a single-line JSON object:
 - **`get`** — look up an agent's stored data. Arguments: `id` (required)
 - **`issue_reenroll_secret`** — mint a re-enrollment secret for an agent that already holds a key
   (master only; a worker forwards it, see [Cluster](#cluster)). Arguments: `id` (required, at most
-  eight digits). **No credential travels with it**: remoted's `POST /enroll/secret` has already
-  proved the identity with the agent's own `client.keys` key, exactly as it proves an enrollment
-  token before authd consumes a use. Answers
+  eight digits) and `key_fingerprint` (SHA-256 of the `client.keys` key remoted authenticated the
+  request against, as 64 lowercase hex chars). **No credential travels with it**: remoted's
+  `POST /enroll/secret` has already proved the identity with the agent's own `client.keys` key,
+  exactly as it proves an enrollment token before authd consumes a use, and the fingerprint is a
+  one-way digest of a key authd already holds — an identity *assertion* authd re-checks, never a
+  credential it trusts. It is what makes "the caller holds **a** key for agent 001" and "the caller
+  holds agent 001's **current** key" different statements: remoted answers from its own copy of
+  `client.keys`, which on a worker node is a replica that can lag this one, so only the master can
+  decide. A request whose fingerprint does not match the keystore entry — or that carries none at
+  all — is refused, and nothing is minted, journaled or queued. Answers
   `{"error": 0, "data": {"id": "001", "reenroll_secret": "<secret>"}}`. The agent's **key is not
   rotated** — only `global set-agent-credentials` runs, with the key the keystore already holds, and
   `client.keys` is unchanged by construction — so repeating the call is safe and is always accepted.
   Refusals: `9026` (the agent is not in the keystore, **or has no row in `global.db` yet** — the
   state a migrated agent is in until `wazuh-manager-modulesd` rebuilds its row from `client.keys`),
   `9030` (a rotation for that agent is already in flight), `9031` (the transition could not be
-  journaled, so nothing was handed out), `9010` (a malformed or absent `id`). See
+  journaled, so nothing was handed out), `9032` (the request authenticated with a key that is no
+  longer the agent's), `9010` (a malformed or absent `id`). See
   [Re-enrollment secret](#re-enrollment-secret)
 - **`token_create`** — mint an [enrollment token](#enrollment-tokens) (master only). Arguments:
   `address` (required), `port`, `prefix`, `ttl` (seconds, `0` = the 30 day default, at most

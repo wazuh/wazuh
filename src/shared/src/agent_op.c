@@ -674,13 +674,20 @@ int w_request_agent_add_clustered(char *err_response,
     return result;
 }
 
-static cJSON* w_create_agent_secret_payload(const char *agent_id) {
+static cJSON* w_create_agent_secret_payload(const char *agent_id, const char *key_fingerprint) {
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
 
     cJSON_AddStringToObject(request, "function", "issue_reenroll_secret");
     cJSON_AddItemToObject(request, "arguments", arguments);
     cJSON_AddStringToObject(arguments, "id", agent_id);
+    /* The key remoted authenticated the agent against (#39315), travelling to the one node that can
+     * judge it. Omitted when the worker received none, so that the master's refusal is "no
+     * fingerprint was presented" rather than "an empty one did not match" -- the same refusal
+     * either way, but only one of them is honest about which caller is at fault. */
+    if (key_fingerprint && *key_fingerprint) {
+        cJSON_AddStringToObject(arguments, "key_fingerprint", key_fingerprint);
+    }
 
     return request;
 }
@@ -743,12 +750,13 @@ static int w_parse_agent_secret_response(const char* buffer, char *err_response,
 //Send a clustered re-enrollment secret request.
 int w_request_agent_secret_clustered(char *err_response,
                                      const char *agent_id,
+                                     const char *key_fingerprint,
                                      char **reenroll_secret,
                                      int *master_error_code) {
     int result;
     char response[OS_MAXSTR + 1];
 
-    cJSON* message = w_create_agent_secret_payload(agent_id);
+    cJSON* message = w_create_agent_secret_payload(agent_id, key_fingerprint);
 
     cJSON* payload = w_create_sendsync_payload("authd", message);
     char* output = cJSON_PrintUnformatted(payload);

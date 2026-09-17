@@ -19,6 +19,7 @@
 #include "enrollment_token_store.h"
 #include "enrollment_token_mint.h"
 #include "reenroll_verify.h"
+#include "sha256_op.h" // os_sha256 / OS_SHA256_String(), for the key fingerprint
 #include "wazuhdb_queries_op.h"
 #include <time.h>
 
@@ -64,7 +65,8 @@ typedef enum auth_local_err {
     EREENROLLSTALE,
     ETOKENSTOREFAILED,
     EREENROLLINPROGRESS,
-    EIDENTITYUNRECORDED
+    EIDENTITYUNRECORDED,
+    EREENROLLKEYMISMATCH
 } auth_local_err;
 
 
@@ -133,7 +135,16 @@ static const struct {
     // is not wrong and the caller is not at fault: this manager cannot record it right now --
     // no room in queue/authd, or the file is unwritable -- so remoted answers 503 and the agent
     // retries. Performing it anyway is what left agents holding credentials nothing else knew.
-    { 9031, "Identity transition could not be recorded" }
+    { 9031, "Identity transition could not be recorded" },
+    // The request authenticated against a key that is no longer this agent's (#39315). remoted
+    // verifies the bearer against ITS copy of client.keys, which on a worker node is a replica that
+    // can lag this one, so "the caller proved possession of a key for agent 001" and "the caller
+    // proved possession of agent 001's CURRENT key" are not the same statement -- and only the
+    // second one may be answered with a credential. Folded into remoted's uniform 401 for the same
+    // reason 9026 is: from the agent's side it means "the credential you used is not current",
+    // which is an authentication outcome, and a legitimate agent that has just rotated simply asks
+    // again with the key it now holds.
+    { 9032, "Agent key changed since the request was authenticated" }
 };
 
 // Dispatch local request. STATIC: the unit tests drive the token verbs and `add` through it.
@@ -247,10 +258,10 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
 // client.keys key and stores it against that UNCHANGED key. No credential travels in the request --
 // remoted's AuthMiddleware already proved the identity, exactly as it does for a verified enrollment
 // token before authd consumes a use of it.
-static cJSON* local_issue_reenroll_secret(const char *id);
+static cJSON* local_issue_reenroll_secret(const char *id, const char *key_fingerprint);
 
 // Forward the same request to the master over the cluster (worker nodes only).
-static cJSON* local_issue_reenroll_secret_clustered(const char *id);
+static cJSON* local_issue_reenroll_secret_clustered(const char *id, const char *key_fingerprint);
 
 // The `issue_reenroll_secret` answer: {"error":0,"data":{"id":..,"reenroll_secret":..}}. Its own
 // builder rather than local_create_agent_response(), which always writes `name`/`ip`/`key` -- fields
@@ -713,25 +724,39 @@ char* local_dispatch(const char *input) {
             response = local_get(item->valuestring);
         } else if (!strcmp(function->valuestring, "issue_reenroll_secret")) {
             cJSON *item;
+            cJSON *fingerprint;
 
             if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
                 ierror = ENOARGUMENT;
                 goto fail;
             }
 
-            /* Validated on BOTH roles, so a worker never forwards garbage to the master: the id is
-             * the only argument, and everything downstream (atoi() for the row lookup,
-             * OS_IsAllowedID() for the keystore) assumes it is one. remoted never sends a malformed
-             * one -- it fills this field from the identity its middleware verified -- so reaching
-             * this refusal means the caller is broken, not the agent. */
+            /* Validated on BOTH roles, so a worker never forwards garbage to the master: everything
+             * downstream (atoi() for the row lookup, OS_IsAllowedID() for the keystore) assumes the
+             * id is one. remoted never sends a malformed one -- it fills this field from the
+             * identity its middleware verified -- so reaching this refusal means the caller is
+             * broken, not the agent. */
             if (item = cJSON_GetObjectItem(arguments, "id"), !cJSON_IsString(item) || !*item->valuestring ||
                 !OS_IsValidID(item->valuestring)) {
                 ierror = ENOID;
                 goto fail;
             }
 
-            response = config.worker_node ? local_issue_reenroll_secret_clustered(item->valuestring)
-                                          : local_issue_reenroll_secret(item->valuestring);
+            /* Optional on the wire, mandatory in effect (#39315): absent means the caller could not
+             * name the key it authenticated against, and the mint below refuses rather than falls
+             * back. Read here only to forward it; the comparison belongs to the master, under the
+             * keystore lock, because only the master's keystore is authoritative. */
+            fingerprint = cJSON_GetObjectItem(arguments, "key_fingerprint");
+            if (fingerprint && !cJSON_IsString(fingerprint)) {
+                ierror = ENOARGUMENT;
+                goto fail;
+            }
+
+            response = config.worker_node
+                           ? local_issue_reenroll_secret_clustered(item->valuestring,
+                                                                   fingerprint ? fingerprint->valuestring : NULL)
+                           : local_issue_reenroll_secret(item->valuestring,
+                                                         fingerprint ? fingerprint->valuestring : NULL);
         } else if (!strcmp(function->valuestring, "token_create")) {
             // Minting writes the store, and only the master writes it (T8): a worker answers the
             // same 9015 as every other write it cannot perform. Checked before parsing the
@@ -1205,6 +1230,32 @@ fail:
     return local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
 }
 
+/* SHA-256 of an agent's client.keys key, in the representation remoted fingerprints (#39315): the
+ * key's own 64-lowercase-hex text, which is exactly what keyentry.raw_key holds. Hashing the text
+ * rather than the decoded bytes is what keeps this side free of a hex decoder; remoted hashes the
+ * same string, re-encoded from the bytes it decoded that string into.
+ *
+ * Constant-time compare, because this runs before a credential is minted and the caller controls
+ * one of the two operands: a fingerprint is not a secret, but leaking where two digests diverge is
+ * a free oracle for no benefit. */
+static bool reenroll_key_fingerprint_matches(const char *raw_key, const char *expected) {
+    os_sha256 actual = {0};
+
+    if (!raw_key || !expected || !*expected) {
+        return false;
+    }
+
+    OS_SHA256_String(raw_key, actual);
+
+    /* strlen(expected) is attacker-influenced; compare against the digest's own fixed length so a
+     * short or over-long value can never read past either buffer. */
+    if (strlen(expected) != strlen(actual)) {
+        return false;
+    }
+
+    return CRYPTO_memcmp(actual, expected, strlen(actual)) == 0;
+}
+
 /* Re-enrollment secret issuance (#39315), master only. local_reenroll() with the bearer verification
  * removed and WITHOUT the rotation: the agent's key is not touched, only a fresh secret is stored
  * against it.
@@ -1217,8 +1268,15 @@ fail:
  *
  * `name`, `ip` and the key all come from the KEYSTORE entry, never from the request (there is
  * nothing else in the request): the writer's UPDATE rewrites the row's name and register_ip from
- * them too, so taking them from client.keys is what keeps this a pure credential write. */
-static cJSON* local_issue_reenroll_secret(const char *id) {
+ * them too, so taking them from client.keys is what keeps this a pure credential write.
+ *
+ * @param key_fingerprint SHA-256 of the key remoted verified the request against, or NULL when the
+ *        caller sent none. NULL and a non-matching value are both refused (9032): this verb issues
+ *        a credential for whatever key the keystore holds NOW, so it may only run when the caller
+ *        has proved possession of that same key -- proving possession of *a* key this agent once
+ *        had is not enough, and on a worker with a lagging client.keys replica that is exactly the
+ *        difference between the two. */
+static cJSON* local_issue_reenroll_secret(const char *id, const char *key_fingerprint) {
     int index;
     int ierror;
     cJSON *response = NULL;
@@ -1287,6 +1345,26 @@ static cJSON* local_issue_reenroll_secret(const char *id) {
         goto fail;
     }
 
+    /* The request authenticated against SOME key for this id; this is where we find out whether it
+     * was this one (#39315). Inside mutex_keys and after the reservation, so the entry compared
+     * against is the entry the mint below reads: a rotation that completed before this request
+     * arrived is invisible to the generation counter (its baseline was taken at reserve time, after
+     * remoted had already authenticated), and this comparison is what catches it.
+     *
+     * The practical case is a worker whose replicated client.keys still holds a superseded key: its
+     * remoted accepts that key, forwards here, and without this check the holder of a key the
+     * master has already rotated away from would be handed a live credential for the current
+     * identity -- and could then re-enroll with it. WARN, not debug: for a legitimate agent this is
+     * a rotation it just performed and will retry past, and for anything else it is exactly the
+     * event an operator wants to see. */
+    if (!reenroll_key_fingerprint_matches(keys.keyentries[index]->raw_key, key_fingerprint)) {
+        mwarn("Secret issuance for agent '%s' refused: the request was authenticated with a key that is not the "
+              "agent's current one. A worker node whose client.keys replica is behind the master will produce this "
+              "until it syncs; the agent retries on its own.", id);
+        ierror = EREENROLLKEYMISMATCH;
+        goto fail;
+    }
+
     if (OS_NewReenrollSecret(secret, sizeof(secret)) != 0) {
         merror("Unable to issue a re-enrollment secret for agent '%s': the CSPRNG (RAND_bytes) failed.", id);
         ierror = EKEY;
@@ -1337,7 +1415,11 @@ fail:
 
 // Forward an "issue_reenroll_secret" request to the master node over the cluster (worker nodes only).
 // The row this writes lives in the master's global.db, which is why the verb is master-only at all.
-static cJSON* local_issue_reenroll_secret_clustered(const char *id) {
+/* The worker forwards the fingerprint untouched and compares nothing itself: its own client.keys is
+ * the replica whose staleness this check exists to catch, so a comparison here would answer "does
+ * this match the copy that already accepted it?" -- always yes, and worthless. Only the master's
+ * keystore is authoritative, so only the master decides. */
+static cJSON* local_issue_reenroll_secret_clustered(const char *id, const char *key_fingerprint) {
     char err_response[OS_SIZE_2048] = {0};
     char *new_secret = NULL;
     int master_error_code = 0;
@@ -1346,7 +1428,7 @@ static cJSON* local_issue_reenroll_secret_clustered(const char *id) {
 
     mdebug2("issue_reenroll_secret_clustered(%s)", id);
 
-    result = w_request_agent_secret_clustered(err_response, id, &new_secret, &master_error_code);
+    result = w_request_agent_secret_clustered(err_response, id, key_fingerprint, &new_secret, &master_error_code);
 
     if (result == 0) {
         response = local_create_secret_response(id, new_secret);

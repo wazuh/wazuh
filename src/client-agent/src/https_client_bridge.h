@@ -88,4 +88,22 @@ bool w_https_client_enroll(const char *body_json, const char *password, const ch
  */
 bool w_https_client_fetch_reenroll_secret(hc_secret_result_t *result);
 
+/**
+ * @brief Take/release the writer side of the global keystore lock (#39315).
+ *
+ * Wraps whatever REPLACES `keys` -- OS_UpdateKeys() and the crypto-method reset that follows it --
+ * so that readers running on other threads (the re-enrollment secret bootstrap, which wakes up to
+ * a minute after start) copy the identity out instead of borrowing pointers OS_FreeKeys() is about
+ * to free.
+ *
+ * Declared here rather than in keys.h because the reader that needs it lives here: this is the
+ * agent's only concurrent keystore reader, and a lock in the shared keystore API would imply a
+ * guarantee the manager-side users of that API do not get.
+ *
+ * Not recursive: never call these while already holding them. Where the handle lock is also held,
+ * it is taken FIRST.
+ */
+void w_agent_keys_write_lock(void);
+void w_agent_keys_write_unlock(void);
+
 #endif // _HTTPS_CLIENT_BRIDGE_H

@@ -11,6 +11,7 @@
 
 #include "secretClient.hpp"
 
+#include "clockSkew.hpp"
 #include "jwtSigner.hpp"
 #include "keyProvider.hpp"
 #include "requestTarget.hpp"
@@ -36,6 +37,46 @@ HttpResponse SecretClient::fetch()
         return response;
     }
 
+    HttpResponse response = performOnce();
+
+    // One-shot 401 grace-retry, the same one EnrollClient runs and for the same reason (#38440's
+    // self-correction): a 401 here is either a key the manager no longer accepts or an agent whose
+    // wall clock is outside the manager's time policy, and the response alone cannot tell them
+    // apart. This is NOT a general retry -- the bootstrap deliberately makes one attempt per start
+    // -- it is the correction that makes that one attempt meaningful. Without it a skewed agent is
+    // answered 401 on every start for ever: each start builds a fresh zero-offset clock, so nothing
+    // it learns survives, and unlike ordinary traffic (whose long-lived facade clock is corrected
+    // by the first 401 it sees) this call would never carry a usable timestamp at all.
+    if (response.httpCode == 401 && correctClockIfSkewed(response))
+    {
+        response = performOnce();
+    }
+
+    return response;
+}
+
+bool SecretClient::correctClockIfSkewed(const HttpResponse& response)
+{
+    // Same decision, same noise floor and same single implementation RetrySender and EnrollClient
+    // use (clockSkew.hpp): three copies of that constant are three things that have to change
+    // together, and the one that is missed is the one nobody notices.
+    const auto delta = correctClockFromServerDate(m_clock, response.serverDateSeconds);
+
+    if (delta == 0)
+    {
+        return false; // No Date, or inside the floor: the 401 is a dead key, not the clock.
+    }
+
+    LOGFN_INFO(m_logFn,
+               "https_client: clock skew of %lld s detected against the manager's response "
+               "(Date header) while requesting the re-enrollment secret; correcting the signing "
+               "timestamp and retrying once.",
+               static_cast<long long>(delta));
+    return true;
+}
+
+HttpResponse SecretClient::performOnce()
+{
     // The REQUEST profile (`wazuh-agent+jwt`), not the enroll one: this is a plain authenticated
     // endpoint, and the manager's AuthMiddleware would reject a `wazuh-enroll+jwt` here -- a `kid`
     // in that profile means "enrollment token or re-enrolling agent", which is a different claim

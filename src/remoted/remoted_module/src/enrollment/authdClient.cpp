@@ -124,13 +124,22 @@ namespace remoted::enrollment
             return payload.dump();
         }
 
-        /// The `issue_reenroll_secret` wire request (issue #39315). The id is the ONLY argument --
-        /// no credential, no name, no ip: authd reads the agent's name, ip and key from its own
-        /// keystore entry, which is what keeps the operation a pure credential write.
+        /// The `issue_reenroll_secret` wire request (issue #39315). Two arguments -- no credential,
+        /// no name, no ip: authd reads the agent's name, ip and key from its own keystore entry,
+        /// which is what keeps the operation a pure credential write.
+        ///
+        /// `key_fingerprint` names the key remoted authenticated against, so authd can refuse to
+        /// mint when its own entry has since moved on. Omitted when empty rather than sent blank:
+        /// an authd that predates this field ignores it either way, and a blank value must not be
+        /// mistakable for "this key matched".
         std::string buildSecretPayload(const AuthdSecretRequest& request)
         {
             nlohmann::json arguments;
             arguments["id"] = request.id;
+            if (!request.keyFingerprint.empty())
+            {
+                arguments["key_fingerprint"] = request.keyFingerprint;
+            }
 
             nlohmann::json payload;
             payload["function"] = "issue_reenroll_secret";

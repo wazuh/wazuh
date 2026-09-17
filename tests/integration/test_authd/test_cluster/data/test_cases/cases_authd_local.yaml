@@ -249,9 +249,13 @@
   metadata:
     cases:
     -
+      # key_fingerprint is SHA-256 of the agent's key TEXT below, which is what remoted computes
+      # from the client.keys entry it authenticated against. The check is fail-closed, so this is
+      # the one field that cannot be omitted here.
+      #
       # The answer carries the pair and nothing else -- no key, no name, no ip, because none of
       # them changed. The secret itself is random, so the assertion is the shape up to it.
-      input: '{"arguments":{"id":"001"},"function":"issue_reenroll_secret"}'
+      input: '{"arguments":{"id":"001","key_fingerprint":"5e5dc47fdaf573f3f9acbd9cab71377d08e1fd05d5fbb524cc7bf92453df278e"},"function":"issue_reenroll_secret"}'
       output: '{"error":0,"data":{"id":"001","reenroll_secret":"'
     pre_existent_agents:
     -
@@ -280,6 +284,18 @@
     -
       input: '{"function":"issue_reenroll_secret"}'
       output: '{"error":9004,"message":"No such argument"}'
+    -
+      # A fingerprint that is not this agent's current key: the caller authenticated against a key
+      # the manager has since moved away from, which is what a worker serving from a lagging
+      # client.keys replica looks like. Refused rather than answered -- issuing here would bind a
+      # credential to a key that is no longer the agent's.
+      input: '{"arguments":{"id":"001","key_fingerprint":"00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"},"function":"issue_reenroll_secret"}'
+      output: '{"error":9032,"message":"Agent key changed since the request was authenticated"}'
+    -
+      # Fail-closed: a request that names no key at all is refused the same way, so a caller that
+      # cannot say which key it verified never gets a credential.
+      input: '{"arguments":{"id":"001"},"function":"issue_reenroll_secret"}'
+      output: '{"error":9032,"message":"Agent key changed since the request was authenticated"}'
     pre_existent_agents:
     -
       id: '001'

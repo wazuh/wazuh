@@ -227,7 +227,9 @@ namespace remoted::endpoints
                     // becomes the sole owner -- dropping it (or calling payload.release()) then
                     // frees the buffer and restores the budget while the responder lives on to reply.
                     remoted::auth::AuthenticatedRequest authRequest;
-                    authRequest.agentId = std::move(std::get<remoted::auth::VerifiedAgent>(verified).agentId);
+                    auto& verifiedAgent = std::get<remoted::auth::VerifiedAgent>(verified);
+                    authRequest.agentId = std::move(verifiedAgent.agentId);
+                    authRequest.keyFingerprint = std::move(verifiedAgent.keyFingerprint);
                     authRequest.protocolVersion = protocolVersion;
                     authRequest.method = methodStr;
                     authRequest.requestTarget = request->target;

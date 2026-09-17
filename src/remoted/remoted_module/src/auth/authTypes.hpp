@@ -100,7 +100,11 @@ namespace remoted::auth
      */
     struct AuthenticatedRequest
     {
-        std::string agentId;         ///< Verified agent id, canonical (the token's `sub`, never the raw header).
+        std::string agentId; ///< Verified agent id, canonical (the token's `sub`, never the raw header).
+        /// SHA-256 of the key that authenticated this request -- see VerifiedAgent::keyFingerprint
+        /// for what it is and is not. Empty on any path that did not authenticate against a
+        /// client.keys key. Only credential-changing endpoints have any business reading it.
+        std::string keyFingerprint;
         std::string protocolVersion; ///< Value of the protocol-version header.
         std::string method;          ///< Uppercase HTTP method, e.g. "POST".
         std::string requestTarget;   ///< Raw path + query, exactly as received.
@@ -184,6 +188,15 @@ namespace remoted::auth
     struct VerifiedAgent
     {
         std::string agentId; ///< Canonical form ("001"): the token's verified `sub`, equal to `kid`.
+        /// SHA-256 of the client.keys key this request was actually verified against, as 64
+        /// lowercase hex chars (see keyFingerprint()). NOT a credential: it is one-way, and it is
+        /// derived from a key the manager already holds, so it proves nothing on its own.
+        ///
+        /// It exists because the id alone does not say WHICH key authenticated (#39315): remoted
+        /// answers from its own copy of client.keys, which on a worker may be an out-of-date
+        /// replica, so an endpoint that changes credentials must be able to ask the authority
+        /// "is this still the key you have?" rather than trust that nothing rotated in between.
+        std::string keyFingerprint;
     };
 
     /**

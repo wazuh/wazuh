@@ -51,9 +51,22 @@ class SecretClient
         ///         transport config itself is invalid (fail-closed policy), and OtherError with
         ///         httpCode 0 when the bearer could not be minted -- nothing was ever sent in
         ///         either case.
+        ///
+        ///         At most TWO requests leave here, and only in one case: a 401 whose Date header
+        ///         shows measurable clock skew is re-signed once against the corrected time (see
+        ///         correctClockIfSkewed). Everything else -- 429, 503, a second 401 -- is returned
+        ///         as received, because the retry that answers those is the agent's next start.
         HttpResponse fetch();
 
     private:
+        /// Build the bearer, send one POST /enroll/secret, return whatever came back.
+        HttpResponse performOnce();
+
+        /// Apply the manager's Date to m_clock when the gap is outside the shared noise floor.
+        /// @return true when a correction was applied and re-signing is therefore worth one more
+        ///         request; false when the 401 cannot be explained by the clock.
+        bool correctClockIfSkewed(const HttpResponse& response);
+
         ModuleConfig m_config;
         IHttpPerformer& m_performer;
         const IFsProbe& m_fsProbe;

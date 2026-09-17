@@ -76,6 +76,11 @@ namespace
         HttpResponse m_response;
     };
 
+    /// The fingerprint AuthMiddleware would have attached: SHA-256 of the key that verified the
+    /// bearer. Its VALUE is opaque to this layer -- the endpoint forwards it and authd judges it --
+    /// so the tests only care that this exact string arrives at authd unchanged.
+    constexpr auto kKeyFingerprint {"3f79bb7b435b05321651daefd374cdc681dc06faa65e374e38337b88ca046dea"};
+
     // What AuthGateway hands the handler: an already-verified identity. The body is deliberately
     // free-form in these tests, because the handler must never read it.
     std::shared_ptr<const remoted::auth::AuthenticatedRequest> verifiedRequest(const std::string& agentId,
@@ -83,6 +88,7 @@ namespace
     {
         remoted::auth::AuthenticatedRequest request;
         request.agentId = agentId;
+        request.keyFingerprint = kKeyFingerprint;
         request.protocolVersion = "1";
         request.method = "POST";
         request.requestTarget = "/enroll/secret";
@@ -94,18 +100,32 @@ namespace
         return std::make_shared<const remoted::auth::AuthenticatedRequest>(std::move(request));
     }
 
+    // What the responder callback writes and the test reads. Its own object, owned jointly by the
+    // stub and the callback, for the reason AuthdStub below does NOT own it: the callback outlives
+    // nothing and owns nothing else, so releasing the stub is enough to stop and destroy the server.
+    struct RequestRecord
+    {
+        std::mutex mutex;
+        std::string lastRequest;
+    };
+
     // An authd stand-in that records the request it was sent and answers a fixed response.
+    //
+    // The server is destroyed (and therefore stopped and joined) by ~AuthdStub, which runs when the
+    // last caller reference goes away. That only holds because the responder captures `record` and
+    // NOT the stub: a callback holding a shared_ptr to its own owner is a cycle, and the socket,
+    // the accept thread and every retained connection thread would then survive the case that
+    // created them -- accumulating across the 100+ tests that share this process.
     struct AuthdStub
     {
         std::string path;
+        std::shared_ptr<RequestRecord> record {std::make_shared<RequestRecord>()};
         std::unique_ptr<FakeUdsServer> server;
-        std::mutex mutex;
-        std::string lastRequest;
 
         std::string request()
         {
-            std::lock_guard<std::mutex> lock(mutex);
-            return lastRequest;
+            std::lock_guard<std::mutex> lock(record->mutex);
+            return record->lastRequest;
         }
     };
 
@@ -114,10 +134,10 @@ namespace
         auto stub = std::make_shared<AuthdStub>();
         stub->path = makeUniqueSocketPath("reenroll_secret_endpoint");
         stub->server = std::make_unique<FakeUdsServer>(stub->path,
-                                                       [stub, response](const std::string& request)
+                                                       [record = stub->record, response](const std::string& request)
                                                        {
-                                                           std::lock_guard<std::mutex> lock(stub->mutex);
-                                                           stub->lastRequest = request;
+                                                           std::lock_guard<std::mutex> lock(record->mutex);
+                                                           record->lastRequest = request;
                                                            return response;
                                                        });
         return stub;
@@ -206,7 +226,54 @@ TEST(ReenrollSecretEndpointTest, TheIdSentToAuthdIsTheVerifiedOneNeverTheBody)
     EXPECT_EQ(sent["function"], "issue_reenroll_secret");
     EXPECT_EQ(sent["arguments"]["id"], "007");
     // Nothing else travels: no credential, no name, no ip. authd reads those from its own keystore.
-    EXPECT_EQ(sent["arguments"].size(), 1U);
+    // The one companion is the fingerprint of the key that authenticated -- see the test below.
+    EXPECT_EQ(sent["arguments"].size(), 2U);
+}
+
+TEST(ReenrollSecretEndpointTest, TheAuthenticatedKeysFingerprintTravelsToAuthd)
+{
+    // #39315 F1. The id alone says WHO asked; it does not say WITH WHICH KEY, and on a worker whose
+    // client.keys replica lags the master those are different statements: a key the master has
+    // already rotated away from still authenticates here. authd is the only node that can tell,
+    // so what it needs must reach it -- unchanged, and from the verified request rather than from
+    // anything the caller sent.
+    auto authd = authdAnswering(successResponse("001", kSecret));
+    Fixture f;
+
+    ASSERT_EQ(f.dispatch(authd->path).status, 200);
+
+    const auto sent = nlohmann::json::parse(authd->request(), nullptr, false);
+    ASSERT_FALSE(sent.is_discarded());
+    EXPECT_EQ(sent["arguments"]["key_fingerprint"], kKeyFingerprint);
+}
+
+TEST(ReenrollSecretEndpointTest, AKeyThatIsNoLongerCurrentIs401)
+{
+    // 9032: authd compared the fingerprint with its own entry and they differ, so the caller proved
+    // possession of a key this agent no longer has. Same 401 envelope as 9026 on purpose -- from
+    // the agent's side both mean "the credential you presented is not current" -- and deliberately
+    // not a distinct public code, which would tell a caller it is talking to a stale replica.
+    auto authd = authdAnswering(errorResponse(9032, "Agent key changed since the request was authenticated"));
+    Fixture f;
+
+    const auto response = f.dispatch(authd->path);
+
+    EXPECT_EQ(response.status, 401);
+    // `code`, not `error`: in this envelope `error` is the human-readable message (which is
+    // deliberately the same generic string for every credential failure) and `code` is the class.
+    // Asserting on the message would pass for any 401 at all.
+    EXPECT_EQ(parseBody(response)["code"], "unknown_agent");
+    // Nothing was issued, and the in-progress counter is untouched: this is not a rotation racing
+    // another one, it is a request that must never have been answered at all.
+    EXPECT_EQ(f.metrics.issued->get(), 0U);
+    EXPECT_EQ(f.metrics.rejectedInProgress->get(), 0U);
+    // `other`, not a `401` cell: ResponseCounters is a closed set (2xx/400/403/409/413/429/500/503)
+    // built when every 401 came from the AuthGateway, before any handler ran, and so belonged to
+    // remoted.auth.reject.* alone. This route breaks that assumption -- it maps authd's 9026/9032
+    // to a 401 from INSIDE the handler, through the MeteredResponder -- so the status is counted,
+    // and it lands in the catch-all. The WHY is not lost: it is in remoted.enroll.secret.authd_error
+    // and remoted.auth.reject.unknown_agent.
+    EXPECT_EQ(f.http.responses.other->get(), 1U);
 }
 
 TEST(ReenrollSecretEndpointTest, AuthdRotationInFlightIs409)

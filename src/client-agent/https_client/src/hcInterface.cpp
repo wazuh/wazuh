@@ -413,10 +413,12 @@ extern "C"
             const auto typedConfig = ModuleConfig::fromC(*config);
             FsProbe fsProbe;
             // SkewCorrectedClock for the same reason EnrollClient gets one: the bearer binds a
-            // timestamp, and a skewed agent is answered 401 by the manager's time policy. There is
-            // no retry here (one attempt per start, by design), so this instance only ever serves
-            // the one signature -- it costs nothing and keeps the signing path identical to the
-            // other bearer-minting callers.
+            // timestamp, and a skewed agent is answered 401 by the manager's time policy.
+            // SecretClient::fetch() runs the same one-shot Date-based correction on a 401, so this
+            // instance can serve two signatures -- the second on a corrected clock. It is local to
+            // this call (the facade's long-lived corrected clock is not reachable from a
+            // handle-less entry point), so the correction is relearned each start: one extra round
+            // trip, against never obtaining the secret at all on a skewed agent.
             SystemClock systemClock;
             SkewCorrectedClock clock {systemClock};
             CurlPerformer performer(typedConfig, defaultCurlHandleFactory(), fsProbe);

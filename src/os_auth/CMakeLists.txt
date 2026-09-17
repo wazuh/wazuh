@@ -17,6 +17,7 @@ include_directories(
   ${SRC_FOLDER}/shared/os_crypto/md5/
   ${SRC_FOLDER}/shared/os_crypto/md5_sha1_sha256/
   ${SRC_FOLDER}/shared/os_crypto/sha1/
+  ${SRC_FOLDER}/shared/os_crypto/sha256/
   ${SRC_FOLDER}/shared/os_crypto/signature/
   ${SRC_FOLDER}/shared/include/error_messages/
   ${SRC_FOLDER}/external/cJSON/

@@ -148,10 +148,20 @@ w_enroll_status_t try_enroll_to_server(void) {
     /* Wait for key update on agent side */
     mdebug1("Waiting %ld seconds before server connection", (long)agt->enrollment.delay_after_enrollment);
     sleep(agt->enrollment.delay_after_enrollment);
+
+    /* Under the keystore writer lock (#39315): OS_UpdateKeys() frees every keyentry and the
+     * id/raw_key strings inside it before reading the replacements, and this runs on the
+     * re-enrollment thread while other threads may be reading that same keystore -- the
+     * re-enrollment secret bootstrap wakes up to a minute after start and does exactly that.
+     * The crypto-method reset is inside the same critical section: it walks the entries this call
+     * just installed, and a reader seeing the keystore between the two would see them half set up. */
+    w_agent_keys_write_lock();
     /* Successful enroll, read keys */
     OS_UpdateKeys(&keys);
     /* Set the crypto method for the agent */
     os_set_agent_crypto_method(&keys, W_METH_AES);
+    w_agent_keys_write_unlock();
+
     return W_ENROLL_OK;
 }
 
