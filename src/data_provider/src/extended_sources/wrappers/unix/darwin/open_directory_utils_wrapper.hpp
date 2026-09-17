@@ -65,7 +65,8 @@ class ODUtilsWrapper : public IODUtilsWrapper
         /// account that has none, and that same authority carries the enabled algorithms as
         /// `HASHLIST:<alg1,alg2,...>`.
         ///
-        /// Each entry is keyed by record name and holds:
+        /// Each entry is keyed by every name the record holds, since getpwuid may report an
+        /// alias rather than the primary one, and holds:
         /// - "password_status": "active" when a password is set, "not_set" otherwise (string)
         /// - "password_hash_algorithm": first algorithm of the hash list, empty when absent (string)
         ///

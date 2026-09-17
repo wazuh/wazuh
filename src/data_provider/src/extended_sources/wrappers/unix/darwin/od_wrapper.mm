@@ -10,22 +10,13 @@
 #import <OpenDirectory/OpenDirectory.h>
 #import <Foundation/Foundation.h>
 #include "od_wrapper.hpp"
+#include "password_authority.hpp"
 #include "json.hpp"
 
 #include <cstring>
 
 namespace od
 {
-    /// Authority tag present only on accounts that have a local password set.
-    static constexpr auto SHADOW_HASH_TAG {";ShadowHash;"};
-
-    /// Prefix of the algorithm list embedded in the ShadowHash authority.
-    static constexpr auto HASH_LIST_TAG {"HASHLIST:<"};
-
-    /// Password status values, aligned with the ones the Linux shadow provider reports.
-    static constexpr auto PASSWORD_STATUS_ACTIVE {"active"};
-    static constexpr auto PASSWORD_STATUS_NOT_SET {"not_set"};
-
     /// @brief Runs a query against the local OpenDirectory node.
     ///
     /// @return The matching records, or nil when the directory could not be read. An empty array
@@ -284,7 +275,7 @@ namespace od
             for (ODRecord * re in results)
             {
                 NSError* attrErr = nullptr;
-                NSArray* authorities =
+                NSArray* authorityValues =
                     [re valuesForAttribute:kODAttributeTypeAuthenticationAuthority error:&attrErr];
 
                 // An unreadable record is left out of the map, so the caller reports the fields as
@@ -295,51 +286,35 @@ namespace od
                     continue;
                 }
 
-                nlohmann::json entry
+                std::vector<std::string> authorities;
+
+                for (id authority in authorityValues)
                 {
-                    {"password_status", PASSWORD_STATUS_NOT_SET},
-                    {"password_hash_algorithm", ""}
-                };
-
-                for (id authority in authorities)
-                {
-                    const std::string value {toStdString([authority description])};
-
-                    if (value.find(SHADOW_HASH_TAG) == std::string::npos)
-                    {
-                        continue;
-                    }
-
-                    entry["password_status"] = PASSWORD_STATUS_ACTIVE;
-
-                    const auto listStart = value.find(HASH_LIST_TAG);
-
-                    if (listStart == std::string::npos)
-                    {
-                        continue;
-                    }
-
-                    const auto algorithmsStart = listStart + std::strlen(HASH_LIST_TAG);
-                    const auto algorithmsEnd = value.find('>', algorithmsStart);
-
-                    if (algorithmsEnd == std::string::npos)
-                    {
-                        continue;
-                    }
-
-                    // The list is ordered by preference, so the first entry is the algorithm in use.
-                    const auto algorithms = value.substr(algorithmsStart, algorithmsEnd - algorithmsStart);
-                    const auto separator = algorithms.find(',');
-                    entry["password_hash_algorithm"] = separator == std::string::npos
-                                                       ? algorithms
-                                                       : algorithms.substr(0, separator);
+                    authorities.push_back(toStdString([authority description]));
                 }
 
-                const auto recordName {toStdString([re recordName])};
+                const auto entry { parseAuthenticationAuthority(authorities) };
 
-                if (!recordName.empty())
+                // A record can hold several names, and getpwuid may report any of them. Indexing
+                // every one keeps the caller's lookup from missing an account through an alias.
+                NSArray* recordNames = [re valuesForAttribute:kODAttributeTypeRecordName error:nil];
+
+                for (id recordName in recordNames)
                 {
-                    passwordData[recordName] = std::move(entry);
+                    const auto name {toStdString([recordName description])};
+
+                    if (!name.empty())
+                    {
+                        // The primary name comes first, so it wins over any alias it shares.
+                        passwordData.emplace(name, entry);
+                    }
+                }
+
+                const auto primaryName {toStdString([re recordName])};
+
+                if (!primaryName.empty())
+                {
+                    passwordData.emplace(primaryName, entry);
                 }
             }
         }

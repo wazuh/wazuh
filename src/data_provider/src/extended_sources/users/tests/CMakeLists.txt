@@ -23,6 +23,7 @@ else()
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         list(APPEND TEST_SRC test_logged_in_users_darwin.cpp)
         list(APPEND TEST_SRC test_users_darwin.cpp)
+        list(APPEND TEST_SRC test_password_authority.cpp)
     endif()
 endif()
 

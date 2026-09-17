@@ -66,7 +66,8 @@ class UsersProvider
         nlohmann::json collectAccountPolicyData(const uid_t uid);
 
         /// @brief Resolves the password data of a single user from the collected directory data.
-        /// @param username The name of the user, which is how OpenDirectory keys its records.
+        /// @param username The name of the user; OpenDirectory indexes its records under
+        ///                 every name they hold, so either the passwd or the primary name matches.
         /// @param disabledUsers Names of the accounts macOS reports as disabled.
         /// @param disabledUsersResolved Whether the disabled accounts could be read at all.
         /// @param passwordData Password data of every user, keyed by record name.
