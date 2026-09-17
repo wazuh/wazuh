@@ -5,35 +5,83 @@
 """
 Integration and regression tests for the manager metrics snapshot indexing pipeline.
 
-Integration tests require a local OpenSearch instance. They are skipped automatically
-when OpenSearch is not reachable at OPENSEARCH_URL.
+Integration tests require a real OpenSearch instance reachable with the credentials the
+manager itself would use (TLS + basic auth, matching indexer.ssl in wazuh-manager.conf;
+plain HTTP OpenSearch is not a config this pipeline ever runs against). They write into the
+real wazuh-metrics-* data streams, so they only run when OPENSEARCH_URL is set explicitly;
+with it unset they are skipped, whatever is listening on localhost. Configure via:
+
+    OPENSEARCH_URL        e.g. https://localhost:9200 (no default: opt-in)
+    OPENSEARCH_USER       default admin
+    OPENSEARCH_PASSWORD   default admin
+    OPENSEARCH_VERIFY_CERTS  "1" to verify TLS certs (default: unverified, devcontainer
+                              self-signed setup)
 
 Regression tests run fully isolated (no live dependency required).
 """
 
+import os
 import sys
+import uuid
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import requests
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ---------------------------------------------------------------------------
 # Optional OpenSearch availability check
 # ---------------------------------------------------------------------------
 
-OPENSEARCH_URL = "http://localhost:9200"
+OPENSEARCH_URL = os.environ.get("OPENSEARCH_URL")
+OPENSEARCH_USER = os.environ.get("OPENSEARCH_USER", "admin")
+OPENSEARCH_PASSWORD = os.environ.get("OPENSEARCH_PASSWORD", "admin")
+OPENSEARCH_VERIFY_CERTS = os.environ.get("OPENSEARCH_VERIFY_CERTS", "") == "1"
 OPENSEARCH_AVAILABLE = False
 
-try:
-    resp = requests.get(OPENSEARCH_URL, timeout=3)
-    OPENSEARCH_AVAILABLE = resp.status_code == 200
-except Exception:
-    pass
+if OPENSEARCH_URL:
+    try:
+        resp = requests.get(
+            OPENSEARCH_URL,
+            auth=(OPENSEARCH_USER, OPENSEARCH_PASSWORD),
+            verify=OPENSEARCH_VERIFY_CERTS,
+            timeout=3,
+        )
+        OPENSEARCH_AVAILABLE = resp.status_code == 200
+    except Exception:
+        pass
+
+# Real index templates, as downloaded by `make deps` into src/external/indexer-plugins
+# (see src/Makefile's INDEXER_PLUGINS_DIR) and installed under etc/indexer-plugins/ on a
+# real manager. Used to exercise the same schema validation _load_schema() runs in
+# production, not a stand-in.
+INDEXER_TEMPLATES_PATH = os.environ.get(
+    "INDEXER_TEMPLATES_PATH", "src/external/indexer-plugins"
+)
+INDEXER_TEMPLATES_AVAILABLE = all(
+    os.path.isfile(os.path.join(INDEXER_TEMPLATES_PATH, name))
+    for name in ("metrics-agents.json", "metrics-comms.json", "metrics-normalization.json")
+)
+requires_indexer_templates = pytest.mark.skipif(
+    not INDEXER_TEMPLATES_AVAILABLE,
+    reason=(
+        f"Real index templates not found under {INDEXER_TEMPLATES_PATH} — run `make deps` "
+        "or set INDEXER_TEMPLATES_PATH, otherwise schema validation is not exercised"
+    ),
+)
 
 requires_opensearch = pytest.mark.skipif(
     not OPENSEARCH_AVAILABLE,
-    reason="OpenSearch not reachable at localhost:9200 — skipping integration tests",
+    reason=(
+        f"OpenSearch not reachable at {OPENSEARCH_URL} — skipping integration tests"
+        if OPENSEARCH_URL
+        else "OPENSEARCH_URL not set — integration tests write into the real metrics "
+        "data streams and only run on explicit opt-in"
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -48,6 +96,7 @@ mocked_modules = {
     "wazuh.core.utils": MagicMock(),
     "wazuh.core.InputValidator": MagicMock(),
     "wazuh.core.cluster": MagicMock(),
+    "wazuh.core.cluster.control": MagicMock(),
     "wazuh.core.cluster.utils": MagicMock(),
     "wazuh.core.cluster.dapi": MagicMock(),
     "wazuh.core.cluster.dapi.dapi": MagicMock(),
@@ -64,7 +113,17 @@ with patch.dict(sys.modules, mocked_modules):
     import wazuh.core.indexer.metrics_snapshot as _metrics_snapshot_module
     from wazuh.core.indexer.metrics_snapshot import MetricsSnapshotTasks
 
+# patch.dict restores sys.modules to its pre-`with` snapshot on exit, which silently
+# drops the 'wazuh.core.indexer.metrics_snapshot' entry the import above just created
+# (it wasn't a pre-existing key). Without putting it back, any later
+# patch("wazuh.core.indexer.metrics_snapshot.<name>", ...) re-imports the module for
+# real (this time with no mocked dependencies) and patches that unrelated copy instead
+# of the one MetricsSnapshotTasks is actually bound to — the patch silently no-ops.
+sys.modules["wazuh.core.indexer.metrics_snapshot"] = _metrics_snapshot_module
+
 import wazuh.core.indexer as _indexer_pkg
+from wazuh.core.indexer.metrics import MetricsIndex
+
 _indexer_pkg.metrics_snapshot = _metrics_snapshot_module
 
 # ---------------------------------------------------------------------------
@@ -74,29 +133,6 @@ _indexer_pkg.metrics_snapshot = _metrics_snapshot_module
 CLUSTER_ITEMS = {
     "intervals": {"master": {"metrics_frequency": 600, "metrics_bulk_size": 100}}
 }
-
-# Values correspond to normalized fields (ECS mapping)
-AGENT_DOCS = [
-    {
-        "wazuh.agent.id": "001",
-        "wazuh.agent.name": "ubuntu-agent",
-        "wazuh.agent.host.ip": "10.0.0.1",
-        "wazuh.agent.status": "active",
-        "wazuh.agent.version": "Wazuh v5.0.0",
-        "wazuh.agent.groups": ["default"],
-        "wazuh.agent.config.group.hash.md5": "def456",
-        "wazuh.agent.registered_at": "2026-01-01T00:00:00Z",
-        "wazuh.agent.last_seen": "2026-03-19T10:00:00Z",
-        "wazuh.agent.disconnected_at": 0,
-        "wazuh.agent.register.ip": "0.0.0.0/0",
-        "wazuh.agent.config.group.synced": True,
-        "wazuh.agent.status_code": 0,
-        "wazuh.agent.host.os.name": "Ubuntu",
-        "wazuh.agent.host.os.version": "22.04",
-        "wazuh.agent.host.os.platform": "ubuntu",
-        "wazuh.agent.host.architecture": "x86_64",
-    }
-]
 
 # Values correspond to normalized fields (ECS mapping)
 COMMS_DOCS = [
@@ -142,180 +178,189 @@ def _make_tasks(server=None):
 # ---------------------------------------------------------------------------
 
 
-class TestBulkIndexingIntegration:
-    """End-to-end bulk indexing tests against a local OpenSearch instance."""
+class TestMetricsPipelineIntegration:
+    """Runs MetricsSnapshotTasks._collect_and_index() end to end against a real
+    indexer and confirms documents land in the three *real* data streams
+    (wazuh-metrics-agents, wazuh-metrics-comms-v4, wazuh-metrics-normalization) with
+    the shape their index templates expect — not an ad-hoc scratch index, which is
+    what let a real template mismatch (issue #39283) pass unnoticed here before.
+
+    Collection (_collect_agents / _collect_comms_all_nodes /
+    _collect_normalization_all_nodes) is mocked — this test's job is the last mile:
+    normalization, schema validation against the real downloaded templates (skipped,
+    not silently bypassed, when they are not present — see requires_indexer_templates)
+    and bulk-index against a live indexer, tagged under a unique node name so it never
+    collides with a real cluster node and is cleaned up afterwards.
+    """
+
+    NODE_NAME = f"itest-{uuid.uuid4().hex[:8]}"
 
     @pytest.fixture
-    async def os_client(self):
-        """Fixture providing an OpenSearch client, handling teardown/cleanup of indices."""
+    async def indexer_client(self):
+        """Real AsyncOpenSearch client, using the same TLS/auth shape the manager
+        itself connects with (see the module docstring for the env vars)."""
         pytest.importorskip("opensearchpy")
         from opensearchpy import AsyncOpenSearch
 
         client = AsyncOpenSearch(
-            hosts=[{"host": "localhost", "port": 9200}],
-            use_ssl=False,
-            verify_certs=False,
+            hosts=[OPENSEARCH_URL],
+            http_auth=(OPENSEARCH_USER, OPENSEARCH_PASSWORD),
+            use_ssl=OPENSEARCH_URL.startswith("https"),
+            verify_certs=OPENSEARCH_VERIFY_CERTS,
         )
         yield client
 
-        # Teardown: Clean up indices created during tests to avoid cross-run interference
-        try:
-            await client.indices.delete(index="wazuh-metrics-agents-test", ignore_unavailable=True)
-            await client.indices.delete(index="wazuh-metrics-comms-test", ignore_unavailable=True)
-        except Exception:
-            pass
-        finally:
-            await client.close()
+        # Teardown: remove only this run's own documents, never a broad delete. Each
+        # index is cleaned up independently — one failing must not skip the other two.
+        # The refresh makes documents written moments ago visible to delete_by_query,
+        # which otherwise misses them when the test failed before its own refresh.
+        cleanup_errors = []
+        for index in (
+            "wazuh-metrics-agents",
+            "wazuh-metrics-comms-v4",
+            "wazuh-metrics-normalization",
+        ):
+            try:
+                await client.indices.refresh(index=index, ignore_unavailable=True)
+                await client.delete_by_query(
+                    index=index,
+                    body={"query": {"term": {"wazuh.cluster.node": self.NODE_NAME}}},
+                    ignore_unavailable=True,
+                    conflicts="proceed",
+                )
+            except Exception as exc:
+                cleanup_errors.append(f"{index}: {exc}")
+        await client.close()
+        if cleanup_errors:
+            # Loud on purpose: these are the real data streams the environment's own
+            # metrics live in, so leftover synthetic documents must not go unnoticed.
+            pytest.fail(
+                f"could not clean up documents tagged {self.NODE_NAME}: "
+                + "; ".join(cleanup_errors)
+            )
 
-    @requires_opensearch
-    @pytest.mark.asyncio
-    async def test_agents_documents_indexed_successfully(self, os_client):
-        """Bulk indexing of agent docs produces at least one document in the data stream."""
-        from opensearchpy.helpers import async_bulk
-
-        index = "wazuh-metrics-agents-test"
-        docs_with_meta = [
-            {
-                "@timestamp": TIMESTAMP,
-                "wazuh.cluster.node": "master-node",
-                "wazuh.cluster.name": "wazuh-cluster",
-                "wazuh.schema.version": "1",
-                **doc,
-            }
-            for doc in AGENT_DOCS
-        ]
-
-        actions = [
-            {"_op_type": "index", "_index": index, "_source": doc}
-            for doc in docs_with_meta
-        ]
-
-        success, failed = await async_bulk(os_client, actions, raise_on_error=False)
-
-        assert success >= 1
-        assert failed == []
-
-    @requires_opensearch
-    @pytest.mark.asyncio
-    async def test_agents_documents_have_timestamp(self, os_client):
-        """Documents indexed into wazuh-metrics-agents contain a valid @timestamp."""
-        from opensearchpy.helpers import async_bulk
-
-        index = "wazuh-metrics-agents-test"
-        doc = {"@timestamp": TIMESTAMP, "wazuh.agent.id": "001", "wazuh.agent.name": "test-agent"}
-        actions = [{"_op_type": "index", "_index": index, "_source": doc}]
-
-        await async_bulk(os_client, actions, raise_on_error=False)
-
-        # Refresh and verify
-        await os_client.indices.refresh(index=index)
-        result = await os_client.search(
-            index=index,
-            body={"query": {"term": {"wazuh.agent.id.keyword": "001"}}},
+    @staticmethod
+    def _patch_real_indexer_client(client):
+        """Make _collect_and_index()'s `async with get_indexer_client()` yield a real
+        MetricsIndex backed by `client`, bypassing the manager's own config/keystore-
+        driven connection setup (covered separately by test_indexer.py)."""
+        handle = SimpleNamespace(metrics=MetricsIndex(client))
+        return patch(
+            "wazuh.core.indexer.metrics_snapshot.get_indexer_client",
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=handle),
+                __aexit__=AsyncMock(return_value=False),
+            ),
         )
 
-        hits = result["hits"]["hits"]
-        assert len(hits) >= 1
-        source = hits[0]["_source"]
-        assert "@timestamp" in source
-
-        # Verify ISO 8601 format
-        ts = source["@timestamp"]
-        datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
-
     @requires_opensearch
+    @requires_indexer_templates
     @pytest.mark.asyncio
-    async def test_comms_documents_indexed_successfully(self, os_client):
-        """Bulk indexing of comms docs produces at least one document in the data stream."""
-        from opensearchpy.helpers import async_bulk
+    async def test_pipeline_indexes_documents_into_the_three_real_data_streams(
+        self, indexer_client
+    ):
+        server = _make_server(node_name=self.NODE_NAME)
+        tasks = _make_tasks(server=server)
+        tasks.logger = MagicMock()
 
-        index = "wazuh-metrics-comms-test"
-        docs_with_meta = [
+        agent_doc = tasks._normalize_agent_doc(
+            {
+                "id": "999",
+                "name": "itest-agent",
+                "status": "active",
+                "status_code": 0,
+                "version": "v5.0.0",
+                "os.name": "Ubuntu",
+                "os.platform": "ubuntu",
+                "os.version": "22.04",
+                "@timestamp": TIMESTAMP,
+                "wazuh.cluster.node": self.NODE_NAME,
+                "wazuh.cluster.name": "wazuh-cluster",
+            }
+        )
+        comms_doc = tasks._normalize_comms_doc(
             {
                 "@timestamp": TIMESTAMP,
-                "wazuh.cluster.node": "master-node",
+                "wazuh.cluster.node": self.NODE_NAME,
                 "wazuh.cluster.name": "wazuh-cluster",
-                "wazuh.schema.version": "1",
-                **doc,
+                "metrics": {"bytes": {"sent": 1, "received": 1}, "tcp_sessions": 1},
             }
-            for doc in COMMS_DOCS
-        ]
-
-        actions = [
-            {"_op_type": "index", "_index": index, "_source": doc}
-            for doc in docs_with_meta
-        ]
-
-        success, failed = await async_bulk(os_client, actions, raise_on_error=False)
-
-        assert success >= 1
-        assert failed == []
-
-    @requires_opensearch
-    @pytest.mark.asyncio
-    async def test_comms_documents_have_expected_fields(self, os_client):
-        """Documents indexed into wazuh-metrics-comms contain all expected fields."""
-        from opensearchpy.helpers import async_bulk
-
-        index = "wazuh-metrics-comms-test"
-        doc = {
-            "@timestamp": TIMESTAMP,
-            "wazuh.cluster.node": "master-node",
-            "wazuh.cluster.name": "wazuh-cluster",
-            "wazuh.schema.version": "1",
-            **COMMS_DOCS[0],
-        }
-        actions = [{"_op_type": "index", "_index": index, "_source": doc}]
-        await async_bulk(os_client, actions, raise_on_error=False)
-        await os_client.indices.refresh(index=index)
-
-        result = await os_client.search(
-            index=index,
-            body={"query": {"term": {"queue.usage": 10}}},
-            size=1,
+        )
+        normalization_doc = tasks._normalize_normalization_doc(
+            {"name": "itest.metric", "type": "counter", "enabled": True, "value": 1},
+            None,
+            TIMESTAMP,
+            "wazuh-cluster",
+            self.NODE_NAME,
         )
 
-        hits = result["hits"]["hits"]
-        assert len(hits) >= 1
-        source = hits[0]["_source"]
+        with (
+            patch.object(
+                tasks, "_collect_agents", new_callable=AsyncMock, return_value=[agent_doc]
+            ),
+            patch.object(
+                tasks,
+                "_collect_comms_all_nodes",
+                new_callable=AsyncMock,
+                return_value=[comms_doc],
+            ),
+            patch.object(
+                tasks,
+                "_collect_normalization_all_nodes",
+                new_callable=AsyncMock,
+                return_value=[normalization_doc],
+            ),
+            self._patch_real_indexer_client(indexer_client),
+            # common is module-mocked at the top of this file for import isolation, so
+            # _load_schema() needs a real INDEXER_PLUGINS_PATH pointed at it explicitly
+            # instead of os.path.join(MagicMock(), ...). requires_indexer_templates
+            # guarantees this path exists and holds the three real templates, so
+            # _validate_documents() actually runs against them instead of being
+            # bypassed. Note this only catches top-level shape mismatches:
+            # _opensearch_template_to_jsonschema() sets additionalProperties: False
+            # only at levels whose own template node declares dynamic: strict, not
+            # recursively, so an extra *nested* field (the exact shape of the
+            # wazuh.agent.config/host.os.full mismatch this PR removes) would still
+            # pass local validation and only be caught by the live indexer itself.
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.common.INDEXER_PLUGINS_PATH",
+                INDEXER_TEMPLATES_PATH,
+            ),
+        ):
+            await tasks._collect_and_index()
 
-        expected_fields = [
-            "@timestamp",
-            "wazuh.cluster.node",
-            "wazuh.cluster.name",
-            "wazuh.schema.version",
-            "queue.usage",
-            "queue.capacity",
-            "tcp.sessions",
-            "events.total",
-            "network.egress.bytes",
-            "network.ingress.bytes",
-        ]
-        for field in expected_fields:
-            assert field in source, f"Missing field: {field}"
-
-    @requires_opensearch
-    @pytest.mark.asyncio
-    async def test_timestamp_format_is_iso8601(self, os_client):
-        """@timestamp is present and correctly formatted in all indexed documents."""
-        from opensearchpy.helpers import async_bulk
-
-        for index in ["wazuh-metrics-agents-test", "wazuh-metrics-comms-test"]:
-            doc = {"@timestamp": TIMESTAMP, "test_field": "value"}
-            actions = [{"_op_type": "index", "_index": index, "_source": doc}]
-            await async_bulk(os_client, actions, raise_on_error=False)
-            await os_client.indices.refresh(index=index)
-
-            result = await os_client.search(
+        for index in (
+            "wazuh-metrics-agents",
+            "wazuh-metrics-comms-v4",
+            "wazuh-metrics-normalization",
+        ):
+            await indexer_client.indices.refresh(index=index)
+            result = await indexer_client.search(
                 index=index,
-                body={"query": {"exists": {"field": "@timestamp"}}},
-                size=1,
+                body={"query": {"term": {"wazuh.cluster.node": self.NODE_NAME}}},
             )
             hits = result["hits"]["hits"]
-            assert len(hits) >= 1
-            ts = hits[0]["_source"]["@timestamp"]
-            # Must parse as ISO 8601
-            datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
+            assert hits, (
+                f"No document with wazuh.cluster.node={self.NODE_NAME} found in {index}"
+            )
+            source = hits[0]["_source"]
+
+            # Parse the stored @timestamp the same way the index template's `date`
+            # mapping (no explicit format) would. Checked against the indexed document,
+            # not the normalizer's own return value — comparing to that would just
+            # replay a _to_iso() regression instead of catching one, since both sides
+            # would carry the same bad value.
+            datetime.strptime(source["@timestamp"], "%Y-%m-%dT%H:%M:%SZ")
+
+            if index == "wazuh-metrics-agents":
+                assert source["wazuh"]["agent"]["id"] == "999"
+                assert source["wazuh"]["agent"]["name"] == "itest-agent"
+            elif index == "wazuh-metrics-comms-v4":
+                assert source["event"]["module"] == "remoted"
+                assert source["network"]["egress"]["bytes"] == 1
+            else:
+                assert source["metric"]["name"] == "itest.metric"
+                assert source["metric"]["value"] == 1
 
 
 # ---------------------------------------------------------------------------
