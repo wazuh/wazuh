@@ -27,9 +27,12 @@ All notable changes to this project will be documented in this file.
 
 - Raised from 64 to 1024 the number of active response commands that `wazuh-execd` can load from `etc/shared/ar.conf`. ([#38509](https://github.com/wazuh/wazuh/pull/38509))
 - Added the missing compiler hardening flags (stack canary, PIE, full RELRO and FORTIFY_SOURCE) to the Linux binaries. ([#38571](https://github.com/wazuh/wazuh/pull/38571))
+- Removed the per-comparison JSON serialisation from the macOS ports deduplication in syscollector. ([#39167](https://github.com/wazuh/wazuh/issues/39167))
 
 #### Fixed
 
+- Fixed missing Windows FIM inventory for file names with non-ANSI characters. ([#38301](https://github.com/wazuh/wazuh/pull/38301))
+- Fixed an agent crash caused by unsynchronized reads of the FIM directories list from the whodata callbacks. ([#39201](https://github.com/wazuh/wazuh/issues/39201))
 - Fixed the Windows agent MSI upgrade leaving the agent broken after the next reboot, and the silent `/q` upgrade hanging, when a system restart was pending. ([#38277](https://github.com/wazuh/wazuh/pull/38277))
 - Fixed syscollector sometimes keeping excluded macOS packages in the inventory. ([#38340](https://github.com/wazuh/wazuh/pull/38340))
 - Fixed `wazuh-execd` crashing when more active response commands than supported are defined. ([#38410](https://github.com/wazuh/wazuh/pull/38410))
@@ -41,16 +44,34 @@ All notable changes to this project will be documented in this file.
 - Fixed the `disable-account` active response reporting success when the account was not disabled, and stopped `is_valid_username()` from rejecting valid usernames containing consecutive dots. ([#38637](https://github.com/wazuh/wazuh/pull/38637))
 - Fixed the `disable-account` active response returning success when the account command was missing or the system was not supported. ([#38645](https://github.com/wazuh/wazuh/pull/38645))
 - Fixed the gcloud wodle masking missing-dependency errors as an unrelated `AttributeError`. ([#38856](https://github.com/wazuh/wazuh/pull/38856))
+- Restricted active response usernames to an allowlist, rejecting quotes, shell metacharacters, control characters and non-ASCII bytes. ([#38651](https://github.com/wazuh/wazuh/pull/38651))
 - Fixed process names truncated to fifteen characters in the syscollector inventory. ([#38969](https://github.com/wazuh/wazuh/pull/38969))
 - Fixed the gcloud wodle's Pub/Sub integration failing to start whenever the bucket integration's dependencies (e.g. `google-cloud-storage`) were broken, by deferring each integration's imports so a failure in one no longer blocks the other. ([#38868](https://github.com/wazuh/wazuh/pull/38868))
 - Fixed the macOS agent's default FIM configuration monitoring `/etc`, which macOS resolves as a symlink to `/private/etc`; without `follow_symbolic_link` enabled, syscheck only recorded the symlink itself, leaving every file under it (`sudoers`, `sshd_config`, `pam.d`, `hosts`) uncovered. The default `<directories>`, `<ignore>`, and `<nodiff>` entries now target `/private/etc` directly. ([#39119](https://github.com/wazuh/wazuh/issues/39119))
 - Fixed the macOS agent's syscollector process and port inventory being truncated, because `proc_listallpids()` was called with the buffer size expressed in pid_t count instead of bytes. ([#39126](https://github.com/wazuh/wazuh/issues/39126))
+- Fixed the default agent nodiff list not protecting /etc/shadow and real key paths. ([#39124](https://github.com/wazuh/wazuh/pull/39124))
+- Fixed FIM not monitoring user-mounted `tmpfs` directories mistaken for `/dev`. ([#38627](https://github.com/wazuh/wazuh/pull/38627))
+- Fixed the gcloud wodle silently discarding a crashed process's raw output when it produced no recognized log line, and fixed `wm_exec()` (shared by every wodle) reporting exit code 0 for a process killed by a signal, such as an OOM kill or a native segfault, which had made that raw-output fallback unreachable for exactly the crashes it was meant to catch. ([#38943](https://github.com/wazuh/wazuh/pull/38943))
+- Fixed the default Windows FIM configuration monitoring none of its 19 named critical binaries (`cmd.exe`, `lsass.exe`, `sc.exe`, `sethc.exe`, etc.), because duplicate `%WINDIR%\SysNative` / `%WINDIR%\System32` directory declarations collapsed onto the same path once normalized and silently replaced each other's `restrict` list. ([#39198](https://github.com/wazuh/wazuh/issues/39198))
+- Fixed the AWS wodle rejecting the `us-gov-east-1` and `us-gov-west-1` regions as invalid. ([#30480](https://github.com/wazuh/wazuh/issues/30480))
+- Fixed the macOS agent not reporting the password status and hash algorithm of local users. ([#39356](https://github.com/wazuh/wazuh/pull/39356))
+- Fixed the macOS agent reporting zeroed password aging values for local users, where macOS defines no such policy. ([#39356](https://github.com/wazuh/wazuh/pull/39356))
+- Fixed the users inventory misreporting sudoers, missing group-based grants (e.g. macOS's `%admin`, Linux's `%sudo`/`%wheel`) and flagging unrelated accounts. ([#39165](https://github.com/wazuh/wazuh/issues/39165))
+- Fixed the users inventory never reading sudo grants placed in sudoers drop-in files (`/etc/sudoers.d/*`). ([#39165](https://github.com/wazuh/wazuh/issues/39165))
 
 ### Ruleset
 
 #### Fixed
 - Fixed multiple checks with deprecated commands in Apple macOS 26.0 SCA file. ([#38669](https://github.com/wazuh/wazuh/pull/38669))
 - Fixed false-pass on the CIS Amazon Linux 2023 and Ubuntu 18.04 minimum password-days checks. ([#39047](https://github.com/wazuh/wazuh/pull/39047))
+- Fixed a `Permisive` typo failing the SELinux mode check on compliant hosts across 5 SCA policies. ([#39166](https://github.com/wazuh/wazuh/pull/39166))
+
+### Other
+
+#### Changed
+
+- Updated embedded Python to 3.10.21 and dependencies `cryptography`, `pip`, `pyasn1` and `setuptools`. ([#39148](https://github.com/wazuh/wazuh/pull/39148))
+- Updated the Google Cloud dependencies (`google-cloud-storage`, `google-cloud-core`, `google-auth` and `google-resumable-media`), which relied on the `pkg_resources` module removed in `setuptools` 82. ([#39148](https://github.com/wazuh/wazuh/pull/39148))
 
 ## [v4.14.8]
 

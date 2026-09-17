@@ -12,6 +12,9 @@
 #define STAT_WRAPPERS_H
 
 #include <sys/stat.h>
+#ifdef __linux__
+#include <sys/vfs.h>
+#endif
 
 int __wrap_chmod(const char *path);
 int __wrap_fchmod(int fd, mode_t mode);
@@ -39,6 +42,10 @@ void expect_mkdir(const char *__path, __mode_t __mode, int ret);
 #endif
 
 int __wrap_stat(const char * __file, struct stat * __buf);
+
+#ifdef __linux__
+int __wrap_statfs(const char * __file, struct statfs * __buf);
+#endif
 
 mode_t __wrap_umask(mode_t mode);
 

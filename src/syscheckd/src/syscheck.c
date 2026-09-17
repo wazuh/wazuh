@@ -319,9 +319,21 @@ int Start_win32_Syscheck() {
 
 #ifdef __linux__
 #ifdef ENABLE_AUDIT
+static bool fim_whodata_active_ebpf(const char *path) {
+    directory_t *configuration;
+    bool active;
+
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    configuration = fim_configuration_directory(path);
+    active = (configuration != NULL) && (configuration->options & WHODATA_ACTIVE);
+    w_rwlock_unlock(&syscheck.directories_lock);
+
+    return active;
+}
+
 void check_ebpf_availability() {
     minfo(FIM_EBPF_INIT);
-    fimebpf_initialize(fim_configuration_directory, get_user, get_group, fim_whodata_event,
+    fimebpf_initialize(fim_whodata_active_ebpf, get_user, get_group, fim_whodata_event,
                        free_whodata_event, loggingFunction, abspath, fim_shutdown_process_on, syscheck.queue_size);
     if (ebpf_whodata_healthcheck()) {
         mwarn(FIM_ERROR_EBPF_HEALTHCHECK);

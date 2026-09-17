@@ -317,6 +317,18 @@ extern char ** environ;
 
 static void* reader(void *args);   // Reading thread's start point
 
+/**
+ * @brief Translate a raw waitpid() status into the exit code callers see
+ * @param status Raw status as filled in by waitpid()
+ * @return The process' own exit code if it exited normally, or 128 + the
+ *         signal number if it was killed by one (the same convention shells
+ *         use) -- WEXITSTATUS() alone is unspecified on a signalled process
+ *         and reads as 0 on Linux, silently reporting a crash as success.
+ */
+STATIC int wm_exec_exit_code(int status) {
+    return WIFSIGNALED(status) ? 128 + WTERMSIG(status) : WEXITSTATUS(status);
+}
+
 // Execute command with timeout of secs
 
 int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path)
@@ -496,7 +508,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                 }
 
                 if (exitcode)
-                    *exitcode = WEXITSTATUS(status);
+                    *exitcode = wm_exec_exit_code(status);
             }
 
         } else if (secs) {
@@ -543,7 +555,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                     }
 
                     if (exitcode) {
-                        *exitcode = WEXITSTATUS(status);
+                        *exitcode = wm_exec_exit_code(status);
                     }
 
                     break;
@@ -569,7 +581,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                     }
 
                     if (exitcode)
-                        *exitcode = WEXITSTATUS(status);
+                        *exitcode = wm_exec_exit_code(status);
                 }
             }
         } else {
@@ -588,7 +600,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                 }
 
                 if (exitcode) {
-                    *exitcode = WEXITSTATUS(status);
+                    *exitcode = wm_exec_exit_code(status);
                 }
             }
         }
