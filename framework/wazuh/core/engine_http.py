@@ -226,6 +226,40 @@ class RemotedHTTPClient:
         except ValueError as exc:
             raise WazuhInternalError(2032, extra_message=f'Invalid JSON in remoted admin response: {exc}')
 
+    def get_tls(self) -> dict:
+        """Retrieve the TLS certificate material remoted serves, from its local admin socket.
+
+        Returns
+        -------
+        dict
+            The `GET /tls` document: `evaluated_at`/`evaluated_at_ts`, `listener` (the served
+            certificate: subject, issuer, sans, validity in RFC 3339 and epoch forms,
+            `seconds_until_expiry`, `fingerprint`, `serial`, `path`, `loaded_at`) and `ca_bundle`
+            (path, publication fields, `content_sha256`, counts and sizes against their limits,
+            `chain_valid`, one entry per certificate with `signs_active_leaf`, and
+            `last_read_failure` while the bundle cannot be read). remoted answers 503 while its
+            HTTPS listener is not up, which surfaces here as a `WazuhError(2029)`.
+        """
+        try:
+            response = self._client.get(
+                url=f'{self.API_URL}/tls',
+                headers={'Content-Type': 'application/json'},
+            )
+        except httpx.TimeoutException as exc:
+            raise WazuhInternalError(2030, extra_message=str(exc))
+        except httpx.ConnectError as exc:
+            raise WazuhInternalError(2031, extra_message=str(exc))
+        except httpx.RequestError as exc:
+            raise WazuhError(2013, extra_message=str(exc))
+
+        if response.is_error:
+            raise WazuhError(2029, extra_message=response.text)
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise WazuhInternalError(2032, extra_message=f'Invalid JSON in remoted admin response: {exc}')
+
     def get_status(self) -> dict:
         """Retrieve remoted's readiness status from its local admin socket.
 
