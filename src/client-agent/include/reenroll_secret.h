@@ -128,7 +128,28 @@ void w_reenroll_secret_clear(void);
  * ends up owned by, and off the boot path: it performs a network round trip whose whole budget would
  * otherwise be added to the start of every agent whose manager is unreachable, for a credential
  * nothing at boot consumes.
+ *
+ * Synchronous. Call w_reenroll_secret_bootstrap_async() from a start path; this one is the unit the
+ * tests drive directly.
  */
 void w_reenroll_secret_bootstrap(void);
+
+/**
+ * @brief Runs w_reenroll_secret_bootstrap() on a detached thread, after a random delay.
+ *
+ * What a start path calls. It returns immediately, so nothing about the boot waits on a network
+ * round trip for a credential only a future recovery consumes, and a failure to spawn the thread is
+ * logged rather than fatal.
+ *
+ * The delay is jitter, not a timer: the fleet this exists for -- 4.x agents upgraded to 5.0 over
+ * WPK -- restarts together, so without a spread every agent would ask in the same instant, be paced
+ * by the manager's shared rate limit, and re-synchronize on the following boot.
+ *
+ * Both start paths call it and neither may skip it: the POSIX one in `agentd.c` (`AgentdStart`) and
+ * the Windows one in `win32/win_utils.c` (`local_start`), which is a separate function because
+ * `agentd.c` is not part of the Windows build -- the same split `w_agent_token_bootstrap()` lives
+ * with. Call it once the HTTPS transport is up.
+ */
+void w_reenroll_secret_bootstrap_async(void);
 
 #endif /* REENROLL_SECRET_H */

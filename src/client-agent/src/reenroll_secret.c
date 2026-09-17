@@ -203,6 +203,58 @@ void w_reenroll_secret_clear(void) {
     minfo("The re-enrollment secret was rejected by the manager and has been removed.");
 }
 
+/* Longest wait before the one request of this start.
+ *
+ * The population this bootstrap exists for is a 4.x fleet upgraded to 5.0 over WPK: every one of
+ * those agents restarts at roughly the same moment and would otherwise ask at the same instant. The
+ * manager paces that with a 429 -- the route shares POST /enroll's rate limit -- and a 429 is
+ * answered by simply trying again on the next start, so without a spread the fleet just
+ * re-synchronizes on every boot. Spending up to a minute here costs nothing: this credential is for
+ * a FUTURE recovery, and nothing in this process waits on it. */
+#define W_REENROLL_BOOTSTRAP_JITTER_SEC 60
+
+#ifdef WIN32
+static DWORD WINAPI w_reenroll_secret_bootstrap_thread(LPVOID arg)
+#else
+static void *w_reenroll_secret_bootstrap_thread(void *arg)
+#endif
+{
+    (void) arg;
+
+    /* The sign is masked off before the modulo, not after: os_random() returns a plain int and can
+     * be negative, and a negative remainder cast to unsigned would sleep for decades. */
+    sleep((unsigned int)(os_random() & 0x7FFFFFFF) % (W_REENROLL_BOOTSTRAP_JITTER_SEC + 1));
+    w_reenroll_secret_bootstrap();
+
+#ifdef WIN32
+    return 0;
+#else
+    return NULL;
+#endif
+}
+
+void w_reenroll_secret_bootstrap_async(void) {
+    /* Deliberately not w_create_thread(): that macro merror_exit()s when the spawn fails, and this
+     * credential is for a future recovery -- an agent that cannot spare a thread for it is no worse
+     * off than one whose manager refused the request, and must not be taken down over it. */
+#ifdef WIN32
+    HANDLE thread = CreateThread(NULL, 0, w_reenroll_secret_bootstrap_thread, NULL, 0, NULL);
+
+    if (thread == NULL) {
+        mdebug1("Could not start the re-enrollment secret bootstrap thread; retrying on the next start.");
+        return;
+    }
+
+    /* The thread is never joined, so the handle is closed straight away: keeping it would leak one
+     * per start for a thread nothing waits on. Closing it does not stop the thread. */
+    CloseHandle(thread);
+#else
+    if (!CreateThread(w_reenroll_secret_bootstrap_thread, NULL)) {
+        mdebug1("Could not start the re-enrollment secret bootstrap thread; retrying on the next start.");
+    }
+#endif
+}
+
 void w_reenroll_secret_bootstrap(void) {
     char stored_id[W_REENROLL_ID_SIZE];
     char stored_secret[W_REENROLL_SECRET_SIZE];
