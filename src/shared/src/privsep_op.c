@@ -16,6 +16,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <sys/types.h>
+#include <sys/resource.h>
 #include <unistd.h>
 
 #include "privsep_op.h"
@@ -176,6 +177,39 @@ int Privsep_Chroot(const char *path)
 
     nowChroot();
     return (OS_SUCCESS);
+}
+
+long w_raise_nofile_limit(long target, const char *option_name)
+{
+    struct rlimit limit;
+
+    if (getrlimit(RLIMIT_NOFILE, &limit) < 0) {
+        merror("Could not read the file descriptor limit: %s (%d)", strerror(errno), errno);
+        return -1;
+    }
+
+    if (limit.rlim_cur == RLIM_INFINITY || (rlim_t)target <= limit.rlim_cur) {
+        return limit.rlim_cur == RLIM_INFINITY ? target : (long)limit.rlim_cur;
+    }
+
+    const rlim_t soft = (limit.rlim_max == RLIM_INFINITY || limit.rlim_max >= (rlim_t)target) ? (rlim_t)target : limit.rlim_max;
+
+    if (soft > limit.rlim_cur) {
+        limit.rlim_cur = soft;
+
+        if (setrlimit(RLIMIT_NOFILE, &limit) < 0) {
+            merror("Could not set the file descriptor limit to %lu: %s (%d)", (unsigned long)soft, strerror(errno), errno);
+            return -1;
+        }
+
+        mdebug1("File descriptor limit raised to %lu", (unsigned long)soft);
+    }
+
+    if (soft < (rlim_t)target) {
+        mwarn("File descriptor limit is %lu, below the %ld requested by '%s'. Raise the limit the process is started with (LimitNOFILE, ulimit -n, container ulimits) to go higher.", (unsigned long)soft, target, option_name);
+    }
+
+    return (long)soft;
 }
 
 #endif /* !WIN32 */
