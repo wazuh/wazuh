@@ -43,6 +43,7 @@
  * call, read included, runs under the source's mutex, so two readers can never publish out of order.
  */
 
+#include "certificateDescriptor.hpp"
 #include "fileRead.hpp"
 #include "tlsCertificateStatus.hpp"
 
@@ -57,10 +58,26 @@
 
 namespace remoted::http
 {
-    /// Everything `GET /cacerts` and the TLS status need about the CA file, from a single read.
+    /// One certificate of the bundle as `GET /tls` reports it.
+    struct CaCertificateEntry
+    {
+        CertificateDescriptor certificate;
+        bool signsLeaf {false}; ///< caSignsLeaf() against the served leaf: a direct signature check, not a
+                                ///< chain verdict. False when there was no leaf to check against.
+    };
+
+    /// Everything `GET /cacerts`, the TLS status and `GET /tls` need about the CA file, from a single read.
     struct CaCertificateSnapshot
     {
         std::string pem; ///< Certificates only, re-serialised here. Empty when there is nothing to serve.
+        std::size_t serializedBytes {0};         ///< pem.size(): what an agent receives, against kAgentBodyLimit.
+        std::vector<CaCertificateEntry> entries; ///< One per certificate, in file order.
+        std::string contentSha256; ///< contentSha256() of the certificates read; empty when there is none.
+        /// The `##` publication block of the bundle (#39319): the timestamp `wazuh-manager-certs`
+        /// stamped and whether its hash vouched for these bytes. 0 / false until that parser exists,
+        /// and when the block is missing or does not match.
+        std::uint64_t publication {0};
+        bool publicationVouched {false};
         std::optional<bool>
             matchesLeaf; ///< Whether some certificate signs the served leaf directly; nullopt when none was read.
         std::optional<bool> chainValid; ///< Whether the leaf validates with the bundle as its trust store (chain,
@@ -87,6 +104,14 @@ namespace remoted::http
         /// Largest CA file served. A bundle is a few KB; past this the file is refused as TooLarge,
         /// and never more than kMaxBytes + 1 bytes of it are requested from the reader.
         static constexpr std::size_t kMaxBytes {1024U * 1024U};
+
+        /// What a bundle may hold and still reach every agent (spike #39277, D5; #39319 § 3): at most
+        /// this many certificates, serialised into at most kAgentBodyLimit bytes -- the agent's
+        /// HC_MAX_CACERTS_BODY (8192) less its terminator -- whichever binds first. Neither is enforced
+        /// here (the file is the operator's); `GET /tls` reports both next to the current values so the
+        /// room left is visible, and the rotation tool refuses to publish past them.
+        static constexpr std::size_t kMaxCertificates {6};
+        static constexpr std::size_t kAgentBodyLimit {8191};
 
         /**
          * @param path Configured CA path; an empty one yields an empty snapshot forever.

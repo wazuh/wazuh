@@ -71,13 +71,37 @@ namespace remoted::http
         }
 
         snapshot.pem = serializeCertificates(parsed.certificates);
+        snapshot.serializedBytes = snapshot.pem.size();
         snapshot.certificates = parsed.certificates.size();
+        snapshot.contentSha256 = contentSha256(parsed.certificates);
 
-        // With no leaf to check against (a server that has not started) the answer is "unknown",
-        // not "mismatch": anyCaSignsLeaf() would say false, and false is what refuses to serve.
+        // Per certificate: the descriptor GET /tls publishes and whether THIS one signs the leaf.
+        // With no leaf to check against (a server that has not started) the bundle-level answer is
+        // "unknown", not "mismatch": false is what refuses to serve.
+        bool anySigns = false;
+        snapshot.entries.reserve(parsed.certificates.size());
+        for (const auto& certificate : parsed.certificates)
+        {
+            CaCertificateEntry entry;
+            if (auto described = describeCertificate(certificate.get()))
+            {
+                entry.certificate = std::move(*described);
+            }
+            entry.signsLeaf = m_leaf && caSignsLeaf(m_leaf.get(), certificate.get());
+            anySigns = anySigns || entry.signsLeaf;
+            snapshot.entries.push_back(std::move(entry));
+
+            if (!snapshot.subjects.empty())
+            {
+                snapshot.subjects += ", ";
+            }
+            snapshot.subjects += subjectOfCertificate(certificate.get());
+        }
+
         if (m_leaf)
         {
-            snapshot.matchesLeaf = anyCaSignsLeaf(m_leaf.get(), parsed.certificates);
+            // The same value anyCaSignsLeaf() gives: the OR of the per-certificate checks above.
+            snapshot.matchesLeaf = anySigns;
 
             // Separately from the signature: does the leaf VALIDATE with this bundle as its trust
             // store (chain, dates, CA constraints, server purpose)? Information for the logs, never
@@ -85,15 +109,6 @@ namespace remoted::http
             const auto chain = chainValidates(m_leaf.get(), parsed.certificates);
             snapshot.chainValid = chain.valid;
             snapshot.chainError = chain.error;
-        }
-
-        for (const auto& certificate : parsed.certificates)
-        {
-            if (!snapshot.subjects.empty())
-            {
-                snapshot.subjects += ", ";
-            }
-            snapshot.subjects += subjectOfCertificate(certificate.get());
         }
 
         // A serialisation failure leaves nothing to publish: refuse rather than fall back to the

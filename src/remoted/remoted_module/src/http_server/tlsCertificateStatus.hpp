@@ -98,6 +98,12 @@ namespace remoted::http
     std::optional<int> daysUntilExpiry(const X509* certificate);
 
     /**
+     * @brief Whether @p ca signed @p leaf (`X509_verify` against the CA's public key). The per-CA
+     *        half of anyCaSignsLeaf(): what `GET /tls` reports as `signs_active_leaf`.
+     */
+    bool caSignsLeaf(const X509* leaf, const X509* ca);
+
+    /**
      * @brief Whether any of @p cas signed @p leaf (`X509_verify` against each CA's public key).
      *
      * A signature check, not a chain validation: no dates, no name constraints, no basicConstraints.
