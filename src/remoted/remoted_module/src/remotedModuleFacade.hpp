@@ -13,6 +13,7 @@
 #define _REMOTED_MODULE_FACADE_HPP
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdarg>
 #include <cstdint>
@@ -131,7 +132,7 @@ constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 // remoted_module_config_t::max_deferred_requests <= 0).
 constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {128};
 
-// Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status). RELATIVE on
+// Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status + GET /tls). RELATIVE on
 // purpose: remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
 // Named "-admin" (not "-http"/"-stats"): remoted's HTTP identity is the public listener, this is
 // a management plane, and it must not collide with remcom's legacy "queue/sockets/remote.sock". No
@@ -1358,6 +1359,36 @@ private:
                 },
                 wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
 
+            // GET /tls: the served certificate and the CA bundle as `GET /cacerts` would hand it out
+            // right now (issue #39320) -- see http_server/tlsInventory.hpp for the document. ONE
+            // tlsInventory() call per request: it is the one place the leaf and the CA verdict come
+            // from the same instant, and the CA half costs a bounded read of a few KB under the
+            // source's own mutex (regular files only, O_NONBLOCK), which is why this stays a Liveness
+            // route like its siblings rather than the first Control route on the admin plane. Same
+            // weak target as tlsCaMatchesLeaf(): 503 while the public listener is not up.
+            m_adminServer->addRoute(
+                wazuh::uds_http::Method::Get,
+                "/tls",
+                [this](std::shared_ptr<const wazuh::uds_http::HttpRequest>,
+                       std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
+                {
+                    std::shared_ptr<remoted::http::IHttpServer> server;
+                    {
+                        std::lock_guard<std::mutex> lock {m_publicDiagMutex};
+                        server = m_publicDiagTarget.lock();
+                    }
+                    const auto inventory = server ? server->tlsInventory() : remoted::http::TlsInventory {};
+                    if (!inventory.listener.has_value())
+                    {
+                        responder->send(
+                            wazuh::uds_http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})"));
+                        return;
+                    }
+                    responder->send(wazuh::uds_http::HttpResponse::json(
+                        200, remoted::http::renderTlsInventory(inventory, std::chrono::system_clock::now())));
+                },
+                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
+
             wazuh::uds_http::UdsHttpServerConfig config;
             config.socketPath = REMOTED_MODULE_ADMIN_SOCKET_PATH;
             // Identity: a NEW server with no prior wire contract, so the Server: header carries
@@ -1365,7 +1396,7 @@ private:
             config.logTag = "wazuh-manager-remoted:remoted-module:admin";
             config.serverName = "remoted admin";
             config.serverHeader = "wazuh-remoted";
-            // Three liveness routes serving one local operator: sized far below the library's
+            // Four liveness routes serving one local operator: sized far below the library's
             // data-plane defaults, everything else left at them.
             config.ioThreads = 2;
             config.maxConnections = 64;
@@ -1374,9 +1405,10 @@ private:
 
             registerAdminTransportDiagnostics();
 
-            LOGFN_INFO(moduleLogFn(),
-                       "remoted admin server listening on '%s' (routes: GET /, GET /metrics, and GET /status).",
-                       REMOTED_MODULE_ADMIN_SOCKET_PATH);
+            LOGFN_INFO(
+                moduleLogFn(),
+                "remoted admin server listening on '%s' (routes: GET /, GET /metrics, GET /status, and GET /tls).",
+                REMOTED_MODULE_ADMIN_SOCKET_PATH);
         }
         catch (const std::exception& e)
         {
@@ -1796,7 +1828,7 @@ private:
     /// transport-diagnostics pulls can hold a weak_ptr that expires when stop() resets it --
     /// nothing else shares ownership.
     std::shared_ptr<remoted::http::IHttpServer> m_httpServer;
-    /// Local admin plane (fixed UDS socket, GET / + GET /metrics + GET /status). OPTIONAL by
+    /// Local admin plane (fixed UDS socket, GET / + GET /metrics + GET /status + GET /tls). OPTIONAL by
     /// policy: a failed start leaves it null and the module keeps running (see startAdminServer()).
     std::shared_ptr<wazuh::uds_http::IUdsHttpServer> m_adminServer;
     /// Pull-metric plumbing for the admin server's TransportDiagnostics: the weak target is
