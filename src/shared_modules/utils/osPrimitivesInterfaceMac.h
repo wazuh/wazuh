@@ -24,6 +24,7 @@ class IOsPrimitivesMac
 
         virtual int sysctl(int* name, u_int namelen, void* oldp, size_t* oldlenp, void* newp, size_t newlen) const = 0;
         virtual int sysctlbyname(const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen) const = 0;
+        virtual int proc_listallpids(void* buffer, int buffersize) const = 0;
 
         virtual CFMutableDictionaryRef IOServiceMatching(const char* name) const = 0;
         virtual kern_return_t IOServiceGetMatchingServices(mach_port_t mainPort, CFDictionaryRef matching, io_iterator_t* existing) const = 0;

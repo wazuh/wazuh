@@ -1,7 +1,7 @@
 /*
  * Wazuh SysInfo
  * Copyright (C) 2015, Wazuh Inc.
- * May 18, 2023.
+ * September 17, 2026.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -14,20 +14,14 @@
 
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "osPrimitivesInterfaceMac.h"
 
-class UtilsMock
-{
-    public:
-        MOCK_METHOD(std::string, exec, (const std::string&, const size_t));
-};
-
-static UtilsMock* gs_utils_mock = NULL;
-
-std::string UtilsWrapperMac::exec(const std::string& cmd, const size_t bufferSize)
-{
-    return gs_utils_mock->exec(cmd, bufferSize);
-}
-
+// Local to this test target on purpose: shared_modules/utils/osPrimitivesInterfaceMac.h
+// bundles process, sysctl and IOKit/CoreFoundation primitives into a single interface,
+// so any mock of it has to stub every method regardless of which one a given test
+// exercises. sysInfoHardwareMac/osPrimitives_mock.h also (re)defines
+// UtilsWrapperMac::exec for its own hardware-info tests; duplicating a trimmed mock
+// here keeps this target's dependencies scoped to process listing.
 class OsPrimitivesMacMock: public IOsPrimitivesMac
 {
     public:
