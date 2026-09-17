@@ -112,6 +112,9 @@ def load_stats(results_dir: str, src: str) -> pd.DataFrame | None:
     """
     samples = bench_samples.samples_path(results_dir)
     if not os.path.isfile(samples):
+        # Standalone monitor.py may place its default samples file under monitor/.
+        samples = bench_samples.samples_path(os.path.join(results_dir, "monitor"))
+    if not os.path.isfile(samples):
         return None
     df = bench_samples.project(samples, src)
     # Already scoped to the last run by its run id. _keep_last_run must NOT be applied on

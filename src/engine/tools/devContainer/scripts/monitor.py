@@ -686,9 +686,10 @@ def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: st
         stop.set()
     if disk_thread and disk_thread.is_alive():
         disk_thread.join(timeout=5.0)
+    # An in-flight query may still need to write its result or timeout error.
+    # Keep the shared sink open until every collector has finished that write.
     for t, _ in api_threads:
-        if t.is_alive():
-            t.join(timeout=5.0)
+        t.join()
     ndjson.close()
 
     logger.info("All monitoring threads finished. Results in %s", output_dir)
