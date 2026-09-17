@@ -134,6 +134,80 @@ def _remoted_status(running: bool) -> dict:
     return entry
 
 
+# Why remoted could not describe its certificates, by the code RemotedHTTPClient raised. Every
+# entry is remoted's own state (down, no admin plane, slow, garbled), never the caller's fault.
+_REMOTED_TLS_REASONS = {
+    2013: 'request failed',
+    2028: 'admin client unavailable',
+    2030: 'timeout',
+    2031: 'admin socket unreachable',
+    2032: 'invalid response',
+}
+
+
+def _remoted_tls(running: bool) -> dict:
+    """Fetch remoted's `GET /tls` document, or say why it is not available.
+
+    Anything that is remoted's own state -- not running, admin socket never came up, HTTPS
+    listener not started (the route's 503), a timeout, a garbled answer -- becomes an explicit
+    `{'available': False, 'reason': ...}` instead of an exception: a consumer must never read a
+    missing document as "no certificate to worry about", and an error would leave no node to hang
+    that state on. The document itself passes through untouched, `seconds_until_expiry` negative
+    once expired included.
+    """
+    if not running:
+        return {'available': False, 'reason': 'remoted not running'}
+
+    client = None
+    try:
+        client = RemotedHTTPClient()
+        document = client.get_tls()
+    except WazuhInternalError as exc:
+        return {'available': False, 'reason': _REMOTED_TLS_REASONS.get(exc.code, 'invalid response')}
+    except WazuhError as exc:
+        if exc.code == 2029 and '"code":503' in exc.message:
+            # remoted is up but its HTTPS listener is not (yet): the route answers 503 by contract.
+            return {'available': False, 'reason': 'listener not started'}
+        return {'available': False, 'reason': _REMOTED_TLS_REASONS.get(exc.code, 'unexpected response')}
+    except WazuhException:
+        return {'available': False, 'reason': 'unexpected response'}
+    finally:
+        if client is not None:
+            client.close()
+
+    return {'available': True, **document}
+
+
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
+def get_remoted_tls() -> AffectedItemsWazuhResult:
+    """Report the TLS certificate material remoted serves on this node.
+
+    The certificate the HTTPS listener presents to agents and the CA bundle `GET /cacerts` hands
+    out, as remoted's admin `GET /tls` describes them: dates, identities, which CA signs the leaf,
+    sizes against their limits. No thresholds: the consumer decides what "soon" means. The CA half
+    is read on this request; the listener's certificate is the one loaded when remoted started
+    (`listener.loaded_at`), so a replaced file shows only after a restart.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Exactly one affected item, always carrying `node`: the document with `available: true`, or
+        `{'node', 'available': False, 'reason'}` when remoted could not describe itself (not
+        running, admin socket unreachable, listener not started, timeout, invalid response). Never a
+        failed item: the state is the node's answer, not an error of the request.
+    """
+    result = AffectedItemsWazuhResult(
+        all_msg=f"TLS certificate information was successfully read{' in specified node' if node_id != 'manager' else ''}",
+        none_msg=f"Could not read TLS certificate information{' in specified node' if node_id != 'manager' else ''}",
+    )
+
+    running = status().get('wazuh-manager-remoted') == 'running'
+    result.affected_items.append({'node': node_id, **_remoted_tls(running)})
+    result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def get_status() -> AffectedItemsWazuhResult:
     """Report the node status: whether it is ready to process events, per daemon.
