@@ -17,6 +17,7 @@
 #include "clusterIdentity.hpp"
 #include "collectorSource.hpp"
 #include "compressionGate.hpp"
+#include "caBundleFetcher.hpp"
 #include "caPublicationState.hpp"
 #include "configHashState.hpp"
 #include "controlStream.hpp"
@@ -126,6 +127,7 @@ class HttpsClientFacade final
         StatelessStream m_stateless;
         StatefulStream m_stateful;
         ControlStream m_control;
+        CaBundleFetcher m_caFetcher;
         ReporterStream m_reporter;
 
         // One waiter per stream thread; the stop flag doubles as the abort flag.

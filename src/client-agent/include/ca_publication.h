@@ -72,4 +72,25 @@ int64_t w_ca_publication_read(const char *path);
  */
 int w_ca_publication_render(int64_t generation, char *out, size_t out_size);
 
+/**
+ * @brief Installs @p pem as the trust store at @p path, recording @p generation with it.
+ *
+ * Wholesale: the bundle replaces whatever was there, which is how an operator retires a CA.
+ * Written to a temporary file beside the target and renamed over it, so a crash leaves either
+ * the old bundle with its own publication or the new pair, never a mix -- the publication lives
+ * in the same file precisely so this is one rename rather than two writes to keep in step.
+ *
+ * Refuses a body that is not certificates. w_x509_load_all_pem() reads the file to its end and
+ * yields nothing when any block fails to decode, so a truncated or padded bundle is rejected
+ * here rather than becoming a trust store that verifies less than it appears to.
+ *
+ * @param path Trust store to replace.
+ * @param pem The bundle, as served.
+ * @param pem_len Its length.
+ * @param generation The publication to record; must be > 0.
+ * @return 0 when the store now holds @p pem at @p generation, -1 on any refusal, with the
+ *         existing store untouched.
+ */
+int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, int64_t generation);
+
 #endif /* CA_PUBLICATION_H */

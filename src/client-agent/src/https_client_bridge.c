@@ -1026,6 +1026,30 @@ static void bridge_on_manager_config_hash(const char *config_hash, void *user_da
  * back to merged.mg) and must be preserved as empty, not turned into "default".
  * Compares before writing so an unchanged report (the module already dedupes,
  * this is defense in depth) doesn't pay for a metadata republish. */
+/**
+ * @brief Installs a CA bundle the module fetched and vetted (#39321).
+ *
+ * The module established that the connection was verified against the CA the agent already
+ * trusts, that the answer was a complete 200, and that the node vouched for the publication
+ * being adopted. What is left is the part that needs X.509, which the module cannot link: parse
+ * the body, and replace the trust store atomically or not at all.
+ *
+ * Writes to agt->ssl.certificate_authorities rather than AGENT_ANCHOR_CA directly, because that
+ * is the file the transport was told to verify against -- an operator pointing
+ * <certificate_authorities> at their own path gets refreshes into that path, not into an anchor
+ * nothing is reading.
+ */
+static bool bridge_on_ca_bundle(const char *pem, size_t pem_len, int64_t generation,
+                                void *user_data) {
+    (void) user_data;
+
+    if (pem == NULL || pem_len == 0 || agt == NULL || agt->ssl.certificate_authorities == NULL) {
+        return false;
+    }
+
+    return w_ca_publication_install(agt->ssl.certificate_authorities, pem, pem_len, generation) == 0;
+}
+
 static void bridge_on_agent_groups(const char *groups_csv, void *user_data)
 {
     (void)user_data;
@@ -1928,6 +1952,7 @@ bool w_https_client_start(void)
     callbacks.on_task_failed = bridge_on_task_failed;
     callbacks.on_manager_config_hash = bridge_on_manager_config_hash;
     callbacks.on_agent_groups = bridge_on_agent_groups;
+    callbacks.on_ca_bundle = bridge_on_ca_bundle;
     callbacks.on_config_downloaded = bridge_on_config_downloaded;
     callbacks.on_sync_response = bridge_on_sync_response;
     callbacks.on_state_change = bridge_on_state_change;
