@@ -16,7 +16,7 @@ indexer.
 | Agent identities: ids, names, keys (`client.keys`) | Kept. Agents reconnect without re-enrolling. | Step 3 |
 | Agent registry: registration date, last known version and OS, group membership (`global.db`) | Kept, including assignments made from the manager or the API that never reached the agent's `ossec.conf`. | Step 3 |
 | Group folders (`etc/shared/<group>/`) | Kept. `agent.conf` files must be valid for 5.0. | Step 3 |
-| Enrollment password (`authd.pass`) | Kept, so 4.x agents (and new ones) enroll with the password they already have. | Step 3 |
+| Enrollment password (`authd.pass`) | Kept on the manager only if 4.x agents still have to enroll. 5.0 agents never use it, and the 5.0 package upgrade deletes it from the endpoint. | [Step 3](#enrollment-password) |
 | API users, roles and policies (`rbac.db`) | Kept, including passwords. | Step 3 |
 | Manager configuration | Rewritten by hand into `wazuh-manager.conf`. | Step 4 |
 | TLS material | Not carried. 5.0 needs its own CA and agent-listener certificate, issued before the first start, and every agent ends up verifying the manager against that CA. | Step 2, [Step 7](#7-upgrade-the-agents-to-50) |
@@ -186,15 +186,32 @@ is no window in which `wazuh-manager-modulesd` sees a half-extracted folder and 
 install -m 640 -o root -g wazuh-manager /root/wazuh-4x-backup/authd.pass /var/wazuh-manager/etc/authd.pass
 ```
 
-The installer writes `<auth><use_password>yes</use_password>` (see
-[authd](../../ref/modules/authd/configuration.md#use_password)), so keeping the 4.x password means
-the `authd.pass` already present on every agent keeps working. Skip this and `wazuh-manager-authd`
-generates a new random password on its first start, which every agent that enrolls with the old one
-is then rejected with. In a cluster the file belongs to the master and is distributed to the workers.
+**This step is conditional.** Carry the password only if 4.x agents will still have to enroll
+against the 5.0 manager during the migration window — a rebuilt host, an agent whose `client.keys`
+was lost, a 4.x agent installed after the cutover. If every agent keeps its key, as the rest of this
+guide arranges, nothing enrolls and the file buys you nothing.
 
-Migrated agents never enroll again, so this only matters for agents that re-enroll and for new 4.x
-agents. New 5.0 agents use enrollment tokens instead, covered in
-[After the migration](#after-the-migration-enrolling-new-agents).
+The asymmetry is the reason to think about it rather than copy it by reflex:
+
+- **The manager still uses it.** The installer writes `<auth><use_password>yes</use_password>` (see
+  [authd](../../ref/modules/authd/configuration.md#use_password)), so legacy enrollment on `1515`
+  demands a password. Skip this step and `wazuh-manager-authd` generates a new random one on its
+  first start, which rejects every 4.x agent still holding the old one. In a cluster the file
+  belongs to the master and is distributed to the workers.
+- **5.0 agents do not.** They enroll with an enrollment token and re-enroll with a per-agent secret.
+  Nothing on a 5.0 endpoint writes or reads `authd.pass`, `WAZUH_REGISTRATION_PASSWORD` is no longer
+  a supported install variable, and the 5.0 package upgrade **deletes** any `authd.pass` it finds on
+  the endpoint.
+
+So carrying it extends the life of a fleet-wide shared secret that 5.0 is retiring. There is one
+reason to keep it beyond the enrollment window: it is the only credential an *upgraded* agent can be
+given if the manager ever stops recognising its key, as
+[What the upgrade does to the agent's credentials](#what-the-upgrade-does-to-the-agents-credentials)
+explains. Drop it once every agent has been replaced by a token-enrolled 5.0 install: delete
+`/var/wazuh-manager/etc/authd.pass` and restart `wazuh-manager-authd` to get a fresh one, or set
+`<auth><use_password>no</use_password>` once nothing enrolls over `1515` any more.
+
+New 5.0 agents are covered in [After the migration](#after-the-migration-enrolling-new-agents).
 
 ### API users, roles and policies
 
@@ -333,6 +350,59 @@ migrated fleet:
 - **State rebuild.** Within minutes of connecting over HTTPS the agent's inventory, FIM, SCA and
   vulnerability state appears in the `wazuh-states-*` indices. The 4.x history is not carried.
 
+### What the upgrade does to the agent's credentials
+
+An upgraded agent keeps its identity and never enrolls, which is the point of this procedure. It
+also changes what the endpoint holds, in a way worth knowing before you upgrade a fleet:
+
+1. The manager delivers its CA (remote upgrades), the installer validates it and writes it to
+   `etc/certs/root-ca.pem`.
+2. The package preserves `client.keys`, `ossec.conf` and `local_internal_options.conf`.
+3. The package **deletes `etc/authd.pass`**, overwriting it first. The message is on the package
+   manager's own output:
+
+   ```console
+   wazuh-agent: removed the fleet-wide enrollment password at /var/ossec/etc/authd.pass. 5.0 enrols
+   with an enrollment token (WAZUH_ENROLLMENT_TOKEN) and re-enrols with a per-agent secret.
+   ```
+
+4. The agent restarts, reads the manager address out of its legacy `<client>` block, and connects
+   over `1517` with the same id and key, verifying against the anchor from step 1.
+
+The agent now holds exactly one credential: the key in `client.keys`. It has no enrollment password,
+because the upgrade removed it, and no per-agent re-enrollment secret, because those are issued by
+`POST /enroll` and an upgraded agent never calls it. That is enough for everything it does day to
+day, and the manager's `<auth><force>` rules already stop another host from taking its name while it
+is active.
+
+It is not enough to recover on its own if the manager ever stops recognising the key — an agent
+deleted from the manager, or a `global.db` restored from a backup older than the agent. A 5.0 agent
+in that position re-enrolls with its re-enrollment secret. An upgraded one has none, keeps retrying,
+and stays disconnected until an operator intervenes on the endpoint.
+
+The intervention is the enrollment password, not a token. An enrollment token is consumed only by
+the bootstrap that runs at the agent's first start, and that bootstrap latches: an agent that
+already holds a trust anchor — which is exactly what the upgrade gave it — discards a token without
+using it. So recovery means putting the manager's password back on the endpoint the upgrade took it
+from:
+
+```bash
+sudo cat /var/wazuh-manager/etc/authd.pass        # on the manager
+# on the agent
+echo "<password>" | sudo tee /var/ossec/etc/authd.pass
+sudo chown root:wazuh /var/ossec/etc/authd.pass && sudo chmod 640 /var/ossec/etc/authd.pass
+sudo systemctl restart wazuh-agent
+```
+
+This is the practical reason to keep the manager's `authd.pass` for as long as any upgraded agent
+remains, even though nothing enrolls with it day to day: it is the only credential those agents can
+be given without reinstalling them. Back up `client.keys` and `global.db` together as well, so a
+restore never leaves the registry behind the keys.
+
+Issue [#39315](https://github.com/wazuh/wazuh/issues/39315) tracks giving upgraded agents a
+re-enrollment secret without an operator, and [#39065](https://github.com/wazuh/wazuh/issues/39065)
+a standalone token consumer for the endpoint. Until both land, the sequence above is the recovery.
+
 ## 8. Retire the legacy channel
 
 Once no 4.x agent remains, disable `<remote><legacy>` and `<auth><legacy_enrollment>` and close
@@ -352,9 +422,23 @@ sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --addr
 ```
 
 Pass it to the installer as `WAZUH_ENROLLMENT_TOKEN`. `--list-enrollment-tokens` and
-`--revoke-enrollment-token` manage them. The shared password path you carried over in
-[Step 3](#enrollment-password) keeps working alongside it, for 4.x agents and for automation written
-before tokens existed. See [Agent enrollment lifecycle](../../ref/modules/authd/enrollment-lifecycle.md).
+`--revoke-enrollment-token` manage them. See
+[Agent enrollment lifecycle](../../ref/modules/authd/enrollment-lifecycle.md).
+
+The token is now the **only** registration input a 5.0 agent installer accepts. The variables a 4.x
+install command carries — `WAZUH_MANAGER`, `WAZUH_MANAGER_IP`, `WAZUH_MANAGER_PORT`,
+`WAZUH_REGISTRATION_PASSWORD`, `WAZUH_REGISTRATION_CA`, `WAZUH_REGISTRATION_SERVER` and the rest of
+that family — are read only to tell you they no longer do anything:
+
+```console
+wazuh-agent: WAZUH_MANAGER is not supported in 5.0 and was ignored: registration is configured by
+WAZUH_ENROLLMENT_TOKEN alone; this variable no longer has any effect.
+```
+
+The install is not stopped, so an untouched playbook produces an agent with no manager configured
+rather than a failure. Check your deployment automation before the cutover, not after. `SSL_VERIFICATION`
+was renamed to `WAZUH_SSL_VERIFICATION` with no alias, and the old spelling is reported the same way.
+`WAZUH_AGENT_NAME` and `WAZUH_AGENT_GROUP` are unchanged.
 
 ## Historical data
 
