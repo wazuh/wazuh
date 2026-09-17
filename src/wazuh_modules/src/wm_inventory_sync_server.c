@@ -431,8 +431,10 @@ void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
              * race-free to read here even though wm_vulnerability_scanner's OWN start() has not
              * run yet on this node. Absent module (no <vulnerability-detection> section at all,
              * "no section means no module" per Read_Vulnerability_Detection_JSON()) -> not
-             * configured. Present with no "enabled" key, or a value w_parse_bool() does not
-             * recognize as "no" -> defaults enabled, matching the scanner's own default. */
+             * configured. Present with no "enabled" key -> defaults enabled, matching the scanner's
+             * own default. A string value w_parse_bool() does not recognize as "yes" -> treated as
+             * disabled: the scanner's own Utils::parseStrToBool() throws on the same input, which
+             * leaves it permanently failed rather than started, so this must not wait on it. */
             config.vd_configured_enabled = false;
             const wmodule* vd_module = wm_find_module(WM_VULNERABILITY_SCANNER_CONTEXT.name);
             if (vd_module && vd_module->data)
@@ -447,7 +449,7 @@ void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
                 }
                 else if (cJSON_IsString(vd_enabled))
                 {
-                    config.vd_configured_enabled = w_parse_bool(vd_enabled->valuestring) != 0;
+                    config.vd_configured_enabled = w_parse_bool(vd_enabled->valuestring) == 1;
                 }
                 else
                 {
