@@ -11,7 +11,7 @@ from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, manager_reload
 from wazuh.core.configuration import get_manager_conf
-from wazuh.core.engine_http import (EngineHTTPClient, RemotedHTTPClient, VdHTTPClient,
+from wazuh.core.engine_http import (EngineHTTPClient, RemotedAdminHTTPError, RemotedHTTPClient, VdHTTPClient,
                                     WazuhDBStatusHTTPClient)
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_wazuh_logs, \
@@ -195,12 +195,13 @@ def _remoted_tls(running: bool) -> dict:
     try:
         client = RemotedHTTPClient()
         document = client.get_tls()
+    except RemotedAdminHTTPError as exc:
+        # remoted is up but its HTTPS listener is not (yet): the route answers 503 by contract.
+        reason = 'listener not started' if exc.status_code == 503 else 'unexpected response'
+        return {'available': False, 'reason': reason}
     except WazuhInternalError as exc:
         return {'available': False, 'reason': _REMOTED_TLS_REASONS.get(exc.code, 'invalid response')}
     except WazuhError as exc:
-        if exc.code == 2029 and '"code":503' in exc.message:
-            # remoted is up but its HTTPS listener is not (yet): the route answers 503 by contract.
-            return {'available': False, 'reason': 'listener not started'}
         return {'available': False, 'reason': _REMOTED_TLS_REASONS.get(exc.code, 'unexpected response')}
     except WazuhException:
         return {'available': False, 'reason': 'unexpected response'}
@@ -230,7 +231,7 @@ def get_remoted_tls() -> AffectedItemsWazuhResult:
         failed item: the state is the node's answer, not an error of the request.
     """
     result = AffectedItemsWazuhResult(
-        all_msg=f"TLS certificate information was successfully read{' in specified node' if node_id != 'manager' else ''}",
+        all_msg=f"TLS certificate information was returned{' in specified node' if node_id != 'manager' else ''}",
         none_msg=f"Could not read TLS certificate information{' in specified node' if node_id != 'manager' else ''}",
     )
 
