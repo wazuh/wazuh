@@ -40,8 +40,9 @@ class SudoersProvider
         ///
         /// Never matches what the endpoint cannot resolve -- netgroups ("+netgroup") and numeric ids
         /// ("#501", "%#80"). A "!"-prefixed entry does not itself grant, but per sudoers(5) it can
-        /// revoke a grant an earlier entry in the same user list gave -- the last entry in the list
-        /// that actually applies to the user (negated or not) decides the result.
+        /// revoke a grant an earlier entry gave -- last-match-wins applies both to the entries within
+        /// one rule's user list and across separate rules in the whole policy, so the last rule (and,
+        /// within it, the last entry) that actually applies to the user decides the result.
         ///
         /// This overload builds the User_Alias map itself; prefer the one below when checking
         /// several users against the same sudoers rules, and build the map once with
@@ -50,7 +51,7 @@ class SudoersProvider
         /// @param sudoers Rules as returned by collect().
         /// @param userName Name of the user to look up.
         /// @param userGroups Names of the groups the user belongs to.
-        /// @return true when at least one rule grants sudo to the user.
+        /// @return true when the last applicable rule grants sudo to the user.
         static bool isUserSudoer(const nlohmann::json& sudoers,
                                  const std::string& userName,
                                  const std::set<std::string>& userGroups);
@@ -62,7 +63,7 @@ class SudoersProvider
         /// @param userName Name of the user to look up.
         /// @param userGroups Names of the groups the user belongs to.
         /// @param userAliases Result of collectUserAliases(sudoers).
-        /// @return true when at least one rule grants sudo to the user.
+        /// @return true when the last applicable rule grants sudo to the user.
         static bool isUserSudoer(const nlohmann::json& sudoers,
                                  const std::string& userName,
                                  const std::set<std::string>& userGroups,

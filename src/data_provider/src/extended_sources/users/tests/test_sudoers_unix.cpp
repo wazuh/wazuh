@@ -265,6 +265,47 @@ TEST(SudoersIsUserSudoerTest, LaterPositiveEntryRegrantsAfterAnEarlierNegation)
     EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "baduser", {"admin"}));
 }
 
+TEST(SudoersIsUserSudoerTest, LaterNegatedEntryInASeparateRuleRevokesAnEarlierGroupGrant)
+{
+    const auto sudoers = R"([
+        {"header": "%wheel", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"},
+        {"header": "!alice,", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"}
+    ])"_json;
+
+    // "alice" is in "wheel" and would be granted by the first rule alone, but the negated entry
+    // in the later, separate rule is the one that actually applies to her last, per sudoers(5)
+    // last-match-wins evaluation across the whole policy, not just within one rule's user list.
+    EXPECT_FALSE(SudoersProvider::isUserSudoer(sudoers, "alice", {"wheel"}));
+
+    // Any other member of "wheel" is unaffected by the negated entry naming "alice".
+    EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "bob", {"wheel"}));
+}
+
+TEST(SudoersIsUserSudoerTest, LaterGroupGrantInASeparateRuleRegrantsAfterAnEarlierNegation)
+{
+    const auto sudoers = R"([
+        {"header": "!alice,", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"},
+        {"header": "%wheel", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"}
+    ])"_json;
+
+    // The negated rule for "alice" comes first, but the later, separate rule granting via her
+    // "wheel" membership is the last rule that applies to her, so it wins.
+    EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "alice", {"wheel"}));
+}
+
+TEST(SudoersIsUserSudoerTest, IrrelevantLaterRuleDoesNotClobberAnEarlierApplicableGrant)
+{
+    const auto sudoers = R"([
+        {"header": "%wheel", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"},
+        {"header": "bob,", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"}
+    ])"_json;
+
+    // "alice" is granted by the first rule via her "wheel" membership. The second rule names
+    // "bob", not "alice", so it never applies to her and must leave her running state alone
+    // instead of resetting it back to NoMatch/false.
+    EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "alice", {"wheel"}));
+}
+
 TEST(SudoersIsUserSudoerTest, NonUnixGroupIsMatchedByName)
 {
     const auto sudoers = R"([
