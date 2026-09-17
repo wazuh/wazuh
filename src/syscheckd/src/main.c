@@ -347,6 +347,12 @@ int main(int argc, char **argv)
         merror(FIM_ERROR_WHODATA_AUDIT_SUPPORT);
 #endif
     }
+#ifdef ENABLE_AUDIT
+    else {
+        // Drop a leftover plugin configuration from a previous run with who-data via Audit
+        audit_remove_plugin_config();
+    }
+#endif
 
     /* Start the daemon */
     start_daemon();
