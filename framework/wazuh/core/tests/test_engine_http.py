@@ -457,6 +457,94 @@ def test_remoted_get_status_request_error():
     assert exc_info.value.code == 2013
 
 
+REMOTED_TLS_RESPONSE = {
+    'evaluated_at': '2026-09-15T10:00:00Z', 'evaluated_at_ts': 1789466400,
+    'listener': {
+        'subject': 'CN=manager-01', 'issuer': 'CN=Corp Root CA', 'sans': ['manager-01.example.com'],
+        'not_before': '2026-01-01T00:00:00Z', 'not_before_ts': 1767225600,
+        'not_after': '2027-01-01T00:00:00Z', 'not_after_ts': 1798761600,
+        'seconds_until_expiry': 9295200, 'fingerprint': 'x509-sha256:' + '0' * 64, 'serial': '0x01',
+        'path': 'etc/certs/remoted.pem', 'loaded_at': '2026-09-14T08:12:31Z', 'loaded_at_ts': 1789373551,
+    },
+    'ca_bundle': {
+        'path': 'etc/certs/root-ca.pem', 'publication': 0, 'publication_vouched': False,
+        'content_sha256': 'b' * 64, 'certificates_count': 1, 'certificates_limit': 6,
+        'serialized_bytes': 1200, 'serialized_bytes_limit': 8191, 'chain_valid': True,
+        'certificates': [{'subject': 'CN=Corp Root CA', 'signs_active_leaf': True}],
+    },
+}
+
+
+def test_remoted_get_tls_ok():
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.return_value = REMOTED_TLS_RESPONSE
+    client._client.get.return_value = mock_response
+
+    result = client.get_tls()
+
+    client._client.get.assert_called_once_with(
+        url='http://localhost/tls',
+        headers={'Content-Type': 'application/json'},
+    )
+    assert result == REMOTED_TLS_RESPONSE
+
+
+def test_remoted_get_tls_http_error_carries_the_body():
+    """remoted answers 503 while its listener is not up: the body travels in the 2029 so the
+    framework can tell that case apart from any other error status."""
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = True
+    mock_response.text = '{"error":"Service unavailable","code":503}'
+    client._client.get.return_value = mock_response
+
+    with pytest.raises(WazuhError) as exc_info:
+        client.get_tls()
+    assert exc_info.value.code == 2029
+    assert '"code":503' in exc_info.value.message
+
+
+def test_remoted_get_tls_invalid_json():
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.side_effect = ValueError("not valid json")
+    client._client.get.return_value = mock_response
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_tls()
+    assert exc_info.value.code == 2032
+
+
+def test_remoted_get_tls_timeout():
+    client = _make_remoted_client()
+    client._client.get.side_effect = httpx.TimeoutException("timed out", request=MagicMock())
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_tls()
+    assert exc_info.value.code == 2030
+
+
+def test_remoted_get_tls_connect_error():
+    client = _make_remoted_client()
+    client._client.get.side_effect = httpx.ConnectError("connection refused", request=MagicMock())
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_tls()
+    assert exc_info.value.code == 2031
+
+
+def test_remoted_get_tls_request_error():
+    client = _make_remoted_client()
+    client._client.get.side_effect = httpx.RequestError("generic error", request=MagicMock())
+
+    with pytest.raises(WazuhError) as exc_info:
+        client.get_tls()
+    assert exc_info.value.code == 2013
+
+
 def test_remoted_http_client_init_error():
     with patch('wazuh.core.common.REMOTED_ADMIN_SOCKET', '/var/wazuh-manager/queue/sockets/remote-admin-http.sock'):
         with patch('httpx.HTTPTransport', side_effect=OSError("no socket")):
