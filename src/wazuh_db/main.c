@@ -17,6 +17,8 @@
 #define WDB_AGENT_EVENTS_TOPIC "wdb-agent-events"
 #define WDB_FIM_EVENTS_TOPIC "wdb-fim-events"
 #define WDB_INVENTORY_EVENTS_TOPIC "wdb-inventory-events"
+// Same topic inventory_harvester already subscribes to (previously published by remoted).
+#define WDB_SYSCOLLECTOR_DELTAS_TOPIC "deltas-syscollector"
 
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);
@@ -219,6 +221,10 @@ int main(int argc, char ** argv)
 
     if (router_inventory_events_handle = router_provider_create(WDB_INVENTORY_EVENTS_TOPIC, false), !router_inventory_events_handle) {
         mdebug2("Failed to create router handle for 'wdb-inventory-events'.");
+    }
+
+    if (router_syscollector_deltas_handle = router_provider_create(WDB_SYSCOLLECTOR_DELTAS_TOPIC, false), !router_syscollector_deltas_handle) {
+        mdebug2("Failed to create router handle for 'deltas-syscollector'.");
     }
 
     if (notify_queue = wnotify_init(1), !notify_queue) {

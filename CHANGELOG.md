@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed syscollector inventory records becoming visible in the Indexer before `wazuh-db` applied the corresponding write, by having `wazuh-db` publish the confirmed delta to the inventory harvester instead of `wazuh-remoted` forwarding it independently. ([#39329](https://github.com/wazuh/wazuh/issues/39329))
 - Bounded the agent control message copy to the source string length in `wazuh-remoted`. ([#38427](https://github.com/wazuh/wazuh/pull/38427))
 - Fixed the cluster server keeping pre-authentication connections open indefinitely by adding a handshake deadline and a global connection limit. ([#38449](https://github.com/wazuh/wazuh/pull/38449))
 - Fixed a memory leak in the `wazuh-analysisd` JSON decoder when an event repeats a static field. ([#38548](https://github.com/wazuh/wazuh/pull/38548))
