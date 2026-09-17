@@ -97,8 +97,9 @@ list(APPEND client-agent_names "test_startup_gate")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_SHA256_File ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_ca_publication")
-# Pure file parsing: no wrappers, and deliberately none -- it reads real temporary files.
-list(APPEND client-agent_flags " ")
+# Real temporary files, so no filesystem wrappers -- but the install path logs, and the
+# unwrapped logger reads ossec.conf and dies without one.
+list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_agent_ssl_ca")
 list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,os_find_ca_bundle \

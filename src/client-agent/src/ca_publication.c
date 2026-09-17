@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "ca_publication.h"
+#include "x509_op.h"
 
 /* The first line of the block, so a reader (or an operator opening the file) can tell what the
  * comment is for. Not parsed: only the generation line carries meaning. */
@@ -96,4 +97,88 @@ int w_ca_publication_render(int64_t generation, char *out, size_t out_size) {
     }
 
     return 0;
+}
+
+int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, int64_t generation) {
+    char block[128];
+    File store = {NULL, NULL};
+    X509 **certs = NULL;
+    size_t count = 0;
+    int ret = -1;
+
+    if (path == NULL || pem == NULL || pem_len == 0) {
+        return -1;
+    }
+
+    if (w_ca_publication_render(generation, block, sizeof(block)) != 0) {
+        merror("CA bundle: refusing to record publication %lld.", (long long) generation);
+        return -1;
+    }
+
+    /* The temporary file is where the body is judged, not the destination: a bundle that turns
+     * out not to be certificates must never have existed at the path the agent verifies
+     * against. TempFile() templates on the target, so the rename below stays within one
+     * filesystem and is atomic. */
+    if (TempFile(&store, path, 0) < 0) {
+        merror("CA bundle: could not create a temporary file beside '%s': %s (%d).", path,
+               strerror(errno), errno);
+        return -1;
+    }
+
+#ifndef WIN32
+    /* Same 0640 the anchor already carries: the runtime user reads the certificate authority it
+     * verifies against; nothing widens beyond that. TempFile() leaves 0600 behind its umask. */
+    if (chmod(store.name, 0640) == -1) {
+        merror("CA bundle: could not set permissions on '%s': %s (%d).", store.name,
+               strerror(errno), errno);
+        goto end;
+    }
+#endif
+
+    if (fwrite(block, 1, strlen(block), store.fp) != strlen(block) ||
+            fwrite(pem, 1, pem_len, store.fp) != pem_len) {
+        merror("CA bundle: could not write the trust store to '%s'.", store.name);
+        goto end;
+    }
+
+    if (fclose(store.fp) != 0) {
+        /* A write error can surface only here, when the stream is flushed; installing a store
+         * whose tail never reached the disk would be installing a truncated bundle. */
+        store.fp = NULL;
+        merror("CA bundle: could not flush the trust store to '%s': %s (%d).", store.name,
+               strerror(errno), errno);
+        goto end;
+    }
+
+    store.fp = NULL;
+
+    /* Judged only now that every byte is on disk, and judged from the file rather than the
+     * buffer so what is validated is exactly what would be installed. */
+    if (certs = w_x509_load_all_pem(store.name, &count), certs == NULL) {
+        merror("CA bundle: the body served for publication %lld is not a certificate bundle this "
+               "agent can parse; the trust store is unchanged.", (long long) generation);
+        goto end;
+    }
+
+    w_x509_free_all(certs, count);
+
+    if (OS_MoveFile(store.name, path) < 0) {
+        merror("CA bundle: could not install the trust store at '%s'.", path);
+        goto end;
+    }
+
+    minfo("CA bundle: trust store replaced at publication %lld (%zu certificate(s)).",
+          (long long) generation, count);
+    os_free(store.name);
+    return 0;
+
+end:
+    if (store.fp != NULL) {
+        fclose(store.fp);
+    }
+
+    unlink(store.name);
+    os_free(store.name);
+
+    return ret;
 }
