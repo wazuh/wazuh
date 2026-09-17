@@ -645,13 +645,16 @@ nlohmann::json SysInfo::getUsers() const
             userItem["user_last_login"] = 0;
         }
 
-        userItem["user_password_expiration_date"] = 0;
-        userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
-        userItem["user_password_inactive_days"] = 0;
-        userItem["user_password_max_days_between_changes"] = 0;
-        userItem["user_password_min_days_between_changes"] = 0;
-        userItem["user_password_status"] = UNKNOWN_VALUE;
-        userItem["user_password_warning_days_before_expiration"] = 0;
+        userItem["user_password_hash_algorithm"] = user["password_hash_algorithm"];
+        userItem["user_password_status"] = user["password_status"];
+        // macOS has no shadow file and no password aging policy unless an MDM imposes one, so
+        // there is no source for these. Reporting them as not collected keeps them apart from a
+        // policy that genuinely allows zero days.
+        userItem["user_password_expiration_date"] = NOT_COLLECTED_VALUE;
+        userItem["user_password_inactive_days"] = NOT_COLLECTED_VALUE;
+        userItem["user_password_max_days_between_changes"] = NOT_COLLECTED_VALUE;
+        userItem["user_password_min_days_between_changes"] = NOT_COLLECTED_VALUE;
+        userItem["user_password_warning_days_before_expiration"] = NOT_COLLECTED_VALUE;
 
         // By default, user is not sudoer.
         userItem["user_roles"] = UNKNOWN_VALUE;

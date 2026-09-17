@@ -12,8 +12,65 @@
 #include "od_wrapper.hpp"
 #include "json.hpp"
 
+#include <cstring>
+
 namespace od
 {
+    /// Authority tag present only on accounts that have a local password set.
+    static constexpr auto SHADOW_HASH_TAG {";ShadowHash;"};
+
+    /// Prefix of the algorithm list embedded in the ShadowHash authority.
+    static constexpr auto HASH_LIST_TAG {"HASHLIST:<"};
+
+    /// Password status values, aligned with the ones the Linux shadow provider reports.
+    static constexpr auto PASSWORD_STATUS_ACTIVE {"active"};
+    static constexpr auto PASSWORD_STATUS_NOT_SET {"not_set"};
+
+    /// @brief Runs a query against the local OpenDirectory node.
+    ///
+    /// @return The matching records, or nil when the directory could not be read. An empty array
+    ///         means the query succeeded and matched nothing, which is not a failure.
+    static NSArray* queryLocalNode(ODRecordType recordType,
+                                   ODAttributeType attribute,
+                                   id queryValues,
+                                   ODAttributeType returnAttributes)
+    {
+        ODSession* session = [ODSession defaultSession];
+        NSError* err = nullptr;
+
+        ODNode* root = [ODNode nodeWithSession:session name:@"/Local/Default" error:&err];
+
+        if (err != nullptr)
+        {
+            return nil;
+        }
+
+        ODQuery* query =
+            [ODQuery queryWithNode:root
+                     forRecordTypes:recordType
+                     attribute:attribute
+                     matchType:kODMatchEqualTo
+                     queryValues:queryValues
+                     returnAttributes:returnAttributes
+                     maximumResults:0
+                     error:&err];
+
+        if (err != nullptr)
+        {
+            return nil;
+        }
+
+        NSArray* results = [query resultsAllowingPartial:NO error:&err];
+
+        return err != nullptr ? nil : results;
+    }
+
+    /// @brief Converts an Objective-C string, which yields null when it cannot be encoded as UTF-8.
+    static std::string toStdString(NSString* value)
+    {
+        const char* utf8 { [value UTF8String] };
+        return utf8 != nullptr ? std::string {utf8} : std::string {};
+    }
 
     void genEntries(const std::string& record_type,
                     const std::string* record,
@@ -203,6 +260,133 @@ namespace od
             assign_safe("failedLoginCount", "failed_login_count", true);
             assign_safe("failedLoginTimestamp", "failed_login_timestamp", false);
             assign_safe("passwordLastSetTime", "password_last_set_time", false);
+        }
+    }
+
+    void genPasswordData(std::map<std::string, nlohmann::json>& passwordData)
+    {
+        @autoreleasepool
+        {
+            // A nil query value matches every user, so the whole directory is read in one round
+            // trip instead of one per account.
+            NSArray* results = queryLocalNode(kODRecordTypeUsers,
+                                              kODAttributeTypeUniqueID,
+                                              nil,
+                                              kODAttributeTypeAuthenticationAuthority);
+
+            // Every account is left out of the map, so the caller reports the fields as not
+            // collected rather than inventing a status for accounts it could not read.
+            if (results == nil)
+            {
+                return;
+            }
+
+            for (ODRecord * re in results)
+            {
+                NSError* attrErr = nullptr;
+                NSArray* authorities =
+                    [re valuesForAttribute:kODAttributeTypeAuthenticationAuthority error:&attrErr];
+
+                // An unreadable record is left out of the map, so the caller reports the fields as
+                // not collected rather than claiming the account has no password. An account that
+                // simply has no authority returns an empty list without an error.
+                if (attrErr != nullptr)
+                {
+                    continue;
+                }
+
+                nlohmann::json entry
+                {
+                    {"password_status", PASSWORD_STATUS_NOT_SET},
+                    {"password_hash_algorithm", ""}
+                };
+
+                for (id authority in authorities)
+                {
+                    const std::string value {toStdString([authority description])};
+
+                    if (value.find(SHADOW_HASH_TAG) == std::string::npos)
+                    {
+                        continue;
+                    }
+
+                    entry["password_status"] = PASSWORD_STATUS_ACTIVE;
+
+                    const auto listStart = value.find(HASH_LIST_TAG);
+
+                    if (listStart == std::string::npos)
+                    {
+                        continue;
+                    }
+
+                    const auto algorithmsStart = listStart + std::strlen(HASH_LIST_TAG);
+                    const auto algorithmsEnd = value.find('>', algorithmsStart);
+
+                    if (algorithmsEnd == std::string::npos)
+                    {
+                        continue;
+                    }
+
+                    // The list is ordered by preference, so the first entry is the algorithm in use.
+                    const auto algorithms = value.substr(algorithmsStart, algorithmsEnd - algorithmsStart);
+                    const auto separator = algorithms.find(',');
+                    entry["password_hash_algorithm"] = separator == std::string::npos
+                                                       ? algorithms
+                                                       : algorithms.substr(0, separator);
+                }
+
+                const auto recordName {toStdString([re recordName])};
+
+                if (!recordName.empty())
+                {
+                    passwordData[recordName] = std::move(entry);
+                }
+            }
+        }
+    }
+
+    bool genDisabledUsers(std::set<std::string>& disabledUsers)
+    {
+        @autoreleasepool
+        {
+            // macOS tracks disabled accounts as members of this group.
+            NSArray* results = queryLocalNode(kODRecordTypeGroups,
+                                              kODAttributeTypeRecordName,
+                                              @"com.apple.access_disabled",
+                                              kODAttributeTypeGroupMembership);
+
+            // A group that does not exist, or exists with no members, comes back as an empty
+            // result rather than an error, and genuinely means nobody is disabled.
+            if (results == nil)
+            {
+                return false;
+            }
+
+            for (ODRecord * re in results)
+            {
+                NSError* attrErr = nullptr;
+                NSArray* members =
+                    [re valuesForAttribute:kODAttributeTypeGroupMembership error:&attrErr];
+
+                // Reporting a partial membership list would mark a disabled account as active,
+                // so an unreadable group is a failure rather than an empty one.
+                if (attrErr != nullptr)
+                {
+                    return false;
+                }
+
+                for (id member in members)
+                {
+                    const auto memberName {toStdString([member description])};
+
+                    if (!memberName.empty())
+                    {
+                        disabledUsers.insert(memberName);
+                    }
+                }
+            }
+
+            return true;
         }
     }
 

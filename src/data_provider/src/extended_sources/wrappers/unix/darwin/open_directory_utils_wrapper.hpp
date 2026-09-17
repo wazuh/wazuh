@@ -56,4 +56,39 @@ class ODUtilsWrapper : public IODUtilsWrapper
         {
             od::genAccountPolicyData(uid, policyData);
         }
+
+        /// @brief Retrieves the password status and hash algorithm of every local user.
+        ///
+        /// Reads the whole local OpenDirectory node in a single query and derives, per account,
+        /// the state of its `AuthenticationAuthority` attribute. macOS stores no shadow file, so
+        /// the presence of a `;ShadowHash;` authority is what tells a password apart from an
+        /// account that has none, and that same authority carries the enabled algorithms as
+        /// `HASHLIST:<alg1,alg2,...>`.
+        ///
+        /// Each entry is keyed by record name and holds:
+        /// - "password_status": "active" when a password is set, "not_set" otherwise (string)
+        /// - "password_hash_algorithm": first algorithm of the hash list, empty when absent (string)
+        ///
+        /// A record whose attribute cannot be read is omitted, so that callers can tell a failed
+        /// lookup apart from an account with no password.
+        ///
+        /// @param passwordData Output map of record name to its password data.
+        void genPasswordData(std::map<std::string, nlohmann::json>& passwordData) override
+        {
+            od::genPasswordData(passwordData);
+        }
+
+        /// @brief Collects the names of the accounts macOS marks as disabled.
+        ///
+        /// A disabled account keeps an OpenDirectory record identical to an enabled one, so the
+        /// state cannot be read from the user record. macOS tracks it as membership in the
+        /// `com.apple.access_disabled` group, which is what this function reads.
+        ///
+        /// @param disabledUsers Output set to be filled with the names of the disabled accounts.
+        /// @return True when the directory was read, false when it could not be: an empty set then
+        /// means the membership is unknown rather than nobody being disabled.
+        bool genDisabledUsers(std::set<std::string>& disabledUsers) override
+        {
+            return od::genDisabledUsers(disabledUsers);
+        }
 };
