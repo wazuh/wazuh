@@ -543,7 +543,8 @@ nlohmann::json SysInfo::getPorts() const
                     row = Utils::trim(row);
                     Utils::replaceAll(row, "\t", " ");
                     row = Utils::trimRepeated(row, ' ');
-                    std::make_unique<PortImpl>(std::make_shared<LinuxPortWrapper>(portType.first, row))->buildPortData(port);
+                    const LinuxPortWrapper wrapper(portType.first, row);
+                    PortImpl(wrapper).buildPortData(port);
                     inodes.push_back(port.at("inode"));
                     ports.push_back(std::move(port));
                 }
