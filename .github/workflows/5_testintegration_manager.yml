@@ -237,7 +237,7 @@ jobs:
               - name: wazuh-dashboard
                 ip: 127.0.0.1
           EOF
-          bash src/engine/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c "$CERTS_YML" -o "$CERTS_OUT"
+          bash tools/devContainer/scripts/wazuh-certs-tool.sh -A -c "$CERTS_YML" -o "$CERTS_OUT"
           sudo mkdir -p "$INSTALLATION_DIR/etc/certs"
           # Reproduce the deployment ownership model so startup exercises the privilege-dropped read
           # (issue #38276): the indexer material is root:wazuh-manager 0640 and only group-readable,
