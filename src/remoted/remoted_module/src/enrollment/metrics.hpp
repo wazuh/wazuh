@@ -52,6 +52,21 @@ namespace remoted::enrollment
     // processed -- and only here and in remoted.http.enroll.responses.429.
     constexpr auto METRIC_RATE_LIMITED {"remoted.enroll.rate_limited"};
 
+    // POST /enroll/secret (issue #39315): the authenticated route an agent that ALREADY holds a
+    // client.keys key calls to obtain the per-agent re-enrollment secret its enrollment never gave
+    // it (a 4.x agent upgraded over WPK, an agent enrolled over 1515, a row rebuilt from
+    // client.keys). Its own family rather than more cells on the ones above, because none of those
+    // describes it: no enrollment happens, no identity is minted, and nothing is rotated. It lives
+    // under the remoted.enroll.* prefix -- and in THIS header rather than a
+    // endpoints/<name>Metrics.hpp of its own (the cacerts/download precedent) -- because its
+    // downstream is the shared AuthdClient, which belongs to the enrollment subsystem, and
+    // remoted.enroll.* is what an operator already greps.
+    constexpr auto METRIC_SECRET_ISSUED {"remoted.enroll.secret.issued"};
+    constexpr auto METRIC_SECRET_REJECTED_IN_PROGRESS {"remoted.enroll.secret.rejected_in_progress"};
+    constexpr auto METRIC_SECRET_AUTHD_ERROR {"remoted.enroll.secret.authd_error"};
+    constexpr auto METRIC_SECRET_AUTHD_UNAVAILABLE {"remoted.enroll.secret.authd_unavailable"};
+    constexpr auto METRIC_SECRET_RATE_LIMITED {"remoted.enroll.secret.rate_limited"};
+
     struct EnrollmentMetrics
     {
         std::shared_ptr<wazuh::metrics::ICounter> accepted;
@@ -130,6 +145,82 @@ namespace remoted::enrollment
                                        "Enrollment requests refused by the endpoint's rate limit "
                                        "('remote.https.enroll_rate_limit'), before any authd round trip",
                                        "count")};
+    }
+
+    /**
+     * @brief POST /enroll/secret's outcome counters (issue #39315).
+     *
+     * Deliberately a struct of its own rather than five more members on EnrollmentMetrics: the two
+     * routes share a rate-limit bucket and an authd queue, not a set of outcomes, and keeping the
+     * families apart is what lets an operator tell a bootstrap wave from an enrollment wave under
+     * one ceiling. Default-constructed (all null) it counts nothing, like every other struct here.
+     */
+    struct ReenrollSecretMetrics
+    {
+        std::shared_ptr<wazuh::metrics::ICounter> issued;
+        std::shared_ptr<wazuh::metrics::ICounter> rejectedInProgress;
+        std::shared_ptr<wazuh::metrics::ICounter> authdError;
+        std::shared_ptr<wazuh::metrics::ICounter> authdUnavailable;
+        std::shared_ptr<wazuh::metrics::ICounter> rateLimited;
+    };
+
+    inline ReenrollSecretMetrics makeReenrollSecretMetrics(wazuh::metrics::IManager& manager)
+    {
+        return ReenrollSecretMetrics {
+            manager.getOrCreateCounter(METRIC_SECRET_ISSUED,
+                                       "Re-enrollment secrets issued to an agent that proved possession of its "
+                                       "own client.keys key (the agent's key is NOT rotated)",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_SECRET_REJECTED_IN_PROGRESS,
+                                       "Secret requests authd refused because a rotation for that agent is "
+                                       "already in flight (9030): the agent retries",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_SECRET_AUTHD_ERROR,
+                                       "Secret requests rejected by authd's own business rules -- notably 9026, "
+                                       "the agent has no row in global.db yet (wm_database rebuilds it "
+                                       "asynchronously from client.keys)",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_SECRET_AUTHD_UNAVAILABLE,
+                                       "Secret requests that got no clean answer from authd (unreachable, "
+                                       "timed out, or its bounded queue full)",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_SECRET_RATE_LIMITED,
+                                       "Secret requests refused by the rate limit SHARED with POST /enroll "
+                                       "('remote.https.enroll_rate_limit'), before authentication and before "
+                                       "any authd round trip",
+                                       "count")};
+    }
+
+    inline void incSecretIssued(ReenrollSecretMetrics& m)
+    {
+        if (m.issued)
+        {
+            m.issued->add();
+        }
+    }
+
+    inline void incSecretRejectedInProgress(ReenrollSecretMetrics& m)
+    {
+        if (m.rejectedInProgress)
+        {
+            m.rejectedInProgress->add();
+        }
+    }
+
+    inline void incSecretAuthdError(ReenrollSecretMetrics& m)
+    {
+        if (m.authdError)
+        {
+            m.authdError->add();
+        }
+    }
+
+    inline void incSecretAuthdUnavailable(ReenrollSecretMetrics& m)
+    {
+        if (m.authdUnavailable)
+        {
+            m.authdUnavailable->add();
+        }
     }
 
     inline void incTokenAccepted(EnrollmentMetrics& m)

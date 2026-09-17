@@ -122,7 +122,10 @@ list(APPEND client-agent_flags "-Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS}")
 # the working directory -- the atomic rename and the 0640 mode are the point, so nothing about the
 # filesystem is mocked. Only the log wrappers, same as test_client_conf_ssl_resolution above.
 list(APPEND client-agent_names "test_reenroll_secret")
-list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS}")
+# w_reenroll_secret_bootstrap() (#39315) mocks only the one module boundary it calls through --
+# w_https_client_fetch_reenroll_secret(), the bridge to POST /enroll/secret -- exactly the
+# convention test_token_bootstrap below uses. The store itself keeps running for real.
+list(APPEND client-agent_flags "-Wl,--wrap,w_https_client_fetch_reenroll_secret ${DEBUG_OP_WRAPPERS}")
 
 # w_shred_file_in_place()/w_agent_shred_enrollment_password() (#39064): the real shredder against
 # real files relative to the working directory. Whether the open truncates is the whole point, so
@@ -252,6 +255,12 @@ if(TARGET test_token_bootstrap)
     # token_bootstrap.c pulls in https_client.h directly (hc_config_t, hc_cacerts_*,
     # hc_enroll_*), same as test_enrollment/test_https_client_bridge above.
     target_include_directories(test_token_bootstrap PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
+endif()
+
+if(TARGET test_reenroll_secret)
+    # https_client_bridge.h pulls in https_client.h (hc_secret_result_t, for the wrapped
+    # w_https_client_fetch_reenroll_secret), same as test_token_bootstrap above.
+    target_include_directories(test_reenroll_secret PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
 endif()
 
 # Component test for the durable dedup + IPC round-trip: wires the

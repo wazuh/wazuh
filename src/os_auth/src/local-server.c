@@ -243,6 +243,20 @@ static cJSON* local_get(const char *id);
 // `kid` and rotates that agent's key and secret in place -- same id, no removal, no purge.
 static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups);
 
+// Re-enrollment secret issuance (#39315, master only): mints a secret for an agent that already holds a
+// client.keys key and stores it against that UNCHANGED key. No credential travels in the request --
+// remoted's AuthMiddleware already proved the identity, exactly as it does for a verified enrollment
+// token before authd consumes a use of it.
+static cJSON* local_issue_reenroll_secret(const char *id);
+
+// Forward the same request to the master over the cluster (worker nodes only).
+static cJSON* local_issue_reenroll_secret_clustered(const char *id);
+
+// The `issue_reenroll_secret` answer: {"error":0,"data":{"id":..,"reenroll_secret":..}}. Its own
+// builder rather than local_create_agent_response(), which always writes `name`/`ip`/`key` -- fields
+// this operation neither changes nor has any business publishing (and `key` would be a NULL).
+static cJSON* local_create_secret_response(const char *id, const char *reenroll_secret);
+
 // Generates an agent info json response
 // reenroll_secret may be NULL: the field is then absent (local_get(), and a clustered add whose master
 // predates the secret). Only `add` ever carries it (#38993).
@@ -697,6 +711,27 @@ char* local_dispatch(const char *input) {
             }
 
             response = local_get(item->valuestring);
+        } else if (!strcmp(function->valuestring, "issue_reenroll_secret")) {
+            cJSON *item;
+
+            if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
+                ierror = ENOARGUMENT;
+                goto fail;
+            }
+
+            /* Validated on BOTH roles, so a worker never forwards garbage to the master: the id is
+             * the only argument, and everything downstream (atoi() for the row lookup,
+             * OS_IsAllowedID() for the keystore) assumes it is one. remoted never sends a malformed
+             * one -- it fills this field from the identity its middleware verified -- so reaching
+             * this refusal means the caller is broken, not the agent. */
+            if (item = cJSON_GetObjectItem(arguments, "id"), !cJSON_IsString(item) || !*item->valuestring ||
+                !OS_IsValidID(item->valuestring)) {
+                ierror = ENOID;
+                goto fail;
+            }
+
+            response = config.worker_node ? local_issue_reenroll_secret_clustered(item->valuestring)
+                                          : local_issue_reenroll_secret(item->valuestring);
         } else if (!strcmp(function->valuestring, "token_create")) {
             // Minting writes the store, and only the master writes it (T8): a worker answers the
             // same 9015 as every other write it cannot perform. Checked before parsing the
@@ -1170,6 +1205,173 @@ fail:
     return local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
 }
 
+/* Re-enrollment secret issuance (#39315), master only. local_reenroll() with the bearer verification
+ * removed and WITHOUT the rotation: the agent's key is not touched, only a fresh secret is stored
+ * against it.
+ *
+ * That asymmetry is the whole point. Rotating the key here would mean a response lost in flight
+ * leaves the agent holding a key the manager no longer accepts -- a bricked endpoint produced by the
+ * very mechanism meant to avoid one. Issuing only the secret makes the worst case "nothing changed":
+ * the agent still has its key, still has no secret, and its next start asks again. Reissue is always
+ * allowed for the same reason.
+ *
+ * `name`, `ip` and the key all come from the KEYSTORE entry, never from the request (there is
+ * nothing else in the request): the writer's UPDATE rewrites the row's name and register_ip from
+ * them too, so taking them from client.keys is what keeps this a pure credential write. */
+static cJSON* local_issue_reenroll_secret(const char *id) {
+    int index;
+    int ierror;
+    cJSON *response = NULL;
+    cJSON *agent_info = NULL;
+    char secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
+    unsigned int generation = 0;
+    long long journal_seq = 0;
+
+    mdebug2("issue_reenroll_secret(%s)", id);
+
+    /* FIRST, exactly as local_reenroll() does and for the same reason (issue #39078, H02): this
+     * serialises against a concurrent /enroll re-enrollment of the same agent, whose bearer was
+     * verified against a secret this call is about to replace. From here on every exit releases it. */
+    if (!w_reenroll_reserve(id, &generation)) {
+        mdebug1("Secret issuance for agent '%s' refused: another rotation is already in flight.", id);
+        return local_create_error_response(ERRORS[EREENROLLINPROGRESS].code, ERRORS[EREENROLLINPROGRESS].message);
+    }
+
+    /* A courtesy, not an invariant -- unlike local_add()'s phase 0, which exists because <force> may
+     * already have deleted an agent by the time an append fails. Nothing here is mutated before the
+     * append below, so a full journal would surface there as this same 9031; asking now just makes
+     * the refusal cheaper. */
+    if (identity_journal_full()) {
+        w_reenroll_abandon(id);
+        return local_create_error_response(ERRORS[EIDENTITYUNRECORDED].code, ERRORS[EIDENTITYUNRECORDED].message);
+    }
+
+    /* The row must EXIST, and this check is not optional: wdb_set_agent_credentials() has no
+     * row-existence check of its own (wdb_global_set_agent_credentials() ends in
+     * wdb_exec_stmt_silent(), which answers `ok` for an UPDATE matching zero rows), so the writer's
+     * first pass would treat a missing row as success, the retry pass would skip it, and the journal
+     * line would be dropped at commit -- handing out a secret that nothing stored.
+     *
+     * local_reenroll() is shadowed from that hazard because it reads the row to verify the bearer.
+     * This path has no such read by nature, and it targets exactly the population whose row is
+     * created ASYNCHRONOUSLY, by wm_database/sync_keys_with_wdb() rebuilding it from a migrated
+     * client.keys. An honest 9026 is what the agent retries on its next start, once that pass has
+     * run.
+     *
+     * Outside mutex_keys, for the reason purge_is_pending() runs there: this is a wazuh-db round
+     * trip on the request thread, and the keystore lock is the one every enrollment and the writer
+     * take. */
+    agent_info = wdb_get_agent_info(atoi(id), NULL);
+    if (agent_info == NULL || agent_info->child == NULL) {
+        cJSON_Delete(agent_info);
+        w_reenroll_abandon(id);
+        mdebug1("Secret issuance for agent '%s' refused: the agent has no row in global.db.", id);
+        return local_create_error_response(ERRORS[EREENROLLUNKNOWN].code, ERRORS[EREENROLLUNKNOWN].message);
+    }
+    cJSON_Delete(agent_info);
+
+    w_mutex_lock(&mutex_keys);
+
+    /* Same belt and braces as local_reenroll(): a rotation that was already accepted when this
+     * request started may have completed while the row was being read, and the reservation would be
+     * free again by then -- only the counter tells. */
+    if (w_reenroll_generation(id) != generation) {
+        ierror = EREENROLLINPROGRESS;
+        goto fail;
+    }
+
+    /* The row said yes; the keystore has the last word (the agent may have been deleted since, or
+     * the row may be wazuh-db's alone). */
+    if (index = OS_IsAllowedID(&keys, id), index < 0) {
+        ierror = EREENROLLUNKNOWN;
+        goto fail;
+    }
+
+    if (OS_NewReenrollSecret(secret, sizeof(secret)) != 0) {
+        merror("Unable to issue a re-enrollment secret for agent '%s': the CSPRNG (RAND_bytes) failed.", id);
+        ierror = EKEY;
+        goto fail;
+    }
+
+    /* On the record BEFORE it is handed out (issue #39078, H03). rotate = true: the agent already has
+     * a row, so the writer must UPDATE its credentials rather than insert. The entry carries the
+     * agent's CURRENT key, unchanged -- what is owed to the database is the secret alone. */
+    if (!identity_journal_append(id, keys.keyentries[index]->name, keys.keyentries[index]->ip->ip,
+                                 keys.keyentries[index]->raw_key, secret, true, &journal_seq)) {
+        ierror = EIDENTITYUNRECORDED;
+        goto fail;
+    }
+
+    /* group = NULL is deliberate: the writer's `if (!cur->rotate || cur->group)` guard then skips
+     * wdb_set_agent_groups_csv() entirely, so the agent's groups are not touched. The queue node
+     * carries the UNCHANGED key, so the rotate branch runs wdb_set_agent_credentials() -- an UPDATE
+     * -- and releases the reservation once the write commits. client.keys' content is identical by
+     * construction: this path never modified the keystore the writer rewrites it from.
+     *
+     * The two lines after it are local_reenroll()'s own: without them the entry waits for the
+     * writer's next scheduled pass instead of the current one. */
+    add_rotate(keys.keyentries[index], NULL, secret, journal_seq);
+    write_pending = 1;
+    w_cond_signal(&cond_pending);
+
+    response = local_create_secret_response(id, secret);
+    w_mutex_unlock(&mutex_keys);
+    OPENSSL_cleanse(secret, sizeof(secret));
+
+    minfo("Re-enrollment secret issued for agent '%s' (its key was not changed).", id);
+    return response;
+
+fail:
+    w_mutex_unlock(&mutex_keys);
+    /* Unreachable today -- nothing fallible sits between the append and add_rotate() -- and written
+     * down because it stops being unreachable the moment a check is inserted between the two. A line
+     * left behind would have the writer apply a credential the agent was never told about. */
+    if (journal_seq > 0) {
+        identity_journal_drop(&journal_seq, 1);
+    }
+    /* Nothing was handed out on this path, so the agent is free to try again at once. */
+    w_reenroll_abandon(id);
+    OPENSSL_cleanse(secret, sizeof(secret));
+    return local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
+}
+
+// Forward an "issue_reenroll_secret" request to the master node over the cluster (worker nodes only).
+// The row this writes lives in the master's global.db, which is why the verb is master-only at all.
+static cJSON* local_issue_reenroll_secret_clustered(const char *id) {
+    char err_response[OS_SIZE_2048] = {0};
+    char *new_secret = NULL;
+    int master_error_code = 0;
+    int result;
+    cJSON *response = NULL;
+
+    mdebug2("issue_reenroll_secret_clustered(%s)", id);
+
+    result = w_request_agent_secret_clustered(err_response, id, &new_secret, &master_error_code);
+
+    if (result == 0) {
+        response = local_create_secret_response(id, new_secret);
+    } else if (master_error_code > 0) {
+        // A well-formed business rejection: surface the master's exact code so the bridge can map it
+        // precisely. Drop the "ERROR: " prefix w_parse_agent_secret_response() always adds.
+        const char *message = err_response;
+        if (!strncmp(message, "ERROR: ", 7)) {
+            message += 7;
+        }
+
+        mwarn("Error %d: %s.", master_error_code, message);
+        response = local_create_error_response(master_error_code, message);
+    } else {
+        merror("ERROR %d: %s.", ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
+        response = local_create_error_response(ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
+    }
+
+    if (new_secret) {
+        OPENSSL_cleanse(new_secret, strlen(new_secret));
+    }
+    os_free(new_secret);
+    return response;
+}
+
 // Forward an "add" request to the master node over the cluster (worker nodes only)
 cJSON* local_add_clustered(const char *name, const char *ip, const char *groups, const char *key_hash, const char *token_id,
                            const char *reenroll_kid, const char *reenroll_bearer) {
@@ -1528,6 +1730,19 @@ cJSON* local_create_agent_response(const char *id, const char *name, const char 
     if (reenroll_secret) {
         cJSON_AddStringToObject(data, "reenroll_secret", reenroll_secret);
     }
+
+    return response;
+}
+
+cJSON* local_create_secret_response(const char *id, const char *reenroll_secret) {
+    cJSON *response = NULL;
+    cJSON *data = NULL;
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddItemToObject(response, "data", data = cJSON_CreateObject());
+    cJSON_AddStringToObject(data, "id", id);
+    cJSON_AddStringToObject(data, "reenroll_secret", reenroll_secret);
 
     return response;
 }

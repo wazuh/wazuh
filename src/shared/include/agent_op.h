@@ -125,6 +125,29 @@ int w_request_agent_add_clustered(char *err_response,
                                   const char *reenroll_bearer,
                                   int *master_error_code);
 
+/**
+ * @brief Send a clustered "issue_reenroll_secret" request (issue #39315).
+ *
+ * The worker's half of the secret-issuance path: the agent's row lives in the master's global.db, so
+ * only the master can mint and store the credential. Travels over the same generic `sendsync` relay
+ * the "add" request above uses -- the authd payload is opaque to the cluster daemon, which keys only
+ * on `daemon_name` -- so this adds no cluster-protocol command and no Python change.
+ *
+ * @param err_response A buffer (2048 bytes) where the error message is stored on failure. May be NULL.
+ * @param agent_id The agent to issue a secret for. Already validated by the caller (OS_IsValidID()).
+ * @param reenroll_secret Receives (os_strdup'ed) the secret the master minted. Written only on
+ *        success, and never empty: a success carrying no secret is reported as a malformed response.
+ * @param master_error_code If not NULL, receives the master's own numeric error code when it responds
+ *        with a well-formed business rejection (9026/9030/9031). Left untouched otherwise -- callers
+ *        must not assume it was written unless the return value indicates that case.
+ * @return 0 on success, -1 on a business rejection from the master, -2 on a transport failure or an
+ *         unparseable/incomplete response.
+ */
+int w_request_agent_secret_clustered(char *err_response,
+                                     const char *agent_id,
+                                     char **reenroll_secret,
+                                     int *master_error_code);
+
 // Send a clustered agent remove request.
 int w_request_agent_remove_clustered(char *err_response, const char* agent_id, int purge);
 

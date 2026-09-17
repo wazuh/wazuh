@@ -71,4 +71,21 @@ int w_https_client_submit_event(const char *frame, size_t length);
 bool w_https_client_enroll(const char *body_json, const char *password, const char *enroll_kid,
                            const char *enroll_key_hex, hc_enroll_result_t *result);
 
+/**
+ * @brief Perform exactly one POST /enroll/secret request (#39315): ask the manager for this
+ *        agent's re-enrollment secret, authenticating with the client.keys key it already
+ *        holds. Handle-less like w_https_client_enroll(), against the same manager/TLS
+ *        material every other endpoint dials.
+ *
+ * The identity is read from the in-memory keystore (`keys`), not from a caller argument, so it
+ * is by construction the same identity the rest of the agent signs with.
+ *
+ * @param result Filled with the HTTP outcome; http_code stays 0 when nothing was ever sent (an
+ *        invalid transport config, or a key that could not mint a bearer).
+ * @return true once a request was sent and answered, whatever the HTTP status; false when
+ *         nothing was ever sent -- including the case where this agent has no usable
+ *         client.keys entry, which is not an error, just nothing to ask with.
+ */
+bool w_https_client_fetch_reenroll_secret(hc_secret_result_t *result);
+
 #endif // _HTTPS_CLIENT_BRIDGE_H

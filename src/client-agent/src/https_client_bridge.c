@@ -2046,3 +2046,38 @@ bool w_https_client_enroll(const char *body_json, const char *password, const ch
 
     return hc_enroll(&config, &request, result);
 }
+
+/* Handle-less for the same reason w_https_client_enroll() is (#39315): it never reads or writes
+ * g_https_client, so it neither takes that lock nor cares whether the full client is running.
+ *
+ * The identity comes from the in-memory keystore, the same place bridge_build_config() reads it,
+ * so this request is signed with exactly what every other endpoint signs with. A re-enrollment
+ * could in principle replace that entry while this runs -- the caller (w_reenroll_secret_bootstrap)
+ * fires once per start, right after the client comes up, so it never overlaps one in practice, and
+ * the worst outcome if it ever did is a 401 the caller logs and retries on the next start. */
+bool w_https_client_fetch_reenroll_secret(hc_secret_result_t *result)
+{
+    hc_config_t config;
+    bridge_build_transport_config(&config);
+
+    const char *raw_key = (keys.keyentries && keys.keyentries[0]) ? keys.keyentries[0]->raw_key : NULL;
+    const char *agent_id = (keys.keyentries && keys.keyentries[0]) ? keys.keyentries[0]->id : NULL;
+
+    /* No usable identity means there is nothing to prove possession OF -- and an agent in that
+     * state has no use for a re-enrollment secret either. Not an error: a never-enrolled agent is
+     * simply not this call's subject. The same validation bridge_build_config() applies, for the
+     * same reason: a key that is not 64 lowercase hex chars cannot mint the bearer. */
+    if (raw_key == NULL || agent_id == NULL || !bridge_key_is_valid(raw_key)) {
+        mdebug1("https_client: no usable client.keys entry; skipping the re-enrollment secret request.");
+        return false;
+    }
+
+    strncpy(config.agent_id, agent_id, sizeof(config.agent_id) - 1);
+    strncpy(config.agent_key, raw_key, sizeof(config.agent_key) - 1);
+
+    hc_secret_request_t request;
+    memset(&request, 0, sizeof(request));
+    request.log = mtLoggingFunctionsWrapper;
+
+    return hc_fetch_reenroll_secret(&config, &request, result);
+}

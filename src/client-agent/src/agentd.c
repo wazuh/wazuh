@@ -12,6 +12,7 @@
 #include "agentd.h"
 #include "https_client_bridge.h"
 #include "os_net.h"
+#include "reenroll_secret.h"
 #include "state.h"
 #include "token_bootstrap.h"
 
@@ -59,6 +60,29 @@ static void remove_systemd_pidfile(void)
     char path[256];
     snprintf(path, sizeof(path), "%s/%s", OS_PIDFILE, SYSTEMD_PIDFILE_NAME);
     unlink(path);
+}
+
+/* Longest wait before the one re-enrollment-secret request of this start (#39315).
+ *
+ * The population this bootstrap exists for is a 4.x fleet upgraded to 5.0 over WPK: every one of
+ * those agents restarts at roughly the same moment and would otherwise ask at the same instant. The
+ * manager paces that with a 429 -- the route shares POST /enroll's rate limit -- and a 429 is
+ * answered by simply trying again on the next start, so without a spread the fleet just
+ * re-synchronizes on every boot. Spending up to a minute here costs nothing: this credential is for
+ * a FUTURE recovery, and nothing in this process waits on it. */
+#define REENROLL_SECRET_BOOTSTRAP_JITTER_SEC 60
+
+/* One attempt, on its own detached thread, holding no reference to anything AgentdStart() owns. Not
+ * in w_agentd_keys_init(): that runs before the transport is up, and a synchronous call there would
+ * add the client's whole connect+response budget to the boot of every agent whose manager is
+ * unreachable, for a credential nothing at boot consumes. */
+static void *reenroll_secret_bootstrap_thread(__attribute__((unused)) void *arg)
+{
+    /* The sign is masked off before the modulo, not after: os_random() returns a plain int and can
+     * be negative, and a negative remainder cast to unsigned would sleep for decades. */
+    sleep((unsigned int)(os_random() & 0x7FFFFFFF) % (REENROLL_SECRET_BOOTSTRAP_JITTER_SEC + 1));
+    w_reenroll_secret_bootstrap();
+    return NULL;
 }
 
 /* Start the agent daemon */
@@ -217,6 +241,24 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
      * a C++ static lazily initialized on a module thread registers after this line
      * and dies before the drain runs. */
     atexit(w_https_client_stop);
+
+    /* Re-enrollment secret bootstrap (#39315): an agent that reached 5.0 while KEEPING its
+     * client.keys identity -- a 4.x agent upgraded over WPK, one enrolled over port 1515, one whose
+     * manager-side row was rebuilt from client.keys -- never called POST /enroll and so never
+     * received a re-enrollment secret. Without one, the day the manager stops accepting its key,
+     * recovery needs an operator at the endpoint. It asks for one here instead.
+     *
+     * HERE, and not earlier: the transport must be up (the request goes over the same HTTPS channel
+     * every other endpoint uses), and the process has already dropped to the `wazuh` user
+     * (Privsep_SetUser() ran long before start_agent_prepare()), so the store is written with the
+     * ownership reenroll_secret.h asks for -- deliberately unlike the root-running
+     * w_agent_token_bootstrap() above, which writes the trust anchor.
+     *
+     * Detached and non-fatal by construction: CreateThread() logs its own failure, and an agent that
+     * cannot even spawn the thread is no worse off than one whose manager refused the request. */
+    if (!CreateThread(reenroll_secret_bootstrap_thread, NULL)) {
+        mdebug1("Could not start the re-enrollment secret bootstrap thread; retrying on the next start.");
+    }
 
     start_agent(1);
 

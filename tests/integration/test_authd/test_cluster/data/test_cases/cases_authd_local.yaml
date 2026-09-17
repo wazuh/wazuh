@@ -238,3 +238,53 @@
       key: '998bb619f50225fa0a4ec3b2a4888ae0a9b1d249189827462a5689d1d5586deb'
     groups:
       - 'Group1'
+
+# issue_reenroll_secret (wazuh/wazuh#39315): the verb behind remoted's POST /enroll/secret. It
+# exists for the agents an enrollment never reached -- one upgraded from 4.x over WPK, one enrolled
+# over port 1515, one whose row was rebuilt from client.keys -- so the agent below is exactly that:
+# a pre-existent identity with a key and no secret.
+- name: 'Issue a re-enrollment secret for an agent that already has a key'
+  description: 'The agent keeps its key; only the secret is minted and stored against it.'
+  configuration_parameters:
+  metadata:
+    cases:
+    -
+      # The answer carries the pair and nothing else -- no key, no name, no ip, because none of
+      # them changed. The secret itself is random, so the assertion is the shape up to it.
+      input: '{"arguments":{"id":"001"},"function":"issue_reenroll_secret"}'
+      output: '{"error":0,"data":{"id":"001","reenroll_secret":"'
+    pre_existent_agents:
+    -
+      id: '001'
+      name: 'migrated_agent'
+      ip: 'any'
+      key: '998bb619f50225fa0a4ec3b2a4888ae0a9b1d249189827462a5689d1d5586deb'
+    groups:
+      -
+
+- name: 'Refuse a re-enrollment secret for an agent the manager does not have'
+  description: 'An id absent from the keystore is refused rather than handed a credential nothing would store.'
+  configuration_parameters:
+  metadata:
+    cases:
+    -
+      input: '{"arguments":{"id":"999"},"function":"issue_reenroll_secret"}'
+      output: '{"error":9026,"message":"Unknown agent or no re-enrollment credential"}'
+    -
+      # Validated on both roles, so a worker never forwards garbage to the master.
+      input: '{"arguments":{"id":"not-an-id"},"function":"issue_reenroll_secret"}'
+      output: '{"error":9010,"message":"No such agent ID"}'
+    -
+      input: '{"arguments":{},"function":"issue_reenroll_secret"}'
+      output: '{"error":9010,"message":"No such agent ID"}'
+    -
+      input: '{"function":"issue_reenroll_secret"}'
+      output: '{"error":9004,"message":"No such argument"}'
+    pre_existent_agents:
+    -
+      id: '001'
+      name: 'migrated_agent'
+      ip: 'any'
+      key: '998bb619f50225fa0a4ec3b2a4888ae0a9b1d249189827462a5689d1d5586deb'
+    groups:
+      -

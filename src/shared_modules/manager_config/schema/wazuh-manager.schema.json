@@ -275,7 +275,7 @@
               "minimum": 0,
               "maximum": 100000,
               "default": 100,
-              "description": "Sustained POST /enroll requests per second this manager serves, counted for the endpoint as a whole and not per agent. 0 disables the limit. Requests over it get 429 without reaching authd. Short bursts are absorbed: the endpoint may serve twice this value back to back before the rate paces it."
+              "description": "Sustained requests per second this manager serves across POST /enroll and POST /enroll/secret together, counted for the two routes as a whole and not per agent. 0 disables the limit. Requests over it get 429 without reaching authd or, on /enroll/secret, without even being authenticated. Short bursts are absorbed: the pair may serve twice this value back to back before the rate paces it. One ceiling for both on purpose: they cost the manager the same authd round trip, so a fleet-wide bootstrap wave cannot exhaust the identity journal and start refusing real enrollments."
             },
             "cacerts_rate_limit": {
               "type": "integer",

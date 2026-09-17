@@ -614,6 +614,58 @@ typedef struct hc_cacerts_result_t
 HC_EXPORTED bool hc_fetch_cacerts(const hc_config_t* config, const hc_cacerts_request_t* request,
                                   hc_cacerts_result_t* result);
 
+/* ---- POST /enroll/secret (re-enrollment secret for an agent that already has a key) ---- */
+
+/// Sized for {"id":"<=10 digits","reenroll_secret":"<64 hex>"} and any error body the
+/// manager answers with, all of which are small flat JSON objects.
+#define HC_MAX_SECRET_BODY 512
+
+/**
+ * @brief One POST /enroll/secret request (issue #39315), built entirely by the C caller.
+ *        Handle-less like hc_enroll_request_t, but for the opposite reason: this call runs
+ *        when the agent HAS an identity and the full client may or may not be up yet.
+ */
+typedef struct hc_secret_request_t
+{
+    full_log_fnc_t log; ///< This call's log sink; the module's own may not be assigned yet.
+} hc_secret_request_t;
+
+/** @brief Result of one POST /enroll/secret attempt. */
+typedef struct hc_secret_result_t
+{
+    long http_code;                     ///< 0 = no HTTP response at all (transport/config/credential
+    ///< failure -- see hc_fetch_reenroll_secret()'s return value).
+    long retry_after_seconds;           ///< Parsed Retry-After header (0 = absent). Set on the 429
+    ///< the shared /enroll rate limit answers during a fleet-wide bootstrap wave.
+    char body[HC_MAX_SECRET_BODY];      ///< Raw response body ({"id","reenroll_secret"} on 200).
+    /// Same contract as hc_enroll_result_t::transport_error.
+    char transport_error[HC_MAX_TRANSPORT_ERROR];
+} hc_secret_result_t;
+
+/**
+ * @brief Perform exactly one POST /enroll/secret request: ask the manager for this agent's
+ *        re-enrollment secret, proving identity with the client.keys key it already holds.
+ *
+ * For the agents whose enrollment never produced a secret -- a 4.x agent upgraded to 5.0 over
+ * WPK (it keeps its key, so it never calls /enroll), an agent enrolled over port 1515, or one
+ * whose manager-side row was rebuilt from client.keys. The manager does NOT rotate the key, so
+ * a response lost in flight leaves the agent exactly as it was; the caller simply asks again on
+ * its next start.
+ *
+ * The bearer is the `wazuh-agent+jwt` REQUEST profile (the one the control stream uses), minted
+ * here from config->agent_id and config->agent_key -- not the `wazuh-enroll+jwt` of hc_enroll(),
+ * which the manager would reject on this route.
+ *
+ * @param config Transport half plus agent_id/agent_key, both of which must be set: unlike
+ *        hc_enroll()/hc_fetch_cacerts(), this call is only meaningful for an enrolled agent.
+ * @return true once a request was actually sent and answered, whatever the HTTP status
+ *         (result->http_code carries it: 401/409/429/503 are all answers the caller
+ *         interprets). false when nothing was ever sent -- an invalid transport config, a
+ *         credential that could not be minted, or a NULL argument; result->http_code stays 0.
+ */
+HC_EXPORTED bool hc_fetch_reenroll_secret(const hc_config_t* config, const hc_secret_request_t* request,
+                                          hc_secret_result_t* result);
+
 /**
  * @brief Extracts, from a /cacerts PEM bundle, the single certificate whose SPKI matches an
  *        enrollment token's pin -- the only certificate in that body a caller may trust.

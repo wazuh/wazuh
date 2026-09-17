@@ -319,6 +319,22 @@ database), so every cell is `authd`'s verdict on the master:
 | `remoted.enroll.reenroll.rejected_stale` | 9028: correctly signed but outside the accepted time window — the agent gets `401 stale_token` | [`remoted.jwt_max_age`](configuration.md#remotedjwt_max_age), [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) (`authd` reads the same two) — but fix NTP first |
 | `remoted.enroll.reenroll.rejected_in_progress` | 9030: a rotation for that agent is already accepted and not yet persisted — the agent gets `409` and retries, its bearer was fine | — (transient; a sustained count means the writer is not draining, look at wazuh-db) |
 
+The **re-enrollment secret** subset (`POST /enroll/secret`) — an agent that already holds a
+`client.keys` identity asking for the secret its enrollment never gave it (one upgraded from 4.x
+over WPK, one enrolled over port 1515, one whose row was rebuilt from `client.keys`). A family of
+its own, because none of the rows above describes it: no enrollment happens, no identity is minted,
+and nothing is rotated — the agent's key is deliberately left alone, which is what makes a lost
+answer harmless. A busy `issued` after a fleet upgrade is the feature working; a `issued` that keeps
+climbing for the same fleet afterwards is not, since every agent needs exactly one.
+
+| Metric | Meaning | Tuning |
+|---|---|---|
+| `remoted.enroll.secret.issued` | `200`: a secret was minted for the identity the bearer proved and stored against that agent's **unchanged** key | — |
+| `remoted.enroll.secret.rejected_in_progress` | 9030: a rotation for that agent is already accepted and not yet persisted — the agent gets `409` and retries | — (transient; sustained means the writer is not draining, look at wazuh-db) |
+| `remoted.enroll.secret.authd_error` | `authd` refused on its own rules. Overwhelmingly 9026 → `401`: the agent has no row in `global.db` **yet**, because `wm_database` rebuilds it asynchronously from `client.keys`. That is an honest refusal rather than a secret nothing would store, and the agent's next start succeeds once the sync pass has run. Also 9031/9016 → `503` | diagnostic — a 9026 that persists past one sync cycle is a `wm_database` problem |
+| `remoted.enroll.secret.authd_unavailable` | `503`: no clean answer from `authd` — unreachable, timed out, unparseable, or its bounded queue full. Subtract `remoted.enroll.authd.queue.rejected.total` to separate saturation from an absent `authd` | [`remoted.authd_max_queue_size`](configuration.md#remotedauthd_max_queue_size), [`remoted.authd_worker_threads`](configuration.md#remotedauthd_worker_threads) |
+| `remoted.enroll.secret.rate_limited` | `429`: refused by the ceiling **shared with `POST /enroll`**, charged before authentication and before any `authd` round trip — so it is in none of the rows above, and a request carrying no bearer at all lands here rather than in `rejected_auth`. Expected in bulk during a fleet-wide upgrade wave; each agent retries on its next start | [`https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit) — the same number governs `/enroll` |
+
 The replica of the token store this node authenticates enrollment tokens against (pulls; present
 whenever enrollment is enabled, `0` otherwise):
 
@@ -444,10 +460,13 @@ behind `remoted.http.cacerts.responses.*`; the evaluation that decides the `503`
 
 ### Rate limits — `remoted.<endpoint>.rate_limit.*`
 
-The live state of the rate limit on the two routes that carry one (`enroll`, `cacerts`). The
-**refusals** are not here — those are `remoted.enroll.rate_limited` and
-`remoted.cacerts.rate_limited` above, with the rest of each endpoint's outcomes. These three answer
-a different question: how much of the route's budget is left?
+The live state of the two rate-limit **buckets** (`enroll`, `cacerts`). There are two buckets and
+three routes: `remoted.enroll.rate_limit.*` governs `POST /enroll` **and** `POST /enroll/secret`
+together, so a bootstrap wave and an enrollment wave drain the same allowance. The **refusals** are
+not here — those are `remoted.enroll.rate_limited`, `remoted.enroll.secret.rate_limited` and
+`remoted.cacerts.rate_limited` above, one per route, which is what keeps the two enrollment routes
+distinguishable under a single ceiling. These three answer a different question: how much of the
+bucket's budget is left?
 
 All are pull metrics (read at scrape time) and read `0` while the listener is down. Reading them
 never charges the bucket, so scraping cannot cost an agent its enrollment.

@@ -9,7 +9,9 @@
 
 #include "shared.h"
 #include "reenroll_secret.h"
+#include "https_client_bridge.h"
 #include "shred_file.h"
+#include "cJSON.h"
 
 #include <openssl/crypto.h>
 
@@ -199,4 +201,97 @@ void w_reenroll_secret_clear(void) {
     }
 
     minfo("The re-enrollment secret was rejected by the manager and has been removed.");
+}
+
+void w_reenroll_secret_bootstrap(void) {
+    char stored_id[W_REENROLL_ID_SIZE];
+    char stored_secret[W_REENROLL_SECRET_SIZE];
+    hc_secret_result_t result;
+    cJSON *response = NULL;
+    cJSON *j_id = NULL;
+    cJSON *j_secret = NULL;
+
+    /* Asked first, so an agent that already has a credential costs the manager nothing at all --
+     * which is every 5.0 agent, since its own enrollment handed it one. A malformed store reads as
+     * absent (w_reenroll_secret_load()'s contract), so this also repairs one by replacing it. */
+    if (w_reenroll_secret_load(stored_id, sizeof(stored_id), stored_secret, sizeof(stored_secret))) {
+        OPENSSL_cleanse(stored_secret, sizeof(stored_secret));
+        mdebug2("A re-enrollment secret is already stored; not requesting one.");
+        return;
+    }
+
+    memset(&result, 0, sizeof(result));
+
+    /* Never fatal, on any path below: this credential is for a FUTURE recovery, so nothing the
+     * agent does now depends on having it, and a failure is simply retried by the next start. */
+    if (!w_https_client_fetch_reenroll_secret(&result)) {
+        mdebug1("Could not request a re-enrollment secret: %s.",
+                result.transport_error[0] != '\0' ? result.transport_error : "no request was sent");
+        goto end;
+    }
+
+    if (result.http_code != 200) {
+        switch (result.http_code) {
+        case 401:
+            /* The manager did not accept the key this agent holds. Worth a warning rather than a
+             * debug line: the agent can still talk on that key until the manager stops accepting it
+             * elsewhere too, but it now has no way to recover on its own, and the operator is the
+             * one who can fix that -- with an enrollment token. */
+            mwarn("The manager rejected this agent's key while requesting a re-enrollment secret; "
+                  "no secret was obtained.");
+            break;
+        case 409:
+            mdebug1("A credential rotation for this agent is already in flight; no re-enrollment "
+                    "secret was obtained this start.");
+            break;
+        case 429:
+        case 503:
+            /* The two expected answers during a fleet-wide upgrade wave, and deliberately handled
+             * identically: the manager is pacing or temporarily cannot record the transition. One
+             * line, no retry in this process -- the jittered attempt on the next start is the
+             * retry. */
+            mdebug1("The manager is not issuing re-enrollment secrets right now (HTTP %ld); "
+                    "retrying on the next start.", result.http_code);
+            break;
+        default:
+            mdebug1("Re-enrollment secret request answered with HTTP %ld; retrying on the next start.",
+                    result.http_code);
+            break;
+        }
+        goto end;
+    }
+
+    response = cJSON_Parse(result.body);
+    if (!response) {
+        merror("The re-enrollment secret response is not valid JSON.");
+        goto end;
+    }
+
+    j_id = cJSON_GetObjectItem(response, "id");
+    j_secret = cJSON_GetObjectItem(response, "reenroll_secret");
+
+    /* Both fields are mandatory here, unlike /enroll's optional fifth field: this route exists only
+     * to produce a secret, so an answer without one is a protocol disagreement, not a manager that
+     * issues none. w_reenroll_secret_store() validates them again before writing anything. */
+    if (!cJSON_IsString(j_id) || !cJSON_IsString(j_secret)) {
+        merror("The re-enrollment secret response has a missing or invalid field.");
+        goto end;
+    }
+
+    if (w_reenroll_secret_store(j_id->valuestring, j_secret->valuestring) != 0) {
+        /* w_reenroll_secret_store() logged the reason. */
+        goto end;
+    }
+
+    minfo("Re-enrollment secret obtained from the manager for agent '%s'.", j_id->valuestring);
+
+end:
+    /* NULL first: cJSON_IsString() is opaque to the static analyser, which then reads the
+     * dereference below as a possible null one. */
+    if (j_secret && cJSON_IsString(j_secret) && j_secret->valuestring) {
+        OPENSSL_cleanse(j_secret->valuestring, strlen(j_secret->valuestring));
+    }
+    cJSON_Delete(response);
+    /* The raw body held the secret in the clear whether or not it parsed. */
+    OPENSSL_cleanse(result.body, sizeof(result.body));
 }

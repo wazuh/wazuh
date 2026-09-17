@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """#39064 DoD: all eight 401 authentication classes exercised against a REAL manager.
 
+Extended for #39315 with a POST /enroll/secret section: the route an agent that already holds a
+client.keys key uses to obtain its re-enrollment secret. It is an ordinary authenticated route, so
+it takes the `wazuh-agent+jwt` REQUEST profile (sign_agent()) and not the `wazuh-enroll+jwt` of
+/enroll -- a distinction the section asserts in both directions.
+
 Runs on the manager itself (the listener certificate's SAN is 127.0.0.1, and minting requires
 an address in that SAN). Asserts, for every case, the three things the agent actually reads:
 
@@ -97,6 +102,28 @@ def sign(key, kid=None, now=None, jti=None):
     return f"{si}.{b64e(hmac.new(key, si.encode(), hashlib.sha256).digest())}"
 
 
+AGENT_TYP = "wazuh-agent+jwt"
+
+
+def sign_agent(key_hex, agent_id, now=None, jti=None):
+    """The REQUEST profile (`wazuh-agent+jwt`), for POST /enroll/secret (#39315).
+
+    A different credential from sign()'s above, and the distinction matters: a `wazuh-enroll+jwt`
+    whose kid is an agent id already means "re-enrollment bearer", so /enroll/secret -- an ordinary
+    authenticated route behind AuthMiddleware -- would reject it. This one is the same bearer the
+    control stream presents: the 64-hex client.keys secret decoded verbatim into the 32-byte HS256
+    key, six claims including `iss` and `sub`.
+    """
+    key = bytes.fromhex(key_hex)
+    iat = int(time.time()) if now is None else int(now)
+    jti = jti or b64e(os.urandom(16))
+    header = f'{{"alg":"{ALG}","kid":"{agent_id}","typ":"{AGENT_TYP}"}}'
+    payload = (f'{{"exp":{iat + LIFETIME},"iat":{iat},"iss":"wazuh-agent/{agent_id}",'
+               f'"jti":"{jti}","nbf":{iat},"sub":"{agent_id}"}}')
+    si = f"{b64e(header.encode())}.{b64e(payload.encode())}"
+    return f"{si}.{b64e(hmac.new(key, si.encode(), hashlib.sha256).digest())}"
+
+
 def authd(payload):
     raw = json.dumps(payload).encode()
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -129,6 +156,13 @@ def post(body, headers, name="matrix-agent"):
         if value is None:
             hdrs.pop(key, None)
     return requests.post(f"{BASE}/enroll", data=body, headers=hdrs, verify=False, timeout=15)
+
+
+def post_secret(headers):
+    """POST /enroll/secret: no arguments at all -- the id comes from the verified bearer."""
+    hdrs = {"Content-Type": "application/json", "protocol-version": "1"}
+    hdrs.update({k: v for k, v in headers.items() if v is not None})
+    return requests.post(f"{BASE}/enroll/secret", data=b"{}", headers=hdrs, verify=False, timeout=15)
 
 
 def enroll_body(name):
@@ -206,6 +240,7 @@ def main():
     print(f"[{'PASS' if ok else 'FAIL'}] 200 shared-password enrollment issues a reenroll_secret")
     print(f"         status {r.status_code} | keys {sorted(body)}")
     agent_id = body.get("id")
+    agent_key = body.get("key")
     agent_secret = body.get("reenroll_secret")
 
     token_id, token_secret = mint(ttl=3600, uses=10, description="matrix valid")
@@ -319,6 +354,78 @@ def main():
               f" (status {r.status_code})")
         if ok:
             print(f"         rotated secret: {'reenroll_secret' in r.json()}")
+
+    # POST /enroll/secret (#39315): the route an agent that ALREADY holds a key uses to obtain the
+    # re-enrollment secret its enrollment never gave it. Exercised with the agent enrolled at the
+    # top of this run -- it does have a secret, which is fine and is the point of the reissue case:
+    # the operation is idempotent, because a one-shot gate would strand any agent whose answer was
+    # lost in flight.
+    print()
+    print("=" * 78)
+    print("POST /enroll/secret")
+    print("=" * 78)
+
+    if agent_id and agent_key:
+        r = post_secret({"Authorization": f"Bearer {sign_agent(agent_key, agent_id)}"})
+        issued = r.json() if r.status_code == 200 else {}
+        ok = (r.status_code == 200 and issued.get("id") == agent_id
+              and len(issued.get("reenroll_secret", "")) == 64)
+        RESULTS.append((ok, "200 /enroll/secret issues a secret for the verified identity"))
+        print(f"[{'PASS' if ok else 'FAIL'}] 200 /enroll/secret issues a secret for the verified identity")
+        print(f"         status {r.status_code} | keys {sorted(issued)}")
+
+        # Reissue: accepted, and a DIFFERENT secret. The key is untouched either way -- the answer
+        # carries none, and the agent goes on signing with the one it already has, which is exactly
+        # why a lost answer here is harmless.
+        second = post_secret({"Authorization": f"Bearer {sign_agent(agent_key, agent_id)}"})
+        reissued = second.json() if second.status_code == 200 else {}
+        ok = (second.status_code == 200
+              and reissued.get("reenroll_secret") not in (None, issued.get("reenroll_secret")))
+        RESULTS.append((ok, "/enroll/secret reissues on a second call (idempotent, new secret)"))
+        print(f"[{'PASS' if ok else 'FAIL'}] /enroll/secret reissues on a second call"
+              f" (status {second.status_code})")
+
+        # The key still signs: proof that nothing was rotated under the agent.
+        third = post_secret({"Authorization": f"Bearer {sign_agent(agent_key, agent_id)}"})
+        ok = third.status_code == 200
+        RESULTS.append((ok, "the agent's key still authenticates after two issuances"))
+        print(f"[{'PASS' if ok else 'FAIL'}] the agent's key still authenticates after two issuances"
+              f" (status {third.status_code})")
+
+        # And the newest secret is the one that re-enrolls, on /enroll, with the enroll profile.
+        newest = third.json().get("reenroll_secret") if third.status_code == 200 else None
+        if newest:
+            rkey = hkdf(bytes.fromhex(newest), REENROLL_INFO)
+            r = post(enroll_body(f"matrix-pw-{stamp}"), {"Authorization": f"Bearer {sign(rkey, kid=agent_id)}"})
+            ok = r.status_code == 200
+            RESULTS.append((ok, "the newest issued secret re-enrolls the agent on /enroll"))
+            print(f"[{'PASS' if ok else 'FAIL'}] the newest issued secret re-enrolls the agent"
+                  f" (status {r.status_code})")
+            # The re-enrollment rotated the key, so keep the fresh pair for anything after this.
+            if ok:
+                agent_key = r.json().get("key", agent_key)
+
+    # No credential at all: the SAME 401 class every other authenticated route answers. (Under a
+    # drained bucket this route answers 429 instead -- the limit is charged before authentication --
+    # which is why this case is run against an otherwise idle manager.)
+    check("invalid_request: /enroll/secret with no Authorization",
+          post_secret({}), 401, "invalid_request", CH_INVALID_REQUEST)
+
+    # The enroll profile on this route: right key, wrong credential type. `kid` = an agent id means
+    # "re-enrollment bearer" there, which AuthMiddleware does not accept here.
+    if agent_id and agent_secret:
+        wrong_profile = sign(hkdf(bytes.fromhex(agent_secret), REENROLL_INFO), kid=agent_id)
+        r = post_secret({"Authorization": f"Bearer {wrong_profile}"})
+        ok = r.status_code == 401
+        RESULTS.append((ok, "/enroll/secret refuses a wazuh-enroll+jwt bearer"))
+        print(f"[{'PASS' if ok else 'FAIL'}] /enroll/secret refuses a wazuh-enroll+jwt bearer"
+              f" (status {r.status_code})")
+
+    # An id the manager never issued, signed with a key it never held: unknown_agent, decided by the
+    # middleware before authd is ever asked.
+    check("unknown_agent: /enroll/secret for an agent id the manager never issued",
+          post_secret({"Authorization": f"Bearer {sign_agent('ab' * 32, '999')}"}),
+          401, "unknown_agent", ch("unknown_agent"))
 
     print()
     print("=" * 78)

@@ -46,6 +46,7 @@ it would erase why.
 | RF-14 | Reject an id, whether caller-supplied or auto-assigned, that would not fit the width `client.keys` and the database store it in | kept (`OS_IsValidAgentInsertID`, `OS_ADDAGENT_LIMIT_REACHED`) — D9 |
 | RF-15 | Mint and revoke enrollment tokens on the master, mint only for an address the listener certificate names, and consume one use when an agent enrolls with one; list tokens on either node role | kept ([enrollment](#enrollment); `token_cli.c`, `enrollment_token_mint.c`, `enrollment_token_store.c`) — D11. `manage_agents` has no part in it |
 | RF-16 | Return a re-enrollment secret with local-socket enrollments and let those agents rotate their keys under the same id without a deletion | kept (`local_reenroll`, `add_rotate`, `global set-agent-credentials`) — D12; port 1515 does not deliver this secret to the agent |
+| RF-17 | Issue a re-enrollment secret to an agent that already holds a `client.keys` key, **without changing that key**, for the populations an enrollment never reached | kept (`local_issue_reenroll_secret`, `issue_reenroll_secret` verb) — D14; remoted's `POST /enroll/secret` proves the identity, this daemon mints and records |
 
 ### Non-functional (RNF)
 
@@ -76,7 +77,7 @@ it, inventory-sync applies it — and all three depend on these:
 
 <a id="design-decisions-d1d12"></a>
 
-## Design decisions (D1–D13)
+## Design decisions (D1–D14)
 
 | # | Decision | Rationale |
 |---|---|---|
@@ -93,6 +94,7 @@ it, inventory-sync applies it — and all three depend on these:
 | D11 | **The token store has one writer — the master — and a use is reserved before the agent exists** | Workers receive `etc/enrollment_tokens.json` from the cluster sync and only read it, so there is nothing to reconcile; consuming after `OS_AddNewAgent()` would leave an agent to roll back when the token turns out exhausted, while reserving first costs only an `etoken_store_release()` on refusal. The reservation is held for the whole add (the store mutex is not), and a `dead` purge skips a token that holds one: it may still get its use back, and an entry taken away in the meantime could not receive it. `--all` takes it anyway — emptying the store is an order, not a cleanup |
 | D12 | **Re-enrollment rotates the entry in place; `global.db` holds the authoritative secret** | A delete + add under one lock keeps the id and its documents (no `add_remove()`, no purge). `client.keys` is copied to every worker and read by remoted; the secret is verified on the master and is also retained in its local identity journal while persistence is pending |
 | D13 | **The identity journal is not `fsync`ed** (`identity_journal.c`) | What it recovers from is a crashed process and an unreachable wazuh-db, not a power cut with the page still in cache. An `fsync` per enrollment would be paid by every agent, on the request path, in front of the answer — for a failure mode the rest of the design does not claim to survive. The bound that does hold is admission: a transition that cannot be appended is refused (`9031`) rather than performed unrecorded |
+| D14 | **Secret issuance never rotates the key** (`local_issue_reenroll_secret`, issue #39315) | `reenroll_secret` is minted only by an enrollment, which leaves three populations holding a key and no way to recover: a 4.x agent upgraded over WPK (it keeps its identity, so it never enrolls), one enrolled over port 1515, and a row `wm_database` rebuilt from `client.keys`. They need a secret, not new credentials. Reusing `local_reenroll()` would be more reuse and would rotate both — and then an answer lost in flight leaves the agent holding a key this manager no longer accepts, a bricked endpoint produced by the very mechanism meant to avoid one. Storing only the secret makes the worst case "nothing changed", which is also why reissue is **always** allowed: a one-shot gate would strand exactly the agent whose answer was lost. The row is read **before** anything is minted (`9026` when absent), because `wdb_set_agent_credentials()` has no row-existence check — an UPDATE matching zero rows answers `ok`, the writer's first pass treats that as success and the journal line is dropped at commit, handing out a credential nothing stored. That hazard is shadowed on `local_reenroll()`, which reads the row to verify the bearer; this path has no such read by nature, and it targets precisely the population whose row is created asynchronously |
 
 ## Layout
 

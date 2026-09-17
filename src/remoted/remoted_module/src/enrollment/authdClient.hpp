@@ -49,6 +49,16 @@ namespace remoted::enrollment
         std::optional<ReenrollCredential> reenroll;
     };
 
+    /// Fields forwarded to authd's local socket "issue_reenroll_secret" function (issue #39315): the
+    /// agent to mint a re-enrollment secret for, and nothing else. The id is the one remoted's
+    /// AuthMiddleware already verified (the bearer's `sub`), never a request field -- which is what
+    /// makes it impossible for one agent to ask about another. No credential travels with it:
+    /// remoted has already proved the identity, exactly as it does for a verified enrollment token.
+    struct AuthdSecretRequest
+    {
+        std::string id;
+    };
+
     /**
      * @brief Outcome of an AuthdClient::addAgent() call.
      *
@@ -179,6 +189,14 @@ namespace remoted::enrollment
         /// concurrently with another call's callback on a different thread) -- even if the client
         /// is stopping or the queue is full (errorCode -1 in both cases).
         void addAgent(AuthdAddRequest request, std::function<void(AuthdResult)> callback);
+
+        /// Enqueues an "issue_reenroll_secret" request (issue #39315), with exactly the contract
+        /// addAgent() has above -- same bounded queue, same worker pool, same errorCode -1 for a
+        /// full queue or a stopping client. Sharing the queue is deliberate: the two routes cost
+        /// authd the same round trip, so they must not be able to outbid each other for it.
+        /// On success only `id` and `reenrollSecret` are populated; authd rotates nothing, so
+        /// there is no key to return.
+        void issueReenrollSecret(AuthdSecretRequest request, std::function<void(AuthdResult)> callback);
 
         /// Resolves the effective response timeout for a configured value (0 = worker-aware
         /// default). A pure function of its arguments; exposed for unit testing.

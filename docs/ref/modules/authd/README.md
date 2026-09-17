@@ -80,6 +80,11 @@ the agent already holds; see
 an `add` that carries `token_id` or `reenroll` to the master, answers `token_create` and `token_revoke`
 with `9015`, and serves `token_list` from the copy it holds.
 
+`issue_reenroll_secret` is forwarded the same way and for the same reason — the row it writes lives
+in the master's `global.db`. It travels over the existing generic `sendsync` relay, which carries the
+authd payload opaquely, so it needs no cluster-protocol command of its own; a forward that fails
+answers `9016`.
+
 ## Storage
 
 | File | Contents |
@@ -377,6 +382,25 @@ highest id present in `client.keys`, so the next self-enrollment would hand out 
 agent would reject that too. Eight digits is what re-enrollment supports; widening the range is a change
 to the agent, the id assigner and the deletion recovery together.
 
+### Agents that never enrolled, and how they get one
+
+The secret is minted by an enrollment, which leaves three populations holding a key and no way to
+recover on their own: a **4.x agent upgraded to 5.0 over WPK** (it keeps its `client.keys` identity,
+so it never calls `POST /enroll` — and the 5.0 package upgrade removes `etc/authd.pass`, so that key
+becomes its only credential), an agent **enrolled over port 1515**, and a row **rebuilt from
+`client.keys`**. All three are what `9026` names when they try to re-enroll.
+
+Such an agent asks for a secret instead, on
+[`POST /enroll/secret`](../remoted/https-events-api.md#re-enrollment-secret-endpoint-post-enrollsecret),
+which reaches this daemon as the `issue_reenroll_secret` verb. Authorization is possession of the
+agent's own key, proved to remoted; the secret is minted for the identity that bearer names and
+**the key is not touched**, so a lost answer leaves the agent exactly as it was and its next start
+asks again. Reissue is always accepted for the same reason. An agent whose row does not exist yet is
+refused with `9026` rather than handed a secret the writer would silently drop: `set-agent-credentials`
+answers `ok` for an UPDATE matching zero rows, so the row is read before anything is minted.
+
+An operator needs to do nothing: the agent does this by itself on its first start after the upgrade.
+
 **There is no upgrade path for `global.db`.** A database created by a 5.0.0 build from before the
 `agent.reenroll_secret` column is recreated, not migrated. And rebuilding the agent rows from
 `client.keys` — what `wazuh-manager-modulesd` does when it finds rows missing — does **not** bring the
@@ -444,6 +468,19 @@ A request is a single-line JSON object:
   meaning as the [`purge`](configuration.md#purge) configuration option, but scoped to this one
   request)
 - **`get`** — look up an agent's stored data. Arguments: `id` (required)
+- **`issue_reenroll_secret`** — mint a re-enrollment secret for an agent that already holds a key
+  (master only; a worker forwards it, see [Cluster](#cluster)). Arguments: `id` (required, at most
+  eight digits). **No credential travels with it**: remoted's `POST /enroll/secret` has already
+  proved the identity with the agent's own `client.keys` key, exactly as it proves an enrollment
+  token before authd consumes a use. Answers
+  `{"error": 0, "data": {"id": "001", "reenroll_secret": "<secret>"}}`. The agent's **key is not
+  rotated** — only `global set-agent-credentials` runs, with the key the keystore already holds, and
+  `client.keys` is unchanged by construction — so repeating the call is safe and is always accepted.
+  Refusals: `9026` (the agent is not in the keystore, **or has no row in `global.db` yet** — the
+  state a migrated agent is in until `wazuh-manager-modulesd` rebuilds its row from `client.keys`),
+  `9030` (a rotation for that agent is already in flight), `9031` (the transition could not be
+  journaled, so nothing was handed out), `9010` (a malformed or absent `id`). See
+  [Re-enrollment secret](#re-enrollment-secret)
 - **`token_create`** — mint an [enrollment token](#enrollment-tokens) (master only). Arguments:
   `address` (required), `port`, `prefix`, `ttl` (seconds, `0` = the 30 day default, at most
   315360000), `max_uses` (`0` = unlimited), `description`, `embed_ca`, `no_credential` (booleans).
@@ -466,7 +503,8 @@ A successful `add` responds with:
 {"error": 0, "data": {"id": "001", "name": "myagent", "ip": "any", "key": "<key>", "reenroll_secret": "<secret>"}}
 ```
 
-`get` answers the same shape without `reenroll_secret`, a successful `remove` responds with
+`issue_reenroll_secret` answers only `{"id", "reenroll_secret"}` — no `key`, `name` or `ip`, because
+it changes none of them. `get` answers the `add` shape without `reenroll_secret`, a successful `remove` responds with
 `{"error": 0, "data": "Agent deleted successfully."}`, and any failure responds with
 `{"error": <code>, "message": "<description>"}` (for example `9007` "Duplicate IP", `9013` "Maximum
 number of agents reached", or `9022`–`9031` for the token, re-enrollment and identity-journal paths — see the
@@ -516,7 +554,7 @@ certificates' in the installation guide. Exiting.` and exits.
 |------|---------|
 | `src/main-server.c` | Main loop, thread management, client pool, CLI argument parsing |
 | `src/auth.c` | Protocol parsing, agent validation, key generation |
-| `src/local-server.c` | Local socket enrollment handler (JSON `add`/`remove`/`get` and the `token_create`/`token_list`/`token_revoke`/`token_purge` API) |
+| `src/local-server.c` | Local socket enrollment handler (JSON `add`/`remove`/`get`/`issue_reenroll_secret` and the `token_create`/`token_list`/`token_revoke`/`token_purge` API) |
 | `src/identity_journal.c` | `queue/authd/pending-identities`: the credential recorded before it is handed out, and replayed until `global.db` has committed it |
 | `src/token_cli.c` | The `--*-enrollment-token` / `--show-token` utility mode: a client of the socket verbs above |
 | `src/enrollment_token_mint.c` | What may be minted: the SAN, loopback and CA-signature checks against the listener certificate |

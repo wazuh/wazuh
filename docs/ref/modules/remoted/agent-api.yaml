@@ -1098,6 +1098,148 @@ paths:
                   value:
                     error: { code: -1, message: "Enrollment service temporarily unavailable" }
 
+  /enroll/secret:
+    post:
+      tags: [Enrollment]
+      operationId: issueReenrollSecret
+      summary: Obtain this agent's re-enrollment secret, keeping its current key
+      security:
+        - WazuhAuthentication: []
+      parameters:
+        - $ref: "#/components/parameters/ProtocolVersion"
+      description: |
+        For an agent that already has a `client.keys` identity but no re-enrollment secret. Three
+        populations are in that state, because `reenroll_secret` is only ever minted by an
+        enrollment: an agent upgraded from 4.x to 5.0 over WPK (it keeps its key, so it never calls
+        `POST /enroll`), an agent enrolled over port 1515, and one whose manager-side row was rebuilt
+        from `client.keys`. Without a secret, the day the manager stops accepting that key, recovery
+        needs an operator at the endpoint with a freshly minted enrollment token.
+
+        Unlike `POST /enroll`, this is an **ordinary authenticated route**: the caller IS a known
+        agent, so it presents the same `wazuh-agent+jwt` bearer (`WazuhAuthentication`) it uses for
+        `/control` and `/stateless`, and the full middleware applies -- the `client.keys` key
+        lookup, that entry's `ip` column against the peer address, and the
+        `remoted.jwt_max_age`/`remoted.jwt_clock_skew` time policy. **The secret is minted for the
+        identity the bearer proves. There is no id field in the request**, so no request shape
+        exists in which one agent asks about another.
+
+        **The agent's key is not rotated.** `authd` stores the new secret against the existing key
+        (`global set-agent-credentials`), which is what makes the operation safe to repeat: an answer
+        lost in flight leaves the agent exactly as it was -- valid key, no secret -- and its next
+        start asks again. Reissue is therefore always allowed; a one-shot gate would strand any agent
+        whose answer never arrived. Each call replaces the previous secret, and the newest one is the
+        one that verifies.
+
+        On a worker node the request is relayed to the master, which owns the agent's row.
+
+        Errors use this page's flat `{"error":"..."}` shape, not `/enroll`'s nested numeric one.
+      requestBody:
+        required: false
+        description: No arguments. An empty body or `{}` are equally acceptable and neither is read.
+        content:
+          application/json:
+            schema: { type: object }
+            examples:
+              empty:
+                value: {}
+      responses:
+        "200":
+          description: The credential, for the agent to store next to its key and never send.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReenrollSecretResponse" }
+              examples:
+                issued:
+                  value:
+                    id: "001"
+                    reenroll_secret: 0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0
+        "400":
+          description: Missing or unsupported `protocol-version` header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "401":
+          description: |
+            The middleware's own classes, unchanged -- plus `unknown_agent` for `authd`'s 9026,
+            which folds "no such agent" and "the agent has no row in `global.db` yet" together. The
+            second is reachable for a freshly migrated agent whose row `wm_database` has not yet
+            rebuilt from `client.keys`; it is an honest refusal rather than a secret nothing would
+            store, and the agent's next start succeeds once that pass has run.
+          headers:
+            WWW-Authenticate:
+              $ref: "#/components/headers/WWW-Authenticate"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                unknownAgent:
+                  value: { error: "Unauthorized", code: unknown_agent }
+        "409":
+          description: |
+            A credential rotation for this agent is already accepted and not yet persisted (`authd`
+            9030) -- typically a `POST /enroll` re-enrollment in flight. Retry.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [reenroll_in_progress] }
+              examples:
+                inProgress:
+                  value: { error: reenroll_in_progress }
+        "429":
+          description: |
+            Refused by the rate limit **shared with `POST /enroll`**
+            (`<remote><https><enroll_rate_limit>`), charged before authentication and before `authd`
+            is contacted. One ceiling for both routes on purpose: they cost the manager the same
+            round trips, and a fleet-wide 4.x->5.0 upgrade wave is exactly the burst it exists to
+            absorb -- unthrottled, that wave fills `authd`'s identity journal and starts refusing
+            **real enrollments**. Carries `Retry-After` in whole seconds; the agent retries on its
+            next start.
+          headers:
+            Retry-After:
+              description: Whole seconds to wait before retrying.
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [rate_limited] }
+              examples:
+                rateLimited:
+                  value: { error: rate_limited }
+        "500":
+          description: An `authd` code this route does not map, which means the two sides disagree about the verb.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [authd_error] }
+        "503":
+          description: |
+            `authd` could not record the transition and so handed out nothing (9031,
+            `identity_unrecorded`); a worker's forward to the master failed (9015/9016,
+            `master_unreachable`); or `authd` was unreachable, timed out, answered unparseably, or
+            its bounded request queue was full (`authd_unavailable`). All retryable, none the
+            agent's fault.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [identity_unrecorded, master_unreachable, authd_unavailable] }
+              examples:
+                unrecorded:
+                  value: { error: identity_unrecorded }
+                unavailable:
+                  value: { error: authd_unavailable }
+
 components:
   securitySchemes:
     WazuhAuthentication:
@@ -1478,6 +1620,33 @@ components:
           description: |
             Opaque hash of the agent's current key, if it has one. Drives `authd`'s
             force/key-mismatch decision, same as port 1515's `K:` field.
+
+    ReenrollSecretResponse:
+      type: object
+      additionalProperties: false
+      required: [id, reenroll_secret]
+      description: |
+        `POST /enroll/secret`'s answer. Deliberately just the pair: no `key`, because this operation
+        does not rotate one, and no `name`/`ip`, because it changes neither -- publishing them would
+        suggest otherwise to an agent that might act on it.
+      properties:
+        id:
+          type: string
+          description: |
+            The agent's canonical id, as `authd` spells it -- the same identity the bearer proved.
+            Stored with the secret, because an agent that has lost `client.keys` still has to know
+            which id to present when it re-enrolls.
+          example: "001"
+        reenroll_secret:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          minLength: 64
+          maxLength: 64
+          description: |
+            The same credential `POST /enroll` returns (see `EnrollResponse.reenroll_secret`): 64
+            lowercase hex characters, the input of the `WAZUH-REENROLL-KEY` derivation. Each call
+            replaces the previous one, and the newest is the one that verifies.
+          example: 0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0
 
     EnrollResponse:
       type: object

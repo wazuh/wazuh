@@ -20,6 +20,8 @@
 
 #include <gtest/gtest.h>
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <atomic>
 #include <chrono>
 #include <cstddef>
@@ -946,4 +948,209 @@ TEST(AuthGatewayTest, ManyConcurrentZstdRequestsNeverOvershootTheBudget)
     // Releasing them restores the budget exactly, with nothing leaked by any thread.
     EXPECT_EQ(server.m_budget.availableBytes(), kBudget);
     EXPECT_EQ(server.m_budget.inFlightCount(), 0U);
+}
+
+/* --- The optional rate-limit gate (issue #39315) ---------------------------------------------
+ *
+ * POST /enroll/secret is the first AUTHENTICATED route in remoted to carry a rate limit, and it
+ * carries one because it shares POST /enroll's bucket: a fleet-wide 4.x->5.0 upgrade wave hits it
+ * all at once, and unthrottled that wave fills authd's identity journal and starts refusing real
+ * enrollments. endpoints/rateLimitGate.hpp's wrap() cannot express it -- it composes with a
+ * RouteHandler, and addAuthenticatedRoute() builds the RouteHandler itself with authenticate()
+ * inside -- so the gate lives in the gateway and is charged BEFORE authentication.
+ *
+ * That ordering is the property these cases exist for. Everything else about the token bucket is
+ * the limiter's own contract (endpointRateLimiter_test) and the gate's shared semantics are
+ * rateLimitGate_test's; what cannot be seen anywhere else is that the refusal precedes
+ * authenticate(), that an ungated route is untouched, and that a refusal never enters the latency
+ * histogram.
+ */
+
+namespace
+{
+    // The gate's own fixture: a live bucket, the route's counters, and a handler that records
+    // whether it ever ran.
+    struct GateFixture
+    {
+        wazuh::metrics::Manager manager;
+        remoted::metrics::EndpointHttpMetrics http {remoted::metrics::makeEndpointHttpMetrics(
+            manager, "enroll.secret", /*withLatency=*/true, "POST", "/enroll/secret")};
+        std::shared_ptr<wazuh::metrics::ICounter> rateLimited {
+            manager.getOrCreateCounter("remoted.enroll.secret.rate_limited", "test", "count")};
+        int handlerCalls {0};
+
+        AuthenticatedRouteGate gate(double rate, double burst)
+        {
+            EndpointRateLimiter::Settings settings;
+            settings.ratePerSecond = rate;
+            settings.burst = burst;
+
+            AuthenticatedRouteGate g;
+            g.limiter = std::make_shared<EndpointRateLimiter>(settings);
+            g.rejection = []
+            {
+                return HttpResponse::json(429, R"({"error":"rate_limited"})");
+            };
+            g.rejected = rateLimited;
+            g.httpMetrics = &http;
+            g.route = "POST /enroll/secret";
+            return g;
+        }
+
+        AuthenticatedHandler handler()
+        {
+            return [this](std::shared_ptr<const remoted::auth::AuthenticatedRequest>,
+                          std::shared_ptr<IHttpResponder> responder)
+            {
+                ++handlerCalls;
+                responder->send(HttpResponse::json(200, R"({"ok":true})"));
+            };
+        }
+    };
+} // namespace
+
+TEST(AuthGatewayTest, AnEmptyBucketRefusesBeforeAuthenticationRuns)
+{
+    // THE assertion that pins the ordering: a request carrying no bearer at all -- which the
+    // gateway would answer 401 -- is answered 429 instead, because the bucket was consulted first.
+    // Charging after authenticate() would put 401 before 429 and make every refusal pay a keystore
+    // lookup and an HMAC, which is exactly the cost the limit exists to avoid spending.
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+    GateFixture f;
+
+    gateway.addAuthenticatedRoute(
+        server, Method::Post, "/enroll/secret", f.handler(), ResponseMode::Buffered, f.gate(1.0, 1.0));
+
+    // Spend the single token with a request that does authenticate.
+    auto first = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/enroll/secret", signedRequest("{}"), first);
+    ASSERT_TRUE(first->captured.has_value());
+    ASSERT_EQ(first->captured->status, 200);
+    ASSERT_EQ(f.handlerCalls, 1);
+
+    HttpRequest unauthenticated;
+    unauthenticated.method = Method::Post;
+    unauthenticated.target = "/enroll/secret";
+    // No protocol-version and no authorization: a 400/401 on any other authenticated route.
+
+    auto second = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/enroll/secret", unauthenticated, second);
+
+    ASSERT_TRUE(second->captured.has_value());
+    EXPECT_EQ(second->captured->status, 429);
+    EXPECT_EQ(f.handlerCalls, 1);
+}
+
+TEST(AuthGatewayTest, AGatedRefusalCarriesTheRoutesBodyAndRetryAfter)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+    GateFixture f;
+
+    gateway.addAuthenticatedRoute(
+        server, Method::Post, "/enroll/secret", f.handler(), ResponseMode::Buffered, f.gate(1.0, 1.0));
+
+    auto first = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/enroll/secret", signedRequest("{}"), first);
+    auto refused = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/enroll/secret", signedRequest("{}"), refused);
+
+    ASSERT_TRUE(refused->captured.has_value());
+    EXPECT_EQ(refused->captured->status, 429);
+    // The ROUTE's envelope, not one the gateway invented: sharing a bucket is not sharing a body.
+    EXPECT_EQ(refused->captured->body, R"({"error":"rate_limited"})");
+
+    std::string retryAfter;
+    for (const auto& [name, value] : refused->captured->headers)
+    {
+        if (name == "Retry-After")
+        {
+            retryAfter = value;
+        }
+    }
+    // The gate owns this one: it is the limiter's refill time, not an envelope decision.
+    EXPECT_EQ(retryAfter, "1");
+}
+
+TEST(AuthGatewayTest, AGatedRefusalMovesTheResponsesFamilyButNotTheLatencyHistogram)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+    GateFixture f;
+
+    gateway.addAuthenticatedRoute(
+        server, Method::Post, "/enroll/secret", f.handler(), ResponseMode::Buffered, f.gate(1.0, 1.0));
+
+    auto first = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/enroll/secret", signedRequest("{}"), first);
+    auto refused = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/enroll/secret", signedRequest("{}"), refused);
+    ASSERT_EQ(refused->captured->status, 429);
+
+    EXPECT_EQ(f.rateLimited->get(), 1U);         // the WHY
+    EXPECT_EQ(f.http.responses.c429->get(), 1U); // the WHAT
+    EXPECT_EQ(f.http.responses.other->get(), 0U);
+    // The refusal must NOT be timed: it never entered the handler, and during the very burst the
+    // limit exists for those microsecond samples would dominate the distribution and hide the
+    // latency of the requests actually served. The admitted request is not timed here either --
+    // the endpoint's own MeteredResponder does that, and this fixture's stub handler has none.
+    ASSERT_NE(f.http.latency, nullptr);
+    EXPECT_EQ(f.http.latency->snapshot().count, 0U);
+}
+
+TEST(AuthGatewayTest, ARouteWithNoGateOrADisabledLimiterIsUnaffected)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+    GateFixture ungated;
+    GateFixture disabled;
+
+    // The six existing authenticated routes: no gate argument at all.
+    gateway.addAuthenticatedRoute(server, Method::Post, "/stateless", ungated.handler());
+    // A gate whose limiter is disabled (rate 0, the operator's "no limit"): resolved once at
+    // registration, so it costs one pointer test per request and refuses nothing.
+    gateway.addAuthenticatedRoute(
+        server, Method::Post, "/enroll/secret", disabled.handler(), ResponseMode::Buffered, disabled.gate(0.0, 0.0));
+
+    for (int i = 0; i < 5; ++i)
+    {
+        auto plain = std::make_shared<CapturingResponder>();
+        server.dispatch(Method::Post, "/stateless", signedRequest("{}"), plain);
+        ASSERT_TRUE(plain->captured.has_value());
+        EXPECT_EQ(plain->captured->status, 200);
+
+        auto gated = std::make_shared<CapturingResponder>();
+        server.dispatch(Method::Post, "/enroll/secret", signedRequest("{}"), gated);
+        ASSERT_TRUE(gated->captured.has_value());
+        EXPECT_EQ(gated->captured->status, 200);
+    }
+
+    EXPECT_EQ(ungated.handlerCalls, 5);
+    EXPECT_EQ(disabled.handlerCalls, 5);
+    EXPECT_EQ(ungated.rateLimited->get(), 0U);
+    EXPECT_EQ(disabled.rateLimited->get(), 0U);
+}
+
+TEST(AuthGatewayTest, AGatedRouteStillAuthenticatesWhenTheBucketAdmits)
+{
+    // The gate is a ceiling, not a replacement for the credential check: an admitted request whose
+    // bearer does not verify is still a 401, and the handler still never runs.
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+    GateFixture f;
+
+    gateway.addAuthenticatedRoute(
+        server, Method::Post, "/enroll/secret", f.handler(), ResponseMode::Buffered, f.gate(100.0, 100.0));
+
+    auto request = signedRequest("{}");
+    request.headers["authorization"] = "Bearer not.a.token";
+
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/enroll/secret", request, responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(responder->captured->status, 401);
+    EXPECT_EQ(f.handlerCalls, 0);
+    EXPECT_EQ(f.rateLimited->get(), 0U);
 }

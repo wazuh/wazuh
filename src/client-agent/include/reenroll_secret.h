@@ -104,4 +104,31 @@ int w_reenroll_secret_load(char* id, size_t id_size, char* secret, size_t secret
  */
 void w_reenroll_secret_clear(void);
 
+/**
+ * @brief Obtains a re-enrollment secret for an agent that already holds a key (issue #39315).
+ *
+ * The other way into this store. `POST /enroll` mints the secret for an agent that enrolls, which
+ * leaves three populations without one: a 4.x agent upgraded to 5.0 over WPK (it keeps its
+ * client.keys identity, so it never enrolls -- and #39064 deleted its etc/authd.pass, so its key is
+ * then the only credential it has), an agent enrolled over port 1515, and one whose manager-side row
+ * was rebuilt from client.keys. The moment the manager stops accepting that key, recovery needs an
+ * operator at the endpoint -- exactly the cost the token-less upgrade path exists to remove.
+ *
+ * So the agent asks, over the authenticated HTTPS channel it already has: POST /enroll/secret, with
+ * the `wazuh-agent+jwt` bearer signed by its own key. The manager mints the secret for the identity
+ * that bearer proves and **does not touch the key**, which is what makes this safe to repeat: a lost
+ * response leaves the agent exactly as it was, and the next start asks again.
+ *
+ * Does nothing (and costs no request) when the store already holds a credential, or when there is no
+ * client.keys entry to authenticate with. **One attempt per start, never fatal**: 429 (the manager's
+ * shared /enroll rate limit, the expected answer during a fleet-wide upgrade wave) and 503 are
+ * handled identically -- one log line, no retry in this process.
+ *
+ * Must run AFTER the privilege drop, so the store it writes is owned by the same user client.keys
+ * ends up owned by, and off the boot path: it performs a network round trip whose whole budget would
+ * otherwise be added to the start of every agent whose manager is unreachable, for a credential
+ * nothing at boot consumes.
+ */
+void w_reenroll_secret_bootstrap(void);
+
 #endif /* REENROLL_SECRET_H */

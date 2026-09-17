@@ -84,11 +84,18 @@ namespace remoted::metrics
         /// first call; totals carry over on later calls because getOrCreateCounter dedupes by name).
         /// @p method only labels the description ("POST /stateless", "GET /cacerts"); it is not part
         /// of the metric name, which stays `remoted.http.<endpoint>.responses.<code>`.
-        static ResponseCounters
-        make(wazuh::metrics::IManager& manager, const char* endpoint, const char* method = "POST")
+        /// @p route overrides the path in that description, for the routes whose metric-name segment
+        /// cannot be their path verbatim (a '/' has no place in a metric name): "enroll.secret"
+        /// names the family, "/enroll/secret" names the route an operator greps the docs for.
+        static ResponseCounters make(wazuh::metrics::IManager& manager,
+                                     const char* endpoint,
+                                     const char* method = "POST",
+                                     const char* route = nullptr)
         {
             const std::string prefix = std::string {HTTP_METRIC_PREFIX} + endpoint + ".responses.";
-            const std::string description = std::string {method} + " /" + endpoint + " responses sent with this status";
+            const std::string description = std::string {method} + " " +
+                                            (route != nullptr ? std::string {route} : "/" + std::string {endpoint}) +
+                                            " responses sent with this status";
             const auto counter = [&](const char* code)
             {
                 return manager.getOrCreateCounter(prefix + code, description, "count");
@@ -149,17 +156,20 @@ namespace remoted::metrics
 
     /// Resolves the remoted.http.<endpoint>.* family. @p withLatency additionally resolves the
     /// latency histogram (see EndpointHttpMetrics). @p method labels the descriptions only (every
-    /// agent-facing route is a POST except GET /cacerts).
+    /// agent-facing route is a POST except GET /cacerts), and so does @p route (see
+    /// ResponseCounters::make).
     inline EndpointHttpMetrics makeEndpointHttpMetrics(wazuh::metrics::IManager& manager,
                                                        const char* endpoint,
                                                        bool withLatency,
-                                                       const char* method = "POST")
+                                                       const char* method = "POST",
+                                                       const char* route = nullptr)
     {
-        EndpointHttpMetrics m {ResponseCounters::make(manager, endpoint, method), nullptr};
+        EndpointHttpMetrics m {ResponseCounters::make(manager, endpoint, method, route), nullptr};
         if (withLatency)
         {
+            const std::string path = route != nullptr ? std::string {route} : "/" + std::string {endpoint};
             m.latency = manager.getOrCreateHistogram(std::string {HTTP_METRIC_PREFIX} + endpoint + ".latency",
-                                                     std::string {method} + " /" + endpoint +
+                                                     std::string {method} + " " + path +
                                                          " end-to-end time, request receipt to response delivery",
                                                      "microseconds");
         }

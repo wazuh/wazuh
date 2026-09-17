@@ -466,7 +466,7 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
                         /* Optional (#38993): a master that predates the re-enrollment secret answers without
                          * it, and that is not an error -- the caller then simply has none to hand back. */
                         cJSON *data_secret = cJSON_GetObjectItem(data, "reenroll_secret");
-                        if (cJSON_IsString(data_secret) && data_secret->valuestring) {
+                        if (data_secret && cJSON_IsString(data_secret) && data_secret->valuestring) {
                             strncpy(reenroll_secret, data_secret->valuestring, AGENT_REENROLL_SECRET_HEX_CHARS);
                             reenroll_secret[AGENT_REENROLL_SECRET_HEX_CHARS] = '\0';
                         } else {
@@ -670,6 +670,99 @@ int w_request_agent_add_clustered(char *err_response,
     }
     OPENSSL_cleanse(new_secret, sizeof(new_secret));
     OPENSSL_cleanse(response, sizeof(response)); // the master's answer carried the key and the secret
+
+    return result;
+}
+
+static cJSON* w_create_agent_secret_payload(const char *agent_id) {
+    cJSON* request = cJSON_CreateObject();
+    cJSON* arguments = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(request, "function", "issue_reenroll_secret");
+    cJSON_AddItemToObject(request, "arguments", arguments);
+    cJSON_AddStringToObject(arguments, "id", agent_id);
+
+    return request;
+}
+
+/* The master's answer to "issue_reenroll_secret": {"error":0,"data":{"id":..,"reenroll_secret":..}}.
+ *
+ * A success whose data carries no secret is treated as a MALFORMED response (-2), not as a success
+ * with nothing to hand back: this verb exists only to produce a secret, so an answer without one can
+ * only mean the two nodes disagree about the protocol. Answering 0 there would have the worker tell
+ * the agent "here you are" with an empty credential. */
+static int w_parse_agent_secret_response(const char* buffer, char *err_response, char **reenroll_secret, int *error_code) {
+    int result = 0;
+    cJSON* response = NULL;
+    cJSON* error = NULL;
+    cJSON* message = NULL;
+    cJSON* data = NULL;
+    cJSON* data_secret = NULL;
+
+    const char *jsonErrPtr;
+    if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
+        result = -2;
+    } else if (error = cJSON_GetObjectItem(response, "error"), !cJSON_IsNumber(error)) {
+        result = -2;
+    } else if (error->valueint > 0) {
+        message = cJSON_GetObjectItem(response, "message");
+        mwarn("%d: %s", error->valueint, message && message->valuestring ? message->valuestring : "(undefined)");
+        if (error_code) {
+            *error_code = error->valueint;
+        }
+        result = -1;
+    } else if (data = cJSON_GetObjectItem(response, "data"), !data) {
+        result = -2;
+    } else if (data_secret = cJSON_GetObjectItem(data, "reenroll_secret"),
+               !cJSON_IsString(data_secret) || !data_secret->valuestring || !*data_secret->valuestring) {
+        result = -2;
+    } else if (reenroll_secret) {
+        os_strdup(data_secret->valuestring, *reenroll_secret);
+    }
+
+    if (err_response) {
+        if (result == -1) {
+            snprintf(err_response, 2048, "ERROR: %s", message && message->valuestring ? message->valuestring : "(undefined)");
+        } else if (result == -2) {
+            snprintf(err_response, 2048, "ERROR: Invalid message format");
+        }
+    }
+
+    // The parsed tree held the secret in the clear; it is copied out above, so wipe the original.
+    // NULL first: cJSON_IsString() is opaque to the static analyser, which then reads the
+    // dereference below as a possible null one.
+    if (data_secret && cJSON_IsString(data_secret) && data_secret->valuestring) {
+        OPENSSL_cleanse(data_secret->valuestring, strlen(data_secret->valuestring));
+    }
+
+    cJSON_Delete(response);
+
+    return result;
+}
+
+//Send a clustered re-enrollment secret request.
+int w_request_agent_secret_clustered(char *err_response,
+                                     const char *agent_id,
+                                     char **reenroll_secret,
+                                     int *master_error_code) {
+    int result;
+    char response[OS_MAXSTR + 1];
+
+    cJSON* message = w_create_agent_secret_payload(agent_id);
+
+    cJSON* payload = w_create_sendsync_payload("authd", message);
+    char* output = cJSON_PrintUnformatted(payload);
+    cJSON_Delete(payload);
+
+    if (result = w_send_clustered_message("sendsync", output, response), result == 0) {
+        result = w_parse_agent_secret_response(response, err_response, reenroll_secret, master_error_code);
+    }
+    else if (err_response) {
+        snprintf(err_response, 2048, "ERROR: Cannot communicate with master");
+    }
+
+    free(output);
+    OPENSSL_cleanse(response, sizeof(response)); // the master's answer carried the secret
 
     return result;
 }
