@@ -10,9 +10,11 @@
  */
 
 #include "indexerConnector_test.hpp"
+#include "defer.hpp"
 #include "fakeIndexer.hpp"
 #include "indexerConnector.hpp"
 #include "json.hpp"
+#include "loggerHelper.h"
 #include "stringHelper.h"
 #include "gtest/gtest.h"
 #include <chrono>
@@ -24,12 +26,6 @@
 #include <stdexcept>
 #include <thread>
 #include <utility>
-
-namespace Log
-{
-    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
-        GLOBAL_LOG_FUNCTION;
-}; // namespace Log
 
 // Template.
 static const auto TEMPLATE_FILE_PATH {std::filesystem::temp_directory_path() / "template.json"};
@@ -599,6 +595,220 @@ TEST_F(IndexerConnectorTest, PublishDeletedByQuery)
 }
 
 /**
+ * @brief Test that deleting a shorter agent ID does not sweep a longer sibling agent ID's mirror
+ * entries out via the raw prefix-scan `seek()`, which would otherwise make the sibling's own next routine sync
+ * wrongly delete its real, still-present document from the index.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeletedByQueryDoesNotCollideWithLongerAgentId)
+{
+    std::atomic<bool> callbackCalled {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&callbackCalled](const std::string& data)
+        {
+            std::ignore = data;
+            callbackCalled = true;
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // Insert the sibling agents' own documents, populating the local mirror.
+    for (const auto& id : {std::string("250_admins"), std::string("2502_wheel")})
+    {
+        callbackCalled = false;
+        nlohmann::json publishData;
+        publishData["id"] = id;
+        publishData["operation"] = "INSERTED";
+        publishData["data"] = "content";
+        ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+        ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    }
+
+    // Delete the shorter agent "250" - this must only remove "250"'s own mirror entry, not "2502"'s.
+    callbackCalled = false;
+    nlohmann::json deleteData;
+    deleteData["id"] = "250";
+    deleteData["operation"] = "DELETED_BY_QUERY";
+    ASSERT_NO_THROW(indexerConnector.publish(deleteData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    // Agent "2502"'s routine resync: the index still genuinely has its document. If the mirror was wrongly
+    // wiped by the prefix collision above, diff() will (pre-fix) issue a wrongful delete for it.
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [](const std::string&) -> std::string
+        { return R"({"_scroll_id":"abcdef","hits":{"total":{"value":1},"hits":[{"_id":"2502_wheel"}]}})"; });
+
+    std::atomic<bool> deleteRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&deleteRequested](const std::string& data)
+        {
+            if (data.find("\"delete\"") != std::string::npos)
+            {
+                deleteRequested = true;
+            }
+        });
+
+    indexerConnector.sync("2502");
+
+    EXPECT_ANY_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_FALSE(deleteRequested) << "Agent 2502's real document was wrongly deleted after agent 250's deletion";
+}
+
+/**
+ * @brief Test that `diff()` does not delete real index documents when the local mirror scan comes back
+ * completely empty for an agent, independent of the mirror-prefix-collision mechanism - an empty
+ * mirror is not proof the documents don't belong, it can just as easily mean a corrupted/gapped mirror.
+ *
+ */
+TEST_F(IndexerConnectorTest, DiffSkipsDeletionOnEmptyMirror)
+{
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [](const std::string&) -> std::string
+        { return R"({"_scroll_id":"abcdef","hits":{"total":{"value":1},"hits":[{"_id":"004_preseeded"}]}})"; });
+
+    std::atomic<bool> deleteRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&deleteRequested](const std::string& data)
+        {
+            if (data.find("\"delete\"") != std::string::npos)
+            {
+                deleteRequested = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // Never publish anything for agent "004" - its mirror is empty by construction, matching a case where the
+    // local RocksDB mirror never held (or lost) this agent's entries while the real index still has them.
+    indexerConnector.sync("004");
+
+    EXPECT_ANY_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_FALSE(deleteRequested) << "diff() deleted a real document based on an empty per-agent mirror scan";
+}
+
+/**
+ * @brief Test that `diff()` is a clean no-op once an agent's deletion has fully landed on both sides: the local
+ * mirror is empty because the agent's own DELETED_BY_QUERY purged it, and the index no longer reports any
+ * document for it either. This is the far end of the legitimate-deletion timeline whose mid-flight state
+ * `DiffSkipsDeletionOnEmptyMirror` covers - here the empty-mirror guard must not fire at all, and no request
+ * of any kind should reach the indexer.
+ *
+ */
+TEST_F(IndexerConnectorTest, DiffIsNoOpOnceAgentDeletionHasFullyLanded)
+{
+    std::atomic<bool> callbackCalled {false};
+    std::atomic<bool> searchRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&callbackCalled](const std::string& data)
+        {
+            std::ignore = data;
+            callbackCalled = true;
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // Populate agent "250"'s mirror entry first, so its mirror ends up empty because the deletion below
+    // legitimately emptied it - not because it was never written.
+    nlohmann::json publishData;
+    publishData["id"] = "250_admins";
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    callbackCalled = false;
+    nlohmann::json deleteData;
+    deleteData["id"] = "250";
+    deleteData["operation"] = "DELETED_BY_QUERY";
+    ASSERT_NO_THROW(indexerConnector.publish(deleteData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    // The index-side deletion has landed too: the scroll search reports no documents for this agent.
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [&searchRequested](const std::string&) -> std::string
+        {
+            searchRequested = true;
+            return R"({"_scroll_id":"abcdef","hits":{"total":{"value":0},"hits":[]}})";
+        });
+
+    // sendBulkReactive() skips the HTTP call entirely when there is nothing to send, so the assertion is that no
+    // _bulk request fires at all, not that no "delete" action appears inside one.
+    std::atomic<bool> publishCallbackFired {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&publishCallbackFired](const std::string& data)
+        {
+            std::ignore = data;
+            publishCallbackFired = true;
+        });
+
+    indexerConnector.sync("250");
+
+    EXPECT_ANY_THROW(
+        waitUntil([&publishCallbackFired]() { return publishCallbackFired.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    // The reconciliation really ran: without this the negative assertion below would also hold for a sync() that
+    // never reached diff() at all.
+    ASSERT_TRUE(searchRequested) << "sync() never queried the index, so the no-op assertion proves nothing";
+    ASSERT_FALSE(publishCallbackFired) << "A fully deleted agent's sync issued a bulk request instead of a no-op";
+}
+
+/**
+ * @brief Test that `diff()`'s empty-mirror guard also protects an agent that has simply moved to a node which
+ * never processed it: this connector's mirror holds no entries for the agent, while the shared index still
+ * reports the documents written by its previous node. Shares the guard's code path with
+ * `DiffSkipsDeletionOnEmptyMirror` on purpose - that test pins corruption containment, this one pins failover
+ * safety, so a refactor motivated by only one of them cannot silently break the other.
+ *
+ */
+TEST_F(IndexerConnectorTest, DiffGuardProtectsFailedOverAgentSameAsCorruption)
+{
+    std::atomic<bool> searchRequested {false};
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [&searchRequested](const std::string&) -> std::string
+        {
+            searchRequested = true;
+            return R"({"_scroll_id":"abcdef","hits":{"total":{"value":1},"hits":[{"_id":"010_preseeded"}]}})";
+        });
+
+    std::atomic<bool> deleteRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&deleteRequested](const std::string& data)
+        {
+            if (data.find("\"delete\"") != std::string::npos)
+            {
+                deleteRequested = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // This connector instance stands in for a cluster node that has never processed agent "010": nothing is ever
+    // published for it here, so its mirror partition is empty by construction.
+    indexerConnector.sync("010");
+
+    EXPECT_ANY_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    // The reconciliation really ran: without this the negative assertion below would also hold for a sync() that
+    // never reached diff() at all.
+    ASSERT_TRUE(searchRequested) << "sync() never queried the index, so the no-deletion assertion proves nothing";
+    ASSERT_FALSE(deleteRequested) << "A failed-over agent's real document was deleted by the node it moved to";
+}
+
+/**
  * @brief Test the publication to an unavailable server.
  *
  */
@@ -900,6 +1110,7 @@ TEST_F(IndexerConnectorTest, QueueCorruptionTest)
             }
         }
     };
+    DEFER([]() { Log::deassignLogFunction(); });
 
     EXPECT_NO_THROW({
         spIndexerConnector = std::make_unique<IndexerConnector>(
@@ -907,4 +1118,91 @@ TEST_F(IndexerConnectorTest, QueueCorruptionTest)
     });
 
     EXPECT_TRUE(dbRepaired) << "The log that indicates the database was repaired wasn't found";
+}
+
+/**
+ * @brief Test that a per-item `_bulk` rejection inside an HTTP 200 response is logged at warning
+ * level with the document id, error type and reason, and that the dispatch queue keeps draining afterwards
+ * (no throw/stall on a rejected-but-200 batch).
+ *
+ * NOTE: like QueueCorruptionTest above, this test passes a real (non-null) logFunction to the constructor, which
+ * claims loggerHelper.h's process-wide `GLOBAL_LOG_FUNCTION` slot under an "assign once, first caller wins" guard.
+ * CMakeLists.txt compiles indexer_connector's own sources directly into this test binary, so the
+ * `Log::deassignLogFunction()` call below reaches the same copy of that slot the code under test writes through,
+ * and the slot is cleared before the next test runs in this same process.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishBulkErrorLogged)
+{
+    std::atomic<bool> warnLogged {false};
+    std::string capturedMessage;
+    const auto logFunction = [&warnLogged, &capturedMessage](const int logLevel,
+                                                             const std::string& tag,
+                                                             const std::string& file,
+                                                             const int line,
+                                                             const std::string& func,
+                                                             const std::string& logMessage,
+                                                             va_list args)
+    {
+        std::ignore = tag;
+        std::ignore = file;
+        std::ignore = line;
+        std::ignore = func;
+
+        if (logLevel == Log::LOGLEVEL_WARNING)
+        {
+            char formattedStr[MAXLEN] = {0};
+            vsnprintf(formattedStr, MAXLEN, logMessage.c_str(), args);
+            capturedMessage = formattedStr;
+            warnLogged = true;
+        }
+    };
+    DEFER([]() { Log::deassignLogFunction(); });
+
+    // A real per-item `_bulk` rejection body: HTTP 200, `errors: true`, one item carrying an `error`.
+    m_indexerServers[A_IDX]->setPublishResponseCallback(
+        [](const std::string&) -> std::string
+        {
+            return R"({"took":1,"errors":true,"items":[{"index":{"_id":"003_broken","status":400,)"
+                   R"("error":{"type":"strict_dynamic_mapping_exception","reason":"mapping set to strict"}}}]})";
+        });
+
+    std::atomic<bool> firstPublishSeen {false};
+    std::atomic<bool> secondPublishSeen {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&firstPublishSeen, &secondPublishSeen](const std::string& data)
+        {
+            if (data.find("003_broken") != std::string::npos)
+            {
+                firstPublishSeen = true;
+            }
+            else if (data.find("004_ok") != std::string::npos)
+            {
+                secondPublishSeen = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, logFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "003_broken";
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&firstPublishSeen]() { return firstPublishSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_NO_THROW(waitUntil([&warnLogged]() { return warnLogged.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    EXPECT_NE(capturedMessage.find("003_broken"), std::string::npos);
+    EXPECT_NE(capturedMessage.find("strict_dynamic_mapping_exception"), std::string::npos);
+
+    // The queue must keep draining after a rejected-but-200 item: a second, unrelated publish should still go
+    // through promptly, not stall behind the rejected one.
+    publishData["id"] = "004_ok";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(
+        waitUntil([&secondPublishSeen]() { return secondPublishSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
 }
