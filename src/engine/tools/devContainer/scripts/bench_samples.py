@@ -1037,7 +1037,7 @@ _UINT64_MAX = 2 ** 64 - 1
 
 
 def _int_column(pd, values: list, present: list):
-    """An integer column in the narrowest exact dtype that holds every value in it.
+    """Choose an exact integer dtype when possible, otherwise fall back to float64.
 
     Picking int64 unconditionally raised OverflowError on a counter past INT64_MAX, which
     is not a rounding error but a dead projection: the exception propagates out of
@@ -1059,7 +1059,9 @@ def _int_column(pd, values: list, present: list):
         return pd.array(values, dtype="UInt64") if has_gap \
             else pd.array(present, dtype="uint64")
 
-    if low < _INT64_MIN:
+    if low < _INT64_MIN or high > _INT64_MAX:
+        # A mixed-sign range can exceed int64 without fitting uint64. Use the same
+        # lossy fallback as other ranges that no available integer dtype can hold.
         return pd.array([float(v) if v is not None else float("nan") for v in values],
                         dtype="float64")
 

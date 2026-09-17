@@ -902,3 +902,14 @@ def test_a_value_wider_than_uint64_degrades_instead_of_failing(tmp_path):
     column = bs.project(_run_with(tmp_path, [2 ** 64 + 1, 2 ** 64 + 2], name="h.ndjson"),
                         "inventory-sync")["docs_indexed"]
     assert str(column.dtype) == "float64", "lossy, but the source still charts"
+
+
+@pytest.mark.parametrize("values", [[-1, 2 ** 63], [-1, None, 2 ** 63]])
+def test_mixed_sign_wide_integers_do_not_kill_projection(tmp_path, values):
+    pd = pytest.importorskip("pandas")
+    column = bs.project(_run_with(tmp_path, values), "inventory-sync")["docs_indexed"]
+    assert str(column.dtype) == "float64"
+    assert column.iloc[0] == -1
+    assert column.iloc[-1] == float(2 ** 63)
+    if None in values:
+        assert pd.isna(column.iloc[1])
