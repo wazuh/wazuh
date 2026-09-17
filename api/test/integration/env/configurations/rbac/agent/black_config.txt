@@ -37,6 +37,7 @@
 | agent:create             | *         |                                         | *                                   |
 | agent:uninstall          | *         |                                         | *                                   |
 | enrollment_token:create  | *         |                                         | *                                   |
+| enrollment_token:delete  | *         |                                         | *                                   |
 | group:read               | group:id  | group2,group3                           | *                                   |
 | group:delete             | group:id  | *                                       | default,group1,group2,group3,pepito |
 | group:update_config      | group:id  | group1                                  | *                                   |

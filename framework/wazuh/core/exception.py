@@ -274,6 +274,9 @@ class WazuhException(Exception):
                               'queue/authd, and whether too many enrollments are still waiting for '
                               'wazuh-db, then retry'
                },
+        1773: {'message': 'Enrollment token request refused by the manager',
+               'remediation': 'Check the request against the field limits in the API spec, then retry'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'

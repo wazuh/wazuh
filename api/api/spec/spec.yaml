@@ -1021,6 +1021,7 @@ components:
           certificate (`remote.https.certificate`); an address outside it is refused with error 1768"
           type: string
           format: alphanumeric_symbols
+          maxLength: 253
         port:
           description: "Listener port to write into the token when it differs from the configured one"
           type: integer
@@ -1037,12 +1038,14 @@ components:
           At most 315360000 seconds (3650 days): the expiry is stored as an absolute time, and a lifetime
           beyond that cannot be represented"
           type: string
+          maxLength: 32
           format: timeframe
         max_uses:
           description: "Enrollments the token allows. 0 (the default) means unlimited"
           type: integer
-          format: int32
+          format: int64
           minimum: 0
+          maximum: 4294967295
         description:
           description: "Free text shown when listing the tokens. Control characters (a newline included)
           are refused: the description is written to the manager's log when the token is minted"
