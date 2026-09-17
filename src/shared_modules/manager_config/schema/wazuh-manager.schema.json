@@ -434,8 +434,7 @@
         },
         "legacy_enrollment": {
           "type": "boolean",
-          "default": true,
-          "description": "Accept enrollment through the legacy TLS port."
+          "description": "Accept enrollment through the legacy TLS port (1515), used only by 4.x agents. No default of its own: when absent it follows remote.legacy.enabled, so a configuration without the remote.legacy block has no legacy enrollment either. An explicit value always wins."
         },
         "agents": {
           "description": "Agent version policy of the enrollment service.",

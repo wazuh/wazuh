@@ -29,6 +29,12 @@ int authd_read_config(const char *path) {
     {
         cJSON *auth = w_mconf_section("auth");
         int ret = Read_Authd_JSON(auth, &config);
+
+        if (ret == 0) {
+            cJSON *remote = w_mconf_section("remote");
+            w_authd_resolve_legacy_enrollment(&config, auth, remote);
+            cJSON_Delete(remote);
+        }
         cJSON_Delete(auth);
 
         if (ret < 0) {

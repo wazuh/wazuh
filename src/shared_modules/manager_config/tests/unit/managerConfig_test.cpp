@@ -115,6 +115,8 @@ TEST(Load, EffectiveDefaultsFromMinimalDocument)
     EXPECT_EQ(rapidjson::Pointer("/remote/https/enroll_rate_limit").Get(effective)->GetInt(), 100);
     EXPECT_EQ(rapidjson::Pointer("/remote/https/cacerts_rate_limit").Get(effective)->GetInt(), 50);
     EXPECT_EQ(rapidjson::Pointer("/auth/port").Get(effective)->GetInt(), 1515);
+    EXPECT_EQ(rapidjson::Pointer("/auth/legacy_enrollment").Get(effective), nullptr)
+        << "no default: authd follows remote.legacy.enabled when unset";
     EXPECT_TRUE(rapidjson::Pointer("/auth/force/disconnected_time/enabled").Get(effective)->GetBool());
     EXPECT_STREQ(rapidjson::Pointer("/wdb/backup/global/interval").Get(effective)->GetString(), "1d");
     EXPECT_EQ(rapidjson::Pointer("/vulnerability-detection/pageSize").Get(effective)->GetInt(), 100);
@@ -152,7 +154,8 @@ TEST(Load, GeneratedManagerFileKeepsUserValuesAndFillsTheRest)
     const auto auth = json(doc.sectionJson("auth"));
     EXPECT_TRUE(auth["purge"].GetBool());
     EXPECT_TRUE(auth["use_password"].GetBool());
-    EXPECT_EQ(auth.MemberCount(), 15u) << "13 leaves + force + agents objects (18 inventory options)";
+    EXPECT_EQ(auth.MemberCount(), 14u) << "12 defaulted leaves + force + agents objects (18 inventory options; "
+                                          "legacy_enrollment has no default)";
     const auto indexer = json(doc.sectionJson("indexer"));
     EXPECT_STREQ(rapidjson::Pointer("/hosts/0").Get(indexer)->GetString(), "https://127.0.0.1:9200");
 }

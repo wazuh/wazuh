@@ -44,6 +44,8 @@ static void test_authd_read_config_loads_auth_section(void **state) {
     will_return(__wrap_w_mconf_load, 0);
     expect_string(__wrap_w_mconf_section, section, "auth");
     will_return(__wrap_w_mconf_section, cJSON_Parse("{\"disabled\":false,\"port\":1516,\"use_password\":true}"));
+    expect_string(__wrap_w_mconf_section, section, "remote");
+    will_return(__wrap_w_mconf_section, cJSON_Parse("{\"legacy\":{\"enabled\":false},\"https\":{\"port\":1517}}"));
     will_return(__wrap_getDefine_Int_default, 1);     // auth.timeout_seconds
     will_return(__wrap_getDefine_Int_default, 0);     // auth.timeout_microseconds
     will_return(__wrap_getDefine_Int_default, 7);     // authd.max_agents
@@ -59,6 +61,7 @@ static void test_authd_read_config_loads_auth_section(void **state) {
     assert_int_equal(config.flags.use_password, 1);
     assert_int_equal(config.flags.disabled, 0);
     assert_int_equal(config.flags.remote_enrollment, 1); // reader default
+    assert_int_equal(config.flags.legacy_enrollment, 0); // unset: follows remote.legacy.enabled
     assert_string_equal(config.ciphers, DEFAULT_CIPHERS);
     assert_string_equal(config.manager_cert, "etc/certs/remoted.pem");
     assert_int_equal(config.timeout_sec, 1);

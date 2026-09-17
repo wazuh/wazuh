@@ -261,6 +261,28 @@ int Read_Authd_JSON(const struct cJSON *auth, void *d1) {
 
     return 0;
 }
+
+/* `auth.legacy_enrollment` has no default of its own in the schema: unset, the 1515 listener follows the
+ * legacy TCP/UDP listener (`remote.legacy.enabled`, false when the block is absent), so removing
+ * <remote><legacy> also closes legacy enrollment. An explicit value always wins. */
+void w_authd_resolve_legacy_enrollment(authd_config_t *config, const struct cJSON *auth, const struct cJSON *remote) {
+    const cJSON *legacy = NULL;
+
+    if (config == NULL) {
+        return;
+    }
+
+    if (auth != NULL && cJSON_IsBool(cJSON_GetObjectItem(auth, "legacy_enrollment"))) {
+        return;
+    }
+
+    if (remote != NULL) {
+        legacy = cJSON_GetObjectItem(remote, "legacy");
+    }
+
+    config->flags.legacy_enrollment =
+        w_mconf_json_bool(cJSON_IsObject(legacy) ? cJSON_GetObjectItem(legacy, "enabled") : NULL, 0) != 0;
+}
 #endif /* CLIENT */
 
 #endif

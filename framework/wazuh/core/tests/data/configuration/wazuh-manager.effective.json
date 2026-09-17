@@ -69,7 +69,6 @@
         "ssl_manager_cert": "etc/certs/remoted.pem",
         "ssl_manager_key": "etc/certs/remoted-key.pem",
         "remote_enrollment": true,
-        "legacy_enrollment": true,
         "agents": {
             "allow_higher_versions": false
         }
