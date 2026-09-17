@@ -19,6 +19,7 @@
 #include "jwtSigner.hpp"
 #include "jwtTestSupport.hpp"
 #include "mockCallbackSink.hpp"
+#include "mockFileDecompressor.hpp"
 #include "mockHttpPerformer.hpp"
 #include "retrySender.hpp"
 
@@ -33,6 +34,7 @@ using ::testing::_;
 using ::testing::Contains;
 using ::testing::Invoke;
 using ::testing::Not;
+using ::testing::NotNull;
 using ::testing::Return;
 
 namespace
@@ -885,4 +887,165 @@ TEST_F(RetrySenderTest, ConfiguredEndpointComposesWithFileBackedTargets)
     ASSERT_EQ("/wazuh-manager/stateful", seenSpec.target);
 
     EXPECT_TRUE(decodeBearer(seenSpec.headers.back(), testAgentKeyHex())->signatureValid);
+}
+
+// #38514: response decompression. decompressResponseIfNeeded() runs once, after the retry loop
+// has already settled the transport outcome (and reset the backoff / armed the auth gate off of
+// it) -- these tests exercise that it is a no-op unless every one of its three preconditions
+// holds (a decompressor is configured, the request was file-backed, the response actually
+// carried the header), and that a decompression failure downgrades the outcome without
+// retrying inside this send() call.
+
+TEST_F(RetrySenderTest, CompressedFileBackedResponseIsDecompressedInPlaceOnSuccess)
+{
+    MockFileDecompressor decompressor;
+    RetrySender withDecompressor {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr,
+                                  {}, &decompressor};
+
+    const std::string path = writeTempFile("hc_rs_decompress_ok.bin", "compressed-bytes");
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.responseFilePath = path;
+    spec.maxResponseBytes = 64ULL * 1024 * 1024;
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec&)
+    {
+        auto value = response(TransportStatus::Ok, 200);
+        value.contentEncodingZstd = true;
+        return value;
+    }));
+    EXPECT_CALL(decompressor,
+                decompress(path, 64ULL * 1024 * 1024, NotNull()))
+    .WillOnce(Return(std::optional<uint64_t> {123}));
+
+    const auto result = withDecompressor.send(spec, m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+}
+
+TEST_F(RetrySenderTest, PlainResponseNeverCallsTheDecompressor)
+{
+    MockFileDecompressor decompressor;
+    RetrySender withDecompressor {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr,
+                                  {}, &decompressor};
+
+    const std::string path = writeTempFile("hc_rs_decompress_plain.bin", "plain-bytes");
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.responseFilePath = path;
+
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 200)));
+    EXPECT_CALL(decompressor, decompress(_, _, _)).Times(0);
+
+    const auto result = withDecompressor.send(spec, m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+}
+
+TEST_F(RetrySenderTest, ContentEncodingHeaderOnAnInMemoryResponseIsIgnored)
+{
+    // No responseFilePath -- not a candidate for decompression regardless of what the header
+    // says (only /download's fetchers ever set it today).
+    MockFileDecompressor decompressor;
+    RetrySender withDecompressor {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr,
+                                  {}, &decompressor};
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec&)
+    {
+        auto value = response(TransportStatus::Ok, 200);
+        value.contentEncodingZstd = true;
+        return value;
+    }));
+    EXPECT_CALL(decompressor, decompress(_, _, _)).Times(0);
+
+    const auto result = withDecompressor.send(makeSpec(), m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+}
+
+TEST_F(RetrySenderTest, NoDecompressorConfiguredIsSafeEvenForACompressedFileBackedResponse)
+{
+    // m_sender (the fixture default) is built with no decompressor -- the five non-download
+    // streams' actual configuration.
+    const std::string path = writeTempFile("hc_rs_decompress_nodec.bin", "compressed-bytes");
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.responseFilePath = path;
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec&)
+    {
+        auto value = response(TransportStatus::Ok, 200);
+        value.contentEncodingZstd = true;
+        return value;
+    }));
+
+    const auto result = m_sender.send(spec, m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome); // No crash, no decompression attempted.
+}
+
+TEST_F(RetrySenderTest, DecompressionFailureDowngradesTheOutcomeToPermanentWithoutRetrying)
+{
+    MockFileDecompressor decompressor;
+    RetrySender withDecompressor {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr,
+                                  {}, &decompressor};
+
+    const std::string path = writeTempFile("hc_rs_decompress_fail.bin", "garbage");
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.responseFilePath = path;
+
+    // maxAttempts = 4: proves a decompression failure does not consume the retry budget or loop
+    // back into another attempt -- perform() is called exactly once.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec&)
+    {
+        auto value = response(TransportStatus::Ok, 200);
+        value.contentEncodingZstd = true;
+        return value;
+    }));
+    EXPECT_CALL(decompressor, decompress(_, _, _)).WillOnce(Return(std::nullopt));
+
+    const auto result = withDecompressor.send(spec, m_waiter, 4);
+
+    EXPECT_EQ(OutcomeClass::Permanent, result.outcome);
+    EXPECT_TRUE(m_waiter.requestedDelays().empty());
+}
+
+TEST_F(RetrySenderTest, BackoffStillResetsOnTransportSuccessEvenWhenDecompressionLaterFails)
+{
+    // The backoff/auth-gate decisions key off the transport outcome alone, settled before
+    // decompression ever runs -- a content-level failure discovered afterward must not
+    // retroactively un-reset it.
+    MockFileDecompressor decompressor;
+    RetrySender withDecompressor {m_performer, m_signer, m_clock, m_backoff, false, nullptr, nullptr,
+                                  {}, &decompressor};
+
+    const std::string path = writeTempFile("hc_rs_decompress_backoff.bin", "garbage");
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.responseFilePath = path;
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec&)
+    {
+        auto value = response(TransportStatus::Ok, 200);
+        value.contentEncodingZstd = true;
+        return value;
+    }));
+    EXPECT_CALL(decompressor, decompress(_, _, _)).WillOnce(Return(std::nullopt));
+
+    m_backoff.next(); // Pre-dirty the backoff to observe the reset.
+    const auto result = withDecompressor.send(spec, m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Permanent, result.outcome);
+    EXPECT_EQ(1000u, m_backoff.currentCeilingMs()); // Reset regardless.
 }

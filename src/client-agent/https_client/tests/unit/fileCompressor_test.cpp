@@ -19,7 +19,12 @@
 #define ZSTD_STATIC_LINKING_ONLY
 #include <zstd.h>
 
+// opendir/readdir, not <filesystem>: mingw-w64 ships dirent.h, so the winagent cross-build --
+// the only platform where the leak this guards is observable -- compiles this with no #ifdef.
+#include <dirent.h>
+
 #include <fstream>
+#include <string_view>
 #include <vector>
 
 namespace
@@ -37,6 +42,32 @@ namespace
     {
         std::ifstream file {path, std::ios::binary};
         return std::string {std::istreambuf_iterator<char> {file}, std::istreambuf_iterator<char> {}};
+    }
+
+    // Counts this class's own sibling temp files (createExclusiveTempFile's "hc_zstd_" prefix) so
+    // a leak shows up as a rising count rather than an absolute one -- the spool dir is a shared
+    // temp dir that may already hold unrelated files.
+    std::size_t countCompressorTempFiles(const std::string& dir)
+    {
+        DIR* handle = opendir(dir.c_str());
+
+        if (handle == nullptr)
+        {
+            return 0;
+        }
+
+        std::size_t count = 0;
+
+        while (const dirent* entry = readdir(handle))
+        {
+            if (std::string_view {entry->d_name}.rfind("hc_zstd_", 0) == 0)
+            {
+                count++;
+            }
+        }
+
+        closedir(handle);
+        return count;
     }
 
     bool fileExists(const std::string& path)
@@ -127,6 +158,22 @@ TEST_F(FileCompressorTest, AbortFlagStopsCompressionAndReturnsNullopt)
     const auto result = m_compressor.compress(sourcePath, plain.size(), m_spoolDir, &abortFlag);
 
     EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(FileCompressorTest, AnAbortedCompressionLeavesNoTempFileBehind)
+{
+    // Passes on POSIX either way -- an open file unlinks fine there. It is Windows that refuses to
+    // delete a file with a live handle, so this only ever fails on the winagent build, and only if
+    // a failure path removes the temp file before closing it.
+    const std::size_t before = countCompressorTempFiles(m_spoolDir);
+    const std::string plain(2000, 'c');
+    const std::string sourcePath = writeTempFile("hc_fc_leak_src.bin", plain);
+
+    const std::atomic<bool> abortFlag {true};
+    const auto result = m_compressor.compress(sourcePath, plain.size(), m_spoolDir, &abortFlag);
+
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(before, countCompressorTempFiles(m_spoolDir));
 }
 
 TEST_F(FileCompressorTest, EmptySourceProducesAValidMinimalFrame)

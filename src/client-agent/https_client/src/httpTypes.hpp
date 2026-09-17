@@ -185,6 +185,10 @@ struct HttpResponse
     std::string body;
     std::string curlError;      ///< libcurl's own wording for a failed attempt, empty
     ///< otherwise (success, or a failure that never reached libcurl).
+    bool contentEncodingZstd {false}; ///< The response carried a literal "Content-Encoding:
+    ///< zstd" (#38514) -- the sole signal RetrySender uses to decide whether to
+    ///< decompress a file-backed response. Never inferred from what the request
+    ///< advertised.
 };
 
 #endif // _HC_HTTP_TYPES_HPP
