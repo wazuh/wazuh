@@ -15,6 +15,7 @@
 #include "http_server/caCertificateSource.hpp"
 #include "http_server/caPublicationRecord.hpp"
 #include "http_server/caRecordEvents.hpp"
+#include "http_server/certificateDescriptor.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
 #include "http_server/tlsCertificateStatus.hpp"
@@ -2989,4 +2990,121 @@ TEST_F(GlobalPrefixTransportTest, StartWithInvalidPrefixThrowsAndStaysStopped)
     config.globalPrefix = "/wazuh-manager";
     ASSERT_NO_THROW(m_server->start(config));
     EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager/")), 200);
+}
+
+// ---------------------------------------------------------------------------
+// GET /tls's source: IHttpServer::tlsInventory() (issue #39320)
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    void copyFile(const std::string& from, const std::string& to)
+    {
+        std::ifstream in {from, std::ios::binary};
+        std::ofstream out {to, std::ios::binary | std::ios::trunc};
+        out << in.rdbuf();
+    }
+
+    std::string contentsOf(const std::string& path)
+    {
+        std::ifstream in {path, std::ios::binary};
+        return std::string {std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {}};
+    }
+} // namespace
+
+// The inventory exists exactly while the listener accepts: empty before start() and after
+// stopAccepting(), and in between it describes the leaf in the SSL_CTX (not a re-read of the file)
+// next to the CA snapshot /cacerts answers from.
+TEST(HttpServerTest, TlsInventoryIsEmptyUnlessAccepting)
+{
+    TempCert cert {10};
+    auto server = makeHttpServer();
+    EXPECT_FALSE(server->tlsInventory().listener.has_value());
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = cert.certPath(); // self-signed: its own CA
+
+    const auto before = std::chrono::system_clock::now();
+    ASSERT_NO_THROW(server->start(config));
+
+    const auto inventory = server->tlsInventory();
+    ASSERT_TRUE(inventory.listener.has_value());
+    EXPECT_EQ(inventory.listener->certificatePath, cert.certPath());
+    EXPECT_EQ(inventory.caCertificatePath, cert.certPath());
+    EXPECT_GE(inventory.listener->loadedAt, before - std::chrono::seconds {1});
+    EXPECT_LE(inventory.listener->loadedAt, std::chrono::system_clock::now() + std::chrono::seconds {1});
+
+    const auto onDisk = readPemCertificates(cert.certPath());
+    ASSERT_EQ(onDisk.size(), 1U);
+    EXPECT_EQ(inventory.listener->certificate.fingerprint, fingerprintOf(onDisk.front().get()));
+    EXPECT_EQ(inventory.listener->certificate.subject, "CN=test");
+
+    ASSERT_EQ(inventory.ca.entries.size(), 1U);
+    EXPECT_TRUE(inventory.ca.entries.front().signsLeaf);
+    EXPECT_EQ(inventory.ca.matchesLeaf, true);
+    EXPECT_EQ(inventory.ca.entries.front().certificate.fingerprint, inventory.listener->certificate.fingerprint);
+
+    server->stopAccepting();
+    EXPECT_FALSE(server->tlsInventory().listener.has_value());
+    server->stop();
+}
+
+// The asymmetry the document is built around: the CA half follows the file on disk request by
+// request (a grown bundle, a missing file), the leaf half stays what start() loaded even when the
+// certificate file is replaced underneath it.
+TEST(HttpServerTest, TlsInventoryFollowsTheCaFileButNotTheLeafFile)
+{
+    TempCert cert {10};
+    TempCert other {10};
+    const auto caPath = scratchPath("tls_inventory_ca");
+    copyFile(cert.certPath(), caPath);
+
+    auto server = makeHttpServer();
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = caPath;
+    ASSERT_NO_THROW(server->start(config));
+
+    const auto first = server->tlsInventory();
+    ASSERT_TRUE(first.listener.has_value());
+    ASSERT_EQ(first.ca.entries.size(), 1U);
+
+    // A second CA appended (atomically: sibling + rename): the next call sees both and tells which
+    // one signs. No restart, no monitor tick involved.
+    {
+        std::ofstream out {caPath + ".tmp", std::ios::binary | std::ios::trunc};
+        out << contentsOf(cert.certPath()) << contentsOf(other.certPath());
+    }
+    ASSERT_EQ(std::rename((caPath + ".tmp").c_str(), caPath.c_str()), 0);
+    const auto second = server->tlsInventory();
+    ASSERT_EQ(second.ca.entries.size(), 2U);
+    EXPECT_TRUE(second.ca.entries[0].signsLeaf);
+    EXPECT_FALSE(second.ca.entries[1].signsLeaf);
+    EXPECT_EQ(second.ca.matchesLeaf, true);
+    EXPECT_EQ(second.listener->loadedAt, first.listener->loadedAt);
+
+    // The leaf file replaced on disk: what is served -- and described -- is the certificate in the
+    // SSL_CTX until the next start().
+    copyFile(other.certPath(), cert.certPath());
+    const auto third = server->tlsInventory();
+    ASSERT_TRUE(third.listener.has_value());
+    EXPECT_EQ(third.listener->certificate.fingerprint, first.listener->certificate.fingerprint);
+    EXPECT_EQ(third.listener->loadedAt, first.listener->loadedAt);
+
+    // The bundle moved away: the last good read stays, the failure travels with it, counted per call.
+    ASSERT_EQ(std::remove(caPath.c_str()), 0);
+    const auto fourth = server->tlsInventory();
+    EXPECT_EQ(fourth.ca.entries.size(), 2U);
+    ASSERT_TRUE(fourth.ca.lastReadFailure.has_value());
+    EXPECT_EQ(fourth.ca.lastReadFailure->status, ReadStatus::CannotOpen);
+    EXPECT_EQ(fourth.ca.lastReadFailure->error, ENOENT);
+    EXPECT_EQ(fourth.ca.lastReadFailure->consecutive, 1U);
+    EXPECT_EQ(server->tlsInventory().ca.lastReadFailure->consecutive, 2U);
+
+    server->stop();
 }

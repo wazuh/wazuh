@@ -60,6 +60,7 @@ using remoted::http::CaRecordEvent;
 using remoted::http::CaRecordEventMailbox;
 using remoted::http::describeReadFailure;
 using remoted::http::Entry;
+using remoted::http::fingerprintOf;
 using remoted::http::LoadOutcome;
 using remoted::http::ReadFailure;
 using remoted::http::readFileBounded;
@@ -1095,6 +1096,97 @@ TEST(CaCertificateSource, RefusesToVouchOverTheByteCap)
     EXPECT_EQ(snapshot.vouchFailure, GuardFailure::too_many_bytes);
     EXPECT_GT(snapshot.serializedBytes, ca_bundle::kMaxSerializedBytes);
     EXPECT_EQ(snapshot.matchesLeaf, true);
+}
+
+// GET /tls's per-certificate view (issue #39320): each entry says whether THIS certificate signs
+// the leaf -- the plain signature fact. The bundle-level matchesLeaf is a different question (does
+// the leaf CHAIN to the bundle, what /cacerts' 503 decides) and is asserted separately. The sizes and
+// the content hash ride along from the same read.
+TEST(CaCertificateSource, EntriesTellWhichCertificateSignsTheLeaf)
+{
+    const auto signerKey = remoted::test::makeTestKey();
+    const auto otherKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    const auto signer = remoted::test::makeCertificate(
+        "Signing CA", -3600, 86400, signerKey.get(), signerKey.get(), nullptr, nullptr, true);
+    const auto other = remoted::test::makeCertificate(
+        "Other CA", -3600, 86400, otherKey.get(), otherKey.get(), nullptr, nullptr, true);
+    const auto leaf =
+        remoted::test::makeCertificate("manager", -60, 3600, leafKey.get(), signerKey.get(), signer.get());
+
+    const auto path = "/tmp/casource_entries_" + std::to_string(::getpid()) + ".pem";
+    const auto reversed = path + ".reversed";
+    remoted::test::ScratchFileCleanup cleanup {{path, reversed}};
+    remoted::test::writePemFile(path, {other.get(), signer.get()});
+    remoted::test::writePemFile(reversed, {signer.get(), other.get()});
+
+    CaCertificateSource source {path, leaf.get()};
+    const auto snapshot = source.snapshot();
+
+    ASSERT_EQ(snapshot.entries.size(), 2U);
+    EXPECT_FALSE(snapshot.entries[0].signsLeaf);
+    EXPECT_TRUE(snapshot.entries[1].signsLeaf);
+    EXPECT_EQ(snapshot.matchesLeaf, true);
+    EXPECT_EQ(snapshot.entries[0].certificate.subject, "CN=Other CA");
+    EXPECT_EQ(snapshot.entries[0].certificate.fingerprint, fingerprintOf(other.get()));
+    EXPECT_EQ(snapshot.entries[1].certificate.fingerprint, fingerprintOf(signer.get()));
+
+    EXPECT_GT(snapshot.serializedBytes, 0U);
+    EXPECT_EQ(snapshot.serializedBytes, snapshot.pem.size());
+    EXPECT_LE(snapshot.certificates, CaCertificateSource::kMaxCertificates);
+    EXPECT_LE(snapshot.serializedBytes, CaCertificateSource::kAgentBodyLimit);
+
+    // The bundle's identity does not depend on the order the operator concatenated the files in.
+    EXPECT_EQ(snapshot.contentSha256.size(), 64U);
+    CaCertificateSource reversedSource {reversed, leaf.get()};
+    EXPECT_EQ(reversedSource.snapshot().contentSha256, snapshot.contentSha256);
+
+    // No `##` block: an ordinary CA file, served but not published.
+    EXPECT_EQ(snapshot.publication, 0);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::no_block);
+}
+
+TEST(CaCertificateSource, AnExpiredCaSignsTheLeafButDoesNotValidateIt)
+{
+    const auto caKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    const auto expiredCa =
+        remoted::test::makeCertificate("Expired CA", -172800, -86400, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto leaf = remoted::test::makeCertificate("manager", -60, 3600, leafKey.get(), caKey.get(), expiredCa.get());
+
+    const auto path = "/tmp/casource_expired_ca_" + std::to_string(::getpid()) + ".pem";
+    remoted::test::ScratchFileCleanup cleanup {{path}};
+    remoted::test::writePemFile(path, {expiredCa.get()});
+
+    CaCertificateSource source {path, leaf.get()};
+    const auto snapshot = source.snapshot();
+
+    // signs_active_leaf is the plain signature: still true for an expired CA. The two chain verdicts
+    // both say no -- matchesLeaf (leafChainsToAnyCa, the 503) checks the validity window since C33,
+    // and chain_valid is what an agent's verification would reach. GET /tls shows all three.
+    ASSERT_EQ(snapshot.entries.size(), 1U);
+    EXPECT_TRUE(snapshot.entries[0].signsLeaf);
+    EXPECT_EQ(snapshot.matchesLeaf, false);
+    EXPECT_EQ(snapshot.chainValid, false);
+    EXPECT_FALSE(snapshot.chainError.empty());
+    const auto now =
+        std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    EXPECT_LT(snapshot.entries[0].certificate.notAfter, now);
+}
+
+TEST(CaCertificateSource, WithoutALeafNoEntryClaimsToSignIt)
+{
+    auto pki = makePki("casource-entries-noleaf");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    CaCertificateSource source {pki->files.caCertPath, nullptr};
+    const auto snapshot = source.snapshot();
+
+    ASSERT_EQ(snapshot.entries.size(), 1U);
+    EXPECT_FALSE(snapshot.entries[0].signsLeaf);
+    EXPECT_FALSE(snapshot.matchesLeaf.has_value()); // unknown, never "mismatch"
+    EXPECT_FALSE(snapshot.entries[0].certificate.fingerprint.empty());
 }
 
 TEST(CaCertificateSource, AnEmptyPathNeverReadsAnything)
