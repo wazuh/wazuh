@@ -199,6 +199,13 @@ TEST(CertificateDescriptor, ContentSha256IsIndependentOfCertificateOrder)
     EXPECT_NE(ca_bundle::contentSha256(single), hash);
 }
 
+TEST(CertificateDescriptor, Sha256HexMatchesAKnownVector)
+{
+    // FIPS 180-4 vector for "abc": the one helper behind fingerprints, the bundle hash and the cache key.
+    EXPECT_EQ(remoted::http::sha256Hex("abc"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    EXPECT_EQ(remoted::http::sha256Hex(""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+}
+
 TEST(CertificateDescriptor, Rfc3339UtcFormatsEpochSeconds)
 {
     EXPECT_EQ(rfc3339Utc(0), "1970-01-01T00:00:00Z");

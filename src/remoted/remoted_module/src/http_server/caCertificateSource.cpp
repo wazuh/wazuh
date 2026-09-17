@@ -14,11 +14,9 @@
 #include "ca_bundle/ca_bundle.hpp"
 
 #include <openssl/err.h>
-#include <openssl/sha.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#include <array>
 #include <cstring>
 #include <ctime>
 #include <utility>
@@ -28,23 +26,6 @@ namespace remoted::http
 {
     namespace
     {
-        /// Hex SHA-256 of the bytes. Only ever compared against another of these, never published.
-        std::string digestOf(std::string_view bytes)
-        {
-            std::array<unsigned char, SHA256_DIGEST_LENGTH> digest {};
-            SHA256(reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size(), digest.data());
-
-            static constexpr char kHex[] = "0123456789abcdef";
-            std::string hex;
-            hex.reserve(digest.size() * 2);
-            for (const auto byte : digest)
-            {
-                hex.push_back(kHex[byte >> 4]);
-                hex.push_back(kHex[byte & 0x0F]);
-            }
-            return hex;
-        }
-
         /// A reference of our own on @p leaf (null stays null). X509_up_ref takes a non-const X509*;
         /// it only bumps the reference count.
         X509Ptr retain(const X509* leaf)
@@ -208,7 +189,7 @@ namespace remoted::http
 
         m_consecutiveFailures = 0;
 
-        auto hash = digestOf(contents);
+        auto hash = sha256Hex(contents);
         if (hash == m_hash)
         {
             m_snapshot.lastReadFailure.reset();
