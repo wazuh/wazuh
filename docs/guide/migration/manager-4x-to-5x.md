@@ -126,6 +126,22 @@ Once the installation finishes, stop the manager before touching any of its file
 systemctl stop wazuh-manager
 ```
 
+> [!IMPORTANT]
+> The installer starts the manager, so between that and the `stop` above there is a window in which
+> a 5.0 manager is answering on the migrated address with an empty registry. A **5.0 agent** that
+> reaches it in that window is told its key is unknown, and its re-enrollment policy does exactly
+> what it should: it enrolls again, and comes back with a **new id** — and a new name too, its
+> hostname, if `<agent_name>` is not configured. The identity this whole procedure exists to
+> preserve is then gone for that agent, silently:
+>
+> ```console
+> agent:   WARNING: https_client: credential rejected (401); re-enrolling.
+> manager: INFO: Agent key generated for agent 'agent-ubuntu24' (requested locally)
+> ```
+>
+> Stop the agents, or keep `1514`, `1515` and `1517` closed to them, until [Step 5](#5-start-the-manager-and-verify-the-registry).
+> A 4.x agent is not exposed to this: it has no re-enrollment policy and simply retries.
+
 Do not connect any agent yet.
 
 ## 3. Restore the identity data
