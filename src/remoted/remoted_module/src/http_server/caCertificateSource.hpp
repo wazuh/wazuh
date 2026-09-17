@@ -73,6 +73,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <ctime>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -155,6 +156,9 @@ namespace remoted::http
             std::optional<std::int64_t> generation;
         };
 
+        /// The instant the chain verdict is evaluated at. Empty means OpenSSL's own clock (production).
+        using VerdictClock = std::function<std::time_t()>;
+
         /// Largest CA file served. A bundle is a few KB; past this the file is refused as TooLarge,
         /// and never more than kMaxBytes + 1 bytes of it are requested from the reader.
         static constexpr std::size_t kMaxBytes {1024U * 1024U};
@@ -188,6 +192,7 @@ namespace remoted::http
          *              record existed: it remembers nothing and emits nothing.
          * @param mailbox Where the events go until a caller with a logger drains them. Null also
          *              means no events (the two are injected together in production).
+         * @param verdictClock What the chain verdict is evaluated against; empty for the current time.
          */
         CaCertificateSource(std::string path,
                             const X509* leaf,
@@ -195,7 +200,8 @@ namespace remoted::http
                             Clock clock = std::chrono::steady_clock::now,
                             LoadOutcome initialRecord = {},
                             std::shared_ptr<CaPublicationRecord> record = nullptr,
-                            std::shared_ptr<CaRecordEventMailbox> mailbox = nullptr);
+                            std::shared_ptr<CaRecordEventMailbox> mailbox = nullptr,
+                            VerdictClock verdictClock = {});
 
         /**
          * @brief Current state of the file: cached while its content hash is unchanged.
@@ -203,6 +209,10 @@ namespace remoted::http
          * When the read fails, the last good snapshot comes back unchanged with `lastReadFailure`
          * set; when it succeeds, `lastReadFailure` is cleared, and identical bytes are still a cache
          * hit even across a failure in between.
+         *
+         * The chain verdict (`chainValid`/`chainError`) is the one thing the cache does not hold: it has
+         * a date term, so it is re-evaluated against the clock on every call -- hit, miss or failed
+         * read -- for the certificates of the snapshot being returned.
          */
         CaCertificateSnapshot snapshot();
 
@@ -285,7 +295,10 @@ namespace remoted::http
         void flushPendingRecord();
 
     private:
-        CaCertificateSnapshot buildLocked(std::string_view pem) const;
+        /// Everything about @p certificates except the chain verdict, which validateChainLocked() owns.
+        CaCertificateSnapshot buildLocked(const ca_bundle::ParsedBundle& parsed) const;
+        /// chainValid/chainError of m_snapshot from m_leaf and m_certificates, as of m_clock (or now).
+        void validateChainLocked();
 
         /**
          * @brief Derives the record event for @p built and updates what this source remembers.
@@ -309,10 +322,12 @@ namespace remoted::http
         X509Ptr m_leaf; ///< Our own reference to the served leaf; null when the caller passed none.
         const FileReader m_reader;
         const Clock m_clock;
+        const VerdictClock m_verdictClock; ///< Empty in production: validateChainLocked() uses OpenSSL's clock.
 
         mutable std::mutex m_mutex;
         std::string m_hash; ///< SHA-256 of the bytes behind m_snapshot; empty before the first good read.
         CaCertificateSnapshot m_snapshot;
+        std::vector<X509Ptr> m_certificates; ///< The parsed certificates behind m_snapshot, kept for the verdict.
         std::uint64_t m_parses {0};
         std::uint64_t m_consecutiveFailures {0};                       ///< Reset by every successful read.
         std::chrono::steady_clock::time_point m_lastDescriptorRead {}; ///< When descriptor() last revalidated.

@@ -101,11 +101,13 @@ namespace remoted::http
                                              Clock clock,
                                              LoadOutcome initialRecord,
                                              std::shared_ptr<CaPublicationRecord> record,
-                                             std::shared_ptr<CaRecordEventMailbox> mailbox)
+                                             std::shared_ptr<CaRecordEventMailbox> mailbox,
+                                             VerdictClock verdictClock)
         : m_path {std::move(path)}
         , m_leaf {retain(leaf)}
         , m_reader {reader ? std::move(reader) : FileReader {readFileBounded}}
         , m_clock {clock ? std::move(clock) : Clock {std::chrono::steady_clock::now}}
+        , m_verdictClock {std::move(verdictClock)}
         , m_record {std::move(record)}
         , m_mailbox {std::move(mailbox)}
         // Only a record that was READ seeds what this source believes. Everything else starts
@@ -118,11 +120,10 @@ namespace remoted::http
     {
     }
 
-    CaCertificateSnapshot CaCertificateSource::buildLocked(std::string_view pem) const
+    CaCertificateSnapshot CaCertificateSource::buildLocked(const ca_bundle::ParsedBundle& parsed) const
     {
         CaCertificateSnapshot snapshot;
 
-        auto parsed = ca_bundle::parseBundle(pem);
         if (parsed.certificates.empty())
         {
             // Empty, unparsable or carrying no certificate: all of them mean the same thing to
@@ -173,13 +174,9 @@ namespace remoted::http
             // what the 503 and the announced generation are decided from.
             snapshot.matchesLeaf = leafChainsToAnyCa(m_leaf.get(), parsed.certificates);
 
-            // The operator-facing sibling of that verdict: the same validation with
-            // X509_V_FLAG_PARTIAL_CHAIN (any bundle entry may anchor) and the server purpose added,
-            // so the two can differ in both directions. Information for the logs, never for the
-            // 503 -- see chainValidates().
-            const auto chain = chainValidates(m_leaf.get(), parsed.certificates);
-            snapshot.chainValid = chain.valid;
-            snapshot.chainError = chain.error;
+
+            // The chain verdict is deliberately NOT computed here: it has a date term, so
+            // snapshotLocked() asks validateChainLocked() for it on every call, cache hit or not.
         }
 
         // A serialisation failure leaves nothing to publish: refuse rather than fall back to the
@@ -205,6 +202,7 @@ namespace remoted::http
             // once the file is back are still a cache hit.
             ++m_consecutiveFailures;
             m_snapshot.lastReadFailure = ReadFailure {read.status, read.error, m_consecutiveFailures};
+            validateChainLocked();
             return m_snapshot;
         }
 
@@ -214,12 +212,17 @@ namespace remoted::http
         if (hash == m_hash)
         {
             m_snapshot.lastReadFailure.reset();
+            validateChainLocked();
             return m_snapshot;
         }
 
         // Rebuilt from these bytes, whatever they hold: a readable file with no certificate in it is
-        // the operator's way of saying "stop serving", and it clears the snapshot at once.
-        m_snapshot = buildLocked(contents);
+        // the operator's way of saying "stop serving", and it clears the snapshot at once. The parsed
+        // certificates stay behind the snapshot so the chain verdict can be re-judged from them on
+        // every call without touching the PEM again.
+        auto parsed = ca_bundle::parseBundle(contents);
+        m_snapshot = buildLocked(parsed);
+        m_certificates = m_snapshot.pem.empty() ? std::vector<X509Ptr> {} : std::move(parsed.certificates);
         // Set after the rebuild and from the same hash the cache is keyed on, so the file's identity
         // travels with the snapshot even when buildLocked() refused everything else in it.
         m_snapshot.fileSha256 = hash;
@@ -230,6 +233,9 @@ namespace remoted::http
         m_hash = std::move(hash);
         ++m_parses;
 
+        // The one date-dependent verdict, judged now for whatever is being returned: the bundle just
+        // parsed, the cached one, or the last good one behind a failed read.
+        validateChainLocked();
         return m_snapshot;
     }
 
@@ -394,6 +400,24 @@ namespace remoted::http
         // upgrade go ahead without an anchor, which is recoverable, instead of writing one that
         // is not.
         return 0;
+    }
+
+    void CaCertificateSource::validateChainLocked()
+    {
+        if (!m_leaf || m_certificates.empty())
+        {
+            // Nothing to validate against (no leaf yet, or no bundle): unknown, never "invalid".
+            m_snapshot.chainValid.reset();
+            m_snapshot.chainError.clear();
+            return;
+        }
+
+        // Does the leaf VALIDATE with this bundle as its trust store (chain, dates, CA constraints,
+        // server purpose)? Information for the logs and GET /tls, never for the 503 -- see chainValidates().
+        const auto chain = chainValidates(
+            m_leaf.get(), m_certificates, m_verdictClock ? std::optional<std::time_t> {m_verdictClock()} : std::nullopt);
+        m_snapshot.chainValid = chain.valid;
+        m_snapshot.chainError = chain.error;
     }
 
     std::uint64_t CaCertificateSource::parses() const

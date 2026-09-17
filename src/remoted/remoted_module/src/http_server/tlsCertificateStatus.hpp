@@ -43,6 +43,7 @@
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
+#include <ctime>
 #include <functional>
 #include <mutex>
 #include <optional>
@@ -98,7 +99,8 @@ namespace remoted::http
      * own certificate file -- because the bundle is all an agent bootstrapping from `GET /cacerts`
      * will ever hold. `X509_V_FLAG_PARTIAL_CHAIN` makes any certificate of the bundle a trust anchor
      * even when it is not self-signed, so `root-ca.pem` may carry a purchased intermediate that
-     * signed the leaf as well as a private self-signed CA. Evaluated against the current time.
+     * signed the leaf as well as a private self-signed CA. Evaluated against @p at when given, else
+     * the current time: the verdict has a date term, so whoever caches it must re-evaluate it.
      *
      * Not what decides the 503: ca_bundle's leafChainsToAnyCa() is, and since C33 that is a chain
      * validation as well -- with OpenSSL's DEFAULT flags, so its anchor must be self-signed and this
@@ -108,7 +110,8 @@ namespace remoted::http
      * the bundle that only holds an intermediate (serviceable for this check, unusable for an
      * agent). Surfaced through the snapshots and the certificate log lines, never as a refusal.
      */
-    ChainVerdict chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas);
+    ChainVerdict
+    chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas, std::optional<std::time_t> at = std::nullopt);
 
     /**
      * @brief The names that describe this host to itself, and to nobody else.

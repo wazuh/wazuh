@@ -39,6 +39,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -2505,6 +2506,118 @@ TEST(CaCertificateSourceRecord, NotifyStyleDeliveryLogsWithoutTouchingTheRecord)
     EXPECT_TRUE(said.empty());
     EXPECT_GT(*writes, 0);
     EXPECT_EQ(record->load(pki->files.caCertPath).status, LoadOutcome::Status::ok);
+}
+
+namespace
+{
+    /// A clock the test moves by hand: what CaCertificateSource judges the chain verdict against.
+    struct FakeClock
+    {
+        std::shared_ptr<std::time_t> now {std::make_shared<std::time_t>(std::time(nullptr))};
+
+        std::time_t operator()() const
+        {
+            return *now;
+        }
+    };
+} // namespace
+
+TEST(CaCertificateSource, ChainVerdictFollowsTheClockOnACacheHit)
+{
+    const auto caKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    // The CA's window closes before the leaf's, so it is the CA expiring that flips the verdict.
+    const auto ca =
+        remoted::test::makeCertificate("Short CA", -3600, 3600, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto leaf = remoted::test::makeCertificate("manager", -60, 7200, leafKey.get(), caKey.get(), ca.get());
+
+    const auto path = "/tmp/casource_clock_hit_" + std::to_string(::getpid()) + ".pem";
+    remoted::test::ScratchFileCleanup cleanup {{path}};
+    remoted::test::writePemFile(path, {ca.get()});
+
+    FakeClock clock;
+    const std::time_t start = *clock.now;
+    CaCertificateSource source {path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, nullptr, clock};
+
+    auto snapshot = source.snapshot();
+    EXPECT_EQ(snapshot.chainValid, true);
+    EXPECT_TRUE(snapshot.chainError.empty());
+
+    // Same bytes, later clock: a cache hit that must not repeat a verdict the dates have overturned
+    // (PR #39370 review, r4037971554).
+    *clock.now = start + 7000;
+    snapshot = source.snapshot();
+    EXPECT_EQ(snapshot.chainValid, false);
+    EXPECT_FALSE(snapshot.chainError.empty());
+    EXPECT_EQ(snapshot.matchesLeaf, true); // the signature check has no date term
+    ASSERT_EQ(snapshot.entries.size(), 1U);
+    EXPECT_TRUE(snapshot.entries[0].signsLeaf);
+    EXPECT_EQ(source.parses(), 1U); // the verdict moved, the bytes did not: no re-parse
+
+    *clock.now = start;
+    snapshot = source.snapshot();
+    EXPECT_EQ(snapshot.chainValid, true);
+    EXPECT_EQ(source.parses(), 1U);
+}
+
+TEST(CaCertificateSource, ChainVerdictFollowsTheClockWhileTheFileIsUnreadable)
+{
+    const auto caKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    const auto ca =
+        remoted::test::makeCertificate("Short CA", -3600, 3600, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto leaf = remoted::test::makeCertificate("manager", -60, 7200, leafKey.get(), caKey.get(), ca.get());
+
+    const auto path = "/tmp/casource_clock_unreadable_" + std::to_string(::getpid()) + ".pem";
+    remoted::test::ScratchFileCleanup cleanup {{path}};
+    remoted::test::writePemFile(path, {ca.get()});
+
+    FakeReader reader;
+    reader.state->contents = readAll(path);
+    FakeClock clock;
+    const std::time_t start = *clock.now;
+    CaCertificateSource source {path, leaf.get(), reader, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, nullptr, clock};
+
+    auto snapshot = source.snapshot();
+    ASSERT_EQ(snapshot.certificates, 1U);
+    EXPECT_EQ(snapshot.chainValid, true);
+
+    // The file goes away and the CA expires: the bundle still being served is judged as of now.
+    reader.state->status = ReadStatus::CannotOpen;
+    reader.state->error = ENOENT;
+    *clock.now = start + 7000;
+    snapshot = source.snapshot();
+    ASSERT_TRUE(snapshot.lastReadFailure.has_value());
+    EXPECT_EQ(snapshot.certificates, 1U);
+    EXPECT_EQ(snapshot.chainValid, false);
+    EXPECT_FALSE(snapshot.chainError.empty());
+    EXPECT_EQ(source.parses(), 1U);
+}
+
+TEST(CaCertificateSource, ANotYetValidCaBecomesValidWithoutAReparse)
+{
+    const auto caKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    const auto ca =
+        remoted::test::makeCertificate("Future CA", 600, 7200, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto leaf = remoted::test::makeCertificate("manager", -60, 7200, leafKey.get(), caKey.get(), ca.get());
+
+    const auto path = "/tmp/casource_clock_future_" + std::to_string(::getpid()) + ".pem";
+    remoted::test::ScratchFileCleanup cleanup {{path}};
+    remoted::test::writePemFile(path, {ca.get()});
+
+    FakeClock clock;
+    const std::time_t start = *clock.now;
+    CaCertificateSource source {path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, nullptr, clock};
+
+    auto snapshot = source.snapshot();
+    EXPECT_EQ(snapshot.chainValid, false);
+    EXPECT_NE(snapshot.chainError.find("not yet valid"), std::string::npos);
+
+    *clock.now = start + 1200;
+    snapshot = source.snapshot();
+    EXPECT_EQ(snapshot.chainValid, true);
+    EXPECT_EQ(source.parses(), 1U);
 }
 
 TEST(ParsedBundle, SerialisationRoundTripsAndDropsEverythingElse)
