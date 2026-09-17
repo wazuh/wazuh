@@ -156,11 +156,13 @@ namespace invsync::vd
             {
                 case VulnerabilityScannerFacade::ScanTriggerResult::Success: return AgentScanOutcome::Ok;
 
-                // All transient, and all for reasons outside this request: vulnerability detection
-                // is not initialized yet -- kept here defensively even though the gate above
-                // already returns Skipped for that case, since this switch also covers callers
-                // that reach triggerAgentScan() directly -- the feed is still loading, the
-                // scanner is still starting, or no indexer host is healthy.
+                // All transient, and all for reasons outside this request. NotInitialized cannot
+                // actually occur here -- the `!isInitialized()` guard above already returns Skipped
+                // for that case, and this is triggerAgentScan()'s only production call site -- but
+                // it is listed defensively since triggerAgentScan() is public and a future direct
+                // caller (or a unit test, which does call it directly) can still hit it. The other
+                // three are real: the feed is still loading, the scanner is still starting, or no
+                // indexer host is healthy.
                 case VulnerabilityScannerFacade::ScanTriggerResult::NotInitialized:
                 case VulnerabilityScannerFacade::ScanTriggerResult::FeedNotReady:
                 case VulnerabilityScannerFacade::ScanTriggerResult::ScannerNotReady:

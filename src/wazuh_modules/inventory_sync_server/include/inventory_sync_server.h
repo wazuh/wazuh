@@ -185,16 +185,6 @@ extern "C"
         int vd_scan_queue_slots;         ///< Short admission queue of the scan lane; full -> 503
                                          ///< "scan capacity exhausted". Range 0..256.
                                          ///< <=0 -> 2x vd_workers.
-        bool vd_configured_enabled;      ///< Whether `<vulnerability-detection>` is present and
-                                         ///< enabled in THIS node's own configuration -- read
-                                         ///< directly from the vulnerability_scanner wmodule's
-                                         ///< parsed config, which wm_config() populates before any
-                                         ///< module thread runs, so it is available before that
-                                         ///< module's own start() begins. Lets the scan lane defer
-                                         ///< (retryable 503) a session that arrives in the narrow
-                                         ///< window before the scanner's start() has run, instead
-                                         ///< of treating "hasn't started yet" the same as "will
-                                         ///< never run here".
 
         /* ---- SYNC indexer connector (IndexerConnectorSync) tuning. Overlaid onto the <indexer>
          *      block below by buildSyncConnectorConfig() before construction. This is the same
@@ -338,6 +328,18 @@ extern "C"
         int indexer_sync_connector_max_bulk_size; ///< NDJSON bytes staged before the connector cuts
                                                   ///< a `_bulk` request. -> `max_bulk_size`.
                                                   ///< <=0 -> 10 MiB.
+
+        /* ---- Vulnerability-detection scan-lane readiness -- APPENDED, same ABI rule as above. ---- */
+        bool vd_configured_enabled; ///< Whether `<vulnerability-detection>` is present and
+                                    ///< enabled in THIS node's own configuration -- read
+                                    ///< directly from the vulnerability_scanner wmodule's
+                                    ///< parsed config, which wm_config() populates before any
+                                    ///< module thread runs, so it is available before that
+                                    ///< module's own start() begins. Lets the scan lane defer
+                                    ///< (retryable 503) a session that arrives in the narrow
+                                    ///< window before the scanner's start() has run, instead
+                                    ///< of treating "hasn't started yet" the same as "will
+                                    ///< never run here".
     } inventory_sync_server_config_t;
 
     /**
