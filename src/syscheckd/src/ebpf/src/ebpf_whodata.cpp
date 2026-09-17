@@ -675,10 +675,6 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& loc
             w_evt->group_name = fimebpf::instance().m_get_group(event->gid);
             w_evt->effective_uid = num_to_str(event->euid);
             w_evt->effective_name = fimebpf::instance().m_get_user(event->euid);
-            /* The kernel reports (uid_t)-1 when task_struct.loginuid is unavailable,
-             * which is the case on kernels built without CONFIG_AUDIT. Leave the audit
-             * attribution unset instead of publishing the raw sentinel, matching what
-             * the Audit provider does in audit_parse.c. */
             if (event->login_uid != (uint32_t)-1)
             {
                 w_evt->audit_uid = num_to_str(event->login_uid);
