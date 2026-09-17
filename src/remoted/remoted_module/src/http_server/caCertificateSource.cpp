@@ -132,6 +132,27 @@ namespace remoted::http
 
         snapshot.pem = serializeCertificates(parsed.certificates);
         snapshot.certificates = parsed.certificates.size();
+        snapshot.contentSha256 = ca_bundle::contentSha256(parsed.certificates);
+
+        // Per certificate: the descriptor GET /tls publishes and whether THIS one signs the leaf -- the
+        // plain signature fact, deliberately not the chain verdict matchesLeaf carries below.
+        snapshot.entries.reserve(parsed.certificates.size());
+        for (const auto& certificate : parsed.certificates)
+        {
+            CaCertificateEntry entry;
+            if (auto described = describeCertificate(certificate.get()))
+            {
+                entry.certificate = std::move(*described);
+            }
+            entry.signsLeaf = m_leaf && caSignsLeaf(m_leaf.get(), certificate.get());
+            snapshot.entries.push_back(std::move(entry));
+
+            if (!snapshot.subjects.empty())
+            {
+                snapshot.subjects += ", ";
+            }
+            snapshot.subjects += subjectOfCertificate(certificate.get());
+        }
 
         // The one vouch there is (D15): every caller -- the endpoint, the log lines, the notify
         // descriptor -- reads this verdict instead of re-deciding it, so they cannot disagree about
@@ -159,15 +180,6 @@ namespace remoted::http
             const auto chain = chainValidates(m_leaf.get(), parsed.certificates);
             snapshot.chainValid = chain.valid;
             snapshot.chainError = chain.error;
-        }
-
-        for (const auto& certificate : parsed.certificates)
-        {
-            if (!snapshot.subjects.empty())
-            {
-                snapshot.subjects += ", ";
-            }
-            snapshot.subjects += subjectOfCertificate(certificate.get());
         }
 
         // A serialisation failure leaves nothing to publish: refuse rather than fall back to the

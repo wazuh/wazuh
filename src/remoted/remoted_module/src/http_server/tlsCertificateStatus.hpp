@@ -76,6 +76,13 @@ namespace remoted::http
      */
     std::optional<int> daysUntilExpiry(const X509* certificate);
 
+    /**
+     * @brief Whether @p ca signed @p leaf (`X509_verify` against the CA's public key): the plain
+     *        signature fact `GET /tls` reports per certificate as `signs_active_leaf`. Not the chain
+     *        question -- leafChainsToAnyCa() decides the 503 and chainValidates() the operator verdict.
+     */
+    bool caSignsLeaf(const X509* leaf, const X509* ca);
+
     /// What chainValidates() found: nullopt when there was nothing to validate against.
     struct ChainVerdict
     {

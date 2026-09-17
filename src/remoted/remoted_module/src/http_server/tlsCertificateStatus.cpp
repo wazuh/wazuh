@@ -110,6 +110,20 @@ namespace remoted::http
         return days;
     }
 
+    bool caSignsLeaf(const X509* leaf, const X509* ca)
+    {
+        if (leaf == nullptr || ca == nullptr)
+        {
+            return false;
+        }
+        EVP_PKEY* key = X509_get0_pubkey(ca);
+        // X509_verify takes a non-const X509* (it may cache the encoding) but does not modify
+        // the certificate in any observable way.
+        const bool signs = key != nullptr && X509_verify(const_cast<X509*>(leaf), key) == 1;
+        ERR_clear_error(); // a failed X509_verify queues a signature error
+        return signs;
+    }
+
     ChainVerdict chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas)
     {
         if (leaf == nullptr || cas.empty())
