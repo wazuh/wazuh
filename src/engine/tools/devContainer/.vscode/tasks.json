@@ -68,8 +68,10 @@
         {
             "label": "E2E Scripts: [Manager] Copy wazuh-manager certs",
             "type": "shell",
-            "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_copy_certs.sh",
-            "args": [],
+            "command": "sudo",
+            "args": [
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_copy_certs.sh"
+            ],
             "problemMatcher": []
         },
         {
@@ -83,18 +85,96 @@
             "problemMatcher": []
         },
         {
+            "label": "E2E Scripts: [Manager] Fresh install from branch (purge!)",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_install_manager.sh",
+                "--yes",
+                "--mode",
+                "fresh",
+                "--api"
+            ],
+            "problemMatcher": [],
+            "detail": "Stops and PURGES /var/wazuh-manager, installs this checkout with install.sh, copies the certificates, starts it and runs wazuh_verify_manager.sh. Evidence under $TMPDIR/wazuh-e2e-evidence/<timestamp>."
+        },
+        {
+            "label": "E2E Scripts: [Manager] Verify installed manager",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_verify_manager.sh",
+                "--api"
+            ],
+            "problemMatcher": [],
+            "detail": "PASS/FAIL per check: daemons, conf validate, GET /cacerts, new ERROR/CRITICAL lines, API login."
+        },
+        {
             "label": "E2E Scripts: [Agent] Init setup (download pkgs)",
             "type": "shell",
             "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/init.sh",
             "args": [],
+            "problemMatcher": [],
+            "detail": "Downloads the 4.x/5.x agent packages into e2e/agents/pkgs/; a stale 5.x 'latest' is refreshed automatically."
+        },
+        {
+            "label": "E2E Scripts: [Agent] Check packages (--check)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/init.sh",
+            "args": [
+                "--check"
+            ],
             "problemMatcher": []
         },
         {
-            "label": "E2E Scripts: [Agent] Up (reset & start containers)",
+            "label": "E2E Scripts: [Agent] Re-download packages (--force)",
             "type": "shell",
-            "command": "docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/docker-compose.yml down -v && docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/docker-compose.yml up -d",
-            "args": [],
+            "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/init.sh",
+            "args": [
+                "--force"
+            ],
             "problemMatcher": []
+        },
+        {
+            "label": "E2E Scripts: [Agent] Create enrollment token",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/create_token.sh",
+                "--env-file",
+                "/tmp/wazuh-e2e-agents.env",
+                "--meta",
+                "/tmp/wazuh-e2e-agents.meta"
+            ],
+            "problemMatcher": [],
+            "detail": "Mints an enrollment token on the running manager (5.x agents) and copies authd.pass (4.x agents) into /tmp/wazuh-e2e-agents.env (0600). Delete the file after 'Up'."
+        },
+        {
+            "label": "E2E Scripts: [Agent] Up (start containers)",
+            "type": "shell",
+            "command": "docker compose --env-file /tmp/wazuh-e2e-agents.env -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/docker-compose.yml up -d --build",
+            "args": [],
+            "problemMatcher": [],
+            "detail": "Needs the env file from 'Create enrollment token'. Keeps existing volumes (already enrolled agents reconnect)."
+        },
+        {
+            "label": "E2E Scripts: [Agent] Reset (down -v)",
+            "type": "shell",
+            "command": "docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/docker-compose.yml down -v",
+            "args": [],
+            "problemMatcher": [],
+            "detail": "Removes the agent containers AND their volumes: the enrolled keys are lost and the next Up enrolls again."
+        },
+        {
+            "label": "E2E Scripts: [Agent] Verify enrollment",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/verify_agents.sh",
+                "--api"
+            ],
+            "problemMatcher": [],
+            "detail": "PASS/FAIL per agent: key in client.keys, global.db active, agent log, trust anchor (5.x), manager log, API."
         },
         {
             "label": "E2E Scripts: [Manager] Up (reset & start containers)",

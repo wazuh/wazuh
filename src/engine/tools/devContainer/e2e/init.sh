@@ -13,8 +13,7 @@ cd "$SCRIPT_DIR"
 # Logging: mirror all stdout and stderr to a timestamped log file
 # ------------------------------------------------------------------------------
 LOG_FILE="${SCRIPT_DIR}/init.log"
-: > "$LOG_FILE"  # Truncate log file on each run
-exec > >(tee "$LOG_FILE") 2>&1
+exec > >(tee -a "$LOG_FILE") 2>&1   # append: a run driven by another script must not erase the previous one
 
 echo "==========================================================="
 echo "  init.sh started at $(date '+%Y-%m-%d %H:%M:%S')"
@@ -27,7 +26,9 @@ echo ""
 FROM_WORKFLOWS=0
 CERTS_ONLY=0
 REGEN_CERTS=0
+REUSE_CERTS=0
 ROTATE_CA=0
+NO_LISTENERS=0
 for arg in "$@"; do
   case "$arg" in
     --from-wf|--from-workflow|--from-workflows)
@@ -39,12 +40,18 @@ for arg in "$@"; do
     --regen-certs)
       REGEN_CERTS=1
       ;;
+    --reuse-certs)
+      REUSE_CERTS=1
+      ;;
     --rotate-ca)
       ROTATE_CA=1
       ;;
+    --no-listeners)
+      NO_LISTENERS=1
+      ;;
     -h|--help)
       cat <<EOF
-Usage: $0 [--from-wf] [--certs-only] [--regen-certs] [--rotate-ca]
+Usage: $0 [--from-wf] [--certs-only] [--regen-certs | --reuse-certs] [--rotate-ca] [--no-listeners]
 
 Initializes the E2E environment: downloads the Wazuh Indexer and Dashboard
 packages and generates the TLS certificates into certs/ with
@@ -54,15 +61,24 @@ By default, the packages are downloaded from the staging nightly artifact URL
 manifests. If a package is missing from the primary manifest, the script tries
 the nightly backup manifest.
 
+Unless --no-listeners is given, the script also edits <remote> in
+\$WAZUH_MANAGER_HOME/etc/wazuh-manager.conf so both agent listeners bind to
+0.0.0.0 (containerised agents reach the manager over the docker bridge) and
+resets the file's owner/group to root:wazuh-manager 660.
+
 Options:
   --from-wf, --from-workflow, --from-workflows
                  Download packages from the latest successful GitHub Actions
                  workflows instead of the staging manifests.
   --certs-only   Skip the package download; only (re)generate the certificates.
   --regen-certs  Regenerate the certificates without asking when certs/ exists.
+  --reuse-certs  Keep the existing certs/ without asking (non-interactive callers
+                 such as wazuh_install_manager.sh; without it, an existing certs/
+                 triggers an interactive question that fails when stdin is not a TTY).
   --rotate-ca    Issue a new root CA instead of reusing certs/root-ca.{pem,key}.
                  Everything that trusts the current CA must be redeployed after
                  that (docker compose down -v && up -d, sudo ./wazuh_copy_certs.sh).
+  --no-listeners Do not touch \$WAZUH_MANAGER_HOME/etc/wazuh-manager.conf.
   --help, -h     Show this help.
 
 Required tools:
@@ -176,9 +192,13 @@ function upsert_certs() {
     return 1
   fi
 
-  # Existing certificates: ask before replacing them unless --regen-certs
+  # Existing certificates: keep them (--reuse-certs), replace them (--regen-certs), or ask
   if [ -d "$CERTS_DIR" ] && [ -n "$(ls -A "$CERTS_DIR")" ]; then
     echo "==> Certificates directory already exists."
+    if (( REUSE_CERTS == 1 )) && (( REGEN_CERTS == 0 )); then
+      echo "==> --reuse-certs: keeping the existing certificates."
+      return 0
+    fi
     if (( REGEN_CERTS == 0 )); then
       read -p "Do you want to regenerate the certificates? This will delete the existing certs directory. (y/N): " -n 1 -r
       echo
@@ -664,7 +684,11 @@ fi
 upsert_certs
 
 # Let containerised agents reach remoted
-open_manager_listeners
+if (( NO_LISTENERS == 0 )); then
+  open_manager_listeners
+else
+  echo "==> --no-listeners: leaving ${WAZUH_MANAGER_HOME}/etc/wazuh-manager.conf untouched."
+fi
 
 echo ""
 echo "==========================================================="
