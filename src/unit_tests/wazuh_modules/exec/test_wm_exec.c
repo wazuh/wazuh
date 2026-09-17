@@ -24,6 +24,12 @@
 
 
 extern OSList * wm_children_list;
+#ifndef WIN32
+#include <signal.h>
+#include <sys/wait.h>
+int wm_exec_exit_code(int status);
+pid_t __real_fork(void); // The real fork(), reachable despite this binary wrapping it globally
+#endif
 
 int __wrap_sleep (unsigned int __seconds) {
     return mock();
@@ -376,6 +382,41 @@ static void test_wm_kill_children_parent(void ** state) {
     wm_children_list = NULL;
 }
 
+#ifndef WIN32
+static void test_wm_exec_exit_code_normal_exit(void ** state) {
+    pid_t pid = __real_fork();
+
+    if (pid == 0) {
+        _exit(3);
+    }
+
+    int status;
+    waitpid(pid, &status, 0);
+
+    assert_int_equal(wm_exec_exit_code(status), 3);
+}
+
+static void test_wm_exec_exit_code_signal(void ** state) {
+    pid_t pid = __real_fork();
+
+    if (pid == 0) {
+        // SIGKILL specifically: it cannot be caught, so no handler this test binary may have
+        // installed (e.g. cmocka's own crash reporting) runs in the child after the fork().
+        // raise(), not kill(): this binary wraps the kill symbol for its own tests.
+        raise(SIGKILL);
+        _exit(123); // Should never be reached
+    }
+
+    int status;
+    waitpid(pid, &status, 0);
+
+    // A crash must be reported as a real failure (128 + signal number, the shell
+    // convention), never as exit code 0 -- WEXITSTATUS() alone is unspecified on
+    // a signalled process and reads as 0 on Linux, which is what this guards against.
+    assert_int_equal(wm_exec_exit_code(status), 128 + SIGKILL);
+}
+#endif
+
 #else
 static void test_wm_append_handle_null_list(void ** state) {
     HANDLE hProcess = (HANDLE)0x00112233;
@@ -524,7 +565,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_remove_sid_success, setup_modules, teardown_modules),
         cmocka_unit_test_setup_teardown(test_wm_kill_children_fork_failed, setup_modules, NULL),
         cmocka_unit_test_setup_teardown(test_wm_kill_children_timeout_kill_child, setup_modules, NULL),
-        cmocka_unit_test_setup_teardown(test_wm_kill_children_parent, setup_modules, NULL)
+        cmocka_unit_test_setup_teardown(test_wm_kill_children_parent, setup_modules, NULL),
+#ifndef WIN32
+        cmocka_unit_test(test_wm_exec_exit_code_normal_exit),
+        cmocka_unit_test(test_wm_exec_exit_code_signal)
+#endif
 #else
         cmocka_unit_test_setup_teardown(test_wm_append_handle_null_list, NULL, NULL),
         cmocka_unit_test_setup_teardown(test_wm_append_handle_fail, setup_modules, teardown_modules),
