@@ -20,13 +20,27 @@
 namespace invsync::vd
 {
 
+    bool
+    feedGateOpen(bool started, bool enabled, bool startFailed, bool initialized, bool feedReady, bool configuredEnabled)
+    {
+        const bool willRunHere = started ? enabled : configuredEnabled;
+        if (!willRunHere || startFailed)
+        {
+            return true;
+        }
+        return initialized && feedReady;
+    }
+
     /**
      * @brief Production IVdScanner: the scan lane's bridge to the vulnerability scanner module.
      *
      * Translates a ValidatedSession into the scanner's NEUTRAL views (no FlatBuffers cross this
      * boundary; the views alias the request body, which the lane keeps alive for the whole call)
      * and reproduces the legacy gate decision:
-     *  - scanner not initialized (disabled, or still starting) -> legitimate skip, index anyway.
+     *  - never going to run here (disabled, or a harness that never started it) -> legitimate
+     *    skip, index anyway.
+     *  - enabled but still starting -> deferred: the feed-not-ready gate answers a retryable 503
+     *    instead, since this node is expected to run a scanner soon.
      *
      * There is no manager-initiated "feed-update fleet scan" to coordinate with anymore -- feed
      * updates no longer trigger an automatic rescan of every agent; agents detect the offset
@@ -37,12 +51,35 @@ namespace invsync::vd
     class VdScannerAdapter final : public IVdScanner
     {
     public:
+        explicit VdScannerAdapter(bool vdConfiguredEnabled)
+            : m_configuredEnabled(vdConfiguredEnabled)
+        {
+        }
+
         bool feedReady() const override
         {
+            // Never going to run here -- it ran and found vulnerability detection disabled, or
+            // ran and failed outright, or was never invoked at all AND this node's own
+            // configuration does not have VD enabled either (a test harness that skips start()
+            // entirely, e.g. the testtool's --no-vd, or a real node with no
+            // <vulnerability-detection> section) -- none of those is a "feed not ready"
+            // condition: those sessions skip the scan and index (D22's legitimate-skip row), so
+            // they must pass this gate rather than wait on a feed that will never load.
+            //
+            // Otherwise -- either running (enabled, started, start() didn't fail), or not yet
+            // started but this node's OWN config says it will be -- the real feed-readiness
+            // signal decides, once initialized. This is what lets the D17 gate -- and the
+            // /scan/vd on-demand path, which re-checks this same gate before scanAgent() --
+            // defer the ENTIRE startup window (both before start() begins, and while it is still
+            // validating) with a retryable 503, instead of routing a session that merely arrived
+            // early through Skipped as if this node would never run a scanner.
             auto& scanner = VulnerabilityScannerFacade::instance();
-            // An uninitialized scanner is not a "feed not ready" condition: those sessions skip
-            // the scan and index (D22's legitimate-skip row), so they must pass this gate.
-            return !scanner.isInitialized() || scanner.isFeedReady();
+            return feedGateOpen(scanner.hasStarted(),
+                                scanner.isEnabled(),
+                                scanner.startFailed(),
+                                scanner.isInitialized(),
+                                scanner.isFeedReady(),
+                                m_configuredEnabled);
         }
 
         bool scannerRunning() const override
@@ -101,9 +138,11 @@ namespace invsync::vd
 
             if (!scanner.isInitialized())
             {
-                // Skipped, not NotReady: on a node with vulnerability detection disabled there is
-                // nothing to come back for, and reporting it as transient would make the caller
-                // retry a scan that can never run on this manager.
+                // Reached only for "never going to run here" (disabled, or a harness that never
+                // started it): the lane's feedReady() re-check, one level up, already deferred
+                // the enabled-but-starting case with a retryable 503 before calling scanAgent()
+                // at all. Skipped, not NotReady: this gate is what the QA suite, the operator
+                // WARN and vd.scans.skipped hang off.
                 return AgentScanOutcome::Skipped;
             }
 
@@ -117,11 +156,12 @@ namespace invsync::vd
             {
                 case VulnerabilityScannerFacade::ScanTriggerResult::Success: return AgentScanOutcome::Ok;
 
-                // Vulnerability detection is not running here. Same reasoning as the gate above.
-                case VulnerabilityScannerFacade::ScanTriggerResult::NotInitialized: return AgentScanOutcome::Skipped;
-
-                // All transient, and all for reasons outside this request: the feed is still
-                // loading, the scanner is still starting, or no indexer host is healthy.
+                // All transient, and all for reasons outside this request: vulnerability detection
+                // is not initialized yet -- kept here defensively even though the gate above
+                // already returns Skipped for that case, since this switch also covers callers
+                // that reach triggerAgentScan() directly -- the feed is still loading, the
+                // scanner is still starting, or no indexer host is healthy.
+                case VulnerabilityScannerFacade::ScanTriggerResult::NotInitialized:
                 case VulnerabilityScannerFacade::ScanTriggerResult::FeedNotReady:
                 case VulnerabilityScannerFacade::ScanTriggerResult::ScannerNotReady:
                 case VulnerabilityScannerFacade::ScanTriggerResult::IndexerUnavailable:
@@ -138,6 +178,9 @@ namespace invsync::vd
         }
 
     private:
+        /// Set once at construction from this node's own configuration; see feedGateOpen().
+        bool m_configuredEnabled;
+
         static std::vector<vd_sync::SyncItemView> buildItems(const sync::ValidatedSession& session)
         {
             std::vector<vd_sync::SyncItemView> items;
@@ -198,9 +241,9 @@ namespace invsync::vd
         // LCOV_EXCL_STOP
     };
 
-    std::shared_ptr<IVdScanner> makeProductionVdScanner()
+    std::shared_ptr<IVdScanner> makeProductionVdScanner(bool vdConfiguredEnabled)
     {
-        return std::make_shared<VdScannerAdapter>();
+        return std::make_shared<VdScannerAdapter>(vdConfiguredEnabled);
     }
 
 } // namespace invsync::vd

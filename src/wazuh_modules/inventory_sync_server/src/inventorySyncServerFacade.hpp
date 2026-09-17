@@ -322,8 +322,10 @@ namespace invsync
         using IndexerConnectorAsyncFactory = std::function<std::unique_ptr<invsync::indexer::IIndexerConnectorAsync>(
             const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)>;
         /// Builds the scan lane's seam over the vulnerability scanner; tests substitute a fake so
-        /// the D22 gating can be pinned without a CVE feed.
-        using VdScannerFactory = std::function<std::shared_ptr<invsync::vd::IVdScanner>()>;
+        /// the D22 gating can be pinned without a CVE feed. Takes whether THIS node's own config
+        /// has VD enabled (m_config.vd_configured_enabled), known before the scanner's own
+        /// start() has necessarily run -- see feedGateOpen().
+        using VdScannerFactory = std::function<std::shared_ptr<invsync::vd::IVdScanner>(bool)>;
 
         /**
          * @brief TEST-ONLY. Override how the shared indexer session is constructed.
@@ -877,6 +879,7 @@ namespace invsync
             invsync::vd::VdScanLaneConfig laneConfig;
             std::size_t laneWorkers {1};
             VdScannerFactory scannerFactory;
+            bool vdConfiguredEnabled {false};
             std::uint64_t generation {0};
             bool needSession {false};
             bool needSync {false};
@@ -929,6 +932,7 @@ namespace invsync
                                                    ? m_config.vd_feed_retry_after_seconds
                                                    : DEFAULT_VD_RETRY_AFTER_SECS;
                 scannerFactory = m_vdScannerFactory;
+                vdConfiguredEnabled = m_config.vd_configured_enabled;
 
                 sessionFactory = m_indexerSessionFactory;
                 syncFactory = m_indexerConnectorSyncFactory;
@@ -1101,7 +1105,7 @@ namespace invsync
                         generation,
                         [&]
                         {
-                            builtScanner = scannerFactory();
+                            builtScanner = scannerFactory(vdConfiguredEnabled);
                             std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors;
                             connectors.reserve(laneWorkers);
                             for (std::size_t i = 0; i < laneWorkers; ++i)
@@ -1384,7 +1388,8 @@ namespace invsync
                     config, adapter.session(), std::move(logging));
             }};
 
-        VdScannerFactory m_vdScannerFactory {[]() { return invsync::vd::makeProductionVdScanner(); }};
+        VdScannerFactory m_vdScannerFactory {[](bool vdConfiguredEnabled)
+                                             { return invsync::vd::makeProductionVdScanner(vdConfiguredEnabled); }};
 
         IndexerConnectorAsyncFactory m_indexerConnectorAsyncFactory {
             [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)

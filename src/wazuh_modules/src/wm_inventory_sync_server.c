@@ -13,6 +13,7 @@
 #include "indexer-config.h"
 #include "inventory_sync_server.h"
 #include "sym_load.h"
+#include "wm_vulnerability_scanner.h"
 #include <cJSON.h>
 
 static void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data);
@@ -74,12 +75,13 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
 
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
              "sync pipeline: sync_workers=%d, sync_queue_bytes=%lld, vd_feed_retry_after_seconds=%d, vd_workers=%d, "
-             "vd_scan_queue_slots=%d",
+             "vd_scan_queue_slots=%d, vd_configured_enabled=%s",
              config->sync_workers,
              config->sync_queue_bytes,
              config->vd_feed_retry_after_seconds,
              config->vd_workers,
-             config->vd_scan_queue_slots);
+             config->vd_scan_queue_slots,
+             config->vd_configured_enabled ? "yes" : "no");
 
     /* Split from the line above so the two indexer families stay visually distinct in the log, the
      * same way they are in the configuration: their key names are NOT interchangeable. */
@@ -423,6 +425,35 @@ void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
              * thread runs -- wm_config() reads the configuration before main() creates them. */
             cJSON* indexer_json = indexer_config ? cJSON_Duplicate(indexer_config, TRUE) : cJSON_CreateObject();
             config.indexer = indexer_json;
+
+            /* Same guarantee as indexer_config above: wm_config() reads every wmodule's
+             * configuration, this one included, before any module thread is created, so this is
+             * race-free to read here even though wm_vulnerability_scanner's OWN start() has not
+             * run yet on this node. Absent module (no <vulnerability-detection> section at all,
+             * "no section means no module" per Read_Vulnerability_Detection_JSON()) -> not
+             * configured. Present with no "enabled" key, or a value w_parse_bool() does not
+             * recognize as "no" -> defaults enabled, matching the scanner's own default. */
+            config.vd_configured_enabled = false;
+            const wmodule* vd_module = wm_find_module(WM_VULNERABILITY_SCANNER_CONTEXT.name);
+            if (vd_module && vd_module->data)
+            {
+                const wm_vulnerability_scanner_t* vd_data = (const wm_vulnerability_scanner_t*)vd_module->data;
+                const cJSON* vd_enabled = vd_data->vulnerability_detection
+                                              ? cJSON_GetObjectItem(vd_data->vulnerability_detection, "enabled")
+                                              : NULL;
+                if (!vd_enabled || cJSON_IsBool(vd_enabled))
+                {
+                    config.vd_configured_enabled = !vd_enabled || cJSON_IsTrue(vd_enabled);
+                }
+                else if (cJSON_IsString(vd_enabled))
+                {
+                    config.vd_configured_enabled = w_parse_bool(vd_enabled->valuestring) != 0;
+                }
+                else
+                {
+                    config.vd_configured_enabled = true;
+                }
+            }
 
             wm_inventory_sync_server_log_config(&config);
             const int status = inventory_sync_server_start_ptr(mtLoggingFunctionsWrapper, &config);
