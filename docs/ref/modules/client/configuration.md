@@ -340,6 +340,30 @@ TLS 1.3). A configuration carrying them — e.g. left over from a 4.x
 `ossec.conf`, which an in-place upgrade does not rewrite — still starts the
 agent normally: each is recognized and logged at `INFO`, not rejected.
 
+### batch
+
+Size and cadence of the HTTPS `/events/stateless` accumulator. The same size is the ceiling held
+for one `/stateful` session.
+
+```xml
+<agent>
+  <batch>
+    <size>1MB</size>
+    <interval>10s</interval>
+  </batch>
+</agent>
+```
+
+- **`size`** — Default `1MB`. Positive byte count with the usual suffixes, up to `1GB`.
+- **`interval`** — Default `10s`. Positive duration, up to one day.
+- **Note:** `size` has to stay under the manager's request-body caps, which the agent cannot see.
+  Up to `remoted.auth_max_body_size` (5 MiB by default) an oversized batch is answered `413` and the
+  agent splits it and resends smaller without losing events. Above `<remote><https><max_body_size>`
+  (10 MiB by default) the manager closes the connection with no response; the agent reads that as a
+  network failure, keeps the batch and retries it indefinitely, and no further events leave the
+  agent. If this value is raised, raise both manager settings first and keep `size` at or below the
+  auth cap. See [remoted's configuration](../remoted/configuration.md#httpsmax_body_size).
+
 ---
 
 ## Client Buffer Configuration (`<client_buffer>`)
