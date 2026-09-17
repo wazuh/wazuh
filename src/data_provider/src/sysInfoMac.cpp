@@ -73,7 +73,19 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
 {
     nlohmann::json jsProcessInfo{};
     jsProcessInfo["pid"]        = std::to_string(pid);
-    jsProcessInfo["name"]       = taskInfo.pbsd.pbi_name;
+
+    char pathBuffer[PROC_PIDPATHINFO_MAXSIZE] = {0};
+    const auto pathLen { proc_pidpath(pid, pathBuffer, sizeof(pathBuffer)) };
+
+    if (pathLen > 0)
+    {
+        const std::string fullPath { pathBuffer };
+        jsProcessInfo["name"] = fullPath.substr(fullPath.find_last_of('/') + 1);
+    }
+    else
+    {
+        jsProcessInfo["name"] = taskInfo.pbsd.pbi_name;
+    }
 
     jsProcessInfo["state"]      = UNKNOWN_VALUE;
     jsProcessInfo["ppid"]       = taskInfo.pbsd.pbi_ppid;
