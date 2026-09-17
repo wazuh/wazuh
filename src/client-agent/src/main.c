@@ -309,7 +309,7 @@ int main(int argc, char **argv)
     }
 
     /* Start the signal manipulation */
-    StartSIG(ARGV0);
+    StartSIG2(ARGV0, agentd_shutdown);
 
     /* Agentd Start */
     AgentdStart(uid, gid, user, group);

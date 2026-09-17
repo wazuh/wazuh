@@ -91,7 +91,7 @@ list(APPEND client-agent_names "test_agentd")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
                                 -Wl,--wrap,w_https_client_start -Wl,--wrap,w_https_client_stop \
                                 -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
-                                -Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,OS_IsValidIP -Wl,--wrap,exit ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_startup_gate")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_SHA256_File ${DEBUG_OP_WRAPPERS}")
