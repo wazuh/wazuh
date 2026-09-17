@@ -358,7 +358,9 @@ def mark_cases_as_skipped(metadata):
 def restart_wazuh_function_without_exception(daemon=None):
     """Restart all Wazuh daemons."""
     try:
-        control_service("start", daemon=daemon)
+        # 'restart' and not 'start': starting an already running manager is a no-op, so the
+        # configuration the test just wrote would never be read.
+        control_service("restart", daemon=daemon)
     except ValueError:
         pass
 
