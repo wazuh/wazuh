@@ -96,6 +96,9 @@ src/http_server/
 ├── inFlightBudget.hpp       # global in-flight byte budget + RAII Reservation (backpressure/503)
 ├── tlsCertificateStatus.hpp/.cpp # served-leaf expiry + "does the configured CA sign it" evaluation
 │                            #   (pure functions over X509 + a PEM path) and TlsCertificateMonitor
+├── certificateDescriptor.hpp/.cpp # one certificate as GET /tls reports it (RFC 2253 names, SANs, epoch
+│                            #   validity, `x509-sha256:` identity) + the bundle's Content-SHA256
+├── tlsInventory.hpp/.cpp    # TlsInventory (served leaf + CA snapshot from ONE call) and the GET /tls document
 ├── httpServerConfig.hpp/.cpp# buildHttpServerConfig(): C-ABI struct -> HttpServerConfig (+ fallbacks)
 ├── httpServerFactory.hpp    # makeHttpServer() -> the single transport swap point
 └── RestinioHttpServer.hpp/.cpp # RESTinio + OpenSSL implementation (PImpl hides RESTinio in the .cpp)
@@ -2100,15 +2103,16 @@ catalogs consume.
 
 The module's management plane: a second, independent HTTP server (the shared
 `shared_modules/uds_http_server` library — the public HTTPS server keeps its own RESTinio stack)
-brought up by `startAdminServer()` right after the public server. It serves exactly three
-read-only routes, all **Liveness** class (answered inline from resident state, exempt from the
-byte budget):
+brought up by `startAdminServer()` right after the public server. It serves exactly four
+read-only routes, all **Liveness** class (answered inline from resident state — or, for `/tls`,
+one bounded read of a few-KB file — exempt from the byte budget):
 
 | Route | Answer |
 |---|---|
 | `GET /` | `{"status":"ok","module":"remoted_module"}` — liveness probe |
 | `GET /metrics` | JSON dump of the module's whole `wazuh_metrics` registry (every family in **Metrics catalog** above), same envelope as inventory sync's `/metrics` |
 | `GET /status` | Readiness, not bare liveness — see below |
+| `GET /tls` | The served TLS certificate and the CA bundle `GET /cacerts` hands out: dates, identities, which CA signs the leaf — see below |
 
 ### `GET /status`: readiness, not liveness
 
@@ -2168,6 +2172,94 @@ entirely in `framework/wazuh/manager.py`'s `_remoted_status()`, not in this hand
 this route's own perspective, the socket either answers or it doesn't come up at all (the
 warn-and-continue policy below).
 
+### `GET /tls`: the served certificate and the CA bundle
+
+What an operator — or `GET /cluster/{node_id}/daemons/remoted/tls` — reads to see certificate
+validity without shelling into the node (issue #39320): the leaf the HTTPS listener is serving and
+every certificate of the CA bundle `GET /cacerts` hands out, with their dates, identities and which
+CA signs the leaf. **No thresholds, no `warning`/`critical` verdicts**: the consumer decides what
+"soon" means; the daily `TlsCertificateMonitor` keeps logging expiry as before, unchanged.
+
+**One** `IHttpServer::tlsInventory()` call per request (`http_server/tlsInventory.hpp`): the leaf
+half is the `CertificateDescriptor` `start()` computed from the certificate in the `SSL_CTX`, the CA
+half is one `CaCertificateSource::snapshot()` — the same read `/cacerts` answers from, so the two
+routes can never disagree about `signs_active_leaf`. `503 {"error":"Service unavailable","code":503}`
+while the public listener is not accepting (before its start, after `stopAccepting()`, during
+teardown), through the same `m_publicDiagMutex`/`m_publicDiagTarget` weak_ptr `tlsCaMatchesLeaf()`
+uses. Still a **Liveness** route: the CA read is bounded (`CaCertificateSource::kMaxBytes`),
+regular files only, under the source's own mutex — nothing that can block the admin reactor.
+
+Response shape (`http_server/tlsInventory.cpp` renders it, keys in this order):
+
+```json
+{
+  "evaluated_at": "2026-09-15T10:00:00Z", "evaluated_at_ts": 1789466400,
+  "listener": {
+    "subject": "CN=manager-01", "issuer": "CN=Corp Root CA",
+    "sans": ["manager-01.example.com", "10.0.0.5"],
+    "not_before": "2026-01-01T00:00:00Z", "not_before_ts": 1767225600,
+    "not_after": "2027-01-01T00:00:00Z", "not_after_ts": 1798761600,
+    "seconds_until_expiry": 9295200,
+    "fingerprint": "x509-sha256:3f9c…", "serial": "0x1a2b…",
+    "path": "etc/certs/remoted.pem",
+    "loaded_at": "2026-09-14T08:12:31Z", "loaded_at_ts": 1789373551
+  },
+  "ca_bundle": {
+    "path": "etc/certs/root-ca.pem",
+    "publication": 0, "publication_vouched": false,
+    "content_sha256": "b7e1…",
+    "certificates_count": 2, "certificates_limit": 6,
+    "serialized_bytes": 2428, "serialized_bytes_limit": 8191,
+    "chain_valid": true,
+    "certificates": [
+      {"subject": "CN=Corp Root CA", "issuer": "CN=Corp Root CA", "not_before": "…", "not_before_ts": 0,
+       "not_after": "…", "not_after_ts": 0, "seconds_until_expiry": 0,
+       "fingerprint": "x509-sha256:…", "serial": "0x…", "signs_active_leaf": true},
+      {"…": "…", "signs_active_leaf": false}
+    ]
+  }
+}
+```
+
+- **Freshness is asymmetric, and the document says so.** The CA half is never older than the
+  request: replace the bundle on disk (atomically — write a sibling, `rename` it over the path,
+  as `caCertificateSource.hpp` explains) and the next request shows it, no restart, no monitor tick.
+  The leaf lives in the `SSL_CTX` from `start()` until the next one: `listener.loaded_at` dates it,
+  and replacing `remoted.pem` on disk changes nothing until remoted restarts. There is deliberately
+  no "force refresh" parameter — it could refresh only half the resource.
+- **`signs_active_leaf` vs `chain_valid`.** Per certificate, `signs_active_leaf` is the direct
+  signature check (`caSignsLeaf()`, `X509_verify` against that CA's key); the OR of them is
+  `CaCertificateSnapshot::matchesLeaf`, what `/cacerts` uses for its `503 ca_mismatch`.
+  Bundle-level `chain_valid` is `chainValidates()`'s verdict: the leaf validates with the bundle as
+  its **only** trust store (path building, dates, `basicConstraints`/`keyUsage`, server purpose).
+  They disagree on purpose for an expired CA, or one without `CA:TRUE`, that still signs the leaf:
+  `signs_active_leaf: true`, `chain_valid: false` plus `chain_error` (present only when false).
+  `chain_valid` is `null` when there is nothing to validate against.
+- **`last_read_failure`** (present only while the bundle cannot be read): the CA fields then describe
+  the **last good read** — the certificates, hash and sizes of the file as it was — next to `cause`
+  (the `describeReadFailure()` fragment, e.g. `"cannot be opened (No such file or directory)"`),
+  `errno` and `consecutive` failed reads. A bundle that never read successfully shows
+  `certificates_count: 0` **plus** the failure — never an empty list that reads as "nothing to
+  worry about".
+- **Identity** is `fingerprint`: `x509-sha256:` + SHA-256 of the DER, 64 lowercase hex digits, no
+  colons (`certificateDescriptor.hpp`). The DER, not the SPKI pin: a reissue with the same key is a
+  different certificate and reads as one. `openssl x509 -in cert.pem -noout -fingerprint -sha256`
+  prints the same digest uppercase with colons — `| cut -d= -f2 | tr -d ':' | tr 'A-F' 'a-f'` to
+  compare. `content_sha256` is the bundle's identity: SHA-256 over the DERs sorted bytewise and
+  concatenated, independent of the order the operator concatenated the files in (#39319's
+  `Content-SHA256`). `serial` is `0x` + lowercase hex.
+- **Limits.** `certificates_limit` (6) and `serialized_bytes_limit` (8191 — the agent's
+  `HC_MAX_CACERTS_BODY` less its terminator) are `CaCertificateSource::kMaxCertificates` /
+  `kAgentBodyLimit`, whichever binds first. Nothing here enforces them (the file is the operator's,
+  and the rotation tool refuses to publish past them); they sit next to `certificates_count` and
+  `serialized_bytes` so the room left before adding a CA is visible.
+- **`publication` / `publication_vouched`** come from the bundle's `##` block (#39319): `0` /
+  `false` until that parser lands, and whenever the block is missing or its hash does not match.
+- `sans` is listed for the listener only (bare dNSName/iPAddress entries, in certificate order); a
+  CA's names are not something an agent dials. Every timestamp comes in both spellings — RFC 3339
+  UTC and `_ts` epoch seconds — and `seconds_until_expiry` is `not_after_ts − evaluated_at_ts`,
+  **negative once expired**.
+
 Contract points:
 
 - **Fixed path, no knob**: the constant `queue/sockets/remote-admin-http.sock` is **relative** on
@@ -2190,6 +2282,7 @@ Contract points:
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/status
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/tls | jq
 ```
 
 ## Integration in remoted
@@ -2397,7 +2490,16 @@ load but Password-mode is disabled, asserting `ready:true` alongside `keystore:{
 to prove a keystore failure alone never drags `ready` down, and `enrollment_tokens:{loaded:0,
 last_reload_ok:true}` reported whenever enrollment is enabled without ever gating `ready`, 404/405 exact-match routing, the
 warn-and-continue policy when the bind fails with the public listener unaffected, and `stop()`
-unlinking the socket with a restart cycle bringing the plane back).
+unlinking the socket with a restart cycle bringing the plane back; `GET /tls` describing the
+listener the facade started and the bundle `/cacerts` serves, following a bundle rewritten on disk
+between two requests with the leaf and `loaded_at` unchanged, keeping the last good read plus a
+counted `last_read_failure` while the bundle is away, and a never-readable bundle still yielding the
+listener). The `GET /tls` document itself is `tlsInventory_test.cpp` (rendered at a fixed clock:
+every key, both timestamp spellings, failure-only fields, no verdicts); the per-certificate
+descriptor and the identities are `certificateDescriptor_test.cpp`; the per-entry
+`signsLeaf`/sizes/`contentSha256` of the snapshot and the transport's `tlsInventory()` (empty unless
+accepting; CA file followed, leaf file not) are in `caCertificateSource_test.cpp` and
+`httpServer_test.cpp`.
 
 **Two files in `test/unit/` are spikes, not contracts.** They characterize a third-party library
 fetched by `make deps`; their purpose is to pin observed dependency behaviour, and
