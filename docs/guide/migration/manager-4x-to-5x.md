@@ -48,6 +48,12 @@ indexer.
 
 ## 1. Back up the 4.x manager
 
+Steps 1, 3 and 5 are what
+[`tools/migration/wazuh-migrate-identity.py`](https://github.com/wazuh/wazuh/blob/5.0.0/tools/migration/wazuh-migrate-identity.py)
+automates: it collects the same files into a checksummed bundle, restores them with the ownership
+below, and compares the result against what it carried. Read this section either way, since the
+decisions it describes are still yours, and run the tool with `--dry-run` first.
+
 Stop the 4.x manager so the files are consistent, then copy everything below off the host. The
 paths are the 4.x ones; the table says where each item lands on 5.0.
 
