@@ -131,10 +131,30 @@ Path to the CA bundle used to verify the manager's certificate.
 
 How strictly the agent verifies the manager's TLS certificate.
 
-- **Default value:** `system` when `<certificate_authorities>` is not set, `certificate` when it
-  is set without an explicit `<verification_mode>` (mirrors the manager's own inference for
-  `<remote><https><ca>`/`<verification_mode>` in `remote-config.c`). `none` is never the default —
-  it is only reached via an explicit `<verification_mode>none</verification_mode>`.
+- **Default value:** there is no single default. When `<verification_mode>` is absent the agent
+  resolves a **ladder**, in this order (`w_agent_resolve_ssl_posture()`):
+
+  | Condition | Resolved mode |
+  |---|---|
+  | `<certificate_authorities>` is set | `certificate` |
+  | otherwise, a trust anchor exists at `etc/certs/root-ca.pem` | **`full`** |
+  | otherwise, no trust material at all | **`none`** |
+
+  Two consequences worth reading twice:
+
+  * **A stock install with no trust material verifies nothing**, and logs
+    `TLS verification is DISABLED (verify_mode=none)` at warning level. `none` is never chosen over
+    a usable anchor, but it *is* what an agent given nothing falls back to, because `system` could
+    only ever refuse: the manager's certificate is signed by its own `root-ca.pem`, which is in no
+    OS trust store.
+  * **Placing a CA at `etc/certs/root-ca.pem` promotes the agent to `full`**, which includes the
+    hostname check, without any configuration change. Behind a load balancer in TLS passthrough that
+    requires every manager node's certificate to carry the address the agent dials; see
+    [A Wazuh server cluster behind a load balancer](../cluster/lb.md). If it does not, the agent
+    fails with a TLS error and no HTTP status.
+
+  An explicit `<verification_mode>` is always honoured, `none` included; the anchor only decides
+  what the block left unsaid.
 - **Allowed values:**
   - `full` — verify the certificate against `<certificate_authorities>` AND check that it
     matches the manager's hostname (strictest).

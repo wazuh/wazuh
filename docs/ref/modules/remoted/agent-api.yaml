@@ -51,9 +51,10 @@ servers:
       globalPrefix:
         default: "/wazuh-manager"
         description: >
-          Value of <remote><https><global_prefix> without its trailing slash. Freshly generated
-          configurations ship /wazuh-manager; an absent tag means no prefix (use an empty
-          string here). The signed request target includes this prefix.
+          Value of <remote><https><global_prefix> without its trailing slash. The default is
+          /wazuh-manager, materialised by the schema, so an absent tag means the prefix IS
+          applied. Serving unprefixed endpoints requires setting the tag to / explicitly.
+          The signed request target includes this prefix.
 
 tags:
   - name: Health
@@ -126,6 +127,14 @@ paths:
         response. The converse rotation -- a *different but valid* CA written over the file without
         restarting -- is served on the very next request; a new *leaf* certificate still needs a
         restart to load, so rotate CA and certificate together and restart remoted.
+
+        BEHIND A TLS-TERMINATING LOAD BALANCER THIS ROUTE IS NOT A USABLE BOOTSTRAP. It returns
+        the CA that signs the MANAGER's listener certificate, but under termination the agent's TLS
+        peer is the balancer. When the balancer's certificate comes from a different CA, the anchor
+        returned here cannot verify the peer the agent actually talks to, and an agent that adopts
+        it loses the connection it had. Distribute the anchor out of band instead. An enrollment
+        token carries a CA pin, but it pins this same CA, so it only helps when the balancer leaf
+        is signed by it too. See docs/ref/modules/cluster/lb.md.
 
         This is a trust-on-first-use bootstrap over an unverified channel: an agent that already
         holds the CA MUST NOT replace it from this route, and a deployment that can distribute the
