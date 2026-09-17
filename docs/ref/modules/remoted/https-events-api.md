@@ -1415,8 +1415,33 @@ absent — so a 5.0 agent, which already has a secret from its own enrollment, n
 route at all. The attempt runs on a detached thread after the HTTPS client starts, never on the boot
 path: nothing at boot consumes the secret, and putting a network round trip there would add its full
 timeout to the start of every agent whose manager is unreachable. It is never fatal; `429` and `503`
-are handled identically (one log line, no retry in that process), and the next attempt is jittered so
-a fleet restarted together does not re-synchronize.
+are handled identically (one log line, no retry in that process), and the attempt is jittered so a
+fleet restarted together does not re-synchronize. Both start paths make the call — `AgentdStart()`
+on Unix and `local_start()` on Windows, which is a separate function because `agentd.c` is not part
+of the Windows build.
+
+### Known limitation: changing the master node
+
+**A master change invalidates every agent's stored secret.** `reenroll_secret` lives in the master's
+`global.db`, and `global.db` is **not** replicated between cluster nodes — only `client.keys`,
+`etc/authd.pass` and `etc/enrollment_tokens.json` are. A promoted node rebuilds its agent rows from
+the `client.keys` it received, and those rebuilt rows carry a NULL secret (the same path that puts
+the third population above in this state).
+
+What does **not** break: `client.keys` *is* replicated, so every agent's key still authenticates.
+Agents keep connecting, reporting and receiving configuration exactly as before, and this route keeps
+working for them — it authenticates with that same key.
+
+What breaks is **recovery**: each agent still holds a secret the new master has never seen, and it
+will not ask for another, because it only asks when its store is empty. Nothing exercises the secret
+while the key works, so the mismatch stays invisible until the day the key stops being accepted —
+at which point the agent shreds the dead secret and falls back to whatever credential it has. For an
+agent with no enrollment token and no password, that means an operator.
+
+If you change the master, treat the fleet's recovery credentials as lost and re-issue them: removing
+`etc/reenroll.secret` on an agent makes its next start ask the new master for a fresh one. This is
+inherited from the secret's design (issue #38993), not from this endpoint, which is what makes the
+re-issue possible at all.
 
 ## Download endpoint (`POST /download`)
 

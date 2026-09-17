@@ -401,6 +401,19 @@ answers `ok` for an UPDATE matching zero rows, so the row is read before anythin
 
 An operator needs to do nothing: the agent does this by itself on its first start after the upgrade.
 
+**Changing the master node invalidates every stored secret**, and for the same root cause as the note
+below: the secret lives in the master's `global.db`, which the cluster does **not** replicate
+(`cluster.json` carries `client.keys`, `etc/authd.pass` and `etc/enrollment_tokens.json`, and nothing
+else). A promoted node rebuilds its agent rows from the `client.keys` it received, with a NULL secret
+— the third population above, fleet-wide.
+
+The agents themselves keep working: `client.keys` *is* replicated, so their keys still authenticate,
+and `issue_reenroll_secret` still serves them on that key. What is lost is recovery — each agent holds
+a credential the new master has never seen, and it will not ask for another, because it only asks when
+its store is empty. The mismatch surfaces only when the key itself stops being accepted, which is too
+late for an agent with no token and no password. After a master change, re-issue the fleet's secrets:
+removing `etc/reenroll.secret` on an agent makes its next start ask for a fresh one.
+
 **There is no upgrade path for `global.db`.** A database created by a 5.0.0 build from before the
 `agent.reenroll_secret` column is recreated, not migrated. And rebuilding the agent rows from
 `client.keys` — what `wazuh-manager-modulesd` does when it finds rows missing — does **not** bring the
