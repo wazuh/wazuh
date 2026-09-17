@@ -177,6 +177,18 @@ class VdHTTPClient:
             code = self._SCAN_REJECTION_CODES.get(reason, 8007)
             raise WazuhError(code, extra_message=reason)
 
+class RemotedAdminHTTPError(WazuhError):
+    """An error status answered by remoted's admin socket, with the HTTP status the route returned.
+
+    Raised as error 2029 like before; `status_code` lets a caller tell a contractual `503` (the HTTPS
+    listener is not up) apart from anything else without parsing the body.
+    """
+
+    def __init__(self, status_code: int, extra_message: str = None):
+        super().__init__(2029, extra_message=extra_message)
+        self.status_code = status_code
+
+
 class RemotedHTTPClient:
     """Synchronous HTTP client for remoted's local admin unix socket."""
 
@@ -238,7 +250,8 @@ class RemotedHTTPClient:
             (path, publication fields, `content_sha256`, counts and sizes against their limits,
             `chain_valid`, one entry per certificate with `signs_active_leaf`, and
             `last_read_failure` while the bundle cannot be read). remoted answers 503 while its
-            HTTPS listener is not up, which surfaces here as a `WazuhError(2029)`.
+            HTTPS listener is not up, which surfaces here as a `RemotedAdminHTTPError` (error 2029)
+            carrying that status code.
         """
         try:
             response = self._client.get(
@@ -253,7 +266,7 @@ class RemotedHTTPClient:
             raise WazuhError(2013, extra_message=str(exc))
 
         if response.is_error:
-            raise WazuhError(2029, extra_message=response.text)
+            raise RemotedAdminHTTPError(response.status_code, extra_message=response.text)
 
         try:
             return response.json()

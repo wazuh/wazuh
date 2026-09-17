@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import httpx
 
-from wazuh.core.engine_http import EngineHTTPClient, RemotedHTTPClient, VdHTTPClient
+from wazuh.core.engine_http import EngineHTTPClient, RemotedHTTPClient, VdHTTPClient, RemotedAdminHTTPError
 from wazuh.core.exception import WazuhError, WazuhInternalError
 
 
@@ -491,19 +491,22 @@ def test_remoted_get_tls_ok():
     assert result == REMOTED_TLS_RESPONSE
 
 
-def test_remoted_get_tls_http_error_carries_the_body():
-    """remoted answers 503 while its listener is not up: the body travels in the 2029 so the
-    framework can tell that case apart from any other error status."""
+def test_remoted_get_tls_http_error_carries_the_status_code():
+    """remoted answers 503 while its listener is not up: the status travels with the 2029 so the
+    framework can tell that case apart from any other error status without parsing the body."""
     client = _make_remoted_client()
     mock_response = MagicMock()
     mock_response.is_error = True
+    mock_response.status_code = 503
     mock_response.text = '{"error":"Service unavailable","code":503}'
     client._client.get.return_value = mock_response
 
-    with pytest.raises(WazuhError) as exc_info:
+    with pytest.raises(RemotedAdminHTTPError) as exc_info:
         client.get_tls()
+    assert isinstance(exc_info.value, WazuhError)
     assert exc_info.value.code == 2029
-    assert '"code":503' in exc_info.value.message
+    assert exc_info.value.status_code == 503
+    assert 'Service unavailable' in exc_info.value.message
 
 
 def test_remoted_get_tls_invalid_json():

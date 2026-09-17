@@ -7262,7 +7262,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "TLS certificate information was successfully read in specified node"
+                message: "TLS certificate information was returned in specified node"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'

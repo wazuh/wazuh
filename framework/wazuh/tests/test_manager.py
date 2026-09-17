@@ -24,6 +24,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.manager import LoggingFormat
         from wazuh.core.tests.test_manager import get_logs
         from wazuh import WazuhInternalError, WazuhError
+        from wazuh.core.engine_http import RemotedAdminHTTPError
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -435,6 +436,7 @@ def test_get_remoted_tls_returns_the_document_with_the_node(mock_status, mock_re
     assert item['listener'] == REMOTED_TLS_DOCUMENT['listener']
     assert item['ca_bundle'] == REMOTED_TLS_DOCUMENT['ca_bundle']
     assert item['evaluated_at_ts'] == 1789466400
+    assert 'was returned' in result.message
     mock_remoted_cls.return_value.close.assert_called_once()
 
 
@@ -467,8 +469,9 @@ def test_get_remoted_tls_remoted_not_running(mock_status, mock_remoted_cls):
     (WazuhInternalError(2030), 'timeout'),
     (WazuhInternalError(2032), 'invalid response'),
     (WazuhInternalError(2028), 'admin client unavailable'),
-    (WazuhError(2029, extra_message='{"error":"Service unavailable","code":503}'), 'listener not started'),
-    (WazuhError(2029, extra_message='{"error":"Internal server error","code":500}'), 'unexpected response'),
+    (RemotedAdminHTTPError(503, extra_message='{"error":"Service unavailable","code":503}'), 'listener not started'),
+    (RemotedAdminHTTPError(500, extra_message='{"error":"Internal server error","code":500}'), 'unexpected response'),
+    (WazuhError(2029), 'unexpected response'),
     (WazuhError(2013), 'request failed'),
 ])
 @patch('wazuh.manager.RemotedHTTPClient')
