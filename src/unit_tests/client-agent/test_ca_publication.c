@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -51,6 +52,51 @@
  * boundary and never parses what follows. */
 #define CERT_BODY "-----BEGIN CERTIFICATE-----\nQUJD\n-----END CERTIFICATE-----\n"
 
+/* rename() is the instant the trust store is committed, and #39321's crash-atomicity
+ * criterion is a claim about exactly that instant: everything before it is invisible, and the
+ * call itself either happens whole or not at all. The kernel guarantees the second half. The
+ * first half is this code's responsibility, and wrapping rename() is what makes it assertable
+ * -- the wrapper records what the destination held at the moment of commit, which is precisely
+ * what a crash one instruction earlier would have left behind.
+ *
+ * It delegates to the real call unless a test asks otherwise, so the install still runs end to
+ * end against real files. */
+static int rename_fail_errno = 0;
+static int rename_calls = 0;
+static char rename_source[512] = {0};
+static char rename_destination_at_commit[8192] = {0};
+
+int __real_rename(const char *from, const char *to);
+
+static size_t slurp(const char *path, char *out, size_t size) {
+    FILE *fp = fopen(path, "r");
+    size_t read = 0;
+
+    out[0] = '\0';
+
+    if (fp == NULL) {
+        return 0;
+    }
+
+    read = fread(out, 1, size - 1, fp);
+    out[read] = '\0';
+    fclose(fp);
+    return read;
+}
+
+int __wrap_rename(const char *from, const char *to) {
+    rename_calls++;
+    snprintf(rename_source, sizeof(rename_source), "%s", from);
+    slurp(to, rename_destination_at_commit, sizeof(rename_destination_at_commit));
+
+    if (rename_fail_errno != 0) {
+        errno = rename_fail_errno;
+        return -1;
+    }
+
+    return __real_rename(from, to);
+}
+
 static void write_store(const char *content) {
     FILE *fp = fopen(STORE_PATH, "w");
     assert_non_null(fp);
@@ -61,6 +107,10 @@ static void write_store(const char *content) {
 static int teardown_store(void **state) {
     (void) state;
     unlink(STORE_PATH);
+    rename_fail_errno = 0;
+    rename_calls = 0;
+    rename_source[0] = '\0';
+    rename_destination_at_commit[0] = '\0';
     return 0;
 }
 
@@ -277,6 +327,88 @@ static void test_install_refuses_an_empty_body(void **state) {
     assert_int_equal(w_ca_publication_install(STORE_PATH, NULL, 10, 1789000012LL), -1);
 }
 
+/* The crash-atomicity criterion, stated as the invariant it actually is: a crash at any point
+ * before the commit leaves the old pair, because nothing before the commit touches the store.
+ * The wrapper reads the destination at the instant of rename() -- the last moment a crash could
+ * still find the old content there -- and it is still, byte for byte, what was installed before. */
+static void test_install_leaves_the_store_untouched_until_the_commit(void **state) {
+    (void) state;
+    const char *original = "## generation: 1789000012\n" CERT_BODY;
+
+    write_store(original);
+
+    expect_any(__wrap__minfo, formatted_msg);
+
+    assert_int_equal(w_ca_publication_install(STORE_PATH, ROOT_CA_PEM, strlen(ROOT_CA_PEM),
+                                              1789000013LL), 0);
+
+    assert_int_equal(rename_calls, 1);
+    assert_string_equal(rename_destination_at_commit, original);
+
+    /* And after it, the new pair -- so the assertion above is about timing, not about an
+     * install that never happened. */
+    assert_int_equal(w_ca_publication_read(STORE_PATH), 1789000013LL);
+}
+
+/* The commit is the only writer, so when it fails nothing has changed. This is a regression
+ * test with a name: the install used to go through OS_MoveFile(), which falls back to a
+ * read-write copy when rename() fails -- and a copy truncates the destination first. A crash
+ * during that copy would leave the agent holding a fragment of a bundle: unable to verify the
+ * manager, and so unable to reach /cacerts to repair itself.
+ *
+ * EPERM is not hypothetical here. The anchor lives in a sticky directory, where renaming over a
+ * file owned by someone else is refused -- which is what a pre-#39321 install looks like until
+ * its ownership is repaired. */
+static void test_install_leaves_the_store_intact_when_the_commit_fails(void **state) {
+    (void) state;
+    const char *original = "## generation: 1789000012\n" CERT_BODY;
+    char after[8192];
+
+    write_store(original);
+    rename_fail_errno = EPERM;
+
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_int_equal(w_ca_publication_install(STORE_PATH, ROOT_CA_PEM, strlen(ROOT_CA_PEM),
+                                              1789000013LL), -1);
+
+    slurp(STORE_PATH, after, sizeof(after));
+    assert_string_equal(after, original);
+    assert_int_equal(w_ca_publication_read(STORE_PATH), 1789000012LL);
+}
+
+/* rename() is atomic only within one filesystem; across a boundary it fails outright, and any
+ * helper papering over that failure would be copying. TempFile() templating on the target is
+ * what keeps the temporary beside it, and this pins that -- a later refactor pointing the
+ * temporary at /tmp would still pass every other test here. */
+static void test_the_temporary_file_is_committed_from_beside_the_store(void **state) {
+    (void) state;
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__minfo, formatted_msg);
+
+    assert_int_equal(w_ca_publication_install(STORE_PATH, ROOT_CA_PEM, strlen(ROOT_CA_PEM),
+                                              1789000012LL), 0);
+
+    assert_int_equal(rename_calls, 1);
+    assert_null(strchr(rename_source, '/'));          /* Same directory as STORE_PATH. */
+    assert_non_null(strstr(rename_source, STORE_PATH)); /* Templated on the target's own name. */
+}
+
+/* A body that is not certificates is refused before the commit is ever reached, so there is no
+ * window in which the store holds it. */
+static void test_a_rejected_body_never_reaches_the_commit(void **state) {
+    (void) state;
+    const char *junk = "this is not a certificate at all\n";
+
+    write_store("## generation: 1789000012\n" CERT_BODY);
+
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_int_equal(w_ca_publication_install(STORE_PATH, junk, strlen(junk), 1789000013LL), -1);
+    assert_int_equal(rename_calls, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_reads_the_publication_it_rendered, teardown_store),
@@ -299,6 +431,10 @@ int main(void) {
         cmocka_unit_test_teardown(test_install_refuses_a_partially_corrupt_bundle, teardown_store),
         cmocka_unit_test_teardown(test_install_refuses_a_non_positive_publication, teardown_store),
         cmocka_unit_test_teardown(test_install_refuses_an_empty_body, teardown_store),
+        cmocka_unit_test_teardown(test_install_leaves_the_store_untouched_until_the_commit, teardown_store),
+        cmocka_unit_test_teardown(test_install_leaves_the_store_intact_when_the_commit_fails, teardown_store),
+        cmocka_unit_test_teardown(test_the_temporary_file_is_committed_from_beside_the_store, teardown_store),
+        cmocka_unit_test_teardown(test_a_rejected_body_never_reaches_the_commit, teardown_store),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

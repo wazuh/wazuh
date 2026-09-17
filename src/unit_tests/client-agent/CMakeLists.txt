@@ -99,7 +99,10 @@ list(APPEND client-agent_flags "-Wl,--wrap,OS_SHA256_File ${DEBUG_OP_WRAPPERS}")
 list(APPEND client-agent_names "test_ca_publication")
 # Real temporary files, so no filesystem wrappers -- but the install path logs, and the
 # unwrapped logger reads ossec.conf and dies without one.
-list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS}")
+# rename() is the exception: it is the instant the trust store is committed, and wrapping it is
+# what makes crash atomicity assertable rather than merely argued. The wrapper delegates to
+# __real_rename() unless a test asks it to fail, so the install still runs for real.
+list(APPEND client-agent_flags "-Wl,--wrap,rename ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_agent_ssl_ca")
 list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,os_find_ca_bundle \
