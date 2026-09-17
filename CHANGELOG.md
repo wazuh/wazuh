@@ -58,7 +58,6 @@ All notable changes to this project will be documented in this file.
 - Fixed the users inventory misreporting sudoers, missing group-based grants (e.g. macOS's `%admin`, Linux's `%sudo`/`%wheel`) and flagging unrelated accounts. ([#39165](https://github.com/wazuh/wazuh/issues/39165))
 - Fixed the users inventory never reading sudo grants placed in sudoers drop-in files (`/etc/sudoers.d/*`). ([#39165](https://github.com/wazuh/wazuh/issues/39165))
 - Fixed the macOS agent shipping preinstalled empty `logs/ossec.log`/`ossec.json` placeholders, which daily log rotation then compressed into an empty `ossec-DD.json.gz` every day regardless of `<log_format>`; the DEB/RPM packages already stripped these before packaging, the macOS package now does too. ([#39120](https://github.com/wazuh/wazuh/issues/39120))
-- Fixed the macOS agent package shipping empty `logs/ossec.json` placeholders, which daily rotation compressed into an empty `ossec-DD.json.gz` regardless of `<log_format>`; now stripped before packaging, like DEB/RPM already do. ([#39120](https://github.com/wazuh/wazuh/issues/39120))
 
 ### Ruleset
 
