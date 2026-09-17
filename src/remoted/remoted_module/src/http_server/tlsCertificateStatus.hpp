@@ -27,6 +27,8 @@
  * can carry TlsCertificateSnapshot without leaking the OpenSSL API into every endpoint.
  */
 
+#include "fileRead.hpp"
+
 #include <openssl/types.h>
 
 #include <atomic>
@@ -87,14 +89,6 @@ namespace remoted::http
     std::string serializeCertificates(const std::vector<X509Ptr>& certificates);
 
     /**
-     * @brief Read every CERTIFICATE block of a PEM file.
-     *
-     * Empty when the file is missing, unreadable, carries no certificate or could not be parsed to
-     * its end: the caller cannot tell those apart, and does not need to -- none of them can be served.
-     */
-    std::vector<X509Ptr> loadCertificates(const std::string& pemPath);
-
-    /**
      * @brief Whole days until @p certificate's notAfter, negative once expired.
      *
      * Truncated toward zero, except that an already-expired certificate never reads 0: the first
@@ -109,9 +103,33 @@ namespace remoted::http
      * A signature check, not a chain validation: no dates, no name constraints, no basicConstraints.
      * That is deliberate -- the question `GET /cacerts` needs answered is "would the PEM I am about
      * to hand out let an agent trust the certificate I am serving", and the issuer signature is the
-     * one property that decides it. A self-signed leaf listed as its own CA matches.
+     * one property that decides it. A self-signed leaf listed as its own CA matches. The chain
+     * question is chainValidates()'s, and it informs the logs, not the 503 (issue #39318).
      */
     bool anyCaSignsLeaf(const X509* leaf, const std::vector<X509Ptr>& cas);
+
+    /// What chainValidates() found: nullopt when there was nothing to validate against.
+    struct ChainVerdict
+    {
+        std::optional<bool> valid;
+        std::string error; ///< OpenSSL's reason (X509_verify_cert_error_string) when valid is false; empty otherwise.
+    };
+
+    /**
+     * @brief Whether @p leaf VALIDATES with @p cas as its trust store: chain building, validity
+     *        dates, basicConstraints/keyUsage of every CA on the path, and server purpose.
+     *
+     * The store holds the bundle and nothing else -- no intermediates borrowed from the listener's
+     * own certificate file -- because the bundle is all an agent bootstrapping from `GET /cacerts`
+     * will ever hold. `X509_V_FLAG_PARTIAL_CHAIN` makes any certificate of the bundle a trust anchor
+     * even when it is not self-signed, so `root-ca.pem` may carry a purchased intermediate that
+     * signed the leaf as well as a private self-signed CA. Evaluated against the current time.
+     *
+     * Not what decides the 503: anyCaSignsLeaf() is. This is information for the operator -- a CA
+     * that signs the leaf but has expired, or lacks `CA:TRUE`, still "matches" and yet no verifying
+     * agent could use it -- surfaced through the snapshots and the certificate log lines.
+     */
+    ChainVerdict chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas);
 
     /**
      * @brief The names that describe this host to itself, and to nobody else.
@@ -162,25 +180,23 @@ namespace remoted::http
      */
     struct TlsCertificateSnapshot
     {
-        std::optional<int> expiryDays;     ///< Days until the served leaf expires; see daysUntilExpiry().
-        std::optional<bool> caMatchesLeaf; ///< true/false when the CA file was readable and carried at
-                                           ///< least one certificate; nullopt when it was not (a
-                                           ///< missing CA is "unknown", never "mismatch").
-        std::uint64_t evaluations {0};     ///< How many evaluations produced snapshots so far (1 after
-                                           ///< the start-time one; +1 per monitor tick).
-        std::string leafSubject;           ///< Subject of the served leaf, for the log lines.
-        std::string caSubjects;            ///< Subjects of the certificates read from the CA file,
-                                           ///< comma-separated; empty when none was readable.
+        std::optional<int> expiryDays;            ///< Days until the served leaf expires; see daysUntilExpiry().
+        std::optional<bool> caMatchesLeaf;        ///< true/false when the CA file was readable and carried at
+                                                  ///< least one certificate; nullopt when it was not (a
+                                                  ///< missing CA is "unknown", never "mismatch").
+        std::uint64_t evaluations {0};            ///< How many evaluations produced snapshots so far (1 after
+                                                  ///< the start-time one; +1 per monitor tick).
+        std::string leafSubject;                  ///< Subject of the served leaf, for the log lines.
+        std::string caSubjects;                   ///< Subjects of the certificates read from the CA file,
+                                                  ///< comma-separated; empty when none was readable.
+        std::optional<bool> chainValid;           ///< Whether the served leaf validates with the CA file as its trust
+                                                  ///< store (chain, dates, constraints); nullopt when there was nothing
+                                                  ///< to evaluate against.
+        std::string chainError;                   ///< OpenSSL's reason when chainValid is false; empty otherwise.
+        std::optional<ReadFailure> caReadFailure; ///< Present while the CA file cannot be read: the CA fields
+                                                  ///< above then describe the last GOOD read of it (or are empty
+                                                  ///< when there never was one), not the file as it is now.
     };
-
-    /**
-     * @brief Evaluate @p leaf against the CA file at @p caPath, re-reading the file now.
-     *
-     * The leaf is the one loaded into the SSL_CTX (constant until the listener restarts); the CA is
-     * whatever is on disk at this moment, so a rotated CA is noticed at the next evaluation. The
-     * returned `evaluations` is 0 -- counting is the monitor's job.
-     */
-    TlsCertificateSnapshot evaluateCertificateStatus(const X509* leaf, const std::string& caPath);
 
     /**
      * @brief Periodic re-evaluation on its own thread, plus the latest snapshot.

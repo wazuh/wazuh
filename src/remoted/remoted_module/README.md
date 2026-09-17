@@ -33,6 +33,7 @@ remoted_module/
 │   │                               #   coherence evaluation and its daily monitor thread;
 │   │                               #   caCertificateSource.hpp/.cpp = the CA file as ONE read:
 │   │                               #   certificates re-serialised + verdict, cached by content hash;
+│   │                               #   fileRead.hpp/.cpp = bounded, injectable POSIX read + failure cause;
 │   │                               #   endpointRateLimiter.hpp/.cpp = token bucket per endpoint
 │   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below);
 │   │   │                           #   endpoint.hpp also carries the remoted.auth.reject.* catalog
@@ -104,7 +105,8 @@ src/http_server/
   `start()` builds the TLS context it evaluates the leaf it just loaded — days to `notAfter`
   (negative once expired) and whether `HttpServerConfig::caCertificatePath` (the CA `GET /cacerts`
   hands out; any `CERTIFICATE` block of the file counts, so a bundle works) signs it — logs the
-  result (ERROR expired / CA does not sign, WARN < 30 days / CA unreadable) and records it **before**
+  result (ERROR expired / CA does not sign, WARN < 30 days / CA unreadable, WARN/INFO for the chain
+  verdict from `chainValidates()`, the bundle as sole trust store) and records it **before**
   `run_async`, so no request can ever read "not evaluated yet". A `TlsCertificateMonitor` (own
   thread parked on a `condition_variable::wait_for`, the module's canonical periodic-task shape —
   RESTinio's `run_async()` keeps its `io_context` private, so no timer there: D45) re-evaluates and
@@ -298,19 +300,29 @@ src/endpoints/
   besides the health probe registered as a *raw* `addRoute()` — no `AuthGateway` (the caller holds
   no credential yet: this is how it gets the CA to trust the manager with), `countAgainstBudget=false`
   (a trust bootstrap is never shed under memory pressure), `Buffered`, under the global prefix like
-  every route. `makeHandler(caCertificatePath, status, CacertsMetrics, const EndpointHttpMetrics*)`
-  reads the PEM file on **every** request (tiny, cold; no cache to invalidate): unreadable or without a
-  `-----BEGIN CERTIFICATE-----` block ⇒ `404 {"error":"not_found"}` (the transport's unknown-route
-  body); `status().caMatchesLeaf == false` (the transport's evaluation says this CA does not sign the
-  served leaf) ⇒ `503 {"error":"ca_mismatch"}` — refused, because handing it out would make every
-  verifying agent fail against this very listener; `true` **or `nullopt`** (never evaluated, or the CA
-  was unreadable at the last tick and is back) ⇒ `200 Content-Type: application/x-pem-file`, the file
-  byte for byte. Body and headers (an `Authorization`, say) are ignored. One `LogThrottle` per cause.
-  The status function the facade passes locks a `weak_ptr` to the server and calls
-  `certificateStatus()`; the WHAT is counted through a `MeteredResponder` on
-  `remoted.http.cacerts.responses.*` (method label `GET`), the WHY on `remoted.cacerts.*`. Known
-  window: a *different but valid* CA written over the file is served until the next daily tick or a
-  restart (refresh-on-fingerprint is a deferred improvement).
+  every route. `makeHandler(std::function<CaCertificateSnapshot()> snapshotOf, CacertsMetrics,
+  const EndpointHttpMetrics*)` never touches the filesystem itself: it calls `snapshotOf()`, the
+  lambda the facade passes that locks a `weak_ptr` to the server and calls `caCertificateSnapshot()`,
+  which reads through `CaCertificateSource` (`http_server/caCertificateSource.{hpp,cpp}`) — one read
+  and one hash per call, bounded by the injectable POSIX reader in `fileRead.hpp` (at most 1 MiB + 1
+  byte, under the source's own mutex); the parsed certificates, their reserialised PEM and the
+  leaf-match verdict are cached by the SHA-256 of the bytes, so a same-size, same-mtime replacement
+  is still reparsed. `certificates == 0 || pem.empty()` ⇒ `404 {"error":"not_found"}`; a read
+  failure (missing, unreadable, a read error, or over the cap) leaves the last good snapshot being
+  served and records the cause instead of clearing it — only a readable file with nothing in it
+  clears the snapshot; `matchesLeaf == false` (no certificate in the CA signs the served leaf) ⇒
+  `503 {"error":"ca_mismatch"}` — refused, because handing it out would make every verifying agent
+  fail against this very listener; `true` **or `nullopt`** (no leaf to check against: a server
+  that has not started) ⇒ `200 Content-Type: application/x-pem-file`, the snapshot's PEM (certificates this
+  process reserialised, never the file's own bytes). Body and headers (an `Authorization`, say) are
+  ignored. Three `LogThrottle`s, one per cause: 404 (names the read-failure cause when there is one,
+  otherwise "carries no usable certificate"), 503 (unchanged, `ERROR`), and a `WARN` that fires while
+  a request is answered from the last good snapshot because the file itself cannot be read right
+  now. The WHAT is counted through a `MeteredResponder` on `remoted.http.cacerts.responses.*`
+  (method label `GET`), the WHY on `remoted.cacerts.*`. The snapshot also carries
+  `chainValid`/`chainError` from `chainValidates()` (the bundle as trust store, `PARTIAL_CHAIN`,
+  SSL-server purpose), which play no part in this response and which the transport logs
+  (`WARN`/`INFO`) in `logCertificateStatus()`.
 
 - **Endpoint handler (async):**
   `using AuthenticatedHandler = std::function<void(std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder>)>;`
@@ -1970,7 +1982,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
 | `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector, or the manager has no established membership for it). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request) and from `not_found` (an *entitled* request whose file is not on disk) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
 | `remoted.cacerts.{served, not_found, ca_mismatch, rate_limited}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, refused because the configured CA does not sign the served leaf, or refused by the route's rate limit before the CA was even read | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch; `rate_limited` is bumped by the gate (`endpoints/rateLimitGate.cpp`), which runs before the handler |
-| `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does `remote.https.ca_certificate` sign it (0 also when the CA is unreadable) | `IHttpServer::certificateStatus()` over the transport's `TlsCertificateMonitor` snapshot (start + every 24 h); registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
+| `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does `remote.https.ca_certificate` sign it (0 when it does not, or when the last successful read yielded no certificate — a read that fails after a good one keeps that bundle's verdict) | `IHttpServer::certificateStatus()`: `cert_expiry_days` from the transport's `TlsCertificateMonitor` snapshot (evaluated at start and every 24 h); `ca_matches_leaf` re-read from the same `CaCertificateSource` `/cacerts` answers from, on every scrape; registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
 | `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable, rate_limited}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above). `rate_limited` is the odd one: the request was refused before the handler ran, so it has no outcome among the others | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp`; `rate_limited` by the gate (`endpoints/rateLimitGate.cpp`) |
 | `remoted.<enroll\|cacerts>.rate_limit.{limit, burst, available}` (pulls) | is the route's ceiling sized right: `available` pinned at 0 while `rate_limited` climbs is a rate below what the fleet needs, not necessarily an attack | `EndpointRateLimiter::diagnostics()` through `registerRateLimitDiagnostics()`; reads the bucket WITHOUT charging it, so scraping never costs an agent its enrollment |
@@ -2108,11 +2120,11 @@ Unit tests (built when `UNIT_TEST` is enabled) live in `test/unit/`: `remotedMod
 (C-ABI black-box), `httpServer_test.cpp` (transport config incl. in-flight-budget/max-connections
 resolution + responder contract incl. a shared request surviving a deferred handler, plus the
 certificate status: `TlsCertificateStatusTest` drives `daysUntilExpiry()`/`anyCaSignsLeaf()`/
-`evaluateCertificateStatus()` from certificates built in memory — signed by the CA, by a foreign CA,
+`statusFrom()` from certificates built in memory — signed by the CA, by a foreign CA,
 CA unreadable, a bundle with the signing CA not first — and `HttpServerTest` pins that the status is
 already evaluated when `start()` returns, re-evaluated on a 1 s `certificateStatusInterval`, and that
 `stopAccepting()` joins the monitor), `cacertsEndpoint_test.cpp` (the `GET /cacerts` decision table
-against a faked status: PEM served byte for byte as `application/x-pem-file`, missing/garbage file
+against a faked snapshot: the snapshot's PEM served as `application/x-pem-file`, missing/garbage file
 404, `caMatchesLeaf == false` 503, `nullopt` serves, body/`Authorization` ignored, both metric
 families counted, null metrics count nothing), `cacertsE2E_test.cpp` (a REAL TLS server with a leaf
 signed by a throwaway CA — `testTlsServer.hpp`'s `generateCaSignedCertificate()`: the PEM `/cacerts`
@@ -2182,7 +2194,13 @@ is counted not printed, and 8 threads × 10 000 records neither lose nor double-
 non-ASCII bytes and BOMs rejected, and a truncated multi-byte tail never read past the view — the
 ASAN heap-overflow regression), `caCertificateSource_test.cpp` (certificates only, never the key
 from a combined PEM; a file with one undecodable block is refused whole; re-parsed on content change
-despite identical size and mtime).
+despite identical size and mtime; a read failure -- missing, a directory, a read error, or over the
+1 MiB cap with both a fake and a real file -- keeps the previous snapshot and records the cause,
+while an emptied but readable file clears it; 8 threads racing 20 atomic file rotations never
+publish a torn mix of two CAs' bytes and subjects, and a fake reader counting its in-flight calls
+proves the read itself runs under the mutex; and `fileRead`'s `readFileBounded()` gets its own
+`Ok`/`TooLarge`/`CannotOpen`/`ReadError` cases with the matching errno, including a FIFO refused
+as not a regular file).
 
 Body decoding: `bodyDecoder_test.cpp` (only an exact, case-insensitive `zstd` decodes — `gzip`,
 `"zstd, gzip"` and prefixes are refused — the decoded bytes stay charged to the in-flight budget

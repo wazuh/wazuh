@@ -404,8 +404,12 @@ namespace remoted::http
          * @brief Latest evaluation of the served TLS certificate: days to expiry and whether
          *        HttpServerConfig::caCertificatePath signs it (the CA `GET /cacerts` hands out).
          *
-         * Evaluated once before the listener starts accepting and again every
-         * HttpServerConfig::certificateStatusInterval; the facade publishes it as the
+         * Expiry is evaluated once before the listener starts accepting and again every
+         * HttpServerConfig::certificateStatusInterval (that is what `evaluations` counts). The CA
+         * half is taken from the same CaCertificateSource `/cacerts` answers from, on every call,
+         * so it can never disagree with the endpoint: `caMatchesLeaf`, `caSubjects`, the chain
+         * fields and `caReadFailure` describe the file as of the last read -- or, while the file
+         * cannot be read, the last good read of it. The facade publishes it as the
          * `remoted.server.tls.*` pulls and `/cacerts` refuses (503) to serve a CA that reads
          * `caMatchesLeaf == false`. Callable from any thread; a default-constructed snapshot
          * (nothing known, 0 evaluations) before start() and on implementations that never
@@ -422,8 +426,10 @@ namespace remoted::http
          *
          * What `GET /cacerts` answers with. Re-read on each call and re-validated whenever the
          * file's content changes, so the PEM handed out and the verdict about it always describe
-         * the same bytes. Callable from any thread; an empty snapshot before start() and on
-         * implementations that hold no certificate, like the test fakes.
+         * the same bytes. A read that fails keeps the last good snapshot (with `lastReadFailure`
+         * set); a readable file with no certificate in it clears it. Callable from any thread; an
+         * empty snapshot before start() and on implementations that hold no certificate, like the
+         * test fakes.
          */
         virtual CaCertificateSnapshot caCertificateSnapshot() const
         {

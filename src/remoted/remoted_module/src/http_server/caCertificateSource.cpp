@@ -13,9 +13,9 @@
 
 #include <openssl/err.h>
 #include <openssl/sha.h>
+#include <openssl/x509.h>
 
 #include <array>
-#include <fstream>
 #include <utility>
 
 namespace remoted::http
@@ -39,35 +39,22 @@ namespace remoted::http
             return hex;
         }
 
-        /**
-         * @brief Read at most @p maxBytes of @p path.
-         *
-         * false when the file cannot be opened or is larger than the cap; the caller treats both as
-         * "nothing to serve". The cap is the difference from the old per-request read, which pulled
-         * in whatever size the file happened to be.
-         */
-        bool readBounded(const std::string& path, std::size_t maxBytes, std::string& contents)
+        /// A reference of our own on @p leaf (null stays null). X509_up_ref takes a non-const X509*;
+        /// it only bumps the reference count.
+        X509Ptr retain(const X509* leaf)
         {
-            std::ifstream file {path, std::ios::binary};
-            if (!file.is_open())
+            if (leaf == nullptr || X509_up_ref(const_cast<X509*>(leaf)) != 1)
             {
-                return false;
+                return {};
             }
-
-            contents.assign(std::istreambuf_iterator<char> {file}, std::istreambuf_iterator<char> {});
-            if (contents.size() > maxBytes)
-            {
-                contents.clear();
-                return false;
-            }
-
-            return true;
+            return X509Ptr {const_cast<X509*>(leaf)};
         }
     } // namespace
 
-    CaCertificateSource::CaCertificateSource(std::string path, const X509* leaf)
+    CaCertificateSource::CaCertificateSource(std::string path, const X509* leaf, FileReader reader)
         : m_path {std::move(path)}
-        , m_leaf {leaf}
+        , m_leaf {retain(leaf)}
+        , m_reader {reader ? std::move(reader) : FileReader {readFileBounded}}
     {
     }
 
@@ -78,8 +65,8 @@ namespace remoted::http
         auto parsed = parseCertificates(pem);
         if (parsed.certificates.empty())
         {
-            // Missing, empty, unparsable or carrying no certificate: all of them mean the same
-            // thing to every caller -- there is nothing an agent could bootstrap trust from.
+            // Empty, unparsable or carrying no certificate: all of them mean the same thing to
+            // every caller -- there is nothing an agent could bootstrap trust from.
             return snapshot;
         }
 
@@ -88,9 +75,16 @@ namespace remoted::http
 
         // With no leaf to check against (a server that has not started) the answer is "unknown",
         // not "mismatch": anyCaSignsLeaf() would say false, and false is what refuses to serve.
-        if (m_leaf != nullptr)
+        if (m_leaf)
         {
-            snapshot.matchesLeaf = anyCaSignsLeaf(m_leaf, parsed.certificates);
+            snapshot.matchesLeaf = anyCaSignsLeaf(m_leaf.get(), parsed.certificates);
+
+            // Separately from the signature: does the leaf VALIDATE with this bundle as its trust
+            // store (chain, dates, CA constraints, server purpose)? Information for the logs, never
+            // for the 503 -- see chainValidates().
+            const auto chain = chainValidates(m_leaf.get(), parsed.certificates);
+            snapshot.chainValid = chain.valid;
+            snapshot.chainError = chain.error;
         }
 
         for (const auto& certificate : parsed.certificates)
@@ -119,24 +113,38 @@ namespace remoted::http
             return {};
         }
 
-        std::string contents;
-        const bool read = readBounded(m_path, kMaxBytes, contents);
-
+        // The read runs under the lock too. The file is a few KB and the callers are a rate-limited
+        // route, a daily monitor, a metrics scrape and the legacy poller, so serialising them costs
+        // nothing measurable -- and it is what makes publication monotonic: with the read outside,
+        // the caller that read the OLDER bytes could take the lock last and publish them over the
+        // newer ones (issue #39318).
         std::lock_guard<std::mutex> lock {m_mutex};
 
-        if (!read)
+        std::string contents;
+        const ReadResult read = m_reader(m_path, kMaxBytes, contents);
+
+        if (read.status != ReadStatus::Ok)
         {
-            m_hash.clear();
-            m_snapshot = CaCertificateSnapshot {};
+            // A failed read is a window, not a decision: whatever was being served keeps being
+            // served (nothing, if nothing ever was), and the failure travels with the snapshot for
+            // the callers that own a logger. m_hash stays as it is, so the same bytes read again
+            // once the file is back are still a cache hit.
+            ++m_consecutiveFailures;
+            m_snapshot.lastReadFailure = ReadFailure {read.status, read.error, m_consecutiveFailures};
             return m_snapshot;
         }
+
+        m_consecutiveFailures = 0;
 
         auto hash = digestOf(contents);
         if (hash == m_hash)
         {
+            m_snapshot.lastReadFailure.reset();
             return m_snapshot;
         }
 
+        // Rebuilt from these bytes, whatever they hold: a readable file with no certificate in it is
+        // the operator's way of saying "stop serving", and it clears the snapshot at once.
         m_snapshot = buildLocked(contents);
         m_hash = std::move(hash);
         ++m_parses;
@@ -148,5 +156,18 @@ namespace remoted::http
     {
         std::lock_guard<std::mutex> lock {m_mutex};
         return m_parses;
+    }
+
+    TlsCertificateSnapshot statusFrom(const X509* leaf, const CaCertificateSnapshot& ca)
+    {
+        TlsCertificateSnapshot status;
+        status.expiryDays = daysUntilExpiry(leaf);
+        status.leafSubject = subjectOfCertificate(leaf);
+        status.caMatchesLeaf = ca.matchesLeaf;
+        status.chainValid = ca.chainValid;
+        status.chainError = ca.chainError;
+        status.caSubjects = ca.subjects;
+        status.caReadFailure = ca.lastReadFailure;
+        return status;
     }
 } // namespace remoted::http

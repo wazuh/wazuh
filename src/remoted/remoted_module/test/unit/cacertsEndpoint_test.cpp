@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cerrno>
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
@@ -33,6 +34,7 @@
 #include "common/requestOutcomeMetrics.hpp"
 #include "endpoints/cacertsEndpoint.hpp"
 #include "endpoints/cacertsMetrics.hpp"
+#include "http_server/fileRead.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -42,6 +44,8 @@ using remoted::http::HttpRequest;
 using remoted::http::HttpResponse;
 using remoted::http::IHttpResponder;
 using remoted::http::Method;
+using remoted::http::ReadFailure;
+using remoted::http::ReadStatus;
 using namespace std::chrono_literals;
 
 namespace
@@ -186,6 +190,25 @@ TEST(CacertsEndpoint, ServesTheSnapshotPemWithPemContentType)
     EXPECT_EQ(f.http.latency, nullptr); // no histogram for a snapshot read
 }
 
+TEST(CacertsEndpoint, ServesThePreviousSnapshotOnReadFailure)
+{
+    Fixture f;
+
+    // The source kept the last good bundle through a read that failed (issue #39318): the handler
+    // must still answer from it -- 200, exactly as a snapshot with no failure would -- and not let
+    // a transient read error turn into a spurious 404 for every agent bootstrapping trust.
+    auto snapshot = snapshotOf(true);
+    snapshot.lastReadFailure = ReadFailure {ReadStatus::ReadError, EIO, 3};
+
+    const auto response = f.run(snapshot);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(response.body, kPem);
+    EXPECT_EQ(f.metrics.served->get(), 1U);
+    EXPECT_EQ(f.http.responses.c2xx->get(), 1U);
+    EXPECT_EQ(f.metrics.notFound->get(), 0U);
+}
+
 TEST(CacertsEndpoint, EmptySnapshotAnswers404NotFound)
 {
     Fixture f;
@@ -201,6 +224,22 @@ TEST(CacertsEndpoint, EmptySnapshotAnswers404NotFound)
     EXPECT_EQ(f.metrics.served->get(), 0U);
     EXPECT_EQ(f.http.responses.other->get(), 1U); // 404 is outside the closed status set
     EXPECT_EQ(f.http.responses.c2xx->get(), 0U);
+}
+
+TEST(CacertsEndpoint, NotFoundOnReadFailureStaysNotFound)
+{
+    Fixture f;
+
+    // Nothing was ever served from this file and it cannot be read now: still the plain 404, not a
+    // new outcome -- the failure only changes what gets logged, not the status code or metric.
+    CaCertificateSnapshot snapshot;
+    snapshot.lastReadFailure = ReadFailure {ReadStatus::CannotOpen, ENOENT, 1};
+
+    const auto response = f.run(snapshot);
+
+    EXPECT_EQ(response.status, 404);
+    EXPECT_EQ(response.body, R"({"error":"not_found"})");
+    EXPECT_EQ(f.metrics.notFound->get(), 1U);
 }
 
 TEST(CacertsEndpoint, SnapshotWithCountButNoPemAnswers404)
@@ -231,6 +270,32 @@ TEST(CacertsEndpoint, CaMismatchAnswers503)
     EXPECT_EQ(f.metrics.served->get(), 0U);
     EXPECT_EQ(f.http.responses.c503->get(), 1U);
     EXPECT_EQ(f.http.responses.c2xx->get(), 0U);
+}
+
+TEST(CacertsEndpoint, ChainValidDoesNotDecideTheAnswer)
+{
+    // The chain verdict is information for the logs (issue #39318), never the 503 decision: a CA
+    // that signs the leaf but whose chain does not validate must still serve, and a CA that does
+    // not sign the leaf must still be refused even when the chain happens to validate through it.
+    {
+        Fixture f;
+        auto matches = snapshotOf(true);
+        matches.chainValid = false;
+        matches.chainError = "certificate has expired";
+
+        const auto response = f.run(matches);
+        EXPECT_EQ(response.status, 200);
+        EXPECT_EQ(f.metrics.served->get(), 1U);
+    }
+    {
+        Fixture f;
+        auto mismatches = snapshotOf(false);
+        mismatches.chainValid = true;
+
+        const auto response = f.run(mismatches);
+        EXPECT_EQ(response.status, 503);
+        EXPECT_EQ(f.metrics.caMismatch->get(), 1U);
+    }
 }
 
 TEST(CacertsEndpoint, UnverifiedSnapshotStillServes)

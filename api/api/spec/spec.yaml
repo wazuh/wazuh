@@ -2190,7 +2190,7 @@ components:
                       description: "Bytes offered across all started downloads"
                 tls:
                   type: object
-                  description: "The HTTPS listener's own certificate, evaluated when the listener starts and once a day afterwards. Both read `0` while the listener is down"
+                  description: "The HTTPS listener's own certificate. `cert_expiry_days` is evaluated when the listener starts and every 24 hours afterwards; `ca_matches_leaf` reflects the CA file as it was last read. Both read `0` while the listener is down"
                   properties:
                     cert_expiry_days:
                       type: integer
@@ -2199,7 +2199,7 @@ components:
                     ca_matches_leaf:
                       type: integer
                       format: int64
-                      description: "`1` when the configured CA (`remote.https.ca_certificate`, served on `GET /cacerts`) signs the served certificate, `0` otherwise (including when the CA file could not be read)"
+                      description: "`1` when the configured CA (`remote.https.ca_certificate`, served on `GET /cacerts`) signs the served certificate; `0` when it does not, or when the last successful read yielded no certificate. A read that fails after a good one keeps that bundle's verdict"
                 cacerts:
                   type: object
                   description: "Outcomes of `GET /cacerts`, the unauthenticated route that hands agents the CA that signs the listener certificate"

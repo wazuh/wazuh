@@ -418,10 +418,12 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
   `{"status":"ok","module":"remoted"}`.
 - **`GET /cacerts`** — unauthenticated CA distribution: the PEM configured as
   [`remote.https.ca_certificate`](configuration.md#httpsca_certificate) (the CA that signs the
-  listener certificate), byte for byte, as `Content-Type: application/x-pem-file`, so an agent can
-  bootstrap trust in the manager before it holds any credential. Returns **`200`** with the PEM,
-  **`404`** `{"error":"not_found"}` when the file is missing, unreadable or carries no certificate,
-  or **`503`** `{"error":"ca_mismatch"}` when the configured CA does not sign the certificate this
+  listener certificate), served as re-serialised certificates with
+  `Content-Type: application/x-pem-file`, so an agent can bootstrap trust in the manager before it
+  holds any credential. Returns **`200`** with the PEM,
+  **`404`** `{"error":"not_found"}` when the file was never readable or is readable but carries no
+  certificate (a file that stops being readable after it was served keeps the last good bundle in
+  service), or **`503`** `{"error":"ca_mismatch"}` when the configured CA does not sign the certificate this
   listener serves — refusing to hand out a CA that would make every verifying agent fail. See
   [CA certificate endpoint](#ca-certificate-endpoint-get-cacerts) below.
 - **`POST /stateless`** — authenticated event ingestion. Once the signature is verified, the module
@@ -1555,22 +1557,31 @@ memory pressure, and it is served under the [global prefix](#endpoints) like eve
 | Outcome | HTTP | Body | Meaning |
 | --- | --- | --- | --- |
 | Served | `200` | re-serialised certificates, `Content-Type: application/x-pem-file` | The CA the listener chains to. A bundle is served as a bundle; private keys and other non-certificate material are omitted |
-| No CA | `404` | `{"error":"not_found"}` | The configured file is missing, unreadable, too large, or contains no usable certificates (including an undecodable certificate block). Same body as an unknown route; the manager logs the failure |
+| No CA | `404` | `{"error":"not_found"}` | The configured file was never readable -- missing, unreadable, too large, or otherwise unparsable -- or it is readable but contains no usable certificates (an emptied file). A file that stops being readable after it was served keeps serving the last good bundle instead. Same body as an unknown route; the manager logs the failure |
 | Incoherent CA | `503` | `{"error":"ca_mismatch"}` | The configured CA does **not** sign the certificate this listener is serving. Refused rather than served: handing it out would make every verifying agent fail its handshake against this very manager |
 
 **What the coherence check compares.** The leaf is the certificate loaded into the TLS context when
 the listener started (constant until a restart); the CA is re-read from disk at each evaluation,
 and every `CERTIFICATE` block in the file counts — the CA is coherent when *any* of them signed the
 leaf, so a bundle carrying the signing CA plus others passes. It is a signature check, not a full
-chain validation: dates and constraints are the agent's verifier's business.
+chain validation, and that decision does not change: the manager separately validates the served
+certificate's full chain — dates, every CA's `basicConstraints`/`keyUsage`, and server purpose —
+using the bundle as its sole trust store (the anchor need not be self-signed), and logs the result
+at startup and on every daily evaluation: a `WARN` when the bundle signs the leaf but the chain does
+not validate (an expired CA, or one missing `CA:TRUE`, would serve no verifying agent), an
+informational line when the chain validates without a direct signature. Neither outcome changes this
+endpoint's response.
 
 **Cadence.** Each request reads the CA file and obtains the certificate bundle and coherence verdict
 from the same snapshot. Parsing and signature checks are cached by a hash of those bytes; a changed
-file is re-evaluated even if its size and modification time stay the same. A missing CA therefore
-answers `404` immediately, and a replacement CA that does not sign the loaded leaf answers `503`
-on the next request. Separately, the certificate monitor runs at startup and every 24 hours, logging
-expiry and coherence findings. Rotate the CA and listener certificate together and restart remoted
-to load the new leaf.
+file is re-evaluated even if its size and modification time stay the same. A CA file that cannot be
+read keeps the last good bundle in service and logs the failure; only a file that was never readable
+answers `404`, and a file that reads but carries no certificate answers `404` at once. A replacement
+CA that does not sign the loaded leaf answers `503` on the next request. Separately, the certificate
+monitor runs at startup and every 24 hours, logging expiry and coherence findings. Rotate the CA and
+listener certificate together and restart remoted to load the new leaf. Replace the CA file
+atomically (write a sibling, then rename it over the path): a file caught half-written is readable,
+and a readable file with no certificate answers `404` at once.
 
 **Trust on first use.** The channel the CA travels over is, by definition, not yet verified. An
 agent that already holds a CA MUST NOT replace it from this route, and a deployment that can

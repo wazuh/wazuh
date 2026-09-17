@@ -223,19 +223,43 @@ TEST_F(CacertsE2ETest, ForeignCaAnswers503)
     EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/")), 200);
 }
 
-TEST_F(CacertsE2ETest, MissingCaAnswers404WithoutARestart)
+TEST_F(CacertsE2ETest, MissingCaKeepsServingThePreviousSnapshot)
+{
+    startServer("", m_pki->caCertPath);
+    const auto first = remoted::test::sendGetRequest(m_port, "/cacerts");
+    ASSERT_EQ(statusOf(first), 200) << first;
+    const auto firstBody = remoted::test::splitResponse(first).second;
+
+    // The file is read per request, but a failed read is a window, not a decision (issue
+    // #39318): moving the CA away keeps the last good snapshot being served, no tick or restart
+    // needed -- not a 404, which is what would strand every agent until the file came back.
+    const auto moved = m_pki->caCertPath + ".off";
+    ASSERT_EQ(std::rename(m_pki->caCertPath.c_str(), moved.c_str()), 0);
+    const auto stillServed = remoted::test::sendGetRequest(m_port, "/cacerts");
+    ASSERT_EQ(statusOf(stillServed), 200) << stillServed;
+    EXPECT_EQ(remoted::test::splitResponse(stillServed).second, firstBody);
+
+    ASSERT_EQ(std::rename(moved.c_str(), m_pki->caCertPath.c_str()), 0);
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/cacerts")), 200);
+}
+
+TEST_F(CacertsE2ETest, AnEmptiedCaAnswers404WithoutARestart)
 {
     startServer("", m_pki->caCertPath);
     ASSERT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/cacerts")), 200);
 
-    // The file is read per request: moving the CA away is a 404 immediately, no tick or restart
-    // needed (the sandbox matrix's "CA moved away" row); putting it back serves again.
-    const auto moved = m_pki->caCertPath + ".off";
-    ASSERT_EQ(std::rename(m_pki->caCertPath.c_str(), moved.c_str()), 0);
-    const auto gone = remoted::test::sendGetRequest(m_port, "/cacerts");
-    EXPECT_EQ(statusOf(gone), 404) << gone;
-    EXPECT_EQ(remoted::test::splitResponse(gone).second, R"({"error":"not_found"})");
+    // Unlike a failed read, a readable file with nothing in it is the operator's way of saying
+    // "stop serving" -- it takes effect at once, no restart needed.
+    const auto original = readFile(m_pki->caCertPath);
+    {
+        std::ofstream truncate {m_pki->caCertPath, std::ios::binary | std::ios::trunc};
+    }
+    const auto emptied = remoted::test::sendGetRequest(m_port, "/cacerts");
+    EXPECT_EQ(statusOf(emptied), 404) << emptied;
+    EXPECT_EQ(remoted::test::splitResponse(emptied).second, R"({"error":"not_found"})");
 
-    ASSERT_EQ(std::rename(moved.c_str(), m_pki->caCertPath.c_str()), 0);
+    std::ofstream restore {m_pki->caCertPath, std::ios::binary | std::ios::trunc};
+    restore << original;
+    restore.close();
     EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/cacerts")), 200);
 }

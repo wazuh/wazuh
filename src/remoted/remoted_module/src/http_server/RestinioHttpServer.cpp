@@ -10,6 +10,7 @@
  */
 
 #include "RestinioHttpServer.hpp"
+#include "caCertificateSource.hpp"
 #include "common/logThrottle.hpp"
 #include "httpServerConfig.hpp"
 #include "httpServerFactory.hpp"
@@ -572,13 +573,37 @@ namespace
             }
         }
 
-        if (!status.caMatchesLeaf.has_value())
+        if (status.caReadFailure.has_value())
+        {
+            // A failed read is a window, not a decision (issue #39318): what the source served last is
+            // what it keeps serving, and the operator hears the exact cause rather than "unreadable".
+            const auto cause = remoted::http::describeReadFailure(*status.caReadFailure,
+                                                                  remoted::http::CaCertificateSource::kMaxBytes);
+            if (status.caMatchesLeaf.has_value())
+            {
+                LOGFN_WARN(logFn(),
+                           "CA certificate '%s' %s (%llu consecutive failed read(s)); GET /cacerts keeps serving the "
+                           "last bundle read from it until the file is readable again.",
+                           caPath.c_str(),
+                           cause.c_str(),
+                           static_cast<unsigned long long>(status.caReadFailure->consecutive));
+            }
+            else
+            {
+                LOGFN_WARN(logFn(),
+                           "CA certificate '%s' %s; GET /cacerts will answer 404 until it is restored.",
+                           caPath.c_str(),
+                           cause.c_str());
+            }
+        }
+        else if (!status.caMatchesLeaf.has_value())
         {
             LOGFN_WARN(logFn(),
-                       "CA certificate '%s' unreadable; GET /cacerts will answer 404 until it is restored.",
+                       "CA certificate '%s' carries no certificate; GET /cacerts will answer 404 until it is restored.",
                        caPath.c_str());
         }
-        else if (!*status.caMatchesLeaf)
+
+        if (status.caMatchesLeaf.has_value() && !*status.caMatchesLeaf)
         {
             LOGFN_ERROR(logFn(),
                         "The configured CA '%s' does not sign the served certificate '%s' (subjects: CA '%s', "
@@ -588,6 +613,28 @@ namespace
                         leafPath.c_str(),
                         status.caSubjects.c_str(),
                         status.leafSubject.c_str());
+        }
+
+        // The chain verdict is information, not the decision (issue #39318): a CA that signs the leaf
+        // but could never be used by a verifying agent deserves a line, and so does the converse.
+        if (status.caMatchesLeaf == true && status.chainValid == false)
+        {
+            LOGFN_WARN(logFn(),
+                       "The configured CA '%s' signs the served certificate '%s' but the chain does not validate (%s); "
+                       "a verifying agent that pins this CA will reject the handshake -- check the validity dates and "
+                       "the CA constraints of the certificates involved.",
+                       caPath.c_str(),
+                       leafPath.c_str(),
+                       status.chainError.c_str());
+        }
+        else if (status.caMatchesLeaf == false && status.chainValid == true)
+        {
+            LOGFN_INFO(logFn(),
+                       "The configured CA '%s' does not sign the served certificate '%s' directly, though the "
+                       "certificate validates through it; GET /cacerts refuses it all the same: the bundle must carry "
+                       "the certificate's issuer.",
+                       caPath.c_str(),
+                       leafPath.c_str());
         }
     }
 
@@ -599,6 +646,7 @@ namespace
         asio::ssl::context context;
         remoted::http::X509Ptr leaf;
         remoted::http::TlsCertificateSnapshot initialStatus;
+        std::shared_ptr<remoted::http::CaCertificateSource> caSource; ///< The one reader of the CA file, from here on.
     };
 
     // The certificate the context serves, with a reference of our own (SSL_CTX_get0_certificate
@@ -641,8 +689,13 @@ namespace
         // now: expiry (the historical warning) and whether that CA signs it (GET /cacerts must not
         // hand out a CA agents cannot chain this listener to). Logged here, BEFORE the listener
         // accepts anything, so the status the routes read is never "not evaluated yet".
+        // The same CaCertificateSource GET /cacerts will answer from, built here so that the start-time
+        // verdict and every later one come out of one reader (bounded, failure-aware) rather than two
+        // code paths that could drift apart (issue #39318). The leaf pointer it keeps stays valid when
+        // the X509Ptr is moved into the server below.
         auto leaf = retainServedCertificate(context);
-        const auto initialStatus = remoted::http::evaluateCertificateStatus(leaf.get(), config.caCertificatePath);
+        auto caSource = std::make_shared<remoted::http::CaCertificateSource>(config.caCertificatePath, leaf.get());
+        const auto initialStatus = remoted::http::statusFrom(leaf.get(), caSource->snapshot());
         logCertificateStatus(initialStatus, config.certificatePath, config.caCertificatePath);
 
         // Deliberately NOT part of logCertificateStatus(), which also runs on every monitor tick.
@@ -701,7 +754,7 @@ namespace
             }
         }
 
-        return TlsSetup {std::move(context), std::move(leaf), initialStatus};
+        return TlsSetup {std::move(context), std::move(leaf), initialStatus, std::move(caSource)};
     }
 
     /**
@@ -1373,6 +1426,9 @@ namespace remoted::http
             const auto ca = source->snapshot();
             status.caMatchesLeaf = ca.matchesLeaf;
             status.caSubjects = ca.subjects;
+            status.chainValid = ca.chainValid;
+            status.chainError = ca.chainError;
+            status.caReadFailure = ca.lastReadFailure;
         }
 
         return status;
@@ -1402,7 +1458,7 @@ namespace remoted::http
         auto tls = createTlsContext(config);
         m_impl->m_leaf = std::move(tls.leaf);
         m_impl->m_caCertificatePath = config.caCertificatePath;
-        m_impl->m_caSource = std::make_shared<CaCertificateSource>(config.caCertificatePath, m_impl->m_leaf.get());
+        m_impl->m_caSource = std::move(tls.caSource);
         m_impl->m_certMonitor.record(tls.initialStatus);
 
         m_impl->m_workerPool = std::make_unique<asio::thread_pool>(config.workerThreads);
@@ -1555,15 +1611,9 @@ namespace remoted::http
                                     {
                                         // Expiry is the leaf's business; the CA half comes from the same source the
                                         // endpoint answers from, so this tick can never overwrite a fresher CA verdict
-                                        // with a re-read of its own (issue #39078, H06).
-                                        TlsCertificateSnapshot status;
-                                        status.expiryDays = daysUntilExpiry(leaf);
-                                        status.leafSubject = subjectOfCertificate(leaf);
-
-                                        const auto ca = source->snapshot();
-                                        status.caMatchesLeaf = ca.matchesLeaf;
-                                        status.caSubjects = ca.subjects;
-
+                                        // with a re-read of its own (issue #39078, H06) -- and it is built by the
+                                        // same statusFrom() the start-time evaluation used.
+                                        const auto status = remoted::http::statusFrom(leaf, source->snapshot());
                                         logCertificateStatus(status, leafPath, caPath);
                                         return status;
                                     });

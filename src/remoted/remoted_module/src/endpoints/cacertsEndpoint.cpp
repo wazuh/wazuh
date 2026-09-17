@@ -12,6 +12,8 @@
 #include "cacertsEndpoint.hpp"
 
 #include "common/logThrottle.hpp"
+#include "http_server/caCertificateSource.hpp"
+#include "http_server/fileRead.hpp"
 
 #include "loggerHelper.h"
 
@@ -31,18 +33,21 @@ namespace remoted::endpoints::cacerts
             return instance;
         }
 
-        // One throttle per cause, so a missing file and a mismatched CA each get their own line
-        // per window instead of the second cause hiding behind the first's silence.
-        remoted::common::LogThrottle& notFoundThrottle()
+        // One throttle per cause, so a missing file, a mismatched CA and a read failure each get
+        // their own line per window instead of one cause hiding behind another's silence. Owned by
+        // the handler -- one per route registration -- rather than by the process: a restart starts
+        // its windows afresh, and two handlers alive in one process (two servers in a test binary)
+        // never take each other's line.
+        struct Throttles
         {
-            static remoted::common::LogThrottle instance;
-            return instance;
-        }
+            remoted::common::LogThrottle notFound;
+            remoted::common::LogThrottle caMismatch;
+            remoted::common::LogThrottle readFailure;
+        };
 
-        remoted::common::LogThrottle& caMismatchThrottle()
+        std::string causeOf(const remoted::http::ReadFailure& failure)
         {
-            static remoted::common::LogThrottle instance;
-            return instance;
+            return remoted::http::describeReadFailure(failure, remoted::http::CaCertificateSource::kMaxBytes);
         }
 
         remoted::http::HttpResponse pemResponse(std::string pem)
@@ -64,7 +69,8 @@ namespace remoted::endpoints::cacerts
                                             CacertsMetrics metrics,
                                             const remoted::metrics::EndpointHttpMetrics* httpMetrics)
     {
-        return [snapshotOf = std::move(snapshotOf), metrics = std::move(metrics), httpMetrics](
+        auto throttles = std::make_shared<Throttles>();
+        return [snapshotOf = std::move(snapshotOf), metrics = std::move(metrics), httpMetrics, throttles](
                    std::shared_ptr<const remoted::http::HttpRequest> /*request*/,
                    std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
@@ -84,23 +90,58 @@ namespace remoted::endpoints::cacerts
             if (snapshot.certificates == 0 || snapshot.pem.empty())
             {
                 incNotFound(metrics);
-                if (const auto throttle = notFoundThrottle().record())
+                if (const auto throttle = throttles->notFound.record())
                 {
-                    LOGFN_WARN(logFn(),
-                               "GET /cacerts answered 404 to %llu request(s) in the last %d s: the configured CA "
-                               "certificate is missing, unreadable, too large or carries no usable certificate; "
-                               "agents cannot bootstrap trust from this manager until it is restored.",
-                               static_cast<unsigned long long>(throttle.total),
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    if (snapshot.lastReadFailure.has_value())
+                    {
+                        // Nothing was ever served from this file and it cannot be read now: name the
+                        // cause, because a missing file, a directory at the path and an oversized file
+                        // lead the operator to different fixes.
+                        LOGFN_WARN(logFn(),
+                                   "GET /cacerts answered 404 to %llu request(s) in the last %d s: the configured CA "
+                                   "certificate %s (%llu consecutive failed read(s)); agents cannot bootstrap trust "
+                                   "from this manager until it is restored.",
+                                   static_cast<unsigned long long>(throttle.total),
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds,
+                                   causeOf(*snapshot.lastReadFailure).c_str(),
+                                   static_cast<unsigned long long>(snapshot.lastReadFailure->consecutive));
+                    }
+                    else
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "GET /cacerts answered 404 to %llu request(s) in the last %d s: the configured CA "
+                                   "certificate carries no usable certificate; agents cannot bootstrap trust from "
+                                   "this manager until it is restored.",
+                                   static_cast<unsigned long long>(throttle.total),
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
                 }
                 responder->send(remoted::http::HttpResponse::json(404, R"({"error":"not_found"})"));
                 return;
             }
 
+            if (snapshot.lastReadFailure.has_value())
+            {
+                // The source kept the last good bundle through a read that failed (issue #39318):
+                // answer from it -- 200 or 503, exactly as that bundle deserves -- and say so, once
+                // per window, so the operator learns about the file before the agents do.
+                if (const auto throttle = throttles->readFailure.record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "GET /cacerts is answering %llu request(s) in the last %d s from the last good read of "
+                               "the configured CA certificate, which now %s (%llu consecutive failed read(s)); "
+                               "restore the file -- the bundle being served predates the failure.",
+                               static_cast<unsigned long long>(throttle.total),
+                               remoted::common::LogThrottle::kDefaultWindowSeconds,
+                               causeOf(*snapshot.lastReadFailure).c_str(),
+                               static_cast<unsigned long long>(snapshot.lastReadFailure->consecutive));
+                }
+            }
+
             if (snapshot.matchesLeaf.has_value() && !*snapshot.matchesLeaf)
             {
                 incCaMismatch(metrics);
-                if (const auto throttle = caMismatchThrottle().record())
+                if (const auto throttle = throttles->caMismatch.record())
                 {
                     LOGFN_ERROR(logFn(),
                                 "GET /cacerts answered 503 to %llu request(s) in the last %d s: the configured CA "

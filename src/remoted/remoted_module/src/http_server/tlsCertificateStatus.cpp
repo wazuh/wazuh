@@ -152,32 +152,6 @@ namespace remoted::http
         return (data != nullptr && length > 0) ? std::string {data, static_cast<std::size_t>(length)} : std::string {};
     }
 
-    std::vector<X509Ptr> loadCertificates(const std::string& pemPath)
-    {
-        if (pemPath.empty())
-        {
-            return {};
-        }
-
-        BioPtr bio {BIO_new_file(pemPath.c_str(), "r"), &BIO_free};
-        if (!bio)
-        {
-            ERR_clear_error();
-            return {};
-        }
-
-        std::string contents;
-        char buffer[4096];
-        for (int read = BIO_read(bio.get(), buffer, sizeof(buffer)); read > 0;
-             read = BIO_read(bio.get(), buffer, sizeof(buffer)))
-        {
-            contents.append(buffer, static_cast<std::size_t>(read));
-        }
-        ERR_clear_error();
-
-        return parseCertificates(contents).certificates;
-    }
-
     std::optional<int> daysUntilExpiry(const X509* certificate)
     {
         if (certificate == nullptr)
@@ -226,6 +200,70 @@ namespace remoted::http
         }
         ERR_clear_error(); // a failed X509_verify queues a signature error
         return false;
+    }
+
+    ChainVerdict chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas)
+    {
+        if (leaf == nullptr || cas.empty())
+        {
+            return {};
+        }
+
+        using StorePtr = std::unique_ptr<X509_STORE, decltype(&X509_STORE_free)>;
+        using StoreCtxPtr = std::unique_ptr<X509_STORE_CTX, decltype(&X509_STORE_CTX_free)>;
+
+        StorePtr store {X509_STORE_new(), &X509_STORE_free};
+        StoreCtxPtr ctx {X509_STORE_CTX_new(), &X509_STORE_CTX_free};
+        if (!store || !ctx)
+        {
+            ERR_clear_error();
+            return {false, "internal error"};
+        }
+
+        for (const auto& ca : cas)
+        {
+            // OpenSSL 1.1+ accepts a certificate already in the store and returns 1; the only
+            // failures left are allocation and locking, which no verdict about the bundle can absorb.
+            if (X509_STORE_add_cert(store.get(), ca.get()) != 1)
+            {
+                ERR_clear_error();
+                return {false, "internal error"};
+            }
+        }
+
+        // PARTIAL_CHAIN: a certificate in the store is a trust anchor even when it is not self-signed,
+        // which is what lets root-ca.pem carry a purchased intermediate that signed the leaf. The
+        // purpose pins the one use this listener has for its certificate.
+        X509_STORE_set_flags(store.get(), X509_V_FLAG_PARTIAL_CHAIN);
+        X509_STORE_set_purpose(store.get(), X509_PURPOSE_SSL_SERVER);
+
+        // No untrusted chain: the bundle has to suffice on its own, because it is all an agent
+        // bootstrapping from GET /cacerts will ever hold. X509_STORE_CTX_init takes a non-const
+        // X509*; verification does not modify the certificate observably.
+        if (X509_STORE_CTX_init(ctx.get(), store.get(), const_cast<X509*>(leaf), nullptr) != 1)
+        {
+            ERR_clear_error();
+            return {false, "internal error"};
+        }
+
+        ChainVerdict verdict;
+        const int verified = X509_verify_cert(ctx.get());
+        if (verified == 1)
+        {
+            verdict.valid = true;
+        }
+        else if (verified == 0)
+        {
+            verdict.valid = false;
+            verdict.error = X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx.get()));
+        }
+        else
+        {
+            verdict.valid = false;
+            verdict.error = "internal error";
+        }
+        ERR_clear_error();
+        return verdict;
     }
 
     std::vector<std::string> localHostNames()
@@ -311,28 +349,6 @@ namespace remoted::http
     bool leafHasUsableSan(const X509* leaf)
     {
         return leafHasUsableSan(leaf, localHostNames());
-    }
-
-    TlsCertificateSnapshot evaluateCertificateStatus(const X509* leaf, const std::string& caPath)
-    {
-        TlsCertificateSnapshot snapshot;
-        snapshot.expiryDays = daysUntilExpiry(leaf);
-        snapshot.leafSubject = subjectOfCertificate(leaf);
-
-        const auto cas = loadCertificates(caPath);
-        if (!cas.empty())
-        {
-            snapshot.caMatchesLeaf = anyCaSignsLeaf(leaf, cas);
-            for (const auto& ca : cas)
-            {
-                if (!snapshot.caSubjects.empty())
-                {
-                    snapshot.caSubjects += ", ";
-                }
-                snapshot.caSubjects += subjectOfCertificate(ca.get());
-            }
-        }
-        return snapshot;
     }
 
     TlsCertificateMonitor::~TlsCertificateMonitor()

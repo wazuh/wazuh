@@ -31,9 +31,11 @@ info:
     the listener's own certificate, so an agent can bootstrap trust in the manager before it holds
     any credential at all -- by construction it cannot require one.
 
-    Statuses this API never returns: `429 Too Many Requests` and `426 Upgrade Required`. Capacity is
-    shed with `503`. An agent that receives either has been answered by an intermediary, not by
-    remoted.
+    `429 Too Many Requests` is returned only by the two routes with no credential to rate-limit by
+    identity, `POST /enroll` and `GET /cacerts`, each behind its own rate limit and carrying
+    `Retry-After`; no other route returns it. `426 Upgrade Required` is never returned by any route.
+    Capacity is shed with `503`. An agent that receives a `429` from any other route, or a `426`
+    from any route, has been answered by an intermediary, not by remoted.
 
     The module's own statistics are not served here. They live on a separate manager-local Unix
     socket (`queue/sockets/remote-admin-http.sock`), unreachable from an agent.
@@ -95,9 +97,11 @@ paths:
       operationId: getCaCertificates
       summary: The CA that signs the listener certificate (unauthenticated)
       description: |
-        Returns, byte for byte, the PEM file configured as `<remote><https><ca_certificate>` (by
-        default `etc/certs/root-ca.pem`: the CA the operator provisions together with the listener
-        certificate it signs -- the manager generates neither),
+        Returns the `CERTIFICATE` blocks found in the file configured as
+        `<remote><https><ca_certificate>` (by default `etc/certs/root-ca.pem`: the CA the operator
+        provisions together with the listener certificate it signs -- the manager generates
+        neither), re-serialised by the manager -- never the file's raw bytes, and never a private
+        key or any other non-certificate material the file might also carry --
         so an agent can bootstrap trust in the manager without an out-of-band copy of the CA: fetch
         it once, then verify every later connection against it. A bundle (several `CERTIFICATE`
         blocks) is served as a bundle. No authentication and no `protocol-version` header -- by
@@ -108,14 +112,20 @@ paths:
         which caps how fast this endpoint is served at all. That limit is a ceiling for the whole
         fleet, not an allowance per agent.
 
-        The file is read on every request, so a CA that goes missing on the manager answers `404`
-        immediately. Coherence with the served certificate is evaluated when the listener starts and
-        once a day afterwards: when the CA on disk does **not** sign the certificate this very
-        listener is serving, the route answers `503 ca_mismatch` instead of handing out a CA that
-        would make every verifying agent fail its handshake against this manager (RF-27). The
-        converse rotation -- a *different but valid* CA written over the file without restarting --
-        is served until the next daily evaluation or a restart; rotate CA and certificate together
-        and restart remoted.
+        The file is read on every request. When it cannot be read -- missing, unreadable, a read
+        error, or larger than the size cap -- the listener keeps serving the last good bundle it
+        read and logs the failure (file and cause); only a file that was never readable answers
+        `404`. A file that is readable but yields no certificate (for example, emptied to zero
+        bytes) answers `404` at once and stops serving the previous bundle -- this is how an
+        operator halts a CA without restarting; restoring the file serves it again on the next
+        request. Coherence with the served certificate is evaluated from the same read as the body,
+        on every request: when the CA on disk does **not** sign the certificate this very listener
+        is serving, the route answers `503 ca_mismatch` instead of handing out a CA that would make
+        every verifying agent fail its handshake against this manager (RF-27). The certificate
+        monitor (at start and every 24 h) only re-logs this same verdict; it does not decide the
+        response. The converse rotation -- a *different but valid* CA written over the file without
+        restarting -- is served on the very next request; a new *leaf* certificate still needs a
+        restart to load, so rotate CA and certificate together and restart remoted.
 
         This is a trust-on-first-use bootstrap over an unverified channel: an agent that already
         holds the CA MUST NOT replace it from this route, and a deployment that can distribute the
@@ -133,9 +143,11 @@ paths:
                   -----END CERTIFICATE-----
         "404":
           description: |
-            No CA to serve: the configured file is missing, unreadable, or carries no `CERTIFICATE`
-            block. Same body as an unknown route (an agent cannot tell them apart, and does not need
-            to -- neither is a CA it can use; the manager's log names the file).
+            No CA to serve: the configured file was never readable, or it is readable but carries no
+            `CERTIFICATE` block (an emptied file). A file that becomes unreadable after it was served
+            does **not** produce this answer: the last good bundle keeps being served. Same body as
+            an unknown route (an agent cannot tell them apart, and does not need to -- neither is a
+            CA it can use; the manager's log names the file and the cause).
           content:
             application/json:
               schema:
