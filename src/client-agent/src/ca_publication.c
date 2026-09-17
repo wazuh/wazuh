@@ -162,10 +162,34 @@ int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, 
 
     w_x509_free_all(certs, count);
 
-    if (OS_MoveFile(store.name, path) < 0) {
-        merror("CA bundle: could not install the trust store at '%s'.", path);
+    /* A bare rename, deliberately NOT OS_MoveFile(): that helper falls back to a read-write
+     * copy when rename() fails, and a copy onto the trust store is precisely what must never
+     * happen. It truncates the destination first, so a crash partway through leaves the agent
+     * holding a fragment of a certificate bundle -- unable to verify the manager, and so unable
+     * to reach /cacerts to repair itself. The fallback is reachable here: the anchor sits in a
+     * sticky directory, where rename() over a file owned by someone else fails EPERM, which is
+     * exactly what a pre-#39321 install looks like before its ownership is repaired.
+     *
+     * Failing instead is the right answer. Nothing has been touched, the publication stays
+     * pending, the next attempt tries again, and the error names the file for the operator. */
+#ifdef WIN32
+
+    /* rename() refuses an existing destination on Windows; MoveFileEx replaces it in one step. */
+    if (!MoveFileExA(store.name, path, MOVEFILE_REPLACE_EXISTING)) {
+        merror("CA bundle: could not install the trust store at '%s' (error %lu).", path,
+               GetLastError());
         goto end;
     }
+
+#else
+
+    if (rename(store.name, path) != 0) {
+        merror("CA bundle: could not install the trust store at '%s': %s (%d).", path,
+               strerror(errno), errno);
+        goto end;
+    }
+
+#endif
 
     minfo("CA bundle: trust store replaced at publication %lld (%zu certificate(s)).",
           (long long) generation, count);
