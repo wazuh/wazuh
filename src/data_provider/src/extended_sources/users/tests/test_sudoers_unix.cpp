@@ -239,6 +239,32 @@ TEST(SudoersIsUserSudoerTest, NegatedAndNumericEntriesAreNotMatched)
     EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "operator", {}));
 }
 
+TEST(SudoersIsUserSudoerTest, LaterNegatedEntryRevokesAnEarlierGroupGrant)
+{
+    const auto sudoers = R"([
+        {"header": "%admin,", "rule_details": "!baduser ALL=(ALL) ALL", "source": "/etc/sudoers"}
+    ])"_json;
+
+    // "baduser" is in the "admin" group, but the negated entry after it in the same list wins,
+    // per sudoers(5) last-match-wins evaluation.
+    EXPECT_FALSE(SudoersProvider::isUserSudoer(sudoers, "baduser", {"admin"}));
+
+    // Any other member of "admin" is unaffected by the negated entry naming "baduser".
+    EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "gooduser", {"admin"}));
+}
+
+TEST(SudoersIsUserSudoerTest, LaterPositiveEntryRegrantsAfterAnEarlierNegation)
+{
+    const auto sudoers = R"([
+        {"header": "!baduser,", "rule_details": "%admin ALL=(ALL) ALL", "source": "/etc/sudoers"}
+    ])"_json;
+
+    // The negated entry comes first, but the group grant after it is the last entry that applies
+    // to "baduser", so it wins -- this is what proves the evaluation is last-match-wins rather
+    // than "any negation anywhere wins".
+    EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "baduser", {"admin"}));
+}
+
 TEST(SudoersIsUserSudoerTest, NonUnixGroupIsMatchedByName)
 {
     const auto sudoers = R"([

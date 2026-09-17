@@ -13,6 +13,7 @@
 #include <map>
 #include <regex>
 #include <locale>
+#include <utility>
 #include <vector>
 #include <fstream>
 
@@ -250,41 +251,6 @@ namespace
         return definitions;
     }
 
-    std::map<std::string, std::string> collectUserAliases(const nlohmann::json& sudoers)
-    {
-        std::map<std::string, std::string> aliases;
-
-        for (const auto& rule : sudoers)
-        {
-            if (!rule.is_object() || rule.value("header", "") != "User_Alias")
-            {
-                continue;
-            }
-
-            for (const auto& definition : splitAliasDefinitions(rule.value("rule_details", "")))
-            {
-                const auto separator = definition.find('=');
-
-                if (separator == std::string::npos)
-                {
-                    continue;
-                }
-
-                auto name = definition.substr(0, separator);
-                auto members = definition.substr(separator + 1);
-                Utils::trimSpaces(name);
-                Utils::trimSpaces(members);
-
-                if (!name.empty())
-                {
-                    aliases[name] = members;
-                }
-            }
-        }
-
-        return aliases;
-    }
-
     // genSudoersFile() cuts the header at the first whitespace token, so a user list written with
     // spaces after its commas continues at the start of the body. A trailing comma says the list
     // goes on, and the first entry without one closes it.
@@ -310,21 +276,47 @@ namespace
         return userList;
     }
 
-    bool userListMatches(const std::string& userList,
-                         const std::string& userName,
-                         const std::set<std::string>& userGroups,
-                         const std::map<std::string, std::string>& userAliases,
-                         unsigned int depth);
+    // Tracks the running result of evaluating a user list left-to-right, per sudoers(5): the last
+    // entry that actually applies to the user wins, whether it grants or (via a "!"-prefixed entry)
+    // revokes a grant an earlier entry in the same list gave.
+    enum class ListMatchState
+    {
+        NoMatch,
+        Granted,
+        Denied
+    };
 
+    bool userListGrants(const std::string& userList,
+                        const std::string& userName,
+                        const std::set<std::string>& userGroups,
+                        const std::map<std::string, std::string>& userAliases,
+                        unsigned int depth);
+
+    // Strips any leading "!" characters from a user-list entry and reports whether their count is
+    // odd, i.e. whether the entry is actually negated ("!!user" cancels out back to "user").
+    std::pair<bool, std::string> stripNegation(const std::string& entry)
+    {
+        size_t i = 0;
+
+        while (i < entry.size() && entry[i] == '!')
+        {
+            ++i;
+        }
+
+        return {(i % 2) == 1, entry.substr(i)};
+    }
+
+    // Answers whether an entry's underlying condition (ignoring any "!" prefix, already stripped by
+    // the caller) matches the user -- the caller decides whether that grants or denies.
     bool entryMatches(const std::string& entry,
                       const std::string& userName,
                       const std::set<std::string>& userGroups,
                       const std::map<std::string, std::string>& userAliases,
                       unsigned int depth)
     {
-        // A netgroup cannot be resolved from the endpoint, and a negated entry takes a grant away
-        // rather than giving one, so neither can be read as "this user is a sudoer".
-        if (entry.empty() || entry.front() == '+' || entry.front() == '!')
+        // A netgroup cannot be resolved from the endpoint, so it can never be read as "this user is
+        // a sudoer".
+        if (entry.empty() || entry.front() == '+')
         {
             return false;
         }
@@ -366,42 +358,105 @@ namespace
         if (alias != userAliases.end())
         {
             return depth < MAX_ALIAS_DEPTH
-                   && userListMatches(alias->second, userName, userGroups, userAliases, depth + 1);
+                   && userListGrants(alias->second, userName, userGroups, userAliases, depth + 1);
         }
 
         return entry == userName;
     }
 
-    bool userListMatches(const std::string& userList,
-                         const std::string& userName,
-                         const std::set<std::string>& userGroups,
-                         const std::map<std::string, std::string>& userAliases,
-                         unsigned int depth)
+    ListMatchState userListMatchState(const std::string& userList,
+                                      const std::string& userName,
+                                      const std::set<std::string>& userGroups,
+                                      const std::map<std::string, std::string>& userAliases,
+                                      unsigned int depth)
     {
-        for (auto& entry : Utils::split(userList, ','))
+        ListMatchState state = ListMatchState::NoMatch;
+
+        for (auto& rawEntry : Utils::split(userList, ','))
         {
-            Utils::trimSpaces(entry);
+            Utils::trimSpaces(rawEntry);
+
+            const auto [negated, entry] = stripNegation(rawEntry);
+
+            // A bare "!" (or an even run of them reducing to nothing) has no underlying condition to
+            // test, so it never matches and leaves the running result untouched.
+            if (entry.empty())
+            {
+                continue;
+            }
 
             if (entryMatches(entry, userName, userGroups, userAliases, depth))
             {
-                return true;
+                state = negated ? ListMatchState::Denied : ListMatchState::Granted;
             }
         }
 
-        return false;
+        return state;
     }
+
+    // Whether a user list grants sudo to the user, once negation within it has been resolved via
+    // last-match-wins.
+    bool userListGrants(const std::string& userList,
+                        const std::string& userName,
+                        const std::set<std::string>& userGroups,
+                        const std::map<std::string, std::string>& userAliases,
+                        unsigned int depth)
+    {
+        return userListMatchState(userList, userName, userGroups, userAliases, depth) == ListMatchState::Granted;
+    }
+}
+
+std::map<std::string, std::string> SudoersProvider::collectUserAliases(const nlohmann::json& sudoers)
+{
+    std::map<std::string, std::string> aliases;
+
+    for (const auto& rule : sudoers)
+    {
+        if (!rule.is_object() || rule.value("header", "") != "User_Alias")
+        {
+            continue;
+        }
+
+        for (const auto& definition : splitAliasDefinitions(rule.value("rule_details", "")))
+        {
+            const auto separator = definition.find('=');
+
+            if (separator == std::string::npos)
+            {
+                continue;
+            }
+
+            auto name = definition.substr(0, separator);
+            auto members = definition.substr(separator + 1);
+            Utils::trimSpaces(name);
+            Utils::trimSpaces(members);
+
+            if (!name.empty())
+            {
+                aliases[name] = members;
+            }
+        }
+    }
+
+    return aliases;
 }
 
 bool SudoersProvider::isUserSudoer(const nlohmann::json& sudoers,
                                    const std::string& userName,
                                    const std::set<std::string>& userGroups)
 {
+    return isUserSudoer(sudoers, userName, userGroups, collectUserAliases(sudoers));
+}
+
+bool SudoersProvider::isUserSudoer(const nlohmann::json& sudoers,
+                                   const std::string& userName,
+                                   const std::set<std::string>& userGroups,
+                                   const std::map<std::string, std::string>& userAliases)
+{
     if (userName.empty() || !sudoers.is_array())
     {
         return false;
     }
-
-    const auto userAliases = collectUserAliases(sudoers);
 
     for (const auto& rule : sudoers)
     {
@@ -419,7 +474,7 @@ bool SudoersProvider::isUserSudoer(const nlohmann::json& sudoers,
 
         const auto userList = ruleUserList(header, rule.value("rule_details", ""));
 
-        if (userListMatches(userList, userName, userGroups, userAliases, 0))
+        if (userListGrants(userList, userName, userGroups, userAliases, 0))
         {
             return true;
         }

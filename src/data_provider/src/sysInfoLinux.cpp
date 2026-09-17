@@ -695,6 +695,10 @@ nlohmann::json SysInfo::getUsers() const
     SudoersProvider sudoersProvider;
     auto collectedSudoers = sudoersProvider.collect();
 
+    // The User_Alias map does not depend on the user either, so build it once for the whole scan
+    // instead of re-parsing it inside isUserSudoer() for every account.
+    auto sudoersUserAliases = SudoersProvider::collectUserAliases(collectedSudoers);
+
     UserGroupsProvider userGroupsProvider;
 
     // Resolve group membership for every user in a single call. Asking per user repeated
@@ -872,7 +876,7 @@ nlohmann::json SysInfo::getUsers() const
 
         userItem["user_roles"] = UNKNOWN_VALUE;
 
-        if (SudoersProvider::isUserSudoer(collectedSudoers, username, userGroupNames))
+        if (SudoersProvider::isUserSudoer(collectedSudoers, username, userGroupNames, sudoersUserAliases))
         {
             //TODO: user_roles_sudo_sudo_rule_details has more detailed information.
             userItem["user_roles"] = "sudo";
