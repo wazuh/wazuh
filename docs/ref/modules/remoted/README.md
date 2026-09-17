@@ -52,11 +52,13 @@ agent-facing HTTPS endpoint — neither is ever exposed on the public listener.
 |---|---|
 | `GET /` | `200` `{"status":"ok","module":"remoted_module"}` |
 | `GET /metrics` | `200` — JSON dump of every metric family the module keeps (request outcomes and latency per endpoint, auth-rejection and downstream-failure taxonomies, backpressure, keystore health, ...) — see [Metrics](metrics.md) for the full catalog and the settings each metric relates to |
+| `GET /tls` | `200` — validity of the TLS material served to agents: the listener certificate (dates, `x509-sha256` identity, `loaded_at`) and every certificate of the CA bundle `GET /cacerts` hands out, with whether it signs the served one. No thresholds. `503` while the HTTPS listener is not up. Field by field in [Certificate validity](certificate-validity.md); the Server API serves it per node as `GET /cluster/{node_id}/daemons/remoted/tls` |
 | `GET /status` | `200` — readiness, not bare liveness: `ready` reflects whether an enrollment password key is currently available, when enrollment is administratively enabled and Password-mode enrollment is on; it is `true` whenever remoted answers at all if either flag is off. `{"ready":true,"enrollment_password":{"ready":true},"keystore":{"readable":true,"agents_loaded":12,"entries_skipped":0},"enrollment_tokens":{"loaded":3,"last_reload_ok":true}}` (`enrollment_password` is omitted entirely unless both flags are on). `keystore` reports whether `client.keys` last reloaded successfully — informational only, it never gates `ready`, since remoted cannot tell an empty-but-fine `client.keys` apart from a stale one still serving the old table. `enrollment_tokens` does the same for the replica of `etc/enrollment_tokens.json` that verifies enrollment-token bearers (`loaded` = credential-bearing tokens in the replica; an absent file is a valid empty replica): informational, never gates `ready`. This is what `GET /cluster/{node_id}/status` embeds under `wazuh-manager-remoted` |
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/status
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/tls | jq
 ```
 
 A failure to bring this socket up only logs a warning: the admin plane is optional and remoted
