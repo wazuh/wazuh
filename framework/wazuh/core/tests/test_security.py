@@ -2,14 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
 from contextvars import ContextVar
 from unittest.mock import patch
 
 import pytest
-import yaml
 
-from wazuh.core.common import DEFAULT_RBAC_RESOURCES
 from wazuh.tests.test_security import db_setup  # noqa
 
 
@@ -110,47 +107,64 @@ def test_invalid_users_tokens(db_setup, user_list, expected_users):
         assert set(related_users) == expected_users
 
 
+@patch("wazuh.core.security.check_database_integrity")
+def test_ensure_rbac_database(db_integrity_mock, db_setup):
+    """The database is created through the same path the first API start uses, and only when missing.
+
+    Forwarded by `change-password` on a node whose API has never run, so that `update_user` finds a
+    database, and so that a pre-seed file left on that node still decides what it is seeded with.
+    """
+    _, _, core_security = db_setup
+
+    with patch("wazuh.core.security.os.path.exists", return_value=False):
+        assert core_security.ensure_rbac_database() == {'ensured': True}
+    db_integrity_mock.assert_called_once()
+
+    # An existing database is left alone: a password change must not migrate its schema and replace it
+    db_integrity_mock.reset_mock()
+    with patch("wazuh.core.security.os.path.exists", return_value=True):
+        assert core_security.ensure_rbac_database() == {'ensured': True}
+    db_integrity_mock.assert_not_called()
+
+    # Decoded on the master when the request comes from a worker, which refuses an unmarked callable
+    assert core_security.ensure_rbac_database.__wazuh_exposed__
+
+
 @patch("wazuh.core.security.revoke_tokens")
 @patch("wazuh.core.security.check_database_integrity")
 @patch("wazuh.core.security.os.remove")
 def test_rbac_db_factory_reset(remove_mock, db_integrity_mock, revoke_mock, db_setup):
     """Check that the RBAC database factory reset is correct."""
     _, _, core_security = db_setup
-    assert core_security.rbac_db_factory_reset() == {'reset': True}
+
+    with patch("wazuh.core.security.load_preseeded_passwords"):
+        assert core_security.rbac_db_factory_reset() == {'reset': True}
+
     assert remove_mock.call_args[0][0].endswith("rbac.db")
     db_integrity_mock.assert_called_once()
     revoke_mock.assert_called_once()
+    # Decoded on the master when `factory-reset` runs on a worker, which refuses an unmarked callable
+    assert core_security.rbac_db_factory_reset.__wazuh_exposed__
 
 
-@pytest.mark.parametrize('unchanged_users', [2, 1, 0])
-def test_get_users_with_default_password(db_setup, unchanged_users):
-    """Check that only the default users that keep their shipped password are reported.
+@patch("wazuh.core.security.revoke_tokens")
+@patch("wazuh.core.security.check_database_integrity")
+@patch("wazuh.core.security.os.remove")
+def test_rbac_db_factory_reset_needs_provisioned_credentials(remove_mock, db_integrity_mock, revoke_mock,
+                                                             db_setup):
+    """A reset refuses unless the provisioning file can actually be seeded from, before removing anything.
 
-    Parameters
-    ----------
-    db_setup: callable
-        This function creates the rbac.db file.
-    unchanged_users : int
-        Number of default users that keep the password shipped with the package.
+    Seeding is the only way to get the default users back. A file that is absent, or present but
+    unusable, fails the same way, and both have to be caught here: past the removal there is no database
+    left to keep the node running, and every RBAC resource on it is gone.
     """
     _, _, core_security = db_setup
 
-    with open(os.path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
-        shipped_passwords = {username: payload['password']
-                             for username, payload in yaml.safe_load(f)['default_users'].items()}
+    with patch("wazuh.core.security.load_preseeded_passwords",
+               side_effect=core_security.PreseededPasswordsError("no API credentials have been provisioned")):
+        with pytest.raises(core_security.WazuhError, match="5012"):
+            core_security.rbac_db_factory_reset()
 
-    expected_users = list(shipped_passwords)[:unchanged_users]
-
-    class AuthenticationManagerMock:
-        """Authentication manager whose users kept their password only if they are expected to."""
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *exc_info):
-            return False
-
-        def check_user(self, username: str, password: str) -> bool:
-            return username in expected_users and password == shipped_passwords[username]
-
-    with patch('wazuh.core.security.AuthenticationManager', AuthenticationManagerMock):
-        assert core_security.get_users_with_default_password() == expected_users
+    remove_mock.assert_not_called()
+    db_integrity_mock.assert_not_called()
+    revoke_mock.assert_not_called()

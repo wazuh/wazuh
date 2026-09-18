@@ -82,6 +82,16 @@ case "$1" in
         find ${DIR}/etc/ -type f ! -name *shared* -exec mv {} {}.save \;
 
         if [ -d "${DIR}/api" ]; then
+            # Plaintext administrator credential: preserving it as .save would leave it behind once the
+            # package is gone. Not on the rollback arms, where the package stays installed and removing it
+            # would strand a node that has not seeded yet; there the rename below turns it into a .save the
+            # loader does not read, so such a node is provisioned again after a rollback.
+            case "$1" in
+                remove|disappear)
+                    rm -f ${DIR}/api/configuration/security/wazuh-preseeded-passwords.yml
+                    ;;
+            esac
+
             find "${DIR}/api/" -type f -name "*save" -exec rm -f {} \;
             find "${DIR}/api/" -type f -exec mv {} {}.save \;
         fi

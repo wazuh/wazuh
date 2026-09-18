@@ -145,6 +145,35 @@ async def restore_default_passwords(script_args):
         print(f"\t{exc}")
         sys.exit(1)
 
+    # Checked here and not only by `update_user`, which rejects it after the fact: the interactive prompt
+    # would accept a password it cannot apply, and a file naming several users would apply the ones read
+    # before the offending entry.
+    from wazuh.rbac.orm import USER_PASSWORD_MAX_LENGTH, USER_PASSWORD_MIN_LENGTH, USER_PASSWORD_POLICY
+
+    for username, new_password in new_passwords.items():
+        if not USER_PASSWORD_MIN_LENGTH <= len(new_password) <= USER_PASSWORD_MAX_LENGTH \
+                or not USER_PASSWORD_POLICY.match(new_password):
+            print(f"\tThe password of '{username}' does not satisfy the API password policy: "
+                  f"{USER_PASSWORD_MIN_LENGTH} to {USER_PASSWORD_MAX_LENGTH} characters, with a lowercase "
+                  f"letter, an uppercase letter, a digit and a symbol")
+            sys.exit(1)
+
+    # `local_master` resolves to the master from anywhere, which is where the credential in use lives.
+    # `--local` targets this node instead: a worker's `rbac.db` is never synchronized, and only becomes
+    # live if the node is promoted.
+    request_type = "local_any" if script_args.local else "local_master"
+
+    if new_passwords:
+        from wazuh.core.security import ensure_rbac_database
+
+        # A node whose apid has never run (a worker: apid is master-only) has no 'rbac.db', and
+        # 'update_user' would fail against it. Seeded through the same path the first API start uses, so a
+        # pre-seed file left on that node still decides what the users it does not overwrite end up with.
+        ensure_response = await cluster_utils.forward_function(ensure_rbac_database, request_type=request_type)
+        if isinstance(ensure_response, Exception):
+            print(f"\tCould not ensure the RBAC database exists: {ensure_response}")
+            sys.exit(1)
+
     results = {}
     for username, new_password in new_passwords.items():
         # The default users hold reserved IDs, and `update_user` only lets another reserved user
@@ -152,7 +181,7 @@ async def restore_default_passwords(script_args):
         response = await cluster_utils.forward_function(update_user, f_kwargs={'user_id': user_ids[username],
                                                                                'password': new_password,
                                                                                'current_user': username},
-                                                        request_type="local_master")
+                                                        request_type=request_type)
 
         results[username] = f'FAILED | {str(response)}' if isinstance(response, Exception) else 'UPDATED'
 
@@ -163,6 +192,96 @@ async def restore_default_passwords(script_args):
     # requested password was applied.
     if any(status != 'UPDATED' for status in results.values()):
         sys.exit(1)
+
+
+async def preseed_default_password(script_args):
+    """Write the password of one default user to the file the API seeds the RBAC database from.
+
+    Writes a file instead of touching `rbac.db`, so it works with every daemon stopped, which is the only
+    window an installer has: between installing the package and the first manager start. It does not go
+    through the cluster protocol either, so it needs no node to be reachable.
+    """
+    import os
+    from shutil import chown
+    from tempfile import mkstemp
+
+    import yaml
+    from wazuh.core.common import DEFAULT_RBAC_RESOURCES, wazuh_gid
+    from wazuh.rbac.orm import DB_FILE, PRESEEDED_PASSWORDS_FILE, PRESEEDED_PASSWORDS_SCHEMA_VERSION, \
+        USER_PASSWORD_MAX_LENGTH, USER_PASSWORD_MIN_LENGTH, USER_PASSWORD_POLICY
+
+    with open(path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
+        default_users = list(yaml.safe_load(f)['default_users'])
+
+    if script_args.user not in default_users:
+        print(f"\t'{script_args.user}' is not an RBAC default user. Default users: {', '.join(default_users)}")
+        sys.exit(1)
+
+    # From the standard input when '--password' is omitted, which keeps the value out of the process list.
+    # Only the first line: a trailing newline is expected from `echo` and the policy does not allow one.
+    if script_args.password is None:
+        password = sys.stdin.readline().rstrip('\n').rstrip('\r')
+    else:
+        password = script_args.password
+
+    if not USER_PASSWORD_MIN_LENGTH <= len(password) <= USER_PASSWORD_MAX_LENGTH \
+            or not USER_PASSWORD_POLICY.match(password):
+        print(f"\tThe password of '{script_args.user}' does not satisfy the API password policy: "
+              f"{USER_PASSWORD_MIN_LENGTH} to {USER_PASSWORD_MAX_LENGTH} characters, with a lowercase "
+              f"letter, an uppercase letter, a digit and a symbol")
+        sys.exit(1)
+
+    # Merged rather than overwritten: one user is set per execution, and the API refuses a file that does
+    # not name every default user, so the entries already provisioned have to survive.
+    provisioned = {}
+    if os.path.exists(PRESEEDED_PASSWORDS_FILE):
+        try:
+            with open(PRESEEDED_PASSWORDS_FILE, encoding='utf-8') as f:
+                document = yaml.safe_load(f) or {}
+            if not isinstance(document, dict):
+                raise ValueError('it does not hold a YAML mapping')
+            for entry in document.get('manager') or []:
+                provisioned[entry['name']] = entry['password']
+        except (OSError, KeyError, TypeError, ValueError, yaml.YAMLError) as exc:
+            print(f"\tCould not read '{PRESEEDED_PASSWORDS_FILE}': {exc}. Remove it and set every default "
+                  f"user's password again")
+            sys.exit(1)
+
+    provisioned[script_args.user] = password
+
+    # The same shape the credentials tooling uses for its own `manager:` block
+    document = {'schema_version': PRESEEDED_PASSWORDS_SCHEMA_VERSION,
+                'manager': [{'name': name, 'password': value} for name, value in provisioned.items()]}
+
+    # Renamed over the target so a reader never sees a half-written file, with the ownership and mode the
+    # API requires: readable by the Wazuh user, writable by nobody else.
+    # `mkstemp` inside the guard, not before it: an installer chains these calls on the exit status, and a
+    # missing directory or an unprivileged run has to fail the chain rather than report success.
+    tmp_path = None
+    try:
+        fd, tmp_path = mkstemp(dir=path.dirname(PRESEEDED_PASSWORDS_FILE))
+        try:
+            os.write(fd, yaml.safe_dump(document, default_flow_style=False, sort_keys=False).encode())
+        finally:
+            os.close(fd)
+        chown(tmp_path, 'root', wazuh_gid())
+        os.chmod(tmp_path, 0o640)
+        os.replace(tmp_path, PRESEEDED_PASSWORDS_FILE)
+    except Exception as exc:
+        tmp_path and os.path.exists(tmp_path) and os.remove(tmp_path)
+        print(f"\tCould not write '{PRESEEDED_PASSWORDS_FILE}': {exc}. This command must run as root")
+        sys.exit(1)
+
+    print(f"\t{script_args.user}: SET")
+
+    missing = set(default_users) - set(provisioned)
+    if missing:
+        print(f"\tStill missing: {', '.join(sorted(missing))}. The API refuses to start until every default "
+              f"user is set")
+
+    if os.path.exists(DB_FILE):
+        print(f"\t'{DB_FILE}' already exists, so this does not change the password in use. It applies only "
+              f"if that database is created again. Use 'change-password' with the manager running instead")
 
 
 async def reset_rbac_database(script_args):
@@ -194,15 +313,33 @@ def get_script_arguments():
     change_password_parser.add_argument("-p", "--password-file", action="store", dest="password_file", default=None,
                                         help="Read the new password from the first line of this file, or from the "
                                              "standard input if it is '-'. Requires '--user'.")
+    change_password_parser.add_argument("--local", action="store_true", dest="local", default=False,
+                                        help="Apply the change to this node's own RBAC database instead of the "
+                                             "master's. Needed to align a worker, whose database is not "
+                                             "synchronized and only becomes live if it is promoted to master.")
     change_password_parser.add_argument("--passwords-file", action="store", dest="passwords_file", default=None,
                                         help="Read a JSON object mapping default usernames to their new passwords "
                                              "from this file, or from the standard input if it is '-', and change "
                                              "all of them in a single execution.")
     change_password_parser.set_defaults(func=restore_default_passwords)
+    preseed_parser = arg_subparsers.add_parser("set-password",
+                                               help="Provision the password of a default API user for the "
+                                                    "first API start, writing it where "
+                                                    "'wazuh-manager-apid' seeds the RBAC database from. "
+                                                    "Runs with every daemon stopped, and does not change "
+                                                    "the password of a database that already exists.")
+    preseed_parser.add_argument("-u", "--user", action="store", dest="user", required=True,
+                                help="Default user whose password to provision.")
+    preseed_parser.add_argument("-p", "--password", action="store", dest="password", default=None,
+                                help="Password to provision. Read from the first line of the standard input "
+                                     "when omitted, which keeps it out of the process list.")
+    preseed_parser.set_defaults(func=preseed_default_password)
     reset_parser = arg_subparsers.add_parser("factory-reset",
-                                             help="Reset the RBAC database to its default state. This will completely"
-                                                  " wipe your custom RBAC information, and restore the default users'"
-                                                  " shipped passwords.")
+                                             help="Reset the RBAC database to its default state. This will "
+                                                  "completely wipe your custom RBAC information, and restore the "
+                                                  "passwords provisioned in 'wazuh-preseeded-passwords.yml', which "
+                                                  "'set-password' has to write again before every reset: the file "
+                                                  "is removed once the database is seeded from it.")
     reset_parser.add_argument("-f", "--force", action="store_true", dest="reset_force", default=False,
                               help="Do not ask for confirmation for the RBAC database factory reset.")
     reset_parser.set_defaults(func=reset_rbac_database)

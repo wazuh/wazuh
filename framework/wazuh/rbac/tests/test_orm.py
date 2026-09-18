@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
+import logging
 import os
 import re
 from importlib import reload
@@ -28,7 +29,7 @@ in_memory_db_path = ":memory:"
 def db_setup():
     with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
         with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
-            with patch('shutil.chown'), patch('os.chmod'):
+            with patch('wazuh.rbac.orm._set_permissions_and_ownership'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.orm as rbac
                     # Clear mappers
@@ -40,7 +41,7 @@ def db_setup():
 
 
 @pytest.fixture(scope="function")
-def fresh_in_memory_db():
+def fresh_in_memory_db(tmp_path):
     # Clear mappers
     sqlalchemy_orm.clear_mappers()
 
@@ -53,7 +54,19 @@ def fresh_in_memory_db():
         orm.db_manager.connect(in_memory_db_path)
         orm.db_manager.create_database(in_memory_db_path)
 
-    yield orm
+    # Applied after the reload, which would otherwise restore the installed path: seeding reads the
+    # provisioning file, and this host may have a manager installed. Every default user is provisioned,
+    # since that is the only state a seeding can start from.
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+    provisioning_file.write_text(yaml.safe_dump(
+        {'schema_version': 1,
+         'manager': [{'name': 'wazuh', 'password': 'Pr0visioned-Pass!'},
+                     {'name': 'wazuh-wui', 'password': 'Pr0visionedWui-Pass!'}]}, sort_keys=False))
+    provisioning_file.chmod(0o600)
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()):
+        yield orm
 
     orm.db_manager.close_sessions()
 
@@ -660,6 +673,182 @@ def test_databasemanager_insert_default_resources(fresh_in_memory_db):
                == len(default_rules[next(iter(default_rules))])
 
 
+
+def _provisioning_document(**users) -> str:
+    """Build the file `set-password` writes, in the shape the credentials tooling shares."""
+    return yaml.safe_dump({'schema_version': 1,
+                           'manager': [{'name': name, 'password': password}
+                                       for name, password in users.items()]}, sort_keys=False)
+
+
+def test_databasemanager_insert_default_resources_provisioned(fresh_in_memory_db, tmp_path):
+    """The provisioned password is what every default user is seeded with."""
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+    provisioning_file.write_text(_provisioning_document(**{"wazuh": "Pr3seeded-Passw0rd!",
+                                                           "wazuh-wui": "An0ther-Pr3seed!"}))
+    provisioning_file.chmod(0o600)
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()):
+        provisioned = fresh_in_memory_db._load_preseeded_passwords(["wazuh", "wazuh-wui"])
+        fresh_in_memory_db.db_manager.insert_default_resources(in_memory_db_path, provisioned)
+
+    with fresh_in_memory_db.AuthenticationManager(
+            fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as auth:
+        assert auth.check_user("wazuh", "Pr3seeded-Passw0rd!")
+        assert auth.check_user("wazuh-wui", "An0ther-Pr3seed!")
+
+
+def test_databasemanager_insert_default_resources_unusable_password(fresh_in_memory_db):
+    """A user no provisioning covers is seeded with a password nobody knows, not with a literal.
+
+    Only the migration path seeds without provisioning, and `migrate_data()` overwrites those rows a
+    moment later. A guessable literal there would be an administrator account anyone could use.
+    """
+    fresh_in_memory_db.db_manager.insert_default_resources(in_memory_db_path)
+
+    with fresh_in_memory_db.AuthenticationManager(
+            fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as auth:
+        for username in ("wazuh", "wazuh-wui"):
+            assert not auth.check_user(username, username)
+            assert not auth.check_user(username, "wazuh")
+
+
+def test_load_preseeded_passwords_absent(fresh_in_memory_db, tmp_path):
+    """Provisioning is mandatory: no file is an error naming the call that fixes it."""
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(tmp_path / "absent.json")):
+        with pytest.raises(fresh_in_memory_db.PreseededPasswordsError,
+                           match="no API credentials have been provisioned"):
+            fresh_in_memory_db._load_preseeded_passwords(["wazuh", "wazuh-wui"])
+
+
+@pytest.mark.parametrize("content,reason", [
+    ("not: [valid", "not valid UTF-8 YAML"),
+    (b'\xff\xfe{\x00}\x00', "not valid UTF-8 YAML"),
+    ("[]", "does not hold a YAML mapping"),
+    ("schema_version: 1\nmanager: []", "has no 'manager' section"),
+    ("schema_version: 2\nmanager: [{name: wazuh, password: 'Pr3seeded-Passw0rd!'}]", "declares schema_version"),
+    ("schema_version: 1\nindexer: [{name: admin, password: x}]\nmanager: [{name: wazuh, password: 'Pr3seeded-Passw0rd!'}]",
+     "sections this manager does not read"),
+    ("schema_version: 1\nmanager: [{name: wazuh}]", "must hold a 'name' and a 'password'"),
+    ("schema_version: 1\nmanager: [{name: wazuh-wu, password: 'Pr3seeded-Passw0rd!'}]", "is not a default user"),
+    ("schema_version: 1\nmanager: [{name: wazuh, password: 'Pr3seeded-Passw0rd!'}]", "provisions no password for"),
+    ("schema_version: 1\nmanager: [{name: wazuh, password: short}, {name: wazuh-wui, password: 'An0ther-Pr3seed!'}]",
+     "rbac_control set-password -u wazuh"),
+    ("schema_version: 1\nmanager: [{name: wazuh, password: 123}, {name: wazuh-wui, password: 'An0ther-Pr3seed!'}]",
+     "does not satisfy the API password policy"),
+])
+def test_load_preseeded_passwords_invalid(fresh_in_memory_db, tmp_path, content, reason):
+    """A file that is present but unusable is an installation error, never a silent fallback."""
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+    provisioning_file.write_bytes(content if isinstance(content, bytes) else content.encode())
+    provisioning_file.chmod(0o600)
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()):
+        with pytest.raises(fresh_in_memory_db.PreseededPasswordsError, match=reason):
+            fresh_in_memory_db._load_preseeded_passwords(["wazuh", "wazuh-wui"])
+
+
+def test_set_permissions_and_ownership_refuses_a_symlink(fresh_in_memory_db, tmp_path):
+    """The database is never chowned through its name.
+
+    It lives in a directory the account the daemons run as can write, so that account decides what the name
+    points at. Following it would hand it the ownership of whatever the link names.
+    """
+    target = tmp_path / "root-owned"
+    target.write_text("not the database")
+    database = tmp_path / "rbac.db"
+    database.symlink_to(target)
+
+    with pytest.raises(fresh_in_memory_db.PreseededPasswordsError, match="cannot be opened"):
+        fresh_in_memory_db._set_permissions_and_ownership(str(database))
+
+
+def test_set_permissions_and_ownership_refuses_a_non_regular_file(fresh_in_memory_db, tmp_path):
+    """A directory, a fifo or a device in the database's place is refused rather than chowned."""
+    database = tmp_path / "rbac.db"
+    os.mkfifo(database)
+
+    with pytest.raises(fresh_in_memory_db.PreseededPasswordsError, match="is not a regular file"):
+        fresh_in_memory_db._set_permissions_and_ownership(str(database))
+
+
+def test_set_permissions_and_ownership_applies_through_the_descriptor(fresh_in_memory_db, tmp_path):
+    """A real database gets the Wazuh ownership and mode, applied to the file that was opened."""
+    database = tmp_path / "rbac.db"
+    database.write_text("")
+    database.chmod(0o600)
+
+    with patch("wazuh.rbac.orm.os.fchown") as fchown_mock:
+        fresh_in_memory_db._set_permissions_and_ownership(str(database))
+
+    fchown_mock.assert_called_once()
+    assert database.stat().st_mode & 0o777 == 0o640
+
+
+@pytest.mark.skipif(os.getuid() == 0, reason="a file written by root is always accepted, so nothing is refused")
+def test_load_preseeded_passwords_untrusted_owner(fresh_in_memory_db, tmp_path):
+    """A file owned by somebody other than root or the Wazuh user is refused.
+
+    It decides the administrator password of a fresh installation and lives in a group-writable directory.
+    """
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+    provisioning_file.write_text(_provisioning_document(**{"wazuh": "Pr3seeded-Passw0rd!",
+                                                           "wazuh-wui": "An0ther-Pr3seed!"}))
+    provisioning_file.chmod(0o600)
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid() + 1):
+        with pytest.raises(fresh_in_memory_db.PreseededPasswordsError, match="is not owned by root"):
+            fresh_in_memory_db._load_preseeded_passwords(["wazuh", "wazuh-wui"])
+
+
+@pytest.mark.parametrize("mode,reason", [(0o620, "writable"), (0o602, "writable"), (0o666, "writable"),
+                                         (0o644, "readable by others"), (0o604, "readable by others")])
+def test_load_preseeded_passwords_untrusted_mode(fresh_in_memory_db, tmp_path, mode, reason):
+    """A file the group or others can write, or others can read, is refused.
+
+    Group read is the one bit that stays allowed: it is how apid reads a root-owned file once it has
+    dropped privileges to the Wazuh user.
+    """
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+    provisioning_file.write_text(_provisioning_document(**{"wazuh": "Pr3seeded-Passw0rd!",
+                                                           "wazuh-wui": "An0ther-Pr3seed!"}))
+    provisioning_file.chmod(mode)
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()):
+        with pytest.raises(fresh_in_memory_db.PreseededPasswordsError, match=reason):
+            fresh_in_memory_db._load_preseeded_passwords(["wazuh", "wazuh-wui"])
+
+
+@pytest.mark.parametrize("mode", [0o600, 0o640])
+def test_load_preseeded_passwords_accepted_modes(fresh_in_memory_db, tmp_path, mode):
+    """The two modes the documentation gives an installer are accepted."""
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+    provisioning_file.write_text(_provisioning_document(**{"wazuh": "Pr3seeded-Passw0rd!",
+                                                           "wazuh-wui": "An0ther-Pr3seed!"}))
+    provisioning_file.chmod(mode)
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()):
+        assert fresh_in_memory_db._load_preseeded_passwords(["wazuh", "wazuh-wui"]) == {
+            "wazuh": "Pr3seeded-Passw0rd!", "wazuh-wui": "An0ther-Pr3seed!"
+        }
+
+
+def test_consume_preseeded_passwords(fresh_in_memory_db, tmp_path):
+    """The file is removed once its passwords are stored, and a missing one is not an error."""
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+    provisioning_file.write_text("schema_version: 1\n")
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)):
+        fresh_in_memory_db._consume_preseeded_passwords()
+        assert not provisioning_file.exists()
+        fresh_in_memory_db._consume_preseeded_passwords()
+
+
 def test_databasemanager_get_table(fresh_in_memory_db):
     """Test `get_table` method for class `DatabaseManager`."""
     class EnhancedUser(fresh_in_memory_db.User):
@@ -701,13 +890,14 @@ def test_databasemanager_set_database_version(fresh_in_memory_db):
 
 @patch("wazuh.rbac.orm.safe_move")
 @patch("wazuh.rbac.orm.os.remove")
-@patch("wazuh.rbac.orm.chown")
-@patch("wazuh.rbac.orm.os.chmod")
-def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move_mock, fresh_in_memory_db):
+@patch("wazuh.rbac.orm._set_permissions_and_ownership")
+def test_check_database_integrity(permissions_mock, remove_mock, safe_move_mock, fresh_in_memory_db):
     """Test `check_database_integrity` function briefly.
 
     NOTE: To correctly test this procedure, use the RBAC database migration integration tests."""
     db_mock = MagicMock()
+    # The migration restores the default users, which is what the seeding check requires
+    db_mock.get_data.return_value = [MagicMock(id=WAZUH_USER_ID), MagicMock(id=WAZUH_WUI_USER_ID)]
     with patch("wazuh.rbac.orm.db_manager", new=db_mock):
         with patch("wazuh.rbac.orm.os.path.exists", return_value=True):
             with patch("wazuh.rbac.orm.CURRENT_ORM_VERSION", new=99999):
@@ -740,11 +930,66 @@ def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move
         db_mock.assert_has_calls([
             call.connect(fresh_in_memory_db.DB_FILE),
             call.create_database(fresh_in_memory_db.DB_FILE),
-            call.insert_default_resources(fresh_in_memory_db.DB_FILE),
+            # The provisioned passwords are loaded by the caller and handed over, so that a missing or
+            # unusable file stops the installation before any database is created.
+            call.insert_default_resources(fresh_in_memory_db.DB_FILE,
+                                          {'wazuh': 'Pr0visioned-Pass!',
+                                           'wazuh-wui': 'Pr0visionedWui-Pass!'}),
             call.set_database_version(fresh_in_memory_db.DB_FILE, fresh_in_memory_db.CURRENT_ORM_VERSION),
             call.close_sessions()
         ], any_order=True)
 
+
+@patch("wazuh.rbac.orm.safe_move")
+@patch("wazuh.rbac.orm.os.remove")
+@patch("wazuh.rbac.orm._set_permissions_and_ownership")
+def test_check_database_integrity_refuses_unpreserved_default_users(permissions_mock, remove_mock,
+                                                                    safe_move_mock, fresh_in_memory_db):
+    """A migration that cannot restore a default user refuses instead of leaving it locked out.
+
+    `get_data` answers an unreadable source with an empty list rather than an error, so without this check
+    a corrupt database would migrate into one whose administrator password nobody knows.
+    """
+    db_mock = MagicMock()
+
+    with patch("wazuh.rbac.orm.db_manager", new=db_mock), \
+            patch("wazuh.rbac.orm.os.path.exists", return_value=True), \
+            patch("wazuh.rbac.orm.CURRENT_ORM_VERSION", new=99999):
+        db_mock.get_data.return_value = [MagicMock(id=fresh_in_memory_db.WAZUH_USER_ID),
+                                         MagicMock(id=fresh_in_memory_db.WAZUH_WUI_USER_ID)]
+        fresh_in_memory_db.check_database_integrity()
+
+        # A partial loss is refused too, naming the user that could not be preserved
+        db_mock.get_data.return_value = [MagicMock(id=fresh_in_memory_db.WAZUH_USER_ID)]
+        with pytest.raises(fresh_in_memory_db.PreseededPasswordsError,
+                           match=f"id {fresh_in_memory_db.WAZUH_WUI_USER_ID}"):
+            fresh_in_memory_db.check_database_integrity()
+
+        db_mock.get_data.return_value = []
+        with pytest.raises(fresh_in_memory_db.PreseededPasswordsError, match="could not be preserved"):
+            fresh_in_memory_db.check_database_integrity()
+
+
+def test_check_database_integrity_invalid_preseed(fresh_in_memory_db, tmp_path):
+    """An unusable pre-seed stops a fresh installation before any database is created.
+
+    The file is left untouched so that it can be corrected, and no password is generated behind the back of
+    whoever wrote it.
+    """
+    preseed_file = tmp_path / "wazuh-preseeded-passwords.yml"
+    preseed_file.write_text(_provisioning_document(**{"wazuh": "too-short", "wazuh-wui": "An0ther-Pr3seed!"}))
+    preseed_file.chmod(0o600)
+
+    db_mock = MagicMock()
+    with patch("wazuh.rbac.orm.db_manager", new=db_mock), \
+            patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(preseed_file)), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()), \
+            patch("wazuh.rbac.orm.os.path.exists", return_value=False):
+        with pytest.raises(fresh_in_memory_db.PreseededPasswordsError, match="password policy"):
+            fresh_in_memory_db.check_database_integrity()
+
+    db_mock.create_database.assert_not_called()
+    assert preseed_file.exists()
 
 @pytest.mark.parametrize("exception", [ValueError, Exception])
 @patch("wazuh.rbac.orm.DatabaseManager.close_sessions")
@@ -822,11 +1067,12 @@ def test_migrate_data(db_setup, from_id, to_id, users):
 
 @patch("wazuh.rbac.orm.safe_move")
 @patch("wazuh.rbac.orm.os.remove")
-@patch("wazuh.rbac.orm.chown")
-@patch("wazuh.rbac.orm.os.chmod")
-def test_check_database_integrity_missing_default_policy(chmod_mock, chown_mock, remove_mock, safe_move_mock, fresh_in_memory_db):
+@patch("wazuh.rbac.orm._set_permissions_and_ownership")
+def test_check_database_integrity_missing_default_policy(permissions_mock, remove_mock, safe_move_mock, fresh_in_memory_db):
     """Checks that the migration process runs correctly when a default policy is missing."""
     db_mock = MagicMock()
+    # The migration restores the default users, which is what the seeding check requires
+    db_mock.get_data.return_value = [MagicMock(id=WAZUH_USER_ID), MagicMock(id=WAZUH_WUI_USER_ID)]
 
     # Handles the case where a default policy is not present in the YAML files
     def insert_defaults_stub(_target_db):
@@ -865,11 +1111,12 @@ def test_check_database_integrity_missing_default_policy(chmod_mock, chown_mock,
 
 @patch("wazuh.rbac.orm.safe_move")
 @patch("wazuh.rbac.orm.os.remove")
-@patch("wazuh.rbac.orm.chown")
-@patch("wazuh.rbac.orm.os.chmod")
-def test_check_database_integrity_modified_default_policy(chmod_mock, chown_mock, remove_mock, safe_move_mock, fresh_in_memory_db):
+@patch("wazuh.rbac.orm._set_permissions_and_ownership")
+def test_check_database_integrity_modified_default_policy(permissions_mock, remove_mock, safe_move_mock, fresh_in_memory_db):
     """Checks that the migration process runs correctly when a default policy has been modified."""
     db_mock = MagicMock()
+    # The migration restores the default users, which is what the seeding check requires
+    db_mock.get_data.return_value = [MagicMock(id=WAZUH_USER_ID), MagicMock(id=WAZUH_WUI_USER_ID)]
 
     # Handles the case where a default policy is not present in the YAML files
     def insert_defaults_modified(_target_db):
