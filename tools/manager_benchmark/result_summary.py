@@ -257,6 +257,31 @@ def aggregate_samples(path: str | None) -> dict[str, Any]:
             "final": {n: s.last for n, s in numeric.items()},
             "peak": {n: s.max for n, s in numeric.items()},
         }
+
+    # Reading nothing out of a file that exists is not the same as a run with no metrics,
+    # and summary.json cannot tell the two apart: both leave `server_metrics` empty. The
+    # likeliest way to get here is regenerating a summary over an archived results
+    # directory recorded before this format, which drops a section its own summary.json
+    # still has -- exactly the silent drift between tool and data this format exists to
+    # end. Say which of the two happened rather than writing {} without a word.
+    if not out:
+        if run_id is None:
+            logger.warning(
+                "no daemon statistics in %s: it carries no run marker, so it is not a "
+                "samples file this build can read. A results directory recorded before "
+                "the samples format is not readable here (see the README, \"A run "
+                "recorded before the samples file existed\"); re-run the scenario.", path)
+        else:
+            logger.warning(
+                "no daemon statistics in %s: run %s produced no readable scrape for any "
+                "of %s.", path, run_id, ", ".join(sorted(bench_samples.SOURCES)))
+    elif run_id is None:
+        # Readings with no marker to scope them: every writer emits one, so this is a
+        # hand-made or truncated file. It still aggregates, but if it holds two runs
+        # their counters are summed -- the very thing the marker prevents.
+        logger.warning(
+            "%s has readings but no run marker; they cannot be scoped to one run, so a "
+            "file holding several runs reports their combined delta.", path)
     return out
 
 

@@ -461,3 +461,61 @@ def test_the_projection_and_the_summary_agree_across_a_gap(tmp_path):
     column = bs.project(path, "inventory-sync")["docs_indexed"]
     delta = rs.aggregate_samples(path)["inventory-sync"]["delta"]["sync.docs.indexed"]
     assert column.iloc[-1] - column.iloc[0] == delta == 1
+
+
+# ---------------------------------------------------------------------------
+# A file that yields nothing
+#
+# `server_metrics: {}` means either "this run measured nothing" or "this file is not one
+# I can read", and summary.json cannot tell the two apart. Regenerating a summary over an
+# archived results directory hits the second case and drops a section the directory's own
+# summary.json still has -- the silent drift between tool and data that this format exists
+# to end. Each case has to say which it was.
+# ---------------------------------------------------------------------------
+def test_a_file_with_no_run_marker_says_it_is_not_a_samples_file(tmp_path, caplog):
+    """A legacy results directory: the old long-format CSV passed as --samples."""
+    path = str(tmp_path / "server_metrics.csv")
+    with open(path, "w") as fh:
+        fh.write("timestamp,elapsed_s,metric,value\nT1,1,sync.docs.indexed,5\n")
+
+    with caplog.at_level("WARNING"):
+        assert rs.aggregate_samples(path) == {}
+    assert "no daemon statistics" in caplog.text
+    assert "no run marker" in caplog.text
+    # The README says the fix is to re-run; the warning has to carry that, or the reader
+    # is left with an empty section and no idea it is recoverable.
+    assert "re-run the scenario" in caplog.text
+
+
+def test_a_run_that_scraped_nothing_is_told_apart_from_an_unreadable_file(tmp_path, caplog):
+    """A real run whose collectors never got a scrape: the marker is there, readings are not."""
+    path = str(tmp_path / "empty-run.ndjson")
+    writer = bs.NdjsonWriter(path)
+    run_id = writer.run_id
+    writer.close()
+
+    with caplog.at_level("WARNING"):
+        assert rs.aggregate_samples(path) == {}
+    assert run_id in caplog.text, "the warning must name the run that produced nothing"
+    assert "no run marker" not in caplog.text
+
+
+def test_readings_without_a_marker_warn_that_they_cannot_be_scoped(tmp_path, caplog):
+    """A truncated or hand-made file still aggregates, but nothing scopes it to one run."""
+    path = str(tmp_path / "markerless.ndjson")
+    with open(path, "w") as fh:
+        for elapsed, value in ((1.0, 10), (2.0, 20)):
+            fh.write(json.dumps(bs.sample_line("inventory-sync", "T", elapsed,
+                                               {"sync.docs.indexed": value})) + "\n")
+
+    with caplog.at_level("WARNING"):
+        out = rs.aggregate_samples(path)
+    assert out["inventory-sync"]["samples"] == 2, "the readings are still aggregated"
+    assert "no run marker" in caplog.text
+    assert "combined delta" in caplog.text
+
+
+def test_a_readable_run_warns_about_nothing(samples_file, caplog):
+    with caplog.at_level("WARNING"):
+        assert rs.aggregate_samples(samples_file)
+    assert caplog.text == "", "a normal run must stay quiet"
