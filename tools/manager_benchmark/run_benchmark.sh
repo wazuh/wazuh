@@ -43,6 +43,10 @@ set -euo pipefail
 # <manager>` and saved to FILE. Not needed after prepare_manager.sh: its .enrollment_token
 # next to this script is picked up automatically. WAZUH_ENROLLMENT_TOKEN also works.
 #
+# --export-csv: after collection, export the latest run's daemon metrics to
+# results_<label>/stats-api-*.csv using bench_samples.py (requires pandas).
+# Disabled by default. Export failures are reported without changing the sender's exit code.
+#
 # --keep-agents (agent mode only): skip the pre-run cleanup of bench-* agents, so a
 # previous run's agents AND their indexed documents survive -- e.g. to inspect a
 # real_* scenario's data in the indexer's dashboard afterward. Mutually exclusive
@@ -75,12 +79,14 @@ ENROLL_SETTLE=""
 DO_METRICS=true
 DO_MONITOR=true
 DO_CHARTS=true
+DO_EXPORT_CSV=false
 CLEANUP_AFTER=false
 KEEP_AGENTS=false
 METRICS_INTERVAL=1
 
 MONITOR_PY="$SCRIPT_DIR/../../src/engine/tools/devContainer/scripts/monitor.py"
 GRAPHICS_PY="$SCRIPT_DIR/../../src/engine/tools/devContainer/scripts/monitor_graphics_generator.py"
+BENCH_SAMPLES_PY="$SCRIPT_DIR/../../src/engine/tools/devContainer/scripts/bench_samples.py"
 
 PYTHON="${PYTHON:-python3}"
 if [[ -n "${VIRTUAL_ENV:-}" && -x "$VIRTUAL_ENV/bin/python3" ]]; then
@@ -128,6 +134,7 @@ while [[ $# -gt 0 ]]; do
         --no-metrics)   DO_METRICS=false; shift ;;
         --no-monitor)   DO_MONITOR=false; shift ;;
         --no-charts)    DO_CHARTS=false; shift ;;
+        --export-csv)   DO_EXPORT_CSV=true; shift ;;
         --cleanup-after) CLEANUP_AFTER=true; shift ;;
         --keep-agents)  KEEP_AGENTS=true; shift ;;
         -h|--help)      usage; exit 0 ;;
@@ -362,7 +369,24 @@ SUMMARY_ARGS=( --bench "$BENCH_CSV" --out "$SUMMARY_JSON" )
 [[ -f "$RESULTS_DIR/params.json" ]] && SUMMARY_ARGS+=( --params "$RESULTS_DIR/params.json" )
 "$PYTHON" "$SCRIPT_DIR/result_summary.py" "${SUMMARY_ARGS[@]}" || echo "  (summary generation had a warning)"
 
-# 6. Optional charts (best-effort; needs matplotlib).
+# 6. Optional CSV export from the completed samples file (best-effort; needs pandas).
+CSV_EXPORTED=false
+if $DO_EXPORT_CSV; then
+    echo ""
+    echo "Exporting daemon metrics to CSV..."
+    if [[ ! -f "$SAMPLES_NDJSON" ]]; then
+        echo "  (CSV export skipped — no samples file for this run)"
+    elif ! "$PYTHON" -c 'import pandas' 2>/dev/null; then
+        echo "  WARNING: CSV export skipped — pandas is not installed." >&2
+    elif "$PYTHON" "$BENCH_SAMPLES_PY" "$RESULTS_DIR"; then
+        CSV_EXPORTED=true
+    else
+        echo "  WARNING: CSV export failed (see the error above)." >&2
+        echo "  The samples file is available for a later export: $SAMPLES_NDJSON" >&2
+    fi
+fi
+
+# 7. Optional charts (best-effort; needs matplotlib).
 if $DO_CHARTS && [[ -f "$GRAPHICS_PY" && -d "$MONITOR_DIR" ]]; then
     echo ""
     echo "Generating charts..."
@@ -377,7 +401,7 @@ if $DO_CHARTS && [[ -f "$GRAPHICS_PY" && -d "$MONITOR_DIR" ]]; then
     fi
 fi
 
-# 7. Optional post-run cleanup.
+# 8. Optional post-run cleanup.
 if $CLEANUP_AFTER && [[ "$EFFECTIVE_MODE" == "agent" ]]; then
     echo ""
     echo "Deleting bench-* agents (--cleanup-after)..."
@@ -395,7 +419,11 @@ echo "  Done — artifacts in $RESULTS_DIR/"
 echo "    bench.csv, sender_summary.json, summary.json"
 [[ -f "$SAMPLES_NDJSON" ]] && echo "    samples/metrics.ndjson  (every daemon's statistics, lossless)"
 [[ -d "$MONITOR_DIR" ]] && echo "    monitor/  (process, disk and log samples)"
-echo "    (CSV of any daemon's metrics: python3 \$WAZUH_DEV_SCRIPTS/bench_samples.py $RESULTS_DIR)"
+if $CSV_EXPORTED; then
+    echo "    stats-api-*.csv  (daemon metrics exported from the latest run)"
+else
+    echo "    (CSV of any daemon's metrics: python3 \$WAZUH_DEV_SCRIPTS/bench_samples.py $RESULTS_DIR)"
+fi
 # Sender exit contract: 0 ok, 1 measurement invalid, 2 setup failure,
 # 3 measurement VALID but the scenario's expected block failed.
 case "$SENDER_RC" in

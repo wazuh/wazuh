@@ -102,7 +102,15 @@ jq -r 'select(.src=="remoted-module" and .ok) | .m | keys[]' \
     results_<label>/samples/metrics.ndjson | sort -u
 ```
 
-**There is no per-daemon CSV any more.** The collectors used to derive one per scrape, next to the samples file; nothing read it (the charts and the summary both prefer the samples file) and it held strictly less — 57 columns against 126 for inventory sync, because a fixed header can only carry what somebody aliased. Ask for one when you want it:
+**Per-daemon CSV export is optional.** The collectors used to derive one per scrape, next to the samples file; nothing read it (the charts and the summary both prefer the samples file) and it held strictly less — 57 columns against 126 for inventory sync, because a fixed header can only carry what somebody aliased. Add `--export-csv` to export every daemon with samples after collection ends:
+
+```bash
+./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode uds --export-csv
+```
+
+Exports go to `results_<label>/stats-api-*.csv` and include only the latest run when a label is reused. This option requires `pandas` and works with `--no-charts`. If samples are unavailable, export is skipped; missing dependencies or export failures are reported without changing the sender's exit code. CSV export is disabled by default.
+
+You can also export an existing run separately:
 
 ```bash
 python3 $WAZUH_DEV_SCRIPTS/bench_samples.py results_<label>              # every daemon
