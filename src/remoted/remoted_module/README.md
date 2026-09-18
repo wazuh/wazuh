@@ -361,6 +361,25 @@ src/endpoints/
   the guard. `CaCertificateSource::descriptor()` is the read-mostly view of that generation for
   callers on the hot path: it revalidates through the same mutex at most once every
   `kDescriptorRefresh` (1 s), and answers `nullopt` while there is no servable bundle at all.
+  What the file cannot say about itself is whether it was EVER published, so a private record —
+  `CaPublicationRecord` (`http_server/caPublicationRecord.{hpp,cpp}`) — remembers the bundle's
+  bytes and its publication in a directory of its own, `var/run/remoted-ca-bundle/record.json`
+  (mode 0750/0640, created by remoted at start via `ensureRecordDirectory()`; an empty path
+  disables it), read once before the source exists and written by
+  `CaCertificateSource::flushPendingRecord()` **outside** the hot-path mutex, one writer at a time,
+  retried on every call while an entry is pending even if the bundle's hash never changes again.
+  Comparing a changed hash against that record derives a `CaRecordEvent`
+  (`http_server/caRecordEvents.hpp`): `first_time_unpublished` (INFO, a fresh node) ·
+  `published_changed` (INFO, "N (was M)") · `changed_outside_tool` (WARN, the block was lost or the
+  bytes changed by hand) · `guard_failed` (WARN, naming the guard and what it measured) ·
+  `record_unwritable` (WARN, once per failure streak, independent of and never in place of the
+  bundle's own event) — posted to a bounded `CaRecordEventMailbox` the source only fills. Neither
+  `CaPublicationRecord` nor `caRecordEvents.hpp` logs anything (`describeRecordEvent()` is pure, so
+  it links into the test binary without pulling the module's logger along); the three callers that
+  DO own one — the transport at start, its 24 h monitor tick, and this handler right before it
+  answers — drain the mailbox and persist what is pending, so every event is said exactly once, by
+  whichever of the three notices it first, and a guard that fails between two ticks is reported by
+  the very next request instead of a day later.
 
 - **Endpoint handler (async):**
   `using AuthenticatedHandler = std::function<void(std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder>)>;`
@@ -2303,7 +2322,27 @@ the previous snapshot and records the cause, while an emptied but readable file 
 racing 20 atomic file rotations never publish a torn mix of two CAs' bytes and subjects, and a fake
 reader counting its in-flight calls proves the read itself runs under the mutex; and `fileRead`'s
 `readFileBounded()` gets its own `Ok`/`TooLarge`/`CannotOpen`/`ReadError` cases with the matching
-errno, including a FIFO refused as not a regular file).
+errno, including a FIFO refused as not a regular file). That file also gained a
+`CaCertificateSourceRecord` suite wiring the publication record described above into the source end
+to end: a fresh unpublished bundle, a republish lower than what was recorded (never `max(record,
+block)`), a bundle that stops being servable (no event, the record untouched), an initial record
+that could not be read (silent on that first pass only), three independent nodes starting from zero
+each with their own record, and a `store()` stuck on a slow injected writer never blocking a
+concurrent `descriptor()`/`snapshot()` call on another thread. Two new files pin the record itself:
+`caPublicationRecord_test.cpp` (round-trips through `load()`'s five statuses, the atomic-replace
+write under a restrictive and a permissive umask, a write that fails mid-way leaving the previous
+record intact, a directory `fsync` refused with the rename already landed, an orphaned temporary
+left by another pid never blocking the next write, and two `store()` calls racing on the same
+object never sharing a temporary name) and `caRecordEvents_test.cpp` (`describeRecordEvent()`'s
+wording for each of the six `RecordEvent` kinds — INFO for a first publication and for a changed
+generation, WARN for a lost stamp, a refused guard naming it and the value it measured, and a
+record that could not be persisted naming its OWN path, never the bundle's — plus the bounded
+mailbox: events drained once, in order, and the oldest dropped past 32 with the drop counted).
+`cacertsEndpoint_test.cpp` and `httpServer_test.cpp` each gained coverage for
+`deliverCaRecordEvents()`/`onCaRecordReady()`: the collaborator runs before all three of
+`GET /cacerts`'s answers, an event drained by the handler is never seen again by a simulated tick
+(and vice versa), and a `stop()`/`start()` cycle hands out a genuinely new, empty mailbox without
+either replaying or silently dropping whatever the previous one still held undrained.
 
 Body decoding: `bodyDecoder_test.cpp` (only an exact, case-insensitive `zstd` decodes — `gzip`,
 `"zstd, gzip"` and prefixes are refused — the decoded bytes stay charged to the in-flight budget

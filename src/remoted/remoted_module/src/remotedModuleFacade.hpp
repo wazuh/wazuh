@@ -84,6 +84,17 @@ inline const LogFn& moduleLogFn()
     return instance;
 }
 
+/// Tag the CA publication events drained by the GET /cacerts handler come out under: the same one
+/// the endpoint's own lines use (endpoints/cacertsEndpoint.cpp), because to an operator reading the
+/// log they are that route talking -- the transport logs the same events under its own tag when it
+/// is the one that drained them (at start and on the daily tick). Function-local static for the
+/// same visibility reason as moduleLogFn().
+inline const LogFn& cacertsRecordLogFn()
+{
+    static const LogFn instance {LogFn {"wazuh-manager-remoted:endpoints"}.compose("cacerts")};
+    return instance;
+}
+
 // Heartbeat period for the skeleton worker loop.
 constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 
@@ -348,7 +359,19 @@ public:
 private:
     void startHttpServer()
     {
-        const auto config = remoted::http::buildHttpServerConfig(m_config);
+        // Not const: the CA publication-record collaborator below is installed on it (a
+        // std::function field of the config, like certificateStatusInterval is a plain value --
+        // internal wiring, not a configuration option) before the transport is started.
+        auto config = remoted::http::buildHttpServerConfig(m_config);
+
+        // Where the transport will publish the CA source and its publication-event mailbox
+        // (HttpServerConfig::onCaRecordReady, fired inside start() before anything is accepted).
+        // Handles rather than the objects themselves because the route below is registered BEFORE
+        // the server is started, so the handler captures the box and finds whatever start() put in
+        // it -- including on a later restart, which replaces both with a fresh pair (C21b). Owned
+        // by the facade, exactly like m_cacertsMetrics: no weak_ptr to the server is involved.
+        auto caSourceHandle = std::make_shared<std::shared_ptr<remoted::http::CaCertificateSource>>();
+        auto caMailboxHandle = std::make_shared<std::shared_ptr<remoted::http::CaRecordEventMailbox>>();
 
         // The auth-rejection counters live behind errorResponseFor()'s process-wide funnel, so
         // they are installed rather than threaded through the gateway/endpoints. Under the
@@ -445,6 +468,38 @@ private:
                 remoted::endpoints::ratelimit::buildCacertsSettings(m_config));
         }
 
+        // Whatever the read a /cacerts request does notices about the bundle's PUBLICATION: said
+        // once (drain REMOVES the events, so the daily tick will not repeat them) and persisted
+        // outside every lock, before the answer goes out (issue #39319, C21b, C22). A plain
+        // std::function, owned by the handler: the source and the mailbox arrive through the
+        // handles above, so nothing here holds the server alive.
+        auto deliverCaRecordEvents = [caSourceHandle, caMailboxHandle]
+        {
+            if (const auto& mailbox = *caMailboxHandle)
+            {
+                for (const auto& event : mailbox->drain())
+                {
+                    const auto line = remoted::http::describeRecordEvent(event);
+                    if (!line.has_value())
+                    {
+                        continue;
+                    }
+                    if (line->first == remoted::http::RecordEventLevel::warn)
+                    {
+                        LOGFN_WARN(cacertsRecordLogFn(), "%s", line->second.c_str());
+                    }
+                    else
+                    {
+                        LOGFN_INFO(cacertsRecordLogFn(), "%s", line->second.c_str());
+                    }
+                }
+            }
+            if (const auto& source = *caSourceHandle)
+            {
+                source->flushPendingRecord();
+            }
+        };
+
         m_httpServer->addRoute(
             remoted::http::Method::Get,
             "/cacerts",
@@ -459,7 +514,8 @@ private:
                                                         return {};
                                                     },
                                                     m_cacertsMetrics,
-                                                    &m_cacertsHttpMetrics),
+                                                    &m_cacertsHttpMetrics,
+                                                    std::move(deliverCaRecordEvents)),
                                                 m_cacertsRateLimiter,
                                                 &remoted::endpoints::cacerts::rateLimitedResponse,
                                                 m_cacertsMetrics.rateLimited,
@@ -775,6 +831,17 @@ private:
                                           "authd_connect_timeout'/'authd_response_timeout",
                                           resolvedAuthdConnectTimeoutMs + resolvedAuthdResponseTimeoutMs,
                                           static_cast<long long>(config.requestTimeoutSec) * 1000);
+
+        // Installed last, just before the transport builds the source: start() fires it with the
+        // CA source and the mailbox it created, and the /cacerts handler registered above reads
+        // both out of these handles from then on.
+        config.onCaRecordReady =
+            [caSourceHandle, caMailboxHandle](std::shared_ptr<remoted::http::CaCertificateSource> source,
+                                              std::shared_ptr<remoted::http::CaRecordEventMailbox> mailbox)
+        {
+            *caSourceHandle = std::move(source);
+            *caMailboxHandle = std::move(mailbox);
+        };
 
         m_httpServer->start(config);
 

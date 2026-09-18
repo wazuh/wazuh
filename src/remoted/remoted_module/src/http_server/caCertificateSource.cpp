@@ -51,13 +51,36 @@ namespace remoted::http
             }
             return X509Ptr {const_cast<X509*>(leaf)};
         }
+
+        /// Whether two record entries say the same thing. What decides if there is anything left to
+        /// write, and whether the entry a write landed is still the one that was pending.
+        bool sameEntry(const Entry& left, const Entry& right)
+        {
+            return left.bundlePath == right.bundlePath && left.fileSha256 == right.fileSha256 &&
+                   left.publication == right.publication;
+        }
     } // namespace
 
-    CaCertificateSource::CaCertificateSource(std::string path, const X509* leaf, FileReader reader, Clock clock)
+    CaCertificateSource::CaCertificateSource(std::string path,
+                                             const X509* leaf,
+                                             FileReader reader,
+                                             Clock clock,
+                                             LoadOutcome initialRecord,
+                                             std::shared_ptr<CaPublicationRecord> record,
+                                             std::shared_ptr<CaRecordEventMailbox> mailbox)
         : m_path {std::move(path)}
         , m_leaf {retain(leaf)}
         , m_reader {reader ? std::move(reader) : FileReader {readFileBounded}}
         , m_clock {clock ? std::move(clock) : Clock {std::chrono::steady_clock::now}}
+        , m_record {std::move(record)}
+        , m_mailbox {std::move(mailbox)}
+        // Only a record that was READ seeds what this source believes. Everything else starts
+        // empty, and the two states that are not answers (unreadable, malformed) also start the
+        // source in the mode where its first read stays silent about a history it cannot know.
+        , m_recordEffective {initialRecord.status == LoadOutcome::Status::ok ? std::move(initialRecord.entry)
+                                                                             : Entry {}}
+        , m_recordEverLoaded {initialRecord.status != LoadOutcome::Status::unreadable &&
+                              initialRecord.status != LoadOutcome::Status::malformed}
     {
     }
 
@@ -150,6 +173,10 @@ namespace remoted::http
         // Set after the rebuild and from the same hash the cache is keyed on, so the file's identity
         // travels with the snapshot even when buildLocked() refused everything else in it.
         m_snapshot.fileSha256 = hash;
+        // Only the reads that CHANGED the file reach the record: a cache hit above returned long
+        // ago, which is what keeps an event from being re-derived (and re-posted) for bytes that
+        // were already accounted for. O(1) and I/O-free, so it costs the hot path nothing (C22).
+        applyRecord(hash, m_snapshot);
         m_hash = std::move(hash);
         ++m_parses;
 
@@ -212,6 +239,204 @@ namespace remoted::http
     {
         std::lock_guard<std::mutex> lock {m_mutex};
         return m_parses;
+    }
+
+    void CaCertificateSource::applyRecord(const std::string& hash, const CaCertificateSnapshot& built)
+    {
+        if (!m_record && !m_mailbox)
+        {
+            // Nothing injected: this source behaves exactly as it did before the record existed.
+            return;
+        }
+
+        if (built.certificates == 0 || built.pem.empty())
+        {
+            // Not servable (an emptied file, a PEM we could not parse, a serialisation failure):
+            // GET /cacerts already answers 404 and warns about it, and a file nobody can be served
+            // from is not evidence that a publication changed. The record keeps what it held and no
+            // event is posted (C23, objection 4).
+            return;
+        }
+
+        // Whether the record's state at construction was an answer. The first read through here is
+        // the only one it can affect, so the flag is consumed immediately.
+        const bool trusted = m_recordEverLoaded;
+        m_recordEverLoaded = true;
+
+        const bool hadAntecedent = !m_recordEffective.fileSha256.empty();
+
+        CaRecordEvent event;
+        event.bundlePath = m_path;
+        event.recordPath = m_record ? m_record->path() : std::string {};
+        event.previousPublication = hadAntecedent ? m_recordEffective.publication : 0;
+
+        std::int64_t publication {0};
+
+        switch (built.vouchFailure)
+        {
+            case ca_bundle::GuardFailure::none:
+                // Vouched: the publication is the block's, whether it is higher or LOWER than the
+                // recorded one -- the tool is the only writer and what it last wrote is the truth,
+                // so this is never max(record, block) (objection 2).
+                publication = built.publication;
+                if (!hadAntecedent || m_recordEffective.publication != publication)
+                {
+                    event.kind = RecordEvent::published_changed;
+                }
+                break;
+
+            case ca_bundle::GuardFailure::no_block:
+                // An ordinary CA file. Which of the two things it is -- never stamped, or stamped
+                // and then rewritten -- is exactly what the record is for.
+                if (!hadAntecedent)
+                {
+                    event.kind = trusted ? RecordEvent::first_time_unpublished : RecordEvent::none;
+                }
+                else if (m_recordEffective.fileSha256 == hash)
+                {
+                    // These are the bytes the record already describes: a restart, not a change
+                    // (CA-14). Nothing to say and nothing to write.
+                    return;
+                }
+                else
+                {
+                    event.kind = trusted ? RecordEvent::changed_outside_tool : RecordEvent::none;
+                }
+                break;
+
+            case ca_bundle::GuardFailure::hash_mismatch:
+            case ca_bundle::GuardFailure::no_ca_signs_leaf:
+            case ca_bundle::GuardFailure::too_many_certificates:
+            case ca_bundle::GuardFailure::too_many_bytes:
+                // A block is there and a guard refused it: one event carrying WHICH guard and the
+                // value it measured (C25), and the bundle counts as unpublished from now on.
+                event.kind = RecordEvent::guard_failed;
+                event.guard = built.vouchFailure;
+                event.observed =
+                    built.vouchFailure == ca_bundle::GuardFailure::too_many_certificates
+                        ? built.certificates
+                        : (built.vouchFailure == ca_bundle::GuardFailure::too_many_bytes ? built.serializedBytes : 0U);
+                break;
+
+            case ca_bundle::GuardFailure::no_certificates:
+                // Unreachable: a snapshot with nothing servable returned above. Left explicit so a
+                // future guard cannot fall through this switch unnoticed.
+                return;
+        }
+
+        event.publication = publication;
+
+        const Entry updated {m_path, hash, publication};
+        if (!hadAntecedent || !sameEntry(updated, m_recordEffective))
+        {
+            // The effective entry moves whether or not the last write succeeded (objections 5, 7):
+            // what this source remembers is the state of the FILE, never the state of the disk it
+            // is saved on -- otherwise a failing write would make the same change be announced
+            // again at the next read.
+            m_recordEffective = updated;
+            m_pendingRecord = updated;
+        }
+
+        if (m_mailbox && event.kind != RecordEvent::none)
+        {
+            // O(1), under this source's mutex, into the mailbox's own: the only lock ordering there
+            // is (C21b). Nothing here can block on a disk or a logger.
+            m_mailbox->post(std::move(event));
+        }
+    }
+
+    std::vector<CaRecordEvent> CaCertificateSource::drainRecordEvents()
+    {
+        if (!m_mailbox)
+        {
+            return {};
+        }
+
+        // Deliberately does NOT take m_mutex: the mailbox is independent of the snapshot, so a
+        // caller can drain while another is revalidating.
+        return m_mailbox->drain();
+    }
+
+    void CaCertificateSource::flushPendingRecord()
+    {
+        if (!m_record)
+        {
+            return;
+        }
+
+        // One writer at a time, and no queue behind it: a second caller (a request while the
+        // monitor tick is writing) leaves rather than waits, and its entry is written by whoever
+        // comes next -- the pending entry is not consumed until a write succeeds (objection 7).
+        std::unique_lock<std::mutex> writer {m_writerMutex, std::try_to_lock};
+        if (!writer.owns_lock())
+        {
+            return;
+        }
+
+        std::optional<Entry> pending;
+        {
+            std::lock_guard<std::mutex> lock {m_mutex};
+            pending = m_pendingRecord;
+        }
+
+        if (!pending)
+        {
+            return;
+        }
+
+        // The I/O happens here: no m_mutex held, so every reader on the hot path is untouched by
+        // however long this takes (RNF-2, C22).
+        const bool stored = m_record->store(*pending);
+        const int error = m_record->lastError();
+
+        std::lock_guard<std::mutex> lock {m_mutex};
+
+        if (stored)
+        {
+            if (m_pendingRecord && sameEntry(*m_pendingRecord, *pending))
+            {
+                // Still the same entry: it is on disk now. A newer one posted while we wrote stays
+                // pending for the next call.
+                m_pendingRecord.reset();
+            }
+            m_recordFailurePending = false;
+
+            if (error != 0 && m_mailbox)
+            {
+                // Written, and renamed into place, but the directory could not be flushed: the
+                // record is right, its survival across a power loss is not (objection 15).
+                CaRecordEvent event;
+                event.kind = RecordEvent::record_unwritable;
+                event.bundlePath = m_path;
+                event.recordPath = m_record->path();
+                event.publication = pending->publication;
+                event.error = error;
+                event.stored = true;
+                m_mailbox->post(std::move(event));
+            }
+            return;
+        }
+
+        if (m_recordFailurePending)
+        {
+            // Same streak: one line per streak (C19), and the entry stays pending so the next call
+            // tries again even if the bundle never changes again (C19b).
+            return;
+        }
+
+        m_recordFailurePending = true;
+
+        if (m_mailbox)
+        {
+            CaRecordEvent event;
+            event.kind = RecordEvent::record_unwritable;
+            event.bundlePath = m_path;
+            event.recordPath = m_record->path();
+            event.publication = pending->publication;
+            event.error = error;
+            event.stored = false;
+            m_mailbox->post(std::move(event));
+        }
     }
 
     TlsCertificateSnapshot statusFrom(const X509* leaf, const CaCertificateSnapshot& ca)

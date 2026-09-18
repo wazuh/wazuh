@@ -49,8 +49,21 @@
  * is handed out exactly as a vouched one. descriptor() is the view for the callers on the hot path,
  * one per control notify: it revalidates under the same mutex at most once every kDescriptorRefresh,
  * so a notify storm costs one read per second while a rotation is still seen within the second.
+ *
+ * What the file cannot say about itself is whether it was EVER published: an ordinary CA file and a
+ * published bundle somebody rewrote by hand look identical. That is what the optional publication
+ * record adds (CaPublicationRecord), and the division of labour is deliberate (C22): the record is
+ * READ once, before this source is handed to anyone, and arrives through the constructor; the
+ * comparison that turns a changed file into an event is O(1) and runs under the mutex with no I/O
+ * at all; the event goes to a mailbox the source only fills; and the WRITE happens in
+ * flushPendingRecord(), outside the mutex, called by whoever drained the mailbox. So no caller on
+ * the hot path ever waits for a disk, an event is logged exactly once by exactly one of the three
+ * callers that own a logger, and a record that cannot be written costs one warning and a retry --
+ * never a publication (C19, C19b).
  */
 
+#include "caPublicationRecord.hpp"
+#include "caRecordEvents.hpp"
 #include "fileRead.hpp"
 #include "tlsCertificateStatus.hpp"
 
@@ -60,6 +73,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -143,11 +157,25 @@ namespace remoted::http
          * @param clock How descriptor() tells the time when it decides whether its answer is still
          *              fresh. Injectable so the refresh window is testable without sleeping; an
          *              empty function falls back to the default rather than being called.
+         * @param initialRecord What the publication record said when it was read, ONCE, before this
+         *              source existed (C22): reading it here would put file I/O under the hot-path
+         *              mutex. Only `ok` seeds the effective entry; `unreadable`/`malformed` make the
+         *              first read of the bundle stay silent about "never published" and "changed
+         *              outside the tool", because a record we could not read is not evidence of
+         *              either (C23).
+         * @param record Where the effective entry is persisted, outside the mutex, by
+         *              flushPendingRecord(). Null keeps this source exactly as it was before the
+         *              record existed: it remembers nothing and emits nothing.
+         * @param mailbox Where the events go until a caller with a logger drains them. Null also
+         *              means no events (the two are injected together in production).
          */
         CaCertificateSource(std::string path,
                             const X509* leaf,
                             FileReader reader = readFileBounded,
-                            Clock clock = std::chrono::steady_clock::now);
+                            Clock clock = std::chrono::steady_clock::now,
+                            LoadOutcome initialRecord = {},
+                            std::shared_ptr<CaPublicationRecord> record = nullptr,
+                            std::shared_ptr<CaRecordEventMailbox> mailbox = nullptr);
 
         /**
          * @brief Current state of the file: cached while its content hash is unchanged.
@@ -172,8 +200,46 @@ namespace remoted::http
         /// the cache holds when the file did not change, and gives way when it did.
         std::uint64_t parses() const;
 
+        /**
+         * @brief Takes the publication events noticed since the last call, in order.
+         *
+         * For the three callers that own a logger: the transport at start and on the daily tick,
+         * and the `GET /cacerts` handler before it answers. Each event comes out of exactly one of
+         * them, because draining REMOVES it (C21b) -- so a guard that starts failing between two
+         * ticks is said in the next request instead of a day later, and nothing is said twice.
+         * Takes no lock of this source: the mailbox has its own.
+         */
+        std::vector<CaRecordEvent> drainRecordEvents();
+
+        /**
+         * @brief Writes the effective entry to the record, if it is not there yet.
+         *
+         * Runs OUTSIDE the source's mutex, under a writer mutex of its own taken with try_lock: a
+         * second caller arriving while one is writing returns at once rather than queueing, and a
+         * reader on the hot path never waits for the disk (RNF-2, C22). Retries as long as
+         * something is pending -- whether or not the file changed again -- so a permission repaired
+         * hours after the failure is persisted at the next revalidation, not at the next rotation
+         * (C19b). A failure is announced once per streak, and never in place of the bundle's own
+         * event.
+         */
+        void flushPendingRecord();
+
     private:
         CaCertificateSnapshot buildLocked(std::string_view pem) const;
+
+        /**
+         * @brief Derives the record event for @p built and updates what this source remembers.
+         *
+         * Called from snapshotLocked() with m_mutex held, only when the file's hash changed, and it
+         * is O(1) on purpose: a comparison, two assignments and a post(). No I/O whatsoever (C22)
+         * -- the write it makes necessary is left pending for flushPendingRecord().
+         *
+         * Follows the table of 02-diseno.md §2.3 row by row, against the EFFECTIVE entry in memory
+         * (never against the disk): the effective entry is updated whether or not the previous
+         * write succeeded, so a failing disk can never make the same bundle change be announced
+         * twice.
+         */
+        void applyRecord(const std::string& hash, const CaCertificateSnapshot& built);
 
         /// snapshot()'s whole body with m_mutex already held: the read, the cache check and the
         /// rebuild. descriptor() revalidates through it, so a revalidation takes the lock once.
@@ -193,6 +259,27 @@ namespace remoted::http
         /// False until descriptor() has revalidated once, so the first call always reads whatever
         /// time the injected clock starts at -- an epoch-zero start is not "just revalidated".
         bool m_hasDescriptor {false};
+
+        /// Where the effective entry is persisted; null when no record was injected.
+        const std::shared_ptr<CaPublicationRecord> m_record;
+        /// Where the events wait for a logger; null when none was injected.
+        const std::shared_ptr<CaRecordEventMailbox> m_mailbox;
+        /// What this source believes the record says, which is the only thing events are derived
+        /// from. Guarded by m_mutex. An empty fileSha256 means "no antecedent at all".
+        Entry m_recordEffective;
+        /// Whether the record's state at construction was an ANSWER (`ok` or `absent`) rather than
+        /// a failure to read it. False suppresses exactly two events on the first read --
+        /// `first_time_unpublished` and `changed_outside_tool` -- because neither can be concluded
+        /// from a record we could not read (C23). Set once the first read has been through here.
+        bool m_recordEverLoaded {false};
+        /// The entry flushPendingRecord() still has to write, if any. Guarded by m_mutex.
+        std::optional<Entry> m_pendingRecord;
+        /// True while a streak of failed writes is in progress, so the warning is emitted once per
+        /// streak and the retry keeps happening. Guarded by m_mutex.
+        bool m_recordFailurePending {false};
+        /// One writer at a time, and never a queue: flushPendingRecord() takes this with try_lock.
+        /// Separate from m_mutex on purpose -- holding this one blocks no reader.
+        std::mutex m_writerMutex;
     };
 
     /**
