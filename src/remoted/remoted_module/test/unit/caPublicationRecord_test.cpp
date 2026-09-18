@@ -142,9 +142,7 @@ TEST(CaPublicationRecord, StoreThenLoadRoundTripsWithMode0640)
     EXPECT_EQ(outcome.entry.fileSha256, "deadbeefcafe");
     EXPECT_EQ(outcome.entry.publication, 1789000000);
 
-    struct stat info
-    {
-    };
+    struct stat info {};
     ASSERT_EQ(::stat(recordPath.c_str(), &info), 0);
     EXPECT_EQ(info.st_mode & 0777, 0640U);
 
@@ -274,9 +272,7 @@ TEST(CaPublicationRecord, StoreEnforcesModeUnderRestrictiveAndPermissiveUmask)
             ASSERT_TRUE(record.store(entry));
         }
 
-        struct stat info
-        {
-        };
+        struct stat info {};
         ASSERT_EQ(::stat(recordPath.c_str(), &info), 0);
         // fchmod(0640) is explicit in the code, never the umask-adjusted mode open(2) would have
         // left on the temporary (objection 14): both a hostile and a wide-open umask land the same.
@@ -390,14 +386,8 @@ TEST(CaPublicationRecord, ConcurrentStoresUseDistinctTemporaries)
 
     std::atomic<bool> okA {false};
     std::atomic<bool> okB {false};
-    std::thread a {[&]
-                   {
-                       okA = record.store(Entry {bundlePath, "hash-a", 1});
-                   }};
-    std::thread b {[&]
-                   {
-                       okB = record.store(Entry {bundlePath, "hash-b", 2});
-                   }};
+    std::thread a {[&] { okA = record.store(Entry {bundlePath, "hash-a", 1}); }};
+    std::thread b {[&] { okB = record.store(Entry {bundlePath, "hash-b", 2}); }};
     a.join();
     b.join();
 

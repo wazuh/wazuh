@@ -31,6 +31,13 @@
  * it; nobody else will see it again. A guard that starts failing halfway through a day is
  * therefore visible in the very next request instead of at the next tick.
  *
+ * Draining and logging as two steps was not enough (C26, objection 4): with several consumers --
+ * the daily tick, a `GET /cacerts` request and the notify provider all drain this mailbox -- one of
+ * them can take generation N, be descheduled, and log it after another logged N+1, so the LAST line
+ * an operator reads describes an earlier publication. deliver() is therefore the one production
+ * entry point: it holds a mutex of its own (never the source's) across the drain and the emission,
+ * so the order events were posted in is the order they reach the log.
+ *
  * describeRecordEvent() is PURE, and neither this header nor its .cpp pulls the module's logger
  * header in: Log::GLOBAL_LOG_FUNCTION has hidden visibility and only the .so defines it, so a
  * header that drags the logger along fails to link into the separately-linked test binary (the
@@ -39,10 +46,12 @@
  */
 
 #include "ca_bundle/ca_bundle.hpp" // ca_bundle::GuardFailure
+#include "common/logThrottle.hpp"  // Safe in a header: LogThrottle deliberately does not log.
 
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -96,14 +105,30 @@ namespace remoted::http
         std::uint64_t seq {0}; ///< Order of posting within one mailbox, assigned by post(). 1 for the first.
     };
 
+    /// How loud an event's line is. Deliberately not the module logger's own level type, so this
+    /// header stays logger-free; the caller maps it to an INFO or a WARN of its own.
+    enum class RecordEventLevel
+    {
+        info,
+        warn
+    };
+
     /**
-     * @brief The bounded queue an event waits in between being noticed and being logged.
+     * @brief The bounded queue an event waits in between being noticed and being logged, and the
+     *        one place draining and saying it happen together.
      *
-     * Its own mutex, on purpose: the source posts while holding the mutex that guards its cached
-     * snapshot, so this lock is always taken INSIDE that one and never the other way round. Bounded
-     * to kCapacity because a mailbox nobody drains must not grow without limit; past it the OLDEST
-     * event is dropped (the newest state of the bundle is the one worth saying) and the drop is
-     * counted, so silence is never mistaken for "nothing happened".
+     * Two mutexes, and the distinction is the point. The QUEUE's mutex is taken by post() while the
+     * source holds its own hot-path mutex, so it is always the innermost one and nothing that runs
+     * under it can block on a logger or a disk. The DELIVERY mutex is taken by deliver() around the
+     * drain AND the emission, and by nothing else: two consumers of the same mailbox (the daily
+     * tick, a `GET /cacerts` request, the notify provider) therefore cannot publish generation N
+     * after generation N+1, which draining and logging as two steps allowed -- A takes N, is
+     * descheduled, B takes and logs N+1, A logs N (issue #39319, C26, objection 4).
+     *
+     * Bounded to kCapacity because a mailbox nobody drains must not grow without limit; past it the
+     * OLDEST event is dropped (the newest state of the bundle is the one worth saying) and the drop
+     * is counted -- and deliver() says so, once per window, so silence is never mistaken for
+     * "nothing happened".
      *
      * Thread-safe. Created with the source it belongs to: a stop()/start() gets a new one, which is
      * what keeps a previous listener's already-logged events from suppressing this one's.
@@ -111,6 +136,10 @@ namespace remoted::http
     class CaRecordEventMailbox final
     {
     public:
+        /// How an event's line reaches the log. A plain sink, so this header stays logger-free and
+        /// each consumer keeps its OWN tag while sharing this mailbox's ordering.
+        using Emit = std::function<void(RecordEventLevel, const std::string&)>;
+
         /// How many undrained events are kept. No real sequence of events reaches this: it is the
         /// bound that makes an undrained mailbox harmless, not a working queue depth.
         static constexpr std::size_t kCapacity {32};
@@ -120,24 +149,49 @@ namespace remoted::http
 
         /// Everything queued, in posting order, removed from the mailbox: a second call returns
         /// nothing new. This is what makes each event come out exactly once, at exactly one caller.
+        /// The raw take, for the source's own tests and for a caller that words the events itself;
+        /// everything in production delivers through deliver(), which also orders the emission.
         std::vector<CaRecordEvent> drain();
+
+        /**
+         * @brief Drains the mailbox and says every event through @p emit, in posting order.
+         *
+         * The ONE way production turns these events into log lines. Runs whole under the delivery
+         * mutex -- never the source's -- so a second consumer arriving mid-delivery waits and then
+         * drains what is left, instead of overtaking with a newer generation. @p emit is called
+         * with NO queue lock held, so a source posting on the hot path never waits for a logger;
+         * an empty @p emit delivers nothing at all rather than dropping the events.
+         *
+         * Touches no disk: persisting the record is the source's job and its caller's decision
+         * (deliverAndPersistRecordEvents()), which is what lets the notify path drain and log
+         * without an fsync in the keepalive (C26).
+         *
+         * Also reports events the bound dropped, at most once per throttle window, so an operator
+         * reading only the log can tell a quiet mailbox from an overflowing one.
+         */
+        void deliver(const Emit& emit);
 
         /// How many events were dropped because the mailbox was full. Only grows.
         std::uint64_t dropped() const;
 
     private:
+        /// deliver()'s drop line, with m_deliveryMutex held: nothing when no NEW drop happened
+        /// since the last one said, and at most one line per throttle window.
+        void reportDrops(const Emit& emit);
+
         mutable std::mutex m_mutex;
         std::deque<CaRecordEvent> m_queue;
         std::uint64_t m_seq {0};
         std::uint64_t m_dropped {0};
-    };
 
-    /// How loud an event's line is. Deliberately not the module logger's own level type, so this
-    /// header stays logger-free; the caller maps it to an INFO or a WARN of its own.
-    enum class RecordEventLevel
-    {
-        info,
-        warn
+        /// Serialises deliver(): the drain and the emission are one step. Always taken OUTSIDE
+        /// m_mutex (deliver() -> drain()), never the other way round, and never by post().
+        std::mutex m_deliveryMutex;
+        /// Drops already reported, so a total that only grows is not re-announced. Guarded by
+        /// m_deliveryMutex.
+        std::uint64_t m_reportedDrops {0};
+        /// One drop line per window, however many deliveries notice the same overflow.
+        remoted::common::LogThrottle m_dropThrottle;
     };
 
     /**

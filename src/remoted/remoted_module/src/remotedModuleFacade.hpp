@@ -88,12 +88,40 @@ inline const LogFn& moduleLogFn()
 /// Tag the CA publication events drained by the GET /cacerts handler come out under: the same one
 /// the endpoint's own lines use (endpoints/cacertsEndpoint.cpp), because to an operator reading the
 /// log they are that route talking -- the transport logs the same events under its own tag when it
-/// is the one that drained them (at start and on the daily tick). Function-local static for the
-/// same visibility reason as moduleLogFn().
+/// is the one that drained them (at start, on the daily tick and when the listener closes).
+/// Function-local static for the same visibility reason as moduleLogFn().
 inline const LogFn& cacertsRecordLogFn()
 {
     static const LogFn instance {LogFn {"wazuh-manager-remoted:endpoints"}.compose("cacerts")};
     return instance;
+}
+
+/// Tag for the same events when the CONTROL notify path is the one that drains them (issue #39319,
+/// C26): in steady state a manager sees nothing but notifies, so that path is the only consumer
+/// that will ever say them -- under the route that did, not under /cacerts'.
+inline const LogFn& controlRecordLogFn()
+{
+    static const LogFn instance {LogFn {"wazuh-manager-remoted:endpoints"}.compose("control")};
+    return instance;
+}
+
+/// Turns a CA publication event into a log line under @p logFn's tag. Handed to
+/// CaRecordEventMailbox::deliver(), which owns the ordering (it serialises the drain with the
+/// emission, C26); this only maps the level. @p logFn must outlive the emitter -- every caller
+/// passes a function-local static above.
+inline remoted::http::CaRecordEventMailbox::Emit caRecordEmitter(const LogFn& logFn)
+{
+    return [&logFn](remoted::http::RecordEventLevel level, const std::string& line)
+    {
+        if (level == remoted::http::RecordEventLevel::warn)
+        {
+            LOGFN_WARN(logFn, "%s", line.c_str());
+        }
+        else
+        {
+            LOGFN_INFO(logFn, "%s", line.c_str());
+        }
+    };
 }
 
 // Heartbeat period for the skeleton worker loop.
@@ -495,34 +523,28 @@ private:
         }
 
         // Whatever the read a /cacerts request does notices about the bundle's PUBLICATION: said
-        // once (drain REMOVES the events, so the daily tick will not repeat them) and persisted
-        // outside every lock, before the answer goes out (issue #39319, C21b, C22). A plain
-        // std::function, owned by the handler: the source and the mailbox arrive through the
-        // handles above, so nothing here holds the server alive.
-        auto deliverCaRecordEvents = [caSourceHandle, caMailboxHandle]
+        // once (delivering REMOVES the events, so the daily tick will not repeat them), in the
+        // mailbox's own order and with the pending record persisted outside every lock, before the
+        // answer goes out (issue #39319, C21b, C22, C26). A plain std::function, owned by the
+        // handler: the source and the mailbox arrive through the handles above, so nothing here
+        // holds the server alive.
+        auto deliverCaRecordEvents = [caSourceHandle, caMailboxHandle, emit = caRecordEmitter(cacertsRecordLogFn())]
         {
-            if (const auto& mailbox = *caMailboxHandle)
+            const auto& mailbox = *caMailboxHandle;
+            if (!mailbox)
             {
-                for (const auto& event : mailbox->drain())
-                {
-                    const auto line = remoted::http::describeRecordEvent(event);
-                    if (!line.has_value())
-                    {
-                        continue;
-                    }
-                    if (line->first == remoted::http::RecordEventLevel::warn)
-                    {
-                        LOGFN_WARN(cacertsRecordLogFn(), "%s", line->second.c_str());
-                    }
-                    else
-                    {
-                        LOGFN_INFO(cacertsRecordLogFn(), "%s", line->second.c_str());
-                    }
-                }
+                return;
             }
             if (const auto& source = *caSourceHandle)
             {
-                source->flushPendingRecord();
+                // Deliver, flush, deliver: a record this request's own flush could not write is
+                // said in this request instead of waiting up to a day for the next drain
+                // (objection 3).
+                remoted::http::deliverAndPersistRecordEvents(*source, *mailbox, emit);
+            }
+            else
+            {
+                mailbox->deliver(emit);
             }
         };
 
@@ -666,13 +688,34 @@ private:
         // source's to bound -- caDescriptor() revalidates at most once a second (C8/C18) -- so this
         // adds no file read to /control.
         controlConfig.caGenerationProvider =
-            [weak = std::weak_ptr<remoted::http::IHttpServer>(m_httpServer)]() -> std::optional<std::int64_t>
+            [weak = std::weak_ptr<remoted::http::IHttpServer>(m_httpServer),
+             caMailboxHandle,
+             emit = caRecordEmitter(controlRecordLogFn())]() -> std::optional<std::int64_t>
         {
-            if (const auto server = weak.lock())
+            const auto server = weak.lock();
+            if (!server)
             {
-                return server->caDescriptor().generation;
+                return std::nullopt;
             }
-            return std::nullopt;
+
+            // The descriptor FIRST: its revalidation is what notices a rotated bundle and posts the
+            // event, so draining before it would say nothing about the read this very notify did.
+            const auto descriptor = server->caDescriptor();
+
+            // And then it is said. In steady state a manager sees nothing but notifies -- no
+            // /cacerts request, no tick for up to 24 h -- so without this the WARN about a bundle
+            // that stopped being publishable waited a day and, past the mailbox's 32 events, was
+            // dropped unread (issue #39319, C26, objection 2). Deliberately deliver() and NOT
+            // deliverAndPersistRecordEvents(): the keepalive path says things, it never waits for a
+            // disk (RNF-2, C22). The record is persisted by the tick, by the next /cacerts request
+            // or at close -- and nothing is lost meanwhile, because the source keeps the entry
+            // pending until a write succeeds.
+            if (const auto& mailbox = *caMailboxHandle)
+            {
+                mailbox->deliver(emit);
+            }
+
+            return descriptor.generation;
         };
 
         auto vdClient = std::make_shared<remoted::common::VdClient>();

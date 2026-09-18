@@ -1372,6 +1372,103 @@ TEST(HttpServerTest, CaLeafSignerPemReturnsZeroWithNoServableBundle)
     server->stop();
 }
 
+// ---------------------------------------------------------------------------
+// Neither accessor answers for a listener that is not there (issue #39319, C26, objection 7).
+// stop() releases m_server and leaves the CA source in place, and a bind that fails AFTER the TLS
+// context was built leaves it in place having never had a listener at all -- so both used to hand
+// out a generation and an anchor for a manager this process is not serving. caCertificateSnapshot()
+// is deliberately NOT gated: it predates this and GET /cacerts only ever runs with the listener up.
+// ---------------------------------------------------------------------------
+
+TEST(HttpServerTest, CaAccessorsAnswerNothingAfterStop)
+{
+    if (std::system("openssl version >/dev/null 2>&1") != 0)
+    {
+        GTEST_SKIP() << "openssl not available to generate the test PKI";
+    }
+
+    auto pki = remoted::test::generateCaSignedCertificate("httpserver_ca_after_stop");
+    if (!pki)
+    {
+        GTEST_SKIP() << "could not generate the throwaway CA-signed certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {pki->files()};
+
+    const auto readAllBytes = [](const std::string& path)
+    {
+        std::ifstream in {path, std::ios::binary};
+        return std::string {std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {}};
+    };
+
+    // Sealed, so the generation is a real number and not 0: what must disappear after stop() is a
+    // published generation, which is the answer an agent would act on.
+    const auto certificates = ca_bundle::parseBundle(readAllBytes(pki->caCertPath)).certificates;
+    ASSERT_EQ(certificates.size(), 1U);
+    constexpr std::int64_t kPublication {1758000200};
+    ca_bundle::PublicationBlock block;
+    block.publication = kPublication;
+    block.contentSha256 = ca_bundle::contentSha256(certificates);
+    block.updated = "2026-09-19T00:00:00Z";
+    block.writtenBy = "httpServerTest";
+    {
+        std::ofstream out {pki->caCertPath, std::ios::binary | std::ios::trunc};
+        out << ca_bundle::renderBlock(block) << ca_bundle::serializeCertificates(certificates);
+        ASSERT_FALSE(out.fail());
+    }
+
+    auto server = makeHttpServer();
+    HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;
+    config.certificatePath = pki->certPath;
+    config.privateKeyPath = pki->keyPath;
+    config.caCertificatePath = pki->caCertPath;
+
+    ASSERT_NO_THROW(server->start(config));
+
+    std::array<char, 8192> buffer {};
+    ASSERT_EQ(server->caDescriptor().generation, std::optional<std::int64_t> {kPublication});
+    ASSERT_GT(server->caLeafSignerPem(buffer.data(), buffer.size()), 0);
+
+    server->stop();
+
+    EXPECT_FALSE(server->caDescriptor().generation.has_value());
+    EXPECT_EQ(server->caLeafSignerPem(buffer.data(), buffer.size()), 0);
+
+    // The bundle is still perfectly readable -- the source outlives the listener -- so what those
+    // two just refused is the LISTENER being gone, not a missing CA file.
+    EXPECT_EQ(server->caCertificateSnapshot().certificates, 1U);
+}
+
+TEST(HttpServerTest, CaAccessorsAnswerNothingAfterABindFailure)
+{
+    TempCert cert; // self-signed: its own CA, so the bundle below is servable and signs the leaf
+
+    auto server = makeHttpServer();
+    HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = cert.certPath();
+    // TEST-NET-3, never assigned to this host: the TLS context is built and the CA source created
+    // (that is the point), and then run_async() throws on bind -- the window where a listener
+    // never existed but the source does.
+    config.bindAddress = "203.0.113.1";
+
+    EXPECT_THROW(server->start(config), std::exception);
+
+    std::array<char, 8192> buffer {};
+    EXPECT_FALSE(server->caDescriptor().generation.has_value());
+    EXPECT_EQ(server->caLeafSignerPem(buffer.data(), buffer.size()), 0);
+
+    // And the source really is there with a usable bundle behind it: the two refusals above are
+    // about the listener, not about there being nothing to answer with.
+    EXPECT_EQ(server->caCertificateSnapshot().certificates, 1U);
+
+    EXPECT_NO_THROW(server->stop());
+}
+
 // A read failure mid-flight (not just at start) is a window, not a decision: the monitor keeps
 // ticking through it and the status keeps the last good verdict next to the fresh cause. What the
 // tick LOGS on each pass is not observable from this binary (testLogRecorder.hpp), so this pins the
@@ -1430,20 +1527,23 @@ TEST(HttpServerTest, MonitorTickKeepsEvaluatingThroughAReadFailure)
 TEST(HttpServerTest, MissingRecordDirectoryWarnsOnceAndKeepsServing)
 {
     TempCert cert; // self-signed: its own CA, so the bundle is servable from the first read
+    TempDir recordDir;
     auto server = makeHttpServer();
 
     std::shared_ptr<CaCertificateSource> capturedSource;
     std::shared_ptr<CaRecordEventMailbox> capturedMailbox;
+
+    // Two levels missing on purpose: ensureRecordDirectory() (best-effort) creates the record's own
+    // parent, and mkdir(2) is not recursive (by design, C25), so with its grandparent absent every
+    // store() fails. Under a TempDir, so the recovery half of this test cleans up after itself.
+    const auto recordPath = recordDir.path() + "/missing/deeper/record.json";
 
     HttpServerConfig config;
     config.port = 0;
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
     config.caCertificatePath = cert.certPath();
-    // Deliberately pointed at a directory that does not exist and is never created in this test:
-    // ensureRecordDirectory() (best-effort) cannot create it either, since ITS parent is missing
-    // too -- mkdir(2) is not recursive (by design, C25).
-    config.caPublicationRecordPath = "/tmp/httpServerTest-no-such-directory-e2a/deeper/record.json";
+    config.caPublicationRecordPath = recordPath;
     config.onCaRecordReady = [&capturedSource, &capturedMailbox](auto source, auto mailbox)
     {
         capturedSource = std::move(source);
@@ -1454,23 +1554,30 @@ TEST(HttpServerTest, MissingRecordDirectoryWarnsOnceAndKeepsServing)
     ASSERT_TRUE(capturedSource != nullptr);
     ASSERT_TRUE(capturedMailbox != nullptr);
 
-    // createTlsContext() already drained the FIRST event (first_time_unpublished, INFO, logged) and
-    // then tried to flush it -- which is where the missing directory actually bites: exactly one
-    // record_unwritable is left waiting for us, once per streak (C19/C19b).
-    auto events = capturedMailbox->drain();
-    ASSERT_EQ(events.size(), 1U);
-    EXPECT_EQ(events[0].kind, remoted::http::RecordEvent::record_unwritable);
-    EXPECT_FALSE(events[0].stored);
-    EXPECT_NE(events[0].error, 0);
+    // createTlsContext() said BOTH lines itself: the first_time_unpublished the read produced, and
+    // the record_unwritable its own flush produced -- because the start-time delivery drains again
+    // AFTER the flush (issue #39319, C26, objection 3). Before that second drain this warning sat
+    // here until the next consumer, up to a day away. Nothing this start produced is left waiting.
+    EXPECT_TRUE(capturedMailbox->drain().empty());
 
     // Keeps serving despite the record being unwritable: the bundle never depended on it.
     const auto snapshot = server->caCertificateSnapshot();
     EXPECT_GT(snapshot.certificates, 0U);
     EXPECT_FALSE(snapshot.pem.empty());
 
-    // A second flush attempt fails again but is the SAME streak: no second warning.
+    // A second flush attempt fails again but is the SAME streak: no second warning (C19/C19b).
     capturedSource->flushPendingRecord();
     EXPECT_TRUE(capturedMailbox->drain().empty());
+
+    // And it really did fail: the entry is still pending, so the moment the directory exists the
+    // next flush writes it -- which is also what proves the start-time flush never did (and that
+    // the warning above stood for something), now that the mailbox cannot show it.
+    ASSERT_EQ(::mkdir((recordDir.path() + "/missing").c_str(), 0750), 0);
+    ASSERT_EQ(::mkdir((recordDir.path() + "/missing/deeper").c_str(), 0750), 0);
+    capturedSource->flushPendingRecord();
+    EXPECT_TRUE(capturedMailbox->drain().empty()); // a success posts nothing
+    struct stat written {};
+    EXPECT_EQ(::stat(recordPath.c_str(), &written), 0) << "the pending entry was never persisted";
 
     server->stop();
 }
@@ -1523,14 +1630,15 @@ TEST(HttpServerTest, RestartSameServerStartsAFreshMailbox)
     // logged) before handing the mailbox to onCaRecordReady.
     EXPECT_TRUE(mailbox1->drain().empty());
 
-    // A NEW event on the SAME (still running) source/mailbox, left deliberately undrained: the
-    // ordinary CA file's bytes change (still no publication block), so this is changed_outside_tool.
+    // A NEW event on the SAME (still running) source/mailbox, left deliberately undrained by this
+    // test: the ordinary CA file's bytes change (still no publication block), so this is
+    // changed_outside_tool.
     {
         std::ofstream out {caPath, std::ios::binary | std::ios::app};
         out << "\n";
     }
-    // Forces the re-read that posts the event; deliberately NOT drained from here on -- the point
-    // of this test is what a restart does (or does not do) to that undrained leftover.
+    // Forces the re-read that posts the event. Nothing in the test drains it from here on -- the
+    // point is what the CLOSE and the restart do with it.
     (void)server->caCertificateSnapshot();
 
     server->stop();
@@ -1546,11 +1654,12 @@ TEST(HttpServerTest, RestartSameServerStartsAFreshMailbox)
     // previous cycle survives INTO the new one.
     EXPECT_TRUE(mailbox2->drain().empty());
 
-    // And the leftover itself was never silently dropped either -- draining the OLD mailbox
-    // directly still shows it, because nothing but drain() ever removes an event from it.
-    const auto leftover = mailbox1->drain();
-    ASSERT_EQ(leftover.size(), 1U);
-    EXPECT_EQ(leftover[0].kind, remoted::http::RecordEvent::changed_outside_tool);
+    // And the leftover was not carried into the next cycle NOR lost: stop() delivered it (the
+    // transport's close path drains the mailbox one last time -- after that neither the daily tick
+    // nor a GET /cacerts exists to say it, issue #39319, C26), so the old mailbox is empty here.
+    // What the line said is not observable from this binary (testLogRecorder.hpp only sees the
+    // module started through the C ABI); that it left the mailbox is.
+    EXPECT_TRUE(mailbox1->drain().empty());
 
     server->stop();
     std::remove(caPath.c_str());
@@ -1950,7 +2059,7 @@ TEST(HttpServerTest, ReserveInFlightBytesAlwaysGrantsWhenBudgetDisabled)
 
     HttpServerConfig config;
     config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
-    config.port = 0; // ephemeral
+    config.port = 0;                     // ephemeral
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
     config.maxInFlightBytes = 0; // explicitly disabled
@@ -1972,7 +2081,7 @@ TEST(HttpServerTest, ReserveInFlightBytesEnforcesConfiguredCapacityAfterStart)
 
     HttpServerConfig config;
     config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
-    config.port = 0; // ephemeral
+    config.port = 0;                     // ephemeral
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
     // Comfortably above maxBodySize + the transport's per-request overhead, so start()'s own
@@ -2018,7 +2127,7 @@ TEST(HttpServerTest, DiagnosticsReportZerosBeforeStartAndTrackTheBudgetAfter)
 
     HttpServerConfig config;
     config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
-    config.port = 0; // ephemeral
+    config.port = 0;                     // ephemeral
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
     // Same clamp-avoidance as the reservation test above: keep the configured capacity in charge.

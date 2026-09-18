@@ -20,9 +20,13 @@
 #include "http_server/caRecordEvents.hpp"
 
 #include <cstdint>
+#include <future>
 #include <optional>
 #include <string>
 #include <system_error>
+#include <thread>
+#include <utility>
+#include <vector>
 
 using remoted::http::CaRecordEvent;
 using remoted::http::CaRecordEventMailbox;
@@ -212,4 +216,157 @@ TEST(CaRecordEventMailbox, OverflowDropsTheOldestAndCounts)
     // Event 0 (the oldest) was dropped to make room; 1..kCapacity survive, in order.
     EXPECT_EQ(drained.front().publication, 1);
     EXPECT_EQ(drained.back().publication, static_cast<std::int64_t>(CaRecordEventMailbox::kCapacity));
+}
+
+// ---------------------------------------------------------------------------
+// deliver(): the one production way these events reach a log, and the reason it exists -- several
+// consumers drain this mailbox (the daily tick, a GET /cacerts request, the notify provider), and
+// draining and logging as two steps let one of them publish generation N after another published
+// N+1 (issue #39319, C26, objection 4).
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    /// An event with just enough in it to produce a line and be told apart in one.
+    CaRecordEvent publicationEvent(std::int64_t publication)
+    {
+        CaRecordEvent event;
+        event.kind = RecordEvent::published_changed;
+        event.bundlePath = "/etc/certs/root-ca.pem";
+        event.publication = publication;
+        return event;
+    }
+} // namespace
+
+TEST(CaRecordEventMailboxDeliver, SaysEveryEventOnceInPostingOrder)
+{
+    CaRecordEventMailbox mailbox;
+    mailbox.post(publicationEvent(1));
+    mailbox.post(publicationEvent(2));
+
+    std::vector<std::string> said;
+    const auto collect = [&said](RecordEventLevel, const std::string& line)
+    {
+        said.push_back(line);
+    };
+
+    mailbox.deliver(collect);
+    ASSERT_EQ(said.size(), 2U);
+    EXPECT_NE(said[0].find("generation 1"), std::string::npos) << said[0];
+    EXPECT_NE(said[1].find("generation 2"), std::string::npos) << said[1];
+
+    // Delivered means removed: a second consumer arriving afterwards says nothing, and neither
+    // does a plain drain().
+    said.clear();
+    mailbox.deliver(collect);
+    EXPECT_TRUE(said.empty());
+    EXPECT_TRUE(mailbox.drain().empty());
+}
+
+TEST(CaRecordEventMailboxDeliver, AnEmptyEmitterKeepsTheEvents)
+{
+    // A consumer with nowhere to log must not be a way to lose events: nothing is drained.
+    CaRecordEventMailbox mailbox;
+    mailbox.post(publicationEvent(7));
+
+    mailbox.deliver({});
+    ASSERT_EQ(mailbox.drain().size(), 1U);
+}
+
+TEST(CaRecordEventMailboxDeliver, ConcurrentConsumersCannotPublishOutOfOrder)
+{
+    CaRecordEventMailbox mailbox;
+    mailbox.post(publicationEvent(1));
+
+    std::mutex saidMutex;
+    std::vector<std::string> said;
+
+    // Barriers, never sleeps: promises make each step wait for the exact event it depends on, so
+    // the interleaving under test is reached deterministically and the test cannot be slow or
+    // timing-dependent.
+    std::promise<void> firstEmitEntered;
+    std::promise<void> releaseFirstEmit;
+    std::promise<void> secondConsumerStarted;
+    auto firstEmitEnteredFuture = firstEmitEntered.get_future();
+    auto releaseFirstEmitFuture = releaseFirstEmit.get_future();
+    auto secondConsumerStartedFuture = secondConsumerStarted.get_future();
+
+    // The consumer that is descheduled BETWEEN taking the event and saying it -- exactly where the
+    // race lived. It records the line only after being released, so `said` is publication order.
+    std::thread slow {[&]
+                      {
+                          bool parked = false;
+                          mailbox.deliver(
+                              [&](RecordEventLevel, const std::string& line)
+                              {
+                                  if (!parked)
+                                  {
+                                      parked = true;
+                                      firstEmitEntered.set_value();
+                                      releaseFirstEmitFuture.wait();
+                                  }
+                                  std::lock_guard<std::mutex> lock {saidMutex};
+                                  said.push_back(line);
+                              });
+                      }};
+
+    firstEmitEnteredFuture.wait();
+
+    // A NEWER event arrives while the first consumer is parked mid-delivery, and a second consumer
+    // goes for it. Without the delivery mutex it drains and logs generation 2 here, before the
+    // parked one has said generation 1 -- so the last line an operator reads describes an EARLIER
+    // publication.
+    mailbox.post(publicationEvent(2));
+    std::thread fast {[&]
+                      {
+                          secondConsumerStarted.set_value();
+                          mailbox.deliver(
+                              [&](RecordEventLevel, const std::string& line)
+                              {
+                                  std::lock_guard<std::mutex> lock {saidMutex};
+                                  said.push_back(line);
+                              });
+                      }};
+
+    secondConsumerStartedFuture.wait();
+    releaseFirstEmit.set_value();
+
+    slow.join();
+    fast.join();
+
+    std::lock_guard<std::mutex> lock {saidMutex};
+    ASSERT_EQ(said.size(), 2U);
+    EXPECT_NE(said[0].find("generation 1"), std::string::npos) << said[0];
+    EXPECT_NE(said[1].find("generation 2"), std::string::npos) << said[1];
+}
+
+TEST(CaRecordEventMailboxDeliver, ReportsDroppedEventsOncePerOverflow)
+{
+    CaRecordEventMailbox mailbox;
+
+    for (std::uint64_t i = 0; i < CaRecordEventMailbox::kCapacity + 2; ++i)
+    {
+        mailbox.post(publicationEvent(static_cast<std::int64_t>(i)));
+    }
+    ASSERT_EQ(mailbox.dropped(), 2U);
+
+    std::vector<std::pair<RecordEventLevel, std::string>> said;
+    const auto collect = [&said](RecordEventLevel level, const std::string& line)
+    {
+        said.emplace_back(level, line);
+    };
+
+    mailbox.deliver(collect);
+
+    // The events that survived, and then ONE line about the gap: silence about a full mailbox is
+    // indistinguishable from "nothing happened", which is what the counter exists to prevent.
+    ASSERT_EQ(said.size(), CaRecordEventMailbox::kCapacity + 1);
+    const auto& report = said.back();
+    EXPECT_EQ(report.first, RecordEventLevel::warn);
+    EXPECT_NE(report.second.find("Dropped 2 CA bundle publication event(s)"), std::string::npos) << report.second;
+
+    // A total that only grows is not re-announced: the next delivery, with no NEW drop, is silent.
+    said.clear();
+    mailbox.deliver(collect);
+    EXPECT_TRUE(said.empty());
 }
