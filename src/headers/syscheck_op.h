@@ -138,6 +138,8 @@ typedef enum fim_fields {
     FIM_AUDIT_PCWD,
     FIM_AUDIT_ID,
     FIM_AUDIT_NAME,
+    FIM_AUDIT_GID,
+    FIM_AUDIT_GROUP_NAME,
     FIM_EFFECTIVE_UID,
     FIM_EFFECTIVE_NAME,
     FIM_PPID,
