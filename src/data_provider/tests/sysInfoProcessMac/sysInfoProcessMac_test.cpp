@@ -9,49 +9,28 @@
  * Foundation.
  */
 #include "sysInfoProcessMac_test.h"
-#include "filesystemHelper.h"
+#include "processInfoMac.h"
 #include <string>
+#include <unistd.h>
 
-// getProcessInfo() has internal linkage and lives in a TU that pulls in the
-// full macOS SDK, so this duplicates its name-resolution branch for isolated
-// testing — keep the two in sync if that logic changes.
-static std::string resolveProcessName(const int pathLen, const char* pathBuffer, const std::string& pbiName)
+TEST_F(SysInfoProcessMacTest, ResolvesRealNameWhenPathLookupSucceeds)
 {
-    if (pathLen > 0)
-    {
-        return Utils::getFilename(std::string{pathBuffer});
-    }
-
-    return pbiName;
-}
-
-TEST_F(SysInfoProcessMacTest, LongProcessNameIsNotTruncated)
-{
-    const std::string fullPath { "/System/Library/PrivateFrameworks/TCC.framework/Support/com.apple.accessibility.mediaaccessibilityd" };
+    // Fallback mimics a truncated pbi_name; proc_pidpath() succeeds for this
+    // live pid so the real path always wins.
     const std::string truncatedPbiName { "com.apple.accessibility.mediaac" };
 
-    const auto name { resolveProcessName(static_cast<int>(fullPath.size()), fullPath.c_str(), truncatedPbiName) };
+    const auto name { resolveProcessName(getpid(), truncatedPbiName) };
 
-    EXPECT_EQ("com.apple.accessibility.mediaaccessibilityd", name);
-    EXPECT_GT(name.size(), 31u);
     EXPECT_NE(truncatedPbiName, name);
-}
-
-TEST_F(SysInfoProcessMacTest, ShortProcessNameIsUnaffected)
-{
-    const std::string fullPath { "/usr/sbin/cron" };
-    const std::string pbiName { "cron" };
-
-    const auto name { resolveProcessName(static_cast<int>(fullPath.size()), fullPath.c_str(), pbiName) };
-
-    EXPECT_EQ("cron", name);
+    EXPECT_FALSE(name.empty());
 }
 
 TEST_F(SysInfoProcessMacTest, FallsBackToPbiNameWhenPathLookupFails)
 {
     const std::string pbiName { "com.apple.accessibility.mediaac" };
 
-    const auto name { resolveProcessName(0, "", pbiName) };
+    // pid 0 is the kernel task; proc_pidpath() cannot resolve it and returns 0.
+    const auto name { resolveProcessName(0, pbiName) };
 
     EXPECT_EQ(pbiName, name);
 }

@@ -8,8 +8,12 @@ file(GLOB sysinfo_UNIT_TEST_SRC
     "sysInfoProcessMac_test.cpp"
     "main.cpp")
 
+file(GLOB SYSINFO_SRC
+    "${CMAKE_SOURCE_DIR}/src/processInfoMac.cpp")
+
 add_executable(sysInfoProcessMac_unit_test
-    ${sysinfo_UNIT_TEST_SRC})
+    ${sysinfo_UNIT_TEST_SRC}
+    ${SYSINFO_SRC})
 
 target_link_libraries(sysInfoProcessMac_unit_test
     debug gtestd
