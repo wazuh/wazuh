@@ -135,6 +135,7 @@
 | [#39064](https://github.com/wazuh/wazuh/issues/39064) | An agent no longer restarts repeatedly when its enrollment token has been revoked or used up. |
 | [#39064](https://github.com/wazuh/wazuh/issues/39064) | An agent keeps its enrollment token when the manager reports only that enrollment is disabled. |
 | [#39064](https://github.com/wazuh/wazuh/issues/39064) | An agent whose re-enrollment secret the manager refuses falls back to the configured credential, so a rebuilt manager does not require visiting every endpoint. |
+| [#39407](https://github.com/wazuh/wazuh/issues/39407) | Added Enroll and Update CA actions to the Windows agent tray GUI (`win32ui`), enrolling or refreshing the trust anchor from a pasted token. |
 
 #### Changed
 

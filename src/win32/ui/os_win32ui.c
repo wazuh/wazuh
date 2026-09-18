@@ -71,6 +71,9 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
             AppendMenu(hSubMenu, MF_SEPARATOR, UI_MENU_NONE, "");
             AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_STATUS, "&Status");
             AppendMenu(hSubMenu, MF_SEPARATOR, UI_MENU_NONE, "");
+            AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_ENROLL, "&Enroll");
+            AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_CERTS, "&Update CA");
+            AppendMenu(hSubMenu, MF_SEPARATOR, UI_MENU_NONE, "");
             AppendMenu(hSubMenu, MF_STRING, UI_MENU_MANAGE_EXIT, "&Exit");
             AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT)hSubMenu, "&Manage");
 
@@ -191,6 +194,12 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                     else {
                         MessageBox(hwnd, "Unable to stop agent", "Error -- Unable to Stop Agent", MB_OK);
                     }
+                    break;
+                case UI_MENU_MANAGE_ENROLL:
+                    run_agent_enroll(hwnd);
+                    break;
+                case UI_MENU_MANAGE_CERTS:
+                    run_agent_certs_only(hwnd);
                     break;
                 case UI_MENU_MANAGE_STATUS:
                     if (CheckServiceRunning()) {
