@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Added the missing compiler hardening flags (stack canary, PIE, full RELRO and FORTIFY_SOURCE) to the Linux binaries. ([#38571](https://github.com/wazuh/wazuh/pull/38571))
+- The API access log no longer writes the `run_as` authorization context verbatim unless debug logging is enabled; `hash_auth_context` still identifies it. ([#39471](https://github.com/wazuh/wazuh/pull/39471))
 
 #### Fixed
 
@@ -21,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - Aligned the API `force` parameter with its OpenAPI schema: `POST /agents` now declares it, and `POST /agents/insert` no longer sends a `force` object that the request did not carry. ([#38804](https://github.com/wazuh/wazuh/pull/38804))
 - Escaped control characters in the request path of the API plain-text access log, so an unauthenticated request can no longer forge access log entries. ([#38894](https://github.com/wazuh/wazuh/pull/38894))
 - Fixed the indexer connector silently diverging from the `wazuh-states-*` indices: per-item `_bulk` rejections are now logged instead of ignored, aggregated by error type and reason, `_delete_by_query` responses reporting failures or version conflicts are now logged too, agent-ID deletions no longer match by raw string prefix, `diff()` no longer deletes real documents when its local mirror comes up empty, and a DELETED document no longer sweeps in sibling documents whose ID merely starts with the deleted one. ([#39041](https://github.com/wazuh/wazuh/pull/39041))
+- Raised the default API `run_as` authentication-context payload size limit from 8 KB to 64 KB and made it configurable via the new `auth_context_max_payload_size` option, for AD/LDAP/SSO logins with large group-membership contexts. ([#PLACEHOLDER](https://github.com/wazuh/wazuh/pull/PLACEHOLDER))
 
 ### Agent
 

@@ -40,6 +40,7 @@ default_api_configuration = {
     "drop_privileges": True,
     "experimental_features": False,
     "max_upload_size": 10485760,
+    "auth_context_max_payload_size": 65536,
     "authentication_pool_size": 2,
     "intervals": {
         "request_timeout": 10
