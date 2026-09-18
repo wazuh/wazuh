@@ -185,6 +185,53 @@ Example: `GET /agents?status=active`
 
 ---
 
+## Startup and socket binding
+
+`api/scripts/wazuh_manager_apid.py` opens the API's listening sockets itself, before uvicorn is started, and hands them to `uvicorn.Server(config).run(sockets=...)`. uvicorn never binds anything on its own.
+
+One socket is bound per address that each entry in `api.yaml`'s `host` (a list, `['0.0.0.0', '::']` by default) resolves to. Entries are resolved with `socket.getaddrinfo()` -- not by checking for a literal `:` in the string, so a hostname with both A and AAAA records is bound on both, and one with no colon in it that only resolves to an AAAA record is still bound as IPv6 -- and every IPv6 socket is bound `IPV6_V6ONLY`, so an IPv4 client is always served by the IPv4 socket and its address reaches the access log and the brute-force IP blocking as `1.2.3.4` rather than the v4-mapped `::ffff:1.2.3.4`.
+
+A real bind failure (the port already in use, permission denied, ...) is all-or-nothing per attempt: every socket opened so far in that attempt is closed before the next attempt or before raising. The one exception is an address whose family isn't available on this system at all -- opening the socket fails with `EAFNOSUPPORT` on a kernel booted with `ipv6.disable=1`, or the bind fails with `EADDRNOTAVAIL`/`EAFNOSUPPORT` when IPv6 is disabled through `net.ipv6.conf.all.disable_ipv6` -- which is what `asyncio.loop.create_server()` tolerated too: that address is skipped and the attempt proceeds with whatever else binds, so the API can end up serving on only one address family if the other one isn't available on this host at all. The attempt only fails this way if every address ends up skipped.
+
+```
+                  ┌──────────────────────────────────────────────┐
+                  │  bind one socket per resolved 'host' address │
+                  └──────────────────────────────────────────────┘
+                        │                          │
+                 EADDRINUSE                   all bound
+                        │                          │
+       ┌────────────────▼───────────────┐          │
+       │ attempts left?                 │          │
+       │  yes -> WARNING in api.log,    │          │
+       │         wait 2^n * 2s + jitter │          │
+       │  no  -> ERROR 2010, exit       │          │
+       └────────────────┬───────────────┘          │
+                        │ retry                    ▼
+                        └──────────────► uvicorn.Server.run(sockets=...)
+                                            │
+                                            ▼
+                                         ASGI lifespan startup
+                                         logs "Listening on ..."
+```
+
+### Retry on a busy port
+
+A bind that fails with `EADDRINUSE` is retried 5 times on top of the first attempt, with an exponential backoff of `2 ** attempt * 2` seconds plus up to a second of jitter, i.e. roughly 62 seconds of waiting in the worst case. This covers a port that is momentarily held by something else, for example an unrelated outbound connection that was given it as an ephemeral source port.
+
+- Each failed attempt is logged in `api.log` at `WARNING` level with the hosts, the port, the attempt number and the wait before the next one.
+- Any other `OSError` (for example `EACCES` on a privileged port) is not retried: retrying cannot change the outcome. The exception is an address family that isn't available on this host (see above), which is tolerated by skipping that address rather than by retrying -- it only reaches this retry/exit logic if it leaves every address skipped.
+- Exhausting every attempt logs error `2010`, *Error while attempting to bind on address: address already in use*, at `ERROR` level, and the process exits. **This failure is only visible in `api.log`**: it is not written to `logs/wazuh-manager.log`, and it does not change `wazuh-manager.service`'s own unit state, which stays `active` because the other manager daemons are still running.
+
+Because the bind succeeds before uvicorn is started, the `Listening on ...` line emitted from the ASGI lifespan startup hook (`api/api/signals.py`) can only be logged once a real socket exists. uvicorn's own `Uvicorn running on http://...` line is not logged at all when it is given pre-bound sockets.
+
+The process daemonizes and writes its PID files before it reaches this point, so for as long as the retry loop keeps waiting the daemon exists and `wazuh-manager-control status` reports `wazuh-manager-apid is running...` while nothing is bound and the API answers nothing. `api.log`'s retry warnings are what distinguish that window from a served API.
+
+### Shutdown during startup
+
+The retry wait is backed by a `threading.Event` that `exit_handler`, the `SIGTERM` handler, sets before it removes the API's PID files. A stop issued while apid is still waiting to retry therefore ends the process immediately, instead of leaving it retrying in the background with its PID files already gone and `wazuh-manager-control status` reporting it stopped. The same event is checked once more after the bind succeeds and before uvicorn is started, so a stop that lands during the bind itself does not leave the API serving with its PID files already removed.
+
+---
+
 ## Distributed API (DAPI)
 
 In cluster deployments, not all requests can be handled by the node receiving them.
