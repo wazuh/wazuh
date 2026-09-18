@@ -157,7 +157,7 @@ HANDLE wrap_FindFirstFile(LPCWSTR lpFileName,  LPWIN32_FIND_DATAW lpFindFileData
 
     file_name = mock_type(char *);
     if (file_name != NULL) {
-        mbstowcs(lpFindFileData->cFileName, file_name, MAX_PATH);
+        MultiByteToWideChar(CP_UTF8, 0, file_name, -1, lpFindFileData->cFileName, MAX_PATH);
         lpFindFileData->dwFileAttributes = mock_type(DWORD);
     }
 
@@ -169,7 +169,7 @@ BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData) {
     check_expected(hFindFile);
     file_name = mock_type(char *);
     if (file_name != NULL) {
-        mbstowcs(lpFindFileData->cFileName, file_name, MAX_PATH);
+        MultiByteToWideChar(CP_UTF8, 0, file_name, -1, lpFindFileData->cFileName, MAX_PATH);
         lpFindFileData->dwFileAttributes = mock_type(DWORD);
     }
     return mock_type(BOOL);

@@ -19,27 +19,27 @@
 class PortImpl final : public IOSPort
 {
     private:
-        std::shared_ptr<IPortWrapper> m_spPortRawData;
+        const IPortWrapper& m_portRawData;
     public:
-        explicit PortImpl(const std::shared_ptr<IPortWrapper>& portRawData)
-            : m_spPortRawData(portRawData)
+        explicit PortImpl(const IPortWrapper& portRawData)
+            : m_portRawData { portRawData }
         { }
         // LCOV_EXCL_START
         ~PortImpl() = default;
         // LCOV_EXCL_STOP
         void buildPortData(nlohmann::json& port) override
         {
-            port["network_transport"] = m_spPortRawData->protocol();
-            port["source_ip"] = m_spPortRawData->localIp();
-            port["source_port"] = m_spPortRawData->localPort();
-            port["destination_ip"] = m_spPortRawData->remoteIP();
-            port["destination_port"] = m_spPortRawData->remotePort();
-            port["host_network_egress_queue"] = m_spPortRawData->txQueue();
-            port["host_network_ingress_queue"] = m_spPortRawData->rxQueue();
-            port["file_inode"] = m_spPortRawData->inode();
-            port["interface_state"] = m_spPortRawData->state();
-            port["process_pid"] = m_spPortRawData->pid();
-            port["process_name"] = m_spPortRawData->processName();
+            port["network_transport"] = m_portRawData.protocol();
+            port["source_ip"] = m_portRawData.localIp();
+            port["source_port"] = m_portRawData.localPort();
+            port["destination_ip"] = m_portRawData.remoteIP();
+            port["destination_port"] = m_portRawData.remotePort();
+            port["host_network_egress_queue"] = m_portRawData.txQueue();
+            port["host_network_ingress_queue"] = m_portRawData.rxQueue();
+            port["file_inode"] = m_portRawData.inode();
+            port["interface_state"] = m_portRawData.state();
+            port["process_pid"] = m_portRawData.pid();
+            port["process_name"] = m_portRawData.processName();
         }
 };
 #endif // _PORT_IMPL_H

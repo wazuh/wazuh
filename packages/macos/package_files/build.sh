@@ -54,6 +54,12 @@ function build() {
 
     find "${DESTINATION_PATH}/ruleset/sca/" -type f -exec rm -f {} \;
 
+    # install.sh always creates empty logs/ossec.{log,json} placeholders; the DEB/RPM specs
+    # already strip these before packaging, so this package must too (otherwise the .json
+    # placeholder gets rotated into an empty archive daily, regardless of <log_format>).
+    # A glob here would not expand under this script's own `set -f` (line 10), so use find.
+    find ${DESTINATION_PATH}/logs -maxdepth 1 -type f \( -name 'ossec.log' -o -name 'ossec.json' \) -delete
+
     # Add the auxiliar script used while installing the package
     mkdir -p ${INSTALLATION_SCRIPTS_DIR}/
     cp ${SOURCES_PATH}/VERSION.json ${INSTALLATION_SCRIPTS_DIR}/

@@ -331,9 +331,16 @@ int get_ossec_server()
     char *str = NULL;
     int success = 0;
 
-    /* Definitions. <agent><manager> is the 5.x shape; the <client> paths are kept
-     * because a WPK upgrade never rewrites ossec.conf.
+    /* Definitions. <endpoint> is the canonical 5.x spelling (#38624) and is checked
+     * first to mirror Read_Agent_Manager()'s precedence (client-config.c): it carries
+     * the whole host[:port][/prefix] target and wins over the deprecated <address>
+     * pair whenever both are present. <agent><manager> is the 5.x block; <client>
+     * is kept because a WPK upgrade never rewrites ossec.conf, and the installer
+     * writes <endpoint> under whichever block a preserved 4.x file already has
+     * (InstallerScripts.vbs), matching Read_Legacy_Client()'s own precedence.
      */
+    const char *(xml_agentendpoint[]) = {"ossec_config", "agent", "manager", "endpoint", NULL};
+    const char *(xml_serverendpoint[]) = {"ossec_config", "client", "server", "endpoint", NULL};
     const char *(xml_agentaddr[]) = {"ossec_config", "agent", "manager", "address", NULL};
     const char *(xml_serverip[]) = {"ossec_config", "client", "server-ip", NULL};
     const char *(xml_serverhost[]) = {"ossec_config", "client", "server-hostname", NULL};
@@ -351,9 +358,34 @@ int get_ossec_server()
     }
     config_inst.server_type = 0;
 
+    /* Block precedence first, tag second: <agent><manager> is checked in full
+     * (endpoint, then its own deprecated address) before ever looking at
+     * <client><server> -- mirrors Read_Legacy_Client()'s address_taken gate
+     * (client-config.c), which skips the legacy block entirely once <agent>
+     * has resolved anything, regardless of which tag it used. Checking
+     * endpoint-anywhere before address-anywhere would let a legacy
+     * <client><server><endpoint> (from an installer-patched preserved 4.x
+     * file) outrank a same-file <agent><manager><address> it should lose to. */
+
+    /* Displayed verbatim: the endpoint is not an address, so it is always
+     * SERVER_HOST_USED regardless of what its host portion looks like. */
+    if (str = OS_GetOneContentforElement(&xml, xml_agentendpoint), str) {
+        config_inst.server_type = SERVER_HOST_USED;
+        config_inst.server = str;
+        success = 1;
+        goto ret;
+    }
+
     /* Get IP address of the server */
     if (str = OS_GetOneContentforElement(&xml, xml_agentaddr), str) {
         config_inst.server_type = OS_IsValidIP(str, NULL) == 1 ? SERVER_IP_USED : SERVER_HOST_USED;
+        config_inst.server = str;
+        success = 1;
+        goto ret;
+    }
+
+    if (str = OS_GetOneContentforElement(&xml, xml_serverendpoint), str) {
+        config_inst.server_type = SERVER_HOST_USED;
         config_inst.server = str;
         success = 1;
         goto ret;
@@ -395,203 +427,3 @@ int get_ossec_server()
     return success;
 }
 
-/* Run a cmd.exe command */
-int run_cmd(char *cmd, HWND hwnd)
-{
-    int result;
-    int cmdlen;
-    STARTUPINFO si;
-    PROCESS_INFORMATION pi;
-    DWORD exit_code;
-
-    /* Build command */
-    cmdlen = strlen(COMSPEC) + 5 + strlen(cmd);
-    char finalcmd[cmdlen];
-    snprintf(finalcmd, cmdlen, "%s /c %s", COMSPEC, cmd);
-
-    /* Log command being run */
-    mferror("Running the following command (%s)", finalcmd);
-
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    ZeroMemory(&pi, sizeof(pi));
-
-    if (!CreateProcess(NULL, finalcmd, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL,
-                       &si, &pi)) {
-        MessageBox(hwnd, "Unable to run command.",
-                   "Error -- Failure Running Command", MB_OK);
-        return (0);
-    }
-
-    /* Wait until process exits */
-    WaitForSingleObject(pi.hProcess, INFINITE);
-
-    /* Get exit code from command */
-    result = GetExitCodeProcess(pi.hProcess, &exit_code);
-
-    /* Close process and thread */
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-
-    if (!result) {
-        MessageBox(hwnd, "Could not determine exit code from command.",
-                   "Error -- Failure Running Command", MB_OK);
-
-        return (0);
-    }
-
-    return (exit_code);
-}
-
-/* Set OSSEC Server IP */
-int set_ossec_server(char *ip, HWND hwnd)
-{
-    OS_XML xml;
-    char *str = NULL;
-    const char *(xml_agentaddr[]) = {"ossec_config", "agent", "manager", "address", NULL};
-    const char *(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
-    /* Write order. The block that already holds an address is tried first so an
-     * upgraded 4.x file keeps its <client><server> shape and a 5.x file gets
-     * <agent><manager>. The other path is the fallback for a config with neither. */
-    const char **xml_paths[] = {xml_agentaddr, xml_serveraddr};
-    const size_t xml_paths_len = sizeof(xml_paths) / sizeof(xml_paths[0]);
-    size_t i;
-    char config_tmp[] = CONFIG;
-    char *conf_file = basename_ex(config_tmp);
-
-    char tmp_path[strlen(TMP_DIR) + 1 + strlen(conf_file) + 6 + 1];
-
-    snprintf(tmp_path, sizeof(tmp_path), "%s/%sXXXXXX", TMP_DIR, conf_file);
-
-    /* Verify IP Address */
-    if (OS_IsValidIP(ip, NULL) != 1) {
-
-        if (strchr(ip, '/')) {
-            MessageBox(hwnd,
-                       "A valid hostname cannot contain the following character: /",
-                       "Cannot save hostname", MB_OK | MB_ICONERROR);
-            return (0);
-        }
-        config_inst.server_type = SERVER_HOST_USED;
-    } else {
-        config_inst.server_type = SERVER_IP_USED;
-    }
-
-    /* Keep <agent>/<client> block compatibility depending on current config: move the
-     * block that already carries an address to the front of the write order. */
-    if (OS_ReadXML(CONFIG, &xml) == 0) {
-        for (i = 0; i < xml_paths_len; i++) {
-            if (str = OS_GetOneContentforElement(&xml, xml_paths[i]), str) {
-                free(str);
-                const char **found = xml_paths[i];
-                xml_paths[i] = xml_paths[0];
-                xml_paths[0] = found;
-                break;
-            }
-        }
-        OS_ClearXML(&xml);
-    }
-
-    /* Create temporary file */
-    if (mkstemp_ex(tmp_path) == -1) {
-        MessageBox(hwnd, "Could not create temporary file.",
-                   "Error -- Failure Setting IP", MB_OK);
-        return (0);
-    }
-
-    /* Read the XML. Print error and line number. */
-    int written = 0;
-    for (i = 0; i < xml_paths_len && !written; i++) {
-        written = OS_WriteXML(CONFIG, tmp_path, xml_paths[i], NULL, ip) == 0;
-    }
-
-    if (!written) {
-        MessageBox(hwnd, "Unable to set OSSEC Server IP Address.\r\n"
-                   "(Internal error on the XML Write).",
-                   "Error -- Failure Setting IP", MB_OK);
-
-        if (unlink(tmp_path)) {
-            MessageBox(hwnd, "Could not delete temporary file.",
-                       "Error -- Failure Deleting Temporary File", MB_OK);
-        }
-
-        return (0);
-    }
-
-    /* Rename config files */
-    if (rename_ex(CONFIG, LASTCONFIG)) {
-        MessageBox(hwnd, "Unable to backup configuration.",
-                   "Error -- Failure Backing Up Configuration", MB_OK);
-
-        if (unlink(tmp_path)) {
-            MessageBox(hwnd, "Could not delete temporary file.",
-                       "Error -- Failure Deleting Temporary File", MB_OK);
-        }
-
-        return (0);
-    }
-
-    if (rename_ex(tmp_path, CONFIG)) {
-        MessageBox(hwnd, "Unable rename temporary file.",
-                   "Error -- Failure Renaming Temporary File", MB_OK);
-
-        if (unlink(tmp_path)) {
-            MessageBox(hwnd, "Could not delete temporary file.",
-                       "Error -- Failure Deleting Temporary File", MB_OK);
-        }
-
-        return (0);
-    }
-
-    return (1);
-}
-
-/* Set OSSEC Authentication Key */
-int set_ossec_key(char *key, HWND hwnd)
-{
-    FILE *fp;
-
-    char auth_file_tmp[] = KEYS_FILE;
-    char *keys_file = basename_ex(auth_file_tmp);
-
-    char tmp_path[strlen(TMP_DIR) + 1 + strlen(keys_file) + 6 + 1];
-
-    snprintf(tmp_path, sizeof(tmp_path), "%s/%sXXXXXX", TMP_DIR, keys_file);
-
-    /* Create temporary file */
-    if (mkstemp_ex(tmp_path) == -1) {
-        MessageBox(hwnd, "Could not create temporary file.",
-                   "Error -- Failure Setting IP", MB_OK);
-        return (0);
-    }
-
-    fp = wfopen(tmp_path, "w");
-    if (fp) {
-        fprintf(fp, "%s", key);
-        fclose(fp);
-    } else {
-        MessageBox(hwnd, "Could not open temporary file for write.",
-                   "Error -- Failure Importing Key", MB_OK);
-
-        if (unlink(tmp_path)) {
-            MessageBox(hwnd, "Could not delete temporary file.",
-                       "Error -- Failure Deleting Temporary File", MB_OK);
-        }
-
-        return (0);
-    }
-
-    if (rename_ex(tmp_path, KEYS_FILE)) {
-        MessageBox(hwnd, "Unable to rename temporary file.",
-                   "Error -- Failure Renaming Temporary File", MB_OK);
-
-        if (unlink(tmp_path)) {
-            MessageBox(hwnd, "Could not delete temporary file.",
-                       "Error -- Failure Deleting Temporary File", MB_OK);
-        }
-
-        return (0);
-    }
-
-    return (1);
-}

@@ -309,7 +309,7 @@ list(APPEND shared_tests_names "test_fs_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 else()
-list(APPEND shared_tests_flags "-Wl,--wrap=statfs ${DEBUG_OP_WRAPPERS}")
+list(APPEND shared_tests_flags "-Wl,--wrap=stat -Wl,--wrap=statfs ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_wazuhdb_op")
