@@ -36,6 +36,7 @@ All notable changes to this project will be documented in this file.
 - Prevent a race condition in `randombytes` during the initialization of the Windows RSA key container ([#37701](https://github.com/wazuh/wazuh/pull/37701))
 - Fixed missing macOS SSH authentication logs by adding the `sshd-session` and `sshd-auth` processes to the default Unified Logging query. ([#37769](https://github.com/wazuh/wazuh/pull/37769))
 - Fixed the name, version and PyPI packages reported for Microsoft Store Python installations. ([#37441](https://github.com/wazuh/wazuh/pull/37441))
+- Fixed the FIM eBPF whodata provider swapping the reported `user_id` and `group_id` in every event. ([#39358](https://github.com/wazuh/wazuh/issues/39358))
 - Fixed FIM eBPF whodata attributing every file change to root when the kernel reports no loginuid. ([#39335](https://github.com/wazuh/wazuh/pull/39335))
 
 #### Added

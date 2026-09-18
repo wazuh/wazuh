@@ -332,8 +332,8 @@ statfunc void submit_event(const char *filename,
     /* PID and UID/GID */
     evt->pid = BPF_CORE_READ(current_task, tgid);
     __u64 uid_gid = bpf_get_current_uid_gid();
-    evt->uid = uid_gid >> 32;
-    evt->gid = uid_gid;
+    evt->uid = uid_gid;
+    evt->gid = uid_gid >> 32;
 
     /* Effective UID */
     evt->euid = BPF_CORE_READ(current_task, cred, euid.val);
