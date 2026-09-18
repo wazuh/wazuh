@@ -675,13 +675,16 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& loc
             w_evt->group_name = fimebpf::instance().m_get_group(event->gid);
             w_evt->effective_uid = num_to_str(event->euid);
             w_evt->effective_name = fimebpf::instance().m_get_user(event->euid);
-            w_evt->audit_uid = num_to_str(event->login_uid);
-            w_evt->audit_name = fimebpf::instance().m_get_user(event->login_uid);
-            int audit_gid_val = get_login_gid(event->login_uid);
-            if (audit_gid_val >= 0)
+            if (event->login_uid != (uint32_t)-1)
             {
-                w_evt->audit_gid = num_to_str((unsigned int)audit_gid_val);
-                w_evt->audit_group_name = fimebpf::instance().m_get_group(audit_gid_val);
+                w_evt->audit_uid = num_to_str(event->login_uid);
+                w_evt->audit_name = fimebpf::instance().m_get_user(event->login_uid);
+                int audit_gid_val = get_login_gid(event->login_uid);
+                if (audit_gid_val >= 0)
+                {
+                    w_evt->audit_gid = num_to_str((unsigned int)audit_gid_val);
+                    w_evt->audit_group_name = fimebpf::instance().m_get_group(audit_gid_val);
+                }
             }
             w_evt->inode = num_to_str(event->inode);
             w_evt->dev = num_to_str(event->dev);
