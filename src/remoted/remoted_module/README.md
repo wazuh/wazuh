@@ -109,8 +109,9 @@ src/http_server/
   hands out; any `CERTIFICATE` block of the file counts, so a bundle works) signs it, which is
   [`ca_bundle`](../../shared_modules/ca_bundle/README.md)'s `anyCaSignsLeaf()` — logs the
   result (ERROR expired / CA does not sign, WARN < 30 days / CA unreadable, WARN/INFO for the chain
-  verdict from `chainValidates()`, the bundle as sole trust store) and records it **before**
-  `run_async`, so no request can ever read "not evaluated yet". A `TlsCertificateMonitor` (own
+  verdict from `chainValidates()`, the bundle as sole trust store, INFO for the generation a stamped
+  bundle is published under and WARN naming the guard that refused to vouch for one) and records it
+  **before** `run_async`, so no request can ever read "not evaluated yet". A `TlsCertificateMonitor` (own
   thread parked on a `condition_variable::wait_for`, the module's canonical periodic-task shape —
   RESTinio's `run_async()` keeps its `io_context` private, so no timer there: D45) re-evaluates and
   re-logs every `HttpServerConfig::certificateStatusInterval` (24 h; tests inject 1 s — it is not a
@@ -333,9 +334,10 @@ src/endpoints/
   lambda the facade passes that locks a `weak_ptr` to the server and calls `caCertificateSnapshot()`,
   which reads through `CaCertificateSource` (`http_server/caCertificateSource.{hpp,cpp}`) — one read
   and one hash per call, bounded by the injectable POSIX reader in `fileRead.hpp` (at most 1 MiB + 1
-  byte, under the source's own mutex); the parsed certificates, their reserialised PEM and the
-  leaf-match verdict are cached by the SHA-256 of the bytes, so a same-size, same-mtime replacement
-  is still reparsed. `certificates == 0 || pem.empty()` ⇒ `404 {"error":"not_found"}`; a read
+  byte, under the source's own mutex); the parsed certificates, their reserialised PEM, the
+  leaf-match verdict and the publication verdict are cached by the SHA-256 of the bytes, so a
+  same-size, same-mtime replacement is still reparsed. `certificates == 0 || pem.empty()` ⇒
+  `404 {"error":"not_found"}`; a read
   failure (missing, unreadable, a read error, or over the cap) leaves the last good snapshot being
   served and records the cause instead of clearing it — only a readable file with nothing in it
   clears the snapshot; `matchesLeaf == false` (no certificate in the CA signs the served leaf) ⇒
@@ -351,6 +353,14 @@ src/endpoints/
   `chainValid`/`chainError` from `chainValidates()` (the bundle as trust store, `PARTIAL_CHAIN`,
   SSL-server purpose), which play no part in this response and which the transport logs
   (`WARN`/`INFO`) in `logCertificateStatus()`.
+  Neither does the publication verdict the same read produces (issue #39319):
+  [`ca_bundle`](../../shared_modules/ca_bundle/README.md)'s `vouch()` is called once per read that
+  changed the bytes, and `publication`/`vouchFailure`/`block`/`serializedBytes`/`fileSha256` travel
+  with the snapshot — an unvouched bundle is served exactly as a vouched one, and the difference is
+  the generation agents are told about (0 when no guard vouched for it) plus the log line that names
+  the guard. `CaCertificateSource::descriptor()` is the read-mostly view of that generation for
+  callers on the hot path: it revalidates through the same mutex at most once every
+  `kDescriptorRefresh` (1 s), and answers `nullopt` while there is no servable bundle at all.
 
 - **Endpoint handler (async):**
   `using AuthenticatedHandler = std::function<void(std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder>)>;`
@@ -2220,7 +2230,8 @@ signed by a throwaway CA — `testTlsServer.hpp`'s `generateCaSignedCertificate(
 serves lets a client with `verify_peer` and **only that PEM** complete the handshake against the same
 listener, while a foreign CA does not; prefixed vs bare target; a foreign CA configured as
 `caCertificatePath` is caught by the real start-time evaluation and answered 503; the CA moved away
-is a 404 without a restart),
+is a 404 without a restart; the fixture's CA file is a stamped bundle, so what the route answers is
+the certificate this process reserialised and never the file's `##` lines),
 `inFlightBudget_test.cpp` (reserve/release accounting, exhaustion, RAII move-once, disabled mode,
 concurrency), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
 release, disabled mode, concurrency), `endpointRateLimiter_test.cpp` (the third limiter, a token
@@ -2281,15 +2292,18 @@ keeps the original answer), `logThrottle_test.cpp` (first occurrence emits, the 
 is counted not printed, and 8 threads × 10 000 records neither lose nor double-count),
 `strictJsonObject_test.cpp` (exact-allowlist parsing: missing/extra/duplicate/mistyped members,
 non-ASCII bytes and BOMs rejected, and a truncated multi-byte tail never read past the view — the
-ASAN heap-overflow regression), `caCertificateSource_test.cpp` (certificates only, never the key
-from a combined PEM; a file with one undecodable block is refused whole; re-parsed on content change
-despite identical size and mtime; a read failure -- missing, a directory, a read error, or over the
-1 MiB cap with both a fake and a real file -- keeps the previous snapshot and records the cause,
-while an emptied but readable file clears it; 8 threads racing 20 atomic file rotations never
-publish a torn mix of two CAs' bytes and subjects, and a fake reader counting its in-flight calls
-proves the read itself runs under the mutex; and `fileRead`'s `readFileBounded()` gets its own
-`Ok`/`TooLarge`/`CannotOpen`/`ReadError` cases with the matching errno, including a FIFO refused
-as not a regular file).
+ASAN heap-overflow regression), `caCertificateSource_test.cpp` (the publication verdict of a stamped
+bundle and every guard that refuses one -- no block, a hash that describes other certificates, no CA
+signing the served leaf, no leaf at all, a seventh certificate, a document over the byte cap -- and
+`descriptor()`'s refresh window driven by an injected clock and a call-counting reader: 100 calls,
+one read; certificates only, never the key from a combined PEM; a file with one undecodable block is
+refused whole; re-parsed on content change despite identical size and mtime; a read failure --
+missing, a directory, a read error, or over the 1 MiB cap with both a fake and a real file -- keeps
+the previous snapshot and records the cause, while an emptied but readable file clears it; 8 threads
+racing 20 atomic file rotations never publish a torn mix of two CAs' bytes and subjects, and a fake
+reader counting its in-flight calls proves the read itself runs under the mutex; and `fileRead`'s
+`readFileBounded()` gets its own `Ok`/`TooLarge`/`CannotOpen`/`ReadError` cases with the matching
+errno, including a FIFO refused as not a regular file).
 
 Body decoding: `bodyDecoder_test.cpp` (only an exact, case-insensitive `zstd` decodes — `gzip`,
 `"zstd, gzip"` and prefixes are refused — the decoded bytes stay charged to the in-flight budget

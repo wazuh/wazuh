@@ -41,13 +41,12 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -162,6 +161,19 @@ namespace remoted::http
         std::optional<ReadFailure> caReadFailure; ///< Present while the CA file cannot be read: the CA fields
                                                   ///< above then describe the last GOOD read of it (or are empty
                                                   ///< when there never was one), not the file as it is now.
+
+        /// Generation the CA bundle is published under (RF-2), 0 when no guard vouched for it --
+        /// what the logs announce and what the notify path tells agents.
+        std::int64_t caPublication {0};
+        /// Which guard refused to vouch for the bundle, or `none`; `no_certificates` for a status
+        /// that never had a bundle to vouch for. What names the cause in the log line.
+        ca_bundle::GuardFailure caVouchFailure {ca_bundle::GuardFailure::no_certificates};
+        /// How many certificates the CA bundle carried at the last good read; 0 when there was none.
+        /// What the `too_many_certificates` log line names alongside ca_bundle::kMaxCertificates.
+        std::size_t caCertificates {0};
+        /// Size of the PEM this process would serve for the bundle; 0 when there was none. What the
+        /// `too_many_bytes` log line names alongside ca_bundle::kMaxSerializedBytes.
+        std::size_t caSerializedBytes {0};
     };
 
     /**

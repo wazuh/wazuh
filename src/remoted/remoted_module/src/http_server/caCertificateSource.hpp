@@ -41,11 +41,22 @@
  * for real -- never more than kMaxBytes + 1 bytes are requested, whatever the file's size -- and it is
  * injectable, so every failure path is testable without permission tricks that root ignores. The whole
  * call, read included, runs under the source's mutex, so two readers can never publish out of order.
+ *
+ * That same read also decides whether the bundle is PUBLISHED (issue #39319): ca_bundle::vouch()
+ * runs on it once, and its verdict -- the generation, or 0 and the guard that refused -- travels in
+ * the snapshot, so the endpoint, the certificate log lines and the notify path cannot disagree about
+ * what generation this file is. Publishing is a separate question from serving: an unvouched bundle
+ * is handed out exactly as a vouched one. descriptor() is the view for the callers on the hot path,
+ * one per control notify: it revalidates under the same mutex at most once every kDescriptorRefresh,
+ * so a notify storm costs one read per second while a rotation is still seen within the second.
  */
 
 #include "fileRead.hpp"
 #include "tlsCertificateStatus.hpp"
 
+#include "ca_bundle/ca_bundle.hpp"
+
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -71,6 +82,25 @@ namespace remoted::http
         /// Present while the latest read failed. The fields above then describe the last GOOD read
         /// (or are empty when there never was one), not the file as it is right now.
         std::optional<ReadFailure> lastReadFailure;
+
+        /// The generation this bundle may be announced under (RF-2): the publication its block
+        /// carries once every guard passed, 0 when any of them refused -- and 0 is what an agent
+        /// reads as "this manager has no published bundle".
+        std::int64_t publication {0};
+        /// Which guard refused to vouch for the bundle, or `none`. Defaults to `no_certificates`
+        /// rather than `none`: a snapshot buildLocked() never got to vouch for (nothing to serve,
+        /// a serialisation failure) must not read as "vouched for" because the field was untouched.
+        ca_bundle::GuardFailure vouchFailure {ca_bundle::GuardFailure::no_certificates};
+        /// The publication block the file carries, if any. Absent means the bundle was never
+        /// stamped -- an ordinary CA file -- which is a different state from a block that does not
+        /// describe the certificates next to it.
+        std::optional<ca_bundle::PublicationBlock> block;
+        /// Size of `pem`: what the byte guard measured, and what `GET /cacerts` would hand out.
+        std::size_t serializedBytes {0};
+        /// SHA-256 of the FILE's bytes -- the cache key, and what tells a bundle rewritten outside
+        /// the tool from one that never changed. Not the block's Content-SHA256, which hashes what
+        /// the certificates ARE (ca_bundle::contentSha256()).
+        std::string fileSha256;
     };
 
     /**
@@ -84,6 +114,21 @@ namespace remoted::http
     class CaCertificateSource final
     {
     public:
+        /// How descriptor() reads the clock. A test hands it a time it moves by hand.
+        using Clock = std::function<std::chrono::steady_clock::time_point()>;
+
+        /// How long descriptor() may answer without reading the file again: one read per second per
+        /// node is the whole cost the notify path is allowed to add, however many agents ask (C18).
+        static constexpr std::chrono::seconds kDescriptorRefresh {1};
+
+        /// What the notify path needs from the bundle, and nothing else: the generation to tell an
+        /// agent about. `nullopt` means there is no servable bundle at all (`null` on the wire); 0
+        /// means there is one and it is not published. No hash of anything ever leaves here.
+        struct CaDescriptor
+        {
+            std::optional<std::int64_t> generation;
+        };
+
         /// Largest CA file served. A bundle is a few KB; past this the file is refused as TooLarge,
         /// and never more than kMaxBytes + 1 bytes of it are requested from the reader.
         static constexpr std::size_t kMaxBytes {1024U * 1024U};
@@ -95,8 +140,14 @@ namespace remoted::http
          *             that still holds this source (the metrics scrape, the legacy poller).
          * @param reader How the bytes are read: readFileBounded() unless a test says otherwise. An
          *               empty function falls back to the default rather than being called.
+         * @param clock How descriptor() tells the time when it decides whether its answer is still
+         *              fresh. Injectable so the refresh window is testable without sleeping; an
+         *              empty function falls back to the default rather than being called.
          */
-        CaCertificateSource(std::string path, const X509* leaf, FileReader reader = readFileBounded);
+        CaCertificateSource(std::string path,
+                            const X509* leaf,
+                            FileReader reader = readFileBounded,
+                            Clock clock = std::chrono::steady_clock::now);
 
         /**
          * @brief Current state of the file: cached while its content hash is unchanged.
@@ -107,6 +158,16 @@ namespace remoted::http
          */
         CaCertificateSnapshot snapshot();
 
+        /**
+         * @brief The vouched-for generation, revalidated at most once every kDescriptorRefresh.
+         *
+         * One call per control notify, and a notify storm is exactly what this must not turn into a
+         * read storm -- while a rotation still has to be seen within the second (CA-15). Runs under
+         * the same mutex as snapshot(), so the generation it publishes is never older than what the
+         * last read saw, and the first call always reads.
+         */
+        CaDescriptor descriptor();
+
         /// How many times the bytes were actually parsed. Only the tests care: it is what proves
         /// the cache holds when the file did not change, and gives way when it did.
         std::uint64_t parses() const;
@@ -114,15 +175,24 @@ namespace remoted::http
     private:
         CaCertificateSnapshot buildLocked(std::string_view pem) const;
 
+        /// snapshot()'s whole body with m_mutex already held: the read, the cache check and the
+        /// rebuild. descriptor() revalidates through it, so a revalidation takes the lock once.
+        CaCertificateSnapshot snapshotLocked();
+
         const std::string m_path;
         X509Ptr m_leaf; ///< Our own reference to the served leaf; null when the caller passed none.
         const FileReader m_reader;
+        const Clock m_clock;
 
         mutable std::mutex m_mutex;
         std::string m_hash; ///< SHA-256 of the bytes behind m_snapshot; empty before the first good read.
         CaCertificateSnapshot m_snapshot;
         std::uint64_t m_parses {0};
-        std::uint64_t m_consecutiveFailures {0}; ///< Reset by every successful read.
+        std::uint64_t m_consecutiveFailures {0};                       ///< Reset by every successful read.
+        std::chrono::steady_clock::time_point m_lastDescriptorRead {}; ///< When descriptor() last revalidated.
+        /// False until descriptor() has revalidated once, so the first call always reads whatever
+        /// time the injected clock starts at -- an epoch-zero start is not "just revalidated".
+        bool m_hasDescriptor {false};
     };
 
     /**

@@ -53,10 +53,11 @@ namespace remoted::http
         }
     } // namespace
 
-    CaCertificateSource::CaCertificateSource(std::string path, const X509* leaf, FileReader reader)
+    CaCertificateSource::CaCertificateSource(std::string path, const X509* leaf, FileReader reader, Clock clock)
         : m_path {std::move(path)}
         , m_leaf {retain(leaf)}
         , m_reader {reader ? std::move(reader) : FileReader {readFileBounded}}
+        , m_clock {clock ? std::move(clock) : Clock {std::chrono::steady_clock::now}}
     {
     }
 
@@ -64,8 +65,6 @@ namespace remoted::http
     {
         CaCertificateSnapshot snapshot;
 
-        // ca_bundle also hands back the publication block (`parsed.block`); nothing here reads it
-        // yet -- the snapshot grows that field with the guards, in this issue's next stage.
         auto parsed = ca_bundle::parseBundle(pem);
         if (parsed.certificates.empty())
         {
@@ -76,6 +75,16 @@ namespace remoted::http
 
         snapshot.pem = serializeCertificates(parsed.certificates);
         snapshot.certificates = parsed.certificates.size();
+
+        // The one vouch there is (D15): every caller -- the endpoint, the log lines, the notify
+        // descriptor -- reads this verdict instead of re-deciding it, so they cannot disagree about
+        // what generation this file is, and the guards run once per read that changed the bytes.
+        // What is measured is what would be handed out: the PEM we serialised, not the file.
+        const auto vouch = ca_bundle::vouch(parsed, m_leaf.get(), snapshot.pem.size());
+        snapshot.publication = vouch.publication;
+        snapshot.vouchFailure = vouch.failure;
+        snapshot.block = parsed.block;
+        snapshot.serializedBytes = snapshot.pem.size();
 
         // With no leaf to check against (a server that has not started) the answer is "unknown",
         // not "mismatch": anyCaSignsLeaf() would say false, and false is what refuses to serve.
@@ -110,20 +119,8 @@ namespace remoted::http
         return snapshot;
     }
 
-    CaCertificateSnapshot CaCertificateSource::snapshot()
+    CaCertificateSnapshot CaCertificateSource::snapshotLocked()
     {
-        if (m_path.empty())
-        {
-            return {};
-        }
-
-        // The read runs under the lock too. The file is a few KB and the callers are a rate-limited
-        // route, a daily monitor, a metrics scrape and the legacy poller, so serialising them costs
-        // nothing measurable -- and it is what makes publication monotonic: with the read outside,
-        // the caller that read the OLDER bytes could take the lock last and publish them over the
-        // newer ones (issue #39318).
-        std::lock_guard<std::mutex> lock {m_mutex};
-
         std::string contents;
         const ReadResult read = m_reader(m_path, kMaxBytes, contents);
 
@@ -150,10 +147,65 @@ namespace remoted::http
         // Rebuilt from these bytes, whatever they hold: a readable file with no certificate in it is
         // the operator's way of saying "stop serving", and it clears the snapshot at once.
         m_snapshot = buildLocked(contents);
+        // Set after the rebuild and from the same hash the cache is keyed on, so the file's identity
+        // travels with the snapshot even when buildLocked() refused everything else in it.
+        m_snapshot.fileSha256 = hash;
         m_hash = std::move(hash);
         ++m_parses;
 
         return m_snapshot;
+    }
+
+    CaCertificateSnapshot CaCertificateSource::snapshot()
+    {
+        if (m_path.empty())
+        {
+            return {};
+        }
+
+        // The read runs under the lock too. The file is a few KB and the callers are a rate-limited
+        // route, a daily monitor, a metrics scrape and the legacy poller, so serialising them costs
+        // nothing measurable -- and it is what makes publication monotonic: with the read outside,
+        // the caller that read the OLDER bytes could take the lock last and publish them over the
+        // newer ones (issue #39318).
+        std::lock_guard<std::mutex> lock {m_mutex};
+        return snapshotLocked();
+    }
+
+    CaCertificateSource::CaDescriptor CaCertificateSource::descriptor()
+    {
+        if (m_path.empty())
+        {
+            // Same guard as snapshot(): nothing configured never has anything to revalidate, so this
+            // returns before the reader is touched and before m_lastDescriptorRead/m_hasDescriptor
+            // move at all -- a source with no path is not "due for a re-read a second from now", it
+            // never becomes due.
+            return {};
+        }
+
+        // Same mutex as snapshot() (RNF-2): the generation this hands out is one a read produced,
+        // never a half-updated one.
+        std::lock_guard<std::mutex> lock {m_mutex};
+
+        const auto now = m_clock();
+        if (!m_hasDescriptor || now - m_lastDescriptorRead >= kDescriptorRefresh)
+        {
+            // Inside the window the last verdict stands; past it the file is read again, which is
+            // what makes a rotation visible within the second without a notify storm becoming a
+            // read storm (CA-15).
+            (void)snapshotLocked();
+            m_lastDescriptorRead = now;
+            m_hasDescriptor = true;
+        }
+
+        if (m_snapshot.certificates == 0 || m_snapshot.pem.empty())
+        {
+            // Nothing servable is not "published as 0": the wire keeps the two apart (`null` vs
+            // `0`), so an agent can tell a manager with no bundle from one whose bundle is unstamped.
+            return {};
+        }
+
+        return CaDescriptor {m_snapshot.publication};
     }
 
     std::uint64_t CaCertificateSource::parses() const
@@ -172,6 +224,10 @@ namespace remoted::http
         status.chainError = ca.chainError;
         status.caSubjects = ca.subjects;
         status.caReadFailure = ca.lastReadFailure;
+        status.caPublication = ca.publication;
+        status.caVouchFailure = ca.vouchFailure;
+        status.caCertificates = ca.certificates;
+        status.caSerializedBytes = ca.serializedBytes;
         return status;
     }
 } // namespace remoted::http
