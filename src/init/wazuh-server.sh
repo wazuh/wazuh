@@ -197,6 +197,11 @@ status()
             continue
         fi
 
+        ## Mirror start_service(): authd is not started when auth.disabled is true.
+        if [ "$i" = "wazuh-manager-authd" ] && [ "$(${MCONF} get auth.disabled 2>/dev/null)" = "true" ]; then
+            continue
+        fi
+
         if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
         else
