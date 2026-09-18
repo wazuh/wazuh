@@ -147,6 +147,24 @@ int w_agent_auth_parse_opt(agent_auth_opts_t *opts, int c, const char *arg, FILE
     }
 }
 
+int w_agent_auth_reject_operands(int argc, char **argv, int optind, FILE *err) {
+    (void)argv;
+
+    if (optind >= argc) {
+        return 0;
+    }
+
+    /* The value is deliberately NOT echoed. This is the path a token typed as an operand lands
+     * on, and naming it would put the credential in stderr, in the terminal's scrollback and in
+     * whatever captures them -- the exposure the command exists to avoid, reintroduced by its own
+     * error message. Nothing here can tell a stray word from a token, so neither is printed. */
+    fprintf(err, "%s: unexpected argument. The token is never passed on the command line --\n",
+            AGENT_AUTH_NAME);
+    fprintf(err, "  use --token-file or standard input.\n");
+
+    return -1;
+}
+
 /** Wipes a heap-allocated token before releasing it, then frees it. NULL-safe. */
 STATIC void w_agent_auth_forget(char *secret) {
     if (secret == NULL) {
@@ -267,6 +285,18 @@ STATIC char *w_agent_auth_current_id(void) {
  */
 STATIC char *w_agent_auth_read_token(const agent_auth_opts_t *opts, FILE *in, FILE *err) {
     if (opts->source == AGENT_AUTH_SOURCE_FILE) {
+        /* The shared reader refuses a token too long to fit rather than truncating it, so the
+         * size is checked here only to say why: it reports the same "could not read" as a file
+         * that is missing or empty, and those want different responses. The stdin path below
+         * already names this case; this gives the file path the same answer. */
+        struct stat token_st;
+
+        if (stat(opts->token_file, &token_st) == 0 && token_st.st_size >= W_ETOKEN_MAX_FILE_BYTES) {
+            fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", AGENT_AUTH_NAME,
+                    W_ETOKEN_MAX_FILE_BYTES);
+            return NULL;
+        }
+
         char *text = w_agent_token_read_file(opts->token_file);
 
         if (text == NULL) {
@@ -749,11 +779,20 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
             } else if (report.rolled_back) {
                 fprintf(err, "  The previous agent key was restored; this agent still talks to\n");
                 fprintf(err, "  its former manager.\n");
-            } else if (registered) {
+            } else {
                 /* The loudest case gets the most words: enrolled, the key on disk was replaced,
                  * and nothing was put back. Saying only "could not be committed" here would hide
-                 * the fact that this agent can now reach no manager at all. */
-                fprintf(err, "  The previous agent key was NOT restored and no backup exists.\n");
+                 * the fact that this agent can now reach no manager at all.
+                 *
+                 * Deliberately not gated on `registered`, which describes the state before the
+                 * run rather than the damage done by it: an agent that has a trust anchor but an
+                 * empty client.keys still enrolls transactionally, yet has nothing to snapshot,
+                 * so it arrives here with `registered` false and no backup -- the one shape
+                 * where every branch above is false and this warning is the only one left. */
+                if (registered) {
+                    fprintf(err, "  The previous agent key was NOT restored and no backup exists.\n");
+                }
+
                 fprintf(err, "  This agent now holds a key for %s while still trusting its\n",
                         report.host[0] != '\0' ? report.host : token.adr);
                 fprintf(err, "  former manager, and can reach neither until it is re-enrolled.\n");

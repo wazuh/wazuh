@@ -28,6 +28,13 @@ int main(int argc, char **argv) {
 
     w_agent_auth_opts_init(&opts);
 
+#ifndef WIN32
+    /* A write to a closed pipe should fail, not kill the command part-way through an enrollment.
+     * agentd installs the same handler through StartSIG(); this command has no signal thread to
+     * justify the rest of it. */
+    signal(SIGPIPE, SIG_IGN);
+#endif
+
     while ((c = getopt_long(argc, argv, "hdn", agent_auth_long_opts, NULL)) != -1) {
         switch (c) {
             case 'h':
@@ -54,9 +61,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (optind < argc) {
-        fprintf(stderr, "%s: unexpected argument '%s'. The token is never passed on the command "
-                "line -- use --token-file or standard input.\n", AGENT_AUTH_NAME, argv[optind]);
+    if (w_agent_auth_reject_operands(argc, argv, optind, stderr) != 0) {
         exit(AGENT_AUTH_ERR_USAGE);
     }
 

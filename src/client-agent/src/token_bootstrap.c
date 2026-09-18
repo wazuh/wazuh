@@ -35,7 +35,7 @@ STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure);
  *        w_enrollment_load_password()'s fopen/fgets read style (enrollment.c), sized for a
  *        token instead of a short password.
  * @return A newly allocated, trimmed copy of the file's first line, or NULL when the file is
- *         missing, empty, or unreadable.
+ *         missing, empty, unreadable, or holds a first line too long to fit.
  */
 char *w_agent_token_read_file(const char *path) {
     FILE *fp = wfopen(path, "r");
@@ -45,10 +45,18 @@ char *w_agent_token_read_file(const char *path) {
     }
 
     char buf[W_ETOKEN_MAX_FILE_BYTES];
-    char *read_ok = fgets(buf, sizeof(buf) - 1, fp);
+    char *read_ok = fgets(buf, sizeof(buf), fp);
+
+    /* fgets() stops at a newline, at end of file, or because the buffer filled, and reports all
+     * three the same way. Only the last is a problem: the token arrives quietly cut short and is
+     * then refused as malformed, which sends whoever reads that message off to inspect a token
+     * that is merely too big. Asking whether anything is left to read is what separates the
+     * buffer filling from the line simply ending. */
+    bool truncated = (read_ok != NULL && strchr(buf, '\n') == NULL && fgetc(fp) != EOF);
+
     fclose(fp);
 
-    if (!read_ok) {
+    if (!read_ok || truncated) {
         return NULL;
     }
 
@@ -920,6 +928,10 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     if (OS_MoveFile(anchor_file.name, AGENT_ANCHOR_CA) < 0) {
         merror("Could not install the trust anchor at '%s'.", AGENT_ANCHOR_CA);
         token_rollback(opts, &snapshot, report);
+        /* The rename is what failed, so the staged anchor is still on disk holding the new CA.
+         * Every other failure branch in this function removes it; this one did not, leaving one
+         * behind in the certs directory on each attempt. */
+        unlink(anchor_file.name);
         os_free(anchor_file.name);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_COMMIT;
@@ -966,8 +978,12 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     token_report_identity(&enroll_result, report);
     token_snapshot_discard(&snapshot);
     w_etoken_free(&token);
-    minfo(anchor_changed ? "Enrollment succeeded; the manager's CA is now the agent's trust anchor."
-                         : "Enrollment succeeded; the agent's trust anchor is unchanged.");
+    /* The "Token bootstrap: " prefix is not decoration. The end-to-end check in
+     * engine/tools/devContainer/e2e/agents/verify_agents.sh greps ossec.log for this exact
+     * phrase to decide whether an agent enrolled over POST /enroll. */
+    minfo(anchor_changed
+              ? "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's trust anchor."
+              : "Token bootstrap: enrollment succeeded; the agent's trust anchor is unchanged.");
 
     return W_TOKEN_ENROLL_OK;
 }

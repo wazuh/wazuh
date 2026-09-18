@@ -52,6 +52,19 @@ int MQReconnectPredicated(__attribute__((unused)) const char *path,
     return 0;
 }
 
+/* agent_report.c's report_dispatch() fans out to every module's command dispatcher. Three of
+ * them resolve from libraries this executable already links; these two live in logcollector and
+ * execd, which it does not, and linking either to satisfy a call that never happens would pull a
+ * whole subsystem into a command that enrolls and exits. 0 is what report_dispatch() itself
+ * returns for a target it does not know. */
+size_t lccom_dispatch(__attribute__((unused)) char *command, __attribute__((unused)) char **output) {
+    return 0;
+}
+
+size_t wcom_dispatch(__attribute__((unused)) char *command, __attribute__((unused)) char **output) {
+    return 0;
+}
+
 /* syscheck is not running in this process, so there is no state for a command to query. */
 size_t syscom_dispatch(__attribute__((unused)) char *command, __attribute__((unused)) size_t command_len,
                        __attribute__((unused)) char **output) {

@@ -2053,8 +2053,10 @@ int OS_MoveFile(const char *src, const char *dst) {
      * into it, so a crash mid-copy leaves a half-written file -- and a half-written anchor now
      * refuses to let the agent start at all (w_agent_validate_ssl_ca). MoveFileEx replaces
      * atomically within a volume, which src and dst always share here: the temporary file is
-     * created beside its destination. */
-    if (MoveFileEx(src, dst, MOVEFILE_REPLACE_EXISTING)) {
+     * created beside its destination. Through the wide-char wrapper, or a path outside the
+     * active code page would fall through to the copy below and lose exactly the atomicity this
+     * branch exists for. */
+    if (utf8_MoveFileEx(src, dst, MOVEFILE_REPLACE_EXISTING)) {
         return 0;
     }
 

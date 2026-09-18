@@ -156,9 +156,12 @@ list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll
 list(APPEND client-agent_names "test_agent_auth_cli")
 # kill() is wrapped for the running-agentd probe only; the wrapper forwards every real signal
 # to __real_kill, or cmocka's own failure handling would go through it too.
+# OS_MoveFile is wrapped for one thing the enrollment core cannot be asked for any other way: a
+# commit that fails after the manager has already accepted. That is the state the command has the
+# most to say about, and the branch it says it in is chosen here rather than in the core.
 list(APPEND client-agent_flags "-Wl,--wrap,kill -Wl,--wrap,hc_fetch_cacerts \
                                 -Wl,--wrap,hc_enroll -Wl,--wrap,hc_spki_pinned_certificate \
-                                -Wl,--wrap,OS_WriteXML \
+                                -Wl,--wrap,OS_WriteXML -Wl,--wrap,OS_MoveFile \
                                 -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup \
                                 -Wl,--wrap,chown -Wl,--wrap,fchown ${DEBUG_OP_WRAPPERS}")
 

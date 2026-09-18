@@ -98,6 +98,16 @@ int w_agent_auth_parse_opt(agent_auth_opts_t *opts, int c, const char *arg, FILE
  */
 int w_agent_auth_run(const agent_auth_opts_t *opts, FILE *in, FILE *out, FILE *err);
 
+/**
+ * @brief Refuses any non-option argument left after getopt_long().
+ *
+ * Separate from main() so it can be tested: this is where a token typed on the command line
+ * lands, and the one thing it must never do is repeat it back.
+ *
+ * @return 0 when there is nothing left over, -1 when there is (a reason is written to @p err).
+ */
+int w_agent_auth_reject_operands(int argc, char **argv, int optind, FILE *err);
+
 /** Prints the help text. */
 void w_agent_auth_help(FILE *out, const char *progname);
 

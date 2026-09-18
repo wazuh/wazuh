@@ -168,6 +168,24 @@ bool __wrap_hc_enroll(const hc_config_t *config, const hc_enroll_request_t *requ
     return mock_type(int) != 0;
 }
 
+/* Set by the one test that needs the enrollment to fail at the last step, after the manager has
+ * already accepted -- the only way to reach the command's most serious warning. */
+static bool g_fail_anchor_move = false;
+
+int __real_OS_MoveFile(const char *src, const char *dst);
+
+int __wrap_OS_MoveFile(const char *src, const char *dst) {
+    const char *base = src ? strrchr(src, '/') : NULL;
+
+    base = base ? base + 1 : src;
+
+    if (g_fail_anchor_move && base != NULL && strncmp(base, "root-ca.pem", 11) == 0) {
+        return -1;
+    }
+
+    return __real_OS_MoveFile(src, dst);
+}
+
 int __wrap_OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
                        const char *oldval, const char *newval) {
     (void) infile;
@@ -265,6 +283,7 @@ static int setup_test(void **state) {
     g_fetch_calls = 0;
     g_enroll_calls = 0;
     g_enroll_body[0] = '\0';
+    g_fail_anchor_move = false;
     unlink(KEYS_FILE);
     unlink(AGENT_ANCHOR_CA);
     clear_agentd_pidfiles();
@@ -1023,9 +1042,110 @@ static void test_certs_only_reports_a_failed_config_rewrite(void **state) {
     assert_non_null(strstr(err_buf, "by hand before restarting"));
 }
 
+/* A token typed as an operand is the one mistake whose error message must not quote its input:
+ * the value is the credential, and stderr is read, scrolled back and captured. */
+static void test_operand_is_refused_without_echoing_it(void **state) {
+    (void) state;
+    char err_buf[2048] = {0};
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+    char *argv[] = {"wazuh-agent-auth", TOKEN_PIN_ONLY, NULL};
+
+    assert_int_equal(w_agent_auth_reject_operands(2, argv, 1, err), -1);
+
+    fclose(err);
+
+    assert_non_null(strstr(err_buf, "unexpected argument"));
+    assert_non_null(strstr(err_buf, "--token-file"));
+    /* The whole point. */
+    assert_null(strstr(err_buf, TOKEN_PIN_ONLY));
+}
+
+/* Nothing left over is not an error. */
+static void test_no_operand_is_accepted(void **state) {
+    (void) state;
+    char err_buf[256] = {0};
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+    char *argv[] = {"wazuh-agent-auth", NULL};
+
+    assert_int_equal(w_agent_auth_reject_operands(1, argv, 1, err), 0);
+
+    fclose(err);
+    assert_string_equal(err_buf, "");
+}
+
+/* A token file past the ceiling used to be read truncated by fgets() and then reported as
+ * malformed, sending the operator to inspect a token that is merely too big. */
+static void test_oversized_token_file_is_reported_as_too_big(void **state) {
+    (void) state;
+    agent_auth_opts_t opts;
+    char out_buf[1024] = {0};
+    char err_buf[2048] = {0};
+    FILE *in = fmemopen((char *) "", 0, "r");
+    FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+    char *oversized;
+
+    os_calloc(W_ETOKEN_MAX_FILE_BYTES + 64, sizeof(char), oversized);
+    memset(oversized, 'A', W_ETOKEN_MAX_FILE_BYTES + 32);
+    write_file("big-token", oversized);
+    os_free(oversized);
+
+    w_agent_auth_opts_init(&opts);
+    opts.source = AGENT_AUTH_SOURCE_FILE;
+    opts.token_file = "big-token";
+
+    assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_ERR_USAGE);
+
+    fclose(in);
+    fclose(out);
+    fclose(err);
+
+    assert_non_null(strstr(err_buf, "does not fit"));
+    assert_null(strstr(err_buf, "malformed"));
+}
+
+/* An agent that has a trust anchor but an empty client.keys is the worst shape a failed commit
+ * can leave behind: there is nothing to snapshot, so nothing is restored, and the warning used to
+ * be gated on whether a key existed beforehand -- which is false in exactly this case. The
+ * headline alone does not say the agent can now reach no manager at all. */
+static void test_a_failed_commit_warns_even_with_no_previous_key(void **state) {
+    (void) state;
+    agent_auth_opts_t opts;
+    char out_buf[1024] = {0};
+    char err_buf[2048] = {0};
+    char token[] = TOKEN_PIN_ONLY;
+    FILE *in = fmemopen(token, strlen(token), "r");
+    FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    /* An anchor with no key beside it: enough to enroll transactionally, nothing to roll back. */
+    write_file(AGENT_ANCHOR_CA, "-----BEGIN CERTIFICATE-----\nold\n-----END CERTIFICATE-----\n");
+
+    w_agent_auth_opts_init(&opts);
+    g_fail_anchor_move = true;
+    allow_any_logging(LOG_DEBUG1 | LOG_INFO | LOG_ERROR);
+    expect_successful_enrollment();
+
+    assert_int_not_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_OK);
+
+    fclose(in);
+    fclose(out);
+    fclose(err);
+
+    assert_non_null(strstr(err_buf, "can reach neither until it is re-enrolled"));
+    /* There was no previous key, so the line about one not being restored must not appear. */
+    assert_null(strstr(err_buf, "was NOT restored"));
+
+    unlink(AGENT_ANCHOR_CA);
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_parse_defaults, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_operand_is_refused_without_echoing_it, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_no_operand_is_accepted, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_oversized_token_file_is_reported_as_too_big, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_parse_show_token_rejects_an_inline_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_parse_show_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_parse_token_file, setup_test, teardown_test),
@@ -1052,6 +1172,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_certs_only_dry_run_previews_the_config_rewrite, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certs_only_points_the_config_at_the_new_address, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certs_only_reports_a_failed_config_rewrite, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_a_failed_commit_warns_even_with_no_previous_key, setup_test,
+                                        teardown_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
