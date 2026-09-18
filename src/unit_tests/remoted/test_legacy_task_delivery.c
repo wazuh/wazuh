@@ -165,14 +165,12 @@ static cJSON *build_payload_versioned(const char *wpk_file, const char *sha1, co
  * does not open the file at all: it asks the C++ module, which resolves
  * remote.https.ca_certificate itself and hands back the ONE certificate of that bundle which signs
  * the served leaf, re-serialised. So what a test stages here is that answer -- the PEM and its
- * length -- not a file.
+ * length -- not a file. The FILE* parameter this took for that read is gone along with it; call
+ * sites no longer need a tmpfile() of their own for it.
  *
- * @param fake_ca Unused since the read is gone. Kept so the eight call sites below (and the
- *                tmpfile() each of them already owns for the WPK step) read unchanged.
- * @param path Likewise unused: the path is the module's business now, and is only in the log lines
- *             this manager writes. test_ca_reads_the_configured_path is where that is asserted. */
-static void expect_ca_export(FILE *fake_ca, const char *path, const char *pem) {
-    (void) fake_ca;
+ * @param path Unused: the path is the module's business now, and is only in the log lines this
+ *             manager writes. test_ca_reads_the_configured_path is where that is asserted. */
+static void expect_ca_export(const char *path, const char *pem) {
     (void) path;
 
     will_return(__wrap_remoted_module_tls_leaf_signer_pem, pem);
@@ -189,8 +187,8 @@ static const char *test_ca_sha1(void) {
 
 /* Queues a complete, successful CA cycle: the export's answer, the CA-signs-leaf check, then the
  * four wire steps against LEGACY_TASK_CA_FILE_NAME. */
-static void expect_ca_delivery_success(FILE *fake_ca) {
-    expect_ca_export(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+static void expect_ca_delivery_success(void) {
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
 
     will_return(__wrap_remoted_module_tls_ca_matches_leaf, 1);
 
@@ -214,9 +212,6 @@ static void expect_ca_delivery_success(FILE *fake_ca) {
  * ordered -- so this helper is itself the ordering assertion: moving the CA cycle to either side of
  * that boundary would leave a queued response unmatched and fail every test that uses it. */
 static void expect_full_successful_push(FILE *fake_file, const char *sha1) {
-    FILE *fake_ca = tmpfile();
-    assert_non_null(fake_ca);
-
     expect_any(__wrap__minfo, formatted_msg); // "delivering remote_upgrade task..."
     expect_any(__wrap__minfo, formatted_msg); // "successfully delivered..."
 
@@ -242,7 +237,7 @@ static void expect_full_successful_push(FILE *fake_file, const char *sha1) {
     snprintf(sha1_response, sizeof(sha1_response), "{\"error\":0,\"message\":\"%s\"}", sha1);
     expect_req_step(sha1_response, 0);                           // sha1
 
-    expect_ca_delivery_success(fake_ca);                         // step 5b
+    expect_ca_delivery_success();                                // step 5b
 
     expect_req_step("{\"error\":0,\"message\":\"0\"}", 0);       // upgrade
 }
@@ -387,9 +382,7 @@ static void test_deliver_write_step_chunks_large_file(void **state) {
     expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);           // close
     expect_req_step("{\"error\":0,\"message\":\"abc123\"}", 0);      // sha1
 
-    FILE *fake_ca = tmpfile();
-    assert_non_null(fake_ca);
-    expect_ca_delivery_success(fake_ca);                              // step 5b
+    expect_ca_delivery_success();                                     // step 5b
 
     expect_req_step("{\"error\":0,\"message\":\"0\"}", 0);           // upgrade
 
@@ -617,9 +610,7 @@ static void test_deliver_fails_on_upgrade_exit_nonzero(void **state) {
     expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);            // close
     expect_req_step("{\"error\":0,\"message\":\"abc123\"}", 0);       // sha1, matches
 
-    FILE *fake_ca = tmpfile();
-    assert_non_null(fake_ca);
-    expect_ca_delivery_success(fake_ca);                               // step 5b
+    expect_ca_delivery_success();                                      // step 5b
 
     expect_req_step("{\"error\":0,\"message\":\"1\"}", 0);            // upgrade: non-zero exit status
 
@@ -703,9 +694,7 @@ static void test_deliver_fails_on_upgrade_step_no_ack_is_permanent_not_retryable
     expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);           // close
     expect_req_step("{\"error\":0,\"message\":\"abc123\"}", 0);      // sha1, matches
 
-    FILE *fake_ca = tmpfile();
-    assert_non_null(fake_ca);
-    expect_ca_delivery_success(fake_ca);                              // step 5b
+    expect_ca_delivery_success();                                     // step 5b
 
     expect_req_step(NULL, -1);                  // upgrade: no ack at all
     expect_any(__wrap__mwarn, formatted_msg);    // "no response for step targeting 'upgrade'"
@@ -797,12 +786,10 @@ static void test_ca_sent_when_target_version_absent(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_delivery_success(fake_ca);
+    expect_ca_delivery_success();
     expect_upgrade_step_and_success();
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh"); // no wpk_version key
@@ -816,12 +803,10 @@ static void test_ca_sent_when_target_version_unparseable(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_delivery_success(fake_ca);
+    expect_ca_delivery_success();
     expect_upgrade_step_and_success();
 
     cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "nightly-build");
@@ -842,13 +827,11 @@ static void test_ca_reads_the_configured_path(void **state) {
     logr.https.ca_certificate = configured_ca;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
 
-    expect_ca_export(fake_ca, "etc/certs/corporate-ca.pem", TEST_CA_PEM);
+    expect_ca_export("etc/certs/corporate-ca.pem", TEST_CA_PEM);
     will_return(__wrap_remoted_module_tls_ca_matches_leaf, 1);
 
     /* Built from the same fixture the delivery uses, so the expectation and the code cannot drift:
@@ -940,13 +923,10 @@ static void test_ca_file_without_certificate_block_is_refused(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_export(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH,
-                        "-----BEGIN PRIVATE KEY-----\nZmFrZQ==\n-----END PRIVATE KEY-----\n");
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, "-----BEGIN PRIVATE KEY-----\nZmFrZQ==\n-----END PRIVATE KEY-----\n");
 
     expect_any(__wrap__merror, formatted_msg);
     expect_upgrade_step_and_success();
@@ -966,12 +946,10 @@ static void test_ca_file_truncated_pem_is_refused(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_export(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, "-----BEGIN CERTIFICATE-----\nZmFrZQ==\n");
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, "-----BEGIN CERTIFICATE-----\nZmFrZQ==\n");
 
     expect_any(__wrap__merror, formatted_msg);
     expect_upgrade_step_and_success();
@@ -988,12 +966,10 @@ static void test_ca_not_sent_when_it_does_not_sign_the_leaf(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_export(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
 
     will_return(__wrap_remoted_module_tls_ca_matches_leaf, 0); // explicit mismatch
 
@@ -1012,12 +988,10 @@ static void test_ca_sent_when_signing_status_is_unknown(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_export(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
 
     will_return(__wrap_remoted_module_tls_ca_matches_leaf, -1); // unknown
 
@@ -1045,12 +1019,10 @@ static void test_ca_sha1_mismatch_retries_then_truncates(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_export(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
     will_return(__wrap_remoted_module_tls_ca_matches_leaf, 1);
     expect_any(__wrap__mdebug1, formatted_msg); // "sending the manager CA ..."
 
@@ -1090,12 +1062,10 @@ static void test_ca_no_response_breaks_early_and_skips_truncate(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_export(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
     will_return(__wrap_remoted_module_tls_ca_matches_leaf, 1);
     expect_any(__wrap__mdebug1, formatted_msg); // "sending the manager CA ..."
 
