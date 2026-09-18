@@ -49,6 +49,22 @@ namespace remoted::enrollment
         std::optional<ReenrollCredential> reenroll;
     };
 
+    /// Fields forwarded to authd's local socket "issue_reenroll_secret" function (issue #39315):
+    /// the agent to mint a re-enrollment secret for, and the fingerprint of the key that proved it.
+    /// Both come from remoted's AuthMiddleware (the bearer's verified `sub`, and the key that
+    /// verified it), never from a request field -- which is what makes it impossible for one agent
+    /// to ask about another.
+    ///
+    /// No credential travels here: the fingerprint is a one-way digest of a key authd already
+    /// holds, so it cannot be replayed as one. It is an identity ASSERTION that authd re-checks
+    /// against its own keystore, not a credential authd trusts -- remoted's copy of client.keys may
+    /// be a stale replica, which is precisely why the authority has to be the one to compare.
+    struct AuthdSecretRequest
+    {
+        std::string id;
+        std::string keyFingerprint;
+    };
+
     /**
      * @brief Outcome of an AuthdClient::addAgent() call.
      *
@@ -179,6 +195,14 @@ namespace remoted::enrollment
         /// concurrently with another call's callback on a different thread) -- even if the client
         /// is stopping or the queue is full (errorCode -1 in both cases).
         void addAgent(AuthdAddRequest request, std::function<void(AuthdResult)> callback);
+
+        /// Enqueues an "issue_reenroll_secret" request (issue #39315), with exactly the contract
+        /// addAgent() has above -- same bounded queue, same worker pool, same errorCode -1 for a
+        /// full queue or a stopping client. Sharing the queue is deliberate: the two routes cost
+        /// authd the same round trip, so they must not be able to outbid each other for it.
+        /// On success only `id` and `reenrollSecret` are populated; authd rotates nothing, so
+        /// there is no key to return.
+        void issueReenrollSecret(AuthdSecretRequest request, std::function<void(AuthdResult)> callback);
 
         /// Resolves the effective response timeout for a configured value (0 = worker-aware
         /// default). A pure function of its arguments; exposed for unit testing.

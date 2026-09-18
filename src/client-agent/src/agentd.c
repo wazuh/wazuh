@@ -12,6 +12,7 @@
 #include "agentd.h"
 #include "https_client_bridge.h"
 #include "os_net.h"
+#include "reenroll_secret.h"
 #include "state.h"
 #include "token_bootstrap.h"
 
@@ -217,6 +218,23 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
      * a C++ static lazily initialized on a module thread registers after this line
      * and dies before the drain runs. */
     atexit(w_https_client_stop);
+
+    /* Re-enrollment secret bootstrap (#39315): an agent that reached 5.0 while KEEPING its
+     * client.keys identity -- a 4.x agent upgraded over WPK, one enrolled over port 1515, one whose
+     * manager-side row was rebuilt from client.keys -- never called POST /enroll and so never
+     * received a re-enrollment secret. Without one, the day the manager stops accepting its key,
+     * recovery needs an operator at the endpoint. It asks for one here instead.
+     *
+     * HERE, and not earlier: the transport must be up (the request goes over the same HTTPS channel
+     * every other endpoint uses), and the process has already dropped to the `wazuh` user
+     * (Privsep_SetUser() ran long before start_agent_prepare()), so the store is written with the
+     * ownership reenroll_secret.h asks for -- deliberately unlike the root-running
+     * w_agent_token_bootstrap() above, which writes the trust anchor.
+     *
+     * Detached and non-fatal by construction (see w_reenroll_secret_bootstrap_async()). The Windows
+     * agent makes the same call from win32/win_utils.c, which is a separate start path because this
+     * file is not part of that build. */
+    w_reenroll_secret_bootstrap_async();
 
     start_agent(1);
 

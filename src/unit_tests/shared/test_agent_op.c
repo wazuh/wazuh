@@ -570,6 +570,141 @@ void test_w_send_clustered_message_success_after_recv_error(void **state) {
     assert_int_equal(w_send_clustered_message(command, payload, response), 0);
     assert_string_equal(recv_response, response);
 }
+
+/* Tests w_request_agent_secret_clustered (#39315): the worker's half of the secret-issuance path.
+ *
+ * What these pin is the ENVELOPE -- exactly the sendsync/authd payload the master's local_dispatch()
+ * accepts -- and the two answers the parser has to tell apart. The relay itself is generic, which is
+ * the point: no cluster-protocol command and no Python change were added for this verb. */
+/* The fingerprint rides in the SAME envelope (#39315 F1): no new cluster command, one extra
+ * argument. Pinned here because the master refuses any request that arrives without it, so a
+ * worker that dropped the field on the way through would turn every forwarded request into a
+ * 9032 -- and nothing else in this path would notice. */
+#define SECRET_FINGERPRINT "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+#define SECRET_SENDSYNC_PAYLOAD \
+    "{\"daemon_name\":\"authd\",\"message\":{\"function\":\"issue_reenroll_secret\",\"arguments\":{\"id\":\"001\",\"key_fingerprint\":\"" SECRET_FINGERPRINT "\"}}}"
+#define SECRET_HEX "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+
+// Arms one successful cluster round trip answering `reply`.
+static void expect_secret_round_trip(const char *reply) {
+    const int sock_num = 3;
+    will_return(__wrap_external_socket_connect, sock_num);
+
+    expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+    expect_string(__wrap_OS_SendSecureTCPCluster, command, "sendsync");
+    expect_string(__wrap_OS_SendSecureTCPCluster, payload, SECRET_SENDSYNC_PAYLOAD);
+    expect_value(__wrap_OS_SendSecureTCPCluster, length, strlen(SECRET_SENDSYNC_PAYLOAD));
+    will_return(__wrap_OS_SendSecureTCPCluster, 1);
+
+    expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
+    expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureClusterTCP, reply);
+    will_return(__wrap_OS_RecvSecureClusterTCP, strlen(reply));
+}
+
+void test_w_request_agent_secret_clustered_success(void **state) {
+    (void)state;
+    char err_response[OS_SIZE_2048] = {0};
+    char *secret = NULL;
+    int master_error_code = 0;
+
+    expect_secret_round_trip("{\"error\":0,\"data\":{\"id\":\"001\",\"reenroll_secret\":\"" SECRET_HEX "\"}}");
+
+    assert_int_equal(w_request_agent_secret_clustered(err_response, "001", SECRET_FINGERPRINT, &secret, &master_error_code), 0);
+    assert_non_null(secret);
+    assert_string_equal(secret, SECRET_HEX);
+    // Untouched on success, exactly like the add path's contract.
+    assert_int_equal(master_error_code, 0);
+    os_free(secret);
+}
+
+void test_w_request_agent_secret_clustered_business_rejection(void **state) {
+    (void)state;
+    char err_response[OS_SIZE_2048] = {0};
+    char *secret = NULL;
+    int master_error_code = 0;
+
+    expect_secret_round_trip("{\"error\":9026,\"message\":\"Unknown agent or no re-enrollment credential\"}");
+    expect_string(__wrap__mwarn, formatted_msg, "9026: Unknown agent or no re-enrollment credential");
+
+    // The master's exact code survives the trip, which is what lets remoted map it precisely
+    // (9026 -> 401, 9030 -> 409, 9031 -> 503) instead of collapsing every rejection into one status.
+    assert_int_equal(w_request_agent_secret_clustered(err_response, "001", SECRET_FINGERPRINT, &secret, &master_error_code), -1);
+    assert_int_equal(master_error_code, 9026);
+    assert_string_equal(err_response, "ERROR: Unknown agent or no re-enrollment credential");
+    assert_null(secret);
+}
+
+void test_w_request_agent_secret_clustered_success_without_a_secret_is_malformed(void **state) {
+    (void)state;
+    char err_response[OS_SIZE_2048] = {0};
+    char *secret = NULL;
+    int master_error_code = 0;
+
+    // error 0 but no credential in it. Reported as a malformed response (-2), never as a success:
+    // this verb exists only to produce a secret, so the worker must not answer "here you are" with
+    // an empty one.
+    expect_secret_round_trip("{\"error\":0,\"data\":{\"id\":\"001\"}}");
+
+    assert_int_equal(w_request_agent_secret_clustered(err_response, "001", SECRET_FINGERPRINT, &secret, &master_error_code), -2);
+    assert_null(secret);
+    assert_string_equal(err_response, "ERROR: Invalid message format");
+}
+
+void test_w_request_agent_secret_clustered_transport_failure(void **state) {
+    (void)state;
+    char err_response[OS_SIZE_2048] = {0};
+    char *secret = NULL;
+    int master_error_code = 0;
+
+    for (int i = 0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i) {
+        will_return(__wrap_external_socket_connect, -1);
+        will_return(__wrap_strerror, "ERROR");
+        expect_string(__wrap__mdebug1, formatted_msg,
+                      "Could not connect to socket 'queue/sockets/cluster-internal.sock': ERROR (0).");
+    }
+    expect_value_count(__wrap_sleep, seconds, 1, 9);
+    expect_string(__wrap__mwarn, formatted_msg, "Could not send message through the cluster after '10' attempts.");
+
+    assert_int_equal(w_request_agent_secret_clustered(err_response, "001", SECRET_FINGERPRINT, &secret, &master_error_code), -2);
+    assert_null(secret);
+    assert_string_equal(err_response, "ERROR: Cannot communicate with master");
+}
+
+void test_w_request_agent_secret_clustered_omits_an_absent_fingerprint(void **state) {
+    (void)state;
+    char err_response[OS_SIZE_2048] = {0};
+    char *secret = NULL;
+    int master_error_code = 0;
+
+    // No `key_fingerprint` key at all, rather than an empty string: the master distinguishes "the
+    // caller named no key" from "the caller named a key that did not match", and an empty value
+    // would blur the two into one message nobody can act on. The refusal is the same either way --
+    // that is the point of testing the SHAPE here rather than the outcome.
+    static const char *const payload =
+        "{\"daemon_name\":\"authd\",\"message\":{\"function\":\"issue_reenroll_secret\","
+        "\"arguments\":{\"id\":\"001\"}}}";
+
+    const int sock_num = 3;
+    will_return(__wrap_external_socket_connect, sock_num);
+    expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+    expect_string(__wrap_OS_SendSecureTCPCluster, command, "sendsync");
+    expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
+    expect_value(__wrap_OS_SendSecureTCPCluster, length, strlen(payload));
+    will_return(__wrap_OS_SendSecureTCPCluster, 1);
+
+    static const char *const reply = "{\"error\":9032,\"message\":\"Agent key changed since the request was "
+                                     "authenticated\"}";
+    expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
+    expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureClusterTCP, reply);
+    will_return(__wrap_OS_RecvSecureClusterTCP, strlen(reply));
+    expect_string(__wrap__mwarn, formatted_msg, "9032: Agent key changed since the request was authenticated");
+
+    assert_int_equal(w_request_agent_secret_clustered(err_response, "001", NULL, &secret, &master_error_code), -1);
+    assert_int_equal(master_error_code, 9032);
+    assert_null(secret);
+}
 #endif
 
 static void test_parse_agent_add_response(void **state) {
@@ -966,6 +1101,12 @@ int main(void) {
         cmocka_unit_test(test_w_send_clustered_message_success_after_send_error),
         cmocka_unit_test(test_w_send_clustered_message_success_after_cluster_error),
         cmocka_unit_test(test_w_send_clustered_message_success_after_recv_error),
+        // Tests w_request_agent_secret_clustered (#39315)
+        cmocka_unit_test(test_w_request_agent_secret_clustered_success),
+        cmocka_unit_test(test_w_request_agent_secret_clustered_business_rejection),
+        cmocka_unit_test(test_w_request_agent_secret_clustered_success_without_a_secret_is_malformed),
+        cmocka_unit_test(test_w_request_agent_secret_clustered_transport_failure),
+        cmocka_unit_test(test_w_request_agent_secret_clustered_omits_an_absent_fingerprint),
         // Tests getPrimaryIP
         cmocka_unit_test(test_getPrimaryIP_no_sysinfo_network),
         cmocka_unit_test(test_getPrimaryIP_no_sysinfo_free),

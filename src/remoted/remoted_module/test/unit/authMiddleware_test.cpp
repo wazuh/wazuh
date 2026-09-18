@@ -240,6 +240,34 @@ namespace
         EXPECT_EQ(std::get<VerifiedAgent>(result).agentId, "001");
     }
 
+    // #39315 F1. A hard-coded vector, not a recomputation: this digest is a WIRE value that authd
+    // recomputes independently with OS_SHA256_String() over keyentry.raw_key, so what it pins is the
+    // representation -- SHA-256 of the key's 64-lowercase-hex client.keys TEXT, not of the 32
+    // decoded bytes. A test that hashed the key the same way the implementation does would agree
+    // with any choice and catch the one mistake that actually breaks this feature: the two sides
+    // silently hashing different things, which shows up only as every request being refused 9032.
+    TEST(Middleware, TheVerifiedAgentCarriesTheFingerprintOfTheKeyThatSignedIt)
+    {
+        Fixture f;
+        const auto result = f.run("1", bearer("001"));
+        ASSERT_TRUE(std::holds_alternative<VerifiedAgent>(result)) << toString(errorOf(result));
+        EXPECT_EQ(std::get<VerifiedAgent>(result).keyFingerprint,
+                  "b74f5fe5967637ab40ccf46db7ec2a55c5a50939e3c4f8081474aedc892bad40");
+    }
+
+    TEST(Middleware, TheFingerprintIsNotTheKey)
+    {
+        // It leaves the process and is written to authd's socket, so the one thing it must never be
+        // is the credential itself -- in any encoding.
+        Fixture f;
+        const auto result = f.run("1", bearer("001"));
+        ASSERT_TRUE(std::holds_alternative<VerifiedAgent>(result)) << toString(errorOf(result));
+        const auto& fingerprint = std::get<VerifiedAgent>(result).keyFingerprint;
+        EXPECT_EQ(fingerprint.size(), 64U);
+        EXPECT_NE(fingerprint, kKeyHex);
+        EXPECT_EQ(fingerprint.find_first_not_of("0123456789abcdef"), std::string::npos);
+    }
+
     TEST(Middleware, TheFrozenVectorAuthenticatesAtItsOwnTime)
     {
         Fixture f;

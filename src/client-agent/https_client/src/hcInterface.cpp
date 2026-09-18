@@ -26,6 +26,7 @@
 #include "enrollClient.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
+#include "secretClient.hpp"
 #include "spkiPin.hpp"
 #include "sysSeams.hpp"
 
@@ -380,6 +381,53 @@ extern "C"
             // the pinned certificate may be exactly what is missing -- so the caller has to be
             // able to tell "this is not the CA I expected" from "I could not read all of it".
             result->body_truncated = response.body.size() >= sizeof(result->body);
+            std::strncpy(result->body, response.body.c_str(), sizeof(result->body) - 1);
+            std::strncpy(result->transport_error, response.curlError.c_str(),
+                         sizeof(result->transport_error) - 1);
+
+            return response.httpCode != 0;
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
+    bool hc_fetch_reenroll_secret(const hc_config_t* config, const hc_secret_request_t* request,
+                                  hc_secret_result_t* result)
+    {
+        if (config == nullptr || request == nullptr || result == nullptr)
+        {
+            return false;
+        }
+
+        // Zeroed before anything that could throw -- same contract as hc_enroll().
+        *result = {};
+
+        try
+        {
+            // Assigns its own sink, like the other two handle-less calls: this one runs on a
+            // detached bootstrap thread that may start before, after or alongside hc_create().
+            assignModuleLogSink(request->log);
+
+            const auto typedConfig = ModuleConfig::fromC(*config);
+            FsProbe fsProbe;
+            // SkewCorrectedClock for the same reason EnrollClient gets one: the bearer binds a
+            // timestamp, and a skewed agent is answered 401 by the manager's time policy.
+            // SecretClient::fetch() runs the same one-shot Date-based correction on a 401, so this
+            // instance can serve two signatures -- the second on a corrected clock. It is local to
+            // this call (the facade's long-lived corrected clock is not reachable from a
+            // handle-less entry point), so the correction is relearned each start: one extra round
+            // trip, against never obtaining the secret at all on a skewed agent.
+            SystemClock systemClock;
+            SkewCorrectedClock clock {systemClock};
+            CurlPerformer performer(typedConfig, defaultCurlHandleFactory(), fsProbe);
+            SecretClient client(typedConfig, performer, fsProbe, clock, HTTPS_CLIENT_LOGTAG);
+
+            const HttpResponse response = client.fetch();
+
+            result->http_code = response.httpCode;
+            result->retry_after_seconds = response.retryAfterSeconds;
             std::strncpy(result->body, response.body.c_str(), sizeof(result->body) - 1);
             std::strncpy(result->transport_error, response.curlError.c_str(),
                          sizeof(result->transport_error) - 1);

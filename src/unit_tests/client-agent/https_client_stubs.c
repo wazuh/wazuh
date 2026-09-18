@@ -103,6 +103,14 @@ bool hc_fetch_cacerts(const void *config, const void *request, void *result)
     return false;
 }
 
+bool hc_fetch_reenroll_secret(const void *config, const void *request, void *result)
+{
+    (void)config;
+    (void)request;
+    (void)result;
+    return false;
+}
+
 bool hc_spki_pinned_certificate(const char *cacerts_body, size_t body_len, const char *pin_b64url,
                                 char *matched_pem, size_t matched_pem_size)
 {

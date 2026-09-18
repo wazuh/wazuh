@@ -82,6 +82,8 @@ EXPECTED_HTTP_SERVER_METRICS = {
                    '429': 1409, '500': 1406, '503': 1407, 'other': 1408},
         'enroll': {'total': 13545, '2xx': 1501, '400': 1502, '403': 1503, '409': 1504, '413': 1505,
                    '429': 1509, '500': 1506, '503': 1507, 'other': 1508},
+        'enroll.secret': {'total': 14895, '2xx': 1651, '400': 1652, '403': 1653, '409': 1654, '413': 1655,
+                          '429': 1659, '500': 1656, '503': 1657, 'other': 1658},
         'cacerts': {'total': 14445, '2xx': 1601, '400': 1602, '403': 1603, '409': 1604, '413': 1605,
                     '429': 1609, '500': 1606, '503': 1607, 'other': 1608},
     },
@@ -102,7 +104,11 @@ EXPECTED_HTTP_SERVER_METRICS = {
                    'authd_error': 2005, 'authd_unavailable': 2006,
                    'authd_queue': {'depth': 2007, 'capacity': 2008, 'rejected_total': 2009},
                    'rate_limited': 2010,
-                   'rate_limit': {'limit': 2013, 'burst': 2012, 'available': 2011}},
+                   'rate_limit': {'limit': 2013, 'burst': 2012, 'available': 2011},
+                   # POST /enroll/secret shares this route's authd queue and rate limit, so its
+                   # outcomes are nested here rather than given a group of their own.
+                   'secret': {'issued': 2051, 'rejected_in_progress': 2052, 'authd_error': 2053,
+                              'authd_unavailable': 2054, 'rate_limited': 2055}},
     'control': {'startup': 3001, 'notify': 3002, 'shutdown': 3003, 'rejected': 3004, 'wdb_error': 3005,
                 'task_fetch': 3006, 'task_fetch_error': 3007, 'registry_agents': 3008,
                 'wdb_latency': {'count': 3100, 'sum': 3101, 'min': 3102, 'max': 3103, 'p50': 3104,

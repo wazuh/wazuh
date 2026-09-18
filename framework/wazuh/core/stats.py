@@ -37,7 +37,7 @@ class _Histogram(NamedTuple):
 # ---------------------------------------------------------------------------------------------
 
 # Endpoints whose `remoted.http.<endpoint>.responses.*` family the module registers.
-_HTTP_ENDPOINTS = ('stateless', 'stateful', 'stats', 'config', 'enroll', 'cacerts')
+_HTTP_ENDPOINTS = ('stateless', 'stateful', 'stats', 'config', 'enroll', 'enroll.secret', 'cacerts')
 
 # The closed status set of that family; some cells are structurally zero for a given endpoint
 # but are kept so every endpoint reports the same vocabulary.
@@ -87,6 +87,19 @@ _REMOTED_METRIC_GROUPS = {
             'limit': 'remoted.enroll.rate_limit.limit',
             'burst': 'remoted.enroll.rate_limit.burst',
             'available': 'remoted.enroll.rate_limit.available',
+        },
+        # POST /enroll/secret: an agent that already holds a client.keys key asking for the
+        # re-enrollment secret its enrollment never gave it. Nested here rather than in a group of
+        # its own because it shares this route's authd queue AND its rate limit -- the `rate_limit`
+        # readings above govern both routes -- while its outcomes are genuinely different ones: no
+        # enrollment happens and nothing is rotated. Its own `rate_limited` counter is what keeps
+        # the two distinguishable under that one ceiling.
+        'secret': {
+            'issued': 'remoted.enroll.secret.issued',
+            'rejected_in_progress': 'remoted.enroll.secret.rejected_in_progress',
+            'authd_error': 'remoted.enroll.secret.authd_error',
+            'authd_unavailable': 'remoted.enroll.secret.authd_unavailable',
+            'rate_limited': 'remoted.enroll.secret.rate_limited',
         },
     },
     'control': {

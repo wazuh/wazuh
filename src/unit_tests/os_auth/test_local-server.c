@@ -26,6 +26,7 @@
 #include <time.h>
 #include <unistd.h>
 #include "sec.h"
+#include "sha256_op.h" // the key fingerprint the secret-issuance tests build (#39315)
 #include "enrollment_token.h"
 #include "enrollment_token_store.h"
 #include "reenroll_verify.h"
@@ -91,6 +92,38 @@ int __wrap_w_request_agent_add_clustered(char *err_response,
         const char *mock_secret = mock_ptr_type(const char *);
         os_strdup(mock_id, *id);
         os_strdup(mock_key, *key);
+        os_strdup(mock_secret, *reenroll_secret);
+    } else {
+        int code = mock_type(int);
+        if (code > 0) {
+            *master_error_code = code;
+        }
+        const char *message = mock_ptr_type(const char *);
+        if (message) {
+            strncpy(err_response, message, OS_SIZE_2048 - 1);
+        }
+    }
+
+    return result;
+}
+
+// The worker's half of the secret-issuance path (#39315). Same shape as the wrap above: the test
+// asserts which id travels to the master and hands back either the secret or a rejection.
+int __wrap_w_request_agent_secret_clustered(char *err_response,
+                                            const char *agent_id,
+                                            const char *key_fingerprint,
+                                            char **reenroll_secret,
+                                            int *master_error_code) {
+    check_expected(agent_id);
+    // The worker must forward the fingerprint it was given, untouched: it is the master that
+    // compares, so a worker that dropped it would turn every forwarded request into a 9032.
+    check_expected(key_fingerprint);
+    assert_non_null(reenroll_secret);
+
+    int result = mock_type(int);
+
+    if (result == 0) {
+        const char *mock_secret = mock_ptr_type(const char *);
         os_strdup(mock_secret, *reenroll_secret);
     } else {
         int code = mock_type(int);
@@ -1866,6 +1899,434 @@ static void test_reenroll_on_worker_forwards_kid_and_bearer(void **state) {
     config.worker_node = FALSE;
 }
 
+/* --- issue_reenroll_secret (#39315): a secret for an agent that already holds a key ----------- */
+
+/* A fingerprint for an agent that is not in this node's keystore -- what a worker forwards, and
+ * what the master refuses. Any 64 hex chars will do: the point is that it is not a digest of the
+ * key the master holds. */
+#define FOREIGN_KEY_FINGERPRINT "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+
+/* Ask with an explicit fingerprint. NULL sends no `key_fingerprint` field at all, which is how a
+ * caller that predates #39315 -- or one that could not name the key it authenticated with -- looks
+ * on the wire. */
+static cJSON *issue_secret_fingerprinted(const char *id, const char *fingerprint) {
+    char request[512];
+
+    if (fingerprint) {
+        snprintf(request, sizeof(request),
+                 "{\"function\":\"issue_reenroll_secret\",\"arguments\":{\"id\":\"%s\",\"key_fingerprint\":\"%s\"}}",
+                 id, fingerprint);
+    } else {
+        snprintf(request, sizeof(request), "{\"function\":\"issue_reenroll_secret\",\"arguments\":{\"id\":\"%s\"}}",
+                 id);
+    }
+
+    return dispatch(request);
+}
+
+/* The honest caller: remoted authenticated against the key this node currently holds for `id`, so
+ * the fingerprint is the digest of that key. Derived from the live keystore rather than passed in
+ * by each test, so every existing case keeps exercising the matching path without restating it --
+ * and so a test that rotates the key mid-flight gets the NEW digest only if it asks after the
+ * rotation, which is exactly the distinction #39315 turns on. */
+static cJSON *issue_secret(const char *id) {
+    const int index = OS_IsAllowedID(&keys, id);
+    os_sha256 fingerprint = {0};
+
+    if (index < 0) {
+        /* No key here to fingerprint, so any value will do: the cases that land here are the ones
+         * the keystore refuses anyway. The worker cases do NOT come through here -- they name the
+         * fingerprint themselves, because an id being absent locally is not what makes a request a
+         * forward. */
+        return issue_secret_fingerprinted(id, FOREIGN_KEY_FINGERPRINT);
+    }
+
+    OS_SHA256_String(keys.keyentries[index]->raw_key, fingerprint);
+    return issue_secret_fingerprinted(id, fingerprint);
+}
+
+static void test_issue_secret_mints_one_without_touching_the_key(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char key[128];
+    add_agent("upgraded-agent", id, sizeof(id), key, sizeof(key));
+    const unsigned int keysize_before = keys.keysize;
+
+    // The row exists (wm_database has mirrored client.keys by now); it carries NO secret, which is
+    // exactly the state this verb exists for -- and unlike a re-enrollment, nothing about the row's
+    // contents is verified: remoted already proved the identity.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), NULL));
+
+    cJSON *response = issue_secret(id);
+    assert_int_equal(response_error(response), 0);
+    assert_string_equal(data_string(response, "id"), id);
+    const char *secret = data_string(response, "reenroll_secret");
+    assert_true(OS_IsValidReenrollSecret(secret));
+    // The answer carries the credential and nothing else: no key, no name, no ip -- none of them
+    // changed, and publishing them would suggest otherwise.
+    cJSON *data = cJSON_GetObjectItem(response, "data");
+    assert_null(cJSON_GetObjectItem(data, "key"));
+    assert_null(cJSON_GetObjectItem(data, "name"));
+
+    // THE assertion of this feature: the keystore entry is byte-identical. Same key, same name,
+    // same slot -- a rotation here would mean a lost response bricks the endpoint.
+    int index = OS_IsAllowedID(&keys, id);
+    assert_true(index >= 0);
+    assert_string_equal(keys.keyentries[index]->raw_key, key);
+    assert_string_equal(keys.keyentries[index]->name, "upgraded-agent");
+    assert_int_equal(keys.keysize, keysize_before);
+
+    // The writer's queue: a rotation node (so the row is UPDATEd, not inserted) carrying the
+    // UNCHANGED key and no group -- group == NULL is what keeps the writer off
+    // wdb_set_agent_groups_csv(), so the agent's groups survive.
+    struct keynode *node = find_node(queue_insert, id);
+    assert_non_null(node);
+    assert_int_equal(node->rotate, 1);
+    assert_null(node->group);
+    assert_string_equal(node->raw_key, key);
+    assert_string_equal(node->reenroll_secret, secret);
+    assert_null(find_node(queue_remove, id));
+
+    // And it is journaled before it is handed out, with the same unchanged key.
+    size_t count = 0;
+    identity_journal_entry_t *entries = identity_journal_snapshot(0, 0, &count);
+    identity_journal_entry_t *mine = NULL;
+    for (size_t i = 0; i < count; i++) {
+        if (!strcmp(entries[i].id, id)) {
+            mine = &entries[i];
+        }
+    }
+    assert_non_null(mine);
+    assert_true(mine->rotate);
+    assert_string_equal(mine->key, key);
+    assert_string_equal(mine->secret, secret);
+    identity_journal_free(entries, count);
+
+    cJSON_Delete(response);
+}
+
+static void test_issue_secret_is_reissued_on_every_call(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char key[128];
+    add_agent("reissue-agent", id, sizeof(id), key, sizeof(key));
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), NULL));
+    cJSON *first = issue_secret(id);
+    assert_int_equal(response_error(first), 0);
+    char first_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1];
+    strncpy(first_secret, data_string(first, "reenroll_secret"), sizeof(first_secret) - 1);
+    first_secret[sizeof(first_secret) - 1] = '\0';
+    cJSON_Delete(first);
+
+    // The writer persisted it, so the reservation is free again. A second call is ACCEPTED, not
+    // refused: idempotent reissue is what makes a lost response self-healing -- a one-shot gate
+    // would strand the agent whose first answer never arrived.
+    w_reenroll_complete(id);
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), first_secret));
+    cJSON *second = issue_secret(id);
+    assert_int_equal(response_error(second), 0);
+    assert_string_not_equal(data_string(second, "reenroll_secret"), first_secret);
+    // Still the same key, twice over.
+    assert_string_equal(keys.keyentries[OS_IsAllowedID(&keys, id)]->raw_key, key);
+    cJSON_Delete(second);
+}
+
+static void test_issue_secret_without_a_row_is_refused_with_nothing_minted(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char key[128];
+    add_agent("rowless-agent", id, sizeof(id), key, sizeof(key));
+    const size_t journaled_before = identity_journal_pending();
+
+    // The agent is in client.keys but wm_database has not rebuilt its global.db row yet -- the
+    // exact state a freshly migrated 4.x agent is in. set-agent-credentials answers `ok` for an
+    // UPDATE matching zero rows, so without this check the agent would be handed a secret the
+    // writer silently drops at commit.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, NULL);
+
+    cJSON *response = issue_secret(id);
+    assert_int_equal(response_error(response), 9026);
+    cJSON_Delete(response);
+
+    // Nothing minted, nothing journaled, and nothing queued beyond the enrollment's own insert
+    // node: no rotation was ever appended (find_node() answers the LAST node for the id).
+    assert_int_equal(identity_journal_pending(), journaled_before);
+    struct keynode *node = find_node(queue_insert, id);
+    assert_non_null(node);
+    assert_int_equal(node->rotate, 0);
+    assert_string_equal(keys.keyentries[OS_IsAllowedID(&keys, id)]->raw_key, key);
+
+    // And the reservation was released: the next attempt, once the sync pass has run, goes through.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), NULL));
+    cJSON *retry = issue_secret(id);
+    assert_int_equal(response_error(retry), 0);
+    cJSON_Delete(retry);
+}
+
+static void test_issue_secret_for_an_agent_not_in_the_keystore_is_9026(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    // A row wazuh-db still holds for an agent the keystore no longer has: the keystore has the last
+    // word, and the name/ip/key this operation writes could only have come from it.
+    expect_value(__wrap_wdb_get_agent_info, id, 999);
+    will_return(__wrap_wdb_get_agent_info, agent_row(999, NULL));
+    cJSON *response = issue_secret("999");
+    assert_int_equal(response_error(response), 9026);
+    cJSON_Delete(response);
+}
+
+static void test_issue_secret_while_a_rotation_is_in_flight_is_9030(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char key[128];
+    add_agent("inflight-agent", id, sizeof(id), key, sizeof(key));
+
+    // A re-enrollment accepted and not yet persisted holds the reservation; a secret request for
+    // the same agent must not slip past it and write a credential over one in flight.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    cJSON *rotation = reenroll(id, "inflight-agent");
+    assert_int_equal(response_error(rotation), 0);
+    cJSON_Delete(rotation);
+
+    // No wdb_get_agent_info() is expected: the reservation refuses before the database is asked.
+    cJSON *response = issue_secret(id);
+    assert_int_equal(response_error(response), 9030);
+    cJSON_Delete(response);
+}
+
+static void test_issue_secret_that_cannot_be_journaled_is_refused(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    // identity_journal_append() logs the write failure itself.
+    EXPECT_LOG_ERROR();
+    char id[16];
+    char key[128];
+    add_agent("unrecordable-agent", id, sizeof(id), key, sizeof(key));
+
+    identity_journal_init("queue/no-such-directory/pending-identities");
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), NULL));
+
+    cJSON *response = issue_secret(id);
+    assert_int_equal(response_error(response), 9031);
+    assert_null(cJSON_GetObjectItem(cJSON_GetObjectItem(response, "data"), "reenroll_secret"));
+    cJSON_Delete(response);
+    // Only the enrollment's own insert node is queued: no rotation was appended.
+    struct keynode *node = find_node(queue_insert, id);
+    assert_non_null(node);
+    assert_int_equal(node->rotate, 0);
+
+    // The reservation is released, so the retry after the journal is writable again succeeds.
+    identity_journal_init(IDENTITY_JOURNAL_PATH);
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), NULL));
+    cJSON *retry = issue_secret(id);
+    assert_int_equal(response_error(retry), 0);
+    cJSON_Delete(retry);
+}
+
+static void test_issue_secret_rejects_a_malformed_or_absent_id(void **state) {
+    (void)state;
+    EXPECT_LOG_ERROR();
+    static const char *const requests[] = {
+        "{\"function\":\"issue_reenroll_secret\"}",
+        "{\"function\":\"issue_reenroll_secret\",\"arguments\":{}}",
+        "{\"function\":\"issue_reenroll_secret\",\"arguments\":{\"id\":\"\"}}",
+        "{\"function\":\"issue_reenroll_secret\",\"arguments\":{\"id\":5}}",
+        "{\"function\":\"issue_reenroll_secret\",\"arguments\":{\"id\":\"abc\"}}",
+        "{\"function\":\"issue_reenroll_secret\",\"arguments\":{\"id\":\"999999999\"}}",
+    };
+    // None of these reaches wazuh-db: no expectation on that wrap.
+    for (size_t i = 0; i < sizeof(requests) / sizeof(requests[0]); i++) {
+        cJSON *response = dispatch(requests[i]);
+        assert_true(response_error(response) == 9004 || response_error(response) == 9010);
+        cJSON_Delete(response);
+    }
+}
+
+/* --- #39315 F1: the mint is bound to the key that authenticated, not just to the id ------------ */
+
+static void test_issue_secret_refuses_a_fingerprint_that_is_not_the_current_key(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_WARN(); // the refusal names the stale-replica case for the operator
+    char id[16];
+    char key[128];
+    add_agent("rotated-agent", id, sizeof(id), key, sizeof(key));
+
+    // THE case this check exists for: remoted authenticated the request on a worker whose
+    // client.keys replica still holds a key this node has already rotated away from. The id is
+    // right, the bearer verified, and the answer must still be a refusal -- otherwise the holder of
+    // a superseded key walks away with a live credential for the CURRENT identity and can
+    // re-enroll with it.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), NULL));
+
+    cJSON *response = issue_secret_fingerprinted(id, FOREIGN_KEY_FINGERPRINT);
+    assert_int_equal(response_error(response), 9032);
+    assert_null(cJSON_GetObjectItem(cJSON_GetObjectItem(response, "data"), "reenroll_secret"));
+    cJSON_Delete(response);
+
+    // Nothing was minted, journaled or queued: a refusal that still rotated the credential would
+    // hand the legitimate agent a secret it was never told about.
+    struct keynode *node = find_node(queue_insert, id);
+    assert_non_null(node);
+    assert_int_equal(node->rotate, 0); // the enrollment's own insert, not a rotation
+
+    // And the reservation was released, so the agent's next honest attempt is not answered 9030.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), NULL));
+    cJSON *retry = issue_secret(id);
+    assert_int_equal(response_error(retry), 0);
+    cJSON_Delete(retry);
+}
+
+static void test_issue_secret_refuses_a_request_that_names_no_key(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_WARN();
+    char id[16];
+    char key[128];
+    add_agent("unnamed-key-agent", id, sizeof(id), key, sizeof(key));
+
+    // Fail closed, not open: a caller that cannot say which key it authenticated against has not
+    // made the statement this verb requires. Answering it would restore exactly the behaviour the
+    // check removes, for any caller that simply omits the field.
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), NULL));
+
+    cJSON *response = issue_secret_fingerprinted(id, NULL);
+    assert_int_equal(response_error(response), 9032);
+    cJSON_Delete(response);
+}
+
+static void test_issue_secret_accepts_the_fingerprint_of_the_key_it_holds(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char key[128];
+    add_agent("current-key-agent", id, sizeof(id), key, sizeof(key));
+
+    // The positive half, stated explicitly rather than left to the other cases' helper: the digest
+    // is taken over the key's client.keys text, which is the representation remoted fingerprints.
+    os_sha256 fingerprint = {0};
+    OS_SHA256_String(key, fingerprint);
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), NULL));
+
+    cJSON *response = issue_secret_fingerprinted(id, fingerprint);
+    assert_int_equal(response_error(response), 0);
+    assert_true(OS_IsValidReenrollSecret(data_string(response, "reenroll_secret")));
+    cJSON_Delete(response);
+
+    // The key itself is untouched, so the fingerprint that worked still works: this check refuses
+    // requests, it does not rotate anything.
+    const int index = OS_IsAllowedID(&keys, id);
+    assert_true(index >= 0);
+    assert_string_equal(keys.keyentries[index]->raw_key, key);
+}
+
+static void test_issue_secret_on_worker_forwards_to_the_master(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    config.worker_node = TRUE;
+
+    // The row lives in the master's global.db, so the worker forwards and hands the answer back
+    // untouched -- it neither reserves nor journals anything of its own.
+    expect_string(__wrap_w_request_agent_secret_clustered, agent_id, "001");
+    expect_string(__wrap_w_request_agent_secret_clustered, key_fingerprint, FOREIGN_KEY_FINGERPRINT);
+    will_return(__wrap_w_request_agent_secret_clustered, 0);
+    will_return(__wrap_w_request_agent_secret_clustered, REENROLL_SECRET);
+
+    /* Explicit, not issue_secret(): that helper fingerprints from THIS node's keystore, and by this
+     * point in the group an earlier case already owns id 001 -- so it would send that agent's real
+     * fingerprint instead. What a worker forwards is whatever the request carried, whether or not
+     * the id means anything locally, and saying so here is what makes the case independent of
+     * whatever the cases before it added. */
+    cJSON *response = issue_secret_fingerprinted("001", FOREIGN_KEY_FINGERPRINT);
+    assert_int_equal(response_error(response), 0);
+    assert_string_equal(data_string(response, "id"), "001");
+    assert_string_equal(data_string(response, "reenroll_secret"), REENROLL_SECRET);
+    cJSON_Delete(response);
+
+    config.worker_node = FALSE;
+}
+
+static void test_issue_secret_on_worker_preserves_the_masters_code(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_WARN();
+    config.worker_node = TRUE;
+
+    expect_string(__wrap_w_request_agent_secret_clustered, agent_id, "001");
+    expect_string(__wrap_w_request_agent_secret_clustered, key_fingerprint, FOREIGN_KEY_FINGERPRINT);
+    will_return(__wrap_w_request_agent_secret_clustered, -1);
+    will_return(__wrap_w_request_agent_secret_clustered, 9026);
+    will_return(__wrap_w_request_agent_secret_clustered, "ERROR: Unknown agent or no re-enrollment credential");
+
+    /* Explicit, not issue_secret(): that helper fingerprints from THIS node's keystore, and by this
+     * point in the group an earlier case already owns id 001 -- so it would send that agent's real
+     * fingerprint instead. What a worker forwards is whatever the request carried, whether or not
+     * the id means anything locally, and saying so here is what makes the case independent of
+     * whatever the cases before it added. */
+    cJSON *response = issue_secret_fingerprinted("001", FOREIGN_KEY_FINGERPRINT);
+    assert_int_equal(response_error(response), 9026);
+    cJSON_Delete(response);
+
+    config.worker_node = FALSE;
+}
+
+static void test_issue_secret_on_worker_transport_failure_is_9016(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_ERROR();
+    config.worker_node = TRUE;
+
+    expect_string(__wrap_w_request_agent_secret_clustered, agent_id, "001");
+    expect_string(__wrap_w_request_agent_secret_clustered, key_fingerprint, FOREIGN_KEY_FINGERPRINT);
+    will_return(__wrap_w_request_agent_secret_clustered, -2);
+    will_return(__wrap_w_request_agent_secret_clustered, 0);
+    will_return(__wrap_w_request_agent_secret_clustered, NULL);
+
+    /* Explicit, not issue_secret(): that helper fingerprints from THIS node's keystore, and by this
+     * point in the group an earlier case already owns id 001 -- so it would send that agent's real
+     * fingerprint instead. What a worker forwards is whatever the request carried, whether or not
+     * the id means anything locally, and saying so here is what makes the case independent of
+     * whatever the cases before it added. */
+    cJSON *response = issue_secret_fingerprinted("001", FOREIGN_KEY_FINGERPRINT);
+    assert_int_equal(response_error(response), 9016);
+    cJSON_Delete(response);
+
+    config.worker_node = FALSE;
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_local_add_clustered_success),
@@ -1923,6 +2384,20 @@ int main(void) {
         cmocka_unit_test(test_reenroll_duplicate_name_of_another_agent_9008),
         cmocka_unit_test(test_reenroll_malformed_or_with_token_id_9027),
         cmocka_unit_test(test_reenroll_on_worker_forwards_kid_and_bearer),
+        cmocka_unit_test(test_issue_secret_mints_one_without_touching_the_key),
+        cmocka_unit_test(test_issue_secret_is_reissued_on_every_call),
+        cmocka_unit_test(test_issue_secret_without_a_row_is_refused_with_nothing_minted),
+        cmocka_unit_test(test_issue_secret_for_an_agent_not_in_the_keystore_is_9026),
+        cmocka_unit_test(test_issue_secret_while_a_rotation_is_in_flight_is_9030),
+        cmocka_unit_test(test_issue_secret_that_cannot_be_journaled_is_refused),
+        cmocka_unit_test(test_issue_secret_rejects_a_malformed_or_absent_id),
+        // #39315 F1: the mint is bound to the key that authenticated, not just to the id.
+        cmocka_unit_test(test_issue_secret_refuses_a_fingerprint_that_is_not_the_current_key),
+        cmocka_unit_test(test_issue_secret_refuses_a_request_that_names_no_key),
+        cmocka_unit_test(test_issue_secret_accepts_the_fingerprint_of_the_key_it_holds),
+        cmocka_unit_test(test_issue_secret_on_worker_forwards_to_the_master),
+        cmocka_unit_test(test_issue_secret_on_worker_preserves_the_masters_code),
+        cmocka_unit_test(test_issue_secret_on_worker_transport_failure_is_9016),
     };
     int failed = cmocka_run_group_tests(tests, NULL, NULL);
     failed += cmocka_run_group_tests(token_tests, setup_token_env, teardown_token_env);

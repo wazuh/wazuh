@@ -165,6 +165,46 @@ TEST(AuthdClientTest, ReenrollCredentialTravelsAsArgumentsReenroll)
     EXPECT_FALSE(wire["arguments"].contains("id"));
 }
 
+TEST(AuthdClientTest, IssueReenrollSecretSendsOnlyTheAgentId)
+{
+    // Secret issuance (issue #39315): a different verb over the SAME bounded queue and worker pool
+    // as `add`, which is the point -- the two routes cost authd the same round trip, so they must
+    // not be able to outbid each other for it. The request carries the id and nothing else: no
+    // credential (remoted already proved the identity), and no name/ip/key, because authd reads
+    // those from its own keystore entry and this operation changes none of them.
+    const std::string path = makeUniqueSocketPath("authd_client_issue_secret");
+    std::string captured;
+    std::mutex mu;
+    FakeUdsServer server(
+        path,
+        [&](const std::string& request)
+        {
+            std::lock_guard<std::mutex> lock(mu);
+            captured = request;
+            return std::string(
+                R"({"error":0,"data":{"id":"001",)"
+                R"("reenroll_secret":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}})");
+        });
+    server.setCloseAfterReply(true);
+
+    AuthdClient client(path);
+    ResultWaiter waiter;
+    client.issueReenrollSecret(AuthdSecretRequest {"001"}, waiter.callback());
+
+    const auto result = waiter.wait();
+    EXPECT_EQ(result.errorCode, 0);
+    EXPECT_EQ(result.id, "001");
+    EXPECT_EQ(result.reenrollSecret, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+    // No key comes back, because none was rotated -- the whole reason a lost answer is harmless.
+    EXPECT_TRUE(result.key.empty());
+
+    std::lock_guard<std::mutex> lock(mu);
+    const auto wire = nlohmann::json::parse(captured);
+    EXPECT_EQ(wire["function"], "issue_reenroll_secret");
+    EXPECT_EQ(wire["arguments"]["id"], "001");
+    EXPECT_EQ(wire["arguments"].size(), 1U);
+}
+
 TEST(AuthdClientTest, BusinessRejectionPreservesCodeAndStripsPrefix)
 {
     const std::string path = makeUniqueSocketPath("authd_client_business_error");

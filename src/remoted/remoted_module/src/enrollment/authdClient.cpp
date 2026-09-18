@@ -93,6 +93,59 @@ namespace remoted::enrollment
             }
             return message;
         }
+
+        /// The `add` wire request. Built on the calling thread (see AuthdClient::addAgent), so the
+        /// bounded queue carries opaque bytes and knows nothing about verbs.
+        std::string buildAddPayload(const AuthdAddRequest& request)
+        {
+            nlohmann::json arguments;
+            arguments["name"] = request.name;
+            arguments["ip"] = request.ip;
+            if (request.groups)
+            {
+                arguments["groups"] = *request.groups;
+            }
+            if (request.keyHash)
+            {
+                arguments["key_hash"] = *request.keyHash;
+            }
+            if (request.tokenId)
+            {
+                arguments["token_id"] = *request.tokenId;
+            }
+            if (request.reenroll)
+            {
+                arguments["reenroll"] = {{"kid", request.reenroll->kid}, {"bearer", request.reenroll->bearer}};
+            }
+
+            nlohmann::json payload;
+            payload["function"] = "add";
+            payload["arguments"] = std::move(arguments);
+            return payload.dump();
+        }
+
+        /// The `issue_reenroll_secret` wire request (issue #39315). Two arguments -- no credential,
+        /// no name, no ip: authd reads the agent's name, ip and key from its own keystore entry,
+        /// which is what keeps the operation a pure credential write.
+        ///
+        /// `key_fingerprint` names the key remoted authenticated against, so authd can refuse to
+        /// mint when its own entry has since moved on. Omitted when empty rather than sent blank:
+        /// an authd that predates this field ignores it either way, and a blank value must not be
+        /// mistakable for "this key matched".
+        std::string buildSecretPayload(const AuthdSecretRequest& request)
+        {
+            nlohmann::json arguments;
+            arguments["id"] = request.id;
+            if (!request.keyFingerprint.empty())
+            {
+                arguments["key_fingerprint"] = request.keyFingerprint;
+            }
+
+            nlohmann::json payload;
+            payload["function"] = "issue_reenroll_secret";
+            payload["arguments"] = std::move(arguments);
+            return payload.dump();
+        }
     } // namespace
 
     class AuthdClient::Impl
@@ -156,7 +209,10 @@ namespace remoted::enrollment
             }
         }
 
-        void addAgent(AuthdAddRequest request, std::function<void(AuthdResult)> callback)
+        /// The wire request is built by the CALLER's thread (see addAgent()/issueReenrollSecret()
+        /// below) and travels as opaque bytes from here on: this queue does not care which verb it
+        /// is carrying, which is what lets both routes share one bounded queue and one worker pool.
+        void enqueue(std::string wire, std::function<void(AuthdResult)> callback)
         {
             std::function<void(AuthdResult)> reject;
             bool stopping = false;
@@ -177,7 +233,7 @@ namespace remoted::enrollment
                 }
                 else
                 {
-                    m_queue.push({std::move(request), std::move(callback)});
+                    m_queue.push({std::move(wire), std::move(callback)});
                     m_cv.notify_one();
                 }
             }
@@ -217,7 +273,7 @@ namespace remoted::enrollment
     private:
         struct Request
         {
-            AuthdAddRequest request;
+            std::string wire; ///< The already-serialized authd request.
             std::function<void(AuthdResult)> callback;
         };
 
@@ -251,17 +307,16 @@ namespace remoted::enrollment
                 // This runs on a bare std::thread (m_workers), not on the HTTP transport's own
                 // worker pool -- RestinioHttpServer's own try/catch around a route handler's
                 // SYNCHRONOUS call (see its comment about asio::thread_pool terminating on any
-                // escaping exception) does NOT cover this: addAgent() already returned by the
-                // time this runs, later, on a different thread entirely. An uncaught exception
-                // here -- from performRequest() itself (e.g. nlohmann::json::dump()/bad_alloc
-                // building the wire request, before its own try blocks even start) or from
-                // req.callback() (e.g. mapAuthdResult()'s JSON building, or IHttpResponder::send()
-                // racing an already-torn-down connection) -- would escape this thread's entry
-                // function and std::terminate the entire remoted daemon, taking down every other
-                // agent's connection along with the one enrollment request that triggered it.
+                // escaping exception) does NOT cover this: the enqueueing call already returned by
+                // the time this runs, later, on a different thread entirely. An uncaught exception
+                // here -- from performRequest() itself, or from req.callback() (e.g.
+                // mapAuthdResult()'s JSON building, or IHttpResponder::send() racing an
+                // already-torn-down connection) -- would escape this thread's entry function and
+                // std::terminate the entire remoted daemon, taking down every other agent's
+                // connection along with the one request that triggered it.
                 try
                 {
-                    req.callback(performRequest(req.request));
+                    req.callback(performRequest(req.wire));
                 }
                 catch (const std::exception& e)
                 {
@@ -274,37 +329,12 @@ namespace remoted::enrollment
             }
         }
 
-        AuthdResult performRequest(const AuthdAddRequest& request)
+        AuthdResult performRequest(const std::string& requestStr)
         {
             using SocketType = Socket<OSPrimitives, SizeHeaderProtocol>;
 
             AuthdResult result;
             result.errorCode = -1;
-
-            nlohmann::json arguments;
-            arguments["name"] = request.name;
-            arguments["ip"] = request.ip;
-            if (request.groups)
-            {
-                arguments["groups"] = *request.groups;
-            }
-            if (request.keyHash)
-            {
-                arguments["key_hash"] = *request.keyHash;
-            }
-            if (request.tokenId)
-            {
-                arguments["token_id"] = *request.tokenId;
-            }
-            if (request.reenroll)
-            {
-                arguments["reenroll"] = {{"kid", request.reenroll->kid}, {"bearer", request.reenroll->bearer}};
-            }
-
-            nlohmann::json payload;
-            payload["function"] = "add";
-            payload["arguments"] = std::move(arguments);
-            const std::string requestStr = payload.dump();
 
             // Deliberately the bare Socket, not shared_modules/utils's SocketClient: SocketClient's
             // connect() only starts a background thread that connects asynchronously and returns
@@ -561,7 +591,12 @@ namespace remoted::enrollment
 
     void AuthdClient::addAgent(AuthdAddRequest request, std::function<void(AuthdResult)> callback)
     {
-        m_impl->addAgent(std::move(request), std::move(callback));
+        m_impl->enqueue(buildAddPayload(request), std::move(callback));
+    }
+
+    void AuthdClient::issueReenrollSecret(AuthdSecretRequest request, std::function<void(AuthdResult)> callback)
+    {
+        m_impl->enqueue(buildSecretPayload(request), std::move(callback));
     }
 
     std::uint32_t AuthdClient::resolveResponseTimeoutMs(std::uint32_t configuredMs, bool isWorkerNode) noexcept

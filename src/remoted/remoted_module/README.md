@@ -255,7 +255,9 @@ src/endpoints/
 ├── downloadEndpoint.hpp/.cpp # /download policy: request grammar + resource resolution + file streaming
 ├── iAgentGroupSource.hpp     # interface: the selector an authenticated agent may download
 ├── cacertsEndpoint.hpp/.cpp  # GET /cacerts: the CA that signs the listener cert, certificates only (no auth)
-└── rateLimitGate.hpp/.cpp    # per-endpoint rate limit in front of the two unauthenticated routes
+├── rateLimitGate.hpp/.cpp    # per-endpoint rate limit in front of the two unauthenticated routes
+└── reenrollSecretEndpoint.hpp/.cpp # POST /enroll/secret: a re-enrollment secret for an agent that
+                             #   already holds a key (authenticated; authd mints, the key is untouched)
 ```
 
 - **`rateLimitGate.hpp/.cpp` (ns `remoted::endpoints::ratelimit`):** `wrap()` takes a
@@ -295,6 +297,29 @@ src/endpoints/
 
   `EndpointRateLimiter::diagnostics()` reads the bucket **without charging it** — the facade
   publishes `available` as a pull metric, and a scrape must never cost an agent its enrollment.
+
+  **`wrap()` does not reach authenticated routes, so the gateway grew a gate of its own.**
+  `POST /enroll/secret` shares `/enroll`'s bucket (see its chapter below), and it is authenticated.
+  `wrap()` cannot express that: it takes and returns a `RouteHandler`, while
+  `AuthGateway::addAuthenticatedRoute()` takes an `AuthenticatedHandler` and builds the
+  `RouteHandler` itself, with `authenticate()` inside it — so a wrapped handler could only ever be
+  charged *after* authentication, which puts `401` before `429` and makes every refusal pay a
+  keystore lookup and an HMAC. `addAuthenticatedRoute()` therefore takes an optional
+  `AuthenticatedRouteGate` (limiter, 429-body factory, refusal counter, `EndpointHttpMetrics`, route
+  name), charged inside the registered lambda **before `authenticate()` and before the `receivedAt`
+  stamp**, reproducing `wrap()`'s semantics exactly — including recording **only**
+  `httpMetrics->responses.count(429)` and never the latency histogram. Default-constructed the gate
+  is inert and resolved once at registration, so the six routes registered without one are untouched
+  and cost nothing. `AnEmptyBucketRefusesBeforeAuthenticationRuns` in `authGateway_test.cpp` is the
+  assertion that pins the ordering: with a drained bucket, a request carrying **no bearer at all**
+  is answered `429`, not `401`.
+
+  **The one failure mode no test catches by itself:** a gate handed a *null* limiter is silently
+  inert — no log, no error — and the route then ships unlimited. `m_enrollRateLimiter` is
+  constructed in `startHttpServer()` **after** the authenticated-route block, so the
+  `/enroll/secret` registration deliberately sits below that construction rather than with its
+  siblings. A registration moved back up would still pass every unit test, because those inject a
+  live limiter and never see the facade's construction order.
 
 - **`GET /cacerts` (`cacertsEndpoint.hpp/.cpp`, ns `remoted::endpoints::cacerts`):** the one route
   besides the health probe registered as a *raw* `addRoute()` — no `AuthGateway` (the caller holds
@@ -1456,6 +1481,66 @@ die with it; their diagnostics are reachable through weak targets repointed per 
 `m_downstreamClient` — `AuthdClient::stop()` before the HTTP transport's final `stop()` releases its
 I/O runtime, matching the ordering documented in *Deferred forwarding* above.
 
+## Re-enrollment secret (`POST /enroll/secret`) — `src/endpoints/reenrollSecretEndpoint.{hpp,cpp}`
+
+`reenroll_secret` is minted only by an enrollment, so three populations end up holding a valid key
+and no way to recover with it: an agent **upgraded from 4.x over WPK** (it keeps its `client.keys`
+identity, so it never calls `POST /enroll` — and issue #39064 removes `etc/authd.pass` at package
+upgrade, leaving that key as its only credential), an agent **enrolled over port 1515**, and a row
+**rebuilt from `client.keys`** by `wm_database`. The moment the manager stops accepting such an
+agent's key, recovery needs an operator at the endpoint with a freshly minted token — exactly the
+cost the token-less upgrade path exists to remove. This route closes that gap.
+
+**Authenticated, unlike `/enroll`.** Registered through `m_authGateway->addAuthenticatedRoute()`
+like `/stats` and `/control`, because here the caller *is* a known agent: the middleware runs
+verbatim (keystore lookup, the entry's `ip` column against the peer address, HS256 over the agent's
+own key, the `jwt_max_age`/`jwt_clock_skew` window). **The id is the middleware's verified `sub`,
+never a body field** — there is no id input at all, so no request shape exists in which one agent
+asks about another, and the body is not read (`{}` and an empty body are equally acceptable).
+
+Three design points, each the reason the next one holds:
+
+- **The key is never rotated on this path.** authd stores the new secret against the agent's
+  *existing* key (`issue_reenroll_secret`, see `os_auth/README.md` D14). Reusing the re-enrollment
+  path would rotate both, and an answer lost in flight would then leave the agent holding a key the
+  manager no longer accepts — a bricked endpoint produced by the very mechanism meant to avoid one.
+- **Reissue is always allowed**, precisely because a lost answer is harmless. A one-shot gate would
+  strand the agent whose answer never arrived: the database would hold a credential it never
+  received and could never ask for again.
+- **The agent asks once per start**, on a detached thread after its HTTPS client comes up, and only
+  when its store is empty — so every 5.0 agent, which already has a secret, never reaches this route.
+
+Status mapping (`mapAuthdResult()`): `200` with `{id, reenroll_secret}`; **`401`** for the
+middleware's own classes *and* for authd's `9026`, which folds "no such agent" and "no row in
+`global.db` yet" — that second case is the freshly migrated agent whose row `wm_database` has not
+rebuilt, and it is answered through `errorResponseFor()` so it carries the same envelope, challenge
+and `remoted.auth.reject.unknown_agent` cell the gateway itself would have produced; **`409`** on
+`9030` (a rotation already in flight); **`503`** on `9031`, `9015`/`9016`, and `errorCode -1` (an
+unreachable authd, a timeout, an unparseable reply, or a **full `AuthdClient` queue** — all the same
+"no clean answer"); **`500`** for an authd code this route does not map, which would mean the two
+sides disagree about the verb. A `200` carrying an empty secret is treated as `503`, not as a
+success: this verb exists only to produce one, so there is no "an older authd sent none" case to
+tolerate as there is on `/enroll`.
+
+The bodies use this module's flat `{"error":"..."}` envelope (the `cacerts` shape), not `/enroll`'s
+nested numeric one: sharing a rate-limit bucket is not sharing an error envelope.
+
+**Why it shares `/enroll`'s bucket.** A fleet-wide 4.x→5.0 upgrade puts every migrated agent here at
+once. One request costs an authd round trip (plus a cluster round trip on a worker) and, on top of
+`/enroll`, an identity-journal append and a writer pass — against `IDENTITY_JOURNAL_MAX_ENTRIES`
+(5000). Once that journal is full, **real enrollments are refused with 9031 too**, so an unthrottled
+wave would take down the path this feature exists to protect. One shared ceiling makes that
+unprovokable from this route; the accepted residual is that the wave can throttle real enrollments
+*at the limiter* instead, which is paced backpressure with a retry behind it rather than an outright
+refusal. The refusal **counters** stay one per route (`remoted.enroll.rate_limited`,
+`remoted.enroll.secret.rate_limited`), which is what keeps the two distinguishable under one number.
+The mechanics of the gate, and the ordering trap in its registration, are in the *Endpoints* chapter
+above.
+
+Metrics: `remoted.enroll.secret.*` (catalog in `enrollment/metrics.hpp`, next to `remoted.enroll.*`
+because the downstream — the shared `AuthdClient` — belongs to the enrollment subsystem) plus
+`remoted.http.enroll.secret.responses.*`.
+
 ## Streamed responses — `POST /download`
 
 Most endpoints answer with one in-memory body. `/download` serves `merged.mg` and WPK packages,
@@ -1977,7 +2062,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
 | `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed, token_unknown, token_expired, token_revoked}` | WHY authentication failed, finer than the class the wire names (see [401 classes](#401-classes)); the three `token_*` cells are `/enroll`'s enrollment-token states | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
 | `remoted.auth.keystore.{agents, entries_skipped, reloads.total, reload_failures.total}` (pulls) | did the client.keys hot-reload pick up re-enrolls; is the file unreadable/unstable; how many lines the load could not use | atomics maintained by `Keystore::reload()`. `agents`/`entries_skipped` are LEVELS of the adopted load (a failed load leaves both untouched); neither counts comments, blanks or removed entries |
-| `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|cacerts>.responses.{2xx,400,403,409,413,429,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
+| `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|enroll.secret\|cacerts>.responses.{2xx,400,403,409,413,429,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
 | `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector, or the manager has no established membership for it). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request) and from `not_found` (an *entitled* request whose file is not on disk) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
@@ -1985,7 +2070,8 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does `remote.https.ca_certificate` sign it (0 when it does not, or when the last successful read yielded no certificate — a read that fails after a good one keeps that bundle's verdict) | `IHttpServer::certificateStatus()`: `cert_expiry_days` from the transport's `TlsCertificateMonitor` snapshot (evaluated at start and every 24 h); `ca_matches_leaf` re-read from the same `CaCertificateSource` `/cacerts` answers from, on every scrape; registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
 | `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable, rate_limited}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above). `rate_limited` is the odd one: the request was refused before the handler ran, so it has no outcome among the others | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp`; `rate_limited` by the gate (`endpoints/rateLimitGate.cpp`) |
-| `remoted.<enroll\|cacerts>.rate_limit.{limit, burst, available}` (pulls) | is the route's ceiling sized right: `available` pinned at 0 while `rate_limited` climbs is a rate below what the fleet needs, not necessarily an attack | `EndpointRateLimiter::diagnostics()` through `registerRateLimitDiagnostics()`; reads the bucket WITHOUT charging it, so scraping never costs an agent its enrollment |
+| `remoted.<enroll\|cacerts>.rate_limit.{limit, burst, available}` (pulls) | is the BUCKET's ceiling sized right: `available` pinned at 0 while `rate_limited` climbs is a rate below what the fleet needs, not necessarily an attack. Two buckets, three routes — the `enroll` one governs `POST /enroll` and `POST /enroll/secret` together | `EndpointRateLimiter::diagnostics()` through `registerRateLimitDiagnostics()`; reads the bucket WITHOUT charging it, so scraping never costs an agent its enrollment |
+| `remoted.enroll.secret.{issued, rejected_in_progress, authd_error, authd_unavailable, rate_limited}` | WHY each `POST /enroll/secret` request ended that way. Its own family because none of the `remoted.enroll.*` outcomes describes it: no enrollment happens, no identity is minted, nothing is rotated. `authd_error` is overwhelmingly 9026 — the agent's `global.db` row has not been rebuilt from `client.keys` yet — and `rate_limited` is the shared bucket refusing before authentication | `enrollment/metrics.hpp`, counted in `endpoints/reenrollSecretEndpoint.cpp`; `rate_limited` by the gateway's gate (`endpoints/authGateway.cpp`), which runs before `authenticate()` |
 | `remoted.enroll.token.{accepted, rejected_unknown, rejected_expired, rejected_revoked, rejected_exhausted}` | the enrollment-token subset of the above, by what happened to the TOKEN: unknown/expired/revoked decided by remoted's replica (and by authd's 9022/9023 when the replica lagged), exhausted by authd alone (9024) | `countTokenRejection()` (remoted's own verdict) + `countTokenOutcome()` (authd's) in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.reenroll.{accepted, rejected_unknown, rejected_signature, rejected_stale}` | the re-enrollment subset (`kid` = agent id): authd's verdict on the master — 9026 / 9027 / 9028 — since remoted forwards that bearer unverified; each rejection also lands in the `remoted.auth.reject.*` cell of the `AuthError` it maps to | `countReenrollOutcome()` in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.token_store.{tokens, reloads.total, reload_failures.total}` (pulls) | does this node recognise the tokens the operator minted (an empty replica on a worker = the sync has not landed); is `etc/enrollment_tokens.json` being picked up, or is a corrupt/hand-edited store making the previous replica serve | `TokenKeySource::diagnostics()` through `registerTokenKeySourceDiagnostics()`; 0 while enrollment is disabled |

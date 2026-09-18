@@ -379,10 +379,15 @@ TLS checks still apply. See the memory settings below.
 
 Rate limiting is a **separate** mechanism and answers **`429 Too Many Requests`** with a
 `Retry-After`. It applies to the two routes no credential can gate, `POST /enroll` and
-`GET /cacerts`, and only to those: every other route is already bounded by what the presented agent
-key permits. The bucket belongs to the **endpoint**, so the configured rate is a ceiling for the
-whole fleet rather than an allowance per agent — one client asking fast enough can consume the
-route's budget. See
+`GET /cacerts`, and to `POST /enroll/secret`, which is authenticated but shares `POST /enroll`'s
+bucket — the only authenticated route that carries a limit, because it is the one a fleet-wide
+4.x→5.0 upgrade wave hits all at once and, unthrottled, that wave would fill `authd`'s identity
+journal and start refusing real enrollments. Every other route is already bounded by what the
+presented agent key permits. The bucket belongs to the **endpoint** (and here to the enrollment
+PAIR), so the configured rate is a ceiling for the whole fleet rather than an allowance per agent —
+one client asking fast enough can consume the route's budget. On `/enroll/secret` the charge is made
+**before authentication**, so a request carrying no bearer at all is answered `429` rather than
+`401`. See
 [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes)
 for the defaults and for how to size them.
 
@@ -484,8 +489,15 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
   when enrollment is administratively disabled. Returns **`200 OK`** with the new agent's
   `{id,name,ip,key,reenroll_secret}` on success, or a mapped `4xx`/`5xx` on failure. See
   [Enrollment endpoint](#enrollment-endpoint-post-enroll) below for details.
+- **`POST /enroll/secret`** — authenticated: an agent that already holds a `client.keys` identity
+  but no re-enrollment secret asks for one. Unlike `POST /enroll` it uses the ordinary
+  agent<->manager bearer, and the secret is minted for the identity that bearer proves — there is no
+  id field in the request. The agent's **key is not rotated**, so a lost answer leaves it exactly as
+  it was. Returns **`200 OK`** with `{id,reenroll_secret}`, **`401`** (including `authd` 9026),
+  **`409`** while a rotation is in flight, **`429`** from the shared `/enroll` bucket, or **`503`**.
+  See [Re-enrollment secret endpoint](#re-enrollment-secret-endpoint-post-enrollsecret) below.
 
-The machine-readable contract is published as OpenAPI, covering all ten routes — see the
+The machine-readable contract is published as OpenAPI, covering all eleven routes — see the
 [endpoint reference](agent-api-reference.html) (source: [`agent-api.yaml`](agent-api.yaml)).
 
 ## Configuration
@@ -1311,6 +1323,125 @@ first, in the same flat shape it uses for every route, `/enroll` included: an un
 (`500`), capacity-based load shedding once the module's in-flight byte budget is exhausted (`503`),
 or (mTLS mode) a client certificate that doesn't match the connecting peer's address (`403`). These
 are the exception to the "always nested" rule above, not a second business-error shape.
+
+## Re-enrollment secret endpoint (`POST /enroll/secret`)
+
+`POST /enroll` is the only thing that mints a `reenroll_secret`, which leaves three populations of
+agents holding a valid key and no way to recover it:
+
+| Population | How it got there |
+|---|---|
+| **4.x agents upgraded to 5.0 over WPK** | The upgrade delivers the manager CA over the legacy channel, so the agent speaks HTTPS on 1517 without a token — and precisely because it keeps its `client.keys` identity, it never calls `POST /enroll`. The 5.0 package upgrade also removes `etc/authd.pass`, so its key ends up being the *only* credential it has |
+| Agents enrolled over port 1515 | That path passes no secret by design: an OSSEC `K:` line has no field for one |
+| Rows rebuilt from `client.keys` | `wm_database` mirrors the keystore into `global.db` with a NULL secret |
+
+The moment the manager stops accepting such an agent's key, recovery needs an operator at the
+endpoint with a freshly minted enrollment token — exactly the cost the token-less upgrade path
+exists to remove. This endpoint closes that gap: the agent asks for a secret over the authenticated
+channel it already has.
+
+### What it is, and what it is not
+
+It is an **ordinary authenticated route**, registered through the same gateway as `/control` and
+`/stateless`, so the [bearer token](#authentication) applies verbatim — the `client.keys` key
+lookup, that entry's `ip` column against the peer address, the signature, and the
+`jwt_max_age`/`jwt_clock_skew` window. That is the whole authorization: **possession of the agent's
+own key**.
+
+**The secret is minted for the identity the bearer proves. There is no id field in the request** —
+`{}` and an empty body are equally acceptable and neither is read — so no request shape exists in
+which one agent asks about another. Agent 002 cannot produce a signature under agent 001's key.
+
+Two decisions shape everything else:
+
+- **The key is never rotated here.** `authd` stores the new secret against the agent's *existing*
+  key. Reusing the full re-enrollment path would rotate both, and then an answer lost in flight
+  would leave the agent holding a key the manager no longer accepts — a bricked endpoint produced by
+  the very mechanism meant to avoid one. Issuing only the secret makes the worst case "nothing
+  changed": valid key, still no secret, and the agent's next start asks again.
+- **Reissue is always allowed.** A one-shot gate ("only when the row has no secret") would strand
+  exactly the agent whose answer was lost: the database would hold a credential it never received
+  and could never ask for again. Each call replaces the previous secret, and the newest one is the
+  one that verifies.
+
+The security boundary is therefore narrow and worth stating: possession of `client.keys` already
+allows full impersonation of that agent. This endpoint adds one power on top — rotating that one
+agent's key, locking the legitimate agent out until an operator intervenes. It reaches no other
+agent and it mints no identity.
+
+### Request and responses
+
+```http
+POST /enroll/secret HTTP/1.1
+protocol-version: 1
+Authorization: Bearer <wazuh-agent+jwt>
+Content-Type: application/json
+
+{}
+```
+
+| Condition | Status | Body |
+|---|---|---|
+| Issued | `200` | `{"id":"001","reenroll_secret":"<64 hex>"}` — no `key`, no `name`, no `ip`: none of them changed |
+| Any credential failure, and `authd`'s 9026 | `401` | The gateway's own classes and envelope. `9026` folds "no such agent" and "no row in `global.db` yet"; the second is the freshly migrated agent whose row `wm_database` has not rebuilt yet, and its next start succeeds once that pass has run |
+| A rotation for this agent is already in flight (9030) | `409` | `{"error":"reenroll_in_progress"}` — typically a `POST /enroll` re-enrollment mid-commit. Retry |
+| Over the rate limit | `429` | `{"error":"rate_limited"}` + `Retry-After`. **Shared with `POST /enroll`** (`remote.https.enroll_rate_limit`) and charged **before authentication**, so a request with no bearer at all is answered `429`, not `401` |
+| Transition unrecordable (9031) | `503` | `{"error":"identity_unrecorded"}` — nothing was handed out |
+| Worker rejected or its forward failed (9015/9016) | `503` | `{"error":"master_unreachable"}` |
+| `authd` unreachable, timed out, unparseable, or its queue full | `503` | `{"error":"authd_unavailable"}` |
+
+Unlike `/enroll`, these bodies use this page's flat `{"error":"..."}` shape: sharing a rate-limit
+bucket is not sharing an error envelope.
+
+### Why one bucket for two routes
+
+A fleet-wide 4.x→5.0 upgrade puts every migrated agent on this route at once. Each request costs the
+manager an `authd` round trip (plus, on a worker, a cluster round trip to the master) and, on top of
+what `/enroll` costs, an identity-journal append and a writer pass. Unthrottled, that burst lands on
+the journal, whose bound is 5000 entries — and once it is full, **real enrollments are refused with
+9031 too**. One shared ceiling makes that impossible to provoke from this route.
+
+The residual is deliberate and worth knowing: the wave can now throttle real enrollments *at the
+limiter*. The two failures are not symmetric — a `429` is paced backpressure with a retry behind it,
+while a `9031` refuses a real enrollment outright — and an operator watching both throttle still has
+one number to raise. The refusal counters stay one per route
+(`remoted.enroll.rate_limited`, `remoted.enroll.secret.rate_limited`), which is what keeps the two
+distinguishable under a single ceiling.
+
+### What the agent does with it
+
+One attempt per start, and only when `client.keys` holds an entry **and** `etc/reenroll.secret` is
+absent — so a 5.0 agent, which already has a secret from its own enrollment, never reaches this
+route at all. The attempt runs on a detached thread after the HTTPS client starts, never on the boot
+path: nothing at boot consumes the secret, and putting a network round trip there would add its full
+timeout to the start of every agent whose manager is unreachable. It is never fatal; `429` and `503`
+are handled identically (one log line, no retry in that process), and the attempt is jittered so a
+fleet restarted together does not re-synchronize. Both start paths make the call — `AgentdStart()`
+on Unix and `local_start()` on Windows, which is a separate function because `agentd.c` is not part
+of the Windows build.
+
+### Known limitation: changing the master node
+
+**A master change invalidates every agent's stored secret.** `reenroll_secret` lives in the master's
+`global.db`, and `global.db` is **not** replicated between cluster nodes — only `client.keys`,
+`etc/authd.pass` and `etc/enrollment_tokens.json` are. A promoted node rebuilds its agent rows from
+the `client.keys` it received, and those rebuilt rows carry a NULL secret (the same path that puts
+the third population above in this state).
+
+What does **not** break: `client.keys` *is* replicated, so every agent's key still authenticates.
+Agents keep connecting, reporting and receiving configuration exactly as before, and this route keeps
+working for them — it authenticates with that same key.
+
+What breaks is **recovery**: each agent still holds a secret the new master has never seen, and it
+will not ask for another, because it only asks when its store is empty. Nothing exercises the secret
+while the key works, so the mismatch stays invisible until the day the key stops being accepted —
+at which point the agent shreds the dead secret and falls back to whatever credential it has. For an
+agent with no enrollment token and no password, that means an operator.
+
+If you change the master, treat the fleet's recovery credentials as lost and re-issue them: removing
+`etc/reenroll.secret` on an agent makes its next start ask the new master for a fresh one. This is
+inherited from the secret's design (issue #38993), not from this endpoint, which is what makes the
+re-issue possible at all.
 
 ## Download endpoint (`POST /download`)
 

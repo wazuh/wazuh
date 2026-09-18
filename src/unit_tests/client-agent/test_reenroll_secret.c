@@ -24,6 +24,7 @@
 
 #include "shared.h"
 #include "reenroll_secret.h"
+#include "https_client_bridge.h" // hc_secret_result_t, for the one mocked module boundary
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 #define VALID_SECRET "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -48,8 +49,19 @@ static int setup_test(void **state) {
  * whenever the file it is about to replace does not exist yet -- so the count varies with what the
  * test did before. Declared uninteresting instead of counted, in the test body rather than in the
  * fixture: cmocka validates a setup function's own queue when setup returns, and an "always" entry
- * left there is reported as an unchecked leftover. */
-#define ignore_debug_lines() expect_any_always(__wrap__mdebug1, formatted_msg)
+ * left there is reported as an unchecked leftover.
+ *
+ * Count -2 rather than expect_any_always() (-1): cmocka exempts an "always" entry from the
+ * leftover check only once it has been consumed at least once, so a path that logs at neither
+ * debug level -- the 401 and the malformed-answer cases below -- fails on the unused entry. -2 is
+ * the count will_return_maybe() uses, and means "any number of times, including none". Both levels
+ * are declared because which one a path logs at is the production code's business, not the test's:
+ * every assertion here is on the store and on the request count. */
+#define ignore_debug_lines()                                  \
+    do {                                                      \
+        expect_any_count(__wrap__mdebug1, formatted_msg, -2); \
+        expect_any_count(__wrap__mdebug2, formatted_msg, -2); \
+    } while (0)
 
 static int teardown_test(void **state) {
     (void) state;
@@ -289,6 +301,154 @@ static void test_clear_without_a_store_is_silent(void **state) {
     assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
 }
 
+/* ---- w_reenroll_secret_bootstrap() (#39315) ----
+ *
+ * The other way into this store: an agent that reached 5.0 KEEPING its client.keys identity never
+ * enrolled, so nothing ever handed it a secret. It asks for one over the authenticated channel it
+ * already has. Only that one module boundary is mocked; the store keeps running for real, because
+ * what these cases are about is what ends up on disk. */
+
+static int bootstrap_calls = 0;
+
+bool __wrap_w_https_client_fetch_reenroll_secret(hc_secret_result_t *result) {
+    bootstrap_calls++;
+    memset(result, 0, sizeof(*result));
+
+    const bool sent = mock_type(int) != 0;
+
+    if (!sent) {
+        const char *transport_error = mock_ptr_type(const char *);
+        if (transport_error) {
+            strncpy(result->transport_error, transport_error, sizeof(result->transport_error) - 1);
+        }
+        return false;
+    }
+
+    result->http_code = mock_type(int);
+    const char *body = mock_ptr_type(const char *);
+    if (body) {
+        strncpy(result->body, body, sizeof(result->body) - 1);
+    }
+    return true;
+}
+
+// Arms one answered request.
+static void expect_manager_answer(int http_code, const char *body) {
+    will_return(__wrap_w_https_client_fetch_reenroll_secret, 1);
+    will_return(__wrap_w_https_client_fetch_reenroll_secret, http_code);
+    will_return(__wrap_w_https_client_fetch_reenroll_secret, body);
+}
+
+static int setup_bootstrap(void **state) {
+    bootstrap_calls = 0;
+    return setup_test(state);
+}
+
+static void test_bootstrap_stores_exactly_what_the_manager_answered(void **state) {
+    (void) state;
+    ignore_debug_lines();
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_manager_answer(200, "{\"id\":\"042\",\"reenroll_secret\":\"" VALID_SECRET "\"}");
+
+    w_reenroll_secret_bootstrap();
+
+    assert_int_equal(bootstrap_calls, 1);
+    assert_string_equal(read_store(), "042 " VALID_SECRET "\n");
+}
+
+static void test_bootstrap_does_not_ask_when_a_secret_is_already_stored(void **state) {
+    (void) state;
+    ignore_debug_lines();
+    assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
+
+    // No will_return is queued: a request here would abort the case, which is the assertion. Every
+    // 5.0 agent is in this state after its own enrollment, so this is the common path and it must
+    // cost the manager nothing at all.
+    w_reenroll_secret_bootstrap();
+
+    assert_int_equal(bootstrap_calls, 0);
+    assert_string_equal(read_store(), "001 " VALID_SECRET "\n");
+}
+
+static void test_bootstrap_replaces_a_malformed_store(void **state) {
+    (void) state;
+    ignore_debug_lines();
+    expect_any(__wrap__minfo, formatted_msg);
+    // w_reenroll_secret_load() reports a malformed store as absent and logs it, so the bootstrap
+    // repairs it rather than leaving a credential nothing can use.
+    expect_any(__wrap__merror, formatted_msg);
+    write_store("this is not a credential\n");
+
+    expect_manager_answer(200, "{\"id\":\"007\",\"reenroll_secret\":\"" OTHER_SECRET "\"}");
+
+    w_reenroll_secret_bootstrap();
+
+    assert_int_equal(bootstrap_calls, 1);
+    assert_string_equal(read_store(), "007 " OTHER_SECRET "\n");
+}
+
+static void test_bootstrap_treats_429_like_503_and_never_fails(void **state) {
+    (void) state;
+    ignore_debug_lines();
+    // Both are the expected answers during a fleet-wide upgrade wave, and both are handled
+    // identically: one line, nothing stored, no retry in this process -- the next start asks again.
+    expect_manager_answer(429, "{\"error\":\"rate_limited\"}");
+    w_reenroll_secret_bootstrap();
+    assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
+
+    expect_manager_answer(503, "{\"error\":\"authd_unavailable\"}");
+    w_reenroll_secret_bootstrap();
+    assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
+
+    assert_int_equal(bootstrap_calls, 2);
+}
+
+static void test_bootstrap_warns_once_when_the_key_is_rejected(void **state) {
+    (void) state;
+    ignore_debug_lines();
+    // A 401 means the manager no longer accepts the key this agent holds, so it now has no way to
+    // recover on its own. Worth the operator's attention, unlike the transient answers above.
+    expect_any(__wrap__mwarn, formatted_msg);
+    expect_manager_answer(401, "{\"error\":\"unknown_agent\",\"code\":\"unknown_agent\"}");
+
+    w_reenroll_secret_bootstrap();
+
+    assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
+}
+
+static void test_bootstrap_stores_nothing_when_nothing_was_sent(void **state) {
+    (void) state;
+    ignore_debug_lines();
+    will_return(__wrap_w_https_client_fetch_reenroll_secret, 0);
+    will_return(__wrap_w_https_client_fetch_reenroll_secret, "Could not resolve host");
+
+    w_reenroll_secret_bootstrap();
+
+    assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
+}
+
+static void test_bootstrap_refuses_a_malformed_or_incomplete_answer(void **state) {
+    (void) state;
+    ignore_debug_lines();
+    static const char *const bodies[] = {
+        "not json at all",
+        "{}",
+        "{\"id\":\"001\"}",                                    // no secret: this route exists only to produce one
+        "{\"reenroll_secret\":\"" VALID_SECRET "\"}",          // no id: the store needs the pair
+        "{\"id\":\"001\",\"reenroll_secret\":\"too-short\"}",  // refused by the store's own validation
+        "{\"id\":\"abc\",\"reenroll_secret\":\"" VALID_SECRET "\"}", // an id OS_IsValidID() refuses
+    };
+
+    for (size_t i = 0; i < sizeof(bodies) / sizeof(bodies[0]); i++) {
+        expect_any(__wrap__merror, formatted_msg);
+        expect_manager_answer(200, bodies[i]);
+        w_reenroll_secret_bootstrap();
+        // Nothing half-written: a store the verifier would refuse is worse than no store at all,
+        // because the agent would present a bearer nobody can check instead of falling back.
+        assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
+    }
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_store_then_load_round_trip, setup_test, teardown_test),
@@ -311,6 +471,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_load_refuses_null_arguments, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_clear_overwrites_then_unlinks, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_clear_without_a_store_is_silent, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bootstrap_stores_exactly_what_the_manager_answered, setup_bootstrap, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bootstrap_does_not_ask_when_a_secret_is_already_stored, setup_bootstrap, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bootstrap_replaces_a_malformed_store, setup_bootstrap, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bootstrap_treats_429_like_503_and_never_fails, setup_bootstrap, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bootstrap_warns_once_when_the_key_is_rejected, setup_bootstrap, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bootstrap_stores_nothing_when_nothing_was_sent, setup_bootstrap, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bootstrap_refuses_a_malformed_or_incomplete_answer, setup_bootstrap, teardown_test),
     };
 
     return cmocka_run_group_tests(tests, group_setup, NULL);
