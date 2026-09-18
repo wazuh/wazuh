@@ -8,7 +8,7 @@
 - [Client](client/index.html) - Agent daemon (wazuh-agentd) managing agent-manager communication
 - [Cluster](cluster/index.html) - Manages the Wazuh server cluster
 - [Command](command/index.html) - Scheduled command execution through the command wodle
-- [Content Manager](content_manager/index.html) - CTI feed fetcher for Vulnerability Detection
+- [Content Manager](content_manager/index.html) - Shared content fetcher: CVE feeds for Vulnerability Detection, rulesets and IoCs for the Engine
 - [Control](control/index.html) - Manager control operations (restart, reload) via wm_control module
 - [Database Sync](database-sync/index.html) - Differential database synchronization library (DBSync) for inventory-type modules
 - [Engine](engine/index.html) - Event decoding, enrichment, and detection pipeline

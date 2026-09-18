@@ -2,6 +2,7 @@
 #define IOCSYNC_IIOCSYNC_HPP
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/syncStatus.hpp>
@@ -55,6 +56,17 @@ public:
      * @return Vector of IocTypeStatus, one per configured IOC type.
      */
     virtual std::vector<IocTypeStatus> getIocStatus() const = 0;
+
+    /**
+     * @brief Queue an out-of-band synchronization, off the scheduler.
+     *
+     * Non-blocking: the request is handed to the content manager's bounded lane and runs on one of
+     * its workers, so this is safe to call from an API handler thread. A type whose hash has not
+     * moved costs one probe, and a type already syncing is left alone rather than run twice.
+     *
+     * @param iocType IOC type to update. Empty updates every tracked type.
+     */
+    virtual void requestOnDemandUpdate(std::string_view iocType = {}) = 0;
 };
 
 } // namespace ioc::sync
