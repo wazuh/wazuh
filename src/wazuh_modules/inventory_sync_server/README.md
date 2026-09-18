@@ -475,9 +475,12 @@ flush, no group commit in this lane — and answer `200`.
 
 **`IVdScanner`** is the lane's entire view of the scanner: `feedReady()`, `currentFeedOffset()`
 (this node's current VD feed offset, backing the `feed_offset` check above), and
-`scan() -> Ok | Skipped`. `feedReady()` is `!isInitialized() || isFeedReady()` — a DISABLED
-scanner passes the gate and `scan()` reports `Skipped`, so inventory keeps flowing with VD off
-(the only legitimate skip; it still indexes and answers `200`). The production adapter lives in
+`scan() -> Ok | Skipped`. `feedReady()` is `feedGateOpen()`: a scanner that will never run here
+(disabled — by this node's own config or by the running scanner's — or one that started and
+failed) passes the gate and `scan()` reports `Skipped`, so inventory keeps flowing with VD off
+(the only legitimate skip; it still indexes and answers `200`). A scanner that WILL run here but
+hasn't finished starting keeps the gate closed until `isInitialized() && isFeedReady()`,
+deferring the whole startup window with a retryable `503` instead. The production adapter lives in
 exactly one translation unit,
 `vdScannerAdapter.cpp`, because the scanner's headers pull include-dir baggage the rest of this
 module must not inherit; the boundary itself is the scanner's neutral view interface
