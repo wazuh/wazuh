@@ -12,10 +12,14 @@
 /**
  * @file caCertificateSource_test.cpp
  * @brief What the CA file turns into: certificates we re-serialise, a verdict from the same read,
- *        and a cache keyed by content so a replacement is seen at once (issue #39078, H01 and H06).
+ *        and a cache keyed by content so a replacement is seen at once (issue #39078, H01 and H06)
+ *        -- plus the publication that verdict now carries, and the generation the notify path
+ *        reads through descriptor() (issue #39319).
  *
  * Real certificates throughout (testTlsServer.hpp's throwaway PKI): the point of the class is what
- * OpenSSL makes of the bytes, so parsing them for real is the test.
+ * OpenSSL makes of the bytes, so parsing them for real is the test. The published bundles are built
+ * with ca_bundle::renderBlock(), the only writer of those `##` lines there is, so a test can never
+ * pin a block shape the tool would not write.
  */
 
 #include <gtest/gtest.h>
@@ -30,6 +34,7 @@
 #include <atomic>
 #include <cerrno>
 #include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <fstream>
 #include <memory>
@@ -42,6 +47,7 @@
 #include <utime.h>
 #include <vector>
 
+using ca_bundle::GuardFailure;
 using ca_bundle::parseBundle;
 using remoted::http::CaCertificateSource;
 using remoted::http::describeReadFailure;
@@ -181,6 +187,76 @@ namespace
         pki.leaf = std::move(leaves.front());
         return pki;
     }
+
+    /// Publications the tests stamp with: fixed Unix timestamps, so what the assertions pin is the
+    /// number the block carried and not a clock.
+    constexpr std::int64_t kPublication {1789000000};
+    constexpr std::int64_t kNewerPublication {1789000600};
+
+    /**
+     * @brief The document `wazuh-manager-certs` would leave behind: the block it stamps, then the
+     *        certificates that block describes.
+     *
+     * @param contentSha256 Overrides the block's hash, for the one case that matters: a stamp that
+     *                      describes another set of certificates (a bundle changed under it).
+     */
+    std::string sealedDocument(const std::vector<remoted::http::X509Ptr>& certificates,
+                               std::int64_t publication,
+                               const std::string& contentSha256 = {})
+    {
+        ca_bundle::PublicationBlock block;
+        block.publication = publication;
+        block.contentSha256 = contentSha256.empty() ? ca_bundle::contentSha256(certificates) : contentSha256;
+        block.updated = "2026-09-18T00:00:00Z";
+        block.writtenBy = "caCertificateSource_test";
+        return ca_bundle::renderBlock(block) + serializeCertificates(certificates);
+    }
+
+    /// A self-signed CA with nothing to do with any leaf, built in memory: filler for the bundles
+    /// the count and byte guards are about. @p sanBytes of subjectAltName is how a certificate is
+    /// made big without a bigger key -- dNSName entries have no 64-byte name limit to respect.
+    remoted::http::X509Ptr fillerCertificate(EVP_PKEY* key, const std::string& commonName, std::size_t sanBytes = 0)
+    {
+        std::string san;
+        while (san.size() < sanBytes)
+        {
+            san += (san.empty() ? "DNS:" : ",DNS:") + std::string(200, static_cast<char>('a' + san.size() % 26));
+        }
+        return remoted::test::makeCertificate(commonName.c_str(),
+                                              -3600,
+                                              3600,
+                                              key,
+                                              key,
+                                              nullptr,
+                                              san.empty() ? nullptr : san.c_str(),
+                                              /*isCa=*/true);
+    }
+
+    /// A FileReader that counts its calls and otherwise reads the file for real: what proves
+    /// descriptor() reads once per refresh window instead of once per call.
+    struct CountingReader
+    {
+        std::shared_ptr<std::atomic<int>> calls {std::make_shared<std::atomic<int>>(0)};
+
+        ReadResult operator()(const std::string& path, std::size_t maxBytes, std::string& contents) const
+        {
+            ++*calls;
+            return readFileBounded(path, maxBytes, contents);
+        }
+    };
+
+    /// A clock the test moves by hand, so the refresh window is exercised without sleeping through
+    /// it (and without a real second of test time per case).
+    struct TestClock
+    {
+        std::shared_ptr<std::chrono::steady_clock::time_point> now {
+            std::make_shared<std::chrono::steady_clock::time_point>()};
+
+        std::chrono::steady_clock::time_point operator()() const
+        {
+            return *now;
+        }
+    };
 } // namespace
 
 TEST(CaCertificateSource, PublishesOnlyCertificatesFromACombinedPem)
@@ -423,6 +499,31 @@ TEST(CaCertificateSource, StatusFromCarriesTheReadFailure)
     EXPECT_EQ(failedStatus.caReadFailure->error, EIO);
     EXPECT_EQ(failedStatus.caReadFailure->consecutive, 1U);
     EXPECT_EQ(failedStatus.caMatchesLeaf, true); // the last good verdict, kept through the failure
+}
+
+TEST(CaCertificateSource, StatusFromCarriesCertificateAndByteCounts)
+{
+    // The "too many certificates"/"too many bytes" log lines name what was actually observed
+    // alongside the cap (issue found in the E1b review); statusFrom() is where that has to travel
+    // from the snapshot to the status the transport logs from.
+    auto signer = makePki("casource-statuscounts");
+    auto other = makePki("casource-statuscounts-other");
+    ASSERT_TRUE(signer.has_value());
+    ASSERT_TRUE(other.has_value());
+    remoted::test::ScratchFileCleanup cleanup {signer->files.files()};
+    remoted::test::ScratchFileCleanup cleanupOther {other->files.files()};
+
+    const auto bundle = signer->files.caCertPath + ".statuscounts";
+    write(bundle, readAll(other->files.caCertPath) + readAll(signer->files.caCertPath));
+    remoted::test::ScratchFileCleanup cleanupBundle {{bundle}};
+
+    CaCertificateSource source {bundle, signer->leaf.get()};
+    const auto snapshot = source.snapshot();
+    ASSERT_EQ(snapshot.certificates, 2U);
+
+    const auto status = statusFrom(signer->leaf.get(), snapshot);
+    EXPECT_EQ(status.caCertificates, 2U);
+    EXPECT_EQ(status.caSerializedBytes, snapshot.pem.size());
 }
 
 TEST(CaCertificateSource, ADirectoryAtThePathIsAReadError)
@@ -755,11 +856,338 @@ TEST(CaCertificateSource, SnapshotCarriesChainValid)
     EXPECT_FALSE(noLeaf.snapshot().chainValid.has_value());
 }
 
+TEST(CaCertificateSource, UnpublishedBundleVouchesAsZeroWithNoBlockFailure)
+{
+    auto pki = makePki("casource-unpublished");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    // The state every bundle is in before the tool ever stamps it -- and the state every existing
+    // installation is in: an ordinary CA file. It is served exactly as before; what it is not is
+    // published, and `no_block` is how that is told apart from a broken stamp.
+    CaCertificateSource source {pki->files.caCertPath, pki->leaf.get()};
+    const auto snapshot = source.snapshot();
+
+    EXPECT_EQ(snapshot.publication, 0);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::no_block);
+    EXPECT_FALSE(snapshot.block.has_value());
+    EXPECT_FALSE(snapshot.pem.empty());
+    EXPECT_EQ(snapshot.matchesLeaf, true);
+    EXPECT_EQ(snapshot.serializedBytes, snapshot.pem.size());
+    EXPECT_EQ(snapshot.fileSha256.size(), 64U); // the FILE's hash, hex: what the record compares
+}
+
+TEST(CaCertificateSource, VouchesAPublishedBundleAndAnnouncesItsPublication)
+{
+    auto pki = makePki("casource-published");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    const auto certificates = readPemCertificates(pki->files.caCertPath);
+    ASSERT_EQ(certificates.size(), 1U);
+    const auto path = pki->files.caCertPath + ".published";
+    write(path, sealedDocument(certificates, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, pki->leaf.get()};
+    const auto snapshot = source.snapshot();
+
+    EXPECT_EQ(snapshot.publication, kPublication);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::none);
+    ASSERT_TRUE(snapshot.block.has_value());
+    EXPECT_EQ(snapshot.block->publication, kPublication);
+    EXPECT_EQ(snapshot.block->contentSha256, ca_bundle::contentSha256(certificates));
+    EXPECT_EQ(snapshot.block->updated, "2026-09-18T00:00:00Z");
+    EXPECT_EQ(snapshot.block->writtenBy, "caCertificateSource_test");
+
+    // The `##` lines are the tool's; what is served is still the certificates alone.
+    EXPECT_EQ(snapshot.pem, serializeCertificates(certificates));
+    EXPECT_EQ(snapshot.pem.find("##"), std::string::npos);
+
+    // And the verdict travels to the status the transport logs and publishes from.
+    const auto status = statusFrom(pki->leaf.get(), snapshot);
+    EXPECT_EQ(status.caPublication, kPublication);
+    EXPECT_EQ(status.caVouchFailure, GuardFailure::none);
+}
+
+TEST(CaCertificateSource, RefusesToVouchWhenTheBlockHashDoesNotMatch)
+{
+    auto pki = makePki("casource-hashmismatch");
+    auto other = makePki("casource-hashmismatch-other");
+    ASSERT_TRUE(pki.has_value());
+    ASSERT_TRUE(other.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    remoted::test::ScratchFileCleanup cleanupOther {other->files.files()};
+
+    // A stamp that describes ANOTHER set of certificates: what a bundle edited by hand after the
+    // tool stamped it looks like. The stamp is not transferable, and that is the point.
+    const auto certificates = readPemCertificates(pki->files.caCertPath);
+    const auto foreignHash = ca_bundle::contentSha256(readPemCertificates(other->files.caCertPath));
+    const auto path = pki->files.caCertPath + ".mismatched";
+    write(path, sealedDocument(certificates, kPublication, foreignHash));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, pki->leaf.get()};
+    const auto snapshot = source.snapshot();
+
+    EXPECT_EQ(snapshot.publication, 0);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::hash_mismatch);
+    ASSERT_TRUE(snapshot.block.has_value());
+    EXPECT_EQ(snapshot.block->contentSha256, foreignHash);
+
+    // Refusing to vouch is not refusing to serve: the certificates read are handed out as ever,
+    // and the agents bootstrapping from them are unaffected.
+    EXPECT_EQ(snapshot.certificates, 1U);
+    EXPECT_EQ(snapshot.pem, serializeCertificates(certificates));
+    EXPECT_EQ(snapshot.matchesLeaf, true);
+}
+
+TEST(CaCertificateSource, RefusesToVouchWhenNoCertificateSignsTheLeaf)
+{
+    auto pki = makePki("casource-foreignca");
+    auto foreign = makePki("casource-foreignca-other");
+    ASSERT_TRUE(pki.has_value());
+    ASSERT_TRUE(foreign.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    remoted::test::ScratchFileCleanup cleanupForeign {foreign->files.files()};
+
+    // A perfectly good, properly stamped bundle -- of somebody else's CA. Publishing it would tell
+    // agents to trust a generation that cannot verify this listener.
+    const auto certificates = readPemCertificates(foreign->files.caCertPath);
+    const auto path = pki->files.caCertPath + ".foreign";
+    write(path, sealedDocument(certificates, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, pki->leaf.get()};
+    const auto snapshot = source.snapshot();
+
+    EXPECT_EQ(snapshot.publication, 0);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::no_ca_signs_leaf);
+    EXPECT_EQ(snapshot.matchesLeaf, false); // the 503 the endpoint already answered, unchanged
+}
+
+TEST(CaCertificateSource, RefusesToVouchWithoutAServedLeaf)
+{
+    auto pki = makePki("casource-noleaf-vouch");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    const auto certificates = readPemCertificates(pki->files.caCertPath);
+    const auto path = pki->files.caCertPath + ".noleaf";
+    write(path, sealedDocument(certificates, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    // With no served certificate to check against, nothing is vouched for: "unknown" still SERVES
+    // (matchesLeaf stays nullopt, as it always did), but it never publishes a generation.
+    CaCertificateSource source {path, nullptr};
+    const auto snapshot = source.snapshot();
+
+    EXPECT_EQ(snapshot.publication, 0);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::no_ca_signs_leaf);
+    EXPECT_FALSE(snapshot.matchesLeaf.has_value());
+    EXPECT_FALSE(snapshot.pem.empty());
+}
+
+TEST(CaCertificateSource, RefusesToVouchOverSixCertificates)
+{
+    auto pki = makePki("casource-toomany");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    // The signer plus six fillers: seven certificates, one over the cap, and every earlier guard
+    // passes (the stamp describes them all and the signer is among them), so the count is what
+    // answers -- a bundle that grew past what an agent should be told to trust.
+    auto certificates = readPemCertificates(pki->files.caCertPath);
+    auto key = remoted::test::makeTestKey();
+    for (std::size_t index = 0; index < ca_bundle::kMaxCertificates; ++index)
+    {
+        certificates.push_back(fillerCertificate(key.get(), "casource-toomany-filler-" + std::to_string(index)));
+    }
+    ASSERT_EQ(certificates.size(), ca_bundle::kMaxCertificates + 1);
+
+    const auto path = pki->files.caCertPath + ".toomany";
+    write(path, sealedDocument(certificates, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, pki->leaf.get()};
+    const auto snapshot = source.snapshot();
+
+    EXPECT_EQ(snapshot.certificates, ca_bundle::kMaxCertificates + 1);
+    EXPECT_EQ(snapshot.publication, 0);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::too_many_certificates);
+    EXPECT_EQ(snapshot.matchesLeaf, true); // still servable, just not publishable
+}
+
+TEST(CaCertificateSource, RefusesToVouchOverTheByteCap)
+{
+    auto pki = makePki("casource-toobig");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    // Three certificates, two of them fat with subjectAltName entries, so what the source would
+    // hand out is over the cap while the count is well under it: the guard measures the document
+    // an agent would have to download, not how many certificates produced it.
+    auto certificates = readPemCertificates(pki->files.caCertPath);
+    auto key = remoted::test::makeTestKey();
+    certificates.push_back(fillerCertificate(key.get(), "casource-toobig-filler-0", 5000));
+    certificates.push_back(fillerCertificate(key.get(), "casource-toobig-filler-1", 5000));
+    ASSERT_LE(certificates.size(), ca_bundle::kMaxCertificates);
+    ASSERT_GT(serializeCertificates(certificates).size(), ca_bundle::kMaxSerializedBytes);
+
+    const auto path = pki->files.caCertPath + ".toobig";
+    write(path, sealedDocument(certificates, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, pki->leaf.get()};
+    const auto snapshot = source.snapshot();
+
+    EXPECT_EQ(snapshot.publication, 0);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::too_many_bytes);
+    EXPECT_GT(snapshot.serializedBytes, ca_bundle::kMaxSerializedBytes);
+    EXPECT_EQ(snapshot.matchesLeaf, true);
+}
+
 TEST(CaCertificateSource, AnEmptyPathNeverReadsAnything)
 {
     CaCertificateSource source {"", nullptr};
     EXPECT_EQ(source.snapshot().certificates, 0U);
     EXPECT_EQ(source.parses(), 0U);
+}
+
+TEST(CaCertificateSourceDescriptor, DoesNotReadWhenNoPathIsConfigured)
+{
+    // snapshot() has always had this guard; descriptor() must too -- without it, a source with
+    // nothing configured would open "" once per refresh window forever, one CannotOpen at a time.
+    const CountingReader reader;
+    CaCertificateSource source {"", nullptr, reader};
+
+    for (int call = 0; call < 3; ++call)
+    {
+        EXPECT_FALSE(source.descriptor().generation.has_value()) << "call " << call;
+    }
+
+    EXPECT_EQ(reader.calls->load(), 0);
+}
+
+TEST(CaCertificateSourceDescriptor, RevalidatesAtMostOnceWithinTheRefreshWindow)
+{
+    auto pki = makePki("casource-descriptor-window");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    const auto certificates = readPemCertificates(pki->files.caCertPath);
+    const auto path = pki->files.caCertPath + ".descriptor";
+    write(path, sealedDocument(certificates, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    const CountingReader reader;
+    const TestClock clock;
+    CaCertificateSource source {path, pki->leaf.get(), reader, clock};
+
+    // A notify storm asks this once per notify. Inside the window they cost one read between them:
+    // that is the whole budget the feature is allowed on the hot path (C18, CA-15).
+    for (int call = 0; call < 100; ++call)
+    {
+        const auto descriptor = source.descriptor();
+        ASSERT_TRUE(descriptor.generation.has_value()) << "call " << call;
+        EXPECT_EQ(*descriptor.generation, kPublication) << "call " << call;
+    }
+
+    EXPECT_EQ(reader.calls->load(), 1);
+    EXPECT_EQ(source.parses(), 1U);
+}
+
+TEST(CaCertificateSourceDescriptor, RevalidatesAgainAfterTheWindowElapsesAndShowsTheNewPublication)
+{
+    auto pki = makePki("casource-descriptor-rotation");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    const auto certificates = readPemCertificates(pki->files.caCertPath);
+    const auto path = pki->files.caCertPath + ".rotating-descriptor";
+    write(path, sealedDocument(certificates, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    const CountingReader reader;
+    const TestClock clock;
+    CaCertificateSource source {path, pki->leaf.get(), reader, clock};
+
+    for (int call = 0; call < 100; ++call)
+    {
+        (void)source.descriptor();
+    }
+    ASSERT_EQ(reader.calls->load(), 1);
+
+    // The master re-stamped the bundle. One window later the next caller reads for real and sees
+    // the new generation -- no restart, no daily tick.
+    replaceAtomically(path, sealedDocument(certificates, kNewerPublication));
+    *clock.now += CaCertificateSource::kDescriptorRefresh;
+
+    const auto descriptor = source.descriptor();
+    EXPECT_EQ(reader.calls->load(), 2);
+    ASSERT_TRUE(descriptor.generation.has_value());
+    EXPECT_EQ(*descriptor.generation, kNewerPublication);
+    EXPECT_EQ(source.parses(), 2U);
+}
+
+TEST(CaCertificateSourceDescriptor, HonoursTheFullRefreshWindow)
+{
+    // The two tests above only ever check the boundary at exactly kDescriptorRefresh; a window one
+    // millisecond short of a second would pass them just the same. This one pins the edges: one
+    // millisecond before the window closes the answer must still be the old generation from a
+    // single read, and the millisecond that closes it must revalidate for real.
+    auto pki = makePki("casource-descriptor-boundary");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    const auto certificates = readPemCertificates(pki->files.caCertPath);
+    const auto path = pki->files.caCertPath + ".boundary";
+    write(path, sealedDocument(certificates, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    const CountingReader reader;
+    const TestClock clock;
+    CaCertificateSource source {path, pki->leaf.get(), reader, clock};
+
+    const auto first = source.descriptor();
+    ASSERT_EQ(reader.calls->load(), 1);
+    ASSERT_TRUE(first.generation.has_value());
+    EXPECT_EQ(*first.generation, kPublication);
+
+    // The master re-stamps the bundle right away; still inside the window, so the answer must not
+    // move and the file must not be reopened.
+    replaceAtomically(path, sealedDocument(certificates, kNewerPublication));
+    *clock.now += std::chrono::milliseconds {999};
+
+    const auto stillInsideTheWindow = source.descriptor();
+    EXPECT_EQ(reader.calls->load(), 1);
+    ASSERT_TRUE(stillInsideTheWindow.generation.has_value());
+    EXPECT_EQ(*stillInsideTheWindow.generation, kPublication);
+
+    // The last millisecond of the window: a full second has now passed since the first read, and
+    // this call is the one that revalidates and sees the new generation.
+    *clock.now += std::chrono::milliseconds {1};
+
+    const auto afterTheWindow = source.descriptor();
+    EXPECT_EQ(reader.calls->load(), 2);
+    ASSERT_TRUE(afterTheWindow.generation.has_value());
+    EXPECT_EQ(*afterTheWindow.generation, kNewerPublication);
+}
+
+TEST(CaCertificateSourceDescriptor, IsNulloptWhenNoBundleIsServable)
+{
+    auto pki = makePki("casource-descriptor-empty");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    // Nothing servable is not "published as 0": the notify path tells the two apart, so an agent
+    // can distinguish a manager with no bundle at all from one whose bundle is unstamped.
+    const auto path = pki->files.caCertPath + ".emptied";
+    write(path, std::string {});
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, pki->leaf.get()};
+    EXPECT_FALSE(source.descriptor().generation.has_value());
 }
 
 TEST(ParsedBundle, SerialisationRoundTripsAndDropsEverythingElse)

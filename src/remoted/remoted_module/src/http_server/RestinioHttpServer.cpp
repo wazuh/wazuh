@@ -636,6 +636,64 @@ namespace
                        caPath.c_str(),
                        leafPath.c_str());
         }
+
+        // Whether the bundle is PUBLISHED is a separate question from whether it can be served
+        // (issue #39319): a bundle no guard vouched for is handed out exactly as before, and agents
+        // are told generation 0 for it, so the guard that refused is the one thing the operator
+        // cannot work out from the file. Two states are deliberately silent here: `no_block` (never
+        // stamped -- an ordinary CA file, which needs the publication record to tell a fresh node
+        // from a bundle whose block was removed) and `no_certificates` (nothing servable, already
+        // warned about above).
+        switch (status.caVouchFailure)
+        {
+            case ca_bundle::GuardFailure::none:
+                if (status.caPublication > 0)
+                {
+                    LOGFN_INFO(logFn(),
+                               "CA bundle '%s' is published as generation %lld; that is the generation agents asking "
+                               "this manager are told about.",
+                               caPath.c_str(),
+                               static_cast<long long>(status.caPublication));
+                }
+                break;
+
+            case ca_bundle::GuardFailure::hash_mismatch:
+                LOGFN_WARN(logFn(),
+                           "The publication block of the CA bundle '%s' does not describe the certificates next to it "
+                           "(Content-SHA256 mismatch); the bundle is served as before and announced as unpublished "
+                           "(0) until it is stamped again.",
+                           caPath.c_str());
+                break;
+
+            case ca_bundle::GuardFailure::no_ca_signs_leaf:
+                LOGFN_WARN(logFn(),
+                           "The CA bundle '%s' is not published because no CA in it signs the served certificate "
+                           "'%s'; agents are told this manager has no published bundle (0).",
+                           caPath.c_str(),
+                           leafPath.c_str());
+                break;
+
+            case ca_bundle::GuardFailure::too_many_certificates:
+                LOGFN_WARN(logFn(),
+                           "The CA bundle '%s' is not published because it carries %zu certificates (max %zu); "
+                           "agents are told this manager has no published bundle (0).",
+                           caPath.c_str(),
+                           status.caCertificates,
+                           ca_bundle::kMaxCertificates);
+                break;
+
+            case ca_bundle::GuardFailure::too_many_bytes:
+                LOGFN_WARN(logFn(),
+                           "The CA bundle '%s' is not published because what it would serve is %zu bytes (max %zu); "
+                           "agents are told this manager has no published bundle (0).",
+                           caPath.c_str(),
+                           status.caSerializedBytes,
+                           ca_bundle::kMaxSerializedBytes);
+                break;
+
+            case ca_bundle::GuardFailure::no_block:
+            case ca_bundle::GuardFailure::no_certificates: break;
+        }
     }
 
     // What building the TLS context yields besides the context itself: the leaf the context will
