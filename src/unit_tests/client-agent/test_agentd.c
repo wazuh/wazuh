@@ -12,6 +12,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/url_wrappers.h"
@@ -41,6 +42,15 @@ static int clear_stale_anchor(void **state) {
  * return, which none of these tests expect. */
 bool __wrap_w_https_client_start(void) { return true; }
 void __wrap_w_https_client_stop(void) {}
+
+/* exit() is noreturn, so the wrapper must not return either: falling back into
+ * agentd_shutdown() after the call would land past an omitted epilogue. Same
+ * mock_assert() convention __wrap__merror_exit() already uses, so every test
+ * below calls it through expect_assert_failure(). */
+void __wrap_exit(int code) {
+    check_expected(code);
+    mock_assert(0, "exit called", __FILE__, __LINE__);
+}
 
 static int setup_group(void **state) {
     curl_response *response;
@@ -465,6 +475,30 @@ static void test_config_report_custom_interval_is_respected(void** state)
     assert_int_equal(agt->config_report.interval, 1800); // 30m, overriding the 3600s default.
 }
 
+/* agentd_shutdown */
+
+static void test_agentd_shutdown_sigterm_exits_zero(void **state) {
+    (void) state;
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "(1225): SIGNAL [(15)-(Terminated)] Received. Exit Cleaning...");
+    expect_value(__wrap_exit, code, 0);
+
+    expect_assert_failure(agentd_shutdown(SIGTERM));
+}
+
+/* The handler must not branch on the signal: every signal StartSIG2() routes to it
+ * is a requested stop. */
+static void test_agentd_shutdown_sigint_exits_zero(void **state) {
+    (void) state;
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "(1225): SIGNAL [(2)-(Interrupt)] Received. Exit Cleaning...");
+    expect_value(__wrap_exit, code, 0);
+
+    expect_assert_failure(agentd_shutdown(SIGINT));
+}
+
 #endif // TEST_AGENT
 
 int main(void) {
@@ -500,6 +534,10 @@ int main(void) {
             test_config_report_explicit_no_is_respected, setup_client_conf, teardown_client_conf),
         cmocka_unit_test_setup_teardown(
             test_config_report_custom_interval_is_respected, setup_client_conf, teardown_client_conf),
+
+        // agentd_shutdown
+        cmocka_unit_test(test_agentd_shutdown_sigterm_exits_zero),
+        cmocka_unit_test(test_agentd_shutdown_sigint_exits_zero),
 
 #endif // TEST_AGENT
     };
