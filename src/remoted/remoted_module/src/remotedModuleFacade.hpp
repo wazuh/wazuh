@@ -15,6 +15,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstdarg>
+#include <cstdint>
 #include <cstdio>
 #include <functional>
 #include <memory>
@@ -631,7 +632,24 @@ private:
         // member on this facade, so its address stays stable across HTTP-server retries; the
         // counters it caches live in m_metricsManager (created once, never reset), so totals
         // carry over too -- desirable for observability.
-        const auto controlConfig = remoted::control::buildControlConfig(m_config);
+        auto controlConfig = remoted::control::buildControlConfig(m_config);
+
+        // The CA generation an agent is told about on every notify (RF-3). Same weak server pointer
+        // as /cacerts above, for the same two reasons: the handler must not keep the listener alive,
+        // and after stop() resets m_httpServer the provider answers "no servable bundle" instead of
+        // touching a dead source. Resolved per call, never captured as a shared_ptr. The cost is the
+        // source's to bound -- caDescriptor() revalidates at most once a second (C8/C18) -- so this
+        // adds no file read to /control.
+        controlConfig.caGenerationProvider =
+            [weak = std::weak_ptr<remoted::http::IHttpServer>(m_httpServer)]() -> std::optional<std::int64_t>
+        {
+            if (const auto server = weak.lock())
+            {
+                return server->caDescriptor().generation;
+            }
+            return std::nullopt;
+        };
+
         auto vdClient = std::make_shared<remoted::common::VdClient>();
         m_controlHandler = std::make_unique<remoted::control::ControlHandler>(
             agentRegistry,

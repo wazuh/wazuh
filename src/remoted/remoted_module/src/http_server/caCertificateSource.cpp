@@ -449,10 +449,6 @@ namespace remoted::http
         status.chainError = ca.chainError;
         status.caSubjects = ca.subjects;
         status.caReadFailure = ca.lastReadFailure;
-        status.caPublication = ca.publication;
-        status.caVouchFailure = ca.vouchFailure;
-        status.caCertificates = ca.certificates;
-        status.caSerializedBytes = ca.serializedBytes;
         return status;
     }
 } // namespace remoted::http

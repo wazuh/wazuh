@@ -470,6 +470,80 @@ TEST(CacertsEndpoint, NullMetricsCountNothing)
 }
 
 // ---------------------------------------------------------------------------
+// Wazuh-CA-Generation (issue #39319, RF-4): the header every 200 carries, so an agent that
+// refreshes over an already-verified channel learns which generation the bundle it just received
+// is published under without a second round trip. 0 is deliberately the SAME wire value whether
+// nobody ever stamped the bundle or a guard refused it -- an agent cannot and need not tell those
+// apart. 404 and 503 carry no such header at all: there is no bundle being handed out to attach a
+// generation to.
+// ---------------------------------------------------------------------------
+
+TEST(CacertsEndpoint, PublishedBundleAddsCaGenerationHeader)
+{
+    Fixture f;
+    auto snapshot = snapshotOf(true);
+    snapshot.publication = 1758000000;
+
+    const auto response = f.run(snapshot);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(responseHeader(response, CA_GENERATION_HEADER), "1758000000");
+}
+
+TEST(CacertsEndpoint, UnpublishedBundleAddsZeroCaGenerationHeader)
+{
+    Fixture f;
+    // snapshotOf() leaves publication at CaCertificateSnapshot's own default (0): a bundle nobody
+    // ever stamped and one a guard refused both look like this on the wire (design §2.4).
+    const auto response = f.run(snapshotOf(true));
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(responseHeader(response, CA_GENERATION_HEADER), "0");
+}
+
+TEST(CacertsEndpoint, NotFoundAnswerCarriesNoCaGenerationHeader)
+{
+    Fixture f;
+
+    const auto response = f.run(CaCertificateSnapshot {});
+
+    EXPECT_EQ(response.status, 404);
+    EXPECT_TRUE(responseHeader(response, CA_GENERATION_HEADER).empty());
+}
+
+TEST(CacertsEndpoint, CaMismatchAnswerCarriesNoCaGenerationHeader)
+{
+    Fixture f;
+
+    const auto response = f.run(snapshotOf(false));
+
+    EXPECT_EQ(response.status, 503);
+    EXPECT_TRUE(responseHeader(response, CA_GENERATION_HEADER).empty());
+}
+
+TEST(CacertsEndpoint, NeverEmitsAHashHeader)
+{
+    // The published and the unpublished 200 from above: not one header on either answer names a
+    // hash -- only the generation ever leaves this endpoint, never a digest of the file or of the
+    // certificates it carries (CA-9).
+    Fixture f;
+    auto published = snapshotOf(true);
+    published.publication = 1758000000;
+
+    for (const auto& response : {f.run(published), f.run(snapshotOf(true))})
+    {
+        for (const auto& [key, value] : response.headers)
+        {
+            std::string lowered = key;
+            std::transform(
+                lowered.begin(), lowered.end(), lowered.begin(), [](unsigned char c) { return std::tolower(c); });
+            EXPECT_EQ(lowered.find("sha"), std::string::npos) << key;
+            EXPECT_EQ(lowered.find("hash"), std::string::npos) << key;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // deliverCaRecordEvents(): the collaborator that says out loud, and persists, what the read just
 // above noticed about the bundle's publication (issue #39319, C21b). The first test below stays
 // with the file's usual canned snapshots (only the ORDER matters); the other two need a REAL

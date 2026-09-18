@@ -125,7 +125,8 @@ namespace
 
             m_servedCa = ca_bundle::serializeCertificates(certificates);
             ca_bundle::PublicationBlock block;
-            block.publication = 1789000000;
+            m_publication = 1789000000;
+            block.publication = m_publication;
             block.contentSha256 = ca_bundle::contentSha256(certificates);
             block.updated = "2026-09-18T00:00:00Z";
             block.writtenBy = "cacertsE2E_test";
@@ -194,8 +195,9 @@ namespace
         std::optional<remoted::test::TestCaSignedCertificate> m_pki;
         std::optional<remoted::test::TestCertificate> m_foreignCa;
         std::unique_ptr<remoted::test::ScratchFileCleanup> m_cleanup;
-        std::string m_servedCa;       ///< The certificate alone, re-serialised: what /cacerts must answer.
-        std::string m_caFileContents; ///< The stamped file on disk: the block plus that certificate.
+        std::string m_servedCa;         ///< The certificate alone, re-serialised: what /cacerts must answer.
+        std::string m_caFileContents;   ///< The stamped file on disk: the block plus that certificate.
+        std::int64_t m_publication {0}; ///< The block's publication SetUp() stamped the file with.
     };
 } // namespace
 
@@ -207,6 +209,10 @@ TEST_F(CacertsE2ETest, ServesTheCaTheListenerChainsTo)
     ASSERT_EQ(statusOf(response), 200) << response;
     const auto [head, body] = remoted::test::splitResponse(response);
     EXPECT_NE(head.find("Content-Type: application/x-pem-file"), std::string::npos) << head;
+
+    // The real transport puts the generation the fixture stamped the file with on the wire (issue
+    // #39319, RF-4), the same value the block above carries -- not a hash of anything.
+    EXPECT_NE(head.find("Wazuh-CA-Generation: " + std::to_string(m_publication)), std::string::npos) << head;
 
     // The file carries the publication block; what the route hands out is the certificate this
     // process re-serialised out of it, with no `##` line in sight (D9).

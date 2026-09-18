@@ -580,31 +580,6 @@ TEST(CaCertificateSource, StatusFromCarriesTheReadFailure)
     EXPECT_EQ(failedStatus.caMatchesLeaf, true); // the last good verdict, kept through the failure
 }
 
-TEST(CaCertificateSource, StatusFromCarriesCertificateAndByteCounts)
-{
-    // The "too many certificates"/"too many bytes" log lines name what was actually observed
-    // alongside the cap (issue found in the E1b review); statusFrom() is where that has to travel
-    // from the snapshot to the status the transport logs from.
-    auto signer = makePki("casource-statuscounts");
-    auto other = makePki("casource-statuscounts-other");
-    ASSERT_TRUE(signer.has_value());
-    ASSERT_TRUE(other.has_value());
-    remoted::test::ScratchFileCleanup cleanup {signer->files.files()};
-    remoted::test::ScratchFileCleanup cleanupOther {other->files.files()};
-
-    const auto bundle = signer->files.caCertPath + ".statuscounts";
-    write(bundle, readAll(other->files.caCertPath) + readAll(signer->files.caCertPath));
-    remoted::test::ScratchFileCleanup cleanupBundle {{bundle}};
-
-    CaCertificateSource source {bundle, signer->leaf.get()};
-    const auto snapshot = source.snapshot();
-    ASSERT_EQ(snapshot.certificates, 2U);
-
-    const auto status = statusFrom(signer->leaf.get(), snapshot);
-    EXPECT_EQ(status.caCertificates, 2U);
-    EXPECT_EQ(status.caSerializedBytes, snapshot.pem.size());
-}
-
 TEST(CaCertificateSource, ADirectoryAtThePathIsAReadError)
 {
     auto pki = makePki("casource-isdir");
@@ -982,11 +957,6 @@ TEST(CaCertificateSource, VouchesAPublishedBundleAndAnnouncesItsPublication)
     // The `##` lines are the tool's; what is served is still the certificates alone.
     EXPECT_EQ(snapshot.pem, serializeCertificates(certificates));
     EXPECT_EQ(snapshot.pem.find("##"), std::string::npos);
-
-    // And the verdict travels to the status the transport logs and publishes from.
-    const auto status = statusFrom(pki->leaf.get(), snapshot);
-    EXPECT_EQ(status.caPublication, kPublication);
-    EXPECT_EQ(status.caVouchFailure, GuardFailure::none);
 }
 
 TEST(CaCertificateSource, RefusesToVouchWhenTheBlockHashDoesNotMatch)

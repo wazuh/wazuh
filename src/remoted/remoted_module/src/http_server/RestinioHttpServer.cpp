@@ -1531,6 +1531,21 @@ namespace remoted::http
         return source ? source->snapshot() : CaCertificateSnapshot {};
     }
 
+    CaCertificateSource::CaDescriptor RestinioHttpServer::caDescriptor() const
+    {
+        // Same shape as caCertificateSnapshot() above -- the shared_ptr is taken under m_mutex and
+        // the source is asked outside it -- because this one is on the notify hot path: holding
+        // m_mutex here would make every notify wait out a concurrent start(). The read itself is
+        // the source's to bound: descriptor() revalidates at most once a second (C8/C18), so a
+        // notify storm costs one read per second, not one per request.
+        std::shared_ptr<CaCertificateSource> source;
+        {
+            std::lock_guard<std::mutex> lock {m_impl->m_mutex};
+            source = m_impl->m_caSource;
+        }
+        return source ? source->descriptor() : CaCertificateSource::CaDescriptor {};
+    }
+
     TlsCertificateSnapshot RestinioHttpServer::certificateStatus() const
     {
         // The monitor has its own lock; m_mutex is not needed (and must not be taken: a metrics
