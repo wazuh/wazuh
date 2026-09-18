@@ -51,7 +51,7 @@ Only `wazuh-wui` can authenticate with an authorization context, because resolvi
 
 The flag on its own does not grant the shipped mappings, which is easy to miss. `RBAChecker.get_user_roles` evaluates a rule holding a reserved ID — the five in `rules.yaml` get IDs `1..5`, while rules created through the API start at `100` — only when the caller is user ID 2. Enabling `allow_run_as` on any other account therefore lets it resolve **custom rules only**, and a context that matches one grants that role whatever the account's own role links say.
 
-Both users are created with **the password shipped in `rbac/default/users.yaml`**, which is the username itself. They are reserved IDs (`<= MAX_ID_RESERVED`), so only another reserved user can change their password — `update_user` needs a `current_user` naming who is asking, which the API takes from the token's `sub`.
+`insert_default_resources` seeds both users from the provisioning file a deployment is written before its first API start (see below). The package ships no password for them, and a file that does not name every default user is refused, so there is nothing else they can be seeded from. They are reserved IDs (`<= MAX_ID_RESERVED`), so only another reserved user can change their password — `update_user` needs a `current_user` naming who is asking, which the API takes from the token's `sub`.
 
 The `administrator` role these two users carry is also the only one that receives `secrets_read`,
 the policy behind `cluster:read_secrets` and `agent:read_secrets`. An `rbac.db` seeded **before** that policy existed does not
@@ -64,7 +64,34 @@ path from 4.x, and an `rbac.db` left by an earlier 5.0 development build keeps w
 was seeded with — its owner recreates it, or adds the missing policy. New default policies therefore
 reach an installation through a fresh database, and nothing in the manager rewrites one in place.
 
-`wazuh-manager-apid` logs a warning on every start for each of these users whose password is still the shipped one. It does not refuse to serve: the defaults are documented, and some deployments configure the credentials only after the first start.
+The package ships no password for them, and there is no fallback: a node with nothing provisioned does not start. An installation upgraded from a version that did ship one keeps whatever it had, because the RBAC migration preserves the default users.
+
+### Provisioning and recovery
+
+The password of each default user comes from `api/configuration/security/wazuh-preseeded-passwords.yml`, provisioned **before** the first API start with `bin/rbac_control set-password -u <user>`, which takes the value from `-p` or from the standard input and writes the file itself, with the ownership and mode below. It runs with every daemon stopped, which is the only window an installer has, and it merges: one user per call, so the entry already provisioned survives. See [Provision the API passwords](../../getting-started/installation.md#provision-the-api-passwords).
+
+The file is YAML, in the shape the credentials tooling uses for its own `manager:` block:
+
+```yaml
+schema_version: 1
+manager:
+  - name: wazuh
+    password: "..."
+  - name: wazuh-wui
+    password: "..."
+```
+
+Another `schema_version`, a section this manager does not read, an entry naming a user that is not a default one, the same user twice, a password the API policy rejects, and a file that leaves a default user out are all refused. The user left out is the reason for the last one: it has no password to fall back to, so the node would either not serve it or serve it something the rest of the deployment does not share.
+
+`set-password` writes it as `root:wazuh-manager` with mode `0640`. A file written by hand has to satisfy the same rules the loader checks: owned by `root` or by the Wazuh user, not writable by its group or by others, and not readable by others, because the directory it lives in is group-writable and the file holds an administrator password in plaintext.
+
+A missing file, or one that is present but unusable for any of those reasons, stops the API with error `2012` and leaves no database behind. The seeding runs before `wazuh-manager-apid` forks, so that exit status reaches `wazuh-manager-control`, which reports `wazuh-manager-apid did not start correctly` and aborts: the API is the first daemon it starts, so no other one comes up. The logged error names the reason and the `set-password` call that fixes it, and an unusable file is left on disk so that it can be corrected.
+
+**The file is consumed.** It is read only when `rbac.db` is created, and removed as soon as the passwords it carries are stored, so an administrator credential does not stay in plaintext once the hashes exist. One sitting next to an existing database is not applied, and is left alone. `rbac_control factory-reset` seeds through the same path, so it refuses with error `5012` unless the node has been provisioned again with a file it can seed from, validated before the database is removed: past that point there would be nothing to seed from, and the reset would leave the manager unable to start and every RBAC resource on the node lost.
+
+**Restart `wazuh-manager-apid` after a `factory-reset`.** The reset unlinks `rbac.db` and seeds a new one from another process, while the running API keeps its connection to the database it opened at startup, which the unlink does not destroy. Until it restarts it therefore keeps authenticating against the credentials the reset removed, and reports nothing unusual.
+
+`rbac.db` holds a scrypt hash, so a password nobody wrote down is **not recoverable** — `rbac_control change-password` sets a new one instead, and never asks for the current one. Losing the database means provisioning the node again: the next start takes the same path a first install does, and refuses without a file. A migration whose source database cannot be read restores nothing, and is refused for the same reason, rather than migrating into a database whose default users are locked out.
 
 Change them with `bin/rbac_control change-password`, which prompts for each password when run without options (an empty answer leaves that one unchanged) and can also be driven from a file so that installers and password tools can use it:
 
@@ -76,7 +103,7 @@ bin/rbac_control change-password --user wazuh-wui --password-file /root/wui.pass
 echo '{"wazuh": "...", "wazuh-wui": "..."}' | bin/rbac_control change-password --passwords-file -
 ```
 
-Passwords are never accepted as a command-line argument, so they do not reach the process list. The command exits non-zero if any requested change was not applied. A new password must satisfy the policy enforced by `framework/wazuh/security.py`: 12 to 64 characters, with a lowercase letter, an uppercase letter, a digit and a symbol. Changing `wazuh-wui`'s password requires updating the dashboard configuration to match.
+Passwords are never accepted as a command-line argument, so they do not reach the process list. The command exits non-zero if any requested change was not applied. `--local` applies the change to the node it runs on instead of the master. A new password must satisfy the policy enforced by `framework/wazuh/security.py`: 12 to 64 characters, with a lowercase letter, an uppercase letter, a digit and a symbol. Changing `wazuh-wui`'s password requires updating the dashboard configuration to match.
 
 ### What a password change does and does not do
 
@@ -84,13 +111,13 @@ The policy above is enforced by `security.update_user` and `security.create_user
 
 Once a change goes through:
 
-- It is written to the **master** node's `rbac.db`. `check_user` and `update_user` are `local_master` requests, so a worker forwards every authentication and needs no action while it stays a worker. Each node still keeps its own `rbac.db`, seeded with the default users, and the cluster does not synchronize it (`cluster.json` shares `etc/`, `etc/shared/` and `var/multigroups/` only) — so a worker promoted to master starts serving the shipped defaults again. Repeat the change on any node that may take that role.
+- It is written to the **master** node's `rbac.db` by default. `check_user` and `update_user` are `local_master` requests, so a worker forwards every authentication and needs no action while it stays a worker. Each node still keeps its own `rbac.db`, seeded independently, and the cluster does not synchronize it (`cluster.json` shares `etc/`, `etc/shared/` and `var/multigroups/` only) — so a worker promoted to master starts serving whatever password its own database was seeded with. A worker provisioned with the deployment's passwords seeds them when it is promoted, so promotion rotates nothing; a worker that was never provisioned does not start once promoted. `rbac_control change-password --local`, which routes the call as `local_any` and acts on that node's own database instead of the master's (the default `local_master` routing runs on the master and reports success there even from a worker), is for a password changed by hand after installing: use it to align a worker whose database already exists. For one that has not seeded yet, what has to be updated is its provisioning file, with `set-password`.
 - **No daemon restart** is required. The next `POST /security/user/authenticate` already uses the new password.
 - Every token held by the modified user is **revoked immediately** (`update_user` calls `invalid_users_tokens`), so a script that changes its own user's password must authenticate again before its next call. Tokens of other users are untouched; `PUT /security/user/revoke` revokes all of them at once.
 - A client left with the old password — typically a dashboard whose stored copy was not updated — is counted against `max_login_attempts` (50) and its IP is then blocked for `block_time` (300 seconds), answering `403`. The block is lifted when that time elapses, not when the password is corrected.
 - No manager component authenticates with `wazuh` or `wazuh-wui`, so the keystore and the manager configuration files are unaffected. The only copy outside the manager is the dashboard's `wazuh_core.hosts.<host>.password`, which is why changing `wazuh-wui` — and only that user — needs the dashboard updated and restarted.
 
-The step-by-step procedure, including the dashboard side and the container variants, is in [Installation](../../getting-started/installation.md#change-the-default-api-passwords).
+The step-by-step procedure, including the dashboard side and the container variants, is in [Installation](../../getting-started/installation.md#the-api-passwords).
 
 ---
 

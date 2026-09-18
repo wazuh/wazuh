@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import re
 from copy import deepcopy
 from functools import lru_cache
 
@@ -18,9 +17,7 @@ from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
 from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
 from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
-
-# Minimum twelve characters, at least one uppercase letter, one lowercase letter, one number and one special character:
-_user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$')
+from wazuh.rbac.orm import USER_PASSWORD_POLICY as _user_password
 
 @dapi_allower()
 def get_user_me(token: dict) -> AffectedItemsWazuhResult:

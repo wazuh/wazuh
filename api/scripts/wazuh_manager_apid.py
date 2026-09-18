@@ -94,24 +94,6 @@ def configure_ssl(params):
             raise exc from exc
 
 
-def warn_about_default_passwords():
-    """Log a warning for each default API user that still has the password shipped with the package.
-
-    The API is started either way: the default credentials are documented, and refusing to serve
-    would break the deployments that configure them after the first start.
-    """
-    try:
-        users = get_users_with_default_password()
-    except Exception as exc:
-        logger.debug(f'Could not check whether the default API users keep their default password: {exc}')
-        return
-
-    for username in users:
-        logger.warning(f"The '{username}' API user still has its default password. Anyone able to reach the API "
-                       f"can use it. Change it with "
-                       f"'{os.path.join(common.WAZUH_PATH, 'bin', 'rbac_control')} change-password'")
-
-
 def start(params: dict):
     """Run the Wazuh API.
 
@@ -125,13 +107,6 @@ def start(params: dict):
     params : dict
         uvicorn parameter configuration dictionary.
     """
-    try:
-        check_database_integrity()
-    except Exception as db_integrity_exc:
-        raise APIError(2012, details=str(db_integrity_exc)) from db_integrity_exc
-
-    warn_about_default_passwords()
-
     pools = common.mp_pools.get()
 
     try:
@@ -306,7 +281,6 @@ if __name__ == '__main__':
     from connexion.options import SwaggerUIOptions
     from content_size_limit_asgi.errors import ContentSizeExceeded
     from wazuh.core import common, pyDaemonModule, utils
-    from wazuh.core.security import get_users_with_default_password
     from wazuh.rbac.orm import check_database_integrity
 
     from api import __path__ as api_path
@@ -362,12 +336,6 @@ if __name__ == '__main__':
     # Check for unused PID files
     utils.clean_pid_files(pyDaemonModule.API_MAIN_PROCESS)
 
-    # Foreground/Daemon
-    if not args.foreground:
-        pyDaemonModule.pyDaemon()
-    else:
-        logger.info('Starting API in foreground')
-
     # Drop privileges to wazuh
     if not args.root:
         if api_conf['drop_privileges']:
@@ -375,6 +343,22 @@ if __name__ == '__main__':
             os.setuid(common.wazuh_uid())
     else:
         logger.info('Starting API as root')
+
+    # Seeded before daemonizing so that a failure reaches the caller: `wazuh-manager-control` decides
+    # whether the daemon came up from this process's exit code, and aborts the whole start on a failure.
+    # After dropping privileges, not before: it chowns a database that lives in a directory the Wazuh user
+    # can write, and doing that as root would follow a symlink planted there onto a file of root's.
+    try:
+        check_database_integrity()
+    except Exception as db_integrity_exc:
+        logger.error(f"Error when trying to start the Wazuh API. {APIError(2012, details=str(db_integrity_exc))}")
+        sys.exit(1)
+
+    # Foreground/Daemon
+    if not args.foreground:
+        pyDaemonModule.pyDaemon()
+    else:
+        logger.info('Starting API in foreground')
 
     pid = os.getpid()
     pyDaemonModule.create_pid(pyDaemonModule.API_MAIN_PROCESS, pid)

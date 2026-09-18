@@ -49,6 +49,7 @@ Specifies the role of the node.
 - **Default value:** `master`
 - **Allowed values:** `master`, `worker`
 - **Note:** The current cluster implementation allows only one master node
+- **RBAC consequence:** `wazuh-manager-apid` only runs on the master, so a worker's `api/configuration/security/rbac.db` is never created (and never synchronized to it either) until this value changes to `master` and the API starts there for the first time. What password that node then serves depends on how it was provisioned — see [What a password change does and does not do](../server-api/authentication.md#what-a-password-change-does-and-does-not-do).
 
 ### key
 

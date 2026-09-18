@@ -12,9 +12,9 @@ from api import __path__ as api_path
 from api.authentication import change_keypair
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
-from wazuh.core.common import DEFAULT_RBAC_RESOURCES
 from wazuh.core.decorators import dapi_allower
-from wazuh.rbac.orm import AuthenticationManager, TokenManager, check_database_integrity, DB_FILE
+from wazuh.rbac.orm import AuthenticationManager, TokenManager, check_database_integrity, DB_FILE, \
+    PreseededPasswordsError, load_preseeded_passwords
 
 REQUIRED_FIELDS = ['id']
 SORT_FIELDS = ['id', 'name']
@@ -122,8 +122,55 @@ def sanitize_rbac_policy(policy):
         policy['effect'] = policy['effect'].lower()
 
 
+@dapi_allower()
+def ensure_rbac_database():
+    """Create the RBAC database if it is missing, seeding it exactly as the first API start would.
+
+    Exists so that a caller forwarding over the cluster protocol reaches the same seeding path, pre-seed
+    file included, rather than leaving a node whose API has never run without a database. Exposed because
+    a request made on a worker without `--local` is decoded on the master, which refuses a callable that
+    is not marked.
+
+    Guarded on the file being absent rather than always running `check_database_integrity()`, which also
+    migrates the schema of an existing database and replaces it through `safe_move`. Changing a password
+    must not carry that: a database that exists but is unusable is recovered by the API start that owns
+    the migration, not here.
+
+    Returns
+    -------
+    dict
+        Confirmation message. Required, not optional: `forward_function` wraps the result in a
+        `WazuhResult`, which rejects `None` with error 1000.
+    """
+    if not os.path.exists(DB_FILE):
+        check_database_integrity()
+
+    return {'ensured': True}
+
+
+@dapi_allower()
 def rbac_db_factory_reset():
-    """Reset the RBAC database to default values."""
+    """Reset the RBAC database to default values.
+
+    Exposed for the same reason as `ensure_rbac_database`: `rbac_control factory-reset` forwards it as a
+    `local_master` request, which a worker sends to the master, and the master refuses to decode a
+    callable that is not marked.
+
+    Seeds through the same path a first start takes, so the credentials the node is provisioned with are
+    what it comes back on.
+
+    Raises
+    ------
+    WazuhError(5012)
+        When the node is not provisioned with credentials this manager can seed from. Validated, not
+        merely looked for: a file that exists but cannot be used would pass the check and fail during
+        seeding, with the database already gone and every RBAC resource on the node lost with it.
+    """
+    try:
+        load_preseeded_passwords()
+    except PreseededPasswordsError as exc:
+        raise WazuhError(5012, extra_message=str(exc))
+
     try:
         os.remove(DB_FILE)
     except FileNotFoundError:
@@ -132,20 +179,3 @@ def rbac_db_factory_reset():
     check_database_integrity()
     revoke_tokens()
     return {'reset': True}
-
-
-def get_users_with_default_password() -> list:
-    """Get the default users whose password is still the one shipped with the package.
-
-    Returns
-    -------
-    list
-        Names of the default users that keep their shipped password, in the order they are declared
-        in the default users file.
-    """
-    with open(os.path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
-        default_users = yaml.safe_load(f)['default_users']
-
-    with AuthenticationManager() as auth:
-        return [username for username, payload in default_users.items()
-                if auth.check_user(username, payload['password'])]
