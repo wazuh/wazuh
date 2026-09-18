@@ -42,8 +42,8 @@ LOGIN_ENDPOINT = '/security/user/authenticate'
 # Authentication context hash key
 HASH_AUTH_CONTEXT_KEY = 'hash_auth_context'
 
-# Allowed upper bound for auth_context payload
-AUTH_CONTEXT_MAX_PAYLOAD_SIZE = 8 * 1024
+# Default of the max auth_context payload size in bytes (see api.yaml `auth_context_max_payload_size`)
+AUTH_CONTEXT_MAX_PAYLOAD_SIZE = configuration.default_api_configuration["auth_context_max_payload_size"]
 
 # API secure headers
 server = Server().set("Wazuh")
@@ -267,16 +267,17 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
 
 
 class CheckAuthContextSizeMiddleware(BaseHTTPMiddleware):
-    """Reject run_as requests whose body exceeds AUTH_CONTEXT_MAX_PAYLOAD_SIZE."""
+    """Reject run_as requests whose body exceeds auth_context_max_payload_size."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if request.url.path == RUN_AS_LOGIN_ENDPOINT and request.method == "POST":
+            max_size = configuration.api_conf['auth_context_max_payload_size']
             body = await request.body()
-            if len(body) > AUTH_CONTEXT_MAX_PAYLOAD_SIZE:
+            if len(body) > max_size:
                 raise PayloadTooLargeException(
                     title="Request Entity Too Large",
                     detail=f"Auth context payload exceeds the maximum allowed size of "
-                           f"{AUTH_CONTEXT_MAX_PAYLOAD_SIZE} bytes.",
+                           f"{max_size} bytes.",
                 )
         return await call_next(request)
 
@@ -316,7 +317,8 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
 
         # Don't allow heavy bodies when trying to authenticate. Necessary because this middleware is executed before
         # CheckAuthContextSizeMiddleware can be executed
-        if body and (request.url.path != RUN_AS_LOGIN_ENDPOINT or len(body) <= AUTH_CONTEXT_MAX_PAYLOAD_SIZE):
+        max_auth_context_payload_size = configuration.api_conf['auth_context_max_payload_size']
+        if body and (request.url.path != RUN_AS_LOGIN_ENDPOINT or len(body) <= max_auth_context_payload_size):
             try:
                 # Load the request body to the _json field before calling the controller so it's cached before the stream
                 # is consumed. If there's a json error we skip it so it's handled later.
