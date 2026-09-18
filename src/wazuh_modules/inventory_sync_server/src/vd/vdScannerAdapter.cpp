@@ -77,11 +77,10 @@ namespace invsync::vd
             // validating) with a retryable 503, instead of routing a session that merely arrived
             // early through Skipped as if this node would never run a scanner.
             auto& scanner = VulnerabilityScannerFacade::instance();
-            return feedGateOpen(
-                vdWillRunHere(scanner.hasStarted(), scanner.isEnabled(), m_configuredEnabled),
-                scanner.startFailed(),
-                scanner.isInitialized(),
-                scanner.isFeedReady());
+            return feedGateOpen(vdWillRunHere(scanner.hasStarted(), scanner.isEnabled(), m_configuredEnabled),
+                                scanner.startFailed(),
+                                scanner.isInitialized(),
+                                scanner.isFeedReady());
         }
 
         bool scannerRunning() const override
