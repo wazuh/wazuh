@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed the framework `wazuh-db` query builder substituting request parameters in multiple passes, which could re-substitute a value that matched another parameter's placeholder name and render string values inconsistently.
 - Bounded the agent control message copy to the source string length in `wazuh-remoted`. ([#38427](https://github.com/wazuh/wazuh/pull/38427))
 - Fixed the cluster server keeping pre-authentication connections open indefinitely by adding a handshake deadline and a global connection limit. ([#38449](https://github.com/wazuh/wazuh/pull/38449))
 - Fixed a memory leak in the `wazuh-analysisd` JSON decoder when an event repeats a static field. ([#38548](https://github.com/wazuh/wazuh/pull/38548))
