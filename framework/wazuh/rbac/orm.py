@@ -6,9 +6,10 @@ import json
 import logging
 import os
 import re
+import secrets
 from datetime import datetime
 from enum import IntEnum
-from shutil import chown
+from stat import S_IRGRP, S_IROTH, S_ISREG, S_IWGRP, S_IWOTH
 from time import time
 from typing import Union
 
@@ -26,7 +27,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.configuration import security_conf
 from api.constants import SECURITY_PATH
-from wazuh.core.common import wazuh_uid, wazuh_gid, DEFAULT_RBAC_RESOURCES
+from wazuh.core.common import wazuh_uid, wazuh_gid, DEFAULT_RBAC_RESOURCES, WAZUH_PATH
 from wazuh.core.utils import get_utc_now, safe_move
 from wazuh.rbac.utils import clear_tokens_cache
 
@@ -44,7 +45,236 @@ _DUMMY_HASH = generate_password_hash("wazuh-dummy-constant-never-matches-any-rea
 # Start a session and set the default security elements
 DB_FILE = os.path.join(SECURITY_PATH, "rbac.db")
 DB_FILE_TMP = f"{DB_FILE}.tmp"
+PRESEEDED_PASSWORDS_FILE = os.path.join(SECURITY_PATH, "wazuh-preseeded-passwords.yml")
+_SET_PASSWORD_CMD = os.path.join(WAZUH_PATH, "bin", "rbac_control") + " set-password"
 CURRENT_ORM_VERSION = 1
+
+# Minimum twelve characters, at least one uppercase letter, one lowercase letter, one number and one
+# symbol out of `. * + ? -`, the set both authentication realms of a deployment share.
+# `\Z` rather than `$`, which would also match before a trailing newline.
+USER_PASSWORD_MIN_LENGTH = 12
+USER_PASSWORD_MAX_LENGTH = 64
+USER_POLICY_SYMBOLS = '.*+?-'
+USER_PASSWORD_POLICY = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[.*+?-]).{12,}\Z')
+
+def _unusable_password() -> str:
+    """Build a password nobody knows, for a user no provisioning covers.
+
+    Only the migration path needs one: it seeds a throwaway database whose default users `migrate_data()`
+    overwrites with their real rows a moment later. Random rather than a literal so that, if that overwrite
+    does not happen because the previous database could not be read, the account is unusable instead of
+    guessable. `check_database_integrity` detects that case and refuses to start.
+    """
+    return secrets.token_urlsafe(32) + 'aA1!'
+
+
+class PreseededPasswordsError(Exception):
+    """A pre-seed file is present but cannot be used as written."""
+
+
+def _assert_preseed_source_is_trusted(fileno: int):
+    """Check that an already-open pre-seed file could only have been written by root or the Wazuh user.
+
+    Stat'd through the descriptor that will be read rather than through the path: the file decides the
+    administrator password of a fresh installation and lives in a group-writable directory, so checking the
+    path first would leave a window to swap what gets read.
+
+    Parameters
+    ----------
+    fileno : int
+        Descriptor of the open pre-seed file.
+
+    Raises
+    ------
+    PreseededPasswordsError
+        When the file is not a regular file, is owned by somebody else, its group or others can write it,
+        or it is readable outside root and the Wazuh group.
+    """
+    stat = os.fstat(fileno)
+
+    if not S_ISREG(stat.st_mode):
+        raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' is not a regular file")
+
+    if stat.st_uid not in (0, wazuh_uid()):
+        raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' is not owned by root or by the Wazuh user")
+
+    if stat.st_mode & (S_IWGRP | S_IWOTH):
+        raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' is writable by its group or by others")
+
+    # Group read is what lets apid read a root-owned file after dropping privileges, so it is allowed for
+    # root's group and the Wazuh group only: a plaintext administrator password must not be readable by
+    # every account on the host, nor by whichever group a hand-written file happened to get.
+    if stat.st_mode & S_IROTH or (stat.st_mode & S_IRGRP and stat.st_gid not in (0, wazuh_gid())):
+        raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' is readable by others, or by a group "
+                                      f"other than the Wazuh one")
+
+
+def _load_preseeded_passwords(known_usernames: list) -> dict:
+    """Read the passwords the node was provisioned with.
+
+    Written by `bin/rbac_control set-password` before the first API start, carrying the `manager:` block
+    of the deployment's credentials file and nothing else:
+
+        manager:
+          - name: wazuh
+            password: "..."
+
+    Parameters
+    ----------
+    known_usernames : list
+        Names of the default users, to reject an entry that matches none of them.
+
+    Raises
+    ------
+    PreseededPasswordsError
+        When the file is missing or unreadable, is not valid YAML, does not hold the expected structure,
+        names an unknown user, leaves one out, or carries a password the API would not accept.
+
+    Returns
+    -------
+    dict
+        Username to password mapping, with an entry for every default user.
+    """
+    set_every_user = ' and '.join(f"'{_SET_PASSWORD_CMD} -u {username}'" for username in known_usernames)
+
+    try:
+        # O_NONBLOCK so that a fifo left at this path answers instead of blocking the start forever, the
+        # same reason `_set_permissions_and_ownership` opens the database that way; the descriptor is then
+        # checked for being a regular file. O_NOFOLLOW because the directory is group-writable.
+        source = open(os.open(PRESEEDED_PASSWORDS_FILE, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK),
+                      encoding='utf-8')
+    except FileNotFoundError:
+        raise PreseededPasswordsError(f"no API credentials have been provisioned. Set them with "
+                                      f"{set_every_user}, then start the manager again") from None
+    except OSError as exc:
+        raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' cannot be opened: {exc}") from exc
+
+    with source:
+        _assert_preseed_source_is_trusted(source.fileno())
+        try:
+            document = yaml.safe_load(source)
+        # ValueError rather than YAMLError alone: a file that is not valid UTF-8 raises UnicodeDecodeError.
+        except (yaml.YAMLError, ValueError) as exc:
+            # Neither `str(exc)` nor a chained cause: a MarkedYAMLError echoes the source line it failed on,
+            # password included, and this message is written to api.log.
+            mark = getattr(exc, 'problem_mark', None)
+            raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' is not valid UTF-8 YAML: "
+                                          f"{getattr(exc, 'problem', None) or type(exc).__name__}"
+                                          f"{f' (line {mark.line + 1})' if mark else ''}") from None
+
+    if not isinstance(document, dict):
+        raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' does not hold a YAML mapping. Set the "
+                                      f"credentials again with {set_every_user}")
+
+    unknown_sections = set(document) - {'manager'}
+    if unknown_sections:
+        # Through `str`: YAML allows a key of any scalar type, and sorting or joining those raises instead
+        raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' holds sections this manager does not "
+                                      f"read: {', '.join(sorted(map(str, unknown_sections)))}")
+
+    entries = document.get('manager')
+    if not isinstance(entries, list) or not entries:
+        raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' has no 'manager' section listing the "
+                                      f"default users. Set them with {set_every_user}")
+
+    preseeded = {}
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != {'name', 'password'}:
+            raise PreseededPasswordsError(f"every entry under 'manager' in '{PRESEEDED_PASSWORDS_FILE}' must "
+                                          f"hold a 'name' and a 'password', and nothing else")
+
+        username, password = entry['name'], entry['password']
+
+        if username not in known_usernames:
+            raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' names '{username}', which is not a "
+                                          f"default user. Default users: {', '.join(known_usernames)}")
+
+        if username in preseeded:
+            raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' names '{username}' more than once")
+
+        # Length too: `wazuh.security` enforces it separately from the pattern (error 5009). The value itself
+        # is never logged.
+        if not isinstance(password, str) or not USER_PASSWORD_MIN_LENGTH <= len(password) \
+                <= USER_PASSWORD_MAX_LENGTH or not USER_PASSWORD_POLICY.match(password):
+            raise PreseededPasswordsError(f"the password provisioned for '{username}' in "
+                                          f"'{PRESEEDED_PASSWORDS_FILE}' does not satisfy the API password "
+                                          f"policy. Set it again with "
+                                          f"'{_SET_PASSWORD_CMD} -u {username}'")
+
+        preseeded[username] = password
+
+    missing = set(known_usernames) - set(preseeded)
+    if missing:
+        raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' provisions no password for "
+                                      f"{', '.join(sorted(missing))}. Set it with "
+                                      f"'{_SET_PASSWORD_CMD} -u {sorted(missing)[0]}'")
+
+    return preseeded
+
+
+def load_preseeded_passwords() -> dict:
+    """Read and validate the passwords the node was provisioned with, for the default users it ships.
+
+    Returns
+    -------
+    dict
+        Username to password mapping, with an entry for every default user.
+    """
+    with open(os.path.join(DEFAULT_RBAC_RESOURCES, "users.yaml")) as stream:
+        default_users = yaml.safe_load(stream)
+
+    return _load_preseeded_passwords(list(default_users[next(iter(default_users))]))
+
+
+def _set_permissions_and_ownership(database: str):
+    """Set Wazuh ownership and permissions on an RBAC database.
+
+    Applied through the descriptor rather than the path, and refusing to open a symlink: the database lives
+    in a group-writable directory, so the account the daemons run as chooses what the name points at, and a
+    chown by the path would follow it onto a file of root's.
+
+    Parameters
+    ----------
+    database : str
+        Path to the database whose permissions are going to be changed.
+
+    Raises
+    ------
+    PreseededPasswordsError
+        When the path cannot be opened, is a symlink, or is not a regular file.
+    """
+    # O_NONBLOCK so that a fifo left in the database's place answers instead of blocking the start forever.
+    try:
+        fd = os.open(database, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError as exc:
+        raise PreseededPasswordsError(f"'{database}' cannot be opened: {exc}. Remove it and provision the "
+                                      f"credentials again with '{_SET_PASSWORD_CMD} -u <user>'") from exc
+
+    try:
+        if not S_ISREG(os.fstat(fd).st_mode):
+            raise PreseededPasswordsError(f"'{database}' is not a regular file. Remove it and provision the "
+                                          f"credentials again with '{_SET_PASSWORD_CMD} -u <user>'")
+        os.fchown(fd, wazuh_uid(), wazuh_gid())
+        os.fchmod(fd, 0o640)
+    finally:
+        os.close(fd)
+
+
+def _consume_preseeded_passwords():
+    """Remove the provisioning file once its passwords are stored in the database.
+
+    It carries an administrator credential in plaintext and has no further use: the hashes in `rbac.db` are
+    what authenticates from here on. Removed only after a complete, successful seeding, so a failure leaves
+    the file in place to be corrected.
+    """
+    try:
+        os.remove(PRESEEDED_PASSWORDS_FILE)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        logger.warning(f"Could not remove '{PRESEEDED_PASSWORDS_FILE}' after using it: {exc}")
+
+
 _new_columns = {}
 _engine = create_engine(f"sqlite:///{DB_FILE}", pool_size=10, echo=False)
 _Base = declarative_base()
@@ -2080,21 +2310,28 @@ class DatabaseManager:
         """
         return str(self.sessions[database].execute(text("pragma user_version")).first()[0])
 
-    def insert_default_resources(self, database: str):
+    def insert_default_resources(self, database: str, preseeded_passwords: dict = None):
         """Insert default security resources into the given database.
 
         Parameters
         ----------
         database : str
             Name of the stored database.
+        preseeded_passwords : dict
+            Passwords provisioned for the default users, already validated. Loaded by the caller rather
+            than here, so that an unusable file stops the installation before any database is created.
+            A user it does not name gets a password nobody knows, which only the migration path relies on.
         """
+        preseeded_passwords = preseeded_passwords or {}
+
         # Create default users if they don't exist yet
         with open(os.path.join(DEFAULT_RBAC_RESOURCES, "users.yaml"), 'r') as stream:
             default_users = yaml.safe_load(stream)
 
             with AuthenticationManager(self.sessions[database]) as auth:
                 for d_username, payload in default_users[next(iter(default_users))].items():
-                    auth.add_user(username=d_username, password=payload['password'], check_default=False)
+                    password = preseeded_passwords.get(d_username) or _unusable_password()
+                    auth.add_user(username=d_username, password=password, check_default=False)
                     auth.edit_run_as(user_id=auth.get_user(username=d_username)['id'],
                                      allow_run_as=payload['allow_run_as'])
 
@@ -2471,23 +2708,18 @@ def check_database_integrity():
         Generic error during the database migration process.
     """
 
-    def _set_permissions_and_ownership(database: str):
-        """Set Wazuh ownership and permissions.
-
-        Parameters
-        ----------
-        database : str
-            Path to the database which permissions are going to be changed.
-        """
-        chown(database, wazuh_uid(), wazuh_gid())
-        os.chmod(database, 0o640)
-
     try:
         logger.info("Checking RBAC database integrity...")
 
         if os.path.exists(DB_FILE):
             # If db exists, fix permissions and ownership and connect to it
             logger.info(f"{DB_FILE} file was detected")
+
+            # Only read when the database is created, so it takes no effect here.
+            if os.path.exists(PRESEEDED_PASSWORDS_FILE):
+                logger.debug(f"'{PRESEEDED_PASSWORDS_FILE}' is present but not applied: '{DB_FILE}' "
+                             f"already exists")
+
             _set_permissions_and_ownership(DB_FILE)
             db_manager.connect(DB_FILE)
             current_version = int(db_manager.get_database_version(DB_FILE))
@@ -2505,7 +2737,16 @@ def check_database_integrity():
                 db_manager.connect(DB_FILE_TMP)
                 db_manager.create_database(DB_FILE_TMP)
                 _set_permissions_and_ownership(DB_FILE_TMP)
+                # Seeded with a password nobody knows, and normally overwritten: migrate_data() below
+                # restores the real preexisting password of the default users.
                 db_manager.insert_default_resources(DB_FILE_TMP)
+
+                # `get_data` answers an unreadable source with an empty list rather than an error, so a
+                # corrupt database would reach the migration with nothing to restore and leave the default
+                # users locked out. Checked before migrating, to refuse instead.
+                preserved_default_users = {user.id for user in
+                                          db_manager.get_data(DB_FILE, User, User.id, from_id=WAZUH_USER_ID,
+                                                              to_id=WAZUH_WUI_USER_ID)}
 
                 # Migrate data from old database
                 db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=WAZUH_USER_ID,
@@ -2513,6 +2754,14 @@ def check_database_integrity():
                 db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=CLOUD_RESERVED_RANGE,
                                         to_id=MAX_ID_RESERVED)
                 db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=MAX_ID_RESERVED + 1)
+
+                lost_default_users = {WAZUH_USER_ID, WAZUH_WUI_USER_ID} - preserved_default_users
+                if lost_default_users:
+                    raise PreseededPasswordsError(
+                        f"the previous {DB_FILE} held no usable row for the default users with id "
+                        f"{', '.join(str(user_id) for user_id in sorted(lost_default_users))}, so their "
+                        f"password could not be preserved. Remove {DB_FILE} and provision the credentials "
+                        f"again with '{_SET_PASSWORD_CMD} -u <user>'")
 
                 # Apply changes and replace database
                 db_manager.set_database_version(DB_FILE_TMP, expected_version)
@@ -2525,13 +2774,27 @@ def check_database_integrity():
         # If the database does not exist, it means this is a fresh installation and must be created properly
         else:
             logger.info("RBAC database not found. Initializing")
+
+            # Loaded before anything is created: a missing or unusable file must stop the installation
+            # without leaving a half-seeded database behind.
+            preseeded_passwords = load_preseeded_passwords()
+
             db_manager.connect(DB_FILE)
             db_manager.create_database(DB_FILE)
             _set_permissions_and_ownership(DB_FILE)
-            db_manager.insert_default_resources(DB_FILE)
+            db_manager.insert_default_resources(DB_FILE, preseeded_passwords)
             db_manager.set_database_version(DB_FILE, CURRENT_ORM_VERSION)
             db_manager.close_sessions()
+            logger.info(f"Default users seeded from '{PRESEEDED_PASSWORDS_FILE}'")
+            _consume_preseeded_passwords()
             logger.info(f"{DB_FILE} database created successfully")
+    except PreseededPasswordsError as e:
+        # Nothing, rather than no database: the migration path also lands here, with the previous DB_FILE
+        # still in place and the temporary one removed by the `finally` below.
+        logger.error(f"Cannot seed the RBAC database: {e}. Nothing has been applied, and the manager does "
+                     f"not start until this is fixed")
+        db_manager.close_sessions()
+        raise e
     except ValueError as e:
         logger.error("Error retrieving the current Wazuh RBAC database version. Aborting database integrity check")
         db_manager.close_sessions()

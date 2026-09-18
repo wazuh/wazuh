@@ -472,8 +472,8 @@ class WazuhException(Exception):
         5004: {'message': 'The user could not be removed or updated',
                'remediation': 'Administrator users cannot be removed or updated'},
         5007: {'message': 'Insecure user password provided',
-               'remediation': 'The password must contain at least one upper and lower case letter, a number and a '
-                              'symbol.'},
+               'remediation': 'The password must contain at least one upper and lower case letter, a number and '
+                              'one of the symbols . * + ? -'},
         5008: {'message': 'The current user cannot be deleted',
                'remediation': 'You can delete this user with the administrator user (wazuh) or '
                               'any other user with the necessary permissions'},
@@ -485,6 +485,9 @@ class WazuhException(Exception):
                },
         5011: {'message': 'Administrator users can only be modified by themselves',
                'remediation': 'Log in as administrator and try again'},
+        5012: {'message': 'The RBAC database cannot be seeded without provisioned credentials',
+               'remediation': "Set them with 'bin/rbac_control set-password -u <user>' for every default "
+                              'user, then try again'},
 
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '
