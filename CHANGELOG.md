@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - Added Fluentd server identity verification to the `fluent-forward` module: the certificate name is now checked against the configured address and the shared key digest returned by the server is verified. ([#38686](https://github.com/wazuh/wazuh/pull/38686))
 - Aligned the API `force` parameter with its OpenAPI schema: `POST /agents` now declares it, and `POST /agents/insert` no longer sends a `force` object that the request did not carry. ([#38804](https://github.com/wazuh/wazuh/pull/38804))
 - Escaped control characters in the request path of the API plain-text access log, so an unauthenticated request can no longer forge access log entries. ([#38894](https://github.com/wazuh/wazuh/pull/38894))
+- Raised the default API `run_as` authentication-context payload size limit from 8 KB to 64 KB and made it configurable via the new `auth_context_max_payload_size` option, for AD/LDAP/SSO logins with large group-membership contexts. ([#PLACEHOLDER](https://github.com/wazuh/wazuh/pull/PLACEHOLDER))
 
 ### Agent
 
