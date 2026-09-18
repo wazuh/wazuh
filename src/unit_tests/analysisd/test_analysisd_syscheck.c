@@ -100,6 +100,8 @@ static int setup_fim_event_cjson(void **state) {
                 "\"process_name\":\"process_name\","
                 "\"audit_uid\":\"audit_uid\","
                 "\"audit_name\":\"audit_name\","
+                "\"audit_gid\":\"audit_gid\","
+                "\"audit_group_name\":\"audit_group_name\","
                 "\"effective_uid\":\"effective_uid\","
                 "\"effective_name\":\"effective_name\","
                 "\"ppid\":12345,"
@@ -210,6 +212,10 @@ static int setup_event_info(void **state) {
         return -1;
     if(lf->decoder_info->fields[FIM_AUDIT_NAME] = strdup("audit_name"), lf->decoder_info->fields[FIM_AUDIT_NAME] == NULL)
         return -1;
+    if(lf->decoder_info->fields[FIM_AUDIT_GID] = strdup("audit_gid"), lf->decoder_info->fields[FIM_AUDIT_GID] == NULL)
+        return -1;
+    if(lf->decoder_info->fields[FIM_AUDIT_GROUP_NAME] = strdup("audit_group_name"), lf->decoder_info->fields[FIM_AUDIT_GROUP_NAME] == NULL)
+        return -1;
     if(lf->decoder_info->fields[FIM_EFFECTIVE_UID] = strdup("effective_uid"), lf->decoder_info->fields[FIM_EFFECTIVE_UID] == NULL)
         return -1;
     if(lf->decoder_info->fields[FIM_EFFECTIVE_NAME] = strdup("effective_name"), lf->decoder_info->fields[FIM_EFFECTIVE_NAME] == NULL)
@@ -303,6 +309,8 @@ static int setup_fim_data(void **state) {
                 "\"process_name\":\"process_name\","
                 "\"audit_uid\":\"audit_uid\","
                 "\"audit_name\":\"audit_name\","
+                "\"audit_gid\":\"audit_gid\","
+                "\"audit_group_name\":\"audit_group_name\","
                 "\"effective_uid\":\"effective_uid\","
                 "\"effective_name\":\"effective_name\","
                 "\"ppid\":12345,"
@@ -602,6 +610,8 @@ static int setup_decode_fim_event(void **state) {
                 "\"process_name\":\"process_name\","
                 "\"audit_uid\":\"audit_uid\","
                 "\"audit_name\":\"audit_name\","
+                "\"audit_gid\":\"audit_gid\","
+                "\"audit_group_name\":\"audit_group_name\","
                 "\"effective_uid\":\"effective_uid\","
                 "\"effective_name\":\"effective_name\","
                 "\"ppid\":12345,"
@@ -1515,6 +1525,8 @@ static void test_fim_generate_alert_full_alert(void **state) {
     assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
     assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
     assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GID].value, "audit_gid");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GROUP_NAME].value, "audit_group_name");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
 
@@ -1892,6 +1904,8 @@ static void test_fim_generate_alert_type_not_modified(void **state) {
     assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
     assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
     assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GID].value, "audit_gid");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GROUP_NAME].value, "audit_group_name");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
 
@@ -2012,6 +2026,8 @@ static void test_fim_generate_alert_null_mode(void **state) {
     assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
     assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
     assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GID].value, "audit_gid");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GROUP_NAME].value, "audit_group_name");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
 
@@ -2196,6 +2212,8 @@ static void test_fim_process_alert_added_success(void **state) {
     assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
     assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
     assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GID].value, "audit_gid");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GROUP_NAME].value, "audit_group_name");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
 
@@ -2295,6 +2313,8 @@ static void test_fim_process_alert_modified_success(void **state) {
     assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
     assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
     assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GID].value, "audit_gid");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GROUP_NAME].value, "audit_group_name");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
 
@@ -2390,6 +2410,8 @@ static void test_fim_process_alert_deleted_success(void **state) {
     assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
     assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
     assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GID].value, "audit_gid");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GROUP_NAME].value, "audit_group_name");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
 
@@ -2590,6 +2612,8 @@ static void test_fim_process_alert_no_hard_links(void **state) {
     assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
     assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
     assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GID].value, "audit_gid");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GROUP_NAME].value, "audit_group_name");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
 
@@ -2688,6 +2712,8 @@ static void test_fim_process_alert_no_mode(void **state) {
     assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
     assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
     assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GID].value, "audit_gid");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GROUP_NAME].value, "audit_group_name");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
 
@@ -2785,6 +2811,8 @@ static void test_fim_process_alert_no_tags(void **state) {
     assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
     assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
     assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GID].value, "audit_gid");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GROUP_NAME].value, "audit_group_name");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
 
@@ -2883,6 +2911,8 @@ static void test_fim_process_alert_no_content_changes(void **state) {
     assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
     assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
     assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GID].value, "audit_gid");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GROUP_NAME].value, "audit_group_name");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
 
@@ -2981,6 +3011,8 @@ static void test_fim_process_alert_no_changed_attributes(void **state) {
     assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
     assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
     assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GID].value, "audit_gid");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GROUP_NAME].value, "audit_group_name");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
 
@@ -3101,6 +3133,8 @@ static void test_fim_process_alert_no_old_attributes(void **state) {
     assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
     assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
     assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GID].value, "audit_gid");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_GROUP_NAME].value, "audit_group_name");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
     assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
 
