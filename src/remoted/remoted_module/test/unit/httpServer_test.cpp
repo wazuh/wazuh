@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#include "ca_bundle/ca_bundle.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "http_server/RestinioHttpServer.hpp"
 #include "http_server/caCertificateSource.hpp"
@@ -127,7 +128,7 @@ namespace
             return {};
         }
         std::string pem {std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {}};
-        return parseCertificates(pem).certificates;
+        return ca_bundle::parseBundle(pem).certificates;
     }
 
     // Generates a throwaway self-signed cert/key pair (via the `openssl` CLI, already a

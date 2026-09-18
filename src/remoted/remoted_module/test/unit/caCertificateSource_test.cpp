@@ -20,6 +20,7 @@
 
 #include <gtest/gtest.h>
 
+#include "ca_bundle/ca_bundle.hpp"
 #include "http_server/caCertificateSource.hpp"
 #include "http_server/fileRead.hpp"
 #include "testCertificates.hpp"
@@ -41,9 +42,9 @@
 #include <utime.h>
 #include <vector>
 
+using ca_bundle::parseBundle;
 using remoted::http::CaCertificateSource;
 using remoted::http::describeReadFailure;
-using remoted::http::parseCertificates;
 using remoted::http::ReadFailure;
 using remoted::http::readFileBounded;
 using remoted::http::ReadResult;
@@ -152,7 +153,7 @@ namespace
     // bounded/failure-aware half is what CaCertificateSource itself is under test for.
     std::vector<remoted::http::X509Ptr> readPemCertificates(const std::string& path)
     {
-        return parseCertificates(readAll(path)).certificates;
+        return parseBundle(readAll(path)).certificates;
     }
 
     struct Pki
@@ -593,8 +594,8 @@ TEST(CaCertificateSource, ConcurrentReadersPublishTheNewestContent)
 
     // The canonical form each content must reserialise to: what proves a snapshot read one of
     // the two whole, never a torn mix of both.
-    const auto pemA = serializeCertificates(parseCertificates(paddedA).certificates);
-    const auto pemB = serializeCertificates(parseCertificates(paddedB).certificates);
+    const auto pemA = serializeCertificates(parseBundle(paddedA).certificates);
+    const auto pemB = serializeCertificates(parseBundle(paddedB).certificates);
     ASSERT_FALSE(pemA.empty());
     ASSERT_FALSE(pemB.empty());
     const std::string cnA = "CN=casource-concurrent-a-ca";
@@ -761,14 +762,14 @@ TEST(CaCertificateSource, AnEmptyPathNeverReadsAnything)
     EXPECT_EQ(source.parses(), 0U);
 }
 
-TEST(PemCertificates, SerialisationRoundTripsAndDropsEverythingElse)
+TEST(ParsedBundle, SerialisationRoundTripsAndDropsEverythingElse)
 {
     auto pki = makePki("pem-roundtrip");
     ASSERT_TRUE(pki.has_value());
     remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
 
     const auto combined = readAll(pki->files.caCertPath) + readAll(pki->files.caKeyPath);
-    const auto parsed = parseCertificates(combined);
+    const auto parsed = parseBundle(combined);
     ASSERT_TRUE(parsed.wellFormed);
     ASSERT_EQ(parsed.certificates.size(), 1U);
 
@@ -777,7 +778,7 @@ TEST(PemCertificates, SerialisationRoundTripsAndDropsEverythingElse)
 
     // What we emit parses back to the same certificate: the published document is usable, not
     // merely stripped.
-    const auto reparsed = parseCertificates(serialised);
+    const auto reparsed = parseBundle(serialised);
     EXPECT_TRUE(reparsed.wellFormed);
     EXPECT_EQ(reparsed.certificates.size(), 1U);
     EXPECT_EQ(serializeCertificates(reparsed.certificates), serialised);

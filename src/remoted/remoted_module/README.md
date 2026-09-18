@@ -30,7 +30,8 @@ remoted_module/
 │   ├── decoding/                   # ns remoted::decoding — Content-Encoding policy (see below)
 │   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below);
 │   │                               #   tlsCertificateStatus.hpp/.cpp = served-certificate expiry + CA
-│   │                               #   coherence evaluation and its daily monitor thread;
+│   │                               #   coherence evaluation and its daily monitor thread (the bundle
+│   │                               #   itself is shared_modules/ca_bundle's; re-exported from here);
 │   │                               #   caCertificateSource.hpp/.cpp = the CA file as ONE read:
 │   │                               #   certificates re-serialised + verdict, cached by content hash;
 │   │                               #   fileRead.hpp/.cpp = bounded, injectable POSIX read + failure cause;
@@ -94,8 +95,9 @@ src/http_server/
 ├── IHttpServer.hpp          # neutral interface + types (Method/HttpRequest/HttpResponse/
 │                            #   IHttpResponder/HttpServerConfig). No transport types leak here.
 ├── inFlightBudget.hpp       # global in-flight byte budget + RAII Reservation (backpressure/503)
-├── tlsCertificateStatus.hpp/.cpp # served-leaf expiry + "does the configured CA sign it" evaluation
-│                            #   (pure functions over X509 + a PEM path) and TlsCertificateMonitor
+├── tlsCertificateStatus.hpp/.cpp # served-leaf expiry + chain verdict + TlsCertificateMonitor (pure
+│                            #   functions over X509); re-exports ca_bundle's X509Ptr,
+│                            #   serializeCertificates() and anyCaSignsLeaf() into remoted::http
 ├── httpServerConfig.hpp/.cpp# buildHttpServerConfig(): C-ABI struct -> HttpServerConfig (+ fallbacks)
 ├── httpServerFactory.hpp    # makeHttpServer() -> the single transport swap point
 └── RestinioHttpServer.hpp/.cpp # RESTinio + OpenSSL implementation (PImpl hides RESTinio in the .cpp)
@@ -104,7 +106,8 @@ src/http_server/
 - **Certificate status (`tlsCertificateStatus.hpp`, `IHttpServer::certificateStatus()`):** when
   `start()` builds the TLS context it evaluates the leaf it just loaded — days to `notAfter`
   (negative once expired) and whether `HttpServerConfig::caCertificatePath` (the CA `GET /cacerts`
-  hands out; any `CERTIFICATE` block of the file counts, so a bundle works) signs it — logs the
+  hands out; any `CERTIFICATE` block of the file counts, so a bundle works) signs it, which is
+  [`ca_bundle`](../../shared_modules/ca_bundle/README.md)'s `anyCaSignsLeaf()` — logs the
   result (ERROR expired / CA does not sign, WARN < 30 days / CA unreadable, WARN/INFO for the chain
   verdict from `chainValidates()`, the bundle as sole trust store) and records it **before**
   `run_async`, so no request can ever read "not evaluated yet". A `TlsCertificateMonitor` (own
@@ -2205,8 +2208,8 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http:
 Unit tests (built when `UNIT_TEST` is enabled) live in `test/unit/`: `remotedModule_test.cpp`
 (C-ABI black-box), `httpServer_test.cpp` (transport config incl. in-flight-budget/max-connections
 resolution + responder contract incl. a shared request surviving a deferred handler, plus the
-certificate status: `TlsCertificateStatusTest` drives `daysUntilExpiry()`/`anyCaSignsLeaf()`/
-`statusFrom()` from certificates built in memory — signed by the CA, by a foreign CA,
+certificate status: `TlsCertificateStatusTest` drives `daysUntilExpiry()`/`statusFrom()` and
+`ca_bundle`'s `anyCaSignsLeaf()` from certificates built in memory — signed by the CA, by a foreign CA,
 CA unreadable, a bundle with the signing CA not first — and `HttpServerTest` pins that the status is
 already evaluated when `start()` returns, re-evaluated on a 1 s `certificateStatusInterval`, and that
 `stopAccepting()` joins the monitor), `cacertsEndpoint_test.cpp` (the `GET /cacerts` decision table
