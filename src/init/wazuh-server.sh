@@ -101,6 +101,7 @@ lock()
                     marker_busy=`expr ${marker_busy} + 1`
                     if [ "${marker_busy}" -gt 4 ]; then
                         rmdir "${LOCK}.reclaim" > /dev/null 2>&1
+                        marker_busy=0
                     fi
                 fi
             fi
