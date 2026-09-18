@@ -27,10 +27,40 @@
 firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, const char *argv0);
 firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_version, const char *argv0);
 firewall_result_t try_route_macos(const char *srcip, int action, int ip_version, const char *argv0);
+int block_ip_macos_main(int argc, char **argv);
 
-static wfd_t *dummy_wfd(void) {
+/* setup_and_check_message/get_srcip_from_json/send_keys_and_check_message are
+ * real functions in active_responses.c (linked in via the shared library,
+ * not compiled into this target), wrapped here -- target-locally, via this
+ * target's own CMakeLists.txt flags, not a shared wrapper file -- purely so
+ * test_block_ip_macos_main_* below can drive block_ip_macos_main() end to
+ * end without needing to fake the real JSON-on-stdin protocol. */
+int __wrap_setup_and_check_message(__attribute__((unused)) char **argv, cJSON **message) {
+    *message = mock_ptr_type(cJSON *);
+    return mock_type(int);
+}
+
+const char *__wrap_get_srcip_from_json(__attribute__((unused)) const cJSON *input) {
+    return mock_ptr_type(const char *);
+}
+
+int __wrap_send_keys_and_check_message(__attribute__((unused)) char **argv, __attribute__((unused)) char **keys) {
+    return mock_type(int);
+}
+
+// try_route_macos now drains wfd->file_out (W_BIND_STDERR) before wpclose,
+// so every mocked wfd needs a real, readable stream -- stderr_text is what
+// route(8) is simulated to have printed (pass "" for the success paths that
+// don't care about it).
+static wfd_t *dummy_wfd(const char *stderr_text) {
     static wfd_t wfd;
+    // fmemopen() rejects a zero-length buffer on some libc implementations
+    // (POSIX leaves size==0 undefined) -- fall back to a single blank line.
+    static const char empty[] = "\n";
     memset(&wfd, 0, sizeof(wfd));
+    size_t len = strlen(stderr_text);
+    wfd.file_out = len > 0 ? fmemopen((void *)stderr_text, len, "r")
+                            : fmemopen((void *)empty, strlen(empty), "r");
     return &wfd;
 }
 
@@ -67,12 +97,21 @@ void test_try_route_macos_enable_succeeds(void **state) {
     expect_string(__wrap_get_binary_path, command, "route");
     will_return(__wrap_get_binary_path, route_path);
     will_return(__wrap_get_binary_path, 0);
-    will_return(__wrap_wpopenv, dummy_wfd());
+    will_return(__wrap_wpopenv, dummy_wfd(""));
     will_return(__wrap_wpclose, 0);
 
     firewall_result_t result = try_route_macos("192.168.1.100", ENABLE_COMMAND, 4, "block-ip");
 
     assert_int_equal(result, FIREWALL_SUCCESS);
+    // Confirms the exact command run, not just that *some* command succeeded
+    // -- the mock ignores argv on its own, see wpopenv_captured_argv()'s doc.
+    assert_int_equal(wpopenv_captured_argc(), 6);
+    assert_string_equal(wpopenv_captured_argv(0), "/sbin/route");  // route_path itself is already os_free()d inside try_route_macos by this point
+    assert_string_equal(wpopenv_captured_argv(1), "-q");
+    assert_string_equal(wpopenv_captured_argv(2), "add");
+    assert_string_equal(wpopenv_captured_argv(3), "192.168.1.100");
+    assert_string_equal(wpopenv_captured_argv(4), "127.0.0.1");
+    assert_string_equal(wpopenv_captured_argv(5), "-blackhole");
 }
 
 void test_try_route_macos_disable_succeeds(void **state) {
@@ -81,12 +120,19 @@ void test_try_route_macos_disable_succeeds(void **state) {
     expect_string(__wrap_get_binary_path, command, "route");
     will_return(__wrap_get_binary_path, route_path);
     will_return(__wrap_get_binary_path, 0);
-    will_return(__wrap_wpopenv, dummy_wfd());
+    will_return(__wrap_wpopenv, dummy_wfd(""));
     will_return(__wrap_wpclose, 0);
 
     firewall_result_t result = try_route_macos("192.168.1.100", DISABLE_COMMAND, 4, "block-ip");
 
     assert_int_equal(result, FIREWALL_SUCCESS);
+    assert_int_equal(wpopenv_captured_argc(), 6);
+    assert_string_equal(wpopenv_captured_argv(0), "/sbin/route");  // route_path itself is already os_free()d inside try_route_macos by this point
+    assert_string_equal(wpopenv_captured_argv(1), "-q");
+    assert_string_equal(wpopenv_captured_argv(2), "delete");
+    assert_string_equal(wpopenv_captured_argv(3), "192.168.1.100");
+    assert_string_equal(wpopenv_captured_argv(4), "127.0.0.1");
+    assert_string_equal(wpopenv_captured_argv(5), "-blackhole");
 }
 
 void test_try_route_macos_ipv6_enable_succeeds(void **state) {
@@ -95,29 +141,77 @@ void test_try_route_macos_ipv6_enable_succeeds(void **state) {
     expect_string(__wrap_get_binary_path, command, "route");
     will_return(__wrap_get_binary_path, route_path);
     will_return(__wrap_get_binary_path, 0);
-    will_return(__wrap_wpopenv, dummy_wfd());
+    will_return(__wrap_wpopenv, dummy_wfd(""));
     will_return(__wrap_wpclose, 0);
 
     firewall_result_t result = try_route_macos("2001:db8::1", ENABLE_COMMAND, 6, "block-ip");
 
     assert_int_equal(result, FIREWALL_SUCCESS);
+    // This is the exact assertion the argv-blind mock couldn't make before:
+    // -inet6 present, and the gateway is the IPv6 loopback, not 127.0.0.1.
+    assert_int_equal(wpopenv_captured_argc(), 7);
+    assert_string_equal(wpopenv_captured_argv(0), "/sbin/route");  // route_path itself is already os_free()d inside try_route_macos by this point
+    assert_string_equal(wpopenv_captured_argv(1), "-q");
+    assert_string_equal(wpopenv_captured_argv(2), "add");
+    assert_string_equal(wpopenv_captured_argv(3), "-inet6");
+    assert_string_equal(wpopenv_captured_argv(4), "2001:db8::1");
+    assert_string_equal(wpopenv_captured_argv(5), "::1");
+    assert_string_equal(wpopenv_captured_argv(6), "-blackhole");
 }
 
 // Exercises the exit-status check itself: wpopenv succeeds (non-NULL wfd) but
-// the route command exited non-zero -- must be reported as a failure, not the
-// false FIREWALL_SUCCESS this function returned before the fix.
+// the route command exited non-zero for a reason that is NOT the known
+// already-blocked/already-clear case below -- must be reported as a failure,
+// not the false FIREWALL_SUCCESS this function returned before the fix.
 void test_try_route_macos_nonzero_exit_is_failure(void **state) {
     char *route_path = strdup("/sbin/route");
 
     expect_string(__wrap_get_binary_path, command, "route");
     will_return(__wrap_get_binary_path, route_path);
     will_return(__wrap_get_binary_path, 0);
-    will_return(__wrap_wpopenv, dummy_wfd());
+    will_return(__wrap_wpopenv, dummy_wfd("add net 192.168.1.100: gateway 127.0.0.1: Network is unreachable\n"));
     will_return(__wrap_wpclose, 1 << 8);  // WIFEXITED true, WEXITSTATUS 1
 
     firewall_result_t result = try_route_macos("192.168.1.100", ENABLE_COMMAND, 4, "block-ip");
 
     assert_int_equal(result, FIREWALL_EXECUTION_FAILED);
+}
+
+// route(8) exits non-zero (EEXIST) when the blackhole route is already
+// present -- a repeat ENABLE for an already-blocked IP must not be reported
+// as a total chain failure. Verified against Apple's route.tproj/route.c:
+// EEXIST falls through to strerror(), which is "File exists" on macOS/BSD.
+void test_try_route_macos_enable_already_blocked_is_success(void **state) {
+    char *route_path = strdup("/sbin/route");
+
+    expect_string(__wrap_get_binary_path, command, "route");
+    will_return(__wrap_get_binary_path, route_path);
+    will_return(__wrap_get_binary_path, 0);
+    will_return(__wrap_wpopenv, dummy_wfd("add net 192.168.1.100: gateway 127.0.0.1: File exists\n"));
+    will_return(__wrap_wpclose, 1 << 8);  // WIFEXITED true, WEXITSTATUS 1
+
+    firewall_result_t result = try_route_macos("192.168.1.100", ENABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_SUCCESS);
+}
+
+// route(8) exits non-zero (ESRCH -> "not in table") when a DISABLE is
+// requested for a route that's already gone -- same no-op-is-success
+// treatment try_hostsdeny_macos already gives a duplicate/missing entry.
+// Verified against Apple's route.tproj/route.c: route_strerror() maps ESRCH
+// to the literal string "not in table".
+void test_try_route_macos_disable_not_in_table_is_success(void **state) {
+    char *route_path = strdup("/sbin/route");
+
+    expect_string(__wrap_get_binary_path, command, "route");
+    will_return(__wrap_get_binary_path, route_path);
+    will_return(__wrap_get_binary_path, 0);
+    will_return(__wrap_wpopenv, dummy_wfd("delete net 192.168.1.100: not in table\n"));
+    will_return(__wrap_wpclose, 1 << 8);  // WIFEXITED true, WEXITSTATUS 1
+
+    firewall_result_t result = try_route_macos("192.168.1.100", DISABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_SUCCESS);
 }
 
 // ============================================================================
@@ -160,6 +254,58 @@ void test_try_hostsdeny_macos_missing_file_is_not_available(void **state) {
     assert_int_equal(result, FIREWALL_NOT_AVAILABLE);
 }
 
+// ============================================================================
+// block_ip_macos_main: exercises the actual pf -> hostsdeny -> route table
+// wired up in main() itself, the one piece #39192's fix touches that no
+// other test in this file invokes -- everything above tests the individual
+// try_*_macos functions or (in test_firewall_helpers.c) a stubbed-out chain,
+// neither of which runs the real methods[] literal through execute_firewall_chain.
+// ============================================================================
+
+void test_block_ip_macos_main_stock_install_falls_back_to_route(void **state) {
+    char *argv[] = {"block-ip", NULL};
+    cJSON *input_json = cJSON_CreateObject();
+
+    will_return(__wrap_setup_and_check_message, input_json);
+    will_return(__wrap_setup_and_check_message, ENABLE_COMMAND);
+
+    will_return(__wrap_get_srcip_from_json, "192.168.1.100");
+
+    will_return(__wrap_send_keys_and_check_message, CONTINUE_COMMAND);
+
+    // pf declines: /dev/pf not accessible (stock install, PF never configured)
+    char *pfctl_path = strdup("/sbin/pfctl");
+    expect_string(__wrap_get_binary_path, command, "pfctl");
+    will_return(__wrap_get_binary_path, pfctl_path);
+    will_return(__wrap_get_binary_path, 0);
+    expect_string(__wrap_access, __name, "/dev/pf");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, -1);
+
+    // hostsdeny declines: /etc/hosts.deny not present (stock install)
+    expect_string(__wrap_access, __name, "/etc/hosts.deny");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, -1);
+
+    // route succeeds: the #39192 fallback this whole PR is about
+    char *route_path = strdup("/sbin/route");
+    expect_string(__wrap_get_binary_path, command, "route");
+    will_return(__wrap_get_binary_path, route_path);
+    will_return(__wrap_get_binary_path, 0);
+    will_return(__wrap_wpopenv, dummy_wfd(""));
+    will_return(__wrap_wpclose, 0);
+
+    int result = block_ip_macos_main(1, argv);
+
+    assert_int_equal(result, OS_SUCCESS);
+    // Confirms it's really route that ran, with the right add/IPv4 syntax,
+    // not e.g. a mock mismatch that happened to still return OS_SUCCESS.
+    assert_int_equal(wpopenv_captured_argc(), 6);
+    assert_string_equal(wpopenv_captured_argv(0), "/sbin/route");  // route_path itself is already os_free()d inside try_route_macos by this point
+    assert_string_equal(wpopenv_captured_argv(2), "add");
+    assert_string_equal(wpopenv_captured_argv(3), "192.168.1.100");
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_try_route_macos_binary_not_found),
@@ -168,8 +314,11 @@ int main(void) {
         cmocka_unit_test(test_try_route_macos_disable_succeeds),
         cmocka_unit_test(test_try_route_macos_ipv6_enable_succeeds),
         cmocka_unit_test(test_try_route_macos_nonzero_exit_is_failure),
+        cmocka_unit_test(test_try_route_macos_enable_already_blocked_is_success),
+        cmocka_unit_test(test_try_route_macos_disable_not_in_table_is_success),
         cmocka_unit_test(test_try_pf_macos_disabled_is_invalid_state),
         cmocka_unit_test(test_try_hostsdeny_macos_missing_file_is_not_available),
+        cmocka_unit_test(test_block_ip_macos_main_stock_install_falls_back_to_route),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

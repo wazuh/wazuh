@@ -7,11 +7,14 @@ endif()
 list(APPEND active-response_names "test_firewall_helpers")
 list(APPEND active-response_flags " ")
 
-# block-ip-macos.c is __APPLE__-gated and uses fmemopen() (POSIX-only), so it
-# isn't buildable/meaningful under the Windows agent unit-test toolchain.
+# This guard is unreachable in practice: src/unit_tests/CMakeLists.txt only
+# add_subdirectory(active-response)'s under CMAKE_SYSTEM_NAME STREQUAL
+# "Linux", so TARGET is never "winagent" by the time this file is processed.
+# Kept for consistency with the test_active-response guard above and as a
+# defensive default if that top-level condition ever changes.
 if(NOT ${TARGET} STREQUAL "winagent")
     list(APPEND active-response_names "test_block_ip_macos")
-    list(APPEND active-response_flags "-Wl,--wrap,access -Wl,--wrap,get_binary_path -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,getpid")
+    list(APPEND active-response_flags "-Wl,--wrap,access -Wl,--wrap,get_binary_path -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,getpid -Wl,--wrap,setup_and_check_message -Wl,--wrap,get_srcip_from_json -Wl,--wrap,send_keys_and_check_message")
 endif()
 
 list(LENGTH active-response_names count)

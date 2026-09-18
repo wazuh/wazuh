@@ -49,6 +49,7 @@ int main(int argc, char **argv) {
         keys[1] = NULL;
 
         action2 = send_keys_and_check_message(argv, keys);
+        os_free(keys[0]);
         os_free(keys);
 
         if (action2 != CONTINUE_COMMAND) {
@@ -492,15 +493,46 @@ firewall_result_t try_route_macos(const char *srcip, int action, int ip_version,
         return FIREWALL_EXECUTION_FAILED;
     }
 
-    int wp_closefd = wpclose(wfd);
-    if (!(WIFEXITED(wp_closefd) && WEXITSTATUS(wp_closefd) == 0)) {
-        memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1, "route command failed with status %d", wp_closefd);
-        write_debug_file(argv0, log_msg);
-        return FIREWALL_EXECUTION_FAILED;
+    // Drain stderr (bound via W_BIND_STDERR) before wpclose, same pattern
+    // try_pf_macos already uses -- an unread pipe can leave the child
+    // blocked on write(), and the first line is kept for diagnostics.
+    char buffer[OS_MAXSTR];
+    char error_msg[OS_MAXSTR];
+    memset(error_msg, '\0', OS_MAXSTR);
+    while (fgets(buffer, OS_MAXSTR, wfd->file_out) != NULL) {
+        if (error_msg[0] == '\0') {
+            strncpy(error_msg, buffer, OS_MAXSTR - 1);
+        }
     }
 
-    return FIREWALL_SUCCESS;
+    int wp_closefd = wpclose(wfd);
+    if (WIFEXITED(wp_closefd) && WEXITSTATUS(wp_closefd) == 0) {
+        return FIREWALL_SUCCESS;
+    }
+
+    // route(8) exits non-zero when the blackhole route already exists (add)
+    // or is already gone (delete) -- treat both as a successful no-op, same
+    // as try_hostsdeny_macos already does for a duplicate hosts.deny entry.
+    // Confirmed against Apple's own route.tproj/route.c: ESRCH is mapped to
+    // "not in table" explicitly; EEXIST falls through to strerror(), which
+    // is "File exists" on macOS/BSD.
+    if (strstr(error_msg, "File exists") != NULL || strstr(error_msg, "not in table") != NULL) {
+        return FIREWALL_SUCCESS;
+    }
+
+    memset(log_msg, '\0', OS_MAXSTR);
+    if (error_msg[0] != '\0') {
+        char *newline = strchr(error_msg, '\n');
+        if (newline) *newline = '\0';
+        snprintf(log_msg, OS_MAXSTR - 1, "route command failed (exit %d): %s",
+                 WIFEXITED(wp_closefd) ? WEXITSTATUS(wp_closefd) : wp_closefd, error_msg);
+    } else if (WIFSIGNALED(wp_closefd)) {
+        snprintf(log_msg, OS_MAXSTR - 1, "route command terminated by signal %d", WTERMSIG(wp_closefd));
+    } else {
+        snprintf(log_msg, OS_MAXSTR - 1, "route command failed with status %d", wp_closefd);
+    }
+    write_debug_file(argv0, log_msg);
+    return FIREWALL_EXECUTION_FAILED;
 }
 
 #endif // __APPLE__
