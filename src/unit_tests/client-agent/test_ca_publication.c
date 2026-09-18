@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <dirent.h>
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
@@ -22,6 +23,8 @@
 #include "../../client-agent/include/ca_publication.h"
 
 #define STORE_PATH "ca_publication_test.pem"
+/* Stands in for a file an attacker would want the install to truncate. */
+#define SENTINEL_PATH "ca_publication_test_sentinel"
 
 /* A real certificate, copied from test_x509_op.c: the install path parses what it wrote,
  * so a placeholder would only ever exercise the refusal. */
@@ -97,6 +100,25 @@ int __wrap_rename(const char *from, const char *to) {
     return __real_rename(from, to);
 }
 
+/* How many files in the working directory begin with `prefix`. The staging file is the only
+ * thing that ever creates one beside the store, so this counts orphans. */
+static int count_files_with_prefix(const char *prefix) {
+    DIR *dir = opendir(".");
+    struct dirent *entry;
+    int found = 0;
+
+    assert_non_null(dir);
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (strncmp(entry->d_name, prefix, strlen(prefix)) == 0) {
+            found++;
+        }
+    }
+
+    closedir(dir);
+    return found;
+}
+
 static void write_store(const char *content) {
     FILE *fp = fopen(STORE_PATH, "w");
     assert_non_null(fp);
@@ -107,6 +129,10 @@ static void write_store(const char *content) {
 static int teardown_store(void **state) {
     (void) state;
     unlink(STORE_PATH);
+    /* Fixed name, so a leftover really would be inherited by the next test rather than being
+     * one more uniquely-named file nobody notices. */
+    unlink(STORE_PATH ".tmp");
+    unlink(SENTINEL_PATH);
     rename_fail_errno = 0;
     rename_calls = 0;
     rename_source[0] = '\0';
@@ -242,10 +268,6 @@ static void test_render_refuses_a_buffer_it_would_overrun(void **state) {
 static void test_install_writes_the_bundle_and_its_publication(void **state) {
     (void) state;
 
-    /* TempFile() emits a benign FSTAT_ERROR debug line the first time it templates on a path
-     * that does not exist yet; a test that wrote the store first never sees it. */
-    expect_any(__wrap__mdebug1, formatted_msg);
-
     expect_any(__wrap__minfo, formatted_msg);
 
     assert_int_equal(w_ca_publication_install(STORE_PATH, ROOT_CA_PEM, strlen(ROOT_CA_PEM),
@@ -279,7 +301,6 @@ static void test_install_replaces_what_was_there(void **state) {
 static void test_install_refuses_a_body_that_is_not_certificates(void **state) {
     (void) state;
 
-    expect_any(__wrap__mdebug1, formatted_msg);
     const char *junk = "this is not a certificate at all\n";
 
     expect_any(__wrap__minfo, formatted_msg);
@@ -298,7 +319,6 @@ static void test_install_refuses_a_body_that_is_not_certificates(void **state) {
 static void test_install_refuses_a_partially_corrupt_bundle(void **state) {
     (void) state;
 
-    expect_any(__wrap__mdebug1, formatted_msg);
     char bundle[8192];
 
     snprintf(bundle, sizeof(bundle), "%s-----BEGIN CERTIFICATE-----\nnot base64\n"
@@ -377,22 +397,103 @@ static void test_install_leaves_the_store_intact_when_the_commit_fails(void **st
     assert_int_equal(w_ca_publication_read(STORE_PATH), 1789000012LL);
 }
 
-/* rename() is atomic only within one filesystem; across a boundary it fails outright, and any
- * helper papering over that failure would be copying. TempFile() templating on the target is
- * what keeps the temporary beside it, and this pins that -- a later refactor pointing the
- * temporary at /tmp would still pass every other test here. */
+/* Two properties of the staging file's name, both load-bearing, neither visible in any other
+ * test here -- a refactor that broke either would pass the whole rest of this suite.
+ *
+ * Beside the store: rename() is atomic only within one filesystem, and across a boundary it
+ * fails outright. A staging file in /tmp would work on most hosts and fail on the ones that
+ * mount it separately.
+ *
+ * And exactly one name, not a template: a kill between the create and the rename leaves the
+ * staging file behind, so a random name accumulates one orphan per interrupted install in a
+ * directory whose contents are meant to be trust stores. A fixed name is reused by the next
+ * attempt instead. */
 static void test_the_temporary_file_is_committed_from_beside_the_store(void **state) {
     (void) state;
 
-    expect_any(__wrap__mdebug1, formatted_msg);
     expect_any(__wrap__minfo, formatted_msg);
 
     assert_int_equal(w_ca_publication_install(STORE_PATH, ROOT_CA_PEM, strlen(ROOT_CA_PEM),
                                               1789000012LL), 0);
 
     assert_int_equal(rename_calls, 1);
-    assert_null(strchr(rename_source, '/'));          /* Same directory as STORE_PATH. */
-    assert_non_null(strstr(rename_source, STORE_PATH)); /* Templated on the target's own name. */
+    assert_null(strchr(rename_source, '/'));     /* Same directory as STORE_PATH. */
+    assert_string_equal(rename_source, STORE_PATH ".tmp");
+}
+
+/* The leftover a killed install leaves behind. The name is fixed, so the next attempt meets its
+ * own debris rather than a free path -- if that were treated as a failure, one interrupted
+ * install would stop the agent adopting anything ever again, which is far worse than the orphan
+ * the fixed name exists to prevent. */
+static void test_a_leftover_staging_file_is_reclaimed(void **state) {
+    (void) state;
+    FILE *fp = fopen(STORE_PATH ".tmp", "w");
+
+    assert_non_null(fp);
+    fputs("half a certificate, from an install that was killed\n", fp);
+    fclose(fp);
+
+    expect_any(__wrap__minfo, formatted_msg);
+
+    assert_int_equal(w_ca_publication_install(STORE_PATH, ROOT_CA_PEM, strlen(ROOT_CA_PEM),
+                                              1789000012LL), 0);
+    assert_int_equal(w_ca_publication_read(STORE_PATH), 1789000012LL);
+}
+
+/* The property the fixed name buys, stated directly: however many installs are interrupted, the
+ * directory never accumulates. Two failed commits in a row, and the staging file is still the
+ * one name -- with a template it would be two files here and one per interruption forever. */
+static void test_interrupted_installs_do_not_accumulate_staging_files(void **state) {
+    (void) state;
+    int attempt;
+
+    write_store("## generation: 1789000012\n" CERT_BODY);
+
+    /* The commit fails, which is where a kill would land: the body is written and validated,
+     * and the store is never replaced. */
+    rename_fail_errno = EPERM;
+
+    for (attempt = 0; attempt < 2; attempt++) {
+        expect_any(__wrap__merror, formatted_msg);
+        assert_int_equal(w_ca_publication_install(STORE_PATH, ROOT_CA_PEM, strlen(ROOT_CA_PEM),
+                                                  1789000013LL), -1);
+    }
+
+    assert_int_equal(rename_calls, 2);
+    /* Nothing but the store and, at most, its one staging sibling. */
+    assert_int_equal(count_files_with_prefix(STORE_PATH "."), 0);
+    assert_int_equal(w_ca_publication_read(STORE_PATH), 1789000012LL);
+}
+
+/* etc/certs is group-writable and sticky since #39321, so the staging file's name is a path the
+ * runtime user can plant something at. A symlink there must never be followed: opening it with
+ * "w" would truncate whatever it points at, with the agent's privileges, on a schedule the
+ * manager controls.
+ *
+ * What refuses it is the exclusive create, not O_NOFOLLOW -- O_CREAT|O_EXCL fails EEXIST on an
+ * existing symlink on its own. So this case discriminates the create from a plain fopen("w"),
+ * which is the distinction that matters; it would still pass if O_NOFOLLOW were dropped. */
+static void test_a_symlink_at_the_staging_path_is_not_followed(void **state) {
+    (void) state;
+    char sentinel[64] = {'\0'};
+    FILE *fp = fopen(SENTINEL_PATH, "w");
+
+    assert_non_null(fp);
+    fputs("do not truncate me\n", fp);
+    fclose(fp);
+
+    assert_int_equal(symlink(SENTINEL_PATH, STORE_PATH ".tmp"), 0);
+
+    expect_any(__wrap__minfo, formatted_msg);
+
+    assert_int_equal(w_ca_publication_install(STORE_PATH, ROOT_CA_PEM, strlen(ROOT_CA_PEM),
+                                              1789000012LL), 0);
+
+    /* The link itself was removed -- unlink() never follows one -- and its target was left
+     * alone. The install then proceeded into a file it had created itself. */
+    slurp(SENTINEL_PATH, sentinel, sizeof(sentinel));
+    assert_string_equal(sentinel, "do not truncate me\n");
+    assert_int_equal(w_ca_publication_read(STORE_PATH), 1789000012LL);
 }
 
 /* A body that is not certificates is refused before the commit is ever reached, so there is no
@@ -434,6 +535,9 @@ int main(void) {
         cmocka_unit_test_teardown(test_install_leaves_the_store_untouched_until_the_commit, teardown_store),
         cmocka_unit_test_teardown(test_install_leaves_the_store_intact_when_the_commit_fails, teardown_store),
         cmocka_unit_test_teardown(test_the_temporary_file_is_committed_from_beside_the_store, teardown_store),
+        cmocka_unit_test_teardown(test_a_leftover_staging_file_is_reclaimed, teardown_store),
+        cmocka_unit_test_teardown(test_interrupted_installs_do_not_accumulate_staging_files, teardown_store),
+        cmocka_unit_test_teardown(test_a_symlink_at_the_staging_path_is_not_followed, teardown_store),
         cmocka_unit_test_teardown(test_a_rejected_body_never_reaches_the_commit, teardown_store),
     };
 
