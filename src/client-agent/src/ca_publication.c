@@ -166,9 +166,14 @@ int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, 
      * copy when rename() fails, and a copy onto the trust store is precisely what must never
      * happen. It truncates the destination first, so a crash partway through leaves the agent
      * holding a fragment of a certificate bundle -- unable to verify the manager, and so unable
-     * to reach /cacerts to repair itself. The fallback is reachable here: the anchor sits in a
-     * sticky directory, where rename() over a file owned by someone else fails EPERM, which is
-     * exactly what a pre-#39321 install looks like before its ownership is repaired.
+     * to reach /cacerts to repair itself. The fallback is entered here whenever rename() fails,
+     * which the sticky directory makes routine: rename() over a file owned by someone else
+     * fails EPERM, and that is what a pre-#39321 install looks like until its ownership is
+     * repaired. Measured, at the anchor's own 0640 root:wazuh, the copy then fails too -- it
+     * cannot open the destination for writing either -- so the store survives that particular
+     * case whichever helper is used. What it does not survive is an anchor left group-writable,
+     * where the copy succeeds in truncating and a crash mid-copy is a torn trust store. Not
+     * relying on a mode being exactly right is the point of using rename() directly.
      *
      * Failing instead is the right answer. Nothing has been touched, the publication stays
      * pending, the next attempt tries again, and the error names the file for the operator. */
