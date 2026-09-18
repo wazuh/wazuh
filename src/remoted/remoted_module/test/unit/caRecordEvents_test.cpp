@@ -119,7 +119,9 @@ TEST(DescribeRecordEvent, GuardFailedNamesTheGuardAndTheObservedValue)
 
         const auto line = describeRecordEvent(event);
         ASSERT_TRUE(line.has_value());
-        EXPECT_NE(line->second.find("no CA signs the served leaf"), std::string::npos) << line->second;
+        // Since C33 the guard is a chain validation, and the line an operator greps says so --
+        // "signs" would send them to check a signature that may well be fine.
+        EXPECT_NE(line->second.find("does not chain to any CA in it"), std::string::npos) << line->second;
     }
     {
         CaRecordEvent event;

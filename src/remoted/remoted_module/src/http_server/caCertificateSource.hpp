@@ -86,13 +86,14 @@ namespace remoted::http
     struct CaCertificateSnapshot
     {
         std::string pem; ///< Certificates only, re-serialised here. Empty when there is nothing to serve.
-        std::optional<bool>
-            matchesLeaf; ///< Whether some certificate signs the served leaf directly; nullopt when none was read.
-        std::optional<bool> chainValid; ///< Whether the leaf validates with the bundle as its trust store (chain,
-                                        ///< dates, constraints); nullopt when there is nothing to validate against.
-        std::string chainError;         ///< OpenSSL's reason when chainValid is false; empty otherwise.
-        std::string subjects;           ///< Comma-separated subjects, for the log lines.
-        std::size_t certificates {0};   ///< How many certificates the file yielded.
+        std::optional<bool> matchesLeaf; ///< Whether the served leaf CHAINS to some certificate of the bundle
+                                         ///< (ca_bundle::leafChainsToAnyCa(), C33 -- not a bare signature check);
+                                         ///< nullopt when none was read.
+        std::optional<bool> chainValid;  ///< Whether the leaf validates with the bundle as its trust store (chain,
+                                         ///< dates, constraints); nullopt when there is nothing to validate against.
+        std::string chainError;          ///< OpenSSL's reason when chainValid is false; empty otherwise.
+        std::string subjects;            ///< Comma-separated subjects, for the log lines.
+        std::size_t certificates {0};    ///< How many certificates the file yielded.
         /// Present while the latest read failed. The fields above then describe the last GOOD read
         /// (or are empty when there never was one), not the file as it is right now.
         std::optional<ReadFailure> lastReadFailure;
@@ -197,7 +198,7 @@ namespace remoted::http
         CaDescriptor descriptor();
 
         /**
-         * @brief The ONE certificate of this bundle that signs the served leaf, re-serialised into
+         * @brief The ONE certificate of this bundle the served leaf CHAINS to, re-serialised into
          *        @p buffer -- a single certificate, never the bundle and never the `##` block (RF-7).
          *
          * For the legacy WPK delivery, and for nothing else. `src/init/pkg_installer.sh` refuses a
@@ -205,15 +206,18 @@ namespace remoted::http
          * 4.x agent mid-upgrade the bundle a rotation's overlap makes of this file would leave it
          * with no anchor at all (C7). What the agent needs is the one CA that verifies this
          * listener AND that its installer will keep, and that is what comes out of here: the FIRST
-         * certificate of the snapshot that signs the served leaf, is a CA (basicConstraints
-         * CA:TRUE) and is valid right now (notBefore <= now <= notAfter) -- the three properties
-         * pkg_installer.sh checks -- written back out by this process from the parsed X.509 object
-         * rather than copied out of the file.
+         * certificate of the snapshot the served leaf chains to
+         * (`ca_bundle::leafChainsToAnyCa()` over that certificate alone), that is a CA
+         * (basicConstraints CA:TRUE) and that is valid right now (notBefore <= now <= notAfter) --
+         * the properties pkg_installer.sh checks -- written back out by this process from the parsed
+         * X.509 object rather than copied out of the file.
          *
-         * A signature alone is deliberately not enough (C26): two re-issues of the same CA key
-         * both verify the leaf, so a bundle that still carries the expired one would otherwise
-         * hand a 4.x agent an anchor its installer discards, which is the exact outcome this
-         * export exists to prevent. No certificate with all three properties means nothing is
+         * A signature alone is deliberately not enough (C26, C33): two re-issues of the same CA key
+         * both verify the leaf, so a bundle that still carries the expired one would otherwise hand
+         * a 4.x agent an anchor its installer discards; and a certificate holding that key under
+         * ANOTHER subject signs the leaf without being its issuer, so an installer that took it
+         * would leave the agent with an anchor its own TLS rejects. Which one the leaf chains to is
+         * the question that excludes both. No certificate with all these properties means nothing is
          * delivered.
          *
          * Reads through snapshot(), so these bytes come from the same cache, the same read and the
@@ -223,8 +227,8 @@ namespace remoted::http
          *
          * @param buffer Where the PEM is written. Not NUL-terminated: the return value is the length.
          * @param capacity Bytes available at @p buffer.
-         * @return Bytes written (> 0); 0 when no certificate of the bundle is a valid CA that signs
-         *         the leaf, when there is no servable bundle or when there is no served leaf to
+         * @return Bytes written (> 0); 0 when no certificate of the bundle is a valid CA the leaf
+         *         chains to, when there is no servable bundle or when there is no served leaf to
          *         check against; -1 when @p capacity is too small (nothing is written).
          */
         int leafSignerPem(char* buffer, std::size_t capacity);

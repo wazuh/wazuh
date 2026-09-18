@@ -24,8 +24,8 @@ type Counters struct {
 
 	// Cacerts* are the GET /cacerts (CA distribution) counters. Cacerts200 is
 	// a PEM handed out; Cacerts404 the CA file missing on the manager;
-	// Cacerts503 the manager refusing a CA that does not sign its own
-	// certificate; Cacerts429 the route's own rate limit refusing it before the
+	// Cacerts503 the manager refusing a CA the served certificate does
+	// not chain to; Cacerts429 the route's own rate limit refusing it before the
 	// CA was read (docu/15-cacerts.md). CacertsOther collects what invalidates
 	// the run (a 200 without a PEM body, an unexpected status) -- 429 has a
 	// counter of its own precisely so it is not conflated with that.
@@ -212,7 +212,7 @@ func (r *Registry) RecordScanVD(fleet, lane string, status int, latencyUS uint64
 // RecordCacerts classifies a GET /cacerts outcome and records its latency.
 //
 // 200 (the CA PEM served), 404 (no CA file on the manager), 503 (the manager
-// refuses to hand out a CA that does not sign its own certificate) and 429 (the
+// refuses to hand out a CA the served certificate does not chain to) and 429 (the
 // route's rate limit) are the contract outcomes; anything else lands in
 // CacertsOther, which the caller pairs with invalidating the run (a status the
 // contract does not name, or a 200 that did not carry a PEM).

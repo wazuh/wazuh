@@ -1107,10 +1107,12 @@ TEST(CaCertificateSource, AnEmptyPathNeverReadsAnything)
 // ---------------------------------------------------------------------------
 // leafSignerPem(): the ONE certificate the legacy WPK delivery may hand a 4.x agent (RF-7, C7).
 // pkg_installer.sh refuses a root-ca.pem drop-in with more than one certificate in it, so what
-// matters here is not "a CA" but WHICH one, alone, and with no publication block around it.
+// matters here is not "a CA" but WHICH one, alone, and with no publication block around it -- the
+// one the served leaf CHAINS to, asked of each candidate on its own (C33), not one that merely
+// signs it.
 // ---------------------------------------------------------------------------
 
-TEST(CaCertificateSourceLeafSignerPem, ReturnsTheFirstCertificateThatSignsTheLeaf)
+TEST(CaCertificateSourceLeafSignerPem, ReturnsTheFirstCertificateTheLeafChainsTo)
 {
     auto signer = makePki("casource-leafsigner");
     auto other = makePki("casource-leafsigner-other");
@@ -1158,7 +1160,7 @@ TEST(CaCertificateSourceLeafSignerPem, ReturnsTheFirstCertificateThatSignsTheLea
     EXPECT_EQ(begins, 1U);
 }
 
-TEST(CaCertificateSourceLeafSignerPem, ReturnsZeroWhenNoCertificateSignsTheLeaf)
+TEST(CaCertificateSourceLeafSignerPem, ReturnsZeroWhenTheLeafChainsToNothingInTheBundle)
 {
     auto pki = makePki("casource-leafsigner-none");
     auto foreign = makePki("casource-leafsigner-none-other");
@@ -1314,10 +1316,13 @@ TEST(CaCertificateSourceLeafSignerPem, PrefersTheValidReissueOverTheExpiredOneTh
                                                   /*isCa=*/true);
 
     // It really does sign the leaf: without this the test could pass for the wrong reason (the
-    // expired certificate being skipped as "not a signer" rather than as "not installable").
+    // expired certificate being skipped as "not a signer" rather than as "not installable"). Since
+    // C33 the two facts are told apart here: the SIGNATURE is on the leaf, and the leaf still does
+    // not chain to it, which is why either rule refuses it.
     std::vector<remoted::http::X509Ptr> expiredOnly;
     expiredOnly.push_back(retainCertificate(expired.get()));
-    ASSERT_TRUE(ca_bundle::anyCaSignsLeaf(pki.leaf.get(), expiredOnly));
+    ASSERT_TRUE(ca_bundle::describe(expired.get(), pki.leaf.get()).signsLeaf);
+    ASSERT_FALSE(ca_bundle::leafChainsToAnyCa(pki.leaf.get(), expiredOnly));
 
     std::vector<remoted::http::X509Ptr> bundle;
     bundle.push_back(retainCertificate(expired.get()));
@@ -1427,6 +1432,59 @@ TEST(CaCertificateSourceLeafSignerPem, SkipsASignerWithoutCaTrue)
 
     CaCertificateSource impostorSource {impostorOnly, pki.leaf.get()};
     ASSERT_EQ(impostorSource.snapshot().certificates, 1U);
+    EXPECT_EQ(impostorSource.leafSignerPem(buffer.data(), buffer.size()), 0);
+}
+
+TEST(CaCertificateSourceLeafSignerPem, SkipsACaWithTheSameKeyAndAnotherSubject)
+{
+    // The back door of C33: an impostor CA that is current, CA:TRUE and holds the issuing key, so
+    // its signature verifies the served leaf -- but the leaf names the real CA as its issuer, so
+    // nothing chains to it. A 4.x agent whose installer accepted this file would keep an anchor its
+    // own TLS then rejects on every connection, which is the failure this export exists to prevent.
+    // First in the bundle, so a rule that only looked at the signature would deliver it.
+    auto pki = makeMemoryPki("other-subject");
+    auto impostor = remoted::test::makeCertificate("other-subject-impostor",
+                                                   -3600,
+                                                   3600,
+                                                   pki.caKey.get(), // the issuing CA's key
+                                                   pki.caKey.get(),
+                                                   nullptr,
+                                                   nullptr,
+                                                   /*isCa=*/true);
+    const auto impostorFacts = ca_bundle::describe(impostor.get(), pki.leaf.get());
+    ASSERT_TRUE(impostorFacts.signsLeaf) << "the fixture must be the real bug shape: it DOES sign";
+    ASSERT_TRUE(impostorFacts.isCa);
+
+    std::vector<remoted::http::X509Ptr> bundle;
+    bundle.push_back(retainCertificate(impostor.get()));
+    bundle.push_back(retainCertificate(pki.ca.get()));
+
+    const auto path = anchorPath("other_subject");
+    write(path, sealedDocument(bundle, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, pki.leaf.get()};
+    ASSERT_EQ(source.snapshot().certificates, 2U);
+
+    std::array<char, 8192> buffer {};
+    const auto written = source.leafSignerPem(buffer.data(), buffer.size());
+    ASSERT_GT(written, 0);
+    EXPECT_EQ(std::string(buffer.data(), static_cast<std::size_t>(written)), aloneAsPem(pki.ca.get()));
+
+    // Alone it is no fallback either: 0, and the publication guard refuses the bundle for the same
+    // reason, so the agent is told this manager has no published bundle rather than handed this.
+    std::vector<remoted::http::X509Ptr> alone;
+    alone.push_back(retainCertificate(impostor.get()));
+    const auto impostorOnly = anchorPath("other_subject_alone");
+    write(impostorOnly, sealedDocument(alone, kPublication));
+    remoted::test::ScratchFileCleanup cleanupAlone {{impostorOnly}};
+
+    CaCertificateSource impostorSource {impostorOnly, pki.leaf.get()};
+    const auto impostorSnapshot = impostorSource.snapshot();
+    ASSERT_EQ(impostorSnapshot.certificates, 1U);
+    EXPECT_EQ(impostorSnapshot.matchesLeaf, false);
+    EXPECT_EQ(impostorSnapshot.publication, 0);
+    EXPECT_EQ(impostorSnapshot.vouchFailure, GuardFailure::no_ca_signs_leaf);
     EXPECT_EQ(impostorSource.leafSignerPem(buffer.data(), buffer.size()), 0);
 }
 

@@ -54,7 +54,7 @@ enroll_https_latency_ms_p50,enroll_https_latency_ms_p99
   so requests and attempts are the same number here.
 - `cacerts_*` are the `GET /cacerts` counters ([15](15-cacerts.md)): the CA-distribution requests a
   `cacerts` step sends. `cacerts_200` counts CA PEMs handed out; `cacerts_404` (the manager has no
-  CA file), `cacerts_503` (the manager refused a CA that does not sign its own certificate) and
+  CA file), `cacerts_503` (the manager refused a CA the served certificate does not chain to) and
   `cacerts_429` (the route's own rate limit, `remote.https.cacerts_rate_limit`) are the manager's
   contract outcomes; `cacerts_other` holds what invalidates the run (a `200` without a PEM body, a
   status the contract does not name) — the `429` has a column of its own so a rate-limited manager is

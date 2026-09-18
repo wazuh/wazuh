@@ -113,14 +113,18 @@ namespace remoted::http
         snapshot.serializedBytes = snapshot.pem.size();
 
         // With no leaf to check against (a server that has not started) the answer is "unknown",
-        // not "mismatch": anyCaSignsLeaf() would say false, and false is what refuses to serve.
+        // not "mismatch": leafChainsToAnyCa() would say false, and false is what refuses to serve.
         if (m_leaf)
         {
-            snapshot.matchesLeaf = anyCaSignsLeaf(m_leaf.get(), parsed.certificates);
+            // A real chain validation since C33, with OpenSSL's default flags: a certificate that
+            // merely signs the leaf is not one an agent can build a chain to, and this verdict is
+            // what the 503 and the announced generation are decided from.
+            snapshot.matchesLeaf = leafChainsToAnyCa(m_leaf.get(), parsed.certificates);
 
-            // Separately from the signature: does the leaf VALIDATE with this bundle as its trust
-            // store (chain, dates, CA constraints, server purpose)? Information for the logs, never
-            // for the 503 -- see chainValidates().
+            // The operator-facing sibling of that verdict: the same validation with
+            // X509_V_FLAG_PARTIAL_CHAIN (any bundle entry may anchor) and the server purpose added,
+            // so the two can differ in both directions. Information for the logs, never for the
+            // 503 -- see chainValidates().
             const auto chain = chainValidates(m_leaf.get(), parsed.certificates);
             snapshot.chainValid = chain.valid;
             snapshot.chainError = chain.error;
@@ -253,7 +257,7 @@ namespace remoted::http
         const auto current = snapshot();
         if (current.pem.empty() || !m_leaf)
         {
-            // Nothing servable, or nothing to check a signature against. Both are "no certificate",
+            // Nothing servable, or no leaf to build a chain from. Both are "no certificate",
             // not an error: the poller logs the reason and lets the upgrade go ahead.
             return 0;
         }
@@ -264,27 +268,42 @@ namespace remoted::http
         auto parsed = ca_bundle::parseBundle(current.pem);
 
         // The moment the delivery is judged against, read once for the whole bundle so two
-        // certificates of it can never be measured against two different "now"s.
+        // certificates of it can never be measured against two different "now"s. (The chain
+        // validation below reads the clock itself, once per candidate; this is the window check
+        // that mirrors the agent's installer, and it is the one an operator can reason about.)
         const auto now = std::time(nullptr);
 
         for (auto& certificate : parsed.certificates)
         {
-            // describe() answers all three questions about ONE certificate -- which is exactly
-            // what anyCaSignsLeaf() cannot say: WHICH of them holds this listener up, and whether
-            // it is an anchor the agent's installer will keep. Its subject and issuer are computed
-            // and dropped; no new ca_bundle entry point for a path that runs once per legacy
-            // upgrade.
+            // The question is asked of ONE certificate at a time -- a store holding only this
+            // candidate -- because what a 4.x agent gets is a single-certificate root-ca.pem: what
+            // matters is not that the bundle chains, but WHICH of its certificates the leaf chains
+            // to (C33). A signature is not enough and never was: a certificate carrying the CA's
+            // key under another subject signs the leaf without being its issuer, and an installer
+            // that accepted it would leave the agent trusting an anchor its TLS then rejects --
+            // the same defect the publication guard closes, through the back door (objection 8).
+            std::vector<X509Ptr> candidateAnchor;
+            candidateAnchor.push_back(retain(certificate.get()));
+            if (!ca_bundle::leafChainsToAnyCa(m_leaf.get(), candidateAnchor))
+            {
+                continue;
+            }
+
+            // describe() answers what is left about this one certificate: its validity window as
+            // this process reads it, and its CA bit. Its subject and issuer are computed and
+            // dropped; no new ca_bundle entry point for a path that runs once per legacy upgrade.
             const auto facts = ca_bundle::describe(certificate.get(), m_leaf.get());
 
-            // A valid signature is NOT enough (issue #39319, C26). `src/init/pkg_installer.sh`
-            // refuses a delivered root-ca.pem that is not a CA (no basicConstraints CA:TRUE) or
-            // whose validity window does not contain the moment of the upgrade -- and a rotation's
-            // overlap is exactly where a bundle carries the EXPIRED re-issue of the same key next
-            // to the current one: both sign the served leaf, so picking "the first that signs it"
-            // can hand the agent the one its installer throws away, leaving it with no anchor at
-            // all. That is the failure this export exists to prevent, so the three properties are
-            // checked together and the first certificate that has all of them is the one delivered.
-            if (!facts.signsLeaf || !facts.isCa)
+            // Chaining already implies a current CA to OpenSSL, and `src/init/pkg_installer.sh`
+            // decides the same thing again on the agent, with `date` and a grep: it refuses a
+            // delivered root-ca.pem that is not a CA (no basicConstraints CA:TRUE) or whose
+            // validity window does not contain the moment of the upgrade. The checks are kept
+            // explicitly so the parity with that script is visible and stays exact rather than
+            // resting on how OpenSSL happens to treat a certificate with no extensions -- and a
+            // rotation's overlap is where it earns its keep: the bundle carries the EXPIRED
+            // re-issue of the same key next to the current one, both sign the served leaf, and the
+            // agent's installer throws away exactly one of them.
+            if (!facts.isCa)
             {
                 continue;
             }
@@ -309,7 +328,7 @@ namespace remoted::http
             if (pem.empty())
             {
                 // A certificate that will not write back out is not one to deliver. Same answer as
-                // "none signs it": there is nothing to hand over.
+                // "nothing chains to it": there is nothing to hand over.
                 return 0;
             }
 
@@ -324,7 +343,8 @@ namespace remoted::http
             return static_cast<int>(pem.size());
         }
 
-        // Nothing in this bundle is both the leaf's signer and an installable anchor. Better no
+        // Nothing in this bundle is both an anchor the leaf chains to and one the installer keeps.
+        // Better no
         // delivery than one the installer discards: the poller says why and lets the upgrade go
         // ahead without an anchor, which is recoverable, instead of writing one that is not.
         return 0;

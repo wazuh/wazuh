@@ -670,7 +670,7 @@ TEST(TlsCertificateStatusTest, DaysUntilExpiryIsNegativeOnceExpired)
     EXPECT_FALSE(daysUntilExpiry(nullptr).has_value());
 }
 
-TEST(TlsCertificateStatusTest, CaSignsLeafTrue)
+TEST(TlsCertificateStatusTest, LeafChainsToTheConfiguredCa)
 {
     StatusPki pki;
     const auto caPath = scratchPath("ca_true");
@@ -679,7 +679,7 @@ TEST(TlsCertificateStatusTest, CaSignsLeafTrue)
 
     std::vector<X509Ptr> cas = readPemCertificates(caPath);
     ASSERT_EQ(cas.size(), 1U);
-    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), cas));
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), cas));
 
     const auto status = statusFrom(pki.leaf.get(), CaCertificateSource {caPath, pki.leaf.get()}.snapshot());
     EXPECT_EQ(status.caMatchesLeaf, true);
@@ -690,20 +690,20 @@ TEST(TlsCertificateStatusTest, CaSignsLeafTrue)
     EXPECT_NE(status.caSubjects.find("status-ca"), std::string::npos) << status.caSubjects;
 }
 
-TEST(TlsCertificateStatusTest, CaSignsLeafFalse)
+TEST(TlsCertificateStatusTest, LeafDoesNotChainToAForeignCa)
 {
     StatusPki pki;
     const auto caPath = scratchPath("ca_false");
     remoted::test::ScratchFileCleanup cleanup {{caPath}};
     writePemFile(caPath, {pki.foreignCa.get()});
 
-    EXPECT_FALSE(anyCaSignsLeaf(pki.leaf.get(), readPemCertificates(caPath)));
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), readPemCertificates(caPath)));
     EXPECT_EQ(statusFrom(pki.leaf.get(), CaCertificateSource {caPath, pki.leaf.get()}.snapshot()).caMatchesLeaf, false);
     // A null leaf never matches anything either.
-    EXPECT_FALSE(anyCaSignsLeaf(nullptr, readPemCertificates(caPath)));
+    EXPECT_FALSE(leafChainsToAnyCa(nullptr, readPemCertificates(caPath)));
 }
 
-TEST(TlsCertificateStatusTest, CaSignsLeafUnreadable)
+TEST(TlsCertificateStatusTest, LeafChainVerdictIsUnknownWhenTheCaIsUnreadable)
 {
     StatusPki pki;
     const auto missing = "/nonexistent/remoted-tests/root-ca.pem";
@@ -844,7 +844,7 @@ TEST(TlsCertificateStatusTest, BundleWithTheSigningCaMatches)
 
     const auto cas = readPemCertificates(bundlePath);
     ASSERT_EQ(cas.size(), 2U);
-    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), cas));
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), cas));
     const auto status = statusFrom(pki.leaf.get(), CaCertificateSource {bundlePath, pki.leaf.get()}.snapshot());
     EXPECT_EQ(status.caMatchesLeaf, true);
     EXPECT_NE(status.caSubjects.find("foreign-ca"), std::string::npos) << status.caSubjects;
@@ -853,8 +853,10 @@ TEST(TlsCertificateStatusTest, BundleWithTheSigningCaMatches)
 
 // ---------------------------------------------------------------------------
 // chainValidates(): does the served leaf VALIDATE with the bundle as its trust store (issue
-// #39318) -- a stricter, separate question from anyCaSignsLeaf()'s plain signature check. Every
-// GTEST_LOG_(INFO) line below is deliberate: the exact OpenSSL wording is what the operator-facing
+// #39318) -- a separate question from leafChainsToAnyCa()'s, which since C33 is a chain validation
+// as well: this one adds the server purpose and relaxes the anchor rule with
+// X509_V_FLAG_PARTIAL_CHAIN, so neither answer subsumes the other and each case below states both.
+// Every GTEST_LOG_(INFO) line is deliberate: the exact OpenSSL wording is what the operator-facing
 // WARN/INFO lines in RestinioHttpServer.cpp quote, so it belongs in the test output, not only in a
 // failure diagnostic.
 // ---------------------------------------------------------------------------
@@ -886,8 +888,10 @@ TEST(TlsCertificateStatusTest, ChainValidWithAnIntermediateAnchor)
     cas.push_back(std::move(pki.intermediate));
 
     // X509_V_FLAG_PARTIAL_CHAIN makes the intermediate itself a trust anchor: the root need not be
-    // in the bundle for the chain to be complete.
-    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), cas));
+    // in the bundle for the chain to be complete. The guard does NOT set that flag (C33), so the
+    // same bundle is not publishable -- an agent's own OpenSSL would not treat a certificate that
+    // is not self-signed as an anchor either, and this is the disagreement the INFO line reports.
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), cas));
     const auto verdict = chainValidates(pki.leaf.get(), cas);
     GTEST_LOG_(INFO) << "ChainValidWithAnIntermediateAnchor chainError: \"" << verdict.error << "\"";
     ASSERT_TRUE(verdict.valid.has_value());
@@ -902,8 +906,8 @@ TEST(TlsCertificateStatusTest, ChainValidRootOnlyWithMissingIntermediate)
     cas.push_back(std::move(pki.root));
 
     // The root does not sign the leaf directly (the intermediate does), and it is not the leaf's
-    // named issuer either: the chain cannot be completed from the root alone.
-    EXPECT_FALSE(anyCaSignsLeaf(pki.leaf.get(), cas));
+    // named issuer either: the chain cannot be completed from the root alone, under either flag set.
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), cas));
     const auto verdict = chainValidates(pki.leaf.get(), cas);
     GTEST_LOG_(INFO) << "ChainValidRootOnlyWithMissingIntermediate chainError: \"" << verdict.error << "\"";
     ASSERT_TRUE(verdict.valid.has_value());
@@ -922,7 +926,10 @@ TEST(TlsCertificateStatusTest, ChainValidExpiredCa)
     std::vector<X509Ptr> cas;
     cas.push_back(std::move(ca));
 
-    EXPECT_TRUE(anyCaSignsLeaf(leaf.get(), cas));
+    // It signs the leaf, and since C33 that is not what the guard asks: an expired anchor is one no
+    // agent could use, so the bundle stops being publishable as well as failing this verdict.
+    EXPECT_TRUE(ca_bundle::describe(cas.front().get(), leaf.get()).signsLeaf);
+    EXPECT_FALSE(leafChainsToAnyCa(leaf.get(), cas));
     const auto verdict = chainValidates(leaf.get(), cas);
     GTEST_LOG_(INFO) << "ChainValidExpiredCa chainError: \"" << verdict.error << "\"";
     ASSERT_TRUE(verdict.valid.has_value());
@@ -944,7 +951,10 @@ TEST(TlsCertificateStatusTest, ChainValidNonCaSigner)
     std::vector<X509Ptr> cas;
     cas.push_back(std::move(signer));
 
-    EXPECT_TRUE(anyCaSignsLeaf(leaf.get(), cas));
+    // Same shape as the expired case: the signature is there, the anchor is not one a verifier
+    // accepts, and the guard refuses it too (C33).
+    EXPECT_TRUE(ca_bundle::describe(cas.front().get(), leaf.get()).signsLeaf);
+    EXPECT_FALSE(leafChainsToAnyCa(leaf.get(), cas));
     const auto verdict = chainValidates(leaf.get(), cas);
     GTEST_LOG_(INFO) << "ChainValidNonCaSigner chainError: \"" << verdict.error << "\"";
     ASSERT_TRUE(verdict.valid.has_value());
@@ -959,7 +969,7 @@ TEST(TlsCertificateStatusTest, ChainValidSelfSignedCa)
     std::vector<X509Ptr> singleCa;
     singleCa.push_back(upRef(pki.ca));
 
-    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), singleCa));
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), singleCa));
     const auto singleVerdict = chainValidates(pki.leaf.get(), singleCa);
     GTEST_LOG_(INFO) << "ChainValidSelfSignedCa (ca only) chainError: \"" << singleVerdict.error << "\"";
     ASSERT_TRUE(singleVerdict.valid.has_value());
@@ -972,7 +982,7 @@ TEST(TlsCertificateStatusTest, ChainValidSelfSignedCa)
     bundleWithForeign.push_back(upRef(pki.foreignCa));
     bundleWithForeign.push_back(upRef(pki.ca));
 
-    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), bundleWithForeign));
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), bundleWithForeign));
     const auto bundleVerdict = chainValidates(pki.leaf.get(), bundleWithForeign);
     GTEST_LOG_(INFO) << "ChainValidSelfSignedCa (foreignCa+ca) chainError: \"" << bundleVerdict.error << "\"";
     ASSERT_TRUE(bundleVerdict.valid.has_value());
@@ -1336,15 +1346,15 @@ TEST(HttpServerTest, CaLeafSignerPemReturnsTheSigningCertificate)
     }
     EXPECT_EQ(begins, 1U);
 
-    // And it is the signer, not merely "one of them": the whole bundle is still what /cacerts
-    // serves, so a wrong pick here would be invisible to every other assertion.
+    // And it is the anchor the leaf chains to, not merely "one of them": the whole bundle is still
+    // what /cacerts serves, so a wrong pick here would be invisible to every other assertion.
     EXPECT_EQ(server->caCertificateSnapshot().certificates, 2U);
 
     const auto leaves = ca_bundle::parseBundle(readAllBytes(pki->certPath)).certificates;
     const auto deliveredCas = ca_bundle::parseBundle(delivered).certificates;
     ASSERT_FALSE(leaves.empty());
     ASSERT_EQ(deliveredCas.size(), 1U);
-    EXPECT_TRUE(ca_bundle::anyCaSignsLeaf(leaves.front().get(), deliveredCas));
+    EXPECT_TRUE(ca_bundle::leafChainsToAnyCa(leaves.front().get(), deliveredCas));
 
     server->stop();
 }
