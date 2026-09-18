@@ -23,8 +23,7 @@ TYPE="manager"
 ###  Do not modify below here ###
 
 # Getting additional processes
-ls -la ${PLIST} > /dev/null 2>&1
-if [ $? = 0 ]; then
+if [ -f "${PLIST}" ]; then
 . ${PLIST};
 fi
 
@@ -45,31 +44,15 @@ MAX_ITERATION="40"
 
 MAX_KILL_TRIES=30
 
-checkpid()
-{
-    for i in ${CDAEMONS}; do
-        daemon_name="$i"
-        for j in `cat ${DIR}/var/run/${daemon_name}-*.pid 2>/dev/null`; do
-            ps -p $j >/dev/null 2>&1
-            if [ ! $? = 0 ]; then
-                if [ $USE_JSON = false ]; then
-                    echo "Deleting PID file '${DIR}/var/run/${daemon_name}-${j}.pid' not used..."
-                fi
-                rm ${DIR}/var/run/${daemon_name}-${j}.pid
-            fi
-        done
-    done
-}
-
 lock()
 {
     i=0;
+    unreachable=0;
+    marker_busy=0;
 
     # Providing a lock.
     while [ 1 ]; do
-        mkdir ${LOCK} > /dev/null 2>&1
-        MSL=$?
-        if [ "${MSL}" = "0" ]; then
+        if mkdir ${LOCK} > /dev/null 2>&1; then
             # Lock acquired (setting the pid)
             echo "$$" > ${LOCK_PID}
             return;
@@ -80,20 +63,51 @@ lock()
         i=`expr $i + 1`;
         pid=$(cat ${LOCK_PID} 2>/dev/null)
 
-        if [ $? = 0 ]
-        then
-            kill -0 ${pid} >/dev/null 2>&1
-            if [ ! $? = 0 ]; then
-                # Pid is not present.
-                # Unlocking and executing
-                unlock;
-                mkdir ${LOCK} > /dev/null 2>&1
-                echo "$$" > ${LOCK_PID}
-                return;
+        # Only consecutive pid-less rounds may open the gate below. Neither
+        # "$i" (a caller queued behind a live owner would inherit an open
+        # gate the moment that owner is gone) nor a round spent on a dead
+        # pid says anything about a lock that is still mid-acquisition.
+        if [ -z "${pid}" ]; then
+            unreachable=`expr ${unreachable} + 1`
+        else
+            unreachable=0
+        fi
+
+        # An empty pid (no pid file) fails kill -0 just like a dead one.
+        kill -0 ${pid} >/dev/null 2>&1
+        if [ "$?" != "0" ]; then
+            # A dead pid is stale right away; a missing one may still be
+            # mid-acquisition, so it needs a few consecutive rounds first.
+            if [ -n "${pid}" ] || [ "${unreachable}" -gt 2 ]; then
+                # mkdir on this marker is exclusive like ${LOCK}'s own, so
+                # only one caller at a time may unlock and recreate ${LOCK}.
+                if mkdir "${LOCK}.reclaim" > /dev/null 2>&1; then
+                    marker_busy=0
+                    # Another caller may have reclaimed ${LOCK} meanwhile.
+                    rpid=$(cat ${LOCK_PID} 2>/dev/null)
+                    kill -0 ${rpid} >/dev/null 2>&1
+                    if [ ! $? = 0 ]; then
+                        unlock;
+                        if mkdir ${LOCK} > /dev/null 2>&1; then
+                            echo "$$" > ${LOCK_PID}
+                            rmdir "${LOCK}.reclaim" > /dev/null 2>&1
+                            return;
+                        fi
+                    fi
+                    rmdir "${LOCK}.reclaim" > /dev/null 2>&1
+                else
+                    # The marker is held only briefly; one still busy after
+                    # several consecutive rounds was left by a dead caller.
+                    marker_busy=`expr ${marker_busy} + 1`
+                    if [ "${marker_busy}" -gt 4 ]; then
+                        rmdir "${LOCK}.reclaim" > /dev/null 2>&1
+                        marker_busy=0
+                    fi
+                fi
             fi
         fi
 
-        # We tried 10 times to acquire the lock.
+        # We tried MAX_ITERATION times to acquire the lock.
         if [ "$i" = "${MAX_ITERATION}" ]; then
             echo "ERROR: Another instance is locking this process."
             echo "If you are sure that no other instance is running, please remove ${LOCK}"
@@ -111,7 +125,7 @@ help()
 {
     # Help message
     echo ""
-    echo "Usage: $0 [-j] {start|stop|restart|status|enable|disable|info [-v -r -t]}";
+    echo "Usage: $0 [-j] {start|stop|restart|reload|status|enable|disable|info [-v -r -t]}";
     echo ""
     echo "    -j    Use JSON output."
     exit 1;
@@ -120,14 +134,14 @@ help()
 # Enables additional daemons
 enable()
 {
-    if [ "X$2" = "X" ]; then
+    if [ -z "$1" ]; then
         echo ""
         echo "Enable options: debug"
         echo "Usage: $0 enable debug"
         exit 1;
     fi
 
-    if [ "X$2" = "Xdebug" ]; then
+    if [ "$1" = "debug" ]; then
         echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
     else
         echo ""
@@ -143,15 +157,14 @@ enable()
 # Disables additional daemons
 disable()
 {
-    if [ "X$2" = "X" ]; then
+    if [ -z "$1" ]; then
         echo ""
         echo "Disable options: debug"
         echo "Usage: $0 disable debug]"
         exit 1;
     fi
-    daemon=''
 
-    if [ "X$2" = "Xdebug" ]; then
+    if [ "$1" = "debug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""
@@ -160,14 +173,6 @@ disable()
         echo "Disable options: debug"
         echo "Usage: $0 disable debug"
         exit 1;
-    fi
-    if [ "$daemon" != '' ]; then
-        pstatus ${daemon};
-        if [ $? = 1 ]; then
-            kill `cat $DIR/var/run/$daemon-*`
-            rm $DIR/var/run/$daemon-*
-            echo "Killing ${daemon}...";
-        fi
     fi
 }
 
@@ -181,8 +186,6 @@ status()
     RETVAL=0
     first=true
 
-    checkpid;
-
     node_type=$(get_node_type);
 
     if [ $USE_JSON = true ]; then
@@ -190,7 +193,12 @@ status()
     fi
     for i in ${DAEMONS}; do
         ## The API daemon only runs on the master node
-        if [ X"$i" = "Xwazuh-manager-apid" ] && [ "$node_type" != "master" ]; then
+        if [ "$i" = "wazuh-manager-apid" ] && [ "$node_type" != "master" ]; then
+            continue
+        fi
+
+        ## Mirror start_service(): authd is not started when auth.disabled is true.
+        if [ "$i" = "wazuh-manager-authd" ] && [ "$(${MCONF} get auth.disabled 2>/dev/null)" = "true" ]; then
             continue
         fi
 
@@ -259,8 +267,7 @@ testconfig()
 
     # Then each daemon checks what is not configuration (files, sockets, keys).
     for i in ${SDAEMONS}; do
-        daemon_name="$i"
-        ${DIR}/bin/${daemon_name} -t ${DEBUG_CLI};
+        ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
             if [ $USE_JSON = true ]; then
                 echo -n '{"error":20,"message":"'${i}': Configuration error."}'
@@ -278,33 +285,6 @@ testconfig()
         fi
     done
 }
-# Check if the system uses systemd
-is_systemd() {
-    [ -d /run/systemd/system ]
-}
-
-# Add daemons to the manager cgroup if systemd is used in legacy systems.
-add_to_cgroup()
-{
-    CGROUP_PATH="/sys/fs/cgroup/systemd/system.slice/wazuh-manager.service/cgroup.procs"
-
-    # Check if cgroup path exists
-    if [ ! -f "$CGROUP_PATH" ]; then
-        echo "Warning: cgroup path does not exist: $CGROUP_PATH" >&2
-    else
-        for pidfile in ${DIR}/var/run/wazuh-manager-*.pid; do
-            [ -f "$pidfile" ] || continue
-            pid=$(cat "$pidfile" 2>/dev/null)
-            [ -z "$pid" ] && continue
-
-            # Try to write to cgroup, capture any errors
-            if ! echo "$pid" >> "$CGROUP_PATH" 2>/dev/null; then
-                echo "Warning: Failed to add PID $pid to cgroup ($(basename "$pidfile"))" >&2
-            fi
-        done
-    fi
-}
-
 get_wazuh_engine_pid()
 {
     local max_ticks=100
@@ -369,8 +349,6 @@ start_service()
         echo "Starting Wazuh $VERSION..."
     fi
 
-    checkpid;
-
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp"
     find "$TO_DELETE" -mindepth 1 -delete
@@ -389,12 +367,12 @@ start_service()
     fi
     for i in ${SDAEMONS}; do
         ## Only start the API daemon on the master node
-        if [ X"$i" = "Xwazuh-manager-apid" ] && [ "$node_type" != "master" ]; then
+        if [ "$i" = "wazuh-manager-apid" ] && [ "$node_type" != "master" ]; then
             continue
         fi
 
         ## If wazuh-manager-authd is disabled (auth.disabled: true), don't try to start it.
-        if [ X"$i" = "Xwazuh-manager-authd" ]; then
+        if [ "$i" = "wazuh-manager-authd" ]; then
              if [ "$(${MCONF} get auth.disabled 2>/dev/null)" = "true" ]; then
                 continue
              fi
@@ -410,28 +388,13 @@ start_service()
             ## Create starting flag
             failed=false
             touch ${DIR}/var/run/${i}.start
-            daemon_name="$i"
 
-            if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
-                if command -v systemd-run >/dev/null 2>&1; then
-                    # safe to use systemd-run
-                    if [ $USE_JSON = true ]; then
-                        systemd-run --scope --slice=system.slice ${DIR}/bin/${daemon_name} ${DEBUG_CLI} > /dev/null 2>&1
-                    else
-                        systemd-run --scope --slice=system.slice ${DIR}/bin/${daemon_name} ${DEBUG_CLI}
-                    fi
-                else
-                    echo "ERROR: systemd is in use but systemd-run is not available" >&2
-                    exit 1
-                fi
+            if [ "$i" = "wazuh-manager-analysisd" ]; then
+                wait_for_wazuh_engine_ready
+            elif [ $USE_JSON = true ]; then
+                ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1;
             else
-                if [ "$i" = "wazuh-manager-analysisd" ]; then
-                    wait_for_wazuh_engine_ready
-                elif [ $USE_JSON = true ]; then
-                    ${DIR}/bin/${daemon_name} ${DEBUG_CLI} > /dev/null 2>&1;
-                else
-                    ${DIR}/bin/${daemon_name} ${DEBUG_CLI};
-                fi
+                ${DIR}/bin/${i} ${DEBUG_CLI};
             fi
 
             if [ $? != 0 ]; then
@@ -469,11 +432,6 @@ start_service()
     # to internally create their PID files.
     sleep 2;
 
-    # Add daemons to the manager cgroup if systemd is used.
-    if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
-        add_to_cgroup
-    fi
-
     if [ $USE_JSON = true ]; then
         echo -n ']}'
     else
@@ -487,20 +445,19 @@ pstatus()
     pfile=$1;
     _pstatus_quiet=${2:-""}
     # pfile must be set
-    if [ "X${pfile}" = "X" ]; then
+    if [ -z "${pfile}" ]; then
         return 0;
     fi
 
-    daemon_name="$pfile"
-    ls ${DIR}/var/run/${daemon_name}-*.pid > /dev/null 2>&1
+    ls ${DIR}/var/run/${pfile}-*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
-        for pid in `cat ${DIR}/var/run/${daemon_name}-*.pid 2>/dev/null`; do
+        for pid in `cat ${DIR}/var/run/${pfile}-*.pid 2>/dev/null`; do
             ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
-                if [ $USE_JSON = false ] && [ "X${_pstatus_quiet}" = "X" ]; then
+                if [ $USE_JSON = false ] && [ -z "${_pstatus_quiet}" ]; then
                     echo "${pfile}: Process ${pid} not used by Wazuh, removing..."
                 fi
-                rm -f ${DIR}/var/run/${daemon_name}-${pid}.pid
+                rm -f ${DIR}/var/run/${pfile}-${pid}.pid
                 continue;
             fi
 
@@ -533,18 +490,15 @@ wait_pid() {
 
 stop_service()
 {
-    checkpid;
-
     # First pass: send kill signal to all running daemons
     for i in ${DAEMONS}; do
-        daemon_name="$i"
         pstatus ${i};
         if [ $? = 1 ]; then
             if [ $USE_JSON != true ]
             then
                 echo "Killing ${i}...";
             fi
-            pid=`cat ${DIR}/var/run/${daemon_name}-*.pid`
+            pid=`cat ${DIR}/var/run/${i}-*.pid`
             kill $pid
         else
             if [ $USE_JSON != true ]
@@ -560,7 +514,6 @@ stop_service()
         echo -n '{"error":0,"data":['
     fi
     for i in ${DAEMONS}; do
-        daemon_name="$i"
         if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
         else
@@ -570,7 +523,7 @@ stop_service()
         pstatus ${i} "quiet";
 
         if [ $? = 1 ]; then
-            pid=`cat ${DIR}/var/run/${daemon_name}-*.pid`
+            pid=`cat ${DIR}/var/run/${i}-*.pid`
 
             if wait_pid $pid
             then
@@ -590,7 +543,7 @@ stop_service()
                 echo -n '{"daemon":"'${i}'","status":"stopped"}'
             fi
         fi
-        rm -f ${DIR}/var/run/${daemon_name}-*.pid
+        rm -f ${DIR}/var/run/${i}-*.pid
     done
 
     if [ $USE_JSON = true ]; then
@@ -602,7 +555,7 @@ stop_service()
 
 info()
 {
-    if [ "X${1}" = "X" ]; then
+    if [ -z "${1}" ]; then
         if [ $USE_JSON = true ]; then
             echo -n '{"error":0,"data":['
             echo -n '{"WAZUH_VERSION":"'${VERSION}'"},'
@@ -656,25 +609,23 @@ start)
     lock
     start_service
     unlock
+    RETVAL=0
     ;;
 stop)
     lock
     stop_service
     unlock
+    RETVAL=0
     ;;
 restart)
     restart_service
+    RETVAL=0
     ;;
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-manager-remoted//')
     SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
-    if is_systemd; then
-        SYSTEMD_VERSION=$(systemctl --version | awk 'NR==1 {print $2}')
-        if [ "$SYSTEMD_VERSION" -le 237 ]; then
-            LEGACY_SYSTEMD_VERSION=1
-        fi
-    fi
     restart_service
+    RETVAL=0
     ;;
 status)
     lock
@@ -683,22 +634,28 @@ status)
     ;;
 enable)
     lock
-    enable $action $arg;
+    enable "$arg";
     unlock
+    RETVAL=0
     ;;
 disable)
     lock
-    disable $action $arg;
+    disable "$arg";
     unlock
+    RETVAL=0
     ;;
 info)
     info $arg
+    RETVAL=0
     ;;
 help)
     help
     ;;
 *)
+    if [ -n "$action" ]; then
+        echo "Invalid action: ${action}"
+    fi
     help
 esac
 
-exit $RETVAL
+exit ${RETVAL:-0}
