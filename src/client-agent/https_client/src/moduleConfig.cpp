@@ -104,12 +104,14 @@ bool ModuleConfig::validateTiming(const LogFn& logFn) const
     return true;
 }
 
-bool ModuleConfig::validateTransport(const IFsProbe& fsProbe, const LogFn& logFn) const
+bool ModuleConfig::validateTransport(const IFsProbe& fsProbe, const LogFn& logFn,
+                                     bool unverifiedByDesign) const
 {
-    return validateTls(fsProbe, logFn) && validateClientCert(fsProbe, logFn);
+    return validateTls(fsProbe, logFn, unverifiedByDesign) && validateClientCert(fsProbe, logFn);
 }
 
-bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn) const
+bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
+                               bool unverifiedByDesign) const
 {
     if (verifyMode != HC_VERIFY_FULL && verifyMode != HC_VERIFY_CERT && verifyMode != HC_VERIFY_NONE
             && verifyMode != HC_VERIFY_SYSTEM)
@@ -120,10 +122,28 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn) cons
 
     if (verifyMode == HC_VERIFY_NONE)
     {
-        // Reachable only via an explicit <verification_mode>none</verification_mode> --
-        // ClientConf() no longer defaults here, so this is always a deliberate operator
-        // opt-out, worth flagging.
-        LOGFN_WARN(logFn, "TLS verification is DISABLED (verify_mode=none).");
+        if (unverifiedByDesign)
+        {
+            // Nothing is wrong here: this is the bootstrap's GET /cacerts, and there is no
+            // anchor to verify against until it returns one. What comes back is checked
+            // against the enrollment token's pin before anything trusts it, so say that
+            // rather than warning about a configuration the operator did not choose.
+            LOGFN_INFO(logFn,
+                       "Fetching the manager's certificate authority over an unverified "
+                       "connection; it is checked against the enrollment token's pin before "
+                       "it is trusted.");
+        }
+        else
+        {
+            // Two ways to get here, both worth the same warning: an explicit
+            // <verification_mode>none</verification_mode>, and an unset mode that
+            // w_agent_resolve_ssl_posture() resolved to 'none' for want of any trust material.
+            // The second is not an operator's choice, which is exactly why it is worth saying
+            // out loud -- it is the only sign that an agent is talking to its manager
+            // unverified.
+            LOGFN_WARN(logFn, "TLS verification is DISABLED (verify_mode=none).");
+        }
+
         return true;
     }
 

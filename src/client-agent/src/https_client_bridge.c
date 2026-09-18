@@ -97,6 +97,62 @@ bool g_https_client_stopping = false;
  * could run long / re-enter). */
 static pthread_mutex_t g_https_client_lock = PTHREAD_MUTEX_INITIALIZER;
 
+/* Guards the GLOBAL `keys` keystore against its own reload, for the readers that run off the
+ * agent's startup thread (#39315).
+ *
+ * Distinct from g_https_client_lock, which guards the module HANDLE: that one is taken by
+ * bridge_reenroll_thread() only AFTER try_enroll_to_server() has already replaced the keystore, so
+ * it has never protected `keys` and cannot be made to without holding it across enrollment.
+ *
+ * The writer is OS_UpdateKeys(), whose OS_FreeKeys() frees every keyentry AND the `id`/`raw_key`
+ * strings inside it. Any reader that borrows those pointers and then dereferences them -- rather
+ * than copying them out under this lock -- is reading freed memory the moment a re-enrollment
+ * lands in between, which is not theoretical: the secret bootstrap waits a random 0-60 s before it
+ * reads the keystore, with the HTTPS client already up and its 401 callback free to spawn the
+ * re-enrollment worker at any point inside that window.
+ *
+ * Lock ORDER, where both are held: g_https_client_lock first, then this one. Nothing takes them
+ * the other way round; w_https_client_fetch_reenroll_secret() takes only this one. */
+static pthread_mutex_t g_agent_keys_lock = PTHREAD_MUTEX_INITIALIZER;
+
+void w_agent_keys_write_lock(void)
+{
+    w_mutex_lock(&g_agent_keys_lock);
+}
+
+void w_agent_keys_write_unlock(void)
+{
+    w_mutex_unlock(&g_agent_keys_lock);
+}
+
+/* Copy the agent's identity out of the keystore into caller-owned buffers, so what the caller goes
+ * on to validate and send cannot be freed underneath it.
+ *
+ * Copies rather than returning the pointers because the pointers are exactly what is unsafe: the
+ * entry can be freed the instant this returns, and a borrowed `raw_key` outliving that free is the
+ * defect this exists to close.
+ *
+ * @return true when a complete identity was copied; false when this agent has no entry at all --
+ *         not an error, just nothing to sign with. */
+static bool bridge_copy_agent_identity(char *id_out, size_t id_size, char *key_out, size_t key_size)
+{
+    bool copied = false;
+
+    w_mutex_lock(&g_agent_keys_lock);
+
+    if (keys.keyentries && keys.keyentries[0] && keys.keyentries[0]->id && keys.keyentries[0]->raw_key) {
+        strncpy(id_out, keys.keyentries[0]->id, id_size - 1);
+        id_out[id_size - 1] = '\0';
+        strncpy(key_out, keys.keyentries[0]->raw_key, key_size - 1);
+        key_out[key_size - 1] = '\0';
+        copied = true;
+    }
+
+    w_mutex_unlock(&g_agent_keys_lock);
+
+    return copied;
+}
+
 /* Reads the stopping flag for callers that are not already holding the lock
  * (the re-enroll retry loop polls it between attempts). Callers that go on to
  * touch the handle must instead read it inside their own critical section --
@@ -126,10 +182,10 @@ static bool bridge_stopping(void)
 void *bridge_reenroll_thread(void *arg)
 {
     hc_handle *handle = (hc_handle *)arg;
-    int enroll_result = -1;
+    w_enroll_status_t enroll_result = W_ENROLL_ERR_TRANSPORT;
     int delay_sleep = 0;
 
-    while (enroll_result != 0) {
+    while (enroll_result != W_ENROLL_OK) {
         if (bridge_stopping()) {
             mdebug1("https_client: agent shutting down; abandoning re-enrollment.");
             return NULL;
@@ -137,7 +193,24 @@ void *bridge_reenroll_thread(void *arg)
 
         enroll_result = try_enroll_to_server();
 
-        if (enroll_result != 0) {
+        if (enroll_result != W_ENROLL_OK) {
+            /* #39064: this loop used to run for ever on any failure, which is exactly the
+             * behaviour the issue exists to remove -- an agent whose credential the manager has
+             * definitively refused would re-ask at the top of the ramp until someone noticed.
+             * Same policy function as the initial-enrollment loop, so the two answer identically;
+             * it also shreds a dead re-enrollment secret, which is what lets the next attempt fall
+             * back to the configured credential. */
+            if (w_enrollment_apply_policy(enroll_result) == W_ENROLL_ACTION_STOP) {
+                /* The agent keeps running: it still holds whatever key it had, and the AuthGate
+                 * keeps traffic paused. That is a state an operator can see and fix -- unlike a
+                 * silent retry loop, and unlike tearing the daemon down over a manager-side
+                 * decision. The gate is deliberately NOT released: nothing has changed that would
+                 * make the paused traffic succeed. */
+                merror("https_client: re-enrollment cannot succeed; giving up until the agent is "
+                       "restarted or an operator intervenes. Traffic stays paused.");
+                return NULL;
+            }
+
             /* Same ramp as the initial-enrollment loop (start_agent.c), from the values
              * ClientConf() resolved, so the two cannot drift apart. */
             if (delay_sleep < agt->enrollment.retry_max) {
@@ -166,8 +239,17 @@ void *bridge_reenroll_thread(void *arg)
      * key (the manager is expected to preserve it for an already-known
      * identity, but the module must not assume that -- signing with a stale
      * id after the key changed would desync from whatever id the manager
-     * now associates with this key). Both move together, never just the key. */
-    const bool identity_ok = hc_set_agent_identity(handle, keys.keyentries[0]->id, keys.keyentries[0]->raw_key);
+     * now associates with this key). Both move together, never just the key.
+     *
+     * Copied out under the keystore lock rather than passed by pointer (#39315): this thread wrote
+     * the keystore a moment ago, but the initial-enrollment path can replace it too, and the whole
+     * point of the lock is that no reader dereferences an entry another thread may be freeing.
+     * Lock order as documented at g_agent_keys_lock: handle lock first, this one inside it. */
+    char reloaded_id[HC_MAX_ID] = {0};
+    char reloaded_key[HC_MAX_KEY] = {0};
+    const bool identity_copied =
+        bridge_copy_agent_identity(reloaded_id, sizeof(reloaded_id), reloaded_key, sizeof(reloaded_key));
+    const bool identity_ok = identity_copied && hc_set_agent_identity(handle, reloaded_id, reloaded_key);
 
     if (!identity_ok) {
         merror("https_client: re-enrolled, but the new identity failed validation; traffic stays paused.");
@@ -1603,7 +1685,7 @@ static int bridge_map_verify_mode(int agent_verify_mode)
     case AGENT_VERIFY_SYSTEM:
         return HC_VERIFY_SYSTEM;
     case AGENT_VERIFY_UNSET:
-        // ClientConf() always resolves this to system or certificate before returning;
+        // ClientConf() always resolves this to full, certificate or system before returning;
         // reaching here means some other path built agt->ssl without going through that
         // resolution step. Fail closed the same as an unrecognized value would, but say
         // so loudly instead of silently blending into the FULL default below.
@@ -1867,13 +1949,13 @@ static bool bridge_submit_sync_session(const char *session_id, const uint8_t *bu
 }
 #endif
 
-/* No internal-option gate: by the time AgentdStart() (and so this) runs,
- * client-agent/src/main.c has already refused to start the daemon at all
+/* client-agent/src/main.c already refused to start the daemon at all
  * (merror + mlerror_exit, a hard exit) unless agt->server[0] carries a
  * validated address; the port always has a default (DEFAULT_HTTPS_REMOTE_PORT)
- * when unspecified. HTTPS is the only transport on offer, so there is
- * nothing left to gate. */
-void w_https_client_start(void)
+ * when unspecified. That leaves address/port covered, but bridge_build_config()
+ * below still validates the rest of the transport config (e.g. the backoff
+ * base/cap pair), so this can still fail here and the caller must check. */
+bool w_https_client_start(void)
 {
     minfo("https_client: starting.");
 
@@ -1883,7 +1965,7 @@ void w_https_client_start(void)
 
     hc_config_t config;
     if (!bridge_build_config(&config)) {
-        return; /* bridge_build_config already logged the reason. */
+        return false; /* bridge_build_config already logged the reason. */
     }
 
     hc_callbacks_t callbacks;
@@ -1912,18 +1994,20 @@ void w_https_client_start(void)
     g_https_client = hc_create(&config, &callbacks);
     if (!g_https_client) {
         merror("https_client: failed to create the client instance.");
-        return;
+        return false;
     }
     if (!hc_start(g_https_client)) {
         merror("https_client: failed to start (configuration rejected).");
         hc_destroy(g_https_client);
         g_https_client = NULL;
-        return;
+        return false;
     }
 
 #ifdef WIN32
     asp_set_session_sender(bridge_submit_sync_session);
 #endif
+
+    return true;
 }
 
 void w_https_client_stop(void)
@@ -2000,7 +2084,8 @@ int w_https_client_submit_event(const char *frame, size_t length)
  * whether the full client is running (re-enroll, from bridge_reenroll_thread())
  * or does not exist yet (first boot, from start_agent.c, before
  * w_https_client_start() ever runs). */
-bool w_https_client_enroll(const char *body_json, const char *password, hc_enroll_result_t *result)
+bool w_https_client_enroll(const char *body_json, const char *password, const char *enroll_kid,
+                           const char *enroll_key_hex, hc_enroll_result_t *result)
 {
     hc_config_t config;
     bridge_build_transport_config(&config);
@@ -2014,7 +2099,56 @@ bool w_https_client_enroll(const char *body_json, const char *password, hc_enrol
     if (password) {
         strncpy(request.password, password, sizeof(request.password) - 1);
     }
+
+    /* Both or neither: the module mints the keyed bearer only when it has a `kid` AND a key, and
+     * half a credential would silently fall through to the password instead (#39064). */
+    if (enroll_kid && enroll_key_hex) {
+        strncpy(request.enroll_kid, enroll_kid, sizeof(request.enroll_kid) - 1);
+        strncpy(request.enroll_key_hex, enroll_key_hex, sizeof(request.enroll_key_hex) - 1);
+    }
+
     request.log = mtLoggingFunctionsWrapper;
 
     return hc_enroll(&config, &request, result);
+}
+
+/* Handle-less for the same reason w_https_client_enroll() is (#39315): it never reads or writes
+ * g_https_client, so it neither takes that lock nor cares whether the full client is running.
+ *
+ * The identity comes from the in-memory keystore, the same place bridge_build_config() reads it,
+ * so this request is signed with exactly what every other endpoint signs with. It is COPIED OUT
+ * under g_agent_keys_lock rather than borrowed: the caller (w_reenroll_secret_bootstrap) runs on a
+ * detached thread after a random wait of up to a minute, by which time the HTTPS client is up and
+ * a 401 may already have spawned the re-enrollment worker -- whose OS_UpdateKeys() frees the very
+ * strings this would otherwise be holding. What a concurrent re-enrollment costs after this copy
+ * is at worst a 401 (the key rotated under a request already in flight), which the caller logs and
+ * retries on the next start; before it, it cost a use-after-free. */
+bool w_https_client_fetch_reenroll_secret(hc_secret_result_t *result)
+{
+    hc_config_t config;
+    char agent_id[HC_MAX_ID] = {0};
+    char raw_key[HC_MAX_KEY] = {0};
+
+    bridge_build_transport_config(&config);
+
+    /* No usable identity means there is nothing to prove possession OF -- and an agent in that
+     * state has no use for a re-enrollment secret either. Not an error: a never-enrolled agent is
+     * simply not this call's subject. The same validation bridge_build_config() applies, for the
+     * same reason: a key that is not 64 lowercase hex chars cannot mint the bearer. Both the
+     * presence check and the validation run against the COPY, so neither can be invalidated by a
+     * reload between them. */
+    if (!bridge_copy_agent_identity(agent_id, sizeof(agent_id), raw_key, sizeof(raw_key)) ||
+        !bridge_key_is_valid(raw_key)) {
+        mdebug1("https_client: no usable client.keys entry; skipping the re-enrollment secret request.");
+        return false;
+    }
+
+    strncpy(config.agent_id, agent_id, sizeof(config.agent_id) - 1);
+    strncpy(config.agent_key, raw_key, sizeof(config.agent_key) - 1);
+
+    hc_secret_request_t request;
+    memset(&request, 0, sizeof(request));
+    request.log = mtLoggingFunctionsWrapper;
+
+    return hc_fetch_reenroll_secret(&config, &request, result);
 }

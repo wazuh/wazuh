@@ -1,3 +1,12 @@
+# Containerised agents against the devcontainer's manager (host.docker.internal = the host).
+#
+# Credentials come from an env file that create_token.sh writes (0600, outside the repo):
+#   sudo ./create_token.sh --env-file /tmp/wazuh-e2e-agents.env     # WAZUH_ENROLLMENT_TOKEN (5.x) + AUTHD_PASSWORD (4.x)
+#   docker compose --env-file /tmp/wazuh-e2e-agents.env -f docker-compose.yml up -d --build [service…]
+#   sudo ./verify_agents.sh --api                                    # PASS/FAIL per agent
+# `down -v` drops the volumes and therefore the enrolled keys; a plain `down` keeps them.
+# 4.x agents enroll through authd (1515, shared password); 5.x agents ONLY through POST /enroll
+# (1517) with the token, whose address already carries host, port and prefix — no MANAGER_* for them.
 name: dev-env-engine-agents
 
 x-agent-defaults: &agent_defaults
@@ -20,6 +29,7 @@ services:
       MANAGER_PORT: "1514"
       AUTHD_PORT: "1515"
       AGENT_NAME: "agent-4x-centos"
+      AUTHD_PASSWORD: "${AUTHD_PASSWORD:-}"
     volumes:
       - agent_4x_centos_var:/var/ossec
 
@@ -36,6 +46,7 @@ services:
       MANAGER_PORT: "1514"
       AUTHD_PORT: "1515"
       AGENT_NAME: "agent-4x-ubuntu"
+      AUTHD_PASSWORD: "${AUTHD_PASSWORD:-}"
     volumes:
       - agent_4x_ubuntu_var:/var/ossec
 
@@ -48,10 +59,8 @@ services:
     container_name: wazuh-agent-5x-centos
     hostname: wazuh-agent-5x-centos
     environment:
-      MANAGER_HOST: "host.docker.internal"
-      MANAGER_PORT: "1514"
-      AUTHD_PORT: "1515"
       AGENT_NAME: "agent-5x-centos"
+      WAZUH_ENROLLMENT_TOKEN: "${WAZUH_ENROLLMENT_TOKEN:-}"
     volumes:
       - agent_5x_centos_var:/var/ossec
 
@@ -64,10 +73,8 @@ services:
     container_name: wazuh-agent-5x-ubuntu
     hostname: wazuh-agent-5x-ubuntu
     environment:
-      MANAGER_HOST: "host.docker.internal"
-      MANAGER_PORT: "1514"
-      AUTHD_PORT: "1515"
       AGENT_NAME: "agent-5x-ubuntu"
+      WAZUH_ENROLLMENT_TOKEN: "${WAZUH_ENROLLMENT_TOKEN:-}"
     volumes:
       - agent_5x_ubuntu_var:/var/ossec
 

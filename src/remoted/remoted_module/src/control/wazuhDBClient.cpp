@@ -115,7 +115,9 @@ namespace remoted::control
 
             // Fail any callbacks left in the queue instead of silently dropping
             // them. Callbacks capture upstream state; leaking them means the
-            // upstream code will never learn the request completed.
+            // upstream code will never learn the request completed. Stopping, not
+            // Io: a clean shutdown drain is not a transport failure (same contract
+            // as the task client's drain).
             std::queue<Request> pending;
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -123,7 +125,7 @@ namespace remoted::control
             }
             while (!pending.empty())
             {
-                pending.front().callback(SocketError::Io, "");
+                pending.front().callback(SocketError::Stopping, "");
                 pending.pop();
             }
         }

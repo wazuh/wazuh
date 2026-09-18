@@ -105,4 +105,17 @@ int Privsep_SetGroup(gid_t gid);
 
 int Privsep_Chroot(const char *path) __attribute__((nonnull));
 
+/**
+ * @brief Raise the soft file descriptor limit up to `target`, never above the hard limit.
+ *
+ * The hard limit is left untouched, so no capability is needed and the call works after
+ * dropping privileges. A hard limit below `target` is kept and reported as a warning.
+ *
+ * @param target Soft limit wanted.
+ * @param option_name Internal option that carries `target`, named in the warning.
+ * @return Effective soft limit.
+ * @retval -1 getrlimit() or setrlimit() failed.
+ */
+long w_raise_nofile_limit(long target, const char *option_name) __attribute__((nonnull));
+
 #endif /* PRIV_H */

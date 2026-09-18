@@ -51,7 +51,7 @@ DEFAULT_BODY = default_body("1001")  # re-derived from --agent-id in main()
 # Must match AuthConfig's defaults (interface/authTypes.hpp) unless the manager
 # overrides them -- only used to pick offsets that reliably land on the wrong
 # side of each window.
-MAX_BODY_SIZE = 10 * 1024 * 1024  # AuthConfig default; transport cap (20 MiB) sits above it on purpose.
+MAX_BODY_SIZE = 5 * 1024 * 1024  # AuthConfig default; transport cap (10 MiB) sits above it on purpose.
 
 # Hardcoded in RestinioHttpServer.cpp's incoming_http_msg_limits(); not exposed
 # through HttpServerConfig, so these are fixed regardless of manager config.
@@ -59,7 +59,7 @@ MAX_URL_SIZE = 2048
 MAX_FIELD_NAME_SIZE = 256
 MAX_FIELD_VALUE_SIZE = 8192
 MAX_FIELD_COUNT = 64
-TRANSPORT_MAX_BODY_SIZE = 20 * 1024 * 1024  # httpServerConfig.cpp's DEFAULT_MAX_BODY_SIZE
+TRANSPORT_MAX_BODY_SIZE = 10 * 1024 * 1024  # httpServerConfig.cpp's DEFAULT_MAX_BODY_SIZE
 
 # Sentinel "expected status": these violations make RESTinio's HTTP parser
 # abort and close the connection outright (see RestinioHttpServer.cpp /
@@ -219,10 +219,12 @@ def scenario_ascii_key(agent_id, agent_key):
 
 
 def scenario_body_too_large(agent_id, agent_key):
-    # Between AuthConfig's body cap (10 MiB) and the transport's own hard cap
-    # (16 MiB, see httpServerConfig.cpp) on purpose: big enough for AuthMiddleware
+    # Between AuthConfig's body cap (5 MiB) and the transport's own hard cap
+    # (10 MiB, see httpServerConfig.cpp) on purpose: big enough for AuthMiddleware
     # to reject it with a clean 413, not so big RESTinio drops the connection
-    # first with no response at all.
+    # first with no response at all. Both caps moved in #39129 -- keep the two
+    # constants above in step with them or this scenario silently turns into
+    # scenario_transport_body_too_large and stops covering the 413 path at all.
     target = prefixed("/stateless")
     body = b"A" * (MAX_BODY_SIZE + 1024 * 1024)
     headers = auth_headers(agent_id, agent_key)
@@ -279,7 +281,7 @@ def scenario_payload_agent_mismatch(agent_id, agent_key):
 
 
 def scenario_transport_body_too_large(agent_id, agent_key):
-    # The transport's own hard cap (20 MiB) rather than AuthConfig's (10 MiB,
+    # The transport's own hard cap (10 MiB) rather than AuthConfig's (5 MiB,
     # see scenario_body_too_large): this one must never reach AuthMiddleware
     # at all, so it gets no clean 413 -- RESTinio drops the connection as
     # soon as it sees a too-large Content-Length, before any body is read.
@@ -320,9 +322,9 @@ def scenario_malformed_zstd(agent_id, agent_key):
 
 
 def scenario_zstd_body_beyond_the_auth_cap(agent_id, agent_key):
-    # auth_max_body_size (10 MiB) bounds the WIRE body only. A DECOMPRESSED body is bounded by the
+    # auth_max_body_size (5 MiB) bounds the WIRE body only. A DECOMPRESSED body is bounded by the
     # server's live in-flight capacity instead (max_inflight_bytes, 256 MiB by default), so a batch
-    # that decompresses well past 10 MiB is accepted -- that is the behavior change zstd support
+    # that decompresses well past 5 MiB is accepted -- that is the behavior change zstd support
     # introduced, and what this scenario pins down.
     #
     # There is deliberately no e2e scenario for the 413 that capacity exhaustion produces: with the

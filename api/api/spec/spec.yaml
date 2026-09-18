@@ -98,6 +98,15 @@ x-rbac-catalog:
         actions: ['agent:read']
         resources: ['agent:id:*']
         effect: "allow"
+    'agent:read_secrets':
+      description: "Read the agents' pre-shared keys -- the secrets stored in client.keys -- in clear"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: ['agent:read_secrets']
+        resources: ['agent:id:*']
+        effect: "allow"
     'agent:delete':
       description: "Delete agents"
       resources:
@@ -168,6 +177,30 @@ x-rbac-catalog:
         actions: ['agent:uninstall']
         resources: [ '*:*:*' ]
         effect: "allow"
+    'enrollment_token:create':
+      description: "Mint enrollment tokens (the credential a new agent pastes to enroll over HTTPS)"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['enrollment_token:create']
+        resources: ['*:*:*']
+        effect: "allow"
+    'enrollment_token:read':
+      description: "List enrollment tokens (their id, address, dates and uses; never their credential)"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['enrollment_token:read']
+        resources: ['*:*:*']
+        effect: "allow"
+    'enrollment_token:delete':
+      description: "Revoke enrollment tokens"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['enrollment_token:delete']
+        resources: ['*:*:*']
+        effect: "allow"
     'group:create':
       description: "Create new agent groups"
       resources:
@@ -208,6 +241,14 @@ x-rbac-catalog:
         actions: ['cluster:read']
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
+    'cluster:read_secrets':
+      description: "Read the sensitive configuration values -- the enrollment password and the cluster key -- in clear instead of masked"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/node:id'
+      example:
+        actions: ['cluster:read_secrets']
+        resources: ['node:id:master-node']
+        effect: "allow"
     'cluster:update_config':
       description: "Change the Wazuh's cluster node configuration"
       resources:
@@ -402,14 +443,23 @@ components:
             error: 6002
 
     RequestTooLargeResponse:
-      description: "Maximum request body size exceeded"
+      description: "The request body exceeded the size accepted for this endpoint. Two limits can
+      produce it. The general one is the `max_upload_size` setting of api.yaml, in bytes, which a
+      value of 0 disables. `POST /security/user/authenticate/run_as` is additionally bounded by a
+      fixed 8192-byte limit on its authorization context, which is not configurable and is **not**
+      lifted by setting `max_upload_size` to 0, so that endpoint can answer 413 for a body every
+      other endpoint would accept. The `detail` field names the limit that rejected the request.
+      A body is refused either at the `Content-Length` header, when the request announces it with
+      `Expect: 100-continue`, or while it is being read, which is why the reported size is the
+      declared one in the first case and the bytes read so far in the second"
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
             title: "Request Entity Too Large"
-            detail: "Maximum request body size 1048576 exceeded, actual body size 1225245"
+            detail: "Maximum content size limit (10485760) exceeded (10534912 bytes read)"
+            error: 413
 
     TooManyRequestsResponse:
       description: "Maximum number of request per minute reached"
@@ -671,6 +721,32 @@ components:
               items:
                 $ref: '#/components/schemas/AgentIdKey'
 
+    AllItemsResponseEnrollmentTokens:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/EnrollmentToken'
+
+    AllItemsResponseEnrollmentTokenIDs:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/EnrollmentTokenID'
+
     AllItemsResponseRoles:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -928,6 +1004,116 @@ components:
         key:
           type: string
           format: base64
+
+    EnrollmentTokenID:
+      type: string
+      description: "Enrollment token ID: 22 base64url characters"
+      pattern: '^[A-Za-z0-9_-]{22}$'
+      example: "AAECAwQFBgcICQoLDA0ODw"
+
+    EnrollmentTokenCreateBody:
+      type: object
+      required:
+        - address
+      properties:
+        address:
+          description: "Name (or IP) the agents connect to. Must be one of the names in the listener
+          certificate (`remote.https.certificate`); an address outside it is refused with error 1768"
+          type: string
+          format: alphanumeric_symbols
+          maxLength: 253
+        port:
+          description: "Listener port to write into the token when it differs from the configured one"
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 65535
+        prefix:
+          description: "URL prefix to write into the token when it differs from the configured one"
+          type: string
+          format: alphanumeric_symbols
+          maxLength: 256
+        ttl:
+          description: "Lifetime: seconds, or a number followed by `d`, `h`, `m` or `s`. Default: 30 days.
+          At most 315360000 seconds (3650 days): the expiry is stored as an absolute time, and a lifetime
+          beyond that cannot be represented"
+          type: string
+          maxLength: 32
+          format: timeframe
+        max_uses:
+          description: "Enrollments the token allows. 0 (the default) means unlimited"
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 4294967295
+        description:
+          description: "Free text shown when listing the tokens. Control characters (a newline included)
+          are refused: the description is written to the manager's log when the token is minted"
+          type: string
+          format: alphanumeric_symbols
+          maxLength: 256
+        embed_ca:
+          description: "Carry the CA certificate inside the token instead of its pin (no `/cacerts` fetch
+          by the agent)"
+          type: boolean
+          default: false
+        no_credential:
+          description: "Token without credential: address and pin only. It can point an agent at the
+          manager but cannot authenticate its enrollment"
+          type: boolean
+          default: false
+
+    EnrollmentTokenCreated:
+      type: object
+      required:
+        - token
+        - id
+        - address
+        - expires
+      properties:
+        token:
+          description: "The token text the agent pastes. Returned here only"
+          type: string
+        id:
+          $ref: '#/components/schemas/EnrollmentTokenID'
+        address:
+          type: string
+        expires:
+          type: string
+          format: date-time
+        pin_hex:
+          description: "SHA-256 of the CA's public key the token pins, in hex (absent when the CA is embedded)"
+          type: string
+
+    EnrollmentToken:
+      # No `required` list, like every other list-item schema: `select` strips fields and the API
+      # validates its own responses against this schema in the integration environment.
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/EnrollmentTokenID'
+        address:
+          type: string
+        created:
+          type: string
+          format: date-time
+        expires:
+          type: string
+          format: date-time
+        max_uses:
+          description: "Enrollments the token allows; 0 means unlimited"
+          type: integer
+        uses:
+          description: "Enrollments consumed so far"
+          type: integer
+        revoked:
+          type: boolean
+        credential:
+          description: "Whether the token carries a credential (a public, address-only token does not)"
+          type: boolean
+        description:
+          type: string
+          nullable: true
 
     AgentInsertBody:
       type: object
@@ -1708,6 +1894,10 @@ components:
                       allOf:
                         - $ref: '#/components/schemas/RemotedHttpResponseCounters'
                         - description: "`POST /enroll` — agent enrollment"
+                    cacerts:
+                      allOf:
+                        - $ref: '#/components/schemas/RemotedHttpResponseCounters'
+                        - description: "`GET /cacerts` — CA distribution (the 404 for a missing CA file lands in `other`)"
                 latency:
                   type: object
                   description: "End-to-end request duration per endpoint, in microseconds, from request receipt to response delivery. Percentiles are log-linear bucket estimates (~12.5% relative error). Only the endpoints whose latency answers a tuning question are measured"
@@ -1818,6 +2008,14 @@ components:
                           type: integer
                           format: int64
                           description: "Requests refused because the queue was full"
+                    rate_limited:
+                      type: integer
+                      format: int64
+                      description: "Enrollment requests refused with 429 by the endpoint's rate limit (`remote.https.enroll_rate_limit`), before the enrollment daemon was contacted. Counted in none of the outcomes above, since the request was never processed"
+                    rate_limit:
+                      allOf:
+                        - $ref: '#/components/schemas/RemotedRateLimit'
+                        - description: "The rate limit of `POST /enroll`"
                 control:
                   type: object
                   description: "The control plane: agent connection lifecycle and task dispatch over `POST /control`"
@@ -1958,6 +2156,14 @@ components:
                       type: integer
                       format: int64
                       description: "Requests shed because the budget was exhausted"
+                    connections_open:
+                      type: integer
+                      format: int64
+                      description: "Connections currently open on the HTTPS agent listener. Not the same as `inflight_requests`: a connection is held from accept to close, which for a streamed download is the whole transfer"
+                    connections_max:
+                      type: integer
+                      format: int64
+                      description: "Connections the listener accepts at once. Reaching it refuses nothing — the accept is postponed and the connection waits in the kernel backlog — so there is no rejection counter for this limit, and `connections_open` against this value is the only way to see it being approached"
                 downloads:
                   type: object
                   description: "File downloads served to agents over `POST /download`. Everything is counted when the transfer is offered, so an aborted transfer still counts its offered bytes"
@@ -1982,6 +2188,42 @@ components:
                       type: integer
                       format: int64
                       description: "Bytes offered across all started downloads"
+                tls:
+                  type: object
+                  description: "The HTTPS listener's own certificate. `cert_expiry_days` is evaluated when the listener starts and every 24 hours afterwards; `ca_matches_leaf` reflects the CA file as it was last read. Both read `0` while the listener is down"
+                  properties:
+                    cert_expiry_days:
+                      type: integer
+                      format: int64
+                      description: "Days until the served TLS certificate expires; negative once it has expired"
+                    ca_matches_leaf:
+                      type: integer
+                      format: int64
+                      description: "`1` when the configured CA (`remote.https.ca_certificate`, served on `GET /cacerts`) signs the served certificate; `0` when it does not, or when the last successful read yielded no certificate. A read that fails after a good one keeps that bundle's verdict"
+                cacerts:
+                  type: object
+                  description: "Outcomes of `GET /cacerts`, the unauthenticated route that hands agents the CA that signs the listener certificate"
+                  properties:
+                    served:
+                      type: integer
+                      format: int64
+                      description: "Requests answered 200 with the CA PEM"
+                    not_found:
+                      type: integer
+                      format: int64
+                      description: "Requests answered 404 because the CA file is missing, unreadable or carries no certificate"
+                    ca_mismatch:
+                      type: integer
+                      format: int64
+                      description: "Requests refused with 503 because the configured CA does not sign the served certificate"
+                    rate_limited:
+                      type: integer
+                      format: int64
+                      description: "Requests refused with 429 by the endpoint's rate limit (`remote.https.cacerts_rate_limit`), before the CA was read. Counted in none of the outcomes above"
+                    rate_limit:
+                      allOf:
+                        - $ref: '#/components/schemas/RemotedRateLimit'
+                        - description: "The rate limit of `GET /cacerts`"
                 vd_scan:
                   type: object
                   description: "On-demand vulnerability scan requests admitted from agents over `POST /scan/vd`"
@@ -2049,6 +2291,10 @@ components:
           type: integer
           format: int64
           description: "The request body exceeded the size the endpoint accepts"
+        '429':
+          type: integer
+          format: int64
+          description: "The request was refused by the endpoint's rate limit before it was handled. Only `enroll` and `cacerts` carry a rate limit, so this cell is `0` for every other endpoint"
         '500':
           type: integer
           format: int64
@@ -2061,6 +2307,27 @@ components:
           type: integer
           format: int64
           description: "Responses with any other status"
+
+    RemotedRateLimit:
+      type: object
+      description: |
+        The live state of one endpoint's rate limit. The bucket belongs to the **endpoint**, not to
+        the caller: `limit` is a ceiling on what this manager serves, shared by every agent, so a
+        single client asking fast enough can consume it. Refusals are reported as that endpoint's
+        `rate_limited` counter and as its `429` response cell.
+      properties:
+        limit:
+          type: integer
+          format: int64
+          description: "Requests per second this manager node serves on the endpoint. Each node runs its own limiter, so a cluster of N nodes admits up to N times this rate. `0` when the limit is disabled"
+        burst:
+          type: integer
+          format: int64
+          description: "Requests servable back to back before `limit` paces them"
+        available:
+          type: integer
+          format: int64
+          description: "Allowance left unspent right now. Near `0` means the endpoint is at its ceiling and further requests are being refused"
 
     RemotedHistogramSummary:
       type: object
@@ -2274,6 +2541,9 @@ components:
                                 update-keepalive:
                                   type: integer
                                   format: int32
+                                set-agent-credentials:
+                                  type: integer
+                                  format: int32
                             belongs:
                               type: object
                               properties:
@@ -2426,6 +2696,9 @@ components:
                                   type: integer
                                   format: int32
                                 update-keepalive:
+                                  type: integer
+                                  format: int32
+                                set-agent-credentials:
                                   type: integer
                                   format: int32
                             belongs:
@@ -2736,6 +3009,13 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/AgentID'
+    token_id:
+      in: path
+      name: token_id
+      description: "Enrollment token ID"
+      required: true
+      schema:
+        $ref: '#/components/schemas/EnrollmentTokenID'
     agent_name:
       in: query
       name: agent_name
@@ -3930,7 +4210,7 @@ paths:
       description: "Return the key of an agent"
       operationId: api.controllers.agent_controller.get_agent_key
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/agent:read_secrets'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4518,6 +4798,229 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '403':
           $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/enrollment-tokens:
+    post:
+      tags:
+        - Agents
+      summary: "Create enrollment token"
+      description: "Mint an enrollment token: the credential a new agent pastes to enroll over the
+      HTTPS agent API (`POST /enroll` on the manager's port 1517) without the shared enrollment
+      password. The token names the manager (`address`, which must be one of the names in the
+      listener certificate, `remote.https.certificate`) and pins its CA; unless `no_credential` is set
+      it also carries a random secret the agent signs its enrollment with. The `token` text is
+      returned in this response only and never listed again. Tokens are minted on the master node"
+      operationId: api.controllers.agent_controller.create_enrollment_token
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/enrollment_token:create'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollmentTokenCreateBody'
+            example:
+              address: wazuh-manager.example.com
+              ttl: "12h"
+              max_uses: 50
+              description: "Web tier rollout"
+      responses:
+        '200':
+          description: "Enrollment token minted"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EnrollmentTokenCreated'
+              example:
+                data:
+                  token: "eyJ2ZXIiOjEsImFkciI6IndhenVoLW1hbmFnZXIuZXhhbXBsZS5jb206MTUxNyIsInBpbiI6IllKSGNObVh0WG9NOGpaUmZrLXVfRkxOd0lNenVkek5PUkplc0x2TlpDcUkiLCJrZXkiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R4QVJFaE1VRlJZWEdCa2FHeHdkSGg4In0"
+                  id: "AAECAwQFBgcICQoLDA0ODw"
+                  address: "wazuh-manager.example.com"
+                  expires: "2026-09-09T05:12:40+00:00"
+                  pin_hex: "6091dc3665ed5e833c8d945f93ebbf14b37020ccee77334e4497ac2ef3590aa2"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    get:
+      tags:
+        - Agents
+      summary: "List enrollment tokens"
+      description: "List the enrollment tokens the manager has minted: id, address, creation and expiry,
+      allowed and consumed uses, whether each is revoked and whether it carries a credential. The
+      token text and its credential are never returned"
+      operationId: api.controllers.agent_controller.get_enrollment_tokens
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/enrollment_token:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Enrollment tokens"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseEnrollmentTokens'
+              example:
+                data:
+                  affected_items:
+                    - id: "AAECAwQFBgcICQoLDA0ODw"
+                      address: "wazuh-manager.example.com"
+                      created: "2026-09-08T17:12:40+00:00"
+                      expires: "2026-09-09T05:12:40+00:00"
+                      max_uses: 50
+                      uses: 3
+                      revoked: false
+                      credential: true
+                      description: "Web tier rollout"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "All enrollment tokens were returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    delete:
+      tags:
+        - Agents
+      summary: "Purge enrollment tokens"
+      description: "Remove enrollment tokens from the manager's store. This is not the same as revoking
+      one: a revoked token stays listed with `revoked: true`, a purged one is gone. `status=dead`, the
+      default, removes only the tokens that can no longer authorise an enrollment (revoked, expired or
+      out of uses) and never touches a usable one; `status=all` empties the store, the tokens still in
+      use included. The store is written on the master node"
+      operationId: api.controllers.agent_controller.delete_enrollment_tokens
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/enrollment_token:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - name: status
+          in: query
+          description: "Which tokens to remove"
+          schema:
+            type: string
+            enum:
+              - dead
+              - all
+            default: dead
+          required: false
+      responses:
+        '200':
+          description: "Tokens purged"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseEnrollmentTokenIDs'
+              example:
+                data:
+                  affected_items:
+                    - "9-hPuHF4TgWl2WBjPP0lqQ"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "Enrollment tokens were purged"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/enrollment-tokens/{token_id}:
+    delete:
+      tags:
+        - Agents
+      summary: "Revoke enrollment token"
+      description: "Revoke an enrollment token. A revoked token enrolls nobody from that moment on
+      (the managers refuse it with a 401 of class `token_revoked`) and stays listed with
+      `revoked: true`. Revoking an already revoked token succeeds again"
+      operationId: api.controllers.agent_controller.delete_enrollment_token
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/enrollment_token:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/token_id'
+      responses:
+        '200':
+          description: "Enrollment token revoked"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseEnrollmentTokenIDs'
+              example:
+                data:
+                  affected_items:
+                    - "AAECAwQFBgcICQoLDA0ODw"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "Enrollment token was revoked"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -5196,6 +5699,8 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5619,6 +6124,7 @@ paths:
       operationId: api.controllers.cluster_controller.get_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_secrets'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6186,6 +6692,7 @@ paths:
       operationId: api.controllers.cluster_controller.get_configuration_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_secrets'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6230,6 +6737,7 @@ paths:
                           certificate: etc/certs/remoted.pem
                           key: etc/certs/remoted-key.pem
                           ca: ''
+                          ca_certificate: etc/certs/root-ca.pem
                         agents:
                           allow_higher_versions: false
                       cluster:
@@ -6381,11 +6889,11 @@ paths:
                         http_server:
                           timestamp: 2022-07-21T10:48:32Z
                           responses:
-                            stateless: { total: 98220, '2xx': 98213, '400': 2, '403': 0, '409': 0, '413': 1, '500': 0, '503': 4, other: 0 }
-                            stateful: { total: 4102, '2xx': 4100, '400': 0, '403': 0, '409': 2, '413': 0, '500': 0, '503': 0, other: 0 }
-                            stats: { total: 512, '2xx': 512, '400': 0, '403': 0, '409': 0, '413': 0, '500': 0, '503': 0, other: 0 }
-                            config: { total: 512, '2xx': 512, '400': 0, '403': 0, '409': 0, '413': 0, '500': 0, '503': 0, other: 0 }
-                            enroll: { total: 37, '2xx': 34, '400': 1, '403': 2, '409': 0, '413': 0, '500': 0, '503': 0, other: 0 }
+                            stateless: { total: 98220, '2xx': 98213, '400': 2, '403': 0, '409': 0, '413': 1, '429': 0, '500': 0, '503': 4, other: 0 }
+                            stateful: { total: 4102, '2xx': 4100, '400': 0, '403': 0, '409': 2, '413': 0, '429': 0, '500': 0, '503': 0, other: 0 }
+                            stats: { total: 512, '2xx': 512, '400': 0, '403': 0, '409': 0, '413': 0, '429': 0, '500': 0, '503': 0, other: 0 }
+                            config: { total: 512, '2xx': 512, '400': 0, '403': 0, '409': 0, '413': 0, '429': 0, '500': 0, '503': 0, other: 0 }
+                            enroll: { total: 37, '2xx': 34, '400': 1, '403': 2, '409': 0, '413': 0, '429': 0, '500': 0, '503': 0, other: 0 }
                           latency:
                             stateless: { count: 98213, sum: 210394821, min: 312, max: 90210, p50: 1830, p90: 4110, p99: 9920 }
                             stateful: { count: 4100, sum: 31201400, min: 1204, max: 42109, p50: 6810, p90: 12300, p99: 28100 }
@@ -6412,6 +6920,8 @@ paths:
                             authd_error: 0
                             authd_unavailable: 0
                             authd_queue: { depth: 0, capacity: 128, rejected_total: 0 }
+                            rate_limited: 0
+                            rate_limit: { limit: 100, burst: 200, available: 200 }
                           control:
                             startup: 34
                             notify: 421337
@@ -6443,6 +6953,8 @@ paths:
                             available_bytes: 67099136
                             inflight_bytes: 9728
                             inflight_requests: 3
+                            connections_open: 12
+                            connections_max: 256
                             rejected_total: 0
                           downloads:
                             started: 12
@@ -6782,6 +7294,7 @@ paths:
       operationId: api.controllers.cluster_controller.get_node_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_secrets'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8001,6 +8514,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 

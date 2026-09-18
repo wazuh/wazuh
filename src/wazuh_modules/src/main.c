@@ -124,15 +124,11 @@ int main(int argc, char **argv)
     os_free(home_path);
 
 #ifdef CLIENT
-    int nofile = getDefine_Int("wazuh_modules", "rlimit_nofile", 8192, 1048576);
+    const int nofile = getDefine_Int("wazuh_modules", "rlimit_nofile", 8192, 1048576);
 #else
-    int nofile = getDefine_Int_default("wazuh_modules", "rlimit_nofile", 8192, 1048576, 8192);
+    const int nofile = getDefine_Int_default("wazuh_modules", "rlimit_nofile", 8192, 1048576, 65536);
 #endif
-    struct rlimit rlimit = { .rlim_cur=(rlim_t)nofile, .rlim_max=(rlim_t)nofile };
-
-    if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
-        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
-    }
+    w_raise_nofile_limit(nofile, "wazuh_modules.rlimit_nofile");
 
 #ifdef WAZUH_RUNTIME_USER
     wm_drop_privileges(runtime_user);

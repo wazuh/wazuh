@@ -19,7 +19,7 @@ extern "C" {
 /**
  * @brief Initializes the fimebpf instance with pointers to the C functions.
  *
- * @param fim_conf Pointer to fim_configuration_directory.
+ * @param fim_conf Pointer to the whodata-enabled lookup for a path.
  * @param getUser Pointer to get_user.
  * @param getGroup Pointer to get_group.
  * @param fimWhodataEvent Pointer to fim_whodata_event.
@@ -27,7 +27,7 @@ extern "C" {
  * @param loggingFn Pointer to loggingFunction.
  * @param abspathFn Pointer to abspath.
  */
-void fimebpf_initialize(directory_t *(*fim_conf)(const char *, bool),
+void fimebpf_initialize(bool (*fim_conf)(const char *),
                         char *(*getUser)(int),
                         char *(*getGroup)(int),
                         void (*fimWhodataEvent)(whodata_evt *),

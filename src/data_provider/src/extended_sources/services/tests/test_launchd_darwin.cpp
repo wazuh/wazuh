@@ -11,6 +11,10 @@
 
 #include "launchd_darwin.hpp"
 #include "gtest/gtest.h"
+#include <filesystem>
+#include <fstream>
+#include <unistd.h>
+#include <cstdint>
 
 class LaunchdProviderTest : public ::testing::Test
 {
@@ -188,4 +192,181 @@ TEST_F(LaunchdProviderTest, TestServiceNameExtractionFromPath)
             ASSERT_TRUE(path.find(name) != std::string::npos);
         }
     }
+}
+
+/// Fixture-backed tests. parsePlistFile reads the file through CoreFoundation rather than through
+/// the filesystem wrapper, so the plists below are written to a real temporary directory and the
+/// provider is pointed at it.
+class LaunchdFixtureTest : public ::testing::Test
+{
+    protected:
+        std::filesystem::path m_jobsDir;
+        std::filesystem::path m_overridesDir;
+
+        void SetUp() override
+        {
+            const auto base = std::filesystem::temp_directory_path() /
+                              ("launchd_test_" + std::to_string(::getpid()) + "_" +
+                               std::to_string(reinterpret_cast<uintptr_t>(this)));
+            m_jobsDir = base / "jobs";
+            m_overridesDir = base / "overrides";
+            std::filesystem::create_directories(m_jobsDir);
+            std::filesystem::create_directories(m_overridesDir);
+        }
+
+        void TearDown() override
+        {
+            std::error_code ec;
+            std::filesystem::remove_all(m_jobsDir.parent_path(), ec);
+        }
+
+        /// Writes an XML plist whose root dictionary holds the given body.
+        void writePlist(const std::filesystem::path& dir, const std::string& name, const std::string& body)
+        {
+            std::ofstream out(dir / name);
+            out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                << "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
+                << "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
+                << "<plist version=\"1.0\"><dict>\n" << body << "\n</dict></plist>\n";
+        }
+
+        /// Always points the provider at the fixture override directory, empty unless a test
+        /// writes to it, so no test inherits the host's real override database.
+        nlohmann::json collectFrom()
+        {
+            LaunchdProvider provider(nullptr, {m_jobsDir.string()}, m_overridesDir.string());
+            return provider.collect();
+        }
+
+        static nlohmann::json findByLabel(const nlohmann::json& all, const std::string& label)
+        {
+            for (const auto& service : all)
+            {
+                if (service["label"] == label)
+                {
+                    return service;
+                }
+            }
+
+            return nlohmann::json{};
+        }
+};
+
+TEST_F(LaunchdFixtureTest, DisabledBooleanIsRenderedAsWords)
+{
+    writePlist(m_jobsDir, "on.plist",
+               "<key>Label</key><string>com.test.on</string><key>Disabled</key><false/>");
+    writePlist(m_jobsDir, "off.plist",
+               "<key>Label</key><string>com.test.off</string><key>Disabled</key><true/>");
+
+    const auto all = collectFrom();
+    ASSERT_EQ(all.size(), 2u);
+    EXPECT_EQ(findByLabel(all, "com.test.on")["disabled"], "false");
+    EXPECT_EQ(findByLabel(all, "com.test.off")["disabled"], "true");
+}
+
+TEST_F(LaunchdFixtureTest, DisabledSpelledAsNumberIsCaptured)
+{
+    writePlist(m_jobsDir, "num.plist",
+               "<key>Label</key><string>com.test.num</string><key>Disabled</key><integer>1</integer>");
+
+    const auto all = collectFrom();
+    ASSERT_EQ(all.size(), 1u);
+    EXPECT_EQ(all[0]["disabled"], "1");
+}
+
+TEST_F(LaunchdFixtureTest, DisabledConditionalIsFlaggedAsUnevaluated)
+{
+    writePlist(m_jobsDir, "cond.plist",
+               "<key>Label</key><string>com.test.cond</string>"
+               "<key>Disabled</key><dict><key>#Then</key><true/></dict>");
+
+    const auto all = collectFrom();
+    ASSERT_EQ(all.size(), 1u);
+    // Distinguishable from an absent key, which is empty and means enabled.
+    EXPECT_EQ(all[0]["disabled"], LAUNCHD_UNEVALUATED_VALUE);
+}
+
+TEST_F(LaunchdFixtureTest, AbsentDisabledKeyStaysEmpty)
+{
+    writePlist(m_jobsDir, "plain.plist", "<key>Label</key><string>com.test.plain</string>");
+
+    const auto all = collectFrom();
+    ASSERT_EQ(all.size(), 1u);
+    EXPECT_EQ(all[0]["disabled"], "");
+}
+
+TEST_F(LaunchdFixtureTest, InetdCompatibilityDictionaryMarksTheJob)
+{
+    writePlist(m_jobsDir, "inetd.plist",
+               "<key>Label</key><string>com.test.inetd</string>"
+               "<key>inetdCompatibility</key><dict><key>Wait</key><false/></dict>");
+
+    const auto all = collectFrom();
+    ASSERT_EQ(all.size(), 1u);
+    EXPECT_EQ(all[0]["inetd_compatibility"], "true");
+}
+
+TEST_F(LaunchdFixtureTest, ProgramFallsBackToFirstProgramArgument)
+{
+    writePlist(m_jobsDir, "args.plist",
+               "<key>Label</key><string>com.test.args</string>"
+               "<key>ProgramArguments</key><array>"
+               "<string>/usr/bin/tool</string><string>--flag</string></array>");
+
+    const auto all = collectFrom();
+    ASSERT_EQ(all.size(), 1u);
+    EXPECT_EQ(all[0]["program"], "/usr/bin/tool");
+    EXPECT_EQ(all[0]["program_arguments"], "/usr/bin/tool --flag");
+}
+
+TEST_F(LaunchdFixtureTest, ProgramKeyWinsOverProgramArguments)
+{
+    writePlist(m_jobsDir, "both.plist",
+               "<key>Label</key><string>com.test.both</string>"
+               "<key>Program</key><string>/usr/bin/real</string>"
+               "<key>ProgramArguments</key><array><string>/usr/bin/other</string></array>");
+
+    const auto all = collectFrom();
+    ASSERT_EQ(all.size(), 1u);
+    EXPECT_EQ(all[0]["program"], "/usr/bin/real");
+}
+
+TEST_F(LaunchdFixtureTest, OverrideDatabaseOutranksThePlistBothWays)
+{
+    writePlist(m_jobsDir, "a.plist",
+               "<key>Label</key><string>com.test.a</string>");
+    writePlist(m_jobsDir, "b.plist",
+               "<key>Label</key><string>com.test.b</string><key>Disabled</key><true/>");
+    writePlist(m_overridesDir, "disabled.plist",
+               "<key>com.test.a</key><true/><key>com.test.b</key><false/>");
+
+    const auto all = collectFrom();
+    ASSERT_EQ(all.size(), 2u);
+    // launchctl disable on a job whose plist says nothing.
+    EXPECT_EQ(findByLabel(all, "com.test.a")["disabled"], "true");
+    // launchctl enable on a job whose plist ships disabled.
+    EXPECT_EQ(findByLabel(all, "com.test.b")["disabled"], "false");
+}
+
+TEST_F(LaunchdFixtureTest, AnyDomainDisablingWins)
+{
+    writePlist(m_jobsDir, "c.plist", "<key>Label</key><string>com.test.c</string>");
+    writePlist(m_overridesDir, "disabled.plist", "<key>com.test.c</key><false/>");
+    writePlist(m_overridesDir, "disabled.501.plist", "<key>com.test.c</key><true/>");
+
+    const auto all = collectFrom();
+    ASSERT_EQ(all.size(), 1u);
+    EXPECT_EQ(all[0]["disabled"], "true");
+}
+
+TEST_F(LaunchdFixtureTest, MissingOverrideDirectoryLeavesThePlistUntouched)
+{
+    writePlist(m_jobsDir, "d.plist",
+               "<key>Label</key><string>com.test.d</string><key>Disabled</key><true/>");
+    std::filesystem::remove_all(m_overridesDir);
+
+    const auto all = collectFrom();
+    ASSERT_EQ(all.size(), 1u);
+    EXPECT_EQ(all[0]["disabled"], "true");
 }

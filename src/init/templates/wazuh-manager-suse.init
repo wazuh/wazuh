@@ -48,11 +48,28 @@ rc_reset
 WAZUH_HOME=WAZUH_HOME_TMP
 WAZUH_CONTROL="$WAZUH_HOME/bin/wazuh-manager-control"
 
+# Raise the soft file descriptor limit to the 65536 wazuh-manager.service uses, without lowering
+# a higher limit already granted; below that ceiling, keep what the host allows and say so.
+raise_nofile() {
+    soft=$(ulimit -Sn)
+    hard=$(ulimit -Hn)
+    if [ "$soft" = "unlimited" ] || [ "$soft" -ge 65536 ] 2>/dev/null; then
+        return 0
+    fi
+    if [ "$hard" = "unlimited" ] || [ "$hard" -ge 65536 ] 2>/dev/null; then
+        ulimit -Sn 65536
+    else
+        ulimit -Sn "$hard"
+        echo "wazuh-manager: file descriptor limit is $hard, below 65536; raise it with ulimit -n or LimitNOFILE" >&2
+    fi
+}
+
 test -x $WAZUH_CONTROL || { echo "$WAZUH_CONTROL not installed";
     if [ "$1" = "stop" ]; then exit 0;
     else exit 5; fi; }
 
 start() {
+    raise_nofile
     ${WAZUH_CONTROL} start
 }
 

@@ -40,7 +40,7 @@ static const char *global_db_agent_fields[] = {
 
 static const char *SQL_VACUUM_INTO = "VACUUM INTO ?;";
 
-int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add) {
+int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* reenroll_secret, char* group, int date_add) {
     sqlite3_stmt *stmt = NULL;
 
     // Validate group names before inserting
@@ -94,11 +94,17 @@ int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* regi
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_int(stmt, 6, date_add) != SQLITE_OK) {
+    /* NULL for every agent not enrolled through authd's local `add` (client.keys mirroring, legacy
+     * 1515, older records): the column is read by the re-enrollment path only (#38993). */
+    if (sqlite3_bind_text(stmt, 6, reenroll_secret, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_int(stmt, 7, date_add) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_text(stmt, 7, group, -1, NULL) != SQLITE_OK) {
+    if (sqlite3_bind_text(stmt, 8, group, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -221,6 +227,45 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
         return OS_INVALID;
     }
     if (sqlite3_bind_int(stmt, 3, id) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    return wdb_exec_stmt_silent(stmt);
+}
+
+int wdb_global_set_agent_credentials(wdb_t *wdb, int id, const char *name, const char *register_ip, const char *internal_key, const char *reenroll_secret) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SET_AGENT_CREDENTIALS) < 0) {
+        mdebug1("Cannot cache statement");
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_SET_AGENT_CREDENTIALS];
+
+    if (sqlite3_bind_text(stmt, 1, name, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_text(stmt, 2, register_ip, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_text(stmt, 3, internal_key, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_text(stmt, 4, reenroll_secret, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_int(stmt, 5, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -1061,7 +1106,7 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
                         if (!wdb_global_agent_exists(wdb, id)) {
                             // Create agent in never_connected state
                             const char *ip = "0.0.0.0";
-                            if (OS_INVALID == wdb_global_insert_agent(wdb, id, (char*)create_agent_name, (char*)ip, (char*)ip, NULL, NULL, time(NULL))) {
+                            if (OS_INVALID == wdb_global_insert_agent(wdb, id, (char*)create_agent_name, (char*)ip, (char*)ip, NULL, NULL, NULL, time(NULL))) {
                                 mdebug1("Unable to create agent '%d' in never_connected state", id);
                                 result = WDBC_ERROR;
                             } else {

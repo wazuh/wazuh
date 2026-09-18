@@ -253,13 +253,16 @@ static void wm_task_manager_read_remoted(wm_task_manager *data) {
 
     cJSON_Delete(section);
 
-    /* The seven fields Read_Remote_JSON() can allocate. Everything else in the struct is scalar. */
+    /* The eight fields Read_Remote_JSON() can allocate. Everything else in the struct is scalar.
+     * https.ca_certificate is easy to miss because it is the only one this module never reads --
+     * it is allocated all the same, once per modulesd start. */
     os_free(remoted_config.lip);
     os_free(remoted_config.https.bind_addr);
     os_free(remoted_config.https.global_prefix);
     os_free(remoted_config.https.certificate);
     os_free(remoted_config.https.key);
     os_free(remoted_config.https.ca);
+    os_free(remoted_config.https.ca_certificate);
     os_free(remoted_config.https.ciphers);
 }
 

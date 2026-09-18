@@ -9,7 +9,7 @@ It serves two channels at once, and they share almost nothing:
 
 ## Key Features
 
-- **HTTPS agent API**: TLS 1.3 listener with per-agent JWT bearer authentication (`wazuh-agent+jwt`, HS256 with the agent's `client.keys` key), serving nine agent-facing routes (enrollment, events, state sync, control, file download, reporting)
+- **HTTPS agent API**: TLS 1.3 listener with per-agent JWT bearer authentication (`wazuh-agent+jwt`, HS256 with the agent's `client.keys` key), serving ten agent-facing routes (CA distribution, enrollment, events, state sync, control, file download, reporting)
 - **Back-pressure**: capacity bounded by an in-flight byte budget and a deferred-work limiter rather than a fixed queue, shedding excess load with `503`
 - **Group Management**: dynamic agent group assignment and centralized configuration distribution
 - **Legacy compatibility** *(opt-in)*: TCP and UDP transports, AES message decryption, keep-alive metadata extraction and event batching for 4.x agents
@@ -17,7 +17,7 @@ It serves two channels at once, and they share almost nothing:
 ## Components
 
 - [Architecture](architecture.md) - Overview of remoted's internal architecture
-- [HTTPS Agent API](https-events-api.md) - The agent-facing protocol: TLS, JWT bearer authentication, and all nine endpoints
+- [HTTPS Agent API](https-events-api.md) - The agent-facing protocol: TLS, JWT bearer authentication, and all ten endpoints
 - [Endpoint reference](agent-api-reference.html) - The same contract as OpenAPI (source: [`agent-api.yaml`](agent-api.yaml))
 - [Load balancers](load-balancers/README.md) - Deploying the HTTPS agent API behind a load balancer or reverse proxy ([NGINX](load-balancers/nginx.md), [HAProxy](load-balancers/haproxy.md))
 - [Configuration](configuration.md) - Configuration options and tuning parameters
@@ -25,6 +25,7 @@ It serves two channels at once, and they share almost nothing:
 - [Metrics](metrics.md) - The HTTPS agent server's metric catalog, each metric linked to the setting it helps size
 - [Stateless Metadata](stateless-metadata.md) - Agent metadata enrichment for stateless events (legacy channel)
 - [Event Protocol](event-protocol.md) - Event framing and message format specification
+- [Quick Reference](quick-reference.md) - Commands, counters and starting-point settings for both channels
 
 ## Overview
 
@@ -50,7 +51,7 @@ agent-facing HTTPS endpoint — neither is ever exposed on the public listener.
 |---|---|
 | `GET /` | `200` `{"status":"ok","module":"remoted_module"}` |
 | `GET /metrics` | `200` — JSON dump of every metric family the module keeps (request outcomes and latency per endpoint, auth-rejection and downstream-failure taxonomies, backpressure, keystore health, ...) — see [Metrics](metrics.md) for the full catalog and the settings each metric relates to |
-| `GET /status` | `200` — readiness, not bare liveness: `ready` reflects whether an enrollment password key is currently available, when enrollment is administratively enabled and Password-mode enrollment is on; it is `true` whenever remoted answers at all if either flag is off. `{"ready":true,"enrollment_password":{"ready":true},"keystore":{"readable":true,"agents_loaded":12,"entries_skipped":0}}` (`enrollment_password` is omitted entirely unless both flags are on). `keystore` reports whether `client.keys` last reloaded successfully — informational only, it never gates `ready`, since remoted cannot tell an empty-but-fine `client.keys` apart from a stale one still serving the old table. This is what `GET /cluster/{node_id}/status` embeds under `wazuh-manager-remoted` |
+| `GET /status` | `200` — readiness, not bare liveness: `ready` reflects whether an enrollment password key is currently available, when enrollment is administratively enabled and Password-mode enrollment is on; it is `true` whenever remoted answers at all if either flag is off. `{"ready":true,"enrollment_password":{"ready":true},"keystore":{"readable":true,"agents_loaded":12,"entries_skipped":0},"enrollment_tokens":{"loaded":3,"last_reload_ok":true}}` (`enrollment_password` is omitted entirely unless both flags are on). `keystore` reports whether `client.keys` last reloaded successfully — informational only, it never gates `ready`, since remoted cannot tell an empty-but-fine `client.keys` apart from a stale one still serving the old table. `enrollment_tokens` does the same for the replica of `etc/enrollment_tokens.json` that verifies enrollment-token bearers (`loaded` = credential-bearing tokens in the replica; an absent file is a valid empty replica): informational, never gates `ready`. This is what `GET /cluster/{node_id}/status` embeds under `wazuh-manager-remoted` |
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics

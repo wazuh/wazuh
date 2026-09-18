@@ -272,7 +272,12 @@ the batch drained. What waits now is a dispatcher lane, which is built to.
 A deletion has to be complete when it runs: an index that does not exist counts as success (so
 repeating a deletion is harmless), while a per-shard failure or a skipped document (a version
 conflict, which `conflicts: "proceed"` counts separately) fails it instead of passing as success,
-because with the agent gone nothing would ever overwrite what was missed. A failure is answered as a
+because with the agent gone nothing would ever overwrite what was missed. A version conflict clears
+itself once the index refreshes, so it is first retried inside an allowance shared by the whole
+flush — bounded by an attempt count and by the same wall clock as the rest of the flush — and only
+fails the deletion if it survives that; see the [connector reference](../indexer_connector/README.md)
+for the allowance. That is why a deletion can take a few seconds longer than the single POST per
+index this lane otherwise implies. A failure is answered as a
 non-2xx, and the dispatcher retries it — against a task type with no attempt budget, so it retries
 until it succeeds.
 

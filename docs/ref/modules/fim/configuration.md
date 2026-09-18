@@ -297,6 +297,16 @@ Registry entries to exclude from processing. Ignored keys and values are skipped
 <registry_ignore type="sregex">\Enum$</registry_ignore>
 ```
 
+Plain entries are matched as a **case-insensitive prefix**, so one entry covers the whole subtree
+below it, and the key is skipped before it is opened. `type="sregex"` uses `OSMatch`, which supports
+only `|` (alternatives), `^` (prefix), `$` (suffix) and plain substrings: there are no character
+classes and no wildcards, and an `sregex` entry applies to **every** monitored registry entry, not
+only to the one it was written for.
+
+The `arch` of an ignore entry must equal the `arch` of the `<windows_registry>` entry it is meant to
+filter, and both default to `32bit`. An ignore written with `arch="64bit"` alone never matches a
+monitored entry left at the default, and nothing warns about it.
+
 ---
 
 ### registry_limit (Windows only)
@@ -701,6 +711,14 @@ For environments that require full audit trails on critical configuration files:
   <!-- Ignore noisy or known-changing entries -->
   <registry_ignore>HKEY_LOCAL_MACHINE\Security\Policy\Secrets</registry_ignore>
   <registry_ignore type="sregex">\Enum$</registry_ignore>
+  <registry_ignore type="sregex">\Performance$</registry_ignore>
+
+  <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\bam\State</registry_ignore>
+  <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\dam\State</registry_ignore>
+  <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Tcpip\Parameters\Interfaces</registry_ignore>
+  <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Tcpip6\Parameters\Interfaces</registry_ignore>
+  <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\W32Time\SecureTimeLimits</registry_ignore>
+  <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\SharedAccess\Epoch</registry_ignore>
 
   <registry_limit>
     <enabled>yes</enabled>

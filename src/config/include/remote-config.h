@@ -54,11 +54,28 @@
 #define REMOTED_HTTPS_DUAL_STACK_YES   1 ///< Force dual-stack on (IPV6_V6ONLY=0): also accept IPv4
 #define REMOTED_HTTPS_DUAL_STACK_NO    2 ///< Force IPv6-only (IPV6_V6ONLY=1): reject IPv4 on this socket
 
+/* remote.https.<endpoint>_rate_limit sentinel. Kept in sync by hand with the
+ * C-ABI mirror in src/remoted/remoted_module/include/remoted_module.h
+ * (REMOTED_MODULE_RATE_LIMIT_UNSET).
+ *
+ * Distinct from 0 for the same reason REMOTED_HTTPS_VERIFY_UNSET is distinct from _NONE: 0 is a
+ * MEANINGFUL value here ("no rate limit at all"), so it cannot double as "the operator did not
+ * configure this" -- that is what UNSET says, and it is what makes the module fall back to its own
+ * default. The shipped schema defaults these options, so a document loaded through it never
+ * carries UNSET; a document loaded without the schema (or an <https> block predating this option)
+ * does, and gets the module's defaults rather than an accidental "unlimited". */
+#define REMOTED_HTTPS_RATE_LIMIT_UNSET (-1)
+
+/* Upper bound of the rate options, kept in sync by hand with the schema's own "maximum"
+ * (src/shared_modules/manager_config/schema/wazuh-manager.schema.json). Repeated here because a
+ * document can reach the reader without having gone through the schema. */
+#define REMOTED_HTTPS_RATE_LIMIT_MAX   100000
+
 /* Maximum lengths for remote.https string options. Kept in sync by hand with the
  * fixed-size C-ABI buffers in src/remoted/remoted_module/include/remoted_module.h
  * (bind_address[256], global_prefix[256], certificate_path[512], private_key_path[512],
- * ca_path[512], ciphers[256]) that secure.c's HandleSecure() copies these values into via
- * snprintf. Each limit is one less than its buffer size, to leave room for the NUL terminator.
+ * ca_path[512], ca_certificate_path[512], ciphers[256]) that secure.c's HandleSecure() copies
+ * these values into via snprintf. Each limit is one less than its buffer size, to leave room for the NUL terminator.
  * A value that doesn't fit must be rejected here instead of silently truncated: past
  * this point it is a plain char* with no length limit until it reaches that buffer. */
 #define REMOTED_HTTPS_BIND_ADDR_MAX_LEN     255
@@ -66,6 +83,7 @@
 #define REMOTED_HTTPS_CERTIFICATE_MAX_LEN   511
 #define REMOTED_HTTPS_KEY_MAX_LEN           511
 #define REMOTED_HTTPS_CA_MAX_LEN            511
+#define REMOTED_HTTPS_CA_CERTIFICATE_MAX_LEN 511
 #define REMOTED_HTTPS_CIPHERS_MAX_LEN       255
 
 #include "shared.h"
@@ -80,10 +98,18 @@ typedef struct _remoted_https_config {
     char *certificate;         ///< NULL -> module default
     char *key;                 ///< NULL -> module default
     char *ca;                  ///< NULL -> client-certificate verification disabled
+    char *ca_certificate;      ///< NULL -> module default (CA that signs the listener certificate)
     char *ciphers;             ///< NULL -> library default cipher list
     int verification_mode;     ///< REMOTED_HTTPS_VERIFY_*
     long max_body_size;        ///< bytes; 0 -> module default
     int dual_stack;            ///< REMOTED_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind_addr
+    /* Rate limits of the two unauthenticated routes. An enrolling agent has no client.keys entry
+     * and a trust-bootstrapping one has no anchor yet, so neither route can be put behind the
+     * bearer-token gateway that bounds every other one. The bucket is per ENDPOINT, so these are
+     * fleet-wide ceilings, not per-caller allowances. REMOTED_HTTPS_RATE_LIMIT_UNSET -> module
+     * default, 0 -> no limit, >0 -> requests per second. */
+    int enroll_rate_limit;     ///< POST /enroll sustained requests/second, whole endpoint
+    int cacerts_rate_limit;    ///< GET /cacerts sustained requests/second, whole endpoint
 } remoted_https_config;
 
 /* socklen_t header */
@@ -96,6 +122,16 @@ typedef struct _remoted {
 
     bool allow_higher_versions;
     bool legacy_enabled; ///< Whether remote.legacy.enabled is true
+    /**
+     * @brief Whether remote.legacy.ca_delivery is true (default) -- send the manager's CA to a
+     *        pre-v5.0.0 agent over the WPK transfer channel, ahead of the `upgrade` command.
+     *
+     * Read by remoted's own legacy task poller and by nothing else, so a change takes effect on a
+     * remoted restart alone. `legacy_enabled` and `https.verification_mode` are NOT like that:
+     * modulesd caches them at start for the upgrade delivery gates (wm_task_manager_read_remoted()),
+     * so those two need both daemons restarted. Worth keeping straight -- they sit in the same block.
+     */
+    bool legacy_ca_delivery;
 
     int tcp_sock;       ///< This socket is used to receive requests over TCP
     int udp_sock;       ///< This socket is used to receive requests over UDP

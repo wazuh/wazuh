@@ -50,7 +50,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
 int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
-int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
+int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);

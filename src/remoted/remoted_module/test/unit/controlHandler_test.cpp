@@ -494,6 +494,31 @@ TEST(ControlHandlerTest, NotifyReturnsGroupsSettingsHashAndTasks)
     EXPECT_GE(h.metrics.notify->get(), 1U);
 }
 
+// A failed task-manager poll (here: the task server answers a non-2xx status, one of the
+// SocketError causes routed through controlHandler.cpp's DEBUG1 log) must not change the
+// agent-visible contract: still 200, with an empty tasks array instead of an error surfaced to
+// the agent. The manager retries on the next successful poll.
+TEST(ControlHandlerTest, NotifyReturnsEmptyTasksOnTaskManagerFailure)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+
+    HandlerFixture h(wdb, [](const std::string&) { return "{}"; });
+    h.taskServer->setHandler([](const httplib::Request&, httplib::Response& res) { res.status = 500; });
+
+    NotifyData data;
+    data.version = "5.0.0";
+
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+
+    EXPECT_EQ(w.value.status, 200);
+    auto j = nlohmann::json::parse(w.value.body);
+    ASSERT_TRUE(j["tasks"].is_array());
+    EXPECT_TRUE(j["tasks"].empty());
+}
+
 TEST(ControlHandlerTest, NotifyReturnsRealConfigHashWhenMergedMgExists)
 {
     auto wdb = std::make_shared<WdbRouter>();

@@ -20,15 +20,19 @@
 #include "httpsClientFacade.hpp"
 #include "syncIntake.hpp"
 
+#include "cacertsClient.hpp"
 #include "curlHandle.hpp"
 #include "curlPerformer.hpp"
 #include "enrollClient.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
+#include "secretClient.hpp"
+#include "spkiPin.hpp"
 #include "sysSeams.hpp"
 
 #include <cstring>
 #include <string>
+#include <string_view>
 
 namespace Log
 {
@@ -324,7 +328,9 @@ extern "C"
 
             const std::string bodyJson = boundedField(request->body_json, sizeof(request->body_json));
             const std::string password = boundedField(request->password, sizeof(request->password));
-            const HttpResponse response = client.enroll(bodyJson, password);
+            const std::string enrollKid = boundedField(request->enroll_kid, sizeof(request->enroll_kid));
+            const std::string enrollKeyHex = boundedField(request->enroll_key_hex, sizeof(request->enroll_key_hex));
+            const HttpResponse response = client.enroll(bodyJson, password, enrollKid, enrollKeyHex);
 
             result->http_code = response.httpCode;
             result->retry_after_seconds = response.retryAfterSeconds;
@@ -333,6 +339,129 @@ extern "C"
                          sizeof(result->transport_error) - 1);
 
             return response.httpCode != 0;
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
+    bool hc_fetch_cacerts(const hc_config_t* config, const hc_cacerts_request_t* request,
+                          hc_cacerts_result_t* result)
+    {
+        if (config == nullptr || request == nullptr || result == nullptr)
+        {
+            return false;
+        }
+
+        // Zeroed before anything that could throw -- same contract as hc_enroll().
+        *result = {};
+
+        try
+        {
+            // hc_fetch_cacerts() may run before hc_create() ever does (same
+            // first-boot bootstrap moment as hc_enroll()), so it assigns its
+            // own log sink rather than relying on one already being set.
+            assignModuleLogSink(request->log);
+
+            auto typedConfig = ModuleConfig::fromC(*config);
+            // Forced regardless of what the caller's config carries: GET /cacerts is the
+            // unverified bootstrap leg by definition -- there is no trust anchor yet to
+            // verify against.
+            typedConfig.verifyMode = HC_VERIFY_NONE;
+
+            FsProbe fsProbe;
+            CurlPerformer performer(typedConfig, defaultCurlHandleFactory(), fsProbe);
+            CacertsClient client(typedConfig, performer, fsProbe, HTTPS_CLIENT_LOGTAG);
+
+            const HttpResponse response = client.fetch();
+
+            result->http_code = response.httpCode;
+            // Flagged before the copy silently drops the tail. What gets cut is arbitrary --
+            // the pinned certificate may be exactly what is missing -- so the caller has to be
+            // able to tell "this is not the CA I expected" from "I could not read all of it".
+            result->body_truncated = response.body.size() >= sizeof(result->body);
+            std::strncpy(result->body, response.body.c_str(), sizeof(result->body) - 1);
+            std::strncpy(result->transport_error, response.curlError.c_str(),
+                         sizeof(result->transport_error) - 1);
+
+            return response.httpCode != 0;
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
+    bool hc_fetch_reenroll_secret(const hc_config_t* config, const hc_secret_request_t* request,
+                                  hc_secret_result_t* result)
+    {
+        if (config == nullptr || request == nullptr || result == nullptr)
+        {
+            return false;
+        }
+
+        // Zeroed before anything that could throw -- same contract as hc_enroll().
+        *result = {};
+
+        try
+        {
+            // Assigns its own sink, like the other two handle-less calls: this one runs on a
+            // detached bootstrap thread that may start before, after or alongside hc_create().
+            assignModuleLogSink(request->log);
+
+            const auto typedConfig = ModuleConfig::fromC(*config);
+            FsProbe fsProbe;
+            // SkewCorrectedClock for the same reason EnrollClient gets one: the bearer binds a
+            // timestamp, and a skewed agent is answered 401 by the manager's time policy.
+            // SecretClient::fetch() runs the same one-shot Date-based correction on a 401, so this
+            // instance can serve two signatures -- the second on a corrected clock. It is local to
+            // this call (the facade's long-lived corrected clock is not reachable from a
+            // handle-less entry point), so the correction is relearned each start: one extra round
+            // trip, against never obtaining the secret at all on a skewed agent.
+            SystemClock systemClock;
+            SkewCorrectedClock clock {systemClock};
+            CurlPerformer performer(typedConfig, defaultCurlHandleFactory(), fsProbe);
+            SecretClient client(typedConfig, performer, fsProbe, clock, HTTPS_CLIENT_LOGTAG);
+
+            const HttpResponse response = client.fetch();
+
+            result->http_code = response.httpCode;
+            result->retry_after_seconds = response.retryAfterSeconds;
+            std::strncpy(result->body, response.body.c_str(), sizeof(result->body) - 1);
+            std::strncpy(result->transport_error, response.curlError.c_str(),
+                         sizeof(result->transport_error) - 1);
+
+            return response.httpCode != 0;
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
+    bool hc_spki_pinned_certificate(const char* cacerts_body, size_t body_len, const char* pin_b64url,
+                                    char* matched_pem, size_t matched_pem_size)
+    {
+        if (cacerts_body == nullptr || pin_b64url == nullptr || matched_pem == nullptr || matched_pem_size == 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            const auto matched = spkiPinnedCertificatePem(std::string_view(cacerts_body, body_len), pin_b64url);
+
+            // A destination that cannot hold the whole certificate fails closed rather than
+            // writing a truncated one: a half-written PEM is not a trust anchor, and silently
+            // installing one would be worse than refusing the bootstrap.
+            if (!matched || matched->size() >= matched_pem_size)
+            {
+                return false;
+            }
+
+            std::memcpy(matched_pem, matched->c_str(), matched->size() + 1);
+            return true;
         }
         catch (...)
         {

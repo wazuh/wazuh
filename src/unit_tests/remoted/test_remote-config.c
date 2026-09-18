@@ -67,6 +67,10 @@ static remoted *create_remoted() {
     logr->connection_overtake_time = 60;
     logr->lip = NULL;
     logr->https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
+    /* Same pre-parse state RemotedConfig() sets, for the same reason: 0 is a real setting here
+     * ("no limit"), so the reader must be handed the sentinel, not a zeroed field. */
+    logr->https.enroll_rate_limit = REMOTED_HTTPS_RATE_LIMIT_UNSET;
+    logr->https.cacerts_rate_limit = REMOTED_HTTPS_RATE_LIMIT_UNSET;
     return logr;
 }
 
@@ -87,6 +91,7 @@ static int teardown(void **state) {
     if (ts->logr->https.certificate) free(ts->logr->https.certificate);
     if (ts->logr->https.key) free(ts->logr->https.key);
     if (ts->logr->https.ca) free(ts->logr->https.ca);
+    if (ts->logr->https.ca_certificate) free(ts->logr->https.ca_certificate);
     if (ts->logr->https.ciphers) free(ts->logr->https.ciphers);
     free(ts->logr);
     free(ts);
@@ -136,6 +141,10 @@ static void mock_remoted_internal_option_values(int legacy_value) {
     will_return(__wrap_getDefine_Int_default, 37);     // pass_empty_keyfile
     will_return(__wrap_getDefine_Int_default, 41);     // ctrl_msg_queue_size
     will_return(__wrap_getDefine_Int_default, 43);     // keyupdate_interval
+    // rlimit_nofile: the default must match the LimitNOFILE ceiling of wazuh-manager.service
+    expect_value(__wrap_getDefine_Int_default, min, 1024);
+    expect_value(__wrap_getDefine_Int_default, max, 1048576);
+    expect_value(__wrap_getDefine_Int_default, default_val, 65536);
     will_return(__wrap_getDefine_Int_default, 59);     // nofile
     will_return(__wrap_getDefine_Int_default, 61);     // sender_pool
     will_return(__wrap_getDefine_Int_default, 67);     // request_pool
@@ -386,7 +395,8 @@ static void test_Read_Remote_JSON_effective_defaults(void **state) {
         "{\"legacy\":{\"enabled\":true,\"port\":1514,\"protocol\":[\"tcp\"],\"ipv6\":false,\"local_ip\":\"127.0.0.1\","
         "\"queue_size\":131072,\"rids_closing_time\":\"5m\",\"connection_overtake_time\":60},"
         "\"https\":{\"port\":1517,\"bind_addr\":\"127.0.0.1\",\"global_prefix\":\"/wazuh-manager/\","
-        "\"certificate\":\"etc/certs/remoted.pem\",\"key\":\"etc/certs/remoted-key.pem\",\"ca\":\"\"},"
+        "\"certificate\":\"etc/certs/remoted.pem\",\"key\":\"etc/certs/remoted-key.pem\",\"ca\":\"\","
+        "\"ca_certificate\":\"etc/certs/root-ca.pem\"},"
         "\"agents\":{\"allow_higher_versions\":false}}");
 
     expect_valid_ip("127.0.0.1"); // legacy.local_ip
@@ -408,11 +418,59 @@ static void test_Read_Remote_JSON_effective_defaults(void **state) {
     assert_string_equal(ts->logr->https.certificate, "etc/certs/remoted.pem");
     assert_string_equal(ts->logr->https.key, "etc/certs/remoted-key.pem");
     assert_null(ts->logr->https.ca);
+    assert_string_equal(ts->logr->https.ca_certificate, "etc/certs/root-ca.pem");
     assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_UNSET);
     assert_null(ts->logr->https.ciphers);
     assert_int_equal(ts->logr->https.max_body_size, 0);
     assert_int_equal(ts->logr->https.dual_stack, REMOTED_HTTPS_DUAL_STACK_UNSET);
     assert_false(ts->logr->allow_higher_versions);
+    /* Absent from this (schema-defaulted) document, and the reader still resolves it to true --
+     * the default that ships. */
+    assert_true(ts->logr->legacy_ca_delivery);
+
+    cJSON_Delete(remote);
+}
+
+/* CA delivery to legacy agents during an upgrade: on unless explicitly turned off, including when
+ * the whole <legacy> block is absent -- an uninitialised bool there would be read by the poller. */
+static void test_Read_Remote_JSON_ca_delivery(void **state) {
+    test_state *ts = *state;
+
+    cJSON *disabled = json_or_fail("{\"legacy\":{\"enabled\":true,\"ca_delivery\":false},\"https\":{}}");
+    assert_int_equal(Read_Remote_JSON(disabled, ts->logr), 0);
+    assert_false(ts->logr->legacy_ca_delivery);
+    cJSON_Delete(disabled);
+
+    cJSON *enabled = json_or_fail("{\"legacy\":{\"enabled\":true,\"ca_delivery\":true},\"https\":{}}");
+    assert_int_equal(Read_Remote_JSON(enabled, ts->logr), 0);
+    assert_true(ts->logr->legacy_ca_delivery);
+    cJSON_Delete(enabled);
+
+    /* Present block, key omitted. */
+    ts->logr->legacy_ca_delivery = false;
+    cJSON *omitted = json_or_fail("{\"legacy\":{\"enabled\":true},\"https\":{}}");
+    assert_int_equal(Read_Remote_JSON(omitted, ts->logr), 0);
+    assert_true(ts->logr->legacy_ca_delivery);
+    cJSON_Delete(omitted);
+
+    /* No <legacy> block at all: the listener is off and the poller never runs, but the field must
+     * still hold a defined value rather than whatever was there before. */
+    ts->logr->legacy_ca_delivery = false;
+    cJSON *no_legacy = json_or_fail("{\"https\":{}}");
+    assert_int_equal(Read_Remote_JSON(no_legacy, ts->logr), 0);
+    assert_true(ts->logr->legacy_ca_delivery);
+    cJSON_Delete(no_legacy);
+}
+
+static void test_Read_Remote_JSON_ca_certificate_absent_is_null(void **state) {
+    test_state *ts = *state;
+    /* The reader sets no default of its own: an <https> block without ca_certificate (or a document
+     * loaded without the schema defaults) leaves the field NULL so the module applies its default. */
+    cJSON *remote = json_or_fail("{\"https\":{}}");
+
+    assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
+
+    assert_null(ts->logr->https.ca_certificate);
 
     cJSON_Delete(remote);
 }
@@ -474,10 +532,25 @@ static void test_Read_Remote_JSON_ca_infers_certificate_mode(void **state) {
     expect_string(__wrap__mwarn, formatted_msg,
                   "The 'remote.https.ca' option is configured but 'verification_mode' is not; "
                   "defaulting 'verification_mode' to 'certificate'.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The 'remote.https.verification_mode' is not 'none'; remote upgrades to v5.0.0 or newer "
+                  "will be rejected unless the upgrade request sets 'force_upgrade' (repository path only "
+                  "-- the custom-WPK path cannot be forced).");
 
     assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
     assert_string_equal(ts->logr->https.ca, "ca.pem");
     assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_CERTIFICATE);
+
+    cJSON_Delete(remote);
+}
+
+static void test_Read_Remote_JSON_verification_mode_none_does_not_warn_about_upgrades(void **state) {
+    test_state *ts = *state;
+    cJSON *remote = json_or_fail("{\"https\":{\"verification_mode\":\"none\"}}");
+
+    /* No expect_string(__wrap__mwarn, ...): "none" must not trigger the upgrade/mTLS warning. */
+    assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
+    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_NONE);
 
     cJSON_Delete(remote);
 }
@@ -489,9 +562,21 @@ static void test_Read_Remote_JSON_enum_and_dual_stack(void **state) {
 
     expect_valid_ip("::");
 
+    /* verification_mode resolves to "full" here and stays there through the second call
+     * below (nothing in `off` overrides it), so the upgrade/mTLS warning fires both times. */
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The 'remote.https.verification_mode' is not 'none'; remote upgrades to v5.0.0 or newer "
+                  "will be rejected unless the upgrade request sets 'force_upgrade' (repository path only "
+                  "-- the custom-WPK path cannot be forced).");
+
     assert_int_equal(Read_Remote_JSON(full, ts->logr), 0);
     assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_FULL);
     assert_int_equal(ts->logr->https.dual_stack, REMOTED_HTTPS_DUAL_STACK_YES);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The 'remote.https.verification_mode' is not 'none'; remote upgrades to v5.0.0 or newer "
+                  "will be rejected unless the upgrade request sets 'force_upgrade' (repository path only "
+                  "-- the custom-WPK path cannot be forced).");
 
     /* bind_addr stays "::" from the first document, so no "only applies to IPv6" warning */
     assert_int_equal(Read_Remote_JSON(off, ts->logr), 0);
@@ -499,6 +584,57 @@ static void test_Read_Remote_JSON_enum_and_dual_stack(void **state) {
 
     cJSON_Delete(full);
     cJSON_Delete(off);
+}
+
+/* The two endpoint rate limits (POST /enroll, GET /cacerts). The reader sets no default of its
+ * own: what the document does not carry stays at REMOTED_HTTPS_RATE_LIMIT_UNSET so the module
+ * applies its own -- and an explicit 0 ("no limit") survives as 0, which is the whole reason the
+ * sentinel is negative rather than 0. */
+static void test_Read_Remote_JSON_rate_limits(void **state) {
+    test_state *ts = *state;
+
+    cJSON *configured = json_or_fail("{\"https\":{\"enroll_rate_limit\":12,\"cacerts_rate_limit\":0}}");
+
+    assert_int_equal(Read_Remote_JSON(configured, ts->logr), 0);
+    assert_int_equal(ts->logr->https.enroll_rate_limit, 12);
+    assert_int_equal(ts->logr->https.cacerts_rate_limit, 0);
+
+    cJSON_Delete(configured);
+}
+
+static void test_Read_Remote_JSON_rate_limits_absent_stay_unset(void **state) {
+    test_state *ts = *state;
+    /* An <https> block that never mentions them (or a document loaded without the schema defaults)
+     * must reach the module as "not configured", never as "unlimited". */
+    cJSON *remote = json_or_fail("{\"https\":{}}");
+
+    assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
+
+    assert_int_equal(ts->logr->https.enroll_rate_limit, REMOTED_HTTPS_RATE_LIMIT_UNSET);
+    assert_int_equal(ts->logr->https.cacerts_rate_limit, REMOTED_HTTPS_RATE_LIMIT_UNSET);
+
+    cJSON_Delete(remote);
+}
+
+static void test_Read_Remote_JSON_rate_limit_rejects_out_of_range(void **state) {
+    test_state *ts = *state;
+    /* The schema bounds these, but a document can reach the reader without it -- and a negative
+     * value in particular would arrive at the module as the very sentinel meaning "unset". */
+    cJSON *negative = json_or_fail("{\"https\":{\"enroll_rate_limit\":-1}}");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'enroll_rate_limit': -1.");
+
+    assert_int_equal(Read_Remote_JSON(negative, ts->logr), OS_INVALID);
+    cJSON_Delete(negative);
+
+    cJSON *too_big = json_or_fail("{\"https\":{\"cacerts_rate_limit\":100001}}");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'cacerts_rate_limit': 100001.");
+
+    assert_int_equal(Read_Remote_JSON(too_big, ts->logr), OS_INVALID);
+    cJSON_Delete(too_big);
 }
 
 static void test_Read_Remote_JSON_https_string_too_long(void **state) {
@@ -619,11 +755,17 @@ int main(void)
 
         /* Read_Remote_JSON() -- the effective `remote` section of etc/wazuh-manager.conf */
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_effective_defaults, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_ca_delivery, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_ca_certificate_absent_is_null, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_legacy_disabled_clears_listener, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_protocol_list_and_ipv6_without_local_ip, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_durations_and_sizes_int_or_string, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_ca_infers_certificate_mode, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_verification_mode_none_does_not_warn_about_upgrades, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_enum_and_dual_stack, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_rate_limits, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_rate_limits_absent_stay_unset, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_rate_limit_rejects_out_of_range, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_https_string_too_long, setup, teardown),
 
         /* RemotedConfig() and getconfig over the mocked document (global logr, no fixture) */

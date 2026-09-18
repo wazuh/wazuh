@@ -347,9 +347,13 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | DELETE | `/agents` | Delete agents |
 | POST | `/agents/insert` | Insert agent with key |
 | POST | `/agents/insert/quick` | Quick insertion |
+| POST | `/agents/enrollment-tokens` | Mint an enrollment token (the `token` is returned once) |
+| GET | `/agents/enrollment-tokens` | List enrollment tokens (never their credential) |
+| DELETE | `/agents/enrollment-tokens/{token_id}` | Revoke an enrollment token |
+| DELETE | `/agents/enrollment-tokens` | Purge enrollment tokens: `status=dead` (default) removes the ones that can no longer enrol anybody, `status=all` empties the store |
 | PUT | `/agents/{agent_id}/restart` | Restart agent (v5.0.0+) |
 | PUT | `/agents/{agent_id}/reload` | Reload agent config (v5.0.0+) |
-| GET | `/agents/{agent_id}/key` | Get agent key |
+| GET | `/agents/{agent_id}/key` | Get agent key. Requires `agent:read_secrets` over that agent, not `agent:read`; serving the key is logged as `secret_read` |
 | DELETE | `/agents/{agent_id}/group` | Remove from all groups |
 | PUT | `/agents/{agent_id}/group/{group_id}` | Assign to group |
 | DELETE | `/agents/{agent_id}/group/{group_id}` | Remove from group |
@@ -389,15 +393,15 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | GET | `/cluster/nodes` | List nodes |
 | GET | `/cluster/healthcheck` | Healthcheck |
 | GET | `/cluster/local/info` | Local node info |
-| GET | `/cluster/local/config` | Local node config |
+| GET | `/cluster/local/config` | Local node config. The cluster key comes back masked unless the caller holds `cluster:read_secrets` over this node |
 | GET | `/cluster/api/config` | API config |
 | PUT | `/cluster/restart` | Restart cluster |
 | GET | `/cluster/configuration/validation` | Validate config |
 | GET | `/cluster/{node_id}/status` | Node status |
 | GET | `/cluster/{node_id}/info` | Node info |
-| GET | `/cluster/{node_id}/configuration` | Node config |
+| GET | `/cluster/{node_id}/configuration` | Node config. Sensitive values are masked unless the caller holds `cluster:read_secrets` over that node |
 | PUT | `/cluster/{node_id}/configuration` | Update node config |
-| GET | `/cluster/{node_id}/configuration/{component}/{configuration}` | Active config |
+| GET | `/cluster/{node_id}/configuration/{component}/{configuration}` | Active config. `auth/auth` carries the enrollment password, masked unless the caller holds `cluster:read_secrets` over that node; serving it in clear is logged as `secret_read` in that node's `cluster.log` |
 | GET | `/cluster/{node_id}/daemons/stats` | Daemon stats |
 | GET | `/cluster/{node_id}/logs` | Node logs |
 | GET | `/cluster/{node_id}/logs/summary` | Log summary |
@@ -487,6 +491,35 @@ field operator value[;connector field operator value]
 |-----------|---------|
 | `;` | AND |
 | `,` | OR |
+
+### Value types on in-memory collections
+
+Endpoints whose records are filtered in memory rather than in SQL — `/agents/enrollment-tokens`
+among them — accept `=`, `!=`, `<`, `>` and `~` only, and read the literal as the type of the field
+it is compared against. With `=`, `!=`, `<` and `>`, a date field takes `YYYY-MM-DD`,
+`YYYY-MM-DDTHH:MM:SSZ`, `YYYY-MM-DD HH:MM:SS` or `YYYY-MM-DDTHH:MM:SS.ffffffZ`
+(`q=created>2026-01-01`). A date's stored value keeps second-level precision, so `=`/`!=` need the
+full timestamp to match a specific record (`q=created=2026-01-01T00:00:00Z`); a bare `YYYY-MM-DD`
+parses as exact midnight UTC and matches only a record created at that instant. Bound a whole day
+with `<`/`>` instead. None of these patterns accept a numeric UTC offset, so a timestamp read back
+from a response body (`2026-01-01T00:00:00+00:00`) has to be rewritten with a literal `Z`
+(`2026-01-01T00:00:00Z`) before it is usable in `q` — passed back as-is, it is left as a plain
+string and compared against the field's real `datetime` value: `<`/`>` fail with a 400 (the
+comparison itself raises), `=` silently matches nothing, and `!=` silently matches every record
+instead of failing. This three-way inconsistency is a known gap in how an unparseable literal is
+handled here, separate from the type-mismatch case below.
+
+With `=` and `!=`, a boolean field takes `true`, `false`, `1` or `0` (`q=revoked=true`; any other
+literal is rejected with a 400). A date-shaped literal against a boolean field is read as a date
+rather than an unrecognized literal, so it takes a different path than that 400 and falls through
+to Python's own cross-type comparison: `=` matches nothing and `!=` matches everything. A literal
+whose type the field cannot address is a property of the record, not of the query -- the same
+clause evaluates normally against a differently-typed record -- so it excludes only its own record,
+and `q` is reported invalid with a 400 once, after the whole collection, only when no record could
+evaluate the clause at all. The `search` parameter is case-insensitive and matches the
+rendered value, so `search=true` also finds records
+whose boolean field is set. `~` is case-sensitive on a boolean field, unlike `=`/`!=`/`search`: it
+matches the exact rendered value (`q=revoked~True`, `q=revoked~False`), not `true`/`false`.
 
 ### Examples
 

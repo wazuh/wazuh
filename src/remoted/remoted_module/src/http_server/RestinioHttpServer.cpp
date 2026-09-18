@@ -10,10 +10,12 @@
  */
 
 #include "RestinioHttpServer.hpp"
+#include "caCertificateSource.hpp"
 #include "common/logThrottle.hpp"
 #include "httpServerConfig.hpp"
 #include "httpServerFactory.hpp"
 #include "inFlightBudget.hpp"
+#include "tlsCertificateStatus.hpp"
 
 #include "loggerHelper.h"
 
@@ -258,14 +260,34 @@ namespace
          *                 RESTinio needs an instance whenever the traits name a listener type
          *                 (it throws otherwise), so the listener is always installed and this is
          *                 what makes it inert.
+         * @param open     Live connection count, maintained in EVERY verification mode -- unlike
+         *                 the peer-address check, which only runs in Full. Shared with the server
+         *                 so diagnostics() can read it.
          */
-        explicit FullModeListener(std::shared_ptr<RejectedConnections> rejected = nullptr)
+        explicit FullModeListener(std::shared_ptr<RejectedConnections> rejected = nullptr,
+                                  std::shared_ptr<std::atomic<std::size_t>> open = nullptr)
             : m_rejected {std::move(rejected)}
+            , m_open {std::move(open)}
         {
         }
 
         void state_changed(const restinio::connection_state::notice_t& notice) noexcept
         {
+            // Counted before the Full-mode gate below: the level must be observable in every
+            // verification mode, and a connection rejected by that check was still accepted by the
+            // transport and still holds one of max_parallel_connections' slots until it closes.
+            if (m_open)
+            {
+                if (std::holds_alternative<restinio::connection_state::accepted_t>(notice.cause()))
+                {
+                    m_open->fetch_add(1, std::memory_order_relaxed);
+                }
+                else if (std::holds_alternative<restinio::connection_state::closed_t>(notice.cause()))
+                {
+                    m_open->fetch_sub(1, std::memory_order_relaxed);
+                }
+            }
+
             if (!m_rejected)
             {
                 return;
@@ -338,6 +360,7 @@ namespace
         }
 
         std::shared_ptr<RejectedConnections> m_rejected;
+        std::shared_ptr<std::atomic<std::size_t>> m_open;
     };
 
     struct ServerTraits : public restinio::tls_traits_t<restinio::asio_timer_manager_t, WazuhRestinioLogger, Router>
@@ -519,46 +542,126 @@ namespace
         }
     }
 
-    // Warn (not fatal) when the served certificate is expired or near expiry: OpenSSL serves it
-    // silently, so only verifying agents would otherwise notice.
-    void warnIfCertificateExpiring(asio::ssl::context& context, const std::string& path)
+    /// Below this many days to expiry the start-time/daily evaluation logs a WARN.
+    static constexpr int EXPIRY_WARNING_DAYS {30};
+
+    // Log (never fatal) what an evaluation of the served certificate found: OpenSSL serves an
+    // expired leaf silently, and hands out whatever CA file is configured on GET /cacerts, so
+    // without these lines only verifying agents would notice either problem. Same texts as the
+    // historical start-time warning, plus the two CA-coherence outcomes. Called at start (before
+    // listening) and on every TlsCertificateMonitor tick.
+    void logCertificateStatus(const remoted::http::TlsCertificateSnapshot& status,
+                              const std::string& leafPath,
+                              const std::string& caPath)
     {
-        X509* certificate = SSL_CTX_get0_certificate(context.native_handle());
-        if (certificate == nullptr)
+        if (status.expiryDays.has_value())
         {
-            return;
+            if (*status.expiryDays < 0)
+            {
+                LOGFN_ERROR(logFn(),
+                            "The TLS certificate '%s' has expired; agents that verify the manager certificate will "
+                            "reject the connection until it is renewed.",
+                            leafPath.c_str());
+            }
+            else if (*status.expiryDays < EXPIRY_WARNING_DAYS)
+            {
+                LOGFN_WARN(logFn(),
+                           "The TLS certificate '%s' expires in %d day(s); renew it to avoid an outage for agents "
+                           "that verify the manager certificate.",
+                           leafPath.c_str(),
+                           *status.expiryDays);
+            }
         }
 
-        const ASN1_TIME* notAfter = X509_get0_notAfter(certificate);
-        if (notAfter == nullptr)
+        if (status.caReadFailure.has_value())
         {
-            return;
+            // A failed read is a window, not a decision (issue #39318): what the source served last is
+            // what it keeps serving, and the operator hears the exact cause rather than "unreadable".
+            const auto cause = remoted::http::describeReadFailure(*status.caReadFailure,
+                                                                  remoted::http::CaCertificateSource::kMaxBytes);
+            if (status.caMatchesLeaf.has_value())
+            {
+                LOGFN_WARN(logFn(),
+                           "CA certificate '%s' %s (%llu consecutive failed read(s)); GET /cacerts keeps serving the "
+                           "last bundle read from it until the file is readable again.",
+                           caPath.c_str(),
+                           cause.c_str(),
+                           static_cast<unsigned long long>(status.caReadFailure->consecutive));
+            }
+            else
+            {
+                LOGFN_WARN(logFn(),
+                           "CA certificate '%s' %s; GET /cacerts will answer 404 until it is restored.",
+                           caPath.c_str(),
+                           cause.c_str());
+            }
         }
-
-        // X509_cmp_current_time returns < 0 when the time is in the past.
-        if (X509_cmp_current_time(notAfter) < 0)
-        {
-            LOGFN_ERROR(logFn(),
-                        "The TLS certificate '%s' has expired; agents that verify the manager certificate will "
-                        "reject the connection until it is renewed.",
-                        path.c_str());
-            return;
-        }
-
-        static constexpr int EXPIRY_WARNING_DAYS {30};
-        int days = 0;
-        int seconds = 0;
-        if (ASN1_TIME_diff(&days, &seconds, nullptr, notAfter) == 1 && days < EXPIRY_WARNING_DAYS)
+        else if (!status.caMatchesLeaf.has_value())
         {
             LOGFN_WARN(logFn(),
-                       "The TLS certificate '%s' expires in %d day(s); renew it to avoid an outage for agents "
-                       "that verify the manager certificate.",
-                       path.c_str(),
-                       days);
+                       "CA certificate '%s' carries no certificate; GET /cacerts will answer 404 until it is restored.",
+                       caPath.c_str());
+        }
+
+        if (status.caMatchesLeaf.has_value() && !*status.caMatchesLeaf)
+        {
+            LOGFN_ERROR(logFn(),
+                        "The configured CA '%s' does not sign the served certificate '%s' (subjects: CA '%s', "
+                        "certificate '%s'); GET /cacerts will answer 503 and agents cannot bootstrap trust from "
+                        "this manager until the CA and the certificate match.",
+                        caPath.c_str(),
+                        leafPath.c_str(),
+                        status.caSubjects.c_str(),
+                        status.leafSubject.c_str());
+        }
+
+        // The chain verdict is information, not the decision (issue #39318): a CA that signs the leaf
+        // but could never be used by a verifying agent deserves a line, and so does the converse.
+        if (status.caMatchesLeaf == true && status.chainValid == false)
+        {
+            LOGFN_WARN(logFn(),
+                       "The configured CA '%s' signs the served certificate '%s' but the chain does not validate (%s); "
+                       "a verifying agent that pins this CA will reject the handshake -- check the validity dates and "
+                       "the CA constraints of the certificates involved.",
+                       caPath.c_str(),
+                       leafPath.c_str(),
+                       status.chainError.c_str());
+        }
+        else if (status.caMatchesLeaf == false && status.chainValid == true)
+        {
+            LOGFN_INFO(logFn(),
+                       "The configured CA '%s' does not sign the served certificate '%s' directly, though the "
+                       "certificate validates through it; GET /cacerts refuses it all the same: the bundle must carry "
+                       "the certificate's issuer.",
+                       caPath.c_str(),
+                       leafPath.c_str());
         }
     }
 
-    asio::ssl::context createTlsContext(const remoted::http::HttpServerConfig& config)
+    // What building the TLS context yields besides the context itself: the leaf the context will
+    // serve (retained with its own reference, so the certificate monitor can re-evaluate it for
+    // the listener's lifetime) and the start-time evaluation, already logged.
+    struct TlsSetup
+    {
+        asio::ssl::context context;
+        remoted::http::X509Ptr leaf;
+        remoted::http::TlsCertificateSnapshot initialStatus;
+        std::shared_ptr<remoted::http::CaCertificateSource> caSource; ///< The one reader of the CA file, from here on.
+    };
+
+    // The certificate the context serves, with a reference of our own (SSL_CTX_get0_certificate
+    // is borrowed). Null when the context has none, which use_certificate_chain_file() rules out.
+    remoted::http::X509Ptr retainServedCertificate(asio::ssl::context& context)
+    {
+        X509* certificate = SSL_CTX_get0_certificate(context.native_handle());
+        if (certificate != nullptr && X509_up_ref(certificate) != 1)
+        {
+            return nullptr;
+        }
+        return remoted::http::X509Ptr {certificate};
+    }
+
+    TlsSetup createTlsContext(const remoted::http::HttpServerConfig& config)
     {
         checkTlsFileReadable(config.certificatePath, "certificate");
         checkTlsFileReadable(config.privateKeyPath, "private key");
@@ -582,7 +685,34 @@ namespace
         context.use_certificate_chain_file(config.certificatePath);
         context.use_private_key_file(config.privateKeyPath, asio::ssl::context::pem);
 
-        warnIfCertificateExpiring(context, config.certificatePath);
+        // Start-time evaluation of the leaf just loaded, against the CA file as it is on disk right
+        // now: expiry (the historical warning) and whether that CA signs it (GET /cacerts must not
+        // hand out a CA agents cannot chain this listener to). Logged here, BEFORE the listener
+        // accepts anything, so the status the routes read is never "not evaluated yet".
+        // The same CaCertificateSource GET /cacerts will answer from, built here so that the start-time
+        // verdict and every later one come out of one reader (bounded, failure-aware) rather than two
+        // code paths that could drift apart (issue #39318). The leaf pointer it keeps stays valid when
+        // the X509Ptr is moved into the server below.
+        auto leaf = retainServedCertificate(context);
+        auto caSource = std::make_shared<remoted::http::CaCertificateSource>(config.caCertificatePath, leaf.get());
+        const auto initialStatus = remoted::http::statusFrom(leaf.get(), caSource->snapshot());
+        logCertificateStatus(initialStatus, config.certificatePath, config.caCertificatePath);
+
+        // Deliberately NOT part of logCertificateStatus(), which also runs on every monitor tick.
+        // The CA is re-read each tick because it can be rotated under a running listener; the leaf
+        // is the one loaded into this SSL_CTX and cannot change until the next start(), so its SANs
+        // are evaluated exactly once here. Putting this in the shared function would repeat an
+        // identical line daily for a condition that cannot have changed.
+        if (!remoted::http::leafHasUsableSan(leaf.get()))
+        {
+            LOGFN_WARN(logFn(),
+                       "The TLS certificate '%s' carries no subjectAltName entry an agent could dial (no DNS or IP "
+                       "name beyond loopback and this host's own name); no agent can verify this manager with "
+                       "<verification_mode>full</verification_mode>, whatever address it connects to. Reissue it with "
+                       "every address agents actually use -- including the cluster VIP, each node's address and any "
+                       "NAT address -- among its SANs.",
+                       config.certificatePath.c_str());
+        }
 
         if (SSL_CTX_check_private_key(context.native_handle()) != 1)
         {
@@ -624,7 +754,7 @@ namespace
             }
         }
 
-        return context;
+        return TlsSetup {std::move(context), std::move(leaf), initialStatus, std::move(caSource)};
     }
 
     /**
@@ -977,6 +1107,30 @@ namespace remoted::http
         /// null in the other modes, which is what keeps the listener inert.
         std::shared_ptr<RejectedConnections> m_rejectedConnections;
 
+        /// Connections currently open on the listener, maintained by FullModeListener in EVERY
+        /// verification mode. Allocated once and never reset: the listener RESTinio holds outlives
+        /// a stop(), so handing it a pointer that start() replaces would leave the old listener
+        /// decrementing a counter nobody reads. Shared (not a plain member) for the same reason --
+        /// RESTinio copies the listener around.
+        std::shared_ptr<std::atomic<std::size_t>> m_openConnections {std::make_shared<std::atomic<std::size_t>>(0)};
+
+        /// The ceiling m_openConnections is counted against (config.maxParallelConnections),
+        /// captured at start() so diagnostics() can report the level AND its limit together.
+        std::size_t m_maxConnections {0};
+
+        /// The certificate the SSL_CTX serves (our own reference), constant until the next start():
+        /// the leaf side of every certificate evaluation. The CA side is re-read from
+        /// m_caCertificatePath at each one, so a rotated CA file is noticed at the next tick.
+        X509Ptr m_leaf;
+        std::string m_caCertificatePath;
+        /// The CA file as one coherent thing: what /cacerts publishes and the verdict that goes
+        /// with it, from the same read (issue #39078). Created in start(), when the leaf exists.
+        std::shared_ptr<CaCertificateSource> m_caSource;
+        /// Start-time evaluation recorded before listening; re-evaluated on its own thread every
+        /// HttpServerConfig::certificateStatusInterval while accepting (D45: thread + cv, since
+        /// RESTinio's run_async() keeps its io_context private). Stopped in stopAccepting().
+        TlsCertificateMonitor m_certMonitor;
+
         std::unique_ptr<Router> buildRouter()
         {
             auto requestRouter = std::make_unique<Router>();
@@ -1234,7 +1388,50 @@ namespace remoted::http
         d.budgetInFlightBytes = budget->maxBytes() - budget->availableBytes();
         d.budgetInFlightCount = budget->inFlightCount();
         d.budgetRejectedTotal = budget->rejectedTotal();
+        d.connectionsOpen = m_impl->m_openConnections->load(std::memory_order_relaxed);
+        d.connectionsMax = m_impl->m_maxConnections;
         return d;
+    }
+
+    CaCertificateSnapshot RestinioHttpServer::caCertificateSnapshot() const
+    {
+        // Same reasoning as certificateStatus(): the source has its own lock, and taking m_mutex
+        // here would make a /cacerts request wait out a concurrent start().
+        std::shared_ptr<CaCertificateSource> source;
+        {
+            std::lock_guard<std::mutex> lock {m_impl->m_mutex};
+            source = m_impl->m_caSource;
+        }
+        return source ? source->snapshot() : CaCertificateSnapshot {};
+    }
+
+    TlsCertificateSnapshot RestinioHttpServer::certificateStatus() const
+    {
+        // The monitor has its own lock; m_mutex is not needed (and must not be taken: a metrics
+        // dump racing start() would otherwise wait out the whole TLS setup).
+        auto status = m_impl->m_certMonitor.snapshot();
+
+        // Expiry is the monitor's (it only changes with the clock), but the CA half is read from
+        // the same source /cacerts answers from: otherwise remoted.server.tls.ca_matches_leaf
+        // could report a match while the endpoint is already refusing that very CA, until the
+        // next daily tick (issue #39078, H06).
+        std::shared_ptr<CaCertificateSource> source;
+        {
+            std::lock_guard<std::mutex> lock {m_impl->m_mutex};
+            source = m_impl->m_caSource;
+        }
+
+        if (source)
+        {
+            const auto ca = source->snapshot();
+            status.caMatchesLeaf = ca.matchesLeaf;
+            status.caSubjects = ca.subjects;
+            status.chainValid = ca.chainValid;
+            status.chainError = ca.chainError;
+            status.caReadFailure = ca.lastReadFailure;
+        }
+
+        return status;
     }
 
     void RestinioHttpServer::start(const HttpServerConfig& config)
@@ -1256,8 +1453,13 @@ namespace remoted::http
         m_impl->m_config.globalPrefix = normalizeGlobalPrefix(config.globalPrefix);
 
         // Build the TLS context first: it validates cert/key and may throw before we
-        // allocate any worker threads.
-        auto tlsContext = createTlsContext(config);
+        // allocate any worker threads. It also evaluates (and logs) the served certificate's
+        // status, so certificateStatus() is meaningful from here on -- before anything is accepted.
+        auto tls = createTlsContext(config);
+        m_impl->m_leaf = std::move(tls.leaf);
+        m_impl->m_caCertificatePath = config.caCertificatePath;
+        m_impl->m_caSource = std::move(tls.caSource);
+        m_impl->m_certMonitor.record(tls.initialStatus);
 
         m_impl->m_workerPool = std::make_unique<asio::thread_pool>(config.workerThreads);
 
@@ -1278,6 +1480,9 @@ namespace remoted::http
             maxInFlight = config.maxBodySize + PER_REQUEST_OVERHEAD;
         }
         m_impl->m_budget = std::make_unique<InFlightBudget>(maxInFlight);
+        // Captured here, next to the budget, so diagnostics() reports the level against the ceiling
+        // actually in force for this run rather than a compile-time default.
+        m_impl->m_maxConnections = config.maxParallelConnections;
 
         auto requestRouter = m_impl->buildRouter();
 
@@ -1295,7 +1500,8 @@ namespace remoted::http
         // Always provided, even when it has nothing to do: RESTinio throws
         // ("connection state listener is not specified") if the traits name a listener type and no
         // instance is set. A null registry inside makes it inert for None/Certificate.
-        settings.connection_state_listener(std::make_shared<FullModeListener>(m_impl->m_rejectedConnections));
+        settings.connection_state_listener(
+            std::make_shared<FullModeListener>(m_impl->m_rejectedConnections, m_impl->m_openConnections));
 
         settings.address(config.bindAddress)
             .port(config.port)
@@ -1326,7 +1532,7 @@ namespace remoted::http
                     }
                 })
             .request_handler(std::move(requestRouter))
-            .tls_context(std::move(tlsContext))
+            .tls_context(std::move(tls.context))
             .buffer_size(config.bufferSize)
             // read_next_http_message_timelimit also stands in for a TLS handshake timeout:
             // it starts counting as soon as the connection is established, before anything
@@ -1337,7 +1543,10 @@ namespace remoted::http
             .max_pipelined_requests(config.maxPipelinedRequests)
             .concurrent_accepts_count(config.concurrentAccepts)
             // Bound simultaneous connections so the read-phase peak (bodies still being
-            // received, before they reach the in-flight budget) can't grow unbounded.
+            // received, before they reach the in-flight budget) can't grow unbounded. Reaching it
+            // does NOT reject anything: RESTinio postpones the accept and the connection waits in
+            // the kernel backlog, so the level is published as remoted.server.connections.* --
+            // saturation here is latency, and nothing else would make it visible.
             .max_parallel_connections(config.maxParallelConnections)
             .separate_accept_and_create_connect(true)
             .incoming_http_msg_limits(restinio::incoming_http_msg_limits_t {}
@@ -1390,6 +1599,24 @@ namespace remoted::http
                        static_cast<unsigned int>(config.port),
                        effectivePrefix.c_str());
         }
+
+        // Periodic re-evaluation of the served certificate (expiry + CA coherence), re-logged on
+        // every tick exactly like the start-time one. The raw leaf pointer is safe to capture:
+        // m_leaf is only replaced by a later start(), and stopAccepting() joins this thread first.
+        m_impl->m_certMonitor.start(config.certificateStatusInterval,
+                                    [leaf = m_impl->m_leaf.get(),
+                                     leafPath = config.certificatePath,
+                                     caPath = config.caCertificatePath,
+                                     source = m_impl->m_caSource]
+                                    {
+                                        // Expiry is the leaf's business; the CA half comes from the same source the
+                                        // endpoint answers from, so this tick can never overwrite a fresher CA verdict
+                                        // with a re-read of its own (issue #39078, H06) -- and it is built by the
+                                        // same statusFrom() the start-time evaluation used.
+                                        const auto status = remoted::http::statusFrom(leaf, source->snapshot());
+                                        logCertificateStatus(status, leafPath, caPath);
+                                        return status;
+                                    });
     }
 
     void RestinioHttpServer::stopAccepting() noexcept
@@ -1431,6 +1658,11 @@ namespace remoted::http
             // returns, no RouteHandler -- and therefore no downstream forward() -- will ever run again.
             server->stop();
             server->wait();
+
+            // The certificate monitor goes before the pool join: it is the one other thread the
+            // listener owns, and nothing that runs after this point should still be logging a
+            // certificate status for a listener that is gone. Its last snapshot stays readable.
+            m_impl->m_certMonitor.stop();
 
             if (workerPool)
             {

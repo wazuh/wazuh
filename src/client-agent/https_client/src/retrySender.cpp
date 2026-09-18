@@ -11,24 +11,15 @@
 
 #include "retrySender.hpp"
 
+#include "authFailureClass.hpp"
 #include "bodyCompressor.hpp"
+#include "clockSkew.hpp"
 #include "requestTarget.hpp"
 
 #include <algorithm>
 #include <cstdlib>
 #include <utility>
 #include <vector>
-
-namespace
-{
-    // Below this, a Date-vs-local gap is plausibly network latency or Date's
-    // 1 s granularity, not real clock skew -- applying a correction for noise
-    // this small would only ever matter within the 30 s clock skew the manager
-    // already tolerates, so it is not worth perturbing the token's iat over.
-    // The clock-skew failures this targets (VM snapshot restore, dead CMOS
-    // battery, no NTP) are minutes to hours off, far above this floor.
-    constexpr std::int64_t kSkewNoiseFloorSeconds = 5;
-} // namespace
 
 RetrySender::RetrySender(IHttpPerformer& performer,
                          const ISigner& signer,
@@ -122,12 +113,30 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
     {
         m_backoff.reset();
     }
-    else if (result.outcome == OutcomeClass::AuthFail && m_authGate != nullptr)
+    else if (result.outcome == OutcomeClass::AuthFail)
     {
-        // A 401 that survived the one-shot fresh-timestamp retry above: treat it
-        // as a dead credential. Pause everything and ask for re-enrollment (once
-        // per incident). #37828.
-        m_authGate->reportAuthFailure();
+        // A 401 that survived the one-shot fresh-timestamp retry above. Which of the three answers
+        // it deserves is the manager's to name, not ours to guess (#39064): only `unknown_agent`
+        // means the identity itself is gone, and only that pauses traffic and asks for
+        // re-enrollment. Every other class -- including Unclassified, the fail-safe reading -- is
+        // returned to the caller unescalated; the streams already keep the batch and retry on the
+        // next tick (statelessStream.cpp), so nothing storms and no second pause mechanism exists.
+        const auto authClass = parseAuthFailClass(result.response.body);
+
+        if (authClass == AuthFailClass::UnknownAgent)
+        {
+            if (m_authGate != nullptr)
+            {
+                m_authGate->reportAuthFailure(); // Once per incident. #37828.
+            }
+        }
+        else
+        {
+            LOGFN_ERROR(m_logFn,
+                        "https_client: the manager refused this request's credential (401, %s); "
+                        "keeping the current identity and retrying.",
+                        authFailClassName(authClass));
+        }
     }
 
     return result;
@@ -217,34 +226,15 @@ bool RetrySender::isRetryable(OutcomeClass outcome)
 
 void RetrySender::correctClockIfSkewed(const HttpResponse& response)
 {
-    // Date is not itself authenticated (it isn't covered by any signature),
-    // so this trusts whoever answered the TLS handshake -- no different from
-    // trusting the 401 status/body it arrived with. Under the required TLS
-    // verification modes this is the real manager; under verify_mode=none
-    // (opt-in, insecure) a MITM could already forge the entire response, so
-    // feeding it a bogus Date is not a new capability, only a new use of an
-    // existing one.
-    if (response.serverDateSeconds == 0)
+    // Same decision as EnrollClient's, so it is made in one place (clockSkew.hpp), which also owns
+    // the noise floor and the trust and race arguments that used to be restated here.
+    const auto delta = correctClockFromServerDate(m_clock, response.serverDateSeconds);
+
+    if (delta == 0)
     {
-        return; // No Date captured/parsed: nothing to measure skew against.
+        return; // No Date, or inside the floor: the 401 is likely a dead key, not the clock.
     }
 
-    // This read is only a heuristic pre-check (noise floor + log message):
-    // it can race against another sender's concurrent correction and see a
-    // stale wallSeconds(), but that only risks skipping/duplicating a log
-    // line or a redundant call below -- m_clock.correctToServerTime()
-    // recomputes the actual offset itself, from its own raw clock read
-    // taken at commit time, so a stale `delta` here never corrupts the
-    // applied correction (see IClock::correctToServerTime's contract).
-    const auto delta =
-        static_cast<std::int64_t>(response.serverDateSeconds) - static_cast<std::int64_t>(m_clock.wallSeconds());
-
-    if (std::abs(delta) < kSkewNoiseFloorSeconds)
-    {
-        return; // Aligned enough: leave the clock alone, the 401 is likely a dead key.
-    }
-
-    m_clock.correctToServerTime(response.serverDateSeconds);
     LOGFN_INFO(m_logFn,
                "https_client: clock skew of %lld s detected against the manager's response "
                "(Date header); correcting the token timestamp for this and future requests.",

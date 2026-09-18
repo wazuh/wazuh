@@ -8,12 +8,17 @@ set -uo pipefail
 # figure (numbers will differ with the hardware; the shape of the matrix will not).
 #
 # Usage:
-#   sudo ./prepare_manager.sh              # once: open, password-free enrollment
+#   sudo ./prepare_manager.sh              # once: reachable enrollment + the fleet's token
 #   ./run_matrix.sh                        # 12 runs -> results_<label>/
 #   ./make_report_tables.py > tables.md    # the report's tables, from the artifacts
 #
 # The cluster name is read from the local manager's config (the server answers 403
 # to a foreign cluster). Pass --cluster only for a remote manager or to override it.
+#
+# --bootstrap enroll-token|1515: how every agent-mode entry enrolls its fleet. The
+# default (enroll-token) needs the token prepare_manager.sh minted; 1515 is the legacy
+# comparison and needs `prepare_manager.sh --open-1515`. Run the matrix twice, once with
+# each, to compare the two first-contact paths on one machine.
 #
 # --keep-agents: skip the pre-run cleanup of bench-* agents before each agent-mode
 # entry, so every agent-mode run's agents AND indexed documents survive the whole
@@ -40,6 +45,8 @@ SEED=4242
 # that exhausts it fails loudly instead of measuring 401s.
 ENROLL_SETTLE=240s
 ONLY=""
+# How agent-mode entries enroll their fleet; passed straight through.
+BOOTSTRAP="enroll-token"
 # Charts are produced by default: a run that is not plotted rarely gets looked at.
 CHARTS=true
 KEEP_AGENTS=false
@@ -54,6 +61,7 @@ while [[ $# -gt 0 ]]; do
         --seed)           SEED="$2"; shift 2 ;;
         --enroll-settle)  ENROLL_SETTLE="$2"; shift 2 ;;
         --only)           ONLY="$2"; shift 2 ;;   # run a single label
+        --bootstrap)      BOOTSTRAP="$2"; shift 2 ;;
         --no-charts)      CHARTS=false; shift ;;
         --keep-agents)    KEEP_AGENTS=true; shift ;;
         -h|--help)        usage ;;
@@ -110,7 +118,7 @@ for entry in "${MATRIX[@]}"; do
             # ever deletes bench-* agents.
             ./cleanup_agents.sh >/dev/null 2>&1 || true
         fi
-        extra+=(--enroll-settle "$ENROLL_SETTLE")
+        extra+=(--enroll-settle "$ENROLL_SETTLE" --bootstrap "$BOOTSTRAP")
     fi
 
     echo "=== $label ($mode) — $(date -u +%H:%M:%S)"

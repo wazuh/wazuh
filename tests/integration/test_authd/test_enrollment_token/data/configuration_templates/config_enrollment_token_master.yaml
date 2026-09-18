@@ -1,0 +1,9 @@
+- sections:
+  - section: auth
+    elements:
+    - disabled:
+        value: 'no'
+    - purge:
+        value: 'no'
+    - use_password:
+        value: 'no'

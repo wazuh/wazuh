@@ -2302,3 +2302,31 @@ async def test_sync_files_sync_ko(send_request_mock):
                 await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
                 logger_mock.assert_called_with(f"File {compressed_data} could not be removed/not found. "
                                                f"May be due to a lost connection.")
+
+
+@pytest.mark.asyncio
+async def test_manage_indexer_tasks_logs_traceback_on_failure():
+    """A deterministic bug in get_indexer_client() (e.g. a config-shape mismatch) and a
+    transient indexer outage produce the same one-line warning; the traceback has to go
+    with it at a level that reaches cluster.log on a default install."""
+    manager = cluster_common.IndexerTaskManager()
+    manager.logger = MagicMock()
+
+    with (
+        patch(
+            "wazuh.core.cluster.common.get_indexer_client",
+            side_effect=AttributeError("'str' object has no attribute 'get'"),
+        ),
+        patch(
+            "wazuh.core.cluster.common.asyncio.sleep",
+            side_effect=asyncio.CancelledError,
+        ),
+    ):
+        with pytest.raises(asyncio.CancelledError):
+            await manager.manage_indexer_tasks([])
+
+    manager.logger.warning.assert_called_once_with(
+        "Indexer is not configured or unavailable: 'str' object has no attribute 'get'.",
+        exc_info=True,
+    )
+    manager.logger.debug.assert_not_called()

@@ -102,7 +102,7 @@ int main(int argc, char ** argv)
     wconfig.commit_time_min = getDefine_Int_default("wazuh_db", "commit_time_min", 1, 3600, 10);
     wconfig.commit_time_max = getDefine_Int_default("wazuh_db", "commit_time_max", 1, 3600, 60);
     wconfig.open_db_limit = getDefine_Int_default("wazuh_db", "open_db_limit", 1, 4096, 64);
-    nofile = getDefine_Int_default("wazuh_db", "rlimit_nofile", 1024, 1048576, 458752);
+    nofile = getDefine_Int_default("wazuh_db", "rlimit_nofile", 1024, 1048576, 65536);
 
     wconfig.fragmentation_threshold = getDefine_Int_default("wazuh_db", "fragmentation_threshold", 0, 100, 75);
     wconfig.fragmentation_delta = getDefine_Int_default("wazuh_db", "fragmentation_delta", 0, 100, 5);
@@ -157,11 +157,13 @@ int main(int argc, char ** argv)
         nowDaemon();
     }
 
-    // Set max open files limit
-    struct rlimit rlimit = { nofile, nofile };
+    // Raise the soft file descriptor limit; the hard limit belongs to whoever started the manager
+    {
+        const long effective = w_raise_nofile_limit((long)nofile, "wazuh_db.rlimit_nofile");
 
-    if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
-        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
+        if (effective >= 0) {
+            nofile = (rlim_t)effective;
+        }
     }
 
     // Set user and group
