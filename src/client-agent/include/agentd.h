@@ -49,6 +49,11 @@ cJSON *getAgentInternalOptions(void);
 cJSON *getAntiTamperingConfig(void);
 #endif
 
+#ifndef WIN32
+/* Termination signal handler (SIGINT/SIGQUIT/SIGTERM/SIGALRM) */
+void agentd_shutdown(int sig);
+#endif
+
 /* Agentd init function */
 void AgentdStart(int uid, int gid, const char *user, const char *group) __attribute__((noreturn));
 
