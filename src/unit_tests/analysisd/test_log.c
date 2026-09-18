@@ -62,6 +62,8 @@ DynamicField df[] = {
     [FIM_AUDIT_PCWD] = {.key = "fim_audit_pcwd", .value = "/audit/pcwd"},
     [FIM_AUDIT_ID] = {.key = "fim_audit_id", .value = "6789"},
     [FIM_AUDIT_NAME] = {.key = "fim_audit_name", .value = "audit_name"},
+    [FIM_AUDIT_GID] = {.key = "fim_audit_gid", .value = "6789"},
+    [FIM_AUDIT_GROUP_NAME] = {.key = "fim_audit_group_name", .value = "audit_group_name"},
     [FIM_EFFECTIVE_UID] = {.key = "fim_effective_uid", .value = "effective_uid"},
     [FIM_EFFECTIVE_NAME] = {.key = "fim_effective_name", .value = "effective_name"},
     [FIM_PPID] = {.key = "fim_ppid", .value = "ppid"},
