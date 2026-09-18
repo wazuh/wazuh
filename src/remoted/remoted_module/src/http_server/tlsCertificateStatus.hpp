@@ -24,10 +24,17 @@
  * loggerHelper.h out of this header, as common/logThrottle.hpp explains.
  *
  * Only <openssl/types.h> is pulled in here (X509 stays an incomplete type), so IHttpServer.hpp
- * can carry TlsCertificateSnapshot without leaking the OpenSSL API into every endpoint.
+ * can carry TlsCertificateSnapshot without leaking the OpenSSL API into every endpoint -- a
+ * property ca_bundle/ca_bundle.hpp keeps as well.
+ *
+ * Reading, hashing and vouching for the CA bundle itself is shared_modules/ca_bundle's (issue
+ * #39319): X509Ptr, serializeCertificates() and anyCaSignsLeaf() live there now and are re-exported
+ * below, so every user of this header keeps its spelling.
  */
 
 #include "fileRead.hpp"
+
+#include "ca_bundle/ca_bundle.hpp"
 
 #include <openssl/types.h>
 
@@ -46,47 +53,17 @@
 
 namespace remoted::http
 {
-    /// Deleter kept out of line so X509 can stay incomplete for the header's includers.
-    struct X509Deleter
-    {
-        void operator()(X509* certificate) const noexcept;
-    };
-
-    /// Owning X509 handle.
-    using X509Ptr = std::unique_ptr<X509, X509Deleter>;
-
-    /**
-     * @brief Outcome of parsing PEM bytes: the certificates found, and whether the input ended cleanly.
-     *
-     * `wellFormed` is false when the reader stopped on something it could not decode instead of at
-     * end of input. The distinction matters for what we publish: a file we do not fully understand
-     * is refused whole rather than served up to its first bad block (issue #39078, H01).
-     */
-    struct PemCertificates
-    {
-        std::vector<X509Ptr> certificates;
-        bool wellFormed {true};
-    };
-
-    /**
-     * @brief Read every CERTIFICATE block out of PEM bytes already in memory.
-     *
-     * Non-certificate blocks (a key, a CRL) are skipped by OpenSSL's PEM reader, so a bundle or a
-     * combined file yields exactly its certificates -- and, because the caller serialises these
-     * objects back instead of forwarding the bytes, nothing else can ever leave through them.
-     */
-    PemCertificates parseCertificates(std::string_view pem);
+    // Owned by shared_modules/ca_bundle now, re-exported (using-declarations, not new types) so the
+    // ~40 places that spell them `remoted::http::X509Ptr` / serializeCertificates() /
+    // anyCaSignsLeaf() -- RestinioHttpServer.cpp, caCertificateSource.{hpp,cpp}, the tests' PKI --
+    // did not have to change when the parsing moved out. The bundle READER is ca_bundle's
+    // parseBundle(), which returns the publication block too, so it is called by its own name.
+    using ca_bundle::anyCaSignsLeaf;
+    using ca_bundle::serializeCertificates;
+    using ca_bundle::X509Ptr;
 
     /// Subject line of a certificate, for logs and snapshots. Empty for a null certificate.
     std::string subjectOfCertificate(const X509* certificate);
-
-    /**
-     * @brief PEM text containing @p certificates and nothing else.
-     *
-     * What `GET /cacerts` and `--embed-ca` publish: a document this process built from parsed
-     * X.509 objects, not a file it forwarded.
-     */
-    std::string serializeCertificates(const std::vector<X509Ptr>& certificates);
 
     /**
      * @brief Whole days until @p certificate's notAfter, negative once expired.
@@ -96,17 +73,6 @@ namespace remoted::http
      * null certificate or one whose notAfter cannot be compared.
      */
     std::optional<int> daysUntilExpiry(const X509* certificate);
-
-    /**
-     * @brief Whether any of @p cas signed @p leaf (`X509_verify` against each CA's public key).
-     *
-     * A signature check, not a chain validation: no dates, no name constraints, no basicConstraints.
-     * That is deliberate -- the question `GET /cacerts` needs answered is "would the PEM I am about
-     * to hand out let an agent trust the certificate I am serving", and the issuer signature is the
-     * one property that decides it. A self-signed leaf listed as its own CA matches. The chain
-     * question is chainValidates()'s, and it informs the logs, not the 503 (issue #39318).
-     */
-    bool anyCaSignsLeaf(const X509* leaf, const std::vector<X509Ptr>& cas);
 
     /// What chainValidates() found: nullopt when there was nothing to validate against.
     struct ChainVerdict

@@ -11,10 +11,7 @@
 
 #include "tlsCertificateStatus.hpp"
 
-#include <openssl/bio.h>
 #include <openssl/err.h>
-#include <openssl/evp.h>
-#include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
@@ -29,8 +26,6 @@ namespace remoted::http
 {
     namespace
     {
-        using BioPtr = std::unique_ptr<BIO, decltype(&BIO_free)>;
-
         bool equalsIgnoreCase(const std::string& a, const std::string& b)
         {
             return a.size() == b.size() &&
@@ -85,73 +80,6 @@ namespace remoted::http
         return oneline != nullptr ? std::string {oneline} : std::string {};
     }
 
-    void X509Deleter::operator()(X509* certificate) const noexcept
-    {
-        X509_free(certificate);
-    }
-
-    PemCertificates parseCertificates(std::string_view pem)
-    {
-        PemCertificates result;
-        if (pem.empty())
-        {
-            return result;
-        }
-
-        BioPtr bio {BIO_new_mem_buf(pem.data(), static_cast<int>(pem.size())), &BIO_free};
-        if (!bio)
-        {
-            ERR_clear_error();
-            result.wellFormed = false;
-            return result;
-        }
-
-        // PEM_read_bio_X509 skips blocks that are not a CERTIFICATE, so a combined key+cert file
-        // or a bundle yields exactly its certificates. It fails at end of input with a "no start
-        // line" error; any other reason means a block it could not decode.
-        for (X509Ptr certificate {PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr)}; certificate;
-             certificate.reset(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr)))
-        {
-            result.certificates.push_back(std::move(certificate));
-        }
-
-        // The only clean way out of the loop. Anything else (bad base64, a truncated block, a
-        // header the decoder chokes on) means we do not understand the whole input, and a document
-        // we do not fully understand is not one to publish from.
-        result.wellFormed = ERR_GET_REASON(ERR_peek_last_error()) == PEM_R_NO_START_LINE;
-        ERR_clear_error();
-
-        if (!result.wellFormed)
-        {
-            result.certificates.clear();
-        }
-
-        return result;
-    }
-
-    std::string serializeCertificates(const std::vector<X509Ptr>& certificates)
-    {
-        BioPtr bio {BIO_new(BIO_s_mem()), &BIO_free};
-        if (!bio)
-        {
-            ERR_clear_error();
-            return {};
-        }
-
-        for (const auto& certificate : certificates)
-        {
-            if (PEM_write_bio_X509(bio.get(), certificate.get()) != 1)
-            {
-                ERR_clear_error();
-                return {};
-            }
-        }
-
-        char* data = nullptr;
-        const long length = BIO_get_mem_data(bio.get(), &data);
-        return (data != nullptr && length > 0) ? std::string {data, static_cast<std::size_t>(length)} : std::string {};
-    }
-
     std::optional<int> daysUntilExpiry(const X509* certificate)
     {
         if (certificate == nullptr)
@@ -180,26 +108,6 @@ namespace remoted::http
             days = -1;
         }
         return days;
-    }
-
-    bool anyCaSignsLeaf(const X509* leaf, const std::vector<X509Ptr>& cas)
-    {
-        if (leaf == nullptr)
-        {
-            return false;
-        }
-        for (const auto& ca : cas)
-        {
-            EVP_PKEY* key = X509_get0_pubkey(ca.get());
-            // X509_verify takes a non-const X509* (it may cache the encoding) but does not modify
-            // the certificate in any observable way.
-            if (key != nullptr && X509_verify(const_cast<X509*>(leaf), key) == 1)
-            {
-                return true;
-            }
-        }
-        ERR_clear_error(); // a failed X509_verify queues a signature error
-        return false;
     }
 
     ChainVerdict chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas)

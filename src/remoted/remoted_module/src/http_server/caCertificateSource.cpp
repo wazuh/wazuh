@@ -11,6 +11,8 @@
 
 #include "caCertificateSource.hpp"
 
+#include "ca_bundle/ca_bundle.hpp"
+
 #include <openssl/err.h>
 #include <openssl/sha.h>
 #include <openssl/x509.h>
@@ -62,7 +64,9 @@ namespace remoted::http
     {
         CaCertificateSnapshot snapshot;
 
-        auto parsed = parseCertificates(pem);
+        // ca_bundle also hands back the publication block (`parsed.block`); nothing here reads it
+        // yet -- the snapshot grows that field with the guards, in this issue's next stage.
+        auto parsed = ca_bundle::parseBundle(pem);
         if (parsed.certificates.empty())
         {
             // Empty, unparsable or carrying no certificate: all of them mean the same thing to
