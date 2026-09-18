@@ -13,6 +13,7 @@
 
 #include "cacertsClient.hpp"
 
+#include <algorithm>
 #include <utility>
 
 namespace
@@ -25,6 +26,18 @@ namespace
     /// inside it (6 certificates, 8191 bytes), so a body that reaches this length was cut off
     /// in transit and is not the bundle the publication names.
     constexpr size_t MAX_BUNDLE_BYTES = 8192;
+
+    /// The longest a manager's Retry-After may defer the next attempt.
+    ///
+    /// Retry-After is honoured because a rate limiter asking for room deserves it, but the value
+    /// arrives from the network and nothing else bounds it: a mistyped or buggy header could park
+    /// the refresh for weeks, and because the target stays armed rather than being dropped, the
+    /// agent would simply never come back to it. A minute is longer than any legitimate /cacerts
+    /// rate-limit window and short enough that an adoption still completes promptly.
+    ///
+    /// Capping only delays the agent less than asked, so the worst case is an extra request
+    /// against a rate limiter that is free to answer 429 again.
+    constexpr std::chrono::milliseconds MAX_AGENT_DELAY {60000};
 }
 
 CaBundleFetcher::CaBundleFetcher(const ModuleConfig& config,
@@ -172,7 +185,13 @@ void CaBundleFetcher::performRefresh(std::int64_t target, Waiter& waiter)
     // target stays pending, and 429's Retry-After is honoured when it asks for longer than the
     // ramp does.
     auto delay = m_backoff.next();
-    const auto serverDelay = std::chrono::milliseconds {response.retryAfterSeconds * 1000};
+    // Retry-After is honoured, but only within MAX_AGENT_DELAY and never as a negative value.
+    // It arrives from the network, and because a refused target stays armed rather than being
+    // dropped, an unbounded delay would not postpone the refresh so much as end it. The seconds
+    // are clamped before the multiplication, so a large header cannot overflow on its way in.
+    const std::int64_t cappedSeconds =
+        std::clamp<std::int64_t>(response.retryAfterSeconds, 0, MAX_AGENT_DELAY.count() / 1000);
+    const std::chrono::milliseconds serverDelay {cappedSeconds * 1000};
 
     if (serverDelay > delay)
     {

@@ -83,6 +83,17 @@ namespace
         return response;
     }
 
+    /// A rate limiter's answer: 429 plus the Retry-After it wants honoured (#39280 bounds
+    /// /cacerts to 50 req/s per node, so a rotating fleet meets this for real).
+    HttpResponse rateLimited(long retryAfterSeconds)
+    {
+        HttpResponse response;
+        response.status = TransportStatus::Ok;
+        response.httpCode = 429;
+        response.retryAfterSeconds = retryAfterSeconds;
+        return response;
+    }
+
     /// Records what reached the consumer and answers with whatever the test wants.
     struct Installs
     {
@@ -253,5 +264,93 @@ TEST(CaBundleFetcher, NoRefreshWhenVerificationIsOffOrDelegatedToTheOs)
 
         EXPECT_TRUE(f.m_installs.calls.empty());
         EXPECT_EQ(0, f.m_state.pending()); // Abandoned: retrying cannot help.
+    }
+}
+
+/* Retry-After is not merely parsed, it defers the next attempt. Nothing asserted this before:
+ * every 429 test proved the trust store was untouched and the target stayed armed, so deleting
+ * the comparison against the ramp would have left the suite entirely green.
+ *
+ * The ramp here is milliseconds and the header asks for 30 s, so the header is what decides. */
+TEST(CaBundleFetcher, RetryAfterDefersTheNextAttemptBeyondTheRamp)
+{
+    // The ramp is the fixture's: MaxRandom over a 1000 ms base, so the first retry is due in
+    // exactly 1 s. Backoff copies base/cap in the fetcher's constructor, so it cannot be
+    // retuned through m_config here -- 30 s against 1 s is contrast enough.
+    Fixture f;
+
+    EXPECT_CALL(f.m_performer, perform(_))
+    .WillOnce(Return(rateLimited(30)))
+    .WillOnce(Return(bundleResponse(200, "PEM", PUBLISHED)));
+
+    f.runDueRefresh();                              // First attempt: 429.
+    EXPECT_TRUE(f.m_installs.calls.empty());
+
+    // Well past the ramp, nowhere near what the server asked for: nothing may go out yet.
+    f.m_clock.advance(std::chrono::seconds {5});
+    f.m_fetcher.tick(f.m_waiter);
+    EXPECT_TRUE(f.m_installs.calls.empty());
+
+    // Past the server's window: the attempt is due again.
+    f.m_clock.advance(std::chrono::seconds {26});
+    f.m_fetcher.tick(f.m_waiter);
+    ASSERT_EQ(1u, f.m_installs.calls.size());
+    EXPECT_EQ(PUBLISHED, f.m_installs.calls[0].second);
+}
+
+/* ...but only up to MAX_AGENT_DELAY. The value arrives from the network and nothing else bounds
+ * it, and because a refused target stays armed rather than being dropped, an unbounded delay
+ * would not postpone the refresh so much as end it. A day's Retry-After must not outlive the cap. */
+TEST(CaBundleFetcher, AnAbsurdRetryAfterIsCappedAtTheAgentMaximum)
+{
+    Fixture f;
+
+    EXPECT_CALL(f.m_performer, perform(_))
+    .WillOnce(Return(rateLimited(86400)))           // A full day.
+    .WillOnce(Return(bundleResponse(200, "PEM", PUBLISHED)));
+
+    f.runDueRefresh();
+    EXPECT_TRUE(f.m_installs.calls.empty());
+
+    // Just inside the cap: still waiting, so the cap is a real delay and not a bypass.
+    f.m_clock.advance(std::chrono::seconds {59});
+    f.m_fetcher.tick(f.m_waiter);
+    EXPECT_TRUE(f.m_installs.calls.empty());
+
+    // Just past it: the agent comes back, a day early.
+    f.m_clock.advance(std::chrono::seconds {2});
+    f.m_fetcher.tick(f.m_waiter);
+    ASSERT_EQ(1u, f.m_installs.calls.size());
+    EXPECT_EQ(PUBLISHED, f.m_state.local());
+}
+
+/* A header that is absent, zero or negative is not a delay at all: the ordinary ramp decides,
+ * and a negative value must never subtract from it or fire the attempt immediately. The ramp
+ * here is the fixture's 1 s, so the assertions straddle that rather than the server's value. */
+TEST(CaBundleFetcher, AnAbsentOrNegativeRetryAfterLeavesTheRampInCharge)
+{
+    for (const long header :
+            {
+                0L, -1L, -86400L
+            })
+    {
+        Fixture f;
+
+        EXPECT_CALL(f.m_performer, perform(_))
+        .WillOnce(Return(rateLimited(header)))
+        .WillOnce(Return(bundleResponse(200, "PEM", PUBLISHED)));
+
+        f.runDueRefresh();
+        ASSERT_TRUE(f.m_installs.calls.empty()) << "header " << header;
+
+        // Inside the 1 s ramp: a negative header must not have pulled the due time backwards.
+        f.m_clock.advance(std::chrono::milliseconds {500});
+        f.m_fetcher.tick(f.m_waiter);
+        EXPECT_TRUE(f.m_installs.calls.empty()) << "header " << header;
+
+        // Past it: the ordinary ramp, neither shortened nor extended by the header.
+        f.m_clock.advance(std::chrono::milliseconds {600});
+        f.m_fetcher.tick(f.m_waiter);
+        EXPECT_EQ(1u, f.m_installs.calls.size()) << "header " << header;
     }
 }
