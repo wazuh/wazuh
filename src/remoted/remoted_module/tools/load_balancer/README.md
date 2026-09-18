@@ -60,9 +60,17 @@ grep -c '"ca_certificate"' /var/wazuh-manager/etc/wazuh-manager.schema.json
 ## Bring it up
 
 ```bash
+# The PKI is issued by the installation assistant's tool, built once:
+git clone https://github.com/wazuh/wazuh-installation-assistant
+(cd wazuh-installation-assistant && bash builder.sh -c)
+
+export CERTS_TOOL=$PWD/wazuh-installation-assistant/wazuh-certs-tool.sh
 ./setup_lab.sh --packages /path/to/debs
 ./run_issue_checks.sh
 ```
+
+`CERTS_TOOL` is only read when the PKI does not exist yet, or with `--regenerate`. A version
+supporting `--agent-san` and the `load_balancer:` section is required -- see [Certificates](#certificates).
 
 `--regenerate` issues a fresh CA, which invalidates every certificate already installed. The
 setup always reinstalls from the current PKI so that cannot happen halfway.

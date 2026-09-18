@@ -20,10 +20,44 @@ check() {   # check <description> <expected> <actual>
 
 check_not() {  # check_not <description> <unwanted> <actual>
     local what="$1" bad="$2" got="$3"
-    if [[ "$got" != "$bad" ]]; then
+    # An empty value is a FAIL, never a PASS: a probe that printed nothing, or whose output
+    # stopped matching the pattern the caller greps for, would otherwise satisfy every
+    # negative assertion without having tested anything.
+    if [[ -z "$got" ]]; then
+        printf '  FAIL  %-62s no value (probe produced nothing)\n' "$what"; FAIL=$((FAIL+1))
+    elif [[ "$got" != "$bad" ]]; then
         printf '  PASS  %-62s %s\n' "$what" "$got"; PASS=$((PASS+1))
     else
         printf '  FAIL  %-62s should not be %s\n' "$what" "$bad"; FAIL=$((FAIL+1))
+    fi
+}
+
+check_in() {  # check_in <description> <actual> <allowed>...
+    # For assertions with more than one correct answer. Prefer it over check_not: "not 200"
+    # also accepts a 500, which proves the request failed, not that it was REFUSED.
+    local what="$1" got="$2"; shift 2
+    if [[ -z "$got" ]]; then
+        printf '  FAIL  %-62s no value (probe produced nothing)\n' "$what"; FAIL=$((FAIL+1)); return
+    fi
+    local a
+    for a in "$@"; do
+        if [[ "$got" == "$a" ]]; then
+            printf '  PASS  %-62s %s\n' "$what" "$got"; PASS=$((PASS+1)); return
+        fi
+    done
+    printf '  FAIL  %-62s expected one of [%s], got %s\n' "$what" "$*" "$got"; FAIL=$((FAIL+1))
+}
+
+check_positive_number() {  # check_positive_number <description> <actual>
+    local what="$1" got="$2"
+    # The metric answers a float, or one of the probe's sentinels ('unavailable', 'absent').
+    # A negative value is a certificate that ALREADY EXPIRED, so it must fail here too.
+    if [[ ! "$got" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
+        printf '  FAIL  %-62s not a number: %s\n' "$what" "${got:-<empty>}"; FAIL=$((FAIL+1))
+    elif awk -v v="$got" 'BEGIN{exit !(v>0)}'; then
+        printf '  PASS  %-62s %s\n' "$what" "$got"; PASS=$((PASS+1))
+    else
+        printf '  FAIL  %-62s expired or expiring: %s\n' "$what" "$got"; FAIL=$((FAIL+1))
     fi
 }
 
@@ -51,7 +85,7 @@ NODES="$(docker exec wazuh-master /var/wazuh-manager/bin/cluster_control -l 2>/d
 check "cluster_control lists three nodes" "3" "$NODES"
 
 echo
-echo "=== 3. GET / returns a body (load-balancers/README.md:203 says it does not) ==="
+echo "=== 3. GET / returns the documented JSON body ==="
 BODY="$(curl -s --max-time 10 --cacert "$CA" --resolve "wazuh-lb-haproxy:21518:127.0.0.1" \
         https://wazuh-lb-haproxy:21518/wazuh-manager/ 2>/dev/null)"
 check "body is the liveness JSON" '{"status":"ok","module":"remoted"}' "$BODY"
@@ -84,7 +118,7 @@ print(next((m['value'] for m in d['metrics'] if m['name']=='$2'), 'absent'))
 }
 check "master: the CA signs the served leaf" "1.0" "$(tls_metric wazuh-master remoted.server.tls.ca_matches_leaf)"
 EXPIRY="$(tls_metric wazuh-master remoted.server.tls.cert_expiry_days)"
-check_not "master: the certificate has not expired" "unavailable" "$EXPIRY"
+check_positive_number "master: the certificate has not expired" "$EXPIRY"
 
 echo
 echo "  Certificate FAILURE drills run standalone, because they restart a node:"
@@ -125,10 +159,13 @@ for _ in $(seq 1 12); do
     grep -qE '^  enrollment token *-> 200' <<<"$MODES" && break
     sleep 3
 done
-check_not "no credential is refused"     "200" "$(grep -oE '^  no credential *-> [0-9]+' <<<"$MODES" | grep -oE '[0-9]+$')"
+check_in  "no credential is refused"     "$(grep -oE '^  no credential *-> [0-9]+' <<<"$MODES" | grep -oE '[0-9]+$')" 401 403
 check     "shared password enrolls"      "200" "$(grep -oE '^  shared password *-> [0-9]+' <<<"$MODES" | grep -oE '[0-9]+$')"
 check     "enrollment token enrolls"     "200" "$(grep -oE '^  enrollment token *-> [0-9]+' <<<"$MODES" | grep -oE '[0-9]+$')"
-check_not "unknown token id is refused"  "200" "$(grep -oE '^  unknown token id *-> [0-9]+' <<<"$MODES" | grep -oE '[0-9]+$')"
+# Either answer is correct: remoted refuses an unknown id with its uniform 401, and the master
+# answers 403 (9022) when its own replica already knows the token. Which one you see depends
+# on who notices first, so both are accepted -- but a 500 or a 200 is not.
+check_in  "unknown token id is refused"  "$(grep -oE '^  unknown token id *-> [0-9]+' <<<"$MODES" | grep -oE '[0-9]+$')" 401 403
 
 echo
 echo "=== 8. every route answers through every front end ==="
