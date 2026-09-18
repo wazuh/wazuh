@@ -58,6 +58,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the macOS agent reporting zeroed password aging values for local users, where macOS defines no such policy. ([#39356](https://github.com/wazuh/wazuh/pull/39356))
 - Fixed the users inventory misreporting sudoers, missing group-based grants (e.g. macOS's `%admin`, Linux's `%sudo`/`%wheel`) and flagging unrelated accounts. ([#39165](https://github.com/wazuh/wazuh/issues/39165))
 - Fixed the users inventory never reading sudo grants placed in sudoers drop-in files (`/etc/sudoers.d/*`). ([#39165](https://github.com/wazuh/wazuh/issues/39165))
+- Fixed the macOS agent shipping preinstalled empty `logs/ossec.log`/`ossec.json` placeholders. ([#39120](https://github.com/wazuh/wazuh/issues/39120))
 
 ### Ruleset
 
@@ -108,6 +109,8 @@ All notable changes to this project will be documented in this file.
 - Prevent a race condition in `randombytes` during the initialization of the Windows RSA key container ([#37701](https://github.com/wazuh/wazuh/pull/37701))
 - Fixed missing macOS SSH authentication logs by adding the `sshd-session` and `sshd-auth` processes to the default Unified Logging query. ([#37769](https://github.com/wazuh/wazuh/pull/37769))
 - Fixed the name, version and PyPI packages reported for Microsoft Store Python installations. ([#37441](https://github.com/wazuh/wazuh/pull/37441))
+- Fixed the FIM eBPF whodata provider swapping the reported `user_id` and `group_id` in every event. ([#39358](https://github.com/wazuh/wazuh/issues/39358))
+- Fixed FIM eBPF whodata attributing every file change to root when the kernel reports no loginuid. ([#39335](https://github.com/wazuh/wazuh/pull/39335))
 
 #### Added
 
@@ -894,6 +897,22 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Added the `security:revoke` action to the `PUT /security/user/revoke` endpoint. ([#26255](https://github.com/wazuh/wazuh/pull/26255))
+
+
+## [v4.10.5]
+
+### Manager
+
+#### Fixed
+
+- Hardened RSA decryption to reject malformed ciphertext blobs. ([#36243](https://github.com/wazuh/wazuh/issues/36243))
+- Improved cluster merged file parameter validation to prevent directory escape. ([#38375](https://github.com/wazuh/wazuh/pull/38375))
+- Improved `tmp_file` path validation in cluster DAPI. ([#38376](https://github.com/wazuh/wazuh/pull/38376))
+- Improved cluster non-merged file path validation during worker file processing. ([#38377](https://github.com/wazuh/wazuh/pull/38377))
+- Improved cluster worker file path validation. ([#38378](https://github.com/wazuh/wazuh/pull/38378))
+- Improved destination path validation when uploading CDB list, rule, and decoder files. ([#38379](https://github.com/wazuh/wazuh/pull/38379))
+- Improved cluster master validation of the files received from worker nodes. ([#38380](https://github.com/wazuh/wazuh/pull/38380))
+- Fixed a remote-command configuration validation bypass where upper- or mixed-case XML element names let command `localfile` and `wodle` blocks pass the `remote_commands` restriction. ([#38381](https://github.com/wazuh/wazuh/pull/38381))
 
 
 ## [v4.10.4]

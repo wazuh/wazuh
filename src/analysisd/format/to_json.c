@@ -527,6 +527,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log, OSList * li
         cJSON* user_sect = NULL;
         cJSON* group_sect = NULL;
         cJSON* auser_sect = NULL;
+        cJSON* agroup_sect = NULL;
         cJSON* euser_sect = NULL;
 
         // User section
@@ -549,11 +550,15 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log, OSList * li
         add_json_field(auser_sect, "id", lf->fields[FIM_AUDIT_ID].value, "");
         add_json_field(auser_sect, "name", lf->fields[FIM_AUDIT_NAME].value, "");
 
+        // Login group sect
+        add_json_field(agroup_sect, "id", lf->fields[FIM_AUDIT_GID].value, "");
+        add_json_field(agroup_sect, "name", lf->fields[FIM_AUDIT_GROUP_NAME].value, "");
+
         // Effective user
         add_json_field(euser_sect, "id", lf->fields[FIM_EFFECTIVE_UID].value, "");
         add_json_field(euser_sect, "name", lf->fields[FIM_EFFECTIVE_NAME].value, "");
 
-        if (user_sect || process_sect || group_sect || auser_sect || euser_sect) {
+        if (user_sect || process_sect || group_sect || auser_sect || agroup_sect || euser_sect) {
             audit_sect = cJSON_CreateObject();
             if (user_sect) {
                 cJSON_AddItemToObject(audit_sect, "user", user_sect);
@@ -566,6 +571,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log, OSList * li
             }
             if (auser_sect) {
                 cJSON_AddItemToObject(audit_sect, "login_user", auser_sect);
+            }
+            if (agroup_sect) {
+                cJSON_AddItemToObject(audit_sect, "login_group", agroup_sect);
             }
             if (euser_sect) {
                 cJSON_AddItemToObject(audit_sect, "effective_user", euser_sect);
