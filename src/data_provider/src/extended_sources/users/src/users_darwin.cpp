@@ -153,6 +153,23 @@ nlohmann::json UsersProvider::collectAccountPolicyData(const uid_t uid)
     nlohmann::json accountData;
     m_odWrapper->genAccountPolicyData(std::to_string(uid), accountData);
 
+    // expires_every_n_days is only present when pwpolicy or an MDM has imposed a change
+    // interval. It doubles as the source for the expiration date, which macOS does not store
+    // directly: it is derived the same way the policy itself evaluates it, from the last change.
+    if (accountData.contains("expires_every_n_days"))
+    {
+        const auto expiresEveryNDays = accountData["expires_every_n_days"].get<int64_t>();
+        accountData["password_max_days_between_changes"] = expiresEveryNDays;
+
+        if (accountData.contains("password_last_set_time"))
+        {
+            constexpr auto secondsPerDay = 86400;
+            const auto lastSetTime = accountData["password_last_set_time"].get<double>();
+            accountData["password_expiration_date"] =
+                static_cast<int64_t>(lastSetTime) + expiresEveryNDays * secondsPerDay;
+        }
+    }
+
     return accountData;
 }
 
