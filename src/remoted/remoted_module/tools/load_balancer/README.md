@@ -60,9 +60,17 @@ grep -c '"ca_certificate"' /var/wazuh-manager/etc/wazuh-manager.schema.json
 ## Bring it up
 
 ```bash
+# The PKI is issued by the installation assistant's tool, built once:
+git clone https://github.com/wazuh/wazuh-installation-assistant
+(cd wazuh-installation-assistant && bash builder.sh -c)
+
+export CERTS_TOOL=$PWD/wazuh-installation-assistant/wazuh-certs-tool.sh
 ./setup_lab.sh --packages /path/to/debs
 ./run_issue_checks.sh
 ```
+
+`CERTS_TOOL` is only read when the PKI does not exist yet, or with `--regenerate`. A version
+supporting `--agent-san` and the `load_balancer:` section is required -- see [Certificates](#certificates).
 
 `--regenerate` issues a fresh CA, which invalidates every certificate already installed. The
 setup always reinstalls from the current PKI so that cannot happen halfway.
@@ -218,18 +226,41 @@ with `(8134) Could not chmod 'var/upgrade/upgrade.sh'`, which does not name the 
 ```bash
 docker exec wazuh-agent4-a cat /var/ossec/etc/client.keys > migrate/legacy.keys
 docker stop wazuh-agent4-a
-docker compose up -d migrated-agent
+docker compose --profile migrate up -d migrated-agent
 ```
 
 Boots the 5.x binaries with the `ossec.conf` and `client.keys` a 4.x agent had, which is what a
 migrated host looks like: an upgrade never rewrites `ossec.conf`. The agent keeps its id, does
 not re-enroll, and moves to `1517` on its own.
 
+It is behind a `migrate` profile so it never starts with the rest of the lab: it takes over the
+identity of `wazuh-agent4-a`, and two containers sharing one `client.keys` line would fight over
+it. Stop that agent first, as above.
+
+The migrated host has **no trust anchor**, because an in-place upgrade does not create one, so it
+resolves to `verification_mode none` and says so in its log. That is faithful, not an oversight --
+it is the `verification_mode` ladder in [the agent configuration reference](../../../../../docs/ref/modules/client/configuration.md)
+acting on a real migration. Set `MIGRATE_PLACE_ANCHOR=1` in the service environment to install the
+lab CA at `etc/certs/root-ca.pem` instead and watch the same host come up as `full`.
+
 ### Failure injection
 
-`scenarios/` holds per-node configuration overrides, applied by the manager entrypoint from
-`/lab-overrides`. `break-indexer-ca.sh` points the indexer connector at a missing file, which
-is enough to keep the whole node from opening its agent listener.
+`scenarios/` is the library; `overrides/` is what runs. Only **wazuh-worker2** mounts
+`overrides/` at `/lab-overrides`, and the manager entrypoint sources every `*.sh` it finds
+there on each boot, after writing the configuration and before starting the daemons. It is
+empty by default, so the lab comes up healthy -- mounting the library directly would re-apply
+every scenario on every restart.
+
+```bash
+cp scenarios/break-indexer-ca.sh overrides/   # stage it
+docker restart wazuh-worker2                  # apply
+rm overrides/break-indexer-ca.sh              # undo
+docker restart wazuh-worker2
+```
+
+`break-indexer-ca.sh` points the indexer connector at a missing file, which is enough to keep
+the whole node from opening its agent listener. Scenarios run with the entrypoint's variables
+in scope: `$CONF` is the manager configuration, `$DIR` the install root.
 
 ## Indexer
 

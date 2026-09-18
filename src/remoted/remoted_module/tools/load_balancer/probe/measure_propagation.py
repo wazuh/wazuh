@@ -16,8 +16,12 @@ trick the existing remoted lab uses:
     202  -> accepted
     503  -> the key was accepted; only the downstream engine is unavailable
 
-so 401 and "anything else" cleanly separate "key missing" from "key present", with no
-dependency on a working indexer.
+Only 202 and 503 prove the key arrived, and only 401 proves it had not: both are answers
+the MANAGER gave, so neither depends on a working indexer. Anything else -- a connection
+refused, a read timeout, a TLS failure -- never reached the manager and says nothing about
+the key. Those are inconclusive: they must not stop the clock, or a node that is merely
+unreachable for a moment is recorded as having accepted the key at that moment, and the
+window comes out shorter than it was. They are counted and reported separately instead.
 """
 import argparse
 import json
@@ -96,6 +100,9 @@ def main() -> int:
 
     first_ok = {n: None for n in nodes}
     counts = {n: {} for n in nodes}
+    # Requests that never reached the manager, per node. Reported separately so a reader can
+    # tell whether a measurement was taken against a cleanly reachable cluster.
+    errors: dict = {}
     timeline = []
 
     while time.monotonic() - t0 < args.budget and any(v is None for v in first_ok.values()):
@@ -106,9 +113,13 @@ def main() -> int:
             dt = time.monotonic() - t0
             counts[n][st] = counts[n].get(st, 0) + 1
             timeline.append({"t": round(dt, 3), "node": n, "status": st})
-            if st != 401:
+            if st in (202, 503):
                 first_ok[n] = dt
                 print(f"  [{dt:7.3f}s] {n:14s} ACCEPTED (status {st})")
+            elif st != 401:
+                # Inconclusive: the request never got an answer from the manager. Keep polling.
+                errors[n] = errors.get(n, 0) + 1
+                print(f"  [{dt:7.3f}s] {n:14s} inconclusive ({st}), still waiting")
         time.sleep(args.interval)
 
     print("\n--- result ---")
@@ -124,10 +135,17 @@ def main() -> int:
               f"(fastest node {min(window):.3f}s)")
     total_401 = sum(c.get(401, 0) for c in counts.values())
     print(f"  total 401 answers while waiting: {total_401}")
+    if errors:
+        print("  INCONCLUSIVE requests (never reached the manager), per node: "
+              + ", ".join(f"{n}={c}" for n, c in sorted(errors.items())))
+        print("  Those nodes were unreachable for part of the run, so the window above covers"
+              " only the nodes that answered: treat it as a measurement of them, not of the"
+              " cluster.")
 
     if args.json_out:
         with open(args.json_out, "w") as fh:
             json.dump({"agent_id": agent_id, "name": name, "first_ok": first_ok,
+                       "inconclusive": errors,
                        "counts": {n: {str(k): v for k, v in c.items()} for n, c in counts.items()},
                        "timeline": timeline}, fh, indent=2)
         print(f"  written: {args.json_out}")

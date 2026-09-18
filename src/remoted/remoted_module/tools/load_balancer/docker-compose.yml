@@ -56,6 +56,9 @@ services:
         ipv4_address: 172.28.0.12
     depends_on: [wazuh-master]
 
+  # worker2 is the lab's designated victim: cert_drill.sh installs broken certificates here,
+  # and overrides/ is where a failure-injection scenario is staged. Empty by default, so the
+  # node comes up healthy; see overrides/README.md.
   wazuh-worker2:
     image: lab-wazuh-manager:deb
     hostname: wazuh-worker2
@@ -64,6 +67,7 @@ services:
     volumes:
       - ./certs:/lab-certs:ro
       - ./certs-indexer:/lab-certs-indexer:ro
+      - ./overrides:/lab-overrides:ro
     ports:
       - "41519:1517"
     networks:
@@ -160,6 +164,35 @@ services:
       lab:
         ipv4_address: 172.28.0.72
     depends_on: [wazuh-lb-nginx]
+
+  # ---- The 4.x -> 5.x in-place transition ---------------------------------------
+  # Behind a `profiles:` key so it never starts with the rest of the lab: it takes over the
+  # identity of a 4.x agent, and running both at once would have two containers using one
+  # client.keys line. Start it by name, after stopping the agent it replaces:
+  #
+  #   docker exec wazuh-agent4-a cat /var/ossec/etc/client.keys > migrate/legacy.keys
+  #   docker stop wazuh-agent4-a
+  #   docker compose --profile migrate up -d migrated-agent
+  #
+  # 5.x binaries, but the ossec.conf and client.keys the 4.x agent had -- an upgrade never
+  # rewrites ossec.conf, so that is what a migrated host looks like on first boot.
+  migrated-agent:
+    image: lab-agent5:branch
+    hostname: migrated-agent
+    container_name: migrated-agent
+    profiles: ["migrate"]
+    entrypoint: ["/migrate/entrypoint.sh"]
+    environment:
+      # 0 (default) reproduces a real in-place upgrade: no trust anchor, so the agent resolves
+      # verification_mode to `none`. 1 installs the lab CA and it comes up `full` instead.
+      MIGRATE_PLACE_ANCHOR: "0"
+    volumes:
+      - ./migrate:/migrate
+      - ./certs:/lab-certs:ro
+    networks:
+      lab:
+        ipv4_address: 172.28.0.73
+    depends_on: [wazuh-lb-haproxy]
 
   # ---- Wazuh indexer, single node -----------------------------------------------
   # Needed for the one measurement the lab could not take without it: vd_feed_offset

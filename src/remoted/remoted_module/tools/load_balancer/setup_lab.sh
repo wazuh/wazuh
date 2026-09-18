@@ -63,8 +63,10 @@ fi
 echo "    ok"
 
 echo "==> PKI"
+PKI_CHANGED=no
 if [[ "$REGENERATE" == "yes" || ! -f "$HERE/certs/root-ca.pem" ]]; then
     "$HERE/generate_certs.sh"
+    PKI_CHANGED=yes
 else
     echo "    reusing certs/ (use --regenerate for a fresh CA)"
 fi
@@ -79,6 +81,17 @@ echo "    done"
 
 echo "==> starting the cluster, the balancers and the agents"
 docker compose --project-directory "$HERE" up -d >/dev/null
+
+# HAProxy and NGINX read their TLS certificate ONCE, at startup, and the lab bind-mounts it.
+# `docker compose up` leaves them running because neither image nor service definition changed,
+# so a regenerated PKI would leave both balancers serving the PREVIOUS leaf while every file on
+# disk says otherwise -- every terminating front end then fails verification and the cause is
+# invisible. The managers do not need this: their entrypoint reinstalls from the mount on boot.
+if [[ "$PKI_CHANGED" == "yes" ]]; then
+    echo "    PKI changed: recreating the balancers so they load it"
+    docker compose --project-directory "$HERE" up -d --force-recreate \
+        wazuh-lb-haproxy wazuh-lb-nginx >/dev/null
+fi
 
 echo "==> waiting for the cluster to form"
 until docker exec wazuh-master /var/wazuh-manager/bin/cluster_control -l 2>/dev/null | grep -q worker1; do

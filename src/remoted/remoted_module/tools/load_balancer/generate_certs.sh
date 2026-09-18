@@ -112,6 +112,76 @@ install -m 644 "$WORK/out/admin.pem"             "$IDX/admin.pem"
 install -m 644 "$WORK/out/admin-key.pem"         "$IDX/admin-key.pem"
 install -m 644 "$OUT/root-ca.pem"                "$IDX/root-ca.pem"
 
+echo "==> deliberately broken leaves, for the certificate failure drills"
+# cert_drill.sh installs these on one node to measure what every front end reports. They are
+# issued here rather than by hand so the drills the README documents actually run.
+BAD="$(cd "$OUT/.." && pwd)/certs-bad"
+rm -rf "$BAD"; mkdir -p "$BAD"
+
+# 1. Expired: correct CA, correct SAN, but past its notAfter. Isolates the expiry check.
+#    `openssl x509 -days` cannot backdate ("-days parameter arg must be >= -1") and the
+#    -not_before/-not_after options only exist from OpenSSL 3.2, so this goes through
+#    `openssl ca`, which takes explicit dates on every version the lab supports.
+openssl req -newkey rsa:2048 -nodes -keyout "$BAD/expired-key.pem" \
+    -subj "/CN=wazuh-master" -out "$WORK/exp.csr" 2>/dev/null
+mkdir -p "$WORK/ca-db"; : > "$WORK/ca-db/index.txt"; echo 01 > "$WORK/ca-db/serial"
+cat > "$WORK/ca.cnf" <<'EOF'
+[ca]
+default_ca = CA_default
+[CA_default]
+database      = $ENV::WORK/ca-db/index.txt
+serial        = $ENV::WORK/ca-db/serial
+new_certs_dir = $ENV::WORK/ca-db
+default_md    = sha256
+policy        = pol
+email_in_dn   = no
+rand_serial   = no
+unique_subject = no
+copy_extensions = none
+x509_extensions = ext
+[pol]
+commonName = optional
+[ext]
+subjectAltName = DNS:wazuh-master,DNS:wazuh-lb-haproxy,DNS:wazuh-lb-nginx,IP:172.28.0.11
+basicConstraints = critical,CA:FALSE
+keyUsage = critical,digitalSignature,keyEncipherment
+extendedKeyUsage = serverAuth
+EOF
+WORK="$WORK" openssl ca -config "$WORK/ca.cnf" -cert "$OUT/root-ca.pem" -keyfile "$OUT/root-ca.key" \
+    -in "$WORK/exp.csr" -out "$BAD/expired.pem" -notext -batch \
+    -startdate "$(date -u -d '-400 days' '+%y%m%d%H%M%SZ')" \
+    -enddate   "$(date -u -d '-30 days'  '+%y%m%d%H%M%SZ')" >/dev/null 2>&1 || {
+    echo "!! could not issue the expired leaf" >&2; exit 1; }
+# `openssl verify` exits non-zero here BY DESIGN -- the leaf must fail verification. Capture its
+# output first: piping it straight into grep makes `set -o pipefail` report that intended failure
+# and trips the guard on a correct certificate.
+EXPVERIFY="$(openssl verify -CAfile "$OUT/root-ca.pem" "$BAD/expired.pem" 2>&1 || true)"
+grep -q 'has expired' <<<"$EXPVERIFY" || {
+    echo "!! the expired leaf is not actually expired:" >&2
+    echo "$EXPVERIFY" >&2; exit 1; }
+printf '  %-16s notAfter %s (in the past, on purpose)\n' "expired" \
+    "$(openssl x509 -in "$BAD/expired.pem" -noout -enddate | cut -d= -f2)"
+
+# 2. Rogue CA: correct SAN and not expired, but signed by a CA the agents do not trust.
+openssl req -x509 -newkey rsa:2048 -nodes -keyout "$WORK/rogue-ca-key.pem" \
+    -out "$WORK/rogue-ca.pem" -days 3650 -subj "/CN=Rogue CA" 2>/dev/null
+openssl req -newkey rsa:2048 -nodes -keyout "$BAD/rogue-key.pem" \
+    -subj "/CN=wazuh-master" -out "$WORK/rogue.csr" 2>/dev/null
+cat > "$WORK/rogue.cnf" <<'EOF'
+subjectAltName=DNS:wazuh-master,DNS:wazuh-lb-haproxy,DNS:wazuh-lb-nginx,IP:172.28.0.11
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,digitalSignature,keyEncipherment
+extendedKeyUsage=serverAuth
+EOF
+openssl x509 -req -in "$WORK/rogue.csr" -CA "$WORK/rogue-ca.pem" -CAkey "$WORK/rogue-ca-key.pem" \
+    -CAcreateserial -extfile "$WORK/rogue.cnf" -days 3650 \
+    -out "$BAD/rogue.pem" 2>/dev/null
+openssl verify -CAfile "$OUT/root-ca.pem" "$BAD/rogue.pem" >/dev/null 2>&1 && {
+    echo "!! the rogue leaf verifies against the lab CA; it must not" >&2; exit 1; }
+printf '  %-16s issuer %s\n' "rogue" \
+    "$(openssl x509 -in "$BAD/rogue.pem" -noout -issuer | sed 's/^issuer=//')"
+chmod -R a+rX "$BAD"
+
 echo "==> a deliberately wrong leaf, for the SAN-mismatch drill"
 mkdir -p "$OUT/wazuh-badsan"
 openssl req -newkey rsa:2048 -nodes -keyout "$OUT/wazuh-badsan/node-key.pem" \
@@ -149,6 +219,8 @@ cat "$PUB/lb.pem" "$PUB/lb-key.pem" > "$PUB/lb-bundle.pem"
 chmod -R a+rX "$PUB"
 echo "  public-ca        a CA the managers do NOT chain to, on purpose"
 
+# Only the leaves under certs/ are expected to verify. certs-bad/ is broken on purpose and
+# lives outside this directory precisely so this loop never sees it.
 echo "==> verifying every leaf against the CA"
 for d in "$OUT"/*/; do
     n="$(basename "$d")"

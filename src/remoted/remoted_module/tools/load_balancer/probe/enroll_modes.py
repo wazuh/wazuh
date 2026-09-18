@@ -108,13 +108,23 @@ def main() -> int:
     # 3. Enrollment token.
     try:
         tokens = json.load(open(args.store))["tokens"]
-        tok = next(t for t in tokens
-                   if t["adr"] == args.token_address and not t["revoked"] and t["uses"] < t["max_uses"])
+        # `expires` matters as much as `revoked` and `uses`. The store keeps a token after it
+        # lapses, so a lab that has been up for a while accumulates them -- and taking the first
+        # match by the other three fields then picks a token the manager will refuse, which reads
+        # as a broken enrollment path rather than as a stale pick. Take the newest usable one.
+        now = int(time.time())
+        usable = [t for t in tokens
+                  if t["adr"] == args.token_address and not t["revoked"]
+                  and t["uses"] < t["max_uses"] and int(t["expires"]) > now]
+        if not usable:
+            raise StopIteration
+        tok = max(usable, key=lambda t: int(t["created"]))
         tkey = hkdf(ub64(tok["secret"]), b"WAZUH-ENROLL-TOKEN-KEY" + bytes([1]))
         r = enroll(args.url, args.prefix, bearer(tkey, tok["id"]), f"token-{stamp}", args.ca)
         print(f"  enrollment token     -> {r.status_code} {r.text[:90]}")
     except StopIteration:
-        print("  enrollment token     -> (no usable token in the store)")
+        print("  enrollment token     -> (no usable token in the store: none unrevoked, "
+              "unexpired and under its use cap for this address)")
     except FileNotFoundError:
         print(f"  enrollment token     -> (store not found at {args.store})")
 

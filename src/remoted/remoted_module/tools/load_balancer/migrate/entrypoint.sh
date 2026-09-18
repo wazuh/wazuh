@@ -14,6 +14,22 @@ cp /migrate/legacy.keys "$OSSEC/etc/client.keys"
 chown root:wazuh "$OSSEC/etc/client.keys" 2>/dev/null || true
 chmod 640 "$OSSEC/etc/client.keys"
 
+# A real in-place upgrade does NOT create etc/certs/root-ca.pem: 4.x never had one, and the
+# upgrade only replaces binaries. The agent therefore resolves verification_mode to `none` and
+# logs "TLS verification is DISABLED". That is the faithful default here, because it is what a
+# migrated fleet actually looks like on first boot.
+#
+# MIGRATE_PLACE_ANCHOR=1 installs the lab CA at that path instead, so the same host comes up as
+# `full` -- the other half of the ladder, on one container, without editing any configuration.
+if [[ "${MIGRATE_PLACE_ANCHOR:-0}" == "1" ]]; then
+    install -d -m 755 "$OSSEC/etc/certs"
+    cp /lab-certs/root-ca.pem "$OSSEC/etc/certs/root-ca.pem"
+    chmod 644 "$OSSEC/etc/certs/root-ca.pem"
+    echo "[migrate] trust anchor placed at etc/certs/root-ca.pem -> expect verification_mode=full"
+else
+    echo "[migrate] no trust anchor, as an in-place upgrade leaves it -> expect verification_mode=none"
+fi
+
 python3 - "$OSSEC/etc/ossec.conf" <<'PY'
 import re, sys
 path = sys.argv[1]

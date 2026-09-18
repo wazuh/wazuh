@@ -10,7 +10,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-WPKPACK="$HERE/../../../../packages/wpk/wpkpack.py"
+WPKPACK="$HERE/../../../../../packages/wpk/wpkpack.py"
 OUT="$HERE/wpk"
 
 [[ -f "$HERE/certs/root-ca.pem" ]] || { echo "run ./generate_certs.sh first" >&2; exit 1; }

@@ -18,3 +18,8 @@ results/
 wpk/*.pem
 wpk/*.csr
 wpk/*.wpk
+
+# Staged failure-injection scenarios. The library lives in scenarios/; whatever is copied
+# here is a live modification to a running node, not source.
+overrides/*
+!overrides/README.md
