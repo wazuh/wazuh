@@ -462,27 +462,32 @@ firewall_result_t try_route_macos(const char *srcip, int action, int ip_version,
     // destination and the command fails at the OS level. macOS route(8) also
     // needs -inet6 to disambiguate the family for an IPv6 destination; the
     // gateway itself is still required either way (confirmed empirically --
-    // `route add -net <ip> -blackhole` with no gateway fails with "Invalid
-    // argument" on macOS, only `route add -net <ip> 127.0.0.1 -blackhole`
+    // `route add <ip> -blackhole` with no gateway fails with "Invalid
+    // argument" on macOS, only `route add <ip> 127.0.0.1 -blackhole`
     // works: https://discussions.apple.com/thread/6869503).
     const char *gateway = (ip_version == 6) ? "::1" : "127.0.0.1";
     wfd_t *wfd = NULL;
 
+    // Both streams are bound (not just stderr): route(8) reports the
+    // EEXIST/ESRCH failures try_route_macos checks for below via printf() to
+    // stdout, not stderr (confirmed against Apple's route.tproj/route.c) --
+    // matches try_pf_macos's own W_BIND_STDOUT | W_BIND_STDERR three lines
+    // up in this same file, for the same reason.
     if (action == ENABLE_COMMAND) {
         if (ip_version == 6) {
             char *exec_cmd[] = {route_path, "-q", "add", "-inet6", (char *)srcip, (char *)gateway, "-blackhole", NULL};
-            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDOUT | W_BIND_STDERR);
         } else {
             char *exec_cmd[] = {route_path, "-q", "add", (char *)srcip, (char *)gateway, "-blackhole", NULL};
-            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDOUT | W_BIND_STDERR);
         }
     } else {
         if (ip_version == 6) {
             char *exec_cmd[] = {route_path, "-q", "delete", "-inet6", (char *)srcip, (char *)gateway, "-blackhole", NULL};
-            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDOUT | W_BIND_STDERR);
         } else {
             char *exec_cmd[] = {route_path, "-q", "delete", (char *)srcip, (char *)gateway, "-blackhole", NULL};
-            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDOUT | W_BIND_STDERR);
         }
     }
 
