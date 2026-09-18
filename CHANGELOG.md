@@ -217,3 +217,4 @@
 | [#38928](https://github.com/wazuh/wazuh/issues/38928) | Fixed the CIS Amazon Linux 2023 SCA policy: check 31170 was named for the GID 0 default group control it does not test (its rule actually tests the root password), and check 31172 was a byte-identical duplicate of 31171, both testing `/etc/passwd` permissions and inflating compliance scores. |
 | [#38914](https://github.com/wazuh/wazuh/issues/38914) | Fixed the default agent nodiff list not protecting `/etc/shadow` and real key paths. |
 | [#39309](https://github.com/wazuh/wazuh/issues/39309) | Fixed SCA HIPAA compliance values using parenthesized notation, which the dashboard's Regulatory Compliance catalogue doesn't recognize; converted to the dotted notation the catalogue expects. |
+| [#39192](https://github.com/wazuh/wazuh/issues/39192) | Fixed the `block-ip` active response not blocking IPs on a default macOS install. |

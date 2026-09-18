@@ -14,12 +14,12 @@
 
 /**
  * macOS-specific block-ip implementation
- * Uses pf (Packet Filter) as primary method
- * Falls back to hosts.deny if pf is unavailable
+ * Method chain: pf (Packet Filter) -> hosts.deny -> route (blackhole fallback)
  */
 
 firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, const char *argv0);
 firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_version, const char *argv0);
+firewall_result_t try_route_macos(const char *srcip, int action, int ip_version, const char *argv0);
 
 int main(int argc, char **argv) {
     (void)argc;
@@ -49,6 +49,7 @@ int main(int argc, char **argv) {
         keys[1] = NULL;
 
         action2 = send_keys_and_check_message(argv, keys);
+        os_free(keys[0]);
         os_free(keys);
 
         if (action2 != CONTINUE_COMMAND) {
@@ -73,59 +74,20 @@ int main(int argc, char **argv) {
         return OS_INVALID;
     }
 
-    // macOS tries pf first, then falls back to hostsdeny
-    log_firewall_action(argv[0], LOG_LEVEL_INFO, "pf", "start", "Attempting pf method");
+    // macOS method chain, same pattern as the other Unix/BSD platforms:
+    // pf -> hosts.deny -> route (blackhole), so a stock install with neither
+    // pf enabled nor /etc/hosts.deny present still has a working fallback.
+    const firewall_method_t methods[] = {
+        {"pf", try_pf_macos, false},
+        {"hostsdeny", try_hostsdeny_macos, false},
+        {"route", try_route_macos, false},
+        {NULL, NULL, false}  // Sentinel
+    };
 
-    firewall_result_t result = try_pf_macos(srcip, action, ip_version, argv[0]);
-
-    if (result == FIREWALL_SUCCESS) {
-        log_firewall_action(argv[0], LOG_LEVEL_INFO, "pf", "success",
-                          action == ENABLE_COMMAND ? "IP blocked successfully" : "IP unblocked successfully");
-        write_debug_file(argv[0], "Ended");
-        cJSON_Delete(input_json);
-        return OS_SUCCESS;
-    }
-
-    // PF failed, try hostsdeny as fallback
-    switch (result) {
-        case FIREWALL_NOT_AVAILABLE:
-            log_firewall_action(argv[0], LOG_LEVEL_WARNING, "pf", "unavailable",
-                              "pfctl binary not found, trying hostsdeny");
-            break;
-
-        case FIREWALL_INVALID_STATE:
-            log_firewall_action(argv[0], LOG_LEVEL_WARNING, "pf", "invalid_state",
-                              "PF is not enabled, trying hostsdeny");
-            break;
-
-        case FIREWALL_EXECUTION_FAILED:
-            log_firewall_action(argv[0], LOG_LEVEL_WARNING, "pf", "failed",
-                              "pfctl failed, trying hostsdeny");
-            break;
-
-        default:
-            break;
-    }
-
-    log_firewall_action(argv[0], LOG_LEVEL_INFO, "hostsdeny", "start", "Attempting hostsdeny method");
-    result = try_hostsdeny_macos(srcip, action, ip_version, argv[0]);
-
-    if (result == FIREWALL_SUCCESS) {
-        log_firewall_action(argv[0], LOG_LEVEL_INFO, "hostsdeny", "success",
-                          action == ENABLE_COMMAND ? "IP blocked successfully" : "IP unblocked successfully");
-        write_debug_file(argv[0], "Ended");
-        cJSON_Delete(input_json);
-        return OS_SUCCESS;
-    }
-
-    // Both methods failed
-    log_firewall_action(argv[0], LOG_LEVEL_WARNING, "all", "failed",
-                      "All blocking methods failed - IP not blocked");
-    write_debug_file(argv[0], "WARNING: All methods failed - IP not blocked");
-    write_debug_file(argv[0], "Ended");
+    int result = execute_firewall_chain(methods, srcip, action, ip_version, argv[0]);
 
     cJSON_Delete(input_json);
-    return OS_INVALID;
+    return result;
 }
 
 firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, const char *argv0) {
@@ -477,6 +439,105 @@ firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_vers
 
     release_ar_lock(&lock_ctx);
     return FIREWALL_SUCCESS;
+}
+
+// ============================================================================
+// macOS: route (blackhole) implementation
+// ============================================================================
+// Needs no firewall to be configured or enabled: it works on a stock
+// install, same as the route fallback on Linux/FreeBSD/OpenBSD/NetBSD.
+// macOS route is BSD-derived and takes the same -blackhole syntax as
+// FreeBSD/OpenBSD/NetBSD in block-ip-unix.c's try_route().
+
+firewall_result_t try_route_macos(const char *srcip, int action, int ip_version, const char *argv0) {
+    char log_msg[OS_MAXSTR];
+    char *route_path = NULL;
+
+    if (check_binary_available("route", &route_path, argv0) != FIREWALL_SUCCESS) {
+        return FIREWALL_NOT_AVAILABLE;
+    }
+
+    // The blackhole route needs a gateway placeholder of the same address
+    // family as srcip -- an IPv4 loopback gateway is invalid for an IPv6
+    // destination and the command fails at the OS level. macOS route(8) also
+    // needs -inet6 to disambiguate the family for an IPv6 destination; the
+    // gateway itself is still required either way (confirmed empirically --
+    // `route add <ip> -blackhole` with no gateway fails with "Invalid
+    // argument" on macOS, only `route add <ip> 127.0.0.1 -blackhole`
+    // works: https://discussions.apple.com/thread/6869503).
+    const char *gateway = (ip_version == 6) ? "::1" : "127.0.0.1";
+    wfd_t *wfd = NULL;
+
+    // Both streams are bound (not just stderr): route(8) reports the
+    // EEXIST/ESRCH failures try_route_macos checks for below via printf() to
+    // stdout, not stderr (confirmed against Apple's route.tproj/route.c) --
+    // matches try_pf_macos's own W_BIND_STDOUT | W_BIND_STDERR three lines
+    // up in this same file, for the same reason.
+    if (action == ENABLE_COMMAND) {
+        if (ip_version == 6) {
+            char *exec_cmd[] = {route_path, "-q", "add", "-inet6", (char *)srcip, (char *)gateway, "-blackhole", NULL};
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDOUT | W_BIND_STDERR);
+        } else {
+            char *exec_cmd[] = {route_path, "-q", "add", (char *)srcip, (char *)gateway, "-blackhole", NULL};
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDOUT | W_BIND_STDERR);
+        }
+    } else {
+        if (ip_version == 6) {
+            char *exec_cmd[] = {route_path, "-q", "delete", "-inet6", (char *)srcip, (char *)gateway, "-blackhole", NULL};
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDOUT | W_BIND_STDERR);
+        } else {
+            char *exec_cmd[] = {route_path, "-q", "delete", (char *)srcip, (char *)gateway, "-blackhole", NULL};
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDOUT | W_BIND_STDERR);
+        }
+    }
+
+    os_free(route_path);
+
+    if (!wfd) {
+        write_debug_file(argv0, "Unable to execute route");
+        return FIREWALL_EXECUTION_FAILED;
+    }
+
+    // Drain stderr (bound via W_BIND_STDERR) before wpclose, same pattern
+    // try_pf_macos already uses -- an unread pipe can leave the child
+    // blocked on write(), and the first line is kept for diagnostics.
+    char buffer[OS_MAXSTR];
+    char error_msg[OS_MAXSTR];
+    memset(error_msg, '\0', OS_MAXSTR);
+    while (fgets(buffer, OS_MAXSTR, wfd->file_out) != NULL) {
+        if (error_msg[0] == '\0') {
+            strncpy(error_msg, buffer, OS_MAXSTR - 1);
+        }
+    }
+
+    int wp_closefd = wpclose(wfd);
+    if (WIFEXITED(wp_closefd) && WEXITSTATUS(wp_closefd) == 0) {
+        return FIREWALL_SUCCESS;
+    }
+
+    // route(8) exits non-zero when the blackhole route already exists (add)
+    // or is already gone (delete) -- treat both as a successful no-op, same
+    // as try_hostsdeny_macos already does for a duplicate hosts.deny entry.
+    // Confirmed against Apple's own route.tproj/route.c: ESRCH is mapped to
+    // "not in table" explicitly; EEXIST falls through to strerror(), which
+    // is "File exists" on macOS/BSD.
+    if (strstr(error_msg, "File exists") != NULL || strstr(error_msg, "not in table") != NULL) {
+        return FIREWALL_SUCCESS;
+    }
+
+    memset(log_msg, '\0', OS_MAXSTR);
+    if (error_msg[0] != '\0') {
+        char *newline = strchr(error_msg, '\n');
+        if (newline) *newline = '\0';
+        snprintf(log_msg, OS_MAXSTR - 1, "route command failed (exit %d): %s",
+                 WIFEXITED(wp_closefd) ? WEXITSTATUS(wp_closefd) : wp_closefd, error_msg);
+    } else if (WIFSIGNALED(wp_closefd)) {
+        snprintf(log_msg, OS_MAXSTR - 1, "route command terminated by signal %d", WTERMSIG(wp_closefd));
+    } else {
+        snprintf(log_msg, OS_MAXSTR - 1, "route command failed with status %d", wp_closefd);
+    }
+    write_debug_file(argv0, log_msg);
+    return FIREWALL_EXECUTION_FAILED;
 }
 
 #endif // __APPLE__
