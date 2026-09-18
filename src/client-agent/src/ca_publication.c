@@ -21,6 +21,10 @@
  * line that is not coming. */
 #define CA_PUBLICATION_MAX_HEADER_LINES 32
 
+/* The staging file's name, appended to the anchor's. Fixed rather than templated; see
+ * w_ca_publication_open_staging(). */
+#define CA_PUBLICATION_TEMP_SUFFIX ".tmp"
+
 int64_t w_ca_publication_read(const char *path) {
     FILE *fp;
     char line[OS_BUFFER_SIZE];
@@ -99,9 +103,95 @@ int w_ca_publication_render(int64_t generation, char *out, size_t out_size) {
     return 0;
 }
 
+/**
+ * @brief Opens the staging file beside @p path, ready to be written and then renamed over it.
+ *
+ * A FIXED sibling name, not a mkstemp() template. Both sit beside the target -- which is what
+ * keeps the rename atomic, since it cannot cross a filesystem -- but a random name means a crash
+ * between the create and the rename leaves behind a file nothing will ever look at again, and
+ * enough of them accumulate in a directory whose contents are supposed to be trust stores. One
+ * fixed name is reused by the next attempt, so at most one stale file can exist however often
+ * the agent is killed mid-install. The bootstrap already writes the anchor through this same
+ * fixed sibling on Windows (token_bootstrap.c).
+ *
+ * The exclusive create is what mkstemp() was buying and it is kept deliberately: since #39321
+ * etc/certs is group-writable and sticky, so this name is one the runtime user can plant a
+ * symlink at, and opening it with "w" would follow that link and truncate whatever it points at
+ * -- with the agent's privileges, on a schedule the manager controls. O_CREAT|O_EXCL refuses an
+ * existing symlink outright (measured: EEXIST, and the target untouched), which is what closes
+ * that; O_NOFOLLOW adds nothing on top of O_EXCL and is kept only so the guarantee survives
+ * someone later relaxing the exclusive create.
+ *
+ * EEXIST is otherwise the expected leftover from this agent's own interrupted attempt, so it is
+ * removed once -- unlink() never follows a symlink either, so a planted one is removed rather
+ * than its target -- and the create retried. A second EEXIST means something is recreating the
+ * file underneath us, and that fails closed rather than looping.
+ *
+ * @param path Destination trust store; the staging file is named after it.
+ * @param out Receives the staging file's path.
+ * @param out_size Size of @p out.
+ * @return An open stream positioned at the start, or NULL with errno set.
+ */
+static FILE *w_ca_publication_open_staging(const char *path, char *out, size_t out_size) {
+    int written = snprintf(out, out_size, "%s%s", path, CA_PUBLICATION_TEMP_SUFFIX);
+
+    if (written < 0 || (size_t) written >= out_size) {
+        errno = ENAMETOOLONG;
+        return NULL;
+    }
+
+#ifdef WIN32
+
+    /* No privilege drop and no group-writable certificate directory on Windows, so there is no
+     * unprivileged writer to race with, and open()'s flags are not portable there anyway. Same
+     * call the bootstrap makes for the same file. */
+    return wfopen(out, "w");
+
+#else
+    int attempt;
+
+    for (attempt = 0; attempt < 2; attempt++) {
+        FILE *fp;
+        /* 0640 is what the anchor carries: the runtime user reads the authority it verifies
+         * against and never writes it. Applied with fchmod() rather than left to the create's
+         * mode, which umask() would narrow, and to the fd rather than the name, which nothing
+         * can substitute between the two calls. */
+        const int fd = open(out, O_CREAT | O_EXCL | O_WRONLY | O_NOFOLLOW | O_CLOEXEC, 0640);
+
+        if (fd < 0) {
+            if (errno != EEXIST || attempt != 0) {
+                return NULL;
+            }
+
+            /* Our own leftover, from an install this agent did not live to finish. Removed once,
+             * then the create is retried; ENOENT means someone else removed it first, which is
+             * the outcome this wanted anyway. */
+            if (unlink(out) != 0 && errno != ENOENT) {
+                return NULL;
+            }
+
+            continue;
+        }
+
+        if (fchmod(fd, 0640) != 0 || (fp = fdopen(fd, "w"), fp == NULL)) {
+            const int saved = errno;
+            close(fd);
+            unlink(out);
+            errno = saved;
+            return NULL;
+        }
+
+        return fp;
+    }
+
+    return NULL;
+#endif
+}
+
 int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, int64_t generation) {
     char block[128];
-    File store = {NULL, NULL};
+    char temp_path[OS_FLSIZE + 1] = {'\0'};
+    FILE *fp = NULL;
     X509 **certs = NULL;
     size_t count = 0;
     int ret = -1;
@@ -115,46 +205,35 @@ int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, 
         return -1;
     }
 
-    /* The temporary file is where the body is judged, not the destination: a bundle that turns
-     * out not to be certificates must never have existed at the path the agent verifies
-     * against. TempFile() templates on the target, so the rename below stays within one
-     * filesystem and is atomic. */
-    if (TempFile(&store, path, 0) < 0) {
+    /* The staging file is where the body is judged, not the destination: a bundle that turns out
+     * not to be certificates must never have existed at the path the agent verifies against. It
+     * is named after the target, so the rename below stays within one filesystem and is atomic. */
+    if (fp = w_ca_publication_open_staging(path, temp_path, sizeof(temp_path)), fp == NULL) {
         merror("CA bundle: could not create a temporary file beside '%s': %s (%d).", path,
                strerror(errno), errno);
         return -1;
     }
 
-#ifndef WIN32
-    /* Same 0640 the anchor already carries: the runtime user reads the certificate authority it
-     * verifies against; nothing widens beyond that. TempFile() leaves 0600 behind its umask. */
-    if (chmod(store.name, 0640) == -1) {
-        merror("CA bundle: could not set permissions on '%s': %s (%d).", store.name,
-               strerror(errno), errno);
-        goto end;
-    }
-#endif
-
-    if (fwrite(block, 1, strlen(block), store.fp) != strlen(block) ||
-            fwrite(pem, 1, pem_len, store.fp) != pem_len) {
-        merror("CA bundle: could not write the trust store to '%s'.", store.name);
+    if (fwrite(block, 1, strlen(block), fp) != strlen(block) ||
+            fwrite(pem, 1, pem_len, fp) != pem_len) {
+        merror("CA bundle: could not write the trust store to '%s'.", temp_path);
         goto end;
     }
 
-    if (fclose(store.fp) != 0) {
+    if (fclose(fp) != 0) {
         /* A write error can surface only here, when the stream is flushed; installing a store
          * whose tail never reached the disk would be installing a truncated bundle. */
-        store.fp = NULL;
-        merror("CA bundle: could not flush the trust store to '%s': %s (%d).", store.name,
+        fp = NULL;
+        merror("CA bundle: could not flush the trust store to '%s': %s (%d).", temp_path,
                strerror(errno), errno);
         goto end;
     }
 
-    store.fp = NULL;
+    fp = NULL;
 
     /* Judged only now that every byte is on disk, and judged from the file rather than the
      * buffer so what is validated is exactly what would be installed. */
-    if (certs = w_x509_load_all_pem(store.name, &count), certs == NULL) {
+    if (certs = w_x509_load_all_pem(temp_path, &count), certs == NULL) {
         merror("CA bundle: the body served for publication %lld is not a certificate bundle this "
                "agent can parse; the trust store is unchanged.", (long long) generation);
         goto end;
@@ -180,7 +259,7 @@ int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, 
 #ifdef WIN32
 
     /* rename() refuses an existing destination on Windows; MoveFileEx replaces it in one step. */
-    if (!MoveFileExA(store.name, path, MOVEFILE_REPLACE_EXISTING)) {
+    if (!MoveFileExA(temp_path, path, MOVEFILE_REPLACE_EXISTING)) {
         merror("CA bundle: could not install the trust store at '%s' (error %lu).", path,
                GetLastError());
         goto end;
@@ -188,7 +267,7 @@ int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, 
 
 #else
 
-    if (rename(store.name, path) != 0) {
+    if (rename(temp_path, path) != 0) {
         merror("CA bundle: could not install the trust store at '%s': %s (%d).", path,
                strerror(errno), errno);
         goto end;
@@ -198,16 +277,18 @@ int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, 
 
     minfo("CA bundle: trust store replaced at publication %lld (%zu certificate(s)).",
           (long long) generation, count);
-    os_free(store.name);
     return 0;
 
 end:
-    if (store.fp != NULL) {
-        fclose(store.fp);
+
+    if (fp != NULL) {
+        fclose(fp);
     }
 
-    unlink(store.name);
-    os_free(store.name);
+    /* Removed on every failure that gets this far, so the fixed name is free for the next
+     * attempt without it having to clear the leftover first. That path still exists, because a
+     * kill between the create and the rename never reaches here. */
+    unlink(temp_path);
 
     return ret;
 }
