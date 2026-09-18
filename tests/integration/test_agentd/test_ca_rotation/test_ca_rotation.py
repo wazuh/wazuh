@@ -170,7 +170,11 @@ def test_an_agent_that_has_recorded_no_publication_adopts_the_first_one_advertis
     publish(manager, FIRST)
 
     wait_for_adoption(manager, FIRST)
-    expect_log(f'Manager advertises CA bundle publication {FIRST}; the agent holds 0.')
+    # The agent reports its local publication as UNKNOWN_PUBLICATION, not 0: the two say
+    # different things -- "this store records nothing" against "publication zero" -- and only the
+    # first is a reason to re-anchor on whatever is offered.
+    expect_log(f'Manager advertises CA bundle publication {FIRST}; '
+               f'the agent holds {UNKNOWN_PUBLICATION}.')
     expect_log(f'Adopted CA bundle publication {FIRST}.')
 
     assert len(cacerts_fetches(manager)) == 1, \
@@ -474,8 +478,13 @@ def test_a_refresh_is_never_issued_when_verification_is_disabled(
     '''
     before = store_bytes()
 
-    # The posture really is 'none': the agent holds an anchor and has been told not to use it.
-    expect_log('is ignored')
+    # The posture really is 'none', asserted at both levels it has to hold at. The first line is
+    # the configuration resolving: an anchor is on disk and the agent has been told not to use
+    # it. The second is the transport module actually running that way -- which is what suppresses
+    # the refresh, and the only one of the two that could still be wrong if the module ever read
+    # the posture from somewhere else.
+    expect_log('TLS verification stays disabled, as configured, and the anchor is not used.')
+    expect_log('TLS verification is DISABLED (verify_mode=none).')
 
     manager.ca_generation = FIRST
 
