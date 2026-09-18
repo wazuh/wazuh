@@ -810,16 +810,23 @@ def samples_path(results_dir: str) -> str:
     return os.path.join(results_dir, "samples", SAMPLES_FILENAME)
 
 
-def _iter_lines(path: str) -> Iterator[dict]:
-    """Every well-formed object in the file, in order.
+def _iter_lines(path: str, offset: int = 0) -> Iterator[dict]:
+    """Every well-formed object in the file from *offset* on, in order.
 
     A truncated last line is skipped rather than raised on: the collector appends and
     flushes per scrape, so a run killed mid-write leaves one partial line, and the other
     thousands are still perfectly good data.
+
+    `offset` must be the first byte of a line; `_last_run_start()` is what produces one.
+    Reading from the middle of a line would give a truncated line that is skipped like
+    any other, so a wrong offset costs a sample rather than an exception -- but it would
+    cost it silently, which is why nothing but that function computes one.
     """
     if not os.path.isfile(path):
         return
-    with open(path) as fh:
+    with open(path, "rb") as fh:
+        if offset:
+            fh.seek(offset)
         for line in fh:
             line = line.strip()
             if not line:
@@ -832,17 +839,100 @@ def _iter_lines(path: str) -> Iterator[dict]:
                 yield obj
 
 
+def _scan_back(path: str, block: int = 1 << 16) -> Iterator[tuple[int, bytes]]:
+    """Every non-empty line, last first, with the byte offset of its first byte.
+
+    Reads fixed blocks backwards from EOF and splits them, keeping the leading fragment
+    of each block to join with the block before it. The offsets are what let a caller
+    seek() straight to a line rather than counting its way there from the start.
+    """
+    with open(path, "rb") as fh:
+        fh.seek(0, os.SEEK_END)
+        pos = fh.tell()
+        head = b""
+        while pos > 0:
+            size = min(block, pos)
+            pos -= size
+            fh.seek(pos)
+            parts = (fh.read(size) + head).split(b"\n")
+            # The first piece may be half a line: the rest of it is in the block before.
+            head = parts.pop(0)
+            start = pos + len(head) + 1
+            offsets = []
+            for part in parts:
+                offsets.append(start)
+                start += len(part) + 1
+            for offset, part in zip(reversed(offsets), reversed(parts)):
+                if part.strip():
+                    yield offset, part
+        if head.strip():
+            yield 0, head
+
+
+def _last_run_start(path: str) -> tuple[str | None, int]:
+    """The most recent run's id, and the byte offset where its first line begins.
+
+    Both come from a BACKWARDS scan, so the cost is the size of that run rather than the
+    size of the file. The file is append-only and a reused label reuses its results
+    directory, so it accumulates every run ever recorded under that label -- while every
+    consumer reads only the last one. Walking forwards to find it made each read cost the
+    whole history: on a file holding twenty seven-minute runs, `aggregate_samples()` spent
+    7.6s to describe the 420 scrapes it actually wanted, and that figure grows with every
+    re-run of the label.
+
+    ONLY that run's own marker may set the offset. `NdjsonWriter.__init__` writes the
+    marker before the writer can append anything, so every line of a run lies after its
+    marker and stopping there cannot skip one -- and that holds however many writers share
+    the file, because it is a property of each writer alone. Callers filter on `r`
+    afterwards, so another run's lines past the offset are dropped rather than counted.
+
+    A change of `r` is NOT a boundary, which is the trap here. Runs are only contiguous
+    while one writer owns the file, and nothing enforces that: `run_benchmark.sh` picks
+    between the monitor and the fallback scraper within one invocation, but two
+    invocations sharing a `--label` write to the same samples file, as does a hand-run
+    `monitor.py --ndjson` pointed at it. Treating the first foreign line as the start of
+    the run cut an interleaved run of six samples down to its last one, taking its
+    descriptors and its whole delta with it.
+
+    So anything other than a matching marker -- another run's marker, or a file that ends
+    without one -- returns offset 0 and asks the caller to read the file whole. That is
+    slower and always right; the case it gives up on is a marker lost to an interrupted
+    write, which is rare, while a wrong offset loses samples silently every time.
+
+    Returns (None, 0) for a file that records no run at all, which asks the caller to read
+    it whole: that is what the pre-marker fallback has always done.
+    """
+    if not os.path.isfile(path):
+        return None, 0
+    run_id = None
+    for offset, raw in _scan_back(path):
+        try:
+            obj = json.loads(raw)
+        except ValueError:
+            continue
+        if not isinstance(obj, dict):
+            continue
+        rid = obj.get("r")
+        if run_id is None:
+            # The last id in file order, which is what the run being read is by definition.
+            run_id = rid
+        if obj.get("kind") == "run":
+            # A marker carrying some other id says nothing about where THIS run starts:
+            # with two writers on the file their lines interleave, and this run's own
+            # marker may be earlier still -- or may have been swallowed by an interrupted
+            # write, which leaves an unterminated line that the next marker lands on.
+            # Either way the tail's id is the answer and 0 is the only safe offset.
+            return (run_id, offset) if rid and rid == run_id else (run_id, 0)
+    return run_id, 0
+
+
 def last_run_id(path: str) -> str | None:
     """The id of the most recent run in the file, or None if it records no run.
 
     File order decides, not the id's own ordering: a reader must agree with whatever was
     appended last even if a clock moved.
     """
-    run_id = None
-    for obj in _iter_lines(path):
-        if obj.get("r"):
-            run_id = obj["r"]
-    return run_id
+    return _last_run_start(path)[0]
 
 
 def read_samples(path: str, src: str | None = None, run: str | None = "last",
@@ -853,14 +943,21 @@ def read_samples(path: str, src: str | None = None, run: str | None = "last",
     because the file accumulates: run_benchmark.sh reuses `results_<label>/` for a reused
     label and the collectors append, so a whole-file read silently spans runs and turns a
     delta into the sum of two.
+
+    The default also SEEKS to that run rather than filtering the file down to it, so the
+    cost is the run's size and not the label's whole history. The other two modes cannot:
+    "all" wants every line by definition, and an explicit id may name any run in the file,
+    so both start at the beginning. A consumer reading the last run of a long-reused label
+    is the common case, and it is the one that stopped paying for the rest.
     """
     wanted = None
+    offset = 0
     if run == "last":
-        wanted = last_run_id(path)
+        wanted, offset = _last_run_start(path)
     elif run not in (None, "all"):
         wanted = run
 
-    for obj in _iter_lines(path):
+    for obj in _iter_lines(path, offset):
         if obj.get("kind") == "run":
             continue
         if wanted is not None and obj.get("r") != wanted:

@@ -913,3 +913,245 @@ def test_mixed_sign_wide_integers_do_not_kill_projection(tmp_path, values):
     assert column.iloc[-1] == float(2 ** 63)
     if None in values:
         assert pd.isna(column.iloc[1])
+
+
+# ---------------------------------------------------------------------------
+# Finding the last run without reading the file
+#
+# The file is append-only and a reused label reuses its results directory, so it holds
+# every run ever recorded under that label while every consumer reads only the last. The
+# reader therefore seeks to that run instead of filtering the whole file down to it: on a
+# file of twenty seven-minute runs, walking forwards cost 7.6s to describe the 420 scrapes
+# it wanted, and the figure grew with each re-run. What these tests pin is that seeking
+# returns the SAME lines the walk did -- a wrong offset would silently drop samples, since
+# a half-line is skipped like any other malformed one.
+# ---------------------------------------------------------------------------
+def _marker_offsets(path):
+    """The byte offset of every `run` marker, by walking the file the slow way."""
+    offsets, pos = [], 0
+    with open(path, "rb") as fh:
+        for raw in fh:
+            try:
+                is_marker = json.loads(raw).get("kind") == "run"
+            except ValueError:
+                is_marker = False  # a blank line, or the half-line a kill leaves behind
+            if is_marker:
+                offsets.append(pos)
+            pos += len(raw)
+    return offsets
+
+
+def _runs_file(tmp_path, runs=3, per_run=40, name="runs.ndjson"):
+    """`runs` runs appended to one file, as a reused label produces."""
+    path = str(tmp_path / name)
+    for r in range(runs):
+        w = bs.NdjsonWriter(path, label=f"run{r}")
+        w.write(bs.meta_line("inventory-sync", "/s", {"sync.docs.indexed": "counter"}))
+        for t in range(per_run):
+            w.write(bs.sample_line("inventory-sync", f"T{t}", float(t),
+                                   {"sync.docs.indexed": r * 1000 + t}))
+        w.close()
+    return path
+
+
+def test_the_last_run_is_found_at_its_marker(tmp_path):
+    path = _runs_file(tmp_path)
+    run_id, offset = bs._last_run_start(path)
+
+    assert offset == _marker_offsets(path)[-1], "must be the LAST marker, not the first"
+    with open(path, "rb") as fh:
+        fh.seek(offset)
+        first = json.loads(fh.readline())
+    assert first == {"kind": "run", "r": run_id, "started": first["started"],
+                     "label": "run2"}, "the offset must land on a line boundary"
+
+
+def test_history_does_not_change_what_the_last_run_reads(tmp_path):
+    """The whole point: the same final run reads the same whether 1 run precedes it or 9."""
+    short = list(bs.read_samples(_runs_file(tmp_path, runs=1, name="a.ndjson")))
+    long = list(bs.read_samples(_runs_file(tmp_path, runs=10, name="b.ndjson")))
+
+    assert len(short) == len(long) == 40, "the run's samples, whatever precedes them"
+    # _runs_file numbers run r from r*1000, so the values say which run was read: the
+    # long file must yield its tenth run and none of the 360 samples before it.
+    assert [s["m"]["sync.docs.indexed"] for s in short] == list(range(0, 40))
+    assert [s["m"]["sync.docs.indexed"] for s in long] == list(range(9000, 9040))
+
+
+def test_seeking_does_not_lose_the_run_it_lands_in(tmp_path):
+    """Every line of a run is written after its marker, so none can be before the offset."""
+    path = _runs_file(tmp_path, runs=4, per_run=25)
+    run_id, _ = bs._last_run_start(path)
+
+    seen = list(bs.read_samples(path, src="inventory-sync"))
+    assert len([s for s in seen if s.get("ok")]) == 25
+    assert {s["r"] for s in seen} == {run_id}, "nothing from an earlier run leaked in"
+
+
+@pytest.mark.parametrize("corrupt,why", [
+    (lambda t: t + '{"ts":"T","src":"remo', "a run killed mid-write leaves half a line"),
+    (lambda t: t.rstrip("\n"), "a file that does not end in a newline"),
+    (lambda t: t.replace("\n", "\n\n"), "blank lines between records"),
+])
+def test_the_backwards_scan_survives_a_malformed_tail(tmp_path, corrupt, why):
+    path = _runs_file(tmp_path, runs=2, per_run=10)
+    with open(path) as fh:
+        text = fh.read()
+    with open(path, "w") as fh:
+        fh.write(corrupt(text))
+
+    run_id, offset = bs._last_run_start(path)
+    assert run_id, why
+    assert offset == _marker_offsets(path)[-1], why
+    assert len([s for s in bs.read_samples(path) if s.get("ok")]) == 10, why
+
+
+def test_a_run_longer_than_one_scan_block_is_still_found(tmp_path):
+    """The scan reads fixed blocks backwards; a run bigger than one must still resolve."""
+    path = str(tmp_path / "big.ndjson")
+    w = bs.NdjsonWriter(path, label="first")
+    w.write(bs.sample_line("inventory-sync", "T", 0.0, {"sync.docs.indexed": 0}))
+    w.close()
+    w = bs.NdjsonWriter(path, label="second")
+    for t in range(400):  # ~500 B each, well past the 64 KiB block
+        w.write(bs.sample_line("inventory-sync", f"T{t}", float(t),
+                               {"sync.docs.indexed": t, "pad": "x" * 500}))
+    w.close()
+
+    assert bs._last_run_start(path)[1] == _marker_offsets(path)[-1]
+    assert len(list(bs.read_samples(path))) == 400
+
+
+def test_a_file_with_no_marker_is_read_whole(tmp_path):
+    """The pre-marker fallback: nothing to scope by, so everything is in scope."""
+    path = str(tmp_path / "markerless.ndjson")
+    with open(path, "w") as fh:
+        for t in range(3):
+            fh.write(json.dumps(
+                bs.sample_line("inventory-sync", f"T{t}", float(t),
+                               {"sync.docs.indexed": t})) + "\n")
+
+    assert bs._last_run_start(path) == (None, 0)
+    assert len(list(bs.read_samples(path))) == 3
+
+
+def test_an_explicit_run_id_still_reaches_earlier_runs(tmp_path):
+    """Seeking is only for "last": naming a run must still find one further back."""
+    path = _runs_file(tmp_path, runs=3, per_run=5)
+    first_run = json.loads(open(path).readline())["r"]
+
+    samples = [s for s in bs.read_samples(path, run=first_run) if s.get("ok")]
+    assert len(samples) == 5
+    assert {s["m"]["sync.docs.indexed"] for s in samples} == {0, 1, 2, 3, 4}
+
+
+def _interrupted_then_reopened(tmp_path, earlier_samples, name="swallowed.ndjson"):
+    """A run whose last write was cut mid-line, followed by the next run appending.
+
+    The cut leaves a line with no newline on it, so the marker the NEXT run writes lands
+    on the end of that line and the two together parse as nothing. The second run's own
+    samples are perfectly good; only its marker is gone.
+    """
+    path = str(tmp_path / name)
+    writer = bs.NdjsonWriter(path, label="A")
+    for t in range(earlier_samples):
+        writer.write(bs.sample_line("inventory-sync", f"A{t}", float(t),
+                                    {"sync.docs.indexed": t}))
+    writer.close()
+    with open(path, "a") as fh:
+        fh.write('{"ts":"T","src":"inventory-sync","ok":true,"m":{"sync.doc')  # killed here
+
+    writer = bs.NdjsonWriter(path, label="B")
+    for t in range(3):
+        writer.write(bs.sample_line("inventory-sync", f"B{t}", float(t),
+                                    {"sync.docs.indexed": 100 + t}))
+    writer.close()
+    return path, writer.run_id
+
+
+def test_a_swallowed_marker_does_not_select_the_previous_run(tmp_path):
+    """The run being read is the one the TAIL names, never an older marker.
+
+    With its own marker swallowed, the only marker left in the file belongs to the run
+    before it. Seeking there would scope the read to a run that has no readings left --
+    answering with zero samples while three sit at the end of the file, which is the one
+    failure mode a silent seek can produce.
+    """
+    path, run_b = _interrupted_then_reopened(tmp_path, earlier_samples=0)
+
+    run_id, offset = bs._last_run_start(path)
+    assert run_id == run_b, "the tail says which run this is"
+    assert offset == 0, "no marker for it survived, so the file has to be read whole"
+
+    samples = [s for s in bs.read_samples(path, src="inventory-sync") if s.get("ok")]
+    assert [s["m"]["sync.docs.indexed"] for s in samples] == [100, 101, 102]
+
+
+def test_a_swallowed_marker_falls_back_even_with_samples_before_it(tmp_path):
+    """Still the whole file: the earlier run's lines are not a boundary either.
+
+    An earlier `r` looks like the edge of the run only while one writer owns the file.
+    Nothing enforces that, so the id change cannot be trusted to bound the scan -- see
+    test_interleaved_writers_do_not_truncate_the_run_being_read.
+    """
+    path, run_b = _interrupted_then_reopened(tmp_path, earlier_samples=5, name="s2.ndjson")
+
+    run_id, offset = bs._last_run_start(path)
+    assert run_id == run_b
+    assert offset == 0, "without its own marker there is no offset that is safe"
+
+    samples = [s for s in bs.read_samples(path, src="inventory-sync") if s.get("ok")]
+    assert [s["m"]["sync.docs.indexed"] for s in samples] == [100, 101, 102]
+
+
+# ---------------------------------------------------------------------------
+# Two writers on one file
+#
+# run_benchmark.sh chooses between the monitor and the fallback scraper within a single
+# invocation, but nothing stops two invocations sharing a --label, or a hand-run
+# `monitor.py --ndjson` aimed at a live run's file. Runs then interleave, and the seek has
+# to stay correct without assuming they do not.
+# ---------------------------------------------------------------------------
+def _interleaved(tmp_path, samples=6, name="interleaved.ndjson"):
+    """Two collectors appending to one file, each with its own run id."""
+    path = str(tmp_path / name)
+    first = bs.NdjsonWriter(path, label="first")
+    first.write(bs.meta_line("inventory-sync", "/s", {"sync.docs.indexed": "counter"}))
+    second = bs.NdjsonWriter(path, label="second")
+    for v in range(samples):
+        first.write(bs.sample_line("inventory-sync", f"T{v}", float(v),
+                                   {"sync.docs.indexed": 100 + v * 10}))
+        second.write(bs.sample_line("remoted", f"T{v}", float(v),
+                                    {"data.metrics.tcp_sessions": v}))
+    first.close()
+    second.close()
+    return path, first.run_id, second.run_id
+
+
+def test_interleaved_writers_do_not_truncate_the_run_being_read(tmp_path):
+    """Every line of the run must be read, however many other runs sit between them.
+
+    Cutting the scan at the first line carrying a different `r` left exactly one sample of
+    six: its counter then had nothing to move against, so the run lost its delta, and the
+    meta line ahead of the cut took its descriptors with it. Silent, and wrong in the
+    direction that looks like a quiet benchmark rather than a broken read.
+    """
+    path, _, second = _interleaved(tmp_path)
+
+    run_id, offset = bs._last_run_start(path)
+    assert run_id == second, "the tail names the run"
+    assert offset > 0, "its own marker is intact, so the seek is still the cheap path"
+
+    samples = [s for s in bs.read_samples(path, src="remoted") if s.get("ok")]
+    assert [s["m"]["data.metrics.tcp_sessions"] for s in samples] == [0, 1, 2, 3, 4, 5]
+
+
+def test_an_interleaved_run_keeps_its_descriptors_and_its_delta(tmp_path):
+    """What the truncation actually cost, asserted on the run whose marker comes first."""
+    path, first, _ = _interleaved(tmp_path)
+
+    samples = [s for s in bs.read_samples(path, src="inventory-sync", run=first)
+               if s.get("ok")]
+    assert [s["m"]["sync.docs.indexed"] for s in samples] == [100, 110, 120, 130, 140, 150]
+    descriptors = bs.read_descriptors(path, "inventory-sync", run=first)
+    assert descriptors["sync.docs.indexed"]["type"] == "counter", "the meta line survives"
