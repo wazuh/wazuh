@@ -343,7 +343,7 @@ statfunc void submit_event(const char *filename,
      * CONFIG_AUDIT is enabled at kernel build time. bpf_core_field_exists()
      * resolves this at load time and skips gracefully if unavailable. */
     struct task_struct___local *task_local = (struct task_struct___local *)current_task;
-    kuid_t loginuid = {0};
+    kuid_t loginuid = {(__u32)-1};
     if (bpf_core_field_exists(task_local->loginuid)) {
         loginuid = BPF_CORE_READ(task_local, loginuid);
     }
