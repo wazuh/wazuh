@@ -1,0 +1,28 @@
+[
+    {
+        "index_name": "wazuh-states-inventory-groups-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "2502",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "group": {
+                    "id": 200,
+                    "id_signed": -200,
+                    "is_hidden": false,
+                    "name": "wheel"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]
