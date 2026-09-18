@@ -28,8 +28,8 @@
  * property ca_bundle/ca_bundle.hpp keeps as well.
  *
  * Reading, hashing and vouching for the CA bundle itself is shared_modules/ca_bundle's (issue
- * #39319): X509Ptr, serializeCertificates() and anyCaSignsLeaf() live there now and are re-exported
- * below, so every user of this header keeps its spelling.
+ * #39319): X509Ptr, serializeCertificates() and leafChainsToAnyCa() live there now and are
+ * re-exported below, so every user of this header keeps its spelling.
  */
 
 #include "fileRead.hpp"
@@ -54,10 +54,13 @@ namespace remoted::http
 {
     // Owned by shared_modules/ca_bundle now, re-exported (using-declarations, not new types) so the
     // ~40 places that spell them `remoted::http::X509Ptr` / serializeCertificates() /
-    // anyCaSignsLeaf() -- RestinioHttpServer.cpp, caCertificateSource.{hpp,cpp}, the tests' PKI --
-    // did not have to change when the parsing moved out. The bundle READER is ca_bundle's
-    // parseBundle(), which returns the publication block too, so it is called by its own name.
-    using ca_bundle::anyCaSignsLeaf;
+    // leafChainsToAnyCa() -- caCertificateSource.{hpp,cpp}, the tests' PKI -- did not have to change
+    // when the parsing moved out. The bundle READER is ca_bundle's parseBundle(), which returns the
+    // publication block too, so it is called by its own name.
+    //
+    // leafChainsToAnyCa() was anyCaSignsLeaf() until C33: what decides the 503 and the published
+    // generation is a real chain validation now, not a signature check, so the name says so.
+    using ca_bundle::leafChainsToAnyCa;
     using ca_bundle::serializeCertificates;
     using ca_bundle::X509Ptr;
 
@@ -90,9 +93,13 @@ namespace remoted::http
      * even when it is not self-signed, so `root-ca.pem` may carry a purchased intermediate that
      * signed the leaf as well as a private self-signed CA. Evaluated against the current time.
      *
-     * Not what decides the 503: anyCaSignsLeaf() is. This is information for the operator -- a CA
-     * that signs the leaf but has expired, or lacks `CA:TRUE`, still "matches" and yet no verifying
-     * agent could use it -- surfaced through the snapshots and the certificate log lines.
+     * Not what decides the 503: ca_bundle's leafChainsToAnyCa() is, and since C33 that is a chain
+     * validation as well -- with OpenSSL's DEFAULT flags, so its anchor must be self-signed and this
+     * verdict is the MORE permissive of the two on that axis. It stays a separate, operator-facing
+     * line because it adds the server PURPOSE the guard does not check: a leaf that chains to the
+     * bundle and yet could never be served to a verifying agent is worth saying out loud, and so is
+     * the bundle that only holds an intermediate (serviceable for this check, unusable for an
+     * agent). Surfaced through the snapshots and the certificate log lines, never as a refusal.
      */
     ChainVerdict chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas);
 
@@ -140,15 +147,17 @@ namespace remoted::http
      * @brief Point-in-time result of one certificate evaluation.
      *
      * Published two ways: by the facade as the `remoted.server.tls.*` pull metrics, and to
-     * `GET /cacerts`, which refuses (503) to hand out a CA that does not sign the served leaf.
+     * `GET /cacerts`, which refuses (503) to hand out a bundle the served leaf does not chain to.
      * The default-constructed value is what a server that never started reports.
      */
     struct TlsCertificateSnapshot
     {
         std::optional<int> expiryDays;            ///< Days until the served leaf expires; see daysUntilExpiry().
-        std::optional<bool> caMatchesLeaf;        ///< true/false when the CA file was readable and carried at
-                                                  ///< least one certificate; nullopt when it was not (a
-                                                  ///< missing CA is "unknown", never "mismatch").
+        std::optional<bool> caMatchesLeaf;        ///< Whether the served leaf CHAINS to the CA file
+                                                  ///< (ca_bundle::leafChainsToAnyCa(), C33): true/false when the
+                                                  ///< file was readable and carried at least one certificate,
+                                                  ///< nullopt when it was not (a missing CA is "unknown", never
+                                                  ///< "mismatch").
         std::uint64_t evaluations {0};            ///< How many evaluations produced snapshots so far (1 after
                                                   ///< the start-time one; +1 per monitor tick).
         std::string leafSubject;                  ///< Subject of the served leaf, for the log lines.

@@ -44,8 +44,16 @@ namespace remoted::http
                            "' does not describe the certificates next to it (Content-SHA256 mismatch); the bundle is "
                            "served as before and announced as unpublished (0) until it is stamped again.";
 
+                // The guard is still spelled no_ca_signs_leaf, but since C33 it is a chain
+                // validation: the text says so, because an operator whose `openssl verify` on one
+                // certificate "works" needs to know what was actually checked -- the leaf's own
+                // path to a self-signed anchor of this bundle, validity windows and CA bits
+                // included.
                 case ca_bundle::GuardFailure::no_ca_signs_leaf:
-                    return bundle + " is not published because no CA signs the served leaf certificate; " +
+                    return bundle +
+                           " is not published because the served leaf certificate does not chain to any CA "
+                           "in it (an expired CA, one without CA:TRUE or one that merely signs the leaf "
+                           "does not count); " +
                            UNPUBLISHED_CONSEQUENCE + ".";
 
                 case ca_bundle::GuardFailure::too_many_certificates:

@@ -122,8 +122,8 @@ extern "C"
             // Same discipline as remoted_module_tls_ca_matches_leaf(): nothing may cross back into
             // C, and silent on purpose -- this is polled once per legacy upgrade, and a throwing
             // accessor would log once per agent per poll cycle. -1 rather than 0 because a failure
-            // to produce the certificate is not the same finding as "no certificate signs the
-            // leaf"; the caller refuses to deliver on either.
+            // to produce the certificate is not the same finding as "the leaf chains to no
+            // certificate of the bundle"; the caller refuses to deliver on either.
             return -1;
         }
     }

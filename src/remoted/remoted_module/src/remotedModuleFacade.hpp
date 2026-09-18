@@ -238,7 +238,7 @@ public:
      * must not hand a pre-v5.0.0 agent an anchor that cannot chain to this listener -- an agent
      * that pins one fails every handshake afterwards, which is worse than having no anchor.
      *
-     * @return 1 signs it, 0 explicitly does not, -1 unknown (listener down, never evaluated, or the
+     * @return 1 the leaf chains to it, 0 explicitly does not, -1 unknown (listener down, never evaluated, or the
      *         CA file was unreadable at the last tick). Callers must treat -1 as "proceed", the same
      *         way the /cacerts route does: refusing on unknown turns one transient read failure into
      *         a fleet-wide loss of the trust bootstrap.
@@ -260,7 +260,7 @@ public:
     }
 
     /**
-     * @brief The one certificate of `remote.https.ca_certificate` that signs the served leaf,
+     * @brief The one certificate of `remote.https.ca_certificate` the served leaf chains to,
      *        re-serialised into @p buffer.
      *
      * Exported to C (remoted_module_tls_leaf_signer_pem()) for remoted's legacy task poller: it
@@ -269,7 +269,7 @@ public:
      * here is ONE certificate, re-serialised by this process, with no publication block -- whatever
      * the bundle around it holds while a rotation overlaps (issue #39319, C7).
      *
-     * @return Bytes written (> 0); 0 when nothing signs the leaf, there is no servable bundle or
+     * @return Bytes written (> 0); 0 when the leaf chains to nothing in it, there is no servable bundle or
      *         the listener is down; -1 when @p capacity is too small. The caller delivers nothing
      *         on anything <= 0.
      */
@@ -1611,7 +1611,7 @@ private:
         m_metricsManager->registerPullMetric(
             remoted::endpoints::cacerts::METRIC_TLS_CA_MATCHES_LEAF,
             [certificateStatus] { return static_cast<uint64_t>(certificateStatus().caMatchesLeaf == true ? 1 : 0); },
-            "1 when remote.https.ca_certificate signs the served certificate",
+            "1 when the served certificate chains to remote.https.ca_certificate",
             "flag");
         m_metricsManager->registerPullMetric(
             "remoted.forwarder.deferred.inflight",

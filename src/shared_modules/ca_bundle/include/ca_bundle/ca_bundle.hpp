@@ -19,9 +19,9 @@
  *
  * One library so the manager and the `wazuh-manager-certs` tool answer the questions about that
  * file with the same code instead of two implementations that drift: what certificates does it
- * carry, what content do they hash to, does any of them sign the certificate the listener serves,
- * and was it stamped by the tool. Extracted from remoted's tlsCertificateStatus.{hpp,cpp}, which
- * had every one of these but the block (issue #39319).
+ * carry, what content do they hash to, does the certificate the listener serves CHAIN to any of
+ * them, and was it stamped by the tool. Extracted from remoted's tlsCertificateStatus.{hpp,cpp},
+ * which had every one of these but the block (issue #39319).
  *
  * Pure functions over bytes and X509 objects: no file reads, no logging, no configuration. The
  * caller reads the file (remoted through its bounded, injectable reader), decides what to do with
@@ -138,16 +138,37 @@ namespace ca_bundle
     std::string identityOf(const X509* certificate);
 
     /**
-     * @brief Whether any of @p cas signed @p leaf (`X509_verify` against each CA's public key).
+     * @brief Whether @p leaf CHAINS to one of @p cas: a real validation (`X509_STORE` with the
+     *        bundle as its trust anchors, `X509_STORE_CTX`, `X509_verify_cert()`), not a signature
+     *        check.
      *
-     * A signature check, not a chain validation: no dates, no name constraints, no
-     * basicConstraints. That is deliberate -- the question `GET /cacerts` needs answered is "would
-     * the PEM I am about to hand out let an agent trust the certificate I am serving", and the
-     * issuer signature is the one property that decides it. A self-signed leaf listed as its own
-     * CA matches. The chain question is remoted's chainValidates(), and it informs the logs, not
-     * the 503 (issue #39318).
+     * The question `GET /cacerts` and the publication need answered is "would the PEM I am about to
+     * hand out let an agent trust the certificate I am serving", and only a chain validation answers
+     * it. A signature check does not: a certificate carrying the SAME public key under ANOTHER
+     * subject verifies the leaf's signature while the leaf names the other one as its issuer, so it
+     * never chains and no agent can use it -- and remoted would have announced it as published all
+     * the same (issue #39319, C33).
+     *
+     * Verified with OpenSSL's DEFAULT flags -- deliberately WITHOUT `X509_V_FLAG_PARTIAL_CHAIN`, so
+     * a trust anchor has to be a self-signed root. That is how the OpenSSL of an agent that
+     * bootstrapped from this bundle verifies: with no trust settings of its own, only a self-signed
+     * certificate of its CA file is trusted, so a bundle holding just a (non-self-signed)
+     * intermediate would fail that agent's handshake and must not be announced as publishable here.
+     * A self-signed leaf listed as its own CA still chains: it is its own anchor, at depth 0.
+     *
+     * Default flags also mean the validity WINDOW and `basicConstraints` of everything on the path
+     * are checked, which is a behaviour change from the signature check this replaced: an EXPIRED
+     * CA, a not-yet-valid one and a signer without `CA:TRUE` no longer count, and neither does a
+     * bundle whose served leaf has itself expired. All of them are anchors an agent could not use,
+     * so the stricter answer is the correct one -- but a bundle that was publishable yesterday can
+     * stop being publishable today with no file having changed.
+     *
+     * What this does NOT check is the certificate's PURPOSE (`serverAuth` EKU): remoted's
+     * chainValidates() is the operator-facing verdict that adds it, and relaxes the anchor rule with
+     * `X509_V_FLAG_PARTIAL_CHAIN` at the same time, so neither verdict subsumes the other.
+     * describe()'s `signsLeaf` stays the plain signature fact, for the tool's diagnostics.
      */
-    bool anyCaSignsLeaf(const X509* leaf, const std::vector<X509Ptr>& cas);
+    bool leafChainsToAnyCa(const X509* leaf, const std::vector<X509Ptr>& cas);
 
     /// How many certificates a bundle may carry to be vouched for (spike #39277, D5).
     constexpr std::size_t kMaxCertificates = 6;
@@ -156,6 +177,11 @@ namespace ca_bundle
     constexpr std::size_t kMaxSerializedBytes = 8191;
 
     /// Why vouch() refused, in the order it evaluates them. `none` means it did not.
+    ///
+    /// `no_ca_signs_leaf` keeps its name from when the guard was a signature check: what it means
+    /// since C33 is leafChainsToAnyCa()'s answer -- the served leaf does not CHAIN to any CA of the
+    /// bundle -- which also covers an expired or non-CA signer. The spelling is what callers'
+    /// switches, logs and exit codes are written against, so it was not renamed with the function.
     enum class GuardFailure
     {
         none,
@@ -180,8 +206,8 @@ namespace ca_bundle
      *
      * Evaluates in this order and stops at the first guard that fails: `no_certificates` →
      * `no_block` → `hash_mismatch` (the block's hash against contentSha256() of the certificates
-     * parsed) → `no_ca_signs_leaf` (anyCaSignsLeaf(); with @p leaf null the guard FAILS -- with no
-     * served certificate to check against, nothing is vouched for) → `too_many_certificates` →
+     * parsed) → `no_ca_signs_leaf` (leafChainsToAnyCa(); with @p leaf null the guard FAILS -- with
+     * no served certificate to check against, nothing is vouched for) → `too_many_certificates` →
      * `too_many_bytes` (@p serializedBytes, what the caller would actually hand out).
      *
      * Only a bundle that passes all of them gets its block's publication; anything else is 0 plus
@@ -214,9 +240,12 @@ namespace ca_bundle
     /**
      * @brief The facts an operator needs about @p certificate, for the tool's inspect/check/add.
      *
-     * `signsLeaf` answers anyCaSignsLeaf()'s question for this certificate alone, so a bundle's
-     * facts say which of its CAs is the one holding the listener up. Null @p leaf leaves it false,
-     * exactly as anyCaSignsLeaf() would. Dates are UTC seconds since the epoch, negative for a
+     * `signsLeaf` is the plain SIGNATURE fact for this certificate alone (`X509_verify` against its
+     * public key), so a bundle's facts say which of its CAs holds the listener's signature up. It
+     * is deliberately NOT leafChainsToAnyCa()'s question: a certificate can sign the leaf and not
+     * be an anchor it chains to (another subject, an expired window, no `CA:TRUE`), and telling an
+     * operator those two apart is the whole value of the tool's `inspect`/`check` output. Null
+     * @p leaf leaves it false. Dates are UTC seconds since the epoch, negative for a
      * date before 1970 -- kept as-is, never clamped -- and 0 only when the underlying ASN.1 time
      * could not be converted at all, not as a stand-in for "before 1970" or "midnight 1970-01-01".
      * A null @p certificate gives default-constructed facts.

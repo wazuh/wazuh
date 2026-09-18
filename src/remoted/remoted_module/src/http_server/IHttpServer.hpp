@@ -417,17 +417,18 @@ namespace remoted::http
         }
 
         /**
-         * @brief Latest evaluation of the served TLS certificate: days to expiry and whether
-         *        HttpServerConfig::caCertificatePath signs it (the CA `GET /cacerts` hands out).
+         * @brief Latest evaluation of the served TLS certificate: days to expiry and whether it
+         *        CHAINS to HttpServerConfig::caCertificatePath (the CA `GET /cacerts` hands out).
          *
          * Expiry is evaluated once before the listener starts accepting and again every
          * HttpServerConfig::certificateStatusInterval (that is what `evaluations` counts). The CA
          * half is taken from the same CaCertificateSource `/cacerts` answers from, on every call,
          * so it can never disagree with the endpoint: `caMatchesLeaf`, `caSubjects`, the chain
          * fields and `caReadFailure` describe the file as of the last read -- or, while the file
-         * cannot be read, the last good read of it. The facade publishes it as the
-         * `remoted.server.tls.*` pulls and `/cacerts` refuses (503) to serve a CA that reads
-         * `caMatchesLeaf == false`. Callable from any thread; a default-constructed snapshot
+         * cannot be read, the last good read of it. `caMatchesLeaf` is a real chain validation
+         * (ca_bundle::leafChainsToAnyCa(), C33), so a CA that only signs the leaf reads false. The
+         * facade publishes it as the `remoted.server.tls.*` pulls and `/cacerts` refuses (503) to
+         * serve a bundle that reads `caMatchesLeaf == false`. Callable from any thread; a default-constructed snapshot
          * (nothing known, 0 evaluations) before start() and on implementations that never
          * evaluate, like the test fakes.
          */
@@ -437,8 +438,8 @@ namespace remoted::http
         }
 
         /**
-         * @brief Current state of the CA file: the certificates to publish and whether they sign
-         *        the served leaf, taken from one read (see CaCertificateSource).
+         * @brief Current state of the CA file: the certificates to publish and whether the served
+         *        leaf chains to them, taken from one read (see CaCertificateSource).
          *
          * What `GET /cacerts` answers with. Re-read on each call and re-validated whenever the
          * file's content changes, so the PEM handed out and the verdict about it always describe
@@ -474,18 +475,19 @@ namespace remoted::http
         }
 
         /**
-         * @brief The one certificate of the served CA bundle that signs the listener's leaf,
+         * @brief The one certificate of the served CA bundle the listener's leaf chains to,
          *        re-serialised (CaCertificateSource::leafSignerPem()).
          *
          * What the legacy WPK delivery pushes to a pre-v5.0.0 agent mid-upgrade: a SINGLE
          * certificate, never the bundle and never its `##` block, because the agent-side installer
-         * refuses a drop-in carrying more than one (C7). Bytes written on success; 0 when nothing
-         * of the bundle signs the leaf, there is no servable bundle or there is no leaf, **or the
-         * only certificate that signs the leaf is not an anchor the agent-side installer would
+         * refuses a drop-in carrying more than one (C7). Bytes written on success; 0 when the leaf
+         * chains to nothing in the bundle, there is no servable bundle or there is no leaf, **or the
+         * certificate it chains to is not an anchor the agent-side installer would
          * keep** -- not a CA (no `basicConstraints CA:TRUE`), or outside its validity window at the
-         * moment of the read (issue #39319, C26: a valid signature is not enough, since a
-         * rotation's overlap is exactly where an expired re-issue of the same key can sign the same
-         * leaf as the current certificate); -1 when `capacity` is too small. Callable from any
+         * moment of the read (issue #39319, C26 and C33: a valid signature is not enough, since a
+         * rotation's overlap is exactly where an expired re-issue of the same key signs the same
+         * leaf as the current certificate, and a certificate holding that key under another subject
+         * signs it without being its issuer at all); -1 when `capacity` is too small. Callable from any
          * thread; 0 before start(), on implementations that hold no CA like the test fakes, and
          * once the listener is gone -- after stop(), or after a bind that fails past TLS setup --
          * even while the source underneath still holds a servable bundle, which is what keeps this

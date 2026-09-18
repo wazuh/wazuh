@@ -29,6 +29,8 @@ namespace ca_bundle
     namespace
     {
         using BioPtr = std::unique_ptr<BIO, decltype(&BIO_free)>;
+        using StorePtr = std::unique_ptr<X509_STORE, decltype(&X509_STORE_free)>;
+        using StoreCtxPtr = std::unique_ptr<X509_STORE_CTX, decltype(&X509_STORE_CTX_free)>;
 
         // OPENSSL_free() is a function-like MACRO (it forwards __FILE__/__LINE__ to CRYPTO_free()),
         // so `&OPENSSL_free` does not name a function pointer -- this thin wrapper is what
@@ -90,7 +92,9 @@ namespace ca_bundle
             return std::string {reinterpret_cast<const char*>(buffer.get()), static_cast<std::size_t>(length)};
         }
 
-        /// Whether @p ca signed @p leaf: one signature check, the grain anyCaSignsLeaf() loops over.
+        /// Whether @p ca signed @p leaf: one signature check, and nothing more -- what describe()
+        /// reports as `signsLeaf`. NOT what decides a publication: leafChainsToAnyCa() does, and a
+        /// signature is only one of the things it needs (C33).
         bool caSignsLeaf(const X509* ca, const X509* leaf)
         {
             if (ca == nullptr || leaf == nullptr)
@@ -383,21 +387,56 @@ namespace ca_bundle
         return "x509-sha256:" + sha256Hex(*der);
     }
 
-    bool anyCaSignsLeaf(const X509* leaf, const std::vector<X509Ptr>& cas)
+    bool leafChainsToAnyCa(const X509* leaf, const std::vector<X509Ptr>& cas)
     {
-        if (leaf == nullptr)
+        if (leaf == nullptr || cas.empty())
         {
             return false;
         }
+
+        StorePtr store {X509_STORE_new(), &X509_STORE_free};
+        StoreCtxPtr ctx {X509_STORE_CTX_new(), &X509_STORE_CTX_free};
+        if (!store || !ctx)
+        {
+            // Out of memory building the verifier. "Does not chain" is the only answer that fails
+            // closed, and the caller's guard reads it as "nothing to publish".
+            ERR_clear_error();
+            return false;
+        }
+
         for (const auto& ca : cas)
         {
-            if (caSignsLeaf(ca.get(), leaf))
+            if (!ca)
             {
-                return true;
+                // A null entry is no anchor; the rest of the bundle still gets its chance, exactly
+                // as the signature loop this replaced skipped it.
+                continue;
+            }
+            // OpenSSL 1.1+ accepts a certificate already in the store and returns 1; the only
+            // failures left are allocation and locking, which no verdict about the bundle can
+            // absorb -- a store missing one of its anchors would answer a different question.
+            if (X509_STORE_add_cert(store.get(), ca.get()) != 1)
+            {
+                ERR_clear_error();
+                return false;
             }
         }
-        ERR_clear_error(); // a failed X509_verify queues a signature error
-        return false;
+
+        // No untrusted chain and no flags: the bundle has to suffice on its own, because it is all
+        // an agent bootstrapping from `GET /cacerts` will ever hold, and the anchor has to be a
+        // self-signed root, because that is what such an agent's OpenSSL trusts by default (no
+        // X509_V_FLAG_PARTIAL_CHAIN here on purpose -- see the header). X509_STORE_CTX_init takes a
+        // non-const X509*; verification does not modify the certificate observably.
+        if (X509_STORE_CTX_init(ctx.get(), store.get(), const_cast<X509*>(leaf), nullptr) != 1)
+        {
+            ERR_clear_error();
+            return false;
+        }
+
+        const bool chains = X509_verify_cert(ctx.get()) == 1;
+        // Both the store and the context go back with the unique_ptrs above, on every path.
+        ERR_clear_error(); // a refused chain queues the reason; nothing here reports it
+        return chains;
     }
 
     Vouch vouch(const ParsedBundle& bundle, const X509* leaf, std::size_t serializedBytes)
@@ -420,7 +459,10 @@ namespace ca_bundle
         {
             return {0, GuardFailure::hash_mismatch};
         }
-        if (!anyCaSignsLeaf(leaf, bundle.certificates))
+        // Named no_ca_signs_leaf for the callers already written against it, but the question is
+        // leafChainsToAnyCa()'s since C33: a CA that merely signs the leaf is not one an agent can
+        // use, so it must not decide which generation this manager announces.
+        if (!leafChainsToAnyCa(leaf, bundle.certificates))
         {
             return {0, GuardFailure::no_ca_signs_leaf};
         }

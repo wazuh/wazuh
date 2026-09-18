@@ -61,11 +61,12 @@ before issuing the `upgrade` command. The agent's installer picks it up from the
 - **Note:** With `yes` and a `remote.https.ca_certificate` bundle carrying more than one CA (a
   rotation in progress), the bytes pushed are **not** the file as it sits on disk. `legacy_task_ca_read()`
   asks the C++ module for the certificate the HTTPS listener's leaf is currently served under, and
-  the module hands back the first one that **both signs that leaf and is an anchor the agent-side
-  installer would actually keep**: it must be a CA (`basicConstraints CA:TRUE`) and currently
-  within its validity window, not merely a valid signature — a rotation's overlap is exactly where
-  the bundle can carry an **expired** re-issue of the same key next to the current one, and a valid
-  signature from the expired one is not something `src/init/pkg_installer.sh` will install. If
+  the module hands back the first one that the leaf **actually chains to** and that is **an anchor
+  the agent-side installer would keep**: it must be a CA (`basicConstraints CA:TRUE`) and currently
+  within its validity window. A valid signature is deliberately not enough — a rotation's overlap is
+  exactly where the bundle can carry an **expired** re-issue of the same key next to the current one,
+  and a certificate holding that key under another subject signs the leaf without being its issuer at
+  all; neither is something `src/init/pkg_installer.sh` will install and work with. If
   nothing in the bundle qualifies, **nothing is delivered** and the upgrade proceeds without a CA
   (see the "never fails an upgrade" note below) — better that than a `root-ca.pem` drop-in the
   installer rejects on arrival. The result is re-serialized on its own, with no publication block
@@ -82,8 +83,8 @@ before issuing the `upgrade` command. The agent's installer picks it up from the
   warning naming the CA step specifically. An agent off the air is worse than an agent without an
   anchor.
 
-The manager refuses to send a CA that does not sign the certificate its own HTTPS listener serves,
-and logs an error instead — an agent that pinned such an anchor would fail every connection
+The manager refuses to send a CA that the certificate its own HTTPS listener serves does not chain
+to, and logs an error instead — an agent that pinned such an anchor would fail every connection
 afterwards, which is worse than sending nothing. This is the same check `GET /cacerts` applies
 before handing the CA to a 5.x agent, so the two paths can never disagree.
 
@@ -261,9 +262,12 @@ Path to a CA bundle (PEM) used to verify client (agent) certificates.
 
 ### https.ca_certificate
 
-Path to the CA certificate (PEM) that signs the listener certificate (`certificate`). It is the
-certificate the manager serves on `GET /cacerts` and the one enrollment tokens pin, so agents can
-verify the listener without an out-of-band CA copy.
+Path to the CA certificate (PEM) that **issued** the listener certificate (`certificate`) — the
+self-signed root that certificate chains to, or a bundle carrying it. It is the certificate the
+manager serves on `GET /cacerts` and the one enrollment tokens pin, so agents can verify the listener
+without an out-of-band CA copy. A certificate that only shares the issuer's key, one that has expired
+and one without `CA:TRUE` are all refused: see
+[the coherence check](https-events-api.md#ca-certificate-endpoint-get-cacerts).
 
 Only its **certificates** are ever published: the manager parses the file and re-serialises the
 X.509 blocks it found, so a PEM that also carries the CA's private key (a misprovisioned bundle)

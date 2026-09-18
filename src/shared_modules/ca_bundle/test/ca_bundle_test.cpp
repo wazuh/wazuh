@@ -26,11 +26,11 @@
 #include <utility>
 #include <vector>
 
-using ca_bundle::anyCaSignsLeaf;
 using ca_bundle::contentSha256;
 using ca_bundle::describe;
 using ca_bundle::GuardFailure;
 using ca_bundle::identityOf;
+using ca_bundle::leafChainsToAnyCa;
 using ca_bundle::parseBundle;
 using ca_bundle::ParsedBundle;
 using ca_bundle::PublicationBlock;
@@ -494,7 +494,7 @@ TEST(CaBundleTest, VouchFailsNoCaSignsLeafWhenLeafIsNull)
     EXPECT_EQ(verdict.failure, GuardFailure::no_ca_signs_leaf);
 }
 
-TEST(CaBundleTest, VouchFailsNoCaSignsLeafWhenNoneSigns)
+TEST(CaBundleTest, VouchFailsNoCaSignsLeafWhenTheLeafChainsToNothing)
 {
     const auto pki = makePki("vouch-foreign");
     const auto served = bundleOf({pki.foreignCa.get()});
@@ -511,8 +511,8 @@ TEST(CaBundleTest, VouchFailsTooManyCertificatesOverSix)
 {
     const auto pki = makePki("vouch-too-many");
 
-    // Seven, INCLUDING the CA that signs the leaf: the signature guard is checked first, so this
-    // has to get past it to reach the count.
+    // Seven, INCLUDING the CA the leaf chains to: the chain guard is checked first, so this has to
+    // get past it to reach the count.
     std::vector<ca_bundle::test::EvpPkeyPtr> keys;
     std::vector<X509Ptr> extra;
     for (int index = 0; index < 6; ++index)
@@ -581,12 +581,12 @@ TEST(CaBundleTest, VouchSucceedsAndReturnsTheBlockPublication)
 
 // --- vouch(): precedence when more than one guard would fail (review, P2 #6) -------------------
 
-TEST(CaBundleTest, VouchReportsHashMismatchBeforeSignature)
+TEST(CaBundleTest, VouchReportsHashMismatchBeforeTheChainGuard)
 {
     const auto pki = makePki("vouch-precedence-hash");
-    // Signed with neither the served CA nor anything else: no_ca_signs_leaf would ALSO fail here.
+    // A CA of somebody else's: the leaf chains to nothing here, so no_ca_signs_leaf would ALSO fail.
     const auto served = bundleOf({pki.foreignCa.get()});
-    ASSERT_FALSE(anyCaSignsLeaf(pki.leaf.get(), served));
+    ASSERT_FALSE(leafChainsToAnyCa(pki.leaf.get(), served));
 
     // A stamp describing a different set of certificates: hash_mismatch fails too.
     const auto document = sealedDocument(served, stampFor(bundleOf({pki.ca.get()}), 1789000000));
@@ -641,6 +641,167 @@ TEST(CaBundleTest, VouchReportsTooManyCertificatesBeforeTooManyBytes)
     // fail, but the certificate count has to be the one named.
     const auto verdict = vouch(parsed, pki.leaf.get(), ca_bundle::kMaxSerializedBytes + 1);
     EXPECT_EQ(verdict.failure, GuardFailure::too_many_certificates);
+}
+
+// --- leafChainsToAnyCa(): a real chain, not a signature (issue #39319, C33) --------------------
+//
+// The guard this replaced checked only the signature, so a certificate carrying the issuing CA's
+// public key under ANOTHER subject passed every check while the leaf named the other one as its
+// issuer and no agent could build a chain to it: remoted announced a generation whose anchor was
+// unusable. Each case below is decided the way an agent's own OpenSSL decides it -- default flags,
+// so a self-signed anchor, and the validity windows and basicConstraints of the path included.
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    /// A self-signed CA:TRUE certificate carrying @p key -- @p pki's own CA key, for the impostor --
+    /// under the subject @p commonName. Serial 2 so it never collides with makePki()'s.
+    X509Ptr
+    selfSignedCaWithKey(const char* commonName, EVP_PKEY* key, long notBefore = -kDay, long notAfter = 30 * kDay)
+    {
+        return makeCertificate(commonName, notBefore, notAfter, key, key, nullptr, true, 2);
+    }
+} // namespace
+
+TEST(CaBundleTest, LeafDoesNotChainToACaWithTheSameKeyAndAnotherSubject)
+{
+    // THE regression test of C33 (Codex, P1). The impostor holds the issuing CA's public key, so it
+    // verifies the leaf's signature perfectly, and it is a valid, current CA:TRUE certificate. What
+    // it is not is the issuer the leaf NAMES, so nothing chains to it: an agent handed this bundle
+    // gets "unable to get local issuer certificate" and cannot verify this manager at all.
+    const auto pki = makePki("chain-impostor");
+    const auto impostor = selfSignedCaWithKey("chain-impostor-other-subject", pki.caKey.get());
+
+    const auto impostorFacts = describe(impostor.get(), pki.leaf.get());
+    ASSERT_TRUE(impostorFacts.signsLeaf) << "the fixture must be the real bug shape: it DOES sign";
+    ASSERT_TRUE(impostorFacts.isCa);
+    ASSERT_NE(impostorFacts.subject, describe(pki.ca.get(), pki.leaf.get()).subject);
+
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), bundleOf({impostor.get()})));
+
+    // With the real issuer next to it the bundle is usable again, whichever order they sit in: one
+    // unusable entry is not what decides a bundle.
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), bundleOf({impostor.get(), pki.ca.get()})));
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), bundleOf({pki.ca.get(), impostor.get()})));
+}
+
+TEST(CaBundleTest, LeafChainsToItsRootCaAloneAndAmongForeignOnes)
+{
+    const auto pki = makePki("chain-root");
+
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), bundleOf({pki.ca.get()})));
+    // The root is NOT the first entry: every anchor has to be tried, not only the first.
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), bundleOf({pki.foreignCa.get(), pki.ca.get()})));
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), bundleOf({pki.foreignCa.get()})));
+}
+
+TEST(CaBundleTest, AnExpiredSignerIsNotAnAnchor)
+{
+    // The rotation overlap: the same CA re-issued, and the expired copy left in the bundle. It
+    // signs the leaf (same key, same subject), and an agent's verifier still refuses it -- so it no
+    // longer counts here either, which is the behaviour change C33 documents.
+    const auto pki = makePki("chain-expired");
+    const auto expired = selfSignedCaWithKey("chain-expired-ca", pki.caKey.get(), -3 * kDay, -kDay);
+
+    ASSERT_TRUE(describe(expired.get(), pki.leaf.get()).signsLeaf);
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), bundleOf({expired.get()})));
+    // The current re-issue of the same CA is the one that carries the bundle.
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), bundleOf({expired.get(), pki.ca.get()})));
+}
+
+TEST(CaBundleTest, ASignerWithoutCaTrueIsNotAnAnchor)
+{
+    // A certificate holding the CA's key with no basicConstraints at all: its signature IS on the
+    // leaf, and `pkg_installer.sh` and every TLS client refuse it as a trust anchor.
+    const auto pki = makePki("chain-not-a-ca");
+    const auto notACa =
+        makeCertificate("chain-not-a-ca-ca", -kDay, 30 * kDay, pki.caKey.get(), pki.caKey.get(), nullptr, false, 3);
+
+    ASSERT_TRUE(describe(notACa.get(), pki.leaf.get()).signsLeaf);
+    ASSERT_FALSE(describe(notACa.get(), pki.leaf.get()).isCa);
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), bundleOf({notACa.get()})));
+}
+
+TEST(CaBundleTest, AnIntermediateAloneIsNotAnAnchorWithDefaultFlags)
+{
+    // root -> intermediate -> leaf, with only the intermediate published. It signed the leaf, and
+    // with X509_V_FLAG_PARTIAL_CHAIN (remoted's chainValidates(), for the operator's logs) it would
+    // be an anchor -- but an agent's OpenSSL has no trust settings of its own, so only a SELF-SIGNED
+    // certificate of its CA file is trusted and that agent's handshake fails. Default flags here
+    // say the same thing: not publishable.
+    const auto rootKey = makeTestKey();
+    const auto intermediateKey = makeTestKey();
+    const auto leafKey = makeTestKey();
+    const auto root = makeCertificate("chain-int-root", -kDay, 30 * kDay, rootKey.get(), rootKey.get(), nullptr, true);
+    const auto intermediate = makeCertificate(
+        "chain-int-intermediate", -kDay, 30 * kDay, intermediateKey.get(), rootKey.get(), root.get(), true);
+    const auto leaf =
+        makeCertificate("chain-int-leaf", -kDay, 10 * kDay, leafKey.get(), intermediateKey.get(), intermediate.get());
+
+    ASSERT_TRUE(describe(intermediate.get(), leaf.get()).signsLeaf);
+    EXPECT_FALSE(leafChainsToAnyCa(leaf.get(), bundleOf({intermediate.get()})));
+
+    // The root alone cannot complete it either (the intermediate is missing from the bundle, and
+    // the leaf does not name the root as its issuer); root AND intermediate together can.
+    EXPECT_FALSE(leafChainsToAnyCa(leaf.get(), bundleOf({root.get()})));
+    EXPECT_TRUE(leafChainsToAnyCa(leaf.get(), bundleOf({root.get(), intermediate.get()})));
+}
+
+TEST(CaBundleTest, AnExpiredServedLeafChainsToNothing)
+{
+    // The other end of the window check, and the one case of C33 that is about the LEAF rather than
+    // the anchor: a served certificate past its notAfter validates against nothing, so its bundle
+    // is refused too. An agent could not complete a handshake with it either, but the guard is
+    // stricter than it was here as well -- worth stating, because the operator's fix is to renew
+    // the listener certificate, not the CA.
+    const auto pki = makePki("chain-expired-leaf");
+    const auto expiredLeaf = makeCertificate(
+        "chain-expired-leaf-leaf", -3 * kDay, -kDay, pki.leafKey.get(), pki.caKey.get(), pki.ca.get(), false, 4);
+
+    ASSERT_TRUE(describe(pki.ca.get(), expiredLeaf.get()).signsLeaf);
+    EXPECT_FALSE(leafChainsToAnyCa(expiredLeaf.get(), bundleOf({pki.ca.get()})));
+}
+
+TEST(CaBundleTest, ASelfSignedLeafIsItsOwnAnchor)
+{
+    // The quickstart shape: the served certificate itself published as the bundle. It chains at
+    // depth 0 -- an agent that pins exactly this certificate does verify the handshake -- so the
+    // property the signature check had here is kept.
+    const auto key = makeTestKey();
+    const auto selfSigned = makeCertificate("chain-self-signed", -kDay, 10 * kDay, key.get(), key.get(), nullptr);
+
+    EXPECT_TRUE(leafChainsToAnyCa(selfSigned.get(), bundleOf({selfSigned.get()})));
+}
+
+TEST(CaBundleTest, NothingChainsWithoutALeafOrWithoutAnchors)
+{
+    const auto pki = makePki("chain-nothing");
+
+    EXPECT_FALSE(leafChainsToAnyCa(nullptr, bundleOf({pki.ca.get()})));
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), {}));
+    // A null entry among the anchors is skipped, not fatal: the real CA next to it still decides.
+    std::vector<X509Ptr> withNull;
+    withNull.push_back(X509Ptr {});
+    withNull.push_back(retain(pki.ca.get()));
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), withNull));
+}
+
+TEST(CaBundleTest, VouchRefusesABundleWhoseCaOnlySignsTheLeaf)
+{
+    // The same impostor, now through the guard that decides what generation is announced: a
+    // correctly stamped bundle whose hash matches its certificates, refused because the leaf does
+    // not chain to any of them. This is what C33 keeps remoted from publishing.
+    const auto pki = makePki("vouch-impostor");
+    const auto impostor = selfSignedCaWithKey("vouch-impostor-other-subject", pki.caKey.get());
+    const auto served = bundleOf({impostor.get()});
+    const auto document = sealedDocument(served, stampFor(served, 1789000000));
+    const auto parsed = parseBundle(document);
+    ASSERT_TRUE(parsed.block.has_value());
+    ASSERT_TRUE(describe(parsed.certificates.front().get(), pki.leaf.get()).signsLeaf);
+
+    const auto verdict = vouch(parsed, pki.leaf.get(), document.size());
+    EXPECT_EQ(verdict.publication, 0);
+    EXPECT_EQ(verdict.failure, GuardFailure::no_ca_signs_leaf);
 }
 
 // --- renderBlock(): what the tool writes is what everyone reads (T4) ---------------------------
@@ -709,7 +870,9 @@ TEST(CaBundleTest, DescribeFillsSubjectIssuerDatesAndSignsLeaf)
     EXPECT_EQ(facts.identity, identityOf(pki.ca.get()));
     EXPECT_TRUE(facts.isCa);
     EXPECT_TRUE(facts.signsLeaf);
-    EXPECT_EQ(facts.signsLeaf, anyCaSignsLeaf(pki.leaf.get(), bundleOf({pki.ca.get()})));
+    // For the CA that really issued the leaf the signature fact and the chain verdict agree; the
+    // cases where they DO NOT are what the LeafChainsToAnyCa suite below is about.
+    EXPECT_EQ(facts.signsLeaf, leafChainsToAnyCa(pki.leaf.get(), bundleOf({pki.ca.get()})));
 
     const auto now = std::time(nullptr);
     EXPECT_LT(facts.notBefore, now);
@@ -721,7 +884,7 @@ TEST(CaBundleTest, DescribeFillsSubjectIssuerDatesAndSignsLeaf)
     // A CA of the bundle that does NOT hold the listener up, and no certificate at all.
     const auto foreign = describe(pki.foreignCa.get(), pki.leaf.get());
     EXPECT_FALSE(foreign.signsLeaf);
-    EXPECT_EQ(foreign.signsLeaf, anyCaSignsLeaf(pki.leaf.get(), bundleOf({pki.foreignCa.get()})));
+    EXPECT_EQ(foreign.signsLeaf, leafChainsToAnyCa(pki.leaf.get(), bundleOf({pki.foreignCa.get()})));
     EXPECT_TRUE(foreign.isCa);
 
     const auto leafFacts = describe(pki.leaf.get(), pki.leaf.get());

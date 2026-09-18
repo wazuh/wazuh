@@ -630,35 +630,42 @@ namespace
         if (status.caMatchesLeaf.has_value() && !*status.caMatchesLeaf)
         {
             LOGFN_ERROR(logFn(),
-                        "The configured CA '%s' does not sign the served certificate '%s' (subjects: CA '%s', "
+                        "The served certificate '%s' does not chain to the configured CA '%s' (subjects: CA '%s', "
                         "certificate '%s'); GET /cacerts will answer 503 and agents cannot bootstrap trust from "
-                        "this manager until the CA and the certificate match.",
-                        caPath.c_str(),
+                        "this manager until the CA and the certificate match. A CA that merely signs the "
+                        "certificate is not enough: it must be the self-signed anchor the certificate's own chain "
+                        "ends at, still within its validity window and marked CA:TRUE.",
                         leafPath.c_str(),
+                        caPath.c_str(),
                         status.caSubjects.c_str(),
                         status.leafSubject.c_str());
         }
 
-        // The chain verdict is information, not the decision (issue #39318): a CA that signs the leaf
-        // but could never be used by a verifying agent deserves a line, and so does the converse.
+        // Both verdicts are chain validations since C33, and neither subsumes the other: this one
+        // adds the server purpose, the one behind caMatchesLeaf demands a self-signed anchor
+        // (X509_V_FLAG_PARTIAL_CHAIN, chainValidates()). So they can still disagree in both
+        // directions, and each disagreement is worth its own line -- information, never the
+        // decision (issue #39318).
         if (status.caMatchesLeaf == true && status.chainValid == false)
         {
             LOGFN_WARN(logFn(),
-                       "The configured CA '%s' signs the served certificate '%s' but the chain does not validate (%s); "
-                       "a verifying agent that pins this CA will reject the handshake -- check the validity dates and "
-                       "the CA constraints of the certificates involved.",
-                       caPath.c_str(),
+                       "The served certificate '%s' chains to the configured CA '%s', but validating it as a SERVER "
+                       "certificate fails (%s); a verifying agent that pins this CA will reject the handshake -- "
+                       "check the certificate's extended key usage, its validity dates and the CA constraints of the "
+                       "certificates involved.",
                        leafPath.c_str(),
+                       caPath.c_str(),
                        status.chainError.c_str());
         }
         else if (status.caMatchesLeaf == false && status.chainValid == true)
         {
             LOGFN_INFO(logFn(),
-                       "The configured CA '%s' does not sign the served certificate '%s' directly, though the "
-                       "certificate validates through it; GET /cacerts refuses it all the same: the bundle must carry "
-                       "the certificate's issuer.",
-                       caPath.c_str(),
-                       leafPath.c_str());
+                       "The served certificate '%s' validates through the configured CA '%s' only because a "
+                       "certificate of it is treated as a trust anchor without being self-signed; GET /cacerts "
+                       "refuses it all the same, because an agent's own OpenSSL will not do that -- the bundle must "
+                       "carry the self-signed root the certificate chains to.",
+                       leafPath.c_str(),
+                       caPath.c_str());
         }
     }
 

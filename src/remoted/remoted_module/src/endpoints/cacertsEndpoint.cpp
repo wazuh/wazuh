@@ -104,7 +104,8 @@ namespace remoted::endpoints::cacerts
 
             // Before ANY of the three answers below, never after: whatever that read noticed about
             // the bundle's publication is logged and persisted here (issue #39319). It runs on the
-            // 404 and 503 paths too -- a bundle that stopped being servable, or one no CA signs, is
+            // 404 and 503 paths too -- a bundle that stopped being servable, or one nothing chains
+            // to, is
             // exactly when an operator needs the publication line -- and it takes no lock of the
             // source, so it cannot deadlock against the read above.
             if (deliverCaRecordEvents)
@@ -170,7 +171,7 @@ namespace remoted::endpoints::cacerts
                 {
                     LOGFN_ERROR(logFn(),
                                 "GET /cacerts answered 503 to %llu request(s) in the last %d s: the configured CA "
-                                "(%s) does not sign the served certificate, so it is not handed out (agents "
+                                "(%s) is not one the served certificate chains to, so it is not handed out (agents "
                                 "would fail every handshake against this manager with it).",
                                 static_cast<unsigned long long>(throttle.total),
                                 remoted::common::LogThrottle::kDefaultWindowSeconds,
