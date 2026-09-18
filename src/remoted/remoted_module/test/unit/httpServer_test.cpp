@@ -13,6 +13,8 @@
 #include "http_server/IHttpServer.hpp"
 #include "http_server/RestinioHttpServer.hpp"
 #include "http_server/caCertificateSource.hpp"
+#include "http_server/caPublicationRecord.hpp"
+#include "http_server/caRecordEvents.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
 #include "http_server/tlsCertificateStatus.hpp"
@@ -47,6 +49,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <istream>
 #include <iterator>
@@ -176,6 +179,44 @@ namespace
         std::string m_dir;
         std::string m_certPath;
         std::string m_keyPath;
+    };
+
+    /// Throwaway directory for a publication record (same mold as downloadEndpoint_test.cpp's
+    /// TempDir: mkdtemp for per-instance/per-process uniqueness, std::filesystem for teardown,
+    /// since CaPublicationRecord writes names this file does not predict).
+    class TempDir
+    {
+    public:
+        TempDir()
+        {
+            std::string tmpl = "/tmp/wazuh-httpServerTest-record-XXXXXX";
+            std::vector<char> buffer(tmpl.begin(), tmpl.end());
+            buffer.push_back('\0');
+
+            const char* created = ::mkdtemp(buffer.data());
+            if (created == nullptr)
+            {
+                throw std::runtime_error("mkdtemp failed for the httpServer test's scratch directory");
+            }
+            m_path = created;
+        }
+
+        ~TempDir()
+        {
+            std::error_code ignored;
+            std::filesystem::remove_all(m_path, ignored);
+        }
+
+        TempDir(const TempDir&) = delete;
+        TempDir& operator=(const TempDir&) = delete;
+
+        const std::string& path() const
+        {
+            return m_path;
+        }
+
+    private:
+        std::string m_path;
     };
 } // namespace
 
@@ -973,6 +1014,7 @@ TEST(HttpServerTest, CertificateStatusIsEvaluatedBeforeListening)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0;
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1001,6 +1043,7 @@ TEST(HttpServerTest, StartUpStatusCarriesTheChainVerdict)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0;
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1041,6 +1084,7 @@ TEST(HttpServerTest, ExpiryWarningRunsAgainOnTimerTick)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0;
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1068,6 +1112,7 @@ TEST(HttpServerTest, StopAcceptingJoinsTheCertificateMonitor)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0;
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1110,6 +1155,7 @@ TEST(HttpServerTest, StartUpStatusComesFromTheSharedSource)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0;
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1155,6 +1201,7 @@ TEST(HttpServerTest, MonitorTickKeepsEvaluatingThroughAReadFailure)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0;
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1179,6 +1226,142 @@ TEST(HttpServerTest, MonitorTickKeepsEvaluatingThroughAReadFailure)
 
     server->stop();
     ::rmdir(caPath.c_str());
+}
+
+// ---------------------------------------------------------------------------
+// The publication record wired through start() (issue #39319, C21b): HttpServerConfig::
+// onCaRecordReady is how a caller OUTSIDE the transport (the facade's GET /cacerts handler, stood
+// in for here by draining the mailbox directly) gets at the CA source and its record events
+// without IHttpServer growing a method for it.
+// ---------------------------------------------------------------------------
+
+TEST(HttpServerTest, MissingRecordDirectoryWarnsOnceAndKeepsServing)
+{
+    TempCert cert; // self-signed: its own CA, so the bundle is servable from the first read
+    auto server = makeHttpServer();
+
+    std::shared_ptr<CaCertificateSource> capturedSource;
+    std::shared_ptr<CaRecordEventMailbox> capturedMailbox;
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = cert.certPath();
+    // Deliberately pointed at a directory that does not exist and is never created in this test:
+    // ensureRecordDirectory() (best-effort) cannot create it either, since ITS parent is missing
+    // too -- mkdir(2) is not recursive (by design, C25).
+    config.caPublicationRecordPath = "/tmp/httpServerTest-no-such-directory-e2a/deeper/record.json";
+    config.onCaRecordReady = [&capturedSource, &capturedMailbox](auto source, auto mailbox)
+    {
+        capturedSource = std::move(source);
+        capturedMailbox = std::move(mailbox);
+    };
+
+    ASSERT_NO_THROW(server->start(config));
+    ASSERT_TRUE(capturedSource != nullptr);
+    ASSERT_TRUE(capturedMailbox != nullptr);
+
+    // createTlsContext() already drained the FIRST event (first_time_unpublished, INFO, logged) and
+    // then tried to flush it -- which is where the missing directory actually bites: exactly one
+    // record_unwritable is left waiting for us, once per streak (C19/C19b).
+    auto events = capturedMailbox->drain();
+    ASSERT_EQ(events.size(), 1U);
+    EXPECT_EQ(events[0].kind, remoted::http::RecordEvent::record_unwritable);
+    EXPECT_FALSE(events[0].stored);
+    EXPECT_NE(events[0].error, 0);
+
+    // Keeps serving despite the record being unwritable: the bundle never depended on it.
+    const auto snapshot = server->caCertificateSnapshot();
+    EXPECT_GT(snapshot.certificates, 0U);
+    EXPECT_FALSE(snapshot.pem.empty());
+
+    // A second flush attempt fails again but is the SAME streak: no second warning.
+    capturedSource->flushPendingRecord();
+    EXPECT_TRUE(capturedMailbox->drain().empty());
+
+    server->stop();
+}
+
+TEST(HttpServerTest, RestartSameServerStartsAFreshMailbox)
+{
+    TempCert cert;
+    TempDir recordDir;
+
+    // A separate file for the CA (never the listener's own certificate, which TempCert's
+    // destructor removes and which start() needs to keep reading on every restart below).
+    const auto caPath = scratchPath("restart_fresh_mailbox_ca");
+    {
+        std::ifstream in {cert.certPath(), std::ios::binary};
+        std::ofstream out {caPath, std::ios::binary};
+        out << in.rdbuf();
+    }
+
+    auto server = makeHttpServer();
+
+    std::shared_ptr<CaCertificateSource> source1;
+    std::shared_ptr<CaCertificateSource> source2;
+    std::shared_ptr<CaRecordEventMailbox> mailbox1;
+    std::shared_ptr<CaRecordEventMailbox> mailbox2;
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = caPath;
+    config.caPublicationRecordPath = recordDir.path() + "/record.json";
+    config.onCaRecordReady = [&](auto source, auto mailbox)
+    {
+        if (!source1)
+        {
+            source1 = std::move(source);
+            mailbox1 = std::move(mailbox);
+        }
+        else
+        {
+            source2 = std::move(source);
+            mailbox2 = std::move(mailbox);
+        }
+    };
+
+    ASSERT_NO_THROW(server->start(config));
+    ASSERT_TRUE(source1 != nullptr);
+    ASSERT_TRUE(mailbox1 != nullptr);
+    // The start-time evaluation already drained its own first_time_unpublished event (INFO,
+    // logged) before handing the mailbox to onCaRecordReady.
+    EXPECT_TRUE(mailbox1->drain().empty());
+
+    // A NEW event on the SAME (still running) source/mailbox, left deliberately undrained: the
+    // ordinary CA file's bytes change (still no publication block), so this is changed_outside_tool.
+    {
+        std::ofstream out {caPath, std::ios::binary | std::ios::app};
+        out << "\n";
+    }
+    // Forces the re-read that posts the event; deliberately NOT drained from here on -- the point
+    // of this test is what a restart does (or does not do) to that undrained leftover.
+    (void)server->caCertificateSnapshot();
+
+    server->stop();
+    ASSERT_NO_THROW(server->start(config));
+    ASSERT_TRUE(source2 != nullptr);
+    ASSERT_TRUE(mailbox2 != nullptr);
+
+    // A genuinely NEW source and a genuinely NEW mailbox -- not the ones from before the restart.
+    EXPECT_NE(source1.get(), source2.get());
+    EXPECT_NE(mailbox1.get(), mailbox2.get());
+
+    // The new cycle's own mailbox never saw the leftover event from the old one: nothing from the
+    // previous cycle survives INTO the new one.
+    EXPECT_TRUE(mailbox2->drain().empty());
+
+    // And the leftover itself was never silently dropped either -- draining the OLD mailbox
+    // directly still shows it, because nothing but drain() ever removes an event from it.
+    const auto leftover = mailbox1->drain();
+    ASSERT_EQ(leftover.size(), 1U);
+    EXPECT_EQ(leftover[0].kind, remoted::http::RecordEvent::changed_outside_tool);
+
+    server->stop();
+    std::remove(caPath.c_str());
 }
 
 // ---------------------------------------------------------------------------
@@ -1430,6 +1613,7 @@ namespace
     HttpServerConfig fullModeConfig(const FullModePki& pki, std::uint16_t port)
     {
         HttpServerConfig config;
+        config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
         config.bindAddress = "127.0.0.1";
         config.port = port;
         config.certificatePath = pki.cert("server");
@@ -1573,6 +1757,7 @@ TEST(HttpServerTest, ReserveInFlightBytesAlwaysGrantsWhenBudgetDisabled)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0; // ephemeral
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1594,6 +1779,7 @@ TEST(HttpServerTest, ReserveInFlightBytesEnforcesConfiguredCapacityAfterStart)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0; // ephemeral
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1639,6 +1825,7 @@ TEST(HttpServerTest, DiagnosticsReportZerosBeforeStartAndTrackTheBudgetAfter)
     EXPECT_EQ(d.connectionsMax, 0U); // no ceiling reported until one is configured
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0; // ephemeral
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1700,6 +1887,7 @@ TEST(HttpServerTest, DiagnosticsCountARealAdmissionShed)
         ResponseMode::Buffered);
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = static_cast<std::uint16_t>(26000 + (::getpid() % 5000));
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1754,6 +1942,7 @@ TEST(HttpServerTest, DiagnosticsCountARealConnection)
         ResponseMode::Buffered);
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = static_cast<std::uint16_t>(21000 + (::getpid() % 5000));
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1943,6 +2132,7 @@ TEST(HttpServerStreamingTest, StreamsAMultiChunkBodyByteExactly)
         ResponseMode::Streamable);
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = static_cast<std::uint16_t>(21000 + (::getpid() % 5000));
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
@@ -1999,6 +2189,7 @@ TEST(HttpServerStreamingTest, ChunkSizeFollowsTheConfiguredValue)
         ResponseMode::Streamable);
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = static_cast<std::uint16_t>(22000 + (::getpid() % 5000));
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
@@ -2057,6 +2248,7 @@ TEST(HttpServerStreamingTest, AbortedTransferSendsNoTerminatorAndReleasesTheSour
         ResponseMode::Streamable);
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = static_cast<std::uint16_t>(23000 + (::getpid() % 5000));
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
@@ -2165,6 +2357,7 @@ TEST(HttpServerStreamingTest, HealthyTransferOutlastingTheRequestTimeoutIsNotCut
         ResponseMode::Streamable);
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = static_cast<std::uint16_t>(25000 + (::getpid() % 5000));
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
@@ -2224,6 +2417,7 @@ TEST(HttpServerStreamingTest, TrickleReaderKeepsTheTransferAliveBeyondTheWriteTi
         ResponseMode::Streamable);
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = static_cast<std::uint16_t>(26000 + (::getpid() % 5000));
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
@@ -2339,6 +2533,7 @@ namespace
                                { r->send(HttpResponse::json(200, request->target)); });
 
             HttpServerConfig config;
+            config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
             config.port = m_port;
             config.certificatePath = m_cert->certPath;
             config.privateKeyPath = m_cert->keyPath;
@@ -2469,6 +2664,7 @@ TEST_F(GlobalPrefixTransportTest, StartWithInvalidPrefixThrowsAndStaysStopped)
                        { r->send(HttpResponse::json(200, "{}")); });
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = m_port;
     config.certificatePath = m_cert->certPath;
     config.privateKeyPath = m_cert->keyPath;

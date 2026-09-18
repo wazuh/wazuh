@@ -174,6 +174,10 @@ namespace
             config.privateKeyPath = m_pki->keyPath;
             config.caCertificatePath = caCertificatePath;
             config.globalPrefix = rawPrefix;
+            // The publication record is not under test here: the default path would point at a
+            // var/run directory that does not exist in the build's cwd and warn once per server
+            // (paso 7, addendum). CaCertificateSourceRecord covers the record itself.
+            config.caPublicationRecordPath = "";
             ASSERT_NO_THROW(m_server->start(config));
         }
 

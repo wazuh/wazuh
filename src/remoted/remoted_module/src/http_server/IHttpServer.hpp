@@ -13,6 +13,7 @@
 #define _REMOTED_HTTP_SERVER_INTERFACE_HPP
 
 #include "caCertificateSource.hpp"
+#include "caRecordEvents.hpp"
 #include "inFlightBudget.hpp"
 #include "tlsCertificateStatus.hpp"
 
@@ -265,7 +266,14 @@ namespace remoted::http
         std::string caPath;            ///< CA bundle (PEM) used to verify client certificates.
         std::string caCertificatePath; ///< CA that signs the listener certificate (PEM); served on GET /cacerts
                                        ///< (remote.https.ca_certificate). Not the client-verification caPath.
-        std::string ciphers;           ///< TLS 1.3 ciphersuite override
+        /// Where the node remembers the publication of the bundle it last served, so an ordinary CA
+        /// file can be told from a published one that was rewritten by hand (issue #39319). Its own
+        /// directory under var/run/, created by the daemon at start (C25); an EMPTY value disables
+        /// the record, which only changes what is logged -- never what is served or vouched for.
+        /// Not a configuration option: buildHttpServerConfig() leaves this default, tests point it
+        /// at a temporary directory of their own.
+        std::string caPublicationRecordPath {"var/run/remoted-ca-bundle/record.json"};
+        std::string ciphers;                                                    ///< TLS 1.3 ciphersuite override
         ClientVerificationMode verificationMode {ClientVerificationMode::None}; ///< Client-certificate strictness.
         DualStackMode dualStackMode {DualStackMode::Unset}; ///< IPV6_V6ONLY override (IPv6 bind only).
         std::size_t ioThreads {2};                          ///< RESTinio/asio I/O threads (accept + read/write).
@@ -293,6 +301,14 @@ namespace remoted::http
         /// signs it) after the start-time evaluation -- see IHttpServer::certificateStatus(). Not a
         /// configuration option: buildHttpServerConfig() leaves the default, tests inject a short one.
         std::chrono::seconds certificateStatusInterval {std::chrono::hours {24}};
+        /// Called by start() with the CA source and the publication-event mailbox it just built,
+        /// before the listener accepts anything -- and again on every later start(), with the new
+        /// pair. It is how the owner of a logger that is NOT the transport (the GET /cacerts
+        /// handler, wired in the facade) gets to drain the mailbox and persist the record in the
+        /// request that noticed a change, without this interface growing a method for it (C21b).
+        /// Not a configuration option; empty by default, and an empty one is a no-op.
+        std::function<void(std::shared_ptr<CaCertificateSource>, std::shared_ptr<CaRecordEventMailbox>)>
+            onCaRecordReady {};
     };
 
     /**

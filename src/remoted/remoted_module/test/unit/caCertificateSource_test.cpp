@@ -26,6 +26,8 @@
 
 #include "ca_bundle/ca_bundle.hpp"
 #include "http_server/caCertificateSource.hpp"
+#include "http_server/caPublicationRecord.hpp"
+#include "http_server/caRecordEvents.hpp"
 #include "http_server/fileRead.hpp"
 #include "testCertificates.hpp"
 #include "testTlsServer.hpp"
@@ -36,9 +38,11 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -50,11 +54,18 @@
 using ca_bundle::GuardFailure;
 using ca_bundle::parseBundle;
 using remoted::http::CaCertificateSource;
+using remoted::http::CaPublicationRecord;
+using remoted::http::CaRecordEvent;
+using remoted::http::CaRecordEventMailbox;
 using remoted::http::describeReadFailure;
+using remoted::http::Entry;
+using remoted::http::LoadOutcome;
 using remoted::http::ReadFailure;
 using remoted::http::readFileBounded;
 using remoted::http::ReadResult;
 using remoted::http::ReadStatus;
+using remoted::http::RecordEvent;
+using remoted::http::RecordIo;
 using remoted::http::serializeCertificates;
 using remoted::http::statusFrom;
 
@@ -257,6 +268,74 @@ namespace
             return *now;
         }
     };
+
+    /// Throwaway directory for a publication record, removed with everything under it (the record
+    /// file, its temporaries, a subdirectory created mid-test) on scope exit. Same mold as
+    /// downloadEndpoint_test.cpp's TempDir (mkdtemp: unique per instance and per process), teardown
+    /// via std::filesystem since CaPublicationRecord writes names this test does not predict.
+    class TempDir
+    {
+    public:
+        TempDir()
+        {
+            std::string tmpl = "/tmp/wazuh-casource-record-test-XXXXXX";
+            std::vector<char> buffer(tmpl.begin(), tmpl.end());
+            buffer.push_back('\0');
+
+            const char* created = ::mkdtemp(buffer.data());
+            if (created == nullptr)
+            {
+                throw std::runtime_error("mkdtemp failed for the CaCertificateSourceRecord test's scratch directory");
+            }
+            m_path = created;
+        }
+
+        ~TempDir()
+        {
+            std::error_code ignored;
+            std::filesystem::remove_all(m_path, ignored);
+        }
+
+        TempDir(const TempDir&) = delete;
+        TempDir& operator=(const TempDir&) = delete;
+
+        const std::string& path() const
+        {
+            return m_path;
+        }
+
+    private:
+        std::string m_path;
+    };
+
+    /// Builds a CaCertificateSource with a record/mailbox wired in, the reader/clock left at their
+    /// production defaults -- the six-argument constructor with everything spelled out, so the 18
+    /// CaCertificateSourceRecord tests below do not each repeat readFileBounded/steady_clock::now.
+    /// Returns by value: CaCertificateSource holds two std::mutex members and is therefore neither
+    /// copyable nor movable, but a `return CaCertificateSource{...};` prvalue is elided into the
+    /// caller's storage unconditionally under C++17 (no move ever attempted).
+    CaCertificateSource makeRecordedSource(const std::string& path,
+                                           const X509* leaf,
+                                           LoadOutcome initialRecord,
+                                           std::shared_ptr<CaPublicationRecord> record,
+                                           std::shared_ptr<CaRecordEventMailbox> mailbox)
+    {
+        return CaCertificateSource {path,
+                                    leaf,
+                                    readFileBounded,
+                                    std::chrono::steady_clock::now,
+                                    std::move(initialRecord),
+                                    std::move(record),
+                                    std::move(mailbox)};
+    }
+
+    /// @p sealed with its `##` publication header sliced off, certificate bytes untouched -- what
+    /// an operator removing "just the stamp" by hand actually leaves behind.
+    std::string withoutBlock(const std::string& sealed)
+    {
+        const auto marker = sealed.find("-----BEGIN CERTIFICATE-----");
+        return marker == std::string::npos ? sealed : sealed.substr(marker);
+    }
 } // namespace
 
 TEST(CaCertificateSource, PublishesOnlyCertificatesFromACombinedPem)
@@ -1188,6 +1267,624 @@ TEST(CaCertificateSourceDescriptor, IsNulloptWhenNoBundleIsServable)
 
     CaCertificateSource source {path, pki->leaf.get()};
     EXPECT_FALSE(source.descriptor().generation.has_value());
+}
+
+// ---------------------------------------------------------------------------
+// CaCertificateSourceRecord: the publication record wired into the source (issue #39319, §2.3 of
+// 02-diseno.md). Real CaPublicationRecord objects backed by a throwaway directory throughout --
+// the same object flushPendingRecord() would use in production, only pointed at a temp path
+// instead of var/run/remoted-ca-bundle/.
+// ---------------------------------------------------------------------------
+
+TEST(CaCertificateSourceRecord, FreshPlainPemAnnouncesFirstTimeUnpublished)
+{
+    auto pki = makePki("casource-record-fresh");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+
+    auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/record.json");
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    // No stamp at all (an ordinary CA file) and no record yet either: a fresh node's first boot.
+    auto source = makeRecordedSource(
+        pki->files.caCertPath, pki->leaf.get(), record->load(pki->files.caCertPath), record, mailbox);
+
+    const auto snapshot = source.snapshot();
+    EXPECT_EQ(snapshot.publication, 0);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::no_block);
+
+    const auto events = source.drainRecordEvents();
+    ASSERT_EQ(events.size(), 1U);
+    EXPECT_EQ(events[0].kind, RecordEvent::first_time_unpublished);
+    EXPECT_EQ(events[0].bundlePath, pki->files.caCertPath);
+
+    source.flushPendingRecord();
+    const auto outcome = record->load(pki->files.caCertPath);
+    ASSERT_EQ(outcome.status, LoadOutcome::Status::ok);
+    EXPECT_EQ(outcome.entry.fileSha256, snapshot.fileSha256);
+    EXPECT_EQ(outcome.entry.publication, 0);
+}
+
+TEST(CaCertificateSourceRecord, UnservableBundleDoesNotEmitFirstTimeUnpublished)
+{
+    TempDir dir;
+    const auto path = dir.path() + "/empty.pem";
+    write(path, std::string {}); // no certificate at all: 404 territory, not a publication event
+
+    auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/record.json");
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    auto source = makeRecordedSource(path, nullptr, record->load(path), record, mailbox);
+
+    const auto snapshot = source.snapshot();
+    EXPECT_EQ(snapshot.certificates, 0U);
+    EXPECT_TRUE(source.drainRecordEvents().empty());
+
+    source.flushPendingRecord();
+    EXPECT_EQ(record->load(path).status, LoadOutcome::Status::absent); // nothing was ever pending
+}
+
+TEST(CaCertificateSourceRecord, UnreadableRecordDoesNotChangePublication)
+{
+    auto pki = makePki("casource-record-unreadable");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+
+    auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/record.json");
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+
+    LoadOutcome initial;
+    initial.status = LoadOutcome::Status::unreadable;
+    initial.error = EACCES;
+
+    auto source = makeRecordedSource(pki->files.caCertPath, pki->leaf.get(), initial, record, mailbox);
+
+    // The publication a record we could not read cannot invent: still exactly what the guard
+    // computes from the file, and silent about it -- neither "never published" nor "changed
+    // outside the tool" can be concluded from a record that could not be read (C23).
+    const auto snapshot = source.snapshot();
+    EXPECT_EQ(snapshot.publication, 0);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::no_block);
+    EXPECT_TRUE(source.drainRecordEvents().empty());
+
+    // A REAL change from here on is trusted normally: the suppression is for the first read only.
+    write(pki->files.caCertPath, readAll(pki->files.caCertPath) + "\n");
+    ASSERT_EQ(source.snapshot().publication, 0);
+    const auto events = source.drainRecordEvents();
+    ASSERT_EQ(events.size(), 1U);
+    EXPECT_EQ(events[0].kind, RecordEvent::changed_outside_tool);
+}
+
+TEST(CaCertificateSourceRecord, ContentChangedOutsideTheToolWarnsWithThePreviousPublication)
+{
+    auto pki = makePki("casource-record-changedoutside");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+
+    const auto certificates = readPemCertificates(pki->files.caCertPath);
+    const auto path = pki->files.caCertPath + ".record-changed";
+    write(path, sealedDocument(certificates, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/record.json");
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    auto source = makeRecordedSource(path, pki->leaf.get(), record->load(path), record, mailbox);
+
+    ASSERT_EQ(source.snapshot().publication, kPublication);
+    ASSERT_EQ(source.drainRecordEvents().size(), 1U);
+
+    // Case A: overwritten with a plain PEM -- no block at all.
+    write(path, serializeCertificates(certificates));
+    ASSERT_EQ(source.snapshot().publication, 0);
+    {
+        const auto events = source.drainRecordEvents();
+        ASSERT_EQ(events.size(), 1U);
+        EXPECT_EQ(events[0].kind, RecordEvent::changed_outside_tool);
+        EXPECT_EQ(events[0].previousPublication, kPublication);
+    }
+
+    // Republish, then case B: only the `##` block is stripped, the certificate bytes untouched.
+    write(path, sealedDocument(certificates, kNewerPublication));
+    ASSERT_EQ(source.snapshot().publication, kNewerPublication);
+    ASSERT_EQ(source.drainRecordEvents().size(), 1U);
+
+    write(path, withoutBlock(sealedDocument(certificates, kNewerPublication)));
+    ASSERT_EQ(source.snapshot().publication, 0);
+    {
+        const auto events = source.drainRecordEvents();
+        ASSERT_EQ(events.size(), 1U);
+        EXPECT_EQ(events[0].kind, RecordEvent::changed_outside_tool);
+        EXPECT_EQ(events[0].previousPublication, kNewerPublication);
+    }
+}
+
+TEST(CaCertificateSourceRecord, PublishingForTheFirstTimeIsAnEvent)
+{
+    auto pki = makePki("casource-record-firstpublish");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+
+    const auto certificates = readPemCertificates(pki->files.caCertPath);
+    const auto path = pki->files.caCertPath + ".record-firstpublish";
+    write(path, sealedDocument(certificates, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/record.json");
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    auto source = makeRecordedSource(path, pki->leaf.get(), record->load(path), record, mailbox);
+
+    ASSERT_EQ(source.snapshot().publication, kPublication);
+    const auto events = source.drainRecordEvents();
+    ASSERT_EQ(events.size(), 1U);
+    EXPECT_EQ(events[0].kind, RecordEvent::published_changed);
+    EXPECT_EQ(events[0].previousPublication, 0);
+    EXPECT_EQ(events[0].publication, kPublication);
+}
+
+TEST(CaCertificateSourceRecord, SamePublicationStaysSilent)
+{
+    auto pki = makePki("casource-record-samepub");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+
+    const auto certificates = readPemCertificates(pki->files.caCertPath);
+    const auto path = pki->files.caCertPath + ".record-samepub";
+    write(path, sealedDocument(certificates, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/record.json");
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    auto source = makeRecordedSource(path, pki->leaf.get(), record->load(path), record, mailbox);
+
+    ASSERT_EQ(source.snapshot().publication, kPublication);
+    ASSERT_EQ(source.drainRecordEvents().size(), 1U);
+
+    // Trailing padding changes the FILE's hash without touching the block or the certificates:
+    // same publication, nothing to say.
+    write(path, sealedDocument(certificates, kPublication) + "\n\n\n\n");
+    ASSERT_EQ(source.snapshot().publication, kPublication);
+    EXPECT_TRUE(source.drainRecordEvents().empty());
+
+    // Still tracked, silently: the new hash is what the next flush persists.
+    source.flushPendingRecord();
+    const auto outcome = record->load(path);
+    ASSERT_EQ(outcome.status, LoadOutcome::Status::ok);
+    EXPECT_EQ(outcome.entry.publication, kPublication);
+}
+
+TEST(CaCertificateSourceRecord, RepublishingRecordsThePreviousPublication)
+{
+    auto pki = makePki("casource-record-republish");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+
+    const auto certificates = readPemCertificates(pki->files.caCertPath);
+    const auto path = pki->files.caCertPath + ".record-republish";
+    write(path, sealedDocument(certificates, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/record.json");
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    auto source = makeRecordedSource(path, pki->leaf.get(), record->load(path), record, mailbox);
+
+    ASSERT_EQ(source.snapshot().publication, kPublication);
+    ASSERT_EQ(source.drainRecordEvents().size(), 1U);
+
+    write(path, sealedDocument(certificates, kNewerPublication));
+    ASSERT_EQ(source.snapshot().publication, kNewerPublication);
+    const auto events = source.drainRecordEvents();
+    ASSERT_EQ(events.size(), 1U);
+    EXPECT_EQ(events[0].kind, RecordEvent::published_changed);
+    EXPECT_EQ(events[0].previousPublication, kPublication);
+    EXPECT_EQ(events[0].publication, kNewerPublication);
+}
+
+TEST(CaCertificateSourceRecord, LowerPublicationIsAnnouncedAndRecorded)
+{
+    auto pki = makePki("casource-record-lowerpub");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+
+    const auto certificates = readPemCertificates(pki->files.caCertPath);
+    const auto path = pki->files.caCertPath + ".record-lowerpub";
+    write(path, sealedDocument(certificates, kNewerPublication)); // starts HIGH
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/record.json");
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    auto source = makeRecordedSource(path, pki->leaf.get(), record->load(path), record, mailbox);
+
+    ASSERT_EQ(source.snapshot().publication, kNewerPublication);
+    ASSERT_EQ(source.drainRecordEvents().size(), 1U);
+
+    write(path, sealedDocument(certificates, kPublication)); // now LOWER
+    ASSERT_EQ(source.snapshot().publication, kPublication);  // never max(record, block)
+    const auto events = source.drainRecordEvents();
+    ASSERT_EQ(events.size(), 1U);
+    EXPECT_EQ(events[0].kind, RecordEvent::published_changed);
+    EXPECT_EQ(events[0].previousPublication, kNewerPublication);
+    EXPECT_EQ(events[0].publication, kPublication);
+
+    source.flushPendingRecord();
+    const auto outcome = record->load(path);
+    ASSERT_EQ(outcome.status, LoadOutcome::Status::ok);
+    EXPECT_EQ(outcome.entry.publication, kPublication); // recorded as the lower one, not the max
+}
+
+TEST(CaCertificateSourceRecord, InvalidBlockOrGuardFailureUpdatesTheRecordWithoutASecondEvent)
+{
+    // hash_mismatch: a stamp describing ANOTHER set of certificates.
+    {
+        auto pki = makePki("casource-record-hashmismatch");
+        auto other = makePki("casource-record-hashmismatch-other");
+        ASSERT_TRUE(pki.has_value());
+        ASSERT_TRUE(other.has_value());
+        remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+        remoted::test::ScratchFileCleanup cleanupOther {other->files.files()};
+        TempDir dir;
+
+        const auto certificates = readPemCertificates(pki->files.caCertPath);
+        const auto foreignHash = ca_bundle::contentSha256(readPemCertificates(other->files.caCertPath));
+        const auto path = pki->files.caCertPath + ".record-mismatch";
+        write(path, sealedDocument(certificates, kPublication, foreignHash));
+        remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+        auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/record.json");
+        auto mailbox = std::make_shared<CaRecordEventMailbox>();
+        auto source = makeRecordedSource(path, pki->leaf.get(), record->load(path), record, mailbox);
+
+        ASSERT_EQ(source.snapshot().publication, 0);
+        const auto events = source.drainRecordEvents();
+        ASSERT_EQ(events.size(), 1U);
+        EXPECT_EQ(events[0].kind, RecordEvent::guard_failed);
+        EXPECT_EQ(events[0].guard, GuardFailure::hash_mismatch);
+
+        source.flushPendingRecord();
+        const auto outcome = record->load(path);
+        ASSERT_EQ(outcome.status, LoadOutcome::Status::ok);
+        EXPECT_EQ(outcome.entry.publication, 0);
+    }
+
+    // no_ca_signs_leaf: a properly stamped bundle -- for somebody else's CA.
+    {
+        auto pki = makePki("casource-record-foreignca");
+        auto foreign = makePki("casource-record-foreignca-other");
+        ASSERT_TRUE(pki.has_value());
+        ASSERT_TRUE(foreign.has_value());
+        remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+        remoted::test::ScratchFileCleanup cleanupForeign {foreign->files.files()};
+        TempDir dir;
+
+        const auto certificates = readPemCertificates(foreign->files.caCertPath);
+        const auto path = pki->files.caCertPath + ".record-foreign";
+        write(path, sealedDocument(certificates, kPublication));
+        remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+        auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/record.json");
+        auto mailbox = std::make_shared<CaRecordEventMailbox>();
+        auto source = makeRecordedSource(path, pki->leaf.get(), record->load(path), record, mailbox);
+
+        ASSERT_EQ(source.snapshot().publication, 0);
+        const auto events = source.drainRecordEvents();
+        ASSERT_EQ(events.size(), 1U);
+        EXPECT_EQ(events[0].kind, RecordEvent::guard_failed);
+        EXPECT_EQ(events[0].guard, GuardFailure::no_ca_signs_leaf);
+
+        source.flushPendingRecord();
+        const auto outcome = record->load(path);
+        ASSERT_EQ(outcome.status, LoadOutcome::Status::ok);
+        EXPECT_EQ(outcome.entry.publication, 0);
+    }
+}
+
+TEST(CaCertificateSourceRecord, RestartWithAnExistingRecordSkipsFirstTimeUnpublished)
+{
+    auto pki = makePki("casource-record-restart");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+    const auto recordPath = dir.path() + "/record.json";
+
+    // First boot: no record, an ordinary CA file.
+    {
+        auto record = std::make_shared<CaPublicationRecord>(recordPath);
+        auto mailbox = std::make_shared<CaRecordEventMailbox>();
+        auto source = makeRecordedSource(
+            pki->files.caCertPath, pki->leaf.get(), record->load(pki->files.caCertPath), record, mailbox);
+
+        ASSERT_EQ(source.snapshot().publication, 0);
+        const auto events = source.drainRecordEvents();
+        ASSERT_EQ(events.size(), 1U);
+        EXPECT_EQ(events[0].kind, RecordEvent::first_time_unpublished);
+        source.flushPendingRecord();
+    }
+
+    // Second boot: a NEW source over the SAME bundle and the record just written.
+    {
+        auto record = std::make_shared<CaPublicationRecord>(recordPath);
+        auto mailbox = std::make_shared<CaRecordEventMailbox>();
+        const auto initial = record->load(pki->files.caCertPath);
+        ASSERT_EQ(initial.status, LoadOutcome::Status::ok);
+        auto source = makeRecordedSource(pki->files.caCertPath, pki->leaf.get(), initial, record, mailbox);
+
+        EXPECT_EQ(source.snapshot().publication, 0);
+        EXPECT_TRUE(source.drainRecordEvents().empty()); // a restart, not a change (CA-14)
+    }
+}
+
+TEST(CaCertificateSourceRecord, NoRecordInjectedNeverProducesAnEvent)
+{
+    auto pki = makePki("casource-record-none");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    // record == nullptr, mailbox == nullptr: exactly E1b's behaviour, on a bundle that would
+    // otherwise announce first_time_unpublished.
+    CaCertificateSource source {pki->files.caCertPath, pki->leaf.get()};
+    EXPECT_EQ(source.snapshot().publication, 0);
+    EXPECT_TRUE(source.drainRecordEvents().empty());
+    EXPECT_NO_THROW(source.flushPendingRecord());
+}
+
+TEST(CaCertificateSourceRecord, CacheHitsDoNotRepeatDeliveredEvents)
+{
+    auto pki = makePki("casource-record-cachehit");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+
+    const auto certificates = readPemCertificates(pki->files.caCertPath);
+    const auto path = pki->files.caCertPath + ".record-cachehit";
+    write(path, sealedDocument(certificates, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/record.json");
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    auto source = makeRecordedSource(path, pki->leaf.get(), record->load(path), record, mailbox);
+
+    ASSERT_EQ(source.snapshot().publication, kPublication);
+    ASSERT_EQ(source.drainRecordEvents().size(), 1U);
+    EXPECT_EQ(source.parses(), 1U);
+
+    // Two more reads, bytes unchanged: cache hits, applyRecord() never runs again.
+    source.snapshot();
+    source.snapshot();
+    EXPECT_EQ(source.parses(), 1U);
+    EXPECT_TRUE(source.drainRecordEvents().empty());
+}
+
+TEST(CaCertificateSourceRecord, UnwritableRecordDoesNotHideBundleChanges)
+{
+    auto pki = makePki("casource-record-unwritable");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+
+    const auto& path = pki->files.caCertPath;
+    // The record's own directory never exists: every store() fails with ENOENT.
+    auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/missing/record.json");
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    auto source = makeRecordedSource(path, pki->leaf.get(), record->load(path), record, mailbox);
+
+    ASSERT_EQ(source.snapshot().publication, 0); // ordinary CA file, no block
+    source.flushPendingRecord();
+    {
+        const auto events = source.drainRecordEvents();
+        ASSERT_EQ(events.size(), 2U);
+        EXPECT_EQ(events[0].kind, RecordEvent::first_time_unpublished);
+        EXPECT_EQ(events[1].kind, RecordEvent::record_unwritable);
+        EXPECT_FALSE(events[1].stored);
+    }
+
+    const auto certificates = readPemCertificates(path);
+    write(path, sealedDocument(certificates, kPublication));
+    ASSERT_EQ(source.snapshot().publication, kPublication); // the bundle event still comes through
+    source.flushPendingRecord();                            // still fails; SAME streak, no 2nd warning
+    {
+        const auto events = source.drainRecordEvents();
+        ASSERT_EQ(events.size(), 1U);
+        EXPECT_EQ(events[0].kind, RecordEvent::published_changed);
+    }
+}
+
+TEST(CaCertificateSourceRecord, UnchangedBundleRetriesPersistenceAfterRecovery)
+{
+    auto pki = makePki("casource-record-recovery");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+    const auto subdir = dir.path() + "/subdir";
+    const auto recordPath = subdir + "/record.json";
+
+    auto record = std::make_shared<CaPublicationRecord>(recordPath);
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    auto source = makeRecordedSource(
+        pki->files.caCertPath, pki->leaf.get(), record->load(pki->files.caCertPath), record, mailbox);
+
+    ASSERT_EQ(source.snapshot().publication, 0);
+    source.flushPendingRecord();
+    ASSERT_EQ(source.drainRecordEvents().size(), 2U); // first_time_unpublished + record_unwritable
+
+    // The bundle never changes again: a re-read is a cache hit, no new hash to flush.
+    source.snapshot();
+
+    ASSERT_EQ(::mkdir(subdir.c_str(), 0750), 0);
+
+    // No new hash -- yet the entry pending from before is still written.
+    source.flushPendingRecord();
+    EXPECT_TRUE(source.drainRecordEvents().empty()); // a success posts nothing
+
+    const auto outcome = record->load(pki->files.caCertPath);
+    ASSERT_EQ(outcome.status, LoadOutcome::Status::ok);
+    EXPECT_EQ(outcome.entry.publication, 0);
+}
+
+TEST(CaCertificateSourceRecord, FailedStoreRetainsPreviousPublicationInMemory)
+{
+    auto pki = makePki("casource-record-retained");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+
+    // Permanently broken for this test: the directory is never created.
+    auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/missing/record.json");
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    auto source = makeRecordedSource(
+        pki->files.caCertPath, pki->leaf.get(), record->load(pki->files.caCertPath), record, mailbox);
+
+    ASSERT_EQ(source.snapshot().publication, 0);
+    source.flushPendingRecord();
+    ASSERT_EQ(source.drainRecordEvents().size(), 2U); // first_time_unpublished + record_unwritable
+
+    const auto certificates = readPemCertificates(pki->files.caCertPath);
+    write(pki->files.caCertPath, sealedDocument(certificates, kPublication));
+    ASSERT_EQ(source.snapshot().publication, kPublication);
+    source.flushPendingRecord();
+    ASSERT_EQ(source.drainRecordEvents().size(), 1U); // published_changed only: same failure streak
+
+    // The SAME bytes again: a pure cache hit, because the effective record in memory already holds
+    // this hash/publication regardless of whether the disk ever saw it.
+    const auto parsesBefore = source.parses();
+    source.snapshot();
+    EXPECT_EQ(source.parses(), parsesBefore);
+    EXPECT_TRUE(source.drainRecordEvents().empty());
+}
+
+TEST(CaCertificateSourceRecord, NeverChangesBundleHashOrMtime)
+{
+    auto pki = makePki("casource-record-untouched");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+    const auto subdir = dir.path() + "/subdir";
+    const auto recordPath = subdir + "/record.json";
+
+    struct stat before
+    {
+    };
+    ASSERT_EQ(::stat(pki->files.caCertPath.c_str(), &before), 0);
+    const auto originalBytes = readAll(pki->files.caCertPath);
+
+    auto record = std::make_shared<CaPublicationRecord>(recordPath);
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    auto source = makeRecordedSource(
+        pki->files.caCertPath, pki->leaf.get(), record->load(pki->files.caCertPath), record, mailbox);
+
+    ASSERT_EQ(source.snapshot().publication, 0);
+    for (int i = 0; i < 3; ++i)
+    {
+        source.flushPendingRecord(); // fails every time: the directory is still missing
+    }
+    ASSERT_EQ(::mkdir(subdir.c_str(), 0750), 0);
+    source.flushPendingRecord(); // recovers now -- still never touches the bundle
+
+    struct stat after
+    {
+    };
+    ASSERT_EQ(::stat(pki->files.caCertPath.c_str(), &after), 0);
+    EXPECT_EQ(before.st_mtime, after.st_mtime);
+    EXPECT_EQ(before.st_size, after.st_size);
+    EXPECT_EQ(before.st_mode, after.st_mode);
+    EXPECT_EQ(readAll(pki->files.caCertPath), originalBytes);
+}
+
+TEST(CaCertificateSourceRecord, ThreeIndependentNodesAnnounceZeroDespiteDifferentRecords)
+{
+    auto pki = makePki("casource-record-threenodes");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    const auto bytes = readAll(pki->files.caCertPath); // same PEM, never stamped, on all three
+
+    TempDir dirA;
+    TempDir dirB;
+    TempDir dirC;
+    const auto pathA = pki->files.caCertPath + ".nodeA";
+    const auto pathB = pki->files.caCertPath + ".nodeB";
+    const auto pathC = pki->files.caCertPath + ".nodeC";
+    write(pathA, bytes);
+    write(pathB, bytes);
+    write(pathC, bytes);
+    remoted::test::ScratchFileCleanup cleanupBundles {{pathA, pathB, pathC}};
+
+    auto recordA = std::make_shared<CaPublicationRecord>(dirA.path() + "/record.json");
+    auto mailboxA = std::make_shared<CaRecordEventMailbox>();
+    auto sourceA = makeRecordedSource(pathA, pki->leaf.get(), recordA->load(pathA), recordA, mailboxA);
+
+    auto recordB = std::make_shared<CaPublicationRecord>(dirB.path() + "/record.json");
+    auto mailboxB = std::make_shared<CaRecordEventMailbox>();
+    auto sourceB = makeRecordedSource(pathB, pki->leaf.get(), recordB->load(pathB), recordB, mailboxB);
+
+    auto recordC = std::make_shared<CaPublicationRecord>(dirC.path() + "/record.json");
+    auto mailboxC = std::make_shared<CaRecordEventMailbox>();
+    auto sourceC = makeRecordedSource(pathC, pki->leaf.get(), recordC->load(pathC), recordC, mailboxC);
+
+    // Three separate records/tempdirs, three separate CaCertificateSource instances: none of them
+    // can turn "never stamped" into a nonzero generation just because it belongs to a different node.
+    EXPECT_EQ(sourceA.snapshot().publication, 0);
+    EXPECT_EQ(sourceB.snapshot().publication, 0);
+    EXPECT_EQ(sourceC.snapshot().publication, 0);
+}
+
+TEST(CaCertificateSourceRecord, SlowStoreDoesNotBlockCachedDescriptor)
+{
+    auto pki = makePki("casource-record-slowstore");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+
+    std::atomic<bool> writeStarted {false};
+    std::atomic<bool> releaseWrite {false};
+    RecordIo slow;
+    slow.write = [&writeStarted, &releaseWrite](int fd, const void* data, std::size_t bytes) -> ssize_t
+    {
+        writeStarted = true;
+        while (!releaseWrite.load())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds {1});
+        }
+        return ::write(fd, data, bytes);
+    };
+    auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/record.json", slow);
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+
+    TestClock clock;
+    auto source = CaCertificateSource {pki->files.caCertPath,
+                                       pki->leaf.get(),
+                                       readFileBounded,
+                                       clock,
+                                       record->load(pki->files.caCertPath),
+                                       record,
+                                       mailbox};
+
+    // Primes the descriptor at clock == 0, so the read below lands inside the refresh window.
+    ASSERT_TRUE(source.descriptor().generation.has_value());
+
+    std::thread writer {[&source]
+                        {
+                            source.flushPendingRecord();
+                        }};
+    const auto startDeadline = std::chrono::steady_clock::now() + std::chrono::seconds {2};
+    while (!writeStarted.load() && std::chrono::steady_clock::now() < startDeadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {1});
+    }
+    ASSERT_TRUE(writeStarted.load()) << "the injected write() was never entered";
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto descriptor = source.descriptor(); // must not wait for the writer stuck in store()
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+
+    EXPECT_LT(elapsed, std::chrono::milliseconds {200});
+    EXPECT_TRUE(descriptor.generation.has_value());
+
+    releaseWrite = true;
+    writer.join();
 }
 
 TEST(ParsedBundle, SerialisationRoundTripsAndDropsEverythingElse)

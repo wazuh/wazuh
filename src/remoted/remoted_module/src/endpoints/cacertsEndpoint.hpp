@@ -65,10 +65,21 @@ namespace remoted::endpoints::cacerts
      *                    MeteredResponder. May be null (counts nothing). Must outlive the handler
      *                    when non-null -- the facade keeps it as a value member, like every other
      *                    endpoint's.
+     * @param deliverCaRecordEvents Says out loud, and persists, whatever the read just above
+     *                    noticed about the bundle's PUBLICATION (issue #39319): the facade hands in
+     *                    a function that drains the CA source's event mailbox, logs each event and
+     *                    flushes the publication record. Called once per request, right after the
+     *                    snapshot is taken and BEFORE any of the three answers is sent, so an
+     *                    operator reading the log sees the cause of a generation before the
+     *                    response that carries it -- and a guard that started failing after the
+     *                    last daily evaluation is reported by this request instead of a day later.
+     *                    Empty (the default) is a no-op, which is what every test and the E2E
+     *                    wiring use.
      */
     remoted::http::RouteHandler makeHandler(std::function<remoted::http::CaCertificateSnapshot()> snapshot,
                                             CacertsMetrics metrics,
-                                            const remoted::metrics::EndpointHttpMetrics* httpMetrics);
+                                            const remoted::metrics::EndpointHttpMetrics* httpMetrics,
+                                            std::function<void()> deliverCaRecordEvents = {});
 
     /**
      * @brief The 429 body this route answers when the endpoint's rate limit refuses a request.
