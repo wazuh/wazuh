@@ -138,6 +138,7 @@
     - [Configuration](ref/modules/remoted/configuration.md)
     - [Timing Tuning](ref/modules/remoted/timing-tuning.md)
     - [Metrics](ref/modules/remoted/metrics.md)
+    - [Certificate Validity](ref/modules/remoted/certificate-validity.md)
     - [Quick Reference](ref/modules/remoted/quick-reference.md)
     - [Load Balancers](ref/modules/remoted/load-balancers/README.md)
       - [NGINX](ref/modules/remoted/load-balancers/nginx.md)

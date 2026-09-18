@@ -1265,6 +1265,88 @@ stages:
       status_code: 400
 
 ---
+test_name: GET /cluster/{node_id}/daemons/remoted/tls
+
+marks:
+  - parametrize:
+      key: node_id
+      vals:
+        - master-node
+        - worker1
+        - worker2
+
+stages:
+
+  # One item per node, always carrying the node; the document when remoted answers (the env's
+  # managers run with the installer's remoted.pem + root-ca.pem, so the listener is up and its CA
+  # signs it). Types and identities are asserted, never values: certificate dates are the env's.
+  - name: Read remoted's TLS certificate validity on {node_id}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/{node_id}/daemons/remoted/tls"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - node: "{node_id}"
+              available: true
+              evaluated_at: !anystr
+              evaluated_at_ts: !anyint
+              listener:
+                subject: !anystr
+                issuer: !anystr
+                sans: !anylist
+                not_before: !anystr
+                not_before_ts: !anyint
+                not_after: !anystr
+                not_after_ts: !anyint
+                seconds_until_expiry: !anyint
+                fingerprint: !anystr
+                serial: !anystr
+                path: !anystr
+                loaded_at: !anystr
+                loaded_at_ts: !anyint
+              ca_bundle:
+                path: !anystr
+                publication: !anyint
+                publication_vouched: !anybool
+                content_sha256: !anystr
+                certificates_count: !anyint
+                certificates_limit: 6
+                serialized_bytes: !anyint
+                serialized_bytes_limit: 8191
+                chain_valid: !anybool
+                certificates:
+                  - subject: !anystr
+                    fingerprint: !anystr
+                    signs_active_leaf: true
+          total_affected_items: 1
+          failed_items: []
+          total_failed_items: 0
+
+---
+test_name: GET /cluster/{node_id}/daemons/remoted/tls with an unknown node
+
+stages:
+
+  - name: Read the TLS validity of a node the cluster does not have
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/nonexistent/daemons/remoted/tls"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 404
+      json:
+        error: 1730
+
+---
 test_name: GET /cluster/{node_id}/status
 
 marks:

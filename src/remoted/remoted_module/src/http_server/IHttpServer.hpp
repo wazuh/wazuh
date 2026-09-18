@@ -15,6 +15,7 @@
 #include "caCertificateSource.hpp"
 #include "inFlightBudget.hpp"
 #include "tlsCertificateStatus.hpp"
+#include "tlsInventory.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -432,6 +433,22 @@ namespace remoted::http
          * test fakes.
          */
         virtual CaCertificateSnapshot caCertificateSnapshot() const
+        {
+            return {};
+        }
+
+        /**
+         * @brief What `GET /tls` publishes: the served leaf as loaded by start() (descriptor, when it
+         *        was loaded, its configured path) and the CA file from one caCertificateSnapshot()
+         *        read, with its configured path (see TlsInventory).
+         *
+         * `listener` is engaged only while the server is accepting -- between start() and
+         * stopAccepting() -- so the route can answer 503 instead of describing a certificate nothing
+         * is serving. The CA half is read on every call, like caCertificateSnapshot(); the leaf half
+         * is computed once per start(). Callable from any thread; an empty inventory before start(),
+         * after stopAccepting(), and on implementations that hold no certificate, like the test fakes.
+         */
+        virtual TlsInventory tlsInventory() const
         {
             return {};
         }

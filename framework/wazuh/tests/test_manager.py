@@ -24,6 +24,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.manager import LoggingFormat
         from wazuh.core.tests.test_manager import get_logs
         from wazuh import WazuhInternalError, WazuhError
+        from wazuh.core.engine_http import RemotedAdminHTTPError
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -397,6 +398,94 @@ def test_get_status_remoted_timeout_still_not_ready(mock_status, mock_engine_cls
     assert data['wazuh-manager-remoted']['ready'] is False
     assert 'reason' not in data['wazuh-manager-remoted']
     assert data['ready'] is False
+
+
+REMOTED_TLS_DOCUMENT = {
+    'evaluated_at': '2026-09-15T10:00:00Z', 'evaluated_at_ts': 1789466400,
+    'listener': {
+        'subject': 'CN=manager-01', 'issuer': 'CN=Corp Root CA', 'sans': ['manager-01.example.com', '10.0.0.5'],
+        'not_before': '2026-01-01T00:00:00Z', 'not_before_ts': 1767225600,
+        'not_after': '2027-01-01T00:00:00Z', 'not_after_ts': 1798761600,
+        'seconds_until_expiry': 9295200, 'fingerprint': 'x509-sha256:' + 'a' * 64, 'serial': '0x01',
+        'path': 'etc/certs/remoted.pem', 'loaded_at': '2026-09-14T08:12:31Z', 'loaded_at_ts': 1789373551,
+    },
+    'ca_bundle': {
+        'path': 'etc/certs/root-ca.pem', 'publication': 0, 'publication_vouched': False,
+        'content_sha256': 'b' * 64, 'certificates_count': 1, 'certificates_limit': 6,
+        'serialized_bytes': 1200, 'serialized_bytes_limit': 8191, 'chain_valid': True,
+        'certificates': [{'subject': 'CN=Corp Root CA', 'fingerprint': 'x509-sha256:' + 'c' * 64,
+                          'signs_active_leaf': True}],
+    },
+}
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_remoted_tls_returns_the_document_with_the_node(mock_status, mock_remoted_cls):
+    """remoted answered: one affected item, `node` added by the framework, `available: true`, the
+    document passed through untouched."""
+    mock_remoted_cls.return_value = MagicMock(**{'get_tls.return_value': REMOTED_TLS_DOCUMENT})
+
+    result = get_remoted_tls()
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.total_affected_items == 1
+    assert result.failed_items == {}
+    item = result.affected_items[0]
+    assert item['node'] == node_id
+    assert item['available'] is True
+    assert item['listener'] == REMOTED_TLS_DOCUMENT['listener']
+    assert item['ca_bundle'] == REMOTED_TLS_DOCUMENT['ca_bundle']
+    assert item['evaluated_at_ts'] == 1789466400
+    assert 'was returned' in result.message
+    mock_remoted_cls.return_value.close.assert_called_once()
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_remoted_tls_passes_negative_expiry_through(mock_status, mock_remoted_cls):
+    """An expired certificate reads negative seconds; the framework applies no threshold and
+    changes no value."""
+    expired = {**REMOTED_TLS_DOCUMENT, 'listener': {**REMOTED_TLS_DOCUMENT['listener'], 'seconds_until_expiry': -86400}}
+    mock_remoted_cls.return_value = MagicMock(**{'get_tls.return_value': expired})
+
+    item = get_remoted_tls().affected_items[0]
+    assert item['listener']['seconds_until_expiry'] == -86400
+    assert 'warning' not in item and 'critical' not in item
+
+
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.status', return_value={**manager_status, 'wazuh-manager-remoted': 'stopped'})
+def test_get_remoted_tls_remoted_not_running(mock_status, mock_remoted_cls):
+    """remoted down: an explicit unavailable item, still with `node`, and the admin socket never queried."""
+    result = get_remoted_tls()
+    assert result.total_affected_items == 1
+    assert result.failed_items == {}
+    assert result.affected_items[0] == {'node': node_id, 'available': False, 'reason': 'remoted not running'}
+    mock_remoted_cls.assert_not_called()
+
+
+@pytest.mark.parametrize('side_effect, reason', [
+    (WazuhInternalError(2031), 'admin socket unreachable'),
+    (WazuhInternalError(2030), 'timeout'),
+    (WazuhInternalError(2032), 'invalid response'),
+    (WazuhInternalError(2028), 'admin client unavailable'),
+    (RemotedAdminHTTPError(503, extra_message='{"error":"Service unavailable","code":503}'), 'listener not started'),
+    (RemotedAdminHTTPError(500, extra_message='{"error":"Internal server error","code":500}'), 'unexpected response'),
+    (WazuhError(2029), 'unexpected response'),
+    (WazuhError(2013), 'request failed'),
+])
+@patch('wazuh.manager.RemotedHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_remoted_tls_degrades_to_an_unavailable_item(mock_status, mock_remoted_cls, side_effect, reason):
+    """Every failure that is remoted's own state becomes `{node, available: false, reason}` -- never a
+    failed item, never an exception, never an empty certificate list."""
+    mock_remoted_cls.return_value = MagicMock(**{'get_tls.side_effect': side_effect})
+
+    result = get_remoted_tls()
+    assert result.total_affected_items == 1
+    assert result.failed_items == {}
+    assert result.affected_items[0] == {'node': node_id, 'available': False, 'reason': reason}
+    mock_remoted_cls.return_value.close.assert_called_once()
 
 
 @patch('wazuh.manager.RemotedHTTPClient')

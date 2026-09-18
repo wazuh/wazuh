@@ -109,6 +109,10 @@ from the same place `GET /cacerts` answers from, so the two can never disagree: 
 file changes both in the next request, without waiting for the daily tick. Both read `0` while the
 listener is down — so `ca_matches_leaf` at `0` with the listener **up** is the mismatch signal, and
 `GET /cacerts` is answering `503` (see [CA distribution](#ca-distribution--remotedcacerts)).
+For anything beyond these two gauges — the dates, the `x509-sha256` identities, each certificate
+of the bundle and whether it signs the served one, the chain verdict — read the
+[certificate validity resource](certificate-validity.md) (`GET /tls` on the admin socket,
+`GET /cluster/{node_id}/daemons/remoted/tls` on the Server API).
 
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|

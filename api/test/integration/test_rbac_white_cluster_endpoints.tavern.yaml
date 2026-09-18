@@ -528,6 +528,31 @@ stages:
       status_code: 200
 
 ---
+test_name: GET /cluster/{node_id}/daemons/remoted/tls
+
+stages:
+
+  - name: Request remoted TLS validity from worker1 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/daemons/remoted/tls"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Request remoted TLS validity from worker2 (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker2/daemons/remoted/tls"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
 test_name: GET /cluster/{node_id}/status
 
 stages:

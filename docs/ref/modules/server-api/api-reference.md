@@ -403,6 +403,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | PUT | `/cluster/{node_id}/configuration` | Update node config |
 | GET | `/cluster/{node_id}/configuration/{component}/{configuration}` | Active config. `auth/auth` carries the enrollment password, masked unless the caller holds `cluster:read_secrets` over that node; serving it in clear is logged as `secret_read` in that node's `cluster.log` |
 | GET | `/cluster/{node_id}/daemons/stats` | Daemon stats |
+| GET | `/cluster/{node_id}/daemons/remoted/tls` | TLS certificate validity of remoted's listener and its CA bundle (dates, `x509-sha256` identities, which CA signs the leaf). `available: false` with a `reason` when remoted on that node cannot answer |
 | GET | `/cluster/{node_id}/logs` | Node logs |
 | GET | `/cluster/{node_id}/logs/summary` | Log summary |
 

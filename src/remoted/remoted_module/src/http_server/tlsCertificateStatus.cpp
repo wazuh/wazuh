@@ -182,27 +182,26 @@ namespace remoted::http
         return days;
     }
 
-    bool anyCaSignsLeaf(const X509* leaf, const std::vector<X509Ptr>& cas)
+    bool caSignsLeaf(const X509* leaf, const X509* ca)
     {
-        if (leaf == nullptr)
+        if (leaf == nullptr || ca == nullptr)
         {
             return false;
         }
-        for (const auto& ca : cas)
-        {
-            EVP_PKEY* key = X509_get0_pubkey(ca.get());
-            // X509_verify takes a non-const X509* (it may cache the encoding) but does not modify
-            // the certificate in any observable way.
-            if (key != nullptr && X509_verify(const_cast<X509*>(leaf), key) == 1)
-            {
-                return true;
-            }
-        }
+        EVP_PKEY* key = X509_get0_pubkey(ca);
+        // X509_verify takes a non-const X509* (it may cache the encoding) but does not modify
+        // the certificate in any observable way.
+        const bool signs = key != nullptr && X509_verify(const_cast<X509*>(leaf), key) == 1;
         ERR_clear_error(); // a failed X509_verify queues a signature error
-        return false;
+        return signs;
     }
 
-    ChainVerdict chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas)
+    bool anyCaSignsLeaf(const X509* leaf, const std::vector<X509Ptr>& cas)
+    {
+        return std::any_of(cas.begin(), cas.end(), [leaf](const X509Ptr& ca) { return caSignsLeaf(leaf, ca.get()); });
+    }
+
+    ChainVerdict chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas, std::optional<std::time_t> at)
     {
         if (leaf == nullptr || cas.empty())
         {
@@ -244,6 +243,13 @@ namespace remoted::http
         {
             ERR_clear_error();
             return {false, "internal error"};
+        }
+
+        if (at.has_value())
+        {
+            // A caller with a clock of its own (the tests; a source re-judging a cached bundle) pins the
+            // instant the validity dates are checked against.
+            X509_STORE_CTX_set_time(ctx.get(), 0, *at);
         }
 
         ChainVerdict verdict;

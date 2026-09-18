@@ -35,6 +35,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
+#include <ctime>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -98,6 +99,12 @@ namespace remoted::http
     std::optional<int> daysUntilExpiry(const X509* certificate);
 
     /**
+     * @brief Whether @p ca signed @p leaf (`X509_verify` against the CA's public key). The per-CA
+     *        half of anyCaSignsLeaf(): what `GET /tls` reports as `signs_active_leaf`.
+     */
+    bool caSignsLeaf(const X509* leaf, const X509* ca);
+
+    /**
      * @brief Whether any of @p cas signed @p leaf (`X509_verify` against each CA's public key).
      *
      * A signature check, not a chain validation: no dates, no name constraints, no basicConstraints.
@@ -123,13 +130,15 @@ namespace remoted::http
      * own certificate file -- because the bundle is all an agent bootstrapping from `GET /cacerts`
      * will ever hold. `X509_V_FLAG_PARTIAL_CHAIN` makes any certificate of the bundle a trust anchor
      * even when it is not self-signed, so `root-ca.pem` may carry a purchased intermediate that
-     * signed the leaf as well as a private self-signed CA. Evaluated against the current time.
+     * signed the leaf as well as a private self-signed CA. Evaluated against @p at when given, else
+     * the current time: the verdict has a date term, so whoever caches it must re-evaluate it.
      *
      * Not what decides the 503: anyCaSignsLeaf() is. This is information for the operator -- a CA
      * that signs the leaf but has expired, or lacks `CA:TRUE`, still "matches" and yet no verifying
      * agent could use it -- surfaced through the snapshots and the certificate log lines.
      */
-    ChainVerdict chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas);
+    ChainVerdict
+    chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas, std::optional<std::time_t> at = std::nullopt);
 
     /**
      * @brief The names that describe this host to itself, and to nobody else.
