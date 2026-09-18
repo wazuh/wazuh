@@ -58,6 +58,21 @@ before issuing the `upgrade` command. The agent's installer picks it up from the
 - **Note:** Disable when a corporate PKI or a configuration-management tool distributes the anchor
   by its own means. With `no`, the upgrade push is byte-for-byte what it was before this option
   existed — no file is read and no additional command is sent.
+- **Note:** With `yes` and a `remote.https.ca_certificate` bundle carrying more than one CA (a
+  rotation in progress), the bytes pushed are **not** the file as it sits on disk. `legacy_task_ca_read()`
+  asks the C++ module for the certificate the HTTPS listener's leaf is currently served under, and
+  the module hands back the first one that **both signs that leaf and is an anchor the agent-side
+  installer would actually keep**: it must be a CA (`basicConstraints CA:TRUE`) and currently
+  within its validity window, not merely a valid signature — a rotation's overlap is exactly where
+  the bundle can carry an **expired** re-issue of the same key next to the current one, and a valid
+  signature from the expired one is not something `src/init/pkg_installer.sh` will install. If
+  nothing in the bundle qualifies, **nothing is delivered** and the upgrade proceeds without a CA
+  (see the "never fails an upgrade" note below) — better that than a `root-ca.pem` drop-in the
+  installer rejects on arrival. The result is re-serialized on its own, with no publication block
+  (`remoted_module_tls_leaf_signer_pem()`, `src/remoted/src/legacy_task_delivery.c:651-681`) — the
+  agent-side installer refuses a `root-ca.pem` drop-in with more than one certificate, so sending the
+  bundle verbatim during a rotation would leave the agent with no anchor at all. With a single,
+  currently-valid CA in the bundle, the result is substantively equivalent to the file.
 - **Note:** The CA is only sent when the upgrade targets v5.0.0 or later. An agent being stepped up
   to an intermediate 4.14.x release does not receive it: nothing on that version would read it.
 - **Read by remoted only.** Unlike `legacy.enabled` and `https.verification_mode` below, this value

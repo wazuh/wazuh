@@ -330,11 +330,14 @@ src/endpoints/
   no credential yet: this is how it gets the CA to trust the manager with), `countAgainstBudget=false`
   (a trust bootstrap is never shed under memory pressure), `Buffered`, under the global prefix like
   every route. `makeHandler(std::function<CaCertificateSnapshot()> snapshotOf, CacertsMetrics,
-  const EndpointHttpMetrics*)` never touches the filesystem itself: it calls `snapshotOf()`, the
+  const EndpointHttpMetrics*, std::function<void()> deliverCaRecordEvents = {})` never touches the
+  filesystem itself: it calls `snapshotOf()`, the
   lambda the facade passes that locks a `weak_ptr` to the server and calls `caCertificateSnapshot()`,
   which reads through `CaCertificateSource` (`http_server/caCertificateSource.{hpp,cpp}`) — one read
   and one hash per call, bounded by the injectable POSIX reader in `fileRead.hpp` (at most 1 MiB + 1
-  byte, under the source's own mutex); the parsed certificates, their reserialised PEM, the
+  byte, under the source's own mutex). The fourth parameter, `deliverCaRecordEvents`, drains and logs
+  the CA record event mailbox once, right before the handler answers (empty is a no-op — see the
+  mailbox discussion below, issue #39319, C26); the parsed certificates, their reserialised PEM, the
   leaf-match verdict and the publication verdict are cached by the SHA-256 of the bytes, so a
   same-size, same-mtime replacement is still reparsed. `certificates == 0 || pem.empty()` ⇒
   `404 {"error":"not_found"}`; a read
@@ -387,10 +390,21 @@ src/endpoints/
   `record_unwritable` (WARN, once per failure streak, independent of and never in place of the
   bundle's own event) — posted to a bounded `CaRecordEventMailbox` the source only fills. Neither
   `CaPublicationRecord` nor `caRecordEvents.hpp` logs anything (`describeRecordEvent()` is pure, so
-  it links into the test binary without pulling the module's logger along); the three callers that
-  DO own one — the transport at start, its 24 h monitor tick, and this handler right before it
-  answers — drain the mailbox and persist what is pending, so every event is said exactly once, by
-  whichever of the three notices it first, and a guard that fails between two ticks is reported by
+  it links into the test binary without pulling the module's logger along); every consumer goes
+  through `CaRecordEventMailbox::deliver()` instead of draining and logging as two separate steps
+  (issue #39319, C26), which serialises the drain and the emission under its own mutex so two
+  consumers can never publish an older generation after a newer one. **Four** callers own one, not
+  three: the transport at start, its 24 h monitor tick, this handler right before it answers, and
+  the `/control` notify path's `ca_generation` provider — which, alone among the four, only
+  **drains and logs**: it never calls `CaCertificateSource::flushPendingRecord()`, so the keepalive
+  path that answers every agent's notify never waits on a disk write. A **fifth** delivery point
+  runs once, at `stopAccepting()`, after the monitor thread has stopped and the worker pool has been
+  joined — the last chance to say what the last read noticed, so an event nobody has drained yet is
+  not lost when the listener closes. Start, the tick and `GET /cacerts` are the ones that persist,
+  and each pairs its `flushPendingRecord()` with a **second** delivery right after it
+  (`deliverAndPersistRecordEvents()`), so a `record_unwritable` that flush itself produces comes out
+  in that same call instead of waiting for the next drain. Every event is still said exactly once,
+  by whichever consumer notices it first, and a guard that fails between two ticks is reported by
   the very next request instead of a day later.
 
 - **Endpoint handler (async):**
@@ -503,8 +517,8 @@ src/control/
 │                             #   (answers "which selector may this agent download?", nullopt = deny)
 ├── wazuhDBClient.hpp/.cpp    # WazuhDBClient: async UDS client to wazuh-db (agent status/data updates)
 ├── taskClient.hpp/.cpp       # TaskClient: async UDS client to task-manager (pending task fetch)
-├── mergedMgWatcher.hpp/.cpp  # MergedMgWatcher: inotify + poll watcher for var/multigroups/*.mg changes
-└── hashCache.hpp/.cpp        # HashCache: LRU cache for merged.mg file hashes (avoids repeated disk reads)
+├── mergedMgWatcher.hpp/.cpp  # MergedMgWatcher: inotify watcher for var/multigroups/*.mg changes
+└── hashCache.hpp/.cpp        # HashCache: settings hash (compute-once) + merged.mg config hash cache
 ```
 
 ### Architecture
@@ -706,20 +720,28 @@ objects (id, type, payload JSON). Uses the same bounded queue + deadline + error
 
 #### MergedMgWatcher (`mergedMgWatcher.hpp/.cpp`)
 
-Watches `var/multigroups/*.mg` for changes (inotify + poll fallback) to detect group shared file
-updates. When a `.mg` file changes, it:
-1. Hashes the file
-2. Compares against the cached hash (`HashCache`)
-3. If changed, marks all agents in that group for config invalidation (via callback)
-
-This is the signal that triggers agents in a group to re-fetch their shared configuration when
-`merged.mg` is updated.
+Watches `var/multigroups/*.mg` for changes to detect group shared file updates, using **inotify
+exclusively**: it opens an `inotify_init1(IN_NONBLOCK | IN_CLOEXEC)` fd, watches the shared-groups
+and multigroups roots for `IN_CREATE | IN_MOVED_TO | IN_DELETE | IN_MOVED_FROM` (new/removed group
+dirs) and each group dir for `IN_CLOSE_WRITE | IN_MOVED_TO` (a finished rewrite or an atomic
+write-then-rename), and runs its own thread around a `select()` on that single fd. That `select()`
+only bounds the wait with a 1-second timeout so the loop can observe the stop flag; it does not
+provide a second, independent way of detecting changes. If `inotify_init1` fails at construction, the
+watcher does not start — the process keeps running without change detection
+(`mergedMgWatcher.cpp:39-54,105-119`). When a watched `.mg` file changes, it calls back to invalidate
+that path's entry in `HashCache` (`invalidateConfigHash()`), which marks agents in that group for
+config invalidation on their next lookup.
 
 #### HashCache (`hashCache.hpp/.cpp`)
 
-Simple LRU cache (`std::list` + `std::unordered_map`) for file path → SHA256 hash. Avoids re-reading
-and re-hashing the same `.mg` file on every agent keepalive. Configurable `maxSize` (default 256).
-Thread-safe via a single `std::mutex`.
+Two independent, unbounded caches, each guarded by its own `std::shared_mutex`
+(`hashCache.cpp:298-305`) — there is no shared lock and no size-based eviction between them:
+- `m_settingsHash` — the SHA-256 of the manager's static settings (limits + cluster), a single value
+  computed once on first request and cached for the life of the process, under `m_settingsMutex`.
+- `m_configCache` — `std::unordered_map<std::string, std::string>` from a resolved `merged.mg`
+  absolute path to its SHA-256, one entry per group, under `m_configMutex`. Entries grow with the
+  number of distinct group sets seen and are removed only by `MergedMgWatcher` calling
+  `invalidateConfigHash()` when the underlying file changes — never by an entry count or age limit.
 
 #### VdClient (`common/vdClient.hpp/.cpp`)
 
@@ -805,7 +827,7 @@ All errors use `LogThrottle` (90-second windows) to avoid log flooding:
 - **AgentRegistry**: sharded with per-shard `shared_mutex` (concurrent reads, exclusive writes)
 - **WazuhDBClient / TaskClient**: single worker thread per client, requests queued via `std::queue` + mutex + CV
 - **ControlHandler**: stateless (all state in registry + clients), thread-safe via client APIs
-- **HashCache**: single `std::mutex` protecting LRU list + map
+- **HashCache**: two independent `std::shared_mutex` (one for `m_settingsHash`, one for `m_configCache`)
 
 The HTTP handler threads call `ControlHandler` concurrently; the handler coordinates via the registry
 and clients, which are all thread-safe internally.
@@ -2367,8 +2389,10 @@ mailbox: events drained once, in order, and the oldest dropped past 32 with the 
 `cacertsEndpoint_test.cpp` and `httpServer_test.cpp` each gained coverage for
 `deliverCaRecordEvents()`/`onCaRecordReady()`: the collaborator runs before all three of
 `GET /cacerts`'s answers, an event drained by the handler is never seen again by a simulated tick
-(and vice versa), and a `stop()`/`start()` cycle hands out a genuinely new, empty mailbox without
-either replaying or silently dropping whatever the previous one still held undrained.
+(and vice versa), and a `stop()`/`start()` cycle hands out a genuinely new, empty mailbox. What the
+previous mailbox still held pending is neither replayed into the new one nor left sitting there:
+`stop()`'s own close-time delivery (issue #39319, C26) drains and says it before the mailbox is
+replaced, so draining the OLD mailbox directly afterwards finds it empty too.
 
 Body decoding: `bodyDecoder_test.cpp` (only an exact, case-insensitive `zstd` decodes — `gzip`,
 `"zstd, gzip"` and prefixes are refused — the decoded bytes stay charged to the in-flight budget
