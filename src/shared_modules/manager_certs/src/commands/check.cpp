@@ -13,6 +13,10 @@
 
 #include <ca_bundle/ca_bundle.hpp>
 
+#include <openssl/asn1.h>
+#include <openssl/err.h>
+#include <openssl/x509.h>
+
 #include <ctime>
 #include <string>
 
@@ -59,6 +63,30 @@ namespace manager_certs
             return written > 0 ? std::string {buffer, written} : "unknown";
         }
 
+        /// Whether @p time converts to a Unix timestamp at all, independent of what
+        /// ca_bundle::describe() reports. describe() maps a conversion failure to notBefore/
+        /// notAfter == 0 (src/shared_modules/ca_bundle/src/ca_bundle.cpp:131, asUnixTime()), and 0
+        /// is indistinguishable from a certificate whose real date IS 1970-01-01T00:00:00Z -- so
+        /// the validity-window guard below cannot tell "this ASN.1 time is bogus" from "this ASN.1
+        /// time is exactly the epoch" by looking at CertificateFacts alone. Re-derived here,
+        /// straight from the certificate's own ASN1_TIME, the same call ca_bundle's own asUnixTime()
+        /// makes -- without touching ca_bundle, and without breaking a legitimate pre-1970
+        /// notBefore/notAfter, which still converts (a negative but real timestamp).
+        bool asn1TimeConverts(const ASN1_TIME* time)
+        {
+            if (time == nullptr)
+            {
+                return false;
+            }
+            struct tm parts {};
+            const bool converts = ASN1_TIME_to_tm(time, &parts) == 1;
+            if (!converts)
+            {
+                ERR_clear_error();
+            }
+            return converts;
+        }
+
         /// RF-12 / 02-diseno.md §2.6: `ca_bundle::vouch()` checks structure, the publication hash,
         /// leaf-signing and the size caps, but never a certificate's `isCa` flag or its validity
         /// window -- `check` owns both itself, per certificate, in bundle order, stopping at the
@@ -73,6 +101,15 @@ namespace manager_certs
                 if (!facts.isCa)
                 {
                     return facts.identity + ": not a CA";
+                }
+                // Ahead of the notBefore/notAfter comparisons themselves: a malformed ASN.1 time
+                // that OpenSSL still parses into an X509 (but cannot convert to a struct tm) must
+                // not silently read as facts.notBefore/notAfter == 0, which "now <= 0" and
+                // "now >= 0" would both accept as a real, ancient-but-valid date.
+                if (!asn1TimeConverts(X509_get0_notBefore(certificate.get())) ||
+                    !asn1TimeConverts(X509_get0_notAfter(certificate.get())))
+                {
+                    return facts.identity + ": notBefore/notAfter is not a valid ASN.1 time";
                 }
                 if (now < facts.notBefore)
                 {

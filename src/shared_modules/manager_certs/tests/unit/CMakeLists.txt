@@ -28,9 +28,14 @@ target_link_libraries(
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
 set_tests_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME};manager_certs")
 
-# End-to-end: the CLI (bin/wazuh-manager-certs) for --version/--help with no configuration present
-# (RF-10: the tool has to work with every daemon stopped and no manager home set).
+# End-to-end: the CLI (bin/wazuh-manager-certs) -- --version/--help with no configuration present
+# (RF-10: the tool has to work with every daemon stopped and no manager home set), the three
+# environment exit-2 paths, and inspect/check against a real, CA-signed PKI fixture the script
+# builds with openssl. VERSION_FILE is set once, unconditionally, by the top-level src/CMakeLists.txt
+# this module is always configured under (UNIT_TEST tree included) -- the same string
+# WAZUH_MANAGER_CERTS_VERSION compiles into the binary -- so the script can assert `--version`'s
+# FULL output, not just its prefix.
 add_test(NAME manager_certs_cli
          COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/../cli/manager_certs_cli_test.sh
-                 $<TARGET_FILE:wazuh-manager-certs>)
+                 $<TARGET_FILE:wazuh-manager-certs> "${VERSION_FILE}")
 set_tests_properties(manager_certs_cli PROPERTIES LABELS manager_certs)

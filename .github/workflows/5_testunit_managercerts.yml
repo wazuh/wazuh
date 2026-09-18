@@ -70,6 +70,19 @@ jobs:
           test: "true"
           asan: "false"
 
+      # Second target, not a duplicate: the manager_certs_cli ctest (selected below by the
+      # manager_certs label) executes bin/wazuh-manager-certs itself, and the CLI is not a build
+      # dependency of the GTest binary above -- without this step that test runs against nothing
+      # (review of 4ba63dda7e, objection #1: this job never built the executable its own CLI test
+      # needs). Mirrors manager_config's "Build the configuration CLI" step
+      # (5_testunit_managerconfig.yml).
+      - name: Manager certs - Build the CLI
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "wazuh-manager-certs"
+          test: "true"
+          asan: "false"
+
       # `manager_certs` is the module-wide ctest label: it selects the GTest and the CLI
       # end-to-end test, which runs the built binary for --version/--help with no configuration.
       #

@@ -37,10 +37,20 @@ namespace manager_certs
             return written > 0 ? std::string {buffer, written} : "unknown";
         }
 
-        /// Whole days between now and @p notAfter; negative once the certificate has expired.
+        /// Whole days between now and @p notAfter, floored -- negative once the certificate has
+        /// expired, and a certificate that expired less than a day ago still reads as -1, not 0:
+        /// plain integer division truncates toward zero, so a cert expired 3 hours ago (diff in
+        /// (-kSecondsPerDay, 0)) would otherwise read "0 days remaining", indistinguishable from
+        /// one still valid.
         long daysRemaining(std::time_t notAfter, std::time_t now)
         {
-            return static_cast<long>(notAfter - now) / kSecondsPerDay;
+            const long diff = static_cast<long>(notAfter - now);
+            long days = diff / kSecondsPerDay;
+            if (diff % kSecondsPerDay != 0 && diff < 0)
+            {
+                --days;
+            }
+            return days;
         }
 
     } // namespace
@@ -71,8 +81,15 @@ namespace manager_certs
         }
 
         const auto serializedBytes = ca_bundle::serializeCertificates(bundle.certificates).size();
+        // A bundle that DOES carry certificates but fails to re-serialise has nothing to hand out,
+        // whatever vouch()'s own byte-cap guard says about 0 bytes (it would read as "small enough"
+        // and pass) -- the same call main.cpp's `check` path makes before it ever reaches runCheck(),
+        // and remoted's buildLocked() makes for GET /cacerts (caCertificateSource.cpp:140). inspect()
+        // never fails outright (commands.hpp), so here it is simply never "vouched: yes".
+        const bool serialisationFailed = !bundle.certificates.empty() && serializedBytes == 0;
         const ca_bundle::Vouch vouch = ca_bundle::vouch(bundle, leaf, serializedBytes);
-        out << "vouched: " << (vouch.failure == ca_bundle::GuardFailure::none ? "yes" : "no") << '\n';
+        const bool vouchedYes = !serialisationFailed && vouch.failure == ca_bundle::GuardFailure::none;
+        out << "vouched: " << (vouchedYes ? "yes" : "no") << '\n';
 
         return 0;
     }

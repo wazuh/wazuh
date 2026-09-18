@@ -27,6 +27,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -60,6 +61,37 @@ namespace
     {
         return ca_bundle::renderBlock(blockFor(certificates, publication)) +
                ca_bundle::serializeCertificates(certificates);
+    }
+
+    /// Independent copy of inspect.cpp's own formatUtc(): re-derived here rather than called,
+    /// so this test does not exercise the very formatting logic it is trying to pin (a bug that
+    /// changed the format would move both the same way and the assertion below would still pass).
+    std::string expectedNotAfterLine(std::time_t epochSeconds)
+    {
+        struct tm parts {};
+        gmtime_r(&epochSeconds, &parts);
+        char buffer[32];
+        const std::size_t written = std::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &parts);
+        return std::string {buffer, written};
+    }
+
+    /// Whether @p output contains a "notAfter: <iso> (<days> days remaining)" line for @p iso, with
+    /// the day count within 1 of @p expectedDays -- a tolerance of exactly one day, not an open
+    /// range, so the check still fails hard on a wrong offset, a missing days field, or the
+    /// "0 days remaining" stub objection #11 named, while absorbing the few milliseconds between
+    /// this test's own std::time(nullptr) and runInspect()'s.
+    bool hasNotAfterLine(const std::string& output, const std::string& iso, long expectedDays)
+    {
+        for (long delta = -1; delta <= 1; ++delta)
+        {
+            const std::string needle =
+                "notAfter: " + iso + " (" + std::to_string(expectedDays + delta) + " days remaining)\n";
+            if (output.find(needle) != std::string::npos)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /// A temporary directory (mkdtemp), removed recursively when it goes out of scope: only the
@@ -116,11 +148,19 @@ namespace
 TEST(ManagerCertsInspect, SealedTwoCaBundleListsBothCertificatesAndVouchedYes)
 {
     auto caAKey = makeTestKey();
+    auto rootBKey = makeTestKey();
     auto caBKey = makeTestKey();
     auto leafKey = makeTestKey();
 
+    // caA: a root, self-signed like every real trust anchor (issuer == subject for it is correct,
+    // not a fixture bug). caB: an INTERMEDIATE, issued by rootB (never itself added to the bundle)
+    // -- so caB.issuer != caB.subject, which is what makes the issuer assertion below meaningful:
+    // with two self-signed certificates, printing "issuer: <subject>" by mistake would satisfy an
+    // `output.find("issuer: " + facts.issuer)` check just as well as the real field would
+    // (objection #11).
     auto caA = makeCertificate("ca-a", -kDay, 400 * kDay, caAKey.get(), caAKey.get(), nullptr, true, 1);
-    auto caB = makeCertificate("ca-b", -kDay, 400 * kDay, caBKey.get(), caBKey.get(), nullptr, true, 2);
+    auto rootB = makeCertificate("root-b", -kDay, 400 * kDay, rootBKey.get(), rootBKey.get(), nullptr, true, 10);
+    auto caB = makeCertificate("ca-b", -kDay, 400 * kDay, caBKey.get(), rootBKey.get(), rootB.get(), true, 2);
     auto leaf = makeCertificate("leaf", -kDay, 90 * kDay, leafKey.get(), caAKey.get(), caA.get(), false, 3);
 
     // Facts computed BEFORE the certificates are moved into the bundle vector, against the leaf
@@ -129,12 +169,15 @@ TEST(ManagerCertsInspect, SealedTwoCaBundleListsBothCertificatesAndVouchedYes)
     const ca_bundle::CertificateFacts caBFacts = ca_bundle::describe(caB.get(), leaf.get());
     ASSERT_TRUE(caAFacts.signsLeaf);
     ASSERT_FALSE(caBFacts.signsLeaf);
+    ASSERT_EQ(caAFacts.issuer, caAFacts.subject); // root: genuinely self-signed
+    ASSERT_NE(caBFacts.issuer, caBFacts.subject); // intermediate: the fixture this test needs
 
     std::vector<ca_bundle::X509Ptr> certificates;
     certificates.push_back(std::move(caA));
     certificates.push_back(std::move(caB));
 
     constexpr std::int64_t kPublication = 1758150000;
+    const std::time_t beforeInspect = std::time(nullptr);
     const ca_bundle::ParsedBundle bundle = ca_bundle::parseBundle(sealedBundleText(certificates, kPublication));
     ASSERT_TRUE(bundle.wellFormed);
     ASSERT_EQ(bundle.certificates.size(), 2u);
@@ -148,8 +191,19 @@ TEST(ManagerCertsInspect, SealedTwoCaBundleListsBothCertificatesAndVouchedYes)
     EXPECT_NE(output.find("issuer: " + caAFacts.issuer), std::string::npos) << output;
     EXPECT_NE(output.find("identity: " + caAFacts.identity + "\nsignsLeaf: yes\n"), std::string::npos) << output;
     EXPECT_NE(output.find("subject: " + caBFacts.subject), std::string::npos) << output;
+    EXPECT_NE(output.find("issuer: " + caBFacts.issuer), std::string::npos) << output;
+    // Never "issuer: " + caBFacts.subject: with a distinct issuer this cannot pass by accident.
+    EXPECT_EQ(output.find("issuer: " + caBFacts.subject), std::string::npos) << output;
     EXPECT_NE(output.find("identity: " + caBFacts.identity + "\nsignsLeaf: no\n"), std::string::npos) << output;
-    EXPECT_NE(output.find("days remaining)"), std::string::npos) << output;
+
+    // notAfter + days remaining, for BOTH certificates, against an independently-formatted date
+    // and a tolerant-but-bounded day count (objection #11: a literal "days remaining)" substring
+    // check, as this test used to have, passes even for "0 days remaining)" on a 400-day-out cert).
+    const long expectedDaysA = static_cast<long>(caAFacts.notAfter - beforeInspect) / kDay;
+    const long expectedDaysB = static_cast<long>(caBFacts.notAfter - beforeInspect) / kDay;
+    EXPECT_TRUE(hasNotAfterLine(output, expectedNotAfterLine(caAFacts.notAfter), expectedDaysA)) << output;
+    EXPECT_TRUE(hasNotAfterLine(output, expectedNotAfterLine(caBFacts.notAfter), expectedDaysB)) << output;
+
     EXPECT_NE(output.find("publication: " + std::to_string(kPublication) + "\n"), std::string::npos) << output;
     EXPECT_NE(output.find("vouched: yes\n"), std::string::npos) << output;
 }
@@ -202,7 +256,10 @@ TEST(ManagerCertsCheck, ValidBundleExitsZeroAndLeavesFileUnchanged)
     EXPECT_TRUE(err.str().empty()) << err.str();
 
     // check() never opens the bundle at all (it works over what main.cpp already parsed into
-    // memory): the file on disk is exactly what it was before the call.
+    // memory): the file on disk is exactly what it was before the call. That also means this
+    // assertion can never catch a regression IN main.cpp itself (the only thing here that ever
+    // opens a file) -- tests/cli/manager_certs_cli_test.sh's cli_check_accepts_real_bundle_and_
+    // leaves_it_unchanged exercises the compiled binary end to end for that (objection #7).
     EXPECT_EQ(readFile(bundlePath), before);
 }
 
@@ -290,6 +347,9 @@ TEST(ManagerCertsCheck, ExpiredCertificateExitsNonZeroNamingTheIdentity)
     std::ostringstream err;
     EXPECT_EQ(runCheck(bundle, leaf.get(), serializedBytes, err), 1);
     EXPECT_NE(err.str().find(expectedIdentity + ": expired"), std::string::npos) << err.str();
+    // Same caveat as ManagerCertsCheck.ValidBundleExitsZeroAndLeavesFileUnchanged: runCheck() never
+    // touches disk, so this cannot catch main.cpp truncating the file on a REJECTION; the CLI
+    // suite's cli_check_rejects_bad_hash_and_leaves_it_unchanged does, against the real binary.
     EXPECT_EQ(readFile(bundlePath), before);
 }
 
@@ -322,5 +382,7 @@ TEST(ManagerCertsCheck, NonCaCertificateExitsNonZeroNamingTheIdentity)
     std::ostringstream err;
     EXPECT_EQ(runCheck(bundle, leaf.get(), serializedBytes, err), 1);
     EXPECT_NE(err.str().find(expectedIdentity + ": not a CA"), std::string::npos) << err.str();
+    // See ValidBundleExitsZeroAndLeavesFileUnchanged above: real disk-safety coverage on rejection
+    // is the CLI suite's job, not this in-process call's.
     EXPECT_EQ(readFile(bundlePath), before);
 }
