@@ -63,15 +63,19 @@ lock()
         i=`expr $i + 1`;
         pid=$(cat ${LOCK_PID} 2>/dev/null)
 
+        # Only consecutive pid-less rounds may open the gate below. Neither
+        # "$i" (a caller queued behind a live owner would inherit an open
+        # gate the moment that owner is gone) nor a round spent on a dead
+        # pid says anything about a lock that is still mid-acquisition.
+        if [ -z "${pid}" ]; then
+            unreachable=`expr ${unreachable} + 1`
+        else
+            unreachable=0
+        fi
+
         # An empty pid (no pid file) fails kill -0 just like a dead one.
         kill -0 ${pid} >/dev/null 2>&1
-        if [ "$?" = "0" ]; then
-            unreachable=0
-        else
-            # "$i" counts total rounds waited, not consecutive unreachable
-            # ones; a caller queued behind a live owner would otherwise
-            # inherit an already-open gate the moment that owner is gone.
-            unreachable=`expr ${unreachable} + 1`
+        if [ "$?" != "0" ]; then
             # A dead pid is stale right away; a missing one may still be
             # mid-acquisition, so it needs a few consecutive rounds first.
             if [ -n "${pid}" ] || [ "${unreachable}" -gt 2 ]; then
