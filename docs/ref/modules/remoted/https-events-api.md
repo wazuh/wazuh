@@ -889,6 +889,7 @@ update), which had no equivalent once agent-manager connections became stateless
     "config_token": "web-servers",
     "config_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
+  "ca_generation": 1758000000,
   "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
   "tasks": [],
   "vd_feed_offset": 12345678
@@ -902,6 +903,16 @@ rather than omitting the field or sending an empty string. `config_token` is alw
 string, including in that unresolved case — the agent still needs something to name on `/download`,
 and the next notify re-triggers the attempt.
 
+**`ca_generation` (issue #39319, RF-3) is the one exception to "always present" above, and it is not
+interchangeable across its four states.** It carries the generation the CA bundle
+[`GET /cacerts`](#ca-certificate-endpoint-get-cacerts) would serve right now, at no extra cost to
+this hot path: a timestamp once a guard vouched for that bundle; `0` when there is a bundle to serve
+and no guard vouched for it (an unstamped file, or one a guard refused); `null` when there is no
+servable bundle at all (nothing configured, or the configured file yields no certificate); and the
+key itself **absent** on a manager whose build predates this feature — absent means *unknown*, not
+the same as the confirmed-empty `null`. `nlohmann::json` serialises object keys alphabetically, so on
+the wire `ca_generation` lands between `agent` and `settings_hash`, exactly as in the examples above.
+
 **Response with tasks (`200 OK`):**
 ```json
 {
@@ -910,6 +921,7 @@ and the next notify re-triggers the attempt.
     "config_token": "web-servers",
     "config_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
+  "ca_generation": 1758000000,
   "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
   "vd_feed_offset": 12345678,
   "tasks": [

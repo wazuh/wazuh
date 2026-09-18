@@ -26,7 +26,9 @@
  *   - 200 `application/x-pem-file`: the CERTIFICATE blocks of the configured file, re-serialised
  *     here from the parsed X.509 objects. A bundle is served as a bundle; anything else the file
  *     carries (a private key, a comment, a CRL) is not part of the answer, because the answer is
- *     built rather than forwarded (issue #39078, H01).
+ *     built rather than forwarded (issue #39078, H01). Every 200 also carries
+ *     `Wazuh-CA-Generation`: the generation the bundle is published under, 0 when no guard vouched
+ *     for it (RF-4). Never a hash of anything -- the 404 and the 503 carry no such header.
  *   - 404 `{"error":"not_found"}`: the file is missing, unreadable, too large, carries no
  *     certificate, or could not be parsed to its end -- a document we do not fully understand is
  *     refused whole. Same body as the transport's unknown-route 404.
@@ -51,6 +53,11 @@ namespace remoted::endpoints::cacerts
 {
     /// Media type of a successful answer.
     constexpr auto PEM_CONTENT_TYPE {"application/x-pem-file"};
+
+    /// Header every 200 carries: the generation the served bundle is published under, 0 when no
+    /// guard vouched for it (RF-4). Shared with the tests so neither side drifts from the other's
+    /// literal (issue #39319).
+    constexpr auto CA_GENERATION_HEADER {"Wazuh-CA-Generation"};
 
     /**
      * @brief Build the raw route handler for `GET /cacerts`.

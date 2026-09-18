@@ -360,7 +360,19 @@ src/endpoints/
   the generation agents are told about (0 when no guard vouched for it) plus the log line that names
   the guard. `CaCertificateSource::descriptor()` is the read-mostly view of that generation for
   callers on the hot path: it revalidates through the same mutex at most once every
-  `kDescriptorRefresh` (1 s), and answers `nullopt` while there is no servable bundle at all.
+  `kDescriptorRefresh` (1 s), and answers `nullopt` while there is no servable bundle at all. A
+  **failed** read inside `descriptor()` still consumes that window (`caCertificateSource.cpp:218-226`):
+  it updates `m_lastDescriptorRead` whether or not the revalidation actually read anything new, so a
+  permission fixed a moment after a failed revalidation can take up to a second to show up in
+  `ca_generation` — deliberate (D18): the alternative is a read on every single notify the moment
+  anything looks wrong, which is exactly the storm `kDescriptorRefresh` exists to prevent.
+  Every `200` this endpoint answers also carries the `Wazuh-CA-Generation` header
+  (`endpoints/cacertsEndpoint.cpp`, shared constant `CA_GENERATION_HEADER`): the same generation the
+  snapshot's `publication` field carries, `0` alike whether the bundle was never stamped or a guard
+  refused it, and **never** a hash of anything — the header exists to let an agent that already
+  trusts the CA confirm a `GET /cacerts` refresh landed the generation `/control`'s `notify`
+  announced, not to prove the bundle's content. `404` and `503` carry no such header: there is no
+  bundle being handed out to attach a generation to.
   What the file cannot say about itself is whether it was EVER published, so a private record —
   `CaPublicationRecord` (`http_server/caPublicationRecord.{hpp,cpp}`) — remembers the bundle's
   bytes and its publication in a directory of its own, `var/run/remoted-ca-bundle/record.json`
@@ -600,11 +612,25 @@ sequenceDiagram
    - Reads this node's current Vulnerability Detection feed offset via `VdClient` (cached, see
      `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — always present, 0 if the VD
      module has never completed a feed update or is temporarily unreachable
-   - **Response** (every field always present -- `tasks` is `[]` when there is no work, never an
-     absent key):
+   - Reads the CA bundle's published generation through `Config::caGenerationProvider` (issue
+     #39319, RF-3) and includes it as `ca_generation` — the SAME generation `GET /cacerts`'s
+     `Wazuh-CA-Generation` header would answer right now, at the cost of at most one file read per
+     second across every agent on this node (`IHttpServer::caDescriptor()` →
+     `CaCertificateSource::descriptor()`, `kDescriptorRefresh`), never a read per notify. Four
+     states on the wire, not three: a timestamp once a guard vouched for the bundle; `0` when there
+     is a bundle and none did; `null` when there is no servable bundle at all; and the key itself
+     **absent** when `caGenerationProvider` is unset (an empty `std::function`, what
+     `buildControlConfig()` leaves it at on a build with no HTTPS listener wired in) — absent means
+     *this manager does not know*, which is not the same as the confirmed-empty `null`, and an agent
+     must not conflate the two
+   - **Response** (`agent`/`settings_hash`/`tasks`/`vd_feed_offset` always present -- `tasks` is
+     `[]` when there is no work, never an absent key; `ca_generation` is the one field that can be
+     missing, per the state above). `nlohmann::json` serialises object keys alphabetically, so on
+     the wire `ca_generation` lands between `agent` and `settings_hash`, exactly as below:
      ```json
      {
        "agent": {"groups": ["web-servers"], "config_token": "web-servers", "config_hash": "e3b0c44..."},
+       "ca_generation": 1758000000,
        "settings_hash": "d7a8fbb...",
        "tasks": [],
        "vd_feed_offset": 12345678

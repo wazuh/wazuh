@@ -1180,6 +1180,89 @@ TEST(HttpServerTest, StartUpStatusComesFromTheSharedSource)
     ::rmdir(caDir.c_str());
 }
 
+// ---------------------------------------------------------------------------
+// caDescriptor() (issue #39319, RF-3): the notify hot path's own view of the bundle, distinct from
+// caCertificateSnapshot() above -- it carries only the generation, revalidated at most once a
+// second (CaCertificateSource::kDescriptorRefresh, C8/C18). Both tests below start a real server
+// so RestinioHttpServer::caDescriptor() itself -- the weak_ptr dance under m_mutex, CA-15 -- is
+// exercised, not just CaCertificateSource in isolation (that is caCertificateSource_test.cpp's
+// job).
+// ---------------------------------------------------------------------------
+
+TEST(HttpServerTest, CaDescriptorReturnsThePublishedGeneration)
+{
+    if (std::system("openssl version >/dev/null 2>&1") != 0)
+    {
+        GTEST_SKIP() << "openssl not available to generate the test PKI";
+    }
+
+    auto pki = remoted::test::generateCaSignedCertificate("httpserver_ca_descriptor");
+    if (!pki)
+    {
+        GTEST_SKIP() << "could not generate the throwaway CA-signed certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {pki->files()};
+
+    // Seal the CA file the way `wazuh-manager-certs` would (issue #39319, D9): the block, then the
+    // certificate it describes -- a separate file from the leaf, so sealing it cannot disturb what
+    // the listener loads into its TLS context.
+    std::string rawCa;
+    {
+        std::ifstream in {pki->caCertPath, std::ios::binary};
+        rawCa.assign(std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {});
+    }
+    const auto certificates = ca_bundle::parseBundle(rawCa).certificates;
+    ASSERT_EQ(certificates.size(), 1U);
+
+    constexpr std::int64_t kPublication {1758000000};
+    ca_bundle::PublicationBlock block;
+    block.publication = kPublication;
+    block.contentSha256 = ca_bundle::contentSha256(certificates);
+    block.updated = "2026-09-19T00:00:00Z";
+    block.writtenBy = "httpServerTest";
+    {
+        std::ofstream out {pki->caCertPath, std::ios::binary | std::ios::trunc};
+        out << ca_bundle::renderBlock(block) << ca_bundle::serializeCertificates(certificates);
+        ASSERT_FALSE(out.fail());
+    }
+
+    auto server = makeHttpServer();
+    HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;
+    config.certificatePath = pki->certPath;
+    config.privateKeyPath = pki->keyPath;
+    config.caCertificatePath = pki->caCertPath;
+
+    ASSERT_NO_THROW(server->start(config));
+
+    const auto descriptor = server->caDescriptor();
+    ASSERT_TRUE(descriptor.generation.has_value());
+    EXPECT_EQ(*descriptor.generation, kPublication);
+
+    server->stop();
+}
+
+TEST(HttpServerTest, CaDescriptorReturnsNulloptWithNoServableBundle)
+{
+    TempCert cert; // leaf only; caCertificatePath is left at its default (empty: nothing configured)
+
+    auto server = makeHttpServer();
+    HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+
+    ASSERT_NO_THROW(server->start(config));
+
+    // No CA configured at all is exactly the "no servable bundle" case: `null` on the wire, the
+    // same value a manager whose bundle was emptied or is unreadable would answer with.
+    EXPECT_FALSE(server->caDescriptor().generation.has_value());
+
+    server->stop();
+}
+
 // A read failure mid-flight (not just at start) is a window, not a decision: the monitor keeps
 // ticking through it and the status keeps the last good verdict next to the fresh cause. What the
 // tick LOGS on each pass is not observable from this binary (testLogRecorder.hpp), so this pins the

@@ -17,7 +17,9 @@
 
 #include "loggerHelper.h"
 
+#include <cstdint>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <utility>
 
@@ -50,12 +52,20 @@ namespace remoted::endpoints::cacerts
             return remoted::http::describeReadFailure(failure, remoted::http::CaCertificateSource::kMaxBytes);
         }
 
-        remoted::http::HttpResponse pemResponse(std::string pem)
+        // Every 200 says which generation the bundle it carries is published under (RF-4): the
+        // block's publication once every guard vouched for it, and 0 for a bundle that was never
+        // stamped or that no guard would vouch for -- 0 being exactly what an agent reads as "this
+        // manager has no published bundle". Only the generation travels: no hash of the file or of
+        // its certificates is ever put in a header, because an unverified bootstrap caller must not
+        // be handed anything it could mistake for proof (CA-9). The 404 and the 503 do not come
+        // through here, so they carry no such header at all.
+        remoted::http::HttpResponse pemResponse(std::string pem, std::int64_t publication)
         {
             remoted::http::HttpResponse response;
             response.status = 200;
             response.body = std::move(pem);
             response.headers.emplace_back("Content-Type", PEM_CONTENT_TYPE);
+            response.headers.emplace_back(CA_GENERATION_HEADER, std::to_string(publication));
             return response;
         }
     } // namespace
@@ -171,7 +181,8 @@ namespace remoted::endpoints::cacerts
             }
 
             incServed(metrics);
-            responder->send(pemResponse(std::move(snapshot.pem)));
+            const auto publication = snapshot.publication;
+            responder->send(pemResponse(std::move(snapshot.pem), publication));
         };
     }
 

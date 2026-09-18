@@ -453,6 +453,23 @@ namespace remoted::http
         }
 
         /**
+         * @brief The generation the served CA bundle may be announced under, from the cache the
+         *        source revalidates at most once a second (CaCertificateSource::descriptor()).
+         *
+         * What the control notify path tells an agent (`ca_generation`): the publication a
+         * vouched-for bundle carries, 0 when there is a servable bundle no guard vouched for, and
+         * `nullopt` when there is no servable bundle at all. One call per notify on purpose -- it
+         * costs at most one read of the file per second per node, however many agents ask (C18) --
+         * and no hash of anything ever comes out of here. Callable from any thread; an empty
+         * descriptor (`nullopt`) before start() and on implementations that hold no CA, like the
+         * test fakes, which is what makes the field absent on a manager without the feature.
+         */
+        virtual CaCertificateSource::CaDescriptor caDescriptor() const
+        {
+            return {};
+        }
+
+        /**
          * @brief Start listening. Throws on bind/TLS/configuration failure.
          *
          * @param config Server configuration.
