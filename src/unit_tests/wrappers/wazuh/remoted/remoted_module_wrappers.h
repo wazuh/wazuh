@@ -10,6 +10,8 @@
 #ifndef REMOTED_MODULE_WRAPPERS_H
 #define REMOTED_MODULE_WRAPPERS_H
 
+#include <stddef.h> // size_t
+
 // Forward declarations to avoid including remoted_module.h
 typedef void (*logging_callback_t)(int level, const char* message);
 typedef struct remoted_module_config_t remoted_module_config_t;
@@ -27,5 +29,20 @@ void __wrap_remoted_module_stop(void);
  * rather than silently pick a branch.
  */
 int __wrap_remoted_module_tls_ca_matches_leaf(void);
+
+/**
+ * @brief Mock of the export that hands the legacy task poller the ONE CA certificate to deliver.
+ *
+ * Driven by TWO queued values, in this order: the PEM to copy into @p buffer (or NULL to copy
+ * nothing), then the int to return. That split is what lets a test drive the three outcomes the
+ * caller branches on without inventing bytes for the ones that have none: a positive length WITH a
+ * PEM (delivery), 0 with NULL (nothing signs the served certificate, or no bundle) and -1 with NULL
+ * (the certificate does not fit the caller's buffer).
+ *
+ * At most @p capacity bytes are copied, and never the NUL terminator: the real export reports a
+ * length and leaves termination to the caller, so a mock that terminated the buffer itself would
+ * hide a caller that forgot to.
+ */
+int __wrap_remoted_module_tls_leaf_signer_pem(char* buffer, size_t capacity);
 
 #endif

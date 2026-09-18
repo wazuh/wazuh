@@ -16,6 +16,7 @@
 
 #include <openssl/x509.h>
 
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include <string>
@@ -63,6 +64,7 @@ namespace remoted::http
         TlsCertificateSnapshot certificateStatus() const override;
         CaCertificateSnapshot caCertificateSnapshot() const override;
         CaCertificateSource::CaDescriptor caDescriptor() const override;
+        int caLeafSignerPem(char* buffer, std::size_t capacity) const override;
         void start(const HttpServerConfig& config) override;
         void stopAccepting() noexcept override;
         void stop() noexcept override;

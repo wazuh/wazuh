@@ -33,6 +33,7 @@
 #include "testTlsServer.hpp"
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cerrno>
 #include <chrono>
@@ -1101,6 +1102,132 @@ TEST(CaCertificateSource, AnEmptyPathNeverReadsAnything)
     CaCertificateSource source {"", nullptr};
     EXPECT_EQ(source.snapshot().certificates, 0U);
     EXPECT_EQ(source.parses(), 0U);
+}
+
+// ---------------------------------------------------------------------------
+// leafSignerPem(): the ONE certificate the legacy WPK delivery may hand a 4.x agent (RF-7, C7).
+// pkg_installer.sh refuses a root-ca.pem drop-in with more than one certificate in it, so what
+// matters here is not "a CA" but WHICH one, alone, and with no publication block around it.
+// ---------------------------------------------------------------------------
+
+TEST(CaCertificateSourceLeafSignerPem, ReturnsTheFirstCertificateThatSignsTheLeaf)
+{
+    auto signer = makePki("casource-leafsigner");
+    auto other = makePki("casource-leafsigner-other");
+    ASSERT_TRUE(signer.has_value());
+    ASSERT_TRUE(other.has_value());
+    remoted::test::ScratchFileCleanup cleanup {signer->files.files()};
+    remoted::test::ScratchFileCleanup cleanupOther {other->files.files()};
+
+    // A rotation's overlap, sealed: two CAs and the tool's `##` block, with the signer SECOND --
+    // so returning "the first certificate" or "the whole bundle" would both be wrong, and the file
+    // handed over as it sits is exactly what the agent's installer rejects.
+    std::vector<remoted::http::X509Ptr> bundle;
+    bundle.push_back(std::move(readPemCertificates(other->files.caCertPath).front()));
+    bundle.push_back(std::move(readPemCertificates(signer->files.caCertPath).front()));
+    ASSERT_EQ(bundle.size(), 2U);
+
+    const auto path = signer->files.caCertPath + ".rotation";
+    write(path, sealedDocument(bundle, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, signer->leaf.get()};
+    ASSERT_EQ(source.snapshot().certificates, 2U);
+
+    std::array<char, 8192> buffer {};
+    const auto written = source.leafSignerPem(buffer.data(), buffer.size());
+    ASSERT_GT(written, 0);
+
+    const std::string delivered {buffer.data(), static_cast<std::size_t>(written)};
+
+    // Byte-for-byte what serialising that one certificate on its own produces: not a slice of the
+    // bundle's own serialisation, which is what makes the result independent of the file's layout.
+    std::vector<remoted::http::X509Ptr> onlySigner;
+    onlySigner.push_back(std::move(readPemCertificates(signer->files.caCertPath).front()));
+    EXPECT_EQ(delivered, serializeCertificates(onlySigner));
+
+    // The two properties pkg_installer.sh actually checks (`grep -c BEGIN` == 1, and it never
+    // tolerates the block), asserted here rather than left to the live verification.
+    EXPECT_EQ(delivered.find("##"), std::string::npos);
+    std::size_t begins = 0;
+    for (std::size_t at = delivered.find("-----BEGIN CERTIFICATE-----"); at != std::string::npos;
+         at = delivered.find("-----BEGIN CERTIFICATE-----", at + 1))
+    {
+        ++begins;
+    }
+    EXPECT_EQ(begins, 1U);
+}
+
+TEST(CaCertificateSourceLeafSignerPem, ReturnsZeroWhenNoCertificateSignsTheLeaf)
+{
+    auto pki = makePki("casource-leafsigner-none");
+    auto foreign = makePki("casource-leafsigner-none-other");
+    ASSERT_TRUE(pki.has_value());
+    ASSERT_TRUE(foreign.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    remoted::test::ScratchFileCleanup cleanupForeign {foreign->files.files()};
+
+    // A perfectly good bundle of somebody else's CA: servable (the endpoint still answers 404/503
+    // by its own rules), but there is no certificate here an upgrading agent could pin and still
+    // reach this listener -- so nothing is delivered, and the poller logs why (CA-18).
+    const auto path = pki->files.caCertPath + ".foreign-signer";
+    write(path, sealedDocument(readPemCertificates(foreign->files.caCertPath), kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, pki->leaf.get()};
+    ASSERT_EQ(source.snapshot().certificates, 1U);
+
+    std::array<char, 8192> buffer {};
+    buffer[0] = 'x'; // nothing is written on a refusal
+    EXPECT_EQ(source.leafSignerPem(buffer.data(), buffer.size()), 0);
+    EXPECT_EQ(buffer[0], 'x');
+}
+
+TEST(CaCertificateSourceLeafSignerPem, ReturnsZeroWithNoServableBundle)
+{
+    std::array<char, 8192> buffer {};
+
+    // Nothing configured: no read, no certificate, and 0 rather than -1 -- there is nothing wrong
+    // with the caller's buffer.
+    CaCertificateSource unconfigured {"", nullptr};
+    EXPECT_EQ(unconfigured.leafSignerPem(buffer.data(), buffer.size()), 0);
+    EXPECT_EQ(unconfigured.parses(), 0U);
+
+    // A real bundle but no served leaf (a listener that has not started): "unknown" still SERVES
+    // over /cacerts, but there is no signature to look for, so nothing is delivered here. The
+    // asymmetry is deliberate -- an agent that pins an anchor it cannot verify against fails every
+    // handshake afterwards.
+    auto pki = makePki("casource-leafsigner-noleaf");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    CaCertificateSource noLeaf {pki->files.caCertPath, nullptr};
+    ASSERT_FALSE(noLeaf.snapshot().pem.empty());
+    EXPECT_EQ(noLeaf.leafSignerPem(buffer.data(), buffer.size()), 0);
+}
+
+TEST(CaCertificateSourceLeafSignerPem, ReturnsMinusOneWhenCapacityIsTooSmall)
+{
+    auto pki = makePki("casource-leafsigner-capacity");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+
+    CaCertificateSource source {pki->files.caCertPath, pki->leaf.get()};
+
+    const auto expected = serializeCertificates(readPemCertificates(pki->files.caCertPath));
+    ASSERT_FALSE(expected.empty());
+
+    // One byte short: -1, and NOT a truncated PEM. A short anchor is the one outcome worse than no
+    // anchor -- the installer on the other side pins whatever it finds and cannot tell.
+    std::vector<char> tooSmall(expected.size() - 1, '\0');
+    EXPECT_EQ(source.leafSignerPem(tooSmall.data(), tooSmall.size()), -1);
+    EXPECT_EQ(std::count(tooSmall.begin(), tooSmall.end(), '\0'), static_cast<long>(tooSmall.size()));
+
+    // Exactly enough is enough: the boundary is `>`, not `>=`.
+    std::vector<char> exact(expected.size(), '\0');
+    const auto written = source.leafSignerPem(exact.data(), exact.size());
+    ASSERT_EQ(written, static_cast<int>(expected.size()));
+    EXPECT_EQ(std::string(exact.data(), static_cast<std::size_t>(written)), expected);
 }
 
 TEST(CaCertificateSourceDescriptor, DoesNotReadWhenNoPathIsConfigured)

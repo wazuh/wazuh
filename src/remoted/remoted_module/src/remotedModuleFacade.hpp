@@ -231,6 +231,31 @@ public:
         return *status.caMatchesLeaf ? 1 : 0;
     }
 
+    /**
+     * @brief The one certificate of `remote.https.ca_certificate` that signs the served leaf,
+     *        re-serialised into @p buffer.
+     *
+     * Exported to C (remoted_module_tls_leaf_signer_pem()) for remoted's legacy task poller: it
+     * writes these bytes to a pre-v5.0.0 agent's `etc/certs/root-ca.pem` ahead of the upgrade, and
+     * that agent's installer refuses a file with more than one certificate in it. So what leaves
+     * here is ONE certificate, re-serialised by this process, with no publication block -- whatever
+     * the bundle around it holds while a rotation overlaps (issue #39319, C7).
+     *
+     * @return Bytes written (> 0); 0 when nothing signs the leaf, there is no servable bundle or
+     *         the listener is down; -1 when @p capacity is too small. The caller delivers nothing
+     *         on anything <= 0.
+     */
+    int tlsCaLeafSignerPem(char* buffer, std::size_t capacity)
+    {
+        std::lock_guard<std::mutex> lock {m_publicDiagMutex};
+        const auto server = m_publicDiagTarget.lock();
+        if (!server)
+        {
+            return 0;
+        }
+        return server->caLeafSignerPem(buffer, capacity);
+    }
+
     void stop()
     {
         std::thread workerToJoin;

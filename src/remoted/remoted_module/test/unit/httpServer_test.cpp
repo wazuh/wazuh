@@ -42,6 +42,7 @@
 #include <sys/stat.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cctype>
 #include <cerrno>
@@ -1259,6 +1260,114 @@ TEST(HttpServerTest, CaDescriptorReturnsNulloptWithNoServableBundle)
     // No CA configured at all is exactly the "no servable bundle" case: `null` on the wire, the
     // same value a manager whose bundle was emptied or is unreadable would answer with.
     EXPECT_FALSE(server->caDescriptor().generation.has_value());
+
+    server->stop();
+}
+
+TEST(HttpServerTest, CaLeafSignerPemReturnsTheSigningCertificate)
+{
+    if (std::system("openssl version >/dev/null 2>&1") != 0)
+    {
+        GTEST_SKIP() << "openssl not available to generate the test PKI";
+    }
+
+    auto pki = remoted::test::generateCaSignedCertificate("httpserver_leaf_signer");
+    if (!pki)
+    {
+        GTEST_SKIP() << "could not generate the throwaway CA-signed certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {pki->files()};
+
+    // The rotation case, through the transport: a sealed bundle of TWO CAs with the signer second.
+    // What a 4.x agent may be handed mid-upgrade is one certificate out of that -- never the file,
+    // which pkg_installer.sh would refuse for carrying more than one (issue #39319, C7).
+    auto foreign = remoted::test::generateCaSignedCertificate("httpserver_leaf_signer_other");
+    if (!foreign)
+    {
+        GTEST_SKIP() << "could not generate the second throwaway CA";
+    }
+    remoted::test::ScratchFileCleanup cleanupForeign {foreign->files()};
+
+    const auto readAllBytes = [](const std::string& path)
+    {
+        std::ifstream in {path, std::ios::binary};
+        return std::string {std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {}};
+    };
+
+    auto certificates = ca_bundle::parseBundle(readAllBytes(foreign->caCertPath)).certificates;
+    for (auto& certificate : ca_bundle::parseBundle(readAllBytes(pki->caCertPath)).certificates)
+    {
+        certificates.push_back(std::move(certificate));
+    }
+    ASSERT_EQ(certificates.size(), 2U);
+
+    ca_bundle::PublicationBlock block;
+    block.publication = 1758000100;
+    block.contentSha256 = ca_bundle::contentSha256(certificates);
+    block.updated = "2026-09-19T00:00:00Z";
+    block.writtenBy = "httpServerTest";
+    {
+        std::ofstream out {pki->caCertPath, std::ios::binary | std::ios::trunc};
+        out << ca_bundle::renderBlock(block) << ca_bundle::serializeCertificates(certificates);
+        ASSERT_FALSE(out.fail());
+    }
+
+    auto server = makeHttpServer();
+    HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;
+    config.certificatePath = pki->certPath;
+    config.privateKeyPath = pki->keyPath;
+    config.caCertificatePath = pki->caCertPath;
+
+    ASSERT_NO_THROW(server->start(config));
+
+    std::array<char, 8192> buffer {};
+    const auto written = server->caLeafSignerPem(buffer.data(), buffer.size());
+    ASSERT_GT(written, 0);
+
+    const std::string delivered {buffer.data(), static_cast<std::size_t>(written)};
+    EXPECT_EQ(delivered.find("##"), std::string::npos);
+    std::size_t begins = 0;
+    for (std::size_t at = delivered.find("-----BEGIN CERTIFICATE-----"); at != std::string::npos;
+         at = delivered.find("-----BEGIN CERTIFICATE-----", at + 1))
+    {
+        ++begins;
+    }
+    EXPECT_EQ(begins, 1U);
+
+    // And it is the signer, not merely "one of them": the whole bundle is still what /cacerts
+    // serves, so a wrong pick here would be invisible to every other assertion.
+    EXPECT_EQ(server->caCertificateSnapshot().certificates, 2U);
+
+    const auto leaves = ca_bundle::parseBundle(readAllBytes(pki->certPath)).certificates;
+    const auto deliveredCas = ca_bundle::parseBundle(delivered).certificates;
+    ASSERT_FALSE(leaves.empty());
+    ASSERT_EQ(deliveredCas.size(), 1U);
+    EXPECT_TRUE(ca_bundle::anyCaSignsLeaf(leaves.front().get(), deliveredCas));
+
+    server->stop();
+}
+
+TEST(HttpServerTest, CaLeafSignerPemReturnsZeroWithNoServableBundle)
+{
+    TempCert cert; // leaf only; caCertificatePath is left at its default (empty: nothing configured)
+
+    auto server = makeHttpServer();
+    HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+
+    // Before start() there is no source at all, and with nothing configured there never is one:
+    // both answer 0 -- "nothing to deliver" -- rather than -1, so the legacy poller logs the reason
+    // and lets the upgrade proceed without an anchor instead of reporting a buffer problem.
+    std::array<char, 8192> buffer {};
+    EXPECT_EQ(server->caLeafSignerPem(buffer.data(), buffer.size()), 0);
+
+    ASSERT_NO_THROW(server->start(config));
+    EXPECT_EQ(server->caLeafSignerPem(buffer.data(), buffer.size()), 0);
 
     server->stop();
 }
