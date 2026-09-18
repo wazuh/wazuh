@@ -1,0 +1,144 @@
+name: 5.X - Manager certs - Unit tests
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testunit_managercerts.yml"
+      - "src/shared_modules/manager_certs/**"
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/coverage_cpp/**"
+      - ".github/actions/test_cpp/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  managercerts-modules:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install a compatible CMake
+        uses: ./.github/actions/reinstall_cmake
+      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      - name: "Configure AWS credentials for the compilation cache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+          role-duration-seconds: 7200
+      - name: "Set up sccache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/setup-sccache
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          region: ${{ secrets.CI_AWS_REGION }}
+          key-prefix: sccache/5.0.0
+
+      # Mandatory: the CLI links manager_config (ext_pugixml, ext_rapidjson) and ca_bundle (the
+      # vendored libcrypto), and the test target links gtest/gmock from src/external/googletest/lib.
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      # No -DTARGET is passed, so IS_AGENT stays FALSE and the server-only branch that owns
+      # add_subdirectory(shared_modules/manager_certs) is the one configured.
+      - name: Manager certs - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "manager_certs_utest"
+          test: "true"
+          asan: "false"
+
+      # `manager_certs` is the module-wide ctest label: it selects the GTest and the CLI
+      # end-to-end test, which runs the built binary for --version/--help with no configuration.
+      #
+      # Valgrind is deliberately off: test_cpp runs `valgrind ctest` without --trace-children=yes, so
+      # the test binaries are not instrumented anyway. The ASAN job below is the memory gate that matters here.
+      - name: Manager certs - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          valgrind: "false"
+          target: "manager_certs"
+
+      # Coverage is reported, not gated (threshold 0), like the CA bundle workflow: the point is that
+      # the suite runs at all. The lcov report is uploaded so the team can pin a real floor later.
+      - name: Manager certs - Coverage
+        uses: ./.github/actions/coverage_cpp
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/manager_certs
+          test_directory: src/shared_modules/manager_certs
+          id: manager_certs
+          threshold: "0"
+          validate_function_coverage: "false"
+      - name: "Compilation cache statistics"
+        if: always()
+        run: sccache --show-stats 2>/dev/null | grep -viE "cache location|bucket" || true
+
+  managercerts-asan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install a compatible CMake
+        uses: ./.github/actions/reinstall_cmake
+      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      - name: "Configure AWS credentials for the compilation cache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+          role-duration-seconds: 7200
+      - name: "Set up sccache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/setup-sccache
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          region: ${{ secrets.CI_AWS_REGION }}
+          key-prefix: sccache/5.0.0
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      - name: Manager certs - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "manager_certs_utest"
+          test: "true"
+          asan: "true"
+
+      # This job is not a redundant second run: build_target_cpp's asan mode compiles with
+      # -fsanitize=address,undefined,leak. Only the GTest label is selected here.
+      - name: Manager certs - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          target: "manager_certs_utest"
+          valgrind: "false"
