@@ -1594,7 +1594,8 @@ components:
           description: Machine-readable cause. The values below are the ones VD is known to produce.
           example: scan_queue_full
           examples: [scan_queue_full, indexer_unavailable, feed_not_ready, scanner_not_ready,
-                     task_create_failed, vd_not_initialized, vd_unreachable, vd_error, shutting_down]
+                     task_create_failed, vd_not_initialized, vd_unreachable, vd_error,
+                     "Server is shutting down"]
 
     EnrollRequest:
       type: object

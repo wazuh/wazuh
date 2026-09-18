@@ -426,15 +426,21 @@ void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
             cJSON* indexer_json = indexer_config ? cJSON_Duplicate(indexer_config, TRUE) : cJSON_CreateObject();
             config.indexer = indexer_json;
 
-            /* Same guarantee as indexer_config above: wm_config() reads every wmodule's
-             * configuration, this one included, before any module thread is created, so this is
-             * race-free to read here even though wm_vulnerability_scanner's OWN start() has not
-             * run yet on this node. Absent module (no <vulnerability-detection> section at all,
+            /* Race-free to read here: wm_vulnerability_scanner_main() only ever reads
+             * data->vulnerability_detection (never mutates it in place -- see
+             * wm_vulnerability_scanner_apply_config_defaults()'s comment), so this object is
+             * write-once from wm_config() time on, regardless of which of the two module threads
+             * gets here first. Absent module (no <vulnerability-detection> section at all,
              * "no section means no module" per Read_Vulnerability_Detection_JSON()) -> not
              * configured. Present with no "enabled" key -> defaults enabled, matching the scanner's
              * own default. A string value w_parse_bool() does not recognize as "yes" -> treated as
              * disabled: the scanner's own Utils::parseStrToBool() throws on the same input, which
-             * leaves it permanently failed rather than started, so this must not wait on it. */
+             * leaves it permanently failed rather than started, so this must not wait on it. This
+             * decision tree mirrors VulnerabilityScannerFacade::start()'s vdEnabled lambda
+             * (vulnerabilityScannerFacade.cpp) -- consulted instead of this value once that
+             * module's start() has begun -- if this vocabulary ever changes, check that lambda
+             * stays in step: they interpret the same config key for two different arrival-time
+             * windows around this node's own scanner startup. */
             config.vd_configured_enabled = false;
             const wmodule* vd_module = wm_find_module(WM_VULNERABILITY_SCANNER_CONTEXT.name);
             if (vd_module && vd_module->data)

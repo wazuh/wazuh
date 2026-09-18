@@ -20,10 +20,13 @@
 namespace invsync::vd
 {
 
-    bool
-    feedGateOpen(bool started, bool enabled, bool startFailed, bool initialized, bool feedReady, bool configuredEnabled)
+    bool vdWillRunHere(bool started, bool enabled, bool configuredEnabled)
     {
-        const bool willRunHere = started ? enabled : configuredEnabled;
+        return started ? enabled : configuredEnabled;
+    }
+
+    bool feedGateOpen(bool willRunHere, bool startFailed, bool initialized, bool feedReady)
+    {
         if (!willRunHere || startFailed)
         {
             return true;
@@ -74,12 +77,11 @@ namespace invsync::vd
             // validating) with a retryable 503, instead of routing a session that merely arrived
             // early through Skipped as if this node would never run a scanner.
             auto& scanner = VulnerabilityScannerFacade::instance();
-            return feedGateOpen(scanner.hasStarted(),
-                                scanner.isEnabled(),
-                                scanner.startFailed(),
-                                scanner.isInitialized(),
-                                scanner.isFeedReady(),
-                                m_configuredEnabled);
+            return feedGateOpen(
+                vdWillRunHere(scanner.hasStarted(), scanner.isEnabled(), m_configuredEnabled),
+                scanner.startFailed(),
+                scanner.isInitialized(),
+                scanner.isFeedReady());
         }
 
         bool scannerRunning() const override
