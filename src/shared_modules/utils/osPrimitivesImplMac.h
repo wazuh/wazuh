@@ -32,6 +32,21 @@ class OsPrimitivesMac : public IOsPrimitivesMac
             return ::sysctlbyname(name, oldp, oldlenp, newp, newlen);
         }
 
+        kern_return_t host_statistics64(host_t hostPriv, host_flavor_t flavor, host_info64_t hostInfo64Out, mach_msg_type_number_t* hostInfo64OutCnt) const
+        {
+            return ::host_statistics64(hostPriv, flavor, hostInfo64Out, hostInfo64OutCnt);
+        }
+
+        mach_port_t mach_host_self() const
+        {
+            return ::mach_host_self();
+        }
+
+        kern_return_t mach_port_deallocate(ipc_space_t task, mach_port_name_t name) const
+        {
+            return ::mach_port_deallocate(task, name);
+        }
+
         CFMutableDictionaryRef IOServiceMatching(const char* name) const
         {
             return ::IOServiceMatching(name);
