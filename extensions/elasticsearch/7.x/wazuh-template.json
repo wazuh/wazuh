@@ -830,6 +830,16 @@
                   }
                 }
               },
+              "login_group": {
+                "properties": {
+                  "id": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword"
+                  }
+                }
+              },
               "login_user": {
                 "properties": {
                   "id": {

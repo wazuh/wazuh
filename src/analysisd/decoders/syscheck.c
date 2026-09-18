@@ -256,6 +256,8 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_AUDIT_PCWD] = "parent_cwd";
     fim_decoder->fields[FIM_AUDIT_ID] = "audit_uid";
     fim_decoder->fields[FIM_AUDIT_NAME] = "audit_name";
+    fim_decoder->fields[FIM_AUDIT_GID] = "audit_gid";
+    fim_decoder->fields[FIM_AUDIT_GROUP_NAME] = "audit_group_name";
     fim_decoder->fields[FIM_EFFECTIVE_UID] = "effective_uid";
     fim_decoder->fields[FIM_EFFECTIVE_NAME] = "effective_name";
     fim_decoder->fields[FIM_PPID] = "ppid";
@@ -1250,6 +1252,8 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
      *       cwd:               string
      *       audit_uid:         string
      *       audit_name:        string
+     *       audit_gid:         string
+     *       audit_group_name:  string
      *       effective_uid:     string
      *       effective_name:    string
      *       parent_name:       string
@@ -1541,6 +1545,7 @@ static int fim_generate_alert(Eventinfo *lf, syscheck_event_t event_type, cJSON 
     int path_len = 0;
     char path_buffer[757] = "";
     char *path = path_buffer;
+    char alert[OS_MAXSTR];
 
     /* Dynamic Fields */
     lf->nfields = FIM_NFIELDS;
@@ -1591,10 +1596,16 @@ static int fim_generate_alert(Eventinfo *lf, syscheck_event_t event_type, cJSON 
                 os_strdup(object->valuestring, lf->fields[FIM_AUDIT_ID].value);
             } else if (strcmp(object->string, "audit_name") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_AUDIT_NAME].value);
+            } else if (strcmp(object->string, "audit_gid") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_AUDIT_GID].value);
+            } else if (strcmp(object->string, "audit_group_name") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_AUDIT_GROUP_NAME].value);
             } else if (strcmp(object->string, "effective_uid") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_EFFECTIVE_UID].value);
             } else if (strcmp(object->string, "effective_name") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_EFFECTIVE_NAME].value);
+            } else {
+                mdebug2("Agent '%s' Unrecognized audit field '%s'", lf->agent_id, object->string);
             }
         }
     }
@@ -1677,12 +1688,10 @@ static int fim_generate_alert(Eventinfo *lf, syscheck_event_t event_type, cJSON 
         }
     }
 
-    /* full_log was sized from the input length in cleanevent.c; resize it to the
-     * OS_MAXSTR bound used below before writing the generated alert. */
-    os_realloc(lf->full_log, OS_MAXSTR, lf->full_log);
-    lf->log = lf->full_log;
-
-    snprintf(lf->full_log, OS_MAXSTR,
+    /* Format into a scratch buffer and size full_log to the alert: cleanevent.c
+     * allocated it from the input length, which may be shorter than the alert,
+     * and growing it to OS_MAXSTR on every event inflates the allocator footprint. */
+    snprintf(alert, OS_MAXSTR,
             "%s '%s' %s\n"
             "%s"
             "Mode: %s\n"
@@ -1706,6 +1715,13 @@ static int fim_generate_alert(Eventinfo *lf, syscheck_event_t event_type, cJSON 
             change_win_attributes
             //lf->fields[FIM_SYM_PATH].value
     );
+
+    free(lf->full_log);
+    os_strdup(alert, lf->full_log);
+    lf->log = lf->full_log;
+    /* Predecoder pointers may alias the freed buffer. */
+    lf->program_name = NULL;
+    lf->dec_timestamp = NULL;
 
     cJSON_Delete(tmp);
 
