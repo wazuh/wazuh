@@ -22,7 +22,7 @@ typedef void (*FunctionPtr)();
 int __wrap_ebpf_whodata_healthcheck(void);
 
 // Declare the wrap version of fimebpf_initialize
-void __wrap_fimebpf_initialize(const char* config_dir,
+void __wrap_fimebpf_initialize(FunctionPtr fim_conf,
                                 FunctionPtr get_user,
                                 FunctionPtr get_group,
                                 FunctionPtr whodata_event,
@@ -30,6 +30,6 @@ void __wrap_fimebpf_initialize(const char* config_dir,
                                 FunctionPtr loggingFunction,
                                 FunctionPtr abspath,
                                 FunctionPtr is_shutdown,
-                                syscheck_config syscheck);
+                                unsigned int queue_size);
 
 #endif // WRAP_EBPF_FUNCTIONS_H
