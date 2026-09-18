@@ -458,21 +458,37 @@ firewall_result_t try_route_macos(const char *srcip, int action, int ip_version,
 
     // The blackhole route needs a gateway placeholder of the same address
     // family as srcip -- an IPv4 loopback gateway is invalid for an IPv6
-    // destination and the command fails at the OS level.
+    // destination and the command fails at the OS level. macOS route(8) also
+    // needs -inet6 to disambiguate the family for an IPv6 destination; the
+    // gateway itself is still required either way (confirmed empirically --
+    // `route add -net <ip> -blackhole` with no gateway fails with "Invalid
+    // argument" on macOS, only `route add -net <ip> 127.0.0.1 -blackhole`
+    // works: https://discussions.apple.com/thread/6869503).
     const char *gateway = (ip_version == 6) ? "::1" : "127.0.0.1";
     wfd_t *wfd = NULL;
 
     if (action == ENABLE_COMMAND) {
-        char *exec_cmd[] = {route_path, "-q", "add", (char *)srcip, (char *)gateway, "-blackhole", NULL};
-        wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+        if (ip_version == 6) {
+            char *exec_cmd[] = {route_path, "-q", "add", "-inet6", (char *)srcip, (char *)gateway, "-blackhole", NULL};
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+        } else {
+            char *exec_cmd[] = {route_path, "-q", "add", (char *)srcip, (char *)gateway, "-blackhole", NULL};
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+        }
     } else {
-        char *exec_cmd[] = {route_path, "-q", "delete", (char *)srcip, (char *)gateway, "-blackhole", NULL};
-        wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+        if (ip_version == 6) {
+            char *exec_cmd[] = {route_path, "-q", "delete", "-inet6", (char *)srcip, (char *)gateway, "-blackhole", NULL};
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+        } else {
+            char *exec_cmd[] = {route_path, "-q", "delete", (char *)srcip, (char *)gateway, "-blackhole", NULL};
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+        }
     }
 
     os_free(route_path);
 
     if (!wfd) {
+        write_debug_file(argv0, "Unable to execute route");
         return FIREWALL_EXECUTION_FAILED;
     }
 

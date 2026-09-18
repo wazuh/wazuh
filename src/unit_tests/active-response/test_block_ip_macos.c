@@ -89,6 +89,37 @@ void test_try_route_macos_disable_succeeds(void **state) {
     assert_int_equal(result, FIREWALL_SUCCESS);
 }
 
+void test_try_route_macos_ipv6_enable_succeeds(void **state) {
+    char *route_path = strdup("/sbin/route");
+
+    expect_string(__wrap_get_binary_path, command, "route");
+    will_return(__wrap_get_binary_path, route_path);
+    will_return(__wrap_get_binary_path, 0);
+    will_return(__wrap_wpopenv, dummy_wfd());
+    will_return(__wrap_wpclose, 0);
+
+    firewall_result_t result = try_route_macos("2001:db8::1", ENABLE_COMMAND, 6, "block-ip");
+
+    assert_int_equal(result, FIREWALL_SUCCESS);
+}
+
+// Exercises the exit-status check itself: wpopenv succeeds (non-NULL wfd) but
+// the route command exited non-zero -- must be reported as a failure, not the
+// false FIREWALL_SUCCESS this function returned before the fix.
+void test_try_route_macos_nonzero_exit_is_failure(void **state) {
+    char *route_path = strdup("/sbin/route");
+
+    expect_string(__wrap_get_binary_path, command, "route");
+    will_return(__wrap_get_binary_path, route_path);
+    will_return(__wrap_get_binary_path, 0);
+    will_return(__wrap_wpopenv, dummy_wfd());
+    will_return(__wrap_wpclose, 1 << 8);  // WIFEXITED true, WEXITSTATUS 1
+
+    firewall_result_t result = try_route_macos("192.168.1.100", ENABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_EXECUTION_FAILED);
+}
+
 // ============================================================================
 // try_pf_macos / try_hostsdeny_macos: pre-existing, unmodified by this PR --
 // covering only the exact decline paths that reproduce #39192's stock-install
@@ -135,6 +166,8 @@ int main(void) {
         cmocka_unit_test(test_try_route_macos_command_fails),
         cmocka_unit_test(test_try_route_macos_enable_succeeds),
         cmocka_unit_test(test_try_route_macos_disable_succeeds),
+        cmocka_unit_test(test_try_route_macos_ipv6_enable_succeeds),
+        cmocka_unit_test(test_try_route_macos_nonzero_exit_is_failure),
         cmocka_unit_test(test_try_pf_macos_disabled_is_invalid_state),
         cmocka_unit_test(test_try_hostsdeny_macos_missing_file_is_not_available),
     };

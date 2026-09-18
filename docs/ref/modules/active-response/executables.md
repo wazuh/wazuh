@@ -87,7 +87,7 @@ Wazuh provides **5 Active Response executables** covering IP blocking and accoun
 |----------|--------|------|-----------------|
 | 1 | pf | `pfctl` | `pfctl -t wazuh_fwtable -T add 192.168.1.100` |
 | 2 | hosts.deny | edit file | `ALL: 192.168.1.100` (appended to `/etc/hosts.deny`) |
-| 3 | route | `route` | `route -q add 192.168.1.100 127.0.0.1 -blackhole` |
+| 3 | route | `route` | IPv4: `route -q add 192.168.1.100 127.0.0.1 -blackhole` · IPv6: `route -q add -inet6 2001:db8::1 ::1 -blackhole` |
 
 **Input Fields**:
 ```json
