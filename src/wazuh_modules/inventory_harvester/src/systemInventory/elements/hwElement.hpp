@@ -65,7 +65,10 @@ public:
         element.data.host.cpu.name = data->cpuName();
 
         // Ex: 2497.0, 3192.0 u 4192.0
-        element.data.host.cpu.speed = data->cpuFrequency();
+        if (const auto cpuSpeed = data->cpuFrequency(); cpuSpeed > 0)
+        {
+            element.data.host.cpu.speed = cpuSpeed;
+        }
 
         // Ex: Any value greater than 0
         element.data.host.memory.free = data->freeMem();
