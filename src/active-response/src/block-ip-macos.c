@@ -449,20 +449,24 @@ firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_vers
 // FreeBSD/OpenBSD/NetBSD in block-ip-unix.c's try_route().
 
 firewall_result_t try_route_macos(const char *srcip, int action, int ip_version, const char *argv0) {
-    (void)ip_version;  // route works for both IPv4 and IPv6
+    char log_msg[OS_MAXSTR];
     char *route_path = NULL;
 
     if (check_binary_available("route", &route_path, argv0) != FIREWALL_SUCCESS) {
         return FIREWALL_NOT_AVAILABLE;
     }
 
+    // The blackhole route needs a gateway placeholder of the same address
+    // family as srcip -- an IPv4 loopback gateway is invalid for an IPv6
+    // destination and the command fails at the OS level.
+    const char *gateway = (ip_version == 6) ? "::1" : "127.0.0.1";
     wfd_t *wfd = NULL;
 
     if (action == ENABLE_COMMAND) {
-        char *exec_cmd[] = {route_path, "-q", "add", (char *)srcip, "127.0.0.1", "-blackhole", NULL};
+        char *exec_cmd[] = {route_path, "-q", "add", (char *)srcip, (char *)gateway, "-blackhole", NULL};
         wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
     } else {
-        char *exec_cmd[] = {route_path, "-q", "delete", (char *)srcip, "127.0.0.1", "-blackhole", NULL};
+        char *exec_cmd[] = {route_path, "-q", "delete", (char *)srcip, (char *)gateway, "-blackhole", NULL};
         wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
     }
 
@@ -472,7 +476,14 @@ firewall_result_t try_route_macos(const char *srcip, int action, int ip_version,
         return FIREWALL_EXECUTION_FAILED;
     }
 
-    wpclose(wfd);
+    int wp_closefd = wpclose(wfd);
+    if (!(WIFEXITED(wp_closefd) && WEXITSTATUS(wp_closefd) == 0)) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR - 1, "route command failed with status %d", wp_closefd);
+        write_debug_file(argv0, log_msg);
+        return FIREWALL_EXECUTION_FAILED;
+    }
+
     return FIREWALL_SUCCESS;
 }
 
