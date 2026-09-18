@@ -301,7 +301,7 @@ nlohmann::json SysInfo::getOsInfo() const
     return ret;
 }
 
-static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_ptr<socket_fdinfo>>>& processSocket)
+static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<socket_fdinfo>>& processSocket)
 {
     int32_t maxProcess { 0 };
     auto maxProcessLen { sizeof(maxProcess) };
@@ -336,11 +336,11 @@ static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_p
                         {
                             if (PROX_FDTYPE_SOCKET == processFDInformation[j].proc_fdtype)
                             {
-                                auto socketInfo { std::make_shared<socket_fdinfo>() };
+                                socket_fdinfo socketInfo {};
 
-                                if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, socketInfo.get(), PROC_PIDFDSOCKETINFO_SIZE))
+                                if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, &socketInfo, PROC_PIDFDSOCKETINFO_SIZE))
                                 {
-                                    if (socketInfo && std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo->psi.soi_kind) != s_validFDSock.end())
+                                    if (std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo.psi.soi_kind) != s_validFDSock.end())
                                     {
                                         processSocket[processData].push_back(socketInfo);
                                     }
@@ -357,28 +357,20 @@ static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_p
 nlohmann::json SysInfo::getPorts() const
 {
     nlohmann::json ports;
-    std::map<ProcessInfo, std::vector<std::shared_ptr<socket_fdinfo>>> fdMap;
+    std::map<ProcessInfo, std::vector<socket_fdinfo>> fdMap;
     getProcessesSocketFD(fdMap);
 
     for (const auto& processInfo : fdMap)
     {
-        for (const auto& fdSocket : processInfo.second )
+        for (const auto& fdSocket : processInfo.second)
         {
             nlohmann::json port;
-            std::make_unique<PortImpl>(std::make_shared<BSDPortWrapper>(processInfo.first, fdSocket))->buildPortData(port);
+            const BSDPortWrapper wrapper(processInfo.first, fdSocket);
+            PortImpl(wrapper).buildPortData(port);
 
-            const auto portFound
+            if (ports.end() == std::find(ports.begin(), ports.end(), port))
             {
-                std::find_if(ports.begin(), ports.end(),
-                             [&port](const auto & element)
-                {
-                    return 0 == port.dump().compare(element.dump());
-                })
-            };
-
-            if (ports.end() == portFound)
-            {
-                ports.push_back(port);
+                ports.push_back(std::move(port));
             }
         }
     }
@@ -544,6 +536,10 @@ nlohmann::json SysInfo::getUsers() const
     SudoersProvider sudoersProvider;
     auto collectedSudoers = sudoersProvider.collect();
 
+    // The User_Alias map does not depend on the user either, so build it once for the whole scan
+    // instead of re-parsing it inside isUserSudoer() for every account.
+    auto sudoersUserAliases = SudoersProvider::collectUserAliases(collectedSudoers);
+
     UserGroupsProvider userGroupsProvider;
 
     for (auto& user : collectedUsers)
@@ -564,6 +560,9 @@ nlohmann::json SysInfo::getUsers() const
         std::set<uid_t> uid {static_cast<uid_t>(user["uid"].get<int>())};
         auto collectedUsersGroups = userGroupsProvider.getGroupNamesByUid(uid);
 
+        // The sudoers lookup needs the group names one by one, not concatenated.
+        std::set<std::string> userGroupNames;
+
         if (collectedUsersGroups.empty())
         {
             userItem["user_groups"] = UNKNOWN_VALUE;
@@ -579,7 +578,9 @@ nlohmann::json SysInfo::getUsers() const
                     accumGroups += secondaryArraySeparator;
                 }
 
-                accumGroups += group.get<std::string>();
+                const auto groupName = group.get<std::string>();
+                accumGroups += groupName;
+                userGroupNames.insert(groupName);
             }
 
             userItem["user_groups"] = accumGroups;
@@ -651,28 +652,24 @@ nlohmann::json SysInfo::getUsers() const
             userItem["user_last_login"] = UNKNOWN_VALUE;
         }
 
+        userItem["user_password_hash_algorithm"] = user["password_hash_algorithm"];
+        userItem["user_password_status"] = user["password_status"];
+        // macOS has no shadow file and no password aging policy unless an MDM imposes one, so
+        // there is no source for these. Reporting the day counters as not collected keeps them
+        // apart from a policy that genuinely allows zero days; the expiration date is a
+        // timestamp string in this schema, so it stays unknown.
         userItem["user_password_expiration_date"] = UNKNOWN_VALUE;
-        userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
-        userItem["user_password_inactive_days"] = 0;
-        userItem["user_password_max_days_between_changes"] = 0;
-        userItem["user_password_min_days_between_changes"] = 0;
-        userItem["user_password_status"] = UNKNOWN_VALUE;
-        userItem["user_password_warning_days_before_expiration"] = 0;
+        userItem["user_password_inactive_days"] = NOT_COLLECTED_VALUE;
+        userItem["user_password_max_days_between_changes"] = NOT_COLLECTED_VALUE;
+        userItem["user_password_min_days_between_changes"] = NOT_COLLECTED_VALUE;
+        userItem["user_password_warning_days_before_expiration"] = NOT_COLLECTED_VALUE;
 
-        // By default, user is not sudoer.
         userItem["user_roles"] = UNKNOWN_VALUE;
 
-        for (auto& singleSudoer : collectedSudoers)
+        if (SudoersProvider::isUserSudoer(collectedSudoers, username, userGroupNames, sudoersUserAliases))
         {
-            // Searching in content of header
-            auto header = singleSudoer["header"].get<std::string>();
-
-            if (header.find(username) != std::string::npos)
-            {
-                //TODO: user_roles_sudo_sudo_rule_details has more detailed information.
-                userItem["user_roles"] = "sudo";
-
-            }
+            //TODO: user_roles_sudo_sudo_rule_details has more detailed information.
+            userItem["user_roles"] = "sudo";
         }
 
         result.push_back(std::move(userItem));

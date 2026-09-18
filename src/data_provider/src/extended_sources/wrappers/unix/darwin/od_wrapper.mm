@@ -10,10 +10,58 @@
 #import <OpenDirectory/OpenDirectory.h>
 #import <Foundation/Foundation.h>
 #include "od_wrapper.hpp"
+#include "password_authority.hpp"
 #include "json.hpp"
+
+#include <cstring>
 
 namespace od
 {
+    /// @brief Runs a query against the local OpenDirectory node.
+    ///
+    /// @return The matching records, or nil when the directory could not be read. An empty array
+    ///         means the query succeeded and matched nothing, which is not a failure.
+    static NSArray* queryLocalNode(ODRecordType recordType,
+                                   ODAttributeType attribute,
+                                   id queryValues,
+                                   ODAttributeType returnAttributes)
+    {
+        ODSession* session = [ODSession defaultSession];
+        NSError* err = nullptr;
+
+        ODNode* root = [ODNode nodeWithSession:session name:@"/Local/Default" error:&err];
+
+        if (err != nullptr)
+        {
+            return nil;
+        }
+
+        ODQuery* query =
+            [ODQuery queryWithNode:root
+                     forRecordTypes:recordType
+                     attribute:attribute
+                     matchType:kODMatchEqualTo
+                     queryValues:queryValues
+                     returnAttributes:returnAttributes
+                     maximumResults:0
+                     error:&err];
+
+        if (err != nullptr)
+        {
+            return nil;
+        }
+
+        NSArray* results = [query resultsAllowingPartial:NO error:&err];
+
+        return err != nullptr ? nil : results;
+    }
+
+    /// @brief Converts an Objective-C string, which yields null when it cannot be encoded as UTF-8.
+    static std::string toStdString(NSString* value)
+    {
+        const char* utf8 { [value UTF8String] };
+        return utf8 != nullptr ? std::string {utf8} : std::string {};
+    }
 
     void genEntries(const std::string& record_type,
                     const std::string* record,
@@ -212,6 +260,117 @@ namespace od
                 assign_safe("failedLoginTimestamp", "failed_login_timestamp", false);
                 assign_safe("passwordLastSetTime", "password_last_set_time", false);
             }
+        }
+    }
+
+    void genPasswordData(std::map<std::string, nlohmann::json>& passwordData)
+    {
+        @autoreleasepool
+        {
+            // A nil query value matches every user, so the whole directory is read in one round
+            // trip instead of one per account.
+            NSArray* results = queryLocalNode(kODRecordTypeUsers,
+                                              kODAttributeTypeUniqueID,
+                                              nil,
+                                              kODAttributeTypeAuthenticationAuthority);
+
+            // Every account is left out of the map, so the caller reports the fields as not
+            // collected rather than inventing a status for accounts it could not read.
+            if (results == nil)
+            {
+                return;
+            }
+
+            for (ODRecord * re in results)
+            {
+                NSError* attrErr = nullptr;
+                NSArray* authorityValues =
+                    [re valuesForAttribute:kODAttributeTypeAuthenticationAuthority error:&attrErr];
+
+                // An unreadable record is left out of the map, so the caller reports the fields as
+                // not collected rather than claiming the account has no password. An account that
+                // simply has no authority returns an empty list without an error.
+                if (attrErr != nullptr)
+                {
+                    continue;
+                }
+
+                std::vector<std::string> authorities;
+
+                for (id authority in authorityValues)
+                {
+                    authorities.push_back(toStdString([authority description]));
+                }
+
+                const auto entry { parseAuthenticationAuthority(authorities) };
+
+                // A record can hold several names, and getpwuid may report any of them. Indexing
+                // every one keeps the caller's lookup from missing an account through an alias.
+                NSArray* recordNames = [re valuesForAttribute:kODAttributeTypeRecordName error:nil];
+
+                for (id recordName in recordNames)
+                {
+                    const auto name {toStdString([recordName description])};
+
+                    if (!name.empty())
+                    {
+                        // The primary name comes first, so it wins over any alias it shares.
+                        passwordData.emplace(name, entry);
+                    }
+                }
+
+                const auto primaryName {toStdString([re recordName])};
+
+                if (!primaryName.empty())
+                {
+                    passwordData.emplace(primaryName, entry);
+                }
+            }
+        }
+    }
+
+    bool genDisabledUsers(std::set<std::string>& disabledUsers)
+    {
+        @autoreleasepool
+        {
+            // macOS tracks disabled accounts as members of this group.
+            NSArray* results = queryLocalNode(kODRecordTypeGroups,
+                                              kODAttributeTypeRecordName,
+                                              @"com.apple.access_disabled",
+                                              kODAttributeTypeGroupMembership);
+
+            // A group that does not exist, or exists with no members, comes back as an empty
+            // result rather than an error, and genuinely means nobody is disabled.
+            if (results == nil)
+            {
+                return false;
+            }
+
+            for (ODRecord * re in results)
+            {
+                NSError* attrErr = nullptr;
+                NSArray* members =
+                    [re valuesForAttribute:kODAttributeTypeGroupMembership error:&attrErr];
+
+                // Reporting a partial membership list would mark a disabled account as active,
+                // so an unreadable group is a failure rather than an empty one.
+                if (attrErr != nullptr)
+                {
+                    return false;
+                }
+
+                for (id member in members)
+                {
+                    const auto memberName {toStdString([member description])};
+
+                    if (!memberName.empty())
+                    {
+                        disabledUsers.insert(memberName);
+                    }
+                }
+            }
+
+            return true;
         }
     }
 
