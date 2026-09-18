@@ -24,7 +24,7 @@ The following table maps each `<integration>` field from Wazuh 4.x to its equiva
 | `<name>`           | Notifications | Channel name             | Identifies the channel                                                                                                                   |
 | `<hook_url>`       | Notifications | Webhook URL              | Some 4.x built-in scripts (e.g. PagerDuty) had the endpoint hardcoded and did not require this field                                     |
 | `<api_key>`        | Notifications | Webhook URL / Headers    | Depending on the service, credentials may be placed in the URL, request headers, or not be needed at all                                 |
-| `<alert_format>`   | —             | No match                 | This depends on the configurated message in the channel.                                                                                 |
+| `<alert_format>`   | —             | No match                 | This depends on the configured message in the channel.                                                                                   |
 | `<rule_id>`        | Alerting      | Monitor query            | Monitors use queries on index patterns instead of rule matching. The matching field is `wazuh.rule.id`.                                  |
 | `<level>`          | Alerting      | Monitor query            | In 4.x the field was `rule.level`; see the note below.                                                                                   |
 | `<group>`          | Alerting      | Monitor query            | The group tag referred to the internal Wazuh component that generated the data. Now, it's represented by `wazuh.integration.name`.       |
