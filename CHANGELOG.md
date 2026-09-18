@@ -158,6 +158,7 @@
 | [#39064](https://github.com/wazuh/wazuh/issues/39064) | An enrollment password stored outside the default path is left in place. |
 | [#39064](https://github.com/wazuh/wazuh/issues/39064) | The installers no longer add an `<authorization_pass_path>` element naming the default password file. |
 | [#39064](https://github.com/wazuh/wazuh/issues/39064) | An agent enrolled before the upgrade keeps working on its existing key, but must be re-pointed with an enrollment token to obtain a re-enrollment secret. |
+| [#39406](https://github.com/wazuh/wazuh/issues/39406) | Changed the Windows agent tray GUI (`win32ui`) to display the manager address and enrollment key read-only, removing the `Save` button and its unverified write path. |
 
 #### Removed
 

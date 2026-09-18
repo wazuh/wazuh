@@ -19,7 +19,6 @@
 
 /* Default values */
 #define CONFIG          "ossec.conf"
-#define LASTCONFIG      "last-ossec.conf"
 #define VERSION_FILE    "VERSION.json"
 #define OSSECLOGS       "ossec.log"
 #define HELPTXT         "help.txt"
@@ -28,21 +27,20 @@
 
 /* Status messages */
 #define ST_RUNNING          "Running"
-#define ST_RUNNING_RESTART  "Running (pending restart)"
 #define ST_STOPPED          "Stopped"
 #define ST_UNKNOWN          "Unknown"
 #define ST_NOTSET           "0"
-#define ST_MISSING_IMPORT   "Require import of authentication key.\r\n" \
+#define ST_MISSING_IMPORT   "Not enrolled.\r\n" \
                             "            - Not Running"
-#define ST_MISSING_SERVER   "Require Manager IP address.\r\n" \
+#define ST_MISSING_SERVER   "No manager configured.\r\n" \
                             "            - Not Running"
-#define ST_MISSING_ALL      "Require import of authentication key.\r\n" \
-                            "            Missing Manager IP address.\r\n" \
+#define ST_MISSING_ALL      "Not enrolled.\r\n" \
+                            "            No manager configured.\r\n" \
                             "            - Not Running"
 
 /* Pre-def fields */
-#define FL_NOKEY        "<insert_auth_key_here>"
-#define FL_NOSERVER     "<insert_server_ip_here>"
+#define FL_NOKEY        "(not enrolled)"
+#define FL_NOSERVER     "(no manager configured)"
 #define SERVER_IP_USED      1
 #define SERVER_HOST_USED    2
 
@@ -81,7 +79,6 @@ extern HWND hStatus;
 /* User input */
 #define UI_SERVER_TEXT      1501
 #define UI_SERVER_AUTH      1502
-#define UI_SERVER_MSG       1503
 #define UI_SERVER_TOP       1504
 #define UI_SERVER_INFO      1505
 #define UI_ID_CLOSE         1510
@@ -100,7 +97,6 @@ extern HWND hStatus;
 
 #define IDD_MAIN                1700
 #define IDC_MAIN_STATUS         1701
-#define IDC_ADD                 1702
 #define IDC_CANCEL              1703
 #define IDD_ABOUT               1704
 #define IDC_STATIC -1
@@ -119,15 +115,6 @@ int config_read(HWND hwnd);
 
 /* Initializes the config */
 void init_config();
-
-/* Run command using cmd.exe */
-int run_cmd(char *cmd, HWND hwnd);
-
-/* Set OSSEC Server IP */
-int set_ossec_server(char *ip, HWND hwnd);
-
-/* Set OSSEC Auth Key */
-int set_ossec_key(char *key, HWND hwnd);
 
 /* Get OSSEC Server IP */
 int get_ossec_server();
