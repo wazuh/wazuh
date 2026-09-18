@@ -138,6 +138,9 @@ jobs:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
       INSTALLATION_DIR: /var/wazuh-manager
+      # The default API users have no shipped password: the node is provisioned before its first start and
+      # the suites authenticate with this same value, which they read from the environment.
+      WAZUH_API_PASSWORD: Integration-Tests1!
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -251,6 +254,13 @@ jobs:
           sudo chown root:wazuh-manager "$INSTALLATION_DIR/etc/certs"
           sudo chmod 1770 "$INSTALLATION_DIR/etc/certs"
 
+      - name: Provision the Server API credentials
+        run: |
+          # The manager refuses to start until its default API users have a password. Provisioned the same
+          # way an installation does it, one call per user, before the first start.
+          sudo "$INSTALLATION_DIR/bin/rbac_control" set-password -u wazuh -p "$WAZUH_API_PASSWORD"
+          sudo "$INSTALLATION_DIR/bin/rbac_control" set-password -u wazuh-wui -p "$WAZUH_API_PASSWORD"
+
       - name: Start wazuh-manager and verify
         run: |
           sudo systemctl start wazuh-manager
@@ -295,7 +305,8 @@ jobs:
           sudo tail -F "$INSTALLATION_DIR/logs/cluster.log" >> /tmp/wazuh-logs/cluster.log 2>/dev/null &
           cd tests/integration
           set +e
-          sudo WAZUH_PATH="$INSTALLATION_DIR" GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" \
+          sudo WAZUH_PATH="$INSTALLATION_DIR" WAZUH_API_PASSWORD="$WAZUH_API_PASSWORD" \
+            GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" \
             python -m pytest ${PYTEST_EXTRA_ARGS} ${PYTEST_TIER_ARGS} ${PYTEST_TARGET} \
             --html=results.html --self-contained-html
           EXIT_CODE=$?

@@ -55,6 +55,14 @@ if [ "$4" != "standalone" ] && [ "$3" != "master" ]; then
   done
 fi
 
+# The API refuses to start without provisioned credentials, and the tavern suites authenticate with known
+# values. Master only: the three nodes share the 'api_security' volume, so they would race to write it, and
+# only the master's apid ever seeds a database from it.
+if [ "$3" == "master" ]; then
+  /var/wazuh-manager/bin/rbac_control set-password -u wazuh -p 'Wazuh-Preseed1!'
+  /var/wazuh-manager/bin/rbac_control set-password -u wazuh-wui -p 'WazuhWui-Preseed1!'
+fi
+
 echo "" > /var/wazuh-manager/logs/api.log
 /var/wazuh-manager/bin/wazuh-manager-control start
 

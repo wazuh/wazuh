@@ -38,6 +38,11 @@ chmod 500 /var/wazuh-manager/etc/certs
 chmod 400 /var/wazuh-manager/etc/certs/*
 chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
 
+# The API refuses to start without provisioned credentials, and wazuh.dashboard.yml authenticates with
+# these values.
+/var/wazuh-manager/bin/rbac_control set-password -u wazuh -p 'Wazuh-Preseed1!'
+/var/wazuh-manager/bin/rbac_control set-password -u wazuh-wui -p 'WazuhWui-Preseed1!'
+
 echo "Starting Wazuh..."
 /var/wazuh-manager/bin/wazuh-manager-control start
 
