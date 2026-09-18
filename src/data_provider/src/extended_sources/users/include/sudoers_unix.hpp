@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include <map>
+#include <set>
 #include <string>
 
 #include "json.hpp"
@@ -23,6 +25,49 @@ class SudoersProvider
         SudoersProvider();
 
         nlohmann::json collect();
+
+        /// @brief Builds the User_Alias name -> member-list map used to resolve aliases in a user
+        /// list, so callers checking several users against the same collected rules can build it
+        /// once instead of paying to rebuild it on every isUserSudoer() call.
+        ///
+        /// @param sudoers Rules as returned by collect().
+        /// @return Map of alias name to its (unexpanded) member-list string.
+        static std::map<std::string, std::string> collectUserAliases(const nlohmann::json& sudoers);
+
+        /// @brief Tells whether the collected rules grant sudo to a given user, by name, through one
+        /// of userGroups (the stock macOS "%admin" and Linux "%sudo"/"%wheel" grants), or through a
+        /// User_Alias covering either.
+        ///
+        /// Never matches what the endpoint cannot resolve -- netgroups ("+netgroup") and numeric ids
+        /// ("#501", "%#80"). A "!"-prefixed entry does not itself grant, but per sudoers(5) it can
+        /// revoke a grant an earlier entry gave -- last-match-wins applies both to the entries within
+        /// one rule's user list and across separate rules in the whole policy, so the last rule (and,
+        /// within it, the last entry) that actually applies to the user decides the result.
+        ///
+        /// This overload builds the User_Alias map itself; prefer the one below when checking
+        /// several users against the same sudoers rules, and build the map once with
+        /// collectUserAliases().
+        ///
+        /// @param sudoers Rules as returned by collect().
+        /// @param userName Name of the user to look up.
+        /// @param userGroups Names of the groups the user belongs to.
+        /// @return true when the last applicable rule grants sudo to the user.
+        static bool isUserSudoer(const nlohmann::json& sudoers,
+                                 const std::string& userName,
+                                 const std::set<std::string>& userGroups);
+
+        /// @brief Same as the overload above, but takes an already-built User_Alias map (see
+        /// collectUserAliases()) instead of rebuilding it from sudoers on every call.
+        ///
+        /// @param sudoers Rules as returned by collect().
+        /// @param userName Name of the user to look up.
+        /// @param userGroups Names of the groups the user belongs to.
+        /// @param userAliases Result of collectUserAliases(sudoers).
+        /// @return true when the last applicable rule grants sudo to the user.
+        static bool isUserSudoer(const nlohmann::json& sudoers,
+                                 const std::string& userName,
+                                 const std::set<std::string>& userGroups,
+                                 const std::map<std::string, std::string>& userAliases);
 
     private:
         void genSudoersFile(const std::string& fileName,

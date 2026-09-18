@@ -72,6 +72,14 @@ nlohmann::json UsersProvider::collectUsers(const std::set<uid_t>& uids)
 {
     nlohmann::json users = nlohmann::json::array();
 
+    // Both are resolved once per collection rather than once per user: the directory is read
+    // in a single query and the membership list is the same for everyone.
+    std::set<std::string> disabledUsers;
+    const auto disabledUsersResolved { m_odWrapper->genDisabledUsers(disabledUsers) };
+
+    std::map<std::string, nlohmann::json> passwordData;
+    m_odWrapper->genPasswordData(passwordData);
+
     if (!uids.empty())
     {
         for (const auto& uid : uids)
@@ -88,6 +96,7 @@ nlohmann::json UsersProvider::collectUsers(const std::set<uid_t>& uids)
             user["is_hidden"] = int(userNames[user["username"]]);
 
             user.update(collectAccountPolicyData(user["uid"]));
+            user.update(collectPasswordData(pwUsernameStr, disabledUsers, disabledUsersResolved, passwordData));
 
             users.push_back(user);
         }
@@ -131,6 +140,7 @@ nlohmann::json UsersProvider::collectUsers(const std::set<uid_t>& uids)
         user["is_hidden"] = static_cast<int>(isHidden);
 
         user.update(collectAccountPolicyData(user["uid"]));
+        user.update(collectPasswordData(username, disabledUsers, disabledUsersResolved, passwordData));
 
         users.push_back(user);
     }
@@ -144,4 +154,40 @@ nlohmann::json UsersProvider::collectAccountPolicyData(const uid_t uid)
     m_odWrapper->genAccountPolicyData(std::to_string(uid), accountData);
 
     return accountData;
+}
+
+nlohmann::json UsersProvider::collectPasswordData(const std::string& username,
+                                                  const std::set<std::string>& disabledUsers,
+                                                  const bool disabledUsersResolved,
+                                                  const std::map<std::string, nlohmann::json>& passwordData)
+{
+    // Empty rather than absent, so a user whose record could not be read is reported as not
+    // collected instead of inheriting whatever the caller had in the object.
+    nlohmann::json userPasswordData
+    {
+        {"password_status", ""},
+        {"password_hash_algorithm", ""}
+    };
+
+    const auto it { passwordData.find(username) };
+
+    if (it != passwordData.end())
+    {
+        userPasswordData = it->second;
+    }
+
+    // A disabled account keeps its hash, so the group membership has to win over the
+    // status derived from the authentication authority. Without that membership the status
+    // cannot be trusted at all: a disabled account would otherwise be reported as active, so
+    // it is reported as not collected instead.
+    if (!disabledUsersResolved)
+    {
+        userPasswordData["password_status"] = "";
+    }
+    else if (disabledUsers.count(username))
+    {
+        userPasswordData["password_status"] = "locked";
+    }
+
+    return userPasswordData;
 }

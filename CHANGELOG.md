@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 
 - Raised from 64 to 1024 the number of active response commands that `wazuh-execd` can load from `etc/shared/ar.conf`. ([#38509](https://github.com/wazuh/wazuh/pull/38509))
 - Added the missing compiler hardening flags (stack canary, PIE, full RELRO and FORTIFY_SOURCE) to the Linux binaries. ([#38571](https://github.com/wazuh/wazuh/pull/38571))
+- Removed the per-comparison JSON serialisation from the macOS ports deduplication in syscollector. ([#39167](https://github.com/wazuh/wazuh/issues/39167))
 
 #### Fixed
 
@@ -52,6 +53,12 @@ All notable changes to this project will be documented in this file.
 - Fixed the gcloud wodle silently discarding a crashed process's raw output when it produced no recognized log line, and fixed `wm_exec()` (shared by every wodle) reporting exit code 0 for a process killed by a signal, such as an OOM kill or a native segfault, which had made that raw-output fallback unreachable for exactly the crashes it was meant to catch. ([#38943](https://github.com/wazuh/wazuh/pull/38943))
 - Fixed the default Windows FIM configuration monitoring none of its 19 named critical binaries (`cmd.exe`, `lsass.exe`, `sc.exe`, `sethc.exe`, etc.), because duplicate `%WINDIR%\SysNative` / `%WINDIR%\System32` directory declarations collapsed onto the same path once normalized and silently replaced each other's `restrict` list. ([#39198](https://github.com/wazuh/wazuh/issues/39198))
 - Fixed the macOS postinstall not re-owning `ossec`-era files, due to an unterminated `find -exec`. ([#39160](https://github.com/wazuh/wazuh/issues/39160))
+- Fixed the AWS wodle rejecting the `us-gov-east-1` and `us-gov-west-1` regions as invalid. ([#30480](https://github.com/wazuh/wazuh/issues/30480))
+- Fixed the macOS agent not reporting the password status and hash algorithm of local users. ([#39356](https://github.com/wazuh/wazuh/pull/39356))
+- Fixed the macOS agent reporting zeroed password aging values for local users, where macOS defines no such policy. ([#39356](https://github.com/wazuh/wazuh/pull/39356))
+- Fixed the users inventory misreporting sudoers, missing group-based grants (e.g. macOS's `%admin`, Linux's `%sudo`/`%wheel`) and flagging unrelated accounts. ([#39165](https://github.com/wazuh/wazuh/issues/39165))
+- Fixed the users inventory never reading sudo grants placed in sudoers drop-in files (`/etc/sudoers.d/*`). ([#39165](https://github.com/wazuh/wazuh/issues/39165))
+- Fixed the macOS agent shipping preinstalled empty `logs/ossec.log`/`ossec.json` placeholders. ([#39120](https://github.com/wazuh/wazuh/issues/39120))
 
 ### Ruleset
 
