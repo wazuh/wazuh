@@ -251,6 +251,33 @@ namespace od
             assign_safe("failedLoginCount", "failed_login_count", true);
             assign_safe("failedLoginTimestamp", "failed_login_timestamp", false);
             assign_safe("passwordLastSetTime", "password_last_set_time", false);
+
+            // The aging policy, when pwpolicy has set one, is not a flat key: it lives inside
+            // policyCategoryPasswordChange, an array of policy entries each carrying its own
+            // policyParameters dict. policyAttributeExpiresEveryNDays is the only aging attribute
+            // macOS documents; there is no OpenDirectory equivalent of a minimum password age or
+            // of a warning period before expiration, so those stay unset here.
+            NSArray* passwordChangePolicies = dict[@"policyCategoryPasswordChange"];
+
+            if ([passwordChangePolicies isKindOfClass:[NSArray class]])
+            {
+                for (NSDictionary * entry in passwordChangePolicies)
+                {
+                    if (![entry isKindOfClass:[NSDictionary class]]) continue;
+
+                    NSDictionary* parameters = entry[@"policyParameters"];
+
+                    if (![parameters isKindOfClass:[NSDictionary class]]) continue;
+
+                    NSNumber* expiresEveryNDays = parameters[@"policyAttributeExpiresEveryNDays"];
+
+                    if ([expiresEveryNDays isKindOfClass:[NSNumber class]])
+                    {
+                        policyData["expires_every_n_days"] = [expiresEveryNDays longLongValue];
+                        break;
+                    }
+                }
+            }
         }
     }
 

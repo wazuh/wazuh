@@ -130,6 +130,60 @@ TEST(UsersProviderTest, CollectWithConstraintsSingleUser)
     EXPECT_EQ(result[0]["password_last_set_time"], 1735576569.186);
     EXPECT_EQ(result[0]["password_status"], "active");
     EXPECT_EQ(result[0]["password_hash_algorithm"], "SALTED-SHA512-PBKDF2");
+    EXPECT_FALSE(result[0].contains("password_max_days_between_changes"));
+    EXPECT_FALSE(result[0].contains("password_expiration_date"));
+}
+
+TEST(UsersProviderTest, CollectDerivesAgingFieldsFromExpiresEveryNDays)
+{
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockUUID = std::make_shared<MockUUIDWrapper>();
+    auto mockOD = std::make_shared<MockODUtilsWrapper>();
+
+    static struct passwd fakePasswd
+    {
+        .pw_name = (char*)"testuser",
+        .pw_uid = 101,
+        .pw_gid = 20,
+        .pw_gecos = (char*)"Test User",
+        .pw_dir = (char*)"/Users/testuser",
+        .pw_shell = (char*)"/bin/bash"
+    };
+
+    EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
+    EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
+    {
+        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
+    });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+    {
+        names["testuser"] = false;
+    });
+    // A pwpolicy/MDM-imposed change interval, as read from the nested
+    // policyCategoryPasswordChange/policyParameters entry.
+    EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
+    .WillOnce([](const std::string&, nlohmann::json & policyData)
+    {
+        policyData =
+        {
+            {"creation_time", 1735576566.727},
+            {"failed_login_count", 0},
+            {"failed_login_timestamp", 0},
+            {"password_last_set_time", 1735576569.0},
+            {"expires_every_n_days", 90}
+        };
+    });
+
+    expectPasswordData(mockOD);
+
+    UsersProvider provider(mockPasswd, mockUUID, mockOD);
+
+    auto result = provider.collectWithConstraints({101});
+
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
+    EXPECT_EQ(result[0]["password_max_days_between_changes"], 90);
+    EXPECT_EQ(result[0]["password_expiration_date"], 1735576569 + 90 * 86400);
 }
 
 TEST(UsersProviderTest, CollectInvokesCollectAccountPolicyData)
