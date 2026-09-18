@@ -16,8 +16,10 @@ set -euo pipefail
 
 API_URL="${WAZUH_API_URL:-https://localhost:55000}"
 API_USER="${WAZUH_API_USER:-wazuh}"
-API_PASS="${WAZUH_API_PASS:-wazuh}"
 PYTHON="${PYTHON:-python3}"
+# Whatever provisioned the node. There is no shipped default to fall back to, and the file the password
+# came from is removed once the manager stores it.
+API_PASS="${WAZUH_API_PASS:?set it to the password the node was provisioned with}"
 REMOVE_ALL=false
 
 [[ "${1:-}" == "--all" ]] && REMOVE_ALL=true
@@ -26,7 +28,8 @@ TOKEN=$(curl -s -k -X POST "${API_URL}/security/user/authenticate" \
     -u "${API_USER}:${API_PASS}" | "$PYTHON" -c 'import sys,json; print(json.load(sys.stdin)["data"]["token"])' 2>/dev/null || true)
 
 if [[ -z "$TOKEN" ]]; then
-    echo "Error: could not authenticate with the Wazuh API at ${API_URL}" >&2
+    echo "Error: could not authenticate with the Wazuh API at ${API_URL} as '${API_USER}'." >&2
+    echo "Set WAZUH_API_PASS with the password this installation was provisioned with." >&2
     exit 1
 fi
 

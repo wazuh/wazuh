@@ -14,7 +14,7 @@ variables:
   user_auth_context: wazuh-wui
   pass: wazuh
   basic_auth: dGVzdGluZzp3YXp1aA== # b64 encoded user:pass, update if user or pass changes
-  basic_auth_context: d2F6dWgtd3VpOndhenVoLXd1aQ== # b64 encoded user:pass, update if user or pass changes
+  basic_auth_context: d2F6dWgtd3VpOldhenVoV3VpLVByZXNlZWQxIQ== # b64 encoded wazuh-wui:WazuhWui-Preseed1!, matches base/manager/entrypoint.sh
   login_endpoint: security/user/authenticate
 
   # delays

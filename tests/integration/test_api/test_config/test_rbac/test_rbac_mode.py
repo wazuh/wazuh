@@ -68,6 +68,9 @@ pytestmark = pytest.mark.server
 # Used by add_configuration to select the target configuration file
 configuration_type = CONFIGURATION_TYPES[1]
 test_user = 'test_user'
+# The password schema_add_user.sql stores the hash of: this user is the fixture's own, not a default
+# API user, so the password the node was provisioned with does not apply to it.
+test_user_password = 'Rbac-mode-test1.'
 
 # Paths
 test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_rbac_mode.yaml')
@@ -154,7 +157,7 @@ def test_rbac_mode(test_configuration, test_metadata, add_configuration, add_use
         - rbac
     """
     expected_code = test_metadata['expected_code']
-    authentication_headers, _ = login(user=test_user)
+    authentication_headers, _ = login(user=test_user, password=test_user_password)
     url = get_base_url() + '/cluster/node01/info'
 
     # Make a request to check the response status

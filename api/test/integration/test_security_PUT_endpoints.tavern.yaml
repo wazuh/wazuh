@@ -510,7 +510,7 @@ stages:
       verify: False
       <<: *put_users_request
       json:
-        password: "new_user2A!extra"
+        password: "new_user2A-extra"
     response:
       status_code: 200
       json:
@@ -530,7 +530,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        password: "new_user1Aextra"
+        password: "new_user1A-extra"
     response:
       status_code: 200
       json:
@@ -559,7 +559,7 @@ stages:
       verify: False
       <<: *put_users_request
       json:
-        password: "new_pa55worD!"
+        password: "new_pa55worD-"
     response:
       status_code: 200
       json:
@@ -570,7 +570,8 @@ stages:
               allow_run_as: false
           total_affected_items: 1
 
-  - name: Update admin user password (should fail - error 5011)
+  # Succeeds: the token belongs to a reserved user, which is what the 5011 rule requires
+  - name: Update admin user password
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/1"
@@ -578,7 +579,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        password: "HackedAdmin1!"
+        password: "HackedAdmin1-"
     response:
       status_code: 200
       json:
@@ -597,7 +598,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        password: "NewWazuhWui1!"
+        password: "NewWazuhWui1-"
     response:
       status_code: 200
       json:
