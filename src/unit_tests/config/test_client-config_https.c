@@ -407,7 +407,7 @@ static void test_agent_manager_port_defaults_to_1517(void **state) {
 
     const char *xml_str = "<manager><endpoint>10.0.0.5</endpoint></manager>";
 
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__mdebug1, formatted_msg,
                   "No port in <agent><manager><endpoint>. Using the default port 1517.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
@@ -425,7 +425,7 @@ static void test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent(vo
 
     const char *xml_str = "<manager><endpoint>10.0.0.5</endpoint></manager>";
 
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__mdebug1, formatted_msg,
                   "No port in <agent><manager><endpoint>. Using the default port 1517.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);

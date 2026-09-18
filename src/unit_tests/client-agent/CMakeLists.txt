@@ -153,6 +153,18 @@ list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll
                                 -Wl,--wrap,OS_MoveFile \
                                 ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND client-agent_names "test_agent_auth_cli")
+# kill() is wrapped for the running-agentd probe only; the wrapper forwards every real signal
+# to __real_kill, or cmocka's own failure handling would go through it too.
+# OS_MoveFile is wrapped for one thing the enrollment core cannot be asked for any other way: a
+# commit that fails after the manager has already accepted. That is the state the command has the
+# most to say about, and the branch it says it in is chosen here rather than in the core.
+list(APPEND client-agent_flags "-Wl,--wrap,kill -Wl,--wrap,hc_fetch_cacerts \
+                                -Wl,--wrap,hc_enroll -Wl,--wrap,hc_spki_pinned_certificate \
+                                -Wl,--wrap,OS_WriteXML -Wl,--wrap,OS_MoveFile \
+                                -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup \
+                                -Wl,--wrap,chown -Wl,--wrap,fchown ${DEBUG_OP_WRAPPERS}")
+
 list(APPEND client-agent_names "test_https_client_bridge")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
                                 -Wl,--wrap,hc_create -Wl,--wrap,hc_start -Wl,--wrap,hc_destroy \
@@ -250,6 +262,19 @@ if(TARGET test_enrollment)
     # enrollment.h pulls in https_client.h (hc_enroll_result_t), same as
     # test_https_client_bridge above.
     target_include_directories(test_enrollment PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
+endif()
+
+if(TARGET test_agent_auth_cli)
+    # agent_auth_cli.c includes https_client.h through token_bootstrap.h, same as the bootstrap
+    # suite below.
+    target_include_directories(test_agent_auth_cli PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
+
+    # The agent library is built with -DCLIENT (src/CMakeLists.txt), and several path macros in
+    # defs.h are conditional on it -- WAZUHCONF is "etc/ossec.conf" with it and
+    # "etc/wazuh-manager.conf" without. Without this the test writes one file and the code under
+    # test looks for another, and the failure reads as "the file does not exist" from inside a
+    # function the test just proved could see it.
+    target_compile_definitions(test_agent_auth_cli PRIVATE CLIENT)
 endif()
 
 if(TARGET test_token_bootstrap)

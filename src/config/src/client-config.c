@@ -1054,8 +1054,8 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
      * <endpoint>, so pointing the operator at a <port> element sends them looking for
      * something that no longer exists in a 5.x configuration. */
     if (!port_set) {
-        minfo("No port in <agent><manager><endpoint>. Using the default port %d.",
-              DEFAULT_HTTPS_REMOTE_PORT);
+        mdebug1("No port in <agent><manager><endpoint>. Using the default port %d.",
+                DEFAULT_HTTPS_REMOTE_PORT);
     }
 
     return (0);

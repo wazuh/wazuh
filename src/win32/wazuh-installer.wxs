@@ -280,6 +280,9 @@
                     <Component Id="MANAGE_AGENTS.EXE" DiskId="1" Guid="C15C5883-00FB-41D7-B7E6-53C8BC30761F">
                         <File Id="MANAGE_AGENTS.EXE" Name="manage_agents.exe" Source="..\build\bin\manage_agents.exe" />
                     </Component>
+                    <Component Id="WAZUH_AGENT_AUTH.EXE" DiskId="1" Guid="4C02FD25-3A67-4DF0-AC03-EAE0D86064A1">
+                        <File Id="WAZUH_AGENT_AUTH.EXE" Name="wazuh-agent-auth.exe" Source="..\build\bin\wazuh-agent-auth.exe" />
+                    </Component>
                     <Component Id="WAZUH_AGENT_EVENTCHANNEL.EXE" DiskId="1" Guid="044E7997-12B6-4178-BD00-B90500DBA53F">
                         <File Id="WAZUH_AGENT_EVENTCHANNEL.EXE" Name="wazuh-agent.exe" Source="..\build\bin\wazuh-agent-eventchannel.exe" />
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_eventchannel" />
@@ -646,6 +649,7 @@
             <ComponentRef Id="LIBGCC_S_DW2_1.DLL" />
             <ComponentRef Id="LIBSTDCPP_6.DLL" />
             <ComponentRef Id="MANAGE_AGENTS.EXE" />
+            <ComponentRef Id="WAZUH_AGENT_AUTH.EXE" />
             <ComponentRef Id="WAZUH_AGENT_EVENTCHANNEL.EXE" />
             <ComponentRef Id="WAZUH_AGENT.EXE" />
             <ComponentRef Id="VISTA_SEC.TXT" />

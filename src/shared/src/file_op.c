@@ -1943,12 +1943,29 @@ int cldir_ex_ignore(const char * name, const char ** ignore) {
 
 int TempFile(File *file, const char *source, int copy) {
     FILE *fp_src;
-    int fd;
     char template[OS_FLSIZE + 1];
-    mode_t old_mask;
 
     snprintf(template, OS_FLSIZE, "%s.XXXXXX", source);
-    old_mask = umask(0177);
+
+#ifdef WIN32
+    /* mkstemp() does not exist on this platform -- it is defined away to the constant 0 at the
+     * top of this file -- so the POSIX path below would take stdin's descriptor for a fresh
+     * temporary file and hand back a name that was never created. mkstemp_ex() is the real
+     * implementation: it resolves the template with _mktemp_s() and creates the file with a DACL
+     * that admits only Administrators and SYSTEM. */
+    if (mkstemp_ex(template) < 0) {
+        return -1;
+    }
+
+    if (file->fp = wfopen(template, "w"), !file->fp) {
+        unlink(template);
+        return -1;
+    }
+
+    fp_src = wfopen(source, "r");
+#else
+    int fd;
+    mode_t old_mask = umask(0177);
 
     fd = mkstemp(template);
     umask(old_mask);
@@ -1959,7 +1976,6 @@ int TempFile(File *file, const char *source, int copy) {
 
     fp_src = wfopen(source,"r");
 
-#ifndef WIN32
     struct stat buf;
 
     if (w_stat(source, &buf) == 0) {
@@ -1975,8 +1991,6 @@ int TempFile(File *file, const char *source, int copy) {
         mdebug1(FSTAT_ERROR, source, errno, strerror(errno));
     }
 
-#endif
-
     if (file->fp = fdopen(fd, "w"), !file->fp) {
         if (fp_src) {
             fclose(fp_src);
@@ -1985,6 +1999,7 @@ int TempFile(File *file, const char *source, int copy) {
         unlink(template);
         return -1;
     }
+#endif
 
     if (copy) {
         size_t count_r;
@@ -2031,11 +2046,28 @@ int OS_MoveFile(const char *src, const char *dst) {
     char buffer[4096];
     int status = 0;
 
+#ifdef WIN32
+    /* rename() refuses an existing destination on Windows, which is exactly the case every
+     * replace-in-place hits: the trust anchor being refreshed, client.keys being rewritten by a
+     * re-enrollment. Falling through to the copy below would truncate the destination and stream
+     * into it, so a crash mid-copy leaves a half-written file -- and a half-written anchor now
+     * refuses to let the agent start at all (w_agent_validate_ssl_ca). MoveFileEx replaces
+     * atomically within a volume, which src and dst always share here: the temporary file is
+     * created beside its destination. Through the wide-char wrapper, or a path outside the
+     * active code page would fall through to the copy below and lose exactly the atomicity this
+     * branch exists for. */
+    if (utf8_MoveFileEx(src, dst, MOVEFILE_REPLACE_EXISTING)) {
+        return 0;
+    }
+
+    mdebug1("Couldn't move %s: error %lu", dst, GetLastError());
+#else
     if (rename(src, dst) == 0) {
         return 0;
     }
 
     mdebug1("Couldn't rename %s: %s", dst, strerror(errno));
+#endif
 
     fp_src = wfopen(src, "r");
 

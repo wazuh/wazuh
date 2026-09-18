@@ -19,9 +19,13 @@
 #include "module_limits.h"
 #include "enrollment_status.h" /* w_enroll_status_t; NOT enrollment.h -- see that header */
 
-/* Decode the enrollment token on stdin and print what it carries, without its credential.
- * Shared by both agent entry points so Linux and Windows accept exactly the same tokens.
+/* Decode an enrollment token from @p in and print what it carries, without its credential.
+ * Shared by every entry point that answers --show-token, so they cannot drift over which tokens
+ * are acceptable. Streams are parameters because wazuh-agent-auth also reads from --token-file.
  * Returns 0, 2 when the token itself was rejected, or 1 when it could not be read. */
+int w_agent_show_token(FILE *in, FILE *out, FILE *err, const char *progname);
+
+/* The stdin form the two agent entry points use. */
 int w_agent_show_enrollment_token(void);
 
 /* Overwrite the compiled default enrollment password (AUTHD_PASS) in its own allocation and

@@ -1632,6 +1632,10 @@ InstallAgent()
 
     ${INSTALL} -m 0750 -o root -g 0 build/bin/manage_agents ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-agentd ${INSTALLDIR}/bin
+    # Standalone enrollment-token consumer. 0750 root:root like wazuh-agentd: it reads a
+    # credential and installs the trust anchor, so the unprivileged account the agent runs as
+    # must not be able to run it.
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-agent-auth ${INSTALLDIR}/bin
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/incoming

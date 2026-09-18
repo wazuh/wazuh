@@ -278,9 +278,17 @@ int __wrap_chmod(const char *path, mode_t mode) {
 extern int __real_OS_MoveFile(const char *src, const char *dst);
 static bool g_anchor_chown_recorded_before_move = false;
 
+/* Set by the rollback tests: the anchor's rename is the last step of the commit, and making it
+ * fail is the only way to reach the path where an enrollment has already replaced client.keys. */
+static bool g_fail_anchor_move = false;
+
 int __wrap_OS_MoveFile(const char *src, const char *dst) {
     if (is_anchor_path(src) && g_anchor_chown_uid != (uid_t) -1) {
         g_anchor_chown_recorded_before_move = true;
+    }
+
+    if (g_fail_anchor_move && is_anchor_path(src)) {
+        return -1;
     }
 
     return __real_OS_MoveFile(src, dst);
@@ -288,12 +296,37 @@ int __wrap_OS_MoveFile(const char *src, const char *dst) {
 
 /* ---- fixtures ---- */
 
+/* Removes every "<name>.XXXXXX" TempFile() staged beside @p path. A failed commit leaves one
+ * behind by design in some paths, and without this they accumulate across runs of this binary
+ * and make any "nothing was left behind" assertion count the previous run's litter. */
+static void remove_staged_siblings(const char *dir, const char *prefix) {
+    char **entries = wreaddir(dir);
+
+    if (entries == NULL) {
+        return;
+    }
+
+    for (int i = 0; entries[i] != NULL; i++) {
+        char path[PATH_MAX];
+
+        if (strncmp(entries[i], prefix, strlen(prefix)) == 0 &&
+                strlen(entries[i]) > strlen(prefix)) {
+            snprintf(path, sizeof(path), "%s/%s", dir, entries[i]);
+            unlink(path);
+        }
+    }
+
+    free_strarray(entries);
+}
+
 static void remove_test_paths(void) {
     unlink("etc/enrollment_token");
     unlink("etc/certs/root-ca.pem");
     unlink("etc/client.keys");
     unlink("etc/other-file");
     unlink(AGENT_REENROLL_SECRET);
+    remove_staged_siblings("etc/certs", "root-ca.pem.");
+    remove_staged_siblings("etc", "client.keys.");
 }
 
 static int group_setup(void **state) {
@@ -317,6 +350,7 @@ static int setup_test(void **state) {
     memset(&g_enroll_request, 0, sizeof(g_enroll_request));
     g_fetch_call_count = 0;
     g_enroll_call_count = 0;
+    g_fail_anchor_move = false;
     g_spki_call_count = 0;
     g_anchor_chown_uid = (uid_t) -1;
     g_anchor_chown_gid = (gid_t) -1;
@@ -383,6 +417,32 @@ static char *read_file(const char *path) {
 /* Builds and writes a real token, through the production encoder, so the decoder this module
  * runs against is exercised with exactly the wire format authd itself mints -- no hand-crafted
  * base64/JSON in this file. */
+/* The encoded token, for tests that call w_agent_token_enroll() directly rather than going
+ * through the latched wrapper. Caller frees. */
+static char *make_token(bool has_pin, bool has_key, const char *ca_pem) {
+    w_etoken_t token;
+    memset(&token, 0, sizeof(token));
+    token.ver = 1;
+    token.adr = "127.0.0.1:1517/wazuh-manager";
+
+    if (has_pin) {
+        token.has_pin = 1;
+        memset(token.pin, 0xAB, sizeof(token.pin));
+    } else {
+        token.ca_pem = (char *) ca_pem;
+    }
+
+    if (has_key) {
+        token.has_key = 1;
+        memset(token.id, 0x01, sizeof(token.id));
+        memset(token.secret, 0x02, sizeof(token.secret));
+    }
+
+    char *encoded = w_etoken_encode(&token);
+    assert_non_null(encoded);
+    return encoded;
+}
+
 static void write_token_file(bool has_pin, bool has_key, const char *ca_pem) {
     w_etoken_t token;
     memset(&token, 0, sizeof(token));
@@ -597,7 +657,7 @@ static void test_malformed_token_logs_named_error_and_writes_nothing(void **stat
     write_file("etc/enrollment_token", "not-a-valid-token!!!");
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: could not decode the enrollment token: malformed token.");
+                  "Could not decode the enrollment token: malformed token.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
     assert_int_equal(g_fetch_call_count, 0);
@@ -615,7 +675,7 @@ static void test_fetch_adr_unreachable_logs_named_error_and_writes_nothing(void 
     will_return(__wrap_hc_fetch_cacerts, 0);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: /cacerts adr_unreachable -- could not reach the manager to "
+                  "/cacerts adr_unreachable -- could not reach the manager to "
                   "fetch the certificate authority.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_TRANSIENT);
@@ -634,7 +694,7 @@ static void test_fetch_not_found_logs_named_error_and_writes_nothing(void **stat
     will_return(__wrap_hc_fetch_cacerts, 1);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: /cacerts not_found -- the manager has no certificate "
+                  "/cacerts not_found -- the manager has no certificate "
                   "authority configured (it may predate this feature).");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
@@ -653,7 +713,7 @@ static void test_fetch_ca_mismatch_logs_named_error_and_writes_nothing(void **st
     will_return(__wrap_hc_fetch_cacerts, 1);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: /cacerts ca_mismatch -- the manager's configured certificate "
+                  "/cacerts ca_mismatch -- the manager's configured certificate "
                   "authority does not sign its own listener certificate (misprovisioned, not "
                   "necessarily hostile).");
 
@@ -674,7 +734,7 @@ static void test_pin_mismatch_logs_named_error_and_writes_nothing(void **state) 
     will_return(__wrap_hc_spki_pinned_certificate, NULL);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: pin_mismatch -- fetched CA does not match the enrollment "
+                  "pin_mismatch -- fetched CA does not match the enrollment "
                   "token's pin, refusing to trust it.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
@@ -1054,7 +1114,7 @@ static void test_reenroll_secret_link_is_not_chowned(void **state) {
      * same disposition as client.keys's own chown failure. EMLINK is what w_openat_nofollow_vetted()
      * returns for a hard-linked path. */
     expect_string(__wrap__merror, formatted_msg,
-                  "Token bootstrap: could not change ownership of 'etc/reenroll.secret': "
+                  "Could not change ownership of 'etc/reenroll.secret': "
                   "Too many links (31).");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
@@ -1095,6 +1155,190 @@ static void test_bootstrap_without_a_secret_leaves_no_store(void **state) {
     assert_int_not_equal(IsFile(AGENT_REENROLL_SECRET), 0);
 }
 
+
+/* --- the transaction ------------------------------------------------------------------
+ *
+ * These drive w_agent_token_enroll() directly: the latched wrapper always passes
+ * transactional=false, because a first boot has nothing to roll back to, so nothing that goes
+ * through w_agent_token_bootstrap() can reach this code at all. It is the mechanism the PR's
+ * evidence cites for "commit fails -> previous identity restored byte for byte", and until now
+ * no test touched it. */
+
+#define PREVIOUS_KEY_LINE "007 old-agent any 1111111111111111111111111111111111111111111111111111111111111111\n"
+
+/* The enrollment reaches the manager and client.keys is replaced; then the anchor's rename --
+ * the last step of the commit -- fails. Without the rollback the agent is left holding the new
+ * manager's key against the old manager's anchor, able to verify neither. */
+static void test_failed_commit_restores_the_previous_key(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(true, true, NULL);
+
+    write_file(KEYS_FILE, PREVIOUS_KEY_LINE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    opts.transactional = true;
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+    /* The messages themselves are asserted by the tests above; here the subject is the on-disk
+     * outcome, so any logging is allowed rather than restated. No mdebug1: both files already
+     * exist here, so TempFile() never emits its FSTAT_ERROR line, and cmocka counts an
+     * always-expectation that is never consumed as a leftover. */
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any_always(__wrap__merror, formatted_msg);
+
+    g_fail_anchor_move = true;
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_COMMIT);
+
+    /* The whole point: byte for byte, not merely present. */
+    assert_string_equal(read_file(KEYS_FILE), PREVIOUS_KEY_LINE);
+    assert_true(report.rolled_back);
+    /* Empty means the backup was consumed by a successful restore; a path here would mean the
+     * operator has to put it back by hand. */
+    assert_string_equal(report.keys_backup, "");
+
+    free(token);
+}
+
+/* No backup is taken when there was nothing to save, and the report says so rather than claiming
+ * a rollback that never happened. */
+static void test_failed_commit_without_a_previous_key_reports_no_rollback(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(true, true, NULL);
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    opts.transactional = true;   /* asked for, but there is no key and no anchor to snapshot */
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+    /* The messages themselves are asserted by the tests above; here the subject is the
+     * on-disk outcome, so any logging is allowed rather than restated. */
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any_always(__wrap__merror, formatted_msg);
+
+    g_fail_anchor_move = true;
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_COMMIT);
+    assert_false(report.rolled_back);
+
+    free(token);
+}
+
+/* The staged anchor holds the new CA. Every other failure branch removes it; this one used to
+ * free the name and leave the file, so a repeatedly failing commit littered the certs directory. */
+static void test_failed_commit_leaves_no_staged_anchor(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(true, true, NULL);
+    char **leftovers;
+    int staged = 0;
+
+    write_file(KEYS_FILE, PREVIOUS_KEY_LINE);
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    opts.transactional = true;
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+    /* The messages themselves are asserted by the tests above; here the subject is the
+     * on-disk outcome, so any logging is allowed rather than restated. */
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any_always(__wrap__merror, formatted_msg);
+
+    g_fail_anchor_move = true;
+
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_COMMIT);
+
+    leftovers = wreaddir("etc/certs");
+
+    if (leftovers != NULL) {
+        for (int i = 0; leftovers[i] != NULL; i++) {
+            if (strncmp(leftovers[i], "root-ca.pem.", 12) == 0) {
+                staged++;
+            }
+        }
+        free_strarray(leftovers);
+    }
+
+    assert_int_equal(staged, 0);
+
+    free(token);
+}
+
+/* A token longer than the reader's buffer used to come back silently cut short, and the caller
+ * then refused it as malformed -- which points whoever reads that message at the token's contents
+ * instead of its size. Refusing it outright is what lets both callers say so. */
+static void test_a_token_too_long_to_fit_is_refused_rather_than_truncated(void **state) {
+    (void) state;
+
+    char *oversized;
+    os_calloc(W_ETOKEN_MAX_FILE_BYTES + 64, sizeof(char), oversized);
+    memset(oversized, 'A', W_ETOKEN_MAX_FILE_BYTES + 32);
+    write_file("etc/enrollment_token", oversized);
+    os_free(oversized);
+
+    char *token = w_agent_token_read_file("etc/enrollment_token");
+
+    assert_null(token);
+}
+
+/* The boundary the guard above is measured against: a line that fills the buffer exactly, with
+ * nothing after it, is not truncated and must be returned whole. The reader used to hand back
+ * W_ETOKEN_MAX_FILE_BYTES - 2 characters here, quietly dropping the last one. */
+static void test_a_token_that_fills_the_buffer_exactly_is_read_whole(void **state) {
+    (void) state;
+
+    const size_t longest = W_ETOKEN_MAX_FILE_BYTES - 1;
+    char *exact;
+
+    os_calloc(longest + 1, sizeof(char), exact);
+    memset(exact, 'A', longest);
+    write_file("etc/enrollment_token", exact);
+
+    char *token = w_agent_token_read_file("etc/enrollment_token");
+
+    assert_non_null(token);
+    assert_int_equal(strlen(token), longest);
+    assert_string_equal(token, exact);
+
+    os_free(exact);
+    os_free(token);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_no_token_file_is_noop, setup_test, teardown_test),
@@ -1112,6 +1356,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fatal_token_refusal_discards_the_dead_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_disabled_enrollment_keeps_the_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_pin, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_failed_commit_restores_the_previous_key, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_failed_commit_without_a_previous_key_reports_no_rollback, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_failed_commit_leaves_no_staged_anchor, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fresh_enrollment_keys_chown_failure_logs_merror, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_credential_less_token_enrolls_without_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_ca_pem, setup_test, teardown_test),
@@ -1119,6 +1366,10 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_bootstrap_without_a_secret_leaves_no_store, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_secret_link_is_not_chowned, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_a_token_too_long_to_fit_is_refused_rather_than_truncated, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_a_token_that_fills_the_buffer_exactly_is_read_whole, setup_test,
+                                        teardown_test),
     };
 
     return cmocka_run_group_tests(tests, group_setup, NULL);
