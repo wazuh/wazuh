@@ -69,24 +69,24 @@ static const std::map<std::string, int> s_mapPackagesDirectories =
     { "/opt/local/var/macports/registry", MACPORTS}
 };
 
-static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid)
+static std::string resolveProcessName(const pid_t pid, const std::string& fallbackName)
 {
-    nlohmann::json jsProcessInfo{};
-    jsProcessInfo["pid"]        = std::to_string(pid);
-
     char pathBuffer[PROC_PIDPATHINFO_MAXSIZE] = {0};
     const auto pathLen { proc_pidpath(pid, pathBuffer, sizeof(pathBuffer)) };
 
     if (pathLen > 0)
     {
-        const std::string fullPath { pathBuffer };
-        jsProcessInfo["name"] = fullPath.substr(fullPath.find_last_of('/') + 1);
-    }
-    else
-    {
-        jsProcessInfo["name"] = taskInfo.pbsd.pbi_name;
+        return Utils::getFilename(std::string{pathBuffer});
     }
 
+    return fallbackName;
+}
+
+static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid)
+{
+    nlohmann::json jsProcessInfo{};
+    jsProcessInfo["pid"]        = std::to_string(pid);
+    jsProcessInfo["name"]       = resolveProcessName(pid, taskInfo.pbsd.pbi_name);
     jsProcessInfo["state"]      = UNKNOWN_VALUE;
     jsProcessInfo["ppid"]       = taskInfo.pbsd.pbi_ppid;
 
@@ -338,7 +338,7 @@ static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<socket_fdinfo
 
             if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &processInformation, PROC_PIDTBSDINFO_SIZE) != -1)
             {
-                const std::string processName { processInformation.pbi_name };
+                const std::string processName { resolveProcessName(pid, processInformation.pbi_name) };
                 const ProcessInfo processData { pid, processName };
 
                 const auto processFDBufferSize { proc_pidinfo(pid, PROC_PIDLISTFDS, 0, 0, 0) };

@@ -9,6 +9,7 @@
  * Foundation.
  */
 #include "sysInfoProcessMac_test.h"
+#include "filesystemHelper.h"
 #include <string>
 
 // getProcessInfo() has internal linkage and lives in a TU that pulls in the
@@ -18,8 +19,7 @@ static std::string resolveProcessName(const int pathLen, const char* pathBuffer,
 {
     if (pathLen > 0)
     {
-        const std::string fullPath { pathBuffer };
-        return fullPath.substr(fullPath.find_last_of('/') + 1);
+        return Utils::getFilename(std::string{pathBuffer});
     }
 
     return pbiName;
@@ -51,7 +51,7 @@ TEST_F(SysInfoProcessMacTest, FallsBackToPbiNameWhenPathLookupFails)
 {
     const std::string pbiName { "com.apple.accessibility.mediaac" };
 
-    const auto name { resolveProcessName(-1, "", pbiName) };
+    const auto name { resolveProcessName(0, "", pbiName) };
 
     EXPECT_EQ(pbiName, name);
 }
