@@ -15,6 +15,7 @@
 
 - [Overview](guide/README.md)
 - [Migration](guide/migration/README.md)
+  - [Manager migration from 4.x to 5.0](guide/migration/manager-4x-to-5x.md)
   - [SCA policies from 4.x to 5.x](guide/migration/sca-policies-4x-to-5x.md)
   - [CIS-CAT and OpenSCAP to SCA](guide/migration/ciscat-openscap-to-sca.md)
   - [Mail Forwarding and Reporting to Dashboard Notifications](guide/migration/mail-forwarding-reporting.md)
@@ -33,6 +34,7 @@
   - [Vulnerability Detection to CTI-Based Feeds](guide/migration/vulnerability-detection-cti-feeds.md)
   - [Remote Agent Upgrade Migration](guide/migration/remote-agent-upgrade.md)
   - [Migrating CDB lists to KVDB lists](guide/migration/cdb-to-kvdb-migration.md)
+  - [Migrating rules from 4.x to 5.x](guide/migration/rules-4x-to-5x.md)
   - [Migrating decoders from XML to YAML](guide/migration/xml-decoders-migration.md)
 
 # Reference Manual
