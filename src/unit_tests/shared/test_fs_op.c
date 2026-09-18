@@ -21,23 +21,21 @@
 
 #include "shared.h"
 #include "../wrappers/common.h"
+#include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
-// Wrappers
+#define TMPFS_MAGIC 0x01021994
 
-#ifdef __linux__
-int __wrap_statfs(const char * path, struct statfs * buf) {
-    check_expected(path);
-
-    long f_type = mock_type(long);
-
-    if (f_type != -1) {
-        buf->f_type = f_type;
-    }
-
-    return mock_type(int);
+/* setups/teardowns */
+static int setup_group(void **state) {
+    test_mode = 1;
+    return 0;
 }
-#endif
+
+static int teardown_group(void **state) {
+    test_mode = 0;
+    return 0;
+}
 
 // Tests
 
@@ -77,16 +75,17 @@ void test_fs_magic(void **state)
 
 // Regression tests for https://github.com/wazuh/wazuh/issues/38693:
 // skipFS()/IsNFS() must actually evaluate the "#if defined(__linux__)" branch
-// instead of silently short-circuiting to 0. __wrap_statfs() above only exists
+// instead of silently short-circuiting to 0. __wrap_statfs() (stat_wrappers.c) only exists
 // on Linux (struct statfs itself is only declared there), so these are too.
 #ifdef __linux__
 
 void test_skipFS_overlayfs_is_skipped(void **state)
 {
     (void) state;
+    struct statfs sfs = {.f_type = 0x794c7630 /* OVERLAYFS, mirrors test_fs_magic above */};
 
-    expect_string(__wrap_statfs, path, "/etc");
-    will_return(__wrap_statfs, 0x794c7630 /* OVERLAYFS, mirrors test_fs_magic above */);
+    expect_string(__wrap_statfs, __file, "/etc");
+    will_return(__wrap_statfs, &sfs);
     will_return(__wrap_statfs, 0);
     expect_string(__wrap__mdebug2, formatted_msg, "Skipping dir (FS OVERLAYFS): /etc ");
 
@@ -96,9 +95,10 @@ void test_skipFS_overlayfs_is_skipped(void **state)
 void test_skipFS_regular_fs_is_not_skipped(void **state)
 {
     (void) state;
+    struct statfs sfs = {.f_type = 0xEF53 /* EXT4_SUPER_MAGIC */};
 
-    expect_string(__wrap_statfs, path, "/etc");
-    will_return(__wrap_statfs, 0xEF53 /* EXT4_SUPER_MAGIC */);
+    expect_string(__wrap_statfs, __file, "/etc");
+    will_return(__wrap_statfs, &sfs);
     will_return(__wrap_statfs, 0);
 
     assert_int_equal(skipFS("/etc"), 0);
@@ -108,8 +108,8 @@ void test_skipFS_statfs_error(void **state)
 {
     (void) state;
 
-    expect_string(__wrap_statfs, path, "/nonexistent");
-    will_return(__wrap_statfs, -1);
+    expect_string(__wrap_statfs, __file, "/nonexistent");
+    will_return(__wrap_statfs, NULL);
     errno = ENOENT;
     will_return(__wrap_statfs, -1);
 
@@ -119,9 +119,10 @@ void test_skipFS_statfs_error(void **state)
 void test_IsNFS_nfs_mount_is_detected(void **state)
 {
     (void) state;
+    struct statfs sfs = {.f_type = 0x6969 /* NFS */};
 
-    expect_string(__wrap_statfs, path, "/mnt/nfs");
-    will_return(__wrap_statfs, 0x6969 /* NFS */);
+    expect_string(__wrap_statfs, __file, "/mnt/nfs");
+    will_return(__wrap_statfs, &sfs);
     will_return(__wrap_statfs, 0);
 
     assert_int_equal(IsNFS("/mnt/nfs"), 1);
@@ -130,15 +131,70 @@ void test_IsNFS_nfs_mount_is_detected(void **state)
 void test_IsNFS_regular_fs_is_not_detected(void **state)
 {
     (void) state;
+    struct statfs sfs = {.f_type = 0xEF53 /* EXT4_SUPER_MAGIC */};
 
-    expect_string(__wrap_statfs, path, "/etc");
-    will_return(__wrap_statfs, 0xEF53 /* EXT4_SUPER_MAGIC */);
+    expect_string(__wrap_statfs, __file, "/etc");
+    will_return(__wrap_statfs, &sfs);
     will_return(__wrap_statfs, 0);
 
     assert_int_equal(IsNFS("/etc"), 0);
 }
 
 #endif // __linux__
+#ifdef __linux__
+void test_HasFilesystem_tmpfs_same_dev_as_slash_dev_is_skipped(void **state) {
+    struct statfs sfs = {.f_type = TMPFS_MAGIC};
+    struct stat dev_stat = {.st_dev = 100};
+    struct stat path_stat = {.st_dev = 100};
+    fs_set set = {.dev = 1, .nfs = 0, .sys = 0, .proc = 0};
+
+    expect_string(__wrap_statfs, __file, "/dev");
+    will_return(__wrap_statfs, &sfs);
+    will_return(__wrap_statfs, 0);
+
+    expect_string(__wrap_stat, __file, "/dev");
+    will_return(__wrap_stat, &dev_stat);
+    will_return(__wrap_stat, 0);
+
+    expect_string(__wrap_stat, __file, "/dev");
+    will_return(__wrap_stat, &path_stat);
+    will_return(__wrap_stat, 0);
+
+    assert_true(HasFilesystem("/dev", set));
+}
+
+void test_HasFilesystem_tmpfs_different_dev_from_slash_dev_is_monitored(void **state) {
+    struct statfs sfs = {.f_type = TMPFS_MAGIC};
+    struct stat dev_stat = {.st_dev = 100};
+    struct stat path_stat = {.st_dev = 200};
+    fs_set set = {.dev = 1, .nfs = 0, .sys = 0, .proc = 0};
+
+    expect_string(__wrap_statfs, __file, "/export/reports");
+    will_return(__wrap_statfs, &sfs);
+    will_return(__wrap_statfs, 0);
+
+    expect_string(__wrap_stat, __file, "/dev");
+    will_return(__wrap_stat, &dev_stat);
+    will_return(__wrap_stat, 0);
+
+    expect_string(__wrap_stat, __file, "/export/reports");
+    will_return(__wrap_stat, &path_stat);
+    will_return(__wrap_stat, 0);
+
+    assert_false(HasFilesystem("/export/reports", set));
+}
+
+void test_HasFilesystem_tmpfs_skip_dev_disabled_is_monitored(void **state) {
+    struct statfs sfs = {.f_type = TMPFS_MAGIC};
+    fs_set set = {.dev = 0, .nfs = 0, .sys = 0, .proc = 0};
+
+    expect_string(__wrap_statfs, __file, "/export/reports");
+    will_return(__wrap_statfs, &sfs);
+    will_return(__wrap_statfs, 0);
+
+    assert_false(HasFilesystem("/export/reports", set));
+}
+#endif
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -149,7 +205,10 @@ int main(void) {
             cmocka_unit_test(test_skipFS_statfs_error),
             cmocka_unit_test(test_IsNFS_nfs_mount_is_detected),
             cmocka_unit_test(test_IsNFS_regular_fs_is_not_detected),
-#endif // __linux__
+            cmocka_unit_test(test_HasFilesystem_tmpfs_same_dev_as_slash_dev_is_skipped),
+            cmocka_unit_test(test_HasFilesystem_tmpfs_different_dev_from_slash_dev_is_monitored),
+            cmocka_unit_test(test_HasFilesystem_tmpfs_skip_dev_disabled_is_monitored),
+#endif
     };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
