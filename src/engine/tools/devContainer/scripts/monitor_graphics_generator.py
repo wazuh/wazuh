@@ -440,6 +440,12 @@ REMOTED_MODULE_METRICS = [
     ("http_stateful_responses_2xx",  "POST /stateful — Accepted (2xx)",   "Count"),
     ("http_stateful_responses_503",  "POST /stateful — Shed/Failed (503)", "Count"),
     ("http_stateful_latency_p99",    "POST /stateful — End-to-end p99",   "microseconds"),
+    # The two unauthenticated routes and their rate limits. `available` sitting at 0 while
+    # `rate_limited` climbs is a rate set below what the fleet needs, not necessarily an attack.
+    ("enroll_rate_limited",          "POST /enroll — Refused by the Rate Limit (429)", "Count"),
+    ("enroll_rate_limit_available",  "POST /enroll — Rate-limit Allowance Left", "Requests"),
+    ("cacerts_rate_limited",         "GET /cacerts — Refused by the Rate Limit (429)", "Count"),
+    ("cacerts_rate_limit_available", "GET /cacerts — Rate-limit Allowance Left", "Requests"),
     ("server_budget_available_bytes", "Public Transport — In-flight Budget Available", "Bytes"),
     ("server_budget_inflight_bytes",  "Public Transport — In-flight Bytes Resident",   "Bytes"),
     ("server_budget_rejected_total",  "Public Transport — Requests Shed by the Budget", "Count"),
@@ -451,6 +457,12 @@ REMOTED_MODULE_METRICS = [
     ("download_started",              "POST /download — Transfers Started",   "Count"),
     ("download_bytes_total",          "POST /download — Bytes Offered",       "Bytes"),
     ("download_not_found",            "POST /download — Unknown Group/WPK (404)", "Count"),
+    # The connection ceiling rejects nothing when reached (the accept is postponed and the
+    # connection waits in the kernel backlog), so this level is the only warning it is close --
+    # and the only basis on which 'max_parallel_connections' can be sized rather than guessed.
+    # Downloads are the usual reason it climbs: a streamed response holds its connection for
+    # the whole transfer. Plotted against its cap below as well.
+    ("server_connections_open",   "Public Transport — Connections Open",  "Connections"),
     ("admin_sessions_live",       "Admin Socket — Live Connections",      "Connections"),
 ]
 
@@ -467,6 +479,9 @@ _ENROLL_OUTCOME_FUNNEL_COLS = [
     "enroll_authd_error",
     "enroll_authd_unavailable",
     "enroll_authd_queue_rejected_total",
+    # Refused before the handler ran, so it is in none of the others: this line rising while the
+    # three authd_* ones stay flat is the rate limit doing its job rather than a failure.
+    "enroll_rate_limited",
 ]
 
 # Depth against its own cap: the pair that says whether authd_max_queue_size is sized right.
@@ -503,8 +518,8 @@ _FWD_ERROR_FUNNEL_COLS = [
 
 # One responses funnel per forwarded endpoint: WHAT the agents were answered. Some cells are
 # structurally zero for a given endpoint (kept for a uniform vocabulary).
-_HTTP_RESPONSE_ENDPOINTS = ["stateless", "stateful", "stats", "config", "enroll"]
-_HTTP_RESPONSE_CODES = ["2xx", "400", "403", "409", "413", "500", "503", "other"]
+_HTTP_RESPONSE_ENDPOINTS = ["stateless", "stateful", "stats", "config", "enroll", "cacerts"]
+_HTTP_RESPONSE_CODES = ["2xx", "400", "403", "409", "413", "429", "500", "503", "other"]
 
 # The admission split: everything that arrived lands in exactly one of these. remoted is a
 # synchronous passthrough of VD's admission, so accepted means "VD queued it and will run it"
@@ -1139,6 +1154,18 @@ def generate_charts(
                 "Requests", "Requests",
                 "Remoted Module \u2014 Deferred-work Occupancy",
                 os.path.join(out_dir, f"remoted_module_deferred.{fmt}"),
+            )
+        # Same occupancy-vs-cap shape for the connection ceiling, which is the one capacity limit
+        # with no rejection counter: reaching it postpones the accept instead of refusing, so the
+        # gap between these two lines closing is the only warning available.
+        if any("server_connections_open" in df.columns for df in remoted_module_dfs.values()):
+            plot_stacked_timeseries(
+                remoted_module_dfs,
+                "server_connections_open", "server_connections_max",
+                "Connections open", "Configured connection cap",
+                "Connections", "Connections",
+                "Remoted Module \u2014 Connection Occupancy",
+                os.path.join(out_dir, f"remoted_module_connections.{fmt}"),
             )
 
     # -- Manager log events --------------------------------------------------

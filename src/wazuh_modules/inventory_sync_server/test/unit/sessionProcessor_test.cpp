@@ -305,12 +305,14 @@ TEST_F(SessionProcessorTest, MetadataAndGroupModesRunOneScopedUpdateByQuery)
     struct Case
     {
         invsync::test::fb::Mode mode;
-        const char* mustContain; // a fragment that identifies the script family
-        const char* mustNotContain;
+        const char* mustContain;    // a fragment that identifies the script family
+        const char* mustNotContain; // what the sibling family has and this one must not
     };
+    // Both deltas compare before writing, exactly like their checks, so only the version stamp
+    // separates the families now.
     const Case cases[] = {
-        {invsync::test::fb::Mode_MetadataDelta, "state.document_version = params.globalVersion", "needsUpdate"},
-        {invsync::test::fb::Mode_GroupDelta, "wazuh.agent.groups = params.groups", "needsUpdate"},
+        {invsync::test::fb::Mode_MetadataDelta, "state.document_version = params.globalVersion", nullptr},
+        {invsync::test::fb::Mode_GroupDelta, "state.document_version = params.globalVersion", nullptr},
         {invsync::test::fb::Mode_MetadataCheck, "needsUpdate", "params.timestamp"},
         {invsync::test::fb::Mode_GroupCheck, "needsUpdate", "params.timestamp"},
     };
@@ -340,7 +342,50 @@ TEST_F(SessionProcessorTest, MetadataAndGroupModesRunOneScopedUpdateByQuery)
         EXPECT_EQ(CLUSTER, query["query"]["bool"]["must"][1]["term"]["wazuh.cluster.name"]);
         const auto script = query["script"]["source"].get<std::string>();
         EXPECT_NE(std::string::npos, script.find(testCase.mustContain)) << script;
-        EXPECT_EQ(std::string::npos, script.find(testCase.mustNotContain)) << script;
+        if (testCase.mustNotContain != nullptr)
+        {
+            EXPECT_EQ(std::string::npos, script.find(testCase.mustNotContain)) << script;
+        }
+    }
+}
+
+TEST_F(SessionProcessorTest, BothDeltasCompareBeforeTheyWrite)
+{
+    // Both deltas match `lte` and decide in the script, so a retry rewrites nothing the previous
+    // attempt applied while a document already at this version is still repaired if it drifted.
+    const struct
+    {
+        invsync::test::fb::Mode mode;
+        const char* writes;
+    } cases[] = {
+        {invsync::test::fb::Mode_MetadataDelta, "wazuh.agent.host.hostname = params.hostname"},
+        {invsync::test::fb::Mode_GroupDelta, "wazuh.agent.groups = params.groups"},
+    };
+
+    for (const auto& testCase : cases)
+    {
+        auto localEvents = std::make_shared<ConnectorEvents>();
+        FakeIndexerConnectorSync localConnector {localEvents, "sync"};
+
+        SessionSpec spec;
+        spec.mode = testCase.mode;
+        spec.indices = {"wazuh-states-inventory-packages"};
+
+        const auto prepared = prepare(invsync::test::buildBareSession(spec));
+        ASSERT_EQ(200, processor.executeImmediate(prepared.session, localConnector).status);
+
+        const auto ops = localEvents->syncOps();
+        ASSERT_EQ(1U, ops.size());
+        const auto query = nlohmann::json::parse(std::get<3>(ops[0]));
+        const auto mode = static_cast<int>(testCase.mode);
+
+        const auto& range = query["query"]["bool"]["should"][1]["range"]["state.document_version"];
+        EXPECT_TRUE(range.contains("lte")) << "mode " << mode << ": " << range.dump();
+
+        const auto script = query["script"]["source"].get<std::string>();
+        EXPECT_NE(std::string::npos, script.find("ctx.op = 'noop'")) << "mode " << mode << ": " << script;
+        EXPECT_NE(std::string::npos, script.find(testCase.writes)) << "mode " << mode << ": " << script;
+        EXPECT_NE(std::string::npos, script.find("state.modified_at = params.timestamp")) << script;
     }
 }
 

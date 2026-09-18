@@ -113,7 +113,7 @@ namespace invsync::indexer
         BulkRequestStats takeBulkRequestStats() override
         {
             const auto stats = m_inner.takeBulkRequestStats();
-            return {stats.requests, stats.bytes};
+            return {stats.requests, stats.bytes, stats.conflictRetries};
         }
 
     private:

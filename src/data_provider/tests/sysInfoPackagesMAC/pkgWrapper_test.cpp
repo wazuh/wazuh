@@ -89,7 +89,7 @@ TEST_F(PKGWrapperTest, LongVersion)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -118,7 +118,7 @@ TEST_F(PKGWrapperTest, ShortVersion)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -147,7 +147,7 @@ TEST_F(PKGWrapperTest, NameDifferentExecutable)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -176,7 +176,7 @@ TEST_F(PKGWrapperTest, NameFirst)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -205,7 +205,7 @@ TEST_F(PKGWrapperTest, NoNameButExecutable)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -234,7 +234,7 @@ TEST_F(PKGWrapperTest, NoNameNoExecutable)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -263,7 +263,7 @@ TEST_F(PKGWrapperTest, NoVersion)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -292,7 +292,7 @@ TEST_F(PKGWrapperTest, NoGroups)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -321,7 +321,7 @@ TEST_F(PKGWrapperTest, NoDescription)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
@@ -350,13 +350,66 @@ TEST_F(PKGWrapperTest, NoVendor)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->size(), 0);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+}
+
+// A bundle under a Utilities directory is the only case that may report
+// "utilities". Paired with the cases above, which all sit directly under
+// input_files, this pins both values the classifier can produce.
+TEST_F(PKGWrapperTest, SourceUtilitiesFolder)
+{
+    std::string inputPath;
+    inputPath += currentWorkingDirectory();
+    inputPath += "/input_files/Utilities";
+    std::string package { "PKGWrapperTest_Utilities.app" };
+
+    struct PackageContext ctx
+    {
+        inputPath, package, ""
+    };
+    std::shared_ptr<PKGWrapper> wrapper;
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+    EXPECT_EQ(wrapper->name(), "SampleUtility");
+    EXPECT_EQ(wrapper->version(), "1.2.3");
+    EXPECT_EQ(wrapper->groups(), "public.app-category.utilities");
+    EXPECT_EQ(wrapper->description(), "com.wazuh.SampleUtility");
+    EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->format(), "pkg");
+    EXPECT_EQ(wrapper->osPatch(), "");
+    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
+    EXPECT_EQ(wrapper->vendor(), "Wazuh");
+    EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+}
+
+// The classifier looks for the substring anywhere in the path, so it must not
+// be fooled by a bundle whose own name merely contains the word. This case
+// fails against a classifier rewritten as a prefix or a whole-name match.
+TEST_F(PKGWrapperTest, SourceBundleNamedLikeUtilities)
+{
+    std::string inputPath;
+    inputPath += currentWorkingDirectory();
+    inputPath += "/input_files";
+    std::string package { "PKGWrapperTest_MyUtilities.app" };
+
+    struct PackageContext ctx
+    {
+        inputPath, package, ""
+    };
+    std::shared_ptr<PKGWrapper> wrapper;
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+    EXPECT_EQ(wrapper->name(), "MyUtilities");
+    EXPECT_EQ(wrapper->source(), "applications");
+    EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
 }
 
 TEST_F(PKGWrapperTest, pkgVersionXML)

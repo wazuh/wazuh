@@ -57,7 +57,7 @@ from wazuh_testing.tools.simulators.remoted_simulator import DEFAULT_MANAGER_END
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from utils import wait_connect, wait_enrollment_try
+from utils import log_position, wait_connect, wait_enrollment_try
 
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
@@ -135,11 +135,15 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
     remoted_server = None
     try:
         # Start RemotedSimulator
+        # Anchored before the listener exists: the agent's retry loop can connect and log its
+        # once-only acceptance line before the wait below is entered, and a self-anchored wait
+        # would then start reading past it (utils.py's log_position()).
+        since = log_position()
         remoted_server = RemotedSimulator(prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
         remoted_server.start()
 
         # Wait until Agent is connected
-        wait_connect()
+        wait_connect(since=since)
 
         # Reset simulator
         remoted_server.destroy()
@@ -159,11 +163,15 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
         remoted_server.destroy()
 
         # Start responding Agent
+        # Anchored before the listener exists: the agent's retry loop can connect and log its
+        # once-only acceptance line before the wait below is entered, and a self-anchored wait
+        # would then start reading past it (utils.py's log_position()).
+        since = log_position()
         remoted_server = RemotedSimulator(prefix=DEFAULT_MANAGER_ENDPOINT_PREFIX)
         remoted_server.start()
 
         # Wait until Agent is connected
-        wait_connect()
+        wait_connect(since=since)
     finally:
         # Reset simulator
         if remoted_server:

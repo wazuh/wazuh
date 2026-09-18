@@ -183,6 +183,12 @@ class ControlStream final
         /// at boot for its own reasons.
         bool m_producersPaused {false};
 
+        /// One 404 report per incident: /control retries forever on its own cadence,
+        /// so the condition would otherwise be announced every cycle for as long as
+        /// it lasts. Cleared by a success, so a route that breaks again later is
+        /// reported again.
+        bool m_routeNotFoundReported {false};
+
         /// Set from Effects::resetCadence; see consumeFastFollowup().
         bool m_fastFollowup {false};
 };

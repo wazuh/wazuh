@@ -97,7 +97,8 @@ list(APPEND client-agent_names "test_startup_gate")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_SHA256_File ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_agent_ssl_ca")
-list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,os_find_ca_bundle ${DEBUG_OP_WRAPPERS}")
+list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,os_find_ca_bundle \
+                                -Wl,--wrap,w_x509_load_pem -Wl,--wrap,X509_free ${DEBUG_OP_WRAPPERS}")
 
 # getAgentConfig() reads the agt globals and builds cJSON, nothing else: no wrappers.
 list(APPEND client-agent_names "test_agent_config")
@@ -117,11 +118,47 @@ list(APPEND client-agent_flags " ")
 list(APPEND client-agent_names "test_enrollment")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS}")
 
+# w_reenroll_secret_store()/load()/clear() (#39064): the real store against real files relative to
+# the working directory -- the atomic rename and the 0640 mode are the point, so nothing about the
+# filesystem is mocked. Only the log wrappers, same as test_client_conf_ssl_resolution above.
+list(APPEND client-agent_names "test_reenroll_secret")
+# w_reenroll_secret_bootstrap() (#39315) mocks only the one module boundary it calls through --
+# w_https_client_fetch_reenroll_secret(), the bridge to POST /enroll/secret -- exactly the
+# convention test_token_bootstrap below uses. The store itself keeps running for real.
+list(APPEND client-agent_flags "-Wl,--wrap,w_https_client_fetch_reenroll_secret ${DEBUG_OP_WRAPPERS}")
+
+# w_shred_file_in_place()/w_agent_shred_enrollment_password() (#39064): the real shredder against
+# real files relative to the working directory. Whether the open truncates is the whole point, so
+# nothing about the filesystem is mocked -- only the log wrappers, same as test_reenroll_secret
+# above, whose w_reenroll_secret_clear() shares this shredder.
+list(APPEND client-agent_names "test_shred_file")
+list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS}")
+
+# w_agent_token_bootstrap(): mocks only the https_client module boundary it calls
+# through (hc_fetch_cacerts/hc_enroll/hc_spki_pinned_certificate), the same
+# convention test_https_client_bridge uses for that boundary below -- everything else
+# (IsFile/TempFile/OS_MoveFile/w_etoken_*, w_enrollment_build_request/process_response) runs
+# for real against temp files relative to the working directory, same style as
+# test_client_conf_ssl_resolution above.
+# chown/chmod/fchown are wrapped rather than left to run for real because what the bootstrap
+# asks for -- an anchor (and client.keys) owned by root -- is a privileged operation:
+# unwrapped, the suite passes as root and fails as anyone else, which is the difference
+# between a local run and CI. Wrapping them also makes the ownership assertable instead of
+# merely inspectable. client.keys goes through fchown() rather than chown() (see
+# w_token_bootstrap_chown_keys_file() in token_bootstrap.c), so it needs its own wrap.
+list(APPEND client-agent_names "test_token_bootstrap")
+list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll \
+                                -Wl,--wrap,hc_spki_pinned_certificate -Wl,--wrap,OS_IsValidIP \
+                                -Wl,--wrap,chown -Wl,--wrap,chmod -Wl,--wrap,fchown \
+                                -Wl,--wrap,OS_MoveFile \
+                                ${DEBUG_OP_WRAPPERS}")
+
 list(APPEND client-agent_names "test_https_client_bridge")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
                                 -Wl,--wrap,hc_create -Wl,--wrap,hc_start -Wl,--wrap,hc_destroy \
                                 -Wl,--wrap,hc_set_agent_identity -Wl,--wrap,hc_submit_event \
                                 -Wl,--wrap,hc_set_config_hash -Wl,--wrap,hc_enroll \
+                                -Wl,--wrap,hc_fetch_reenroll_secret \
                                 -Wl,--wrap,try_enroll_to_server \
                                 -Wl,--wrap,CreateThread -Wl,--wrap,sleep -Wl,--wrap,getpid \
                                 -Wl,--wrap,w_agentd_state_update -Wl,--wrap,getDefine_Int \
@@ -213,6 +250,18 @@ if(TARGET test_enrollment)
     # enrollment.h pulls in https_client.h (hc_enroll_result_t), same as
     # test_https_client_bridge above.
     target_include_directories(test_enrollment PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
+endif()
+
+if(TARGET test_token_bootstrap)
+    # token_bootstrap.c pulls in https_client.h directly (hc_config_t, hc_cacerts_*,
+    # hc_enroll_*), same as test_enrollment/test_https_client_bridge above.
+    target_include_directories(test_token_bootstrap PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
+endif()
+
+if(TARGET test_reenroll_secret)
+    # https_client_bridge.h pulls in https_client.h (hc_secret_result_t, for the wrapped
+    # w_https_client_fetch_reenroll_secret), same as test_token_bootstrap above.
+    target_include_directories(test_reenroll_secret PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
 endif()
 
 # Component test for the durable dedup + IPC round-trip: wires the

@@ -31,6 +31,38 @@ namespace remoted::enrollment
         std::string ip;
         std::optional<std::string> groups;
         std::optional<std::string> keyHash;
+        /// The enrollment token the request authenticated with (issue #38993): its id, exactly as the
+        /// bearer's `kid` spelled it and as EnrollmentAuthenticator verified it. Forwarded as
+        /// `token_id` so authd consumes one use of that token (and answers 9022/9023/9024 when it
+        /// disagrees with remoted's replica about the token's state). Absent for the password and
+        /// Open paths, where the wire request stays byte-identical to what it was before tokens.
+        std::optional<std::string> tokenId;
+        /// Re-enrollment (issue #38993): the agent id the bearer named (`kid`) and the bearer itself, both
+        /// verbatim and UNVERIFIED -- forwarded as `reenroll` = {kid, bearer} for authd on the master to
+        /// verify against that agent's re-enrollment secret (which only its global.db holds) and, when it
+        /// verifies, to rotate the agent's key and secret in place. Never together with tokenId.
+        struct ReenrollCredential
+        {
+            std::string kid;
+            std::string bearer;
+        };
+        std::optional<ReenrollCredential> reenroll;
+    };
+
+    /// Fields forwarded to authd's local socket "issue_reenroll_secret" function (issue #39315):
+    /// the agent to mint a re-enrollment secret for, and the fingerprint of the key that proved it.
+    /// Both come from remoted's AuthMiddleware (the bearer's verified `sub`, and the key that
+    /// verified it), never from a request field -- which is what makes it impossible for one agent
+    /// to ask about another.
+    ///
+    /// No credential travels here: the fingerprint is a one-way digest of a key authd already
+    /// holds, so it cannot be replayed as one. It is an identity ASSERTION that authd re-checks
+    /// against its own keystore, not a credential authd trusts -- remoted's copy of client.keys may
+    /// be a stale replica, which is precisely why the authority has to be the one to compare.
+    struct AuthdSecretRequest
+    {
+        std::string id;
+        std::string keyFingerprint;
     };
 
     /**
@@ -53,6 +85,10 @@ namespace remoted::enrollment
         std::string name;
         std::string ip;
         std::string key;
+        /// The agent's re-enrollment secret (issue #38993): 64 hex chars authd generated next to the key
+        /// and stored in global.db, handed to the agent once, here. Empty when authd sent none (an authd
+        /// that predates the secret, or a master behind a worker that does) -- the 200 then omits it.
+        std::string reenrollSecret;
     };
 
     /**
@@ -159,6 +195,14 @@ namespace remoted::enrollment
         /// concurrently with another call's callback on a different thread) -- even if the client
         /// is stopping or the queue is full (errorCode -1 in both cases).
         void addAgent(AuthdAddRequest request, std::function<void(AuthdResult)> callback);
+
+        /// Enqueues an "issue_reenroll_secret" request (issue #39315), with exactly the contract
+        /// addAgent() has above -- same bounded queue, same worker pool, same errorCode -1 for a
+        /// full queue or a stopping client. Sharing the queue is deliberate: the two routes cost
+        /// authd the same round trip, so they must not be able to outbid each other for it.
+        /// On success only `id` and `reenrollSecret` are populated; authd rotates nothing, so
+        /// there is no key to return.
+        void issueReenrollSecret(AuthdSecretRequest request, std::function<void(AuthdResult)> callback);
 
         /// Resolves the effective response timeout for a configured value (0 = worker-aware
         /// default). A pure function of its arguments; exposed for unit testing.

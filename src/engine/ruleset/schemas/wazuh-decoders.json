@@ -7328,7 +7328,7 @@
               ]
             },
             "message_id": {
-              "description": "Module: ecs\nIndexerType: keyword\n\nIdentifier from the RFC 5322 `Message-ID:` email header that refers to a particular email message.",
+              "description": "Module: ecs\nIndexerType: text\n\nIdentifier from the RFC 5322 `Message-ID:` email header that refers to a particular email message.",
               "items": {
                 "type": [
                   "string"
@@ -7716,7 +7716,7 @@
           ]
         },
         "email.message_id": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nIdentifier from the RFC 5322 `Message-ID:` email header that refers to a particular email message.",
+          "description": "Module: ecs\nIndexerType: text\n\nIdentifier from the RFC 5322 `Message-ID:` email header that refers to a particular email message.",
           "items": {
             "type": [
               "string"
@@ -7836,7 +7836,7 @@
               ]
             },
             "message": {
-              "description": "Module: ecs\nIndexerType: keyword\n\nError message.",
+              "description": "Module: ecs\nIndexerType: text\n\nError message.",
               "items": {
                 "type": [
                   "string"
@@ -7849,7 +7849,7 @@
               ]
             },
             "stack_trace": {
-              "description": "Module: ecs\nIndexerType: keyword\n\nThe stack trace of this error in plain text.",
+              "description": "Module: ecs\nIndexerType: text\n\nThe stack trace of this error in plain text.",
               "items": {
                 "type": [
                   "string"
@@ -7906,7 +7906,7 @@
           ]
         },
         "error.message": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nError message.",
+          "description": "Module: ecs\nIndexerType: text\n\nError message.",
           "items": {
             "type": [
               "string"
@@ -7919,7 +7919,7 @@
           ]
         },
         "error.stack_trace": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nThe stack trace of this error in plain text.",
+          "description": "Module: ecs\nIndexerType: text\n\nThe stack trace of this error in plain text.",
           "items": {
             "type": [
               "string"
@@ -15908,7 +15908,7 @@
                       ]
                     },
                     "content": {
-                      "description": "Module: ecs\nIndexerType: keyword\n\nThe full HTTP request body.",
+                      "description": "Module: ecs\nIndexerType: text\n\nThe full HTTP request body.",
                       "items": {
                         "type": [
                           "string"
@@ -16023,7 +16023,7 @@
                       ]
                     },
                     "content": {
-                      "description": "Module: ecs\nIndexerType: keyword\n\nThe full HTTP response body.",
+                      "description": "Module: ecs\nIndexerType: text\n\nThe full HTTP response body.",
                       "items": {
                         "type": [
                           "string"
@@ -16128,7 +16128,7 @@
           ]
         },
         "http.request.body.content": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nThe full HTTP request body.",
+          "description": "Module: ecs\nIndexerType: text\n\nThe full HTTP request body.",
           "items": {
             "type": [
               "string"
@@ -16227,7 +16227,7 @@
           ]
         },
         "http.response.body.content": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nThe full HTTP response body.",
+          "description": "Module: ecs\nIndexerType: text\n\nThe full HTTP response body.",
           "items": {
             "type": [
               "string"
@@ -17056,7 +17056,7 @@
           ]
         },
         "message": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFor log events the message field contains the log message, optimized for viewing in a log viewer.\nFor structured logs without an original message field, other fields can be concatenated to form a human-readable summary of the event.\nIf multiple messages exist, they can be combined into one message.",
+          "description": "Module: ecs\nIndexerType: text\n\nFor log events the message field contains the log message, optimized for viewing in a log viewer.\nFor structured logs without an original message field, other fields can be concatenated to form a human-readable summary of the event.\nIf multiple messages exist, they can be combined into one message.",
           "items": {
             "type": [
               "string"
@@ -20657,7 +20657,7 @@
               ]
             },
             "command_line": {
-              "description": "Module: ecs\nIndexerType: keyword\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
+              "description": "Module: ecs\nIndexerType: text\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
               "items": {
                 "type": [
                   "string"
@@ -21368,7 +21368,7 @@
                   ]
                 },
                 "command_line": {
-                  "description": "Module: ecs\nIndexerType: keyword\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
+                  "description": "Module: ecs\nIndexerType: text\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
                   "items": {
                     "type": [
                       "string"
@@ -22107,7 +22107,7 @@
                   ]
                 },
                 "command_line": {
-                  "description": "Module: ecs\nIndexerType: keyword\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
+                  "description": "Module: ecs\nIndexerType: text\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
                   "items": {
                     "type": [
                       "string"
@@ -22770,7 +22770,7 @@
                   ]
                 },
                 "text": {
-                  "description": "Module: ecs\nIndexerType: keyword\n\nA chunk of output or input sanitized to UTF-8.\nBest efforts are made to ensure complete lines are captured in these events. Assumptions should NOT be made that multiple lines will appear in the same event. TTY output may contain terminal control codes such as for cursor movement, so some string queries may not match due to terminal codes inserted between characters of a word.",
+                  "description": "Module: ecs\nIndexerType: text\n\nA chunk of output or input sanitized to UTF-8.\nBest efforts are made to ensure complete lines are captured in these events. Assumptions should NOT be made that multiple lines will appear in the same event. TTY output may contain terminal control codes such as for cursor movement, so some string queries may not match due to terminal codes inserted between characters of a word.",
                   "items": {
                     "type": [
                       "string"
@@ -23314,7 +23314,7 @@
                   ]
                 },
                 "command_line": {
-                  "description": "Module: ecs\nIndexerType: keyword\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
+                  "description": "Module: ecs\nIndexerType: text\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
                   "items": {
                     "type": [
                       "string"
@@ -25677,7 +25677,7 @@
                   ]
                 },
                 "command_line": {
-                  "description": "Module: ecs\nIndexerType: keyword\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
+                  "description": "Module: ecs\nIndexerType: text\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
                   "items": {
                     "type": [
                       "string"
@@ -25945,7 +25945,7 @@
                   ]
                 },
                 "command_line": {
-                  "description": "Module: ecs\nIndexerType: keyword\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
+                  "description": "Module: ecs\nIndexerType: text\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
                   "items": {
                     "type": [
                       "string"
@@ -27044,7 +27044,7 @@
           ]
         },
         "process.command_line": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
+          "description": "Module: ecs\nIndexerType: text\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
           "items": {
             "type": [
               "string"
@@ -27714,7 +27714,7 @@
           ]
         },
         "process.entry_leader.command_line": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
+          "description": "Module: ecs\nIndexerType: text\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
           "items": {
             "type": [
               "string"
@@ -28338,7 +28338,7 @@
           ]
         },
         "process.group_leader.command_line": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
+          "description": "Module: ecs\nIndexerType: text\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
           "items": {
             "type": [
               "string"
@@ -28923,7 +28923,7 @@
           ]
         },
         "process.io.text": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nA chunk of output or input sanitized to UTF-8.\nBest efforts are made to ensure complete lines are captured in these events. Assumptions should NOT be made that multiple lines will appear in the same event. TTY output may contain terminal control codes such as for cursor movement, so some string queries may not match due to terminal codes inserted between characters of a word.",
+          "description": "Module: ecs\nIndexerType: text\n\nA chunk of output or input sanitized to UTF-8.\nBest efforts are made to ensure complete lines are captured in these events. Assumptions should NOT be made that multiple lines will appear in the same event. TTY output may contain terminal control codes such as for cursor movement, so some string queries may not match due to terminal codes inserted between characters of a word.",
           "items": {
             "type": [
               "string"
@@ -29437,7 +29437,7 @@
           ]
         },
         "process.parent.command_line": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
+          "description": "Module: ecs\nIndexerType: text\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
           "items": {
             "type": [
               "string"
@@ -31638,7 +31638,7 @@
           ]
         },
         "process.previous.command_line": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
+          "description": "Module: ecs\nIndexerType: text\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
           "items": {
             "type": [
               "string"
@@ -31858,7 +31858,7 @@
           ]
         },
         "process.session_leader.command_line": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
+          "description": "Module: ecs\nIndexerType: text\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
           "items": {
             "type": [
               "string"
@@ -32655,7 +32655,7 @@
                   ]
                 },
                 "strings": {
-                  "description": "Module: ecs\nIndexerType: keyword\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
+                  "description": "Module: ecs\nIndexerType: text\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
                   "items": {
                     "type": [
                       "string"
@@ -32756,7 +32756,7 @@
           ]
         },
         "registry.data.strings": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
+          "description": "Module: ecs\nIndexerType: text\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
           "items": {
             "type": [
               "string"
@@ -39305,7 +39305,7 @@
                               ]
                             },
                             "strings": {
-                              "description": "Module: ecs\nIndexerType: keyword\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
+                              "description": "Module: ecs\nIndexerType: text\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
                               "items": {
                                 "type": [
                                   "string"
@@ -39554,7 +39554,7 @@
                           ]
                         },
                         "full": {
-                          "description": "Module: ecs\nIndexerType: keyword\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
+                          "description": "Module: ecs\nIndexerType: text\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
                           "items": {
                             "type": [
                               "string"
@@ -39567,7 +39567,7 @@
                           ]
                         },
                         "original": {
-                          "description": "Module: ecs\nIndexerType: keyword\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
+                          "description": "Module: ecs\nIndexerType: text\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
                           "items": {
                             "type": [
                               "string"
@@ -39593,7 +39593,7 @@
                           ]
                         },
                         "path": {
-                          "description": "Module: ecs\nIndexerType: keyword\n\nPath of the request, such as \"/search\".",
+                          "description": "Module: ecs\nIndexerType: text\n\nPath of the request, such as \"/search\".",
                           "items": {
                             "type": [
                               "string"
@@ -42595,7 +42595,7 @@
                           ]
                         },
                         "strings": {
-                          "description": "Module: ecs\nIndexerType: keyword\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
+                          "description": "Module: ecs\nIndexerType: text\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
                           "items": {
                             "type": [
                               "string"
@@ -42772,7 +42772,7 @@
                       ]
                     },
                     "full": {
-                      "description": "Module: ecs\nIndexerType: keyword\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
+                      "description": "Module: ecs\nIndexerType: text\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
                       "items": {
                         "type": [
                           "string"
@@ -42785,7 +42785,7 @@
                       ]
                     },
                     "original": {
-                      "description": "Module: ecs\nIndexerType: keyword\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
+                      "description": "Module: ecs\nIndexerType: text\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
                       "items": {
                         "type": [
                           "string"
@@ -42811,7 +42811,7 @@
                       ]
                     },
                     "path": {
-                      "description": "Module: ecs\nIndexerType: keyword\n\nPath of the request, such as \"/search\".",
+                      "description": "Module: ecs\nIndexerType: text\n\nPath of the request, such as \"/search\".",
                       "items": {
                         "type": [
                           "string"
@@ -45728,7 +45728,7 @@
           ]
         },
         "threat.enrichments.indicator.registry.data.strings": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
+          "description": "Module: ecs\nIndexerType: text\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
           "items": {
             "type": [
               "string"
@@ -45961,7 +45961,7 @@
           ]
         },
         "threat.enrichments.indicator.url.full": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
+          "description": "Module: ecs\nIndexerType: text\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
           "items": {
             "type": [
               "string"
@@ -45974,7 +45974,7 @@
           ]
         },
         "threat.enrichments.indicator.url.original": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
+          "description": "Module: ecs\nIndexerType: text\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
           "items": {
             "type": [
               "string"
@@ -46000,7 +46000,7 @@
           ]
         },
         "threat.enrichments.indicator.url.path": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nPath of the request, such as \"/search\".",
+          "description": "Module: ecs\nIndexerType: text\n\nPath of the request, such as \"/search\".",
           "items": {
             "type": [
               "string"
@@ -48803,7 +48803,7 @@
           ]
         },
         "threat.indicator.registry.data.strings": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
+          "description": "Module: ecs\nIndexerType: text\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
           "items": {
             "type": [
               "string"
@@ -48967,7 +48967,7 @@
           ]
         },
         "threat.indicator.url.full": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
+          "description": "Module: ecs\nIndexerType: text\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
           "items": {
             "type": [
               "string"
@@ -48980,7 +48980,7 @@
           ]
         },
         "threat.indicator.url.original": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
+          "description": "Module: ecs\nIndexerType: text\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
           "items": {
             "type": [
               "string"
@@ -49006,7 +49006,7 @@
           ]
         },
         "threat.indicator.url.path": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nPath of the request, such as \"/search\".",
+          "description": "Module: ecs\nIndexerType: text\n\nPath of the request, such as \"/search\".",
           "items": {
             "type": [
               "string"
@@ -51877,7 +51877,7 @@
               ]
             },
             "full": {
-              "description": "Module: ecs\nIndexerType: keyword\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
+              "description": "Module: ecs\nIndexerType: text\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
               "items": {
                 "type": [
                   "string"
@@ -51890,7 +51890,7 @@
               ]
             },
             "original": {
-              "description": "Module: ecs\nIndexerType: keyword\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
+              "description": "Module: ecs\nIndexerType: text\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
               "items": {
                 "type": [
                   "string"
@@ -51916,7 +51916,7 @@
               ]
             },
             "path": {
-              "description": "Module: ecs\nIndexerType: keyword\n\nPath of the request, such as \"/search\".",
+              "description": "Module: ecs\nIndexerType: text\n\nPath of the request, such as \"/search\".",
               "items": {
                 "type": [
                   "string"
@@ -52068,7 +52068,7 @@
           ]
         },
         "url.full": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
+          "description": "Module: ecs\nIndexerType: text\n\nIf full URLs are important to your use case, they should be stored in `url.full`, whether this field is reconstructed or present in the event source.",
           "items": {
             "type": [
               "string"
@@ -52081,7 +52081,7 @@
           ]
         },
         "url.original": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
+          "description": "Module: ecs\nIndexerType: text\n\nUnmodified original url as seen in the event source.\nNote that in network monitoring, the observed URL may be a full URL, whereas in access logs, the URL is often just represented as a path.\nThis field is meant to represent the URL as it was observed, complete or not.",
           "items": {
             "type": [
               "string"
@@ -52107,7 +52107,7 @@
           ]
         },
         "url.path": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nPath of the request, such as \"/search\".",
+          "description": "Module: ecs\nIndexerType: text\n\nPath of the request, such as \"/search\".",
           "items": {
             "type": [
               "string"
@@ -58412,7 +58412,7 @@
                                   ]
                                 },
                                 "strings": {
-                                  "description": "Module: ecs\nIndexerType: keyword\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
+                                  "description": "Module: ecs\nIndexerType: text\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
                                   "items": {
                                     "type": [
                                       "string"
@@ -61508,7 +61508,7 @@
                               ]
                             },
                             "strings": {
-                              "description": "Module: ecs\nIndexerType: keyword\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
+                              "description": "Module: ecs\nIndexerType: text\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
                               "items": {
                                 "type": [
                                   "string"
@@ -65552,7 +65552,7 @@
           ]
         },
         "wazuh.threat.enrichments.indicator.registry.data.strings": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
+          "description": "Module: ecs\nIndexerType: text\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
           "items": {
             "type": [
               "string"
@@ -68441,7 +68441,7 @@
           ]
         },
         "wazuh.threat.indicator.registry.data.strings": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
+          "description": "Module: ecs\nIndexerType: text\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
           "items": {
             "type": [
               "string"

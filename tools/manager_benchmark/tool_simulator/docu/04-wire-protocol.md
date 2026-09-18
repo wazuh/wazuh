@@ -5,6 +5,14 @@ module's local Unix socket. None of the 4.x framing (AES/zlib/MD5 over TCP/1514)
 
 ## Enrollment (`agent` mode only)
 
+The fleet's identities come from **`POST /enroll` on the HTTPS listener** with an enrollment-token
+bearer (`--bootstrap enroll-token`, the default): the contract is
+[16-enroll-https.md](16-enroll-https.md), and the sender **MUST** keep the `id` and `key` of the
+`200` record as this agent's identity for the rest of the run. That is the only bootstrap that works
+against a manager whose `<use_password>` is the installed default, so it is what the harness uses.
+
+`--bootstrap 1515` selects the legacy path below instead, kept for comparing the two.
+
 authd listens on **TCP/1515** with TLS. The protocol is one line in, one line out:
 
 ```text
@@ -17,19 +25,22 @@ The sender **MUST** parse the four fields of the answer and keep `<id>` and `<ke
 untrusted-but-accepted (the manager's certificate is self-signed in test environments).
 
 A password-protected authd expects `OSSEC PASS: <password> OSSEC A:'<name>'` instead. The sender
-**SHOULD NOT** implement that: the orchestration prepares the manager with
-`<auth><use_password>no</use_password></auth>`, and requiring a password in a benchmark only adds a
-shared secret to the run. If the manager rejects enrollment, the run **MUST** fail loudly with the
-manager's own answer rather than retrying blindly.
+**SHOULD NOT** implement that: this path carries no credential at all, and the answer to a manager
+that wants one is the token bootstrap above, not a shared secret in the benchmark. So `--bootstrap
+1515` requires an authd opened with `<auth><use_password>no</use_password></auth>`
+(`prepare_manager.sh --open-1515`). If the manager rejects enrollment, the run **MUST** fail loudly
+with the manager's own answer rather than retrying blindly.
 
-The real agent enrolls over remoted's HTTPS `POST /enroll` instead, whose Password mode carries a
-`wazuh-enroll+jwt` bearer (HS256 with the HKDF-SHA256 key of the password; vectors under `"enroll"`
-in `internal/wire/testdata/jwt_vectors.json`). The simulator keeps the authd TCP path: it needs no
-password and exercises the same `client.keys` outcome.
+`POST /enroll`'s other credential forms are not used here: the shared password (a `wazuh-enroll+jwt`
+with no `kid`, HS256 with the HKDF-SHA256 key of the password; vectors under `"enroll"` in
+`internal/wire/testdata/jwt_vectors.json`) and re-enrollment (`kid` = the agent's own id) both exist
+in the manager's contract, and neither belongs in a fleet the harness mints from scratch.
 
 The fleet **SHOULD** be named with a stable prefix (`bench-<n>`) so cleanup can find it, and
 enrollment **SHOULD** be bounded in concurrency: authd is a single-threaded acceptor, and 2000
-simultaneous enrollments measure authd, not the sync path.
+simultaneous enrollments measure authd, not the sync path. That holds for either bootstrap — both
+end at the same `authd` `add` — and is why the sender enrolls the fleet serially, before the
+measurement clock starts.
 
 ## Request authentication (`wazuh-agent+jwt` bearer)
 

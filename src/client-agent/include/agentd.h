@@ -17,9 +17,26 @@
 #include "client-config.h"
 #include "state.h"
 #include "module_limits.h"
+#include "enrollment_status.h" /* w_enroll_status_t; NOT enrollment.h -- see that header */
+
+/* Decode the enrollment token on stdin and print what it carries, without its credential.
+ * Shared by both agent entry points so Linux and Windows accept exactly the same tokens.
+ * Returns 0, 2 when the token itself was rejected, or 1 when it could not be read. */
+int w_agent_show_enrollment_token(void);
+
+/* Overwrite the compiled default enrollment password (AUTHD_PASS) in its own allocation and
+ * unlink it. Shared by both agent entry points so the MSI has the same primitive the POSIX
+ * package scripts get from `dd conv=notrunc`. Returns 0 when the password is gone -- including
+ * when there was none -- and 1 when any part of that failed. */
+int w_agent_shred_enrollment_password(void);
 
 /* Client configuration */
 int ClientConf(const char *cfgfile);
+
+/* Resolve the effective <ssl> posture once ossec.conf has been parsed: settle an unset
+ * <verification_mode>, apply the trust-anchor latch, and default <certificate_authorities>
+ * to the anchor. Called by ClientConf(); exposed for the unit tests. */
+void w_agent_resolve_ssl_posture(agent *cfg);
 
 /* Check <ssl><certificate_authorities> against the configured verification mode.
  * Returns false when the agent must not start. */
@@ -56,9 +73,11 @@ void w_agentd_populate_metadata(void);
  *        endpoint uses (agt->server[0], agt->ssl -- there is no per-attempt
  *        server selection any more), and parse the response. On success,
  *        reloads the in-memory `keys` and sets the crypto method.
- * @return 0 on success, -1 on error (the caller retries with backoff).
+ * @return W_ENROLL_OK on success, otherwise the reason it failed (#39064). The caller must feed
+ *         that status to w_enrollment_apply_policy() rather than assume every failure is worth
+ *         another attempt -- a credential the manager judged and refused never becomes valid.
  * */
-int try_enroll_to_server(void);
+w_enroll_status_t try_enroll_to_server(void);
 
 /**
  * Function that makes the request to the API for the request of uninstallation permissions.

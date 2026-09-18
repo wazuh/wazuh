@@ -74,6 +74,38 @@ else()
 list(APPEND shared_tests_flags "${STRING_OP_BASE_FLAGS}")
 endif()
 
+# Enrollment token primitives. All three sources ship in every target, and winagent.cmake puts
+# WAZUHEXT in TEST_DEPS, so the two that need OpenSSL build there too. They were skipped on
+# winagent until #39063, which left the pin path the Windows agent runs never exercised on it.
+list(APPEND shared_tests_names "test_b64url_op")
+set(B64URL_OP_BASE_FLAGS "${DEBUG_OP_WRAPPERS} -Wl,--wrap,syscom_dispatch")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "${B64URL_OP_BASE_FLAGS} -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=fim_db_teardown")
+else()
+list(APPEND shared_tests_flags "${B64URL_OP_BASE_FLAGS}")
+endif()
+
+# On winagent, DEPENDENCIES_O drags in the win32/syscheck object graph, so these symbols have to
+# be wrapped or the link fails -- the same set every other winagent test above uses.
+# syscom_dispatch belongs with them: agent_report.c, syscheck_op.c and wmodules.c all reach it
+# through DEPENDENCIES_O, and test_x509_op pulls that graph in where test_enrollment_token does
+# not, so leaving it out fails only the first of the two.
+if(${TARGET} STREQUAL "winagent")
+set(ETOKEN_FLAGS "-Wl,--wrap,Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
+                  -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown \
+                  -Wl,--wrap,syscom_dispatch")
+else()
+set(ETOKEN_FLAGS " ")
+endif()
+
+list(APPEND shared_tests_names "test_x509_op")
+list(APPEND shared_tests_flags "${ETOKEN_FLAGS}")
+
+list(APPEND shared_tests_names "test_enrollment_token")
+list(APPEND shared_tests_flags "${ETOKEN_FLAGS}")
+
 list(APPEND shared_tests_names "test_expression")
 set(EXPRESSION_BASE_FLAGS "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,OSRegex_Compile \
                            -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile")
@@ -342,7 +374,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap,audit_send -Wl,--wrap,popen \
 endif()
 
 list(APPEND shared_tests_names "test_privsep_op")
-list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getgrnam_r,--wrap=getpid")
+list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getgrnam_r,--wrap=getpid \
+                                -Wl,--wrap=getrlimit,--wrap=setrlimit ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_mq_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,sleep \
@@ -414,22 +447,6 @@ else()
 endif()
 list(APPEND shared_tests_names "test_hash_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
-
-# Not built for winagent. generate_cert() is reachable only from the manager binaries -- remoted
-# and authd call it, nothing on an agent does -- and its hostname lookup cannot be intercepted
-# there: on Windows gethostname() is a dllimport from ws2_32, so the call goes through the import
-# thunk and -Wl,--wrap,gethostname never sees it. The mock is then left unconsumed ("remaining
-# non-returned values") and the runner's real hostname lands in the SAN the assertions compare.
-if(NOT ${TARGET} STREQUAL "winagent")
-list(APPEND shared_tests_names "test_generate_cert")
-list(APPEND shared_tests_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_write_X509 -Wl,--wrap,RSA_generate_key_ex \
-                                -Wl,--wrap,X509_sign -Wl,--wrap,_merror -Wl,--wrap,wfopen \
-                                -Wl,--wrap,gethostname -Wl,--wrap,getpid \
-                                -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread \
-                                -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,fgets \
-                                -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new -Wl,--wrap,popen \
-                                -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap,is_fim_shutdown")
-endif()
 
 list(APPEND shared_tests_names "test_module_report")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")

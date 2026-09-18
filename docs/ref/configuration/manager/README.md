@@ -100,11 +100,45 @@ wazuh_modules.task_nice=10
 # Timeout in seconds for killing unresponsive modules (default: 10)
 wazuh_modules.kill_timeout=10
 
-# Maximum file descriptors for module processes (default: 8192)
-wazuh_modules.rlimit_nofile=8192
+# Soft file descriptor limit for modulesd, capped by the hard limit it inherits (8192-1048576, default: 65536)
+wazuh_modules.rlimit_nofile=65536
 ```
 
 **Used by modules:** Task Manager, Inventory Sync Server, Vulnerability Scanner, and other wodle-based modules.
+
+---
+
+## File descriptor limits
+
+Two limits apply to every daemon, and they have different owners:
+
+1. **The hard limit** is set by whatever starts the manager: `LimitNOFILE=65536` in
+   `wazuh-manager.service`, the SysV init scripts, or `ulimits.nofile` in a container. The daemons
+   never change it. Raising it needs `CAP_SYS_RESOURCE`, which containers drop by default, so it
+   is set where the process is started, not from inside.
+2. **The soft limit** is the one the kernel enforces (`EMFILE`, "too many open files"). At start,
+   each daemon raises its own soft limit to the value of its internal option, never above the hard
+   limit it inherited and never below what it already had:
+
+| Option | Default | Range |
+|---|---|---|
+| `remoted.rlimit_nofile` | `65536` | `1024`-`1048576` |
+| `wazuh_db.rlimit_nofile` | `65536` | `1024`-`1048576` |
+| `wazuh_modules.rlimit_nofile` | `65536` | `8192`-`1048576` |
+
+`wazuh-manager-analysisd` (the engine) applies the same `65536` without an option. `authd`, `apid`
+and `clusterd` keep the limits they inherit.
+
+When the hard limit is below the option, the daemon runs with the hard limit and logs one warning
+naming both values, for example
+`File descriptor limit is 8192, below the 65536 requested by 'remoted.rlimit_nofile'`. To go
+higher, raise the limit the process is started with: a drop-in with `LimitNOFILE=` for the service
+unit, `ulimit -n` before the init script, or `ulimits.nofile` in the container definition. An
+option above the hard limit never fails and never logs an error. `GET /manager/configuration`
+reports the effective value for remoted.
+
+`wazuh_modules.rlimit_nofile` cannot go below `8192`: a lower value is rejected at start with
+`Invalid definition` and `wazuh-manager-modulesd` does not run.
 
 ---
 

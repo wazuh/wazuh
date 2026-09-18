@@ -19,9 +19,13 @@
 #include "loggerHelper.h"
 
 #include <openssl/crypto.h>
+#include <openssl/evp.h>
+#include <openssl/sha.h> // SHA256_DIGEST_LENGTH
 
+#include <array>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
 namespace remoted::auth
@@ -29,6 +33,47 @@ namespace remoted::auth
     namespace
     {
         constexpr auto AUTH_MIDDLEWARE_LOGTAG {"wazuh-manager-remoted:auth"};
+
+        /// SHA-256 of the agent's key, as 64 lowercase hex chars.
+        ///
+        /// Hashed over the key's canonical client.keys TEXT (the 64 lowercase hex chars the
+        /// keystore decoded this key from -- see decodeKey(), which accepts nothing else), NOT
+        /// over the 32 raw bytes, so that authd can recompute it from the string it already holds
+        /// with one OS_SHA256_String() call and no hex decoder of its own. The two representations
+        /// are in bijection here, so the choice costs nothing and keeps the C side trivial.
+        ///
+        /// Hashed rather than sent as-is because this leaves remoted's process and is written to
+        /// authd's socket: the key itself must not travel, and nothing downstream needs it to --
+        /// comparing fingerprints answers "same key?", which is the entire question.
+        std::string keyFingerprint(const std::uint8_t* key, std::size_t size)
+        {
+            static constexpr char kHexDigits[] = "0123456789abcdef";
+
+            std::string hex;
+            hex.resize(size * 2);
+            for (std::size_t i = 0; i < size; ++i)
+            {
+                hex[i * 2] = kHexDigits[key[i] >> 4];
+                hex[(i * 2) + 1] = kHexDigits[key[i] & 0x0F];
+            }
+
+            // EVP_Digest, not the low-level SHA256(): OpenSSL 3.0 deprecates the latter, and this is
+            // the same one-shot call OS_SHA256_String() makes on the authd side.
+            std::array<unsigned char, SHA256_DIGEST_LENGTH> digest {};
+            unsigned int digestSize = 0;
+            ::EVP_Digest(hex.data(), hex.size(), digest.data(), &digestSize, ::EVP_sha256(), nullptr);
+            // The hex buffer held the key in the clear, in the one representation authd stores.
+            OPENSSL_cleanse(hex.data(), hex.size());
+
+            std::string out;
+            out.resize(digest.size() * 2);
+            for (std::size_t i = 0; i < digest.size(); ++i)
+            {
+                out[i * 2] = kHexDigits[digest[i] >> 4];
+                out[(i * 2) + 1] = kHexDigits[digest[i] & 0x0F];
+            }
+            return out;
+        }
 
         // Function-local statics rather than members: loggerHelper.h must stay out of
         // authMiddleware.hpp (the tests include it, and Log::GLOBAL_LOG_FUNCTION is DSO-hidden),
@@ -76,27 +121,86 @@ namespace remoted::auth
             case AuthError::UnsupportedContentEncoding: return "unsupported_content_encoding";
             case AuthError::MalformedContentEncoding: return "malformed_content_encoding";
             case AuthError::EnrollmentKeyUnavailable: return "enrollment_key_unavailable";
+            case AuthError::TokenUnknown: return "token_unknown";
+            case AuthError::TokenExpired: return "token_expired";
+            case AuthError::TokenRevoked: return "token_revoked";
         }
         return "unknown";
     }
 
+    namespace
+    {
+        // The 401 classes and their RFC 6750 §3 challenges (issue #38993, T10). One literal per class:
+        // errorResponseFor() renders them on every rejected request and must stay allocation-free.
+        constexpr const char* kAuthMessage = "Invalid client authentication";
+        constexpr const char* kUnknownAgent = "unknown_agent";
+        constexpr const char* kStaleToken = "stale_token";
+        constexpr const char* kInvalidSignature = "invalid_signature";
+        constexpr const char* kInvalidRequest = "invalid_request";
+        constexpr const char* kEnrollmentKeyUnavailable = "enrollment_key_unavailable";
+        constexpr const char* kTokenUnknown = "token_unknown";
+        constexpr const char* kTokenExpired = "token_expired";
+        constexpr const char* kTokenRevoked = "token_revoked";
+        constexpr const char* kChallengeUnknownAgent =
+            R"(Bearer error="invalid_token", error_description="unknown_agent")";
+        constexpr const char* kChallengeStaleToken = R"(Bearer error="invalid_token", error_description="stale_token")";
+        constexpr const char* kChallengeInvalidSignature =
+            R"(Bearer error="invalid_token", error_description="invalid_signature")";
+        constexpr const char* kChallengeInvalidRequest = R"(Bearer error="invalid_request")";
+        // The server could not judge the credential at all (no enrollment key to judge it with): RFC
+        // 6750 §3.1 has no error code for that and `invalid_token` would be a lie about the agent's
+        // credential, so the challenge is bare and only the body's `code` names the condition.
+        constexpr const char* kChallengeBare = "Bearer";
+        constexpr const char* kChallengeTokenUnknown =
+            R"(Bearer error="invalid_token", error_description="token_unknown")";
+        constexpr const char* kChallengeTokenExpired =
+            R"(Bearer error="invalid_token", error_description="token_expired")";
+        constexpr const char* kChallengeTokenRevoked =
+            R"(Bearer error="invalid_token", error_description="token_revoked")";
+    } // namespace
+
     PublicError publicErrorFor(AuthError err)
     {
+        // Exhaustive on purpose (no default, like toString()): a reason added to AuthError must pick
+        // its public class here, or the build says so.
         switch (err)
         {
-            case AuthError::MissingProtocolVersion: return {400, "Missing required header: protocol-version"};
-            case AuthError::UnsupportedProtocolVersion: return {400, "Unsupported protocol-version"};
-            case AuthError::PayloadAgentMismatch: return {400, "Invalid event batch"};
-            case AuthError::BodyTooLarge: return {413, "Request payload is too large"};
-            case AuthError::MalformedContentEncoding: return {400, "Malformed compressed body"};
-            case AuthError::UnsupportedContentEncoding: return {415, "Unsupported Content-Encoding"};
-            case AuthError::None: return {200, ""};
-            // MissingAuthorization, MalformedAuthorization, UnknownAgent, MissingKey,
-            // AddressNotAllowed, InvalidToken, InvalidSignature, StaleToken, IdentityMismatch,
-            // EnrollmentKeyUnavailable: collapse to one
-            // generic 401 so the client can never distinguish the reason.
-            default: return {401, "Invalid client authentication"};
+            case AuthError::None: return {200, "", nullptr, nullptr};
+            case AuthError::MissingProtocolVersion:
+                return {400, "Missing required header: protocol-version", nullptr, nullptr};
+            case AuthError::UnsupportedProtocolVersion: return {400, "Unsupported protocol-version", nullptr, nullptr};
+            case AuthError::PayloadAgentMismatch: return {400, "Invalid event batch", nullptr, nullptr};
+            case AuthError::BodyTooLarge: return {413, "Request payload is too large", nullptr, nullptr};
+            case AuthError::MalformedContentEncoding: return {400, "Malformed compressed body", nullptr, nullptr};
+            case AuthError::UnsupportedContentEncoding: return {415, "Unsupported Content-Encoding", nullptr, nullptr};
+
+            // No usable credential was presented: nothing was judged.
+            case AuthError::MissingAuthorization:
+            case AuthError::MalformedAuthorization:
+                return {401, kAuthMessage, kInvalidRequest, kChallengeInvalidRequest};
+
+            // The three agent-actionable classes of the document's §2.10.
+            case AuthError::UnknownAgent: return {401, kAuthMessage, kUnknownAgent, kChallengeUnknownAgent};
+            case AuthError::StaleToken: return {401, kAuthMessage, kStaleToken, kChallengeStaleToken};
+            // Everything that says "this credential does not work for this identity": a bad MAC, a
+            // token that is not a wazuh-agent+jwt, a `sub`/`iss` naming another agent, a peer address
+            // the entry does not allow, an entry whose key does not decode. None of them is fixed by
+            // re-enrolling, so they share the class that tells the agent not to (T10).
+            case AuthError::InvalidSignature:
+            case AuthError::InvalidToken:
+            case AuthError::IdentityMismatch:
+            case AuthError::AddressNotAllowed:
+            case AuthError::MissingKey: return {401, kAuthMessage, kInvalidSignature, kChallengeInvalidSignature};
+
+            case AuthError::EnrollmentKeyUnavailable:
+                return {401, kAuthMessage, kEnrollmentKeyUnavailable, kChallengeBare};
+
+            // /enroll's enrollment-token states (issue #38993).
+            case AuthError::TokenUnknown: return {401, kAuthMessage, kTokenUnknown, kChallengeTokenUnknown};
+            case AuthError::TokenExpired: return {401, kAuthMessage, kTokenExpired, kChallengeTokenExpired};
+            case AuthError::TokenRevoked: return {401, kAuthMessage, kTokenRevoked, kChallengeTokenRevoked};
         }
+        return {401, kAuthMessage, kInvalidSignature, kChallengeInvalidSignature};
     }
 
     AuthMiddleware::AuthMiddleware(AuthConfig config, std::shared_ptr<IAgentKeystore> keystore)
@@ -187,6 +291,10 @@ namespace remoted::auth
         // Step 4: the token against that key. The key moves into a wiped buffer for the duration of
         // the check; the copy the keystore handed us is cleansed as soon as it has been consumed.
         const jwt_profile::v1::SecureBytes key {agent->key.data(), agent->key.size()};
+        // Taken from the SAME lookup that is about to verify the token, before either copy is
+        // wiped, so the fingerprint names the key this request is authenticated against and not
+        // whatever the keystore holds by the time a downstream consumer asks (#39315).
+        std::string fingerprint = keyFingerprint(agent->key.data(), agent->key.size());
         OPENSSL_cleanse(agent->key.data(), agent->key.size());
 
         const auto now = std::chrono::system_clock::time_point {std::chrono::seconds {currentUnixTimeSeconds}};
@@ -200,7 +308,7 @@ namespace remoted::auth
         // the verifier already proved equal to `kid` and to the `iss` suffix, in client.keys' canonical
         // spelling (zero-padded to three digits) -- the form the API's agent list and `POST /stats`'
         // document id use.
-        return VerifiedAgent {result.agent().text()};
+        return VerifiedAgent {result.agent().text(), std::move(fingerprint)};
     }
 
 } // namespace remoted::auth

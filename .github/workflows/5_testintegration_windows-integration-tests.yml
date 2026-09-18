@@ -145,9 +145,9 @@ jobs:
             Get-ChildItem -Path "C:\wazuh-package" -Recurse | Format-Table Name, FullName
             exit 1
           }
-          # WAZUH_MANAGER_ENDPOINT carries the whole target now (#38624), so it replaces
-          # the separate WAZUH_MANAGER.
-          Start-Process msiexec.exe -ArgumentList "/i `"$($package.FullName)`" /q WAZUH_MANAGER_ENDPOINT=`"127.0.0.1`"" -Wait -NoNewWindow
+          Start-Process msiexec.exe -ArgumentList "/i `"$($package.FullName)`" /q" -Wait -NoNewWindow
+          $conf = "C:\Program Files (x86)\ossec-agent\ossec.conf"
+          (Get-Content $conf) -replace '0\.0\.0\.0:1517/wazuh-manager/', '127.0.0.1' | Set-Content $conf
       # ================= QA FRAMEWORK =================
       - name: Download and install qa-integration-framework
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') }}
@@ -172,6 +172,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path C:\wazuh\tests | Out-Null
           Copy-Item -Path "$env:GITHUB_WORKSPACE\tests\*" -Destination C:\wazuh\tests -Recurse -Force
+          # Some tests read shipped config templates by a repo-root-relative path
+          # (e.g. test_macos_uls_default_query.py), so etc/ has to be staged too.
+          Copy-Item -Path "$env:GITHUB_WORKSPACE\etc" -Destination C:\wazuh\etc -Recurse -Force
       # ================= EXECUTION =================
       - name: Start Wazuh agent service
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && (inputs.start_service == true || inputs.start_service == 'true') }}
@@ -193,12 +196,28 @@ jobs:
             exit $pytestExitCode
           }
       # ================= RESULTS =================
+      # results.html carries pytest's own captured output, which does not include the agent's
+      # ossec.log -- and for the reconnection tests that log is the only place the agent says why
+      # it did not reconnect. The framework already preserves it on failure instead of truncating
+      # it (conftest.py's truncate_monitored_files), so it is still on disk here.
+      - name: Collect agent diagnostics
+        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && failure() }}
+        shell: pwsh
+        run: |
+          $dest = "C:\wazuh\it-diagnostics"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Copy-Item "C:\wazuh\tests\integration\results.html" $dest -ErrorAction SilentlyContinue
+          foreach ($f in @("ossec.log", "wazuh-agent.state", "ossec.conf", "local_internal_options.conf")) {
+              Copy-Item "C:\Program Files (x86)\ossec-agent\$f" $dest -ErrorAction SilentlyContinue
+          }
+          Get-ChildItem $dest | Format-Table Name, Length
+
       - name: Upload failed test results
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && failure() }}
         uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ inputs.module_name }}-win-${{ inputs.shard_name }}-test-results-${{ github.run_id }}
-          path: C:\wazuh\tests\integration\results.html
+          path: C:\wazuh\it-diagnostics
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}

@@ -523,6 +523,28 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 
 
 /**
+ * @brief Open an existing file inside a base directory for update, without following symlinks and
+ *        without truncating it at any point.
+ *
+ * Update-mode sibling of w_fopen_nofollow(), for callers that must write over a file's existing
+ * allocation rather than replace its contents -- overwriting a credential before unlinking it, for
+ * one, where truncating would release the secret's bytes and write the replacement somewhere else.
+ * The same vetting applies: @p filename must be a bare file name, and the descriptor must turn out
+ * to be a regular file with a link count of exactly 1, so a symlink, hard link, FIFO, device or
+ * directory at the target path is rejected instead of written through.
+ *
+ * The file must already exist; it is never created. A caller overwriting "what is there" has
+ * nothing to do when nothing is there, and creating the file would turn a target that vanished
+ * mid-operation into a fresh empty one.
+ *
+ * @param basedir Base directory holding the file. Not created by this function.
+ * @param filename Bare file name inside @p basedir.
+ * @return File pointer opened "r+b" and positioned at offset 0, or NULL on error (sets errno).
+ */
+FILE * w_fopen_nofollow_update(const char * basedir, const char * filename);
+
+
+/**
  * @brief Open a compressed file inside a base directory for reading, without following symlinks.
  *
  * Read-side counterpart of w_fopen_nofollow(): intended for directories that may contain files planted
@@ -541,6 +563,28 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
  * @return Compressed file handle on success, NULL on error (sets errno).
  */
 gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char * mode);
+
+
+#ifndef WIN32
+/**
+ * @brief Opens @p filename inside @p basedir without following symlinks, and vets the resulting descriptor
+ * as a lone regular file -- rejecting hard links, FIFOs, devices, and directories -- before handing it
+ * back. Shared by w_fopen_nofollow() and w_gzopen_nofollow() so a future hardening fix only has to be
+ * applied once instead of needing to be kept in sync across every caller.
+ *
+ * @param basedir Base directory holding the file.
+ * @param filename Bare file name inside @p basedir.
+ * @param oflags open()/openat() flags; must include O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK (the latter to
+ *               keep a FIFO from blocking the open) on top of whichever of O_RDONLY/O_WRONLY/O_CREAT the
+ *               caller needs. Deliberately never includes O_TRUNC: truncating at open time would destroy
+ *               the target before anything about it can be checked, which is precisely how a hard link
+ *               slips through -- it is a regular file, so no file type test can tell it apart. A caller
+ *               that needs the file truncated must do so only after this returns a vetted descriptor.
+ * @param mode Permission bits, used only when oflags includes O_CREAT.
+ * @return A vetted file descriptor, with O_NONBLOCK already cleared, on success; -1 on error (sets errno).
+ */
+int w_openat_nofollow_vetted(const char * basedir, const char * filename, int oflags, mode_t mode);
+#endif
 
 
 /**

@@ -149,10 +149,16 @@ class TestBulkIndex:
 
     @pytest.mark.asyncio
     async def test_bulk_index_logs_warning_on_failures(self, metrics_index):
-        """Verify a warning is logged when some documents fail to index."""
-        docs = [{"x": i} for i in range(100)]
+        """Verify a warning is logged when some documents fail to index.
 
-        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock, return_value=(95, 5)):
+        async_bulk() with the default stats_only=False returns failed as a list of
+        per-document error dicts, not a count: this is the real shape the library
+        returns, not an approximation, so the warning call must not assume an int.
+        """
+        docs = [{"x": i} for i in range(100)]
+        errors = [{"create": {"status": 400, "error": {"type": "strict_dynamic_mapping_exception"}}}] * 5
+
+        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock, return_value=(95, errors)):
             metrics_index._logger = MagicMock()
             await metrics_index.bulk_index(
                 index="wazuh-metrics-agents",
@@ -160,10 +166,11 @@ class TestBulkIndex:
                 bulk_size=100,
             )
             metrics_index._logger.warning.assert_called_once_with(
-                "Metrics bulk index on '%s': %d indexed, %d failed",
+                "Metrics bulk index on '%s': %d indexed, %d failed. First errors: %s",
                 "wazuh-metrics-agents",
                 95,
                 5,
+                errors[:5],
             )
 
     @pytest.mark.asyncio
@@ -171,7 +178,7 @@ class TestBulkIndex:
         """Verify no warning is logged when all documents are indexed successfully."""
         docs = [{"x": 1}]
 
-        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock, return_value=(1, 0)):
+        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock, return_value=(1, [])):
             metrics_index._logger = MagicMock()
             await metrics_index.bulk_index(
                 index="wazuh-metrics-agents",

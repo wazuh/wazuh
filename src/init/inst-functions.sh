@@ -74,11 +74,11 @@ DisableAuthd()
     echo "    <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>" >> $NEWCONFIG
     echo "    <!-- <ssl_agent_ca></ssl_agent_ca> -->" >> $NEWCONFIG
     echo "    <ssl_verify_host>no</ssl_verify_host>" >> $NEWCONFIG
-    # Unified manager certificate (see GenerateHttpsManagerCert()): authd no longer generates or
-    # owns its own cert/key pair, so even in this <disabled>yes</disabled> block these point at
-    # remoted's, keeping the value valid in the (rare) case an operator later flips <disabled> back
-    # to "no" by hand instead of regenerating the whole file. Same custom-certificate override as
-    # the enabled path (see WriteAuthd's AUTH_TEMPLATE substitution above), for the same reason.
+    # Unified manager certificate (see CheckListenerCerts()): authd does not own a cert/key pair
+    # of its own, so even in this <disabled>yes</disabled> block these point at remoted's,
+    # keeping the value valid in the (rare) case an operator later flips <disabled> back to "no"
+    # by hand instead of regenerating the whole file. Same custom-certificate override as the
+    # enabled path (see WriteAuthd's AUTH_TEMPLATE substitution above), for the same reason.
     echo "    <ssl_manager_cert>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}</ssl_manager_cert>" >> $NEWCONFIG
     echo "    <ssl_manager_key>${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}</ssl_manager_key>" >> $NEWCONFIG
     echo "  </auth>" >> $NEWCONFIG
@@ -164,68 +164,67 @@ InstallSecurityConfigurationAssessmentFiles()
 }
 
 ##########
-# GenerateHttpsManagerCert()
+# CheckListenerCerts()
 ##########
-# Self-signed certificate for the HTTPS agent server (remoted_module). Manager
-# only -- the listener doesn't exist on agents. Uses wazuh-manager-remoted's own
-# -C/-B/-K/-X/-S flags (same generate_cert() used for authd's cert/key, now in
-# shared/). This is now the manager's ONLY self-signed cert/key pair: authd no
-# longer generates or owns one of its own (its <ssl_manager_cert>/<ssl_manager_key>
-# point here too -- see auth.template and DisableAuthd() above), since /enroll's
-# mTLS mode treats "this certificate validated" as the enrollment credential and
-# both listeners must therefore present the same manager identity.
-GenerateHttpsManagerCert()
+# The manager does not generate TLS certificates. The certificate and key of the HTTPS
+# agent listener (remoted_module) are provisioned externally, e.g. with the Wazuh
+# installation assistant (wazuh-certs-tool), like the indexer trust material; authd's
+# <ssl_manager_cert>/<ssl_manager_key> point at the same pair (see auth.template and
+# DisableAuthd() above), so both listeners present one manager identity. This step only
+# creates etc/certs, fixes the ownership of whatever the operator already deployed
+# (remoted opens the pair after dropping privileges, so ${WAZUH_USER} owns it) and prints
+# a NOTICE when the pair is missing: wazuh-manager-control refuses to start until it
+# exists. Manager only -- the listener does not exist on agents. Custom paths supplied
+# through the WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation
+# variables are honoured (relative paths resolve against the installation directory,
+# as the configuration validator does).
+CheckListenerCerts()
 {
     if [ "X${INSTYPE}" = "Xagent" ]; then
         return
     fi
 
-    # Custom certificate/key paths supplied through the WAZUH_REMOTE_HTTPS_*
-    # installation variables mean the admin manages these files: nothing to
-    # generate at the default location.
-    if [ -n "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] || [ -n "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
-        return
-    fi
+    CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}"
+    KEY="${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}"
+    case "${CERT}" in /*) ;; *) CERT="${INSTALLDIR}/${CERT}";; esac
+    case "${KEY}" in /*) ;; *) KEY="${INSTALLDIR}/${KEY}";; esac
 
-    if [ "X$SSL_CERT" = "Xyes" ]; then
-        # Unified certificate directory: root-owned and sticky (drwxrwx--T). The server
-        # daemons run as ${WAZUH_USER} and regenerate their own self-signed certs here
-        # (group write), while the sticky bit keeps them from replacing the root-owned
-        # indexer trust material that shares the directory. Created here (rather than in a
-        # separate authd-specific step, now removed) since this is the first cert-generating
-        # step that runs on a manager install.
-        ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/certs
+    # Unified certificate directory: root-owned and sticky (drwxrwx--T), shared with the
+    # root-owned indexer trust material (see SetIndexerCertsOwnership()).
+    ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/certs
 
-        # Generation auto-signed certificate if not exists
-        if [ ! -f "${INSTALLDIR}/etc/certs/remoted-key.pem" ] && [ ! -f "${INSTALLDIR}/etc/certs/remoted.pem" ]; then
-            if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
-                    echo "Generating self-signed certificate for the HTTPS agent server..."
-                    ${INSTALLDIR}/bin/wazuh-manager-remoted -C 365 -B 2048 -K ${INSTALLDIR}/etc/certs/remoted-key.pem -X ${INSTALLDIR}/etc/certs/remoted.pem -S "/C=US/ST=California/CN=wazuh/"
-            fi
+    # Owned by ${WAZUH_USER}: remoted opens its certificate and key after dropping
+    # privileges. Re-applied unconditionally so upgrades from installs that left them
+    # root-owned also get corrected.
+    for CERT_FILE in remoted.pem remoted-key.pem; do
+        if [ -f "${INSTALLDIR}/etc/certs/${CERT_FILE}" ]; then
+            chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/${CERT_FILE}
+            chmod 640 ${INSTALLDIR}/etc/certs/${CERT_FILE}
         fi
+    done
 
-        # Owned by ${WAZUH_USER}: remoted drops to that user and regenerates these files at
-        # runtime. Re-applied unconditionally so upgrades from installs that left them
-        # root-owned also get corrected.
-        if [ -f "${INSTALLDIR}/etc/certs/remoted-key.pem" ] && [ -f "${INSTALLDIR}/etc/certs/remoted.pem" ]; then
-            chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/remoted-key.pem
-            chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/remoted.pem
-            chmod 640 ${INSTALLDIR}/etc/certs/remoted-key.pem
-            chmod 640 ${INSTALLDIR}/etc/certs/remoted.pem
-        fi
+    if [ ! -f "${CERT}" ] || [ ! -f "${KEY}" ]; then
+        echo "NOTICE: no TLS certificate for the HTTPS agent listener was found"
+        echo "        (${CERT}, ${KEY})."
+        echo "        wazuh-manager does not generate certificates. Provision root-ca.pem,"
+        echo "        remoted.pem and remoted-key.pem with the Wazuh installation assistant"
+        echo "        (wazuh-certs-tool) before starting the service; wazuh-manager-control"
+        echo "        refuses to start until they exist. See 'Deploy certificates' in the"
+        echo "        installation guide (docs/ref/getting-started/installation.md)."
     fi
 }
 
 ##########
 # SetIndexerCertsOwnership()
 ##########
-# etc/certs holds two kinds of material: the server certificates each daemon self-generates
-# (owned by ${WAZUH_USER}, since the daemon must write them) and the indexer trust material
-# provisioned externally (root-owned, the manager only reads it). The directory is root-owned
-# and sticky so the daemons can (re)generate their own certs but cannot replace the root-owned
-# indexer material; the indexer certs are group-readable by ${WAZUH_GROUP} so the engine and
-# the framework read them after dropping privileges. Applied unconditionally so upgrades and
-# re-runs correct earlier ownerships.
+# etc/certs holds two kinds of material: the certificates the service daemons read after
+# dropping privileges (the externally provisioned listener pair, see CheckListenerCerts(), and
+# the API certificate apid issues for itself -- owned by ${WAZUH_USER}) and the indexer trust
+# material provisioned externally (root-owned, the manager only reads it). The directory is
+# root-owned and sticky so the daemons can write their own files but cannot replace the
+# root-owned indexer material; the indexer certs are group-readable by ${WAZUH_GROUP} so the
+# engine and the framework read them after dropping privileges. Applied unconditionally so
+# upgrades and re-runs correct earlier ownerships.
 SetIndexerCertsOwnership()
 {
     if [ "X${INSTYPE}" = "Xagent" ]; then
@@ -363,156 +362,6 @@ GenerateService()
         sed "s|WAZUH_HOME_TMP|${INSTALLDIR}|g" ${SERVICE_TEMPLATE}
     fi
 }
-
-##########
-# ParseManagerEndpoint() $1=WAZUH_MANAGER_ENDPOINT's value
-#
-# Splits the combined connection target (#38624) into MEP_HOST / MEP_PORT /
-# MEP_ENDPOINT, the three tags the agent still reads:
-#
-#   [https://] host [:port] [/[prefix]]
-#
-# Only the host is mandatory. Note that "no '/' at all" means "default prefix" while
-# "a trailing '/' with nothing after it" is the deliberate opt-out (#38614) and must
-# come out as an empty <endpoint></endpoint>.
-#
-# Byte-for-byte the same logic as parse_manager_endpoint() in
-# register_configure_agent.sh and ParseManagerEndpoint() in
-# src/win32/InstallerScripts.vbs -- a change in one belongs in all three. It is
-# duplicated rather than shared because register_configure_agent.sh ships inside the
-# packages and cannot source this file (the relative . ./src/init/template-select.sh
-# here assumes a repo checkout at CWD, which a post-install script does not have).
-##########
-DEFAULT_MANAGER_PORT="1517"
-DEFAULT_MANAGER_ENDPOINT="/wazuh-manager/"
-
-ParseManagerEndpoint()
-{
-    mep_raw="$1"
-    mep_rest="$mep_raw"
-    MEP_HOST=""
-    MEP_PORT="${DEFAULT_MANAGER_PORT}"
-    MEP_ENDPOINT="${DEFAULT_MANAGER_ENDPOINT}"
-
-    if [ "X${mep_raw}" = "X" ]; then
-        echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': a manager address is required." >&2
-        return 1
-    fi
-
-    case "${mep_rest}" in
-        *"://"*)
-            mep_scheme="${mep_rest%%://*}"
-            case "${mep_scheme}" in
-                */*) ;;
-                *)
-                    mep_rest="${mep_rest#*://}"
-                    case "${mep_scheme}" in
-                        [Hh][Tt][Tt][Pp][Ss]) ;;
-                        *)
-                            echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': unsupported scheme '${mep_scheme}://'; only https is served." >&2
-                            return 1
-                            ;;
-                    esac
-                    ;;
-            esac
-            ;;
-    esac
-
-    case "${mep_rest}" in
-        */*)
-            mep_authority="${mep_rest%%/*}"
-            mep_path="${mep_rest#*/}"
-            mep_path_given="yes"
-            ;;
-        *)
-            mep_authority="${mep_rest}"
-            mep_path=""
-            mep_path_given="no"
-            ;;
-    esac
-
-    mep_port_given=""
-    case "${mep_authority}" in
-        "["*)
-            case "${mep_authority}" in
-                *"]"*) ;;
-                *)
-                    echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': unterminated '[' in the address; a bracketed IPv6 literal needs a closing ']'." >&2
-                    return 1
-                    ;;
-            esac
-            MEP_HOST="${mep_authority#[}"
-            MEP_HOST="${MEP_HOST%%]*}"
-            mep_after="${mep_authority#*]}"
-            case "${mep_after}" in
-                "") ;;
-                ":"*) mep_port_given="${mep_after#:}" ;;
-                *)
-                    echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': unexpected '${mep_after}' after the bracketed address." >&2
-                    return 1
-                    ;;
-            esac
-            # A zone id (%25<iface>) stays part of the host: the agent resolves it
-            # with if_nametoindex() at startup (#38624).
-            ;;
-        *:*:*)
-            echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': an IPv6 address must be bracketed, e.g. [2001:db8::1]:${DEFAULT_MANAGER_PORT}." >&2
-            return 1
-            ;;
-        *:*)
-            MEP_HOST="${mep_authority%:*}"
-            mep_port_given="${mep_authority##*:}"
-            ;;
-        *)
-            MEP_HOST="${mep_authority}"
-            ;;
-    esac
-
-    if [ "X${MEP_HOST}" = "X" ]; then
-        echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': a manager address is required." >&2
-        return 1
-    fi
-
-    if [ "X${mep_port_given}" != "X" ]; then
-        case "${mep_port_given}" in
-            ''|*[!0-9]*)
-                echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': port '${mep_port_given}' is not a number." >&2
-                return 1
-                ;;
-        esac
-        if [ "${mep_port_given}" -lt 1 ] || [ "${mep_port_given}" -gt 65535 ]; then
-            echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': port '${mep_port_given}' is outside 1-65535." >&2
-            return 1
-        fi
-        MEP_PORT="${mep_port_given}"
-    elif [ "${mep_authority}" != "${mep_authority%:}" ]; then
-        echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': trailing ':' with no port." >&2
-        return 1
-    fi
-
-    if [ "${mep_path_given}" = "yes" ]; then
-        while : ; do
-            case "${mep_path}" in
-                /*) mep_path="${mep_path#/}" ;;
-                *) break ;;
-            esac
-        done
-        while : ; do
-            case "${mep_path}" in
-                */) mep_path="${mep_path%/}" ;;
-                *) break ;;
-            esac
-        done
-        if [ "X${mep_path}" = "X" ]; then
-            MEP_ENDPOINT=""
-        else
-            MEP_ENDPOINT="/${mep_path}/"
-        fi
-    fi
-
-    return 0
-}
-
 ##########
 # WriteAgent() $1="no_locafiles" or empty
 ##########
@@ -529,49 +378,22 @@ WriteAgent()
     echo "  <agent>" >> $NEWCONFIG
     echo "    <manager>" >> $NEWCONFIG
 
-    # <endpoint> carries the whole connection target (#38624). WAZUH_MANAGER_ENDPOINT
-    # supplies it directly when set; otherwise it is composed from install.sh's own
-    # $SERVER_IP/$HNAME prompt, which is the only address this path has. Tested with
-    # ${VAR+x} rather than -n so an explicitly empty value is rejected instead of
-    # silently read as unset: "" used to be the prefix opt-out (#38614). A rejected
-    # value falls back to the prompted address, with the reason already on stderr --
-    # this path must still emit a usable template, and the operator is present to see
-    # the message.
-    # $SERVER_IP/$HNAME come from install.sh's own prompt and are the base. WAZUH_MANAGER
-    # (with WAZUH_MANAGER_PORT) still composes a value, and WAZUH_MANAGER_ENDPOINT
-    # overrides everything when set.
+    # <endpoint> carries the whole connection target, composed from install.sh's own
+    # $SERVER_IP/$HNAME prompt. A source install therefore names its manager here and
+    # registers afterwards with wazuh-agent-auth, which is the token-less path the
+    # packages no longer offer.
     AGENT_ENDPOINT="$SERVER_IP"
     if [ "X${HNAME}" != "X" ]; then
       AGENT_ENDPOINT="$HNAME"
     fi
 
-    if [ "X${WAZUH_MANAGER}" != "X" ]; then
-      AGENT_ENDPOINT="${WAZUH_MANAGER}"
-    fi
-
-    # A bare IPv6 literal needs bracketing once it shares a value with the port.
+    # A bare IPv6 literal needs bracketing, or its trailing group reads as a port. Already
+    # bracketed values must be left alone, or "[2001:db8::1]" becomes "[[2001:db8::1]]" and the
+    # agent will not start.
     case "${AGENT_ENDPOINT}" in
-      # Already bracketed values must be left alone, or "[2001:db8::1]" becomes
-      # "[[2001:db8::1]]" and the agent will not start. Matches the guard in
-      # InstallerScripts.vbs.
       \[*) ;;
       *:*:*) AGENT_ENDPOINT="[${AGENT_ENDPOINT}]" ;;
     esac
-
-    if [ "X${WAZUH_MANAGER_PORT}" != "X" ]; then
-      AGENT_ENDPOINT="${AGENT_ENDPOINT}:${WAZUH_MANAGER_PORT}"
-    fi
-
-    # WAZUH_MANAGER_ENDPOINT wins outright once it is set, even if it fails validation:
-    # it carries the whole URL and the operator asked for it specifically, so falling back
-    # to a value composed from WAZUH_MANAGER would silently point the agent at a different
-    # manager. A bad value is reported here and written through, so the agent refuses it
-    # loudly at startup instead -- same rule as register_configure_agent.sh and
-    # InstallerScripts.vbs, which write no <manager> block at all in that case.
-    if [ "X${WAZUH_MANAGER_ENDPOINT+x}" != "X" ]; then
-      ParseManagerEndpoint "${WAZUH_MANAGER_ENDPOINT}"
-      AGENT_ENDPOINT="${WAZUH_MANAGER_ENDPOINT}"
-    fi
 
     echo "      <endpoint>${AGENT_ENDPOINT}</endpoint>" >> $NEWCONFIG
     echo "    </manager>" >> $NEWCONFIG
@@ -814,8 +636,8 @@ ValidateRemoteVars()
     REMOTE_VARS_VALIDATED="yes"
 
     for REMOTE_VAR_NAME in WAZUH_REMOTE_HTTPS_CERTIFICATE WAZUH_REMOTE_HTTPS_KEY \
-                           WAZUH_REMOTE_HTTPS_CA WAZUH_REMOTE_HTTPS_CIPHERS \
-                           WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX; do
+                           WAZUH_REMOTE_HTTPS_CA WAZUH_REMOTE_HTTPS_CA_CERTIFICATE \
+                           WAZUH_REMOTE_HTTPS_CIPHERS WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX; do
         eval "REMOTE_VAR_VALUE=\${${REMOTE_VAR_NAME}}"
         CheckRemoteXmlSafe "$REMOTE_VAR_NAME" "$REMOTE_VAR_VALUE"
     done
@@ -831,8 +653,8 @@ ValidateRemoteVars()
         *) RemoteVarError "WAZUH_REMOTE_HTTPS_VERIFICATION_MODE" "${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}" "expected 'none', 'certificate' or 'full'";;
     esac
 
-    # Either path alone disables the self-signed generation while the other keeps its
-    # default location, which nothing creates.
+    # Both paths travel together: the listener loads the pair as a unit, so a custom
+    # certificate with the default key location (or vice versa) is a misconfiguration.
     if [ -n "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] && [ -z "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
         RemoteVarError "WAZUH_REMOTE_HTTPS_CERTIFICATE" "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" "WAZUH_REMOTE_HTTPS_KEY is required when a custom certificate is provided"
     fi
@@ -897,6 +719,7 @@ WriteRemote()
     echo "      <global_prefix>${WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX:-/wazuh-manager/}</global_prefix>" >> $NEWCONFIG
     echo "      <certificate>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}</certificate>" >> $NEWCONFIG
     echo "      <key>${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}</key>" >> $NEWCONFIG
+    echo "      <ca_certificate>${WAZUH_REMOTE_HTTPS_CA_CERTIFICATE:-etc/certs/root-ca.pem}</ca_certificate>" >> $NEWCONFIG
     if [ -n "${WAZUH_REMOTE_HTTPS_CA}" ]; then
         echo "      <ca>${WAZUH_REMOTE_HTTPS_CA}</ca>" >> $NEWCONFIG
     fi
@@ -977,11 +800,10 @@ WriteManager()
     # Writting auth configuration
     if [ "X${AUTHD}" = "Xyes" ]; then
         # Same custom-certificate override WriteRemote()'s <https> block already honors (see
-        # GenerateHttpsManagerCert() above): authd's <ssl_manager_cert>/<ssl_manager_key> must
-        # point at whatever file the manager's HTTPS listener actually loads, or authd fails to
-        # start (ENOENT) whenever a custom certificate is supplied -- GenerateHttpsManagerCert()
-        # correctly skips generating the default etc/certs/remoted.pem in that case, but
-        # auth.template's cert paths used to stay hardcoded to it regardless.
+        # CheckListenerCerts() above): authd's <ssl_manager_cert>/<ssl_manager_key> must point
+        # at whatever file the manager's HTTPS listener actually loads, or authd fails to start
+        # (ENOENT) whenever a custom certificate is supplied -- auth.template's cert paths used
+        # to stay hardcoded to the default etc/certs/remoted.pem regardless.
         WAZUH_AUTHD_SSL_MANAGER_CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}"
         WAZUH_AUTHD_SSL_MANAGER_KEY="${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}"
         sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" \
@@ -1408,7 +1230,8 @@ InstallCommon()
         if [ -f ../etc/wazuh.mc ]; then
             if [ "X${INSTYPE}" = "Xmanager" ]; then
                 # The generated etc/wazuh-manager.conf must validate against the embedded schema before it is
-                # installed (file existence is not checked: the certificates are generated later in the installation).
+                # installed (file existence is not checked: the certificates are provisioned by the operator,
+                # not by the installer -- see CheckListenerCerts()).
                 if ! build/bin/wazuh-manager-conf --skip-file-checks validate -f ../etc/wazuh.mc; then
                     echo "ERROR: the generated ${WAZUH_CONF} is not a valid manager configuration."
                     exit 1
@@ -1789,7 +1612,7 @@ InstallServer()
         ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/agent-template.conf
     fi
 
-    GenerateHttpsManagerCert
+    CheckListenerCerts
     SetIndexerCertsOwnership
 
     # authd's durable state: the agent deletions whose indexer purge is still pending

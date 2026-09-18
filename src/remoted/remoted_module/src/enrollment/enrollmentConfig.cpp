@@ -32,7 +32,7 @@ namespace remoted::enrollment
         // agent<->manager scheme's AuthConfig -- see the field comment above.
         cfg.timePolicy = remoted::auth::buildTimePolicy(c.jwt_max_age, c.jwt_clock_skew, c.jwt_clock_skew_set != 0);
         cfg.maxBodySize =
-            c.auth_max_body_size > 0 ? static_cast<std::size_t>(c.auth_max_body_size) : (10U * 1024U * 1024U);
+            c.auth_max_body_size > 0 ? static_cast<std::size_t>(c.auth_max_body_size) : (5U * 1024U * 1024U);
 
         cfg.authdConnectTimeoutMs =
             c.authd_connect_timeout > 0 ? static_cast<std::uint32_t>(c.authd_connect_timeout) * 1000U : 0U;

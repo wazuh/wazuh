@@ -87,6 +87,19 @@ Enables or disables the event dumper functionality in the Wazuh engine.
 ### pr-clang.sh
 Formats (or checks formatting of) all `.cpp`/`.hpp` files changed in the current PR against `src/engine/source/`. Accepts an optional `--check` flag to only verify without modifying files.
 
+### wazuh-certs-tool.sh / wazuh-certs-tool.yml
+Devcontainer copy of the installation assistant's certificate tool (`wazuh-certs-tool-5.0.0-beta5.sh`). The script header records the origin URL, its sha256 and the numbered list of local changes; every changed hunk is marked `# DEVCONTAINER:`, so `diff <(curl -sSL <origin URL>) wazuh-certs-tool.sh` is a readable patch. Driven by `wazuh-certs-tool.yml` (`nodes.indexer|manager|dashboard[] {name, ip, dns}`, the same shape as the assistant's `config.yml`), it issues:
+- `root-ca.pem` / `root-ca.key` — or reuses the pair passed after `-A` — and `admin.pem` / `admin-key.pem`
+- `<name>.pem` / `<name>-key.pem` per indexer, manager and dashboard node, with the assistant's unchanged DNs (the indexer package pins `CN=node-1,OU=Wazuh,O=Wazuh,L=California,C=US`)
+- per manager node, additionally **`<name>-remoted.pem`** — the agent-listener leaf followed by the CA (`basicConstraints critical CA:FALSE`, `keyUsage critical digitalSignature,keyEncipherment`, `extendedKeyUsage serverAuth`, SAN = `ip` + `dns` + `<name>`, RSA 2048, SHA-256, 3650 days) — and **`<name>-remoted-key.pem`**, verified with `openssl verify -CAfile root-ca.pem` before the tool exits
+
+```bash
+bash scripts/wazuh-certs-tool.sh -A -v -c scripts/wazuh-certs-tool.yml -o /path/to/out                  # new CA
+bash scripts/wazuh-certs-tool.sh -A ca.pem ca.key -c scripts/wazuh-certs-tool.yml -o /path/to/out -f    # reuse a CA, write into a non-empty dir
+```
+
+The output directory is 755 with private keys 600 and certificates 644, plus `config.yml` (LF copy of the input YAML) and `wazuh-certificates-tool.log`; a non-empty output directory is refused unless `-f` is given. The node names in the YAML are load-bearing (`node-1` for the indexer's `nodes_dn` and entrypoint, `dashboard` for its entrypoint, the first manager node for `e2e/wazuh_copy_certs.sh`); the comments in the file name the consumer that pins each one. `e2e/init.sh` is the normal caller.
+
 ### Other utilities
 - `event_sock_v2.go`: Tools for testing event socket communication
 - `wazuh_stream_socket.go`: WebSocket streaming utility for engine events
@@ -110,21 +123,25 @@ The `e2e/` directory provides scripts to deploy a complete Wazuh ecosystem for e
 
 
 ### init.sh
-Initializes the E2E environment by running three steps in order:
+Initializes the E2E environment by running these steps in order:
 
-1. **Package download** — downloads the Wazuh Indexer and Dashboard `.deb` packages into `wazuh-indexer/` and `wazuh-dashboard/` respectively. By default, package URLs are resolved from the staging nightly manifest, falling back to the nightly backup manifest when a package is missing. Use `--from-wf` to download from the latest successful GitHub Actions workflows instead.
-2. **Certificate generation** — downloads `wazuh-install.sh` from the official Wazuh 4.x repository, generates a temporary `config.yml`, runs `--generate-config-files` to produce the cert bundle, extracts it into `certs/`, and cleans up all temporary files. If `certs/` already exists the script prompts whether to regenerate.
-3. **Logging** — all output is mirrored to `init.log` in the same directory.
+1. **Package download** (skipped with `--certs-only`) — downloads the Wazuh Indexer and Dashboard `.deb` packages into `wazuh-indexer/` and `wazuh-dashboard/` respectively. By default, package URLs are resolved from the staging nightly manifest, falling back to the nightly backup manifest when a package is missing. Use `--from-wf` to download from the latest successful GitHub Actions workflows instead.
+2. **Certificate generation** — runs `scripts/wazuh-certs-tool.sh -A -v -c scripts/wazuh-certs-tool.yml -o certs/` (see [wazuh-certs-tool.sh](#wazuh-certs-toolsh--wazuh-certs-toolyml)) and post-checks the result: the files the docker entrypoints and `wazuh_copy_certs.sh` copy by name exist, every leaf passes `openssl verify -CAfile certs/root-ca.pem`, and the SAN/EKU/KU/BC of the agent-listener leaf are printed. If `certs/` already exists the script prompts before replacing it (`--regen-certs` skips the prompt). The existing `certs/root-ca.pem` / `root-ca.key` are **reused** so the indexer/dashboard containers and the installed manager keep trusting the same CA; `--rotate-ca` issues a new CA instead, after which everything that trusted the old one must be redeployed (`docker compose down -v && docker compose up -d`, `sudo ./wazuh_copy_certs.sh`).
+3. **Manager listeners** — when a manager is installed under `WAZUH_MANAGER_HOME` (default `/var/wazuh-manager`), binds both remoted listeners to `0.0.0.0` in `etc/wazuh-manager.conf` so containerised agents can reach it.
+4. **Logging** — all output is mirrored to `init.log` in the same directory.
 
 **Prerequisites:**
-- Default mode: `curl`
-- Workflow mode (`--from-wf`): GitHub CLI (`gh`) must be installed and authenticated (`gh auth login`)
+- Default mode: `curl`, `openssl`
+- Workflow mode (`--from-wf`): GitHub CLI (`gh`) must be installed and authenticated (`gh auth login`), `unzip`
+- `--certs-only`: `openssl`
 
 **Usage:**
 ```bash
 cd e2e
 ./init.sh
 ./init.sh --from-wf
+./init.sh --certs-only --regen-certs   # re-issue every leaf, keep the CA (VS Code task "E2E Scripts: [Manager] Regenerate certs (keep CA)")
+./init.sh --certs-only --rotate-ca     # new CA: redeploy everything that trusts it afterwards
 ```
 
 ### docker-compose.yml
@@ -155,6 +172,7 @@ docker-compose up -d
 > ./init.sh
 > docker-compose up -d # This rebuilds services with updated packages
 > ```
+> The containers copy the certificates from `./certs` at start: after `./init.sh --certs-only --regen-certs` (same CA, re-issued leaves) a plain `docker compose down && docker compose up -d` loads them. After `./init.sh --certs-only --rotate-ca` use `docker compose down -v && docker compose up -d` instead — `-v` drops the indexer volumes so its security index is re-initialised with the new admin certificate.
 
 ### agents/
 
@@ -201,18 +219,21 @@ docker-compose up -d --build agent_5x_ubuntu  # start a single agent
 For full details, see [agents/README.md](e2e/agents/README.md).
 
 ### wazuh_copy_certs.sh
-Deploys generated certificates to an existing wazuh-manager installation:
-- Copies SSL/TLS certificates from `e2e/certs/` to `/var/wazuh-manager/etc/certs/`
-- Sets appropriate ownership (`wazuh-manager:wazuh-manager`) and permissions (640)
-- Maps certificate files to wazuh-manager expected names:
-  - `wazuh-1-key.pem` → `manager-key.pem`
-  - `wazuh-1.pem` → `manager.pem`
-  - `root-ca.pem` → `root-ca.pem`
-- Updates `ossec.conf` with indexer configuration
+Deploys the certificates issued by `init.sh` into an existing wazuh-manager installation (`WAZUH_MANAGER_HOME`, default `/var/wazuh-manager`). It must run as **root** (`sudo ./wazuh_copy_certs.sh`) and requires the `wazuh-manager` user and group to exist:
 
-**Important:** Must be executed after installing wazuh-manager and before starting the service.
+| Source (`e2e/certs/`) | Destination (`etc/certs/`) | Owner | Mode |
+|---|---|---|---|
+| `root-ca.pem` | `root-ca.pem` | `root:wazuh-manager` | 640 |
+| `<node>.pem` | `indexer-connector.pem` | `root:wazuh-manager` | 640 |
+| `<node>-key.pem` | `indexer-connector-key.pem` | `root:wazuh-manager` | 640 |
+| `<node>-remoted.pem` | `remoted.pem` | `wazuh-manager:wazuh-manager` | 640 |
+| `<node>-remoted-key.pem` | `remoted-key.pem` | `wazuh-manager:wazuh-manager` | 640 |
 
-**VS Code Task:** Available as "E2E Scripts: Copy wazuh-manager certs" in the task menu (`Ctrl+Shift+P` → `Tasks: Run Task`)
+`<node>` is the first `- name:` under `manager:` in `scripts/wazuh-certs-tool.yml` (`wazuh-1`), overridable with `MANAGER_NODE_NAME`. `etc/certs` is created as `1770 root:wazuh-manager`, like the installer does; `root-ca.key` is never copied. remoted opens its certificate and key after dropping privileges (hence the `wazuh-manager` owner), while the indexer-connector files are read as root. The script then verifies the deployed files (`openssl verify -CAfile root-ca.pem`, expiry check) and prints the `<remote><https>` certificate settings of `etc/wazuh-manager.conf` for review — it **does not edit** the configuration: the defaults already point at `etc/certs/remoted.pem`, `etc/certs/remoted-key.pem` and `etc/certs/root-ca.pem`.
+
+**Important:** run it after installing wazuh-manager and before starting the service, or restart it afterwards (`wazuh-manager-control restart`).
+
+**VS Code Tasks:** "E2E Scripts: [Manager] Copy wazuh-manager certs" and, to re-issue the leaves while keeping the CA, "E2E Scripts: [Manager] Regenerate certs (keep CA)" (`Ctrl+Shift+P` → `Tasks: Run Task`)
 
 ### purge_wazuh.sh
 Use the repo-level `tools/purge_wazuh.sh` script before re-running the E2E setup if you need to reset a local Wazuh installation completely.

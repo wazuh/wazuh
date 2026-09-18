@@ -11,10 +11,13 @@
 
 #include "http_server/IHttpServer.hpp"
 #include "http_server/RestinioHttpServer.hpp"
+#include "http_server/caCertificateSource.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
+#include "http_server/tlsCertificateStatus.hpp"
 #include "proc.hpp"
 
+#include "testCertificates.hpp"
 #include "testTlsServer.hpp"
 
 #include <gtest/gtest.h>
@@ -27,25 +30,32 @@
 #include <asio/streambuf.hpp>
 #include <asio/write.hpp>
 
+#include <openssl/bio.h>
 #include <openssl/evp.h>
+#include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
+
+#include <sys/stat.h>
 
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <cerrno>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <istream>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <vector>
 
 using namespace remoted::http;
 
@@ -79,8 +89,15 @@ namespace
         return config;
     }
 
-    using EvpPkeyPtr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
-    using X509Ptr = std::unique_ptr<X509, decltype(&X509_free)>;
+    // EvpPkeyPtr, makeTestKey(), makeCertificate() and writePemFile() moved to testCertificates.hpp
+    // (shared with caCertificateSource_test.cpp): using-declarations, not a new namespace import, so
+    // this stays unambiguous next to `using namespace remoted::http;` above.
+    using remoted::test::EvpPkeyPtr;
+    using remoted::test::makeCertificate;
+    using remoted::test::makeTestKey;
+    using remoted::test::writePemFile;
+    // X509Ptr is remoted::http's (tlsCertificateStatus.hpp), so certificates built here feed the
+    // status functions directly.
 
     // Builds a minimal self-signed certificate with the given comma-separated subjectAltName value
     // (e.g. "IP:203.0.113.5" or "IP:203.0.113.5,IP:2001:db8::1"), so certificateMatchesPeerIp() can
@@ -89,48 +106,28 @@ namespace
     // separately, over a real connection, by FullModeTest below.
     X509Ptr makeSelfSignedCertificate(const char* subjectAltName)
     {
-        EvpPkeyPtr pkey {EVP_PKEY_Q_keygen(nullptr, nullptr, "EC", "prime256v1"), &EVP_PKEY_free};
-        if (!pkey)
+        const auto key = makeTestKey();
+        return makeCertificate("remoted-test", 0, 60L * 60L, key.get(), key.get(), nullptr, subjectAltName);
+    }
+
+    std::string scratchPath(const char* name)
+    {
+        return "/tmp/httpServerTest_" + std::string {name} + "_" + std::to_string(::getpid()) + ".pem";
+    }
+
+    // loadCertificates()/evaluateCertificateStatus() are gone (issue #39318): CaCertificateSource
+    // is the one reader now. This is the read-only half a plain loadCertificates() call used to
+    // give the CA-coherence tests below -- the bounded/failure-aware half is CaCertificateSource's
+    // own job and is exercised through it (statusFrom(leaf, CaCertificateSource{...}.snapshot())).
+    std::vector<X509Ptr> readPemCertificates(const std::string& path)
+    {
+        std::ifstream in {path, std::ios::binary};
+        if (!in)
         {
-            throw std::runtime_error("Failed to generate test EC key pair");
+            return {};
         }
-
-        X509Ptr certificate {X509_new(), &X509_free};
-        if (!certificate)
-        {
-            throw std::runtime_error("Failed to allocate test X509 certificate");
-        }
-
-        X509_set_version(certificate.get(), 2); // X509v3
-        ASN1_INTEGER_set(X509_get_serialNumber(certificate.get()), 1);
-        X509_gmtime_adj(X509_get_notBefore(certificate.get()), 0);
-        X509_gmtime_adj(X509_get_notAfter(certificate.get()), 60L * 60L);
-
-        X509_NAME* name = X509_get_subject_name(certificate.get());
-        X509_NAME_add_entry_by_txt(
-            name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("remoted-test"), -1, -1, 0);
-        X509_set_issuer_name(certificate.get(), name);
-
-        X509_set_pubkey(certificate.get(), pkey.get());
-
-        X509V3_CTX ctx;
-        X509V3_set_ctx_nodb(&ctx);
-        X509V3_set_ctx(&ctx, certificate.get(), certificate.get(), nullptr, nullptr, 0);
-
-        X509_EXTENSION* extension = X509V3_EXT_conf_nid(nullptr, &ctx, NID_subject_alt_name, subjectAltName);
-        if (extension == nullptr)
-        {
-            throw std::runtime_error("Failed to build test subjectAltName extension");
-        }
-        X509_add_ext(certificate.get(), extension, -1);
-        X509_EXTENSION_free(extension);
-
-        if (X509_sign(certificate.get(), pkey.get(), EVP_sha256()) == 0)
-        {
-            throw std::runtime_error("Failed to sign test certificate");
-        }
-
-        return certificate;
+        std::string pem {std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {}};
+        return parseCertificates(pem).certificates;
     }
 
     // Generates a throwaway self-signed cert/key pair (via the `openssl` CLI, already a
@@ -141,15 +138,17 @@ namespace
     class TempCert
     {
     public:
-        TempCert()
+        /// @param days Validity, so the expiry-status tests can pick a leaf inside or outside the
+        ///             30-day warning window.
+        explicit TempCert(int days = 1)
         {
             char dirTemplate[] = "/tmp/httpServerTestXXXXXX";
             m_dir = mkdtemp(dirTemplate);
             m_certPath = m_dir + "/cert.pem";
             m_keyPath = m_dir + "/key.pem";
 
-            const std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=test -keyout " +
-                                    m_keyPath + " -out " + m_certPath + " >/dev/null 2>&1";
+            const std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -days " + std::to_string(days) +
+                                    " -subj /CN=test -keyout " + m_keyPath + " -out " + m_certPath + " >/dev/null 2>&1";
             if (std::system(cmd.c_str()) != 0)
             {
                 ADD_FAILURE() << "Failed to generate a throwaway TLS certificate for testing";
@@ -193,7 +192,7 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.port, 1517);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.workerThreads, 2U * static_cast<std::size_t>(cpp_get_nproc()));
-    EXPECT_EQ(config.maxBodySize, 20U * 1024U * 1024U);
+    EXPECT_EQ(config.maxBodySize, 10U * 1024U * 1024U);
     EXPECT_EQ(config.readTimeoutSec, 10U);
     EXPECT_EQ(config.writeTimeoutSec, 10U);
     EXPECT_EQ(config.requestTimeoutSec, 30U);
@@ -208,10 +207,11 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.bufferSize, 8192U);
     EXPECT_EQ(config.streamChunkSize, 64U * 1024U);
     EXPECT_EQ(config.maxInFlightBytes, 256U * 1024U * 1024U);
-    EXPECT_EQ(config.maxParallelConnections, 512U);
+    EXPECT_EQ(config.maxParallelConnections, 256U);
     EXPECT_EQ(config.certificatePath, "etc/certs/remoted.pem");
     EXPECT_EQ(config.privateKeyPath, "etc/certs/remoted-key.pem");
     EXPECT_EQ(config.caPath, "etc/certs/root-ca.pem");
+    EXPECT_EQ(config.caCertificatePath, "etc/certs/root-ca.pem");
     EXPECT_EQ(config.ciphers, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256");
     EXPECT_EQ(config.verificationMode, ClientVerificationMode::None);
     // Unset, not Disabled: buildHttpServerConfig() intentionally leaves this distinct
@@ -221,6 +221,26 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     // setting the IPV6_V6ONLY socket option, so the effective behavior is still
     // IPv6-only by default -- see DualStackYesFromStructOverridesDefault and friends.
     EXPECT_EQ(config.dualStackMode, DualStackMode::Unset);
+}
+
+TEST(HttpServerConfigTest, CaCertificateDefaultsToRootCa)
+{
+    // remote.https.ca_certificate never configured (empty C-ABI buffer): the CA that signs the
+    // listener certificate defaults to the installer's root CA, independently of `ca` (the
+    // client-verification bundle), which keeps its own default.
+    const auto config = buildHttpServerConfig(zeroedConfig());
+    EXPECT_EQ(config.caCertificatePath, "etc/certs/root-ca.pem");
+    EXPECT_EQ(config.caPath, "etc/certs/root-ca.pem");
+}
+
+TEST(HttpServerConfigTest, CaCertificateOverrideFromConfig)
+{
+    auto raw = zeroedConfig();
+    std::snprintf(raw.ca_certificate_path, sizeof(raw.ca_certificate_path), "/custom/listener-ca.pem");
+    // ca_path deliberately left empty: the two fields must not leak into each other.
+    const auto config = buildHttpServerConfig(raw);
+    EXPECT_EQ(config.caCertificatePath, "/custom/listener-ca.pem");
+    EXPECT_EQ(config.caPath, "etc/certs/root-ca.pem");
 }
 
 TEST(HttpServerConfigTest, InFlightBytesStructWinsElseDefault)
@@ -241,9 +261,11 @@ TEST(HttpServerConfigTest, MaxConnectionsStructWinsElseDefault)
     raw.max_parallel_connections = 128;
     EXPECT_EQ(buildHttpServerConfig(raw).maxParallelConnections, 128U);
 
-    // Unset (<=0) -> built-in default (this setting is not env-driven).
+    // Unset (<=0) -> built-in default (this setting is not env-driven). Must equal secure.c's own
+    // default for the same option, or an embedder passing a zeroed struct is limited differently
+    // from remoted itself.
     raw.max_parallel_connections = 0;
-    EXPECT_EQ(buildHttpServerConfig(raw).maxParallelConnections, 512U);
+    EXPECT_EQ(buildHttpServerConfig(raw).maxParallelConnections, 256U);
 }
 
 TEST(HttpServerConfigTest, StructValuesWin)
@@ -539,6 +561,623 @@ TEST(CertificateVerificationTest, DnsSanDoesNotSatisfyAnAddressCheck)
 TEST(CertificateVerificationTest, NullCertificateReturnsFalse)
 {
     EXPECT_FALSE(certificateMatchesPeerIp(nullptr, "203.0.113.5"));
+}
+
+// ---------------------------------------------------------------------------
+// Certificate status (expiry + CA coherence), from certificates built in memory
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    constexpr long kDay {24L * 60L * 60L};
+
+    // A CA, a leaf it signed, and an unrelated CA -- the whole cast of the coherence tests. `ca` and
+    // `foreignCa` carry CA:TRUE (isCa) so the chainValidates() tests can use them as trust anchors;
+    // `leaf` stays without it -- a served certificate is never itself a CA.
+    struct StatusPki
+    {
+        EvpPkeyPtr caKey {makeTestKey()};
+        X509Ptr ca {makeCertificate("status-ca", -kDay, 30 * kDay, caKey.get(), caKey.get(), nullptr, nullptr, true)};
+        EvpPkeyPtr leafKey {makeTestKey()};
+        X509Ptr leaf {makeCertificate("localhost", -kDay, 10 * kDay, leafKey.get(), caKey.get(), ca.get())};
+        EvpPkeyPtr foreignKey {makeTestKey()};
+        X509Ptr foreignCa {makeCertificate(
+            "foreign-ca", -kDay, 30 * kDay, foreignKey.get(), foreignKey.get(), nullptr, nullptr, true)};
+    };
+
+    // Duplicates an owning reference to an already-built certificate, so the SAME X509 object can
+    // sit in two independent bundles (std::vector<X509Ptr>) without a double free -- needed when a
+    // test reuses one StatusPki's `ca` across two chainValidates() calls.
+    X509Ptr upRef(const X509Ptr& certificate)
+    {
+        X509* raw = certificate.get();
+        if (raw != nullptr)
+        {
+            X509_up_ref(raw);
+        }
+        return X509Ptr {raw};
+    }
+} // namespace
+
+TEST(TlsCertificateStatusTest, DaysUntilExpiryOfTestCert)
+{
+    const auto key = makeTestKey();
+    const auto cert = makeCertificate("leaf", 0, 10 * kDay, key.get(), key.get(), nullptr);
+
+    // Truncated whole days: the seconds elapsed since the certificate was built make it 9.
+    const auto days = daysUntilExpiry(cert.get());
+    ASSERT_TRUE(days.has_value());
+    EXPECT_GE(*days, 9);
+    EXPECT_LE(*days, 10);
+}
+
+TEST(TlsCertificateStatusTest, DaysUntilExpiryIsNegativeOnceExpired)
+{
+    const auto key = makeTestKey();
+    const auto cert = makeCertificate("leaf", -3 * kDay, -2 * kDay, key.get(), key.get(), nullptr);
+
+    const auto days = daysUntilExpiry(cert.get());
+    ASSERT_TRUE(days.has_value());
+    EXPECT_LE(*days, -1);
+
+    // The first 24 h past notAfter read -1, never 0: "negative" is a strict synonym of "expired".
+    const auto justExpired = makeCertificate("leaf", -kDay, -60, key.get(), key.get(), nullptr);
+    EXPECT_EQ(daysUntilExpiry(justExpired.get()), -1);
+
+    EXPECT_FALSE(daysUntilExpiry(nullptr).has_value());
+}
+
+TEST(TlsCertificateStatusTest, CaSignsLeafTrue)
+{
+    StatusPki pki;
+    const auto caPath = scratchPath("ca_true");
+    remoted::test::ScratchFileCleanup cleanup {{caPath}};
+    writePemFile(caPath, {pki.ca.get()});
+
+    std::vector<X509Ptr> cas = readPemCertificates(caPath);
+    ASSERT_EQ(cas.size(), 1U);
+    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), cas));
+
+    const auto status = statusFrom(pki.leaf.get(), CaCertificateSource {caPath, pki.leaf.get()}.snapshot());
+    EXPECT_EQ(status.caMatchesLeaf, true);
+    ASSERT_TRUE(status.expiryDays.has_value());
+    EXPECT_GE(*status.expiryDays, 9);
+    EXPECT_EQ(status.evaluations, 0U); // counting is the monitor's job
+    EXPECT_NE(status.leafSubject.find("localhost"), std::string::npos) << status.leafSubject;
+    EXPECT_NE(status.caSubjects.find("status-ca"), std::string::npos) << status.caSubjects;
+}
+
+TEST(TlsCertificateStatusTest, CaSignsLeafFalse)
+{
+    StatusPki pki;
+    const auto caPath = scratchPath("ca_false");
+    remoted::test::ScratchFileCleanup cleanup {{caPath}};
+    writePemFile(caPath, {pki.foreignCa.get()});
+
+    EXPECT_FALSE(anyCaSignsLeaf(pki.leaf.get(), readPemCertificates(caPath)));
+    EXPECT_EQ(statusFrom(pki.leaf.get(), CaCertificateSource {caPath, pki.leaf.get()}.snapshot()).caMatchesLeaf, false);
+    // A null leaf never matches anything either.
+    EXPECT_FALSE(anyCaSignsLeaf(nullptr, readPemCertificates(caPath)));
+}
+
+TEST(TlsCertificateStatusTest, CaSignsLeafUnreadable)
+{
+    StatusPki pki;
+    const auto missing = "/nonexistent/remoted-tests/root-ca.pem";
+
+    EXPECT_TRUE(readPemCertificates(missing).empty());
+    EXPECT_TRUE(readPemCertificates("").empty());
+
+    // Unknown, not mismatch: the caller must be able to tell "cannot read the CA" from "the CA is
+    // the wrong one" (GET /cacerts serves on the former, refuses on the latter). A missing file is
+    // also a read FAILURE (issue #39318): the source could not open it, and says so.
+    const auto status = statusFrom(pki.leaf.get(), CaCertificateSource {missing, pki.leaf.get()}.snapshot());
+    EXPECT_FALSE(status.caMatchesLeaf.has_value());
+    EXPECT_TRUE(status.caSubjects.empty());
+    ASSERT_TRUE(status.expiryDays.has_value()); // the leaf side is still evaluated
+    ASSERT_TRUE(status.caReadFailure.has_value());
+    EXPECT_EQ(status.caReadFailure->status, ReadStatus::CannotOpen);
+    EXPECT_EQ(status.caReadFailure->error, ENOENT);
+
+    // A file with no CERTIFICATE block is the same as no file for the verdict -- but unlike the
+    // missing path above, the READ itself succeeded, so there is no failure to report.
+    const auto garbage = scratchPath("ca_garbage");
+    remoted::test::ScratchFileCleanup cleanup {{garbage}};
+    {
+        std::ofstream out {garbage};
+        out << "not a pem\n";
+    }
+    EXPECT_TRUE(readPemCertificates(garbage).empty());
+    const auto garbageStatus = statusFrom(pki.leaf.get(), CaCertificateSource {garbage, pki.leaf.get()}.snapshot());
+    EXPECT_FALSE(garbageStatus.caMatchesLeaf.has_value());
+    EXPECT_FALSE(garbageStatus.caReadFailure.has_value());
+}
+
+// ---------------------------------------------------------------------------
+// leafHasUsableSan(): the one certificate question the manager can settle on its own.
+//
+// Not "does the leaf cover the address this agent dials" -- behind NAT, a load balancer or a
+// worker, the manager does not know that address, and the agent checks it for real at upgrade
+// time. This is the weaker, decidable question: is there ANY name here a remote agent could match.
+// The subtracted set is passed explicitly so the table does not depend on what the build machine
+// happens to be called.
+// ---------------------------------------------------------------------------
+namespace
+{
+    const std::vector<std::string> kLocalNames {
+        "localhost", "localhost.localdomain", "build-host.example.net", "build-host"};
+
+    bool usableSan(const char* subjectAltName)
+    {
+        const auto key = makeTestKey();
+        const auto cert = makeCertificate("leaf", 0, 10 * kDay, key.get(), key.get(), nullptr, subjectAltName);
+        return remoted::http::leafHasUsableSan(cert.get(), kLocalNames);
+    }
+} // namespace
+
+TEST(LeafHasUsableSanTest, NoSanExtensionAtAllIsUnusable)
+{
+    // RFC 6125 has clients ignore the subject CN, so a certificate with no SAN identifies no host
+    // to anyone -- however good its CN looks.
+    EXPECT_FALSE(usableSan(nullptr));
+    EXPECT_FALSE(remoted::http::leafHasUsableSan(nullptr, kLocalNames));
+}
+
+TEST(LeafHasUsableSanTest, LoopbackOnlyIsUnusable)
+{
+    EXPECT_FALSE(usableSan("IP:127.0.0.1"));
+    EXPECT_FALSE(usableSan("IP:127.0.0.53")); // the whole 127.0.0.0/8, not just .1
+    EXPECT_FALSE(usableSan("IP:::1"));
+    EXPECT_FALSE(usableSan("IP:127.0.0.1,IP:::1"));
+}
+
+TEST(LeafHasUsableSanTest, LocalNamesOnlyAreUnusable)
+{
+    // The shape a self-signed quickstart certificate has. Catching it is the whole reason the test
+    // is "no USABLE SAN" rather than the simpler "no SAN at all".
+    EXPECT_FALSE(usableSan("DNS:localhost"));
+    EXPECT_FALSE(usableSan("DNS:localhost.localdomain"));
+    EXPECT_FALSE(usableSan("DNS:build-host"));
+    EXPECT_FALSE(usableSan("DNS:build-host.example.net"));
+    EXPECT_FALSE(usableSan("DNS:localhost,IP:127.0.0.1,DNS:build-host"));
+}
+
+TEST(LeafHasUsableSanTest, LocalNameComparisonIsCaseInsensitive)
+{
+    // DNS names are case-insensitive, so a certificate that spells the local host in capitals is
+    // exactly as useless as one that does not -- and must not slip through as "some other name".
+    EXPECT_FALSE(usableSan("DNS:LocalHost"));
+    EXPECT_FALSE(usableSan("DNS:BUILD-HOST.EXAMPLE.NET"));
+}
+
+TEST(LeafHasUsableSanTest, OneRoutableEntryIsEnough)
+{
+    EXPECT_TRUE(usableSan("IP:203.0.113.5"));
+    EXPECT_TRUE(usableSan("IP:2001:db8::1"));
+    EXPECT_TRUE(usableSan("DNS:manager.example.com"));
+    EXPECT_TRUE(usableSan("DNS:*.example.com"));
+    // Loopback plus something real: the filter subtracts, it does not disqualify the whole set.
+    EXPECT_TRUE(usableSan("DNS:localhost,IP:127.0.0.1,IP:203.0.113.5"));
+    EXPECT_TRUE(usableSan("IP:127.0.0.1,DNS:manager.example.com"));
+}
+
+TEST(LeafHasUsableSanTest, ShortLocalNameDoesNotSubtractAnFqdn)
+{
+    // localHostNames() only ever REDUCES a hostname to its short form, never expands a short one to
+    // a guessed FQDN. "build-host.other.example" is a name this code has no business claiming
+    // describes only the local host, so it counts -- warning is the loud action, and being
+    // conservative about NOT warning is the right direction.
+    EXPECT_TRUE(usableSan("DNS:build-host.other.example"));
+}
+
+TEST(LeafHasUsableSanTest, NonIdentityEntryTypesNeitherCountNorDisqualify)
+{
+    // A TLS client never matches a server identity against a URI or an email address.
+    EXPECT_FALSE(usableSan("URI:https://manager.example.com/"));
+    EXPECT_FALSE(usableSan("email:admin@example.com"));
+    EXPECT_TRUE(usableSan("URI:https://manager.example.com/,DNS:manager.example.com"));
+}
+
+TEST(LeafHasUsableSanTest, LocalHostNamesAlwaysCarriesTheLoopbackNames)
+{
+    const auto names = remoted::http::localHostNames();
+    EXPECT_NE(std::find(names.begin(), names.end(), "localhost"), names.end());
+    EXPECT_NE(std::find(names.begin(), names.end(), "localhost.localdomain"), names.end());
+    // gethostname() may fail in a restricted sandbox, so the only guarantee beyond the two literals
+    // is that nothing empty is ever added -- an empty entry would subtract every empty dNSName.
+    for (const auto& name : names)
+    {
+        EXPECT_FALSE(name.empty());
+    }
+}
+
+TEST(TlsCertificateStatusTest, BundleWithTheSigningCaMatches)
+{
+    StatusPki pki;
+    const auto bundlePath = scratchPath("ca_bundle");
+    remoted::test::ScratchFileCleanup cleanup {{bundlePath}};
+    // The signing CA is NOT the first block: every block must be tried.
+    writePemFile(bundlePath, {pki.foreignCa.get(), pki.ca.get()});
+
+    const auto cas = readPemCertificates(bundlePath);
+    ASSERT_EQ(cas.size(), 2U);
+    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), cas));
+    const auto status = statusFrom(pki.leaf.get(), CaCertificateSource {bundlePath, pki.leaf.get()}.snapshot());
+    EXPECT_EQ(status.caMatchesLeaf, true);
+    EXPECT_NE(status.caSubjects.find("foreign-ca"), std::string::npos) << status.caSubjects;
+    EXPECT_NE(status.caSubjects.find("status-ca"), std::string::npos) << status.caSubjects;
+}
+
+// ---------------------------------------------------------------------------
+// chainValidates(): does the served leaf VALIDATE with the bundle as its trust store (issue
+// #39318) -- a stricter, separate question from anyCaSignsLeaf()'s plain signature check. Every
+// GTEST_LOG_(INFO) line below is deliberate: the exact OpenSSL wording is what the operator-facing
+// WARN/INFO lines in RestinioHttpServer.cpp quote, so it belongs in the test output, not only in a
+// failure diagnostic.
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    // root (CA) -> intermediate (CA, signed by root) -> leaf (signed by intermediate): the shape
+    // that lets ChainValidWithAnIntermediateAnchor and ChainValidRootOnlyWithMissingIntermediate
+    // show the difference between "some CA in the bundle signs the leaf" and "the leaf's own chain
+    // is complete against the bundle".
+    struct IntermediatePki
+    {
+        EvpPkeyPtr rootKey {makeTestKey()};
+        X509Ptr root {
+            makeCertificate("status-root", -kDay, 30 * kDay, rootKey.get(), rootKey.get(), nullptr, nullptr, true)};
+        EvpPkeyPtr intermediateKey {makeTestKey()};
+        X509Ptr intermediate {makeCertificate(
+            "status-intermediate", -kDay, 30 * kDay, intermediateKey.get(), rootKey.get(), root.get(), nullptr, true)};
+        EvpPkeyPtr leafKey {makeTestKey()};
+        X509Ptr leaf {
+            makeCertificate("localhost", -kDay, 10 * kDay, leafKey.get(), intermediateKey.get(), intermediate.get())};
+    };
+} // namespace
+
+TEST(TlsCertificateStatusTest, ChainValidWithAnIntermediateAnchor)
+{
+    IntermediatePki pki;
+    std::vector<X509Ptr> cas;
+    cas.push_back(std::move(pki.intermediate));
+
+    // X509_V_FLAG_PARTIAL_CHAIN makes the intermediate itself a trust anchor: the root need not be
+    // in the bundle for the chain to be complete.
+    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), cas));
+    const auto verdict = chainValidates(pki.leaf.get(), cas);
+    GTEST_LOG_(INFO) << "ChainValidWithAnIntermediateAnchor chainError: \"" << verdict.error << "\"";
+    ASSERT_TRUE(verdict.valid.has_value());
+    EXPECT_TRUE(*verdict.valid) << verdict.error;
+    EXPECT_TRUE(verdict.error.empty()) << verdict.error;
+}
+
+TEST(TlsCertificateStatusTest, ChainValidRootOnlyWithMissingIntermediate)
+{
+    IntermediatePki pki;
+    std::vector<X509Ptr> cas;
+    cas.push_back(std::move(pki.root));
+
+    // The root does not sign the leaf directly (the intermediate does), and it is not the leaf's
+    // named issuer either: the chain cannot be completed from the root alone.
+    EXPECT_FALSE(anyCaSignsLeaf(pki.leaf.get(), cas));
+    const auto verdict = chainValidates(pki.leaf.get(), cas);
+    GTEST_LOG_(INFO) << "ChainValidRootOnlyWithMissingIntermediate chainError: \"" << verdict.error << "\"";
+    ASSERT_TRUE(verdict.valid.has_value());
+    EXPECT_FALSE(*verdict.valid);
+    EXPECT_EQ(verdict.error, "unable to get local issuer certificate");
+}
+
+TEST(TlsCertificateStatusTest, ChainValidExpiredCa)
+{
+    auto caKey = makeTestKey();
+    auto ca = makeCertificate("status-expired-ca", -3 * kDay, -kDay, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    auto leafKey = makeTestKey();
+    // The LEAF is still within its validity window; only the CA that signed it has expired.
+    auto leaf = makeCertificate("localhost", -kDay, 10 * kDay, leafKey.get(), caKey.get(), ca.get());
+
+    std::vector<X509Ptr> cas;
+    cas.push_back(std::move(ca));
+
+    EXPECT_TRUE(anyCaSignsLeaf(leaf.get(), cas));
+    const auto verdict = chainValidates(leaf.get(), cas);
+    GTEST_LOG_(INFO) << "ChainValidExpiredCa chainError: \"" << verdict.error << "\"";
+    ASSERT_TRUE(verdict.valid.has_value());
+    EXPECT_FALSE(*verdict.valid);
+    EXPECT_EQ(verdict.error, "certificate has expired");
+}
+
+TEST(TlsCertificateStatusTest, ChainValidNonCaSigner)
+{
+    // A plain leaf-shaped certificate (no isCa: no basicConstraints/keyUsage at all) used as a
+    // signer -- exactly what makeCertificate() has always built. It still signs the leaf; the
+    // exact OpenSSL wording for why the CHAIN then fails is left to the test's own log line rather
+    // than pinned here.
+    auto signerKey = makeTestKey();
+    auto signer = makeCertificate("status-non-ca-signer", -kDay, 30 * kDay, signerKey.get(), signerKey.get(), nullptr);
+    auto leafKey = makeTestKey();
+    auto leaf = makeCertificate("localhost", -kDay, 10 * kDay, leafKey.get(), signerKey.get(), signer.get());
+
+    std::vector<X509Ptr> cas;
+    cas.push_back(std::move(signer));
+
+    EXPECT_TRUE(anyCaSignsLeaf(leaf.get(), cas));
+    const auto verdict = chainValidates(leaf.get(), cas);
+    GTEST_LOG_(INFO) << "ChainValidNonCaSigner chainError: \"" << verdict.error << "\"";
+    ASSERT_TRUE(verdict.valid.has_value());
+    EXPECT_FALSE(*verdict.valid);
+    EXPECT_FALSE(verdict.error.empty());
+}
+
+TEST(TlsCertificateStatusTest, ChainValidSelfSignedCa)
+{
+    StatusPki pki;
+
+    std::vector<X509Ptr> singleCa;
+    singleCa.push_back(upRef(pki.ca));
+
+    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), singleCa));
+    const auto singleVerdict = chainValidates(pki.leaf.get(), singleCa);
+    GTEST_LOG_(INFO) << "ChainValidSelfSignedCa (ca only) chainError: \"" << singleVerdict.error << "\"";
+    ASSERT_TRUE(singleVerdict.valid.has_value());
+    EXPECT_TRUE(*singleVerdict.valid) << singleVerdict.error;
+    EXPECT_TRUE(singleVerdict.error.empty()) << singleVerdict.error;
+
+    // Same self-signed CA, now alongside an unrelated one: an extra, irrelevant bundle entry must
+    // not change the verdict.
+    std::vector<X509Ptr> bundleWithForeign;
+    bundleWithForeign.push_back(upRef(pki.foreignCa));
+    bundleWithForeign.push_back(upRef(pki.ca));
+
+    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), bundleWithForeign));
+    const auto bundleVerdict = chainValidates(pki.leaf.get(), bundleWithForeign);
+    GTEST_LOG_(INFO) << "ChainValidSelfSignedCa (foreignCa+ca) chainError: \"" << bundleVerdict.error << "\"";
+    ASSERT_TRUE(bundleVerdict.valid.has_value());
+    EXPECT_TRUE(*bundleVerdict.valid) << bundleVerdict.error;
+    EXPECT_TRUE(bundleVerdict.error.empty()) << bundleVerdict.error;
+}
+
+TEST(TlsCertificateStatusTest, ChainValidUnknownWithoutLeafOrBundle)
+{
+    StatusPki pki;
+    std::vector<X509Ptr> cas;
+    cas.push_back(upRef(pki.ca));
+
+    const auto noLeaf = chainValidates(nullptr, cas);
+    EXPECT_FALSE(noLeaf.valid.has_value());
+    EXPECT_TRUE(noLeaf.error.empty());
+
+    const auto noBundle = chainValidates(pki.leaf.get(), {});
+    EXPECT_FALSE(noBundle.valid.has_value());
+    EXPECT_TRUE(noBundle.error.empty());
+}
+
+// ---------------------------------------------------------------------------
+// The transport's own evaluation: at start (before listening) and on the monitor's ticks
+// ---------------------------------------------------------------------------
+
+TEST(HttpServerTest, CertificateStatusIsEmptyBeforeStart)
+{
+    auto server = makeHttpServer();
+
+    const auto status = server->certificateStatus();
+    EXPECT_EQ(status.evaluations, 0U);
+    EXPECT_FALSE(status.expiryDays.has_value());
+    EXPECT_FALSE(status.caMatchesLeaf.has_value());
+}
+
+TEST(HttpServerTest, CertificateStatusIsEvaluatedBeforeListening)
+{
+    TempCert cert; // 1 day: inside the WARN window, so this also walks the warning branch
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = cert.certPath(); // self-signed: its own CA
+
+    ASSERT_NO_THROW(server->start(config));
+
+    // Exactly the start-time evaluation -- the 24 h monitor has not ticked -- and it is already
+    // there the moment start() returns, so no request can ever observe "not evaluated yet".
+    const auto status = server->certificateStatus();
+    EXPECT_EQ(status.evaluations, 1U);
+    ASSERT_TRUE(status.expiryDays.has_value());
+    EXPECT_GE(*status.expiryDays, 0);
+    EXPECT_LE(*status.expiryDays, 1);
+    EXPECT_EQ(status.caMatchesLeaf, true);
+
+    server->stop();
+}
+
+TEST(HttpServerTest, StartUpStatusCarriesTheChainVerdict)
+{
+    // openssl req -x509 stamps basicConstraints=critical,CA:TRUE by default (OpenSSL 3,
+    // testTlsServer.hpp), so this self-signed certificate validates as its own CA, not merely
+    // "matches" it.
+    TempCert cert;
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = cert.certPath(); // self-signed: its own CA
+
+    ASSERT_NO_THROW(server->start(config));
+
+    const auto status = server->certificateStatus();
+    EXPECT_EQ(status.caMatchesLeaf, true);
+    ASSERT_TRUE(status.chainValid.has_value());
+    EXPECT_TRUE(*status.chainValid) << status.chainError;
+    EXPECT_TRUE(status.chainError.empty()) << status.chainError;
+
+    server->stop();
+}
+
+namespace
+{
+    // Bounded wait for the monitor to have produced at least @p minimum evaluations.
+    bool waitForEvaluations(const IHttpServer& server, std::uint64_t minimum, std::chrono::milliseconds maxWait)
+    {
+        const auto deadline = std::chrono::steady_clock::now() + maxWait;
+        while (std::chrono::steady_clock::now() < deadline)
+        {
+            if (server.certificateStatus().evaluations >= minimum)
+            {
+                return true;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds {50});
+        }
+        return server.certificateStatus().evaluations >= minimum;
+    }
+} // namespace
+
+TEST(HttpServerTest, ExpiryWarningRunsAgainOnTimerTick)
+{
+    TempCert cert {10}; // inside the 30-day window: every tick walks the WARN path the start did
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = cert.certPath();
+    config.certificateStatusInterval = std::chrono::seconds {1};
+
+    ASSERT_NO_THROW(server->start(config));
+    EXPECT_EQ(server->certificateStatus().evaluations, 1U);
+
+    // The monitor re-evaluates (and re-logs) every interval: a second evaluation lands well
+    // inside 5 s, and it carries the same verdict as the first.
+    ASSERT_TRUE(waitForEvaluations(*server, 2, std::chrono::seconds {5}));
+    const auto status = server->certificateStatus();
+    EXPECT_GE(status.evaluations, 2U);
+    EXPECT_EQ(status.caMatchesLeaf, true);
+    ASSERT_TRUE(status.expiryDays.has_value());
+    EXPECT_GE(*status.expiryDays, 9);
+
+    server->stop();
+}
+
+TEST(HttpServerTest, StopAcceptingJoinsTheCertificateMonitor)
+{
+    TempCert cert {10};
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = cert.certPath();
+    config.certificateStatusInterval = std::chrono::seconds {1};
+
+    ASSERT_NO_THROW(server->start(config));
+    ASSERT_TRUE(waitForEvaluations(*server, 2, std::chrono::seconds {5}));
+
+    // stopAccepting() wakes the monitor instead of waiting out its interval, and joins it.
+    const auto before = std::chrono::steady_clock::now();
+    server->stopAccepting();
+    EXPECT_LT(std::chrono::steady_clock::now() - before, std::chrono::seconds {2});
+
+    // Joined: the count no longer moves, even across what would have been the next tick. The last
+    // snapshot stays readable (the pulls quiesce through the facade's weak_ptr, not here).
+    const auto frozen = server->certificateStatus().evaluations;
+    EXPECT_GE(frozen, 2U);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds {1500};
+    while (std::chrono::steady_clock::now() < deadline)
+    {
+        ASSERT_EQ(server->certificateStatus().evaluations, frozen);
+        std::this_thread::sleep_for(std::chrono::milliseconds {100});
+    }
+
+    server->stop();
+}
+
+// The shared CaCertificateSource (issue #39318): the start-time verdict comes from the same
+// reader GET /cacerts answers from, so a broken CA at start is visible through both entry points
+// at once, each describing the exact failure rather than a bare "unreadable".
+TEST(HttpServerTest, StartUpStatusComesFromTheSharedSource)
+{
+    TempCert cert; // valid leaf/key; only the configured CA path is broken
+
+    char dirTemplate[] = "/tmp/httpServerTestCaDirXXXXXX";
+    const std::string caDir = ::mkdtemp(dirTemplate);
+    ASSERT_FALSE(caDir.empty());
+
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = caDir; // open(2) succeeds on a directory; read(2) refuses it (EISDIR)
+
+    ASSERT_NO_THROW(server->start(config));
+
+    const auto status = server->certificateStatus();
+    EXPECT_EQ(status.evaluations, 1U);
+    EXPECT_FALSE(status.caMatchesLeaf.has_value());
+    ASSERT_TRUE(status.caReadFailure.has_value());
+    EXPECT_EQ(status.caReadFailure->status, ReadStatus::ReadError);
+    EXPECT_EQ(status.caReadFailure->error, EISDIR);
+
+    const auto caSnapshot = server->caCertificateSnapshot();
+    EXPECT_EQ(caSnapshot.certificates, 0U);
+    ASSERT_TRUE(caSnapshot.lastReadFailure.has_value());
+    EXPECT_EQ(caSnapshot.lastReadFailure->status, ReadStatus::ReadError);
+    EXPECT_EQ(caSnapshot.lastReadFailure->error, EISDIR);
+
+    server->stop();
+    ::rmdir(caDir.c_str());
+}
+
+// A read failure mid-flight (not just at start) is a window, not a decision: the monitor keeps
+// ticking through it and the status keeps the last good verdict next to the fresh cause. What the
+// tick LOGS on each pass is not observable from this binary (testLogRecorder.hpp), so this pins the
+// state the status reports and that the monitor did not stop -- not the log line itself.
+TEST(HttpServerTest, MonitorTickKeepsEvaluatingThroughAReadFailure)
+{
+    TempCert cert {10};
+
+    // A copy of the leaf under its own path: TempCert's destructor removes cert.certPath() itself,
+    // and the configured CA path below is about to be replaced by a directory, so it must not be
+    // the same file the listener's own certificate lives at.
+    const auto caPath = scratchPath("ca_monitor_tick");
+    {
+        std::ifstream in {cert.certPath(), std::ios::binary};
+        std::ofstream out {caPath, std::ios::binary};
+        out << in.rdbuf();
+    }
+
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = caPath;
+    config.certificateStatusInterval = std::chrono::seconds {1};
+
+    ASSERT_NO_THROW(server->start(config));
+    EXPECT_EQ(server->certificateStatus().caMatchesLeaf, true);
+
+    // Replace the CA file with a directory: same "open succeeds, read(2) fails EISDIR" case as
+    // CaCertificateSource's own tests, observed here through the monitor's tick.
+    ASSERT_EQ(std::remove(caPath.c_str()), 0);
+    ASSERT_EQ(::mkdir(caPath.c_str(), 0700), 0);
+
+    ASSERT_TRUE(waitForEvaluations(*server, 2, std::chrono::seconds {5}));
+    const auto status = server->certificateStatus();
+    ASSERT_TRUE(status.caReadFailure.has_value());
+    EXPECT_EQ(status.caReadFailure->status, ReadStatus::ReadError);
+    EXPECT_EQ(status.caReadFailure->error, EISDIR);
+    EXPECT_EQ(status.caMatchesLeaf, true); // the last good verdict, kept through the failed read
+    EXPECT_GE(status.evaluations, 2U);
+
+    server->stop();
+    ::rmdir(caPath.c_str());
 }
 
 // ---------------------------------------------------------------------------
@@ -995,6 +1634,8 @@ TEST(HttpServerTest, DiagnosticsReportZerosBeforeStartAndTrackTheBudgetAfter)
     EXPECT_EQ(d.budgetInFlightBytes, 0U);
     EXPECT_EQ(d.budgetInFlightCount, 0U);
     EXPECT_EQ(d.budgetRejectedTotal, 0U);
+    EXPECT_EQ(d.connectionsOpen, 0U);
+    EXPECT_EQ(d.connectionsMax, 0U); // no ceiling reported until one is configured
 
     HttpServerConfig config;
     config.port = 0; // ephemeral
@@ -1011,6 +1652,8 @@ TEST(HttpServerTest, DiagnosticsReportZerosBeforeStartAndTrackTheBudgetAfter)
     EXPECT_EQ(d.budgetInFlightBytes, 0U);
     EXPECT_EQ(d.budgetInFlightCount, 0U);
     EXPECT_EQ(d.budgetRejectedTotal, 0U);
+    EXPECT_EQ(d.connectionsOpen, 0U);                           // nobody has connected yet
+    EXPECT_EQ(d.connectionsMax, config.maxParallelConnections); // the ceiling actually in force
 
     {
         auto reservation = server->tryReserveInFlightBytes(10U * MiB);
@@ -1080,6 +1723,52 @@ TEST(HttpServerTest, DiagnosticsCountARealAdmissionShed)
     EXPECT_EQ(d.budgetRejectedTotal, 1U); // exactly the one refused admission
     EXPECT_EQ(d.budgetInFlightCount, 0U);
     EXPECT_EQ(d.budgetAvailableBytes, 50U * MiB);
+}
+
+// The connection ceiling is the one capacity limit that rejects nothing when reached (RESTinio
+// postpones the accept), so `connectionsOpen` is the ONLY evidence an operator gets that it is being
+// approached -- and it is fed by a RESTinio state-listener callback, not by our own request path. A
+// listener that is never notified would leave it reading 0 forever and nothing else would notice,
+// which is exactly what this test exists to catch: it drives a real TLS connection and requires the
+// counter to have moved while the handler was running.
+TEST(HttpServerTest, DiagnosticsCountARealConnection)
+{
+    constexpr std::size_t MiB = 1024U * 1024U;
+    TempCert cert;
+    std::atomic<std::size_t> openDuringRequest {0};
+    auto server = makeHttpServer();
+    auto* serverPtr = server.get();
+
+    server->addRoute(
+        Method::Post,
+        "/events",
+        [serverPtr, &openDuringRequest](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        {
+            // Sampled from inside the handler: the connection serving this very request is open, so
+            // the count cannot legitimately be 0 here.
+            openDuringRequest = serverPtr->diagnostics().connectionsOpen;
+            responder->send(HttpResponse::json(200, "{}"));
+        },
+        /*countAgainstBudget=*/true,
+        ResponseMode::Buffered);
+
+    HttpServerConfig config;
+    config.port = static_cast<std::uint16_t>(21000 + (::getpid() % 5000));
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.maxBodySize = 1U * MiB;
+    config.maxInFlightBytes = 50U * MiB;
+    config.maxParallelConnections = 64U;
+
+    ASSERT_NO_THROW(server->start(config));
+    EXPECT_EQ(server->diagnostics().connectionsMax, 64U);
+
+    const auto raw = remoted::test::sendSignedRequest(config.port, remoted::test::testAgentKey(), "/events", "{}");
+    ASSERT_FALSE(raw.empty()) << "no response from the server";
+
+    EXPECT_GE(openDuringRequest.load(), 1U) << "the state listener never counted the live connection";
+
+    server->stop();
 }
 
 // ---------------------------------------------------------------------------

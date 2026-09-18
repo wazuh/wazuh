@@ -65,6 +65,30 @@ GUI_AUTHENTICATION_CLAUSES = [
     'process == "loginwindow"',
     'eventMessage contains "attempting login for user"',
     'eventMessage contains "is logged in"',
+    'eventMessage contains "loginwindow.logoutNoReturn"',
+    'process == "sessionlogoutd"',
+    'eventMessage contains "lastUserName"',
+]
+
+NOISE_GATED_CLAUSES = [
+    'process == "sudo" and sender == "sudo"',
+    'sender == "sudo" and not (eventMessage contains "Using original path")',
+    'sender == "sshd"',
+    'sender == "sshd-session"',
+    'sender == "sshd-auth"',
+]
+
+AUTHENTICATION_LIBRARY_CLAUSES = [
+    'sender == "libpam.2.dylib"',
+    'and not (eventMessage contains "doesn\'t have a"',
+    'or eventMessage contains "Unable to retrieve")',
+]
+
+UNGATED_CLAUSES = [
+    '(process == "sudo") or',
+    '(process == "sshd") or',
+    '(process == "sshd-session") or',
+    '(process == "sshd-auth") or',
 ]
 
 PREEXISTING_CLAUSES = [
@@ -181,3 +205,111 @@ def test_macos_uls_default_query_uses_event_message_key(macos_query):
     '''
     assert 'message contains' not in macos_query, \
         "Shipped macOS predicate uses the undocumented 'message' key; use 'eventMessage'"
+
+
+@pytest.mark.parametrize('clause', NOISE_GATED_CLAUSES)
+def test_macos_uls_default_query_gates_sudo_and_ssh_on_sender(clause, macos_query):
+    '''
+    description: Check that the 'sudo' and 'sshd' clauses only match records the monitored
+                 binary emitted itself. Without the 'sender' gate those clauses also match
+                 everything the supporting libraries log under the same process -
+                 'libsystem_info.dylib' group resolution, 'libpam.2.dylib', 'Heimdal',
+                 'libxpc.dylib' - which carries no principal, no verdict and no command,
+                 and accounted for most of the macOS event volume.
+
+    wazuh_min_version: 5.0.0
+
+    tier: 0
+
+    parameters:
+        - clause:
+            type: str
+            brief: Predicate fragment that must be present in the shipped query.
+        - macos_query:
+            type: str
+            brief: Text of the <query> element in the darwin configuration template.
+
+    assertions:
+        - Verify that each sender-gated fragment is present.
+
+    input_description: The <query> element of etc/templates/config/darwin/localfile-extra.template.
+
+    expected_output:
+        - Every fragment listed in NOISE_GATED_CLAUSES.
+
+    tags:
+        - settings
+    '''
+    assert clause in macos_query, f'Missing sender gate in shipped macOS predicate: {clause}'
+
+
+@pytest.mark.parametrize('clause', UNGATED_CLAUSES)
+def test_macos_uls_default_query_has_no_ungated_process_clause(clause, macos_query):
+    '''
+    description: Check that no 'sudo' or 'sshd' clause tests the process alone. The gated
+                 forms contain the ungated ones as a substring, so the presence tests
+                 above cannot detect a revert on their own.
+
+    wazuh_min_version: 5.0.0
+
+    tier: 0
+
+    parameters:
+        - clause:
+            type: str
+            brief: Ungated predicate fragment that must be absent from the shipped query.
+        - macos_query:
+            type: str
+            brief: Text of the <query> element in the darwin configuration template.
+
+    assertions:
+        - Verify that no bare process-only clause is present.
+
+    input_description: The <query> element of etc/templates/config/darwin/localfile-extra.template.
+
+    expected_output:
+        - No fragment listed in UNGATED_CLAUSES.
+
+    tags:
+        - settings
+    '''
+    assert clause not in macos_query, f'Ungated clause in shipped macOS predicate: {clause}'
+
+
+@pytest.mark.parametrize('clause', AUTHENTICATION_LIBRARY_CLAUSES)
+def test_macos_uls_default_query_keeps_pam_verdicts(clause, macos_query):
+    '''
+    description: Check that PAM records under 'sudo' and 'sshd' survive the sender gate.
+                 'pam_opendirectory.so' is 'auth required' for both services and is what
+                 verifies the password, so the account verdicts - locked after incorrect
+                 attempts, disabled or inactive, expired authtok, incorrect authtok - are
+                 written by 'libpam.2.dylib' rather than by the monitored binary. The same
+                 module and the same message are an acceptance record under
+                 'authorizationhost', so gating them out under 'sudo' and 'sshd' would
+                 discard a verdict the predicate collects elsewhere. Only the two families
+                 that carry no verdict are excluded by message.
+
+    wazuh_min_version: 5.0.0
+
+    tier: 0
+
+    parameters:
+        - clause:
+            type: str
+            brief: Predicate fragment that must be present in the shipped query.
+        - macos_query:
+            type: str
+            brief: Text of the <query> element in the darwin configuration template.
+
+    assertions:
+        - Verify that the PAM carve-out and both of its message exclusions are present.
+
+    input_description: The <query> element of etc/templates/config/darwin/localfile-extra.template.
+
+    expected_output:
+        - Every fragment listed in AUTHENTICATION_LIBRARY_CLAUSES.
+
+    tags:
+        - settings
+    '''
+    assert clause in macos_query, f'Missing PAM carve-out in shipped macOS predicate: {clause}'

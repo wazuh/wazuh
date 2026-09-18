@@ -17,6 +17,7 @@ relationships:
         - security_all
         - cluster_all
         - mitre_read
+        - secrets_read
       rule_ids:
         - wui_elastic_admin
         - wui_opensearch_admin

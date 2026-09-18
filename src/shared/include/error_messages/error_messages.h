@@ -296,6 +296,7 @@
 #define AG_INV_SSL_CA      "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> is missing or unreadable: '%s'."
 #define AG_SSL_CA_FORBIDDEN_SYSTEM "(4120): <ssl><verification_mode> is 'system' but <certificate_authorities> is set: '%s'. Remove it, or choose a different verification_mode; the OS trust store is used instead."
 #define AG_SSL_SYSTEM_NO_BUNDLE    "(4121): <ssl><verification_mode> is 'system' but no OS CA bundle was found on this host."
+#define AG_SSL_CA_UNPARSEABLE      "(4123): <certificate_authorities> '%s' is readable but holds no certificate this agent can parse. Nothing would verify against it, so the start is refused here rather than at the first handshake."
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."
