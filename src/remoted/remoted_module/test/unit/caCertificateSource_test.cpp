@@ -1230,6 +1230,206 @@ TEST(CaCertificateSourceLeafSignerPem, ReturnsMinusOneWhenCapacityIsTooSmall)
     EXPECT_EQ(std::string(exact.data(), static_cast<std::size_t>(written)), expected);
 }
 
+// ---------------------------------------------------------------------------
+// leafSignerPem() delivers an ANCHOR, not merely a signer (issue #39319, C26, objection 1).
+// `src/init/pkg_installer.sh` rejects a delivered root-ca.pem that is not a CA (no basicConstraints
+// CA:TRUE) or whose validity window does not contain the moment of the upgrade -- and a rotation's
+// overlap is exactly where two re-issues of the SAME key both sign the served leaf, so "the first
+// certificate that signs it" could hand the agent the one its installer throws away, leaving it
+// with no anchor at all. These bundles are built in memory (testCertificates.hpp) because that is
+// the only way to get an expired CA, a future-dated one or a signer without CA:TRUE: `openssl req
+// -x509` and `x509 -req` refuse to produce any of them.
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    /// A CA and a leaf it signed, plus the CA KEY, so a test can re-issue that CA (same key, other
+    /// dates) exactly as a rotation's overlap leaves it.
+    struct MemoryPki
+    {
+        remoted::test::EvpPkeyPtr caKey {nullptr, &EVP_PKEY_free};
+        remoted::test::EvpPkeyPtr leafKey {nullptr, &EVP_PKEY_free};
+        remoted::http::X509Ptr ca;
+        remoted::http::X509Ptr leaf;
+    };
+
+    /// @param caNotBefore @param caNotAfter Seconds from now, so an expired or a not-yet-valid CA
+    ///        is one argument away. The leaf is always current: what these tests vary is the CA's
+    ///        window, never the served certificate's.
+    MemoryPki makeMemoryPki(const std::string& name, long caNotBefore = -3600, long caNotAfter = 3600)
+    {
+        MemoryPki pki;
+        pki.caKey = remoted::test::makeTestKey();
+        pki.leafKey = remoted::test::makeTestKey();
+        pki.ca = remoted::test::makeCertificate((name + "-ca").c_str(),
+                                                caNotBefore,
+                                                caNotAfter,
+                                                pki.caKey.get(),
+                                                pki.caKey.get(),
+                                                nullptr,
+                                                nullptr,
+                                                /*isCa=*/true);
+        pki.leaf = remoted::test::makeCertificate(
+            (name + "-leaf").c_str(), -600, 3600, pki.leafKey.get(), pki.caKey.get(), pki.ca.get());
+        return pki;
+    }
+
+    /// A reference of our own on @p certificate (X509_up_ref, never a re-encode), so the same one
+    /// can sit in a bundle and in an expectation at once.
+    remoted::http::X509Ptr retainCertificate(const X509* certificate)
+    {
+        X509_up_ref(const_cast<X509*>(certificate));
+        return remoted::http::X509Ptr {const_cast<X509*>(certificate)};
+    }
+
+    /// What serialising @p certificate ALONE produces: byte for byte what leafSignerPem() must
+    /// write when that is the one it picked.
+    std::string aloneAsPem(const X509* certificate)
+    {
+        std::vector<remoted::http::X509Ptr> one;
+        one.push_back(retainCertificate(certificate));
+        return serializeCertificates(one);
+    }
+
+    /// A scratch bundle path of this process's own, so parallel test binaries never collide.
+    std::string anchorPath(const std::string& name)
+    {
+        return "/tmp/casource-anchor-" + name + "_" + std::to_string(::getpid()) + ".pem";
+    }
+} // namespace
+
+TEST(CaCertificateSourceLeafSignerPem, PrefersTheValidReissueOverTheExpiredOneThatAlsoSigns)
+{
+    // The overlap a rotation leaves behind: the old CA re-issued with the SAME key, so both
+    // certificates verify the served leaf's signature -- and the EXPIRED one is first in the file,
+    // which is what made the previous rule (first signer wins) deliver the useless one.
+    auto pki = makeMemoryPki("expired-first");
+    auto expired = remoted::test::makeCertificate("expired-first-ca",
+                                                  -7200,
+                                                  -3600, // notAfter already past
+                                                  pki.caKey.get(),
+                                                  pki.caKey.get(),
+                                                  nullptr,
+                                                  nullptr,
+                                                  /*isCa=*/true);
+
+    // It really does sign the leaf: without this the test could pass for the wrong reason (the
+    // expired certificate being skipped as "not a signer" rather than as "not installable").
+    std::vector<remoted::http::X509Ptr> expiredOnly;
+    expiredOnly.push_back(retainCertificate(expired.get()));
+    ASSERT_TRUE(ca_bundle::anyCaSignsLeaf(pki.leaf.get(), expiredOnly));
+
+    std::vector<remoted::http::X509Ptr> bundle;
+    bundle.push_back(retainCertificate(expired.get()));
+    bundle.push_back(retainCertificate(pki.ca.get()));
+
+    const auto path = anchorPath("expired_first");
+    write(path, sealedDocument(bundle, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, pki.leaf.get()};
+    ASSERT_EQ(source.snapshot().certificates, 2U);
+
+    std::array<char, 8192> buffer {};
+    const auto written = source.leafSignerPem(buffer.data(), buffer.size());
+    ASSERT_GT(written, 0);
+
+    const std::string delivered {buffer.data(), static_cast<std::size_t>(written)};
+    EXPECT_EQ(delivered, aloneAsPem(pki.ca.get()));
+    EXPECT_NE(delivered, aloneAsPem(expired.get()));
+}
+
+TEST(CaCertificateSourceLeafSignerPem, DeliversNothingWhenEveryCaThatSignsHasExpired)
+{
+    // Only the expired re-issue is left: 0, not "the best available". An anchor the installer
+    // rejects leaves the agent with none at all; delivering nothing leaves the upgrade recoverable
+    // and the poller says why (CA-18).
+    auto pki = makeMemoryPki("expired-only", -7200, -3600);
+
+    std::vector<remoted::http::X509Ptr> bundle;
+    bundle.push_back(retainCertificate(pki.ca.get()));
+
+    const auto path = anchorPath("expired_only");
+    write(path, sealedDocument(bundle, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, pki.leaf.get()};
+    // Still SERVED over /cacerts -- whether a bundle may be served is a different question from
+    // whether one certificate of it may be pushed to a 4.x agent as its only anchor.
+    ASSERT_EQ(source.snapshot().certificates, 1U);
+
+    std::array<char, 8192> buffer {};
+    buffer[0] = 'x'; // nothing is written on a refusal
+    EXPECT_EQ(source.leafSignerPem(buffer.data(), buffer.size()), 0);
+    EXPECT_EQ(buffer[0], 'x');
+}
+
+TEST(CaCertificateSourceLeafSignerPem, DeliversNothingWhenTheOnlySignerIsNotYetValid)
+{
+    // The other end of the same window, and the installer's other date refusal ("is not yet
+    // valid"): a CA issued for a rotation that has not started.
+    auto pki = makeMemoryPki("not-yet-valid", 3600, 7200);
+
+    std::vector<remoted::http::X509Ptr> bundle;
+    bundle.push_back(retainCertificate(pki.ca.get()));
+
+    const auto path = anchorPath("not_yet_valid");
+    write(path, sealedDocument(bundle, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, pki.leaf.get()};
+    ASSERT_EQ(source.snapshot().certificates, 1U);
+
+    std::array<char, 8192> buffer {};
+    EXPECT_EQ(source.leafSignerPem(buffer.data(), buffer.size()), 0);
+}
+
+TEST(CaCertificateSourceLeafSignerPem, SkipsASignerWithoutCaTrue)
+{
+    // A certificate holding the CA's key but issued with no basicConstraints at all: its signature
+    // IS on the leaf (same key), and pkg_installer.sh rejects it as "not a CA certificate". First
+    // in the file, so a rule that only looked at the signature would deliver it.
+    auto pki = makeMemoryPki("not-a-ca");
+    auto notACa = remoted::test::makeCertificate("not-a-ca-impostor",
+                                                 -3600,
+                                                 3600,
+                                                 pki.caKey.get(),
+                                                 pki.caKey.get(),
+                                                 nullptr,
+                                                 nullptr,
+                                                 /*isCa=*/false);
+    const auto impostorFacts = ca_bundle::describe(notACa.get(), pki.leaf.get());
+    ASSERT_TRUE(impostorFacts.signsLeaf);
+    ASSERT_FALSE(impostorFacts.isCa);
+
+    std::vector<remoted::http::X509Ptr> bundle;
+    bundle.push_back(retainCertificate(notACa.get()));
+    bundle.push_back(retainCertificate(pki.ca.get()));
+
+    const auto path = anchorPath("not_a_ca");
+    write(path, sealedDocument(bundle, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, pki.leaf.get()};
+    ASSERT_EQ(source.snapshot().certificates, 2U);
+
+    std::array<char, 8192> buffer {};
+    const auto written = source.leafSignerPem(buffer.data(), buffer.size());
+    ASSERT_GT(written, 0);
+    EXPECT_EQ(std::string(buffer.data(), static_cast<std::size_t>(written)), aloneAsPem(pki.ca.get()));
+
+    // And alone it is not a fallback either: 0 rather than "something".
+    std::vector<remoted::http::X509Ptr> alone;
+    alone.push_back(retainCertificate(notACa.get()));
+    const auto impostorOnly = anchorPath("not_a_ca_alone");
+    write(impostorOnly, sealedDocument(alone, kPublication));
+    remoted::test::ScratchFileCleanup cleanupAlone {{impostorOnly}};
+
+    CaCertificateSource impostorSource {impostorOnly, pki.leaf.get()};
+    ASSERT_EQ(impostorSource.snapshot().certificates, 1U);
+    EXPECT_EQ(impostorSource.leafSignerPem(buffer.data(), buffer.size()), 0);
+}
+
 TEST(CaCertificateSourceDescriptor, DoesNotReadWhenNoPathIsConfigured)
 {
     // snapshot() has always had this guard; descriptor() must too -- without it, a source with
@@ -1861,9 +2061,7 @@ TEST(CaCertificateSourceRecord, NeverChangesBundleHashOrMtime)
     const auto subdir = dir.path() + "/subdir";
     const auto recordPath = subdir + "/record.json";
 
-    struct stat before
-    {
-    };
+    struct stat before {};
     ASSERT_EQ(::stat(pki->files.caCertPath.c_str(), &before), 0);
     const auto originalBytes = readAll(pki->files.caCertPath);
 
@@ -1880,9 +2078,7 @@ TEST(CaCertificateSourceRecord, NeverChangesBundleHashOrMtime)
     ASSERT_EQ(::mkdir(subdir.c_str(), 0750), 0);
     source.flushPendingRecord(); // recovers now -- still never touches the bundle
 
-    struct stat after
-    {
-    };
+    struct stat after {};
     ASSERT_EQ(::stat(pki->files.caCertPath.c_str(), &after), 0);
     EXPECT_EQ(before.st_mtime, after.st_mtime);
     EXPECT_EQ(before.st_size, after.st_size);
@@ -1962,10 +2158,7 @@ TEST(CaCertificateSourceRecord, SlowStoreDoesNotBlockCachedDescriptor)
     // Primes the descriptor at clock == 0, so the read below lands inside the refresh window.
     ASSERT_TRUE(source.descriptor().generation.has_value());
 
-    std::thread writer {[&source]
-                        {
-                            source.flushPendingRecord();
-                        }};
+    std::thread writer {[&source] { source.flushPendingRecord(); }};
     const auto startDeadline = std::chrono::steady_clock::now() + std::chrono::seconds {2};
     while (!writeStarted.load() && std::chrono::steady_clock::now() < startDeadline)
     {
@@ -1982,6 +2175,98 @@ TEST(CaCertificateSourceRecord, SlowStoreDoesNotBlockCachedDescriptor)
 
     releaseWrite = true;
     writer.join();
+}
+
+// ---------------------------------------------------------------------------
+// Who says the events, and who pays for the disk (issue #39319, C26, objections 2 and 3). The
+// events are noticed by the source and said by whoever owns a logger -- and there are now four such
+// callers, of which one (the control notify provider) must never wait for a write. Delivery is the
+// mailbox's (it orders the emission too); persisting is deliberately NOT part of it.
+// ---------------------------------------------------------------------------
+
+TEST(CaCertificateSourceRecord, DeliverAndPersistSaysARecordFailureInTheSameCall)
+{
+    auto pki = makePki("casource-deliver-flush-deliver");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+
+    // The record's directory never exists, so the flush this very call makes fails and posts its
+    // record_unwritable WHILE the call is running. Draining only before the flush left that line in
+    // the mailbox until the next drain -- the daily tick, up to 24 h away, or never.
+    auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/missing/record.json");
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    auto source = makeRecordedSource(
+        pki->files.caCertPath, pki->leaf.get(), record->load(pki->files.caCertPath), record, mailbox);
+
+    ASSERT_EQ(source.snapshot().publication, 0); // ordinary CA file: first_time_unpublished posted
+
+    std::vector<std::pair<remoted::http::RecordEventLevel, std::string>> said;
+    const auto collect = [&said](remoted::http::RecordEventLevel level, const std::string& line)
+    {
+        said.emplace_back(level, line);
+    };
+
+    // ONE call, the way the transport and the endpoint make it.
+    remoted::http::deliverAndPersistRecordEvents(source, *mailbox, collect);
+
+    ASSERT_EQ(said.size(), 2U) << "expected the bundle's line and the failed write's, in one call";
+    EXPECT_EQ(said[0].first, remoted::http::RecordEventLevel::info);
+    EXPECT_NE(said[0].second.find("wazuh-manager-certs stamp"), std::string::npos) << said[0].second;
+    EXPECT_EQ(said[1].first, remoted::http::RecordEventLevel::warn);
+    EXPECT_NE(said[1].second.find(record->path()), std::string::npos) << said[1].second;
+
+    // And nothing is left over for the next caller: what this call produced, this call said.
+    EXPECT_TRUE(mailbox->drain().empty());
+}
+
+TEST(CaCertificateSourceRecord, NotifyStyleDeliveryLogsWithoutTouchingTheRecord)
+{
+    auto pki = makePki("casource-notify-delivery");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
+    TempDir dir;
+
+    // A record that would work perfectly well -- and must nevertheless not be written by the
+    // notify path: in steady state a manager sees nothing but keepalives, and that path may not
+    // pay for an fsync (RNF-2, C22). Every write(2) on it is counted, so "did not touch the disk"
+    // is asserted rather than assumed.
+    auto writes = std::make_shared<std::atomic<int>>(0);
+    RecordIo counted;
+    counted.write = [writes](int fd, const void* data, std::size_t bytes) -> ssize_t
+    {
+        ++*writes;
+        return ::write(fd, data, bytes);
+    };
+    const auto recordPath = dir.path() + "/record.json";
+    auto record = std::make_shared<CaPublicationRecord>(recordPath, counted);
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    auto source = makeRecordedSource(
+        pki->files.caCertPath, pki->leaf.get(), record->load(pki->files.caCertPath), record, mailbox);
+
+    // What the provider does: descriptor() first (its revalidation is what notices the file and
+    // posts the event), then deliver -- and nothing else.
+    ASSERT_TRUE(source.descriptor().generation.has_value());
+
+    std::vector<std::string> said;
+    const auto collect = [&said](remoted::http::RecordEventLevel, const std::string& line)
+    {
+        said.push_back(line);
+    };
+    mailbox->deliver(collect);
+
+    ASSERT_EQ(said.size(), 1U);
+    EXPECT_NE(said[0].find(pki->files.caCertPath), std::string::npos) << said[0];
+    EXPECT_EQ(*writes, 0) << "the notify path wrote the record";
+    EXPECT_EQ(record->load(pki->files.caCertPath).status, LoadOutcome::Status::absent);
+
+    // Said is not the same as forgotten: the entry is still pending, so the first caller that DOES
+    // own the disk persists it -- and that caller has nothing left to say, because this one said it.
+    said.clear();
+    remoted::http::deliverAndPersistRecordEvents(source, *mailbox, collect);
+    EXPECT_TRUE(said.empty());
+    EXPECT_GT(*writes, 0);
+    EXPECT_EQ(record->load(pki->files.caCertPath).status, LoadOutcome::Status::ok);
 }
 
 TEST(ParsedBundle, SerialisationRoundTripsAndDropsEverythingElse)

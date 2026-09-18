@@ -19,6 +19,7 @@
 
 #include <array>
 #include <cstring>
+#include <ctime>
 #include <utility>
 #include <vector>
 
@@ -262,13 +263,38 @@ namespace remoted::http
         // no setter, so reading it outside snapshot()'s lock is safe.
         auto parsed = ca_bundle::parseBundle(current.pem);
 
+        // The moment the delivery is judged against, read once for the whole bundle so two
+        // certificates of it can never be measured against two different "now"s.
+        const auto now = std::time(nullptr);
+
         for (auto& certificate : parsed.certificates)
         {
-            // describe() answers caSignsLeaf() for ONE certificate -- which is exactly what
-            // anyCaSignsLeaf() cannot say: WHICH of them holds this listener up. Its subject,
-            // issuer and dates are computed and dropped; no new ca_bundle entry point for a path
-            // that runs once per legacy upgrade.
-            if (!ca_bundle::describe(certificate.get(), m_leaf.get()).signsLeaf)
+            // describe() answers all three questions about ONE certificate -- which is exactly
+            // what anyCaSignsLeaf() cannot say: WHICH of them holds this listener up, and whether
+            // it is an anchor the agent's installer will keep. Its subject and issuer are computed
+            // and dropped; no new ca_bundle entry point for a path that runs once per legacy
+            // upgrade.
+            const auto facts = ca_bundle::describe(certificate.get(), m_leaf.get());
+
+            // A valid signature is NOT enough (issue #39319, C26). `src/init/pkg_installer.sh`
+            // refuses a delivered root-ca.pem that is not a CA (no basicConstraints CA:TRUE) or
+            // whose validity window does not contain the moment of the upgrade -- and a rotation's
+            // overlap is exactly where a bundle carries the EXPIRED re-issue of the same key next
+            // to the current one: both sign the served leaf, so picking "the first that signs it"
+            // can hand the agent the one its installer throws away, leaving it with no anchor at
+            // all. That is the failure this export exists to prevent, so the three properties are
+            // checked together and the first certificate that has all of them is the one delivered.
+            if (!facts.signsLeaf || !facts.isCa)
+            {
+                continue;
+            }
+
+            // notBefore/notAfter are 0 only when the ASN.1 time could not be converted at all
+            // (ca_bundle::describe()); a date before 1970 is negative and legitimate. An
+            // unconvertible window is skipped for the same reason the installer rejects it ("has
+            // an unparsable validity period"): nothing here can say whether it is usable. The
+            // bounds are inclusive, exactly as pkg_installer.sh compares them.
+            if (facts.notBefore == 0 || facts.notAfter == 0 || now < facts.notBefore || now > facts.notAfter)
             {
                 continue;
             }
@@ -298,6 +324,9 @@ namespace remoted::http
             return static_cast<int>(pem.size());
         }
 
+        // Nothing in this bundle is both the leaf's signer and an installable anchor. Better no
+        // delivery than one the installer discards: the poller says why and lets the upgrade go
+        // ahead without an anchor, which is recoverable, instead of writing one that is not.
         return 0;
     }
 
@@ -503,6 +532,23 @@ namespace remoted::http
             event.stored = false;
             m_mailbox->post(std::move(event));
         }
+    }
+
+    void deliverAndPersistRecordEvents(CaCertificateSource& source,
+                                       CaRecordEventMailbox& mailbox,
+                                       const CaRecordEventMailbox::Emit& emit)
+    {
+        // What the read already noticed, in order and exactly once.
+        mailbox.deliver(emit);
+
+        // Outside the delivery mutex on purpose (see this function's declaration): the only step
+        // here that can touch a disk, and no other consumer of the mailbox may be made to wait for
+        // it.
+        source.flushPendingRecord();
+
+        // Again, because the write itself posts: a record_unwritable produced right now comes out
+        // in THIS call instead of waiting for the next drain (objection 3).
+        mailbox.deliver(emit);
     }
 
     TlsCertificateSnapshot statusFrom(const X509* leaf, const CaCertificateSnapshot& ca)

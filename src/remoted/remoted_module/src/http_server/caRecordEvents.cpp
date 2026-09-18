@@ -107,6 +107,64 @@ namespace remoted::http
         return m_dropped;
     }
 
+    void CaRecordEventMailbox::deliver(const Emit& emit)
+    {
+        if (!emit)
+        {
+            // Nowhere to say it: the events stay queued for a consumer that can, rather than being
+            // drained into nothing.
+            return;
+        }
+
+        // The delivery mutex, taken OUTSIDE the queue's own (drain() takes that one): the drain and
+        // the emission are one step, so two consumers cannot publish generation N after N+1
+        // (objection 4). Nothing under this lock touches a disk, and the queue's lock is never held
+        // while emit() runs, so a source posting on the hot path never waits for a logger.
+        std::lock_guard<std::mutex> delivery {m_deliveryMutex};
+
+        for (const auto& event : drain())
+        {
+            if (const auto line = describeRecordEvent(event))
+            {
+                emit(line->first, line->second);
+            }
+        }
+
+        reportDrops(emit);
+    }
+
+    void CaRecordEventMailbox::reportDrops(const Emit& emit)
+    {
+        const auto drops = dropped();
+        if (drops <= m_reportedDrops)
+        {
+            // dropped() only grows, so without this the same overflow would be re-announced by
+            // every delivery for the rest of the listener's life.
+            return;
+        }
+
+        if (!m_dropThrottle.record())
+        {
+            // Not this window's turn. m_reportedDrops is deliberately left alone, so the next
+            // delivery inside the window still owes the line and the one after it says it -- a
+            // suppressed drop report is postponed, never lost.
+            return;
+        }
+
+        const auto unreported = drops - m_reportedDrops;
+        m_reportedDrops = drops;
+
+        // What an operator cannot get anywhere else: how much of the story above is missing. The
+        // lines that DID come out describe the bundle's newest state (the oldest events are the
+        // ones dropped), so this is about completeness, not about what agents are told now.
+        emit(RecordEventLevel::warn,
+             "Dropped " + std::to_string(unreported) + " CA bundle publication event(s) before they could be logged (" +
+                 std::to_string(drops) + " since this listener started): the mailbox holds " +
+                 std::to_string(kCapacity) +
+                 " and the oldest go first, so some intermediate changes were not reported. The lines above describe "
+                 "the bundle's current state, and 'GET /cacerts' still reports the generation in force.");
+    }
+
     std::optional<std::pair<RecordEventLevel, std::string>> describeRecordEvent(const CaRecordEvent& event)
     {
         switch (event.kind)

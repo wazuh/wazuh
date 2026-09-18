@@ -659,10 +659,13 @@ STATIC char *legacy_task_ca_read(unsigned int *out_length) {
     int written = remoted_module_tls_leaf_signer_pem(pem, LEGACY_TASK_CA_MAX_BYTES + 1);
 
     if (written <= 0) {
-        // 0: no certificate of the bundle signs the served one, there is no servable bundle, or the
-        // listener is down. -1: the certificate does not even fit the offered capacity, or the
-        // module failed. Nothing to deliver either way, and the caller continues the upgrade
-        // without a CA. Never a truncated PEM: the export reports -1 rather than writing a prefix.
+        // 0: no certificate of the bundle signs the served one, the one that does is not an
+        // installable anchor (not a CA, or outside its validity window -- issue #39319, C26: a
+        // rotation's overlap is exactly where an expired re-issue of the same key can still sign
+        // the served leaf), there is no servable bundle, or the listener is down. -1: the
+        // certificate does not even fit the offered capacity, or the module failed. Nothing to
+        // deliver either way, and the caller continues the upgrade without a CA. Never a truncated
+        // PEM: the export reports -1 rather than writing a prefix.
         os_free(pem);
         return NULL;
     }
@@ -870,11 +873,15 @@ STATIC void legacy_task_deliver_ca(const char *agent_id, const char *task_id, co
         // because, since #39319, it is the case that lands HERE: the module answers 0 for a bundle
         // none of whose CAs signs the served leaf, so legacy_task_ca_read() returns NULL before the
         // explicit guard below is ever consulted. Its own, more specific message would otherwise be
-        // unreachable in the one situation CA-18 is about, leaving the reason unsaid.
+        // unreachable in the one situation CA-18 is about, leaving the reason unsaid. The same is
+        // true of "none of the certificates that do is a CA within its validity period" (C26): the
+        // module only picks a signer that is ALSO a CA and currently valid, so a bundle whose only
+        // signer is an expired re-issue of the same key -- exactly what a rotation's overlap can
+        // leave behind -- answers 0 here too, with no more specific guard below to say why.
         merror("legacy_task_delivery: agent '%s': the configured CA '%s' is missing, unreadable, larger "
-               "than %d bytes, carries no certificate, or has no certificate that signs the certificate "
-               "this manager serves; continuing the upgrade without it, so the agent will come back "
-               "unverified",
+               "than %d bytes, carries no certificate, has no certificate that signs the certificate "
+               "this manager serves, or none of the certificates that do is a CA within its validity "
+               "period; continuing the upgrade without it, so the agent will come back unverified",
                agent_id, ca_path, LEGACY_TASK_CA_MAX_BYTES);
         return;
     }

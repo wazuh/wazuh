@@ -462,7 +462,11 @@ namespace remoted::http
          * costs at most one read of the file per second per node, however many agents ask (C18) --
          * and no hash of anything ever comes out of here. Callable from any thread; an empty
          * descriptor (`nullopt`) before start() and on implementations that hold no CA, like the
-         * test fakes, which is what makes the field absent on a manager without the feature.
+         * test fakes, which is what makes the field absent on a manager without the feature. Also
+         * `nullopt` once the listener is gone -- after stop(), or after a bind that fails past TLS
+         * setup -- even while the source underneath still holds a perfectly good bundle: this is a
+         * generation for a manager this process is serving, and past that point it is not serving
+         * anything (issue #39319, C26).
          */
         virtual CaCertificateSource::CaDescriptor caDescriptor() const
         {
@@ -476,10 +480,16 @@ namespace remoted::http
          * What the legacy WPK delivery pushes to a pre-v5.0.0 agent mid-upgrade: a SINGLE
          * certificate, never the bundle and never its `##` block, because the agent-side installer
          * refuses a drop-in carrying more than one (C7). Bytes written on success; 0 when nothing
-         * of the bundle signs the leaf, there is no servable bundle or there is no leaf; -1 when
-         * `capacity` is too small. Callable from any thread; 0 before start() and on
-         * implementations that hold no CA, like the test fakes, which is what makes a manager
-         * without a bundle deliver nothing rather than something wrong.
+         * of the bundle signs the leaf, there is no servable bundle or there is no leaf, **or the
+         * only certificate that signs the leaf is not an anchor the agent-side installer would
+         * keep** -- not a CA (no `basicConstraints CA:TRUE`), or outside its validity window at the
+         * moment of the read (issue #39319, C26: a valid signature is not enough, since a
+         * rotation's overlap is exactly where an expired re-issue of the same key can sign the same
+         * leaf as the current certificate); -1 when `capacity` is too small. Callable from any
+         * thread; 0 before start(), on implementations that hold no CA like the test fakes, and
+         * once the listener is gone -- after stop(), or after a bind that fails past TLS setup --
+         * even while the source underneath still holds a servable bundle, which is what keeps this
+         * from shipping an anchor for a manager this process is not serving.
          */
         virtual int caLeafSignerPem(char* /*buffer*/, std::size_t /*capacity*/) const
         {

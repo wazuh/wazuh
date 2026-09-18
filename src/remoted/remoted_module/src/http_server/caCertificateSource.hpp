@@ -204,9 +204,17 @@ namespace remoted::http
          * `root-ca.pem` drop-in carrying more than one `-----BEGIN CERTIFICATE-----`, so handing a
          * 4.x agent mid-upgrade the bundle a rotation's overlap makes of this file would leave it
          * with no anchor at all (C7). What the agent needs is the one CA that verifies this
-         * listener, and that is what comes out of here: the FIRST certificate of the snapshot whose
-         * signature is on the served leaf, written back out by this process from the parsed X.509
-         * object rather than copied out of the file.
+         * listener AND that its installer will keep, and that is what comes out of here: the FIRST
+         * certificate of the snapshot that signs the served leaf, is a CA (basicConstraints
+         * CA:TRUE) and is valid right now (notBefore <= now <= notAfter) -- the three properties
+         * pkg_installer.sh checks -- written back out by this process from the parsed X.509 object
+         * rather than copied out of the file.
+         *
+         * A signature alone is deliberately not enough (C26): two re-issues of the same CA key
+         * both verify the leaf, so a bundle that still carries the expired one would otherwise
+         * hand a 4.x agent an anchor its installer discards, which is the exact outcome this
+         * export exists to prevent. No certificate with all three properties means nothing is
+         * delivered.
          *
          * Reads through snapshot(), so these bytes come from the same cache, the same read and the
          * same mutex `GET /cacerts` answers from -- the two paths can never disagree about which
@@ -215,9 +223,9 @@ namespace remoted::http
          *
          * @param buffer Where the PEM is written. Not NUL-terminated: the return value is the length.
          * @param capacity Bytes available at @p buffer.
-         * @return Bytes written (> 0); 0 when no certificate of the bundle signs the leaf, when
-         *         there is no servable bundle or when there is no served leaf to check against;
-         *         -1 when @p capacity is too small for the certificate (nothing is written).
+         * @return Bytes written (> 0); 0 when no certificate of the bundle is a valid CA that signs
+         *         the leaf, when there is no servable bundle or when there is no served leaf to
+         *         check against; -1 when @p capacity is too small (nothing is written).
          */
         int leafSignerPem(char* buffer, std::size_t capacity);
 
@@ -228,11 +236,15 @@ namespace remoted::http
         /**
          * @brief Takes the publication events noticed since the last call, in order.
          *
-         * For the three callers that own a logger: the transport at start and on the daily tick,
-         * and the `GET /cacerts` handler before it answers. Each event comes out of exactly one of
-         * them, because draining REMOVES it (C21b) -- so a guard that starts failing between two
-         * ticks is said in the next request instead of a day later, and nothing is said twice.
-         * Takes no lock of this source: the mailbox has its own.
+         * The raw take. Each event comes out of exactly one caller, because draining REMOVES it
+         * (C21b) -- so a guard that starts failing between two ticks is said in the next request
+         * instead of a day later, and nothing is said twice. Takes no lock of this source: the
+         * mailbox has its own.
+         *
+         * Production does NOT log from here: every consumer that owns a logger goes through
+         * CaRecordEventMailbox::deliver() (usually via deliverAndPersistRecordEvents()), which
+         * orders the emission as well as the drain (C26). This stays for the callers that want the
+         * values themselves -- the tests that pin what the source posted.
          */
         std::vector<CaRecordEvent> drainRecordEvents();
 
@@ -306,6 +318,25 @@ namespace remoted::http
         /// Separate from m_mutex on purpose -- holding this one blocks no reader.
         std::mutex m_writerMutex;
     };
+
+    /**
+     * @brief Says what @p mailbox holds, persists what @p source has pending, and says whatever
+     *        THAT produced -- in one call.
+     *
+     * The three callers that own both a logger and the right to touch a disk (the transport at
+     * start, on the daily tick and when the listener closes, and the `GET /cacerts` handler before
+     * it answers) go through here, so the order is the same everywhere and nothing a write reveals
+     * waits for the next drain. Draining only once was not enough: a `store()` that fails POSTS
+     * its `record_unwritable` while flushing, and with nothing draining afterwards that line sat in
+     * the mailbox until the next tick -- up to 24 h -- or died with the cycle (C26, objection 3).
+     *
+     * The flush deliberately runs BETWEEN the two deliveries and NOT under the mailbox's delivery
+     * mutex: it is the only step here that touches a disk, and the notify provider -- which drains
+     * this same mailbox on every keepalive -- must never wait for an fsync (C22, C26).
+     */
+    void deliverAndPersistRecordEvents(CaCertificateSource& source,
+                                       CaRecordEventMailbox& mailbox,
+                                       const CaRecordEventMailbox::Emit& emit);
 
     /**
      * @brief The TLS status a CA snapshot implies for @p leaf: expiry from the leaf, everything

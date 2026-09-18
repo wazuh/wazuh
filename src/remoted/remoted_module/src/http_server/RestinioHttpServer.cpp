@@ -70,6 +70,22 @@ namespace
         return instance;
     }
 
+    // How the transport says one CA publication event: its own tag, the mailbox's ordering. Handed
+    // to CaRecordEventMailbox::deliver() -- which drains and emits under one lock of its own -- so
+    // the transport's three delivery points (start, the daily tick, closing) and the endpoint's
+    // cannot publish a generation out of order (issue #39319, C26).
+    void emitCaRecordLine(remoted::http::RecordEventLevel level, const std::string& line)
+    {
+        if (level == remoted::http::RecordEventLevel::warn)
+        {
+            LOGFN_WARN(logFn(), "%s", line.c_str());
+        }
+        else
+        {
+            LOGFN_INFO(logFn(), "%s", line.c_str());
+        }
+    }
+
     // Fixed per-request memory charged on top of the body so that a flood of tiny-body
     // requests still consumes the in-flight budget (headers map, neutral request struct,
     // RESTinio handle bookkeeping). A coarse estimate on purpose.
@@ -553,16 +569,14 @@ namespace
     // historical start-time warning, plus the two CA-coherence outcomes. Called at start (before
     // listening) and on every TlsCertificateMonitor tick.
     //
-    // @p recordEvents are the publication changes the CA source noticed since the last drain (the
-    // caller drains, this logs). They are NOT derived from `status`: an evaluation repeated every
-    // 24 h would repeat its own conclusion daily, which is exactly what publishing through a
-    // drained mailbox fixed (issue #39319, C21b, D20) -- so what is said here is said once, and a
-    // guard that fails between two ticks is said by the GET /cacerts handler instead, in the
-    // request that noticed it.
+    // What the bundle's PUBLICATION changed is deliberately NOT said here: it is not derivable
+    // from `status` (an evaluation repeated every 24 h would repeat its own conclusion daily, which
+    // is exactly what publishing through a drained mailbox fixed -- issue #39319, C21b, D20), and
+    // it has to stay ordered against what the other consumers of that mailbox say. Every caller of
+    // this function therefore pairs it with deliverAndPersistRecordEvents() (C26).
     void logCertificateStatus(const remoted::http::TlsCertificateSnapshot& status,
                               const std::string& leafPath,
-                              const std::string& caPath,
-                              const std::vector<remoted::http::CaRecordEvent>& recordEvents)
+                              const std::string& caPath)
     {
         if (status.expiryDays.has_value())
         {
@@ -645,30 +659,6 @@ namespace
                        "the certificate's issuer.",
                        caPath.c_str(),
                        leafPath.c_str());
-        }
-
-        // Whether the bundle is PUBLISHED is a separate question from whether it can be served
-        // (issue #39319): a bundle no guard vouched for is handed out exactly as before, and agents
-        // are told generation 0 for it. What changed about that is what the events say -- each one
-        // exactly once, whoever drained it -- so this function no longer re-derives the publication
-        // from the snapshot it was handed (C21b): an unchanged bundle produces no line at all, and
-        // the four guards arrive as data instead of four cases of a switch here (C25).
-        for (const auto& event : recordEvents)
-        {
-            const auto line = remoted::http::describeRecordEvent(event);
-            if (!line.has_value())
-            {
-                continue;
-            }
-
-            if (line->first == remoted::http::RecordEventLevel::warn)
-            {
-                LOGFN_WARN(logFn(), "%s", line->second.c_str());
-            }
-            else
-            {
-                LOGFN_INFO(logFn(), "%s", line->second.c_str());
-            }
         }
     }
 
@@ -812,12 +802,12 @@ namespace
                                                                              record,
                                                                              mailbox);
         const auto initialStatus = remoted::http::statusFrom(leaf.get(), caSource->snapshot());
-        // Drain BEFORE logging (the events are an argument of the line-emitting function) and
-        // persist after: the write is outside every lock, and this start-time flush is what makes a
-        // fresh node's "unpublished" line the only one it ever gets (CA-14).
-        logCertificateStatus(
-            initialStatus, config.certificatePath, config.caCertificatePath, caSource->drainRecordEvents());
-        caSource->flushPendingRecord();
+        logCertificateStatus(initialStatus, config.certificatePath, config.caCertificatePath);
+        // Then the publication events, in the mailbox's own order, with the flush between the two
+        // deliveries: the write is outside every lock, this start-time flush is what makes a fresh
+        // node's "unpublished" line the only one it ever gets (CA-14), and a record this very flush
+        // could not write is said now rather than a day from now (C26).
+        remoted::http::deliverAndPersistRecordEvents(*caSource, *mailbox, &emitCaRecordLine);
 
         // Deliberately NOT part of logCertificateStatus(), which also runs on every monitor tick.
         // The CA is re-read each tick because it can be rotated under a running listener; the leaf
@@ -1252,6 +1242,10 @@ namespace remoted::http
         /// The CA file as one coherent thing: what /cacerts publishes and the verdict that goes
         /// with it, from the same read (issue #39078). Created in start(), when the leaf exists.
         std::shared_ptr<CaCertificateSource> m_caSource;
+        /// The mailbox created with that source, kept so the CLOSE path can say what the last read
+        /// noticed: after stopAccepting() neither the daily tick nor a GET /cacerts will ever drain
+        /// it again, and an event nobody says is an event lost (issue #39319, C26, objection 2).
+        std::shared_ptr<CaRecordEventMailbox> m_caMailbox;
         /// Start-time evaluation recorded before listening; re-evaluated on its own thread every
         /// HttpServerConfig::certificateStatusInterval while accepting (D45: thread + cv, since
         /// RESTinio's run_async() keeps its io_context private). Stopped in stopAccepting().
@@ -1538,24 +1532,37 @@ namespace remoted::http
         // m_mutex here would make every notify wait out a concurrent start(). The read itself is
         // the source's to bound: descriptor() revalidates at most once a second (C8/C18), so a
         // notify storm costs one read per second, not one per request.
+        //
+        // Conditioned on a listener that exists, which stop() alone does not make true of the
+        // source: stop() releases m_server and leaves m_caSource in place, and a bind that fails
+        // AFTER createTlsContext() leaves it in place having never had a listener at all. Both
+        // would otherwise answer with a generation for a manager that is serving nothing (C26,
+        // objection 7). A graceful drain keeps answering: m_server is still there while in-flight
+        // requests finish, and those requests deserve the real generation rather than `null`.
         std::shared_ptr<CaCertificateSource> source;
         {
             std::lock_guard<std::mutex> lock {m_impl->m_mutex};
-            source = m_impl->m_caSource;
+            if (m_impl->m_server)
+            {
+                source = m_impl->m_caSource;
+            }
         }
         return source ? source->descriptor() : CaCertificateSource::CaDescriptor {};
     }
 
     int RestinioHttpServer::caLeafSignerPem(char* buffer, std::size_t capacity) const
     {
-        // Same shape as the two above: the shared_ptr under m_mutex, the source asked outside it.
-        // With no source (before start(), after stop()) the answer is 0 -- "no certificate to
-        // deliver" -- which is what keeps the legacy poller from shipping anything at all rather
-        // than something it could not check.
+        // Same shape, and the same listener condition as caDescriptor() for the same reason: with
+        // no listener (before start(), after stop(), after a bind that failed past the TLS setup)
+        // the answer is 0 -- "no certificate to deliver" -- which is what keeps the legacy poller
+        // from shipping an anchor for a manager this process is not serving.
         std::shared_ptr<CaCertificateSource> source;
         {
             std::lock_guard<std::mutex> lock {m_impl->m_mutex};
-            source = m_impl->m_caSource;
+            if (m_impl->m_server)
+            {
+                source = m_impl->m_caSource;
+            }
         }
         return source ? source->leafSignerPem(buffer, capacity) : 0;
     }
@@ -1614,6 +1621,7 @@ namespace remoted::http
         m_impl->m_leaf = std::move(tls.leaf);
         m_impl->m_caCertificatePath = config.caCertificatePath;
         m_impl->m_caSource = std::move(tls.caSource);
+        m_impl->m_caMailbox = std::move(tls.mailbox);
         m_impl->m_certMonitor.record(tls.initialStatus);
 
         // Hand the CA source and its mailbox to whoever configured this server (the facade wires
@@ -1624,7 +1632,7 @@ namespace remoted::http
         // inheriting a mailbox the previous listener already drained (C21b).
         if (config.onCaRecordReady)
         {
-            config.onCaRecordReady(m_impl->m_caSource, tls.mailbox);
+            config.onCaRecordReady(m_impl->m_caSource, m_impl->m_caMailbox);
         }
 
         m_impl->m_workerPool = std::make_unique<asio::thread_pool>(config.workerThreads);
@@ -1773,18 +1781,21 @@ namespace remoted::http
                                     [leaf = m_impl->m_leaf.get(),
                                      leafPath = config.certificatePath,
                                      caPath = config.caCertificatePath,
-                                     source = m_impl->m_caSource]
+                                     source = m_impl->m_caSource,
+                                     mailbox = m_impl->m_caMailbox]
                                     {
                                         // Expiry is the leaf's business; the CA half comes from the same source the
                                         // endpoint answers from, so this tick can never overwrite a fresher CA verdict
                                         // with a re-read of its own (issue #39078, H06) -- and it is built by the
                                         // same statusFrom() the start-time evaluation used.
                                         const auto status = remoted::http::statusFrom(leaf, source->snapshot());
-                                        // Same three steps as the start-time evaluation, in the same order: drain,
-                                        // log, persist. Whatever the GET /cacerts handler already drained is not
-                                        // here, and whatever this drains the handler will not repeat (C21b).
-                                        logCertificateStatus(status, leafPath, caPath, source->drainRecordEvents());
-                                        source->flushPendingRecord();
+                                        // Exactly the start-time sequence: the certificate lines, then the
+                                        // publication events through the mailbox (deliver, persist, deliver).
+                                        // Whatever the GET /cacerts handler already said is not here, and whatever
+                                        // this says the handler will not repeat (C21b, C26).
+                                        logCertificateStatus(status, leafPath, caPath);
+                                        remoted::http::deliverAndPersistRecordEvents(
+                                            *source, *mailbox, &emitCaRecordLine);
                                         return status;
                                     });
     }
@@ -1808,6 +1819,10 @@ namespace remoted::http
             std::unique_ptr<asio::thread_pool> workerPool;
             std::string bindAddress;
             std::uint16_t port {0};
+            // The CA collaborators, taken under the same lock as everything else here: the close
+            // path is the LAST chance to say what the last read noticed (C26, objection 2).
+            std::shared_ptr<CaCertificateSource> caSource;
+            std::shared_ptr<CaRecordEventMailbox> caMailbox;
 
             {
                 std::lock_guard<std::mutex> lock {m_impl->m_mutex};
@@ -1822,6 +1837,8 @@ namespace remoted::http
                 port = m_impl->m_config.port;
                 server = m_impl->m_server.get();
                 workerPool = std::move(m_impl->m_workerPool);
+                caSource = m_impl->m_caSource;
+                caMailbox = m_impl->m_caMailbox;
             }
 
             // Stop accepting/serving first, then drain in-flight handler work (context B). Once this
@@ -1837,6 +1854,17 @@ namespace remoted::http
             if (workerPool)
             {
                 workerPool->join();
+            }
+
+            // LAST, with the monitor stopped and the worker pool joined, so no tick and no
+            // GET /cacerts handler can still be delivering: from here on nobody would ever drain
+            // this mailbox again, and an event nobody says is an event lost (issue #39319, C26,
+            // objection 2). What is still pending is persisted too -- so the next start does not
+            // re-announce a publication as new -- with a second delivery behind it for whatever
+            // that write itself reveals.
+            if (caSource && caMailbox)
+            {
+                remoted::http::deliverAndPersistRecordEvents(*caSource, *caMailbox, &emitCaRecordLine);
             }
 
             LOGFN_INFO(logFn(),
