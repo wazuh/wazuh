@@ -470,6 +470,23 @@ namespace remoted::http
         }
 
         /**
+         * @brief The one certificate of the served CA bundle that signs the listener's leaf,
+         *        re-serialised (CaCertificateSource::leafSignerPem()).
+         *
+         * What the legacy WPK delivery pushes to a pre-v5.0.0 agent mid-upgrade: a SINGLE
+         * certificate, never the bundle and never its `##` block, because the agent-side installer
+         * refuses a drop-in carrying more than one (C7). Bytes written on success; 0 when nothing
+         * of the bundle signs the leaf, there is no servable bundle or there is no leaf; -1 when
+         * `capacity` is too small. Callable from any thread; 0 before start() and on
+         * implementations that hold no CA, like the test fakes, which is what makes a manager
+         * without a bundle deliver nothing rather than something wrong.
+         */
+        virtual int caLeafSignerPem(char* /*buffer*/, std::size_t /*capacity*/) const
+        {
+            return 0;
+        }
+
+        /**
          * @brief Start listening. Throws on bind/TLS/configuration failure.
          *
          * @param config Server configuration.

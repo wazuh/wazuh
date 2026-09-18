@@ -29,6 +29,7 @@
 #endif
 
 #include <stdbool.h>
+#include <stddef.h> // size_t, for the CA export below
 
 #ifdef __cplusplus
 extern "C"
@@ -292,6 +293,36 @@ extern "C"
      */
     EXPORTED int remoted_module_tls_ca_matches_leaf(void);
 
+    /**
+     * @brief Write the ONE certificate of `remote.https.ca_certificate` that signs the certificate
+     *        the HTTPS listener serves, re-serialised, into @p buffer.
+     *
+     * Exists for remoted's legacy task poller, which drops this file on a pre-v5.0.0 agent as
+     * `etc/certs/root-ca.pem` ahead of the WPK upgrade. That agent's installer
+     * (src/init/pkg_installer.sh) REFUSES a drop-in carrying more than one
+     * `-----BEGIN CERTIFICATE-----`, so during the overlap of a CA rotation -- when the bundle
+     * legitimately holds two, plus the tool's `##` publication block -- handing over the file as it
+     * is on disk would leave every upgrading agent with no anchor at all. What comes out of here is
+     * therefore a single certificate, written back out by this process from the parsed X.509 object:
+     * the first one of the bundle whose signature is on the served leaf, with no block and nothing
+     * else around it (issue #39319).
+     *
+     * Read off the same snapshot `GET /cacerts` answers from, so a rotation is seen here too and
+     * the two paths can never hand out certificates from different reads of the same file.
+     *
+     * @param buffer Destination. NOT NUL-terminated on return: the return value is the length.
+     * @param capacity Bytes available at @p buffer.
+     * @return Bytes written (> 0); 0 when no certificate of the bundle signs the served one, when
+     *         there is no servable bundle, or when the listener is down; -1 when @p capacity is too
+     *         small for the certificate, or on an internal error. Nothing is written unless the
+     *         return value is positive.
+     *
+     * @note Unlike remoted_module_tls_ca_matches_leaf(), there is no "unknown that means proceed"
+     *       here: anything other than a positive length is "nothing to deliver", and the caller
+     *       continues the upgrade without a CA rather than shipping bytes it could not produce.
+     */
+    EXPORTED int remoted_module_tls_leaf_signer_pem(char* buffer, size_t capacity);
+
 #ifdef __cplusplus
 }
 #endif
@@ -300,5 +331,6 @@ extern "C"
 typedef void (*remoted_module_start_func)(full_log_fnc_t callbackLog, const remoted_module_config_t* configuration);
 typedef void (*remoted_module_stop_func)(void);
 typedef int (*remoted_module_tls_ca_matches_leaf_func)(void);
+typedef int (*remoted_module_tls_leaf_signer_pem_func)(char* buffer, size_t capacity);
 
 #endif // _REMOTED_MODULE_H

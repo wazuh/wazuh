@@ -18,7 +18,9 @@
 #include <openssl/x509.h>
 
 #include <array>
+#include <cstring>
 #include <utility>
+#include <vector>
 
 namespace remoted::http
 {
@@ -233,6 +235,70 @@ namespace remoted::http
         }
 
         return CaDescriptor {m_snapshot.publication};
+    }
+
+    int CaCertificateSource::leafSignerPem(char* buffer, std::size_t capacity)
+    {
+        if (buffer == nullptr || capacity == 0)
+        {
+            // Not "-1, too small": a caller with nowhere to put the answer asked for nothing, and
+            // the one caller there is treats <= 0 as "do not deliver" either way.
+            return 0;
+        }
+
+        // Through snapshot(), not the reader: the same cache, the same read and the same mutex
+        // `GET /cacerts` answers from, so the certificate handed to a 4.x agent mid-upgrade comes
+        // out of the same bytes the endpoint would serve a 5.x one.
+        const auto current = snapshot();
+        if (current.pem.empty() || !m_leaf)
+        {
+            // Nothing servable, or nothing to check a signature against. Both are "no certificate",
+            // not an error: the poller logs the reason and lets the upgrade go ahead.
+            return 0;
+        }
+
+        // Re-parsed rather than remembered: the snapshot keeps the serialised document, not the
+        // individual X509 objects buildLocked() let go of. m_leaf is set in the constructor and has
+        // no setter, so reading it outside snapshot()'s lock is safe.
+        auto parsed = ca_bundle::parseBundle(current.pem);
+
+        for (auto& certificate : parsed.certificates)
+        {
+            // describe() answers caSignsLeaf() for ONE certificate -- which is exactly what
+            // anyCaSignsLeaf() cannot say: WHICH of them holds this listener up. Its subject,
+            // issuer and dates are computed and dropped; no new ca_bundle entry point for a path
+            // that runs once per legacy upgrade.
+            if (!ca_bundle::describe(certificate.get(), m_leaf.get()).signsLeaf)
+            {
+                continue;
+            }
+
+            // Re-serialised from the parsed object, one certificate in the vector: that is what
+            // makes the result a single-certificate PEM with no publication block in it, whatever
+            // the file around it looks like.
+            std::vector<X509Ptr> onlySigner;
+            onlySigner.push_back(std::move(certificate));
+            const auto pem = serializeCertificates(onlySigner);
+
+            if (pem.empty())
+            {
+                // A certificate that will not write back out is not one to deliver. Same answer as
+                // "none signs it": there is nothing to hand over.
+                return 0;
+            }
+
+            if (pem.size() > capacity)
+            {
+                // Told apart from 0 on purpose: the caller's buffer is a compile-time constant, so
+                // this is a misconfiguration to look at, not a bundle to fix.
+                return -1;
+            }
+
+            std::memcpy(buffer, pem.data(), pem.size());
+            return static_cast<int>(pem.size());
+        }
+
+        return 0;
     }
 
     std::uint64_t CaCertificateSource::parses() const

@@ -1546,6 +1546,20 @@ namespace remoted::http
         return source ? source->descriptor() : CaCertificateSource::CaDescriptor {};
     }
 
+    int RestinioHttpServer::caLeafSignerPem(char* buffer, std::size_t capacity) const
+    {
+        // Same shape as the two above: the shared_ptr under m_mutex, the source asked outside it.
+        // With no source (before start(), after stop()) the answer is 0 -- "no certificate to
+        // deliver" -- which is what keeps the legacy poller from shipping anything at all rather
+        // than something it could not check.
+        std::shared_ptr<CaCertificateSource> source;
+        {
+            std::lock_guard<std::mutex> lock {m_impl->m_mutex};
+            source = m_impl->m_caSource;
+        }
+        return source ? source->leafSignerPem(buffer, capacity) : 0;
+    }
+
     TlsCertificateSnapshot RestinioHttpServer::certificateStatus() const
     {
         // The monitor has its own lock; m_mutex is not needed (and must not be taken: a metrics

@@ -196,6 +196,31 @@ namespace remoted::http
          */
         CaDescriptor descriptor();
 
+        /**
+         * @brief The ONE certificate of this bundle that signs the served leaf, re-serialised into
+         *        @p buffer -- a single certificate, never the bundle and never the `##` block (RF-7).
+         *
+         * For the legacy WPK delivery, and for nothing else. `src/init/pkg_installer.sh` refuses a
+         * `root-ca.pem` drop-in carrying more than one `-----BEGIN CERTIFICATE-----`, so handing a
+         * 4.x agent mid-upgrade the bundle a rotation's overlap makes of this file would leave it
+         * with no anchor at all (C7). What the agent needs is the one CA that verifies this
+         * listener, and that is what comes out of here: the FIRST certificate of the snapshot whose
+         * signature is on the served leaf, written back out by this process from the parsed X.509
+         * object rather than copied out of the file.
+         *
+         * Reads through snapshot(), so these bytes come from the same cache, the same read and the
+         * same mutex `GET /cacerts` answers from -- the two paths can never disagree about which
+         * file they are talking about. The re-parse it costs is deliberate: this runs once per
+         * upgrade of one pre-v5.0.0 agent, never on a hot path.
+         *
+         * @param buffer Where the PEM is written. Not NUL-terminated: the return value is the length.
+         * @param capacity Bytes available at @p buffer.
+         * @return Bytes written (> 0); 0 when no certificate of the bundle signs the leaf, when
+         *         there is no servable bundle or when there is no served leaf to check against;
+         *         -1 when @p capacity is too small for the certificate (nothing is written).
+         */
+        int leafSignerPem(char* buffer, std::size_t capacity);
+
         /// How many times the bytes were actually parsed. Only the tests care: it is what proves
         /// the cache holds when the file did not change, and gives way when it did.
         std::uint64_t parses() const;

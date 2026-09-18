@@ -260,7 +260,7 @@ STATIC bool legacy_task_send_step(const char *agent_id, const char *target, cons
 STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *command_name, cJSON *params, char **out_data, bool *out_malformed, bool *out_no_response, bool is_last_attempt) __attribute__((nonnull(1, 2, 3)));
 STATIC bool legacy_task_ca_target_speaks_https(const char *wpk_version);
 STATIC const char *legacy_task_ca_path(void);
-STATIC char *legacy_task_ca_read(const char *path, unsigned int *out_length) __attribute__((nonnull));
+STATIC char *legacy_task_ca_read(unsigned int *out_length) __attribute__((nonnull));
 STATIC void legacy_task_ca_truncate(const char *agent_id) __attribute__((nonnull));
 STATIC bool legacy_task_ca_push(const char *agent_id, const char *pem, unsigned int length, const char *expected_sha1, bool is_last_attempt, bool *out_no_response) __attribute__((nonnull(1, 2, 4, 6)));
 STATIC void legacy_task_deliver_ca(const char *agent_id, const char *task_id, const char *wpk_version) __attribute__((nonnull(1, 2)));
@@ -615,6 +615,11 @@ STATIC bool legacy_task_ca_target_speaks_https(const char *wpk_version) {
  * reasoning through an out-parameter: every failure log below names this path, and _merror()
  * carries __attribute__((nonnull)) over its variadic arguments.
  *
+ * No longer feeds the read itself (issue #39319): legacy_task_ca_read() asks the C++ module for the
+ * certificate instead of opening this file, and the module resolves the very same setting. What is
+ * left is the operator-facing half -- naming the file the certificate came from, or should have
+ * come from, in every log line below.
+ *
  * @return Never NULL.
  */
 STATIC const char *legacy_task_ca_path(void) {
@@ -624,50 +629,62 @@ STATIC const char *legacy_task_ca_path(void) {
 }
 
 /**
- * @brief Read the CA file and confirm it is something an agent could actually trust.
+ * @brief Get the CA certificate to send, and confirm it is something an agent could actually trust.
  *
- * Rejects a file that is missing, unreadable, over LEGACY_TASK_CA_MAX_BYTES, or that does not
- * carry a complete PEM certificate block -- an empty file, a private key, a path pointing at
- * something else entirely, or a truncated read.
+ * Does NOT read the file (issue #39319). The bytes come from the C++ module, which hands back the
+ * ONE certificate of `remote.https.ca_certificate` that signs what the HTTPS listener serves,
+ * re-serialised and with no publication block. That is the whole point: during the overlap of a CA
+ * rotation the bundle on disk legitimately holds two certificates (plus the `##` block the
+ * `wazuh-manager-certs` tool stamps), and the agent-side installer -- src/init/pkg_installer.sh --
+ * REFUSES a `root-ca.pem` drop-in carrying more than one `-----BEGIN CERTIFICATE-----`. Sending the
+ * file as it sits would therefore leave every agent upgrading during a rotation with no anchor at
+ * all, which is the one outcome this feature exists to prevent.
  *
- * @param path File to read, from legacy_task_ca_path().
+ * Rejects an answer that carries no complete PEM certificate block, exactly as the file-reading
+ * version did -- defence in depth against a truncated or non-certificate payload, from a producer
+ * that is not supposed to be able to emit one.
+ *
  * @param out_length On success, the byte length pushed to the agent.
- * @return Caller-owned file contents (free with os_free), or NULL. Does not log: the caller wants
- * one message naming the agent as well as the file.
+ * @return Caller-owned PEM (free with os_free), or NULL. Does not log: the caller wants one message
+ * naming the agent as well as the file.
  */
-STATIC char *legacy_task_ca_read(const char *path, unsigned int *out_length) {
-    // wfopen/fread/fclose rather than w_get_file_content(): that helper sizes the file through
-    // get_fp_size(), and this is the same trio the WPK step a few lines below already uses.
-    FILE *file = wfopen(path, "rb");
-
-    if (!file) {
-        return NULL;
-    }
-
-    // One byte PAST the cap is requested on purpose: reading exactly the cap cannot distinguish a
-    // file that just fits from one that is larger, whereas getting cap+1 bytes back proves it is
-    // larger. The buffer carries one more byte again, for the NUL terminator.
+STATIC char *legacy_task_ca_read(unsigned int *out_length) {
+    // Same cap and the same one-byte-past-it buffer as when this read the file. One byte PAST the
+    // cap is offered on purpose, exactly as before: a certificate that takes precisely the cap
+    // cannot be told from one that is larger unless the extra byte is there to come back in. The
+    // buffer carries one more byte again, for the NUL terminator the strstr() checks below need.
     char *pem;
     os_calloc(LEGACY_TASK_CA_MAX_BYTES + 2, sizeof(char), pem);
 
-    size_t length = fread(pem, 1, LEGACY_TASK_CA_MAX_BYTES + 1, file);
-    fclose(file);
+    int written = remoted_module_tls_leaf_signer_pem(pem, LEGACY_TASK_CA_MAX_BYTES + 1);
+
+    if (written <= 0) {
+        // 0: no certificate of the bundle signs the served one, there is no servable bundle, or the
+        // listener is down. -1: the certificate does not even fit the offered capacity, or the
+        // module failed. Nothing to deliver either way, and the caller continues the upgrade
+        // without a CA. Never a truncated PEM: the export reports -1 rather than writing a prefix.
+        os_free(pem);
+        return NULL;
+    }
+
+    size_t length = (size_t) written;
 
     if (length > LEGACY_TASK_CA_MAX_BYTES) {
+        // The cap itself, kept where it was: a certificate this size is not a CA, and the caller's
+        // error message promises exactly this bound.
         os_free(pem);
         return NULL;
     }
 
     pem[length] = '\0';
 
-    // BOTH markers, where GET /cacerts checks only the opening one. The difference is deliberate:
-    // that route hands the bytes to an agent that parses them immediately and can reject them,
-    // while these bytes are written to the agent's disk and read much later by an installer that
-    // pins whatever it finds. A short read here -- and fread() is free to return one -- would
-    // otherwise ship a certificate with no END line, which is exactly the truncated anchor this
-    // whole path is careful never to leave behind.
+    // BOTH markers, even though these bytes were serialised by OpenSSL two function calls ago. The
+    // check is not about distrusting the producer: it is that these bytes are written to the agent's
+    // disk and read much later by an installer that pins whatever it finds, so a certificate with no
+    // END line -- the truncated anchor this whole path is careful never to leave behind -- must not
+    // be able to get past here through any future change to how the PEM is produced.
     //
-    // strstr() stops at the first NUL, so a file with an embedded one fails these tests too. That
+    // strstr() stops at the first NUL, so a payload with an embedded one fails these tests too. That
     // is correct: it is not a PEM.
     if (length == 0 || !strstr(pem, "-----BEGIN CERTIFICATE-----") ||
         !strstr(pem, "-----END CERTIFICATE-----")) {
@@ -846,21 +863,28 @@ STATIC void legacy_task_deliver_ca(const char *agent_id, const char *task_id, co
 
     const char *ca_path = legacy_task_ca_path();
     unsigned int ca_length = 0;
-    char *pem = legacy_task_ca_read(ca_path, &ca_length);
+    char *pem = legacy_task_ca_read(&ca_length);
 
     if (!pem) {
+        // "has no certificate that signs the certificate this manager serves" is in this list
+        // because, since #39319, it is the case that lands HERE: the module answers 0 for a bundle
+        // none of whose CAs signs the served leaf, so legacy_task_ca_read() returns NULL before the
+        // explicit guard below is ever consulted. Its own, more specific message would otherwise be
+        // unreachable in the one situation CA-18 is about, leaving the reason unsaid.
         merror("legacy_task_delivery: agent '%s': the configured CA '%s' is missing, unreadable, larger "
-               "than %d bytes, or carries no certificate; continuing the upgrade without it, so the "
-               "agent will come back unverified",
+               "than %d bytes, carries no certificate, or has no certificate that signs the certificate "
+               "this manager serves; continuing the upgrade without it, so the agent will come back "
+               "unverified",
                agent_id, ca_path, LEGACY_TASK_CA_MAX_BYTES);
         return;
     }
 
-    // Read AFTER the file, so a CA that cannot be read is reported as such rather than as a
-    // mismatch. Only an explicit "does not sign" refuses -- unknown (-1: the listener is down, or
-    // the file was unreadable at the last evaluation) proceeds, exactly as GET /cacerts does.
-    // Refusing on unknown would turn one transient read failure into a fleet-wide loss of the
-    // trust bootstrap.
+    // Kept although the export above already refuses to produce a certificate that does not sign
+    // the served one, so this is redundant by design (02-diseno.md §2.5): it is the guard that
+    // states the rule, and it keeps stating it if the export's contract is ever loosened. Only an
+    // explicit "does not sign" refuses -- unknown (-1: the listener is down, or the file was
+    // unreadable at the last evaluation) proceeds, exactly as GET /cacerts does. Refusing on
+    // unknown would turn one transient read failure into a fleet-wide loss of the trust bootstrap.
     if (remoted_module_tls_ca_matches_leaf() == 0) {
         merror("legacy_task_delivery: agent '%s': the configured CA '%s' does not sign the certificate "
                "this manager serves on the HTTPS listener, so it is not sent -- an agent that pinned it "
