@@ -326,7 +326,6 @@ Before upgrading agents:
 2. Plan upgrades in batches to avoid upgrading all agents simultaneously
 3. Test on non-production agents first
 4. Verify manager compatibility with the new agent version
-5. **Password Authentication:** Wazuh 5.0 enables password protection for agent enrollment by default. If you need to re-enroll agents during or after the upgrade, you must use the registration password. If the 5.0 manager was freshly installed, retrieve the new password using `sudo cat /var/wazuh-manager/etc/authd.pass` on the manager and apply it on the agents, or restore the old `authd.pass` file to the new manager.
 
 **Note:** Wazuh agents version 4.x and later support upgrades to version 5.x.
 
@@ -649,24 +648,26 @@ sudo chown -R root:wazuh /var/ossec/etc
 **Issue: Agent not connecting after upgrade**
 
 ```bash
-# Verify manager address in configuration
-sudo grep "<address>" /var/ossec/etc/ossec.conf
+# Verify the manager endpoint. An upgrade never rewrites ossec.conf, so a carried-over
+# 4.x file still spells this as <address>, which is deprecated but still read.
+sudo grep -E "<endpoint>|<address>" /var/ossec/etc/ossec.conf
 
-# Check network connectivity to manager
-ping <manager_ip>
-telnet <manager_ip> 1514
+# Check network connectivity to the manager. The agent channel is 1517; 1514 is the
+# legacy listener and an upgraded agent no longer uses it.
+nc -vz <manager_ip> 1517
 
-# Verify client.keys matches manager
-# Compare key on agent with manager's client.keys entry
+# Has the agent a trust anchor? An upgraded agent receives one over the upgrade
+# channel; without it the agent connects but verifies nothing.
+sudo ls -l /var/ossec/etc/certs/root-ca.pem
 
-# Check for enrollment password verification issues:
-# If you see "ERROR: Invalid password (from manager)" in /var/ossec/logs/ossec.log,
-# verify that the password in the agent's `/var/ossec/etc/authd.pass` matches
-# the manager's `/var/wazuh-manager/etc/authd.pass`.
+# What does the agent say about TLS and enrollment? Every failure here names itself.
+sudo grep -E "TLS verification|cacerts|pin_mismatch|\(41[0-9]{2}\)" /var/ossec/logs/ossec.log | tail -20
 
 # Restart agent
 sudo systemctl restart wazuh-agent
 ```
+
+The message table in [Agent Not Connecting](modules/client/README.md#agent-not-connecting) maps each of those lines to its cause. An agent that still holds an identity keeps working on the key it has; one that has to register again needs an enrollment token, since the endpoint no longer holds a password.
 
 **Issue: Windows agent upgrade fails**
 

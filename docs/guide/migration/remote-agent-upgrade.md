@@ -459,7 +459,7 @@ After triggering the upgrade, confirm all conditions below are met before declar
 - Agent connection status is `active`.
 - `ossec.log` on the agent contains no errors related to the upgrade (`grep -i "upgrade" /var/ossec/logs/ossec.log`).
 - The manager log records the CA step for each upgraded agent, and no warning or error against it
-  (`grep "legacy_task_delivery.*CA" /var/wazuh-manager/logs/ossec.log`). An agent whose CA delivery
+  (`grep "legacy_task_delivery.*CA" /var/wazuh-manager/logs/wazuh-manager.log`). An agent whose CA delivery
   failed is still upgraded and connected, but verifies nothing — worth catching before the migration
   is declared complete.
 

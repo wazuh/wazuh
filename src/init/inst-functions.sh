@@ -379,9 +379,10 @@ WriteAgent()
     echo "    <manager>" >> $NEWCONFIG
 
     # <endpoint> carries the whole connection target, composed from install.sh's own
-    # $SERVER_IP/$HNAME prompt. A source install therefore names its manager here and
-    # registers afterwards with wazuh-agent-auth, which is the token-less path the
-    # packages no longer offer.
+    # $SERVER_IP/$HNAME prompt. A source install therefore names its manager here and is
+    # registered afterwards by running wazuh-agent-auth with a token (install.sh prints the
+    # command): the install itself carries none, and a token is the only registration path
+    # there is.
     AGENT_ENDPOINT="$SERVER_IP"
     if [ "X${HNAME}" != "X" ]; then
       AGENT_ENDPOINT="$HNAME"

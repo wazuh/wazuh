@@ -371,14 +371,28 @@ Whether the node is hidden from the cluster. Default: `no`.
 
 ## Agent
 
+A 5.0 agent registers with an **enrollment token**. The token names the manager, pins the certificate authority that signs the manager's agent-facing certificate, and carries the enrollment credential. Tokens are minted on the manager, see [minting a token](../modules/authd/enrollment-lifecycle.md#step-1-the-operator-mints-a-token) and [Enrollment tokens](../modules/authd/README.md#enrollment-tokens) for listing, revocation and the refusal rules.
+
+A token comes in three shapes, and every installation method below accepts any of them:
+
+| Shape | Minted with | What the agent does with it |
+|---|---|---|
+| Pinned | the default | Fetches the manager's CA, checks it against the pin in the token, installs it as the trust anchor |
+| Embedded CA | `--embed-ca` | Takes the certificate from the token itself; no fetch |
+| Credential-less | `--no-credential` | Points the agent at the manager and installs the trust anchor, but presents no enrollment credential |
+
 > [!IMPORTANT]
-> Enrollment password protection is enabled by default in Wazuh 5.0. Before enrolling agents, you must retrieve the auto-generated password from the manager using:
-> 
-> ```bash
-> sudo cat /var/wazuh-manager/etc/authd.pass
-> ```
-> 
-> Pass this password to the installer using the `WAZUH_REGISTRATION_PASSWORD` environment variable (or `/tmp/wazuh_envs` on macOS, or the installer arguments on Windows) as shown in the examples below.
+> Every token expires: 30 days by default, 3650 days at most. Expiry is checked by the manager, not by the installer, so an agent given a stale token installs and starts normally and then fails to register. The agent log names the token id the manager refused.
+
+### Installation methods
+
+| Method | How the agent is installed | How it registers |
+|---|---|---|
+| **One-line command** | The command the dashboard generates, which carries the token | During the package install |
+| **Package** | `dpkg`, `rpm`, `installer` or the MSI | Afterwards, with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent), when the install passed no token |
+| **From sources** | `install.sh` | Afterwards, with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent) |
+
+The one-line command comes from the dashboard's *Deploy new agent* page. It sets the deployment variables, downloads the package and installs it. Copy it and run it on the endpoint. The agent name and the groups are optional, as they were before, and are only set when you fill them in.
 
 ### Download package
 
@@ -392,10 +406,10 @@ Download the Wazuh agent package for your platform and version. See the [Package
 sudo dpkg -i wazuh-agent_*.deb
 ```
 
-You can optionally specify configuration parameters (such as the manager IP and the required registration password):
+The deployment variables below are passed as environment variables, which is what the dashboard's one-line command does:
 
 ```bash
-sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' dpkg -i wazuh-agent_*.deb
+sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='web-server-01' dpkg -i wazuh-agent_*.deb
 ```
 
 #### Red Hat-based platforms
@@ -404,10 +418,8 @@ sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGE
 sudo rpm -ivh wazuh-agent-*.rpm
 ```
 
-You can optionally specify configuration parameters:
-
 ```bash
-sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
+sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
 ```
 
 #### SUSE-based platforms
@@ -416,10 +428,8 @@ sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGE
 sudo rpm -ivh wazuh-agent-*.rpm
 ```
 
-You can optionally specify configuration parameters:
-
 ```bash
-sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
+sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
 ```
 
 #### Starting the agent
@@ -446,10 +456,10 @@ Install the agent:
 sudo installer -pkg wazuh-agent-*.pkg -target /
 ```
 
-You can optionally specify configuration parameters by writing them to `/tmp/wazuh_envs` before running the installer:
+macOS takes its deployment variables from `/tmp/wazuh_envs`, one `NAME='value'` per line. The installer sources that file and then deletes it:
 
 ```bash
-echo "WAZUH_MANAGER='10.0.0.2'" > /tmp/wazuh_envs && echo "WAZUH_REGISTRATION_PASSWORD='<PASSWORD>'" >> /tmp/wazuh_envs && echo "WAZUH_AGENT_NAME='macbook-01'" >> /tmp/wazuh_envs && sudo installer -pkg wazuh-agent-*.pkg -target /
+echo "WAZUH_ENROLLMENT_TOKEN='<TOKEN>'" > /tmp/wazuh_envs && echo "WAZUH_AGENT_NAME='macbook-01'" >> /tmp/wazuh_envs && sudo installer -pkg wazuh-agent-*.pkg -target /
 ```
 
 Start the agent service:
@@ -472,10 +482,10 @@ Install the agent silently:
 wazuh-agent-*.msi /q
 ```
 
-You can optionally specify configuration parameters:
+The deployment variables are MSI properties:
 
 ```powershell
-wazuh-agent-*.msi /q WAZUH_MANAGER="10.0.0.2" WAZUH_REGISTRATION_PASSWORD="<PASSWORD>" WAZUH_AGENT_NAME="windows-server-01"
+wazuh-agent-*.msi /q WAZUH_ENROLLMENT_TOKEN="<TOKEN>" WAZUH_AGENT_NAME="windows-server-01"
 ```
 
 For interactive installation, double-click the MSI file and follow the installation wizard.
@@ -494,111 +504,79 @@ Get-Service -Name wazuh
 
 ### Options
 
-#### Server connection
+#### Enrollment
 
-**`WAZUH_MANAGER`**\
-Specifies the IP address or hostname of the Wazuh server. The agent uses this to establish communication with the server. Superseded by `WAZUH_MANAGER_ENDPOINT` when that is set.
+**`WAZUH_ENROLLMENT_TOKEN`**\
+The enrollment token minted on the manager. The only way to register an agent. The installer decodes it, writes the manager address it carries into `<agent><manager><endpoint>`, and stores the token at `etc/enrollment_token` (`0600 root:root`; SYSTEM and Administrators only on Windows). The agent consumes it on its first start: it fetches the manager's CA, checks it against the token's pin, installs it as the trust anchor at `etc/certs/root-ca.pem`, enrolls over a fully verified connection, and deletes the token file.
 
-**`WAZUH_MANAGER_PORT`**\
-Defines the port used to communicate with the Wazuh server. Default: `1517`. Superseded by `WAZUH_MANAGER_ENDPOINT` when that is set.
+A token install needs no TLS configuration of any kind. The anchor arrives with the token.
 
-**`WAZUH_MANAGER_ENDPOINT`**\
-The whole connection target in one value — address, optional port and optional reverse-proxy path prefix. Takes priority over `WAZUH_MANAGER` and `WAZUH_MANAGER_PORT`, which remain supported: when only those are set, an equivalent `<endpoint>` is composed from them. The separate `<address>` and `<port>` configuration settings are no longer written.
+A token that cannot be decoded is a **refusal**: nothing is written, the agent keeps the configuration the package shipped, and the reason is logged with a named code — `ERR_BAD_TOKEN` for a token the decoder rejected or one carrying no address, `ERR_NO_DECODER` when the decoder could not be run at all.
 
-```
-WAZUH_MANAGER_ENDPOINT = [ "https://" ] host [ ":" port ] [ "/" [ prefix ] ]
+#### TLS verification
 
-host   = IPv4 literal, hostname, or a bracketed IPv6 literal   ; REQUIRED
-port   = 1-65535                                               ; default 1517
-prefix = reverse-proxy path segments                           ; default wazuh-manager
-```
+**`WAZUH_SSL_VERIFICATION`**\
+Writes `<agent><ssl><verification_mode>`. Exactly one of `full`, `certificate`, `system` or `none`, matched case-sensitively; any other value is logged and the element is left unset. See [`verification_mode`](../modules/client/configuration.md#verification_mode) for what each mode checks and for the ladder that resolves the mode when this is not set.
 
-The address is the only mandatory component; anything omitted takes its default, so `192.168.0.60` behaves exactly like `192.168.0.60:1517/wazuh-manager/`. The prefix must match the server's own configured prefix.
+Most installs do not need it. A token install resolves to `full` against the anchor it just received, and this variable only overrides that. It matters in two cases: a manager fronted by a publicly trusted certificate, where `system` needs no anchor at all; and an install being configured by hand, where it is the only TLS input a variable can supply.
 
-| Value | Address | Port | Prefix |
-|---|---|---|---|
-| `192.168.0.60` | `192.168.0.60` | `1517` | `/wazuh-manager/` |
-| `manager.example.com:8443` | `manager.example.com` | `8443` | `/wazuh-manager/` |
-| `192.168.0.60/proxy/path` | `192.168.0.60` | `1517` | `/proxy/path/` |
-| `https://192.168.0.60:8443/proxy` | `192.168.0.60` | `8443` | `/proxy/` |
-| `192.168.0.60/` | `192.168.0.60` | `1517` | *none — see below* |
-| `[2001:db8::1]:8443` | `2001:db8::1` | `8443` | `/wazuh-manager/` |
-
-A **trailing slash with nothing after it** opts out of the prefix entirely, for a server that runs without one. Note the difference from omitting the slash: `192.168.0.60` gets the default prefix, while `192.168.0.60/` gets none.
-
-An `https://` scheme is accepted and ignored if present; any other scheme is rejected, since HTTPS is the only transport served. An IPv6 address must be bracketed so its colons are not mistaken for the port separator, and its brackets are dropped from the generated configuration. A link-local IPv6 address may carry a zone id, written with the `%` percent-encoded as `%25` — `[fe80::1%25eth0]` or `[fe80::1%257]`. An interface name is resolved to its index while the configuration is parsed, so a name that does not exist on the host is rejected there rather than failing later as an obscure connection error.
-
-A value that does not match the grammar is rejected: no server block is written, the reason is logged to `ossec.log`, and the agent fails to start rather than connecting somewhere unintended.
-
-The value is written verbatim into the agent's configuration, which takes the same grammar:
-
-```xml
-<agent>
-  <manager>
-    <endpoint>192.168.0.60:1517/wazuh-manager/</endpoint>
-  </manager>
-</agent>
-```
-
-An agent upgraded in place keeps whatever `ossec.conf` it already had, so the older spelling with separate `<address>`, `<port>` and a prefix-only `<endpoint>` is still read. It logs a deprecation warning and will stop being accepted in a future release; rewrite it as a single `<endpoint>` when convenient.
-
-#### Enrollment configuration
-
-A 5.0 agent enrolls over the **same** connection and TLS configuration it uses for everything else —
-`POST /enroll` on the server's HTTPS port (`1517` by default). It no longer opens a separate
-connection to the legacy `authd` listener on port `1515`, so enrollment needs no address, port or
-certificate settings of its own.
-
-> The variables below are still accepted so an existing deployment script keeps working. The address
-> and port ones are genuinely ignored: enrollment always targets the configured manager endpoint now,
-> not a separate listener. `WAZUH_REGISTRATION_CA`, below, is the exception — it is read and does
-> take effect, since `<agent><ssl>` is where enrollment gets its TLS material from too.
-
-**`WAZUH_REGISTRATION_SERVER`** *(ignored in 5.0)*\
-Formerly the address of a separate enrollment server. Enrollment now always targets the configured manager endpoint.
-
-**`WAZUH_REGISTRATION_PORT`** *(ignored in 5.0)*\
-Formerly the port of the legacy enrollment listener (`1515`). Enrollment now uses `WAZUH_MANAGER_PORT`.
-
-**`WAZUH_REGISTRATION_PASSWORD`**\
-Sets the password required for agent enrollment. This password must match the one configured on the server. Enrollment password protection is enabled by default, so retrieve the auto-generated password from the manager before enrolling agents:
-
-```bash
-sudo cat /var/wazuh-manager/etc/authd.pass
-```
-
-Passing it through this variable is the recommended approach: the installer writes `etc/authd.pass` on the agent and sets its ownership and permissions automatically. See [`use_password`](../modules/authd/configuration.md#use_password) for details and for adding the password to an already-installed agent.
-
-**`WAZUH_REGISTRATION_CA`**\
-Path to the CA used to verify the manager's certificate. Writes `<agent><ssl><certificate_authorities>`
-directly — the whole connection's TLS material, not just enrollment's, since 5.0 no longer has a
-separate enrollment connection. If `<verification_mode>` is not also set explicitly, the agent infers
-`certificate` from the presence of this CA (see [`verification_mode`](../modules/client/configuration.md#verification_mode)).
-Has no effect if `<verification_mode>` is already explicitly `system` in the shipped configuration,
-since the agent rejects that combination at runtime; a log line explains why in that case.
-
-**`WAZUH_REGISTRATION_CERTIFICATE`** *(ignored in 5.0)*\
-Formerly the agent's certificate for enrollment authentication. Use `<agent><ssl><certificate>`.
-
-**`WAZUH_REGISTRATION_KEY`** *(ignored in 5.0)*\
-Formerly the agent's private key for enrollment authentication. Use `<agent><ssl><key>`.
+> [!NOTE]
+> In 5.0 this variable is named `WAZUH_SSL_VERIFICATION`. The 4.x spelling `SSL_VERIFICATION` is not read and has no alias.
 
 #### Agent identity
 
 **`WAZUH_AGENT_NAME`**\
-Sets the agent's name for identification in the Wazuh server. Default: system hostname.
+Sets the agent's name for identification in the Wazuh server. Writes `<enrollment><agent_name>`. Default: system hostname. Deprecated alias on Windows: `AGENT_NAME`.
 
 **`WAZUH_AGENT_GROUP`**\
-Assigns the agent to a specific group upon enrollment. Default: `default`.
+Assigns the agent to one or more groups at enrollment, comma-separated. Writes `<enrollment><groups>`. Default: `default`. Deprecated alias: `WAZUH_GROUP` (`GROUP` on Windows).
 
 #### Advanced options
 
 **`WAZUH_KEEP_ALIVE_INTERVAL`**\
-Defines the interval in seconds between keep-alive messages sent to the server. When not specified, system defaults apply.
+Interval in seconds between keep-alive notifications to the manager. Writes `<agent><notify_time>`. Default: `10`. Deprecated alias: `WAZUH_NOTIFY_TIME` (`NOTIFY_TIME` on Windows).
 
-**`WAZUH_TIME_RECONNECT`** *(ignored in 5.0)*\
-Formerly forced the agent to reconnect every N seconds. There is no persistent connection to
-re-establish over HTTPS, so `<agent><time-reconnect>` is accepted and ignored.
+**`WAZUH_TIME_RECONNECT`** *(no effect)*\
+Targets `<agent><time-reconnect>`, an option that is deprecated and ignored. Deprecated alias on Windows: `TIME_RECONNECT`.
 
 **`ENROLLMENT_DELAY`**\
-Sets a delay in seconds between agent enrollment and the first connection attempt. When not specified, system defaults apply.
+Delay in seconds between a successful enrollment and the first connection attempt. Writes `<enrollment><delay_after_enrollment>`. Default: `20`. `0` is rejected by the agent's configuration parser.
+
+#### Variables removed in 5.0
+
+The enrollment token replaced the whole registration family. The names below are still read, so an install carrying a 4.x-era command line or an untouched playbook is told what happened, but none of them writes anything:
+
+```console
+wazuh-agent: WAZUH_MANAGER is not supported in 5.0 and was ignored: registration is configured by WAZUH_ENROLLMENT_TOKEN alone; this variable no longer has any effect.
+```
+
+| What you used to set | What you set now |
+|---|---|
+| `WAZUH_MANAGER`, `WAZUH_MANAGER_IP`, `WAZUH_MANAGER_PORT`, `WAZUH_MANAGER_ENDPOINT` | `WAZUH_ENROLLMENT_TOKEN` — the manager address travels inside the token. Without a token, `<agent><manager><endpoint>` in `ossec.conf` |
+| `WAZUH_REGISTRATION_PASSWORD`, `WAZUH_PASSWORD` | `WAZUH_ENROLLMENT_TOKEN` — the token carries its own credential, scoped and revocable. No fleet-wide password is written to the endpoint |
+| `WAZUH_REGISTRATION_SERVER`, `WAZUH_REGISTRATION_PORT`, `WAZUH_AUTHD_SERVER`, `WAZUH_AUTHD_PORT` | Nothing. Enrollment has used the manager's own HTTPS endpoint since 5.0.0; there is no separate enrollment listener to address |
+| `WAZUH_REGISTRATION_CA`, `WAZUH_CERTIFICATE` | Nothing on a token install — the anchor arrives with the token. On a hand-configured install, place the CA at `etc/certs/root-ca.pem` yourself, or name it in `<agent><ssl><certificate_authorities>` |
+| `WAZUH_REGISTRATION_CERTIFICATE`, `WAZUH_PEM` | `<agent><ssl><certificate>` in `ossec.conf` |
+| `WAZUH_REGISTRATION_KEY`, `WAZUH_KEY` | `<agent><ssl><key>` in `ossec.conf` |
+| `SSL_VERIFICATION` | `WAZUH_SSL_VERIFICATION` — renamed, with no alias |
+
+On Windows the same properties are removed under their unprefixed MSI spellings as well: `ADDRESS`, `SERVER_PORT`, `AUTHD_SERVER`, `AUTHD_PORT`, `PASSWORD`, `CERTIFICATE`, `PEM` and `KEY`.
+
+#### Installing without a token
+
+A package install with no `WAZUH_ENROLLMENT_TOKEN` completes, and the installer records that the agent has nowhere to connect:
+
+```console
+wazuh-agent: no manager configured [INFO_NO_MANAGER]: WAZUH_ENROLLMENT_TOKEN was not supplied, so the agent does not know where to connect.
+```
+
+That is the **Package** and **From sources** methods: the agent is installed but not yet registered. The shipped configuration keeps its placeholder endpoint, so the agent starts and then fails to reach a manager called `IP` until it is given a real one.
+
+Register it with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent), which installs the trust anchor, enrolls, and writes the manager address the token names. The variables that are not about registration — `WAZUH_AGENT_NAME`, `WAZUH_AGENT_GROUP`, the timers and `WAZUH_SSL_VERIFICATION` — already applied during the install, and the command reads the name and groups back out of `ossec.conf`, so the agent registers with the ones the install set.
+
+### Migrating agents already running
+
+An agent upgraded in place from 4.x keeps its identity and never enrolls again. The manager delivers its CA over the upgrade channel instead, so those agents need no token — see [Trust anchor delivery to legacy agents](../../guide/migration/remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents) and the validation checklist on the same page.
+
+> [!NOTE]
+> **Manager-side mutual TLS blocks remote upgrades to 5.0.** Finish migrating the fleet before setting `<remote><https><verification_mode>` to anything other than `none`.

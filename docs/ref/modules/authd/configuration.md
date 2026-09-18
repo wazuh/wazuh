@@ -79,27 +79,7 @@ Require agents to provide a shared enrollment password.
 
 When enabled, the password is read from `/var/wazuh-manager/etc/authd.pass` (a single line). If the file does not exist, `wazuh-manager-authd` generates a random password on start (32 bytes straight from the CSPRNG, written as 64 lowercase hexadecimal characters), stores it in that file, and reuses it on later starts. A password written by hand is not held to that format: any single line longer than two characters is accepted. If the file exists but is empty or invalid, `wazuh-manager-authd` does not start. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
 
-**Agent-side setup:** Because `use_password` is `yes` by default, agents must supply the enrollment password or their enrollment request will be rejected. First retrieve the password from the manager:
-
-```bash
-sudo cat /var/wazuh-manager/etc/authd.pass
-```
-
-The recommended way to provide it to an agent is the `WAZUH_REGISTRATION_PASSWORD` install variable, which writes `etc/authd.pass` and sets its ownership and permissions automatically:
-
-```bash
-sudo env WAZUH_MANAGER="<manager-ip>" WAZUH_REGISTRATION_PASSWORD="<password>" apt install ./wazuh-agent.deb
-```
-
-To add it to an already-installed agent, write the file manually. The agent daemon (`wazuh-agentd`) runs as the `wazuh` user, so the file must be readable by that user:
-
-```bash
-echo "<password>" | sudo tee /var/ossec/etc/authd.pass
-sudo chown root:wazuh /var/ossec/etc/authd.pass
-sudo chmod 640 /var/ossec/etc/authd.pass
-```
-
-The agent reads the password from `etc/authd.pass` (relative to its install directory, typically `/var/ossec/etc/authd.pass`) at startup.
+**Agent-side setup:** a 5.0 agent does not use this password. It registers with an [enrollment token](README.md#enrollment-tokens), which carries its own credential, and `use_password` has no bearing on a token enrollment. Nothing writes the endpoint's default `etc/authd.pass` any more: `WAZUH_REGISTRATION_PASSWORD` was removed, a fresh 5.0 install never creates the file, and the 5.0 package upgrade deletes one left by a 4.x install. A path an operator names explicitly in `<enrollment><authorization_pass_path>` is theirs and is left alone.
 
 **Password rotation:** The generated password persists across restarts. To rotate it (for example after a security incident), delete `/var/wazuh-manager/etc/authd.pass` on the master and restart `wazuh-manager-authd`. A new random password will be generated, persisted, and distributed to workers automatically. If the CSPRNG fails, `wazuh-manager-authd` exits instead of writing a weaker password. The reuse of an existing password is logged at `INFO` level on every start.
 
