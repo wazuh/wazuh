@@ -530,6 +530,20 @@ namespace remoted::control
                     response["agent"]["config_token"] = makeConfigToken(groupsCsv);
                     response["settings_hash"] = m_hashCache->getSettingsHash();
 
+                    // The generation the served CA bundle is published under (RF-3), so a 5.x agent
+                    // learns about a rotation on the notify it was already making: a timestamp when
+                    // a guard vouched for the bundle, 0 when there is one and none did, `null` when
+                    // there is no servable bundle at all. Absent -- no provider -- is the fourth
+                    // state and NOT the same as `null`: it is what a manager without the HTTPS
+                    // listener behind this handler answers, and the agent reads it as "unknown".
+                    // Costs no read here: the provider goes to a cache the source revalidates at
+                    // most once a second (C8/C18).
+                    if (m_config.caGenerationProvider)
+                    {
+                        const auto generation = m_config.caGenerationProvider();
+                        response["ca_generation"] = generation ? nlohmann::json(*generation) : nlohmann::json(nullptr);
+                    }
+
                     nlohmann::json tasksJson = nlohmann::json::array();
                     for (const auto& task : tasks)
                     {

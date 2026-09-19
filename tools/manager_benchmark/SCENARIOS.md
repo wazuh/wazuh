@@ -47,8 +47,8 @@ These put one module's traffic on the socket in isolation — the cleanest read 
 
 | Scenario | Exercises |
 |---|---|
-| `control_notify_storm` | A large fleet with an aggressive keepalive interval and a token session lane — the `/control` `notify` path under fan-out |
-| `control_notify_storm_with_sessions` | The same keepalive storm combined with a realistic stateful load |
+| `control_notify_storm` | A 50-agent fleet with an aggressive 2 s keepalive interval and host-info reporting; its single inventory lane is deliberately tiny and spaced so the measured pressure is the `/control` `notify` traffic itself |
+| `control_notify_storm_with_sessions` | The same 2 s keepalive storm paired with a realistic sustained syscollector delta stream — combined control + stateful pressure |
 
 ## Contract under pressure
 

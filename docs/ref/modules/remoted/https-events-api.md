@@ -428,8 +428,8 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
   holds any credential. Returns **`200`** with the PEM,
   **`404`** `{"error":"not_found"}` when the file was never readable or is readable but carries no
   certificate (a file that stops being readable after it was served keeps the last good bundle in
-  service), or **`503`** `{"error":"ca_mismatch"}` when the configured CA does not sign the certificate this
-  listener serves — refusing to hand out a CA that would make every verifying agent fail. See
+  service), or **`503`** `{"error":"ca_mismatch"}` when the certificate this listener serves does not chain to
+  the configured CA — refusing to hand out a CA that would make every verifying agent fail. See
   [CA certificate endpoint](#ca-certificate-endpoint-get-cacerts) below.
 - **`POST /stateless`** — authenticated event ingestion. Once the signature is verified, the module
   cross-checks the H line's `wazuh.agent.id` against the authenticated `agent-id` (**`400`** on a
@@ -889,6 +889,7 @@ update), which had no equivalent once agent-manager connections became stateless
     "config_token": "web-servers",
     "config_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
+  "ca_generation": 1758000000,
   "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
   "tasks": [],
   "vd_feed_offset": 12345678
@@ -902,6 +903,16 @@ rather than omitting the field or sending an empty string. `config_token` is alw
 string, including in that unresolved case — the agent still needs something to name on `/download`,
 and the next notify re-triggers the attempt.
 
+**`ca_generation` (issue #39319, RF-3) is the one exception to "always present" above, and it is not
+interchangeable across its four states.** It carries the generation the CA bundle
+[`GET /cacerts`](#ca-certificate-endpoint-get-cacerts) would serve right now, at no extra cost to
+this hot path: a timestamp once a guard vouched for that bundle; `0` when there is a bundle to serve
+and no guard vouched for it (an unstamped file, or one a guard refused); `null` when there is no
+servable bundle at all (nothing configured, or the configured file yields no certificate); and the
+key itself **absent** on a manager whose build predates this feature — absent means *unknown*, not
+the same as the confirmed-empty `null`. `nlohmann::json` serialises object keys alphabetically, so on
+the wire `ca_generation` lands between `agent` and `settings_hash`, exactly as in the examples above.
+
 **Response with tasks (`200 OK`):**
 ```json
 {
@@ -910,6 +921,7 @@ and the next notify re-triggers the attempt.
     "config_token": "web-servers",
     "config_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
+  "ca_generation": 1758000000,
   "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
   "vd_feed_offset": 12345678,
   "tasks": [
@@ -1689,26 +1701,44 @@ memory pressure, and it is served under the [global prefix](#endpoints) like eve
 | --- | --- | --- | --- |
 | Served | `200` | re-serialised certificates, `Content-Type: application/x-pem-file` | The CA the listener chains to. A bundle is served as a bundle; private keys and other non-certificate material are omitted |
 | No CA | `404` | `{"error":"not_found"}` | The configured file was never readable -- missing, unreadable, too large, or otherwise unparsable -- or it is readable but contains no usable certificates (an emptied file). A file that stops being readable after it was served keeps serving the last good bundle instead. Same body as an unknown route; the manager logs the failure |
-| Incoherent CA | `503` | `{"error":"ca_mismatch"}` | The configured CA does **not** sign the certificate this listener is serving. Refused rather than served: handing it out would make every verifying agent fail its handshake against this very manager |
+| Incoherent CA | `503` | `{"error":"ca_mismatch"}` | The certificate this listener is serving does **not** chain to the configured CA. Refused rather than served: handing it out would make every verifying agent fail its handshake against this very manager |
 
 **What the coherence check compares.** The leaf is the certificate loaded into the TLS context when
 the listener started (constant until a restart); the CA is re-read from disk at each evaluation,
-and every `CERTIFICATE` block in the file counts — the CA is coherent when *any* of them signed the
-leaf, so a bundle carrying the signing CA plus others passes. It is a signature check, not a full
-chain validation, and that decision does not change: the manager separately validates the served
-certificate's full chain — dates, every CA's `basicConstraints`/`keyUsage`, and server purpose —
-using the bundle as its sole trust store (the anchor need not be self-signed), and logs the result
-at startup and on every daily evaluation: a `WARN` when the bundle signs the leaf but the chain does
-not validate (an expired CA, or one missing `CA:TRUE`, would serve no verifying agent), an
-informational line when the chain validates without a direct signature. Neither outcome changes this
+and every `CERTIFICATE` block in the file is offered as a trust anchor — the CA is coherent when the
+leaf builds a valid **chain** to *any* of them, so a bundle carrying the issuing CA plus others
+passes. It is a full validation (`X509_verify_cert()` with OpenSSL's default flags, the bundle as
+its sole trust store), which means:
+
+- a CA that merely **signs** the leaf is not enough: the leaf's own issuer has to be there, so a
+  certificate holding the CA's key under a different subject does not count;
+- the **validity windows** and the `basicConstraints`/`keyUsage` of everything on the path are
+  checked, so an expired CA, a not-yet-valid one, one without `CA:TRUE` — or an expired leaf — make
+  the file incoherent;
+- the anchor must be **self-signed**, because that is what an agent's own OpenSSL trusts by default,
+  so a bundle carrying only a (non-self-signed) intermediate is refused even though that
+  intermediate signed the leaf.
+
+None of these could serve a verifying agent, which is why they are refused rather than served
+(issue #39319; before this the check was a bare signature and such a bundle was served and even
+announced as published).
+
+The manager separately validates the same chain with the server **purpose** added and the anchor
+rule relaxed (an anchor need not be self-signed), and logs the result at startup and on every daily
+evaluation: a `WARN` when the leaf chains to the bundle and yet fails as a *server* certificate (the
+wrong extended key usage, say), an informational line when it only validates because a certificate
+of the bundle was treated as an anchor without being self-signed. Neither outcome changes this
 endpoint's response.
 
 **Cadence.** Each request reads the CA file and obtains the certificate bundle and coherence verdict
-from the same snapshot. Parsing and signature checks are cached by a hash of those bytes; a changed
-file is re-evaluated even if its size and modification time stay the same. A CA file that cannot be
+from the same snapshot. Parsing and the chain validation are cached by a hash of those bytes; a changed
+file is re-evaluated even if its size and modification time stay the same. One consequence of the
+verdict depending on validity windows: a CA that **expires while the file is untouched** keeps the
+verdict it was last given until its bytes change or remoted restarts, so replace the certificate
+before its notAfter rather than relying on the manager to notice the moment it passes. A CA file that cannot be
 read keeps the last good bundle in service and logs the failure; only a file that was never readable
 answers `404`, and a file that reads but carries no certificate answers `404` at once. A replacement
-CA that does not sign the loaded leaf answers `503` on the next request. Separately, the certificate
+CA the loaded leaf does not chain to answers `503` on the next request. Separately, the certificate
 monitor runs at startup and every 24 hours, logging expiry and coherence findings. Rotate the CA and
 listener certificate together and restart remoted to load the new leaf. Replace the CA file
 atomically (write a sibling, then rename it over the path): a file caught half-written is readable,

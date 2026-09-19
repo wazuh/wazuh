@@ -41,14 +41,39 @@
  * for real -- never more than kMaxBytes + 1 bytes are requested, whatever the file's size -- and it is
  * injectable, so every failure path is testable without permission tricks that root ignores. The whole
  * call, read included, runs under the source's mutex, so two readers can never publish out of order.
+ *
+ * That same read also decides whether the bundle is PUBLISHED (issue #39319): ca_bundle::vouch()
+ * runs on it once, and its verdict -- the generation, or 0 and the guard that refused -- travels in
+ * the snapshot, so the endpoint, the certificate log lines and the notify path cannot disagree about
+ * what generation this file is. Publishing is a separate question from serving: an unvouched bundle
+ * is handed out exactly as a vouched one. descriptor() is the view for the callers on the hot path,
+ * one per control notify: it revalidates under the same mutex at most once every kDescriptorRefresh,
+ * so a notify storm costs one read per second while a rotation is still seen within the second.
+ *
+ * What the file cannot say about itself is whether it was EVER published: an ordinary CA file and a
+ * published bundle somebody rewrote by hand look identical. That is what the optional publication
+ * record adds (CaPublicationRecord), and the division of labour is deliberate (C22): the record is
+ * READ once, before this source is handed to anyone, and arrives through the constructor; the
+ * comparison that turns a changed file into an event is O(1) and runs under the mutex with no I/O
+ * at all; the event goes to a mailbox the source only fills; and the WRITE happens in
+ * flushPendingRecord(), outside the mutex, called by whoever drained the mailbox. So no caller on
+ * the hot path ever waits for a disk, an event is logged exactly once by exactly one of the three
+ * callers that own a logger, and a record that cannot be written costs one warning and a retry --
+ * never a publication (C19, C19b).
  */
 
+#include "caPublicationRecord.hpp"
+#include "caRecordEvents.hpp"
 #include "fileRead.hpp"
 #include "tlsCertificateStatus.hpp"
 
+#include "ca_bundle/ca_bundle.hpp"
+
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -61,16 +86,36 @@ namespace remoted::http
     struct CaCertificateSnapshot
     {
         std::string pem; ///< Certificates only, re-serialised here. Empty when there is nothing to serve.
-        std::optional<bool>
-            matchesLeaf; ///< Whether some certificate signs the served leaf directly; nullopt when none was read.
-        std::optional<bool> chainValid; ///< Whether the leaf validates with the bundle as its trust store (chain,
-                                        ///< dates, constraints); nullopt when there is nothing to validate against.
-        std::string chainError;         ///< OpenSSL's reason when chainValid is false; empty otherwise.
-        std::string subjects;           ///< Comma-separated subjects, for the log lines.
-        std::size_t certificates {0};   ///< How many certificates the file yielded.
+        std::optional<bool> matchesLeaf; ///< Whether the served leaf CHAINS to some certificate of the bundle
+                                         ///< (ca_bundle::leafChainsToAnyCa(), C33 -- not a bare signature check);
+                                         ///< nullopt when none was read.
+        std::optional<bool> chainValid;  ///< Whether the leaf validates with the bundle as its trust store (chain,
+                                         ///< dates, constraints); nullopt when there is nothing to validate against.
+        std::string chainError;          ///< OpenSSL's reason when chainValid is false; empty otherwise.
+        std::string subjects;            ///< Comma-separated subjects, for the log lines.
+        std::size_t certificates {0};    ///< How many certificates the file yielded.
         /// Present while the latest read failed. The fields above then describe the last GOOD read
         /// (or are empty when there never was one), not the file as it is right now.
         std::optional<ReadFailure> lastReadFailure;
+
+        /// The generation this bundle may be announced under (RF-2): the publication its block
+        /// carries once every guard passed, 0 when any of them refused -- and 0 is what an agent
+        /// reads as "this manager has no published bundle".
+        std::int64_t publication {0};
+        /// Which guard refused to vouch for the bundle, or `none`. Defaults to `no_certificates`
+        /// rather than `none`: a snapshot buildLocked() never got to vouch for (nothing to serve,
+        /// a serialisation failure) must not read as "vouched for" because the field was untouched.
+        ca_bundle::GuardFailure vouchFailure {ca_bundle::GuardFailure::no_certificates};
+        /// The publication block the file carries, if any. Absent means the bundle was never
+        /// stamped -- an ordinary CA file -- which is a different state from a block that does not
+        /// describe the certificates next to it.
+        std::optional<ca_bundle::PublicationBlock> block;
+        /// Size of `pem`: what the byte guard measured, and what `GET /cacerts` would hand out.
+        std::size_t serializedBytes {0};
+        /// SHA-256 of the FILE's bytes -- the cache key, and what tells a bundle rewritten outside
+        /// the tool from one that never changed. Not the block's Content-SHA256, which hashes what
+        /// the certificates ARE (ca_bundle::contentSha256()).
+        std::string fileSha256;
     };
 
     /**
@@ -84,6 +129,21 @@ namespace remoted::http
     class CaCertificateSource final
     {
     public:
+        /// How descriptor() reads the clock. A test hands it a time it moves by hand.
+        using Clock = std::function<std::chrono::steady_clock::time_point()>;
+
+        /// How long descriptor() may answer without reading the file again: one read per second per
+        /// node is the whole cost the notify path is allowed to add, however many agents ask (C18).
+        static constexpr std::chrono::seconds kDescriptorRefresh {1};
+
+        /// What the notify path needs from the bundle, and nothing else: the generation to tell an
+        /// agent about. `nullopt` means there is no servable bundle at all (`null` on the wire); 0
+        /// means there is one and it is not published. No hash of anything ever leaves here.
+        struct CaDescriptor
+        {
+            std::optional<std::int64_t> generation;
+        };
+
         /// Largest CA file served. A bundle is a few KB; past this the file is refused as TooLarge,
         /// and never more than kMaxBytes + 1 bytes of it are requested from the reader.
         static constexpr std::size_t kMaxBytes {1024U * 1024U};
@@ -95,8 +155,28 @@ namespace remoted::http
          *             that still holds this source (the metrics scrape, the legacy poller).
          * @param reader How the bytes are read: readFileBounded() unless a test says otherwise. An
          *               empty function falls back to the default rather than being called.
+         * @param clock How descriptor() tells the time when it decides whether its answer is still
+         *              fresh. Injectable so the refresh window is testable without sleeping; an
+         *              empty function falls back to the default rather than being called.
+         * @param initialRecord What the publication record said when it was read, ONCE, before this
+         *              source existed (C22): reading it here would put file I/O under the hot-path
+         *              mutex. Only `ok` seeds the effective entry; `unreadable`/`malformed` make the
+         *              first read of the bundle stay silent about "never published" and "changed
+         *              outside the tool", because a record we could not read is not evidence of
+         *              either (C23).
+         * @param record Where the effective entry is persisted, outside the mutex, by
+         *              flushPendingRecord(). Null keeps this source exactly as it was before the
+         *              record existed: it remembers nothing and emits nothing.
+         * @param mailbox Where the events go until a caller with a logger drains them. Null also
+         *              means no events (the two are injected together in production).
          */
-        CaCertificateSource(std::string path, const X509* leaf, FileReader reader = readFileBounded);
+        CaCertificateSource(std::string path,
+                            const X509* leaf,
+                            FileReader reader = readFileBounded,
+                            Clock clock = std::chrono::steady_clock::now,
+                            LoadOutcome initialRecord = {},
+                            std::shared_ptr<CaPublicationRecord> record = nullptr,
+                            std::shared_ptr<CaRecordEventMailbox> mailbox = nullptr);
 
         /**
          * @brief Current state of the file: cached while its content hash is unchanged.
@@ -107,23 +187,160 @@ namespace remoted::http
          */
         CaCertificateSnapshot snapshot();
 
+        /**
+         * @brief The vouched-for generation, revalidated at most once every kDescriptorRefresh.
+         *
+         * One call per control notify, and a notify storm is exactly what this must not turn into a
+         * read storm -- while a rotation still has to be seen within the second (CA-15). Runs under
+         * the same mutex as snapshot(), so the generation it publishes is never older than what the
+         * last read saw, and the first call always reads.
+         */
+        CaDescriptor descriptor();
+
+        /**
+         * @brief The ONE certificate of this bundle the served leaf CHAINS to, re-serialised into
+         *        @p buffer -- a single certificate, never the bundle and never the `##` block (RF-7).
+         *
+         * For the legacy WPK delivery, and for nothing else. `src/init/pkg_installer.sh` refuses a
+         * `root-ca.pem` drop-in carrying more than one `-----BEGIN CERTIFICATE-----`, so handing a
+         * 4.x agent mid-upgrade the bundle a rotation's overlap makes of this file would leave it
+         * with no anchor at all (C7). What the agent needs is the one CA that verifies this
+         * listener AND that its installer will keep, and that is what comes out of here: the FIRST
+         * certificate of the snapshot the served leaf chains to
+         * (`ca_bundle::leafChainsToAnyCa()` over that certificate alone), that is a CA
+         * (basicConstraints CA:TRUE) and that is valid right now (notBefore <= now <= notAfter) --
+         * the properties pkg_installer.sh checks -- written back out by this process from the parsed
+         * X.509 object rather than copied out of the file.
+         *
+         * A signature alone is deliberately not enough (C26, C33): two re-issues of the same CA key
+         * both verify the leaf, so a bundle that still carries the expired one would otherwise hand
+         * a 4.x agent an anchor its installer discards; and a certificate holding that key under
+         * ANOTHER subject signs the leaf without being its issuer, so an installer that took it
+         * would leave the agent with an anchor its own TLS rejects. Which one the leaf chains to is
+         * the question that excludes both. No certificate with all these properties means nothing is
+         * delivered.
+         *
+         * Reads through snapshot(), so these bytes come from the same cache, the same read and the
+         * same mutex `GET /cacerts` answers from -- the two paths can never disagree about which
+         * file they are talking about. The re-parse it costs is deliberate: this runs once per
+         * upgrade of one pre-v5.0.0 agent, never on a hot path.
+         *
+         * @param buffer Where the PEM is written. Not NUL-terminated: the return value is the length.
+         * @param capacity Bytes available at @p buffer.
+         * @return Bytes written (> 0); 0 when no certificate of the bundle is a valid CA the leaf
+         *         chains to, when there is no servable bundle or when there is no served leaf to
+         *         check against; -1 when @p capacity is too small (nothing is written).
+         */
+        int leafSignerPem(char* buffer, std::size_t capacity);
+
         /// How many times the bytes were actually parsed. Only the tests care: it is what proves
         /// the cache holds when the file did not change, and gives way when it did.
         std::uint64_t parses() const;
 
+        /**
+         * @brief Takes the publication events noticed since the last call, in order.
+         *
+         * The raw take. Each event comes out of exactly one caller, because draining REMOVES it
+         * (C21b) -- so a guard that starts failing between two ticks is said in the next request
+         * instead of a day later, and nothing is said twice. Takes no lock of this source: the
+         * mailbox has its own.
+         *
+         * Production does NOT log from here: every consumer that owns a logger goes through
+         * CaRecordEventMailbox::deliver() (usually via deliverAndPersistRecordEvents()), which
+         * orders the emission as well as the drain (C26). This stays for the callers that want the
+         * values themselves -- the tests that pin what the source posted.
+         */
+        std::vector<CaRecordEvent> drainRecordEvents();
+
+        /**
+         * @brief Writes the effective entry to the record, if it is not there yet.
+         *
+         * Runs OUTSIDE the source's mutex, under a writer mutex of its own taken with try_lock: a
+         * second caller arriving while one is writing returns at once rather than queueing, and a
+         * reader on the hot path never waits for the disk (RNF-2, C22). Retries as long as
+         * something is pending -- whether or not the file changed again -- so a permission repaired
+         * hours after the failure is persisted at the next revalidation, not at the next rotation
+         * (C19b). A failure is announced once per streak, and never in place of the bundle's own
+         * event.
+         */
+        void flushPendingRecord();
+
     private:
         CaCertificateSnapshot buildLocked(std::string_view pem) const;
+
+        /**
+         * @brief Derives the record event for @p built and updates what this source remembers.
+         *
+         * Called from snapshotLocked() with m_mutex held, only when the file's hash changed, and it
+         * is O(1) on purpose: a comparison, two assignments and a post(). No I/O whatsoever (C22)
+         * -- the write it makes necessary is left pending for flushPendingRecord().
+         *
+         * Follows the table of 02-diseno.md §2.3 row by row, against the EFFECTIVE entry in memory
+         * (never against the disk): the effective entry is updated whether or not the previous
+         * write succeeded, so a failing disk can never make the same bundle change be announced
+         * twice.
+         */
+        void applyRecord(const std::string& hash, const CaCertificateSnapshot& built);
+
+        /// snapshot()'s whole body with m_mutex already held: the read, the cache check and the
+        /// rebuild. descriptor() revalidates through it, so a revalidation takes the lock once.
+        CaCertificateSnapshot snapshotLocked();
 
         const std::string m_path;
         X509Ptr m_leaf; ///< Our own reference to the served leaf; null when the caller passed none.
         const FileReader m_reader;
+        const Clock m_clock;
 
         mutable std::mutex m_mutex;
         std::string m_hash; ///< SHA-256 of the bytes behind m_snapshot; empty before the first good read.
         CaCertificateSnapshot m_snapshot;
         std::uint64_t m_parses {0};
-        std::uint64_t m_consecutiveFailures {0}; ///< Reset by every successful read.
+        std::uint64_t m_consecutiveFailures {0};                       ///< Reset by every successful read.
+        std::chrono::steady_clock::time_point m_lastDescriptorRead {}; ///< When descriptor() last revalidated.
+        /// False until descriptor() has revalidated once, so the first call always reads whatever
+        /// time the injected clock starts at -- an epoch-zero start is not "just revalidated".
+        bool m_hasDescriptor {false};
+
+        /// Where the effective entry is persisted; null when no record was injected.
+        const std::shared_ptr<CaPublicationRecord> m_record;
+        /// Where the events wait for a logger; null when none was injected.
+        const std::shared_ptr<CaRecordEventMailbox> m_mailbox;
+        /// What this source believes the record says, which is the only thing events are derived
+        /// from. Guarded by m_mutex. An empty fileSha256 means "no antecedent at all".
+        Entry m_recordEffective;
+        /// Whether the record's state at construction was an ANSWER (`ok` or `absent`) rather than
+        /// a failure to read it. False suppresses exactly two events on the first read --
+        /// `first_time_unpublished` and `changed_outside_tool` -- because neither can be concluded
+        /// from a record we could not read (C23). Set once the first read has been through here.
+        bool m_recordEverLoaded {false};
+        /// The entry flushPendingRecord() still has to write, if any. Guarded by m_mutex.
+        std::optional<Entry> m_pendingRecord;
+        /// True while a streak of failed writes is in progress, so the warning is emitted once per
+        /// streak and the retry keeps happening. Guarded by m_mutex.
+        bool m_recordFailurePending {false};
+        /// One writer at a time, and never a queue: flushPendingRecord() takes this with try_lock.
+        /// Separate from m_mutex on purpose -- holding this one blocks no reader.
+        std::mutex m_writerMutex;
     };
+
+    /**
+     * @brief Says what @p mailbox holds, persists what @p source has pending, and says whatever
+     *        THAT produced -- in one call.
+     *
+     * The three callers that own both a logger and the right to touch a disk (the transport at
+     * start, on the daily tick and when the listener closes, and the `GET /cacerts` handler before
+     * it answers) go through here, so the order is the same everywhere and nothing a write reveals
+     * waits for the next drain. Draining only once was not enough: a `store()` that fails POSTS
+     * its `record_unwritable` while flushing, and with nothing draining afterwards that line sat in
+     * the mailbox until the next tick -- up to 24 h -- or died with the cycle (C26, objection 3).
+     *
+     * The flush deliberately runs BETWEEN the two deliveries and NOT under the mailbox's delivery
+     * mutex: it is the only step here that touches a disk, and the notify provider -- which drains
+     * this same mailbox on every keepalive -- must never wait for an fsync (C22, C26).
+     */
+    void deliverAndPersistRecordEvents(CaCertificateSource& source,
+                                       CaRecordEventMailbox& mailbox,
+                                       const CaRecordEventMailbox::Emit& emit);
 
     /**
      * @brief The TLS status a CA snapshot implies for @p leaf: expiry from the leaf, everything

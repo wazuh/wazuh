@@ -113,7 +113,7 @@ listener is down — so `ca_matches_leaf` at `0` with the listener **up** is the
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `remoted.server.tls.cert_expiry_days` | gauge (pull, signed) | days | Whole days until the served certificate's `notAfter`; **negative once expired** (the first 24 h past expiry read `-1`). The only signed value in the catalog — alert on `< 30`, which is also when remoted starts logging a WARN | [`https.certificate`](configuration.md#httpscertificate) — renew the certificate |
-| `remoted.server.tls.ca_matches_leaf` | gauge (pull) | flag | `1` when the configured CA signs the served certificate, `0` when it does not **or** could not be read (the log line tells which) | [`https.ca_certificate`](configuration.md#httpsca_certificate) — the CA that must sign [`https.certificate`](configuration.md#httpscertificate) |
+| `remoted.server.tls.ca_matches_leaf` | gauge (pull) | flag | `1` when the served certificate **chains** to a certificate of the configured CA file — a full validation: the leaf's own issuer, present as a still-valid, self-signed `CA:TRUE` anchor. `0` when it does not (including a CA that merely signs the certificate, one that has expired and one without `CA:TRUE`) **or** the file could not be read (the log line tells which) | [`https.ca_certificate`](configuration.md#httpsca_certificate) — the CA that must have ISSUED [`https.certificate`](configuration.md#httpscertificate) |
 
 ### Deferred forwarding — `remoted.forwarder.deferred.*`
 
@@ -455,7 +455,7 @@ behind `remoted.http.cacerts.responses.*`; the evaluation that decides the `503`
 |---|---|---|---|---|
 | `remoted.cacerts.served` | counter | count | 200: the CA PEM was handed out | — |
 | `remoted.cacerts.not_found` | counter | count | 404: the CA file is missing, unreadable or carries no certificate — agents cannot bootstrap trust until it is restored | diagnostic — restore [`https.ca_certificate`](configuration.md#httpsca_certificate) |
-| `remoted.cacerts.ca_mismatch` | counter | count | 503: refused because the configured CA does not sign the served certificate | diagnostic — make [`https.ca_certificate`](configuration.md#httpsca_certificate) the CA that signed [`https.certificate`](configuration.md#httpscertificate), then restart |
+| `remoted.cacerts.ca_mismatch` | counter | count | 503: refused because the served certificate does not chain to the configured CA (a CA that merely signs it does not count: the chain, the validity windows and the CA bits are all validated) | diagnostic — make [`https.ca_certificate`](configuration.md#httpsca_certificate) the self-signed CA that issued [`https.certificate`](configuration.md#httpscertificate), still valid and marked `CA:TRUE`, then restart |
 | `remoted.cacerts.rate_limited` | counter | count | 429: the route was asked faster than its configured rate. The snapshot was never read — in none of the three rows above | [`https.cacerts_rate_limit`](configuration.md#httpscacerts_rate_limit) |
 
 ### Rate limits — `remoted.<endpoint>.rate_limit.*`

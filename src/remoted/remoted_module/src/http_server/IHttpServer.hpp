@@ -13,6 +13,7 @@
 #define _REMOTED_HTTP_SERVER_INTERFACE_HPP
 
 #include "caCertificateSource.hpp"
+#include "caRecordEvents.hpp"
 #include "inFlightBudget.hpp"
 #include "tlsCertificateStatus.hpp"
 
@@ -265,7 +266,14 @@ namespace remoted::http
         std::string caPath;            ///< CA bundle (PEM) used to verify client certificates.
         std::string caCertificatePath; ///< CA that signs the listener certificate (PEM); served on GET /cacerts
                                        ///< (remote.https.ca_certificate). Not the client-verification caPath.
-        std::string ciphers;           ///< TLS 1.3 ciphersuite override
+        /// Where the node remembers the publication of the bundle it last served, so an ordinary CA
+        /// file can be told from a published one that was rewritten by hand (issue #39319). Its own
+        /// directory under var/run/, created by the daemon at start (C25); an EMPTY value disables
+        /// the record, which only changes what is logged -- never what is served or vouched for.
+        /// Not a configuration option: buildHttpServerConfig() leaves this default, tests point it
+        /// at a temporary directory of their own.
+        std::string caPublicationRecordPath {"var/run/remoted-ca-bundle/record.json"};
+        std::string ciphers;                                                    ///< TLS 1.3 ciphersuite override
         ClientVerificationMode verificationMode {ClientVerificationMode::None}; ///< Client-certificate strictness.
         DualStackMode dualStackMode {DualStackMode::Unset}; ///< IPV6_V6ONLY override (IPv6 bind only).
         std::size_t ioThreads {2};                          ///< RESTinio/asio I/O threads (accept + read/write).
@@ -293,6 +301,14 @@ namespace remoted::http
         /// signs it) after the start-time evaluation -- see IHttpServer::certificateStatus(). Not a
         /// configuration option: buildHttpServerConfig() leaves the default, tests inject a short one.
         std::chrono::seconds certificateStatusInterval {std::chrono::hours {24}};
+        /// Called by start() with the CA source and the publication-event mailbox it just built,
+        /// before the listener accepts anything -- and again on every later start(), with the new
+        /// pair. It is how the owner of a logger that is NOT the transport (the GET /cacerts
+        /// handler, wired in the facade) gets to drain the mailbox and persist the record in the
+        /// request that noticed a change, without this interface growing a method for it (C21b).
+        /// Not a configuration option; empty by default, and an empty one is a no-op.
+        std::function<void(std::shared_ptr<CaCertificateSource>, std::shared_ptr<CaRecordEventMailbox>)>
+            onCaRecordReady {};
     };
 
     /**
@@ -401,17 +417,18 @@ namespace remoted::http
         }
 
         /**
-         * @brief Latest evaluation of the served TLS certificate: days to expiry and whether
-         *        HttpServerConfig::caCertificatePath signs it (the CA `GET /cacerts` hands out).
+         * @brief Latest evaluation of the served TLS certificate: days to expiry and whether it
+         *        CHAINS to HttpServerConfig::caCertificatePath (the CA `GET /cacerts` hands out).
          *
          * Expiry is evaluated once before the listener starts accepting and again every
          * HttpServerConfig::certificateStatusInterval (that is what `evaluations` counts). The CA
          * half is taken from the same CaCertificateSource `/cacerts` answers from, on every call,
          * so it can never disagree with the endpoint: `caMatchesLeaf`, `caSubjects`, the chain
          * fields and `caReadFailure` describe the file as of the last read -- or, while the file
-         * cannot be read, the last good read of it. The facade publishes it as the
-         * `remoted.server.tls.*` pulls and `/cacerts` refuses (503) to serve a CA that reads
-         * `caMatchesLeaf == false`. Callable from any thread; a default-constructed snapshot
+         * cannot be read, the last good read of it. `caMatchesLeaf` is a real chain validation
+         * (ca_bundle::leafChainsToAnyCa(), C33), so a CA that only signs the leaf reads false. The
+         * facade publishes it as the `remoted.server.tls.*` pulls and `/cacerts` refuses (503) to
+         * serve a bundle that reads `caMatchesLeaf == false`. Callable from any thread; a default-constructed snapshot
          * (nothing known, 0 evaluations) before start() and on implementations that never
          * evaluate, like the test fakes.
          */
@@ -421,8 +438,8 @@ namespace remoted::http
         }
 
         /**
-         * @brief Current state of the CA file: the certificates to publish and whether they sign
-         *        the served leaf, taken from one read (see CaCertificateSource).
+         * @brief Current state of the CA file: the certificates to publish and whether the served
+         *        leaf chains to them, taken from one read (see CaCertificateSource).
          *
          * What `GET /cacerts` answers with. Re-read on each call and re-validated whenever the
          * file's content changes, so the PEM handed out and the verdict about it always describe
@@ -434,6 +451,51 @@ namespace remoted::http
         virtual CaCertificateSnapshot caCertificateSnapshot() const
         {
             return {};
+        }
+
+        /**
+         * @brief The generation the served CA bundle may be announced under, from the cache the
+         *        source revalidates at most once a second (CaCertificateSource::descriptor()).
+         *
+         * What the control notify path tells an agent (`ca_generation`): the publication a
+         * vouched-for bundle carries, 0 when there is a servable bundle no guard vouched for, and
+         * `nullopt` when there is no servable bundle at all. One call per notify on purpose -- it
+         * costs at most one read of the file per second per node, however many agents ask (C18) --
+         * and no hash of anything ever comes out of here. Callable from any thread; an empty
+         * descriptor (`nullopt`) before start() and on implementations that hold no CA, like the
+         * test fakes, which is what makes the field absent on a manager without the feature. Also
+         * `nullopt` once the listener is gone -- after stop(), or after a bind that fails past TLS
+         * setup -- even while the source underneath still holds a perfectly good bundle: this is a
+         * generation for a manager this process is serving, and past that point it is not serving
+         * anything (issue #39319, C26).
+         */
+        virtual CaCertificateSource::CaDescriptor caDescriptor() const
+        {
+            return {};
+        }
+
+        /**
+         * @brief The one certificate of the served CA bundle the listener's leaf chains to,
+         *        re-serialised (CaCertificateSource::leafSignerPem()).
+         *
+         * What the legacy WPK delivery pushes to a pre-v5.0.0 agent mid-upgrade: a SINGLE
+         * certificate, never the bundle and never its `##` block, because the agent-side installer
+         * refuses a drop-in carrying more than one (C7). Bytes written on success; 0 when the leaf
+         * chains to nothing in the bundle, there is no servable bundle or there is no leaf, **or the
+         * certificate it chains to is not an anchor the agent-side installer would
+         * keep** -- not a CA (no `basicConstraints CA:TRUE`), or outside its validity window at the
+         * moment of the read (issue #39319, C26 and C33: a valid signature is not enough, since a
+         * rotation's overlap is exactly where an expired re-issue of the same key signs the same
+         * leaf as the current certificate, and a certificate holding that key under another subject
+         * signs it without being its issuer at all); -1 when `capacity` is too small. Callable from any
+         * thread; 0 before start(), on implementations that hold no CA like the test fakes, and
+         * once the listener is gone -- after stop(), or after a bind that fails past TLS setup --
+         * even while the source underneath still holds a servable bundle, which is what keeps this
+         * from shipping an anchor for a manager this process is not serving.
+         */
+        virtual int caLeafSignerPem(char* /*buffer*/, std::size_t /*capacity*/) const
+        {
+            return 0;
         }
 
         /**

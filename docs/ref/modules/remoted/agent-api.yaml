@@ -127,12 +127,39 @@ paths:
         restarting -- is served on the very next request; a new *leaf* certificate still needs a
         restart to load, so rotate CA and certificate together and restart remoted.
 
-        This is a trust-on-first-use bootstrap over an unverified channel: an agent that already
-        holds the CA MUST NOT replace it from this route, and a deployment that can distribute the
-        CA out of band SHOULD.
+        Every `200` also carries `Wazuh-CA-Generation` (see below): the generation this bundle is
+        published under -- `0` when there is a bundle to serve but no guard vouched for it -- never
+        a hash of the file or of the certificates it carries (issue #39319, RF-4).
+
+        What an agent MAY do with the response differs by *why* it called this route, and the two
+        cases must not be conflated:
+          - **Bootstrap** (no anchor yet; this connection is itself unverified -- the very case this
+            route exists for): the agent MUST install only the single certificate that satisfies the
+            enrollment token's SPKI pin, never the bundle as served (`token_bootstrap.c`,
+            `hc_spki_pinned_certificate()`); anything else in the body was chosen by whoever answered
+            the connection, pinned half or not, and installing it would hand that party a trust
+            anchor too.
+          - **Refresh** (the agent already trusts the CA and is calling over a connection that TLS
+            already validated against it): a rotation is what `ca_generation` in `/control`'s
+            `notify` response is for -- a newer generation there is the signal to call this route at
+            all. The agent then confirms the fetched bundle is the SAME rotation, not a stale or a
+            different one, by checking that this response's `Wazuh-CA-Generation` header carries that
+            same generation, and only then replaces its trust store with the response body in full
+            (never merged with, or partially over, what it held).
       responses:
         "200":
           description: The CA certificate(s) the listener chains to, as a PEM file.
+          headers:
+            Wazuh-CA-Generation:
+              description: |
+                The generation the served bundle is published under: the timestamp a guard vouched
+                for it, or `0` when there is a bundle to serve but none did -- an unstamped file and
+                a stamped one a guard refused both answer `0` alike. Present on every `200`, never on
+                a `404` or a `503` (there is no bundle to attach a generation to). Never a hash of
+                the file or of the certificates it carries: this header exists to be compared with
+                `/control`'s `ca_generation` on a refresh, not to prove anything about content
+                (issue #39319, RF-4).
+              schema: { type: integer, minimum: 0 }
           content:
             application/x-pem-file:
               schema:
@@ -376,8 +403,21 @@ paths:
         `config_hash` (a different value means fetch `merged.mg` via `POST /download`, sending
         `agent.config_token` back verbatim as the `resource_id` -- the token is opaque to the
         agent, which must never derive that identifier from `agent.groups` itself),
-        `vd_feed_offset` (a strictly higher value means request a re-scan via `POST /scan/vd`), and
-        `tasks` when the manager has work to dispatch.
+        `ca_generation` (issue #39319, RF-3: the generation the CA bundle `GET /cacerts` would serve
+        right now is published under, costing this hot path no extra file read -- see that route's
+        own description for what an agent does with a rotation once it sees one here), a strictly
+        higher `vd_feed_offset` (request a re-scan via `POST /scan/vd`), and `tasks` when the manager
+        has work to dispatch.
+
+        `ca_generation` carries one of four states, and they are NOT interchangeable: a timestamp
+        once a guard vouched for the bundle; `0` when there is a bundle to serve and none did (an
+        unstamped file, or one a guard refused); `null` when there is no servable bundle at all
+        (nothing configured, or the configured file yields no certificate); and the key itself
+        **absent** on a manager whose build predates this feature -- absent means *unknown*, not
+        the same as the confirmed-empty `null`. `nlohmann::json` serialises object keys in
+        alphabetical order, so on the wire `ca_generation` lands between `agent` and `settings_hash`
+        (see the examples below); nothing in this contract depends on that order, and neither should
+        a client.
 
         Note the parse asymmetry between the two: `startup` reads `version` at the top level, while
         `notify` reads it at `agent.version`.
@@ -413,8 +453,8 @@ paths:
         "200":
           description: |
             Message accepted. The body depends on `type`: `startup` returns the agent's limits,
-            cluster name and groups; `notify` returns change-detection hashes, the VD feed offset and
-            any pending tasks; `shutdown` returns an empty object.
+            cluster name and groups; `notify` returns change-detection hashes, `ca_generation`, the
+            VD feed offset and any pending tasks; `shutdown` returns an empty object.
           content:
             application/json:
               schema:
@@ -429,15 +469,20 @@ paths:
                     cluster: { name: wazuh-cluster }
                     agent: { groups: [default, web-servers] }
                 notifyNoTasks:
-                  summary: No pending work -- `tasks` is an empty array, never an absent key
+                  summary: |
+                    No pending work -- `tasks` is an empty array, never an absent key. `ca_generation`
+                    lands here, between `agent` and `settings_hash`: that is the wire order, not an
+                    authoring choice (see the `ca_generation` paragraph above).
                   value:
                     agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
+                    ca_generation: 1758000000
                     settings_hash: "d7a8fbb3..."
                     tasks: []
                     vd_feed_offset: 12345678
                 notifyWithTasks:
                   value:
                     agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
+                    ca_generation: 1758000000
                     settings_hash: "d7a8fbb3..."
                     vd_feed_offset: 12345678
                     tasks:

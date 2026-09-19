@@ -17,7 +17,9 @@
 
 #include "loggerHelper.h"
 
+#include <cstdint>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <utility>
 
@@ -50,12 +52,20 @@ namespace remoted::endpoints::cacerts
             return remoted::http::describeReadFailure(failure, remoted::http::CaCertificateSource::kMaxBytes);
         }
 
-        remoted::http::HttpResponse pemResponse(std::string pem)
+        // Every 200 says which generation the bundle it carries is published under (RF-4): the
+        // block's publication once every guard vouched for it, and 0 for a bundle that was never
+        // stamped or that no guard would vouch for -- 0 being exactly what an agent reads as "this
+        // manager has no published bundle". Only the generation travels: no hash of the file or of
+        // its certificates is ever put in a header, because an unverified bootstrap caller must not
+        // be handed anything it could mistake for proof (CA-9). The 404 and the 503 do not come
+        // through here, so they carry no such header at all.
+        remoted::http::HttpResponse pemResponse(std::string pem, std::int64_t publication)
         {
             remoted::http::HttpResponse response;
             response.status = 200;
             response.body = std::move(pem);
             response.headers.emplace_back("Content-Type", PEM_CONTENT_TYPE);
+            response.headers.emplace_back(CA_GENERATION_HEADER, std::to_string(publication));
             return response;
         }
     } // namespace
@@ -67,12 +77,17 @@ namespace remoted::endpoints::cacerts
 
     remoted::http::RouteHandler makeHandler(std::function<remoted::http::CaCertificateSnapshot()> snapshotOf,
                                             CacertsMetrics metrics,
-                                            const remoted::metrics::EndpointHttpMetrics* httpMetrics)
+                                            const remoted::metrics::EndpointHttpMetrics* httpMetrics,
+                                            std::function<void()> deliverCaRecordEvents)
     {
         auto throttles = std::make_shared<Throttles>();
-        return [snapshotOf = std::move(snapshotOf), metrics = std::move(metrics), httpMetrics, throttles](
-                   std::shared_ptr<const remoted::http::HttpRequest> /*request*/,
-                   std::shared_ptr<remoted::http::IHttpResponder> responder)
+        return [snapshotOf = std::move(snapshotOf),
+                metrics = std::move(metrics),
+                httpMetrics,
+                throttles,
+                deliverCaRecordEvents =
+                    std::move(deliverCaRecordEvents)](std::shared_ptr<const remoted::http::HttpRequest> /*request*/,
+                                                      std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
             // Wrapped once so every answer below lands in remoted.http.cacerts.responses.* (the
             // WHAT); the counters in `metrics` are the WHY. The request itself is irrelevant: no
@@ -86,6 +101,17 @@ namespace remoted::endpoints::cacerts
             // One read behind both decisions: the certificates to publish and the verdict about
             // them cannot disagree, because they came out of the same bytes.
             auto snapshot = snapshotOf ? snapshotOf() : remoted::http::CaCertificateSnapshot {};
+
+            // Before ANY of the three answers below, never after: whatever that read noticed about
+            // the bundle's publication is logged and persisted here (issue #39319). It runs on the
+            // 404 and 503 paths too -- a bundle that stopped being servable, or one nothing chains
+            // to, is
+            // exactly when an operator needs the publication line -- and it takes no lock of the
+            // source, so it cannot deadlock against the read above.
+            if (deliverCaRecordEvents)
+            {
+                deliverCaRecordEvents();
+            }
 
             if (snapshot.certificates == 0 || snapshot.pem.empty())
             {
@@ -145,7 +171,7 @@ namespace remoted::endpoints::cacerts
                 {
                     LOGFN_ERROR(logFn(),
                                 "GET /cacerts answered 503 to %llu request(s) in the last %d s: the configured CA "
-                                "(%s) does not sign the served certificate, so it is not handed out (agents "
+                                "(%s) is not one the served certificate chains to, so it is not handed out (agents "
                                 "would fail every handshake against this manager with it).",
                                 static_cast<unsigned long long>(throttle.total),
                                 remoted::common::LogThrottle::kDefaultWindowSeconds,
@@ -156,7 +182,8 @@ namespace remoted::endpoints::cacerts
             }
 
             incServed(metrics);
-            responder->send(pemResponse(std::move(snapshot.pem)));
+            const auto publication = snapshot.publication;
+            responder->send(pemResponse(std::move(snapshot.pem), publication));
         };
     }
 

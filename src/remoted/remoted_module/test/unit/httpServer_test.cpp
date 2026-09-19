@@ -9,9 +9,12 @@
  * Foundation.
  */
 
+#include "ca_bundle/ca_bundle.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "http_server/RestinioHttpServer.hpp"
 #include "http_server/caCertificateSource.hpp"
+#include "http_server/caPublicationRecord.hpp"
+#include "http_server/caRecordEvents.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
 #include "http_server/tlsCertificateStatus.hpp"
@@ -39,6 +42,7 @@
 #include <sys/stat.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cctype>
 #include <cerrno>
@@ -46,6 +50,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <istream>
 #include <iterator>
@@ -127,7 +132,7 @@ namespace
             return {};
         }
         std::string pem {std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {}};
-        return parseCertificates(pem).certificates;
+        return ca_bundle::parseBundle(pem).certificates;
     }
 
     // Generates a throwaway self-signed cert/key pair (via the `openssl` CLI, already a
@@ -175,6 +180,44 @@ namespace
         std::string m_dir;
         std::string m_certPath;
         std::string m_keyPath;
+    };
+
+    /// Throwaway directory for a publication record (same mold as downloadEndpoint_test.cpp's
+    /// TempDir: mkdtemp for per-instance/per-process uniqueness, std::filesystem for teardown,
+    /// since CaPublicationRecord writes names this file does not predict).
+    class TempDir
+    {
+    public:
+        TempDir()
+        {
+            std::string tmpl = "/tmp/wazuh-httpServerTest-record-XXXXXX";
+            std::vector<char> buffer(tmpl.begin(), tmpl.end());
+            buffer.push_back('\0');
+
+            const char* created = ::mkdtemp(buffer.data());
+            if (created == nullptr)
+            {
+                throw std::runtime_error("mkdtemp failed for the httpServer test's scratch directory");
+            }
+            m_path = created;
+        }
+
+        ~TempDir()
+        {
+            std::error_code ignored;
+            std::filesystem::remove_all(m_path, ignored);
+        }
+
+        TempDir(const TempDir&) = delete;
+        TempDir& operator=(const TempDir&) = delete;
+
+        const std::string& path() const
+        {
+            return m_path;
+        }
+
+    private:
+        std::string m_path;
     };
 } // namespace
 
@@ -627,7 +670,7 @@ TEST(TlsCertificateStatusTest, DaysUntilExpiryIsNegativeOnceExpired)
     EXPECT_FALSE(daysUntilExpiry(nullptr).has_value());
 }
 
-TEST(TlsCertificateStatusTest, CaSignsLeafTrue)
+TEST(TlsCertificateStatusTest, LeafChainsToTheConfiguredCa)
 {
     StatusPki pki;
     const auto caPath = scratchPath("ca_true");
@@ -636,7 +679,7 @@ TEST(TlsCertificateStatusTest, CaSignsLeafTrue)
 
     std::vector<X509Ptr> cas = readPemCertificates(caPath);
     ASSERT_EQ(cas.size(), 1U);
-    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), cas));
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), cas));
 
     const auto status = statusFrom(pki.leaf.get(), CaCertificateSource {caPath, pki.leaf.get()}.snapshot());
     EXPECT_EQ(status.caMatchesLeaf, true);
@@ -647,20 +690,20 @@ TEST(TlsCertificateStatusTest, CaSignsLeafTrue)
     EXPECT_NE(status.caSubjects.find("status-ca"), std::string::npos) << status.caSubjects;
 }
 
-TEST(TlsCertificateStatusTest, CaSignsLeafFalse)
+TEST(TlsCertificateStatusTest, LeafDoesNotChainToAForeignCa)
 {
     StatusPki pki;
     const auto caPath = scratchPath("ca_false");
     remoted::test::ScratchFileCleanup cleanup {{caPath}};
     writePemFile(caPath, {pki.foreignCa.get()});
 
-    EXPECT_FALSE(anyCaSignsLeaf(pki.leaf.get(), readPemCertificates(caPath)));
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), readPemCertificates(caPath)));
     EXPECT_EQ(statusFrom(pki.leaf.get(), CaCertificateSource {caPath, pki.leaf.get()}.snapshot()).caMatchesLeaf, false);
     // A null leaf never matches anything either.
-    EXPECT_FALSE(anyCaSignsLeaf(nullptr, readPemCertificates(caPath)));
+    EXPECT_FALSE(leafChainsToAnyCa(nullptr, readPemCertificates(caPath)));
 }
 
-TEST(TlsCertificateStatusTest, CaSignsLeafUnreadable)
+TEST(TlsCertificateStatusTest, LeafChainVerdictIsUnknownWhenTheCaIsUnreadable)
 {
     StatusPki pki;
     const auto missing = "/nonexistent/remoted-tests/root-ca.pem";
@@ -801,7 +844,7 @@ TEST(TlsCertificateStatusTest, BundleWithTheSigningCaMatches)
 
     const auto cas = readPemCertificates(bundlePath);
     ASSERT_EQ(cas.size(), 2U);
-    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), cas));
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), cas));
     const auto status = statusFrom(pki.leaf.get(), CaCertificateSource {bundlePath, pki.leaf.get()}.snapshot());
     EXPECT_EQ(status.caMatchesLeaf, true);
     EXPECT_NE(status.caSubjects.find("foreign-ca"), std::string::npos) << status.caSubjects;
@@ -810,8 +853,10 @@ TEST(TlsCertificateStatusTest, BundleWithTheSigningCaMatches)
 
 // ---------------------------------------------------------------------------
 // chainValidates(): does the served leaf VALIDATE with the bundle as its trust store (issue
-// #39318) -- a stricter, separate question from anyCaSignsLeaf()'s plain signature check. Every
-// GTEST_LOG_(INFO) line below is deliberate: the exact OpenSSL wording is what the operator-facing
+// #39318) -- a separate question from leafChainsToAnyCa()'s, which since C33 is a chain validation
+// as well: this one adds the server purpose and relaxes the anchor rule with
+// X509_V_FLAG_PARTIAL_CHAIN, so neither answer subsumes the other and each case below states both.
+// Every GTEST_LOG_(INFO) line is deliberate: the exact OpenSSL wording is what the operator-facing
 // WARN/INFO lines in RestinioHttpServer.cpp quote, so it belongs in the test output, not only in a
 // failure diagnostic.
 // ---------------------------------------------------------------------------
@@ -843,8 +888,10 @@ TEST(TlsCertificateStatusTest, ChainValidWithAnIntermediateAnchor)
     cas.push_back(std::move(pki.intermediate));
 
     // X509_V_FLAG_PARTIAL_CHAIN makes the intermediate itself a trust anchor: the root need not be
-    // in the bundle for the chain to be complete.
-    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), cas));
+    // in the bundle for the chain to be complete. The guard does NOT set that flag (C33), so the
+    // same bundle is not publishable -- an agent's own OpenSSL would not treat a certificate that
+    // is not self-signed as an anchor either, and this is the disagreement the INFO line reports.
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), cas));
     const auto verdict = chainValidates(pki.leaf.get(), cas);
     GTEST_LOG_(INFO) << "ChainValidWithAnIntermediateAnchor chainError: \"" << verdict.error << "\"";
     ASSERT_TRUE(verdict.valid.has_value());
@@ -859,8 +906,8 @@ TEST(TlsCertificateStatusTest, ChainValidRootOnlyWithMissingIntermediate)
     cas.push_back(std::move(pki.root));
 
     // The root does not sign the leaf directly (the intermediate does), and it is not the leaf's
-    // named issuer either: the chain cannot be completed from the root alone.
-    EXPECT_FALSE(anyCaSignsLeaf(pki.leaf.get(), cas));
+    // named issuer either: the chain cannot be completed from the root alone, under either flag set.
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), cas));
     const auto verdict = chainValidates(pki.leaf.get(), cas);
     GTEST_LOG_(INFO) << "ChainValidRootOnlyWithMissingIntermediate chainError: \"" << verdict.error << "\"";
     ASSERT_TRUE(verdict.valid.has_value());
@@ -879,7 +926,10 @@ TEST(TlsCertificateStatusTest, ChainValidExpiredCa)
     std::vector<X509Ptr> cas;
     cas.push_back(std::move(ca));
 
-    EXPECT_TRUE(anyCaSignsLeaf(leaf.get(), cas));
+    // It signs the leaf, and since C33 that is not what the guard asks: an expired anchor is one no
+    // agent could use, so the bundle stops being publishable as well as failing this verdict.
+    EXPECT_TRUE(ca_bundle::describe(cas.front().get(), leaf.get()).signsLeaf);
+    EXPECT_FALSE(leafChainsToAnyCa(leaf.get(), cas));
     const auto verdict = chainValidates(leaf.get(), cas);
     GTEST_LOG_(INFO) << "ChainValidExpiredCa chainError: \"" << verdict.error << "\"";
     ASSERT_TRUE(verdict.valid.has_value());
@@ -901,7 +951,10 @@ TEST(TlsCertificateStatusTest, ChainValidNonCaSigner)
     std::vector<X509Ptr> cas;
     cas.push_back(std::move(signer));
 
-    EXPECT_TRUE(anyCaSignsLeaf(leaf.get(), cas));
+    // Same shape as the expired case: the signature is there, the anchor is not one a verifier
+    // accepts, and the guard refuses it too (C33).
+    EXPECT_TRUE(ca_bundle::describe(cas.front().get(), leaf.get()).signsLeaf);
+    EXPECT_FALSE(leafChainsToAnyCa(leaf.get(), cas));
     const auto verdict = chainValidates(leaf.get(), cas);
     GTEST_LOG_(INFO) << "ChainValidNonCaSigner chainError: \"" << verdict.error << "\"";
     ASSERT_TRUE(verdict.valid.has_value());
@@ -916,7 +969,7 @@ TEST(TlsCertificateStatusTest, ChainValidSelfSignedCa)
     std::vector<X509Ptr> singleCa;
     singleCa.push_back(upRef(pki.ca));
 
-    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), singleCa));
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), singleCa));
     const auto singleVerdict = chainValidates(pki.leaf.get(), singleCa);
     GTEST_LOG_(INFO) << "ChainValidSelfSignedCa (ca only) chainError: \"" << singleVerdict.error << "\"";
     ASSERT_TRUE(singleVerdict.valid.has_value());
@@ -929,7 +982,7 @@ TEST(TlsCertificateStatusTest, ChainValidSelfSignedCa)
     bundleWithForeign.push_back(upRef(pki.foreignCa));
     bundleWithForeign.push_back(upRef(pki.ca));
 
-    EXPECT_TRUE(anyCaSignsLeaf(pki.leaf.get(), bundleWithForeign));
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), bundleWithForeign));
     const auto bundleVerdict = chainValidates(pki.leaf.get(), bundleWithForeign);
     GTEST_LOG_(INFO) << "ChainValidSelfSignedCa (foreignCa+ca) chainError: \"" << bundleVerdict.error << "\"";
     ASSERT_TRUE(bundleVerdict.valid.has_value());
@@ -972,6 +1025,7 @@ TEST(HttpServerTest, CertificateStatusIsEvaluatedBeforeListening)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0;
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1000,6 +1054,7 @@ TEST(HttpServerTest, StartUpStatusCarriesTheChainVerdict)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0;
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1040,6 +1095,7 @@ TEST(HttpServerTest, ExpiryWarningRunsAgainOnTimerTick)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0;
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1067,6 +1123,7 @@ TEST(HttpServerTest, StopAcceptingJoinsTheCertificateMonitor)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0;
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1109,6 +1166,7 @@ TEST(HttpServerTest, StartUpStatusComesFromTheSharedSource)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0;
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1133,6 +1191,294 @@ TEST(HttpServerTest, StartUpStatusComesFromTheSharedSource)
     ::rmdir(caDir.c_str());
 }
 
+// ---------------------------------------------------------------------------
+// caDescriptor() (issue #39319, RF-3): the notify hot path's own view of the bundle, distinct from
+// caCertificateSnapshot() above -- it carries only the generation, revalidated at most once a
+// second (CaCertificateSource::kDescriptorRefresh, C8/C18). Both tests below start a real server
+// so RestinioHttpServer::caDescriptor() itself -- the weak_ptr dance under m_mutex, CA-15 -- is
+// exercised, not just CaCertificateSource in isolation (that is caCertificateSource_test.cpp's
+// job).
+// ---------------------------------------------------------------------------
+
+TEST(HttpServerTest, CaDescriptorReturnsThePublishedGeneration)
+{
+    if (std::system("openssl version >/dev/null 2>&1") != 0)
+    {
+        GTEST_SKIP() << "openssl not available to generate the test PKI";
+    }
+
+    auto pki = remoted::test::generateCaSignedCertificate("httpserver_ca_descriptor");
+    if (!pki)
+    {
+        GTEST_SKIP() << "could not generate the throwaway CA-signed certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {pki->files()};
+
+    // Seal the CA file the way `wazuh-manager-certs` would (issue #39319, D9): the block, then the
+    // certificate it describes -- a separate file from the leaf, so sealing it cannot disturb what
+    // the listener loads into its TLS context.
+    std::string rawCa;
+    {
+        std::ifstream in {pki->caCertPath, std::ios::binary};
+        rawCa.assign(std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {});
+    }
+    const auto certificates = ca_bundle::parseBundle(rawCa).certificates;
+    ASSERT_EQ(certificates.size(), 1U);
+
+    constexpr std::int64_t kPublication {1758000000};
+    ca_bundle::PublicationBlock block;
+    block.publication = kPublication;
+    block.contentSha256 = ca_bundle::contentSha256(certificates);
+    block.updated = "2026-09-19T00:00:00Z";
+    block.writtenBy = "httpServerTest";
+    {
+        std::ofstream out {pki->caCertPath, std::ios::binary | std::ios::trunc};
+        out << ca_bundle::renderBlock(block) << ca_bundle::serializeCertificates(certificates);
+        ASSERT_FALSE(out.fail());
+    }
+
+    auto server = makeHttpServer();
+    HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;
+    config.certificatePath = pki->certPath;
+    config.privateKeyPath = pki->keyPath;
+    config.caCertificatePath = pki->caCertPath;
+
+    ASSERT_NO_THROW(server->start(config));
+
+    const auto descriptor = server->caDescriptor();
+    ASSERT_TRUE(descriptor.generation.has_value());
+    EXPECT_EQ(*descriptor.generation, kPublication);
+
+    server->stop();
+}
+
+TEST(HttpServerTest, CaDescriptorReturnsNulloptWithNoServableBundle)
+{
+    TempCert cert; // leaf only; caCertificatePath is left at its default (empty: nothing configured)
+
+    auto server = makeHttpServer();
+    HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+
+    ASSERT_NO_THROW(server->start(config));
+
+    // No CA configured at all is exactly the "no servable bundle" case: `null` on the wire, the
+    // same value a manager whose bundle was emptied or is unreadable would answer with.
+    EXPECT_FALSE(server->caDescriptor().generation.has_value());
+
+    server->stop();
+}
+
+TEST(HttpServerTest, CaLeafSignerPemReturnsTheSigningCertificate)
+{
+    if (std::system("openssl version >/dev/null 2>&1") != 0)
+    {
+        GTEST_SKIP() << "openssl not available to generate the test PKI";
+    }
+
+    auto pki = remoted::test::generateCaSignedCertificate("httpserver_leaf_signer");
+    if (!pki)
+    {
+        GTEST_SKIP() << "could not generate the throwaway CA-signed certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {pki->files()};
+
+    // The rotation case, through the transport: a sealed bundle of TWO CAs with the signer second.
+    // What a 4.x agent may be handed mid-upgrade is one certificate out of that -- never the file,
+    // which pkg_installer.sh would refuse for carrying more than one (issue #39319, C7).
+    auto foreign = remoted::test::generateCaSignedCertificate("httpserver_leaf_signer_other");
+    if (!foreign)
+    {
+        GTEST_SKIP() << "could not generate the second throwaway CA";
+    }
+    remoted::test::ScratchFileCleanup cleanupForeign {foreign->files()};
+
+    const auto readAllBytes = [](const std::string& path)
+    {
+        std::ifstream in {path, std::ios::binary};
+        return std::string {std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {}};
+    };
+
+    auto certificates = ca_bundle::parseBundle(readAllBytes(foreign->caCertPath)).certificates;
+    for (auto& certificate : ca_bundle::parseBundle(readAllBytes(pki->caCertPath)).certificates)
+    {
+        certificates.push_back(std::move(certificate));
+    }
+    ASSERT_EQ(certificates.size(), 2U);
+
+    ca_bundle::PublicationBlock block;
+    block.publication = 1758000100;
+    block.contentSha256 = ca_bundle::contentSha256(certificates);
+    block.updated = "2026-09-19T00:00:00Z";
+    block.writtenBy = "httpServerTest";
+    {
+        std::ofstream out {pki->caCertPath, std::ios::binary | std::ios::trunc};
+        out << ca_bundle::renderBlock(block) << ca_bundle::serializeCertificates(certificates);
+        ASSERT_FALSE(out.fail());
+    }
+
+    auto server = makeHttpServer();
+    HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;
+    config.certificatePath = pki->certPath;
+    config.privateKeyPath = pki->keyPath;
+    config.caCertificatePath = pki->caCertPath;
+
+    ASSERT_NO_THROW(server->start(config));
+
+    std::array<char, 8192> buffer {};
+    const auto written = server->caLeafSignerPem(buffer.data(), buffer.size());
+    ASSERT_GT(written, 0);
+
+    const std::string delivered {buffer.data(), static_cast<std::size_t>(written)};
+    EXPECT_EQ(delivered.find("##"), std::string::npos);
+    std::size_t begins = 0;
+    for (std::size_t at = delivered.find("-----BEGIN CERTIFICATE-----"); at != std::string::npos;
+         at = delivered.find("-----BEGIN CERTIFICATE-----", at + 1))
+    {
+        ++begins;
+    }
+    EXPECT_EQ(begins, 1U);
+
+    // And it is the anchor the leaf chains to, not merely "one of them": the whole bundle is still
+    // what /cacerts serves, so a wrong pick here would be invisible to every other assertion.
+    EXPECT_EQ(server->caCertificateSnapshot().certificates, 2U);
+
+    const auto leaves = ca_bundle::parseBundle(readAllBytes(pki->certPath)).certificates;
+    const auto deliveredCas = ca_bundle::parseBundle(delivered).certificates;
+    ASSERT_FALSE(leaves.empty());
+    ASSERT_EQ(deliveredCas.size(), 1U);
+    EXPECT_TRUE(ca_bundle::leafChainsToAnyCa(leaves.front().get(), deliveredCas));
+
+    server->stop();
+}
+
+TEST(HttpServerTest, CaLeafSignerPemReturnsZeroWithNoServableBundle)
+{
+    TempCert cert; // leaf only; caCertificatePath is left at its default (empty: nothing configured)
+
+    auto server = makeHttpServer();
+    HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+
+    // Before start() there is no source at all, and with nothing configured there never is one:
+    // both answer 0 -- "nothing to deliver" -- rather than -1, so the legacy poller logs the reason
+    // and lets the upgrade proceed without an anchor instead of reporting a buffer problem.
+    std::array<char, 8192> buffer {};
+    EXPECT_EQ(server->caLeafSignerPem(buffer.data(), buffer.size()), 0);
+
+    ASSERT_NO_THROW(server->start(config));
+    EXPECT_EQ(server->caLeafSignerPem(buffer.data(), buffer.size()), 0);
+
+    server->stop();
+}
+
+// ---------------------------------------------------------------------------
+// Neither accessor answers for a listener that is not there (issue #39319, C26, objection 7).
+// stop() releases m_server and leaves the CA source in place, and a bind that fails AFTER the TLS
+// context was built leaves it in place having never had a listener at all -- so both used to hand
+// out a generation and an anchor for a manager this process is not serving. caCertificateSnapshot()
+// is deliberately NOT gated: it predates this and GET /cacerts only ever runs with the listener up.
+// ---------------------------------------------------------------------------
+
+TEST(HttpServerTest, CaAccessorsAnswerNothingAfterStop)
+{
+    if (std::system("openssl version >/dev/null 2>&1") != 0)
+    {
+        GTEST_SKIP() << "openssl not available to generate the test PKI";
+    }
+
+    auto pki = remoted::test::generateCaSignedCertificate("httpserver_ca_after_stop");
+    if (!pki)
+    {
+        GTEST_SKIP() << "could not generate the throwaway CA-signed certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {pki->files()};
+
+    const auto readAllBytes = [](const std::string& path)
+    {
+        std::ifstream in {path, std::ios::binary};
+        return std::string {std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {}};
+    };
+
+    // Sealed, so the generation is a real number and not 0: what must disappear after stop() is a
+    // published generation, which is the answer an agent would act on.
+    const auto certificates = ca_bundle::parseBundle(readAllBytes(pki->caCertPath)).certificates;
+    ASSERT_EQ(certificates.size(), 1U);
+    constexpr std::int64_t kPublication {1758000200};
+    ca_bundle::PublicationBlock block;
+    block.publication = kPublication;
+    block.contentSha256 = ca_bundle::contentSha256(certificates);
+    block.updated = "2026-09-19T00:00:00Z";
+    block.writtenBy = "httpServerTest";
+    {
+        std::ofstream out {pki->caCertPath, std::ios::binary | std::ios::trunc};
+        out << ca_bundle::renderBlock(block) << ca_bundle::serializeCertificates(certificates);
+        ASSERT_FALSE(out.fail());
+    }
+
+    auto server = makeHttpServer();
+    HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;
+    config.certificatePath = pki->certPath;
+    config.privateKeyPath = pki->keyPath;
+    config.caCertificatePath = pki->caCertPath;
+
+    ASSERT_NO_THROW(server->start(config));
+
+    std::array<char, 8192> buffer {};
+    ASSERT_EQ(server->caDescriptor().generation, std::optional<std::int64_t> {kPublication});
+    ASSERT_GT(server->caLeafSignerPem(buffer.data(), buffer.size()), 0);
+
+    server->stop();
+
+    EXPECT_FALSE(server->caDescriptor().generation.has_value());
+    EXPECT_EQ(server->caLeafSignerPem(buffer.data(), buffer.size()), 0);
+
+    // The bundle is still perfectly readable -- the source outlives the listener -- so what those
+    // two just refused is the LISTENER being gone, not a missing CA file.
+    EXPECT_EQ(server->caCertificateSnapshot().certificates, 1U);
+}
+
+TEST(HttpServerTest, CaAccessorsAnswerNothingAfterABindFailure)
+{
+    TempCert cert; // self-signed: its own CA, so the bundle below is servable and signs the leaf
+
+    auto server = makeHttpServer();
+    HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = cert.certPath();
+    // TEST-NET-3, never assigned to this host: the TLS context is built and the CA source created
+    // (that is the point), and then run_async() throws on bind -- the window where a listener
+    // never existed but the source does.
+    config.bindAddress = "203.0.113.1";
+
+    EXPECT_THROW(server->start(config), std::exception);
+
+    std::array<char, 8192> buffer {};
+    EXPECT_FALSE(server->caDescriptor().generation.has_value());
+    EXPECT_EQ(server->caLeafSignerPem(buffer.data(), buffer.size()), 0);
+
+    // And the source really is there with a usable bundle behind it: the two refusals above are
+    // about the listener, not about there being nothing to answer with.
+    EXPECT_EQ(server->caCertificateSnapshot().certificates, 1U);
+
+    EXPECT_NO_THROW(server->stop());
+}
+
 // A read failure mid-flight (not just at start) is a window, not a decision: the monitor keeps
 // ticking through it and the status keeps the last good verdict next to the fresh cause. What the
 // tick LOGS on each pass is not observable from this binary (testLogRecorder.hpp), so this pins the
@@ -1154,6 +1500,7 @@ TEST(HttpServerTest, MonitorTickKeepsEvaluatingThroughAReadFailure)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = 0;
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1178,6 +1525,154 @@ TEST(HttpServerTest, MonitorTickKeepsEvaluatingThroughAReadFailure)
 
     server->stop();
     ::rmdir(caPath.c_str());
+}
+
+// ---------------------------------------------------------------------------
+// The publication record wired through start() (issue #39319, C21b): HttpServerConfig::
+// onCaRecordReady is how a caller OUTSIDE the transport (the facade's GET /cacerts handler, stood
+// in for here by draining the mailbox directly) gets at the CA source and its record events
+// without IHttpServer growing a method for it.
+// ---------------------------------------------------------------------------
+
+TEST(HttpServerTest, MissingRecordDirectoryWarnsOnceAndKeepsServing)
+{
+    TempCert cert; // self-signed: its own CA, so the bundle is servable from the first read
+    TempDir recordDir;
+    auto server = makeHttpServer();
+
+    std::shared_ptr<CaCertificateSource> capturedSource;
+    std::shared_ptr<CaRecordEventMailbox> capturedMailbox;
+
+    // Two levels missing on purpose: ensureRecordDirectory() (best-effort) creates the record's own
+    // parent, and mkdir(2) is not recursive (by design, C25), so with its grandparent absent every
+    // store() fails. Under a TempDir, so the recovery half of this test cleans up after itself.
+    const auto recordPath = recordDir.path() + "/missing/deeper/record.json";
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = cert.certPath();
+    config.caPublicationRecordPath = recordPath;
+    config.onCaRecordReady = [&capturedSource, &capturedMailbox](auto source, auto mailbox)
+    {
+        capturedSource = std::move(source);
+        capturedMailbox = std::move(mailbox);
+    };
+
+    ASSERT_NO_THROW(server->start(config));
+    ASSERT_TRUE(capturedSource != nullptr);
+    ASSERT_TRUE(capturedMailbox != nullptr);
+
+    // createTlsContext() said BOTH lines itself: the first_time_unpublished the read produced, and
+    // the record_unwritable its own flush produced -- because the start-time delivery drains again
+    // AFTER the flush (issue #39319, C26, objection 3). Before that second drain this warning sat
+    // here until the next consumer, up to a day away. Nothing this start produced is left waiting.
+    EXPECT_TRUE(capturedMailbox->drain().empty());
+
+    // Keeps serving despite the record being unwritable: the bundle never depended on it.
+    const auto snapshot = server->caCertificateSnapshot();
+    EXPECT_GT(snapshot.certificates, 0U);
+    EXPECT_FALSE(snapshot.pem.empty());
+
+    // A second flush attempt fails again but is the SAME streak: no second warning (C19/C19b).
+    capturedSource->flushPendingRecord();
+    EXPECT_TRUE(capturedMailbox->drain().empty());
+
+    // And it really did fail: the entry is still pending, so the moment the directory exists the
+    // next flush writes it -- which is also what proves the start-time flush never did (and that
+    // the warning above stood for something), now that the mailbox cannot show it.
+    ASSERT_EQ(::mkdir((recordDir.path() + "/missing").c_str(), 0750), 0);
+    ASSERT_EQ(::mkdir((recordDir.path() + "/missing/deeper").c_str(), 0750), 0);
+    capturedSource->flushPendingRecord();
+    EXPECT_TRUE(capturedMailbox->drain().empty()); // a success posts nothing
+    struct stat written {};
+    EXPECT_EQ(::stat(recordPath.c_str(), &written), 0) << "the pending entry was never persisted";
+
+    server->stop();
+}
+
+TEST(HttpServerTest, RestartSameServerStartsAFreshMailbox)
+{
+    TempCert cert;
+    TempDir recordDir;
+
+    // A separate file for the CA (never the listener's own certificate, which TempCert's
+    // destructor removes and which start() needs to keep reading on every restart below).
+    const auto caPath = scratchPath("restart_fresh_mailbox_ca");
+    {
+        std::ifstream in {cert.certPath(), std::ios::binary};
+        std::ofstream out {caPath, std::ios::binary};
+        out << in.rdbuf();
+    }
+
+    auto server = makeHttpServer();
+
+    std::shared_ptr<CaCertificateSource> source1;
+    std::shared_ptr<CaCertificateSource> source2;
+    std::shared_ptr<CaRecordEventMailbox> mailbox1;
+    std::shared_ptr<CaRecordEventMailbox> mailbox2;
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.caCertificatePath = caPath;
+    config.caPublicationRecordPath = recordDir.path() + "/record.json";
+    config.onCaRecordReady = [&](auto source, auto mailbox)
+    {
+        if (!source1)
+        {
+            source1 = std::move(source);
+            mailbox1 = std::move(mailbox);
+        }
+        else
+        {
+            source2 = std::move(source);
+            mailbox2 = std::move(mailbox);
+        }
+    };
+
+    ASSERT_NO_THROW(server->start(config));
+    ASSERT_TRUE(source1 != nullptr);
+    ASSERT_TRUE(mailbox1 != nullptr);
+    // The start-time evaluation already drained its own first_time_unpublished event (INFO,
+    // logged) before handing the mailbox to onCaRecordReady.
+    EXPECT_TRUE(mailbox1->drain().empty());
+
+    // A NEW event on the SAME (still running) source/mailbox, left deliberately undrained by this
+    // test: the ordinary CA file's bytes change (still no publication block), so this is
+    // changed_outside_tool.
+    {
+        std::ofstream out {caPath, std::ios::binary | std::ios::app};
+        out << "\n";
+    }
+    // Forces the re-read that posts the event. Nothing in the test drains it from here on -- the
+    // point is what the CLOSE and the restart do with it.
+    (void)server->caCertificateSnapshot();
+
+    server->stop();
+    ASSERT_NO_THROW(server->start(config));
+    ASSERT_TRUE(source2 != nullptr);
+    ASSERT_TRUE(mailbox2 != nullptr);
+
+    // A genuinely NEW source and a genuinely NEW mailbox -- not the ones from before the restart.
+    EXPECT_NE(source1.get(), source2.get());
+    EXPECT_NE(mailbox1.get(), mailbox2.get());
+
+    // The new cycle's own mailbox never saw the leftover event from the old one: nothing from the
+    // previous cycle survives INTO the new one.
+    EXPECT_TRUE(mailbox2->drain().empty());
+
+    // And the leftover was not carried into the next cycle NOR lost: stop() delivered it (the
+    // transport's close path drains the mailbox one last time -- after that neither the daily tick
+    // nor a GET /cacerts exists to say it, issue #39319, C26), so the old mailbox is empty here.
+    // What the line said is not observable from this binary (testLogRecorder.hpp only sees the
+    // module started through the C ABI); that it left the mailbox is.
+    EXPECT_TRUE(mailbox1->drain().empty());
+
+    server->stop();
+    std::remove(caPath.c_str());
 }
 
 // ---------------------------------------------------------------------------
@@ -1429,6 +1924,7 @@ namespace
     HttpServerConfig fullModeConfig(const FullModePki& pki, std::uint16_t port)
     {
         HttpServerConfig config;
+        config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
         config.bindAddress = "127.0.0.1";
         config.port = port;
         config.certificatePath = pki.cert("server");
@@ -1572,7 +2068,8 @@ TEST(HttpServerTest, ReserveInFlightBytesAlwaysGrantsWhenBudgetDisabled)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
-    config.port = 0; // ephemeral
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;                     // ephemeral
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
     config.maxInFlightBytes = 0; // explicitly disabled
@@ -1593,7 +2090,8 @@ TEST(HttpServerTest, ReserveInFlightBytesEnforcesConfiguredCapacityAfterStart)
     auto server = makeHttpServer();
 
     HttpServerConfig config;
-    config.port = 0; // ephemeral
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;                     // ephemeral
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
     // Comfortably above maxBodySize + the transport's per-request overhead, so start()'s own
@@ -1638,7 +2136,8 @@ TEST(HttpServerTest, DiagnosticsReportZerosBeforeStartAndTrackTheBudgetAfter)
     EXPECT_EQ(d.connectionsMax, 0U); // no ceiling reported until one is configured
 
     HttpServerConfig config;
-    config.port = 0; // ephemeral
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+    config.port = 0;                     // ephemeral
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
     // Same clamp-avoidance as the reservation test above: keep the configured capacity in charge.
@@ -1699,6 +2198,7 @@ TEST(HttpServerTest, DiagnosticsCountARealAdmissionShed)
         ResponseMode::Buffered);
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = static_cast<std::uint16_t>(26000 + (::getpid() % 5000));
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1753,6 +2253,7 @@ TEST(HttpServerTest, DiagnosticsCountARealConnection)
         ResponseMode::Buffered);
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = static_cast<std::uint16_t>(21000 + (::getpid() % 5000));
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
@@ -1942,6 +2443,7 @@ TEST(HttpServerStreamingTest, StreamsAMultiChunkBodyByteExactly)
         ResponseMode::Streamable);
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = static_cast<std::uint16_t>(21000 + (::getpid() % 5000));
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
@@ -1998,6 +2500,7 @@ TEST(HttpServerStreamingTest, ChunkSizeFollowsTheConfiguredValue)
         ResponseMode::Streamable);
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = static_cast<std::uint16_t>(22000 + (::getpid() % 5000));
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
@@ -2056,6 +2559,7 @@ TEST(HttpServerStreamingTest, AbortedTransferSendsNoTerminatorAndReleasesTheSour
         ResponseMode::Streamable);
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = static_cast<std::uint16_t>(23000 + (::getpid() % 5000));
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
@@ -2164,6 +2668,7 @@ TEST(HttpServerStreamingTest, HealthyTransferOutlastingTheRequestTimeoutIsNotCut
         ResponseMode::Streamable);
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = static_cast<std::uint16_t>(25000 + (::getpid() % 5000));
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
@@ -2223,6 +2728,7 @@ TEST(HttpServerStreamingTest, TrickleReaderKeepsTheTransferAliveBeyondTheWriteTi
         ResponseMode::Streamable);
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = static_cast<std::uint16_t>(26000 + (::getpid() % 5000));
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
@@ -2338,6 +2844,7 @@ namespace
                                { r->send(HttpResponse::json(200, request->target)); });
 
             HttpServerConfig config;
+            config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
             config.port = m_port;
             config.certificatePath = m_cert->certPath;
             config.privateKeyPath = m_cert->keyPath;
@@ -2468,6 +2975,7 @@ TEST_F(GlobalPrefixTransportTest, StartWithInvalidPrefixThrowsAndStaysStopped)
                        { r->send(HttpResponse::json(200, "{}")); });
 
     HttpServerConfig config;
+    config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
     config.port = m_port;
     config.certificatePath = m_cert->certPath;
     config.privateKeyPath = m_cert->keyPath;
