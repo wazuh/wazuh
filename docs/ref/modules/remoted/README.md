@@ -23,6 +23,7 @@ It serves two channels at once, and they share almost nothing:
 - [Configuration](configuration.md) - Configuration options and tuning parameters
 - [Connection timing tuning](timing-tuning.md) - The agent↔manager timing contract: which timeout, retry and throttle settings pair with which, and what breaks when they are moved alone
 - [Metrics](metrics.md) - The HTTPS agent server's metric catalog, each metric linked to the setting it helps size
+- [CA Rotation Runbook](ca-rotation.md) - Operating a multi-CA bundle rotation with `wazuh-manager-certs`: the fixed step order and the four ways to get it wrong
 - [Stateless Metadata](stateless-metadata.md) - Agent metadata enrichment for stateless events (legacy channel)
 - [Event Protocol](event-protocol.md) - Event framing and message format specification
 - [Quick Reference](quick-reference.md) - Commands, counters and starting-point settings for both channels

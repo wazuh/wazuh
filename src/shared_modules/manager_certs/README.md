@@ -404,3 +404,6 @@ would be a second output contract to keep in sync with the table for no one.
   (`parseBundle`, `vouch`, `describe`, the publication block format).
 - [`manager_config` README](../manager_config/README.md) — the configuration loader
   (`Document::load()`) this tool's `main.cpp` uses to find the bundle and leaf paths.
+- [CA Rotation Runbook](../../../docs/ref/modules/remoted/ca-rotation.md) — the operator-facing
+  procedure this tool is built for: the fixed step order across `add`/`--from-master`/`remove`, why
+  it cannot be reordered, and how to read `ca_generation`.
