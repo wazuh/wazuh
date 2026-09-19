@@ -1757,6 +1757,16 @@ static void bridge_build_transport_config(hc_config_t *config)
     if (agt->ssl.certificate_authorities) {
         strncpy(config->ca_path, agt->ssl.certificate_authorities, sizeof(config->ca_path) - 1);
     }
+
+    /* verify_mode=system's local-anchor fallback (#39123): handed over unconditionally on
+     * openability, exactly like w_agent_resolve_ssl_posture() treats the same file for the
+     * full/certificate anchor default -- deeper validation is the same job CurlPerformer
+     * already does at the actual handshake, not this bridge's. Left empty for every other
+     * verify_mode, since the module only ever reads it under 'system' (moduleConfig.cpp,
+     * curlPerformer.cpp). */
+    if (config->verify_mode == HC_VERIFY_SYSTEM && w_is_file(AGENT_ANCHOR_CA)) {
+        strncpy(config->system_fallback_ca_path, AGENT_ANCHOR_CA, sizeof(config->system_fallback_ca_path) - 1);
+    }
     if (agt->ssl.certificate) {
         strncpy(config->client_cert, agt->ssl.certificate, sizeof(config->client_cert) - 1);
     }

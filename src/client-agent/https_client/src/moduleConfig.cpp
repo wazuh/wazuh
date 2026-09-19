@@ -40,6 +40,8 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.agentKeyHex = boundedString(config.agent_key, sizeof(config.agent_key));
     typed.verifyMode = static_cast<hc_verify_mode_t>(config.verify_mode);
     typed.caPath = boundedString(config.ca_path, sizeof(config.ca_path));
+    typed.systemFallbackCaPath = boundedString(config.system_fallback_ca_path,
+                                               sizeof(config.system_fallback_ca_path));
     typed.clientCert = boundedString(config.client_cert, sizeof(config.client_cert));
     typed.clientKey = boundedString(config.client_key, sizeof(config.client_key));
     typed.ciphers = boundedString(config.ciphers, sizeof(config.ciphers));
@@ -166,15 +168,33 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
         // Windows/macOS ask their native certificate store (CurlPerformer), which this
         // process cannot introspect at validation time; Linux's trust anchor is a probed
         // file, so fail closed now rather than at the first handshake if none is found.
-        if (fsProbe.findSystemCaBundle().empty())
+        // A configured systemFallbackCaPath (#39123) is still allowed to start: an absent
+        // OS bundle is exactly the case CurlPerformer's fallback exists to survive, and
+        // refusing to start here would never give it the chance to try. Both being absent
+        // is the one combination this process can already tell has no way to verify.
+        if (fsProbe.findSystemCaBundle().empty() && systemFallbackCaPath.empty())
         {
             LOGFN_CRITICAL(logFn,
                            "https_client config rejected: verify_mode=system found no OS CA "
-                           "bundle in any known location.");
+                           "bundle in any known location, and no local fallback anchor is "
+                           "present either.");
             return false;
         }
 
 #endif
+
+        // Readability, same as the generic fallthrough below checks for caPath -- the
+        // config.c/w_agent_validate_ssl_ca side additionally parses the anchor as an X.509
+        // certificate before the module ever starts (#39123); this check only guards against
+        // it disappearing or losing read permission between that startup check and here.
+        if (!systemFallbackCaPath.empty() && !fsProbe.isReadableFile(systemFallbackCaPath))
+        {
+            LOGFN_CRITICAL(logFn,
+                           "https_client config rejected: verify_mode=system's local fallback "
+                           "anchor is not a readable file ('%s').",
+                           systemFallbackCaPath.c_str());
+            return false;
+        }
 
         return true;
     }

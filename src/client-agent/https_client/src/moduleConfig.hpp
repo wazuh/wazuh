@@ -47,6 +47,13 @@ struct ModuleConfig
         std::string agentKeyHex;
         hc_verify_mode_t verifyMode {HC_VERIFY_FULL};
         std::string caPath;
+        /// verify_mode=system only: the agent's own trust anchor (AGENT_ANCHOR_CA,
+        /// bridged from the bootstrap/upgrade paths), tried only after the OS trust
+        /// store has actually failed to verify the manager's certificate
+        /// (CurlPerformer's fallback, #39123) -- never a substitute for the OS store,
+        /// which is still tried first on every connection. Empty when no such file
+        /// exists; the fallback then never engages, exactly like today.
+        std::string systemFallbackCaPath;
         std::string clientCert;
         std::string clientKey;
         std::string ciphers;
