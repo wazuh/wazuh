@@ -285,8 +285,8 @@ its first start.
 
 | | Path | Ownership |
 |---|---|---|
-| Linux, macOS | `etc/enrollment_token` | `0600 root:root` |
-| Windows | `enrollment_token` | SYSTEM and Administrators, inheritance broken |
+| Linux, macOS | `etc/enrollment_token` | `0600`, readable only by root |
+| Windows | `enrollment_token` | SYSTEM and Administrators |
 
 Written by the installer from `WAZUH_ENROLLMENT_TOKEN` (see
 [Installation](../../getting-started/installation.md#enrollment)).

@@ -485,7 +485,7 @@ wazuh-agent-*.msi /q
 The deployment variables are MSI properties:
 
 ```powershell
-wazuh-agent-*.msi /q WAZUH_ENROLLMENT_TOKEN="<TOKEN>" WAZUH_AGENT_NAME="windows-server-01"
+msiexec.exe /i wazuh-agent-*.msi /q WAZUH_ENROLLMENT_TOKEN="<TOKEN>" WAZUH_AGENT_NAME="windows-server-01"
 ```
 
 For interactive installation, double-click the MSI file and follow the installation wizard.
@@ -507,7 +507,7 @@ Get-Service -Name wazuh
 #### Enrollment
 
 **`WAZUH_ENROLLMENT_TOKEN`**\
-The enrollment token minted on the manager. The only way to register an agent. The installer decodes it, writes the manager address it carries into `<agent><manager><endpoint>`, and stores the token at `etc/enrollment_token` (`0600 root:root`; SYSTEM and Administrators only on Windows). The agent consumes it on its first start: it fetches the manager's CA, checks it against the token's pin, installs it as the trust anchor at `etc/certs/root-ca.pem`, enrolls over a fully verified connection, and deletes the token file.
+The enrollment token minted on the manager. The only way to register an agent. The installer decodes it, writes the manager address it carries into `<agent><manager><endpoint>`, and stores the token at `etc/enrollment_token` (`0600`, readable only by root; SYSTEM and Administrators only on Windows). The agent consumes it on its first start: it fetches the manager's CA, checks it against the token's pin, installs it as the trust anchor at `etc/certs/root-ca.pem`, enrolls over a fully verified connection, and deletes the token file.
 
 A token install needs no TLS configuration of any kind. The anchor arrives with the token.
 
@@ -570,13 +570,18 @@ A package install with no `WAZUH_ENROLLMENT_TOKEN` completes, and the installer 
 wazuh-agent: no manager configured [INFO_NO_MANAGER]: WAZUH_ENROLLMENT_TOKEN was not supplied, so the agent does not know where to connect.
 ```
 
-That is the **Package** and **From sources** methods: the agent is installed but not yet registered. The shipped configuration keeps its placeholder endpoint, so the agent starts and then fails to reach a manager called `IP` until it is given a real one.
+That is the **Package** and **From sources** methods: the agent is installed but not yet registered. A package install leaves the placeholder `<endpoint>MANAGER_IP</endpoint>`, and the agent refuses to start with it until it is registered:
+
+```console
+wazuh-agentd: ERROR: (4112): Invalid server address found: 'MANAGER_IP'
+wazuh-agentd: ERROR: (1215): No client configured. Exiting.
+```
 
 Register it with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent), which installs the trust anchor, enrolls, and writes the manager address the token names. The variables that are not about registration — `WAZUH_AGENT_NAME`, `WAZUH_AGENT_GROUP`, the timers and `WAZUH_SSL_VERIFICATION` — already applied during the install, and the command reads the name and groups back out of `ossec.conf`, so the agent registers with the ones the install set.
 
 ### Migrating agents already running
 
-An agent upgraded in place from 4.x keeps its identity and never enrolls again. The manager delivers its CA over the upgrade channel instead, so those agents need no token — see [Trust anchor delivery to legacy agents](../../guide/migration/remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents) and the validation checklist on the same page.
+An agent upgraded from 4.x keeps its identity and never enrolls again, so it needs no token. A remote upgrade delivers the manager's CA over the upgrade channel; a local package upgrade does not, and the agent then runs unverified until [`wazuh-agent-auth --certs-only`](../modules/client/README.md#enrolling-or-re-pointing-an-agent) installs one, keeping its id. See [Trust anchor delivery to legacy agents](../../guide/migration/remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents) and the validation checklist on the same page.
 
 > [!NOTE]
 > **Manager-side mutual TLS blocks remote upgrades to 5.0.** Finish migrating the fleet before setting `<remote><https><verification_mode>` to anything other than `none`.

@@ -156,11 +156,13 @@ Shows:
 
 `wazuh-agent-auth` registers an installed agent, registers it again, or points it at a manager whose certificate authority or address has changed. It ships on Linux, macOS and Windows, and is the path for every install that did not carry a token.
 
-```console
-wazuh-agent-auth --token-file /root/token                 enroll
-wazuh-agent-auth --token-file /root/token --force-enroll  re-register, new id
-wazuh-agent-auth --token-file /root/token --certs-only    refresh CA + address
-wazuh-agent-auth --show-token < /root/token               decode a token
+It is installed in the agent's `bin/` directory, which is not on `PATH` (`/Library/Ossec/bin/` on macOS), and runs as root:
+
+```bash
+sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token                  # enroll
+sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --force-enroll   # re-register, new id
+sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --certs-only     # refresh CA + address
+sudo /var/ossec/bin/wazuh-agent-auth --show-token --token-file /root/token     # decode a token
 ```
 
 The token is read from `--token-file` or standard input, never from the command line. The file it is read from is never modified or deleted.
@@ -254,7 +256,7 @@ An in-place upgrade from 4.x whose CA delivery did not run leaves an agent that 
 The trust anchor is the signal. An agent that has one verifies, unless `ossec.conf` names a mode explicitly:
 
 ```bash
-test -s /var/ossec/etc/certs/root-ca.pem && echo "anchor present" || echo "NO ANCHOR"
+sudo test -s /var/ossec/etc/certs/root-ca.pem && echo "anchor present" || echo "NO ANCHOR"
 sudo grep -c "<verification_mode>" /var/ossec/etc/ossec.conf
 ```
 

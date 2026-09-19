@@ -656,8 +656,9 @@ sudo grep -E "<endpoint>|<address>" /var/ossec/etc/ossec.conf
 # legacy listener and an upgraded agent no longer uses it.
 nc -vz <manager_ip> 1517
 
-# Has the agent a trust anchor? An upgraded agent receives one over the upgrade
-# channel; without it the agent connects but verifies nothing.
+# Has the agent a trust anchor? A remote upgrade delivers one; a local package
+# upgrade does not. Without it the agent connects but verifies nothing, until
+# sudo /var/ossec/bin/wazuh-agent-auth --token-file <path> --certs-only installs one.
 sudo ls -l /var/ossec/etc/certs/root-ca.pem
 
 # What does the agent say about TLS and enrollment? Every failure here names itself.

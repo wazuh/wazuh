@@ -197,7 +197,7 @@ After upgrading and cleaning configuration, verify:
 
 1. Agent successfully connects to the manager over HTTPS on port `1517`.
 2. Agent and manager versions are both compatible with 5.0 communication protocol.
-3. The agent holds a trust anchor at `/var/ossec/etc/certs/root-ca.pem` and verifies the manager. An upgraded agent receives one over the upgrade channel — see [Trust anchor delivery to legacy agents](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents).
+3. The agent holds a trust anchor at `/var/ossec/etc/certs/root-ca.pem` and verifies the manager. A remote upgrade delivers one — see [Trust anchor delivery to legacy agents](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents); a local package upgrade does not.
 
 Port `1515` is the legacy enrollment listener. An upgraded agent keeps the identity it already has and does not enroll again, so it never uses that port; a 5.0 agent registering for the first time does so over `POST /enroll` on `1517`, with an enrollment token.
 
