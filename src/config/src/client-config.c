@@ -652,9 +652,10 @@ static int w_resolve_ipv6_zone(const char *zone, uint32_t *out)
 /**
  * @brief Parse the combined <endpoint> value into host, port, prefix and scope id (#38624).
  *
- * <endpoint> carries the whole connection target in one value, in the same
- * language the WAZUH_MANAGER_ENDPOINT installation variable accepts, so the
- * installers can write an operator's value through verbatim:
+ * <endpoint> carries the whole connection target in one value. No deployment variable spells
+ * it: a package install writes it from the address inside the enrollment token,
+ * wazuh-agent-auth writes it from the token it is given, WriteAgent() composes it from
+ * install.sh's own prompt, and anything else is hand-edited.
  *
  *     [https://] host [:port] [/[prefix]]
  *
@@ -968,9 +969,10 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
         }
     }
 
-    /* <endpoint> wins over the deprecated pair whatever order they appeared in: it is
-     * the canonical spelling, and the installers give WAZUH_MANAGER_ENDPOINT the same
-     * priority over WAZUH_MANAGER/WAZUH_MANAGER_PORT. */
+    /* <endpoint> wins over the deprecated pair whatever order they appeared in: it is the
+     * canonical spelling, and <address>/<port> are read only for a hand-written file or a
+     * 5.0.0 development spelling (see the comment on <address> above). A real 4.x file goes
+     * through Read_Legacy_Client() and never reaches here. */
     if (endpoint_set) {
         rip = host;
 

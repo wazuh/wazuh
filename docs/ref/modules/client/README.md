@@ -45,9 +45,13 @@ The client module is responsible for:
 - **Queue persistence:** Events survive agent restarts
 
 ### Security
-- **Anti-tampering:** Monitors agent files for unauthorized modifications
-- **Key-based auth:** Pre-shared key authentication with manager
-- **Auto-enrollment:** Optional automatic agent registration
+
+- **Manager identity:** every connection to the manager is HTTPS, and the agent verifies who answers against a trust anchor it holds on disk. The mode is resolved from `<agent><ssl>` and that anchor -- see [`verification_mode`](configuration.md#verification_mode).
+- **Enrollment token:** registration uses a token minted on the manager, which names the manager, pins its certificate authority and carries a scoped, revocable credential.
+- **Trust anchor:** `etc/certs/root-ca.pem`, root-owned and not writable by the `wazuh` user. It lives outside `ossec.conf` so a configuration-management converge cannot remove it, and the manager cannot push one through centralized configuration.
+- **Per-agent key:** every request after enrollment is authenticated with the agent's own key from `client.keys`, which is never transmitted.
+- **Re-enrollment secret:** a per-agent credential that recovers a lost key without an operator visit and without a shared secret.
+- **Anti-tampering:** monitors agent files for unauthorized modifications.
 
 ---
 
@@ -148,27 +152,123 @@ Shows:
 - Connection status
 - Configuration version
 
+### Enrolling or re-pointing an agent
+
+`wazuh-agent-auth` registers an installed agent, registers it again, or points it at a manager whose certificate authority or address has changed. It ships on Linux, macOS and Windows, and is the path for every install that did not carry a token.
+
+It is installed in the agent's `bin/` directory, which is not on `PATH` (`/Library/Ossec/bin/` on macOS), and runs as root:
+
+```bash
+sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token                  # enroll
+sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --force-enroll   # re-register, new id
+sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --certs-only     # refresh CA + address
+sudo /var/ossec/bin/wazuh-agent-auth --show-token --token-file /root/token     # decode a token
+```
+
+The token is read from `--token-file` or standard input, never from the command line. The file it is read from is never modified or deleted.
+
+**Actions**
+
+| Action | Effect |
+|---|---|
+| *(none)* | Establishes the manager's certificate authority, enrolls, and writes the address the token names into `<manager><endpoint>`. Refused if the agent already has a key |
+| `--certs-only` | Installs the trust anchor and, when the token names a different address, writes that too. The registration is left alone, so the agent keeps its id. Refused on an agent that was never enrolled |
+| `--show-token` | Prints what a token carries, without its credential. Contacts nothing and writes nothing |
+| `-h`, `--help` | Usage |
+
+**Options**
+
+| Option | Effect |
+|---|---|
+| `--token-file <path>` | Read the token from `<path>`, or from standard input with `-` |
+| `-n`, `--dry-run` | Report what would change. Contacts nothing, writes nothing |
+| `-d` | Debug output, repeatable |
+| `--force-enroll` | Required when the agent already has a key. It is registered again and receives a **new** id. The previous id is named; what becomes of it is the manager's replacement policy |
+
+The agent name, groups and address come from `<enrollment>` in `ossec.conf`, so the command takes none of them and a later re-enrollment by the agent itself registers the same way.
+
+It refuses to run while `wazuh-agentd` is running, with no override. A restart is needed either way, since the agent loads its identity once at startup.
+
+**Exit codes**
+
+| Code | Meaning |
+|---|---|
+| `0` | Done |
+| `1` | Could not run |
+| `2` | Token rejected |
+| `3` | CA not established |
+| `4` | Enrollment refused by the manager |
+| `5` | Not committed |
+| `6` | Configuration not updated |
+
+**Moving an agent to another manager.** Which action applies depends on whether the new manager already knows this agent:
+
+- **The same deployment, after the manager rotated its certificate authority or changed its address** — `--certs-only`. The agent keeps its id and its history.
+- **A different deployment, which has never seen this agent** — `--force-enroll`. The agent registers from scratch and receives a new id.
+
+Behind a load balancer there is nothing to re-point between nodes: the agent addresses the balancer, and which node answers a given request is not something it tracks.
+
 ---
 
 ## Troubleshooting
 
 ### Agent Not Connecting
 
-Check configuration:
+Start with the agent's own log:
+
 ```bash
-/var/ossec/bin/wazuh-logtest-config
+sudo grep -E "cacerts|pin_mismatch|TLS verification|\(41[0-9]{2}\)" /var/ossec/logs/ossec.log | tail -20
 ```
 
-Check logs:
+| What the agent says | What it means | What to do |
+|---|---|---|
+| `/cacerts adr_unreachable` | The address in the token answers nothing | Check routing, and that the manager is listening on 1517 |
+| `/cacerts not_found` | The manager answered, but has no CA to hand out | Nothing on the endpoint changes this. The manager has to be given its CA before any agent can bootstrap against it |
+| `/cacerts ca_mismatch` | The CA the manager hands out does not sign the certificate it serves | Nothing on the endpoint changes this. Retrying will keep failing until the manager's certificate and CA match |
+| `pin_mismatch` | The CA the manager served is not the one the token pins | Wrong token, wrong manager, or the CA was rotated. Use a fresh token |
+| `(4118)` | The mode needs a CA, and neither `<certificate_authorities>` nor the trust anchor is present | Enroll with a token, or name a CA |
+| `(4120)` | `system` together with an explicit `<certificate_authorities>` | Drop one of the two: remove the CA to use the OS trust store, or keep it and set the mode to `full` |
+| `(4121)` | `system` on a host with no OS CA bundle | Use `full` against the trust anchor instead |
+| `(4123)` | The CA file is readable but holds no certificate the agent can parse | Replace the file; truncated copies are the usual cause |
+| `(4122)` | An explicit `none` on a host that holds a usable anchor | Remove `<verification_mode>none</verification_mode>` to verify against it |
+| `TLS verification failed connecting to …: the certificate does not include that name` | The address the agent dials is not in the certificate | The line lists the names the certificate does carry |
+| `TLS verification failed connecting to …: the certificate has expired` / `is not valid yet` | The manager's certificate is outside its validity window, or the clock is wrong | The line gives the date it checked against |
+| `TLS verification is DISABLED (verify_mode=none)` | The resolved mode is `none` | See the resolution table under [`verification_mode`](configuration.md#verification_mode) |
+
+> [!NOTE]
+> If nothing above matches, raise the agent's log level with `agent.debug=1` in `local_internal_options.conf` and restart it. Not every TLS failure is reported at normal level so a connection problem with nothing in the log is a reason to turn debug on rather than to rule TLS out.
+
+Confirm what the agent holds:
+
 ```bash
-tail -f /var/ossec/logs/ossec.log
+sudo ls -l /var/ossec/etc/certs/root-ca.pem /var/ossec/etc/client.keys
+sudo grep -A4 "<ssl>" /var/ossec/etc/ossec.conf
 ```
 
-Common issues:
-- Incorrect manager address or port
-- Firewall blocking port 1517
-- Agent key not registered on manager
-- Manager not accepting connections (`remoted` not running)
+The trust anchor should be `0640 root:wazuh`. A root-owned file the `wazuh` user cannot read fails closed just as a missing one does, and a directory listing looks right until the group is checked.
+
+If the agent has no anchor, or the manager's has changed, refresh it with [`wazuh-agent-auth --certs-only`](#enrolling-or-re-pointing-an-agent) rather than copying the file by hand.
+
+#### Auditing a fleet
+
+An in-place upgrade from 4.x whose CA delivery did not run leaves an agent that upgrades, connects and works while verifying nothing, so those have to be looked for rather than waited for.
+
+The trust anchor is the signal. An agent that has one verifies, unless `ossec.conf` names a mode explicitly:
+
+```bash
+sudo test -s /var/ossec/etc/certs/root-ca.pem && echo "anchor present" || echo "NO ANCHOR"
+sudo grep -c "<verification_mode>" /var/ossec/etc/ossec.conf
+```
+
+An anchor and no explicit mode is a verifying agent. No anchor is one that is not, and an explicit mode is one to read before deciding.
+
+The log corroborates it, with the caveat that `ossec.log` spans earlier boots until it rotates, so read the timestamp rather than the presence of a match:
+
+```bash
+sudo grep "TLS verification is DISABLED" /var/ossec/logs/ossec.log | tail -1
+```
+
+See [Trust anchor delivery to legacy agents](../../../guide/migration/remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents) for the delivery and for confirming it ran.
 
 ### Buffer Overflow
 
@@ -191,6 +291,7 @@ If anti-tampering is triggering false positives:
 ## See Also
 
 - [Client Configuration Reference](configuration.md) - Complete configuration options
-- [Remote Configuration](../../configuration/manager/remote.md) - Manager-side connection settings
+- [Manager Configuration Reference](../../configuration/manager/reference.md) - Manager-side `<remote>` settings
 - [Centralized Configuration](../../configuration/centralized/index.html) - Remote agent configuration
-- [Agent Enrollment](../agent-management/enrollment.md) - Agent registration process
+- [Enrollment lifecycle](../authd/enrollment-lifecycle.md) - Agent registration, end to end
+- [Trust anchor delivery to legacy agents](../../../guide/migration/remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents) - How an agent upgraded from 4.x receives its CA

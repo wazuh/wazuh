@@ -434,8 +434,8 @@ static void test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent(vo
     cleanup(&xml, nodes, &cfg);
 }
 
-/* #38624: <endpoint> carries the whole target, in the same language the
- * WAZUH_MANAGER_ENDPOINT installation variable accepts. Only the host is mandatory. */
+/* <endpoint> carries the whole target -- host, optional port, optional URL prefix.
+ * Only the host is mandatory. */
 
 static void test_agent_manager_endpoint_accepts_a_hostname(void **state) {
     OS_XML xml = {0};

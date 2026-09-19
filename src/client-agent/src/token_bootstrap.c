@@ -763,9 +763,9 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * authenticate this request: it is the one credential the operator handed to this endpoint
      * for this purpose.
      *
-     * A credential-less token (token.has_key == false) does NOT fall back to
-     * WAZUH_REGISTRATION_PASSWORD/authd.pass either -- enrollment goes out with no credential
-     * at all. Confirmed against the manager's own EnrollmentAuthenticator
+     * A credential-less token (token.has_key == false) does NOT fall back to a configured
+     * authd.pass either -- enrollment goes out with no credential at all.
+     * Confirmed against the manager's own EnrollmentAuthenticator
      * (remoted/remoted_module/src/enrollment/enrollmentAuthenticator.hpp on
      * enhancement/38991-identity): it has no notion of a "credential-less token" distinct from
      * "no credential presented" -- sending no Authorization header falls through to whatever

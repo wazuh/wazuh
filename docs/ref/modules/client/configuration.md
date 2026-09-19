@@ -32,7 +32,7 @@ The complete connection target: the manager's address, optionally a port, and op
 URL path prefix it is served under. This one option replaces the separate `address` and `port`
 tags.
 
-```
+```text
 endpoint = [ "https://" ] host [ ":" port ] [ "/" [ prefix ] ]
 ```
 
@@ -90,7 +90,6 @@ and logs that it no longer has any effect.
 
 **DEPRECATED:** parsed but ignored. See `max_retries`.
 
-
 ### ssl
 
 TLS configuration for the agent's HTTPS connection to the manager. Controls how the agent
@@ -118,30 +117,40 @@ Path to the private key matching `<certificate>`.
 
 Path to the CA bundle used to verify the manager's certificate.
 
-- **Default value:** None
+- **Default value:** None in `ossec.conf`. When the option is absent and the resolved mode is
+  `full` or `certificate`, the agent uses the trust anchor described below as the CA, so an
+  agent that bootstrapped from an enrollment token verifies without this option being set at
+  all.
 - **Allowed values:** Path to a PEM-encoded CA bundle file, readable by the agent
-- **Required:** Yes, when `<verification_mode>` is `full` or `certificate` -- the agent fails
-  closed (refuses to start) without a readable CA file in that case.
-- **Note:** Must NOT be set when `<verification_mode>` is `system` -- the agent fails closed if
-  it is, since the OS trust store is used as the anchor instead and a configured CA would go
-  silently unused. Ignored (with a warning if set but unreadable) when `<verification_mode>` is
-  `none`.
+- **Required:** Only when neither this option nor the trust anchor is present and
+  `<verification_mode>` is `full` or `certificate` -- the agent then fails closed (refuses to
+  start) with `(4118)`.
+- **Note:** Must NOT be set when `<verification_mode>` is `system` -- the agent fails closed
+  with `(4120)` if it is, since the OS trust store is used as the anchor instead and a
+  configured CA would go silently unused. Ignored when `<verification_mode>` is `none`.
+- **Note:** A file that is readable but holds no certificate the agent can parse is refused at
+  startup with `(4123)`, rather than at the first handshake. Readable is not usable.
 
 #### verification_mode
 
 How strictly the agent verifies the manager's TLS certificate.
 
-- **Default value:** `system` when `<certificate_authorities>` is not set, `certificate` when it
-  is set without an explicit `<verification_mode>` (mirrors the manager's own inference for
-  `<remote><https><ca>`/`<verification_mode>` in `remote-config.c`). `none` is never the default —
-  it is only reached via an explicit `<verification_mode>none</verification_mode>`.
+- **Default value:** There is no single default. The mode is resolved at startup from what
+  `<ssl>` says and whether a trust anchor is on disk:
+
+  | What is configured | Resolved mode |
+  |---|---|
+  | An explicit `<verification_mode>` | That mode, `none` included |
+  | `<certificate_authorities>`, no explicit mode | `certificate` (mirrors the manager's own inference for `<remote><https><ca>`), logged as a warning |
+  | Neither, but the trust anchor is present | `full`, with the anchor as the CA |
+  | Nothing at all | `none` |
+
 - **Allowed values:**
-  - `full` — verify the certificate against `<certificate_authorities>` AND check that it
-    matches the manager's hostname (strictest).
-  - `certificate` — verify the certificate against `<certificate_authorities>`, but do not
-    check the hostname.
-  - `none` — no TLS verification at all. Insecure; intended for quick testing only.
-  - `system` — verify the certificate (and hostname, like `full`) against the operating
+  - `full` -- verify the certificate against the CA AND check that it matches the manager's
+    hostname (strictest).
+  - `certificate` -- verify the certificate against the CA, but do not check the hostname.
+  - `none` -- no TLS verification at all. Insecure; intended for quick testing only.
+  - `system` -- verify the certificate (and hostname, like `full`) against the operating
     system's own trusted CA store instead of `<certificate_authorities>`, the way a web
     browser trusts a public website. Useful when the manager's certificate is issued by a
     publicly (or OS-) trusted CA, so a CA bundle does not need to be distributed to every
@@ -151,6 +160,9 @@ How strictly the agent verifies the manager's TLS certificate.
     `/etc/pki/tls/certs/ca-bundle.crt` on RHEL-family systems) and fails closed at startup if
     none is found on the host.
 - **Note:** Any value other than the four above is rejected at config-parse time.
+- **Note:** An explicit mode always wins, and that includes turning verification off on a host
+  that could verify. An explicit `none` with a trust anchor present keeps `none` and logs
+  `(4122)` at warning level, naming the anchor it is declining to use.
 
 #### ciphers
 
@@ -159,6 +171,29 @@ TLS 1.3 ciphersuite list to offer during the handshake.
 - **Default value:** None (libcurl/OpenSSL default TLS 1.3 ciphersuites)
 - **Allowed values:** Colon-separated list of TLS 1.3 ciphersuite names
 - **Example:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256`
+
+### The trust anchor
+
+The certificate authority the agent verifies the manager against when `<ssl>` does not name
+one. It is a file, not a configuration option, and its presence **is** the default
+verification state -- see the resolution table under `verification_mode` above.
+
+| | Path | Ownership |
+|---|---|---|
+| Linux, macOS | `etc/certs/root-ca.pem`, relative to the installation directory | `0640 root:wazuh`, in a `0750 root:wazuh` directory |
+| Windows | `certs\root-ca.pem` | The inherited ACL of the directory the agent creates |
+
+Three things put it there, and the file is identical whichever did:
+
+- **The enrollment-token bootstrap**, on the agent's first start after a token install. It
+  fetches the manager's CA, checks it against the token's pin and installs only the certificate
+  that matched.
+- **A WPK upgrade from 4.x**, where the manager delivers its CA over the upgrade channel. See
+  [Trust anchor delivery to legacy agents](../../../guide/migration/remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents).
+- **An operator**, placing the file by hand or through configuration management.
+
+It is root-owned and not writable by the `wazuh` user the agent runs as, so it is always
+written by root before the daemon drops privileges -- the same pattern `client.keys` follows.
 
 ### ip_update_interval
 
@@ -181,9 +216,8 @@ Agent configuration profile (used with centralized configuration via `agent.conf
 
 Interval between agent keep-alive notifications to the manager.
 
-- **Default value:** `60`
-- **Allowed values:** Positive integer (seconds)
-- **Minimum:** `10`
+- **Default value:** `10`
+- **Allowed values:** Positive integer (seconds).
 - **Note:** This is not what decides when the agent is marked `disconnected`. The manager uses
   `<global><agents_disconnection_time>` (default `15m`) against the last keepalive it recorded, so
   `notify_time` only has to be comfortably below that figure — see the
@@ -244,6 +278,40 @@ Comma-separated list of groups to assign during enrollment.
 - **Default value:** `default`
 - **Allowed values:** Comma-separated group names
 
+#### Enrollment token
+
+Not an `ossec.conf` option: a one-shot file the installer leaves for the agent to consume on
+its first start.
+
+| | Path | Ownership |
+|---|---|---|
+| Linux, macOS | `etc/enrollment_token` | `0600`, readable only by root |
+| Windows | `enrollment_token` | SYSTEM and Administrators |
+
+Written by the installer from `WAZUH_ENROLLMENT_TOKEN` (see
+[Installation](../../getting-started/installation.md#enrollment)).
+An agent enrolled after its install is enrolled with
+[`wazuh-agent-auth`](README.md#enrolling-or-re-pointing-an-agent), which reads a token from any
+path and leaves it alone.
+
+The bootstrap runs at agent start, before the privilege drop, and takes these steps in order:
+decode the token, open an unverified connection to the address it names and fetch the manager's
+CA, compare the SHA-256 of that certificate's SubjectPublicKeyInfo against the token's pin,
+install only the matching certificate as the trust anchor, open a **new** fully verified
+connection, enroll, and delete this file. No credential crosses the unverified connection. A
+pin mismatch aborts with a named error and no enrollment is attempted.
+
+The file is also deleted, unused, whenever it can no longer be consumed -- on an agent that
+already holds an anchor or an identity, and when the manager reports the token as unknown,
+revoked or out of uses. It is a credential; it is not left at rest once it is spent.
+
+Failures are split into permanent and transient. A
+transient one -- an unreachable manager, a misprovisioned CA, a `5xx` -- is retried in place, on
+the same ramp as enrollment itself -- the `agent.enrollment_retry_delta` and
+`agent.enrollment_retry_max` internal options under **Enrollment Retry** below -- so an agent
+that starts before its manager does still bootstraps. A permanent one -- a malformed token, a
+pin mismatch, a `404` from `/cacerts` -- is not retried.
+
 #### authorization_pass_path
 
 Path to file containing enrollment authorization password.
@@ -302,6 +370,15 @@ accepted window, an enrollment key that has not synced to the node serving the
 request, or a response whose failure class cannot be read — is retried with the
 existing credential. A credential the manager has judged and refused stops the
 retry loop instead of repeating for ever.
+
+#### Moving an agent to another manager or CA
+
+Use [`wazuh-agent-auth`](README.md#enrolling-or-re-pointing-an-agent): `--certs-only` when the
+same deployment rotated its certificate authority or changed its address, `--force-enroll` for a
+deployment that has never seen this agent.
+
+The bootstrap that runs at first start does not repeat once the agent holds a trust anchor or an
+identity, so editing these files by hand does not move an agent.
 
 #### agent_address
 
@@ -659,4 +736,4 @@ Full example with all sections:
 - [Client Module](index.html) - Module overview and architecture
 - [Remoted Configuration](../remoted/configuration.md) - Manager-side agent listener configuration
 - [Centralized Configuration](../agent-management/centralized-configuration.md) - Group-based configuration
-- [Agent Enrollment](../agent-management/enrollment.md) - Agent registration process
+- [Enrollment lifecycle](../authd/enrollment-lifecycle.md) - Agent registration, end to end
