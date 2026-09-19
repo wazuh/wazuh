@@ -42,7 +42,8 @@ OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
 ROUTER_PROVIDER_HANDLE router_rsync_handle = NULL;
-ROUTER_PROVIDER_HANDLE router_syscollector_handle = NULL;
+// Syscollector deltas are now published by wazuh-db only after the write is confirmed
+// (see issue #39329); remoted no longer forwards them to the Indexer pipeline directly.
 // ROUTER_PROVIDER_HANDLE router_syscheck_handle = NULL; // DISABLED
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
@@ -252,9 +253,6 @@ void HandleSecure()
     router_initialize(taggedLogFunction);
 
     // Router providers initialization
-    if (router_syscollector_handle = router_provider_create("deltas-syscollector", false), !router_syscollector_handle) {
-        mdebug2("Failed to create router handle for 'syscollector'.");
-    }
 
     // Disable the syscheck router as FIM events are not to be forwarded
     // if (router_syscheck_handle = router_provider_create("deltas-syscheck", false), !router_syscheck_handle) {
@@ -1010,13 +1008,9 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
     }
 
     if(strncmp(msg, SYSCOLLECTOR_HEADER, SYSCOLLECTOR_HEADER_SIZE) == 0) {
-        if (!router_syscollector_handle) {
-            mdebug2("Router handle for 'syscollector' not available.");
-            return;
-        }
-        router_handle = router_syscollector_handle;
-        message_header_size = SYSCOLLECTOR_HEADER_SIZE;
-        schema_type = MT_SYS_DELTAS;
+        // Not forwarded: wazuh-db publishes this same delta to the Indexer pipeline
+        // once the local write is confirmed (issue #39329).
+        return;
     } else if(strncmp(msg, DBSYNC_HEADER, DBSYNC_HEADER_SIZE) == 0) {
         if (!router_rsync_handle) {
             mdebug2("Router handle for 'rsync' not available.");

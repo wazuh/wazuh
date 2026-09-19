@@ -105,6 +105,9 @@ typedef enum wdb_global_group_hash_operations_t {
 extern ROUTER_PROVIDER_HANDLE router_agent_events_handle;
 // extern ROUTER_PROVIDER_HANDLE router_fim_events_handle; // DISABLED: FIM events are no longer processed.
 extern ROUTER_PROVIDER_HANDLE router_inventory_events_handle;
+// Published only after the corresponding INSERT/UPDATE/DELETE is applied locally,
+// so the Indexer can never observe a record before wazuh-db does.
+extern ROUTER_PROVIDER_HANDLE router_syscollector_deltas_handle;
 
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,

@@ -6604,6 +6604,43 @@ bool process_dbsync_data(wdb_t * wdb, const struct kv * kv_value, const char * o
     return ret_val;
 }
 
+/*
+ * Publishes a confirmed syscollector delta to the Indexer pipeline.
+ * Only called after process_dbsync_data() has applied the change locally,
+ * so the Indexer can never see a record before wazuh-db does (see issue #39329).
+ *
+ * Does NOT resolve agent name/ip/version from global.db here: wdb_parse_dbsync()
+ * is invoked with the per-agent node's mutex already held (wdb_pool_get_or_create()),
+ * and opening the "global" node from inside that scope can deadlock against any
+ * caller that acquires the two nodes in the opposite order. Until that context is
+ * threaded through some other way, those fields are left blank (tracked as follow-up).
+ */
+void wdb_publish_confirmed_delta(wdb_t * wdb, const char * table_key, const char * operation, const char * data) {
+    if (!router_syscollector_deltas_handle) {
+        return;
+    }
+
+    agent_ctx ctx = {
+        .agent_id = wdb->id,
+        .agent_name = "",
+        .agent_ip = "",
+        .agent_version = "",
+    };
+
+    char * msg = NULL;
+    os_malloc(OS_MAXSTR, msg);
+    // Rebuilds the same envelope the agent originally sent ({"type","operation","data"}),
+    // which is what router_provider_send_fb_json() expects for schema MT_SYS_DELTAS.
+    snprintf(msg, OS_MAXSTR - 1, "{\"type\":\"dbsync_%s\",\"operation\":\"%s\",\"data\":%s}",
+             table_key, operation, data);
+
+    if (router_provider_send_fb_json(router_syscollector_deltas_handle, msg, &ctx, MT_SYS_DELTAS) != 0) {
+        mdebug2("DB(%s) Unable to publish confirmed delta for '%s'.", wdb->id, table_key);
+    }
+
+    os_free(msg);
+}
+
 int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
     int ret_val = OS_INVALID;
     char *next = NULL;
@@ -6638,6 +6675,9 @@ int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
     while (NULL != head) {
         if (strncmp(head->current.key, table_key, OS_SIZE_256 - 1) == 0) {
             ret_val = process_dbsync_data(wdb, &head->current, operation, data) ? OS_SUCCESS : OS_INVALID;
+            if (OS_SUCCESS == ret_val) {
+                wdb_publish_confirmed_delta(wdb, table_key, operation, data);
+            }
             break;
         }
         head = head->next;
