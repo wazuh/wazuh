@@ -1189,6 +1189,33 @@ TEST(ManagerCertsAdd, MalformedInputRejected)
     EXPECT_EQ(sha256Of(fixture.bundlePath), before);
 }
 
+TEST(ManagerCertsAdd, MixedValidAndCorruptInputRejectedAsAWhole)
+{
+    SKIP_UNLESS_ROOT();
+    // Objection 16 / objection 6's repro: an input file whose FIRST block decodes and whose second
+    // does not. Reading "up to the first block we could not decode" would add half of what the
+    // operator meant to add -- and, worse, hand finishWrite() a candidate built from a partial
+    // read. GI refuses the file whole (C34b), and the bundle keeps every certificate it had.
+    AddFixture fixture {10};
+    auto validKey = makeTestKey();
+    const auto valid = makeSpareCa(validKey, "ca-valid-half", 150);
+    const std::string mixed =
+        pemOf(valid.get()) + "-----BEGIN CERTIFICATE-----\nnot base64 at all !!\n-----END CERTIFICATE-----\n";
+    ASSERT_FALSE(ca_bundle::parseBundle(mixed).wellFormed) << "fixture is not the mixed input this case needs";
+    const std::string before = sha256Of(fixture.bundlePath);
+    const std::string existingIdentity = ca_bundle::identityOf(fixture.ca.get());
+
+    const AddRun run = runAddOn(fixture, mixed);
+    EXPECT_EQ(run.exitCode, 2);
+    EXPECT_NE(run.err.find("is malformed"), std::string::npos) << run.err;
+    EXPECT_EQ(sha256Of(fixture.bundlePath), before);
+
+    const ca_bundle::ParsedBundle kept = ca_bundle::parseBundle(readFile(fixture.bundlePath));
+    ASSERT_EQ(kept.certificates.size(), 1u) << "the candidate must never lose what the bundle already held";
+    EXPECT_EQ(ca_bundle::identityOf(kept.certificates[0].get()), existingIdentity);
+    EXPECT_EQ(temporaryCount(fixture.dir.path(), kBundleName), 0u);
+}
+
 TEST(ManagerCertsAdd, EmptyInputRejected)
 {
     SKIP_UNLESS_ROOT();

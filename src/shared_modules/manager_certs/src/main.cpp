@@ -59,6 +59,12 @@ namespace
                    "  inspect             Describe the CA bundle's certificates and publication status.\n"
                    "  check               Validate the CA bundle without writing anything.\n"
                    "  add <file>          Add the certificates of <file> to the CA bundle and publish it.\n"
+                   "  remove <identity>   Remove every certificate with <identity> (as 'inspect' prints it)\n"
+                   "                      from the CA bundle and publish it.\n"
+                   "  prune-expired       Remove the CA bundle's expired certificates and publish it; with\n"
+                   "                      nothing expired it writes nothing.\n"
+                   "  stamp               Publish the CA bundle's certificates unchanged, under a new\n"
+                   "                      generation.\n"
                    "\n"
                    "Options:\n"
                    "  -f <file>           Configuration file (default: <home>/etc/wazuh-manager.conf).\n"
@@ -70,10 +76,11 @@ namespace
                    "-h/--help and -V/--version never read the configuration: they work with every daemon\n"
                    "stopped and without a manager home set.\n"
                    "\n"
-                   "'add' writes: it must run as root, on the master node, and it takes an exclusive lock\n"
-                   "on <bundle>.lock while it reads, validates and replaces the bundle.\n"
+                   "'add', 'remove', 'prune-expired' and 'stamp' write: they must run as root, on the\n"
+                   "master node, and each takes an exclusive lock on <bundle>.lock while it reads, validates\n"
+                   "and replaces the bundle. None of them creates the bundle.\n"
                    "\n"
-                   "'remove', 'prune-expired', 'stamp' and '--from-master' arrive in later versions.\n"
+                   "'--from-master', for worker nodes, is not available yet.\n"
                    "\n"
                    "Exit status: 0 success; 1 the bundle or the certificate was rejected, or a usage error;\n"
                    "2 environment error (configuration, bundle, leaf or input could not be read, or this is\n"
@@ -289,9 +296,11 @@ namespace
         return leaf;
     }
 
-    /// The writing commands' own path: the leaf and the input file are read here (main.cpp is the
-    /// only piece of this tool that opens a file, D-1), and the bundle is opened by prepareWrite()
-    /// under the lock -- never before it, so what a guard validated is what gets published.
+    /// The writing commands' own path: the leaf and (for `add`) the input file are read here
+    /// (main.cpp is the only piece of this tool that opens a file, D-1), and the bundle is opened by
+    /// prepareWrite() under the lock -- never before it, so what a guard validated is what gets
+    /// published. @p argument is the file for `add`, the identity for `remove`, and unused by
+    /// `prune-expired`/`stamp`.
     int runWrite(const std::string& command,
                  const std::string& argument,
                  const std::filesystem::path& bundlePath,
@@ -310,11 +319,19 @@ namespace
             return environmentError("leaf certificate does not parse as a single certificate: " + leafPath.string());
         }
 
-        const std::filesystem::path inputPath {argument};
-        const BoundedRead inputRead = readBounded(inputPath);
-        if (!inputRead.contents)
+        // Only `add` takes a file, and it is read BEFORE the lock: an unreadable input is an
+        // environment error that should never cost another writer its turn on the bundle.
+        const bool takesInputFile = command == "add";
+        const std::filesystem::path inputPath {takesInputFile ? argument : std::string {}};
+        std::string inputContents;
+        if (takesInputFile)
         {
-            return environmentError(describeReadFailure("input file", inputPath, inputRead));
+            const BoundedRead inputRead = readBounded(inputPath);
+            if (!inputRead.contents)
+            {
+                return environmentError(describeReadFailure("input file", inputPath, inputRead));
+            }
+            inputContents = *inputRead.contents;
         }
 
         manager_certs::WriteRequest request;
@@ -330,7 +347,19 @@ namespace
             return prepared.exitCode;
         }
 
-        return manager_certs::runAdd(*prepared.context, *inputRead.contents, inputPath, std::cout, std::cerr);
+        if (command == "add")
+        {
+            return manager_certs::runAdd(*prepared.context, inputContents, inputPath, std::cout, std::cerr);
+        }
+        if (command == "remove")
+        {
+            return manager_certs::runRemove(*prepared.context, argument, std::cout, std::cerr);
+        }
+        if (command == "prune-expired")
+        {
+            return manager_certs::runPruneExpired(*prepared.context, std::cout, std::cerr);
+        }
+        return manager_certs::runStamp(*prepared.context, std::cout, std::cerr);
     }
 
     int run(int argc, char** argv)
@@ -375,16 +404,19 @@ namespace
             return usageError("missing command");
         }
         const std::string& command = positional[0];
-        const bool writes = command == "add";
+        const bool writes = command == "add" || command == "remove" || command == "prune-expired" || command == "stamp";
         if (command != "inspect" && command != "check" && !writes)
         {
-            return usageError("'" + command + "' is not available yet (it arrives in a later version)");
+            return usageError("'" + command + "' is not a wazuh-manager-certs command");
         }
-        if (writes)
+        // `add` takes the file to add and `remove` the identity to drop; the other four take
+        // nothing at all.
+        if (command == "add" || command == "remove")
         {
             if (positional.size() != 2)
             {
-                return usageError("'" + command + "' takes exactly one argument: the file to add");
+                return usageError("'" + command + "' takes exactly one argument: " +
+                                  (command == "add" ? "the file to add" : "the identity to remove"));
             }
         }
         else if (positional.size() != 1)
@@ -451,7 +483,7 @@ namespace
 
         if (writes)
         {
-            return runWrite(command, positional[1], bundlePath, leafPath);
+            return runWrite(command, positional.size() > 1 ? positional[1] : std::string {}, bundlePath, leafPath);
         }
 
         // Bundle before leaf, always (tests/cli/manager_certs_cli_test.sh relies on this order to

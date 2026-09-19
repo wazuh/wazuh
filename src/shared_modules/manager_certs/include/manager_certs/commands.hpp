@@ -15,8 +15,8 @@
 /**
  * @file commands.hpp
  * @brief The commands of `wazuh-manager-certs` (issue #39319): `inspect`/`check`, which only read,
- *        and the write transaction `add` (and, from a later stage, `remove`/`prune-expired`/
- *        `stamp`) publishes the bundle through.
+ *        and the write transaction `add`/`remove`/`prune-expired`/`stamp` publish the bundle
+ *        through.
  *
  * The read-only pair are pure functions over an already-parsed bundle and the leaf certificate
  * `main.cpp` read from disk: no file reads, no configuration, no writes. That split is what lets
@@ -29,7 +29,8 @@
  *
  *   prepareWrite()  takes the exclusive lock, opens the bundle ONCE and keeps that descriptor, and
  *                   hands back everything the transaction needs (WriteContext);
- *   the command     (`add`) builds the candidate list and refuses its own inputs;
+ *   the command     (`add`, `remove`, `prune-expired`, `stamp`) builds the candidate list and
+ *                   refuses its own inputs;
  *   finishWrite()   runs the guards every writing command shares, in one order, and publishes
  *                   through atomicWrite().
  *
@@ -324,6 +325,54 @@ namespace manager_certs
                const std::filesystem::path& inputPath,
                std::ostream& out,
                std::ostream& err);
+
+    /**
+     * @brief `remove <identity>`: drops every certificate of the bundle whose
+     *        `ca_bundle::identityOf()` is @p identity, and publishes what is left (RF-14).
+     *
+     * EVERY occurrence, not the first (C34d): a bundle that carries the same CA twice comes out of
+     * this command without it at all, because "removed" has to mean the anchor is gone -- half a
+     * removal is still a published anchor the operator was told they had dropped.
+     *
+     * Exit 1, with the bundle untouched, when @p identity is in it zero times ("not found in
+     * bundle"): a command that changed nothing must not publish a new generation. Everything else
+     * is finishWrite()'s decision -- notably G4, which refuses a removal that would leave no
+     * certificate at all, and G6, which refuses one that would leave the served leaf without an
+     * anchor (the last CA that signs it is not removable while it is the only one, C28/CA-28).
+     *
+     * Takes no input file and adds no certificate, so it carries no guard of its own to re-evaluate
+     * after the wait of C28b.
+     */
+    int runRemove(WriteContext& context, const std::string& identity, std::ostream& out, std::ostream& err);
+
+    /**
+     * @brief `prune-expired`: drops every certificate whose `notAfter` is already past, and
+     *        publishes what is left (RF-14).
+     *
+     * With nothing expired it writes NOTHING and exits 0 ("nothing to prune", C35): an unchanged
+     * bundle republished under a new generation sends the whole fleet back to `GET /cacerts` for
+     * bytes it already has, and this command is the one an operator puts in cron.
+     *
+     * That silent path still audits the publication (C36i): when `ca_bundle::vouch()` over the
+     * bundle as it is on disk does not return its own block's publication -- it was never stamped,
+     * or its `Content-SHA256` no longer describes its certificates -- it says so on @p err, still
+     * without writing. An operator running this nightly would otherwise read "nothing to prune" as
+     * "everything is published".
+     */
+    int runPruneExpired(WriteContext& context, std::ostream& out, std::ostream& err);
+
+    /**
+     * @brief `stamp`: publishes the bundle's certificates unchanged, under a new generation
+     *        (RF-15).
+     *
+     * The candidate is exactly what the file already holds, so the only guards that apply are the
+     * structural ones every writing command shares (finishWrite(): at least one certificate, at
+     * most `kMaxCertificates`, one of them chaining to the served leaf, under
+     * `kMaxSerializedBytes`). Deliberately NOT vouch()'s `no_block`/`hash_mismatch` (C29): an
+     * unstamped plain PEM and a bundle whose block no longer matches its certificates are the two
+     * states this command exists to fix, and the block it writes satisfies both by construction.
+     */
+    int runStamp(WriteContext& context, std::ostream& out, std::ostream& err);
 
 } // namespace manager_certs
 

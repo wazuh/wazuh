@@ -24,7 +24,10 @@ add_library(manager_certs_core STATIC
   src/commands/check.cpp
   src/commands/writeLock.cpp
   src/commands/atomicWrite.cpp
-  src/commands/add.cpp)
+  src/commands/add.cpp
+  src/commands/remove.cpp
+  src/commands/pruneExpired.cpp
+  src/commands/stamp.cpp)
 
 target_include_directories(manager_certs_core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -34,8 +37,9 @@ target_include_directories(manager_certs_core
 # its include directories, and ca_bundle itself carries the vendored libcrypto forward.
 target_link_libraries(manager_certs_core PUBLIC ca_bundle)
 
-# bin/wazuh-manager-certs: inspect / check today (E6); the writing commands and --from-master land
-# in the stages after it. Installed by InstallLocal(), like bin/wazuh-manager-conf.
+# bin/wazuh-manager-certs: inspect / check, and the four writing commands (add / remove /
+# prune-expired / stamp); --from-master lands in a later stage. Installed by InstallLocal(), like
+# bin/wazuh-manager-conf.
 # Built in every mode (also UNIT_TEST) so the CLI end-to-end test can run from the test tree.
 add_executable(wazuh-manager-certs src/main.cpp)
 target_link_libraries(wazuh-manager-certs PRIVATE manager_certs_core manager_config ext_rapidjson)

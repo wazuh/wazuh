@@ -14,6 +14,12 @@
 # `add` must leave the bundle untouched — which the GTest cases over finishWrite() cannot prove for
 # main.cpp itself. Those cases need root (G0) and are skipped, not failed, without it.
 #
+# E7b adds the other three writing commands, at the one level where main.cpp's own dispatch, arity
+# and exit-code mapping are exercised: `stamp` turning a plain PEM into a bundle `check` vouches for,
+# `remove` dropping a certificate by the identity `inspect` prints, `prune-expired` writing NOTHING
+# when nothing has expired (C35) while still warning about an unpublished bundle (C36i), and all
+# three refusing on a worker without leaving a lock file behind.
+#
 # Runs from ctest as `manager_certs_cli`, outside the ASAN job (which selects only the
 # `manager_certs_utest` GTest label, since it never builds this binary with ASAN).
 #
@@ -165,6 +171,18 @@ if [ "$rc" = 0 ] && grep -q '^Usage: wazuh-manager-certs' "$TMP/out" \
     pass cli_help_prints_usage
 else
     fail cli_help_prints_usage "exit $rc; out='$(cat "$TMP/out")'"
+fi
+
+# The four writing commands are listed, and none of them is still announced as unavailable: a usage
+# text that promises `stamp` "in a later version" is what an operator reads before deciding the tool
+# cannot fix their unpublished bundle.
+rc=$(run "$CLI" --help)
+if [ "$rc" = 0 ] && grep -q 'add <file>' "$TMP/out" && grep -q 'remove <identity>' "$TMP/out" \
+    && grep -q 'prune-expired' "$TMP/out" && grep -q '^  stamp ' "$TMP/out" \
+    && ! grep -qE 'arrives? in (a )?later version' "$TMP/out"; then
+    pass cli_help_lists_the_writing_commands
+else
+    fail cli_help_lists_the_writing_commands "exit $rc; out='$(cat "$TMP/out")'"
 fi
 
 # ------------------------------------------------------------------------- environment (exit 2) ---
@@ -363,6 +381,126 @@ CONF
         pass cli_concurrent_adds_leave_a_published_bundle
     else
         fail cli_concurrent_adds_leave_a_published_bundle "publication='$first_publication'"
+    fi
+
+    # --- stamp: a plain PEM becomes a bundle `check` vouches for --------------------------------
+    # The end-to-end shape of CA-29, and the one case that needs no fixture at all beyond a CA file
+    # an operator could have provisioned by hand: before `stamp` the bundle carries no publication
+    # block, so `check` refuses it; afterwards the SAME certificates are published and it passes.
+    STAMP_BUNDLE="$PKI/stamp-bundle.pem"
+    cp "$PKI/ca-cert.pem" "$STAMP_BUNDLE"
+    CONFIG_STAMP="$PKI/config-stamp.conf"
+    write_config "$CONFIG_STAMP" "$PKI/leaf-cert.pem" "$STAMP_BUNDLE"
+
+    rc_before=$(run "$CLI" -f "$CONFIG_STAMP" check)
+    rc=$(run "$CLI" -f "$CONFIG_STAMP" stamp)
+    stamp_out=$(cat "$TMP/out")
+    rc_after=$(run "$CLI" -f "$CONFIG_STAMP" check)
+    publication=$(sed -n 's/^## Publication: //p' "$STAMP_BUNDLE")
+    certificates=$(grep -c "BEGIN CERTIFICATE" "$STAMP_BUNDLE")
+    temporaries=$(find "$PKI" -name "stamp-bundle.pem.tmp.*" | wc -l)
+    if [ "$rc_before" = 1 ] && [ "$rc" = 0 ] && [ "$rc_after" = 0 ] \
+        && [ -n "$publication" ] && [ "$publication" -gt 0 ] && [ "$certificates" = 1 ] \
+        && [ "$temporaries" = 0 ]; then
+        pass cli_stamp_publishes_a_plain_pem
+    else
+        fail cli_stamp_publishes_a_plain_pem \
+            "check_before=$rc_before stamp=$rc check_after=$rc_after publication='$publication' certificates=$certificates temporaries=$temporaries out='$stamp_out' err='$(cat "$TMP/err")'"
+    fi
+
+    # --- remove: by the identity `inspect` prints ------------------------------------------------
+    # `add` then `remove` over the same bundle, so the identity fed to `remove` is exactly the
+    # string the tool itself printed, and the generation has to grow at every step (CA-24).
+    rc_add=$(run "$CLI" -f "$CONFIG_STAMP" add "$PKI/ca2-cert.pem")
+    publication_added=$(sed -n 's/^## Publication: //p' "$STAMP_BUNDLE")
+    rc=$(run "$CLI" -f "$CONFIG_STAMP" remove "x509-sha256:$CA2_ID")
+    remove_out=$(cat "$TMP/out")
+    publication_removed=$(sed -n 's/^## Publication: //p' "$STAMP_BUNDLE")
+    certificates=$(grep -c "BEGIN CERTIFICATE" "$STAMP_BUNDLE")
+    rc_check=$(run "$CLI" -f "$CONFIG_STAMP" check)
+    rc_inspect=$(run "$CLI" -f "$CONFIG_STAMP" inspect)
+    still_there=$(grep -c "^identity: x509-sha256:$CA2_ID$" "$TMP/out")
+    if [ "$rc_add" = 0 ] && [ "$rc" = 0 ] && [ "$certificates" = 1 ] && [ "$still_there" = 0 ] \
+        && [ "$rc_check" = 0 ] && [ "$rc_inspect" = 0 ] \
+        && [ "$publication_removed" -gt "$publication_added" ]; then
+        pass cli_remove_drops_the_certificate_and_republishes
+    else
+        fail cli_remove_drops_the_certificate_and_republishes \
+            "add=$rc_add remove=$rc certificates=$certificates still_there=$still_there check=$rc_check publications=$publication_added/$publication_removed out='$remove_out' err='$(cat "$TMP/err")'"
+    fi
+
+    # An identity the bundle does not carry: exit 1, and the file is not republished either — the
+    # generation must not move for a command that changed nothing.
+    before_content=$(cat "$STAMP_BUNDLE")
+    before_mtime=$(stat -c %Y "$STAMP_BUNDLE" 2>/dev/null || stat -f %m "$STAMP_BUNDLE")
+    sleep 1
+    rc=$(run "$CLI" -f "$CONFIG_STAMP" remove "x509-sha256:$CA3_ID")
+    after_mtime=$(stat -c %Y "$STAMP_BUNDLE" 2>/dev/null || stat -f %m "$STAMP_BUNDLE")
+    if [ "$rc" = 1 ] && grep -q "not found in bundle" "$TMP/err" \
+        && [ "$before_content" = "$(cat "$STAMP_BUNDLE")" ] && [ "$before_mtime" = "$after_mtime" ]; then
+        pass cli_remove_unknown_identity_leaves_the_bundle_unchanged
+    else
+        fail cli_remove_unknown_identity_leaves_the_bundle_unchanged \
+            "exit $rc; err='$(cat "$TMP/err")'; mtime_before=$before_mtime mtime_after=$after_mtime"
+    fi
+
+    # --- prune-expired: nothing expired, nothing written (C35) -----------------------------------
+    # The bundle is sealed, current and vouched, so the command must not touch the file at all: an
+    # unchanged bundle under a new generation sends the whole fleet back to GET /cacerts for bytes
+    # it already has, every night this runs from cron.
+    before_content=$(cat "$STAMP_BUNDLE")
+    before_mtime=$(stat -c %Y "$STAMP_BUNDLE" 2>/dev/null || stat -f %m "$STAMP_BUNDLE")
+    sleep 1
+    rc=$(run "$CLI" -f "$CONFIG_STAMP" prune-expired)
+    after_mtime=$(stat -c %Y "$STAMP_BUNDLE" 2>/dev/null || stat -f %m "$STAMP_BUNDLE")
+    if [ "$rc" = 0 ] && grep -q "nothing to prune" "$TMP/out" && [ -z "$(cat "$TMP/err")" ] \
+        && [ "$before_content" = "$(cat "$STAMP_BUNDLE")" ] && [ "$before_mtime" = "$after_mtime" ]; then
+        pass cli_prune_expired_with_nothing_expired_does_not_write
+    else
+        fail cli_prune_expired_with_nothing_expired_does_not_write \
+            "exit $rc; out='$(cat "$TMP/out")' err='$(cat "$TMP/err")'; mtime_before=$before_mtime mtime_after=$after_mtime"
+    fi
+
+    # ... but it does not stay silent about an UNPUBLISHED bundle (C36i): same exit 0, nothing
+    # written, and a line telling the operator which command fixes it.
+    UNSEALED_BUNDLE="$PKI/unsealed-bundle.pem"
+    cp "$PKI/ca-cert.pem" "$UNSEALED_BUNDLE"
+    CONFIG_UNSEALED="$PKI/config-unsealed.conf"
+    write_config "$CONFIG_UNSEALED" "$PKI/leaf-cert.pem" "$UNSEALED_BUNDLE"
+    before_content=$(cat "$UNSEALED_BUNDLE")
+    before_mtime=$(stat -c %Y "$UNSEALED_BUNDLE" 2>/dev/null || stat -f %m "$UNSEALED_BUNDLE")
+    sleep 1
+    rc=$(run "$CLI" -f "$CONFIG_UNSEALED" prune-expired)
+    after_mtime=$(stat -c %Y "$UNSEALED_BUNDLE" 2>/dev/null || stat -f %m "$UNSEALED_BUNDLE")
+    if [ "$rc" = 0 ] && grep -q "nothing to prune" "$TMP/out" \
+        && grep -q "not vouched; run 'stamp' to publish it" "$TMP/err" \
+        && [ "$before_content" = "$(cat "$UNSEALED_BUNDLE")" ] && [ "$before_mtime" = "$after_mtime" ]; then
+        pass cli_prune_expired_warns_about_an_unpublished_bundle
+    else
+        fail cli_prune_expired_warns_about_an_unpublished_bundle \
+            "exit $rc; out='$(cat "$TMP/out")' err='$(cat "$TMP/err")'; mtime_before=$before_mtime mtime_after=$after_mtime"
+    fi
+
+    # --- the other three commands refuse on a worker too (CA-30) --------------------------------
+    # Same bundle and same configuration as the `add` case above, so what is being compared is the
+    # command alone: each one refuses with exit 2, leaves the bundle alone and creates no lock file.
+    worker_failures=""
+    before_content=$(cat "$WORKER_BUNDLE")
+    for worker_command in remove prune-expired stamp; do
+        if [ "$worker_command" = remove ]; then
+            rc=$(run "$CLI" -f "$CONFIG_WORKER" "$worker_command" "x509-sha256:$CA2_ID")
+        else
+            rc=$(run "$CLI" -f "$CONFIG_WORKER" "$worker_command")
+        fi
+        if [ "$rc" != 2 ] || ! grep -q -- "--from-master" "$TMP/err" \
+            || [ "$before_content" != "$(cat "$WORKER_BUNDLE")" ] || [ -e "$WORKER_BUNDLE.lock" ]; then
+            worker_failures="$worker_failures $worker_command(exit=$rc)"
+        fi
+    done
+    if [ -z "$worker_failures" ]; then
+        pass cli_write_commands_refuse_on_worker_without_touching_the_bundle
+    else
+        fail cli_write_commands_refuse_on_worker_without_touching_the_bundle "failed:$worker_failures"
     fi
 fi
 
