@@ -21,7 +21,10 @@ endif()
 
 add_library(manager_certs_core STATIC
   src/commands/inspect.cpp
-  src/commands/check.cpp)
+  src/commands/check.cpp
+  src/commands/writeLock.cpp
+  src/commands/atomicWrite.cpp
+  src/commands/add.cpp)
 
 target_include_directories(manager_certs_core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include

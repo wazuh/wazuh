@@ -53,11 +53,12 @@ namespace
 
     void usage(std::FILE* out)
     {
-        std::fputs("Usage: wazuh-manager-certs [-f <file>] [-H <home>] <command>\n"
+        std::fputs("Usage: wazuh-manager-certs [-f <file>] [-H <home>] <command> [<argument>]\n"
                    "\n"
                    "Commands:\n"
                    "  inspect             Describe the CA bundle's certificates and publication status.\n"
                    "  check               Validate the CA bundle without writing anything.\n"
+                   "  add <file>          Add the certificates of <file> to the CA bundle and publish it.\n"
                    "\n"
                    "Options:\n"
                    "  -f <file>           Configuration file (default: <home>/etc/wazuh-manager.conf).\n"
@@ -69,10 +70,14 @@ namespace
                    "-h/--help and -V/--version never read the configuration: they work with every daemon\n"
                    "stopped and without a manager home set.\n"
                    "\n"
-                   "'add', 'remove', 'prune-expired', 'stamp' and '--from-master' arrive in later versions.\n"
+                   "'add' writes: it must run as root, on the master node, and it takes an exclusive lock\n"
+                   "on <bundle>.lock while it reads, validates and replaces the bundle.\n"
                    "\n"
-                   "Exit status: 0 success; 1 the bundle was rejected, or a usage error; 2 environment error\n"
-                   "(configuration, bundle or leaf could not be read).\n",
+                   "'remove', 'prune-expired', 'stamp' and '--from-master' arrive in later versions.\n"
+                   "\n"
+                   "Exit status: 0 success; 1 the bundle or the certificate was rejected, or a usage error;\n"
+                   "2 environment error (configuration, bundle, leaf or input could not be read, or this is\n"
+                   "not a root process).\n",
                    out);
     }
 
@@ -284,6 +289,50 @@ namespace
         return leaf;
     }
 
+    /// The writing commands' own path: the leaf and the input file are read here (main.cpp is the
+    /// only piece of this tool that opens a file, D-1), and the bundle is opened by prepareWrite()
+    /// under the lock -- never before it, so what a guard validated is what gets published.
+    int runWrite(const std::string& command,
+                 const std::string& argument,
+                 const std::filesystem::path& bundlePath,
+                 const std::filesystem::path& leafPath)
+    {
+        // The leaf first: every candidate is validated against it (C15, G6), so a missing one is an
+        // environment error before any lock is taken.
+        const BoundedRead leafRead = readBounded(leafPath);
+        if (!leafRead.contents)
+        {
+            return environmentError(describeReadFailure("leaf certificate", leafPath, leafRead));
+        }
+        ca_bundle::X509Ptr leaf = parseLeaf(*leafRead.contents);
+        if (!leaf)
+        {
+            return environmentError("leaf certificate does not parse as a single certificate: " + leafPath.string());
+        }
+
+        const std::filesystem::path inputPath {argument};
+        const BoundedRead inputRead = readBounded(inputPath);
+        if (!inputRead.contents)
+        {
+            return environmentError(describeReadFailure("input file", inputPath, inputRead));
+        }
+
+        manager_certs::WriteRequest request;
+        request.command = command;
+        request.bundlePath = bundlePath;
+        request.leaf = leaf.get();
+        request.writtenBy = std::string {"wazuh-manager-certs "} + WAZUH_MANAGER_CERTS_VERSION;
+
+        manager_certs::PrepareOutcome prepared = manager_certs::prepareWrite(std::move(request));
+        if (!prepared.context)
+        {
+            std::fprintf(stderr, "wazuh-manager-certs: %s\n", prepared.message.c_str());
+            return prepared.exitCode;
+        }
+
+        return manager_certs::runAdd(*prepared.context, *inputRead.contents, inputPath, std::cout, std::cerr);
+    }
+
     int run(int argc, char** argv)
     {
         std::string file;
@@ -326,11 +375,19 @@ namespace
             return usageError("missing command");
         }
         const std::string& command = positional[0];
-        if (command != "inspect" && command != "check")
+        const bool writes = command == "add";
+        if (command != "inspect" && command != "check" && !writes)
         {
             return usageError("'" + command + "' is not available yet (it arrives in a later version)");
         }
-        if (positional.size() != 1)
+        if (writes)
+        {
+            if (positional.size() != 2)
+            {
+                return usageError("'" + command + "' takes exactly one argument: the file to add");
+            }
+        }
+        else if (positional.size() != 1)
         {
             return usageError("'" + command + "' takes no arguments");
         }
@@ -364,6 +421,21 @@ namespace
             return environmentError("internal error: the effective configuration is not valid JSON");
         }
 
+        // G0 and G7, before anything reads, opens or locks the bundle (C34c): a writing command on
+        // the wrong account or on a worker node must not even create the lock file. Both come from
+        // the effective configuration and the process itself, never from the bundle.
+        if (writes)
+        {
+            int guardExit = 0;
+            const std::string failure = manager_certs::writeEnvironmentFailure(
+                command, ::geteuid(), stringAt(json, "/cluster/node_type"), guardExit);
+            if (!failure.empty())
+            {
+                std::fprintf(stderr, "wazuh-manager-certs: %s\n", failure.c_str());
+                return guardExit;
+            }
+        }
+
         const std::string bundlePathString = stringAt(json, "/remote/https/ca_certificate");
         const std::string leafPathString = stringAt(json, "/remote/https/certificate");
         if (bundlePathString.empty())
@@ -376,6 +448,11 @@ namespace
         }
         const std::filesystem::path bundlePath = resolvePath(bundlePathString, homePath);
         const std::filesystem::path leafPath = resolvePath(leafPathString, homePath);
+
+        if (writes)
+        {
+            return runWrite(command, positional[1], bundlePath, leafPath);
+        }
 
         // Bundle before leaf, always (tests/cli/manager_certs_cli_test.sh relies on this order to
         // tell which file a fixture's exit-2 is about).

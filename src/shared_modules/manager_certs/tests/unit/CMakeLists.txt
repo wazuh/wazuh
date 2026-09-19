@@ -6,8 +6,11 @@ file(GLOB SOURCES *.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-# ../testPki.hpp, a sibling of unit/ (not vendored per-suite: one copy, shared by every case file here).
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+# ../testPki.hpp, a sibling of unit/ (not vendored per-suite: one copy, shared by every case file here),
+# and ../../src for the module's own private headers: managerCertsWrite_test.cpp exercises
+# BundleWriteLock and atomicWrite() directly, and they are deliberately NOT part of the public
+# include/manager_certs/ surface (only the transaction that uses them is).
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../../src)
 
 # manager_certs_core links ca_bundle PUBLIC, which itself links `crypto` PUBLIC (ca_bundle/test/CMakeLists.txt),
 # so this target gets manager_certs/ and ca_bundle/ headers plus the vendored OpenSSL archive testPki.hpp needs,

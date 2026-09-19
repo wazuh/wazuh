@@ -9,6 +9,11 @@
 # opens a file at all; the GTest suite calls runCheck()/runInspect() directly and so can never see a
 # regression in main.cpp itself — review of 4ba63dda7e, objections #7/#8/#9).
 #
+# From E7a it also covers the two things only REAL PROCESSES can show about `add`: two of them
+# publishing at once must not lose either certificate (the exclusive lock, C34f), and a refused
+# `add` must leave the bundle untouched — which the GTest cases over finishWrite() cannot prove for
+# main.cpp itself. Those cases need root (G0) and are skipped, not failed, without it.
+#
 # Runs from ctest as `manager_certs_cli`, outside the ASAN job (which selects only the
 # `manager_certs_utest` GTest label, since it never builds this binary with ASAN).
 #
@@ -35,6 +40,8 @@ TOTAL=0
 FAILS=0
 pass() { TOTAL=$((TOTAL + 1)); echo "  ok   $1"; }
 fail() { TOTAL=$((TOTAL + 1)); FAILS=$((FAILS + 1)); echo "  FAIL $1: $2" >&2; }
+# Not a pass and not a failure: a case whose precondition this environment cannot meet.
+skip() { echo "  skip $1: $2"; }
 
 # run <cmd...>: captures stdout/stderr in $TMP/out and $TMP/err, prints the exit code.
 run() {
@@ -239,6 +246,124 @@ if [ "$rc" = 1 ] && grep -q "content hash does not match" "$TMP/err" \
 else
     fail cli_check_rejects_bad_hash_and_leaves_it_unchanged \
         "exit $rc; err='$(cat "$TMP/err")'; content_changed=$([ "$before_content" = "$after_content" ] && echo no || echo YES); mtime_before=$before_mtime mtime_after=$after_mtime"
+fi
+
+# ----------------------------------------------------------------------------------- add --------
+# `add` writes, so every case below needs root (G0) and a bundle of its own, never the fixtures the
+# read-only cases above assert are unchanged.
+
+if [ "$(id -u)" != 0 ]; then
+    skip cli_add_cases "add must run as root (euid 0); nothing here can exercise it"
+else
+    require openssl ecparam -name prime256v1 -genkey -noout -out "$PKI/ca2-key.pem"
+    require openssl req -new -x509 -key "$PKI/ca2-key.pem" -days 400 -sha256 \
+        -subj "/CN=manager-certs-cli-test-ca2" \
+        -addext "basicConstraints=critical,CA:TRUE" -addext "keyUsage=critical,keyCertSign,cRLSign" \
+        -out "$PKI/ca2-cert.pem"
+    require openssl ecparam -name prime256v1 -genkey -noout -out "$PKI/ca3-key.pem"
+    require openssl req -new -x509 -key "$PKI/ca3-key.pem" -days 400 -sha256 \
+        -subj "/CN=manager-certs-cli-test-ca3" \
+        -addext "basicConstraints=critical,CA:TRUE" -addext "keyUsage=critical,keyCertSign,cRLSign" \
+        -out "$PKI/ca3-cert.pem"
+
+    CA2_ID=$(openssl x509 -in "$PKI/ca2-cert.pem" -outform DER | sha256sum | awk '{print $1}')
+    CA3_ID=$(openssl x509 -in "$PKI/ca3-cert.pem" -outform DER | sha256sum | awk '{print $1}')
+
+    # --- a worker refuses before it takes the lock -----------------------------------------------
+    WORKER_BUNDLE="$PKI/worker-bundle.pem"
+    write_sealed_bundle "$WORKER_BUNDLE" "$(date +%s)" "$CONTENT_SHA256" "$PKI/ca-cert.pem"
+    CONFIG_WORKER="$PKI/config-worker.conf"
+    cat > "$CONFIG_WORKER" << CONF
+<wazuh_config>
+  <remote>
+    <https>
+      <certificate>$PKI/leaf-cert.pem</certificate>
+      <key>$PKI/leaf-key.pem</key>
+      <ca_certificate>$WORKER_BUNDLE</ca_certificate>
+    </https>
+  </remote>
+  <cluster>
+    <node_type>worker</node_type>
+    <key>0123456789abcdef0123456789abcdef</key>
+  </cluster>
+  <indexer>
+    <hosts>
+      <host>https://127.0.0.1:9200</host>
+    </hosts>
+  </indexer>
+</wazuh_config>
+CONF
+    before_content=$(cat "$WORKER_BUNDLE")
+    rc=$(run "$CLI" -f "$CONFIG_WORKER" add "$PKI/ca2-cert.pem")
+    # No lock file either: G7 is evaluated before anything opens or locks the bundle (C34c), so a
+    # worker never leaves a trace beside it.
+    if [ "$rc" = 2 ] && grep -q -- "--from-master" "$TMP/err" \
+        && [ "$before_content" = "$(cat "$WORKER_BUNDLE")" ] && [ ! -e "$WORKER_BUNDLE.lock" ]; then
+        pass cli_add_on_worker_refuses_without_touching_the_bundle
+    else
+        fail cli_add_on_worker_refuses_without_touching_the_bundle \
+            "exit $rc; err='$(cat "$TMP/err")'; lock_exists=$([ -e "$WORKER_BUNDLE.lock" ] && echo YES || echo no)"
+    fi
+
+    # --- a refused add leaves the bundle byte for byte ------------------------------------------
+    # The bundle holds a CA that does NOT sign the served leaf, so adding another unrelated CA is
+    # refused by G6 — the guard that runs last, after the whole candidate has been built.
+    ORPHAN_BUNDLE="$PKI/orphan-bundle.pem"
+    ORPHAN_SHA256=$(openssl x509 -in "$PKI/ca2-cert.pem" -outform DER | sha256sum | awk '{print $1}')
+    write_sealed_bundle "$ORPHAN_BUNDLE" "$(date +%s)" "$ORPHAN_SHA256" "$PKI/ca2-cert.pem"
+    CONFIG_ORPHAN="$PKI/config-orphan.conf"
+    write_config "$CONFIG_ORPHAN" "$PKI/leaf-cert.pem" "$ORPHAN_BUNDLE"
+
+    before_content=$(cat "$ORPHAN_BUNDLE")
+    before_mtime=$(stat -c %Y "$ORPHAN_BUNDLE" 2>/dev/null || stat -f %m "$ORPHAN_BUNDLE")
+    sleep 1
+    rc=$(run "$CLI" -f "$CONFIG_ORPHAN" add "$PKI/ca3-cert.pem")
+    after_mtime=$(stat -c %Y "$ORPHAN_BUNDLE" 2>/dev/null || stat -f %m "$ORPHAN_BUNDLE")
+    temporaries=$(find "$PKI" -name "orphan-bundle.pem.tmp.*" | wc -l)
+    if [ "$rc" = 1 ] && grep -q "no CA signs the served leaf" "$TMP/err" \
+        && [ "$before_content" = "$(cat "$ORPHAN_BUNDLE")" ] && [ "$before_mtime" = "$after_mtime" ] \
+        && [ "$temporaries" = 0 ]; then
+        pass cli_add_rejected_leaves_the_bundle_unchanged
+    else
+        fail cli_add_rejected_leaves_the_bundle_unchanged \
+            "exit $rc; err='$(cat "$TMP/err")'; mtime_before=$before_mtime mtime_after=$after_mtime temporaries=$temporaries"
+    fi
+
+    # --- two real processes publishing at once ---------------------------------------------------
+    # Without the exclusive lock both read the same bundle and the second rename wins, so one
+    # operator's CA disappears from the file the whole fleet trusts (C34f). With it, both land.
+    SHARED_BUNDLE="$PKI/shared-bundle.pem"
+    write_sealed_bundle "$SHARED_BUNDLE" "$(date +%s)" "$CONTENT_SHA256" "$PKI/ca-cert.pem"
+    CONFIG_SHARED="$PKI/config-shared.conf"
+    write_config "$CONFIG_SHARED" "$PKI/leaf-cert.pem" "$SHARED_BUNDLE"
+
+    "$CLI" -f "$CONFIG_SHARED" add "$PKI/ca2-cert.pem" > "$TMP/add2.out" 2> "$TMP/add2.err" &
+    pid2=$!
+    "$CLI" -f "$CONFIG_SHARED" add "$PKI/ca3-cert.pem" > "$TMP/add3.out" 2> "$TMP/add3.err" &
+    pid3=$!
+    wait $pid2; rc2=$?
+    wait $pid3; rc3=$?
+
+    certificates=$(grep -c "BEGIN CERTIFICATE" "$SHARED_BUNDLE")
+    rc_inspect=$(run "$CLI" -f "$CONFIG_SHARED" inspect)
+    identities=$(grep -c "^identity: x509-sha256:\($CA2_ID\|$CA3_ID\)$" "$TMP/out")
+    rc_check=$(run "$CLI" -f "$CONFIG_SHARED" check)
+    temporaries=$(find "$PKI" -name "shared-bundle.pem.tmp.*" | wc -l)
+    if [ "$rc2" = 0 ] && [ "$rc3" = 0 ] && [ "$certificates" = 3 ] && [ "$identities" = 2 ] \
+        && [ "$rc_inspect" = 0 ] && [ "$rc_check" = 0 ] && [ "$temporaries" = 0 ]; then
+        pass cli_two_concurrent_adds_keep_both_certificates
+    else
+        fail cli_two_concurrent_adds_keep_both_certificates \
+            "exits $rc2/$rc3; certificates=$certificates identities=$identities check=$rc_check temporaries=$temporaries; err2='$(cat "$TMP/add2.err")' err3='$(cat "$TMP/add3.err")'"
+    fi
+
+    # Strictly increasing publications, from two processes that started in the same second (CA-24).
+    first_publication=$(sed -n 's/^## Publication: //p' "$SHARED_BUNDLE")
+    if [ -n "$first_publication" ] && [ "$first_publication" -gt 0 ]; then
+        pass cli_concurrent_adds_leave_a_published_bundle
+    else
+        fail cli_concurrent_adds_leave_a_published_bundle "publication='$first_publication'"
+    fi
 fi
 
 echo "manager_certs_cli_test: $((TOTAL - FAILS))/$TOTAL passed"
