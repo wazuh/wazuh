@@ -66,10 +66,18 @@ namespace
                    "  stamp               Publish the CA bundle's certificates unchanged, under a new\n"
                    "                      generation.\n"
                    "\n"
+                   "  --from-master [--master <host>] [--port <port>]\n"
+                   "                      Worker nodes only: download the CA bundle the master publishes at\n"
+                   "                      GET /cacerts over HTTPS and install it here, under the generation\n"
+                   "                      the master announces. Not a command word: it is an option, and it\n"
+                   "                      takes no argument of its own.\n"
+                   "\n"
                    "Options:\n"
                    "  -f <file>           Configuration file (default: <home>/etc/wazuh-manager.conf).\n"
                    "  -H <home>           Manager home used to resolve relative paths (default: $WAZUH_MANAGER_HOME,\n"
                    "                      else the parent of the bin/ directory holding this program).\n"
+                   "  --master <host>     Master to pull from (default: the first of cluster.nodes).\n"
+                   "  --port <port>       Master's HTTPS port (default: remote.https.port).\n"
                    "  -h, --help          This help.\n"
                    "  -V, --version       Print the version.\n"
                    "\n"
@@ -80,7 +88,10 @@ namespace
                    "master node, and each takes an exclusive lock on <bundle>.lock while it reads, validates\n"
                    "and replaces the bundle. None of them creates the bundle.\n"
                    "\n"
-                   "'--from-master', for worker nodes, is not available yet.\n"
+                   "'--from-master' writes too, and mirrors that rule: root, on a WORKER node, under the same\n"
+                   "lock -- taken before it connects, so the CA that verifies the master is the one the write\n"
+                   "publishes over. The master's certificate is verified against this node's own bundle and\n"
+                   "nothing else; no option relaxes that.\n"
                    "\n"
                    "Exit status: 0 success; 1 the bundle or the certificate was rejected, or a usage error;\n"
                    "2 environment error (configuration, bundle, leaf or input could not be read, or this is\n"
@@ -135,6 +146,16 @@ namespace
     {
         const rapidjson::Value* value = rapidjson::Pointer(pointer).Get(document);
         return (value != nullptr && value->IsString()) ? value->GetString() : std::string {};
+    }
+
+    /// The integer at @p pointer written out, or an empty string when absent or not an integer.
+    /// The effective configuration materialises schema defaults (`wazuh-manager-conf get
+    /// remote.https.port` prints 1517 for a file that never mentions it), so an empty answer here
+    /// means the configuration really has no such option, not that it was left out of the file.
+    std::string numberAt(const rapidjson::Document& document, const char* pointer)
+    {
+        const rapidjson::Value* value = rapidjson::Pointer(pointer).Get(document);
+        return (value != nullptr && value->IsInt64()) ? std::to_string(value->GetInt64()) : std::string {};
     }
 
     /// Largest file this tool will ever read for the bundle or the leaf: the same cap remoted
@@ -362,10 +383,60 @@ namespace
         return manager_certs::runStamp(*prepared.context, std::cout, std::cerr);
     }
 
+    /// `--from-master`: the worker's own write path. Same shape as runWrite() -- main.cpp reads the
+    /// leaf (D-1) and hands everything else over -- except that the transaction is opened inside
+    /// runFromMaster(), because the lock has to be held BEFORE the download starts (C39d), not
+    /// after it, and the download is the part that needs the bundle this lock protects.
+    int runFromMasterCommand(const rapidjson::Document& json,
+                             const std::string& masterOption,
+                             const std::string& portOption,
+                             const std::filesystem::path& bundlePath,
+                             const std::filesystem::path& leafPath)
+    {
+        const BoundedRead leafRead = readBounded(leafPath);
+        if (!leafRead.contents)
+        {
+            return environmentError(describeReadFailure("leaf certificate", leafPath, leafRead));
+        }
+        ca_bundle::X509Ptr leaf = parseLeaf(*leafRead.contents);
+        if (!leaf)
+        {
+            return environmentError("leaf certificate does not parse as a single certificate: " + leafPath.string());
+        }
+
+        // Where the master is: the two options override the configuration, in the one direction an
+        // operator needs when the cluster section does not describe the node they can actually
+        // reach. The port is required -- the schema gives it a default, so an absent one means the
+        // configuration itself is not usable -- while an absent host is refused by runFromMaster()
+        // with the message that tells the operator to pass --master.
+        const std::string port = portOption.empty() ? numberAt(json, "/remote/https/port") : portOption;
+        if (port.empty())
+        {
+            return environmentError("the effective configuration does not set /remote/https/port");
+        }
+
+        manager_certs::WriteRequest request;
+        request.command = "--from-master";
+        request.bundlePath = bundlePath;
+        request.leaf = leaf.get();
+        request.writtenBy = std::string {"wazuh-manager-certs "} + WAZUH_MANAGER_CERTS_VERSION;
+
+        manager_certs::FromMasterRequest fetch;
+        fetch.host = masterOption.empty() ? stringAt(json, "/cluster/nodes/0") : masterOption;
+        fetch.port = port;
+        fetch.globalPrefix = stringAt(json, "/remote/https/global_prefix");
+
+        return manager_certs::runFromMaster(std::move(request), std::move(fetch), std::cout, std::cerr);
+    }
+
     int run(int argc, char** argv)
     {
         std::string file;
         std::string home;
+        std::string master;
+        std::string port;
+        bool fromMaster = false;
+        bool addressGiven = false;
         std::vector<std::string> positional;
 
         for (int i = 1; i < argc; ++i)
@@ -381,7 +452,24 @@ namespace
                 std::printf("wazuh-manager-certs %s\n", WAZUH_MANAGER_CERTS_VERSION);
                 return EXIT_OK;
             }
-            if (arg == "-f" || arg == "-H")
+            // `--from-master` is an OPTION, not a command word: it is the one thing this tool does
+            // that is not a verb over the local bundle, and its two modifiers only make sense with
+            // it. Parsed here, before the positional command is even looked at, so the command
+            // grammar below stays exactly what it was for the six commands.
+            if (arg == "--from-master")
+            {
+                fromMaster = true;
+            }
+            else if (arg == "--master" || arg == "--port")
+            {
+                if (i + 1 >= argc)
+                {
+                    return usageError(std::string(arg) + " needs an argument");
+                }
+                (arg == "--master" ? master : port) = argv[++i];
+                addressGiven = true;
+            }
+            else if (arg == "-f" || arg == "-H")
             {
                 if (i + 1 >= argc)
                 {
@@ -399,29 +487,41 @@ namespace
             }
         }
 
-        if (positional.empty())
+        if (addressGiven && !fromMaster)
+        {
+            return usageError("'--master' and '--port' are only used with '--from-master'");
+        }
+        if (fromMaster && !positional.empty())
+        {
+            return usageError("'--from-master' takes no command, and '" + positional[0] + "' was given");
+        }
+        if (!fromMaster && positional.empty())
         {
             return usageError("missing command");
         }
-        const std::string& command = positional[0];
+
+        const std::string command = fromMaster ? std::string {"--from-master"} : positional[0];
         const bool writes = command == "add" || command == "remove" || command == "prune-expired" || command == "stamp";
-        if (command != "inspect" && command != "check" && !writes)
+        if (!fromMaster)
         {
-            return usageError("'" + command + "' is not a wazuh-manager-certs command");
-        }
-        // `add` takes the file to add and `remove` the identity to drop; the other four take
-        // nothing at all.
-        if (command == "add" || command == "remove")
-        {
-            if (positional.size() != 2)
+            if (command != "inspect" && command != "check" && !writes)
             {
-                return usageError("'" + command + "' takes exactly one argument: " +
-                                  (command == "add" ? "the file to add" : "the identity to remove"));
+                return usageError("'" + command + "' is not a wazuh-manager-certs command");
             }
-        }
-        else if (positional.size() != 1)
-        {
-            return usageError("'" + command + "' takes no arguments");
+            // `add` takes the file to add and `remove` the identity to drop; the other four take
+            // nothing at all.
+            if (command == "add" || command == "remove")
+            {
+                if (positional.size() != 2)
+                {
+                    return usageError("'" + command + "' takes exactly one argument: " +
+                                      (command == "add" ? "the file to add" : "the identity to remove"));
+                }
+            }
+            else if (positional.size() != 1)
+            {
+                return usageError("'" + command + "' takes no arguments");
+            }
         }
 
         const std::filesystem::path homePath = resolveHome(home);
@@ -456,11 +556,16 @@ namespace
         // G0 and G7, before anything reads, opens or locks the bundle (C34c): a writing command on
         // the wrong account or on a worker node must not even create the lock file. Both come from
         // the effective configuration and the process itself, never from the bundle.
-        if (writes)
+        if (writes || fromMaster)
         {
             int guardExit = 0;
-            const std::string failure = manager_certs::writeEnvironmentFailure(
-                command, ::geteuid(), stringAt(json, "/cluster/node_type"), guardExit);
+            const std::string nodeType = stringAt(json, "/cluster/node_type");
+            // The same G0 for both, and G7 the other way round for `--from-master`: the four
+            // commands publish here and refuse on a worker, this one installs what the master
+            // published and refuses anywhere else (C37a).
+            const std::string failure =
+                fromMaster ? manager_certs::fromMasterEnvironmentFailure(command, ::geteuid(), nodeType, guardExit)
+                           : manager_certs::writeEnvironmentFailure(command, ::geteuid(), nodeType, guardExit);
             if (!failure.empty())
             {
                 std::fprintf(stderr, "wazuh-manager-certs: %s\n", failure.c_str());
@@ -480,6 +585,11 @@ namespace
         }
         const std::filesystem::path bundlePath = resolvePath(bundlePathString, homePath);
         const std::filesystem::path leafPath = resolvePath(leafPathString, homePath);
+
+        if (fromMaster)
+        {
+            return runFromMasterCommand(json, master, port, bundlePath, leafPath);
+        }
 
         if (writes)
         {

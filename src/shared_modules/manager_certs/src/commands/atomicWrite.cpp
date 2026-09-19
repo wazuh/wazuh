@@ -513,6 +513,35 @@ namespace manager_certs
         return {};
     }
 
+    std::string fromMasterEnvironmentFailure(const std::string& command,
+                                             uid_t effectiveUid,
+                                             const std::string& nodeType,
+                                             int& exitCode)
+    {
+        // G0, unchanged: `--from-master` replaces the same root:<group> 0640 file the four writing
+        // commands do, so it needs the same account (P26/C38c).
+        if (effectiveUid != 0)
+        {
+            exitCode = 2;
+            return command + ": must run as root (euid 0)";
+        }
+
+        // G7 mirrored (C37a): only a worker pulls. A master mints its own generations with `stamp`,
+        // and installing one it downloaded -- from itself, or from another master -- would publish
+        // a number it never assigned. Exit 2, the same class as G0 and as the master's own G7: this
+        // node is not the place, which says nothing about the material.
+        if (nodeType != "worker")
+        {
+            exitCode = 2;
+            return command + ": this node is not a cluster worker (cluster.node_type is '" +
+                   (nodeType.empty() ? std::string {"master"} : nodeType) +
+                   "'); publish here with 'wazuh-manager-certs stamp'";
+        }
+
+        exitCode = 0;
+        return {};
+    }
+
     // ----------------------------------------------------------------------- the transaction ----
 
     PrepareOutcome prepareWrite(WriteRequest request)
@@ -656,7 +685,8 @@ namespace manager_certs
 
     WriteOutcome finishWrite(WriteContext& context,
                              std::vector<ca_bundle::X509Ptr> candidate,
-                             const std::function<std::string(std::time_t now)>& recheckAfterWait)
+                             const std::function<std::string(std::time_t now)>& recheckAfterWait,
+                             std::optional<std::int64_t> explicitPublication)
     {
         WriteOutcome outcome;
         const std::string prefix = context.command + ": ";
@@ -689,46 +719,62 @@ namespace manager_certs
             return refuse(1, "no CA signs the served leaf");
         }
 
-        // G8 (C28b): never publish a timestamp in the future, and never one that is not strictly
-        // greater than the current publication. Behind it is a refusal; equal to it -- or with no
-        // publication at all, where the file may well have been published in this very second and
-        // lost its block (C30/C36e) -- is a wait for the next second.
-        const TimeSource time = effectiveTime(context.time);
+        // G8 (C28b), and ONLY when the publication is this node's to decide. With
+        // `explicitPublication` the number came from the master's header (`--from-master`, C37b):
+        // it is not a reading of this clock, so neither "never publish the future" nor the wait for
+        // the next second mean anything about it, and the monotonicity that does matter -- against
+        // the publication this node already serves -- was decided by the caller against
+        // `context.previousPublication`, captured under this same lock before the download (C39d).
+        // Everything below this block still runs, which is the whole point: a bundle the master
+        // vouches for still has to chain to THIS node's leaf, fit the caps and hash (C39h).
         const std::int64_t previous = context.previousPublication;
-        std::int64_t now = static_cast<std::int64_t>(time.now());
-        if (now < previous)
+        std::int64_t now = 0;
+        if (explicitPublication)
         {
-            return refuse(1, "clock is behind the current publication " + std::to_string(previous));
+            now = *explicitPublication;
         }
-
-        if (previous == 0 || now == previous)
+        else
         {
-            const std::int64_t target = std::max(previous, now);
-            const std::int64_t started = time.monotonicNow();
-            while (true)
+            // G8: never publish a timestamp in the future, and never one that is not strictly
+            // greater than the current publication. Behind it is a refusal; equal to it -- or with
+            // no publication at all, where the file may well have been published in this very
+            // second and lost its block (C30/C36e) -- is a wait for the next second.
+            const TimeSource time = effectiveTime(context.time);
+            now = static_cast<std::int64_t>(time.now());
+            if (now < previous)
             {
-                time.sleepUntilNextSecond();
-                const std::int64_t woke = static_cast<std::int64_t>(time.now());
-                if (woke < previous)
+                return refuse(1, "clock is behind the current publication " + std::to_string(previous));
+            }
+
+            if (previous == 0 || now == previous)
+            {
+                const std::int64_t target = std::max(previous, now);
+                const std::int64_t started = time.monotonicNow();
+                while (true)
                 {
-                    return refuse(1, "clock is behind the current publication " + std::to_string(previous));
-                }
-                if (woke < target)
-                {
-                    return refuse(1, "the clock moved backwards while waiting for the next second");
-                }
-                if (woke > target)
-                {
-                    now = woke;
-                    break;
-                }
-                // The monotonic clock is what bounds this: a wall clock frozen on `target` would
-                // otherwise keep a root command here forever.
-                if (time.monotonicNow() - started >= kMaxWaitSeconds)
-                {
-                    return refuse(1,
-                                  "the clock did not advance past " + std::to_string(target) + " within " +
-                                      std::to_string(kMaxWaitSeconds) + " seconds");
+                    time.sleepUntilNextSecond();
+                    const std::int64_t woke = static_cast<std::int64_t>(time.now());
+                    if (woke < previous)
+                    {
+                        return refuse(1, "clock is behind the current publication " + std::to_string(previous));
+                    }
+                    if (woke < target)
+                    {
+                        return refuse(1, "the clock moved backwards while waiting for the next second");
+                    }
+                    if (woke > target)
+                    {
+                        now = woke;
+                        break;
+                    }
+                    // The monotonic clock is what bounds this: a wall clock frozen on `target`
+                    // would otherwise keep a root command here forever.
+                    if (time.monotonicNow() - started >= kMaxWaitSeconds)
+                    {
+                        return refuse(1,
+                                      "the clock did not advance past " + std::to_string(target) + " within " +
+                                          std::to_string(kMaxWaitSeconds) + " seconds");
+                    }
                 }
             }
         }

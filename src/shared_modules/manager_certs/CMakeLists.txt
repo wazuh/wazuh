@@ -27,15 +27,27 @@ add_library(manager_certs_core STATIC
   src/commands/add.cpp
   src/commands/remove.cpp
   src/commands/pruneExpired.cpp
-  src/commands/stamp.cpp)
+  src/commands/stamp.cpp
+  src/commands/masterTransport.cpp
+  src/commands/fromMaster.cpp)
 
 target_include_directories(manager_certs_core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${SRC_FOLDER}/external/curl/include)
 
 # PUBLIC: the public header names ca_bundle types (ParsedBundle, X509Ptr), so every consumer needs
 # its include directories, and ca_bundle itself carries the vendored libcrypto forward.
 target_link_libraries(manager_certs_core PUBLIC ca_bundle)
+
+# --from-master's transport (src/commands/masterTransport.cpp), and nothing more than it needs
+# (C38d/P27): `ext_curl` is an IMPORTED STATIC target with no INTERFACE_LINK_LIBRARIES of its own
+# (src/external/CMakeLists.txt:357-360), so a consumer has to name curl's own dependencies --
+# `ssl`/`crypto` (the GLOBAL aliases of openssl_ssl/openssl_crypto, :106,115) and `ext_zlib` (:157),
+# because this leg configures curl --with-openssl --with-zlib (:296-320). Deliberately NOT
+# `wazuhext`, which would drag sqlite, yaml, pcre2 and bzip2 into a CLI (task_manager's
+# CMakeLists.txt:66-72 is the antipattern), and deliberately not a bare -lcurl either
+# (http-request's :70,76-80): this binary must use the vendored 8.20, not the host's.
+target_link_libraries(manager_certs_core PRIVATE ext_curl ssl crypto ext_zlib)
 
 # bin/wazuh-manager-certs: inspect / check, and the four writing commands (add / remove /
 # prune-expired / stamp); --from-master lands in a later stage. Installed by InstallLocal(), like

@@ -164,6 +164,58 @@ namespace manager_certs
     TimeSource systemTimeSource();
 
     /**
+     * @brief One HTTPS GET of the master's published bundle: everything the transport is allowed to
+     *        decide from, and nothing else (`anexos/e8/tls-transporte.md` §1-7).
+     *
+     * @p trustBundle is the LOCAL bundle's bytes, handed to libcurl as `CURLOPT_CAINFO_BLOB`: the
+     * only trust source the connection has (CA-33). Not a path -- a path would let libcurl open a
+     * file outside the 1 MiB cap this tool applies to everything it reads (C38) -- and never
+     * anything that came back in the response.
+     */
+    struct MasterFetch
+    {
+        std::string url;         ///< Already built from components by runFromMaster() (C39g).
+        std::string trustBundle; ///< The local bundle, verbatim; empty is refused before we get here.
+        std::string headerName;  ///< The response header the generation travels in.
+        long timeoutSeconds {10};
+        std::size_t maxBodyBytes {1024U * 1024U}; ///< Checked BEFORE appending each chunk (C39c).
+    };
+
+    /// How a fetch ended. Preparation and transfer are told apart because they are different
+    /// operator problems -- a refused `setopt` is this build, a refused transfer is the network or
+    /// the master -- even though both exit 2 (C39a).
+    enum class MasterFetchFailure
+    {
+        none,        ///< A complete HTTP 200 whose body stayed under the cap.
+        preparation, ///< `curl_easy_init()` or a security `setopt` refused: NOTHING was sent.
+        transfer     ///< The request was made and did not produce a complete 200.
+    };
+
+    /// What MasterTransport::get() came back with. `body` and `generation` are meaningless unless
+    /// `failure` is `none` AND `httpStatus` is 200 (C39b).
+    struct MasterFetchResult
+    {
+        MasterFetchFailure failure {MasterFetchFailure::none};
+        std::string message;                   ///< Names the option and the CURLcode, or curl's own cause.
+        long httpStatus {0};                   ///< CURLINFO_RESPONSE_CODE of the final response; only 200 counts.
+        std::string body;                      ///< At most MasterFetch::maxBodyBytes.
+        std::optional<std::string> generation; ///< Header value of the LAST response seen, trimmed.
+    };
+
+    /**
+     * @brief The download as a seam, so every guard around it can be tested without a network.
+     *
+     * Same shape and the same reason as IoPort and TimeSource: an unreachable master, a 302 with a
+     * perfectly good body, a header that says `banana` and a body that does not parse are all
+     * states a unit test has to produce, and none of them can be produced by asking a real master
+     * for a real bundle. Empty means the real libcurl one (src/commands/masterTransport.hpp).
+     */
+    struct MasterTransport
+    {
+        std::function<MasterFetchResult(const MasterFetch&)> get {};
+    };
+
+    /**
      * @brief The destination exactly as prepareWrite() read it: what the write has to preserve, and
      *        what it re-checks before publishing (C36f).
      *
@@ -262,6 +314,24 @@ namespace manager_certs
     writeEnvironmentFailure(const std::string& command, uid_t effectiveUid, const std::string& nodeType, int& exitCode);
 
     /**
+     * @brief The same two guards for `--from-master`, with G7 MIRRORED: this one may only run on a
+     *        worker (C37a, C38c).
+     *
+     * G0 is unchanged -- `--from-master` writes the bundle too, so it needs the one account that
+     * may (P26). G7 is inverted: a master publishes with `stamp`, and pulling its own bundle from
+     * itself (or from another master) would install a generation it did not mint. Both failures are
+     * exit 2, like every other "this node is not the place" condition, so a script walking a
+     * cluster tells them from a refused certificate (exit 1) by the code alone.
+     *
+     * @param nodeType `/cluster/node_type` of the effective configuration; anything other than
+     *                 `worker` -- including the `master` default and an empty string -- is refused.
+     */
+    std::string fromMasterEnvironmentFailure(const std::string& command,
+                                             uid_t effectiveUid,
+                                             const std::string& nodeType,
+                                             int& exitCode);
+
+    /**
      * @brief Opens the transaction: lock, then the bundle, then its contents parsed.
      *
      * In that order and no other (C36f): the lock comes first so the bytes we read are the bytes we
@@ -298,10 +368,21 @@ namespace manager_certs
      *                  certificates it is adding), re-evaluated with the post-wait wall clock. It
      *                  returns the message to refuse with, or an empty string. The X509 objects it
      *                  looks at live in @p candidate, which outlives the call.
+     * @param explicitPublication The generation to write, when it is NOT this node's to decide:
+     *                  `--from-master` writes the one the master announced in its header, so the
+     *                  fleet reads the same number from either node (C37b). With a value, G8 --
+     *                  and ONLY G8, the block above that reads the clock and waits for the next
+     *                  second -- is skipped whole, and this value takes `now`'s place for
+     *                  @p recheckAfterWait, the second G6 pass, G5, GH and the block written.
+     *                  Every other guard still runs, which is what keeps a bundle the master
+     *                  vouches for from being installed here when it does not chain to THIS node's
+     *                  leaf (C39h). Monotonicity is the caller's to enforce before calling, against
+     *                  `context.previousPublication` captured under the same lock (C39d).
      */
     WriteOutcome finishWrite(WriteContext& context,
                              std::vector<ca_bundle::X509Ptr> candidate,
-                             const std::function<std::string(std::time_t now)>& recheckAfterWait = {});
+                             const std::function<std::string(std::time_t now)>& recheckAfterWait = {},
+                             std::optional<std::int64_t> explicitPublication = std::nullopt);
 
     /**
      * @brief `add <file>`: appends the certificates of @p inputContents to the bundle (RF-13).
@@ -373,6 +454,44 @@ namespace manager_certs
      * states this command exists to fix, and the block it writes satisfies both by construction.
      */
     int runStamp(WriteContext& context, std::ostream& out, std::ostream& err);
+
+    /**
+     * @brief Where the master is and how this node addresses it: components, never a literal URL
+     *        (C39g).
+     *
+     * Everything here is validated by runFromMaster() rather than by its caller, so the same
+     * refusals are reachable from a test: an empty host, a port that is not 1-65535, an IPv6
+     * literal with unbalanced brackets and a prefix that would produce `//cacerts` are all exit 2.
+     */
+    struct FromMasterRequest
+    {
+        std::string host;             ///< `--master`, else `/cluster/nodes/0`.
+        std::string port;             ///< `--port`, else `/remote/https/port`, verbatim.
+        std::string globalPrefix;     ///< `/remote/https/global_prefix`; normalised here.
+        MasterTransport transport {}; ///< Empty `get` means the real libcurl one.
+    };
+
+    /**
+     * @brief `--from-master`: install the bundle this worker's master publishes (RF-17, 02-diseno
+     *        §2.7).
+     *
+     * Twelve guards in one order (`anexos/e8/tls-transporte.md` §8), and the second of them is the
+     * lock: `prepareWrite()` runs BEFORE the local bundle is read and before anything is sent, so
+     * the CA that authenticates the download is the same CA the transaction will publish over
+     * (C39d). Everything after it -- the TLS handshake included -- happens under that one lock.
+     *
+     * Exit codes follow the rule the whole tool is written to (C38): what we could not read or
+     * parse is 2 (an unreachable master, a refused handshake, a response that is not a complete
+     * 200, a missing or unreadable generation header, a body that does not parse), and what we read
+     * fine but may not install is 1 (a master that announces generation 0, one behind or equal to
+     * ours -- equal is exit 0, a no-op --, a downloaded block that disagrees with the header, and
+     * every guard finishWrite() runs).
+     *
+     * @param request The write transaction's own inputs (bundle path, leaf, seams); `command` is
+     *                the word every diagnostic starts with.
+     * @param fetch   The master's address and the transport.
+     */
+    int runFromMaster(WriteRequest request, FromMasterRequest fetch, std::ostream& out, std::ostream& err);
 
 } // namespace manager_certs
 

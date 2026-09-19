@@ -10,7 +10,11 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 # and ../../src for the module's own private headers: managerCertsWrite_test.cpp exercises
 # BundleWriteLock and atomicWrite() directly, and they are deliberately NOT part of the public
 # include/manager_certs/ surface (only the transaction that uses them is).
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../../src)
+# ${SRC_FOLDER}/external/curl/include is here for the same reason as ../../src: managerCertsFromMaster_test.cpp
+# exercises the real transport through its CurlPort seam (src/commands/masterTransport.hpp), and that private
+# header names libcurl's own types. The archive itself arrives through manager_certs_core.
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+                                                   ${SRC_FOLDER}/external/curl/include)
 
 # manager_certs_core links ca_bundle PUBLIC, which itself links `crypto` PUBLIC (ca_bundle/test/CMakeLists.txt),
 # so this target gets manager_certs/ and ca_bundle/ headers plus the vendored OpenSSL archive testPki.hpp needs,
