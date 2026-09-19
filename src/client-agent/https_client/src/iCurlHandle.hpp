@@ -135,6 +135,14 @@ class ICurlHandle
         /// Default-constructed (kind == None) after a success, after any other failure,
         /// and after an ordinary chain/CA-trust TlsFail, which stays generic.
         virtual TlsFailureDetail tlsFailureDetail() = 0;
+
+        /// Whether the last perform() failed because libcurl could not LOAD the CA file
+        /// set via CurlOption::CaInfo (CURLE_SSL_CACERT_BADFILE) -- missing, unreadable,
+        /// or not a certificate it can parse -- as opposed to loading it fine and then
+        /// failing to verify the peer against it. False after a success and after any
+        /// other failure. See HttpResponse::caFileLoadFailed (httpTypes.hpp) for why this
+        /// is kept separate from tlsFailureDetail().
+        virtual bool caFileLoadFailed() = 0;
 };
 
 using CurlHandleFactory = std::function<std::unique_ptr<ICurlHandle>()>;
