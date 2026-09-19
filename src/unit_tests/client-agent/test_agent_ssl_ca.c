@@ -228,21 +228,78 @@ static void test_system_without_ca_starts_when_bundle_found(void **state)
     agent cfg = make_config(AGENT_VERIFY_SYSTEM, NULL);
 
     expect_os_find_ca_bundle("/etc/ssl/certs/ca-certificates.crt");
+    /* #39123: the anchor is probed (and, if present, parsed) whenever <verification_mode> is
+     * 'system', regardless of whether an OS bundle was found -- the runtime fallback
+     * (curlPerformer.cpp) can still reach it even when the OS bundle exists but simply does
+     * not vouch for this particular manager. */
+    expect_anchor(0);
 
     assert_true(w_agent_validate_ssl_ca(&cfg));
 }
 
-static void test_system_without_ca_fails_when_no_bundle_found(void **state)
+/* Same as above, but with the anchor present and parseable: bundle found makes it not
+ * load-bearing for startup to succeed, but it is still checked whenever it is there. */
+static void test_system_with_bundle_found_and_anchor_present_starts(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_SYSTEM, NULL);
+
+    expect_os_find_ca_bundle("/etc/ssl/certs/ca-certificates.crt");
+    expect_anchor(1);
+    expect_ca_parses(AGENT_ANCHOR_CA, 1);
+
+    assert_true(w_agent_validate_ssl_ca(&cfg));
+}
+
+/* A corrupt/truncated anchor is caught here, at startup, exactly like an operator's own
+ * <certificate_authorities> is (test_full_or_certificate_with_unparseable_ca_fails, below) --
+ * checked (and, on failure, refused) before the OS bundle is even probed: whether one exists
+ * is irrelevant once the anchor itself, which curlPerformer.cpp's fallback would still reach
+ * whenever it is present, is known to be unusable. */
+static void test_system_fails_when_anchor_is_unparseable(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_SYSTEM, NULL);
+
+    expect_anchor(1);
+    expect_ca_parses(AGENT_ANCHOR_CA, 0);
+    expect_string(__wrap__merror, formatted_msg,
+                  "(4124): <ssl><verification_mode> is 'system' and the local trust anchor '"
+                  AGENT_ANCHOR_CA "' is readable but holds no certificate this agent can parse. "
+                  "The https_client module's fallback (#39123) would never verify against it, "
+                  "so the start is refused here rather than at the first handshake that reaches it.");
+
+    assert_false(w_agent_validate_ssl_ca(&cfg));
+}
+
+static void test_system_without_ca_fails_when_no_bundle_and_no_anchor(void **state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_SYSTEM, NULL);
 
     expect_os_find_ca_bundle(NULL);
+    expect_anchor(0);
     expect_string(__wrap__merror, formatted_msg,
                   "(4121): <ssl><verification_mode> is 'system' but no OS CA bundle was found "
-                  "on this host.");
+                  "on this host, and no local trust anchor is present to fall back to either.");
 
     assert_false(w_agent_validate_ssl_ca(&cfg));
+}
+
+/* #39123: no OS bundle alone no longer refuses to start -- the https_client module tries the
+ * OS store first regardless and only falls back to AGENT_ANCHOR_CA if that store turns out
+ * not to vouch for this specific manager (curlPerformer.cpp), so refusing here would never
+ * give that fallback a chance to run. */
+static void test_system_without_ca_starts_when_no_bundle_but_anchor_present(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_SYSTEM, NULL);
+
+    expect_os_find_ca_bundle(NULL);
+    expect_anchor(1);
+    expect_ca_parses(AGENT_ANCHOR_CA, 1);
+
+    assert_true(w_agent_validate_ssl_ca(&cfg));
 }
 
 /* A configured CA would simply go unused under 'system' -- reject rather than
@@ -573,9 +630,13 @@ static void test_full_without_ca_without_anchor_refuses_to_start(void **state)
     free_config(&cfg);
 }
 
-/* An anchor does not rescue 'system': that mode wants the OS store, and without one the
- * agent still refuses. */
-static void test_system_with_anchor_still_needs_an_os_bundle(void **state)
+/* #39123: an anchor now IS enough to start 'system' without an OS bundle -- the
+ * https_client module tries the OS store first regardless (curlPerformer.cpp) and only
+ * falls back to AGENT_ANCHOR_CA if that store turns out not to vouch for this manager;
+ * refusing to start here would never give that fallback a chance to run. Still just the
+ * anchor's own <certificate_authorities> is untouched (never AGENT_VERIFY_SYSTEM), matching
+ * test_resolve_system_never_takes_the_anchor above. */
+static void test_system_with_anchor_starts_without_an_os_bundle(void **state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_SYSTEM, NULL);
@@ -584,12 +645,12 @@ static void test_system_with_anchor_still_needs_an_os_bundle(void **state)
     w_agent_resolve_ssl_posture(&cfg);
 
     expect_os_find_ca_bundle(NULL);
-    expect_string(__wrap__merror, formatted_msg,
-                  "(4121): <ssl><verification_mode> is 'system' but no OS CA bundle was found "
-                  "on this host.");
+    expect_anchor(1);
+    expect_ca_parses(AGENT_ANCHOR_CA, 1);
 
-    assert_false(w_agent_validate_ssl_ca(&cfg));
+    assert_true(w_agent_validate_ssl_ca(&cfg));
     assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_SYSTEM);
+    assert_null(cfg.ssl.certificate_authorities);
     free_config(&cfg);
 }
 
@@ -646,7 +707,10 @@ int main(void)
         cmocka_unit_test(test_full_without_ca_fails),
         cmocka_unit_test(test_certificate_with_unreadable_ca_fails),
         cmocka_unit_test(test_system_without_ca_starts_when_bundle_found),
-        cmocka_unit_test(test_system_without_ca_fails_when_no_bundle_found),
+        cmocka_unit_test(test_system_with_bundle_found_and_anchor_present_starts),
+        cmocka_unit_test(test_system_fails_when_anchor_is_unparseable),
+        cmocka_unit_test(test_system_without_ca_fails_when_no_bundle_and_no_anchor),
+        cmocka_unit_test(test_system_without_ca_starts_when_no_bundle_but_anchor_present),
         cmocka_unit_test(test_system_with_ca_set_fails),
 
         /* Mode resolution: one per row of the <ssl> resolution matrix. An invalid
@@ -674,7 +738,7 @@ int main(void)
         /* Resolver and validator composed. */
         cmocka_unit_test(test_anchor_default_posture_starts),
         cmocka_unit_test(test_full_without_ca_without_anchor_refuses_to_start),
-        cmocka_unit_test(test_system_with_anchor_still_needs_an_os_bundle),
+        cmocka_unit_test(test_system_with_anchor_starts_without_an_os_bundle),
         cmocka_unit_test(test_none_with_anchor_starts_without_verifying),
         cmocka_unit_test(test_full_with_unreadable_ca_still_refuses_with_an_anchor),
     };

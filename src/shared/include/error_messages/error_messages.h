@@ -295,8 +295,9 @@
 #define AG_REQUEST_FAIL    "(4117): Failed validation request to uninstall Wazuh agent package."
 #define AG_INV_SSL_CA      "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> is missing or unreadable: '%s'."
 #define AG_SSL_CA_FORBIDDEN_SYSTEM "(4120): <ssl><verification_mode> is 'system' but <certificate_authorities> is set: '%s'. Remove it, or choose a different verification_mode; the OS trust store is used instead."
-#define AG_SSL_SYSTEM_NO_BUNDLE    "(4121): <ssl><verification_mode> is 'system' but no OS CA bundle was found on this host."
+#define AG_SSL_SYSTEM_NO_BUNDLE    "(4121): <ssl><verification_mode> is 'system' but no OS CA bundle was found on this host, and no local trust anchor is present to fall back to either."
 #define AG_SSL_CA_UNPARSEABLE      "(4123): <certificate_authorities> '%s' is readable but holds no certificate this agent can parse. Nothing would verify against it, so the start is refused here rather than at the first handshake."
+#define AG_SSL_ANCHOR_UNPARSEABLE  "(4124): <ssl><verification_mode> is 'system' and the local trust anchor '%s' is readable but holds no certificate this agent can parse. The https_client module's fallback (#39123) would never verify against it, so the start is refused here rather than at the first handshake that reaches it."
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."

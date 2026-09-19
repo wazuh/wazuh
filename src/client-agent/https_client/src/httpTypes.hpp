@@ -28,7 +28,11 @@ enum class TransportStatus
     Ok,          ///< The request completed and an HTTP status is available.
     Timeout,     ///< The request timed out.
     ConnectFail, ///< DNS/connect failure.
-    TlsFail,     ///< TLS handshake/verification failure.
+    TlsFail,     ///< TLS handshake/verification failure. HttpResponse::tlsFailure narrows
+    ///< this further (#39062) when the cause is a hostname mismatch or a certificate-date
+    ///< problem; verify_mode=system's local-anchor fallback (curlPerformer.cpp, #39123)
+    ///< acts only when tlsFailure.kind is still None -- a genuine chain/CA-trust failure,
+    ///< the one cause a different anchor could plausibly fix.
     Aborted,     ///< Interrupted through the abort flag (shutdown).
     OtherError   ///< Any other transport error.
 };
@@ -210,6 +214,22 @@ struct HttpResponse
     ///< problem; default-constructed (kind == None) otherwise, including for every
     ///< other TlsFail cause (chain/CA trust), which stays generic. See
     ///< tlsCertDiagnostics.hpp.
+
+    /// Whether libcurl could not even LOAD the CA file configured for this attempt
+    /// (CURLE_SSL_CACERT_BADFILE -- missing, unreadable, or not a certificate it can
+    /// parse), as opposed to loading it fine and then failing to verify the peer
+    /// against it. Deliberately separate from tlsFailure: a bad local CA file is a
+    /// permanent local misconfiguration, not a verification outcome, and (unlike a
+    /// hostname mismatch or a chain/CA-trust failure) OpenSSL's verify callback never
+    /// runs at all when the CA file itself fails to load -- sawDepth0 stays false,
+    /// which is exactly what makes this indistinguishable from a pure transport
+    /// failure (a cipher-negotiation failure, a reset mid-handshake) without this
+    /// field. verify_mode=system's local-anchor fallback (curlPerformer.cpp, #39123)
+    /// checks this before its normal sawDepth0/depth0VerificationFailed gate, so a
+    /// fallback anchor that corrupts after startup (config.c's w_x509_load_pem only
+    /// runs once, at startup) is caught and reported instead of the agent silently
+    /// latching onto a file it can never successfully dial again.
+    bool caFileLoadFailed {false};
 };
 
 #endif // _HC_HTTP_TYPES_HPP

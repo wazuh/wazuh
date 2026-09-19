@@ -253,9 +253,12 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
     /* 'system' trusts the OS store instead of an operator-supplied file: a configured CA
      * would be silently unused, which is worth failing closed on rather than guessing which
      * one the operator actually meant. On Windows/macOS the OS store is asked for natively
-     * (no file to probe for); on Linux the https_client module itself fails closed if no
-     * known OS bundle is found (moduleConfig.cpp's validateTls), mirroring this same check
-     * one layer up so a bad config is caught before the module ever spins up threads. */
+     * (no file to probe for); on Linux, an OS bundle file must exist for the agent to start
+     * at all, mirrored one layer up from moduleConfig.cpp's validateTls so a bad config is
+     * caught before the module ever spins up threads -- unless AGENT_ANCHOR_CA is present,
+     * in which case there is still a way to verify and startup proceeds: the https_client
+     * module tries the OS store first regardless, and only falls back to that anchor if the
+     * store turns out not to vouch for this specific manager (curlPerformer.cpp, #39123). */
     if (cfg->ssl.verification_mode == AGENT_VERIFY_SYSTEM) {
         /* A present-but-empty <certificate_authorities/> is not a real CA --
          * w_agent_resolve_ssl_posture() already treats it that way (it does not infer
@@ -267,8 +270,37 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
             return false;
         }
 
+        /* w_is_file() above (and w_agent_resolve_ssl_posture()'s own probe) only answers
+         * "present and readable", not "usable" -- the same gap #38949 question 10 already
+         * flagged for an operator's own <certificate_authorities>, and fixed below for it at
+         * the w_x509_load_pem() call. The fallback anchor (curlPerformer.cpp, #39123) is used
+         * whenever it is present, regardless of whether an OS bundle also exists (an OS bundle
+         * can be found yet simply not vouch for this manager's certificate, which is exactly
+         * when the fallback engages) -- so a corrupt or truncated anchor is worth catching here
+         * too, at the same named-refusal-at-startup point, rather than surfacing as an opaque
+         * libcurl CAINFO error at the first handshake that reaches it. Checked on every
+         * platform: the anchor is a plain PEM file wherever it exists, not the native-store
+         * probe below, which is Linux-only. */
+        const bool anchor_present = w_is_file(AGENT_ANCHOR_CA) != 0;
+
+        if (anchor_present) {
+            X509 *anchor = w_x509_load_pem(AGENT_ANCHOR_CA);
+
+            if (anchor == NULL) {
+                merror(AG_SSL_ANCHOR_UNPARSEABLE, AGENT_ANCHOR_CA);
+                return false;
+            }
+
+            X509_free(anchor);
+        }
+
 #if !defined(WIN32) && !defined(__APPLE__)
-        if (os_find_ca_bundle(NULL) == NULL) {
+        /* An absent OS bundle no longer refuses to start on its own (#39123): the
+         * https_client module falls back to AGENT_ANCHOR_CA at the first handshake that
+         * actually fails to verify (curlPerformer.cpp), and refusing here would never give
+         * that fallback a chance to run. Both being absent is the one combination this
+         * process can already tell has no way to verify at all. */
+        if (os_find_ca_bundle(NULL) == NULL && !anchor_present) {
             merror(AG_SSL_SYSTEM_NO_BUNDLE);
             return false;
         }

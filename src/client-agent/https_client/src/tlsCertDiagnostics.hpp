@@ -51,6 +51,56 @@ struct TlsFailureDetail
 {
     TlsFailureKind kind {TlsFailureKind::None};
 
+    /// Whether the verify callback observed the leaf (depth 0) certificate during this
+    /// attempt -- the same fact classifyTlsVerifyFailure()'s sawDepth0 parameter names,
+    /// carried onto the result. False for a pure transport failure that never reached
+    /// certificate inspection at all (a cipher-negotiation failure, a mid-handshake reset, a
+    /// corrupt local CA file). True whenever a certificate WAS inspected -- which, on its
+    /// own, says nothing about whether that certificate's own verification passed or failed
+    /// (see depth0VerificationFailed below for that). Populated unconditionally (unlike
+    /// certNames/notBefore/notAfter below, which stay empty outside the two classified
+    /// kinds), since it is meaningful precisely when kind is still None.
+    bool sawDepth0 {false};
+
+    /// Whether OpenSSL's own verification of the depth-0 (leaf) certificate reported an
+    /// error (any X509_V_ERR_*, not X509_V_OK) -- meaningless when sawDepth0 is false (no
+    /// certificate was inspected to have an opinion about), and always false in that case.
+    /// The distinction sawDepth0 alone cannot make: a certificate can be inspected AND
+    /// verify cleanly (depth0Error == X509_V_OK) while the overall attempt still ends in
+    /// TlsFail for a reason unrelated to the certificate (one of the non-PEER_FAILED_
+    /// VERIFICATION codes curlHandle.cpp's statusFromCurlCode() also buckets into TlsFail --
+    /// a cipher or protocol failure after an already-accepted certificate, say). That
+    /// combination leaves kind == None too (classifyTlsVerifyFailure() is right not to
+    /// invent a hostname mismatch out of a clean verification -- see its own test table),
+    /// so sawDepth0 alone is not enough to tell a genuine unclassified chain/CA-trust
+    /// failure apart from an unrelated failure that merely happened to occur after a
+    /// certificate was already accepted; this field is what makes that distinction.
+    bool depth0VerificationFailed {false};
+
+    /// Whether the depth0Error behind depth0VerificationFailed is itself plausibly a
+    /// chain/CA-trust problem, as opposed to something else X.509 verification can also
+    /// reject a certificate for -- an unsupported purpose, a policy/extension OpenSSL does
+    /// not understand, an explicit reject entry -- that a different trust anchor could never
+    /// fix either way. Meaningless (and left true, its default) unless depth0VerificationFailed
+    /// is also true. Deliberately a small, explicit denylist of the specific non-trust causes
+    /// (see classifyDepth0ErrorAsChainTrustRelated() in curlHandle.cpp), not an exhaustive
+    /// allowlist of every genuine chain/CA-trust X509_V_ERR_*: an allowlist risks silently
+    /// excluding a real trust failure nobody thought to enumerate, which is exactly the
+    /// failure mode #39123's fallback exists to handle -- understating the denylist is safer
+    /// than overstating an allowlist.
+    bool depth0ErrorIsChainTrustRelated {true};
+
+    /// Whether the verify callback observed a chain-trust rejection at some depth ABOVE the
+    /// leaf (an intermediate or root certificate) during this attempt -- meaningful
+    /// precisely when sawDepth0 is false, the one case the fields above cannot speak to at
+    /// all (OpenSSL's chain builder can reject an untrusted intermediate/root and stop before
+    /// ever reaching depth 0). See isChainBuildingTrustFailure() (curlHandle.cpp) for which
+    /// specific X509_V_ERR_* codes set this -- a short, deliberate allowlist, not every cause
+    /// sawDepth0's own denylist would eventually classify: this signal is purely additive, so
+    /// missing an unenumerated cause here only leaves that one narrower case unresolved,
+    /// never a regression.
+    bool chainTrustRejectedAboveDepth0 {false};
+
     /// The leaf's subject alternative names, OpenSSL-formatted ("DNS:manager.example.com",
     /// "IP Address:10.0.0.1") -- see tlsCertSanNames(). Empty when the certificate carries
     /// no SAN extension at all, which is itself worth showing as-is rather than papering
