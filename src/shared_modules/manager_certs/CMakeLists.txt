@@ -47,18 +47,20 @@ target_link_libraries(manager_certs_core PUBLIC ca_bundle)
 # `wazuhext`, which would drag sqlite, yaml, pcre2 and bzip2 into a CLI (task_manager's
 # CMakeLists.txt:66-72 is the antipattern), and deliberately not a bare -lcurl either
 # (http-request's :70,76-80): this binary must use the vendored 8.20, not the host's.
-target_link_libraries(manager_certs_core PRIVATE ext_curl ssl crypto ext_zlib)
+# `rt dl m pthread` here, with the archives that need them and NOT on the executable: a static link
+# resolves left to right, so a system library placed before libcrypto.a is already behind the linker
+# by the time dso_dlfcn.c asks for dlopen. Listing them on the executable put them ahead of the
+# archives its own dependencies drag in, which links fine with the devcontainer's linker and fails
+# with the package build's -- the quartet and its order come from src/external/CMakeLists.txt, which
+# bundles these same two archives into libwazuhext.
+target_link_libraries(manager_certs_core PRIVATE ext_curl ssl crypto ext_zlib rt dl m pthread)
 
 # bin/wazuh-manager-certs: inspect / check, and the four writing commands (add / remove /
 # prune-expired / stamp); --from-master lands in a later stage. Installed by InstallLocal(), like
 # bin/wazuh-manager-conf.
 # Built in every mode (also UNIT_TEST) so the CLI end-to-end test can run from the test tree.
 add_executable(wazuh-manager-certs src/main.cpp)
-# pthread last and explicit: curl's own threading (curl_threads.c) and the vendored OpenSSL
-# (threads_pthread.c) both need it, and the package build environment does not pull it in on its own
-# the way the devcontainer's linker does -- without this the rpm and deb builds fail to link this
-# binary while every local build succeeds. Same as shared_modules/agent_metadata/CMakeLists.txt.
-target_link_libraries(wazuh-manager-certs PRIVATE manager_certs_core manager_config ext_rapidjson pthread)
+target_link_libraries(wazuh-manager-certs PRIVATE manager_certs_core manager_config ext_rapidjson)
 if(DEFINED VERSION_FILE)
   target_compile_definitions(wazuh-manager-certs PRIVATE WAZUH_MANAGER_CERTS_VERSION="${VERSION_FILE}")
 endif()
