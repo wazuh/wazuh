@@ -43,6 +43,21 @@ namespace remoted::test
 
     using EvpPkeyPtr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
 
+    /// How a CA-shaped test certificate advertises its CA-ness -- the difference an agent's
+    /// installer can actually see.
+    enum class CaShape
+    {
+        /// basicConstraints CA:TRUE (critical) + keyUsage keyCertSign/cRLSign: a CA to OpenSSL and
+        /// to the `X509v3 Basic Constraints` / `CA:TRUE` grep in src/init/pkg_installer.sh alike.
+        basicConstraints,
+        /// keyUsage keyCertSign/cRLSign and NO basicConstraints at all: X509_check_ca() still calls
+        /// it a CA (4) and OpenSSL happily builds chains to it, but pkg_installer.sh discards a
+        /// delivered root-ca.pem of this shape, so anything that trusted X509_check_ca() to decide
+        /// what to hand a 4.x agent would leave that agent with no anchor. `openssl req -x509`
+        /// cannot produce it, which is why it is built here.
+        keyUsageOnly,
+    };
+
     inline EvpPkeyPtr makeTestKey()
     {
         EvpPkeyPtr pkey {EVP_PKEY_Q_keygen(nullptr, nullptr, "EC", "prime256v1"), &EVP_PKEY_free};
@@ -59,7 +74,8 @@ namespace remoted::test
      *        an expired one), public key @p subjectKey, signed with @p signerKey and naming
      *        @p issuer (null = self-signed). An optional comma-separated subjectAltName (e.g.
      *        "IP:203.0.113.5") for the peer-address tests, and an optional CA shape (basicConstraints
-     *        CA:TRUE + keyUsage keyCertSign/cRLSign) for the chainValidates() tests -- a certificate
+     *        CA:TRUE + keyUsage keyCertSign/cRLSign, or @p caShape = keyUsageOnly for the keyUsage
+     *        half alone) for the chainValidates() tests -- a certificate
      *        with no CA extensions at all is not a trust anchor X509_V_FLAG_PARTIAL_CHAIN or a
      *        purpose check will accept past depth 0. No socket, TLS handshake or on-disk fixture
      *        required.
@@ -71,7 +87,8 @@ namespace remoted::test
                                    EVP_PKEY* signerKey,
                                    const X509* issuer,
                                    const char* subjectAltName = nullptr,
-                                   bool isCa = false)
+                                   bool isCa = false,
+                                   CaShape caShape = CaShape::basicConstraints)
     {
         X509Ptr certificate {X509_new()};
         if (!certificate)
@@ -114,14 +131,20 @@ namespace remoted::test
                 // matter to chainValidates(): X509_V_FLAG_PARTIAL_CHAIN still runs the ordinary CA
                 // checks on every non-leaf certificate of the path, and its purpose is
                 // X509_PURPOSE_SSL_SERVER, which requires keyCertSign on the signer.
-                X509_EXTENSION* basicConstraints =
-                    X509V3_EXT_conf_nid(nullptr, &ctx, NID_basic_constraints, "critical,CA:TRUE");
-                if (basicConstraints == nullptr)
+                // CaShape::keyUsageOnly leaves this one out on purpose: what stays is a
+                // certificate OpenSSL treats as a CA (keyUsage allows keyCertSign, and with no
+                // basicConstraints X509_check_ca() answers 4) that the agent's installer refuses.
+                if (caShape == CaShape::basicConstraints)
                 {
-                    throw std::runtime_error("Failed to build test basicConstraints extension");
+                    X509_EXTENSION* basicConstraints =
+                        X509V3_EXT_conf_nid(nullptr, &ctx, NID_basic_constraints, "critical,CA:TRUE");
+                    if (basicConstraints == nullptr)
+                    {
+                        throw std::runtime_error("Failed to build test basicConstraints extension");
+                    }
+                    X509_add_ext(certificate.get(), basicConstraints, -1);
+                    X509_EXTENSION_free(basicConstraints);
                 }
-                X509_add_ext(certificate.get(), basicConstraints, -1);
-                X509_EXTENSION_free(basicConstraints);
 
                 X509_EXTENSION* keyUsage =
                     X509V3_EXT_conf_nid(nullptr, &ctx, NID_key_usage, "critical,keyCertSign,cRLSign");

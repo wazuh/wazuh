@@ -1435,6 +1435,94 @@ TEST(CaCertificateSourceLeafSignerPem, SkipsASignerWithoutCaTrue)
     EXPECT_EQ(impostorSource.leafSignerPem(buffer.data(), buffer.size()), 0);
 }
 
+TEST(CaCertificateSourceLeafSignerPem, SkipsAnAnchorWithoutBasicConstraintsAndKeepsLooking)
+{
+    // The gap between "a CA" as OpenSSL counts them and as the agent counts them: a re-issue of the
+    // real CA (same key, same subject, current window) carrying keyUsage keyCertSign but NO
+    // basicConstraints extension at all. X509_check_ca() answers 4, so ca_bundle::describe() calls
+    // it a CA and the leaf really does chain to it -- but pkg_installer.sh greps the text for
+    // "X509v3 Basic Constraints" / "CA:TRUE" and discards the file. It is FIRST in the bundle, so a
+    // rule that stopped at the first certificate OpenSSL calls a CA would deliver the one the agent
+    // throws away and skip the one behind it that the agent would have kept.
+    auto pki = makeMemoryPki("no-basic-constraints");
+    auto noBasicConstraints = remoted::test::makeCertificate("no-basic-constraints-ca",
+                                                             -3600,
+                                                             3600,
+                                                             pki.caKey.get(),
+                                                             pki.caKey.get(),
+                                                             nullptr,
+                                                             nullptr,
+                                                             /*isCa=*/true,
+                                                             remoted::test::CaShape::keyUsageOnly);
+
+    // The fixture has to be the real bug shape, or the test would pass for the wrong reason: the
+    // extension is genuinely absent, OpenSSL still calls it a CA, and the leaf chains to it -- so
+    // neither the chain check nor describe()'s isCa would have stopped this delivery.
+    ASSERT_LT(X509_get_ext_by_NID(noBasicConstraints.get(), NID_basic_constraints, -1), 0)
+        << "the fixture must carry no basicConstraints extension at all";
+    ASSERT_TRUE(ca_bundle::describe(noBasicConstraints.get(), pki.leaf.get()).isCa)
+        << "X509_check_ca() must still call it a CA, or there is nothing to tell apart";
+    std::vector<remoted::http::X509Ptr> impostorOnlyStore;
+    impostorOnlyStore.push_back(retainCertificate(noBasicConstraints.get()));
+    ASSERT_TRUE(ca_bundle::leafChainsToAnyCa(pki.leaf.get(), impostorOnlyStore))
+        << "the leaf must chain to it, or the chain check alone would already refuse it";
+
+    std::vector<remoted::http::X509Ptr> bundle;
+    bundle.push_back(retainCertificate(noBasicConstraints.get()));
+    bundle.push_back(retainCertificate(pki.ca.get()));
+
+    const auto path = anchorPath("no_basic_constraints");
+    write(path, sealedDocument(bundle, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, pki.leaf.get()};
+    ASSERT_EQ(source.snapshot().certificates, 2U);
+
+    std::array<char, 8192> buffer {};
+    const auto written = source.leafSignerPem(buffer.data(), buffer.size());
+    ASSERT_GT(written, 0) << "the second certificate is deliverable; the search must not stop at the first";
+
+    const std::string delivered {buffer.data(), static_cast<std::size_t>(written)};
+    EXPECT_EQ(delivered, aloneAsPem(pki.ca.get()));
+    EXPECT_NE(delivered, aloneAsPem(noBasicConstraints.get()));
+}
+
+TEST(CaCertificateSourceLeafSignerPem, DeliversNothingWhenTheOnlyAnchorHasNoBasicConstraints)
+{
+    // The same certificate alone: 0, not "the only one there is". Handing it over would leave the
+    // upgraded 4.x agent with a root-ca.pem its own installer deletes -- no anchor at all -- while
+    // delivering nothing leaves the upgrade recoverable and the poller says why (CA-18).
+    auto pki = makeMemoryPki("no-basic-constraints-alone");
+    auto noBasicConstraints = remoted::test::makeCertificate("no-basic-constraints-alone-ca",
+                                                             -3600,
+                                                             3600,
+                                                             pki.caKey.get(),
+                                                             pki.caKey.get(),
+                                                             nullptr,
+                                                             nullptr,
+                                                             /*isCa=*/true,
+                                                             remoted::test::CaShape::keyUsageOnly);
+
+    std::vector<remoted::http::X509Ptr> bundle;
+    bundle.push_back(retainCertificate(noBasicConstraints.get()));
+
+    const auto path = anchorPath("no_basic_constraints_alone");
+    write(path, sealedDocument(bundle, kPublication));
+    remoted::test::ScratchFileCleanup cleanupPath {{path}};
+
+    CaCertificateSource source {path, pki.leaf.get()};
+    const auto snapshot = source.snapshot();
+    // Still served over /cacerts, and still vouched: a 5.x agent bootstrapping from the bundle
+    // builds the same chain OpenSSL just did. What changes is only what may be PUSHED to a 4.x one.
+    ASSERT_EQ(snapshot.certificates, 1U);
+    ASSERT_EQ(snapshot.vouchFailure, GuardFailure::none);
+
+    std::array<char, 8192> buffer {};
+    buffer[0] = 'x'; // nothing is written on a refusal
+    EXPECT_EQ(source.leafSignerPem(buffer.data(), buffer.size()), 0);
+    EXPECT_EQ(buffer[0], 'x');
+}
+
 TEST(CaCertificateSourceLeafSignerPem, SkipsACaWithTheSameKeyAndAnotherSubject)
 {
     // The back door of C33: an impostor CA that is current, CA:TRUE and holds the issuing key, so

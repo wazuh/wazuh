@@ -16,6 +16,7 @@
 #include <openssl/err.h>
 #include <openssl/sha.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 #include <array>
 #include <cstring>
@@ -53,6 +54,36 @@ namespace remoted::http
                 return {};
             }
             return X509Ptr {const_cast<X509*>(leaf)};
+        }
+
+        /// Whether @p certificate carries a `basicConstraints` extension saying `CA:TRUE` -- the
+        /// literal thing `src/init/pkg_installer.sh` greps for on the agent, not OpenSSL's wider
+        /// notion of a CA. `ca_bundle::describe()`'s `isCa` comes from X509_check_ca(), which also
+        /// answers yes to a certificate with NO basicConstraints at all but `keyCertSign` in its
+        /// keyUsage (4), and to a self-signed V1 (3); the installer throws both away, so an export
+        /// that trusted it could hand a 4.x agent the one file its own installer discards and
+        /// leave it with no anchor. Decoded and freed here on every path; a missing or
+        /// undecodable extension is a plain false, which is also what the agent's grep decides.
+        bool hasBasicConstraintsCaTrue(const X509* certificate)
+        {
+            if (certificate == nullptr)
+            {
+                return false;
+            }
+
+            // X509_get_ext_d2i takes a non-const X509* (it caches the extensions it decodes); the
+            // decode does not modify the certificate in any observable way.
+            auto* constraints = static_cast<BASIC_CONSTRAINTS*>(
+                X509_get_ext_d2i(const_cast<X509*>(certificate), NID_basic_constraints, nullptr, nullptr));
+            if (constraints == nullptr)
+            {
+                ERR_clear_error(); // an absent or malformed extension queues nothing worth reporting
+                return false;
+            }
+
+            const bool isCa = constraints->ca != 0;
+            BASIC_CONSTRAINTS_free(constraints);
+            return isCa;
         }
 
         /// Whether two record entries say the same thing. What decides if there is anything left to
@@ -290,20 +321,23 @@ namespace remoted::http
             }
 
             // describe() answers what is left about this one certificate: its validity window as
-            // this process reads it, and its CA bit. Its subject and issuer are computed and
-            // dropped; no new ca_bundle entry point for a path that runs once per legacy upgrade.
+            // this process reads it. Its subject, issuer and CA bit are computed and dropped; no
+            // new ca_bundle entry point for a path that runs once per legacy upgrade.
             const auto facts = ca_bundle::describe(certificate.get(), m_leaf.get());
 
             // Chaining already implies a current CA to OpenSSL, and `src/init/pkg_installer.sh`
             // decides the same thing again on the agent, with `date` and a grep: it refuses a
             // delivered root-ca.pem that is not a CA (no basicConstraints CA:TRUE) or whose
             // validity window does not contain the moment of the upgrade. The checks are kept
-            // explicitly so the parity with that script is visible and stays exact rather than
-            // resting on how OpenSSL happens to treat a certificate with no extensions -- and a
-            // rotation's overlap is where it earns its keep: the bundle carries the EXPIRED
-            // re-issue of the same key next to the current one, both sign the served leaf, and the
-            // agent's installer throws away exactly one of them.
-            if (!facts.isCa)
+            // explicitly so the parity with that script is visible and stays exact -- and the
+            // extension is read HERE rather than taken from describe()'s `isCa`, because that one
+            // is X509_check_ca() and says yes to more certificates than the installer keeps (no
+            // basicConstraints but `keyCertSign`, a self-signed V1): a bundle holding one of those
+            // would otherwise be answered with the single file the agent then throws away. Both
+            // refusals skip this candidate and keep looking, never end the search: a rotation's
+            // overlap is where that earns its keep, with the EXPIRED re-issue of the same key
+            // sitting next to the current one and the installer keeping exactly one of them.
+            if (!hasBasicConstraintsCaTrue(certificate.get()))
             {
                 continue;
             }
@@ -344,9 +378,9 @@ namespace remoted::http
         }
 
         // Nothing in this bundle is both an anchor the leaf chains to and one the installer keeps.
-        // Better no
-        // delivery than one the installer discards: the poller says why and lets the upgrade go
-        // ahead without an anchor, which is recoverable, instead of writing one that is not.
+        // Better no delivery than one the installer discards: the poller says why and lets the
+        // upgrade go ahead without an anchor, which is recoverable, instead of writing one that
+        // is not.
         return 0;
     }
 
