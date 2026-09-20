@@ -293,14 +293,49 @@ namespace manager_certs
                           "there first");
         }
 
-        // Guard 8: the same generation this node already serves. Nothing to do, and republishing it
-        // would send every agent of this worker back for bytes it already has (C35's reasoning, one
-        // command over).
+        // The body, parsed HERE rather than at guard 10, because guard 8 needs to look at what the
+        // master actually serves and not only at the number it announces. Nothing is refused at
+        // this point: the order the guards refuse in is exactly what it was -- a generation behind
+        // this node's is still named as such even when the body is garbage -- and parsing it twice
+        // would be the only other way to give guard 8 what it needs (it is already downloaded, so
+        // this costs no round trip).
+        ca_bundle::ParsedBundle downloaded = ca_bundle::parseBundle(response.body);
+
+        // Guard 8: the same generation this node already serves AND the same certificates. Nothing
+        // to do then, and republishing would send every agent of this worker back for bytes it
+        // already has (C35's reasoning, one command over).
+        //
+        // This REFINES C37(b) ("equal => no-op exit 0"), which decided the shortcut on the
+        // generation alone: `previousPublication` is what the local block CLAIMS, and a block can
+        // sit intact over certificates that are not (an operator edited the worker's bundle and
+        // left the block alone, a partial restore put an old bundle back under a new block). Such a
+        // worker announces the master's generation, serves the wrong anchors, and every
+        // `--from-master` used to answer "nothing to do" -- broken, and told it was fine, forever.
+        // So the comparison is against the CONTENT: equal => no-op as before; different => the pull
+        // carries on and REPAIRS the file, republishing the master's certificates under that very
+        // same generation (nothing moves backwards, agents see the number they already know with
+        // the bytes they should have had). A body that does not parse is no proof of being up to
+        // date either, so it skips the shortcut and guard 10 refuses it like any other.
         const std::int64_t previous = context.previousPublication;
-        if (*generation == previous)
+        bool repairing = false;
+        if (*generation == previous && downloaded.wellFormed)
         {
-            out << "already at generation " << previous << "; nothing to do\n";
-            return 0;
+            // contentSha256() of each side: the SET of certificates by their DER, blind to the
+            // order, the wrapping and the block around them (ca_bundle.hpp), so a bundle rewritten
+            // by hand with the same anchors is NOT a difference and does not cost a republish. An
+            // empty hash means a certificate would not re-encode, and never counts as a match.
+            const std::string local = ca_bundle::contentSha256(context.bundle.certificates);
+            const std::string served = ca_bundle::contentSha256(downloaded.certificates);
+            if (!local.empty() && local == served)
+            {
+                out << "already at generation " << previous << "; nothing to do\n";
+                return 0;
+            }
+
+            // Said once, WITH the success below and not before it: a guard further down may still
+            // refuse this candidate, and an operator must not read "repairing" over a pull that
+            // wrote nothing.
+            repairing = true;
         }
 
         // Guard 9: a generation behind the one this node already published. A master restored from
@@ -314,9 +349,9 @@ namespace manager_certs
         }
 
         // Guard 10: the body is untrusted input, parsed exactly like a file an operator handed over
-        // (C37c). A document we do not understand whole is not one to publish from (P24: we could
+        // (C37c) -- the parse itself is above, where guard 8 needed it; this is where a document we
+        // do not understand whole is refused, because it is not one to publish from (P24: we could
         // not parse it, so exit 2).
-        ca_bundle::ParsedBundle downloaded = ca_bundle::parseBundle(response.body);
         if (!downloaded.wellFormed)
         {
             return refuse(2, "the bundle served by " + *url + " is malformed; refusing to write");
@@ -349,6 +384,11 @@ namespace manager_certs
         if (outcome.durabilityUnknown)
         {
             err << "wazuh-manager-certs: " << outcome.message << '\n';
+        }
+        if (repairing)
+        {
+            out << "the local bundle announced generation " << previous
+                << " without carrying its certificates; repaired under that same generation\n";
         }
         out << "installed " << certificates << " certificate(s) from " << *url << "; published generation "
             << outcome.publication << '\n';

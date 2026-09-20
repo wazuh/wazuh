@@ -41,12 +41,18 @@
 #include <unistd.h>
 
 #include <atomic>
+#include <cerrno>
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <functional>
+#include <memory>
+#include <mutex>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -832,6 +838,53 @@ namespace
     {
         return makeCertificate(name, -kDay, 400 * kDay, key.get(), key.get(), nullptr, true, serial);
     }
+
+    /// Runs @p work on a thread of its own and waits up to @p limit for it to come back.
+    ///
+    /// The two FIFO cases below make the tool open a named pipe that has no writer, which is the
+    /// exact shape of the bug they guard: without O_NONBLOCK that open(2) never returns, and it
+    /// happens with the write lock held, so the command hangs and every other writer of the bundle
+    /// hangs behind it. A test cannot assert "this did not hang" by simply calling it -- it would
+    /// hang too, and take the whole suite with it -- so the call is bounded here and a timeout IS
+    /// the failure. On a timeout the thread is detached and stays parked in the open (nothing can
+    /// interrupt it), so `work` must own everything it touches: both cases hand it copies and
+    /// shared_ptrs, never a reference to something that dies with the case.
+    bool completesWithin(std::chrono::seconds limit, std::function<void()> work)
+    {
+        struct Probe
+        {
+            std::mutex mutex;
+            std::condition_variable returned;
+            bool done {false};
+        };
+
+        auto probe = std::make_shared<Probe>();
+        std::thread worker(
+            [probe, task = std::move(work)]()
+            {
+                task();
+                const std::lock_guard<std::mutex> guard {probe->mutex};
+                probe->done = true;
+                probe->returned.notify_all();
+            });
+
+        std::unique_lock<std::mutex> guard {probe->mutex};
+        const bool done = probe->returned.wait_for(guard, limit, [&probe] { return probe->done; });
+        guard.unlock();
+        if (done)
+        {
+            worker.join();
+        }
+        else
+        {
+            worker.detach();
+        }
+        return done;
+    }
+
+    /// How long the two FIFO cases wait before calling it a hang. Both paths are a couple of
+    /// syscalls on a temporary directory, so anything near this is not slowness, it is the block.
+    constexpr std::chrono::seconds kNoHangBudget {10};
 } // namespace
 
 TEST(ManagerCertsAdd, InitialPreviousEqualsNowWaitsThenPublishesStrictlyHigher)
@@ -1337,4 +1390,89 @@ TEST(ManagerCertsAdd, MissingBundleIsNotCreated)
     EXPECT_NE(prepared.message.find("bundle not found at " + missing.string()), std::string::npos) << prepared.message;
     EXPECT_NE(prepared.message.find("run 'wazuh-manager-certs stamp'"), std::string::npos) << prepared.message;
     EXPECT_FALSE(std::filesystem::exists(missing)) << "add must never create the bundle";
+}
+
+// --------------------------------------------- the bundle path is not necessarily a file (C36a) --
+// Two cases for the two places the transaction opens the destination, both with the EXCLUSIVE LOCK
+// ALREADY HELD: a blocking open there does not just stall this command, it locks out every other
+// writer of the bundle. `remote.https.ca_certificate` is a configured path -- a typo, a path reused
+// for something else, or one planted deliberately -- so "it is always a regular file" is not a
+// property this tool may assume, and main.cpp's readBounded() already does not assume it.
+
+TEST(ManagerCertsAdd, FifoAtTheBundlePathIsRefusedWithoutBlockingTheTransaction)
+{
+    SKIP_UNLESS_ROOT();
+    TempDir dir;
+    TestClock clock;
+    clock.wall = std::time(nullptr);
+    auto caKey = makeTestKey();
+    auto leafKey = makeTestKey();
+    const auto ca = makeCertificate("ca-root", -kDay, 400 * kDay, caKey.get(), caKey.get(), nullptr, true, 1);
+    const auto leaf = makeCertificate("leaf", -kDay, 90 * kDay, leafKey.get(), caKey.get(), ca.get(), false, 2);
+
+    // A named pipe with nothing on the other end, exactly where the configuration points.
+    const auto bundlePath = dir.path() / kBundleName;
+    ASSERT_EQ(::mkfifo(bundlePath.c_str(), 0640), 0) << std::strerror(errno);
+
+    struct Attempt
+    {
+        int exitCode {0};
+        bool opened {false};
+        std::string message;
+    };
+    auto attempt = std::make_shared<Attempt>();
+
+    const bool returned = completesWithin(kNoHangBudget,
+                                          [attempt, request = requestFor(bundlePath, leaf.get(), clock)]() mutable
+                                          {
+                                              auto prepared = prepareWrite(std::move(request));
+                                              attempt->exitCode = prepared.exitCode;
+                                              attempt->opened = prepared.context.has_value();
+                                              attempt->message = prepared.message;
+                                          });
+
+    ASSERT_TRUE(returned) << "prepareWrite() never came back: the bundle was opened without O_NONBLOCK, so a FIFO "
+                             "with no writer parked the whole transaction -- holding the exclusive lock";
+    EXPECT_FALSE(attempt->opened);
+    EXPECT_EQ(attempt->exitCode, 2);
+    EXPECT_NE(attempt->message.find("is not a regular file"), std::string::npos) << attempt->message;
+    // A refusal, not a repair: the path is left as it was found and nothing was written beside it.
+    EXPECT_TRUE(std::filesystem::is_fifo(bundlePath));
+    EXPECT_EQ(temporaryCount(dir.path(), kBundleName), 0u);
+}
+
+TEST(ManagerCertsAdd, FifoSwappedInBeforeTheRenameAbortsInsteadOfBlocking)
+{
+    SKIP_UNLESS_ROOT();
+    AddFixture fixture {10};
+    auto spareKey = makeTestKey();
+    const auto spare = makeSpareCa(spareKey, "ca-spare", 141);
+
+    auto prepared = prepareWrite(requestFor(fixture.bundlePath, fixture.leaf.get(), fixture.clock));
+    ASSERT_TRUE(prepared.context.has_value()) << prepared.message;
+
+    // The destination becomes a named pipe after it was read: step 8 re-reads it BY NAME, one
+    // statement before the rename, and that open is the second one that must not block.
+    ASSERT_TRUE(std::filesystem::remove(fixture.bundlePath));
+    ASSERT_EQ(::mkfifo(fixture.bundlePath.c_str(), 0640), 0) << std::strerror(errno);
+
+    // The transaction is moved into the thread's own hands, so a hang cannot leave it referring to
+    // a context that died with the case.
+    auto context = std::make_shared<WriteContext>(std::move(*prepared.context));
+    auto out = std::make_shared<std::ostringstream>();
+    auto err = std::make_shared<std::ostringstream>();
+    auto exitCode = std::make_shared<std::atomic<int>>(-1);
+    const std::string input = pemOf(spare.get());
+
+    const bool returned = completesWithin(kNoHangBudget,
+                                          [context, out, err, exitCode, input]()
+                                          { exitCode->store(runAdd(*context, input, "input.pem", *out, *err)); });
+
+    ASSERT_TRUE(returned) << "runAdd() never came back: step 8 re-read the destination without O_NONBLOCK, so the "
+                             "FIFO swapped in for the bundle parked the publication -- holding the exclusive lock";
+    EXPECT_EQ(exitCode->load(), 2);
+    // Whatever is at the name now, it is not the file that was read under the lock (C36f).
+    EXPECT_NE(err->str().find("destination changed since it was read"), std::string::npos) << err->str();
+    EXPECT_TRUE(std::filesystem::is_fifo(fixture.bundlePath));
+    EXPECT_EQ(temporaryCount(fixture.dir.path(), kBundleName), 0u);
 }

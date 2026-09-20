@@ -32,7 +32,7 @@ duplicated here.
 | RF-14 | `remove <identity>`: drops **every** certificate with that identity, `prune-expired` drops every expired one; same guards as `add` (neither may leave the served leaf without an anchor), same atomic write and new publication | kept — see D-10, D-11 |
 | RF-15 | `stamp`: publishes the current contents as they are (after the structural guards) — the first step for a hand-provisioned bundle, and the remedy for remoted's "not vouched" WARN | kept — see D-12 |
 | RF-16 | Only the master publishes: `add`/`remove`/`prune-expired`/`stamp` refuse on a node whose `cluster.node_type` is `worker` | kept |
-| RF-17 | `--from-master`: a **worker** downloads its master's published bundle over HTTPS, verifies it against its own leaf, and writes it locally under the generation the master's `Wazuh-CA-Generation` header announced (never this node's clock); equal is a no-op, behind is refused | kept — see D-13…D-15 |
+| RF-17 | `--from-master`: a **worker** downloads its master's published bundle over HTTPS, verifies it against its own leaf, and writes it locally under the generation the master's `Wazuh-CA-Generation` header announced (never this node's clock); an equal generation over the same certificates is a no-op, an equal one over different certificates repairs the file under that same generation, behind is refused | kept — see D-13…D-16 |
 
 ### Non-functional
 
@@ -60,6 +60,7 @@ duplicated here.
 | D-12 | `stamp` applies only the **structural** guards every writing command shares (G4/G6/G5/G8/GH) — never `vouch()`'s `no_block` or `hash_mismatch` | Those two states — a plain PEM that was never stamped, and a block that no longer describes its certificates — are exactly what `stamp` exists to fix (C29/CA-29). Refusing them here would leave a tool that only works once the problem is already solved, and the block it writes satisfies both by construction |
 | D-13 | `--from-master` takes the write lock **before** it reads the local bundle and before it connects, and holds it for the whole download (up to the 10 s timeout) | The local bundle is what verifies the master's certificate. Taken afterwards, a concurrent `remove` could drop the very CA the handshake was authenticated with between the TLS session and the write, and this node would install material vouched for by an anchor it had just stopped trusting (C39d). The cost — other writers wait while a download runs — is the same trade-off C28b already accepts for the publication wait |
 | D-14 | The publication written is the master's header, not this node's clock: `finishWrite()` takes an `explicitPublication` that skips **G8 and only G8** | A generation is a number the whole cluster compares, so a worker that minted its own would tell its agents about a bundle nobody else knows (C37b). Everything else still runs against THIS node's material: G4, G6 (the leaf here, never anything from the response), G5 and GH — a bundle the master is perfectly happy with can still be one this worker must not serve, and `managerCertsFromMaster_test.cpp` has a rejection case for each of those four |
+| D-16 | `--from-master` takes the "already at that generation" shortcut only when the local **certificates** are the master's too; otherwise it writes, repairing the file under that same generation | The generation is what the local block CLAIMS, and a block survives an edit of the certificates around it (an operator rewrote the worker's bundle, a restore put an older one back). Deciding on the number alone left such a worker serving the wrong anchors while every pull told it it was up to date — broken, silently, forever. The body is already downloaded when the shortcut is taken, so the comparison is two content hashes (`ca_bundle::contentSha256()`, blind to order and wrapping, so a hand-rewritten copy of the same anchors is still a no-op), and repairing under the announced generation moves no agent backwards. Refines C37(b), which read "equal ⇒ no-op" |
 | D-15 | Every libcurl option that decides what the connection trusts is set **and checked**: `CAINFO_BLOB` (the local bundle, as a blob, never a path), `CAPATH` cleared, `VERIFYPEER`/`VERIFYHOST`, `PROXY` emptied, no redirects, a 10 s timeout, and only `CURLINFO_RESPONSE_CODE == 200` counts | A `setopt` whose return nobody reads is a silent bypass: with the blob refused (a zero-length one is), libcurl falls back to this build's compiled-in CA file and the fleet's trust anchor quietly becomes whatever is in `/etc` (C39a). `CAPATH` is an independent source the blob does not replace; an inherited proxy can answer with a generation header of its own; and libcurl does not fail on a 302/206/500, whose body must never be read as a bundle (C39b). Detail and anchors: `ca_rotation/anexos/e8/tls-transporte.md` |
 
 ## Layout
@@ -87,8 +88,12 @@ src/shared_modules/manager_certs/
     │   ├── CMakeLists.txt            # target manager_certs_utest; registers manager_certs_cli too
     │   ├── managerCerts_test.cpp     # inspect/check
     │   ├── managerCertsWrite_test.cpp # lock, atomic write, add
-    │   └── managerCertsWriteRemoveStampPrune_test.cpp # remove, prune-expired, stamp
+    │   ├── managerCertsWriteRemoveStampPrune_test.cpp # remove, prune-expired, stamp
+    │   └── managerCertsFromMaster_test.cpp # `--from-master`'s guards and the transport's options
     ├── testPki.hpp                   # in-memory throwaway PKI (bounded copy, see Tests)
+    ├── testHttpsMaster.hpp           # the component test's SSLServer (the other side of the wire)
+    ├── ci/assert_no_skipped_tests.sh # CI gate: a skipped case fails the job (see Tests)
+    ├── component/                    # ctest `manager_certs_from_master` + its HTTPS master binary
     └── cli/manager_certs_cli_test.sh # end-to-end: the compiled binary, ctest `manager_certs_cli`
 ```
 
@@ -102,7 +107,7 @@ src/shared_modules/manager_certs/
 | `remove <identity>` | bundle, leaf | bundle, `<bundle>.lock` | 0 published, 1 refused or the identity is not in the bundle, 2 environment |
 | `prune-expired` | bundle, leaf | bundle, `<bundle>.lock` (nothing at all when nothing expired) | 0 published **or** nothing to prune, 1 refused, 2 environment |
 | `stamp` | bundle, leaf | bundle, `<bundle>.lock` | 0 published, 1 refused, 2 environment |
-| `--from-master [--master <host>] [--port <port>]` | bundle (as its trust material), leaf, the master's `GET /cacerts` | bundle, `<bundle>.lock` | 0 installed **or** already at that generation, 1 refused (not vouched, behind, or a guard), 2 environment (not a worker, unreachable, TLS, not a complete 200, unreadable header, unparsable body) |
+| `--from-master [--master <host>] [--port <port>]` | bundle (as its trust material), leaf, the master's `GET /cacerts` | bundle, `<bundle>.lock` | 0 installed, repaired (same generation, different certificates), **or** already at that generation, 1 refused (not vouched, behind, or a guard), 2 environment (not a worker, unreachable, TLS, not a complete 200, unreadable header, unparsable body) |
 | `--version` / `-V` | nothing | — | 0 |
 | `--help` / `-h` | nothing | — | 0 |
 
@@ -243,6 +248,17 @@ already at generation 1789840456; nothing to do
 0
 ```
 
+"Again" means the same generation **and** the same certificates. A worker whose bundle was edited
+while its publication block was left alone announces a generation it does not carry: the pull then
+repairs it in place, under that same generation, so no agent is sent backwards (D-16).
+
+```
+$ wazuh-manager-certs --from-master; echo $?
+the local bundle announced generation 1789840456 without carrying its certificates; repaired under that same generation
+installed 2 certificate(s) from https://10.0.0.1:1517/wazuh-manager/cacerts; published generation 1789840456
+0
+```
+
 A master that never stamped its own bundle announces generation 0, and there is nothing to adopt:
 
 ```
@@ -288,9 +304,11 @@ and the publish is a rename, so a reader sees the whole old bundle or the whole 
 (`ca_rotation/anexos/e8/tls-transporte.md` §8): G0 + G7' → **the lock** → the local bundle read
 through it (empty ⇒ exit 2, there would be nothing to verify the master with) → the URL, built from
 components → the fetch → a failed fetch or anything that is not a complete 200 ⇒ exit 2 → the
-generation header (absent or unreadable ⇒ 2, a readable `0` ⇒ 1) → equal to ours ⇒ 0, behind ours ⇒
-1 → `parseBundle()` of the body (malformed ⇒ 2) → a publication block in the body that disagrees
-with the header ⇒ 1 → `finishWrite()` with the master's generation, which still runs G4, G6, G5 and
+generation header (absent or unreadable ⇒ 2, a readable `0` ⇒ 1) → `parseBundle()` of the body (the
+equality check below needs it, so it happens here; nothing is refused yet) → equal to ours **with
+the same certificates** ⇒ 0, equal with different ones ⇒ the pull carries on and repairs the file
+under that generation (D-16), behind ours ⇒ 1 → a body that did not parse ⇒ 2 → a publication block
+in the body that disagrees with the header ⇒ 1 → `finishWrite()` with the master's generation, which still runs G4, G6, G5 and
 GH against this node's own leaf.
 
 Nothing relaxes the verification of the master: there is no flag for it, the trust material is this
@@ -332,9 +350,9 @@ fine and may not accept is 1.**
 | File | Invariant it pins |
 |------|-------------------|
 | `tests/unit/managerCerts_test.cpp` (`manager_certs_utest`, suites `ManagerCertsInspect`/`ManagerCertsCheck`) | `inspect` lists both certificates of a sealed 2-CA bundle with `vouched: yes`, and reports `publication: 0 (unpublished)` for a plain PEM; `check` returns 0 and never touches the file on a valid bundle, returns 1 naming the guard for `too_many_certificates` (7 certificates) and `no_ca_signs_leaf` from `vouch()`, and — once `vouch()` passes — returns 1 naming the certificate's identity for an expired certificate and for one that is not a CA (RF-12, D-2) |
-| `tests/unit/managerCertsWrite_test.cpp` (suites `BundleWriteLock`/`AtomicWrite`/`ManagerCertsAdd`) | The lock blocks a second writer, refuses a symlinked or non-root lock file, and notices one replaced while it waited; `atomicWrite()` preserves owner and mode, aborts when the destination changed since it was read, survives ten runs with every `pid.0..9` temporary name already taken, never lets a concurrent reader see a partial file, and — one case per row of the failure matrix — leaves the destination byte for byte intact when any syscall before the rename fails (a failed `fsync` of the directory afterwards is success with a warning); `add` waits for the next second and publishes strictly increasing generations, refuses a clock behind the publication or moved backwards during the wait, refuses duplicates (in the bundle and within the input), non-CAs, expired and unreadable dates, the 7th certificate, an oversized result and one that would leave the leaf unsigned, re-checks dates and the chain **after** the wait, and — the happy path — writes a bundle whose `vouch()` returns exactly the new publication with owner and mode preserved |
+| `tests/unit/managerCertsWrite_test.cpp` (suites `BundleWriteLock`/`AtomicWrite`/`ManagerCertsAdd`) | The lock blocks a second writer, refuses a symlinked or non-root lock file, and notices one replaced while it waited; `atomicWrite()` preserves owner and mode, aborts when the destination changed since it was read, survives ten runs with every `pid.0..9` temporary name already taken, never lets a concurrent reader see a partial file, and — one case per row of the failure matrix — leaves the destination byte for byte intact when any syscall before the rename fails (a failed `fsync` of the directory afterwards is success with a warning); `add` waits for the next second and publishes strictly increasing generations, refuses a clock behind the publication or moved backwards during the wait, refuses duplicates (in the bundle and within the input), non-CAs, expired and unreadable dates, the 7th certificate, an oversized result and one that would leave the leaf unsigned, re-checks dates and the chain **after** the wait, and — the happy path — writes a bundle whose `vouch()` returns exactly the new publication with owner and mode preserved. Two cases bound the transaction in TIME as well: a FIFO at the configured bundle path is refused, and one swapped in for the destination between the read and the rename aborts the publication — each call runs on a thread with a 10 s budget, because the bug they pin (an open without `O_NONBLOCK`) does not fail, it hangs, and it hangs holding the exclusive lock |
 | `tests/unit/managerCertsWriteRemoveStampPrune_test.cpp` (suites `ManagerCertsRemove`/`ManagerCertsPruneExpired`/`ManagerCertsStamp`) | `remove` drops **every** copy of a duplicated identity (`{A,A,B}` → `{B}`), refuses an identity the bundle does not carry without republishing, refuses removing the only CA that chains to the leaf (CA-28) and refuses a removal that would still leave 7 certificates; `prune-expired` keeps the signing CA while dropping the expired one, refuses a prune whose result is still oversized or empty, and — with nothing expired — writes **nothing** (same SHA-256 **and** mtime, same generation, no wait) while warning when the bundle is unstamped or its hash is stale (C35/C36i); `stamp` publishes a plain PEM and the file it writes parses back with the same certificates and a `vouch()` that returns exactly the new publication (C29/CA-29); all three refuse on a worker (CA-30) |
-| `tests/unit/managerCertsFromMaster_test.cpp` (suites `ManagerCertsFromMaster`/`ManagerCertsMasterTransport`) | Through the `MasterTransport` seam: a higher generation is installed and `vouch()` over the result returns exactly the master's number, the chain is validated against the LOCAL leaf (a CA fabricated in the response proves nothing), `0` and a generation behind ours are exit 1, an equal one is a no-op, a missing or non-numeric header is exit **2** (C38b), a body that does not parse is 2, and a body whose publication block disagrees with the header is 1; the four cases that prove skipping G8 skipped nothing else — a candidate with no CA for this leaf, 0 certificates, 7 certificates and an oversized serialisation, all under an explicit publication — are exit 1 with the local bundle unchanged; plus the URL built from components (the default prefix without `//`, IPv6 bracketed) and every unusable address refused without connecting. Through the `CurlPort` seam: every option that decides what the connection trusts, with its value (blob = the local bundle, `CAPATH` cleared, `VERIFYPEER` 1, `VERIFYHOST` 2, `PROXY` empty, no redirects, 10 s), that a refused `setopt` ends the run **before** `curl_easy_perform()`, that only a 200 counts, that the cap drops a crossing chunk whole, and that only the last response's generation header survives |
+| `tests/unit/managerCertsFromMaster_test.cpp` (suites `ManagerCertsFromMaster`/`ManagerCertsMasterTransport`) | Through the `MasterTransport` seam: a higher generation is installed and `vouch()` over the result returns exactly the master's number, the chain is validated against the LOCAL leaf (a CA fabricated in the response proves nothing), `0` and a generation behind ours are exit 1, an equal one over the same certificates is a no-op while an equal one over different certificates repairs the bundle in place under that same generation (D-16), a missing or non-numeric header is exit **2** (C38b), a body that does not parse is 2, and a body whose publication block disagrees with the header is 1; the four cases that prove skipping G8 skipped nothing else — a candidate with no CA for this leaf, 0 certificates, 7 certificates and an oversized serialisation, all under an explicit publication — are exit 1 with the local bundle unchanged; plus the URL built from components (the default prefix without `//`, IPv6 bracketed) and every unusable address refused without connecting. Through the `CurlPort` seam: every option that decides what the connection trusts, with its value (blob = the local bundle, `CAPATH` cleared, `VERIFYPEER` 1, `VERIFYHOST` 2, `PROXY` empty, no redirects, 10 s), that a refused `setopt` ends the run **before** `curl_easy_perform()`, that only a 200 counts, that the cap drops a crossing chunk whole, and that only the last response's generation header survives |
 | `tests/component/manager_certs_from_master_test.sh` (ctest `manager_certs_from_master`) | The compiled binary against a real `SSLServer` (`tests/testHttpsMaster.hpp`), over a real handshake — the part no seam can fake (C39h): a master signed by a CA this node does not carry, one with the wrong identity, one trusted **only** through `SSL_CERT_FILE`/`SSL_CERT_DIR`, and an empty local bundle are all exit 2 with the bundle untouched, while an inherited `https_proxy` pointing nowhere is ignored and the pull still succeeds; a 1 MiB body exactly at the cap is installed, 1 MiB + 1 is refused (in one response and across two chunks alike), a body that stops halfway is refused, 302/500/206 with a perfectly valid payload are refused; the configured prefix produces `/wazuh-manager/cacerts` (no `//`), `--master ::1` produces `https://[::1]:<port>/…`, an unreachable port names `--port` and the `scp` fallback, and running it on a master refuses without leaving a lock file |
 | `tests/cli/manager_certs_cli_test.sh` (ctest `manager_certs_cli`) | `--version`/`--help` work with `$WAZUH_MANAGER_HOME` unset and no configuration anywhere (RF-10); `-f` to a missing file, a config whose bundle is missing, and a config whose leaf is missing each exit 2 — the three environment paths `runInspect()`/`runCheck()` never see, because they are pure functions over an already-parsed bundle. For `add` (root only, skipped otherwise): a worker refuses without leaving a lock file behind, a refused `add` leaves the bundle's bytes and mtime untouched with no temporary left, and **two real processes adding at once keep both certificates** — the one thing no in-process test can show. For the other three (root only): `stamp` turns a plain PEM into a bundle the binary's own `check` then accepts, `add` + `remove` round-trip a certificate by the identity `inspect` printed with strictly growing generations, a `remove` of an absent identity and a `prune-expired` with nothing expired both leave the bytes and the mtime alone (the second one still warning about an unpublished bundle), and all three refuse on a worker without leaving a lock file |
 
@@ -354,6 +372,22 @@ binary:
 
 ```bash
 cmake --build $WAZUH_REPO/src/build -j --target manager_certs_utest wazuh-manager-certs manager_certs_test_master
+```
+
+Most of this suite needs **root**: the write lock has to be a root-owned file (G0/C36f), so without
+euid 0 the GTest binary skips 62 of its 87 cases and both shell suites skip their writing half —
+a developer running them as themselves gets skips, not failures, and exit 0.
+
+CI does not get that leeway, because there a green run over 25 cases is indistinguishable from a
+green run over 87. Both jobs of `.github/workflows/5_testunit_managercerts.yml` therefore run
+`ctest -V` **elevated**, and then hand the log to `tests/ci/assert_no_skipped_tests.sh`, which fails
+the job when anything was skipped (naming how many and which) — and also when the log carries no
+GoogleTest summary at all, since a check that cannot see the cases must not pass for lack of
+evidence:
+
+```bash
+ctest -V -L manager_certs 2>&1 | tee ctest-manager_certs.log   # as root
+sh tests/ci/assert_no_skipped_tests.sh ctest-manager_certs.log
 ```
 
 `tests/testHttpsMaster.hpp` is the other side of the wire: a cpp-httplib `SSLServer` whose response

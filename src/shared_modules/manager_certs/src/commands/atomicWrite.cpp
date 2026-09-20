@@ -163,8 +163,14 @@ namespace manager_certs
         CurrentDestination currentDestination(int directoryFd, const std::string& name, const IoPort& io)
         {
             CurrentDestination current;
-            const int fd = io.openat ? io.openat(directoryFd, name.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC, 0)
-                                     : ::openat(directoryFd, name.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+            // O_NONBLOCK, and for a sharper reason than in main.cpp's readBounded(): this open
+            // happens with the exclusive lock HELD, one step before the rename, so an openat() that
+            // blocks does not merely hang this command -- it keeps every other writer out with it.
+            // A FIFO with no writer (or a device waiting for carrier) at this name is exactly that
+            // open, so the flag makes it return immediately and the check below refuses it.
+            constexpr int kReadFlags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK;
+            const int fd = io.openat ? io.openat(directoryFd, name.c_str(), kReadFlags, 0)
+                                     : ::openat(directoryFd, name.c_str(), kReadFlags);
             if (fd < 0)
             {
                 return current;
@@ -172,6 +178,15 @@ namespace manager_certs
 
             struct stat attributes {};
             if (::fstat(fd, &attributes) != 0)
+            {
+                ::close(fd);
+                return current;
+            }
+            // fstat() on the OPEN descriptor, before a single byte is read: whatever sits at the
+            // name now, if it is not a regular file it is not the file we read under the lock, and
+            // a publication has no business reading a FIFO, a device or a directory to find out.
+            // `readable` stays false, which is what step 8 refuses on.
+            if (!S_ISREG(attributes.st_mode))
             {
                 ::close(fd);
                 return current;
@@ -611,7 +626,14 @@ namespace manager_certs
         }
         context.lock = std::make_unique<BundleWriteLock>(std::move(*acquired.lock));
 
-        context.bundleFd = ::openat(context.directoryFd, context.basename.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+        // O_NONBLOCK, like main.cpp's readBounded() (and the reason its comment gives): a FIFO with
+        // no writer at the configured path turns this openat() into a call that never returns. Here
+        // it would do so with the exclusive lock ALREADY TAKEN two statements above, so the command
+        // would hang holding it and block every other writer of this bundle -- a configuration
+        // mistake (or a planted path) stalling the tool fleet-wide instead of being refused. With
+        // the flag the open returns straight away and the S_ISREG check below rejects it.
+        context.bundleFd =
+            ::openat(context.directoryFd, context.basename.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
         if (context.bundleFd < 0)
         {
             const int cause = errno;

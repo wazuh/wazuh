@@ -437,6 +437,46 @@ TEST(ManagerCertsFromMaster, EqualGenerationIsNoop)
     EXPECT_EQ(outcome.hash, before);
 }
 
+TEST(ManagerCertsFromMaster, EqualGenerationWithDifferentContentIsRepaired)
+{
+    SKIP_UNLESS_ROOT();
+    const TempDir directory;
+    const Pki pki = makePki();
+
+    // The state the number-only shortcut of C37(b) could not see: a healthy publication block,
+    // intact, over certificates it does not describe -- somebody edited the worker's bundle (or a
+    // restore put an older one back) and left the block alone. This worker announces the master's
+    // own generation while serving the wrong anchor, so every pull used to answer "nothing to do"
+    // and leave it broken forever.
+    const std::filesystem::path bundlePath = directory.path() / kBundleName;
+    writeFile(bundlePath,
+              ca_bundle::renderBlock(blockFor(justOne(pki.ca.get()), kLocalPublication)) +
+                  ca_bundle::serializeCertificates(justOne(pki.stranger.get())));
+    const std::string before = sha256Of(bundlePath);
+
+    // The master is at that very generation, with the certificates the file should have carried.
+    StubMaster stub;
+    stub.response = answer(ca_bundle::serializeCertificates(justOne(pki.ca.get())), std::to_string(kLocalPublication));
+
+    const PullOutcome outcome = pull(bundlePath, pki.leaf.get(), stub);
+    ASSERT_EQ(outcome.exitCode, 0) << outcome.err;
+    EXPECT_TRUE(outcome.err.empty()) << outcome.err;
+    EXPECT_EQ(outcome.out.find("nothing to do"), std::string::npos) << outcome.out;
+    EXPECT_NE(outcome.out.find("repaired"), std::string::npos) << outcome.out;
+    EXPECT_NE(outcome.hash, before);
+
+    // Repaired in place: the master's certificate, under the same generation it already announced
+    // (nothing moves backwards for the agents), and a block that describes what the file carries --
+    // so `check` vouches for it again (C29).
+    const ca_bundle::ParsedBundle written = ca_bundle::parseBundle(readFile(bundlePath));
+    ASSERT_TRUE(written.wellFormed);
+    ASSERT_TRUE(written.block.has_value());
+    EXPECT_EQ(written.block->publication, kLocalPublication);
+    ASSERT_EQ(written.certificates.size(), 1U);
+    EXPECT_EQ(ca_bundle::contentSha256(written.certificates), ca_bundle::contentSha256(justOne(pki.ca.get())));
+    EXPECT_EQ(written.block->contentSha256, ca_bundle::contentSha256(written.certificates));
+}
+
 TEST(ManagerCertsFromMaster, LowerGenerationRejected)
 {
     SKIP_UNLESS_ROOT();
