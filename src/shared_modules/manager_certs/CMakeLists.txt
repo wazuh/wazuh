@@ -54,7 +54,11 @@ target_link_libraries(manager_certs_core PRIVATE ext_curl ssl crypto ext_zlib)
 # bin/wazuh-manager-conf.
 # Built in every mode (also UNIT_TEST) so the CLI end-to-end test can run from the test tree.
 add_executable(wazuh-manager-certs src/main.cpp)
-target_link_libraries(wazuh-manager-certs PRIVATE manager_certs_core manager_config ext_rapidjson)
+# pthread last and explicit: curl's own threading (curl_threads.c) and the vendored OpenSSL
+# (threads_pthread.c) both need it, and the package build environment does not pull it in on its own
+# the way the devcontainer's linker does -- without this the rpm and deb builds fail to link this
+# binary while every local build succeeds. Same as shared_modules/agent_metadata/CMakeLists.txt.
+target_link_libraries(wazuh-manager-certs PRIVATE manager_certs_core manager_config ext_rapidjson pthread)
 if(DEFINED VERSION_FILE)
   target_compile_definitions(wazuh-manager-certs PRIVATE WAZUH_MANAGER_CERTS_VERSION="${VERSION_FILE}")
 endif()

@@ -38,12 +38,6 @@ namespace manager_certs
 
     int runPruneExpired(WriteContext& context, std::ostream& out, std::ostream& err)
     {
-        const auto refuse = [&err](int code, const std::string& text)
-        {
-            err << "wazuh-manager-certs: prune-expired: " << text << '\n';
-            return code;
-        };
-
         const std::time_t now = context.time.now ? context.time.now() : std::time(nullptr);
 
         // What stays: everything whose notAfter has not passed. A certificate whose ASN.1 dates do

@@ -83,6 +83,17 @@ jobs:
           test: "true"
           asan: "false"
 
+      # Third target, and the same lesson as the CLI above: `manager_certs_from_master` (selected by
+      # the manager_certs label) drives the compiled CLI against a real HTTPS server, and that server
+      # is a separate executable -- the other side of the wire, linking none of the module. Without
+      # this step the ctest gets a path to a binary nothing built and exits on its usage message.
+      - name: Manager certs - Build the component test's HTTPS master
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "manager_certs_test_master"
+          test: "true"
+          asan: "false"
+
       # `manager_certs` is the module-wide ctest label: it selects the GTest and the CLI
       # end-to-end test, which runs the built binary for --version/--help with no configuration.
       #
