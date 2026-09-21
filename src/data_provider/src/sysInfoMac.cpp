@@ -661,12 +661,12 @@ nlohmann::json SysInfo::getUsers() const
         // when present. macOS has no equivalent of a minimum password age or of a warning period
         // before expiration, so those two stay not collected rather than a guessed zero.
         userItem["user_password_expiration_date"] = user.contains("password_expiration_date")
-                                                     ? user["password_expiration_date"]
-                                                     : nlohmann::json(NOT_COLLECTED_VALUE);
+                                                    ? user["password_expiration_date"]
+                                                    : nlohmann::json(NOT_COLLECTED_VALUE);
         userItem["user_password_inactive_days"] = NOT_COLLECTED_VALUE;
         userItem["user_password_max_days_between_changes"] = user.contains("password_max_days_between_changes")
-                ? user["password_max_days_between_changes"]
-                : nlohmann::json(NOT_COLLECTED_VALUE);
+                                                             ? user["password_max_days_between_changes"]
+                                                             : nlohmann::json(NOT_COLLECTED_VALUE);
         userItem["user_password_min_days_between_changes"] = NOT_COLLECTED_VALUE;
         userItem["user_password_warning_days_before_expiration"] = NOT_COLLECTED_VALUE;
 
