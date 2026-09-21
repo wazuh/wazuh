@@ -26,6 +26,8 @@ wfd_t* __wrap_wpopenv(const char* path, char* const* argv, int flags);
 // Accessors for the argv captured by the most recent __wrap_wpopenv() call --
 // see the capture logic's comment in exec_op_wrappers.c for why this is safe
 // to add to a wrapper shared by many other test targets.
+int wpopenv_captured_flags(void);
+
 int wpopenv_captured_argc(void);
 const char* wpopenv_captured_argv(int index);
 

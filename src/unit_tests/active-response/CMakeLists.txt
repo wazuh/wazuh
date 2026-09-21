@@ -54,7 +54,7 @@ foreach(counter RANGE ${count})
             ${SRC_FOLDER}/active-response/include
         )
         set_source_files_properties(${SRC_FOLDER}/active-response/src/block-ip-macos.c PROPERTIES
-            COMPILE_DEFINITIONS "__APPLE__;PLATFORM_MACOS=1;main=block_ip_macos_main"
+            COMPILE_DEFINITIONS "__APPLE__;main=block_ip_macos_main"
         )
     endif()
 

@@ -64,6 +64,53 @@ static wfd_t *dummy_wfd(const char *stderr_text) {
     return &wfd;
 }
 
+/* dummy_wfd() above returns one shared static, enough for the single-spawn
+ * route tests. try_pf_macos() spawns pfctl up to four times per call, so its
+ * tests need one wfd_t and stream each. __wrap_wpclose() frees neither. */
+#define MAX_MOCK_WFD 8
+static wfd_t *mock_wfds[MAX_MOCK_WFD];
+static int mock_wfd_count = 0;
+
+static wfd_t *make_wfd(const char *output) {
+    /* fmemopen() leaves size==0 undefined */
+    static const char empty[] = "\n";
+    const char *text = (output && *output) ? output : empty;
+
+    wfd_t *wfd = calloc(1, sizeof(wfd_t));
+    assert_non_null(wfd);
+    wfd->file_out = fmemopen((void *)text, strlen(text), "r");
+    assert_non_null(wfd->file_out);
+
+    assert_true(mock_wfd_count < MAX_MOCK_WFD);
+    mock_wfds[mock_wfd_count++] = wfd;
+    return wfd;
+}
+
+static int teardown_wfds(void **state) {
+    (void)state;
+    for (int i = 0; i < mock_wfd_count; i++) {
+        if (mock_wfds[i]->file_out) {
+            fclose(mock_wfds[i]->file_out);
+        }
+        free(mock_wfds[i]);
+    }
+    mock_wfd_count = 0;
+    return 0;
+}
+
+/* try_pf_macos()'s prologue: pfctl found, /dev/pf reachable, PF enabled. */
+static void expect_pf_enabled(void) {
+    expect_string(__wrap_get_binary_path, command, "pfctl");
+    will_return(__wrap_get_binary_path, strdup("/sbin/pfctl"));
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_access, __name, "/dev/pf");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, 0);
+
+    will_return(__wrap_wpopenv, make_wfd("Status: Enabled\n"));
+    will_return(__wrap_wpclose, 0);
+}
 // ============================================================================
 // try_route_macos: new in this PR, the fallback wazuh/wazuh#39192 was missing
 // ============================================================================
@@ -103,6 +150,9 @@ void test_try_route_macos_enable_succeeds(void **state) {
     firewall_result_t result = try_route_macos("192.168.1.100", ENABLE_COMMAND, 4, "block-ip");
 
     assert_int_equal(result, FIREWALL_SUCCESS);
+    // Only stderr may be bound: an empty capture is the success signal, and
+    // binding stdout would put route's always-present line in it
+    assert_int_equal(wpopenv_captured_flags(), W_BIND_STDERR);
     // Confirms the exact command run, not just that *some* command succeeded
     // -- the mock ignores argv on its own, see wpopenv_captured_argv()'s doc.
     assert_int_equal(wpopenv_captured_argc(), 6);
@@ -215,9 +265,8 @@ void test_try_route_macos_disable_not_in_table_is_success(void **state) {
 }
 
 // ============================================================================
-// try_pf_macos / try_hostsdeny_macos: pre-existing, unmodified by this PR --
-// covering only the exact decline paths that reproduce #39192's stock-install
-// symptom, which is what the new route fallback needs to trigger on.
+// try_pf_macos / try_hostsdeny_macos: the decline paths that reproduce the
+// stock-install symptom, which is what the route fallback triggers on.
 // ============================================================================
 
 void test_try_pf_macos_disabled_is_invalid_state(void **state) {
@@ -252,6 +301,193 @@ void test_try_hostsdeny_macos_missing_file_is_not_available(void **state) {
     firewall_result_t result = try_hostsdeny_macos("192.168.1.100", ENABLE_COMMAND, 4, "block-ip");
 
     assert_int_equal(result, FIREWALL_NOT_AVAILABLE);
+}
+
+// ============================================================================
+// try_pf_macos: wazuh_fwtable existence check
+// ============================================================================
+
+/* Declines without touching /etc/pf.conf. cmocka enforces the "without":
+ * a further access()/wpopenv() has no queued expectation and fails. */
+void test_try_pf_macos_missing_table_declines(void **state) {
+    (void)state;
+
+    expect_pf_enabled();
+
+    /* pfctl -T show: exit 255, table absent */
+    will_return(__wrap_wpopenv, make_wfd("pfctl: Table does not exist.\n"));
+    will_return(__wrap_wpclose, 255 << 8);
+
+    firewall_result_t result = try_pf_macos("192.0.2.66", ENABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_INVALID_STATE);
+}
+
+/* Undrained output makes wpclose() kill pfctl with SIGPIPE, so an existing
+ * table reads as missing. feof() pins the drain in place. */
+void test_try_pf_macos_existing_table_check_output_is_drained(void **state) {
+    (void)state;
+
+    expect_pf_enabled();
+
+    wfd_t *show_wfd = make_wfd("   192.0.2.1\n   192.0.2.2\n   192.0.2.3\n");
+    will_return(__wrap_wpopenv, show_wfd);
+    will_return(__wrap_wpclose, 0);
+
+    /* pfctl -T add, then pfctl -k -- the kill's pipe carries the ALTQ warnings
+     * and has to be drained too, or pfctl dies before DIOCKILLSTATES */
+    will_return(__wrap_wpopenv, make_wfd(""));
+    will_return(__wrap_wpclose, 0);
+    wfd_t *kill_wfd = make_wfd("No ALTQ support in kernel\nALTQ related functions disabled\n");
+    will_return(__wrap_wpopenv, kill_wfd);
+    will_return(__wrap_wpclose, 0);
+
+    firewall_result_t result = try_pf_macos("192.0.2.66", ENABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_SUCCESS);
+    assert_true(feof(show_wfd->file_out));
+    assert_true(feof(kill_wfd->file_out));
+    // The last spawn on the block path is the connection kill
+    assert_int_equal(wpopenv_captured_argc(), 3);
+    assert_string_equal(wpopenv_captured_argv(1), "-k");
+    assert_string_equal(wpopenv_captured_argv(2), "192.0.2.66");
+}
+
+/* A signalled check answers nothing, so it must not read as "table present". */
+void test_try_pf_macos_signalled_table_check_declines(void **state) {
+    (void)state;
+
+    expect_pf_enabled();
+
+    will_return(__wrap_wpopenv, make_wfd("No ALTQ support in kernel\n"));
+    will_return(__wrap_wpclose, SIGPIPE);
+
+    firewall_result_t result = try_pf_macos("192.0.2.66", ENABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_INVALID_STATE);
+}
+
+/* A check that cannot be spawned is an execution failure, not a missing table,
+ * and still must not reach /etc/pf.conf. */
+void test_try_pf_macos_table_check_spawn_failure_is_execution_failed(void **state) {
+    (void)state;
+
+    expect_pf_enabled();
+
+    will_return(__wrap_wpopenv, NULL);
+
+    firewall_result_t result = try_pf_macos("192.0.2.66", ENABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_EXECUTION_FAILED);
+}
+
+/* Same on the unblock path. */
+void test_try_pf_macos_missing_table_declines_on_disable(void **state) {
+    (void)state;
+
+    expect_pf_enabled();
+
+    will_return(__wrap_wpopenv, make_wfd("pfctl: Table does not exist.\n"));
+    will_return(__wrap_wpclose, 255 << 8);
+
+    firewall_result_t result = try_pf_macos("192.0.2.66", DISABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_INVALID_STATE);
+}
+
+/* With the table configured pf still works: delete, and no pfctl -k. */
+void test_try_pf_macos_existing_table_deletes_ip(void **state) {
+    (void)state;
+
+    expect_pf_enabled();
+
+    will_return(__wrap_wpopenv, make_wfd("   192.0.2.66\n"));
+    will_return(__wrap_wpclose, 0);
+
+    will_return(__wrap_wpopenv, make_wfd(""));
+    will_return(__wrap_wpclose, 0);
+
+    firewall_result_t result = try_pf_macos("192.0.2.66", DISABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_SUCCESS);
+    // The last spawn is the table operation: confirms delete, not add
+    assert_int_equal(wpopenv_captured_argc(), 6);
+    assert_string_equal(wpopenv_captured_argv(3), "-T");
+    assert_string_equal(wpopenv_captured_argv(4), "delete");
+    assert_string_equal(wpopenv_captured_argv(5), "192.0.2.66");
+}
+
+/* pfctl reports "0/1 addresses deleted." and still exits 0 when the address was
+ * never in the table. pf is then not the method that blocked it, so it must
+ * decline and let the chain reach the one that did. */
+void test_try_pf_macos_disable_address_not_in_table_declines(void **state) {
+    (void)state;
+
+    expect_pf_enabled();
+
+    will_return(__wrap_wpopenv, make_wfd("   198.51.100.1\n"));
+    will_return(__wrap_wpclose, 0);
+
+    /* Measured on macOS 26.5.1: pfctl puts its two ALTQ notices on stderr ahead
+     * of the stdout verdict, so the line that decides this is never the first */
+    will_return(__wrap_wpopenv, make_wfd("No ALTQ support in kernel\nALTQ related functions disabled\n0/1 addresses deleted.\n"));
+    will_return(__wrap_wpclose, 0);
+
+    firewall_result_t result = try_pf_macos("192.0.2.66", DISABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_INVALID_STATE);
+}
+
+/* The symmetric case: the address was in the table, so pf did the unblock and
+ * the chain must stop here. Same ALTQ prefix, different verdict. */
+void test_try_pf_macos_disable_address_in_table_succeeds(void **state) {
+    (void)state;
+
+    expect_pf_enabled();
+
+    will_return(__wrap_wpopenv, make_wfd("   192.0.2.66\n"));
+    will_return(__wrap_wpclose, 0);
+
+    will_return(__wrap_wpopenv, make_wfd("No ALTQ support in kernel\nALTQ related functions disabled\n1/1 addresses deleted.\n"));
+    will_return(__wrap_wpclose, 0);
+
+    firewall_result_t result = try_pf_macos("192.0.2.66", DISABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_SUCCESS);
+}
+
+/* A non-zero status with nothing on stderr means the child never became
+ * route(8) -- a failed execvp() _exit(127)s silently. */
+void test_try_route_macos_spawn_never_exec_is_failure(void **state) {
+    (void)state;
+
+    char *route_path = strdup("/sbin/route");
+    expect_string(__wrap_get_binary_path, command, "route");
+    will_return(__wrap_get_binary_path, route_path);
+    will_return(__wrap_get_binary_path, 0);
+    will_return(__wrap_wpopenv, make_wfd(""));
+    will_return(__wrap_wpclose, 127 << 8);
+
+    firewall_result_t result = try_route_macos("192.0.2.66", ENABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_EXECUTION_FAILED);
+}
+
+/* macOS route(8) exits 0 even when the routing socket write failed, so a zero
+ * status must not be read as success on its own. */
+void test_try_route_macos_zero_exit_with_stderr_is_failure(void **state) {
+    (void)state;
+
+    char *route_path = strdup("/sbin/route");
+    expect_string(__wrap_get_binary_path, command, "route");
+    will_return(__wrap_get_binary_path, route_path);
+    will_return(__wrap_get_binary_path, 0);
+    will_return(__wrap_wpopenv, make_wfd("route: writing to routing socket: Network is unreachable\n"));
+    will_return(__wrap_wpclose, 0);
+
+    firewall_result_t result = try_route_macos("2001:db8::1", ENABLE_COMMAND, 6, "block-ip");
+
+    assert_int_equal(result, FIREWALL_EXECUTION_FAILED);
 }
 
 // ============================================================================
@@ -317,6 +553,16 @@ int main(void) {
         cmocka_unit_test(test_try_route_macos_enable_already_blocked_is_success),
         cmocka_unit_test(test_try_route_macos_disable_not_in_table_is_success),
         cmocka_unit_test(test_try_pf_macos_disabled_is_invalid_state),
+        cmocka_unit_test_teardown(test_try_pf_macos_missing_table_declines, teardown_wfds),
+        cmocka_unit_test_teardown(test_try_pf_macos_existing_table_check_output_is_drained, teardown_wfds),
+        cmocka_unit_test_teardown(test_try_pf_macos_signalled_table_check_declines, teardown_wfds),
+        cmocka_unit_test_teardown(test_try_pf_macos_table_check_spawn_failure_is_execution_failed, teardown_wfds),
+        cmocka_unit_test_teardown(test_try_pf_macos_missing_table_declines_on_disable, teardown_wfds),
+        cmocka_unit_test_teardown(test_try_pf_macos_existing_table_deletes_ip, teardown_wfds),
+        cmocka_unit_test_teardown(test_try_pf_macos_disable_address_not_in_table_declines, teardown_wfds),
+        cmocka_unit_test_teardown(test_try_pf_macos_disable_address_in_table_succeeds, teardown_wfds),
+        cmocka_unit_test_teardown(test_try_route_macos_spawn_never_exec_is_failure, teardown_wfds),
+        cmocka_unit_test_teardown(test_try_route_macos_zero_exit_with_stderr_is_failure, teardown_wfds),
         cmocka_unit_test(test_try_hostsdeny_macos_missing_file_is_not_available),
         cmocka_unit_test(test_block_ip_macos_main_stock_install_falls_back_to_route),
     };

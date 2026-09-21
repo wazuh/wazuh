@@ -108,14 +108,15 @@ Wazuh provides **5 Active Response executables** covering IP blocking and accoun
 
 **macOS-Specific Details**:
 - **PF Table**: Uses table name `wazuh_fwtable`
-- **Connection Killing**: When blocking, also kills existing connections: `pfctl -k 192.168.1.100`
-- **Self-Configuring pf.conf**: Does not use a PF anchor file. If the `wazuh_fwtable` table doesn't exist yet, `block-ip` appends it directly to `/etc/pf.conf` and reloads PF with `pfctl -f /etc/pf.conf` — see wazuh/wazuh#39189 for the risk this self-modification raises.
-- **Fallback**: Falls back to `hosts.deny`, then to a `route` blackhole if `pf` is unavailable or not enabled — the same no-configuration-needed fallback the Unix/Linux chain has, so a stock macOS install (pf disabled, no `/etc/hosts.deny`) still blocks the address
+- **Connection Killing**: When blocking, also kills existing connections: `pfctl -k 192.168.1.100`. Best effort: a failure here is not reported.
+- **Table Precondition**: The `wazuh_fwtable` table and its block rules are a one-time setup owned by the administrator, the same way `wazuh_blacklist` is for `npf` on NetBSD. `block-ip` does not use a PF anchor file, never edits `/etc/pf.conf` and never reloads the packet filter ruleset: if the table is absent it declines and the next method in the chain is tried. The macOS package does not apply or announce it — `install.sh`'s notice runs at package build time, not on the endpoint — so it has to be applied by hand.
+- **Fallback**: Falls back to `hosts.deny`, then to a `route` blackhole if `pf` is unavailable, not enabled or missing its table — the same no-configuration-needed fallback the Unix/Linux chain has, so a stock macOS install (pf disabled, no `/etc/hosts.deny`) still blocks the address
+- **Unblocking**: Each method declines when the address is not the one it holds (`pf` reports `0/1 addresses deleted.`, `hosts.deny` finds no matching line), so the unblock walks the chain until it reaches the method that actually applied the block. Without this a block applied by `route` would never be lifted once `pf` or `hosts.deny` became available.
 - **Permissions**: Requires root privileges
 
-**Example pf.conf entry `block-ip` appends when `wazuh_fwtable` is missing**:
+**Example pf.conf setup** (added by the administrator, then `sudo pfctl -f /etc/pf.conf`):
 ```
-# Wazuh active response table
+# /etc/pf.conf
 table <wazuh_fwtable> persist
 block in quick from <wazuh_fwtable> to any
 block out quick from any to <wazuh_fwtable>

@@ -114,7 +114,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   target_include_directories(block-ip PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/helpers)
 
-  target_compile_definitions(block-ip PRIVATE PLATFORM_MACOS=1)
 
   # Build other macOS active response programs
   add_active_response_executable(
