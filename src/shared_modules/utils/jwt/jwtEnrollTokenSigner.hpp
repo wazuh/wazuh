@@ -13,10 +13,13 @@
 /// Mints `wazuh-enroll+jwt` tokens (jwtEnrollProfileV1.hpp). Header and payload are serialized by
 /// hand in the canonical form the verifier expects and the frozen vectors pin (keys in ASCII
 /// order, no whitespace), so agent, manager tests and the Python tools agree byte for byte.
+/// sign() mints the shared-key form (no `kid`; what the agent sends today); signWithKid() the two
+/// `kid` forms of issue #38993 (enrollment token id, or the canonical agent id when re-enrolling).
 
 #pragma once
 
 #include "jwt/base64Url.hpp"
+#include "jwt/canonicalAgentId.hpp"
 #include "jwt/hmacSha256.hpp"
 #include "jwt/jwtEnrollProfileV1.hpp"
 #include "jwt/jwtProfileV1.hpp"
@@ -40,6 +43,75 @@ namespace jwt_profile::v1::enroll
         /// @return The compact JWS, or nullopt (wrong key size, clock out of range, CSPRNG failure).
         static std::optional<std::string>
         sign(const SecureBytes& key, std::chrono::system_clock::time_point now, std::string_view jtiOverride = {})
+        {
+            return mint(key, now, headerJson(), jtiOverride);
+        }
+
+        /// @brief Same token with a `kid` in the header (issue #38993). `kid` must be one of the two
+        /// disjoint forms the verifier classifies (peekKid()): the enrollment token id as 22 canonical
+        /// base64url chars (key = deriveEnrollTokenKey()) or a canonical agent id (key =
+        /// deriveReenrollKey()). Any other text is nullopt rather than a token nobody can verify.
+        static std::optional<std::string> signWithKid(const SecureBytes& key,
+                                                      std::chrono::system_clock::time_point now,
+                                                      std::string_view kid,
+                                                      std::string_view jtiOverride = {})
+        {
+            if (!isValidKid(kid))
+            {
+                return std::nullopt;
+            }
+            return mint(key, now, headerJson(kid), jtiOverride);
+        }
+
+        /// @brief The two `kid` shapes, and nothing else: exactly kTokenKidChars canonical base64url
+        /// chars of kTokenIdBytes bytes, or the canonical spelling of an agent id.
+        static bool isValidKid(std::string_view kid) noexcept
+        {
+            return isCanonicalBase64UrlOf(kid, kTokenIdBytes) || CanonicalAgentId::parseCanonical(kid).has_value();
+        }
+
+        static std::string headerJson()
+        {
+            std::string out = R"({"alg":")";
+            out += kAlg;
+            out += R"(","typ":")";
+            out += kTyp;
+            out += R"("})";
+            return out;
+        }
+
+        /// Members in ASCII order (`alg`, `kid`, `typ`), the order the agent profile uses too.
+        static std::string headerJson(std::string_view kid)
+        {
+            std::string out = R"({"alg":")";
+            out += kAlg;
+            out += R"(","kid":")";
+            out += kid;
+            out += R"(","typ":")";
+            out += kTyp;
+            out += R"("})";
+            return out;
+        }
+
+        static std::string payloadJson(std::int64_t iat, std::string_view jti)
+        {
+            std::string out = R"({"exp":)";
+            out += std::to_string(iat + kLifetimeSec);
+            out += R"(,"iat":)";
+            out += std::to_string(iat);
+            out += R"(,"jti":")";
+            out += jti;
+            out += R"(","nbf":)";
+            out += std::to_string(iat);
+            out += '}';
+            return out;
+        }
+
+    private:
+        static std::optional<std::string> mint(const SecureBytes& key,
+                                               std::chrono::system_clock::time_point now,
+                                               const std::string& header,
+                                               std::string_view jtiOverride)
         {
             if (key.size() != kKeyBytes)
             {
@@ -71,7 +143,7 @@ namespace jwt_profile::v1::enroll
                 jti = std::string(jtiOverride);
             }
 
-            std::string signingInput = base64UrlEncode(headerJson());
+            std::string signingInput = base64UrlEncode(header);
             signingInput += '.';
             signingInput += base64UrlEncode(payloadJson(iat, jti));
 
@@ -83,30 +155,6 @@ namespace jwt_profile::v1::enroll
             signingInput += '.';
             signingInput += base64UrlEncode(mac.data(), mac.size());
             return signingInput;
-        }
-
-        static std::string headerJson()
-        {
-            std::string out = R"({"alg":")";
-            out += kAlg;
-            out += R"(","typ":")";
-            out += kTyp;
-            out += R"("})";
-            return out;
-        }
-
-        static std::string payloadJson(std::int64_t iat, std::string_view jti)
-        {
-            std::string out = R"({"exp":)";
-            out += std::to_string(iat + kLifetimeSec);
-            out += R"(,"iat":)";
-            out += std::to_string(iat);
-            out += R"(,"jti":")";
-            out += jti;
-            out += R"(","nbf":)";
-            out += std::to_string(iat);
-            out += '}';
-            return out;
         }
     };
 } // namespace jwt_profile::v1::enroll

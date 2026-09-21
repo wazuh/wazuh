@@ -18,6 +18,7 @@
 #include "loggerHelper.h"
 #include "reflectiveJson.hpp"
 #include "secureCommunication.hpp"
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -312,7 +313,8 @@ template<typename TSelector,
          size_t MaxBulkSize = 10 * 1024 * 1024,
          size_t RetryDelay = 1,
          size_t FlushInterval = 20,
-         size_t MaxRetryDelay = 15>
+         size_t MaxRetryDelay = 15,
+         size_t ConflictRetryDelayMs = 3000>
 class IndexerConnectorSyncImpl final
 {
     static_assert(RetryDelay > 0, "RetryDelay must be greater than 0");
@@ -345,6 +347,18 @@ class IndexerConnectorSyncImpl final
     /// a flush before that window (remoted's downstream response timeout, default 20 s) closes;
     /// the cross-team sizing of the whole timeout chain is decided elsewhere.
     static constexpr size_t DEFAULT_MAX_RETRY_ATTEMPTS {5};
+
+    /// A by-query version conflict clears itself after one index refresh, so it retries on its own
+    /// attempt count and its own backoff, leaving the budget above intact for a 429 that follows.
+    /// `refresh_interval` is not uniform across the state indices: 2s for most of them, but 5s for
+    /// `wazuh-states-sca`, which this same retry also covers (isAgentScopedStateIndex,
+    /// AGENT_DELETION_SCOPE_BY_QUERY). Three attempts wait 3s and then up to 6s: the second delay is
+    /// drawn uniformly from [base, 2*base], so the base has to be 3s for the cumulative wait to clear
+    /// a 5s segment on EVERY draw -- at 2s the range is 4s to 6s and the low half of it exhausts the
+    /// allowance before the refresh, failing the caller exactly as it did before the retry existed.
+    /// And no longer than that: the wait is on the caller's request and on the shard queue behind
+    /// it. The wall bound is shared, because the window the caller has to answer in is absolute.
+    static constexpr size_t CONFLICT_RETRY_ATTEMPTS {3};
     static constexpr size_t DEFAULT_MAX_RETRY_DURATION_SECONDS {15};
     size_t m_maxRetryAttempts {DEFAULT_MAX_RETRY_ATTEMPTS};
     std::chrono::milliseconds m_maxRetryDuration {std::chrono::seconds {DEFAULT_MAX_RETRY_DURATION_SECONDS}};
@@ -354,6 +368,8 @@ class IndexerConnectorSyncImpl final
     /// thread.
     std::atomic<uint64_t> m_bulkRequestsSent {0};
     std::atomic<uint64_t> m_bulkBytesSent {0};
+    /// Conflict waits spent. A conflict that clears fails no flush, so nothing else counts it.
+    std::atomic<uint64_t> m_conflictRetries {0};
 
     /// Fallback for 'request_timeout_seconds' when the configuration has no opinion.
     static constexpr long DEFAULT_REQUEST_TIMEOUT_SECONDS {60};
@@ -366,6 +382,51 @@ class IndexerConnectorSyncImpl final
     /// equal to monitoring.hpp's DEFAULT_MONITORING_INTERVAL, which this selector-agnostic
     /// template deliberately does not include.
     static constexpr long DEFAULT_MONITORING_INTERVAL_SECONDS {10};
+
+    /// What @p deadline has left, for a budget that must not open a window of its own on top of
+    /// the one the caller is waiting in. Never 0 while the bound is enabled, because
+    /// IndexerRetryBudget reads 0 as "no wall bound", the opposite of a spent operation.
+    std::chrono::milliseconds budgetLeft(const std::chrono::steady_clock::time_point deadline) const
+    {
+        if (m_maxRetryDuration.count() == 0)
+        {
+            return std::chrono::milliseconds {0};
+        }
+
+        return std::max(
+            std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now()),
+            std::chrono::milliseconds {1});
+    }
+
+    /// Waits out a by-query version conflict, and answers false once the allowance is spent and
+    /// the documents left behind become the caller's problem.
+    bool retryAfterVersionConflict(std::size_t conflicts,
+                                   IndexerExponentialBackoff& backoff,
+                                   IndexerRetryBudget& budget,
+                                   const char* operation)
+    {
+        const auto delay = backoff.nextDelay();
+        if (budget.exhausted(delay))
+        {
+            const auto wallBound = m_maxRetryDuration.count() > 0
+                                       ? ", " + std::to_string(m_maxRetryDuration.count()) + " ms"
+                                       : std::string {};
+            LOGFN_WARN(m_logFn,
+                       "%s left documents behind: %zu version conflict(s) survived its conflict retry "
+                       "allowance (%zu attempt(s)%s).",
+                       operation,
+                       conflicts,
+                       CONFLICT_RETRY_ATTEMPTS,
+                       wallBound.c_str());
+            return false;
+        }
+        m_conflictRetries.fetch_add(1, std::memory_order_relaxed);
+        LOGFN_DEBUG2(m_logFn, "Retrying %s in %lld ms.", operation, static_cast<long long>(delay.count()));
+        std::unique_lock<std::mutex> lock(m_retryMutex);
+        m_retryCv.wait_for(lock, delay, [this]() { return m_stopping.load(); });
+        // A stop cut the wait short, so nothing re-runs the query: the skipped documents stay.
+        return !m_stopping.load();
+    }
 
     void processBulk()
     {
@@ -382,12 +443,14 @@ class IndexerConnectorSyncImpl final
         // after post() returns, from this frame.
         bool deleteByQueryLeftDocuments = false;
         bool indexingFailures = false;
+        std::size_t deleteByQueryConflicts {0};
 
         // A _delete_by_query answers 200 even when it deleted nothing it was asked to: per-shard
         // errors come back in a `failures` array inside the body. Reporting that run as success is
         // how documents survive a deletion that everyone upstream believes worked, so the failures
         // are raised like a transport error and the caller decides whether to retry.
-        const auto onSuccessDeleteByQuery = [this, &deleteByQueryLeftDocuments](const std::string& response)
+        const auto onSuccessDeleteByQuery =
+            [this, &deleteByQueryLeftDocuments, &deleteByQueryConflicts](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Response: %s", response.c_str());
 
@@ -406,13 +469,12 @@ class IndexerConnectorSyncImpl final
             const auto failures =
                 (parsed.contains("failures") && parsed.at("failures").is_array()) ? parsed.at("failures").size() : 0;
 
-            // The OTHER way a 200 leaves documents behind. `conflicts: "proceed"` (set when the
-            // query is staged) makes the run skip a document whose version moved between the search
-            // and the delete instead of aborting -- and OpenSearch tallies those skips in
-            // `version_conflicts`, NOT in `failures`. To the caller both mean the same thing:
-            // documents it asked to delete are still there. So both are raised, because for a
-            // whole-agent deletion the documented recovery is re-running the delete, and nothing
-            // re-runs it while this reports success.
+            // The OTHER way a 200 leaves documents behind: `conflicts: "proceed"` (set when the
+            // query is staged) skips a document whose version moved between the search and the
+            // delete, and OpenSearch tallies those skips in `version_conflicts`, NOT in `failures`.
+            // Unlike a shard failure it clears itself -- a write the indexer has acknowledged but
+            // not yet refreshed makes every document it touched conflict, which is how a clean
+            // collides with the bulk flushed right before it -- so it is retried, not raised.
             const auto conflicts =
                 (parsed.contains("version_conflicts") && parsed.at("version_conflicts").is_number_integer())
                     ? parsed.at("version_conflicts").get<std::size_t>()
@@ -420,6 +482,15 @@ class IndexerConnectorSyncImpl final
 
             if (failures == 0 && conflicts == 0)
             {
+                return;
+            }
+
+            if (failures == 0)
+            {
+                LOGFN_DEBUG2(m_logFn,
+                             "deleteByQuery skipped %zu document(s) on a version conflict, retrying the delete.",
+                             conflicts);
+                deleteByQueryConflicts = conflicts;
                 return;
             }
 
@@ -468,13 +539,24 @@ class IndexerConnectorSyncImpl final
         // Track if we have pending deleteByQuery operations that need notification
         const bool hasDeleteByQuery = !m_deleteByQuery.empty();
 
+        // One wall clock for the whole flush, so the deletes, the conflict allowance and the bulk
+        // draw from the same window instead of each opening its own.
+        const auto flushDeadline = std::chrono::steady_clock::now() + m_maxRetryDuration;
+
+        // One conflict allowance for the whole flush: the refresh boundary is a property of the
+        // flush, so the first index to wait it out clears the rest, and a per-index allowance would
+        // only multiply the wait by the number of indices a Cleans staged.
+        IndexerExponentialBackoff conflictBackoff {std::chrono::milliseconds {ConflictRetryDelayMs},
+                                                   std::chrono::seconds {m_maxRetryDelay}};
+        IndexerRetryBudget conflictBudget {CONFLICT_RETRY_ATTEMPTS, budgetLeft(flushDeadline)};
+
         for (const auto& [index, query] : m_deleteByQuery)
         {
             try
             {
                 IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                         std::chrono::seconds {m_maxRetryDelay}};
-                IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
+                IndexerRetryBudget retryBudget {m_maxRetryAttempts, budgetLeft(flushDeadline)};
                 do
                 {
                     if (m_stopping.load())
@@ -483,6 +565,7 @@ class IndexerConnectorSyncImpl final
                         return;
                     }
                     deleteByQueryNeedsRetry = false;
+                    deleteByQueryConflicts = 0;
                     // Resolved per attempt, like every other request in this file: a host is
                     // consumed only by the request actually sent to it, and a retry rotates to
                     // the next healthy host.
@@ -497,6 +580,12 @@ class IndexerConnectorSyncImpl final
                             .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
                         PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
                         ConfigurationParameters {.timeout = m_requestTimeoutMs});
+                    if (deleteByQueryConflicts > 0 &&
+                        !retryAfterVersionConflict(
+                            deleteByQueryConflicts, conflictBackoff, conflictBudget, "deleteByQuery"))
+                    {
+                        deleteByQueryLeftDocuments = true;
+                    }
                     if (deleteByQueryLeftDocuments)
                     {
                         throw IndexerConnectorException("deleteByQuery did not delete every matching document",
@@ -515,7 +604,7 @@ class IndexerConnectorSyncImpl final
                         std::unique_lock<std::mutex> lock(m_retryMutex);
                         m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
                     }
-                } while (deleteByQueryNeedsRetry);
+                } while (deleteByQueryNeedsRetry || deleteByQueryConflicts > 0);
             }
             catch (...)
             {
@@ -546,7 +635,7 @@ class IndexerConnectorSyncImpl final
 
         // One budget for the whole bulk operation: the chunks of a 413 split, nested ones
         // included, draw from it too, so a split cannot multiply what a flush may spend.
-        IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
+        IndexerRetryBudget retryBudget {m_maxRetryAttempts, budgetLeft(flushDeadline)};
         const auto onError = [this, &needToRetry, &retryBudget](const std::string& error,
                                                                 const long statusCode,
                                                                 const std::string& responseBody) -> void
@@ -1114,8 +1203,9 @@ public:
         bool needToRetry = false;
         // Reported instead of thrown: see processBulk() on why success callbacks must not throw.
         bool updateByQueryFailed = false;
+        std::size_t updateByQueryConflicts {0};
 
-        const auto onSuccess = [this, &updateByQueryFailed](const std::string& response)
+        const auto onSuccess = [this, &updateByQueryFailed, &updateByQueryConflicts](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Update by query response: %s", response.c_str());
 
@@ -1123,9 +1213,9 @@ public:
             {
                 const auto responseJson = nlohmann::json::parse(response);
 
-                // Same contract as _delete_by_query's 200: per-shard errors are tallied in
-                // `failures` and conflicts=proceed skips in `version_conflicts` -- either way,
-                // documents the caller asked to update were left untouched.
+                // Same contract as _delete_by_query's 200, conflict handling included: `failures`
+                // is raised, and the skips `conflicts=proceed` tallies in `version_conflicts` are
+                // the refresh boundary, so they are retried.
                 const auto failures = (responseJson.contains("failures") && responseJson.at("failures").is_array())
                                           ? responseJson.at("failures").size()
                                           : 0;
@@ -1133,7 +1223,15 @@ public:
                                         responseJson.at("version_conflicts").is_number_integer())
                                            ? responseJson.at("version_conflicts").get<std::size_t>()
                                            : 0;
-                if (failures > 0 || conflicts > 0)
+                if (failures == 0 && conflicts > 0)
+                {
+                    LOGFN_DEBUG2(m_logFn,
+                                 "Update by query skipped %zu document(s) on a version conflict, retrying the update.",
+                                 conflicts);
+                    updateByQueryConflicts = conflicts;
+                    return;
+                }
+                if (failures > 0)
                 {
                     LOGFN_WARN(m_logFn,
                                "Update by query left documents behind: %zu failure(s), %zu version conflict(s). "
@@ -1213,9 +1311,14 @@ public:
             }
         };
 
+        // One wall clock for the call, shared by the transport retries and the conflict allowance.
+        const auto callDeadline = std::chrono::steady_clock::now() + m_maxRetryDuration;
         IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
                                                 std::chrono::seconds {m_maxRetryDelay}};
-        IndexerRetryBudget retryBudget {m_maxRetryAttempts, m_maxRetryDuration};
+        IndexerRetryBudget retryBudget {m_maxRetryAttempts, budgetLeft(callDeadline)};
+        IndexerExponentialBackoff conflictBackoff {std::chrono::milliseconds {ConflictRetryDelayMs},
+                                                   std::chrono::seconds {m_maxRetryDelay}};
+        IndexerRetryBudget conflictBudget {CONFLICT_RETRY_ATTEMPTS, budgetLeft(callDeadline)};
         do
         {
             if (m_stopping.load())
@@ -1227,6 +1330,7 @@ public:
 
             needToRetry = false;
             updateByQueryFailed = false;
+            updateByQueryConflicts = 0;
             auto serverUrl = m_selector->getNext();
             std::string url;
             url += serverUrl;
@@ -1240,6 +1344,11 @@ public:
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
+            if (updateByQueryConflicts > 0 &&
+                !retryAfterVersionConflict(updateByQueryConflicts, conflictBackoff, conflictBudget, "Update by query"))
+            {
+                updateByQueryFailed = true;
+            }
             if (updateByQueryFailed)
             {
                 m_notify.clear();
@@ -1260,7 +1369,7 @@ public:
                 std::unique_lock<std::mutex> lock(m_retryMutex);
                 m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
             }
-        } while (needToRetry);
+        } while (needToRetry || updateByQueryConflicts > 0);
     }
 
     nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery)
@@ -1860,6 +1969,6 @@ public:
      */
     IndexerBulkRequestStats takeBulkRequestStats()
     {
-        return {m_bulkRequestsSent.exchange(0), m_bulkBytesSent.exchange(0)};
+        return {m_bulkRequestsSent.exchange(0), m_bulkBytesSent.exchange(0), m_conflictRetries.exchange(0)};
     }
 };

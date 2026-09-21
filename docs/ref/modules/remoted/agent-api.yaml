@@ -9,12 +9,13 @@ info:
     The legacy AES-encrypted TCP/UDP channel on port 1514 is a separate, opt-in compatibility path
     for 4.x agents and is not described here.
 
-    The listener only runs when a TLS certificate and key are present on disk; manager packages
-    generate a self-signed pair at install time.
+    The listener only runs when a TLS certificate and key are present on disk and readable by the
+    service user. The manager does not generate them: the operator provisions them (Wazuh
+    installation assistant, `wazuh-certs-tool`) and the manager fails closed until they exist.
 
-    All requests MUST use HTTP/1.1 over TLS 1.3, and every route except `GET /` MUST carry the
-    `protocol-version` header. Every route except `GET /` and `POST /enroll` is
-    authenticated with a `wazuh-agent+jwt` bearer token: an HS256 JWT the agent signs with the
+    All requests MUST use HTTP/1.1 over TLS 1.3, and every route except `GET /` and `GET /cacerts`
+    MUST carry the `protocol-version` header. Every route except `GET /`, `GET /cacerts` and
+    `POST /enroll` is authenticated with a `wazuh-agent+jwt` bearer token: an HS256 JWT the agent signs with the
     32-byte key its 64-hex `client.keys` secret decodes to; the key is never transmitted. The token
     binds the agent's identity (`kid`/`sub`/`iss`) and its freshness (`iat`/`nbf`/`exp`, 60 s, fresh
     `jti` per request) — not the method, the request target or the body, which TLS protects.
@@ -26,11 +27,15 @@ info:
 
     `POST /enroll` is the exception: an enrolling agent has no key yet, so it uses the sibling
     `wazuh-enroll+jwt` bearer keyed by the enrollment password (or no credential at all, depending
-    on the manager's configuration).
+    on the manager's configuration). `GET /cacerts` is the other: it hands out the CA that signs
+    the listener's own certificate, so an agent can bootstrap trust in the manager before it holds
+    any credential at all -- by construction it cannot require one.
 
-    Statuses this API never returns: `429 Too Many Requests` and `426 Upgrade Required`. Capacity is
-    shed with `503`. An agent that receives either has been answered by an intermediary, not by
-    remoted.
+    `429 Too Many Requests` is returned only by the two routes with no credential to rate-limit by
+    identity, `POST /enroll` and `GET /cacerts`, each behind its own rate limit and carrying
+    `Retry-After`; no other route returns it. `426 Upgrade Required` is never returned by any route.
+    Capacity is shed with `503`. An agent that receives a `429` from any other route, or a `426`
+    from any route, has been answered by an intermediary, not by remoted.
 
     The module's own statistics are not served here. They live on a separate manager-local Unix
     socket (`queue/sockets/remote-admin-http.sock`), unreachable from an agent.
@@ -53,6 +58,8 @@ servers:
 tags:
   - name: Health
     description: Liveness probe
+  - name: Trust
+    description: CA distribution (bootstrapping trust in the manager)
   - name: Events
     description: Event ingestion
   - name: State
@@ -83,6 +90,109 @@ paths:
                 properties:
                   status: { type: string, example: ok }
                   module: { type: string, example: remoted }
+
+  /cacerts:
+    get:
+      tags: [Trust]
+      operationId: getCaCertificates
+      summary: The CA that signs the listener certificate (unauthenticated)
+      description: |
+        Returns the `CERTIFICATE` blocks found in the file configured as
+        `<remote><https><ca_certificate>` (by default `etc/certs/root-ca.pem`: the CA the operator
+        provisions together with the listener certificate it signs -- the manager generates
+        neither), re-serialised by the manager -- never the file's raw bytes, and never a private
+        key or any other non-certificate material the file might also carry --
+        so an agent can bootstrap trust in the manager without an out-of-band copy of the CA: fetch
+        it once, then verify every later connection against it. A bundle (several `CERTIFICATE`
+        blocks) is served as a bundle. No authentication and no `protocol-version` header -- by
+        construction the caller holds no credential yet; a body or an `Authorization` header, if
+        sent, is ignored. Exempt from the server's in-flight byte budget like `GET /`, so the trust
+        bootstrap is never shed with `503` under memory pressure. It is NOT exempt from the route's
+        own rate limit (`<remote><https><cacerts_rate_limit>`, 50/s with a burst of 100 by default),
+        which caps how fast this endpoint is served at all. That limit is a ceiling for the whole
+        fleet, not an allowance per agent.
+
+        The file is read on every request. When it cannot be read -- missing, unreadable, a read
+        error, or larger than the size cap -- the listener keeps serving the last good bundle it
+        read and logs the failure (file and cause); only a file that was never readable answers
+        `404`. A file that is readable but yields no certificate (for example, emptied to zero
+        bytes) answers `404` at once and stops serving the previous bundle -- this is how an
+        operator halts a CA without restarting; restoring the file serves it again on the next
+        request. Coherence with the served certificate is evaluated from the same read as the body,
+        on every request: when the CA on disk does **not** sign the certificate this very listener
+        is serving, the route answers `503 ca_mismatch` instead of handing out a CA that would make
+        every verifying agent fail its handshake against this manager (RF-27). The certificate
+        monitor (at start and every 24 h) only re-logs this same verdict; it does not decide the
+        response. The converse rotation -- a *different but valid* CA written over the file without
+        restarting -- is served on the very next request; a new *leaf* certificate still needs a
+        restart to load, so rotate CA and certificate together and restart remoted.
+
+        This is a trust-on-first-use bootstrap over an unverified channel: an agent that already
+        holds the CA MUST NOT replace it from this route, and a deployment that can distribute the
+        CA out of band SHOULD.
+      responses:
+        "200":
+          description: The CA certificate(s) the listener chains to, as a PEM file.
+          content:
+            application/x-pem-file:
+              schema:
+                type: string
+                example: |
+                  -----BEGIN CERTIFICATE-----
+                  MIIB...
+                  -----END CERTIFICATE-----
+        "404":
+          description: |
+            No CA to serve: the configured file was never readable, or it is readable but carries no
+            `CERTIFICATE` block (an emptied file). A file that becomes unreadable after it was served
+            does **not** produce this answer: the last good bundle keeps being served. Same body as
+            an unknown route (an agent cannot tell them apart, and does not need to -- neither is a
+            CA it can use; the manager's log names the file and the cause).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [not_found] }
+              examples:
+                notFound:
+                  value: { error: "not_found" }
+        "503":
+          description: |
+            Refused: the configured CA does not sign the certificate this listener serves, so handing
+            it out would break every agent that trusted it. Fix the manager's `ca_certificate` /
+            `certificate` pair and restart remoted; the manager logs the mismatch as an ERROR.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [ca_mismatch] }
+              examples:
+                caMismatch:
+                  value: { error: "ca_mismatch" }
+        "429":
+          description: |
+            The endpoint was asked faster than `<remote><https><cacerts_rate_limit>` allows. The
+            bucket belongs to the route, so this ceiling is shared by every caller: it is not a
+            statement about this particular client. Carries `Retry-After` in whole seconds; retry
+            with backoff.
+          headers:
+            Retry-After:
+              description: Whole seconds to wait before retrying.
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [rate_limited] }
+              examples:
+                rateLimited:
+                  value: { error: "rate_limited" }
 
   /stateless:
     post:
@@ -182,20 +292,29 @@ paths:
                   value: { error: "Malformed compressed body", code: 400 }
         "401":
           description: |
-            Client authentication failed. Deliberately generic: a missing/malformed `Authorization`
-            header, an unknown agent, an unusable key, a peer address outside the one authorized for
-            the agent in `client.keys` (third column: an IP, a CIDR/netmask, or `any`), an
-            out-of-window timestamp and an invalid MAC all return the same response so the specific
-            reason is not exposed.
+            Client authentication failed. The message is generic; the failure CLASS is the body's
+            `code` and the `WWW-Authenticate` challenge's `error_description`: `unknown_agent` (the
+            `kid` is not in `client.keys`: re-enroll), `stale_token` (outside the accepted window:
+            fix the clock and retry), `invalid_signature` (bad MAC, not a `wazuh-agent+jwt`,
+            identity mismatch, peer address outside the one authorized for the agent in
+            `client.keys` -- third column: an IP, a CIDR/netmask, or `any` -- or an unusable key: do
+            NOT re-enroll), `invalid_request` (no usable `Authorization` at all).
+          headers:
+            WWW-Authenticate:
+              $ref: "#/components/headers/WWW-Authenticate"
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
               examples:
-                invalidAuthentication:
-                  value: { error: "Invalid client authentication", code: 401 }
+                unknownAgent:
+                  value: { error: "Invalid client authentication", code: unknown_agent }
+                staleToken:
+                  value: { error: "Invalid client authentication", code: stale_token }
+                invalidSignature:
+                  value: { error: "Invalid client authentication", code: invalid_signature }
         "413":
           description: |
-            The request body exceeds the configured auth body limit (10 MiB). For
+            The request body exceeds the configured auth body limit (5 MiB). For
             `Content-Encoding: zstd`, it instead means the frame didn't fit in the server's live
             in-flight memory capacity -- either the decoder's buffers (refused up front, from the
             frame header) or the decompressed output as it was produced. Retryable: the same request
@@ -220,7 +339,7 @@ paths:
           description: |
             The server is temporarily out of capacity (its in-flight byte budget is exhausted or too
             many requests are already parked awaiting the downstream service), or the downstream engine
-            was unreachable / errored. Server-side load-shedding, not per-client rate-limiting: no
+            was unreachable / errored. Server-side load-shedding, not rate limiting: no
             `Retry-After` is sent — the agent applies its own retry/backoff. The connection is closed.
           content:
             application/json:
@@ -500,8 +619,17 @@ paths:
         fetch its **effective** configuration, and needs no database lookup because the directory
         name is the first 8 hex characters of the SHA-256 of the selector verbatim.
 
-        **There is no group-membership check.** Any authenticated agent can fetch any group's or
-        multigroup's merged configuration.
+        **A `config` download is authorized against the requesting agent's own groups.**
+        `resource_id` must equal the selector `/control` handed that agent as `config_token` -- the
+        same string `config_hash` was computed over -- and anything else is `403`. The selector is
+        resolved from the agent registry `/control` maintains, so no wazuh-db round trip is added
+        here; an agent whose membership was never established (no `/control/startup`, or an evicted
+        entry) is denied rather than served. The comparison is exact, multigroup order included.
+
+        **`wpk` downloads are not authorized this way.** A package's authority is the agent's
+        pending upgrade task, which `/control` does not carry, so any authenticated agent may still
+        fetch a staged package; stock packages are signature-verified by the agent against
+        `wpk_root.pem` before installing.
 
         A failed transfer is a truncation, never a short success: the terminating chunk is withheld
         so the agent retries rather than installing an incomplete file. The descriptor is re-`fstat`ed
@@ -541,6 +669,27 @@ paths:
                   summary: Fails the grammar for its type
                   value: { error: "Invalid resource identifier", code: 400 }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: |
+            Two different producers answer `403` on this route, with the same flat shape:
+
+            - **this endpoint**, when `resource_type` is `config` and `resource_id` is not the
+              requesting agent's own selector, or the manager has no established group membership
+              for it. Decided before the path is resolved, so it is indistinguishable from a request
+              for a group that does not exist -- there is no oracle for enumerating group names.
+            - **the shared transport**, in mTLS mode, when the client certificate does not match the
+              connecting peer's address (see the note on `POST /enroll`). That one rejects the whole
+              connection, every route included.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                notTheAgentsOwnResource:
+                  summary: The requested selector is not this agent's
+                  value: { error: "Forbidden", code: 403 }
+                peerAddressMismatch:
+                  summary: mTLS only -- rejected by the transport, before any route
+                  value: { error: "Client certificate does not match the peer address", code: 403 }
         "404":
           description: |
             Absent, not a regular file, or `O_NOFOLLOW` refused a symlink -- deliberately
@@ -761,7 +910,7 @@ paths:
     post:
       tags: [Enrollment]
       operationId: enrollAgent
-      summary: Register a new agent
+      summary: Register a new agent, or re-enroll an existing one under its id
       security:
         - WazuhEnrollAuthentication: []
         - {}
@@ -770,16 +919,24 @@ paths:
         - $ref: "#/components/parameters/ContentEncoding"
       description: |
         Lets a new agent register over the same HTTPS channel it uses for everything afterward,
-        instead of the legacy `authd` listener on port 1515. It is a **bridge, not a second
-        implementation**: `authd` keeps all enrollment business logic, reached over its local socket.
+        instead of the legacy `authd` listener on port 1515 -- and lets an enrolled agent re-enroll
+        under its existing id (new key and re-enrollment secret, nothing removed) with its
+        re-enrollment credential. It is a **bridge, not a second implementation**: `authd` keeps all
+        enrollment business logic, reached over its local socket.
 
         It does **not** use the agent's `wazuh-agent+jwt` bearer -- an enrolling agent has no key yet.
         Two credential checks apply independently, and an operator can require either, both or neither:
         a TLS client certificate (a property of the listener's `verification_mode`, validated during
-        the handshake before the request reaches this endpoint) and a password (required whenever
-        `authd`'s `use_password` is enabled, presented as the `wazuh-enroll+jwt` bearer). With neither
-        configured, no credential is needed -- matching `authd`'s own behavior on port 1515 in that
-        configuration.
+        the handshake before the request reaches this endpoint) and the `wazuh-enroll+jwt` bearer
+        (`WazuhEnrollAuthentication`). The bearer comes in **three forms**, told apart by the JOSE
+        header's `kid`: **no `kid`** -- the shared enrollment password, required whenever `authd`'s
+        `use_password` is enabled and ignored otherwise; **`kid` = an enrollment token id** (22
+        base64url characters) -- an operator-minted enrollment token, verified by the manager in every
+        mode, `use_password` or not, then consumed (one use) by `authd`; **`kid` = the agent's
+        canonical id** (`001`) -- re-enrollment, forwarded verbatim to `authd` on the master node, the
+        only place the agent's re-enrollment secret exists, which verifies it. With neither a client
+        certificate nor `use_password` configured, a request that presents no `kid` credential needs no
+        credential at all -- matching `authd`'s own behavior on port 1515 in that configuration.
 
         `protocol-version` is validated first, exactly as on every other authenticated route, and in
         every mode -- including the credential-less one, since the version is a property of the
@@ -811,7 +968,9 @@ paths:
         "200":
           description: |
             Verbatim from `authd`. The `key` is what the agent must store and use to sign every
-            subsequent request under its new numeric `id`.
+            subsequent request under its numeric `id`; the `reenroll_secret` is what it must keep --
+            and never send -- to re-enroll later under that same `id`. On a re-enrollment the `id` is
+            the one the bearer named and `key` / `reenroll_secret` are the rotated pair.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollResponse" }
@@ -822,6 +981,7 @@ paths:
                     name: web-server-01
                     ip: 10.0.0.15
                     key: 675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915
+                    reenroll_secret: 0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0
         "400":
           description: |
             A missing or unsupported `protocol-version` header (checked before anything else), a
@@ -840,22 +1000,53 @@ paths:
                   value: { error: { code: 0, message: "Unsupported protocol-version" } }
         "401":
           description: |
-            Missing or invalid credential. Collapsed to one generic message so a client cannot tell
-            which check failed.
+            Missing or invalid credential. The message is generic; the class is `error.code` and the
+            `WWW-Authenticate` challenge's `error_description`: `invalid_signature` (a password
+            bearer signed with the wrong password, an enrollment-token bearer signed with the wrong
+            secret or malformed, or a re-enrollment bearer the master could not verify against the
+            agent's secret -- `authd` 9027), `unknown_agent` (re-enrollment of an id the master does
+            not know or that has no re-enrollment secret on record -- `authd` 9026), `stale_token`
+            (bearer outside the accepted window, `authd` 9028 for a re-enrollment), `token_unknown`
+            / `token_expired` / `token_revoked` (the enrollment token's state, decided from the
+            manager's replica of the token store: an unknown id, or a correctly signed bearer whose
+            token has lapsed or was revoked), `invalid_request` (no usable `Authorization` in
+            Password mode), `enrollment_key_unavailable` (Password mode, the manager's enrollment
+            password is not available on this node: a bare `Bearer` challenge, retry later).
+            `authd`'s codes never reach the wire for these: the body `code` is always the class.
+          headers:
+            WWW-Authenticate:
+              $ref: "#/components/headers/WWW-Authenticate"
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
               examples:
-                invalidAuthentication:
-                  value: { error: { code: 0, message: "Invalid client authentication" } }
+                wrongPassword:
+                  value: { error: { code: invalid_signature, message: "Invalid client authentication" } }
+                revokedToken:
+                  value: { error: { code: token_revoked, message: "Invalid client authentication" } }
+                unknownAgentReenrollment:
+                  value: { error: { code: unknown_agent, message: "Invalid client authentication" } }
         "403":
-          description: Enrollment is administratively disabled on this manager.
+          description: |
+            Enrollment is administratively disabled on this manager (`code` 0), or `authd` refused to
+            consume a **verified** enrollment token and its numeric code is passed through: 9022
+            (not found or revoked), 9023 (expired), 9024 (uses exhausted). `403` rather than `401`
+            because the bearer did verify -- re-signing fixes nothing; a new token has to be minted.
+            9022/9023 are only reachable when the manager's replica of the token store lagged behind
+            `authd`'s (a revocation or expiry landing between the two checks, a worker copy not yet
+            synchronized); 9024 is decided by `authd` alone, which owns the use counter.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
               examples:
                 disabled:
                   value: { error: { code: 0, message: "Enrollment is disabled on this manager" } }
+                tokenNotFoundOrRevoked:
+                  value: { error: { code: 9022, message: "Enrollment token not found or revoked" } }
+                tokenExpired:
+                  value: { error: { code: 9023, message: "Enrollment token expired" } }
+                tokenExhausted:
+                  value: { error: { code: 9024, message: "Enrollment token uses exhausted" } }
         "409":
           description: "`authd` reported a duplicate ip, name or id (9007/9008/9012)."
           content:
@@ -863,11 +1054,33 @@ paths:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
         "413":
           description: |
-            Body exceeds `remoted.auth_max_body_size` (10 MiB default). Checked before the bearer is
+            Body exceeds `remoted.auth_max_body_size` (5 MiB default). Checked before the bearer is
             examined, in every mode including the credential-less one.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
+        "429":
+          description: |
+            The endpoint was asked faster than `<remote><https><enroll_rate_limit>` allows (100/s
+            with a burst of 200 by default). Decided **before** the body is decoded, the bearer is
+            examined or `authd` is contacted -- which is the point: without it, a caller holding no
+            usable credential still costs the manager an `authd` round trip and, on a cluster
+            worker, a further round trip to the master.
+
+            The bucket belongs to the route, so this ceiling is shared by the whole fleet: during a
+            mass enrollment many agents can see it at once, and each simply retries with its own
+            backoff until it is served. Carries `Retry-After` in whole seconds.
+          headers:
+            Retry-After:
+              description: Whole seconds to wait before retrying.
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
+              examples:
+                rateLimited:
+                  value:
+                    error: { code: 0, message: "Enrollment is rate limited on this manager, retry later" }
         "500":
           description: "`authd` internal, parse or key-generation failure (9001/9002/9009)."
           content:
@@ -884,6 +1097,148 @@ paths:
                 unavailable:
                   value:
                     error: { code: -1, message: "Enrollment service temporarily unavailable" }
+
+  /enroll/secret:
+    post:
+      tags: [Enrollment]
+      operationId: issueReenrollSecret
+      summary: Obtain this agent's re-enrollment secret, keeping its current key
+      security:
+        - WazuhAuthentication: []
+      parameters:
+        - $ref: "#/components/parameters/ProtocolVersion"
+      description: |
+        For an agent that already has a `client.keys` identity but no re-enrollment secret. Three
+        populations are in that state, because `reenroll_secret` is only ever minted by an
+        enrollment: an agent upgraded from 4.x to 5.0 over WPK (it keeps its key, so it never calls
+        `POST /enroll`), an agent enrolled over port 1515, and one whose manager-side row was rebuilt
+        from `client.keys`. Without a secret, the day the manager stops accepting that key, recovery
+        needs an operator at the endpoint with a freshly minted enrollment token.
+
+        Unlike `POST /enroll`, this is an **ordinary authenticated route**: the caller IS a known
+        agent, so it presents the same `wazuh-agent+jwt` bearer (`WazuhAuthentication`) it uses for
+        `/control` and `/stateless`, and the full middleware applies -- the `client.keys` key
+        lookup, that entry's `ip` column against the peer address, and the
+        `remoted.jwt_max_age`/`remoted.jwt_clock_skew` time policy. **The secret is minted for the
+        identity the bearer proves. There is no id field in the request**, so no request shape
+        exists in which one agent asks about another.
+
+        **The agent's key is not rotated.** `authd` stores the new secret against the existing key
+        (`global set-agent-credentials`), which is what makes the operation safe to repeat: an answer
+        lost in flight leaves the agent exactly as it was -- valid key, no secret -- and its next
+        start asks again. Reissue is therefore always allowed; a one-shot gate would strand any agent
+        whose answer never arrived. Each call replaces the previous secret, and the newest one is the
+        one that verifies.
+
+        On a worker node the request is relayed to the master, which owns the agent's row.
+
+        Errors use this page's flat `{"error":"..."}` shape, not `/enroll`'s nested numeric one.
+      requestBody:
+        required: false
+        description: No arguments. An empty body or `{}` are equally acceptable and neither is read.
+        content:
+          application/json:
+            schema: { type: object }
+            examples:
+              empty:
+                value: {}
+      responses:
+        "200":
+          description: The credential, for the agent to store next to its key and never send.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReenrollSecretResponse" }
+              examples:
+                issued:
+                  value:
+                    id: "001"
+                    reenroll_secret: 0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0
+        "400":
+          description: Missing or unsupported `protocol-version` header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "401":
+          description: |
+            The middleware's own classes, unchanged -- plus `unknown_agent` for `authd`'s 9026,
+            which folds "no such agent" and "the agent has no row in `global.db` yet" together. The
+            second is reachable for a freshly migrated agent whose row `wm_database` has not yet
+            rebuilt from `client.keys`; it is an honest refusal rather than a secret nothing would
+            store, and the agent's next start succeeds once that pass has run.
+          headers:
+            WWW-Authenticate:
+              $ref: "#/components/headers/WWW-Authenticate"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                unknownAgent:
+                  value: { error: "Unauthorized", code: unknown_agent }
+        "409":
+          description: |
+            A credential rotation for this agent is already accepted and not yet persisted (`authd`
+            9030) -- typically a `POST /enroll` re-enrollment in flight. Retry.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [reenroll_in_progress] }
+              examples:
+                inProgress:
+                  value: { error: reenroll_in_progress }
+        "429":
+          description: |
+            Refused by the rate limit **shared with `POST /enroll`**
+            (`<remote><https><enroll_rate_limit>`), charged before authentication and before `authd`
+            is contacted. One ceiling for both routes on purpose: they cost the manager the same
+            round trips, and a fleet-wide 4.x->5.0 upgrade wave is exactly the burst it exists to
+            absorb -- unthrottled, that wave fills `authd`'s identity journal and starts refusing
+            **real enrollments**. Carries `Retry-After` in whole seconds; the agent retries on its
+            next start.
+          headers:
+            Retry-After:
+              description: Whole seconds to wait before retrying.
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [rate_limited] }
+              examples:
+                rateLimited:
+                  value: { error: rate_limited }
+        "500":
+          description: An `authd` code this route does not map, which means the two sides disagree about the verb.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [authd_error] }
+        "503":
+          description: |
+            `authd` could not record the transition and so handed out nothing (9031,
+            `identity_unrecorded`); a worker's forward to the master failed (9015/9016,
+            `master_unreachable`); or `authd` was unreachable, timed out, answered unparseably, or
+            its bounded request queue was full (`authd_unavailable`). All retryable, none the
+            agent's fault.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [identity_unrecorded, master_unreachable, authd_unavailable] }
+              examples:
+                unrecorded:
+                  value: { error: identity_unrecorded }
+                unavailable:
+                  value: { error: authd_unavailable }
 
 components:
   securitySchemes:
@@ -911,8 +1266,9 @@ components:
         - the JSON text of header and claims is ASCII; any non-ASCII byte is an invalid token
 
         The token authenticates identity and freshness only: method, target and body are not signed
-        (TLS protects them). Every credential failure is the same `401` with
-        `WWW-Authenticate: Bearer`.
+        (TLS protects them). Every credential failure is a `401` with the same generic message whose
+        `WWW-Authenticate` challenge and body `code` name the failure class (`unknown_agent`,
+        `stale_token`, `invalid_signature`, `invalid_request`) -- see the `401` responses.
 
     WazuhEnrollAuthentication:
       type: http
@@ -926,38 +1282,69 @@ components:
         Authorization: Bearer <header>.<claims>.<signature>
         ```
 
-        - header: exactly `{"alg":"HS256","typ":"wazuh-enroll+jwt"}` -- no `kid`, there is one
-          shared key
-        - claims: exactly `exp`, `iat`, `jti`, `nbf` (= `iat`) -- no `iss`/`sub`, there is no agent
-          identity yet; `exp - iat = 60`; same acceptance window and the same
-          `remoted.jwt_max_age` / `remoted.jwt_clock_skew` as the agent scheme
-        - key: `HKDF-SHA256(password, salt = 32 x 0x00, info = "WAZUH-ENROLL-JWT-KEY" || 0x01,
-          32 bytes)` derived from `authd`'s enrollment password (`etc/authd.pass`). The password
-          bytes are never used directly.
+        - header: exactly `{"alg":"HS256","typ":"wazuh-enroll+jwt"}` plus an **optional `kid`**
+          that selects the key (three forms below); a `kid` of neither shape, or any other member,
+          is not a `wazuh-enroll+jwt` at all
+        - claims: exactly `exp`, `iat`, `jti`, `nbf` (= `iat`) -- no `iss`/`sub` in any form (a
+          re-enrolling agent names itself through `kid`); `exp - iat = 60`; same acceptance window
+          and the same `remoted.jwt_max_age` / `remoted.jwt_clock_skew` as the agent scheme
+        - key: one construction, `HKDF-SHA256(IKM, salt = 32 x 0x00, info = <label> || 0x01, 32
+          bytes)`, with the input and label the `kid` selects. The secret bytes are never used
+          directly.
 
-        A token of either profile presented to the other's endpoint is rejected on its header.
-        Required only when `authd`'s `use_password` is enabled. A missing, unreadable or invalid
-        password file fails **closed**: every request is rejected, never treated as if no password
-        were required. When neither a password nor a client certificate is configured, `/enroll`
-        accepts requests with no credential at all.
+        | `kid` | Credential | IKM / `info` label | Verified by |
+        |---|---|---|---|
+        | none | the shared enrollment password | `authd`'s enrollment password (`etc/authd.pass`) / `WAZUH-ENROLL-JWT-KEY` | the manager the request reaches. Required whenever `authd`'s `use_password` is enabled; with it off, a shared-key bearer -- or none -- is ignored and the request passes |
+        | 22 base64url characters: a 16-byte enrollment token id | an enrollment token minted by the operator | the token's 16-byte secret / `WAZUH-ENROLL-TOKEN-KEY` | the manager the request reaches, in **every** mode (`use_password` or not), against its replica of `authd`'s token store; lookup, signature, expiry, revocation in that order, so the token's state is only disclosed to a holder of its secret. `authd` on the master then consumes one use (`403` 9022/9023/9024 when it will not) |
+        | the agent's canonical id (`001`) | re-enrollment: the agent's own `reenroll_secret` (returned by its enrollment) | the 32-byte secret / `WAZUH-REENROLL-KEY` | `authd` on the **master node** only -- the secret exists nowhere else -- so the manager forwards the bearer verbatim and unverified and maps `authd`'s verdict (9026/9027/9028) onto `unknown_agent` / `invalid_signature` / `stale_token`. On success the agent keeps its id and receives a new `key` and `reenroll_secret` |
+
+        A token of either profile presented to the other's endpoint is rejected on its header. A
+        missing, unreadable or invalid password file fails **closed** for the shared-key form
+        (`enrollment_key_unavailable`): every such request is rejected, never treated as if no
+        password were required. The token store fails closed too: an absent
+        `etc/enrollment_tokens.json` is an empty store (every token bearer is `token_unknown`), a
+        malformed one keeps the previously loaded tokens. When neither a password nor a client
+        certificate is configured, `/enroll` accepts a request with no credential at all; an
+        enrollment token or a re-enrollment bearer is still checked whenever presented.
+
+  headers:
+    WWW-Authenticate:
+      description: |
+        RFC 6750 §3 challenge, on every `401`. `Bearer error="invalid_token", error_description="<class>"`
+        when a credential was judged and failed (`<class>` = the body's `code`: `unknown_agent`,
+        `stale_token`, `invalid_signature`, `token_unknown`, `token_expired`, `token_revoked`);
+        `Bearer error="invalid_request"` when no usable credential was presented; a bare `Bearer` when the
+        server could not judge it (`enrollment_key_unavailable`).
+      schema:
+        type: string
+        example: 'Bearer error="invalid_token", error_description="unknown_agent"'
 
   responses:
     Unauthorized:
       description: |
-        Client authentication failed. Deliberately generic: a missing/malformed `Authorization`
-        header, an unknown agent, an unusable key, a peer address outside the one authorized for the
-        agent in `client.keys`, a malformed token, a stale token and an invalid signature all return
-        the same response (with `WWW-Authenticate: Bearer`), so the specific reason is not exposed.
+        Client authentication failed. The message is generic; the class is the body's `code` and
+        the `WWW-Authenticate` challenge's `error_description`: `unknown_agent` (the `kid` is not in
+        `client.keys`: re-enroll), `stale_token` (outside the accepted window: fix the clock and
+        retry), `invalid_signature` (bad MAC, malformed token, identity mismatch, peer address
+        outside the one authorized for the agent in `client.keys`, unusable key: do NOT re-enroll),
+        `invalid_request` (missing/malformed `Authorization`).
+      headers:
+        WWW-Authenticate:
+          $ref: "#/components/headers/WWW-Authenticate"
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorResponse" }
           examples:
-            invalidAuthentication:
-              value: { error: "Invalid client authentication", code: 401 }
+            unknownAgent:
+              value: { error: "Invalid client authentication", code: unknown_agent }
+            staleToken:
+              value: { error: "Invalid client authentication", code: stale_token }
+            invalidSignature:
+              value: { error: "Invalid client authentication", code: invalid_signature }
 
     PayloadTooLarge:
       description: |
-        The request body exceeds the configured auth body limit (10 MiB default). For
+        The request body exceeds the configured auth body limit (5 MiB default). For
         `Content-Encoding: zstd` it instead means the frame did not fit in the server's live
         in-flight memory capacity. Retryable.
       content:
@@ -982,7 +1369,7 @@ components:
       description: |
         The server is temporarily out of capacity (its in-flight byte budget is exhausted or too many
         requests are already parked awaiting a downstream service), or the downstream service was
-        unreachable or errored. Server-side load-shedding, not per-client rate-limiting: no
+        unreachable or errored. Server-side load-shedding, not rate limiting: no
         `Retry-After` is sent on this route -- the agent applies its own retry/backoff.
       content:
         application/json:
@@ -1026,12 +1413,36 @@ components:
           description: Human-readable error message.
           example: "Invalid client authentication"
         code:
-          type: integer
-          format: int32
-          minimum: 400
-          maximum: 599
-          description: HTTP status code.
-          example: 401
+          description: |
+            The HTTP status code for every non-authentication error; for a `401`, the authentication
+            failure class (the same value the `WWW-Authenticate` challenge carries as
+            `error_description`).
+          oneOf:
+            - type: integer
+              format: int32
+              minimum: 400
+              maximum: 599
+            - $ref: "#/components/schemas/AuthFailureClass"
+          example: unknown_agent
+
+    AuthFailureClass:
+      type: string
+      description: |
+        Why a `401` was refused, in agent-actionable terms: `unknown_agent` -> re-enroll;
+        `stale_token` -> fix the clock (the `Date` header is the manager's) and retry;
+        `invalid_signature` -> do NOT re-enroll, the credential does not work for that identity;
+        `invalid_request` -> no usable credential was presented; `token_unknown` / `token_expired` /
+        `token_revoked` -> the enrollment token's own state (`POST /enroll`); `enrollment_key_unavailable`
+        -> the manager could not judge the credential (`POST /enroll`, Password mode): retry later.
+      enum:
+        - unknown_agent
+        - stale_token
+        - invalid_signature
+        - invalid_request
+        - token_unknown
+        - token_expired
+        - token_revoked
+        - enrollment_key_unavailable
 
     EnrollErrorResponse:
       type: object
@@ -1047,11 +1458,15 @@ components:
           required: [code, message]
           properties:
             code:
-              type: integer
-              format: int32
               description: |
-                `authd`'s own numeric code when the failure came from `authd`, `0` for failures
-                `/enroll` produced itself, `-1` when `authd` could not be reached or understood.
+                `authd`'s own numeric code when the failure came from `authd`, `0` for non-authentication
+                failures `/enroll` produced itself, `-1` when `authd` could not be reached or understood;
+                for a `401`, the authentication failure class (string) -- the same value the
+                `WWW-Authenticate` challenge carries as `error_description`.
+              oneOf:
+                - type: integer
+                  format: int32
+                - $ref: "#/components/schemas/AuthFailureClass"
               example: 0
             message:
               type: string
@@ -1167,8 +1582,11 @@ components:
       required: [name, version]
       description: |
         `force`, `id` and a raw `key` are never sent, even though `authd`'s local socket accepts all
-        three for admin/restore use: `/enroll` is exclusively for a brand-new agent self-enrolling,
-        which always gets an auto-assigned id and an `authd`-generated key.
+        three for admin/restore use: `/enroll` is for an agent self-enrolling, which always gets an
+        auto-assigned id (or, when re-enrolling, keeps the id its bearer's `kid` names) and an
+        `authd`-generated key. The identity of a re-enrollment lives in the `Authorization` header,
+        never in the body; the body's `name`/`ip` replace the record's, checked against every
+        other agent.
       properties:
         name:
           type: string
@@ -1203,14 +1621,43 @@ components:
             Opaque hash of the agent's current key, if it has one. Drives `authd`'s
             force/key-mismatch decision, same as port 1515's `K:` field.
 
-    EnrollResponse:
+    ReenrollSecretResponse:
       type: object
-      required: [id, name, ip, key]
-      description: Verbatim from `authd`.
+      additionalProperties: false
+      required: [id, reenroll_secret]
+      description: |
+        `POST /enroll/secret`'s answer. Deliberately just the pair: no `key`, because this operation
+        does not rotate one, and no `name`/`ip`, because it changes neither -- publishing them would
+        suggest otherwise to an agent that might act on it.
       properties:
         id:
           type: string
-          description: The agent's new numeric id, to be used in the `Authorization` header from now on.
+          description: |
+            The agent's canonical id, as `authd` spells it -- the same identity the bearer proved.
+            Stored with the secret, because an agent that has lost `client.keys` still has to know
+            which id to present when it re-enrolls.
+          example: "001"
+        reenroll_secret:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          minLength: 64
+          maxLength: 64
+          description: |
+            The same credential `POST /enroll` returns (see `EnrollResponse.reenroll_secret`): 64
+            lowercase hex characters, the input of the `WAZUH-REENROLL-KEY` derivation. Each call
+            replaces the previous one, and the newest is the one that verifies.
+          example: 0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0
+
+    EnrollResponse:
+      type: object
+      required: [id, name, ip, key, reenroll_secret]
+      description: |
+        Verbatim from `authd`. On a re-enrollment `id` is the one the bearer named and `key` /
+        `reenroll_secret` are the rotated pair.
+      properties:
+        id:
+          type: string
+          description: The agent's numeric id, to be used in the `Authorization` header from now on.
           example: "001"
         name: { type: string, example: web-server-01 }
         ip: { type: string, example: 10.0.0.15 }
@@ -1218,3 +1665,16 @@ components:
           type: string
           description: The pre-shared key the agent must store and sign every subsequent request with.
           example: 675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915
+        reenroll_secret:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          minLength: 64
+          maxLength: 64
+          description: |
+            The agent's re-enrollment credential: 64 lowercase hex characters (32 bytes) generated by
+            `authd` next to the key. Keep it with the key and never send it -- it is the input of the
+            `WAZUH-REENROLL-KEY` derivation (see `WazuhEnrollAuthentication`), the only thing that lets
+            the agent re-enroll later keeping this `id` instead of appearing as a new agent. Handed
+            out once per (re-)enrollment; each successful re-enrollment replaces both `key` and
+            `reenroll_secret`. Absent only when the master node's `authd` predates this field.
+          example: 0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0

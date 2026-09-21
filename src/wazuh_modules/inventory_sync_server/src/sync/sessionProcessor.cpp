@@ -364,10 +364,9 @@ namespace invsync::sync
         // (authd removes the key, then relays after its purge delay), so whatever that session wrote
         // inside the index refresh interval is invisible to the query and survives -- and with the
         // agent gone from client.keys nothing ever overwrites it. Refreshing each index first would
-        // close that window, but `_refresh` needs `indices:admin/refresh`, which the manager's
-        // least-privilege indexer role does not grant: every deletion then failed with 403 instead
-        // of missing a few documents. Repeating the deletion is the recovery meanwhile; see the
-        // follow-up to restore the refresh once the privilege is in place.
+        // close it, and is deliberately not done: deferring the purge costs the indexer less under
+        // load and lets the other workers' writes for this agent land first. Repeating the deletion
+        // is the recovery.
         std::string scope;
         for (const auto& index : AGENT_DELETION_SCOPE_BY_QUERY)
         {

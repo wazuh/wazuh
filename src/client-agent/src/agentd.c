@@ -12,7 +12,9 @@
 #include "agentd.h"
 #include "https_client_bridge.h"
 #include "os_net.h"
+#include "reenroll_secret.h"
 #include "state.h"
+#include "token_bootstrap.h"
 
 bool needs_config_reload = false;
 void reload_handler(int signum) {
@@ -20,6 +22,53 @@ void reload_handler(int signum) {
         mdebug1("SIGNAL [(%d)-(%s)] Received. Reload agentd.", signum, strsignal(signum));
         needs_config_reload = true;
     }
+}
+
+/* A signalled stop is not a failure: systemd tracks this process through PIDFile=.
+ * Not HandleSIG(), whose exit(1) is shared with the manager daemons. */
+void agentd_shutdown(int sig)
+{
+    minfo(SIGNAL_RECV, sig, strsignal(sig));
+
+    exit(0);
+}
+
+#define SYSTEMD_PIDFILE_NAME "wazuh-agentd.pid"
+
+/* CreatePID()'s file embeds the PID in its name, so it can't back a static PIDFile=;
+ * write one with a fixed name so systemd tracks this daemon instead of the whole cgroup. */
+static void write_systemd_pidfile(void)
+{
+    char path[256];
+    snprintf(path, sizeof(path), "%s/%s", OS_PIDFILE, SYSTEMD_PIDFILE_NAME);
+
+    FILE *fp = wfopen(path, "w");
+    if (!fp) {
+        merror("Could not write PID file '%s': %s (%d)", path, strerror(errno), errno);
+        return;
+    }
+
+    fprintf(fp, "%d\n", (int)getpid());
+
+    if (chmod(path, 0640) != 0) {
+        merror(CHMOD_ERROR, path, errno, strerror(errno));
+        fclose(fp);
+        return;
+    }
+
+    if (fclose(fp)) {
+        merror("Could not write PID file '%s': %s (%d)", path, strerror(errno), errno);
+    }
+}
+
+/* Covers exit()-driven shutdown (normal SIGTERM/SIGINT via HandleSIG, and any merror_exit()
+ * path, this one included) -- same reach atexit(w_https_client_stop) below already has.
+ * Like any pidfile, a SIGKILL or a crash leaves it stale until the next start overwrites it. */
+static void remove_systemd_pidfile(void)
+{
+    char path[256];
+    snprintf(path, sizeof(path), "%s/%s", OS_PIDFILE, SYSTEMD_PIDFILE_NAME);
+    unlink(path);
 }
 
 /* Start the agent daemon */
@@ -40,6 +89,55 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     if (!run_foreground) {
         nowDaemon();
         goDaemon();
+    }
+
+    /* Enrollment-token bootstrap: must run while still root, since it writes AGENT_ANCHOR_CA
+     * and (on success) client.keys and needs to fix their ownership before the privilege drop
+     * just below.
+     *
+     * A permanent failure ends the start, deliberately: carrying on would reach
+     * start_agent_prepare(), which enrolls over whatever posture is left -- 'none', because no
+     * anchor was written -- so a CA the agent had just refused would be followed by an
+     * unverified enrollment against that same manager. Failing here is what #38940 means by
+     * attempting no enrollment.
+     *
+     * A transient failure (the manager unreachable, a 5xx from /cacerts or /enroll, or the
+     * verified enroll's own transport failing) is retried in place, using the same backoff ramp
+     * the legacy enrollment loop below uses (agt->enrollment.retry_delta/retry_max, see
+     * w_agentd_keys_init()) -- rather than falling through to that loop, which enrolls
+     * unverified and would defeat the whole point of the token path.
+     *
+     * Only a token that was present and (after any transient retries) still failed does this.
+     * An install with no token at all returns W_TOKEN_BOOTSTRAP_DONE from the gate, so the
+     * legacy password/mTLS enrollment loop still gets its normal chance -- as do an agent
+     * already holding an anchor and one already enrolled. */
+    const bool anchor_before = (IsFile(AGENT_ANCHOR_CA) == 0);
+    int token_bootstrap_delay = 0;
+    w_token_bootstrap_result_t token_bootstrap_result;
+
+    while ((token_bootstrap_result = w_agent_token_bootstrap(uid, gid)) == W_TOKEN_BOOTSTRAP_TRANSIENT) {
+        if (token_bootstrap_delay < agt->enrollment.retry_max) {
+            token_bootstrap_delay += agt->enrollment.retry_delta;
+        }
+        mdebug1("Token bootstrap: transient failure, retrying in %d seconds.", token_bootstrap_delay);
+        sleep(token_bootstrap_delay);
+    }
+
+    if (token_bootstrap_result == W_TOKEN_BOOTSTRAP_PERMANENT) {
+        merror_exit("Enrollment-token bootstrap failed; refusing to enroll unverified.");
+    }
+
+    /* Only when this boot is the one that created the anchor. ClientConf() resolved the TLS
+     * posture back in main(), before the bootstrap ran and so before the anchor existed,
+     * settling on 'none'; the bootstrap's own enrollment is unaffected, since it builds a
+     * verified configuration of its own, but everything sent afterwards reads agt->ssl through
+     * bridge_build_transport_config() and would spend the rest of the boot unverified against
+     * an anchor already on disk. Resolving again closes that window. Conditional rather than
+     * unconditional so a boot that had nothing to bootstrap does not re-run a resolution that
+     * can only reach the same answer -- and, when the operator has asked for 'none' outright,
+     * log its warning about that a second time. */
+    if (!anchor_before && IsFile(AGENT_ANCHOR_CA) == 0) {
+        w_agent_resolve_ssl_posture(agt);
     }
 
     /* Set group ID */
@@ -87,6 +185,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
     }
+    write_systemd_pidfile();
+    atexit(remove_systemd_pidfile);
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
@@ -116,13 +216,34 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     start_agent_prepare();
 
     /* HTTPS client: the agent's only transport. It owns the connection
-     * lifecycle, the keepalives, the buffering and the shutdown notification. */
-    w_https_client_start();
+     * lifecycle, the keepalives, the buffering and the shutdown notification.
+     * Its own failure paths already logged the reason via merror; exit here
+     * rather than run on with no way to ever reach the manager. */
+    if (!w_https_client_start()) {
+        merror_exit("https_client: startup failed. Exiting.");
+    }
 
     /* Note: Whatever the drain touches must outlive this: exit() unwinds atexit LIFO, so
      * a C++ static lazily initialized on a module thread registers after this line
      * and dies before the drain runs. */
     atexit(w_https_client_stop);
+
+    /* Re-enrollment secret bootstrap (#39315): an agent that reached 5.0 while KEEPING its
+     * client.keys identity -- a 4.x agent upgraded over WPK, one enrolled over port 1515, one whose
+     * manager-side row was rebuilt from client.keys -- never called POST /enroll and so never
+     * received a re-enrollment secret. Without one, the day the manager stops accepting its key,
+     * recovery needs an operator at the endpoint. It asks for one here instead.
+     *
+     * HERE, and not earlier: the transport must be up (the request goes over the same HTTPS channel
+     * every other endpoint uses), and the process has already dropped to the `wazuh` user
+     * (Privsep_SetUser() ran long before start_agent_prepare()), so the store is written with the
+     * ownership reenroll_secret.h asks for -- deliberately unlike the root-running
+     * w_agent_token_bootstrap() above, which writes the trust anchor.
+     *
+     * Detached and non-fatal by construction (see w_reenroll_secret_bootstrap_async()). The Windows
+     * agent makes the same call from win32/win_utils.c, which is a separate start path because this
+     * file is not part of that build. */
+    w_reenroll_secret_bootstrap_async();
 
     start_agent(1);
 

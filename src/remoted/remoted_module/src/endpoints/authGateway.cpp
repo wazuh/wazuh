@@ -11,6 +11,7 @@
 
 #include "authGateway.hpp"
 
+#include "common/logThrottle.hpp"
 #include "http_server/headerUtils.hpp"
 #include "loggerHelper.h"
 
@@ -90,9 +91,25 @@ namespace remoted::endpoints
                                             Method method,
                                             const std::string& path,
                                             AuthenticatedHandler handler,
-                                            remoted::http::ResponseMode mode)
+                                            remoted::http::ResponseMode mode,
+                                            AuthenticatedRouteGate gate)
     {
         const char* methodStr = methodToCanonical(method);
+
+        // Everything the gate needs is resolved ONCE, here, so a gated route costs one pointer
+        // test per request and an ungated one costs nothing at all. A null or disabled limiter is
+        // dropped now rather than re-checked per request -- the same shortcut ratelimit::wrap()
+        // takes when it hands back the unwrapped handler.
+        const bool gateEnabled = gate.limiter && gate.limiter->enabled();
+        const auto retryAfter = gateEnabled ? std::to_string(gate.limiter->retryAfterSeconds()) : std::string {};
+        // One throttle per gate, not a file-static: two gated routes must not silence each other's
+        // line, and a static would also outlive a restart of the module within one process.
+        const auto throttle = gateEnabled ? std::make_shared<remoted::common::LogThrottle>() : nullptr;
+        const std::string routeName {gateEnabled && gate.route != nullptr ? gate.route : ""};
+        auto limiter = gateEnabled ? std::move(gate.limiter) : nullptr;
+        auto rejection = gateEnabled ? std::move(gate.rejection) : nullptr;
+        auto rejected = gateEnabled ? std::move(gate.rejected) : nullptr;
+        const auto* gateHttpMetrics = gateEnabled ? gate.httpMetrics : nullptr;
 
         server.addRoute(
             method,
@@ -101,8 +118,17 @@ namespace remoted::endpoints
             // reference to the member: the lambda lives in the server's route table and runs per
             // request, long after this call returns. Copying keeps each registered route
             // self-contained instead of tying its validity to this gateway still being alive.
-            [middleware = m_middleware, methodStr, bodyDecoder = m_bodyDecoder, handler = std::move(handler)](
-                std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
+            [middleware = m_middleware,
+             methodStr,
+             bodyDecoder = m_bodyDecoder,
+             handler = std::move(handler),
+             limiter = std::move(limiter),
+             rejection = std::move(rejection),
+             rejected = std::move(rejected),
+             gateHttpMetrics,
+             throttle,
+             routeName,
+             retryAfter](std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
             {
                 // Everything below -- authentication AND the endpoint handler -- runs inside one
                 // try/catch. authenticate() calls into the keystore and OpenSSL (HMAC), either of
@@ -113,6 +139,51 @@ namespace remoted::endpoints
                 // throw, the responder's send-once guarantee makes this 500 a no-op.
                 try
                 {
+                    // The rate limit, when this route carries one, is charged FIRST: before
+                    // authenticate(), before the receipt stamp, before a single header is read.
+                    // The bucket belongs to the endpoint, so the caller's address, credential and
+                    // body are all irrelevant to the decision -- which is precisely why the
+                    // decision can be made before any of them is looked at, and why a refused
+                    // request costs neither a keystore lookup nor an HMAC. A request carrying no
+                    // bearer at all is therefore answered 429, not 401.
+                    if (limiter && !limiter->allow())
+                    {
+                        if (rejected)
+                        {
+                            rejected->add();
+                        }
+
+                        auto response =
+                            rejection ? rejection()
+                                      : remoted::http::HttpResponse::json(429, R"({"error":"too_many_requests"})");
+                        response.headers.emplace_back("Retry-After", retryAfter);
+
+                        // Only the status cell, and counted directly rather than through a
+                        // MeteredResponder: that decorator also feeds the endpoint's latency
+                        // histogram, and this request never entered the handler. During the very
+                        // burst the limiter exists for, those microsecond samples would dominate
+                        // the distribution and hide the latency of the requests actually served.
+                        if (gateHttpMetrics != nullptr)
+                        {
+                            gateHttpMetrics->responses.count(response.status);
+                        }
+
+                        responder->send(std::move(response));
+
+                        if (const auto decision = throttle->record())
+                        {
+                            LOGFN_WARN(logFn(),
+                                       "%s refused %llu request(s) in the last %d s with 429: the endpoint is "
+                                       "being asked faster than its configured rate, which is a ceiling for this "
+                                       "whole node and not a per-agent one. Raise the matching 'remote.https' "
+                                       "rate if this load is legitimate.",
+                                       routeName.c_str(),
+                                       static_cast<unsigned long long>(decision.total),
+                                       remoted::common::LogThrottle::kDefaultWindowSeconds);
+                        }
+                        return;
+                    }
+
                     // Stamped ONCE, before authentication: this is the origin of the
                     // remoted.http.<endpoint>.latency measurement (gateway receipt -> response
                     // delivery). One clock read per authenticated request, no atomics.
@@ -156,7 +227,9 @@ namespace remoted::endpoints
                     // becomes the sole owner -- dropping it (or calling payload.release()) then
                     // frees the buffer and restores the budget while the responder lives on to reply.
                     remoted::auth::AuthenticatedRequest authRequest;
-                    authRequest.agentId = std::move(std::get<remoted::auth::VerifiedAgent>(verified).agentId);
+                    auto& verifiedAgent = std::get<remoted::auth::VerifiedAgent>(verified);
+                    authRequest.agentId = std::move(verifiedAgent.agentId);
+                    authRequest.keyFingerprint = std::move(verifiedAgent.keyFingerprint);
                     authRequest.protocolVersion = protocolVersion;
                     authRequest.method = methodStr;
                     authRequest.requestTarget = request->target;

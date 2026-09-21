@@ -29,6 +29,12 @@ int authd_read_config(const char *path) {
     {
         cJSON *auth = w_mconf_section("auth");
         int ret = Read_Authd_JSON(auth, &config);
+
+        if (ret == 0) {
+            cJSON *remote = w_mconf_section("remote");
+            w_authd_resolve_legacy_enrollment(&config, auth, remote);
+            cJSON_Delete(remote);
+        }
         cJSON_Delete(auth);
 
         if (ret < 0) {
@@ -68,6 +74,12 @@ int authd_read_config(const char *path) {
      * for why authd checks it at all. */
     config.max_pending_deletes =
         getDefine_Int_default("wazuh_modules", "manager_task_max_pending_deletes", 0, 1000000, 20000);
+
+    /* remoted's keys, deliberately (see the fields' comment): the re-enrollment bearer is judged here with
+     * the window remoted applies to the agent's every other request. Same bounds, same defaults as
+     * remoted/src/secure.c. */
+    config.jwt_max_age = getDefine_Int_default("remoted", "jwt_max_age", 1, 43200, 60);
+    config.jwt_clock_skew = getDefine_Int_default("remoted", "jwt_clock_skew", 0, 43200, 30);
 
     return 0;
 }

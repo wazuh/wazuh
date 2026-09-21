@@ -70,6 +70,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION,
     WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP,
     WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE,
+    WDB_STMT_GLOBAL_SET_AGENT_CREDENTIALS,
     WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE,
     WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE_KEEPALIVE,
@@ -489,6 +490,19 @@ int wdb_parse_global_get_agent_info(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * output);
 
 /**
+ * @brief Function to parse the set-agent-credentials request (re-enrollment, issue #38993):
+ *        {"id":N,"name":"...","register_ip":"...","internal_key":"...","reenroll_secret":"..."},
+ *        the five fields mandatory.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the JSON of the agent's new credentials.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_set_agent_credentials(wdb_t * wdb, char * input, char * output);
+
+/**
  * @brief Function to parse the update agent connection status.
  *
  * @param [in] wdb The global struct database.
@@ -883,11 +897,13 @@ int wdb_enable_foreign_keys(sqlite3 *db);
  * @param [in] ip The agent IP address
  * @param [in] register_ip The agent registration IP address
  * @param [in] internal_key The agent key
+ * @param [in] reenroll_secret The agent's re-enrollment secret (64 hex chars, issue #38993), or NULL when
+ *             the record comes from a path that has none (client.keys mirroring, legacy 1515).
  * @param [in] group The agent group
  * @param [in] date_add The agent addition date.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add);
+int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* reenroll_secret, char* group, int date_add);
 
 /**
  * @brief Function to update an agent version data.
@@ -931,6 +947,22 @@ int wdb_global_update_agent_version(wdb_t *wdb,
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection_status, const char *sync_status);
+
+/**
+ * @brief Function to rotate an agent's credentials in place (re-enrollment, issue #38993): its name,
+ *        registration IP, key and re-enrollment secret are replaced; the row -- and with it the id,
+ *        date_add and every other column -- stays. The counterpart of insert-agent for an agent that
+ *        already exists.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id The agent ID.
+ * @param [in] name The agent's (possibly new) name.
+ * @param [in] register_ip The IP the agent re-enrolled from.
+ * @param [in] internal_key The new key, as written to client.keys.
+ * @param [in] reenroll_secret The new re-enrollment secret (64 hex chars).
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_set_agent_credentials(wdb_t *wdb, int id, const char *name, const char *register_ip, const char *internal_key, const char *reenroll_secret);
 
 /**
  * @brief Function to update an agent connection status and the synchronization status.

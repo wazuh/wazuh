@@ -33,9 +33,22 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
         return OutcomeClass::Ok;
     }
 
-    if (code == 401) // Generic auth failure, the only auth code in the contract.
+    // 401: the only auth code in the contract. Which of the eight failure classes it is stays out
+    // of OutcomeClass on purpose -- that keeps its "what was observed" contract, and the class is a
+    // property of the body, not of the status. RetrySender reads it with parseAuthFailClass() where
+    // the escalation decision is actually made (#39064).
+    if (code == 401)
     {
         return OutcomeClass::AuthFail;
+    }
+
+    // 404: nothing at the target. Split out of Permanent because the two
+    // demand opposite treatment -- Permanent says the payload is unacceptable,
+    // while a 404 says nothing about it, so a batch rejected this way must be
+    // kept rather than dropped.
+    if (code == 404)
+    {
+        return OutcomeClass::RouteNotFound;
     }
 
     // 413: the /stateless batch exceeds what the manager accepts; the stream

@@ -74,7 +74,7 @@ XPath or predicate query to filter events (Windows Event Channel and macOS ULS o
 - **Default value:** None (optional)
 - **Allowed values:**
   - **Windows Event Channel:** XPath query or simple Event ID filter (e.g., `Event/System[EventID=7040]`)
-  - **macOS ULS:** Predicate expression using process, subsystem, category, message fields
+  - **macOS ULS:** Predicate expression using `process`, `sender`, `subsystem`, `category` and `eventMessage` fields
 - **Note:** For Windows, supports both simple queries and full QueryList XML format. For macOS, accepts `type` and `level` attributes
 
 #### Windows Event Channel Query Attributes
@@ -498,9 +498,10 @@ Collect macOS authentication logs:
   <location>macos</location>
   <log_format>macos</log_format>
   <query type="trace,log,activity" level="info">
-    (process == "sudo") or
-    (process == "sessionlogoutd" and eventMessage contains "logout is complete.") or
-    (process == "sshd")
+    (process == "sudo" and sender == "sudo") or
+    (process == "sessionlogoutd" and (eventMessage contains "logout is complete." or eventMessage contains "lastUserName")) or
+    ((process == "sshd" or process == "sshd-session") and (sender == "sshd" or sender == "sshd-session")) or
+    ((process == "sudo" or process == "sshd" or process == "sshd-session") and sender == "libpam.2.dylib" and not (eventMessage contains "doesn't have a" or eventMessage contains "Unable to retrieve"))
   </query>
 </localfile>
 ```

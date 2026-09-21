@@ -13,6 +13,7 @@
 #define _HC_HTTP_TYPES_HPP
 
 #include "https_client.h"
+#include "tlsCertDiagnostics.hpp"
 
 #include <atomic>
 #include <cstddef>
@@ -46,6 +47,9 @@ enum class OutcomeClass
     BackPressure,    ///< 503 + Retry-After / 429: server delay wins when longer.
     AuthFail,        ///< 401: one fresh-timestamp retry, then re-enrollment.
     Permanent,       ///< 400/...: retrying identical bytes cannot succeed.
+    RouteNotFound,   ///< 404: the target names no route the manager serves (an
+    ///< endpoint/global_prefix mismatch), or -- on /download alone -- no such
+    ///< resource. Which one it is depends on the endpoint, so the consumer decides.
     PayloadTooLarge, ///< 413: /stateless splits + resends smaller (#37835).
     VersionRejected, ///< 409 at Startup: REJECTED state, slow re-Startup.
     CompressionRejected, ///< 415: manager doesn't accept Content-Encoding: zstd;
@@ -76,6 +80,9 @@ inline const char* outcomeName(OutcomeClass outcome)
 
         case OutcomeClass::Permanent:
             return "Permanent";
+
+        case OutcomeClass::RouteNotFound:
+            return "RouteNotFound";
 
         case OutcomeClass::PayloadTooLarge:
             return "PayloadTooLarge";
@@ -125,6 +132,9 @@ inline int toHcResult(OutcomeClass outcome)
         case OutcomeClass::Permanent:
             return HC_RESULT_PERMANENT;
 
+        case OutcomeClass::RouteNotFound:
+            return HC_RESULT_PERMANENT;
+
         case OutcomeClass::PayloadTooLarge:
             return HC_RESULT_PERMANENT;
 
@@ -142,12 +152,22 @@ inline int toHcResult(OutcomeClass outcome)
     }
 }
 
+/// HTTP verb for one HttpRequestSpec. Every endpoint so far has been a POST,
+/// so this stays a minimal two-value switch rather than a full verb set.
+enum class HttpMethod
+{
+    Post, ///< The long-standing default: a fixed-size or streamed body.
+    Get   ///< No body; CurlPerformer sends CURLOPT_HTTPGET instead.
+};
+
 /// One signed HTTP attempt, as handed to the performer. TLS settings and the
 /// base URL are the performer's own configuration; the spec carries only the
 /// per-request data.
 struct HttpRequestSpec
 {
     std::string target;                ///< e.g. "/stateless" (also the MAC'd target).
+    HttpMethod method {HttpMethod::Post}; ///< Defaults to POST so every pre-existing caller
+    ///< (which never sets this) keeps behaving unchanged.
     std::string contentType;           ///< Emitted as Content-Type when non-empty; empty
     ///< leaves libcurl's default (non-JSON endpoints).
     std::vector<std::string> headers;  ///< Extra headers (auth headers included).
@@ -185,6 +205,11 @@ struct HttpResponse
     std::string body;
     std::string curlError;      ///< libcurl's own wording for a failed attempt, empty
     ///< otherwise (success, or a failure that never reached libcurl).
+    TlsFailureDetail tlsFailure; ///< Populated (kind != None) only when status == TlsFail
+    ///< AND the failure was classified as a hostname mismatch or a certificate-date
+    ///< problem; default-constructed (kind == None) otherwise, including for every
+    ///< other TlsFail cause (chain/CA trust), which stays generic. See
+    ///< tlsCertDiagnostics.hpp.
 };
 
 #endif // _HC_HTTP_TYPES_HPP

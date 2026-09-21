@@ -76,29 +76,50 @@ int w_authd_validate_ciphers(const char *ciphers) {
 }
 
 int get_time_interval(char *source, time_t *interval) {
+    /* The greatest value a time_t can hold, as an unsigned so the expression cannot itself overflow */
+    const uint64_t max_interval = ((((uint64_t) 1) << (sizeof(time_t) * 8 - 1)) - 1);
+    uint64_t factor;
+    uint64_t value;
     char *endptr;
-    *interval = strtoul(source, &endptr, 0);
 
-    if ((!*interval && endptr == source) || *interval < 0) {
+    errno = 0;
+    value = (uint64_t) strtoull(source, &endptr, 0);
+
+    /* Nothing parsed, out of range, or a negative that strtoull() quietly wrapped: strtoull()
+     * accepts a leading '-' and returns the two's complement of the number, which is why a value
+     * above the time_t maximum is refused below rather than trusted here */
+    if ((value == 0 && endptr == source) || (value == ULLONG_MAX && errno == ERANGE)) {
         return OS_INVALID;
     }
 
     switch (*endptr) {
     case 'd':
-        *interval *= 86400;
+        factor = 86400;
         break;
     case 'h':
-        *interval *= 3600;
+        factor = 3600;
         break;
     case 'm':
-        *interval *= 60;
+        factor = 60;
         break;
     case 's':
     case '\0':
+        factor = 1;
         break;
     default:
         return OS_INVALID;
     }
+
+    /* The unit multiplies a number that came from a configuration file or a command line. Left
+     * unchecked the product wraps -- signed overflow, and in practice a NEGATIVE interval that
+     * every caller downstream then has to recognise as "too large", which none of them can: by then
+     * the number no longer says what was written. "999999999999999d" is refused here instead
+     * (issue #39133) */
+    if (value > max_interval / factor) {
+        return OS_INVALID;
+    }
+
+    *interval = (time_t) (value * factor);
 
     return 0;
 }
@@ -239,6 +260,28 @@ int Read_Authd_JSON(const struct cJSON *auth, void *d1) {
     }
 
     return 0;
+}
+
+/* `auth.legacy_enrollment` has no default of its own in the schema: unset, the 1515 listener follows the
+ * legacy TCP/UDP listener (`remote.legacy.enabled`, false when the block is absent), so removing
+ * <remote><legacy> also closes legacy enrollment. An explicit value always wins. */
+void w_authd_resolve_legacy_enrollment(authd_config_t *config, const struct cJSON *auth, const struct cJSON *remote) {
+    const cJSON *legacy = NULL;
+
+    if (config == NULL) {
+        return;
+    }
+
+    if (auth != NULL && cJSON_IsBool(cJSON_GetObjectItem(auth, "legacy_enrollment"))) {
+        return;
+    }
+
+    if (remote != NULL) {
+        legacy = cJSON_GetObjectItem(remote, "legacy");
+    }
+
+    config->flags.legacy_enrollment =
+        w_mconf_json_bool(cJSON_IsObject(legacy) ? cJSON_GetObjectItem(legacy, "enabled") : NULL, 0) != 0;
 }
 #endif /* CLIENT */
 

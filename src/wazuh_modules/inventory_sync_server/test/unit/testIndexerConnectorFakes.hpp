@@ -74,6 +74,7 @@ namespace invsync::test
         std::atomic<int> m_syncFlushes {0}; ///< Times the sync fake's flush() ran.
         /// What the sync fake hands out from takeBulkRequestStats(), once (taking resets them).
         std::atomic<std::uint64_t> m_bulkStatsRequests {0};
+        std::atomic<std::uint64_t> m_bulkStatsConflictRetries {0};
         std::atomic<std::uint64_t> m_bulkStatsBytes {0};
         /// Canned body the sync fake returns from executeSearchQuery(). Guarded by m_mutex.
         nlohmann::json m_searchResponse = nlohmann::json::object();
@@ -371,7 +372,9 @@ namespace invsync::test
             {
                 return {};
             }
-            return {m_events->m_bulkStatsRequests.exchange(0), m_events->m_bulkStatsBytes.exchange(0)};
+            return {m_events->m_bulkStatsRequests.exchange(0),
+                    m_events->m_bulkStatsBytes.exchange(0),
+                    m_events->m_bulkStatsConflictRetries.exchange(0)};
         }
 
     private:

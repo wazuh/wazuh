@@ -31,11 +31,12 @@ static int setup_agent(void **state)
     memset(&test_agt, 0, sizeof(test_agt));
     memset(test_servers, 0, sizeof(test_servers));
 
-    /* The defaults ClientConf() ends up with once <ssl> is unset (UNSET resolves to
-     * SYSTEM there), so an "unconfigured" case here is the same struct an agent with
-     * an untouched ossec.conf ends up running on. */
+    /* The defaults ClientConf() ends up with once <ssl> is unset and no trust anchor is on
+     * disk (UNSET resolves to NONE there), so an "unconfigured" case here is the same struct
+     * an agent with an untouched ossec.conf ends up running on. The anchor-resolved posture
+     * is a separate test below. */
     test_agt.flags.auto_restart = 1;
-    test_agt.ssl.verification_mode = AGENT_VERIFY_SYSTEM;
+    test_agt.ssl.verification_mode = AGENT_VERIFY_NONE;
     test_agt.batch.interval = 10;
     test_agt.stats_report.interval = 60;
     test_agt.config_report.enabled = 1;
@@ -320,7 +321,7 @@ static void test_reports_default_ssl_posture(void **state)
     cJSON *ssl = cJSON_GetObjectItem(get_agent_section(&root), "ssl");
 
     assert_non_null(ssl);
-    assert_string_field(ssl, "verification_mode", "system");
+    assert_string_field(ssl, "verification_mode", "none");
     assert_null(cJSON_GetObjectItem(ssl, "certificate"));
     assert_null(cJSON_GetObjectItem(ssl, "key"));
     assert_null(cJSON_GetObjectItem(ssl, "certificate_authorities"));

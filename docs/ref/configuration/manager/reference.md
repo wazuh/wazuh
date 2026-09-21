@@ -51,6 +51,7 @@ wazuh-manager-remoted listeners.
 |---|---|---|---|---|
 | `legacy` | mapping | `{"enabled": false}` |  | Classic TCP/UDP agent listener. Absent block = disabled; present block = enabled unless 'enabled: false'. |
 | `legacy.enabled` | boolean | `true` |  | Start the legacy listener. |
+| `legacy.ca_delivery` | boolean | `true` |  | Send the manager's CA certificate to a pre-v5.0.0 agent over the WPK transfer channel during a remote upgrade, so the upgraded agent has a trust anchor. Disable when a corporate PKI or a configuration-management tool distributes the anchor instead. |
 | `legacy.port` | integer | `1514` | 1-65535 | Listening port. |
 | `legacy.protocol` | list of enum | `["tcp"]` | items one of `tcp`, `udp`; at least 1 item; at most 2 items; unique | Transport protocols to listen on. |
 | `legacy.ipv6` | boolean | `false` |  | Listen on IPv6. |
@@ -65,10 +66,13 @@ wazuh-manager-remoted listeners.
 | `https.certificate` | string | `etc/certs/remoted.pem` |  | Server certificate (PEM). |
 | `https.key` | string | `etc/certs/remoted-key.pem` |  | Server private key (PEM). Must be set together with 'certificate'. |
 | `https.ca` | string | `""` |  | CA bundle used to verify agent certificates. Empty = client certificate verification disabled. |
+| `https.ca_certificate` | string | `etc/certs/root-ca.pem` | not empty | CA certificate that signs the listener certificate; served on GET /cacerts and pinned by enrollment tokens. Not the client-verification CA ('ca'). |
 | `https.verification_mode` | enum |  | one of `none`, `certificate`, `full` | Agent certificate verification. Absent: 'certificate' when 'ca' is set, 'none' otherwise. |
 | `https.ciphers` | string |  | `^TLS_[A-Z0-9_]+(:TLS_[A-Z0-9_]+)*$` | TLS 1.3 cipher suites. Absent: library default. |
 | `https.max_body_size` | integer or string |  | >= 1; `^[0-9]+[bBkKmMgG]?$` | Maximum HTTP request body. Absent: module default. |
 | `https.dual_stack` | boolean |  |  | Accept IPv4 on an IPv6 bind address. Absent: module default. |
+| `https.enroll_rate_limit` | integer | `100` | 0-100000 | Sustained requests per second this manager serves across POST /enroll and POST /enroll/secret together, counted for the two routes as a whole and not per agent. 0 disables the limit. Requests over it get 429 without reaching authd or, on /enroll/secret, without even being authenticated. Short bursts are absorbed: the pair may serve twice this value back to back before the rate paces it. One ceiling for both on purpose: they cost the manager the same authd round trip, so a fleet-wide bootstrap wave cannot exhaust the identity journal and start refusing real enrollments. |
+| `https.cacerts_rate_limit` | integer | `50` | 0-100000 | Sustained GET /cacerts requests per second this manager serves, counted for the endpoint as a whole and not per agent. 0 disables the limit. Requests over it get 429. Short bursts are absorbed: the endpoint may serve twice this value back to back before the rate paces it. |
 | `agents` | mapping |  |  | Agent version policy of the connection handlers. |
 | `agents.allow_higher_versions` | boolean | `false` |  | Accept agents whose version is higher than the manager's. |
 
@@ -97,7 +101,7 @@ wazuh-manager-authd enrollment service (also read by remoted for HTTPS enrollmen
 | `ssl_manager_cert` | string | `etc/certs/remoted.pem` |  | Manager certificate (PEM). |
 | `ssl_manager_key` | string | `etc/certs/remoted-key.pem` |  | Manager private key (PEM). |
 | `remote_enrollment` | boolean | `true` |  | Accept enrollment through the HTTPS listener. |
-| `legacy_enrollment` | boolean | `true` |  | Accept enrollment through the legacy TLS port. |
+| `legacy_enrollment` | boolean |  |  | Accept enrollment through the legacy TLS port (1515), used only by 4.x agents. No default of its own: when absent it follows remote.legacy.enabled, so a configuration without the remote.legacy block has no legacy enrollment either. An explicit value always wins. |
 | `agents` | mapping |  |  | Agent version policy of the enrollment service. |
 | `agents.allow_higher_versions` | boolean | `false` |  | Enroll agents whose version is higher than the manager's. |
 

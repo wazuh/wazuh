@@ -38,7 +38,23 @@
 
 namespace
 {
-    constexpr uint16_t TLS_PORT = 44861;
+    // Every test here binds TLS_PORT + n for n in 0..11 (the fixture itself takes the base), so
+    // this owns 24900-24911. Two constraints, both learned the hard way:
+    //
+    // 1. Keep clear of the other component files' fixed ports -- tlsVerification 44857-44862,
+    //    enroll 44870-44874, cacerts 44880-44882, httpsClient 44441/44853 -- because they all run
+    //    in ONE gtest binary. A base of 44861 covered 44861-44872 and collided with four of them.
+    // 2. Stay BELOW the ephemeral range (net.ipv4.ip_local_port_range, 32768-60999 on the CI
+    //    image). A fixed listener port inside that range is racing every outbound connection the
+    //    suite makes: these tests open many local TLS connections, and one of them holding the
+    //    port when the next fixture forks makes bind() fail with EADDRINUSE. That is not
+    //    hypothetical -- 44898 lost this race in CI and cost the run 336s.
+    //
+    // Either way the symptom is the same and is worth recognising: the loser spends
+    // waitUntilReady()'s full 300s budget probing a listener that never came up, then fails on
+    // whatever it asserts first, which reads as a product hang rather than a port clash.
+    // FakeManager::waitUntilReady() prints a diagnostic naming the port for exactly this reason.
+    constexpr uint16_t TLS_PORT = 24900;
     const std::string KEY_HEX = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 
     struct Recorder
@@ -746,6 +762,12 @@ TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentIdentityRecovers)
     // The manager rotates its key after 2 notifies: the old key starts getting
     // 401, the module pauses + fires on_reenroll_required once, the callback
     // swaps the key via hc_set_agent_identity, and the client re-registers (#37828).
+    //
+    // Those 401s name `unknown_agent` (FakeManager::authFailBody). Since #39064 the auth gate
+    // escalates on that class alone -- every other class, and an unnamed 401, mean "retry and keep
+    // the identity" -- so a manager that has stopped holding this identity's credential has to say
+    // which of the two it is. Naming anything else here would exercise the narrowing instead, which
+    // is what retrySender_test's OnlyUnknownAgentEscalatesToTheAuthGate covers.
     const uint16_t port = TLS_PORT + 4;
     const std::string oldKey = KEY_HEX;
     const std::string newKey = "0f0e0d0c0b0a090807060504030201001f1e1d1c1b1a19181716151413121110";

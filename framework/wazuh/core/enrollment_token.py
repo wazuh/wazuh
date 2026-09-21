@@ -1,0 +1,267 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+"""Enrollment tokens (issue #38993): the framework side of authd's `token_create` / `token_list` /
+`token_revoke` local-socket verbs -- the ones `wazuh-manager-authd --create-enrollment-token`,
+`--list-enrollment-tokens` and `--revoke-enrollment-token` already speak (os_auth/src/token_cli.c).
+
+authd owns the store (etc/enrollment_tokens.json) and every rule: the address must be one of the
+names in the listener certificate, only the master node mints and revokes, a token's credential is
+handed out once. This module only shapes the request, normalizes the answer and translates authd's
+codes into the API's.
+"""
+
+import re
+
+from wazuh.core import common
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
+from wazuh.core.utils import get_date_from_timestamp, get_timeframe_in_seconds
+from wazuh.core.wazuh_socket import WazuhSocketJSON
+
+# authd's codes for these verbs (os_auth/src/local-server.c, ERRORS[]).
+AUTHD_NO_ARGUMENT = 9004      # `address` missing or empty
+AUTHD_WORKER_NODE = 9015      # the store is written on the master only
+AUTHD_TOKEN_NOT_FOUND = 9022  # unknown id, or one that is not the shape of a token id
+AUTHD_MINT_REFUSED = 9025     # the request cannot be honoured; the message carries the detail
+AUTHD_STORE_FAILED = 9029     # applied in memory, but the store file could not be written
+AUTHD_INTERNAL = 9001         # authd's own fault (a prep step failed, a dispatch bug), not the caller's
+# authd's own codes for these verbs start at 9000; anything below it comes from the framework's
+# socket layer (1013, 1014...), a different numbering space entirely.
+_AUTHD_CODE_FLOOR = 9000
+# Codes >= _AUTHD_CODE_FLOOR that are never the caller's fault even though they fall in the
+# native-code range, so the catch-all below must not turn them into a 400. Traced every *ierror
+# assignment local_dispatch()/local_token_create()/local_token_list()/local_token_revoke()/
+# local_token_purge() (local-server.c) can reach for these four verbs specifically:
+#   - 9001 (AUTHD_INTERNAL, above) is authd's own fault, not this set (kept as its own named check).
+#   - 9002 "Parsing JSON input" is raised at the top-level JSON envelope (an unparseable request or a
+#     missing/non-string `function`) and inside local_token_create()/local_token_purge() for an
+#     argument shape authd didn't expect. By the time a request reaches authd, connexion's own
+#     schema validation has already guaranteed every argument's type and `max_uses`'s bound, and
+#     `purge_tokens()` validates `scope` before calling authd at all -- so if this ever fires, the
+#     framework built a bad payload, not the caller.
+#   - 9003 "No such function" only fires for a `function` value none of the four verb branches
+#     recognize; every call site in this module sends one of the four hardcoded verb strings, never
+#     anything caller-influenced.
+#   - 9016 "Cannot communicate with master node" is raised only by add_clustered() (the *agent*-add
+#     forwarding path) -- no token verb's dispatch branch calls it, so it cannot occur here at all;
+#     excluded anyway since its meaning (a manager-side transport failure) would never be the
+#     caller's fault if some future refactor ever did wire it in.
+_AUTHD_FRAMEWORK_FAULT_CODES = frozenset({9002, 9003, 9016})
+_REFUSED_PREFIX = 'Enrollment token refused: '
+# The API's `timeframe` format (api/validator.py _timeframe_type), narrower than what
+# get_timeframe_in_seconds() takes: a single unit group, so `30d` but not `1d12h`.
+_TIMEFRAME = re.compile(r'^\d+[dhms]?$')
+# authd's own ceiling on a lifetime (ETOKEN_MAX_TTL, os_auth/include/enrollment_token_store.h): 3650 days.
+# A token's expiry is an absolute time in a signed time_t, so a lifetime past this cannot be stored --
+# authd refuses it too, and answering here means the caller reads "not a valid timeframe" instead of a
+# refusal that travelled through the socket.
+_MAX_TTL_SECONDS = 315360000
+
+# What purge_tokens() accepts, mirroring authd's own scopes (etoken_purge_t)
+_PURGE_SCOPES = ('dead', 'all')
+
+
+def _authd_request(function: str, arguments: dict = None):
+    """Send one token verb to authd's local socket and return its `data`.
+
+    Parameters
+    ----------
+    function : str
+        `token_create`, `token_list`, `token_revoke` or `token_purge`.
+    arguments : dict
+        The verb's arguments, or None for the argument-less `token_list`.
+
+    Raises
+    ------
+    WazuhResourceNotFound(1767)
+        authd does not know the token (or the id is not the shape of a token id).
+    WazuhError(1768)
+        authd refused to mint: the message carries authd's detail (the address is not in the listener
+        certificate's SAN, the certificate only names loopback, the CA does not sign it...).
+    WazuhError(1769)
+        This node is a cluster worker: tokens are minted and revoked on the master.
+    WazuhInternalError(1771)
+        authd applied the change in memory but could not write the store file.
+    WazuhError(1773)
+        Any other authd-native code (>= 9000) that isn't authd's own internal fault and isn't one of
+        _AUTHD_FRAMEWORK_FAULT_CODES, with the code and authd's message as extra message.
+    WazuhException
+        A framework-level failure talking to the socket, or `AUTHD_INTERNAL` (authd's own fault),
+        as the socket layer or authd reported it.
+
+    Returns
+    -------
+    dict or list
+        The `data` member of authd's answer.
+    """
+    msg = {'function': function}
+    if arguments is not None:
+        msg['arguments'] = arguments
+
+    authd_socket = WazuhSocketJSON(common.AUTHD_SOCKET)
+    try:
+        authd_socket.send(msg)
+        data = authd_socket.receive()
+    except WazuhException as e:
+        if e.code == AUTHD_TOKEN_NOT_FOUND:
+            raise WazuhResourceNotFound(1767, extra_message=str(arguments.get('id', '')) if arguments else None)
+        if e.code == AUTHD_MINT_REFUSED:
+            # authd's message is "Enrollment token refused: <detail>": keep only the detail, the code's
+            # own text already says "refused".
+            detail = str(e.message or '')
+            raise WazuhError(1768, extra_message=detail.split(_REFUSED_PREFIX, 1)[-1] or detail)
+        if e.code == AUTHD_NO_ARGUMENT:
+            raise WazuhError(1768, extra_message='the address is required')
+        if e.code == AUTHD_WORKER_NODE:
+            raise WazuhError(1769)
+        if e.code == AUTHD_STORE_FAILED:
+            # Nothing the caller did wrong and nothing they can fix by changing the request: authd
+            # holds the intent and retries the write on its own, so this is an internal error the
+            # caller should retry, not a 4xx (issue #39078, H04).
+            raise WazuhInternalError(1771)
+        if (e.code >= _AUTHD_CODE_FLOOR and e.code != AUTHD_INTERNAL
+                and e.code not in _AUTHD_FRAMEWORK_FAULT_CODES):
+            # An authd-native code nobody mapped yet: the request reached authd and authd refused it,
+            # so it is the caller's problem, not a communication failure. The raw code and message
+            # travel in `extra_message` so the specific condition stays visible. AUTHD_INTERNAL and
+            # _AUTHD_FRAMEWORK_FAULT_CODES are excluded on purpose: neither means anything about the
+            # request was wrong, so both fall through to `raise e` below like any other communication
+            # failure -- a generic 500, not a misleading 400.
+            raise WazuhError(1773, extra_message=f'authd code {e.code}: {e.message}')
+        raise e
+    finally:
+        authd_socket.close()
+
+    return data
+
+
+def _normalize(entry: dict) -> dict:
+    """Shape one authd token record for the API: `adr` becomes `address`, epochs become UTC datetimes."""
+    normalized = {}
+    for key, value in entry.items():
+        if key == 'adr':
+            normalized['address'] = value
+        elif key in ('created', 'expires') and value is not None:
+            normalized[key] = get_date_from_timestamp(value)
+        elif key in ('revoked', 'credential'):
+            normalized[key] = bool(value)
+        else:
+            normalized[key] = value
+    return normalized
+
+
+def create_token(address: str, port: int = None, prefix: str = None, ttl: str = None, max_uses: int = None,
+                 description: str = None, embed_ca: bool = False, no_credential: bool = False) -> dict:
+    """Mint an enrollment token.
+
+    Parameters
+    ----------
+    address : str
+        Name (or IP) the agents connect to. Must be one of the listener certificate's names.
+    port : int
+        Listener port to write into the token when it differs from the configured one.
+    prefix : str
+        URL prefix to write into the token when it differs from the configured one.
+    ttl : str
+        Lifetime as a timeframe (`30d`, `12h`, `45m`, `90s`, or plain seconds). authd's default (30 days)
+        when None.
+    max_uses : int
+        Enrollments the token allows; 0 or None means unlimited.
+    description : str
+        Free text shown when listing.
+    embed_ca : bool
+        Carry the CA certificate instead of its pin.
+    no_credential : bool
+        Token without credential (address and pin only).
+
+    Raises
+    ------
+    WazuhError(1411)
+        `ttl` is not a valid timeframe, or is longer than the 3650 days authd accepts.
+
+    Returns
+    -------
+    dict
+        `token` (the text the agent pastes -- returned here and never again), `id`, `address`,
+        `expires` (UTC datetime) and, unless the CA is embedded, `pin_hex`.
+    """
+    arguments = {'address': address}
+    if port is not None:
+        arguments['port'] = int(port)
+    if prefix is not None:
+        arguments['prefix'] = prefix
+    if ttl is not None:
+        if not _TIMEFRAME.match(str(ttl)) or not 0 < get_timeframe_in_seconds(str(ttl)) <= _MAX_TTL_SECONDS:
+            raise WazuhError(1411, extra_message=str(ttl))
+        arguments['ttl'] = get_timeframe_in_seconds(str(ttl))
+    if max_uses is not None:
+        arguments['max_uses'] = int(max_uses)
+    if description is not None:
+        arguments['description'] = description
+    if embed_ca:
+        arguments['embed_ca'] = True
+    if no_credential:
+        arguments['no_credential'] = True
+
+    return _normalize(_authd_request('token_create', arguments))
+
+
+def list_tokens() -> list:
+    """List the enrollment tokens as the operator may see them: never their credential or text.
+
+    Returns
+    -------
+    list
+        One dict per token: `id`, `address`, `created`, `expires` (UTC datetimes), `max_uses`, `uses`,
+        `revoked`, `credential` (whether it carries one) and `description`.
+    """
+    return [_normalize(entry) for entry in _authd_request('token_list')]
+
+
+def revoke_token(token_id: str) -> None:
+    """Revoke an enrollment token. Idempotent on an already revoked token.
+
+    Parameters
+    ----------
+    token_id : str
+        The token's id (22 base64url characters).
+
+    Raises
+    ------
+    WazuhResourceNotFound(1767)
+        No token has that id.
+    """
+    _authd_request('token_revoke', {'id': token_id})
+
+
+def purge_tokens(scope: str = 'dead') -> list:
+    """Remove enrollment tokens from the store, instead of marking them revoked.
+
+    Revoking and purging are different acts: a revoked token stays listed, revoked, and a purged one
+    is gone. `dead` removes what can no longer authorise an enrollment (revoked, expired or out of
+    uses) and leaves every usable token alone; `all` empties the store.
+
+    Parameters
+    ----------
+    scope : str
+        `dead` (default) or `all`.
+
+    Raises
+    ------
+    WazuhError(1770)
+        The scope is neither `dead` nor `all`.
+    WazuhError(1769)
+        This node is a cluster worker: the store is written on the master.
+
+    Returns
+    -------
+    list
+        The ids removed, in the order authd removed them.
+    """
+    if scope not in _PURGE_SCOPES:
+        raise WazuhError(1770, extra_message=str(scope))
+
+    data = _authd_request('token_purge', {'scope': scope})
+
+    return data.get('ids', []) if isinstance(data, dict) else []

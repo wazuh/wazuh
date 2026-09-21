@@ -197,22 +197,41 @@ TEST_F(AuthHeadersE2ETest, DuplicatedOrdinaryHeadersStillPass)
     EXPECT_EQ(statusOf(response), 200) << response;
 }
 
-TEST_F(AuthHeadersE2ETest, Every401OnTheWireCarriesTheBearerChallenge)
+// Issue #38993 (T10): every 401 on the wire names its public class twice -- in the RFC 6750
+// challenge (`error_description`) and as the body's `code` -- with the same generic message. The
+// class is the agent-actionable answer: `invalid_signature` for anything that will not be fixed by a
+// new identity (a token that is not a wazuh-agent+jwt, a bad MAC), `invalid_request` when no usable
+// credential was presented at all (no header, a retired scheme).
+TEST_F(AuthHeadersE2ETest, Every401OnTheWireNamesItsClass)
 {
-    for (const auto& authorization : std::vector<std::string> {
-             "Authorization: Bearer not.a.token",
-             "Authorization: Wazuh 7:1784238000:00112233445566778899aabbccddeeff",
-             "Authorization: Bearer " + remoted::test::bearerToken(std::vector<std::uint8_t>(32, 0x0C)) // wrong key
-         })
+    struct Case
     {
-        const auto response = remoted::test::sendRawOverTls(m_port, rawRequest({"protocol-version: 1", authorization}));
+        std::string authorization;
+        const char* code;
+        const char* challenge;
+    };
+    const Case cases[] = {
+        {"Authorization: Bearer not.a.token",
+         "invalid_signature",
+         R"(WWW-Authenticate: Bearer error="invalid_token", error_description="invalid_signature")"},
+        {"Authorization: Wazuh 7:1784238000:00112233445566778899aabbccddeeff",
+         "invalid_request",
+         R"(WWW-Authenticate: Bearer error="invalid_request")"},
+        {"Authorization: Bearer " + remoted::test::bearerToken(std::vector<std::uint8_t>(32, 0x0C)), // wrong key
+         "invalid_signature",
+         R"(WWW-Authenticate: Bearer error="invalid_token", error_description="invalid_signature")"},
+    };
+    for (const auto& c : cases)
+    {
+        const auto response =
+            remoted::test::sendRawOverTls(m_port, rawRequest({"protocol-version: 1", c.authorization}));
         EXPECT_EQ(statusOf(response), 401) << response;
-        EXPECT_NE(response.find("WWW-Authenticate: Bearer"), std::string::npos) << response;
-        // The body never says why.
-        EXPECT_NE(response.find(R"({"error":"Invalid client authentication","code":401})"), std::string::npos)
-            << response;
+        EXPECT_NE(response.find(c.challenge), std::string::npos) << response;
+        const std::string body = std::string {R"({"error":"Invalid client authentication","code":")"} + c.code + "\"}";
+        EXPECT_NE(response.find(body), std::string::npos) << response;
     }
     const auto missing = remoted::test::sendRawOverTls(m_port, rawRequest({"protocol-version: 1"}));
     EXPECT_EQ(statusOf(missing), 401) << missing;
-    EXPECT_NE(missing.find("WWW-Authenticate: Bearer"), std::string::npos) << missing;
+    EXPECT_NE(missing.find(R"(WWW-Authenticate: Bearer error="invalid_request")"), std::string::npos) << missing;
+    EXPECT_NE(missing.find(R"("code":"invalid_request"})"), std::string::npos) << missing;
 }

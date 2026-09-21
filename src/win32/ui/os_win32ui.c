@@ -9,7 +9,6 @@
  */
 
 #include <process.h>
-#include "string_op.h"
 #include "os_win32ui.h"
 #include "../os_win.h"
 #include "dll_load_notify.h"
@@ -107,7 +106,6 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
             config_read(hwnd);
             gen_server_info(hwnd);
 
-
             /* Setting the icons */
             SendMessage(hwnd, WM_SETICON, ICON_SMALL,
                         (LPARAM)LoadIcon(GetModuleHandle(NULL),
@@ -128,150 +126,6 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
 
         case WM_COMMAND:
             switch (LOWORD(wParam)) {
-                /* In case of SAVE */
-                case IDC_ADD: {
-                    int chd = 0;
-                    int len;
-
-                    if (config_inst.admin_access == 0) {
-                        MessageBox(hwnd, "Unable to edit configuration. "
-                                   "Admin access required.",
-                                   "Error Saving.", MB_OK);
-                        break;
-                    }
-
-                    /* Get server IP */
-                    len = GetWindowTextLength(GetDlgItem(hwnd, UI_SERVER_TEXT));
-                    if (len > 0) {
-                        char *buf;
-
-                        /* Allocate buffer */
-                        buf = (char *)GlobalAlloc(GPTR, len + 1);
-                        if (!buf) {
-                            exit(-1);
-                        }
-
-                        GetDlgItemText(hwnd, UI_SERVER_TEXT, buf, len + 1);
-
-                        /* If auth key changed, set it */
-                        if (strcmp(buf, config_inst.server) != 0) {
-                            if (set_ossec_server(buf, hwnd)) {
-                                chd = 1;
-                            }
-                        }
-                        GlobalFree(buf);
-                    }
-
-                    /* Get auth key */
-                    len = GetWindowTextLength(GetDlgItem(hwnd, UI_SERVER_AUTH));
-                    if (len > 0) {
-                        char *buf;
-
-                        /* Allocate buffer */
-                        buf = (char *)GlobalAlloc(GPTR, len + 1);
-                        if (!buf) {
-                            exit(-1);
-                        }
-
-                        GetDlgItemText(hwnd, UI_SERVER_AUTH, buf, len + 1);
-
-                        /* If auth key changed, set it */
-                        if (strcmp(buf, config_inst.key) != 0) {
-                            int ret;
-                            char *tmp_str;
-                            char *decd_buf = NULL;
-                            char *decd_to_write = NULL;
-                            char *id = NULL;
-                            char *name = NULL;
-                            char *ip = NULL;
-
-                            /* Get new fields */
-                            decd_buf = decode_base64(buf);
-                            if (decd_buf) {
-                                decd_to_write = strdup(decd_buf);
-
-                                /* Get ID, name and IP */
-                                id = decd_buf;
-                                name = strchr(id, ' ');
-                                if (name) {
-                                    *name = '\0';
-                                    name++;
-
-                                    ip = strchr(name, ' ');
-                                    if (ip) {
-                                        *ip = '\0';
-                                        ip++;
-
-                                        tmp_str = strchr(ip, ' ');
-                                        if (tmp_str) {
-                                            *tmp_str = '\0';
-                                        }
-                                    }
-                                }
-                            }
-
-                            /* If IP isn't set, it is because we have an invalid
-                             * auth key.
-                             */
-                            if (!ip) {
-                                MessageBox(hwnd, "Unable to import "
-                                           "authentication key because it was invalid.",
-                                           "Error -- Failure Saving Auth Key", MB_OK);
-                            } else {
-                                char mbox_msg[1024 + 1];
-                                mbox_msg[1024] = '\0';
-
-                                snprintf(mbox_msg, 1024, "Adding key for:\r\n\r\n"
-                                         "Agent ID: %s\r\n"
-                                         "Agent Name: %s\r\n"
-                                         "IP Address: %s\r\n",
-                                         id, name, ip);
-
-                                ret = MessageBox(hwnd, mbox_msg,
-                                                 "Confirm Importing Key", MB_OKCANCEL);
-                                if (ret == IDOK) {
-                                    if (set_ossec_key(decd_to_write, hwnd)) {
-                                        chd += 2;
-                                    }
-                                }
-                            }
-
-                            /* Free used memory */
-                            if (decd_buf) {
-                                free(decd_to_write);
-                                free(decd_buf);
-                            }
-                        }
-                        GlobalFree(buf);
-                    } /* Finished adding AUTH KEY */
-
-                    /* Re-print messages */
-                    if (chd) {
-                        config_read(hwnd);
-
-                        /* Set status to restart */
-                        if (strcmp(config_inst.status, ST_RUNNING) == 0) {
-                            config_inst.status = ST_RUNNING_RESTART;
-                        }
-
-                        gen_server_info(hwnd);
-
-                        if (chd == 1) {
-                            SendMessage(hStatus, SB_SETTEXT, 0,
-                                        (LPARAM)"Manager IP saved");
-                        } else if (chd == 2) {
-                            SendMessage(hStatus, SB_SETTEXT, 0,
-                                        (LPARAM)"Auth key imported");
-
-                        } else {
-                            SendMessage(hStatus, SB_SETTEXT, 0,
-                                        (LPARAM)"Auth key and IP saved");
-
-                        }
-                    }
-                }
-                break;
-
                 case UI_MENU_MANAGE_EXIT:
                     PostMessage(hwnd, WM_CLOSE, 0, 0);
                     break;

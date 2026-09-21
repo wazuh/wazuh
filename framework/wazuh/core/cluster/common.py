@@ -2089,7 +2089,7 @@ class IndexerTaskManager:
                 await asyncio.sleep(base_delay)
 
             except Exception as e:
-                self.logger.warning(f"Indexer is not configured or unavailable: {e}.")
+                self.logger.warning(f"Indexer is not configured or unavailable: {e}.", exc_info=True)
 
                 if active_tasks:
                     await self._stop_indexer_tasks(active_tasks)

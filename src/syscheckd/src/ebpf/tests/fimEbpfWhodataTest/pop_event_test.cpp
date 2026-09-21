@@ -99,6 +99,47 @@ TEST_F(PopEventsTest, EbpfPopWithEvent) {
     ebpf_pop_events(mock_kernel_queue);
 }
 
+template <typename Check>
+static void pop_one_event(uint32_t login_uid, Check check) {
+    MockBoundedQueue<std::unique_ptr<dynamic_file_event>> mock_kernel_queue;
+
+    EXPECT_CALL(MockFimebpf::GetInstance(), mock_fim_shutdown_process_on())
+        .WillOnce(::testing::Return(false))
+        .WillOnce(::testing::Return(true));
+
+    EXPECT_CALL(mock_kernel_queue, pop(::testing::_, ::testing::_))
+       .WillOnce(::testing::DoAll(
+        ::testing::Invoke(
+            [login_uid](std::unique_ptr<dynamic_file_event>& event_arg, [[maybe_unused]]int timeout_arg) {
+                event_arg = std::make_unique<dynamic_file_event>();
+                event_arg->login_uid = login_uid;
+            }
+        ),
+        ::testing::Return(true)
+    ));
+
+    EXPECT_CALL(MockFimebpf::GetInstance(), m_fim_whodata_event(::testing::_))
+        .WillOnce(::testing::Invoke(check));
+
+    ebpf_pop_events(mock_kernel_queue);
+}
+
+TEST_F(PopEventsTest, EbpfPopUnsetLoginUidLeavesAuditAttributionUnset) {
+    pop_one_event((uint32_t)-1, [](whodata_evt* w_evt) {
+        EXPECT_EQ(w_evt->audit_uid, nullptr);
+        EXPECT_EQ(w_evt->audit_name, nullptr);
+        EXPECT_EQ(w_evt->audit_gid, nullptr);
+        EXPECT_EQ(w_evt->audit_group_name, nullptr);
+    });
+}
+
+TEST_F(PopEventsTest, EbpfPopValidLoginUidSetsAuditAttribution) {
+    pop_one_event(1000, [](whodata_evt* w_evt) {
+        EXPECT_STREQ(w_evt->audit_uid, "1000");
+        EXPECT_STREQ(w_evt->audit_name, "mock_user");
+    });
+}
+
 void SetUpModule() {}
 void TearDownModule() {}
 

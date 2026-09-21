@@ -127,7 +127,8 @@ jobs:
             exit 1
           fi
 
-          sudo WAZUH_MANAGER_ENDPOINT="127.0.0.1:1517" dpkg -i "${PACKAGE_PATH}" || sudo apt-get install -f -y
+          sudo dpkg -i "${PACKAGE_PATH}" || sudo apt-get install -f -y
+          sudo sed -i 's/MANAGER_IP/127.0.0.1/g' /var/ossec/etc/ossec.conf
 
           sudo awk '
             /<rootcheck>/ { in_block=1; print; next }

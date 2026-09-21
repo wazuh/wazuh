@@ -1,0 +1,13 @@
+- name: Missing listener certificate
+  description: With etc/certs/remoted.pem absent, wazuh-manager-control refuses to start on the validator's 1244 verdict, which says the manager does not generate certificates
+  configuration_parameters:
+    CERTIFICATE: 'etc/certs/remoted.pem'
+    KEY: 'etc/certs/remoted-key.pem'
+  metadata:
+    certificate: 'etc/certs/remoted.pem'
+    key: 'etc/certs/remoted-key.pem'
+    mutation: missing_certificate
+    # wazuh-manager-control runs `wazuh-manager-conf validate` before any daemon and dumps its verdict
+    # into the manager log with the 'wazuh-manager-control: ERROR: ' prefix (src/init/wazuh-server.sh,
+    # testconfig()). The pointer, the resolved path and the provisioning hint are all asserted.
+    expected_error: ".*wazuh-manager-control: ERROR: \\(1244\\): Invalid configuration at '/remote/https/certificate': file not found: .*remoted\\.pem.*does not generate certificates.*"

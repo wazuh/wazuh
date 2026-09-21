@@ -8,6 +8,8 @@
 #include <thread>
 #include <vector>
 
+#include <sys/resource.h>
+
 #include <agentcache/agentMetadataCache.hpp>
 #include <api/handlers.hpp>
 #include <api/status/handlers.hpp>
@@ -201,6 +203,31 @@ int main(int argc, char* argv[])
         {
             std::cerr << e.what() << '\n';
             return EXIT_FAILURE;
+        }
+    }
+
+    // Raise the soft file descriptor limit; the hard limit belongs to whoever started the manager
+    {
+        constexpr rlim_t target = 65536;
+        struct rlimit limit {};
+        if (getrlimit(RLIMIT_NOFILE, &limit) == 0 && limit.rlim_cur < target)
+        {
+            const rlim_t soft = (limit.rlim_max == RLIM_INFINITY || limit.rlim_max >= target) ? target : limit.rlim_max;
+            if (soft > limit.rlim_cur)
+            {
+                limit.rlim_cur = soft;
+                if (setrlimit(RLIMIT_NOFILE, &limit) != 0)
+                {
+                    LOG_ERROR("Could not set the file descriptor limit to {}: {}", soft, strerror(errno));
+                }
+            }
+            if (soft < target)
+            {
+                LOG_WARNING("File descriptor limit is {}, below the {} requested by the engine. Raise the limit the "
+                            "process is started with (LimitNOFILE, ulimit -n, container ulimits) to go higher.",
+                            soft,
+                            target);
+            }
         }
     }
 

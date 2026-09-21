@@ -93,6 +93,8 @@ independent.
 | `delete_agent` | `POST /_internal/agents/delete` | `uds` mode only |
 | `engine` | An H/E event batch to `POST /stateless` | `agent` mode only; see [13](13-engine-event-streams.md) |
 | `scan_vd` | A feed-update re-scan request to `POST /scan/vd` | `agent` mode only; takes ONLY `feed_offset` and the timing fields — no payload; see [14](14-scan-vd.md) |
+| `cacerts` | A body-less `GET /cacerts` (the CA that signs the listener certificate) | `agent` mode only; takes ONLY the timing fields (`repeat_count`, `repeat_delay`, `initial_delay`); see [15](15-cacerts.md) |
+| `enroll_https` | A `POST /enroll` of a FRESH agent name with the `wazuh-enroll+jwt` bearer of an enrollment token | `agent` mode only; takes ONLY the timing fields; the token comes from `--enroll-token-file` / `WAZUH_ENROLLMENT_TOKEN`, never from the scenario; see [16](16-enroll-https.md) |
 | `raw` | A deliberately invalid body | Rejection paths: `not_full_session`, `garbage`, `empty`, `oversized` |
 
 Concurrency is expressed with lanes, never with a step kind: an agent that must POST two sessions
@@ -168,6 +170,8 @@ budget spent).
   "sessions":  { "ok": { "eq": 48 }, "s5xx": { "eq": 0 }, "s503_retry_after": { "gte": 1 } },
   "stateless": { "s202": { "gte": 1 } },
   "scan":      { "sent": { "eq": 100 }, "other": { "eq": 0 } },
+  "cacerts":   { "sent": { "eq": 200 }, "s200": { "eq": 200 }, "other": { "eq": 0 } },
+  "enroll_https": { "sent": { "eq": 100 }, "s200": { "eq": 100 }, "s401": { "eq": 0 }, "other": { "eq": 0 } },
   "control":   { "startup_err": { "eq": 0 } },
   "deletes":   { "err": { "eq": 0 } },
   "transport_errors": { "eq": 0 },

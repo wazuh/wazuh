@@ -204,7 +204,7 @@ wazuh_modules.inventory_sync_server_max_parallel_connections=1024
 
 - **Default value:** `1024`
 - **Allowed values:** 0 to 65536
-- **Note:** Max simultaneous connections; over it `503` and close. Every connection and every deferred reply costs a file descriptor out of a limit shared with all of modulesd, so setting this above `wazuh_modules.rlimit_nofile` logs a warning and guarantees failures before the cap is reached. Live occupancy is visible as `server.sessions.live` in [`GET /metrics`](metrics.md#transport--server) (the cap itself has no shed counter: a hit shows in the logs and as `live` pinned at the cap).
+- **Note:** Max simultaneous connections; over it `503` and close. Every connection and every deferred reply costs a file descriptor out of a limit shared with all of modulesd, so setting this above modulesd's effective descriptor limit (`wazuh_modules.rlimit_nofile`, capped by the hard limit the process starts with) logs a warning and guarantees failures before the cap is reached. Live occupancy is visible as `server.sessions.live` in [`GET /metrics`](metrics.md#transport--server) (the cap itself has no shed counter: a hit shows in the logs and as `live` pinned at the cap).
 
 ### wazuh_modules.inventory_sync_server_max_inflight_bytes
 
@@ -463,7 +463,10 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_retry_attempts=5
   retry loops that would otherwise let a persistent `429` or an unreachable indexer block the
   flushing worker, and the shard behind it, forever. `0` disables the attempts bound (retries are
   then limited only by `max_retry_duration_seconds`); setting both to `0` makes retries fully
-  unbounded and logs a startup `WARNING`. Use `1` for a single attempt with no retry.
+  unbounded and logs a startup `WARNING`. Use `1` for a single attempt with no retry. This does not
+  cover a by-query version conflict: that has its own fixed allowance of 3 attempts, bounded only by
+  `max_retry_duration_seconds`, so a delete-by-query or update-by-query can still be re-sent with
+  `max_retry_attempts` at `1` (see the [connector reference](../indexer_connector/README.md)).
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_duration_seconds
 

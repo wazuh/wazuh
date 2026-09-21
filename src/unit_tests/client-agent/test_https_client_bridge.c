@@ -82,9 +82,11 @@ bool __wrap_hc_submit_event(hc_handle *handle, const uint8_t *frame, size_t leng
     return mock();
 }
 
-int __wrap_try_enroll_to_server(void)
+/* Returns a w_enroll_status_t since #39064: the loops no longer treat every non-zero the same,
+ * so a test has to say WHICH failure it is scripting. */
+w_enroll_status_t __wrap_try_enroll_to_server(void)
 {
-    return mock();
+    return (w_enroll_status_t)mock();
 }
 
 /* hc_enroll mock (#38465): captures the transport config and the request
@@ -111,6 +113,45 @@ bool __wrap_hc_enroll(const hc_config_t *config, const hc_enroll_request_t *requ
         memset(result, 0, sizeof(*result));
         result->http_code = mock_type(long);
     }
+    return mock();
+}
+
+/* The POST /enroll/secret boundary (#39315). Captures the config the bridge built, and -- when
+ * armed -- destroys the keystore entry from INSIDE the call, which is the point: by the time the
+ * module is running, the bridge must already be holding its own copy of the identity. */
+static hc_config_t g_captured_secret_config;
+static bool g_captured_secret_valid = false;
+static bool g_secret_frees_the_keystore = false;
+
+bool __wrap_hc_fetch_reenroll_secret(const hc_config_t *config, const hc_secret_request_t *request,
+                                     hc_secret_result_t *result)
+{
+    (void)request;
+
+    if (config) {
+        g_captured_secret_config = *config;
+        g_captured_secret_valid = true;
+    }
+
+    if (g_secret_frees_the_keystore) {
+        /* Exactly what OS_UpdateKeys() does to the entry the caller read from: OS_FreeKeys() frees
+         * the keyentry AND the id/raw_key strings inside it. A bridge that had passed borrowed
+         * pointers would now be pointing at freed memory -- under ASAN this is the use-after-free,
+         * without it a silently corrupted request. */
+        g_secret_frees_the_keystore = false;
+        os_free(keys.keyentries[0]->id);
+        os_free(keys.keyentries[0]->raw_key);
+        os_free(keys.keyentries[0]);
+        os_free(keys.keyentries);
+        keys.keyentries = NULL;
+        keys.keysize = 0;
+    }
+
+    if (result) {
+        memset(result, 0, sizeof(*result));
+        result->http_code = mock_type(long);
+    }
+
     return mock();
 }
 
@@ -357,6 +398,8 @@ static int setup_test(void **state)
     agt = (agent *)calloc(1, sizeof(agent));
     memset(&keys, 0, sizeof(keys));
     g_captured_config_valid = false;
+    g_captured_secret_valid = false;
+    g_secret_frees_the_keystore = false;
     g_https_client_stopping = false;
     g_populate_metadata_calls = 0;
     g_resolved_options[0] = '\0';
@@ -657,7 +700,7 @@ static void test_enroll_reuses_transport_config_not_identity(void **state)
     will_return(__wrap_hc_enroll, true);
 
     hc_enroll_result_t result;
-    w_https_client_enroll("{}", "", &result);
+    w_https_client_enroll("{}", "", NULL, NULL, &result);
 
     assert_true(g_captured_enroll_valid);
     assert_string_equal(g_captured_enroll_config.server_host, "10.0.0.1");
@@ -684,7 +727,7 @@ static void test_enroll_reuses_the_configured_endpoint(void **state)
     will_return(__wrap_hc_enroll, true);
 
     hc_enroll_result_t result;
-    w_https_client_enroll("{}", "", &result);
+    w_https_client_enroll("{}", "", NULL, NULL, &result);
 
     assert_true(g_captured_enroll_valid);
     assert_string_equal(g_captured_enroll_config.server_endpoint, "wazuh-manager");
@@ -698,12 +741,122 @@ static void test_enroll_passes_body_and_password_through(void **state)
     will_return(__wrap_hc_enroll, true);
 
     hc_enroll_result_t result;
-    const bool sent = w_https_client_enroll("{\"name\":\"agent01\"}", "s3cr3t", &result);
+    const bool sent = w_https_client_enroll("{\"name\":\"agent01\"}", "s3cr3t", NULL, NULL, &result);
 
     assert_true(sent);
     assert_int_equal(result.http_code, 200);
     assert_string_equal(g_captured_enroll_request.body_json, "{\"name\":\"agent01\"}");
     assert_string_equal(g_captured_enroll_request.password, "s3cr3t");
+    /* No keyed credential passed: the module must see empty fields, not stale bytes, or it would
+     * try to mint a bearer from them (#39064). */
+    assert_string_equal(g_captured_enroll_request.enroll_kid, "");
+    assert_string_equal(g_captured_enroll_request.enroll_key_hex, "");
+}
+
+/* #39064: a re-enrollment credential reaches the module as a `kid` + derived key, and the module
+ * is what gives it priority over the password. The bridge's only job is to pass both through. */
+static void test_enroll_passes_the_keyed_credential_through(void **state)
+{
+    (void)state;
+    static const char *const KEY_HEX =
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+    expect_any(__wrap_hc_enroll, config);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, true);
+
+    hc_enroll_result_t result;
+    const bool sent = w_https_client_enroll("{\"name\":\"agent01\"}", "s3cr3t", "001", KEY_HEX, &result);
+
+    assert_true(sent);
+    assert_string_equal(g_captured_enroll_request.enroll_kid, "001");
+    assert_string_equal(g_captured_enroll_request.enroll_key_hex, KEY_HEX);
+    /* The password still travels: the precedence decision belongs to the module, which owns the
+     * signing, not to the bridge -- so the bridge must not silently drop one of them. */
+    assert_string_equal(g_captured_enroll_request.password, "s3cr3t");
+}
+
+/* --- #39315 F2: the secret request owns its identity, it does not borrow the keystore's --------- */
+
+/* setup_test() already installs this identity; installing another here would leak the first. */
+static const char *const SECRET_KEY_HEX = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+static void test_fetch_reenroll_secret_signs_with_the_keystore_identity(void **state)
+{
+    (void)state;
+
+    will_return(__wrap_hc_fetch_reenroll_secret, 200L);
+    will_return(__wrap_hc_fetch_reenroll_secret, true);
+
+    hc_secret_result_t result;
+    assert_true(w_https_client_fetch_reenroll_secret(&result));
+
+    assert_true(g_captured_secret_valid);
+    assert_string_equal(g_captured_secret_config.agent_id, "001");
+    assert_string_equal(g_captured_secret_config.agent_key, SECRET_KEY_HEX);
+}
+
+/* THE regression for the use-after-free. The bootstrap runs on a detached thread that wakes up to a
+ * minute after start, by which point the HTTPS client is up and a 401 can have spawned the
+ * re-enrollment worker -- whose OS_UpdateKeys() frees every keyentry and the strings inside it.
+ * Borrowed pointers made that a read of freed memory; the copy taken under g_agent_keys_lock makes
+ * it a request that simply carries the identity it started with.
+ *
+ * The keystore is destroyed from inside the module call, so the freed strings are the very ones the
+ * config would have been pointing at. Under ASAN this test is what turns red if the copy is ever
+ * replaced by a borrow again. */
+static void test_fetch_reenroll_secret_survives_a_keystore_reload_mid_request(void **state)
+{
+    (void)state;
+
+    g_secret_frees_the_keystore = true;
+    will_return(__wrap_hc_fetch_reenroll_secret, 200L);
+    will_return(__wrap_hc_fetch_reenroll_secret, true);
+
+    hc_secret_result_t result;
+    assert_true(w_https_client_fetch_reenroll_secret(&result));
+
+    /* The config the module received is intact and still names the identity that was current when
+     * the request was built -- it is a copy, not a view of a freed entry. */
+    assert_string_equal(g_captured_secret_config.agent_id, "001");
+    assert_string_equal(g_captured_secret_config.agent_key, SECRET_KEY_HEX);
+    /* And the keystore really is gone, so this is not asserting on a still-live entry. */
+    assert_null(keys.keyentries);
+}
+
+static void test_fetch_reenroll_secret_without_an_entry_sends_nothing(void **state)
+{
+    (void)state;
+    /* A never-enrolled agent: nothing to prove possession of, and no use for the credential
+     * either. Not an error -- and above all, not a dereference of keyentries[0]. Released rather
+     * than never created, because setup_test() installs an identity for every case. */
+    os_free(keys.keyentries[0]->id);
+    os_free(keys.keyentries[0]->raw_key);
+    os_free(keys.keyentries[0]);
+    os_free(keys.keyentries);
+    keys.keyentries = NULL;
+    keys.keysize = 0;
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    hc_secret_result_t result;
+    assert_false(w_https_client_fetch_reenroll_secret(&result));
+}
+
+/* Half a credential is no credential: a `kid` with no key (or the reverse) must arrive empty, so
+ * the module falls back to the password instead of minting a bearer it cannot sign. */
+static void test_enroll_ignores_a_half_keyed_credential(void **state)
+{
+    (void)state;
+    expect_any(__wrap_hc_enroll, config);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, true);
+
+    hc_enroll_result_t result;
+    w_https_client_enroll("{}", "s3cr3t", "001", NULL, &result);
+
+    assert_string_equal(g_captured_enroll_request.enroll_kid, "");
+    assert_string_equal(g_captured_enroll_request.enroll_key_hex, "");
 }
 
 static void test_config_checksum_is_sha256_of_local_merged_file(void **state)
@@ -764,7 +917,7 @@ static void test_missing_key_refuses_to_start(void **state)
                   "https_client: agent key is missing or is not a valid HS256 key "
                   "(expected exactly 64 lowercase hex characters); refusing to start.");
 
-    w_https_client_start();
+    assert_false(w_https_client_start());
     /* No hc_create expectation: must not be reached. */
 }
 
@@ -783,7 +936,7 @@ static void test_no_keystore_defers_at_debug(void **state)
     expect_string(__wrap__mdebug1, formatted_msg,
                   "https_client: not enrolled yet (no client.keys); deferring start.");
 
-    w_https_client_start();
+    assert_false(w_https_client_start());
     /* No hc_create expectation: must not be reached. */
 }
 
@@ -798,7 +951,7 @@ static void test_wrong_length_key_refuses_to_start(void **state)
                   "https_client: agent key is missing or is not a valid HS256 key "
                   "(expected exactly 64 lowercase hex characters); refusing to start.");
 
-    w_https_client_start();
+    assert_false(w_https_client_start());
 }
 
 static void test_non_hex_key_refuses_to_start(void **state)
@@ -813,7 +966,7 @@ static void test_non_hex_key_refuses_to_start(void **state)
                   "https_client: agent key is missing or is not a valid HS256 key "
                   "(expected exactly 64 lowercase hex characters); refusing to start.");
 
-    w_https_client_start();
+    assert_false(w_https_client_start());
 }
 
 /* The `wazuh-agent+jwt` key is exactly 32 bytes (64 hex chars), so a client.keys entry of any
@@ -829,7 +982,7 @@ static void test_48_char_key_is_refused(void **state)
                   "https_client: agent key is missing or is not a valid HS256 key "
                   "(expected exactly 64 lowercase hex characters); refusing to start.");
 
-    w_https_client_start(); /* the merror expectation above is the assertion */
+    assert_false(w_https_client_start());
 }
 
 /* The shared JwtKeyDecoder only takes lowercase hex (canonical client.keys form). */
@@ -844,7 +997,7 @@ static void test_uppercase_hex_key_is_refused(void **state)
                   "https_client: agent key is missing or is not a valid HS256 key "
                   "(expected exactly 64 lowercase hex characters); refusing to start.");
 
-    w_https_client_start(); /* the merror expectation above is the assertion */
+    assert_false(w_https_client_start());
 }
 
 static void test_valid_64_char_key_is_accepted(void **state)
@@ -863,7 +1016,7 @@ static void test_valid_64_char_key_is_accepted(void **state)
     will_return(__wrap_hc_start, true);
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
 
-    w_https_client_start();
+    assert_true(w_https_client_start());
 
     assert_string_equal(g_captured_config.agent_key,
                          "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
@@ -884,10 +1037,15 @@ static void test_hc_create_failure_is_logged(void **state)
     will_return(__wrap_hc_create, NULL);
     expect_string(__wrap__merror, formatted_msg, "https_client: failed to create the client instance.");
 
-    w_https_client_start();
+    assert_false(w_https_client_start());
     /* No hc_start/hc_destroy expectation: neither must be reached. */
 }
 
+/* #38859: a rejected transport config (e.g. an inverted https_backoff_base/
+ * https_backoff_cap pair -- see ModuleConfigTest.ValidateRejectsInvertedBackoffBounds)
+ * surfaces here as hc_start() returning false. Before this fix the caller
+ * (AgentdStart()) had no way to observe that: w_https_client_start() was void,
+ * so the agent kept running with no transport and no visible failure. */
 static void test_hc_start_failure_destroys_and_logs(void **state)
 {
     (void)state;
@@ -902,7 +1060,7 @@ static void test_hc_start_failure_destroys_and_logs(void **state)
     expect_string(__wrap__merror, formatted_msg, "https_client: failed to start (configuration rejected).");
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
 
-    w_https_client_start();
+    assert_false(w_https_client_start());
 }
 
 /* 401 -> re-enrollment (M5): bridge_on_reenroll_required's spawn decision,
@@ -965,7 +1123,7 @@ static void test_reenroll_thread_succeeds_on_first_attempt(void **state)
     (void)state;
     enable_enrollment();
 
-    will_return(__wrap_try_enroll_to_server, 0);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_OK);
     expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
     expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
     expect_string(__wrap_hc_set_agent_identity, key_hex, keys.keyentries[0]->raw_key);
@@ -981,6 +1139,27 @@ static void test_reenroll_thread_succeeds_on_first_attempt(void **state)
     assert_int_equal(g_populate_metadata_calls, 1);
 }
 
+/* #39064: the loop used to run for ever on any failure. A credential the manager judged and
+ * refused must stop it instead -- the agent keeps the key it has, the AuthGate keeps traffic
+ * paused, and an operator has something to see. Deliberately no hc_set_agent_identity and no gate
+ * release: nothing has changed that would make the paused traffic succeed. */
+static void test_reenroll_thread_stops_on_a_fatal_rejection(void **state)
+{
+    (void)state;
+    enable_enrollment();
+
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_ERR_AUTH_FATAL);
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: re-enrollment cannot succeed; giving up until the agent is "
+                  "restarted or an operator intervenes. Traffic stays paused.");
+
+    bridge_reenroll_thread(FAKE_HANDLE);
+
+    /* No retry: no sleep was requested and the identity was never reloaded. Both are scripted
+     * expectations elsewhere, so an unexpected call fails the test on its own. */
+    assert_int_equal(g_populate_metadata_calls, 0);
+}
+
 static void test_reenroll_thread_retries_with_backoff_then_succeeds(void **state)
 {
     (void)state;
@@ -989,14 +1168,14 @@ static void test_reenroll_thread_retries_with_backoff_then_succeeds(void **state
     /* First pass fails (#38465: a single unconditional target now --
      * agt->server[0] via the shared transport config -- so one failure is
      * one whole pass, unlike the old dual-target loop). */
-    will_return(__wrap_try_enroll_to_server, -1);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_ERR_TRANSPORT);
 
     expect_string(__wrap__mdebug1, formatted_msg,
                   "https_client: re-enrollment attempt failed; retrying in 5 seconds.");
     expect_value(__wrap_sleep, seconds, 5); /* first back-off step */
 
     /* Second pass succeeds. */
-    will_return(__wrap_try_enroll_to_server, 0);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_OK);
 
     expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
     expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
@@ -1019,23 +1198,23 @@ static void test_reenroll_thread_backoff_follows_the_resolved_ramp(void **state)
     agt->enrollment.retry_delta = 7;
     agt->enrollment.retry_max = 14;
 
-    will_return(__wrap_try_enroll_to_server, -1);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_ERR_TRANSPORT);
     expect_string(__wrap__mdebug1, formatted_msg,
                   "https_client: re-enrollment attempt failed; retrying in 7 seconds.");
     expect_value(__wrap_sleep, seconds, 7);
 
-    will_return(__wrap_try_enroll_to_server, -1);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_ERR_TRANSPORT);
     expect_string(__wrap__mdebug1, formatted_msg,
                   "https_client: re-enrollment attempt failed; retrying in 14 seconds.");
     expect_value(__wrap_sleep, seconds, 14);
 
     /* At the ceiling the delay stops growing rather than being clamped afterwards. */
-    will_return(__wrap_try_enroll_to_server, -1);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_ERR_TRANSPORT);
     expect_string(__wrap__mdebug1, formatted_msg,
                   "https_client: re-enrollment attempt failed; retrying in 14 seconds.");
     expect_value(__wrap_sleep, seconds, 14);
 
-    will_return(__wrap_try_enroll_to_server, 0);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_OK);
     expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
     expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
     expect_string(__wrap_hc_set_agent_identity, key_hex, keys.keyentries[0]->raw_key);
@@ -1065,7 +1244,7 @@ static void test_reenroll_thread_logs_error_when_new_key_fails_validation(void *
     (void)state;
     enable_enrollment();
 
-    will_return(__wrap_try_enroll_to_server, 0);
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_OK);
     expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
     expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
     expect_string(__wrap_hc_set_agent_identity, key_hex, keys.keyentries[0]->raw_key);
@@ -2730,6 +2909,15 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_enroll_reuses_transport_config_not_identity, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_reuses_the_configured_endpoint, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_passes_body_and_password_through, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_passes_the_keyed_credential_through, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_ignores_a_half_keyed_credential, setup_test, teardown_test),
+        // #39315 F2: the secret request owns its identity rather than borrowing the keystore's.
+        cmocka_unit_test_setup_teardown(test_fetch_reenroll_secret_signs_with_the_keystore_identity, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_fetch_reenroll_secret_survives_a_keystore_reload_mid_request, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_fetch_reenroll_secret_without_an_entry_sends_nothing, setup_test,
+                                        teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_sha256_of_local_merged_file, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_empty_when_local_file_unreadable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_missing_key_refuses_to_start, setup_test, teardown_test),
@@ -2744,6 +2932,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_reenroll_callback_disabled_enrollment_logs_error_only, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_callback_enabled_enrollment_only_warns, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_succeeds_on_first_attempt, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reenroll_thread_stops_on_a_fatal_rejection, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_retries_with_backoff_then_succeeds, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_backoff_follows_the_resolved_ramp, setup_test,
                                         teardown_test),
