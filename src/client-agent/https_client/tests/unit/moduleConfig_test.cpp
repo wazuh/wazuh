@@ -232,6 +232,23 @@ TEST(ModuleConfigTest, SystemModeFailsClosedWhenCaIsSet)
     EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
 }
 
+// Symmetric with the generic fallthrough's readability check on caPath (see the CA-not-
+// readable test above): config.c/w_agent_validate_ssl_ca additionally parses the anchor as an
+// X.509 certificate before the module ever starts, but this module's own validation should
+// not silently accept a fallback path that vanished or lost read permission since then either.
+// Not platform-gated: on Windows/macOS findSystemCaBundle() is never called at all (no
+// expectation is set on it here), and the readability check itself is not Linux-only.
+TEST(ModuleConfigTest, SystemModeFailsClosedWhenFallbackAnchorIsUnreadable)
+{
+    MockFsProbe fsProbe;
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+    std::strncpy(config.system_fallback_ca_path, "/var/ossec/etc/certs/root-ca.pem",
+                 sizeof(config.system_fallback_ca_path) - 1);
+    EXPECT_CALL(fsProbe, isReadableFile("/var/ossec/etc/certs/root-ca.pem")).WillOnce(Return(false));
+    EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
 #if !defined(WIN32) && !defined(__APPLE__)
 TEST(ModuleConfigTest, SystemModeFailsClosedWhenNoBundleFound)
 {
@@ -239,6 +256,37 @@ TEST(ModuleConfigTest, SystemModeFailsClosedWhenNoBundleFound)
     auto config = minimalConfig();
     config.verify_mode = HC_VERIFY_SYSTEM;
     EXPECT_CALL(fsProbe, findSystemCaBundle()).WillOnce(Return(""));
+    EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
+// #39123: no OS bundle alone no longer fails closed here -- CurlPerformer's fallback still
+// gets a chance to try system_fallback_ca_path at the first handshake. Both absent (the
+// test above) is the one combination this static check can already rule out.
+TEST(ModuleConfigTest, SystemModeValidWithoutBundleWhenFallbackAnchorConfigured)
+{
+    MockFsProbe fsProbe;
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+    std::strncpy(config.system_fallback_ca_path, "/var/ossec/etc/certs/root-ca.pem",
+                 sizeof(config.system_fallback_ca_path) - 1);
+    EXPECT_CALL(fsProbe, findSystemCaBundle()).WillOnce(Return(""));
+    EXPECT_CALL(fsProbe, isReadableFile("/var/ossec/etc/certs/root-ca.pem")).WillOnce(Return(true));
+    EXPECT_TRUE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
+// An OS bundle IS found, so systemFallbackCaPath is not load-bearing for startup to
+// succeed -- but it is still readable-checked whenever it is configured (the runtime fallback
+// in curlPerformer.cpp can still reach it, since an OS bundle existing does not mean it will
+// vouch for this particular manager), so an unreadable one fails closed here too.
+TEST(ModuleConfigTest, SystemModeFailsClosedWhenFallbackAnchorIsUnreadableEvenWithBundleFound)
+{
+    MockFsProbe fsProbe;
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+    std::strncpy(config.system_fallback_ca_path, "/var/ossec/etc/certs/root-ca.pem",
+                 sizeof(config.system_fallback_ca_path) - 1);
+    EXPECT_CALL(fsProbe, findSystemCaBundle()).WillOnce(Return("/etc/ssl/certs/ca-certificates.crt"));
+    EXPECT_CALL(fsProbe, isReadableFile("/var/ossec/etc/certs/root-ca.pem")).WillOnce(Return(false));
     EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
 }
 #endif

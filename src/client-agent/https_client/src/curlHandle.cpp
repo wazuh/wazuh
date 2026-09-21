@@ -100,6 +100,15 @@ namespace
         std::vector<std::string> certNames;
         std::string notBefore;
         std::string notAfter;
+
+        /// #39123 follow-up: whether the callback observed a chain-trust rejection at some
+        /// depth ABOVE the leaf (an intermediate or root certificate) -- see
+        /// isChainBuildingTrustFailure() below for which specific errors qualify. OpenSSL's
+        /// build_chain()/verify_chain() can reject an untrusted intermediate/root and stop
+        /// before internal_verify() ever reaches depth 0, in which case sawDepth0 above stays
+        /// false and would otherwise leave this failure looking identical to a pure transport
+        /// error. Captured independently of sawDepth0 for exactly that reason.
+        bool chainTrustRejectedAboveDepth0 {false};
     };
 
     /// One process-wide SSL_CTX ex_data slot: each CurlHandle's own sslCtxSetupTrampoline()
@@ -208,6 +217,81 @@ namespace
         return (flag != nullptr && flag->load()) ? 1 : 0;
     }
 
+    /// Whether an OpenSSL depth0Error is plausibly a chain/CA-trust problem, as opposed to a
+    /// policy/purpose/extension rejection a different trust anchor could never fix (see
+    /// TlsFailureDetail::depth0ErrorIsChainTrustRelated for why this is a denylist of the
+    /// specific known-unrelated causes, not an allowlist of every genuine trust cause). Only
+    /// meaningful when depth0Error is already known to be non-OK and not one of
+    /// classifyTlsVerifyFailure()'s own classified date/hostname causes.
+    bool classifyDepth0ErrorAsChainTrustRelated(int depth0Error)
+    {
+        switch (depth0Error)
+        {
+            // The certificate itself was fine; OpenSSL rejected it for what it is FOR
+            // (extended key usage / purpose flags), which no different CA changes.
+            case X509_V_ERR_INVALID_PURPOSE:
+
+            // An explicit "reject" trust setting on the certificate (X509_TRUST_REJECTED),
+            // not a missing/untrusted issuer -- the same certificate is rejected by name
+            // however it is reached.
+            case X509_V_ERR_CERT_REJECTED:
+
+            // A critical extension this OpenSSL build does not know how to process --
+            // a local capability gap, not a statement about who issued the certificate.
+            case X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION:
+            case X509_V_ERR_INVALID_EXTENSION:
+
+            // Certificate policy problems: the leaf or an intermediate names constraints
+            // this verification cannot satisfy, independent of chain-of-trust discovery.
+            case X509_V_ERR_INVALID_POLICY_EXTENSION:
+            case X509_V_ERR_NO_EXPLICIT_POLICY:
+                return false;
+
+            default:
+                // Deliberately permissive: every date/hostname cause is already classified
+                // and excluded upstream (classifyTlsVerifyFailure()), and every genuine
+                // chain/CA-trust X509_V_ERR_* (untrusted issuer, self-signed root, path
+                // length, signature failure, ...) must keep reaching the #39123 fallback --
+                // an unenumerated one here must fail open into "still eligible", never
+                // silently excluded.
+                return true;
+        }
+    }
+
+    /// Whether an OpenSSL X509_V_ERR_* observed at a depth ABOVE the leaf (an intermediate or
+    /// root certificate, never depth 0 -- see TlsVerifyCapture::chainTrustRejectedAboveDepth0)
+    /// indicates the verify callback could not establish trust for THAT certificate's issuer
+    /// -- the exact class of rejection a different trust anchor (#39123's fallback) exists to
+    /// fix. Deliberately narrow, an ALLOWLIST -- the opposite choice from
+    /// classifyDepth0ErrorAsChainTrustRelated() just above, and deliberately so: that denylist
+    /// guards a signal the fallback already depends on (sawDepth0), so understating it risks
+    /// silently EXCLUDING a real trust failure. This signal is purely additive -- widening
+    /// what sawDepth0 alone already covers -- so missing an unenumerated cause here only means
+    /// today's KNOWN LIMITATION (curlPerformer.cpp's isUnclassifiedChainFailure()) persists
+    /// for that one cause, never a regression; a false positive here, on the other hand, would
+    /// retry or fail closed for something the fallback was never meant to catch, which is why
+    /// this stays a short, deliberate list rather than "everything not already classified."
+    bool isChainBuildingTrustFailure(int error)
+    {
+        switch (error)
+        {
+            // Chain building could not find, or does not trust, this certificate's issuer --
+            // confirmed against real curl/OpenSSL output while writing the test this enables
+            // (SystemVerificationFallsBackWhenTheUntrustedCaIsAnIntermediateNotTheLeaf,
+            // tlsVerification_component_test.cpp): "self-signed certificate in certificate
+            // chain (19)" is X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN, reported at the
+            // intermediate's own depth.
+            case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
+            case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
+            case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
+            case X509_V_ERR_CERT_UNTRUSTED:
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
     TransportStatus statusFromCurlCode(CURLcode code)
     {
         switch (code)
@@ -223,8 +307,15 @@ namespace
             case CURLE_COULDNT_CONNECT:
                 return TransportStatus::ConnectFail;
 
-            case CURLE_SSL_CONNECT_ERROR:
+            // CURLE_SSL_CACERT is libcurl's older name for CURLE_PEER_FAILED_VERIFICATION
+            // (an alias since 7.62.0), so it is not a separate case here. perform() below
+            // narrows this bucket further via classifyTlsVerifyFailure() (#39062) into
+            // HttpResponse::tlsFailure -- verify_mode=system's local-anchor fallback
+            // (curlPerformer.cpp, #39123) acts only when that classification is still
+            // None, since a hostname mismatch or a certificate-date problem is never
+            // fixed by trying a different trust anchor.
             case CURLE_PEER_FAILED_VERIFICATION:
+            case CURLE_SSL_CONNECT_ERROR:
             case CURLE_SSL_CERTPROBLEM:
             case CURLE_SSL_CIPHER:
             case CURLE_SSL_CACERT_BADFILE:
@@ -341,6 +432,7 @@ namespace
                 m_lastError.clear();
                 m_tlsCapture = TlsVerifyCapture {};
                 m_tlsFailureDetail = TlsFailureDetail {};
+                m_caFileLoadFailed = false;
 
                 // Installed unconditionally, not just when trustSelfSignedRoot() is called
                 // (verify_mode=system's applyTrustAnchors() never calls it): the diagnostics
@@ -396,6 +488,15 @@ namespace
                                  url != nullptr ? url : "unknown URL",
                                  m_lastError.c_str());
 
+                    // The CA file itself (CURLOPT_CAINFO) could not be loaded -- missing,
+                    // unreadable, or not a certificate libcurl can parse. Distinct from every
+                    // other TlsFail cause below: OpenSSL's verify callback never runs in this
+                    // case (there is no chain to build yet), so m_tlsCapture.sawDepth0 stays
+                    // false, which on its own is indistinguishable from a pure transport
+                    // failure. See HttpResponse::caFileLoadFailed (httpTypes.hpp) for why this
+                    // needs its own signal rather than folding into that classification.
+                    m_caFileLoadFailed = (code == CURLE_SSL_CACERT_BADFILE);
+
                     // Narrowed from the generic TlsFail above: a hostname mismatch or a
                     // certificate-date problem is reported at normal level, unlike every other
                     // transport failure here (ordinary chain/CA-trust TlsFail included), which
@@ -404,9 +505,30 @@ namespace
                     const auto kind = classifyTlsVerifyFailure(m_tlsCapture.sawDepth0, m_tlsCapture.depth0Error,
                                                                code == CURLE_PEER_FAILED_VERIFICATION);
 
+                    // Populated regardless of kind: sawDepth0/depth0VerificationFailed are
+                    // meaningful precisely when kind stays None (see TlsFailureDetail's own
+                    // doc comments), which is also the one case verify_mode=system's
+                    // local-anchor fallback (curlPerformer.cpp, #39123) acts on -- and only
+                    // when the depth-0 certificate's OWN verification actually failed, not
+                    // merely whenever one was inspected (a certificate can verify cleanly and
+                    // the attempt still end in TlsFail for an unrelated reason). The
+                    // date/hostname detail fields, and the log line, stay conditional -- both
+                    // are only ever shown for the two classified kinds, unchanged from #39062.
+                    m_tlsFailureDetail.kind = kind;
+                    m_tlsFailureDetail.sawDepth0 = m_tlsCapture.sawDepth0;
+                    m_tlsFailureDetail.depth0VerificationFailed =
+                        m_tlsCapture.sawDepth0 && m_tlsCapture.depth0Error != X509_V_OK;
+                    // Meaningless (left at its default true) unless depth0VerificationFailed is
+                    // also true -- computed unconditionally anyway, same as the other two above,
+                    // since guarding it on depth0VerificationFailed here would just repeat that
+                    // condition for no benefit.
+                    m_tlsFailureDetail.depth0ErrorIsChainTrustRelated =
+                        classifyDepth0ErrorAsChainTrustRelated(m_tlsCapture.depth0Error);
+                    m_tlsFailureDetail.chainTrustRejectedAboveDepth0 =
+                        m_tlsCapture.chainTrustRejectedAboveDepth0;
+
                     if (kind != TlsFailureKind::None)
                     {
-                        m_tlsFailureDetail.kind = kind;
                         m_tlsFailureDetail.certNames = m_tlsCapture.certNames;
                         m_tlsFailureDetail.notBefore = m_tlsCapture.notBefore;
                         m_tlsFailureDetail.notAfter = m_tlsCapture.notAfter;
@@ -468,6 +590,11 @@ namespace
                 return m_tlsFailureDetail;
             }
 
+            bool caFileLoadFailed() override
+            {
+                return m_caFileLoadFailed;
+            }
+
         private:
             /// Installs the combined CURLOPT_SSL_CTX_FUNCTION (sslCtxSetupTrampoline) and its
             /// CURLOPT_SSL_CTX_DATA (this), idempotently -- both trustSelfSignedRoot() and
@@ -506,6 +633,8 @@ namespace
             std::string m_lastError {}; ///< Last perform()'s reason, empty when it succeeded.
             bool m_wantsPartialChain {false}; ///< Set by trustSelfSignedRoot(); consumed by
             ///< sslCtxSetupTrampoline().
+            bool m_caFileLoadFailed {false}; ///< Set in perform() on CURLE_SSL_CACERT_BADFILE;
+            ///< reset at the top of every perform() like the other per-attempt state below.
             TlsVerifyCapture m_tlsCapture {}; ///< Filled by tlsVerifyCaptureTrampoline() during
             ///< perform(); reset at the top of every perform() (one CurlHandle is never reused
             ///< across requests, but resetting costs nothing and removes the assumption).
@@ -545,11 +674,6 @@ namespace
 
     int CurlHandle::tlsVerifyCaptureTrampoline(int preverifyOk, X509_STORE_CTX* storeCtx)
     {
-        if (X509_STORE_CTX_get_error_depth(storeCtx) != 0)
-        {
-            return preverifyOk; // Only the leaf (depth 0) is captured -- see TlsVerifyCapture.
-        }
-
         auto* ssl = static_cast<SSL*>(X509_STORE_CTX_get_ex_data(storeCtx, SSL_get_ex_data_X509_STORE_CTX_idx()));
 
         if (ssl == nullptr)
@@ -563,6 +687,22 @@ namespace
         if (capture == nullptr)
         {
             return preverifyOk; // LCOV_EXCL_LINE: sslCtxSetupTrampoline() always sets this first.
+        }
+
+        if (X509_STORE_CTX_get_error_depth(storeCtx) != 0)
+        {
+            // #39123 follow-up: captured here, above the leaf, since this is the only place a
+            // chain-build rejection at this depth is ever observed -- internal_verify() can
+            // stop right here and never reach depth 0 at all (see
+            // TlsVerifyCapture::chainTrustRejectedAboveDepth0's own doc comment). Everything
+            // else about the leaf (certNames/notBefore/notAfter below) stays leaf-only, as
+            // before.
+            if (preverifyOk == 0 && isChainBuildingTrustFailure(X509_STORE_CTX_get_error(storeCtx)))
+            {
+                capture->chainTrustRejectedAboveDepth0 = true;
+            }
+
+            return preverifyOk;
         }
 
         capture->sawDepth0 = true;

@@ -230,10 +230,17 @@ sudo grep -E "cacerts|pin_mismatch|TLS verification|\(41[0-9]{2}\)" /var/ossec/l
 | `(4120)` | `system` together with an explicit `<certificate_authorities>` | Drop one of the two: remove the CA to use the OS trust store, or keep it and set the mode to `full` |
 | `(4121)` | `system` on a host with no OS CA bundle | Use `full` against the trust anchor instead |
 | `(4123)` | The CA file is readable but holds no certificate the agent can parse | Replace the file; truncated copies are the usual cause |
+| `(4124)` | `system`, and the trust anchor is readable but holds no certificate the agent can parse | Replace the anchor, or enroll with a token to reinstall it; truncated copies are the usual cause |
 | `(4122)` | An explicit `none` on a host that holds a usable anchor | Remove `<verification_mode>none</verification_mode>` to verify against it |
 | `TLS verification failed connecting to …: the certificate does not include that name` | The address the agent dials is not in the certificate | The line lists the names the certificate does carry |
 | `TLS verification failed connecting to …: the certificate has expired` / `is not valid yet` | The manager's certificate is outside its validity window, or the clock is wrong | The line gives the date it checked against |
-| `TLS verification is DISABLED (verify_mode=none)` | The resolved mode is `none` | See the resolution table under [`verification_mode`](configuration.md#verification_mode) |
+| `TLS verification is DISABLED (verification_mode=none)` | The resolved mode is `none` | See the resolution table under [`verification_mode`](configuration.md#verification_mode) |
+| `verification_mode=system: … falling back to the local trust anchor ('…')` | The OS trust store did not vouch for the manager, so the agent verified against its own anchor instead | Nothing, if the agent connects after it. Add the manager's CA to the OS trust store to verify there instead |
+| `verification_mode=system: … no local trust anchor is configured to fall back to` | The OS trust store does not vouch for this manager, and there is no anchor to fall back to | Add the manager's CA to the OS trust store, or enroll with a token so the agent holds an anchor. Logged once per run; the agent keeps retrying and recovers once the store carries the CA |
+| `verification_mode=system: … no time remains in this attempt's budget to try the local fallback anchor ('…')` | The attempt against the OS trust store used the whole request timeout, so the anchor was never tried | Usually a slow or overloaded manager. Logged once per run, then at debug level |
+| `local fallback anchor ('…') could not be loaded (missing, unreadable, or not a certificate this agent can parse)` | The anchor was present when the agent started and is not usable now | The agent stops. Restore the anchor file, or enroll with a token to reinstall it, then start the agent |
+| `local fallback anchor ('…') does not verify the manager's certificate either` | Neither the OS trust store nor the anchor vouches for this manager | The agent stops. Usually the manager's CA was rotated: enroll with a fresh token |
+| `verification_mode=system found no OS trust store on this system … and the local fallback anchor ('…') does not verify it either` | There is no OS trust store to consult, and the anchor does not match this manager | The agent stops. Enroll with a fresh token, or use `full` against a correct anchor |
 
 > [!NOTE]
 > If nothing above matches, raise the agent's log level with `agent.debug=1` in `local_internal_options.conf` and restart it. Not every TLS failure is reported at normal level so a connection problem with nothing in the log is a reason to turn debug on rather than to rule TLS out.

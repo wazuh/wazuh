@@ -129,6 +129,10 @@ typedef struct hc_config_t
     ///< `wazuh-agent+jwt` bearer token is signed with.
     int verify_mode;               ///< hc_verify_mode_t; 0 = full (fail closed).
     char ca_path[HC_MAX_PATH];     ///< certificate_authorities file path.
+    char system_fallback_ca_path[HC_MAX_PATH]; ///< verify_mode=system only (#39123): the
+    ///< agent's own trust anchor, tried only once the OS trust store has actually
+    ///< failed to verify the manager. Empty -> the fallback never engages (today's
+    ///< behavior). Ignored for every other verify_mode.
     char client_cert[HC_MAX_PATH]; ///< Optional mTLS certificate (FR11.3).
     char client_key[HC_MAX_PATH];  ///< Optional mTLS private key.
     char ciphers[HC_MAX_CIPHERS];  ///< Optional cipher list.
