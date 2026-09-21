@@ -235,13 +235,13 @@ The asymmetry is the reason to think about it rather than copy it by reflex:
   still reads one placed there by hand, which is what makes the recovery below work, but it is no
   longer part of how an agent is deployed.
 
-So carrying it extends the life of a fleet-wide shared secret that 5.0 is retiring. There is one
-reason to keep it beyond the enrollment window: it is the only credential an *upgraded* agent can be
-given if the manager ever stops recognising its key, as
+So carrying it extends the life of a fleet-wide shared secret that 5.0 is retiring, and it buys
+nothing once the last 4.x agent is gone: an upgraded agent gets a per-agent secret of its own on its
+first 5.0 start, and anything else an operator needs is done with a token, as
 [What the upgrade does to the agent's credentials](#what-the-upgrade-does-to-the-agents-credentials)
-explains. Drop it once every agent has been replaced by a token-enrolled 5.0 install: delete
-`/var/wazuh-manager/etc/authd.pass` and restart `wazuh-manager-authd` to get a fresh one, or set
-`<auth><use_password>no</use_password>` once nothing enrolls over `1515` any more.
+explains. Drop it at that point: delete `/var/wazuh-manager/etc/authd.pass` and restart
+`wazuh-manager-authd` to get a fresh one, or set `<auth><use_password>no</use_password>` once
+nothing enrolls over `1515` any more.
 
 New 5.0 agents are covered in [After the migration](#after-the-migration-enrolling-new-agents).
 
@@ -367,7 +367,9 @@ migrated fleet:
     [Trust anchor delivery](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents).
   - **Package upgrade on the host.** Nothing is delivered. Place the manager's
     `/var/wazuh-manager/etc/certs/root-ca.pem` at `/var/ossec/etc/certs/root-ca.pem` on Linux and
-    macOS, or `<installdir>\certs\root-ca.pem` on Windows, before upgrading.
+    macOS, or `<installdir>\certs\root-ca.pem` on Windows, before upgrading. An agent already
+    upgraded without one takes it from a token afterwards, keeping its identity:
+    `wazuh-agent-auth --token-file <file> --certs-only`.
 
   An upgraded agent that holds the anchor and states no `<verification_mode>` of its own comes up
   verifying with `full` against it. One upgraded without an anchor connects and verifies nothing:
@@ -384,8 +386,8 @@ migrated fleet:
 
 ### What the upgrade does to the agent's credentials
 
-An upgraded agent keeps its identity and never enrolls, which is the point of this procedure. It
-also changes what the endpoint holds, in a way worth knowing before you upgrade a fleet:
+An upgraded agent keeps its identity and never enrolls, which is the point of this procedure. What
+it holds on disk still changes, and it is worth knowing before you upgrade a fleet:
 
 1. The manager delivers its CA (remote upgrades), the installer validates it and writes it to
    `etc/certs/root-ca.pem`.
@@ -400,41 +402,43 @@ also changes what the endpoint holds, in a way worth knowing before you upgrade 
 
 4. The agent restarts, reads the manager address out of its legacy `<client>` block, and connects
    over `1517` with the same id and key, verifying against the anchor from step 1.
+5. On that first start it asks the manager for a re-enrollment secret of its own, proving who it is
+   with the key it already has, and stores the answer at `etc/reenroll.secret`. Nothing to do: the
+   agent does this by itself, the key is not touched, and a lost answer just means it asks again
+   next time.
 
-The agent now holds exactly one credential: the key in `client.keys`. It has no enrollment password,
-because the upgrade removed it, and no per-agent re-enrollment secret, because those are issued by
-`POST /enroll` and an upgraded agent never calls it. That is enough for everything it does day to
-day, and the manager's `<auth><force>` rules already stop another host from taking its name while it
-is active.
+So the endpoint ends up holding its key and its own per-agent secret, and no fleet-wide credential
+at all. That is the point of the exercise: the shared password is gone from every host, and an agent
+whose key the manager later stops recognising re-enrolls with its secret, keeping its id, without
+anyone visiting it.
 
-It is not enough to recover on its own if the manager ever stops recognising the key — an agent
-deleted from the manager, or a `global.db` restored from a backup older than the agent. A 5.0 agent
-in that position re-enrolls with its re-enrollment secret. An upgraded one has none, keeps retrying,
-and stays disconnected until an operator intervenes on the endpoint.
-
-The intervention is the enrollment password, not a token. An enrollment token is consumed only by
-the bootstrap that runs at the agent's first start, and that bootstrap has two independent latches:
-a trust anchor on disk, and a `client.keys` with anything in it. An upgraded agent trips the second
-whatever path it took, and the first as well when the upgrade delivered the CA. Either way the token
-file is deleted without being read. So recovery means putting the manager's password back on the
-endpoint the upgrade took it from:
+Two cases still need an operator, and both are handled from the endpoint with `wazuh-agent-auth`
+and a token minted on the manager:
 
 ```bash
-sudo cat /var/wazuh-manager/etc/authd.pass        # on the manager
-# on the agent
-echo "<password>" | sudo tee /var/ossec/etc/authd.pass
-sudo chown root:wazuh /var/ossec/etc/authd.pass && sudo chmod 640 /var/ossec/etc/authd.pass
-sudo systemctl restart wazuh-agent
+sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address mgr.example.com --ttl 1d
 ```
 
-This is the practical reason to keep the manager's `authd.pass` for as long as any upgraded agent
-remains, even though nothing enrolls with it day to day: it is the only credential those agents can
-be given without reinstalling them. Back up `client.keys` and `global.db` together as well, so a
-restore never leaves the registry behind the keys.
+- **The agent cannot verify the manager**, because no anchor reached it. `--certs-only` installs the
+  CA and the address from the token and leaves the identity alone, which is what you want for an
+  agent that is otherwise healthy:
 
-Issue [#39315](https://github.com/wazuh/wazuh/issues/39315) tracks giving upgraded agents a
-re-enrollment secret without an operator, and [#39065](https://github.com/wazuh/wazuh/issues/39065)
-a standalone token consumer for the endpoint. Until both land, the sequence above is the recovery.
+  ```bash
+  sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --certs-only
+  ```
+
+- **The identity is genuinely gone** from the manager, so no secret can help. `--force-enroll`
+  registers the agent again; it comes back with a **new id**, which is the cost of that path:
+
+  ```bash
+  sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --force-enroll
+  ```
+
+`--dry-run` reports what either would change without contacting anything. See
+[Enrolling or re-pointing an agent](../../ref/modules/client/index.html#enrolling-or-re-pointing-an-agent) for the full surface.
+
+Back up `client.keys` and `global.db` together as well, so a restore never leaves the registry
+behind the keys and sends a fleet down the second path for no reason.
 
 ## 8. Retire the legacy channel
 
