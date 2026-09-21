@@ -14,6 +14,7 @@
 #include "json.hpp"
 
 #include <cstring>
+#include <string>
 
 namespace od
 {
@@ -261,6 +262,9 @@ namespace od
 
             if ([passwordChangePolicies isKindOfClass:[NSArray class]])
             {
+                bool haveExpiresEveryNDays = false;
+                long long minExpiresEveryNDays = 0;
+
                 for (NSDictionary * entry in passwordChangePolicies)
                 {
                     if (![entry isKindOfClass:[NSDictionary class]]) continue;
@@ -269,13 +273,41 @@ namespace od
 
                     if (![parameters isKindOfClass:[NSDictionary class]]) continue;
 
-                    NSNumber* expiresEveryNDays = parameters[@"policyAttributeExpiresEveryNDays"];
+                    id expiresEveryNDays = parameters[@"policyAttributeExpiresEveryNDays"];
+                    long long days = 0;
+                    bool parsed = false;
 
                     if ([expiresEveryNDays isKindOfClass:[NSNumber class]])
                     {
-                        policyData["expires_every_n_days"] = [expiresEveryNDays longLongValue];
-                        break;
+                        days = [(NSNumber*)expiresEveryNDays longLongValue];
+                        parsed = true;
                     }
+                    else if ([expiresEveryNDays isKindOfClass:[NSString class]])
+                    {
+                        // Same string-vs-number ambiguity assign_safe already handles above.
+                        try
+                        {
+                            days = std::stoll(std::string([(NSString*)expiresEveryNDays UTF8String]));
+                            parsed = true;
+                        }
+                        catch (...)
+                        {
+                            // Not a parseable integer; this entry contributes nothing.
+                        }
+                    }
+
+                    // When an MDM profile and a local pwpolicy stack, the most restrictive
+                    // (soonest-expiring) interval wins.
+                    if (parsed && (!haveExpiresEveryNDays || days < minExpiresEveryNDays))
+                    {
+                        haveExpiresEveryNDays = true;
+                        minExpiresEveryNDays = days;
+                    }
+                }
+
+                if (haveExpiresEveryNDays)
+                {
+                    policyData["expires_every_n_days"] = minExpiresEveryNDays;
                 }
             }
         }

@@ -11,6 +11,7 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <limits>
 
 #include "users_darwin.hpp"
 #include "uuid_wrapper.hpp"
@@ -156,18 +157,24 @@ nlohmann::json UsersProvider::collectAccountPolicyData(const uid_t uid)
     // expires_every_n_days is only present when pwpolicy or an MDM has imposed a change
     // interval. It doubles as the source for the expiration date, which macOS does not store
     // directly: it is derived the same way the policy itself evaluates it, from the last change.
-    if (accountData.contains("expires_every_n_days"))
+    // Both fields are only reported together, since a max-days value next to an absent
+    // expiration date would misrepresent the policy as incomplete.
+    if (accountData.contains("expires_every_n_days") && accountData.contains("password_last_set_time"))
     {
         const auto expiresEveryNDays = accountData["expires_every_n_days"].get<int64_t>();
         accountData["password_max_days_between_changes"] = expiresEveryNDays;
 
-        if (accountData.contains("password_last_set_time"))
-        {
-            constexpr auto secondsPerDay = 86400;
-            const auto lastSetTime = accountData["password_last_set_time"].get<double>();
-            accountData["password_expiration_date"] =
-                static_cast<int64_t>(lastSetTime) + expiresEveryNDays * secondsPerDay;
-        }
+        constexpr auto secondsPerDay = 86400;
+        // Largest day count whose derived epoch seconds still fit the int wire field; day 24856
+        // is 2038-01-20. Mirrors shadow_linux.cpp's MAX_EXPIRE_DAYS: the manager's parser rejects
+        // an out-of-range int and would drop the whole message.
+        constexpr int64_t maxExpireDays = std::numeric_limits<int32_t>::max() / secondsPerDay;
+        constexpr int64_t noExpiration = -1;
+        const auto lastSetTime = accountData["password_last_set_time"].get<double>();
+
+        accountData["password_expiration_date"] = (expiresEveryNDays > maxExpireDays)
+                                                  ? noExpiration
+                                                  : static_cast<int64_t>(lastSetTime) + expiresEveryNDays * secondsPerDay;
     }
 
     return accountData;
