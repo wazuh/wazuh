@@ -35,11 +35,13 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <json.hpp>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <unistd.h>
@@ -652,6 +654,152 @@ TEST(ControlHandlerTest, NotifyFirstHostMetadataBypassesKeepaliveThrottle)
     }
     EXPECT_EQ(fullUpdates, 1U);
     EXPECT_EQ(lightweightKeepalives, 1U);
+}
+
+// -----------------------------------------------------------------------------
+// ca_generation (issue #39319, RF-3): what m_config.caGenerationProvider hands back on every
+// notify. The provider itself is a plain std::function the fixture injects through tweakCfg, so
+// none of these tests need a real HTTPS listener or CA file -- that wiring is
+// RemotedModuleFacade's (production, not under test here) and IHttpServer::caDescriptor()'s (see
+// httpServer_test.cpp). Every assertion reads a parsed nlohmann::json by KEY, never by comparing
+// serialized text: the library sorts object keys alphabetically ("ca_generation" lands between
+// "agent" and "settings_hash" on the wire), and a test that assumed a different order would break
+// on a library upgrade for no reason that has anything to do with this feature (design §2.4).
+// -----------------------------------------------------------------------------
+
+TEST(ControlHandlerTest, NotifyReportsCaGenerationTimestampFromProvider)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+    HandlerFixture h(
+        wdb,
+        [](const std::string&) { return "{\"tasks\":[]}"; },
+        [](Config& c)
+        {
+            c.caGenerationProvider = []() -> std::optional<std::int64_t>
+            {
+                return std::int64_t {1758000000};
+            };
+        });
+
+    NotifyData data;
+    data.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+
+    EXPECT_EQ(w.value.status, 200);
+    const auto j = nlohmann::json::parse(w.value.body);
+    ASSERT_TRUE(j.contains("ca_generation"));
+    EXPECT_EQ(j["ca_generation"], 1758000000);
+}
+
+TEST(ControlHandlerTest, NotifyReportsCaGenerationZeroFromProvider)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+    HandlerFixture h(
+        wdb,
+        [](const std::string&) { return "{\"tasks\":[]}"; },
+        [](Config& c)
+        {
+            c.caGenerationProvider = []() -> std::optional<std::int64_t>
+            {
+                return std::int64_t {0};
+            };
+        });
+
+    NotifyData data;
+    data.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+
+    EXPECT_EQ(w.value.status, 200);
+    const auto j = nlohmann::json::parse(w.value.body);
+    ASSERT_TRUE(j.contains("ca_generation"));
+    EXPECT_EQ(j["ca_generation"], 0);
+}
+
+TEST(ControlHandlerTest, NotifyReportsCaGenerationNullWhenProviderHasNoBundle)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+    HandlerFixture h(
+        wdb,
+        [](const std::string&) { return "{\"tasks\":[]}"; },
+        [](Config& c)
+        {
+            c.caGenerationProvider = []() -> std::optional<std::int64_t>
+            {
+                return std::nullopt;
+            };
+        });
+
+    NotifyData data;
+    data.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+
+    EXPECT_EQ(w.value.status, 200);
+    const auto j = nlohmann::json::parse(w.value.body);
+    ASSERT_TRUE(j.contains("ca_generation"));
+    // A provider that answers "no servable bundle" puts `null` on the wire, not an absent key:
+    // absent means "no provider at all" (a manager older than this feature), which is a different
+    // state (NotifyOmitsCaGenerationWithoutProvider, below).
+    EXPECT_TRUE(j["ca_generation"].is_null());
+}
+
+TEST(ControlHandlerTest, NotifyOmitsCaGenerationWithoutProvider)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+    // No tweakCfg: makeConfig() leaves caGenerationProvider default-constructed (empty), exactly
+    // as buildControlConfig() does today on a build with no HTTPS listener behind it.
+    HandlerFixture h(wdb,
+                     [](const std::string&) -> std::string
+                     {
+                         nlohmann::json j;
+                         j["tasks"] = nlohmann::json::array();
+                         j["tasks"].push_back(
+                             {{"task_id", "T1"}, {"task_type", "upgrade"}, {"payload", {{"v", "5.1"}}}});
+                         return j.dump();
+                     });
+
+    NotifyData data;
+    data.version = "5.0.0";
+    HostInfo host;
+    host.hostname = "web01";
+    host.ip = "127.0.0.1";
+    host.osName = "Ubuntu";
+    host.osVersion = "24.04";
+    host.osPlatform = "ubuntu";
+    host.architecture = "x86_64";
+    host.osType = "Linux";
+    data.host = host;
+
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(7, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+
+    EXPECT_EQ(w.value.status, 200);
+    const auto j = nlohmann::json::parse(w.value.body);
+    EXPECT_FALSE(j.contains("ca_generation"));
+
+    // Nothing else about the response changed: same shape as
+    // NotifyReturnsGroupsSettingsHashAndTasks, field for field.
+    ASSERT_TRUE(j["agent"]["groups"].is_array());
+    EXPECT_EQ(j["agent"]["groups"][0], "default");
+    EXPECT_EQ(j["agent"]["config_hash"], "0");
+    EXPECT_EQ(j["agent"]["config_token"], "default");
+    EXPECT_TRUE(j.contains("settings_hash"));
+    EXPECT_EQ(j["settings_hash"].get<std::string>().size(), 64U); // sha256 hex
+    ASSERT_TRUE(j["tasks"].is_array());
+    ASSERT_EQ(j["tasks"].size(), 1U);
+    EXPECT_EQ(j["tasks"][0]["task_id"], "T1");
+    ASSERT_TRUE(j.contains("vd_feed_offset"));
+    EXPECT_TRUE(j["vd_feed_offset"].is_number_unsigned());
 }
 
 // =============================================================================

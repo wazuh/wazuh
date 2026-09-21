@@ -275,6 +275,10 @@ endif()
 if(NOT IS_AGENT)
   add_subdirectory(engine)
   add_subdirectory(os_auth)
+  # Before remoted: remoted_module links ca_bundle, and registering it here (out of the list's
+  # alphabetical order, like uds_http_server above) keeps the dependency readable. CMake itself
+  # does not need the order -- it resolves link targets by name at generate time.
+  add_subdirectory(shared_modules/ca_bundle)
   add_subdirectory(remoted)
   add_subdirectory(shared_modules/content_manager)
   add_subdirectory(shared_modules/indexer_connector)

@@ -11,6 +11,7 @@ on:
       - src/shared_modules/utils/**
       - src/shared_modules/metrics/**
       - src/shared_modules/manager_config/**
+      - src/shared_modules/ca_bundle/**
       - src/wazuh_modules/inventory_sync_server/**
       - src/wazuh_modules/task_manager/**
       - src/wazuh_modules/vulnerability_scanner/**
@@ -143,6 +144,17 @@ jobs:
           path: src/shared_modules/manager_config
           id: manager_config
 
+      # CA bundle
+      - name: CA bundle - Coding style
+        id: ca_bundle_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/ca_bundle
+          id: ca_bundle
+
       - name: Check all coding style results
         if: always()
         run: |
@@ -182,6 +194,10 @@ jobs:
 
           if [ "${{ steps.manager_config_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS ManagerConfig"
+          fi
+
+          if [ "${{ steps.ca_bundle_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS CABundle"
           fi
 
           if [ -n "$FAILED_STEPS" ]; then
