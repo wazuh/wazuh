@@ -23,8 +23,13 @@
  * changes nothing until remoted restarts. The CA half comes from the same CaCertificateSource
  * `GET /cacerts` answers from, read on this request, so replacing the bundle shows in the next
  * request -- and while the file cannot be read, the CA fields describe the last good read and
- * `last_read_failure` says so. No thresholds and no `warning`/`critical` verdicts: the consumer
- * (the Dashboard, a runbook) decides what "soon" means.
+ * `last_read_failure` says so. Three verdicts travel with the bundle and answer three different
+ * questions: per certificate `signs_active_leaf` (a plain signature), bundle-level
+ * `matches_active_leaf` (does the leaf CHAIN to it -- what `GET /cacerts` decides its 503 from) and
+ * `chain_valid` (the operator-facing validation, partial chains and the server purpose included).
+ * `publication` follows the wire contract of `ca_generation`: null without a servable bundle, 0
+ * served but unvouched, else the vouched timestamp. No thresholds and no `warning`/`critical`
+ * verdicts: the consumer (the Dashboard, a runbook) decides what "soon" means.
  *
  * Rendering is a pure function of the inventory and a clock so the exact document -- every key,
  * both spellings of every timestamp, the fields that appear only on failure -- is unit-tested

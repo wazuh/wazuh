@@ -22,11 +22,11 @@
  * Pure functions of an X509: no I/O, no clock, no logger, so the tests drive them from certificates
  * built in memory. Times are epoch seconds; rfc3339Utc() renders them for the document.
  *
- * TODO(#39319): `wazuh-manager-certs inspect` needs this same descriptor (subject, issuer, notAfter,
- * identity, signs-active-leaf) and the bundle's `Content-SHA256`. Both issues were specified in
- * parallel, so if #39319 lands a descriptor of its own first, this pair is the one to keep and the
- * tool should link it: two fingerprint implementations for the one string `remove <identity>` takes
- * would eventually disagree.
+ * The identity string (`x509-sha256:<hex>`) and the bundle hash are ca_bundle's -- identityOf() and
+ * contentSha256(), the same functions `wazuh-manager-certs` prints and takes for `remove <identity>`
+ * -- so exactly one implementation produces the two strings an operator copies. This pair adds what
+ * ca_bundle::describe() does not carry and only GET /tls needs: the subjectAltName list, the serial,
+ * RFC 2253 names and the RFC 3339 rendering.
  */
 
 #include "tlsCertificateStatus.hpp"
@@ -41,9 +41,6 @@
 
 namespace remoted::http
 {
-    /// What every certificate identity this module prints starts with: the algorithm, then the digest.
-    constexpr std::string_view kFingerprintPrefix {"x509-sha256:"};
-
     /// The fields `GET /tls` publishes for one certificate.
     struct CertificateDescriptor
     {
@@ -55,32 +52,11 @@ namespace remoted::http
         std::int64_t notBefore {0}; ///< Epoch seconds, UTC.
         std::int64_t notAfter {0};  ///< Epoch seconds, UTC. `notAfter - now` negative means expired.
         std::string serial;         ///< `0x` + lowercase hex of the serial number.
-        std::string fingerprint;    ///< fingerprintOf().
+        std::string fingerprint;    ///< ca_bundle::identityOf(): `x509-sha256:` + 64 lowercase hex digits.
     };
 
     /// nullopt for a null certificate or one whose validity times cannot be converted.
     std::optional<CertificateDescriptor> describeCertificate(const X509* certificate);
-
-    /**
-     * @brief kFingerprintPrefix + SHA-256 of the DER encoding as 64 lowercase hex digits, no
-     *        separators. Empty for a null certificate.
-     *
-     * The DER, not the SPKI: a reissue with the same key is a different certificate and must read
-     * as one (spike #39277). Lowercase and colon-free so the identity is one token to copy, and
-     * because the bundle's own `Content-SHA256` (#39319) is bare hex too -- one style for the whole
-     * feature. `openssl x509 -noout -fingerprint -sha256` prints the same digest uppercase with
-     * colons: a consumer comparing the two folds case and drops the colons, and #39319's
-     * `remove <identity>` is asked to accept both spellings, with or without the prefix.
-     */
-    std::string fingerprintOf(const X509* certificate);
-
-    /**
-     * @brief Bare-hex SHA-256 over the DER encodings of @p certificates sorted bytewise and
-     *        concatenated (#39319 § 1's `Content-SHA256`): the identity of a bundle, independent of
-     *        the order its certificates were written in. Empty when there is nothing to hash or one
-     *        of them cannot be encoded.
-     */
-    std::string contentSha256(const std::vector<X509Ptr>& certificates);
 
     /// `YYYY-MM-DDTHH:MM:SSZ` for an epoch second, UTC. Empty when the value cannot be broken down.
     std::string rfc3339Utc(std::int64_t epochSeconds);

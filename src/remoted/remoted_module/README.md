@@ -99,7 +99,7 @@ src/http_server/
 │                            #   functions over X509); re-exports ca_bundle's X509Ptr,
 │                            #   serializeCertificates() and leafChainsToAnyCa() into remoted::http
 ├── certificateDescriptor.hpp/.cpp # one certificate as GET /tls reports it (RFC 2253 names, SANs, epoch
-│                            #   validity, `x509-sha256:` identity) + the bundle's Content-SHA256
+│                            #   validity; identity and bundle hash come from ca_bundle)
 ├── tlsInventory.hpp/.cpp    # TlsInventory (served leaf + CA snapshot from ONE call) and the GET /tls document
 ├── httpServerConfig.hpp/.cpp# buildHttpServerConfig(): C-ABI struct -> HttpServerConfig (+ fallbacks)
 ├── httpServerFactory.hpp    # makeHttpServer() -> the single transport swap point
@@ -2311,14 +2311,17 @@ Response shape (`http_server/tlsInventory.cpp` renders it, keys in this order):
   The leaf lives in the `SSL_CTX` from `start()` until the next one: `listener.loaded_at` dates it,
   and replacing `remoted.pem` on disk changes nothing until remoted restarts. There is deliberately
   no "force refresh" parameter — it could refresh only half the resource.
-- **`signs_active_leaf` vs `chain_valid`.** Per certificate, `signs_active_leaf` is the direct
-  signature check (`caSignsLeaf()`, `X509_verify` against that CA's key); the OR of them is
-  `CaCertificateSnapshot::matchesLeaf`, what `/cacerts` uses for its `503 ca_mismatch`.
+- **`signs_active_leaf`, `matches_active_leaf`, `chain_valid`.** Per certificate, `signs_active_leaf` is
+  the plain signature check (`caSignsLeaf()`, `X509_verify` against that CA's key). Bundle-level
+  `matches_active_leaf` is `CaCertificateSnapshot::matchesLeaf` -- `ca_bundle::leafChainsToAnyCa()`,
+  a real chain validation with OpenSSL's default rules -- what `/cacerts` uses for its `503 ca_mismatch`
+  and what `remoted.server.tls.ca_matches_leaf` reports.
   Bundle-level `chain_valid` is `chainValidates()`'s verdict: the leaf validates with the bundle as
   its **only** trust store (path building, dates, `basicConstraints`/`keyUsage`, server purpose).
   They disagree on purpose for an expired CA, or one without `CA:TRUE`, that still signs the leaf:
-  `signs_active_leaf: true`, `chain_valid: false` plus `chain_error` (present only when false).
-  `chain_valid` is `null` when there is nothing to validate against. It is judged against the clock on
+  `signs_active_leaf: true`, `matches_active_leaf: false`, `chain_valid: false` plus `chain_error`
+  (present only when false). `matches_active_leaf` is judged when the bundle is parsed, like the `503`
+  it mirrors. `chain_valid` is `null` when there is nothing to validate against. It is judged against the clock on
   every request — hit or miss of the content-hash cache, and against the last good bundle while the
   file is unreadable — so a CA that expires with the file untouched flips it on the next request and
   fires the monitor's WARN on its next tick; only the parse is cached, never the verdict.
@@ -2332,16 +2335,18 @@ Response shape (`http_server/tlsInventory.cpp` renders it, keys in this order):
   colons (`certificateDescriptor.hpp`). The DER, not the SPKI pin: a reissue with the same key is a
   different certificate and reads as one. `openssl x509 -in cert.pem -noout -fingerprint -sha256`
   prints the same digest uppercase with colons — `| cut -d= -f2 | tr -d ':' | tr 'A-F' 'a-f'` to
-  compare. `content_sha256` is the bundle's identity: SHA-256 over the DERs sorted bytewise and
-  concatenated, independent of the order the operator concatenated the files in (#39319's
-  `Content-SHA256`). `serial` is `0x` + lowercase hex.
+  compare. `content_sha256` is the bundle's identity: `ca_bundle::contentSha256()`, SHA-256 over the
+  DERs sorted bytewise and concatenated, independent of the order the operator concatenated the files
+  in -- the same function the `##` block's `Content-SHA256` is checked with. `serial` is `0x` + lowercase hex.
 - **Limits.** `certificates_limit` (6) and `serialized_bytes_limit` (8191 — the agent's
-  `HC_MAX_CACERTS_BODY` less its terminator) are `CaCertificateSource::kMaxCertificates` /
-  `kAgentBodyLimit`, whichever binds first. Nothing here enforces them (the file is the operator's,
+  `HC_MAX_CACERTS_BODY` less its terminator) are `ca_bundle::kMaxCertificates` /
+  `ca_bundle::kMaxSerializedBytes`, whichever binds first. Nothing here enforces them (the file is the operator's,
   and the rotation tool refuses to publish past them); they sit next to `certificates_count` and
   `serialized_bytes` so the room left before adding a CA is visible.
-- **`publication` / `publication_vouched`** come from the bundle's `##` block (#39319): `0` /
-  `false` until that parser lands, and whenever the block is missing or its hash does not match.
+- **`publication` / `publication_vouched`** follow the wire contract of `ca_generation` (#39319):
+  `publication` is `null` when there is no servable bundle, `0` when one is served but no guard
+  vouches for it (`vouchFailure != none`), else the vouched timestamp of the bundle's `##` block;
+  `publication_vouched` is that guard's verdict.
 - `sans` is listed for the listener only (bare dNSName/iPAddress entries, in certificate order); a
   CA's names are not something an agent dials. Every timestamp comes in both spellings — RFC 3339
   UTC and `_ts` epoch seconds — and `seconds_until_expiry` is `not_after_ts − evaluated_at_ts`,

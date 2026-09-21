@@ -248,7 +248,7 @@ class RemotedHTTPClient:
             certificate: subject, issuer, sans, validity in RFC 3339 and epoch forms,
             `seconds_until_expiry`, `fingerprint`, `serial`, `path`, `loaded_at`) and `ca_bundle`
             (path, publication fields, `content_sha256`, counts and sizes against their limits,
-            `chain_valid`, one entry per certificate with `signs_active_leaf`, and
+            `matches_active_leaf`, `chain_valid`, one entry per certificate with `signs_active_leaf`, and
             `last_read_failure` while the bundle cannot be read). remoted answers 503 while its
             HTTPS listener is not up, which surfaces here as a `RemotedAdminHTTPError` (error 2029)
             carrying that status code.

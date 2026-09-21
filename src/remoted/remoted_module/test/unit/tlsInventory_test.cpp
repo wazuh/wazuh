@@ -21,6 +21,8 @@
 #include "http_server/tlsInventory.hpp"
 #include "testCertificates.hpp"
 
+#include "ca_bundle/ca_bundle.hpp"
+
 #include "json.hpp"
 
 #include <gtest/gtest.h>
@@ -31,7 +33,7 @@
 #include <string>
 
 using remoted::http::CaCertificateEntry;
-using remoted::http::CaCertificateSource;
+using remoted::http::CaCertificateSnapshot;
 using remoted::http::describeCertificate;
 using remoted::http::ReadFailure;
 using remoted::http::ReadStatus;
@@ -134,11 +136,12 @@ TEST(TlsInventory, RendersTheIssueDocument)
     EXPECT_EQ(bundle["publication_vouched"], false);
     EXPECT_EQ(bundle["content_sha256"], std::string(64, 'a'));
     EXPECT_EQ(bundle["certificates_count"], 2);
-    EXPECT_EQ(bundle["certificates_limit"], CaCertificateSource::kMaxCertificates);
+    EXPECT_EQ(bundle["certificates_limit"], ca_bundle::kMaxCertificates);
     EXPECT_EQ(bundle["certificates_limit"], 6);
     EXPECT_EQ(bundle["serialized_bytes"], 1234);
-    EXPECT_EQ(bundle["serialized_bytes_limit"], CaCertificateSource::kAgentBodyLimit);
+    EXPECT_EQ(bundle["serialized_bytes_limit"], ca_bundle::kMaxSerializedBytes);
     EXPECT_EQ(bundle["serialized_bytes_limit"], 8191);
+    EXPECT_EQ(bundle["matches_active_leaf"], true);
     EXPECT_EQ(bundle["chain_valid"], true);
     EXPECT_FALSE(bundle.contains("chain_error"));
     EXPECT_FALSE(bundle.contains("last_read_failure"));
@@ -163,6 +166,40 @@ TEST(TlsInventory, RendersTheIssueDocument)
 
     // Read top-down like the issue's example: the listener before the bundle it chains to.
     EXPECT_LT(text.find("\"listener\""), text.find("\"ca_bundle\""));
+}
+
+TEST(TlsInventory, PublicationIsNullWithoutAServableBundle)
+{
+    const auto pki = makePki();
+    auto inventory = makeInventory(pki);
+    inventory.ca = CaCertificateSnapshot {};
+
+    const Json document = Json::parse(renderTlsInventory(inventory, at(kNow)));
+    const Json& bundle = document["ca_bundle"];
+
+    // The wire contract of ca_generation: no servable bundle is `null`, never 0 and never an
+    // empty list that reads as "nothing to worry about".
+    EXPECT_TRUE(bundle["publication"].is_null());
+    EXPECT_EQ(bundle["publication_vouched"], false);
+    EXPECT_TRUE(bundle["matches_active_leaf"].is_null());
+    EXPECT_TRUE(bundle["chain_valid"].is_null());
+    EXPECT_EQ(bundle["certificates_count"], 0);
+}
+
+TEST(TlsInventory, PublicationFollowsTheVouchedBundle)
+{
+    const auto pki = makePki();
+    auto inventory = makeInventory(pki);
+    inventory.ca.publication = 1789423200;
+    inventory.ca.vouchFailure = ca_bundle::GuardFailure::none;
+    inventory.ca.matchesLeaf = false;
+
+    const Json document = Json::parse(renderTlsInventory(inventory, at(kNow)));
+    const Json& bundle = document["ca_bundle"];
+
+    EXPECT_EQ(bundle["publication"], 1789423200);
+    EXPECT_EQ(bundle["publication_vouched"], true);
+    EXPECT_EQ(bundle["matches_active_leaf"], false); // the 503 the endpoint would answer, visible here
 }
 
 TEST(TlsInventory, ExpiredLeafReadsNegativeSeconds)

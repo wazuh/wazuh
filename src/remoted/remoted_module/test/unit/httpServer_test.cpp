@@ -3039,7 +3039,7 @@ TEST(HttpServerTest, TlsInventoryIsEmptyUnlessAccepting)
 
     const auto onDisk = readPemCertificates(cert.certPath());
     ASSERT_EQ(onDisk.size(), 1U);
-    EXPECT_EQ(inventory.listener->certificate.fingerprint, fingerprintOf(onDisk.front().get()));
+    EXPECT_EQ(inventory.listener->certificate.fingerprint, ca_bundle::identityOf(onDisk.front().get()));
     EXPECT_EQ(inventory.listener->certificate.subject, "CN=test");
 
     ASSERT_EQ(inventory.ca.entries.size(), 1U);

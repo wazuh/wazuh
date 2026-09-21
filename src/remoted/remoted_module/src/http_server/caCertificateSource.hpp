@@ -105,7 +105,8 @@ namespace remoted::http
         std::string subjects;            ///< Comma-separated subjects, for the log lines.
         std::size_t certificates {0};    ///< How many certificates the file yielded.
         std::vector<CaCertificateEntry> entries; ///< One per certificate, in file order: what GET /tls describes.
-        std::string contentSha256; ///< contentSha256() of the certificates read; empty when there is none.
+        std::string contentSha256; ///< ca_bundle::contentSha256() of the certificates read: the bundle's identity
+                                   ///< GET /tls publishes; empty when there is none.
         /// Present while the latest read failed. The fields above then describe the last GOOD read
         /// (or are empty when there never was one), not the file as it is right now.
         std::optional<ReadFailure> lastReadFailure;
@@ -162,14 +163,6 @@ namespace remoted::http
         /// Largest CA file served. A bundle is a few KB; past this the file is refused as TooLarge,
         /// and never more than kMaxBytes + 1 bytes of it are requested from the reader.
         static constexpr std::size_t kMaxBytes {1024U * 1024U};
-
-        /// What a bundle may hold and still reach every agent (spike #39277, D5; #39319 § 3): at most
-        /// this many certificates, serialised into at most kAgentBodyLimit bytes -- the agent's
-        /// HC_MAX_CACERTS_BODY (8192) less its terminator -- whichever binds first. Neither is enforced
-        /// here (the file is the operator's); `GET /tls` reports both next to the current values so the
-        /// room left is visible, and the rotation tool refuses to publish past them.
-        static constexpr std::size_t kMaxCertificates {6};
-        static constexpr std::size_t kAgentBodyLimit {8191};
 
         /**
          * @param path Configured CA path; an empty one yields an empty snapshot forever.

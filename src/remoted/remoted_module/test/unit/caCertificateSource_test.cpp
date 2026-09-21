@@ -54,6 +54,7 @@
 #include <vector>
 
 using ca_bundle::GuardFailure;
+using ca_bundle::identityOf;
 using ca_bundle::parseBundle;
 using remoted::http::CaCertificateSource;
 using remoted::http::CaPublicationRecord;
@@ -61,7 +62,6 @@ using remoted::http::CaRecordEvent;
 using remoted::http::CaRecordEventMailbox;
 using remoted::http::describeReadFailure;
 using remoted::http::Entry;
-using remoted::http::fingerprintOf;
 using remoted::http::LoadOutcome;
 using remoted::http::ReadFailure;
 using remoted::http::readFileBounded;
@@ -1129,13 +1129,13 @@ TEST(CaCertificateSource, EntriesTellWhichCertificateSignsTheLeaf)
     EXPECT_TRUE(snapshot.entries[1].signsLeaf);
     EXPECT_EQ(snapshot.matchesLeaf, true);
     EXPECT_EQ(snapshot.entries[0].certificate.subject, "CN=Other CA");
-    EXPECT_EQ(snapshot.entries[0].certificate.fingerprint, fingerprintOf(other.get()));
-    EXPECT_EQ(snapshot.entries[1].certificate.fingerprint, fingerprintOf(signer.get()));
+    EXPECT_EQ(snapshot.entries[0].certificate.fingerprint, identityOf(other.get()));
+    EXPECT_EQ(snapshot.entries[1].certificate.fingerprint, identityOf(signer.get()));
 
     EXPECT_GT(snapshot.serializedBytes, 0U);
     EXPECT_EQ(snapshot.serializedBytes, snapshot.pem.size());
-    EXPECT_LE(snapshot.certificates, CaCertificateSource::kMaxCertificates);
-    EXPECT_LE(snapshot.serializedBytes, CaCertificateSource::kAgentBodyLimit);
+    EXPECT_LE(snapshot.certificates, ca_bundle::kMaxCertificates);
+    EXPECT_LE(snapshot.serializedBytes, ca_bundle::kMaxSerializedBytes);
 
     // The bundle's identity does not depend on the order the operator concatenated the files in.
     EXPECT_EQ(snapshot.contentSha256.size(), 64U);
@@ -2537,7 +2537,8 @@ TEST(CaCertificateSource, ChainVerdictFollowsTheClockOnACacheHit)
 
     FakeClock clock;
     const std::time_t start = *clock.now;
-    CaCertificateSource source {path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, nullptr, clock};
+    CaCertificateSource source {
+        path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, nullptr, clock};
 
     auto snapshot = source.snapshot();
     EXPECT_EQ(snapshot.chainValid, true);
@@ -2576,7 +2577,8 @@ TEST(CaCertificateSource, ChainVerdictFollowsTheClockWhileTheFileIsUnreadable)
     reader.state->contents = readAll(path);
     FakeClock clock;
     const std::time_t start = *clock.now;
-    CaCertificateSource source {path, leaf.get(), reader, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, nullptr, clock};
+    CaCertificateSource source {
+        path, leaf.get(), reader, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, nullptr, clock};
 
     auto snapshot = source.snapshot();
     ASSERT_EQ(snapshot.certificates, 1U);
@@ -2608,7 +2610,8 @@ TEST(CaCertificateSource, ANotYetValidCaBecomesValidWithoutAReparse)
 
     FakeClock clock;
     const std::time_t start = *clock.now;
-    CaCertificateSource source {path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, nullptr, clock};
+    CaCertificateSource source {
+        path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, nullptr, clock};
 
     auto snapshot = source.snapshot();
     EXPECT_EQ(snapshot.chainValid, false);

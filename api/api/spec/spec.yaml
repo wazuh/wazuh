@@ -1809,10 +1809,11 @@ components:
             publication:
               type: integer
               format: int64
-              description: "Publication timestamp stamped by `wazuh-manager-certs` in the bundle's `##` metadata block; 0 when the block is missing or its hash does not match the content"
+              nullable: true
+              description: "The publication `wazuh-manager-certs` stamped in the bundle's `##` block, the same value `ca_generation` advertises to agents: `null` when there is no servable bundle, `0` when a bundle is served but no guard vouches for it, else the vouched Unix timestamp"
             publication_vouched:
               type: boolean
-              description: "Whether the `##` block's hash matched the bundle content"
+              description: "Whether every publication guard passed (block present, its hash matches the certificates, the leaf chains to a CA of the bundle, count and size within the agent limits)"
             content_sha256:
               type: string
               description: "Bare-hex SHA-256 over the DER encodings of every certificate, sorted and concatenated: the bundle's identity, independent of certificate order"
@@ -1827,6 +1828,14 @@ components:
             serialized_bytes_limit:
               type: integer
               description: "Largest bundle an agent accepts (8191 bytes)"
+            matches_active_leaf:
+              type: boolean
+              nullable: true
+              description: |
+                Whether the listener certificate CHAINS to some CA of this bundle (a real validation:
+                validity dates and `CA:TRUE` checked, self-signed anchors only) — exactly what `GET /cacerts`
+                decides its `503 ca_mismatch` from, and the value of `remoted.server.tls.ca_matches_leaf`.
+                `null` when there is nothing to check against.
             chain_valid:
               type: boolean
               nullable: true
@@ -1847,7 +1856,7 @@ components:
                     properties:
                       signs_active_leaf:
                         type: boolean
-                        description: "Whether THIS certificate directly signed the listener certificate (a signature check, no dates, no constraints) — the check `GET /cacerts` uses to refuse a mismatched bundle. An expired CA that signed the leaf reads true here and false in `chain_valid`"
+                        description: "Whether THIS certificate's key signed the listener certificate: a plain signature fact (no dates, no constraints), the same `wazuh-manager-certs inspect` prints. Not the 503 decision — that is the bundle's `matches_active_leaf`. An expired CA that signed the leaf reads true here and false in both bundle verdicts"
             last_read_failure:
               type: object
               description: "Present only while the bundle file cannot be read; the fields above then describe the LAST GOOD read of it (or are empty when there never was one)"
@@ -7237,6 +7246,7 @@ paths:
                         certificates_limit: 6
                         serialized_bytes: 2428
                         serialized_bytes_limit: 8191
+                        matches_active_leaf: true
                         chain_valid: true
                         certificates:
                           - subject: CN=Corp Root CA

@@ -155,7 +155,6 @@ namespace remoted::http
             // what the 503 and the announced generation are decided from.
             snapshot.matchesLeaf = leafChainsToAnyCa(m_leaf.get(), parsed.certificates);
 
-
             // The chain verdict is deliberately NOT computed here: it has a date term, so
             // snapshotLocked() asks validateChainLocked() for it on every call, cache hit or not.
         }
@@ -395,8 +394,10 @@ namespace remoted::http
 
         // Does the leaf VALIDATE with this bundle as its trust store (chain, dates, CA constraints,
         // server purpose)? Information for the logs and GET /tls, never for the 503 -- see chainValidates().
-        const auto chain = chainValidates(
-            m_leaf.get(), m_certificates, m_verdictClock ? std::optional<std::time_t> {m_verdictClock()} : std::nullopt);
+        const auto chain =
+            chainValidates(m_leaf.get(),
+                           m_certificates,
+                           m_verdictClock ? std::optional<std::time_t> {m_verdictClock()} : std::nullopt);
         m_snapshot.chainValid = chain.valid;
         m_snapshot.chainError = chain.error;
     }

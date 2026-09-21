@@ -1320,6 +1320,7 @@ stages:
                 certificates_limit: 6
                 serialized_bytes: !anyint
                 serialized_bytes_limit: 8191
+                matches_active_leaf: !anybool
                 chain_valid: !anybool
                 certificates:
                   - subject: !anystr

@@ -33,14 +33,18 @@
 #include <string>
 #include <vector>
 
-using remoted::http::contentSha256;
+using ca_bundle::identityOf;
 using remoted::http::describeCertificate;
-using remoted::http::fingerprintOf;
-using remoted::http::kFingerprintPrefix;
 using remoted::http::rfc3339Utc;
 using remoted::http::X509Ptr;
 using remoted::test::makeCertificate;
 using remoted::test::makeTestKey;
+
+namespace
+{
+    /// What ca_bundle::identityOf() starts every identity with; pinned here so a change of it is a deliberate one.
+    constexpr std::string_view kFingerprintPrefix {"x509-sha256:"};
+} // namespace
 
 namespace
 {
@@ -114,7 +118,7 @@ TEST(CertificateDescriptor, DescribesALeafSignedByACa)
     EXPECT_LE(described->notAfter, before + 3600 + 5);
 
     EXPECT_EQ(described->serial, "0x01"); // makeCertificate() sets serial 1; BN_bn2hex pads to a byte
-    EXPECT_EQ(described->fingerprint, fingerprintOf(leaf.get()));
+    EXPECT_EQ(described->fingerprint, identityOf(leaf.get()));
 }
 
 TEST(CertificateDescriptor, FingerprintIsThePrefixedLowercaseSha256OfTheDer)
@@ -122,7 +126,7 @@ TEST(CertificateDescriptor, FingerprintIsThePrefixedLowercaseSha256OfTheDer)
     const auto key = makeTestKey();
     const auto certificate = makeCertificate("remoted", 0, 3600, key.get(), key.get(), nullptr);
 
-    const auto fingerprint = fingerprintOf(certificate.get());
+    const auto fingerprint = identityOf(certificate.get());
     ASSERT_EQ(fingerprint.rfind(kFingerprintPrefix, 0), 0U) << fingerprint;
     const auto hex = fingerprint.substr(kFingerprintPrefix.size());
     EXPECT_EQ(hex.size(), 64U);
@@ -136,15 +140,15 @@ TEST(CertificateDescriptor, FingerprintIsThePrefixedLowercaseSha256OfTheDer)
     one.push_back(duplicate(certificate));
     const auto roundTripped = ca_bundle::parseBundle(remoted::http::serializeCertificates(one));
     ASSERT_EQ(roundTripped.certificates.size(), 1U);
-    EXPECT_EQ(fingerprintOf(roundTripped.certificates.front().get()), fingerprint);
+    EXPECT_EQ(identityOf(roundTripped.certificates.front().get()), fingerprint);
 
     // Not the SPKI pin: a reissue with the same key is a different certificate and must read as one.
     EXPECT_NE(hex, spkiSha256(certificate.get()));
     const auto reissued = makeCertificate("remoted", 0, 7200, key.get(), key.get(), nullptr);
-    EXPECT_NE(fingerprintOf(reissued.get()), fingerprint);
+    EXPECT_NE(identityOf(reissued.get()), fingerprint);
     EXPECT_EQ(spkiSha256(reissued.get()), spkiSha256(certificate.get()));
 
-    EXPECT_TRUE(fingerprintOf(nullptr).empty());
+    EXPECT_TRUE(identityOf(nullptr).empty());
 }
 
 TEST(CertificateDescriptor, ExpiredCertificateReadsNegativeRemainingSeconds)

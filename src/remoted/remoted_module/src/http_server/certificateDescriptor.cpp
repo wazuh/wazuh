@@ -11,11 +11,12 @@
 
 #include "certificateDescriptor.hpp"
 
+#include "ca_bundle/ca_bundle.hpp"
+
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/err.h>
-#include <openssl/evp.h>
 #include <openssl/sha.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
@@ -171,22 +172,6 @@ namespace remoted::http
             return result;
         }
 
-        /// The DER encoding, or empty when it cannot be produced.
-        std::string derOf(const X509* certificate)
-        {
-            unsigned char* der = nullptr;
-            // i2d_X509 takes a non-const X509* (it may cache the encoding); the certificate is not
-            // modified observably.
-            const int length = i2d_X509(const_cast<X509*>(certificate), &der);
-            if (length <= 0 || der == nullptr)
-            {
-                ERR_clear_error();
-                return {};
-            }
-            std::string bytes {reinterpret_cast<const char*>(der), static_cast<std::size_t>(length)};
-            OPENSSL_free(der);
-            return bytes;
-        }
     } // namespace
 
     std::string sha256Hex(std::string_view bytes)
@@ -194,50 +179,6 @@ namespace remoted::http
         std::array<unsigned char, SHA256_DIGEST_LENGTH> digest {};
         SHA256(reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size(), digest.data());
         return hexOf(digest.data(), digest.size());
-    }
-
-    std::string fingerprintOf(const X509* certificate)
-    {
-        if (certificate == nullptr)
-        {
-            return {};
-        }
-        std::array<unsigned char, EVP_MAX_MD_SIZE> digest {};
-        unsigned int length = 0;
-        if (X509_digest(certificate, EVP_sha256(), digest.data(), &length) != 1)
-        {
-            ERR_clear_error();
-            return {};
-        }
-        return std::string {kFingerprintPrefix} + hexOf(digest.data(), length);
-    }
-
-    std::string contentSha256(const std::vector<X509Ptr>& certificates)
-    {
-        if (certificates.empty())
-        {
-            return {};
-        }
-
-        std::vector<std::string> encodings;
-        encodings.reserve(certificates.size());
-        for (const auto& certificate : certificates)
-        {
-            auto der = derOf(certificate.get());
-            if (der.empty())
-            {
-                return {};
-            }
-            encodings.push_back(std::move(der));
-        }
-        std::sort(encodings.begin(), encodings.end());
-
-        std::string concatenated;
-        for (const auto& der : encodings)
-        {
-            concatenated += der;
-        }
-        return sha256Hex(concatenated);
     }
 
     std::string rfc3339Utc(std::int64_t epochSeconds)
@@ -273,7 +214,7 @@ namespace remoted::http
         descriptor.notBefore = *notBefore;
         descriptor.notAfter = *notAfter;
         descriptor.serial = serialOf(certificate);
-        descriptor.fingerprint = fingerprintOf(certificate);
+        descriptor.fingerprint = ca_bundle::identityOf(certificate);
         return descriptor;
     }
 } // namespace remoted::http

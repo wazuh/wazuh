@@ -71,13 +71,34 @@ namespace remoted::http
         const CaCertificateSnapshot& ca = inventory.ca;
         Json bundle;
         bundle["path"] = inventory.caCertificatePath;
-        bundle["publication"] = ca.publication;
-        bundle["publication_vouched"] = ca.vouchFailure == ca_bundle::GuardFailure::none;
+        // The publication contract is the one `ca_generation` follows on the wire (#39319): null when
+        // there is no servable bundle, 0 when one is served but no guard vouches for it, else the
+        // vouched timestamp. `publication_vouched` is that guard's verdict.
+        const bool servable = ca.certificates != 0;
+        if (servable)
+        {
+            bundle["publication"] = ca.publication;
+        }
+        else
+        {
+            bundle["publication"] = nullptr;
+        }
+        bundle["publication_vouched"] = servable && ca.vouchFailure == ca_bundle::GuardFailure::none;
         bundle["content_sha256"] = ca.contentSha256;
         bundle["certificates_count"] = ca.certificates;
-        bundle["certificates_limit"] = CaCertificateSource::kMaxCertificates;
+        bundle["certificates_limit"] = ca_bundle::kMaxCertificates;
         bundle["serialized_bytes"] = ca.serializedBytes;
-        bundle["serialized_bytes_limit"] = CaCertificateSource::kAgentBodyLimit;
+        bundle["serialized_bytes_limit"] = ca_bundle::kMaxSerializedBytes;
+        // The bundle-level chain check `GET /cacerts` decides its 503 from (ca_bundle::leafChainsToAnyCa(),
+        // the value the `remoted.server.tls.ca_matches_leaf` metric exposes): unknown without a leaf or a bundle.
+        if (ca.matchesLeaf.has_value())
+        {
+            bundle["matches_active_leaf"] = *ca.matchesLeaf;
+        }
+        else
+        {
+            bundle["matches_active_leaf"] = nullptr;
+        }
         if (ca.chainValid.has_value())
         {
             bundle["chain_valid"] = *ca.chainValid;

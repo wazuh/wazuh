@@ -469,7 +469,7 @@ REMOTED_TLS_RESPONSE = {
     'ca_bundle': {
         'path': 'etc/certs/root-ca.pem', 'publication': 0, 'publication_vouched': False,
         'content_sha256': 'b' * 64, 'certificates_count': 1, 'certificates_limit': 6,
-        'serialized_bytes': 1200, 'serialized_bytes_limit': 8191, 'chain_valid': True,
+        'serialized_bytes': 1200, 'serialized_bytes_limit': 8191, 'matches_active_leaf': True, 'chain_valid': True,
         'certificates': [{'subject': 'CN=Corp Root CA', 'signs_active_leaf': True}],
     },
 }
