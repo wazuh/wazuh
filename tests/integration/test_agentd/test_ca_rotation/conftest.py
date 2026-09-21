@@ -22,12 +22,19 @@ The anchor is deliberately seeded in its PRE-#39321 shape -- ``0750`` directory,
 corrected shape would quietly excuse the suite from the upgrade path every existing install
 takes. If that repair ever regresses, these tests stop being able to install anything.
 '''
-import grp
 import os
-import pwd
+import sys
 import time
 
 import pytest
+
+# Unix-only, and only ever called from fixtures this suite runs on Linux (every test carries
+# pytest.mark.linux, so Windows deselects them). Imported unconditionally they would raise while
+# pytest imports this conftest -- which happens before any marker is consulted -- and abort
+# collection for the WHOLE agentd session on Windows, not just this suite.
+if sys.platform != 'win32':
+    import grp
+    import pwd
 
 from wazuh_testing.constants.daemons import AGENT_DAEMON
 from wazuh_testing.constants.paths.configurations import (AGENT_REENROLL_SECRET_PATH,
