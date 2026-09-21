@@ -2726,7 +2726,12 @@ static int w_openat_nofollow_vetted(const char * basedir, const char * filename,
 
     // O_NONBLOCK only mattered while checking for a FIFO above; clear it so reads/writes behave normally.
     if (flags = fcntl(fd, F_GETFL), flags != -1) {
-        fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
+        if (fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) < 0) {
+            saved_errno = errno;
+            close(fd);
+            errno = saved_errno;
+            return -1;
+        }
     }
 
     return fd;
