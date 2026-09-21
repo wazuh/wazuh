@@ -220,8 +220,3 @@
 | [#39309](https://github.com/wazuh/wazuh/issues/39309) | Fixed SCA HIPAA compliance values using parenthesized notation, which the dashboard's Regulatory Compliance catalogue doesn't recognize; converted to the dotted notation the catalogue expects. |
 | [#39514](https://github.com/wazuh/wazuh/pull/39514) | Fixed SCA ISO 27001 compliance mappings, remapped from the superseded 2013 numbering to 2022 Annex A. |
 | [#39192](https://github.com/wazuh/wazuh/issues/39192) | Fixed the `block-ip` active response not blocking IPs on a default macOS install. |
-| [#39321](https://github.com/wazuh/wazuh/issues/39321) | Fixed the agent starting with a multi-certificate `<certificate_authorities>` file whose later certificates are unusable, which failed at the first handshake instead of at startup. |
-| [#39321](https://github.com/wazuh/wazuh/issues/39321) | The agent's trust anchor and its directory are now owned so the agent can replace the anchor itself, which a CA rotation requires. Existing installs are corrected on the next start. |
-| [#39321](https://github.com/wazuh/wazuh/issues/39321) | The agent now refuses to start when its trust anchor has been removed, instead of silently falling back to unverified connections. |
-| [#39321](https://github.com/wazuh/wazuh/issues/39321) | Fixed an enrollment token embedding a CA bundle being accepted at install time and then refused at the agent's first start for being too large. |
-| [#39321](https://github.com/wazuh/wazuh/issues/39321) | Agents now adopt a replacement CA bundle published by the manager, so a CA rotation no longer requires visiting every endpoint. |
