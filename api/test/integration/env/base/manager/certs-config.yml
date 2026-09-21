@@ -1,0 +1,26 @@
+# Certificate inventory of the API integration-test environment, read by
+# src/engine/tools/devContainer/scripts/wazuh-certs-tool.sh from manager.Dockerfile
+# (same shape as the installation assistant's config.yml: nodes.indexer|manager[]
+# with name, ip and dns). Keep comments on their own lines: the tool's parser does
+# not strip trailing comments.
+nodes:
+  # Wazuh indexer node: <name>.pem / <name>-key.pem are installed as
+  # indexer-connector.pem / indexer-connector-key.pem.
+  indexer:
+    - name: wazuh-indexer
+      ip: 127.0.0.1
+
+  # Wazuh manager node: <name>-remoted.pem / <name>-remoted-key.pem are installed as
+  # remoted.pem / remoted-key.pem. The cluster containers (docker-compose.yml services
+  # wazuh-master, wazuh-worker1 and wazuh-worker2) share the api_ssl volume populated
+  # from the image, so one listener certificate carries every hostname the agents and
+  # the tests may use to reach a manager.
+  manager:
+    - name: wazuh-manager
+      ip: 127.0.0.1
+      dns:
+        - wazuh-manager
+        - localhost
+        - wazuh-master
+        - wazuh-worker1
+        - wazuh-worker2

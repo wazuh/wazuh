@@ -195,6 +195,27 @@ static int w_remoted_json_https_string(const cJSON *https, const char *key, size
     return 1;
 }
 
+/* One of the two remote.https endpoint rate options from the effective document: absent
+ * leaves the caller's field at REMOTED_HTTPS_RATE_LIMIT_UNSET, so the module applies its own
+ * default. The schema bounds these already; the range is re-checked here both for a document that
+ * reached the reader without it and because a negative value would otherwise arrive at the module
+ * as the very sentinel that means "unset". Returns 0 on success, OS_INVALID on a bad value. */
+static int w_remoted_json_https_rate(const cJSON *https, const char *key, int max_value, int *dest) {
+    const cJSON *item = cJSON_GetObjectItem(https, key);
+
+    if (item == NULL) {
+        return 0;
+    }
+
+    if (!cJSON_IsNumber(item) || item->valuedouble < 0 || item->valuedouble > max_value) {
+        w_mconf_json_invalid(key, item);
+        return (OS_INVALID);
+    }
+
+    *dest = item->valueint;
+    return 0;
+}
+
 /* OS_IsValidIP() as a plain string validator for w_remoted_json_https_string(). */
 static int w_remoted_json_valid_ip(const char *address) {
     if (OS_IsValidIP(address, NULL) != 1) {
@@ -228,9 +249,14 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
     /* legacy: the effective document always carries the block; `enabled: false` is how the schema
      * represents a disabled legacy listener. */
     logr->legacy_enabled = false;
+    /* Defaulted OUTSIDE the block, not just inside it: an absent `legacy` mapping leaves the
+     * listener disabled, and the poller that reads this never runs -- but a caller that reads the
+     * struct anyway (the unit tests do) must not see an uninitialised bool. */
+    logr->legacy_ca_delivery = true;
 
     if (cJSON_IsObject(legacy)) {
         logr->legacy_enabled = w_mconf_json_bool(cJSON_GetObjectItem(legacy, "enabled"), 1) != 0;
+        logr->legacy_ca_delivery = w_mconf_json_bool(cJSON_GetObjectItem(legacy, "ca_delivery"), 1) != 0;
         os_free(logr->lip);
         logr->rids_closing_time = REMOTED_RIDS_CLOSING_TIME_DEFAULT;
 
@@ -327,7 +353,8 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
             w_remoted_json_https_string(https, "global_prefix", REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN, w_remoted_validate_global_prefix, &logr->https.global_prefix) == OS_INVALID ||
             w_remoted_json_https_string(https, "certificate", REMOTED_HTTPS_CERTIFICATE_MAX_LEN, NULL, &logr->https.certificate) == OS_INVALID ||
             w_remoted_json_https_string(https, "key", REMOTED_HTTPS_KEY_MAX_LEN, NULL, &logr->https.key) == OS_INVALID ||
-            w_remoted_json_https_string(https, "ca", REMOTED_HTTPS_CA_MAX_LEN, NULL, &logr->https.ca) == OS_INVALID) {
+            w_remoted_json_https_string(https, "ca", REMOTED_HTTPS_CA_MAX_LEN, NULL, &logr->https.ca) == OS_INVALID ||
+            w_remoted_json_https_string(https, "ca_certificate", REMOTED_HTTPS_CA_CERTIFICATE_MAX_LEN, NULL, &logr->https.ca_certificate) == OS_INVALID) {
             return (OS_INVALID);
         }
 
@@ -362,6 +389,12 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
         if (item = cJSON_GetObjectItem(https, "dual_stack"), cJSON_IsBool(item)) {
             logr->https.dual_stack = cJSON_IsTrue(item) ? REMOTED_HTTPS_DUAL_STACK_YES : REMOTED_HTTPS_DUAL_STACK_NO;
         }
+
+        /* Rate limits of the two unauthenticated routes (POST /enroll, GET /cacerts). */
+        if (w_remoted_json_https_rate(https, "enroll_rate_limit", REMOTED_HTTPS_RATE_LIMIT_MAX, &logr->https.enroll_rate_limit) == OS_INVALID ||
+            w_remoted_json_https_rate(https, "cacerts_rate_limit", REMOTED_HTTPS_RATE_LIMIT_MAX, &logr->https.cacerts_rate_limit) == OS_INVALID) {
+            return (OS_INVALID);
+        }
     }
 
     /* agents */
@@ -394,6 +427,15 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
         mwarn("The 'remote.https.ca' option is configured but 'verification_mode' is not; "
               "defaulting 'verification_mode' to 'certificate'.");
         logr->https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
+    }
+
+    // Surface the upgrade/mTLS interaction at config time rather than only when an upgrade
+    // request later fails: see task_manager's checkRemotedDelivery() (deliveryGate.hpp).
+    if (logr->https.verification_mode != REMOTED_HTTPS_VERIFY_UNSET &&
+        logr->https.verification_mode != REMOTED_HTTPS_VERIFY_NONE) {
+        mwarn("The 'remote.https.verification_mode' is not 'none'; remote upgrades to v5.0.0 or newer "
+              "will be rejected unless the upgrade request sets 'force_upgrade' (repository path only "
+              "-- the custom-WPK path cannot be forced).");
     }
 
     if (logr->https.dual_stack != REMOTED_HTTPS_DUAL_STACK_UNSET &&

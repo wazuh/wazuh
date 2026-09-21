@@ -544,17 +544,17 @@ TEST(WazuhDBClientTest, QueueFullRejectsSynchronously)
 }
 
 // -----------------------------------------------------------------------------
-// Dtor drains: any pending queue entries are failed with Io so upstream code
+// Dtor drains: any pending queue entries are failed with Stopping so upstream code
 // can propagate a real error instead of hanging.
 // -----------------------------------------------------------------------------
-TEST(WazuhDBClientTest, DtorFailsPendingCallbacksWithIo)
+TEST(WazuhDBClientTest, DtorFailsPendingCallbacksWithStopping)
 {
     const auto path = remoted::test::makeUniqueSocketPath("wdb_dt");
     FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok"; });
     server.setDropResponses(true);
 
     ControlMetrics metrics;
-    std::atomic<int> io {0};
+    std::atomic<int> stopping {0};
 
     {
         // Short deadline so the worker's wait_for on the in-flight request
@@ -567,17 +567,17 @@ TEST(WazuhDBClientTest, DtorFailsPendingCallbacksWithIo)
             client.query("cmd",
                          [&](SocketError e, const std::string&)
                          {
-                             if (e == SocketError::Io)
-                                 io.fetch_add(1);
+                             if (e == SocketError::Stopping)
+                                 stopping.fetch_add(1);
                          });
         }
-        // Falling out of scope destroys client -> pending drained with Io.
+        // Falling out of scope destroys client -> pending drained with Stopping.
     }
 
     // At least the requests still queued at teardown must have been failed.
     // The in-flight one may also have been failed with Io/Timeout; we assert on
     // the queued ones (>= 4 of the 5) to keep the test deterministic.
-    EXPECT_GE(io.load(), 4);
+    EXPECT_GE(stopping.load(), 4);
 }
 
 // globalQuery: an application-level "err ..." travels over a socket that worked, so the transport

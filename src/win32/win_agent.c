@@ -138,6 +138,18 @@ STATIC int run_service_restart(void)
 
 int main(int argc, char **argv)
 {
+    /* Decoding a token is a pure function of stdin, so it is answered before anything here looks
+     * at the installation -- in particular before the chdir() below, which exits the process on
+     * failure. The package installer calls this while it is still rewriting ossec.conf, and an
+     * operator inspecting a token by hand should not need a working install either. Kept ahead
+     * of the argv dispatch further down for that reason, and it runs the same function the POSIX
+     * entry point does, so a token one platform accepts is a token the other accepts. */
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--show-token") == 0) {
+            return (w_agent_show_enrollment_token());
+        }
+    }
+
     char *tmpstr;
     char mypath[OS_MAXSTR + 1];
     char myfinalpath[OS_MAXSTR + 1];
@@ -171,7 +183,14 @@ int main(int argc, char **argv)
     snprintf(myfinalpath, OS_MAXSTR, "\"%s\\%s\"", mypath, myfile);
 
     if (argc > 1) {
-        if (strcmp(argv[1], "install-service") == 0) {
+        if (strcmp(argv[1], "--shred-enrollment-password") == 0) {
+            /* Handled here rather than in the pre-chdir loop above, unlike --show-token:
+             * AUTHD_PASS is relative to the installation directory (see defs.h), so it only
+             * resolves once the chdir() has run. The MSI's RemoveFleetEnrollmentPassword custom
+             * action invokes this, deferred and After="InstallFiles", so this binary is already
+             * on disk by the time it is asked to do it. */
+            return (w_agent_shred_enrollment_password());
+        } else if (strcmp(argv[1], "install-service") == 0) {
             return (InstallService(myfinalpath));
         } else if (strcmp(argv[1], "uninstall-service") == 0) {
             return (UninstallService());

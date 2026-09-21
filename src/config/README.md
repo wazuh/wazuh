@@ -32,7 +32,7 @@ this library: it reads the same file through `manager_config` and publishes the 
 | Section | Reader | Output | Consumers |
 |---|---|---|---|
 | `global` | `Read_Global_JSON` (`src/global-config.c`) | `_Config` | remoted (also read by the task manager's disconnection sweep) |
-| `remote` | `Read_Remote_JSON` (`src/remote-config.c`) | `remoted` | remoted (`legacy`, `https`, `agents`); the task manager reads `legacy.enabled` and `https.verification_mode` for its upgrade delivery gates |
+| `remote` | `Read_Remote_JSON` (`src/remote-config.c`) | `remoted` | remoted (`legacy`, `https`, `agents`); the task manager reads `legacy.enabled` and `https.verification_mode` for its upgrade delivery gates; authd reads `legacy.enabled` as the value of an unset `auth.legacy_enrollment` (`w_authd_resolve_legacy_enrollment()`) |
 | `auth` | `Read_Authd_JSON` (`src/authd-config.c`) | `authd_config_t` | authd, remoted's enrollment bridge |
 | `wdb` | `Read_WazuhDB_JSON` (`src/wazuh_db-config.c`) | `wconfig` (`src/shared/src/wazuhdb_op.c`) | wazuh-db |
 | `indexer` | `Read_Indexer_JSON` (`src/indexer-config.c`) | `indexer_config` (cJSON global) | modulesd (vulnerability scanner, inventory sync...) |

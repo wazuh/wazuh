@@ -2582,29 +2582,24 @@ static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * fi
     return hFile;
 }
 #else
-/**
- * Opens @p filename inside @p basedir without following symlinks, and vets the resulting descriptor as
- * a lone regular file — rejecting hard links, FIFOs, devices, and directories — before handing it back.
- * Shared by w_fopen_nofollow() and w_gzopen_nofollow() so a future hardening fix only has to be applied
- * once instead of needing to be kept in sync across both.
- *
- * @param basedir Base directory holding the file.
- * @param filename Bare file name inside @p basedir.
- * @param oflags open()/openat() flags; must include O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK (the latter to
- *               keep a FIFO from blocking the open) on top of whichever of O_RDONLY/O_WRONLY/O_CREAT the
- *               caller needs. Deliberately never includes O_TRUNC: truncating at open time would destroy
- *               the target before anything about it can be checked, which is precisely how a hard link
- *               slips through — it is a regular file, so no file type test can tell it apart. A caller
- *               that needs the file truncated must do so only after this returns a vetted descriptor.
- * @param mode Permission bits, used only when oflags includes O_CREAT.
- * @return A vetted file descriptor, with O_NONBLOCK already cleared, on success; -1 on error (sets errno).
- */
-static int w_openat_nofollow_vetted(const char * basedir, const char * filename, int oflags, mode_t mode) {
+/* See file_op.h for the full doc comment. Declared there (non-static) so callers outside this file --
+ * e.g. client-agent's token_bootstrap.c -- can reuse this vetting logic instead of duplicating it. */
+int w_openat_nofollow_vetted(const char * basedir, const char * filename, int oflags, mode_t mode) {
     struct stat statbuf;
     int dirfd;
     int fd;
     int saved_errno;
     int flags;
+
+    /* Both preconditions this function's own doc comment promises: a bare filename (no '/' to
+     * escape basedir with) and O_NOFOLLOW in oflags (without it, the open below would silently
+     * follow a symlink at the final path component instead of vetting it). Neither is live today
+     * -- both current callers already satisfy them -- but enforcing them here, not just at each
+     * call site, keeps that promise backed for whoever calls this next. */
+    if (!basedir || !w_is_bare_filename(filename) || !(oflags & O_NOFOLLOW)) {
+        errno = EINVAL;
+        return -1;
+    }
 
     if (dirfd = open(basedir, O_RDONLY | O_DIRECTORY | O_CLOEXEC), dirfd < 0) {
         return -1;
@@ -2717,6 +2712,63 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
     }
 
     if (fp = fdopen(fd, mode), fp == NULL) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+    }
+
+    return fp;
+#endif
+}
+
+
+FILE * w_fopen_nofollow_update(const char * basedir, const char * filename) {
+    if (!basedir || !w_is_bare_filename(filename)) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+#ifdef WIN32
+    int fd;
+    FILE * fp;
+
+    // OPEN_EXISTING, and no SetEndOfFile() unlike w_fopen_nofollow(): the caller is overwriting the
+    // file's own allocation, so it must not be truncated at any point -- not at open time, which
+    // would destroy a hard link's target before it can be vetted, and not after either.
+    HANDLE hFile = w_createfile_nofollow_vetted(basedir, filename, GENERIC_READ | GENERIC_WRITE, OPEN_EXISTING);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        return NULL;
+    }
+
+    if (fd = _open_osfhandle((intptr_t)hFile, 0), fd < 0) {
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    // From here on the descriptor owns the handle, so it has to be closed through the CRT: calling
+    // CloseHandle() would release the handle while leaving the descriptor allocated forever.
+    if (fp = _fdopen(fd, "r+b"), fp == NULL) {
+        const int fdopen_errno = errno;
+        _close(fd);
+        errno = fdopen_errno;
+        return NULL;
+    }
+
+    return fp;
+#else
+    FILE * fp;
+    int saved_errno;
+    // O_RDWR rather than O_WRONLY so the "r+b" handed to fdopen() below matches the descriptor's
+    // access mode. No O_CREAT: there is nothing to overwrite in a file that did not exist, and
+    // creating one would turn a vanished target into a fresh empty file the caller then "shreds".
+    int fd = w_openat_nofollow_vetted(basedir, filename, O_RDWR | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, 0);
+
+    if (fd < 0) {
+        return NULL;
+    }
+
+    if (fp = fdopen(fd, "r+b"), fp == NULL) {
         saved_errno = errno;
         close(fd);
         errno = saved_errno;

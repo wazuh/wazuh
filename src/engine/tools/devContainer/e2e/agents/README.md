@@ -1,223 +1,73 @@
-# Agents E2E
+# Agents E2E — real 4.x and 5.x agents against the devcontainer's manager
 
-This directory contains a minimal environment to run Wazuh agents inside containers and connect them to a manager reachable from the devContainer host. The goal is to validate agent-side end-to-end scenarios without depending on manual installations on separate machines.
+Four containers built from the official agent packages, pointed at the manager installed in the
+devcontainer (`host.docker.internal` = the host). They exist so a change can be proven with a real
+agent enrolling and connecting, not with a simulator. The scripts here are the same ones the
+VS Code tasks `E2E Scripts: [Agent] …` and the Claude skill `agent-env` run.
 
-There are currently two agent variants based on Rocky Linux 8:
+## Layout
 
-- `4.14.3`: installs the package from the official Wazuh repository.
-- `5.x`: installs the agent from a local RPM that must be present in the build context.
-
-## Structure
-
-```text
+```
 agents/
-├── docker-compose.yml
-└── rpm/
-    ├── 4.14.3/
-    │   ├── Dockerfile
-    │   └── entrypoint.sh
-    └── 5.x/
-        ├── Dockerfile
-        ├── entrypoint.sh
-        └── wazuh-agent_5.0.0-0_x86_64_*.rpm
+├── init.sh              downloads the four installers into pkgs/ (4.x from packages.wazuh.com, 5.x from the nightly manifests)
+├── create_token.sh      mints an enrollment token on the manager → env file (token + authd password), 0600
+├── docker-compose.yml   agent_{4x,5x}_{centos,ubuntu}; credentials come from `--env-file`
+├── entrypoint.sh        4.x: agent-auth (1515, password) · 5.x: token → <endpoint> + etc/enrollment_token → POST /enroll
+├── verify_agents.sh     PASS/FAIL per agent: client.keys, global.db, agent log, trust anchor, manager log, API
+├── {ubuntu,centos}/{4.x,5.x}/Dockerfile
+└── pkgs/                the .deb/.rpm files (gitignored)
 ```
 
-## Files and responsibilities
+## How enrollment works here
 
-### `docker-compose.yml`
+| | 4.x | 5.x |
+|---|---|---|
+| Path | `agent-auth -A <name> -m host.docker.internal -p 1515 -P <password>` | `wazuh-agentd` token bootstrap: `GET /cacerts` → pin check → `POST /enroll` with a `wazuh-enroll+jwt` bearer (kid = token id) on 1517. **Never 1515.** |
+| Credential | the manager's `etc/authd.pass` (`<auth><use_password>yes</use_password>` is the default) | an enrollment token minted with `wazuh-manager-authd --create-enrollment-token --address host.docker.internal` (the token carries host, port, prefix, the CA pin and the secret) |
+| Configured by | `entrypoint.sh` (`<client><server>` address/port from `MANAGER_HOST`/`MANAGER_PORT`) | `entrypoint.sh`, with the same three effects as the packaged `register_configure_agent.sh` — which the postinst removes together with `/var/ossec/packages_files`, so it is absent at container start, and is used when present: `<agent><manager><endpoint>` from the token's address (decoded with `wazuh-agentd --show-token`), `<enrollment><agent_name>`, and `etc/enrollment_token` 0600 root, unlinked by the agent once the bootstrap succeeds |
+| Success (agent log) | `agent-auth: INFO: Valid key received` then `(4102): Connected to the server` | `INFO: Token bootstrap: enrollment succeeded; the manager's CA is now the agent's trust anchor.` |
+| Success (manager) | `etc/client.keys` + `global.db` (authd logs the 1515 path at debug level only) | `wazuh-manager-authd: INFO: Enrollment token '<id>' consumed by agent '<name>'.` and `Recorded credentials of agent '<name>' written to the database` |
 
-Defines two services:
+Reference: `docs/ref/modules/authd/enrollment-lifecycle.md`, `docs/ref/modules/authd/README.md#enrollment-tokens`,
+`docs/ref/modules/remoted/https-events-api.md#enrollment-endpoint-post-enroll`.
 
-- `agent_4143_rocky8`
-- `agent_50_rocky8`
+## Quick start
 
-Both services:
-
-- build their image from `rpm/<version>`
-- add `host.docker.internal` pointing to the host gateway
-- configure environment variables for agent registration
-- mount a persistent volume at `/var/ossec`
-- restart with the `unless-stopped` policy
-
-The persistent volumes are:
-
-- `agent_4143_rocky8_var`
-- `agent_50_rocky8_var`
-
-This means the agent state, keys, and configuration survive a `docker compose stop/start`. If you need a clean start, bring the environment down with volumes removed.
-
-### `rpm/4.14.3/Dockerfile`
-
-Builds an image based on `rockylinux:8` and:
-
-- updates base packages
-- installs required utilities such as `curl`, `hostname`, `procps-ng`, and `tini`
-- imports the Wazuh GPG key
-- creates the Wazuh 4.x Yum repository
-- installs `wazuh-agent-4.14.3*` from the official repository
-- copies `entrypoint.sh`
-
-This variant does not require any additional local artifacts to build the image.
-
-### `rpm/5.x/Dockerfile`
-
-This image also starts from `rockylinux:8`, installs basic dependencies, and imports the Wazuh GPG key, but the important difference is that it does not download the agent from a repository. Instead, it:
-
-- runs `COPY wazuh-agent_5.0.0-0_x86_64_*.rpm /tmp/`
-- installs the local RPM with `dnf`
-- removes the temporary file and cleans the cache
-- copies `entrypoint.sh`
-
-## RPM requirement for `5.x`
-
-For the `agent_50_rocky8` service to build successfully, the agent RPM package must exist inside:
-
-```text
-rpm/5.x/
-```
-
-with a filename matching this pattern:
-
-```text
-wazuh-agent_5.0.0-0_x86_64_*.rpm
-```
-
-If the file is not present, the Docker build fails at the `COPY` step.
-
-Example of a valid filename:
-
-```text
-wazuh-agent_5.0.0-0_x86_64_test.rpm
-```
-
-If the expected agent version changes, the pattern in `rpm/5.x/Dockerfile` must be updated.
-
-### `rpm/4.14.3/entrypoint.sh` and `rpm/5.x/entrypoint.sh`
-
-Both entrypoints implement the same flow:
-
-1. read environment variables for connection and registration
-2. update the manager address inside `/var/ossec/etc/ossec.conf`
-3. run `agent-auth` to register the agent against `authd`
-4. start the agent with `wazuh-control start`
-5. keep the container alive by following `/var/ossec/logs/ossec.log`
-
-Supported variables:
-
-- `MANAGER_HOST`: manager host, default `host.docker.internal`
-- `MANAGER_PORT`: manager connection port, default `1514`
-- `AUTHD_PORT`: `agent-auth` registration port, default `1515`
-- `AGENT_NAME`: name used to register the agent
-- `AUTHD_PASSWORD`: optional password for authenticated registration
-
-The scripts tolerate `agent-auth` failures with `|| true`. That prevents the container from exiting immediately, but it also means a container in `running` state does not guarantee that the agent was registered successfully. The real verification should be done by checking the logs.
-
-## How to use it
-
-### Prerequisites
-
-- Docker must be available inside the devContainer
-- a Wazuh manager must be reachable from the container host
-- port `1514` must be reachable for agent connection
-- port `1515` must be reachable if `authd` registration is used
-- for `5.x`, the agent RPM must be copied into `rpm/5.x/` beforehand
-
-This compose setup assumes the manager is reachable as `host.docker.internal`. That works because each service adds:
-
-```yaml
-extra_hosts:
-  - "host.docker.internal:host-gateway"
-```
-
-### Start the agents
-
-From this directory:
+Prerequisites: docker + compose v2, `curl`; a running manager (`sudo ../wazuh_verify_manager.sh` → 7/7) whose
+listeners bind to `0.0.0.0` (`../init.sh` does that) and whose listener certificate names
+`host.docker.internal` in its SAN (the devcontainer's `scripts/wazuh-certs-tool.yml` does).
 
 ```bash
-docker compose up -d --build
+./init.sh                                   # packages into pkgs/ (a stale 5.x "latest" is refreshed automatically; --check reports, --force redownloads)
+sudo ./create_token.sh --env-file /tmp/wazuh-e2e-agents.env --meta /tmp/wazuh-e2e-agents.meta --max-uses 2   # 0600; never printed
+docker compose --env-file /tmp/wazuh-e2e-agents.env -f docker-compose.yml up -d --build agent_5x_ubuntu agent_4x_ubuntu
+sudo ./verify_agents.sh --api --expect 2 --wait 120    # PASS/FAIL lines + "# summary:" + agents-manifest.md under --out
+rm -f /tmp/wazuh-e2e-agents.env                         # the containers already hold what they need
 ```
 
-If your environment uses the classic binary, the equivalent command is:
+VS Code: `[Agent] Init setup (download pkgs)` → `[Agent] Create enrollment token` → `[Agent] Up (start containers)`
+→ `[Agent] Verify enrollment`; `[Agent] Reset (down -v)` wipes the volumes (and therefore the enrolled keys);
+`[Agent] Check packages (--check)` / `[Agent] Re-download packages (--force)` manage `pkgs/`.
 
-```bash
-docker-compose up -d --build
-```
+The 5.x package must be one that carries the token bootstrap (`--show-token` in `wazuh-agentd`): the nightly
+`5.0.0-latest` does; `init.sh --check` tells you whether `pkgs/` is stale. A 5.x package without it cannot enroll
+here at all — the entrypoint refuses to start it unenrolled rather than falling back to a password.
 
-### Start a single agent
+## Troubleshooting
 
-```bash
-docker compose up -d --build agent_4143_rocky8
-docker compose up -d --build agent_50_rocky8
-```
+| Symptom | Cause | Fix |
+|---|---|---|
+| 4.x: `Invalid password provided by …` in the manager log | `AUTHD_PASSWORD` empty or wrong | run `create_token.sh` (it copies `etc/authd.pass`) and start with `--env-file` |
+| 5.x: `[entrypoint] ERROR: WAZUH_ENROLLMENT_TOKEN is empty` | compose started without `--env-file` | mint + `up` with `--env-file` |
+| 5.x: `[entrypoint] ERROR: wazuh-agentd --show-token refused the token` or `Deployment variables refused [ERR_BAD_TOKEN]` | the token was altered (quotes, line breaks), or the package predates the token bootstrap | re-mint; the env file must hold the raw token. For an old package: `init.sh --force`, then `down -v` and `up --build` — the volume keeps the old `/var/ossec` otherwise |
+| 5.x: `Enrollment-token bootstrap failed; refusing to enroll unverified` | `GET /cacerts` unreachable/404, or the served CA does not match the token's pin (CA rotated after minting) | `curl -sk https://127.0.0.1:1517/wazuh-manager/cacerts`; re-mint after a CA rotation |
+| 5.x: HTTP 401/403 on `/enroll` | 401 = bearer refused; 403 with 9022/9023/9024 = token unknown-or-revoked / expired / out of uses | `wazuh-manager-authd --list-enrollment-tokens`; mint a new one |
+| 5.x: HTTP 404 | wrong port/prefix in the token's address | mint with `--port`/`--prefix` matching `wazuh-manager-conf get remote` |
+| `Transport endpoint is not connected` | listeners bound to 127.0.0.1 | `../init.sh --certs-only --reuse-certs` (opens them) and restart the manager |
+| agent `version` newer than the manager refused | `<remote><agents><allow_higher_versions>no` | use a manager built from a branch at least as new as the nightly, or set it to `yes` for the test |
+| `Duplicate name` | a previous container enrolled with the same name | `docker compose down -v` (or remove the agent with the API) |
 
-### View logs
-
-```bash
-docker compose logs -f agent_4143_rocky8
-docker compose logs -f agent_50_rocky8
-```
-
-### Force rebuild after changing the RPM
-
-If you replace the local `5.x` agent RPM, rebuild the image:
-
-```bash
-docker compose build --no-cache agent_50_rocky8
-docker compose up -d agent_50_rocky8
-```
-
-### Start from scratch
-
-To remove the persistent `/var/ossec` state as well:
-
-```bash
-docker compose down -v
-```
-
-## Expected startup flow
-
-When the container starts:
-
-1. the agent is installed or already present in the image
-2. the entrypoint rewrites `ossec.conf` with the manager address
-3. the agent attempts to authenticate with `agent-auth`
-4. the agent service is started
-5. the container remains alive by following `ossec.log`
-
-This makes it possible to quickly test:
-
-- new agent enrollment
-- compatibility across agent versions
-- connectivity against a manager running on the host
-- registration or communication issues by reviewing container logs
-
-## Operational considerations
-
-- The `5.x` service depends on a local artifact. The Dockerfile alone is not enough; the RPM must be copied into the folder before building.
-- Because `/var/ossec` is mounted on a volume, an already registered agent can reuse previous state across restarts.
-- If you need to test a clean enrollment, use `docker compose down -v`.
-- If the manager is not running on the host or does not expose `1514/1515`, the container will start but registration and connection will not complete.
-- If your deployment uses an `authd` password, define `AUTHD_PASSWORD` in the compose file or when launching the service.
-
-## Quick customization example
-
-To change the agent name or pass a registration password, you can modify the service environment variables in `docker-compose.yml`:
-
-```yaml
-environment:
-  MANAGER_HOST: "host.docker.internal"
-  MANAGER_PORT: "1514"
-  AUTHD_PORT: "1515"
-  AGENT_NAME: "agent-50-rocky8"
-  AUTHD_PASSWORD: "secret"
-```
-
-## Required RPM location
-
-The expected location for the local `5.x` agent package is:
-
-```text
-wazuh/src/engine/tools/devContainer/e2e/agents/rpm/5.x/
-```
-
-That file is part of the Docker build context. If it is placed outside that folder, the `Dockerfile` will not be able to copy it.
+`docker compose down` keeps the volumes (the agents reconnect with their keys); `down -v` starts from scratch and
+the next `up` enrolls again — mint a token with enough `--max-uses`, or a new one. **After refreshing `pkgs/`,
+`down -v` is mandatory**: the volume holds the whole `/var/ossec` (binaries included) copied from the image that
+first created it, so `up --build` with a new package keeps running the old `wazuh-agentd` until the volume is recreated.

@@ -31,7 +31,7 @@ to**. Anything that relied on that mapping is gone or reworked.
 | --- | --- | --- |
 | `1517` | Remoted HTTPS agent API | **Default.** Always enabled. Serves 5.x agents, enrollment included. |
 | `1514` | Remoted legacy AES TCP/UDP | Opt-in. Only bound when `<remote><legacy>` is present and enabled. Serves 4.x agents. |
-| `1515` | `authd` TLS enrollment | Opt-in. Gated by `<auth><legacy_enrollment>`. Only needed by 4.x agents. |
+| `1515` | `authd` TLS enrollment | Opt-in. Follows `<remote><legacy>` unless `<auth><legacy_enrollment>` sets it explicitly. Only needed by 4.x agents. |
 
 Open `1517/tcp` on the manager before migrating any agent. If your fleet is fully on 5.x, `1514` and
 `1515` can both be closed — see [Retiring the legacy channel](#retiring-the-legacy-channel).
@@ -150,10 +150,15 @@ options) log a notice and are skipped. No script rewrites the file for you.
 
 ## Certificates
 
-The HTTPS listener requires a certificate and key. Manager packages generate a self-signed pair at
-install time, so a default install already satisfies this — but note that starting is **fail-closed**:
-if the certificate or key is missing or invalid, `remoted` does not start at all, rather than coming
-up without the listener.
+The HTTPS listener requires a certificate and key, and the manager does not generate them: they are
+issued with the Wazuh installation assistant's `wazuh-certs-tool` — a `remoted.pem` leaf of the same
+`root-ca.pem` the assistant issues for the rest of the platform, so agents can pin that CA — and
+deployed under `etc/certs` before the first start (see
+[Deploy certificates](../../ref/getting-started/installation.md#deploy-certificates)). Starting is
+**fail-closed**: without them `wazuh-manager-control start` refuses (`(1244): Invalid configuration at
+'/remote/https/certificate': file not found: …`), and a pair the service user cannot read stops
+`remoted` at startup (`Cannot start the HTTPS agent listener: …`) rather than coming up without the
+listener.
 
 `authd` and `remoted` now share one pair, `etc/certs/remoted.pem` and `etc/certs/remoted-key.pem`
 (with `etc/certs/root-ca.pem` as the CA). A 4.x configuration that pointed `<auth><ssl_manager_cert>`
@@ -183,7 +188,8 @@ Once no 4.x agents remain:
 
 1. Remove the `<remote><legacy>` block (or set `<enabled>no</enabled>`). The legacy listener, keystore,
    metadata cache, event queue and dispatcher threads are then never created.
-2. Set `<auth><legacy_enrollment>no</legacy_enrollment>` to stop listening on `1515`.
+2. Port `1515` closes with it: an unset `<auth><legacy_enrollment>` follows `<remote><legacy>`. If your
+   configuration sets `<legacy_enrollment>yes</legacy_enrollment>` explicitly, remove it or set it to `no`.
 3. Close `1514` and `1515` on the firewall.
 
 Verify with the manager log at startup: it reports either

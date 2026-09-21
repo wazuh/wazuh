@@ -210,6 +210,35 @@ TEST_F(OrchestratorTest, WritesTheAgentTaskShapeTheDeliveryPathsExpect)
     EXPECT_EQ(payload.at("wpk_file"), "wazuh_agent_v5.0.0_linux_amd64.deb.wpk");
     EXPECT_EQ(payload.at("wpk_sha1"), SHA1);
     EXPECT_EQ(payload.at("installer"), "upgrade.sh");
+    // Carried for the DELIVERY side: remoted's legacy poller sends the manager's CA to a pre-v5
+    // agent only when the target is 5.x, and re-parsing it out of the file name there would let the
+    // two spellings drift apart.
+    EXPECT_EQ(payload.at("wpk_version"), "v5.0.0");
+}
+
+TEST_F(OrchestratorTest, AnIntermediateTargetCarriesItsOwnVersion)
+{
+    // A 4.13 agent reaches 5.0 in two hops. This is the first one, and the delivery side must be
+    // able to tell it apart: sending the manager CA here would leave a file in the agent's
+    // var/incoming that nothing on 4.14.x reads, and nothing on 4.14.x cleans up either.
+    m_hostOps.agentRows[5] = ubuntuRow("v4.13.1");
+
+    // Scripted by hand rather than through scriptRepo(), for two reasons. The shared VERSIONS_BODY
+    // lists v4.14.0 against a placeholder digest no download would ever reproduce, so the cache
+    // would reject the file before a task was written. And the repository base is derived from the
+    // TARGET's major version, not the manager's -- "4.x", where every other test in this file
+    // resolves to "5.x", which is exactly the distinction this test exists to cover.
+    const std::string base {"https://packages.wazuh.com/4.x/wpk/linux/deb/amd64/"};
+    m_repository.scriptVersions(base + "versions", {true, std::string {"v4.14.5 "} + SHA1 + "\n", 200, 0});
+    m_repository.scriptDownload(base + "wazuh_agent_v4.14.5_linux_amd64.deb.wpk", {true, CONTENT, 200, 0, {}, false});
+
+    auto request {requestFor({5})};
+    request.customVersion = "v4.14.5";
+    ASSERT_EQ(m_orchestrator->process(request, permissive(), m_stop).front().error, UpgradeError::Success);
+
+    const auto tasks {m_store->takePendingAgentTasks("005", 10)};
+    ASSERT_EQ(tasks.size(), 1U);
+    EXPECT_EQ(nlohmann::json::parse(tasks[0].payload).at("wpk_version"), "v4.14.5");
 }
 
 TEST_F(OrchestratorTest, EvictsTheAgentFromTheNegativeCacheSoTheTaskIsVisible)
@@ -539,6 +568,11 @@ TEST_F(OrchestratorTest, ACustomBatchVerifiesTheFileOnceAndDownloadsNothing)
     const auto payload = nlohmann::json::parse(tasks[0].payload);
     EXPECT_EQ(payload.at("wpk_file"), "wazuh_agent_v5.0.0_linux_x86_64.wpk");
     EXPECT_EQ(payload.at("wpk_sha1"), SHA1);
+    // EMPTY on this path, and that is the meaningful value rather than a gap: a custom file's name
+    // is not authoritative about what it installs, so the version is not claimed here. The delivery
+    // side reads empty as "assume 5.x and send the CA" -- the same conservatism this route already
+    // applies by running the https gate against v5.0.0 unconditionally.
+    EXPECT_EQ(payload.at("wpk_version"), "");
 }
 
 TEST_F(OrchestratorTest, ACustomWpkIsTreatedAsIfItTargetsFive)

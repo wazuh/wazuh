@@ -25,6 +25,7 @@
 
 #include "shared.h"
 #include "auth.h"
+#include <openssl/crypto.h>
 #include "mconf-config.h"
 #include <pthread.h>
 #include <sys/wait.h>
@@ -32,9 +33,11 @@
 #include "wazuhdb_queries_op.h"
 #include "wazuhdb_op.h"
 #include "os_err.h"
-#include "generate_cert.h"
 #include <sys/epoll.h>
 #include "manager_task_op.h"
+#include "enrollment_token_store.h"
+#include "token_cli.h"
+#include <getopt.h>
 
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
@@ -88,7 +91,9 @@ static int g_stopFD[2] = {-1, -1};
 static void help_authd(char * home_path)
 {
     print_header();
-    print_out("  %s: -[VhdtfPL] [-u user] [-g group] [-D dir] [-p port] [-c ciphersuites] [-v path [-s]] [-x path] [-k path] [-C days] [-B bits] [-K path] [-X path] [-S subject]", ARGV0);
+    print_out("  %s: -[VhdtfP] [-u user] [-g group] [-D dir] [-p port] [-c ciphersuites] [-v path [-s]] [-x path] [-k path]", ARGV0);
+    print_out("  %s: --create-enrollment-token --address <host> [--port N] [--prefix P] [--ttl 30d] [--max-uses N] [--description S] [--embed-ca] [--no-credential]", ARGV0);
+    print_out("  %s: --list-enrollment-tokens | --revoke-enrollment-token <id> | --purge-enrollment-tokens [--all] [--force] | --show-token[=<token>] [--token-file <path>]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
@@ -104,11 +109,23 @@ static void help_authd(char * home_path)
     print_out("    -s          Used with -v, enable source host verification.");
     print_out("    -x <path>   Full path to server certificate. Default: %s.", CERTFILE);
     print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
-    print_out("    -C          Specify the certificate validity in days.");
-    print_out("    -B          Specify the certificate key size in bits.");
-    print_out("    -K          Specify the path to store the certificate key.");
-    print_out("    -X          Specify the path to store the certificate.");
-    print_out("    -S          Specify the certificate subject.");
+    print_out(" ");
+    print_out("  Enrollment tokens (the daemon must be running; mint and revoke only on the master node):");
+    print_out("    --create-enrollment-token   Mint a token for --address <host>; prints the token on stdout.");
+    print_out("      --address <host>          Name (or IP) the agents connect to; must be in the listener certificate's SAN.");
+    print_out("      --port <N>                Listener port to write into the token when it differs from the configured one.");
+    print_out("      --prefix <P>              URL prefix to write into the token when it differs from the configured one.");
+    print_out("      --ttl <30d|12h|45m|90s>   Lifetime. Default: 30 days.");
+    print_out("      --max-uses <N>            Enrollments the token allows. Default: unlimited.");
+    print_out("      --description <text>      Free text shown by --list-enrollment-tokens.");
+    print_out("      --embed-ca                Carry the CA certificate instead of its pin (no /cacerts fetch).");
+    print_out("      --no-credential           Token without credential (public: address and pin only).");
+    print_out("    --list-enrollment-tokens    List the tokens (never their credential).");
+    print_out("    --revoke-enrollment-token <id>");
+    print_out("    --purge-enrollment-tokens   Remove the tokens that can no longer authorise an enrollment (revoked, expired or out of uses).");
+    print_out("      --all                     Remove every token instead, the ones still in use included.");
+    print_out("      --force                   Do not ask for confirmation (needed for --all without a terminal).");
+    print_out("    --show-token[=<token>]      Decode a token (from the argument, --token-file <path> or stdin) without its credential.");
     print_out(" ");
     os_free(home_path);
     exit(1);
@@ -211,19 +228,11 @@ int main(int argc, char **argv)
         const char *ca_cert = NULL;
         const char *server_cert = NULL;
         const char *server_key = NULL;
-        char cert_val[OS_SIZE_32 + 1] = "\0";
-        char cert_key_bits[OS_SIZE_32 + 1] = "\0";
-        char cert_key_path[PATH_MAX + 1] = "\0";
-        char cert_path[PATH_MAX + 1] = "\0";
-        char cert_subj[OS_MAXSTR + 1] = "\0";
-        bool generate_certificate = false;
         unsigned short port = 0;
-        unsigned long days_val = 0;
-        unsigned long key_bits = 0;
+        /* Enrollment token utility mode (#38993): parsed here, run right after the loop. */
+        token_cli_opts_t token_opts = {0};
 
-        /* -L is present in the getopt string but has no handler in the switch below —
-         * dead/vestigial flag, verify before removing. */
-        while (c = getopt(argc, argv, "Vdhtfu:g:D:p:c:v:sx:k:PL:C:B:K:X:S:"), c != -1) {
+        while (c = getopt_long(argc, argv, "Vdhtfu:g:D:p:c:v:sx:k:P", token_cli_long_opts, NULL), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -318,113 +327,28 @@ int main(int argc, char **argv)
                     server_key = optarg;
                     break;
 
-                case 'C':
-                    if (!optarg) {
-                        merror_exit("-%c needs an argument", c);
+                default: {
+                    /* The long options belong to the token CLI; anything else is unknown. */
+                    int consumed = w_token_cli_parse_opt(&token_opts, c, optarg, stderr);
+
+                    if (consumed < 0) {
+                        exit(1);
                     }
 
-                    if (w_str_is_number(optarg)) {
-                        generate_certificate = true;
-                        if (snprintf(cert_val, OS_SIZE_32 + 1, "%s", optarg) > OS_SIZE_32) {
-                            mwarn("-%c argument exceeds %d bytes. Certificate validity info truncated", c, OS_SIZE_32);
-                        }
-                    }
-                    else {
-                        merror_exit("-%c needs a numeric argument", c);
+                    if (consumed == 0) {
+                        help_authd(home_path);
                     }
                     break;
-
-                case 'B':
-                    if (!optarg) {
-                        merror_exit("-%c needs an argument", c);
-                    }
-
-                    if (w_str_is_number(optarg)) {
-                        generate_certificate = true;
-                        if (snprintf(cert_key_bits, OS_SIZE_32 + 1, "%s", optarg) > OS_SIZE_32) {
-                            mwarn("-%c argument exceeds %d bytes. Certificate key size info truncated", c, OS_SIZE_32);
-                        }
-                    }
-                    else {
-                        merror_exit("-%c needs a numeric argument", c);
-                    }
-                    break;
-
-                case 'K':
-                    if (!optarg) {
-                        merror_exit("-%c needs an argument", c);
-                    }
-
-                    generate_certificate = true;
-                    if (snprintf(cert_key_path, PATH_MAX + 1, "%s", optarg) > PATH_MAX) {
-                        mwarn("-%c argument exceeds %d bytes. Certificate key path info truncated", c, PATH_MAX);
-                    }
-                    break;
-
-                case 'X':
-                    if (!optarg) {
-                        merror_exit("-%c needs an argument", c);
-                    }
-
-                    generate_certificate = true;
-                    if (snprintf(cert_path, PATH_MAX + 1, "%s", optarg) > PATH_MAX) {
-                        mwarn("-%c argument exceeds %d bytes. Certificate path info truncated", c, PATH_MAX);
-                    }
-                    break;
-
-                case 'S':
-                    if (!optarg) {
-                        merror_exit("-%c needs an argument", c);
-                    }
-
-                    generate_certificate = true;
-                    if (snprintf(cert_subj, OS_MAXSTR + 1, "%s", optarg) > OS_MAXSTR) {
-                        mwarn("-%c argument exceeds %d bytes. Certificate subject info truncated", c, OS_MAXSTR);
-                    }
-                    break;
-
-                default:
-                    help_authd(home_path);
-                    break;
+                }
             }
         }
 
-        if (generate_certificate) {
-            // Sanitize parameters
-            if (strlen(cert_val) == 0) {
-                merror_exit("Certificate expiration time not defined.");
-            }
-
-            if (strlen(cert_key_bits) == 0) {
-                merror_exit("Certificate key size not defined.");
-            }
-
-            if (strlen(cert_key_path) == 0) {
-                merror_exit("Key path not defined.");
-            }
-
-            if (strlen(cert_path) == 0) {
-                merror_exit("Certificate path not defined.");
-            }
-
-            if (strlen(cert_subj) == 0) {
-                merror_exit("Certificate subject not defined.");
-            }
-
-            if (days_val = strtol(cert_val, NULL, 10), days_val == 0) {
-                merror_exit("Unable to set certificate validity to 0 days.");
-            }
-
-            if (key_bits = strtol(cert_key_bits, NULL, 10), key_bits == 0) {
-                merror_exit("Unable to set certificate private key size to 0 bits.");
-            }
-
-            if (generate_cert(days_val, key_bits, cert_key_path, cert_path, cert_subj) == 0) {
-                mdebug2("Certificates generated successfully.");
-                exit(0);
-            } else {
-                merror_exit("Unable to generate auth certificates.");
-            }
+        /* Enrollment token utility mode: a client of the running daemon over auth.sock (or, for
+         * --show-token, a local decode) that exits before the daemon reads its configuration or
+         * drops privileges. Access to the socket is what authorises the caller, and the cwd is
+         * already the manager home (chdir above), so the relative socket path resolves. */
+        if (token_opts.requested) {
+            exit(w_token_cli_run(&token_opts, stdin, stdout, stderr));
         }
 
         /* Set the Debug level */
@@ -508,6 +432,20 @@ int main(int argc, char **argv)
     case 0:
         config.worker_node = FALSE;
         break;
+    }
+
+    /* Enrollment tokens (#38993): the master mints them over auth.sock and the workers hold the copy
+     * the cluster synchronises next to authd.pass. Loaded once here; every token verb and every
+     * enrollment that presents a token re-checks the file's mtime (etoken_store_reload_if_changed),
+     * so a freshly synchronised copy is seen at once and no extra thread is needed. An absent file
+     * just means "no tokens"; a malformed one is reported and leaves token enrollments rejected. */
+    etoken_store_init(ENROLLMENT_TOKENS_FILE);
+    if (etoken_store_load() == 0) {
+        if (etoken_store_count() > 0) {
+            minfo("%d enrollment token(s) loaded from '%s'.", etoken_store_count(), ENROLLMENT_TOKENS_FILE);
+        }
+    } else {
+        mwarn("Could not load the enrollment tokens from '%s'; enrollments presenting a token will be rejected until the file is fixed.", ENROLLMENT_TOKENS_FILE);
     }
 
     /* Check if the user/group given are valid */
@@ -626,7 +564,9 @@ int main(int argc, char **argv)
 
         /* Start SSL */
         if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca), !ctx) {
-            merror("SSL context setup failed. Exiting.");
+            merror("SSL context setup failed (certificate '%s', key '%s'). wazuh-manager does not generate TLS "
+                   "certificates: provision them with wazuh-certs-tool (Wazuh installation assistant); see 'Deploy "
+                   "certificates' in the installation guide. Exiting.", config.manager_cert, config.manager_key);
             exit(1);
         }
 
@@ -695,6 +635,14 @@ int main(int argc, char **argv)
     if (!config.worker_node) {
         purge_file_load();
         purge_startup_recover();
+
+        /* The other journal, and for the same reason it runs here (issue #39078, H03): what it
+         * decides is read against the client.keys just loaded, and it must be decided before any
+         * request can rotate an agent it still owes. wazuh-db is deliberately not consulted --
+         * its socket does not exist yet, as purge_startup_recover() explains -- so this only
+         * discards what is no longer owed; the writer applies the rest on its own clock. */
+        identity_journal_load();
+        identity_journal_reconcile();
     }
 
     /* Start working threads */
@@ -851,7 +799,7 @@ static void process_message(struct client *client) {
         if (config.worker_node) {
             minfo("Dispatching request to master node");
             // The force registration settings are ignored for workers. The master decides.
-            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL)) {
+            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL, NULL, NULL, NULL, NULL)) {
                 client->enrollment_ok = TRUE;
             }
         }
@@ -1005,7 +953,9 @@ void enqueue_pending_key(int ret, uint32_t index_client) {
                 w_mutex_lock(&mutex_keys);
                 int key_index = OS_IsAllowedID(&keys, g_client_pool[index_client]->new_id);
                 if (key_index >= 0) {
-                    add_insert(keys.keyentries[key_index], g_client_pool[index_client]->centralized_group);
+                    /* No re-enrollment secret on 1515 (#38993): its OSSEC K: line has no field for it and
+                     * a 4.x agent never re-enrolls over HTTPS, so none is generated or stored. */
+                    add_insert(keys.keyentries[key_index], g_client_pool[index_client]->centralized_group, NULL, 0);
                     write_pending = 1;
                     w_cond_signal(&cond_pending);
                 }
@@ -1355,6 +1305,243 @@ static void purge_startup_recover(void) {
     wdbc_close(&wdb_sock);
 }
 
+/* --- Applying what the identity journal still owes ---------------------------------------------
+ *
+ * The journal (issue #39078, H03) holds every credential this manager handed out and the database
+ * has not stored yet. Three things happen here and nowhere else: the leftovers of earlier cycles
+ * are retried, ONE `global commit` per cycle turns wazuh-db's `ok` into durability, and only then
+ * are the entries forgotten -- and a rotation's reservation released.
+ */
+
+/// How many owed transitions one cycle retries. A bound, not a budget: the rest wait for the next
+/// wake-up, which is at most IDENTITY_RETRY_MAX_SECONDS away.
+#define IDENTITY_RETRY_BATCH 256
+#define IDENTITY_RETRY_MIN_SECONDS 1
+#define IDENTITY_RETRY_MAX_SECONDS 60
+
+/// Seconds until the writer wakes itself while anything is owed. Doubles while the database stays
+/// out of reach, and drops back to the minimum on the first commit. Writer thread only.
+static unsigned int identity_retry_delay = IDENTITY_RETRY_MIN_SECONDS;
+
+/// Highest journal sequence this thread has already taken work for. The retry pass looks no
+/// further: everything above it is a transition whose own queue node is still coming, and whose
+/// key has therefore not reached client.keys yet. Writer thread only.
+static long long identity_high_water = 0;
+
+/// A transition whose database write went through and is waiting for the commit that makes it real.
+typedef struct identity_applied_t {
+    long long seq;
+    char *id;
+    bool rotate;
+} identity_applied_t;
+
+static void identity_applied_add(identity_applied_t **applied, size_t *count, long long seq, const char *id, bool rotate) {
+    if (seq <= 0) {
+        return; // not journaled: the legacy 1515 path, which hands out no secret
+    }
+
+    os_realloc(*applied, (*count + 1) * sizeof(identity_applied_t), *applied);
+    (*applied)[*count].seq = seq;
+    (*applied)[*count].rotate = rotate;
+    os_strdup(id, (*applied)[*count].id);
+    (*count)++;
+}
+
+static void identity_applied_free(identity_applied_t *applied, size_t count) {
+    size_t i;
+
+    for (i = 0; i < count; i++) {
+        os_free(applied[i].id);
+    }
+
+    os_free(applied);
+}
+
+/**
+ * @brief Put one owed transition in the database.
+ *
+ * The row is read first, and that read is the whole reason this is not simply an insert:
+ *
+ *   - it may already carry this very credential (this cycle applied it, or a previous run did
+ *     before it could drop the entry) -- nothing to write, and the entry may go;
+ *   - it may exist with another one, including the NULL secret sync_keys_with_wdb() writes when it
+ *     mirrors client.keys into a database that lost the row -- an UPDATE, not an insert;
+ *   - it may not exist at all -- an insert.
+ *
+ * @return true when the database now holds this credential (write done, or already there).
+ */
+static bool identity_apply(const identity_journal_entry_t *entry, int *wdb_sock) {
+    cJSON *info = wdb_get_agent_info(atoi(entry->id), wdb_sock);
+    cJSON *j_secret = info ? cJSON_GetObjectItem(info->child, "reenroll_secret") : NULL;
+    bool present = info != NULL && info->child != NULL;
+    bool applied;
+
+    if (present && cJSON_IsString(j_secret) && !strcmp(j_secret->valuestring, entry->secret)) {
+        OPENSSL_cleanse(j_secret->valuestring, strlen(j_secret->valuestring));
+        cJSON_Delete(info);
+        return true;
+    }
+
+    if (j_secret && cJSON_IsString(j_secret)) {
+        OPENSSL_cleanse(j_secret->valuestring, strlen(j_secret->valuestring));
+    }
+    cJSON_Delete(info);
+
+    if (present) {
+        applied = wdb_set_agent_credentials(atoi(entry->id), entry->name, entry->ip, entry->key,
+                                            entry->secret, wdb_sock) == OS_SUCCESS;
+    } else {
+        applied = wdb_insert_agent(atoi(entry->id), entry->name, NULL, entry->ip, entry->key,
+                                   entry->secret, NULL, 1, wdb_sock) == OS_SUCCESS;
+    }
+
+    if (applied) {
+        minfo("Recorded credentials of agent '%s' written to the database%s.", entry->id,
+              entry->rotate ? " (rotation recovered)" : " (enrollment recovered)");
+    }
+
+    return applied;
+}
+
+static bool identity_applied_has(const identity_applied_t *applied, size_t count, long long seq) {
+    size_t i;
+
+    for (i = 0; i < count; i++) {
+        if (applied[i].seq == seq) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * @brief Whether anything still owes this transition to the database.
+ *
+ * One question only: is the agent still in the keystore? An agent enrolled during a wazuh-db
+ * outage can be DELETED before the database comes back, and writing its row then would resurrect
+ * what the operator removed -- that is what this guards against.
+ *
+ * It deliberately does NOT compare the key. The keystore is written asynchronously, so a rotation
+ * recovered from a previous run legitimately names a key client.keys has not got yet; refusing it
+ * here would undo, one cycle later, exactly what identity_journal_reconcile() just decided to keep
+ * (issue #39078, review round). Which generation is live is decided by the journal's own order,
+ * and the reconciliation has already dropped the entries a later one superseded.
+ */
+static bool identity_still_owed(const identity_journal_entry_t *entry) {
+    bool owed;
+
+    w_mutex_lock(&mutex_keys);
+    owed = OS_IsAllowedID(&keys, entry->id) >= 0;
+    w_mutex_unlock(&mutex_keys);
+
+    return owed;
+}
+
+/// Retry what earlier cycles could not write, adding whatever went through to @p applied.
+static void identity_apply_pending(identity_applied_t **applied, size_t *count, int *wdb_sock) {
+    size_t pending = 0;
+    size_t i;
+    identity_journal_entry_t *entries;
+
+    /* Existence only, and access() rather than w_is_file(), for the reason purge_startup_recover()
+     * gives: wazuh-db starts after this daemon. Without it every entry of the batch would pay
+     * wdbc_connect()'s ladder -- five attempts sleeping 1..5 seconds -- and a full batch would
+     * hold the ONLY keystore writer for hours, with client.keys unwritten for the agents enrolling
+     * meanwhile (issue #39078, review round). */
+    if (access(WDB_LOCAL_SOCK, F_OK) != 0) {
+        return;
+    }
+
+    /* Nothing has been taken yet, so there is no earlier cycle to retry for. */
+    if (identity_high_water <= 0) {
+        return;
+    }
+
+    entries = identity_journal_snapshot(IDENTITY_RETRY_BATCH, identity_high_water, &pending);
+
+    for (i = 0; i < pending; i++) {
+        // Written by this cycle's own loop above: it is in the journal until the commit, but it
+        // does not need a second round trip to find out the database already has it.
+        if (identity_applied_has(*applied, *count, entries[i].seq)) {
+            continue;
+        }
+
+        if (!identity_still_owed(&entries[i])) {
+            mdebug1("Dropping the recorded transition of agent '%s': the agent is no longer in the "
+                    "keystore.", entries[i].id);
+            identity_journal_drop(&entries[i].seq, 1);
+
+            if (entries[i].rotate) {
+                // Nothing is owed, so nothing is holding the agent back either.
+                w_reenroll_abandon(entries[i].id);
+            }
+            continue;
+        }
+
+        if (identity_apply(&entries[i], wdb_sock)) {
+            identity_applied_add(applied, count, entries[i].seq, entries[i].id, entries[i].rotate);
+        } else if (*wdb_sock < 0 || !running) {
+            /* Nothing answered, or this daemon is stopping. A closed socket here means the connect
+             * itself failed, so the rest of the batch would only repeat the same 15-second ladder:
+             * leave them journaled and let the next wake -- which backs off -- try again. */
+            mdebug1("Stopping the identity retry pass after agent '%s': wazuh-db is not answering.",
+                    entries[i].id);
+            break;
+        }
+    }
+
+    identity_journal_free(entries, pending);
+}
+
+/**
+ * @brief Commit, then forget: the only place an entry leaves the journal.
+ *
+ * wazuh-db answers `ok` from inside a deferred transaction it commits on its own clock
+ * (wdb_commit_old()), so dropping an entry on that `ok` would lose exactly the crash this journal
+ * exists for. A failed commit keeps everything -- entries, and the reservations of the rotations
+ * among them -- and lengthens the wait before the next attempt.
+ */
+static void identity_commit_and_forget(identity_applied_t *applied, size_t count, int *wdb_sock) {
+    long long *seqs = NULL;
+    size_t i;
+
+    if (count > 0) {
+        if (wdb_commit_global(wdb_sock) != OS_SUCCESS) {
+            merror("Could not commit the credentials of %zu agent(s) to the database. They stay "
+                   "recorded and are retried; the agents keep the credentials they were given.", count);
+        } else {
+            os_calloc(count, sizeof(long long), seqs);
+
+            for (i = 0; i < count; i++) {
+                seqs[i] = applied[i].seq;
+            }
+
+            identity_journal_drop(seqs, count);
+            os_free(seqs);
+
+            /* Here, and only here (issue #39078, H02 + H03): while the transition was owed the row
+             * still named the previous secret, so releasing the reservation earlier would let that
+             * secret authorise another rotation. */
+            for (i = 0; i < count; i++) {
+                if (applied[i].rotate) {
+                    w_reenroll_complete(applied[i].id);
+                }
+            }
+
+            identity_retry_delay = IDENTITY_RETRY_MIN_SECONDS;
+        }
+    }
+
+    if (identity_journal_pending() > 0) {
+        identity_retry_delay = identity_retry_delay >= IDENTITY_RETRY_MAX_SECONDS
+                                   ? IDENTITY_RETRY_MAX_SECONDS
+                                   : identity_retry_delay * 2;
+    } else {
+        identity_retry_delay = IDENTITY_RETRY_MIN_SECONDS;
+    }
+}
+
 /* Thread for writing keystore onto disk */
 void* run_writer(__attribute__((unused)) void *arg) {
     keystore *copy_keys;
@@ -1365,6 +1552,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
     int wdb_sock = -1;
 
     authd_sigblock();
+
+    /* Everything the startup reconciliation kept is owed and recoverable, so this thread may look
+     * at all of it from its first cycle; anything appended from now on waits for its own. */
+    identity_high_water = identity_journal_last_seq();
 
     mdebug1("Writer thread ready.");
 
@@ -1377,12 +1568,46 @@ void* run_writer(__attribute__((unused)) void *arg) {
         char **removed_ids = NULL;
         size_t removed_count = 0;
         purge_journal_entry_t *journaled = NULL;
+        identity_applied_t *applied = NULL;
+        size_t applied_count = 0;
         bool keys_written = false;
+        bool retry_only = false;
 
         w_mutex_lock(&mutex_keys);
 
         while (!write_pending && running) {
-            w_cond_wait(&cond_pending, &mutex_keys);
+            /* An owed identity transition cannot wait for the next enrollment to come along
+             * (issue #39078, H03): this thread sleeps until something signals it, so on an idle
+             * manager a credential the database never got would stay owed until the next agent
+             * enrolled -- or forever. While anything is owed the wait has a deadline, doubling up
+             * to a minute for as long as the database stays out of reach. */
+            if (identity_journal_pending() > 0) {
+                struct timeval now;
+                struct timespec deadline;
+
+                gettimeofday(&now, NULL);
+                deadline.tv_sec = now.tv_sec + identity_retry_delay;
+                deadline.tv_nsec = now.tv_usec * 1000;
+
+                if (pthread_cond_timedwait(&cond_pending, &mutex_keys, &deadline) == ETIMEDOUT && !write_pending) {
+                    retry_only = true;
+                    break;
+                }
+            } else {
+                w_cond_wait(&cond_pending, &mutex_keys);
+            }
+        }
+
+        /* Woken by the clock and not by a change: there is nothing to dump. client.keys is NOT
+         * rewritten on these cycles -- retrying a database write must not cost a full keystore
+         * rewrite every minute. */
+        if (retry_only) {
+            w_mutex_unlock(&mutex_keys);
+
+            identity_apply_pending(&applied, &applied_count, &wdb_sock);
+            identity_commit_and_forget(applied, applied_count, &wdb_sock);
+            identity_applied_free(applied, applied_count);
+            continue;
         }
 
         mdebug1("Dumping changes into disk.");
@@ -1451,33 +1676,76 @@ void* run_writer(__attribute__((unused)) void *arg) {
         for (cur = copy_insert; cur; cur = next) {
             next = cur->next;
 
-            mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
-
-            gettime(&t0);
-            if (wdb_insert_agent(atoi(cur->id), cur->name, NULL, cur->ip, cur->raw_key, cur->group, 1, &wdb_sock)) {
-                mdebug2("The agent %s '%s' already exists in the database.", cur->id, cur->name);
-            }
-            gettime(&t1);
-            mdebug2("[Writer] wdb_insert_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
-
-            gettime(&t0);
-            char *groups_to_set = cur->group ? cur->group : "default";
-            if (wdb_set_agent_groups_csv(atoi(cur->id),
-                                         groups_to_set,
-                                         WDB_GROUP_MODE_OVERRIDE,
-                                         w_is_single_node(NULL) ? "synced" : "syncreq",
-                                         &wdb_sock)) {
-                merror("Unable to set agent centralized group: %s (internal error)", groups_to_set);
+            /* This node's key is in the client.keys just written, whatever the database says next,
+             * so its journal entry is now safe for the retry pass to look at. Moved here and not
+             * to the success path on purpose: an entry whose write FAILS is exactly what the retry
+             * pass exists for. */
+            if (cur->journal_seq > identity_high_water) {
+                identity_high_water = cur->journal_seq;
             }
 
-            gettime(&t1);
-            mdebug2("[Writer] wdb_set_agent_groups_csv(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+            if (cur->rotate) {
+                /* A re-enrollment (#38993): the agent already has its row, so its credentials are replaced on
+                 * it -- id, date_add and the rest untouched -- rather than inserted (which the duplicate id
+                 * would refuse). Its groups are only overridden when the request named some (below). */
+                mdebug1("[Writer] Performing credential rotation([%s] %s).", cur->id, cur->name);
+
+                gettime(&t0);
+                if (wdb_set_agent_credentials(atoi(cur->id), cur->name, cur->ip, cur->raw_key, cur->reenroll_secret, &wdb_sock)) {
+                    /* The reservation taken when the rotation was accepted STAYS: the row still holds the
+                     * previous secret, so releasing here would let that secret authorise another rotation
+                     * (issue #39078, H02). The agent cannot rotate again on this manager until the
+                     * transition is resolved -- and it will be: the entry is still journaled, and this
+                     * thread retries it on its own clock (H03). */
+                    merror("Unable to store the rotated credentials of agent %s '%s' in the database. The agent "
+                           "keeps the credentials it was given; the change stays recorded and is retried.",
+                           cur->id, cur->name);
+                } else {
+                    /* Not w_reenroll_complete() yet: the write is not durable until the commit below. */
+                    identity_applied_add(&applied, &applied_count, cur->journal_seq, cur->id, true);
+                }
+                gettime(&t1);
+                mdebug2("[Writer] wdb_set_agent_credentials(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+            } else {
+                mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
+
+                gettime(&t0);
+                if (wdb_insert_agent(atoi(cur->id), cur->name, NULL, cur->ip, cur->raw_key, cur->reenroll_secret, cur->group, 1, &wdb_sock)) {
+                    /* Either the row is already there or the database is unreachable, and the answer
+                     * does not say which. The entry stays journaled and the retry below reads the row
+                     * to tell the two apart (issue #39078, H03). */
+                    mdebug2("The agent %s '%s' was not inserted; its credentials stay recorded.", cur->id, cur->name);
+                } else {
+                    identity_applied_add(&applied, &applied_count, cur->journal_seq, cur->id, false);
+                }
+                gettime(&t1);
+                mdebug2("[Writer] wdb_insert_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+            }
+
+            if (!cur->rotate || cur->group) {
+                gettime(&t0);
+                char *groups_to_set = cur->group ? cur->group : "default";
+                if (wdb_set_agent_groups_csv(atoi(cur->id),
+                                             groups_to_set,
+                                             WDB_GROUP_MODE_OVERRIDE,
+                                             w_is_single_node(NULL) ? "synced" : "syncreq",
+                                             &wdb_sock)) {
+                    merror("Unable to set agent centralized group: %s (internal error)", groups_to_set);
+                }
+
+                gettime(&t1);
+                mdebug2("[Writer] wdb_set_agent_groups_csv(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+            }
 
             os_free(cur->id);
             os_free(cur->name);
             os_free(cur->ip);
             os_free(cur->group);
             os_free(cur->raw_key);
+            if (cur->reenroll_secret) {
+                OPENSSL_cleanse(cur->reenroll_secret, strlen(cur->reenroll_secret));
+            }
+            os_free(cur->reenroll_secret);
             os_free(cur);
 
             inserted_agents++;
@@ -1510,10 +1778,18 @@ void* run_writer(__attribute__((unused)) void *arg) {
             os_free(cur->ip);
             os_free(cur->group);
             os_free(cur->raw_key);
+            os_free(cur->reenroll_secret); // always NULL for removals (add_remove() sets none)
             os_free(cur);
 
             removed_agents++;
         }
+
+        /* Whatever earlier cycles could not write, and then the one commit that makes everything
+         * above durable -- this cycle's credentials included. Only after it are the entries
+         * forgotten and the rotations' reservations released (issue #39078, H03). */
+        identity_apply_pending(&applied, &applied_count, &wdb_sock);
+        identity_commit_and_forget(applied, applied_count, &wdb_sock);
+        identity_applied_free(applied, applied_count);
 
         /* PHASES 3 and 4, gated on phase 2. Skipping them costs nothing: the journal lines stay and
          * the next cycle retries them, because phase 3 below works from the whole outstanding set
@@ -1595,6 +1871,7 @@ void handler(int signum) {
 
 /* Exit handler */
 void cleanup() {
+    etoken_store_free();
     DeletePID(ARGV0);
 }
 

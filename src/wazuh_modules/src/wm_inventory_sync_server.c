@@ -199,20 +199,24 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
         config->max_inflight_bytes = (long long)inflight;
     }
 
+#ifndef WIN32
     /* Not a tunable of this module, but the ceiling that makes max_parallel_connections meaningful:
      * every live connection and every deferred reply costs a descriptor, out of a limit shared by all of
      * modulesd. Configuring more connections than descriptors guarantees EMFILE long before the cap is
-     * reached. Same key and range as wm_setup() so the two cannot disagree. */
-    const int nofile = getDefine_Int_default("wazuh_modules", "rlimit_nofile", 8192, 1048576, 8192);
-    if (config->max_parallel_connections > nofile)
+     * reached. main() has already raised the soft limit, so the effective value is the one that counts. */
+    struct rlimit nofile;
+    if (getrlimit(RLIMIT_NOFILE, &nofile) == 0 && nofile.rlim_cur != RLIM_INFINITY
+        && (rlim_t)config->max_parallel_connections > nofile.rlim_cur)
     {
         mtwarn(WM_INVENTORY_SYNC_SERVER_LOGTAG,
-               "'inventory_sync_server_max_parallel_connections' is %d but modulesd's descriptor limit "
-               "('wazuh_modules.rlimit_nofile') is %d, and that limit is shared with every other module. "
-               "Connections will fail with 'too many open files' well before the configured cap.",
+               "'inventory_sync_server_max_parallel_connections' is %d but modulesd's descriptor limit is %lu "
+               "('wazuh_modules.rlimit_nofile', capped by the limit the process is started with), and that limit "
+               "is shared with every other module. Connections will fail with 'too many open files' well before "
+               "the configured cap.",
                config->max_parallel_connections,
-               nofile);
+               (unsigned long)nofile.rlim_cur);
     }
+#endif
 
     /* ---- Sync pipeline (the POST /stateful ingestion path). sync_workers keeps the 0 sentinel
      * (0 -> half the cores, resolved by the module); the other two carry real defaults because

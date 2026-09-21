@@ -279,16 +279,16 @@ TEST(TaskClientTest, QueueFullRejectsSynchronously)
 }
 
 // -----------------------------------------------------------------------------
-// Dtor drains queue with Io.
+// Dtor drains queue with Stopping, distinct from a genuine transport Io failure
 // -----------------------------------------------------------------------------
-TEST(TaskClientTest, DtorFailsPendingCallbacksWithIo)
+TEST(TaskClientTest, DtorFailsPendingCallbacksWithStopping)
 {
     const auto path = remoted::test::makeUniqueSocketPath("task_dt");
     FakeTaskServer server(path);
     server.setStall(5000ms);
 
     ControlMetrics metrics;
-    std::atomic<int> io {0};
+    std::atomic<int> stopping {0};
     {
         TaskClient client(path, 1, /*deadlineMs*/ 200, 10, metrics);
         std::this_thread::sleep_for(100ms);
@@ -297,10 +297,10 @@ TEST(TaskClientTest, DtorFailsPendingCallbacksWithIo)
             client.getPendingTasks(1,
                                    [&](SocketError e, std::vector<Task>)
                                    {
-                                       if (e == SocketError::Io)
-                                           io.fetch_add(1);
+                                       if (e == SocketError::Stopping)
+                                           stopping.fetch_add(1);
                                    });
         }
     }
-    EXPECT_GE(io.load(), 4);
+    EXPECT_GE(stopping.load(), 4);
 }

@@ -346,7 +346,8 @@ def get_values(o: object, fields: list = None) -> list:
             if not fields or key in fields:
                 strings.extend(get_values(obj[key]))
     else:
-        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode) else str(obj))
+        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode)
+                       else ('' if obj is None else str(obj).lower()))
 
     return strings
 
@@ -889,13 +890,12 @@ def get_timeframe_in_seconds(timeframe: str) -> int:
         Time in seconds.
     """
     if not timeframe.isdigit():
-        if 'h' not in timeframe and 'd' not in timeframe and 'm' not in timeframe and 's' not in timeframe:
+        if not re.fullmatch(r'(\d+[dhms])+', timeframe):
             raise WazuhError(1411, timeframe)
 
-        regex, seconds = re.compile(r'(\d+)(\w)'), 0
+        seconds = 0
         time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's': 1}
-        for time, unit in regex.findall(timeframe):
-            # it's not necessarry to check whether the unit is in the dictionary, because it's been validated before.
+        for time, unit in re.findall(r'(\d+)([dhms])', timeframe):
             seconds += int(time) * time_equivalence_seconds[unit]
     else:
         seconds = int(timeframe)
@@ -938,7 +938,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
         for pattern in date_patterns:
             try:
                 return get_utc_strptime(element, pattern)
-            except ValueError:
+            except (ValueError, TypeError):
                 pass
 
         return element
@@ -968,16 +968,32 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
         value1 = [value1] if not isinstance(value1, list) else value1
         for val in value1:
             if op == '~':
-                # value1 should be str if operator is '~'
-                val = str(val) if type(val) == int else val
+                # value1 should be str if operator is '~'. None never matches a substring search,
+                # and a dict/list keeps its own '~' semantics (key/element membership) -- only the
+                # scalar types that would otherwise raise inside `in` (bool, int, float, datetime)
+                # need casting to str.
+                if val is None:
+                    continue
+                if isinstance(val, (bool, int, float, datetime)):
+                    val = str(val)
                 if value2 in val:
                     return True
             else:
+                if val is None and op in ('<', '>'):
+                    # a present-but-null field can never satisfy an ordering comparison; skip it
+                    # instead of letting operator.lt/gt raise and failing the whole query for every
+                    # other, well-typed record. `=`/`!=` don't need this -- None == x / None != x
+                    # never raise, they just correctly evaluate to False/True.
+                    continue
                 # cast value2 to integer if value1 is integer
                 value2 = check_date_format(value2)
                 if type(value2) == datetime:
                     val = check_date_format(val)
                 value2 = int(value2) if type(val) == int else value2
+                if type(val) == bool and isinstance(value2, str):
+                    if value2.lower() not in ('true', 'false', '1', '0'):
+                        raise ValueError(f"'{value2}' is not a boolean")
+                    value2 = value2.lower() in ('true', '1')
                 if operators[op](val, value2):
                     return True
 
@@ -1044,6 +1060,13 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
+    # A literal the field's type cannot address is a property of the record, not of the query: the
+    # same clause evaluates fine against a differently-typed record. So a mismatch only excludes its
+    # own record, and a clause is reported invalid once, after the whole array, and only if no
+    # record could evaluate that clause. Tracked per clause: one malformed clause must not be
+    # excused by a different, well-formed one.
+    mismatched_clauses = set()
+    evaluated_clauses = set()
     # process elements of input_array
     for elem in input_array:
         # if an element matches an OR clause, it will be added to output
@@ -1058,15 +1081,43 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
                 except AttributeError:
                     raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
 
+                # The regex matches any two of the operator characters, so `>=`, `<=` or `==` parse
+                # as an operator that check_clause has no entry for. That is a malformed query, not
+                # a record that fails to match, so it is reported whatever the collection holds.
+                if op not in operators:
+                    raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
+
                 # check if a clause is satisfied
                 match_candidates = list()
-                if field_subnames and field_name in elem and \
-                        get_match_candidates(deepcopy(elem[field_name]), field_subnames.split('.'), match_candidates):
-                    if any([check_clause(candidate, op, value) for candidate in match_candidates if candidate]):
-                        continue
-                else:
-                    if field_name in elem and check_clause(elem[field_name], op, value):
-                        continue
+                # get_match_candidates/deepcopy run outside the try below: a failure here is a bug
+                # in candidate lookup itself, not a type-mismatched query literal, so it must not be
+                # relabeled as a WazuhError(1407) client error.
+                has_nested_match = field_subnames and field_name in elem and \
+                    get_match_candidates(deepcopy(elem[field_name]), field_subnames.split('.'), match_candidates)
+                try:
+                    if has_nested_match:
+                        matched = False
+                        for candidate in match_candidates:
+                            if candidate is None:
+                                continue
+                            try:
+                                candidate_matches = check_clause(candidate, op, value)
+                            except (TypeError, ValueError):
+                                mismatched_clauses.add(and_clause)
+                                continue
+                            evaluated_clauses.add(and_clause)
+                            if candidate_matches:
+                                matched = True
+                                break
+                        if matched:
+                            continue
+                    elif field_name in elem:
+                        elem_matches = check_clause(elem[field_name], op, value)
+                        evaluated_clauses.add(and_clause)
+                        if elem_matches:
+                            continue
+                except (TypeError, ValueError):
+                    mismatched_clauses.add(and_clause)
                 match = False
                 break
 
@@ -1074,6 +1125,10 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             if match:
                 output_array.append(elem)
                 break
+
+    for clause in mismatched_clauses - evaluated_clauses:
+        raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{clause}'")
+
     return output_array
 
 

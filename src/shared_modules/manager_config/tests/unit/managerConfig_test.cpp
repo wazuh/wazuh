@@ -107,8 +107,16 @@ TEST(Load, EffectiveDefaultsFromMinimalDocument)
     EXPECT_EQ(rapidjson::Pointer("/remote/legacy/port").Get(effective)->GetInt(), 1514);
     EXPECT_EQ(rapidjson::Pointer("/remote/https/port").Get(effective)->GetInt(), 1517);
     EXPECT_STREQ(rapidjson::Pointer("/remote/https/global_prefix").Get(effective)->GetString(), "/wazuh-manager/");
+    EXPECT_STREQ(rapidjson::Pointer("/remote/https/ca_certificate").Get(effective)->GetString(),
+                 "etc/certs/root-ca.pem");
     EXPECT_EQ(rapidjson::Pointer("/remote/https/verification_mode").Get(effective), nullptr) << "no default: absent";
+    // The rate limits are NOT written into the shipped file, but they do have defaults: an absent
+    // option must arrive at remoted as a real value, never as "unlimited".
+    EXPECT_EQ(rapidjson::Pointer("/remote/https/enroll_rate_limit").Get(effective)->GetInt(), 100);
+    EXPECT_EQ(rapidjson::Pointer("/remote/https/cacerts_rate_limit").Get(effective)->GetInt(), 50);
     EXPECT_EQ(rapidjson::Pointer("/auth/port").Get(effective)->GetInt(), 1515);
+    EXPECT_EQ(rapidjson::Pointer("/auth/legacy_enrollment").Get(effective), nullptr)
+        << "no default: authd follows remote.legacy.enabled when unset";
     EXPECT_TRUE(rapidjson::Pointer("/auth/force/disconnected_time/enabled").Get(effective)->GetBool());
     EXPECT_STREQ(rapidjson::Pointer("/wdb/backup/global/interval").Get(effective)->GetString(), "1d");
     EXPECT_EQ(rapidjson::Pointer("/vulnerability-detection/pageSize").Get(effective)->GetInt(), 100);
@@ -139,12 +147,15 @@ TEST(Load, GeneratedManagerFileKeepsUserValuesAndFillsTheRest)
     EXPECT_TRUE(rapidjson::Pointer("/legacy/enabled").Get(remote)->GetBool());
     EXPECT_EQ(rapidjson::Pointer("/legacy/queue_size").Get(remote)->GetInt(), 131072) << "filled default";
     EXPECT_STREQ(rapidjson::Pointer("/https/certificate").Get(remote)->GetString(), "etc/certs/remoted.pem");
-    EXPECT_EQ(remote["https"].MemberCount(), 6u)
-        << "port, bind_addr, global_prefix, certificate, key, ca (the three no-default options stay absent)";
+    EXPECT_STREQ(rapidjson::Pointer("/https/ca_certificate").Get(remote)->GetString(), "etc/certs/root-ca.pem");
+    EXPECT_EQ(remote["https"].MemberCount(), 9u) << "port, bind_addr, global_prefix, certificate, key, ca, "
+                                                    "ca_certificate and the two rate limits (the three "
+                                                    "no-default options stay absent)";
     const auto auth = json(doc.sectionJson("auth"));
     EXPECT_TRUE(auth["purge"].GetBool());
     EXPECT_TRUE(auth["use_password"].GetBool());
-    EXPECT_EQ(auth.MemberCount(), 15u) << "13 leaves + force + agents objects (18 inventory options)";
+    EXPECT_EQ(auth.MemberCount(), 14u) << "12 defaulted leaves + force + agents objects (18 inventory options; "
+                                          "legacy_enrollment has no default)";
     const auto indexer = json(doc.sectionJson("indexer"));
     EXPECT_STREQ(rapidjson::Pointer("/hosts/0").Get(indexer)->GetString(), "https://127.0.0.1:9200");
 }
@@ -441,7 +452,7 @@ TEST(CApi, LoadSectionDocumentValidateFree)
     std::filesystem::remove_all(home);
 }
 
-TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtySixLeaves)
+TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtyNineLeaves)
 {
     const auto schema = json(std::string {manager_config::schemaJson()});
     std::size_t leaves = 0;
@@ -465,5 +476,7 @@ TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtySixLeaves)
         }
     };
     walk(schema);
-    EXPECT_EQ(leaves, 65u);
+    // Bump this deliberately, never to make the test pass: it is the guard that a schema option was
+    // added or removed on purpose. Last changed by the two remote.https rate limits (67 -> 69).
+    EXPECT_EQ(leaves, 69u);
 }

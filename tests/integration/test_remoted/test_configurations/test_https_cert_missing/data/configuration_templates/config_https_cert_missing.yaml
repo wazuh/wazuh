@@ -1,0 +1,9 @@
+- sections:
+    - section: remote
+      elements:
+        - https:
+            elements:
+              - certificate:
+                  value: 'CERTIFICATE'
+              - key:
+                  value: 'KEY'

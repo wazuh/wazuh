@@ -170,6 +170,9 @@ namespace invsync::sync
         void respondConnectorFailure(std::vector<Item>& items, indexer::IIndexerConnectorSync& connector);
         void
         flushAndRespond(std::vector<Item>& batch, std::size_t& batchBytes, indexer::IIndexerConnectorSync& connector);
+        /// Moves the connector's own request and conflict counts into the metrics. Every path that
+        /// drives the connector must call it: an immediate session issues its I/O outside any batch.
+        void drainConnectorStats(indexer::IIndexerConnectorSync& connector);
 
         SyncPipelineConfig m_config;
         /// Declared before m_processor: the processor resolves its counters from it. Never reset.
@@ -188,6 +191,7 @@ namespace invsync::sync
         std::shared_ptr<wazuh::metrics::ICounter> m_bulkSessionsTotal;
         std::shared_ptr<wazuh::metrics::ICounter> m_indexerBulkRequests;
         std::shared_ptr<wazuh::metrics::ICounter> m_indexerBulkBytes;
+        std::shared_ptr<wazuh::metrics::ICounter> m_indexerConflictRetries;
         std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresDocuments;
         std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresExhausted;
         std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresOther;

@@ -18,8 +18,8 @@ chunked transfer encoding is rejected.
 | `POST` | `/stateful` | `200` | One whole synchronization session (FlatBuffers `Message{FullSession}`). `200` `{"status":"ok"}` means applied AND flushed to the indexer (and scanned, for VD sessions); `{"status":"ok","noop":true}` means everything was filtered. Other statuses: `400` invalid session, `403` identity mismatch, `409` `{"status":"checksum_mismatch"}` for a `ModuleCheck` session (the agent full-resyncs) OR `{"error":"version_mismatch","current_version":N}` for a VDFirst/VDSync session whose `feed_offset` doesn't match this node's current VD feed offset (the agent retries with `current_version`; see [vulnerability-scanner's architecture.md](../vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents)), `413` the session declares more bytes than the total budget, `500` failed with nothing indexed (including a failed vulnerability scan), `503` not ready / no capacity — with a `Retry-After` header when the CVE feed is still downloading. |
 | `POST` | `/_internal/agents/delete` | `200` | Deletes every document of the agent named in the body (`{"agent_id":"7"}`), in two halves: `wazuh-states-*` by delete-by-query (this cluster's scope, deferred to the agent's worker shard so it orders after that agent's in-flight sessions), and the `wazuh-agent-config` / `wazuh-agent-stats` documents by document id, queued on the asynchronous connector that writes them so the deletion orders after a `/config` or `/stats` report that connector has accepted but not yet pushed. `200` `{"status":"ok"}` means the by-query half has run **and flushed**; the by-id half is queued. One documented window can still leave a state document behind — see [Whole-agent deletion semantics](#whole-agent-deletion-semantics). Manager-internal and UDS-local: the only caller is the Task Manager's dispatcher. `400` malformed body or no usable `agent_id`, `503` indexer unavailable or the module is stopping. |
 | `POST` | `/_internal/vd/scan` | `200` | On-demand vulnerability rescan of the agent named in the body (`{"agent_id":"7"}`), executed on the VD scan lane. `200` `{"status":"ok"}` means the scan RAN; `{"status":"ok","skipped":true}` means this node runs no vulnerability scanner, which is a completion rather than a failure. Manager-internal and UDS-local: the only caller is the Task Manager's dispatcher. `400` malformed body or no usable `agent_id`, `409` `scan_in_progress` when that agent already has a scan in flight, `404` `agent_not_found`, `500` the scan failed, `503` scan capacity exhausted, the feed is still loading, or the module is stopping. See [On-demand vulnerability scans](#on-demand-vulnerability-scans). |
-| `POST` | `/stats` | `200` | Indexes the agent's statistics report into `wazuh-agent-stats` (see [`POST /stats`](#post-stats) below). Answers `{}`. |
-| `POST` | `/config` | `200` | Indexes the agent's reported configuration into `wazuh-agent-config` (see [Indexing `/config`](#indexing-config) below). Answers `{}`. |
+| `POST` | `/stats` | `200` | Indexes the agent's statistics report into `wazuh-agent-stats` (see [`POST /stats`](#post-stats) below). Answers `{}`, which means accepted for indexing, not stored: see [what a `200` promises](#what-a-stats-or-config-200-promises). |
+| `POST` | `/config` | `200` | Indexes the agent's reported configuration into `wazuh-agent-config` (see [Indexing `/config`](#indexing-config) below). Answers `{}`, with the same acceptance semantics as `/stats`: see [what a `200` promises](#what-a-stats-or-config-200-promises). |
 
 The stats and config endpoints take the agent's `modules`-keyed report, move it under their own
 subtree, and index one document per agent (issues #38024 and #38023).
@@ -128,6 +128,27 @@ manager's own configuration read once at registration time.
 A `POST /config` that fails indexer-availability validation (see status codes below) never reaches the
 write path; a request that passes validation but whose serialization later fails (e.g. an agent id
 header that is not valid UTF-8) is answered `400` rather than crashing the handler.
+
+## What a `/stats` or `/config` `200` promises
+
+Accepted for indexing, not stored. Both routes refuse the request when the indexer is unavailable and
+then hand the document to the ASYNCHRONOUS connector, which queues it and answers `{}` without waiting
+for the write. Three consequences, none of which reaches the agent that got the `200`:
+
+- **The queue is in memory.** It does not survive a restart (a stopping queue discards whatever it
+  still holds), and it is bounded by `max_queue_bytes`: past that bound `push()` discards the report.
+  The operator sees both, through the log line the queue writes on its first overflow and the count
+  of discarded events it reports when it drains again. The caller does not.
+- **The availability gate is a cached verdict.** `isAvailable()` reads the monitor's last health
+  check, refreshed every `monitoring_interval_seconds` (10 s by default), so a `200` can rest on a
+  probe up to that old.
+- **A `503` still means what it says.** An indexer that has been unreachable for longer than one
+  monitoring interval is reported as such; only the window inside that interval is not.
+
+This is the opposite of the `/stateful` contract, whose `200` means applied AND flushed (see
+[The `/stateful` session semantics](#the-stateful-session-semantics)). The asymmetry is deliberate:
+`/stats` and `/config` carry a periodic report that the next push replaces, so buffering them keeps
+the agent's request short, while a synchronization session has no next push to correct it.
 
 ## Whole-agent deletion semantics
 

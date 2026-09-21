@@ -100,12 +100,14 @@ runInit()
     echo ""
     echo ""
     control_script="wazuh-control"
+    init_template="wazuh"
 
     if [ -n "$1" ]; then
         if [ "X$1" = "Xmanager" ]; then
             service="$service-manager"
             file_permissions="wazuh-manager"
             control_script="wazuh-manager-control"
+            init_template="wazuh-manager"
         else
             service="$service-$1"
             file_permissions="wazuh"
@@ -166,7 +168,7 @@ runInit()
             fi
             echo " - ${systemis} Redhat Linux."
             echo " - ${modifiedinit}"
-            GenerateService wazuh-rh.init > /etc/rc.d/init.d/${service}
+            GenerateService ${init_template}-rh.init > /etc/rc.d/init.d/${service}
             chmod 755 /etc/rc.d/init.d/${service}
             chown root:$file_permissions /etc/rc.d/init.d/${service}
 
@@ -204,7 +206,7 @@ runInit()
         fi
         echo " - ${systemis} Suse Linux."
         echo " - ${modifiedinit}"
-        GenerateService wazuh-suse.init > /etc/init.d/${service}
+        GenerateService ${init_template}-suse.init > /etc/init.d/${service}
         chmod 755 /etc/init.d/${service}
         chown root:$file_permissions /etc/init.d/${service}
 
@@ -294,7 +296,7 @@ runInit()
             fi
             echo " - ${systemis} Debian (Ubuntu or derivative)."
             echo " - ${modifiedinit}"
-            GenerateService wazuh-debian.init > /etc/init.d/${service}
+            GenerateService ${init_template}-debian.init > /etc/init.d/${service}
             chmod +x /etc/init.d/${service}
             chmod go-w /etc/init.d/${service}
             chown root:$file_permissions /etc/init.d/${service}

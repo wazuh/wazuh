@@ -37,11 +37,11 @@ class _Histogram(NamedTuple):
 # ---------------------------------------------------------------------------------------------
 
 # Endpoints whose `remoted.http.<endpoint>.responses.*` family the module registers.
-_HTTP_ENDPOINTS = ('stateless', 'stateful', 'stats', 'config', 'enroll')
+_HTTP_ENDPOINTS = ('stateless', 'stateful', 'stats', 'config', 'enroll', 'enroll.secret', 'cacerts')
 
 # The closed status set of that family; some cells are structurally zero for a given endpoint
 # but are kept so every endpoint reports the same vocabulary.
-_HTTP_STATUS_CELLS = ('2xx', '400', '403', '409', '413', '500', '503', 'other')
+_HTTP_STATUS_CELLS = ('2xx', '400', '403', '409', '413', '429', '500', '503', 'other')
 
 # Endpoints that additionally resolve a `remoted.http.<endpoint>.latency` histogram.
 _HTTP_LATENCY_ENDPOINTS = ('stateless', 'stateful', 'enroll')
@@ -78,6 +78,28 @@ _REMOTED_METRIC_GROUPS = {
             'depth': 'remoted.enroll.authd.queue.depth',
             'capacity': 'remoted.enroll.authd.queue.capacity',
             'rejected_total': 'remoted.enroll.authd.queue.rejected.total',
+        },
+        # Refused by the endpoint's rate limit before the handler ran, so it is in none of the
+        # outcome counters above. `rate_limit` is the route's live budget: `available` at 0 while
+        # `rate_limited` climbs is a ceiling set below what the fleet needs.
+        'rate_limited': 'remoted.enroll.rate_limited',
+        'rate_limit': {
+            'limit': 'remoted.enroll.rate_limit.limit',
+            'burst': 'remoted.enroll.rate_limit.burst',
+            'available': 'remoted.enroll.rate_limit.available',
+        },
+        # POST /enroll/secret: an agent that already holds a client.keys key asking for the
+        # re-enrollment secret its enrollment never gave it. Nested here rather than in a group of
+        # its own because it shares this route's authd queue AND its rate limit -- the `rate_limit`
+        # readings above govern both routes -- while its outcomes are genuinely different ones: no
+        # enrollment happens and nothing is rotated. Its own `rate_limited` counter is what keeps
+        # the two distinguishable under that one ceiling.
+        'secret': {
+            'issued': 'remoted.enroll.secret.issued',
+            'rejected_in_progress': 'remoted.enroll.secret.rejected_in_progress',
+            'authd_error': 'remoted.enroll.secret.authd_error',
+            'authd_unavailable': 'remoted.enroll.secret.authd_unavailable',
+            'rate_limited': 'remoted.enroll.secret.rate_limited',
         },
     },
     'control': {
@@ -120,6 +142,10 @@ _REMOTED_METRIC_GROUPS = {
         'inflight_bytes': 'remoted.server.budget.inflight.bytes',
         'inflight_requests': 'remoted.server.budget.inflight.requests',
         'rejected_total': 'remoted.server.budget.rejected.total',
+        # The connection ceiling has no rejection counter: reaching it postpones the accept instead
+        # of refusing, so `open` against `max` is the only way to see it being approached.
+        'connections_open': 'remoted.server.connections.open',
+        'connections_max': 'remoted.server.connections.max',
     },
     'downloads': {
         'started': 'remoted.download.started',
@@ -127,6 +153,23 @@ _REMOTED_METRIC_GROUPS = {
         'not_found': 'remoted.download.not_found',
         'open_error': 'remoted.download.open_error',
         'bytes_total': 'remoted.download.bytes.total',
+    },
+    # The listener's own certificate: days to expiry (negative once expired) and whether the CA
+    # `GET /cacerts` hands out signs it. Both pulls read 0 while the listener is down.
+    'tls': {
+        'cert_expiry_days': 'remoted.server.tls.cert_expiry_days',
+        'ca_matches_leaf': 'remoted.server.tls.ca_matches_leaf',
+    },
+    'cacerts': {
+        'served': 'remoted.cacerts.served',
+        'not_found': 'remoted.cacerts.not_found',
+        'ca_mismatch': 'remoted.cacerts.ca_mismatch',
+        'rate_limited': 'remoted.cacerts.rate_limited',
+        'rate_limit': {
+            'limit': 'remoted.cacerts.rate_limit.limit',
+            'burst': 'remoted.cacerts.rate_limit.burst',
+            'available': 'remoted.cacerts.rate_limit.available',
+        },
     },
     'vd_scan': {
         'requests_total': 'remoted.scanvd.requests.total',

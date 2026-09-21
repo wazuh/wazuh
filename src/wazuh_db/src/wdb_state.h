@@ -38,6 +38,7 @@ typedef struct _global_agent_t {
     uint64_t update_connection_status_queries;
     uint64_t update_status_code_queries;
     uint64_t update_keepalive_queries;
+    uint64_t set_agent_credentials_queries;
     struct timeval delete_agent_time;
     struct timeval disconnect_agents_time;
     struct timeval find_agent_time;
@@ -58,6 +59,7 @@ typedef struct _global_agent_t {
     struct timeval update_connection_status_time;
     struct timeval update_status_code_time;
     struct timeval update_keepalive_time;
+    struct timeval set_agent_credentials_time;
 } global_agent_t;
 
 typedef struct _global_belongs_t {
@@ -82,11 +84,13 @@ typedef struct _global_breakdown_t {
     uint64_t backup_queries;
     uint64_t sql_queries;
     uint64_t vacuum_queries;
+    uint64_t commit_queries;
     uint64_t get_fragmentation_queries;
     uint64_t sleep_queries;
     struct timeval backup_time;
     struct timeval sql_time;
     struct timeval vacuum_time;
+    struct timeval commit_time;
     struct timeval get_fragmentation_time;
     struct timeval open_calls_time;
     struct timeval sleep_time;
@@ -198,6 +202,19 @@ void w_inc_global_agent_update_keepalive();
  * @param time Value to increment the counter.
  */
 void w_inc_global_agent_update_keepalive_time(struct timeval time);
+
+/**
+ * @brief Increment set-agent-credentials global agent queries counter
+ *
+ */
+void w_inc_global_agent_set_agent_credentials();
+
+/**
+ * @brief Increment set-agent-credentials global agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_global_agent_set_agent_credentials_time(struct timeval time);
 
 /**
  * @brief Increment update-connection-status global agent queries counter
@@ -510,6 +527,19 @@ void w_inc_global_vacuum();
  * @param time Value to increment the counter.
  */
 void w_inc_global_vacuum_time(struct timeval time);
+
+/**
+ * @brief Increment commit global queries counter
+ *
+ */
+void w_inc_global_commit();
+
+/**
+ * @brief Increment commit global time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_global_commit_time(struct timeval time);
 
 /**
  * @brief Increment get_fragmentation global queries counter

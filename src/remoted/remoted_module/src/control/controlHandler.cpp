@@ -12,6 +12,7 @@
 #include "controlHandler.hpp"
 #include "common/logThrottle.hpp"
 #include "common/vdClient.hpp"
+#include "groupSelector.hpp" // toGroupsCsv(), makeConfigToken() -- shared with /download's authorization check
 #include "json.hpp"
 #include "loggerHelper.h"
 #include <atomic>
@@ -91,33 +92,6 @@ namespace remoted::control
                 .count();
         }
 
-        // Rebuild the raw group CSV wdb returned (no URL-encoding, matches wdb).
-        std::string toGroupsCsv(const std::vector<std::string>& groups)
-        {
-            std::string out;
-            for (size_t i = 0; i < groups.size(); ++i)
-            {
-                if (i > 0)
-                    out.push_back(',');
-                out.append(groups[i]);
-            }
-            return out;
-        }
-
-        /// The /download resource_id the agent must use for its shared configuration.
-        ///
-        /// Opaque to the agent by contract: it passes this through verbatim and never parses it,
-        /// which is exactly what lets this value change without shipping a new agent. Today it IS
-        /// the group selector -- the same CSV config_hash was computed over, so the two provably
-        /// name the same merged.mg -- and /download resolves it with no lookup.
-        ///
-        /// Never empty: /download needs some resource to name, and an agent with no groups is
-        /// implicitly in "default". The substitution is defensive only, since every site that
-        /// writes AgentEntry::groups already falls back to {"default"}.
-        std::string makeConfigToken(const std::string& groupsCsv)
-        {
-            return groupsCsv.empty() ? std::string {"default"} : groupsCsv;
-        }
     } // namespace
 
     class ControlHandler::Impl
@@ -519,9 +493,13 @@ namespace remoted::control
                 [this, id, refreshedEntry, callback = std::move(callback)](SocketError err,
                                                                            std::vector<Task> tasks) mutable
                 {
-                    // DEBUG1: the task client already reports every cause, and its drain answers
-                    // Io for every in-flight request on shutdown.
-                    if (err != SocketError::None)
+                    // DEBUG1: taskClient.cpp already reports every reachable cause (timeout,
+                    // connect/IO, bad status, malformed body, queue full) at WARN or ERROR on its
+                    // own, with more specific detail than this generic line could add -- warning
+                    // here too would just double the log line for the same event. Stopping is
+                    // excluded because a clean shutdown drain isn't a failure at all: it stays at
+                    // the task client's own DEBUG1 ("Task client is stopping...").
+                    if (err != SocketError::None && err != SocketError::Stopping)
                     {
                         if (const auto throttle = taskFetchErrorThrottle().record())
                         {

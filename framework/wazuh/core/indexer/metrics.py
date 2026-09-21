@@ -27,7 +27,7 @@ class MetricsIndex:
         self._client = client
         self._logger = logging.getLogger('wazuh').getChild('MetricsIndex')
 
-    async def bulk_index(self, index: str, docs: List[dict], bulk_size: int) -> None:
+    async def bulk_index(self, index: str, docs: List[dict], bulk_size: int) -> int:
         """
         Bulk index a list of documents into the given data stream.
 
@@ -43,7 +43,8 @@ class MetricsIndex:
 
         Returns
         -------
-        None
+        int
+            Number of documents successfully indexed.
 
         Notes
         -----
@@ -66,6 +67,10 @@ class MetricsIndex:
             raise_on_error=False,
         )
         if failed:
+            # async_bulk() with the default stats_only=False returns a list of
+            # per-document error responses, not a count.
             self._logger.warning(
-                "Metrics bulk index on '%s': %d indexed, %d failed", index, success, failed
+                "Metrics bulk index on '%s': %d indexed, %d failed. First errors: %s",
+                index, success, len(failed), failed[:5],
             )
+        return success

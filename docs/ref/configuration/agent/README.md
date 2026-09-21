@@ -59,9 +59,13 @@ wazuh_modules.task_nice=10
 # Timeout in seconds for killing unresponsive modules (default: 10)
 wazuh_modules.kill_timeout=10
 
-# Maximum file descriptors for module processes (default: 8192)
+# Maximum file descriptors for module processes (8192-1048576, default: 8192)
 wazuh_modules.rlimit_nofile=8192
 ```
+
+`wazuh_modules.rlimit_nofile` cannot go below `8192`: a lower value is rejected at start with
+`Invalid definition` and modulesd does not run. The daemon raises only its soft limit, up to the hard
+limit it inherits; a lower hard limit is kept and logged once as a warning.
 
 **Used by modules:** Command, Syscollector, and other wodle-based modules on the agent.
 

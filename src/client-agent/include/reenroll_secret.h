@@ -1,0 +1,155 @@
+/* Copyright (C) 2015, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
+
+/**
+ * @file reenroll_secret.h
+ * @brief The agent's own re-enrollment credential, at rest (issue #39064).
+ *
+ * `POST /enroll` answers with a fifth field, `reenroll_secret`: 32 CSPRNG bytes as 64 lowercase
+ * hex characters, the IKM of the HKDF (label WAZUH-REENROLL-KEY) that derives the
+ * `wazuh-enroll+jwt` key this agent re-enrolls with. It replaces the fleet-wide etc/authd.pass as
+ * the endpoint's recovery capability: narrower (it can only rotate the key of one id, it cannot
+ * mint a new identity), per-agent (a stolen one is worth one endpoint, not the fleet), and rotated
+ * on every enrollment.
+ *
+ * Stored as "<id> <secret>", not the secret alone. The bearer's `kid` is the agent's own canonical
+ * id, so an agent that has lost client.keys -- the case this whole credential exists for -- still
+ * has to know which id to present.
+ *
+ * ## Why client.keys's protection and not the trust anchor's
+ *
+ * #39060 gives AGENT_ANCHOR_CA ownership the `wazuh` user cannot replace, and #39064's task list
+ * asks for "the same ownership treatment" here. That is not reachable, and it would buy nothing:
+ *
+ *   - Not reachable: the secret is rotated by every successful enrollment, and rotation happens
+ *     inside the running daemon (bridge_reenroll_thread()), long after Privsep_SetUser(). The one
+ *     root window on the agent -- w_agent_token_bootstrap(), before the privilege drop -- covers
+ *     only the very first enrollment on the token path. A secret the daemon cannot rewrite is a
+ *     secret that goes stale on the next rotation and then fails.
+ *   - Buys nothing: this credential's power is exactly client.keys's power. Both rotate the key of
+ *     one existing id; neither creates an identity. A process that can rewrite client.keys already
+ *     owns the agent, so protecting the secret harder than the key it replaces protects nothing.
+ *
+ * The anchor is a different threat model: it defends against a local process that wants a
+ * downgrade to an unverified transport, which is exactly why it must be out of `wazuh`'s reach.
+ *
+ * So: 0640, owned by the same user client.keys ends up owned by, atomic write-then-rename on
+ * POSIX and a direct write on Windows -- the same platform split w_enrollment_store_key_entry()
+ * keeps, and for the same reason.
+ */
+#ifndef REENROLL_SECRET_H
+#define REENROLL_SECRET_H
+
+#include <stddef.h>
+
+/// Buffer size for an agent id read out of the store, including the NUL. Matches the widest id
+/// OS_IsValidID() accepts (8 characters) with room to spare.
+#define W_REENROLL_ID_SIZE 16
+
+/// Buffer size for a secret read out of the store, including the NUL:
+/// AGENT_REENROLL_SECRET_HEX_CHARS + 1.
+#define W_REENROLL_SECRET_SIZE 65
+
+/**
+ * @brief Persists the re-enrollment credential for @p id, replacing any previous one.
+ *
+ * Atomic on POSIX (temp file + chmod 0640 + rename), so a crash mid-write leaves the previous
+ * secret intact rather than a truncated one. Non-atomic on Windows, inherited deliberately from
+ * w_enrollment_store_key_entry()'s own platform split.
+ *
+ * Both arguments are validated before anything is written: an id OS_IsValidID() refuses, or a
+ * secret that is not exactly 64 lowercase hex characters, is a manager response this agent must
+ * not act on, and writing it would leave a store that can only ever fail.
+ *
+ * @param id The agent's canonical id, as the manager just confirmed it.
+ * @param secret The 64-hex-character secret from the response's `reenroll_secret`.
+ * @return 0 on success; -1 on an invalid argument or any filesystem failure (logged).
+ */
+int w_reenroll_secret_store(const char* id, const char* secret);
+
+/**
+ * @brief Reads the stored credential.
+ *
+ * A store that is missing, empty, malformed, or holds values that no longer validate is reported
+ * as simply absent (0 is never returned): there is nothing an agent can do with half a credential,
+ * and treating it as absent is what makes it fall back to the enrollment token or the legacy
+ * password instead of presenting a bearer nobody can verify. A malformed store is logged, since it
+ * means something wrote it that should not have.
+ *
+ * @param id Receives the agent id; at least W_REENROLL_ID_SIZE bytes.
+ * @param id_size Size of @p id.
+ * @param secret Receives the secret; at least W_REENROLL_SECRET_SIZE bytes.
+ * @param secret_size Size of @p secret.
+ * @return 1 when a usable credential was read, 0 otherwise (both buffers are then empty).
+ */
+int w_reenroll_secret_load(char* id, size_t id_size, char* secret, size_t secret_size);
+
+/**
+ * @brief Overwrites and removes the store.
+ *
+ * Called when the manager has told us this credential is dead (`401 unknown_agent` on a
+ * re-enrollment attempt): keeping it would only produce the same rejection for ever, and the agent
+ * has to fall back to whatever else it has.
+ *
+ * The overwrite pass is best-effort by nature -- on a journalling filesystem, a copy-on-write one,
+ * or any SSD doing wear levelling, the old bytes may survive somewhere the agent cannot reach. It
+ * is worth doing anyway (it removes the obvious plaintext copy) but it is not an erasure
+ * guarantee, and nothing here should be described as one.
+ */
+void w_reenroll_secret_clear(void);
+
+/**
+ * @brief Obtains a re-enrollment secret for an agent that already holds a key (issue #39315).
+ *
+ * The other way into this store. `POST /enroll` mints the secret for an agent that enrolls, which
+ * leaves three populations without one: a 4.x agent upgraded to 5.0 over WPK (it keeps its
+ * client.keys identity, so it never enrolls -- and #39064 deleted its etc/authd.pass, so its key is
+ * then the only credential it has), an agent enrolled over port 1515, and one whose manager-side row
+ * was rebuilt from client.keys. The moment the manager stops accepting that key, recovery needs an
+ * operator at the endpoint -- exactly the cost the token-less upgrade path exists to remove.
+ *
+ * So the agent asks, over the authenticated HTTPS channel it already has: POST /enroll/secret, with
+ * the `wazuh-agent+jwt` bearer signed by its own key. The manager mints the secret for the identity
+ * that bearer proves and **does not touch the key**, which is what makes this safe to repeat: a lost
+ * response leaves the agent exactly as it was, and the next start asks again.
+ *
+ * Does nothing (and costs no request) when the store already holds a credential, or when there is no
+ * client.keys entry to authenticate with. **One attempt per start, never fatal**: 429 (the manager's
+ * shared /enroll rate limit, the expected answer during a fleet-wide upgrade wave) and 503 are
+ * handled identically -- one log line, no retry in this process.
+ *
+ * Must run AFTER the privilege drop, so the store it writes is owned by the same user client.keys
+ * ends up owned by, and off the boot path: it performs a network round trip whose whole budget would
+ * otherwise be added to the start of every agent whose manager is unreachable, for a credential
+ * nothing at boot consumes.
+ *
+ * Synchronous. Call w_reenroll_secret_bootstrap_async() from a start path; this one is the unit the
+ * tests drive directly.
+ */
+void w_reenroll_secret_bootstrap(void);
+
+/**
+ * @brief Runs w_reenroll_secret_bootstrap() on a detached thread, after a random delay.
+ *
+ * What a start path calls. It returns immediately, so nothing about the boot waits on a network
+ * round trip for a credential only a future recovery consumes, and a failure to spawn the thread is
+ * logged rather than fatal.
+ *
+ * The delay is jitter, not a timer: the fleet this exists for -- 4.x agents upgraded to 5.0 over
+ * WPK -- restarts together, so without a spread every agent would ask in the same instant, be paced
+ * by the manager's shared rate limit, and re-synchronize on the following boot.
+ *
+ * Both start paths call it and neither may skip it: the POSIX one in `agentd.c` (`AgentdStart`) and
+ * the Windows one in `win32/win_utils.c` (`local_start`), which is a separate function because
+ * `agentd.c` is not part of the Windows build -- the same split `w_agent_token_bootstrap()` lives
+ * with. Call it once the HTTPS transport is up.
+ */
+void w_reenroll_secret_bootstrap_async(void);
+
+#endif /* REENROLL_SECRET_H */

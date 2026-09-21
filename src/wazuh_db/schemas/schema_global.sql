@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS agent (
     ip TEXT,
     register_ip TEXT,
     internal_key TEXT,
+    reenroll_secret TEXT,
     os_name TEXT,
     os_version TEXT,
     os_major TEXT,

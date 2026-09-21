@@ -52,6 +52,12 @@ _Static_assert(REMOTED_HTTPS_DUAL_STACK_YES == REMOTED_MODULE_HTTPS_DUAL_STACK_Y
 _Static_assert(REMOTED_HTTPS_DUAL_STACK_NO == REMOTED_MODULE_HTTPS_DUAL_STACK_NO,
                "REMOTED_HTTPS_DUAL_STACK_NO must match REMOTED_MODULE_HTTPS_DUAL_STACK_NO");
 
+// Same reasoning again, for the rate-limit "not configured" sentinel: w_remoted_build_module_config()
+// copies the two rate fields across with no translation, and a mismatch would turn "the operator
+// never configured this" into a negative rate the module would have to guess about.
+_Static_assert(REMOTED_HTTPS_RATE_LIMIT_UNSET == REMOTED_MODULE_RATE_LIMIT_UNSET,
+               "REMOTED_HTTPS_RATE_LIMIT_UNSET must match REMOTED_MODULE_RATE_LIMIT_UNSET");
+
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
@@ -109,6 +115,9 @@ STATIC char* build_limits_json(const module_limits_t *limits);
 
 // Read control endpoint internal options into the C++ module's config struct
 STATIC void remoted_module_control_config(remoted_module_config_t *rm_config);
+
+// Fail closed when the HTTPS listener's certificate or private key is missing or unreadable
+STATIC void w_remoted_check_tls_files(const remoted_module_config_t *rm_config);
 
 // Headers for messages
 #define UPGRADE_ACK_HEADER "u:upgrade_module:"
@@ -301,10 +310,10 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     // per chunk, so a client that keeps reading slowly can hold a transfer open indefinitely.
     // A mass upgrade (the whole fleet fetching a WPK at once, many over slow links) is therefore
     // bounded only by this value, which is why it is settable rather than fixed.
-    rm_config->max_parallel_connections = getDefine_Int_default("remoted", "max_parallel_connections", 1, 65536, 512);
+    rm_config->max_parallel_connections = getDefine_Int_default("remoted", "max_parallel_connections", 1, 65536, 256);
     // max_deferred_requests caps requests parked awaiting a downstream service (503 over it).
     // No Retry-After is sent: the agent runs its own retry/backoff on a 503.
-    rm_config->max_deferred_requests = getDefine_Int_default("remoted", "max_deferred_requests", 1, 65536, 256);
+    rm_config->max_deferred_requests = getDefine_Int_default("remoted", "max_deferred_requests", 1, 65536, 128);
 
     // Downstream (async UDS client to the engine's event ingress) tunables.
     rm_config->downstream_connect_timeout = getDefine_Int_default("remoted", "downstream_connect_timeout", 1, 60, 2);
@@ -331,7 +340,7 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->jwt_max_age = getDefine_Int_default("remoted", "jwt_max_age", 1, 43200, 60);
     rm_config->jwt_clock_skew = getDefine_Int_default("remoted", "jwt_clock_skew", 0, 43200, 30);
     rm_config->jwt_clock_skew_set = 1;
-    rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 10485760);
+    rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 5242880);
 }
 
 /**
@@ -412,6 +421,16 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
     rm_config->http_max_body_size = logr->https.max_body_size;
     rm_config->dual_stack = logr->https.dual_stack;
 
+    // Copied verbatim, sentinel included: RemotedConfig() starts them at
+    // REMOTED_HTTPS_RATE_LIMIT_UNSET and Read_Remote_JSON() only overwrites what the document
+    // carries, so "the operator set 0" and "nobody configured this" stay distinguishable all the
+    // way into the module. The flag says the two carry real values at all, which is what keeps a
+    // zeroed struct (or remoted_module_start(NULL)) meaning "module defaults" rather than
+    // "unlimited". The bucket depth is not configurable: the module derives it from the rate.
+    rm_config->rate_limit_set = 1;
+    rm_config->enroll_rate_limit = logr->https.enroll_rate_limit;
+    rm_config->cacerts_rate_limit = logr->https.cacerts_rate_limit;
+
     if (logr->https.bind_addr) {
         snprintf(rm_config->bind_address, sizeof(rm_config->bind_address), "%s", logr->https.bind_addr);
     }
@@ -430,6 +449,10 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
 
     if (logr->https.ca) {
         snprintf(rm_config->ca_path, sizeof(rm_config->ca_path), "%s", logr->https.ca);
+    }
+
+    if (logr->https.ca_certificate) {
+        snprintf(rm_config->ca_certificate_path, sizeof(rm_config->ca_certificate_path), "%s", logr->https.ca_certificate);
     }
 
     if (logr->https.ciphers) {
@@ -541,6 +564,37 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     }
 }
 
+/**
+ * @brief Refuse to start when the HTTPS agent listener's certificate or private key cannot be read.
+ *        The manager does not generate these files: the operator provisions them. The configuration
+ *        validator wazuh-manager-control runs first (wazuh-manager-conf validate) only checks that they
+ *        exist, as root; this runs after remoted has entered its chroot and dropped privileges (main.c,
+ *        HandleRemote()), so access(R_OK) answers the question the C++ module would otherwise die on:
+ *        can the service user open them? Exactly one deterministic message is logged (the paths as
+ *        configured, relative to the chroot) and the daemon exits; the module's own exception
+ *        (RestinioHttpServer) stays as the last resort for files that exist but fail to load.
+ *        certificate_path/private_key_path are always populated: the schema gives both options a
+ *        non-empty default and w_remoted_build_module_config() copies them verbatim.
+ */
+STATIC void w_remoted_check_tls_files(const remoted_module_config_t *rm_config) {
+    const char *certificate = rm_config->certificate_path;
+    const char *key = rm_config->private_key_path;
+    const bool certificate_ok = access(certificate, R_OK) == 0;
+    const bool key_ok = access(key, R_OK) == 0;
+
+    if (certificate_ok && key_ok) {
+        return;
+    }
+
+    if (!certificate_ok && !key_ok) {
+        merror_exit(REMOTED_TLS_FILES_MISSING_BOTH, certificate, key);
+    } else if (!certificate_ok) {
+        merror_exit(REMOTED_TLS_FILES_MISSING_CERT, certificate);
+    } else {
+        merror_exit(REMOTED_TLS_FILES_MISSING_KEY, key);
+    }
+}
+
 void w_remoted_validate_module_config(void) {
     remoted_module_config_t rm_config;
     w_remoted_build_module_config(&logr, &rm_config);
@@ -585,6 +639,7 @@ void HandleSecure()
         remoted_module_config_t rm_config;
         w_remoted_build_module_config(&logr, &rm_config);
         remoted_module_control_config(&rm_config);
+        w_remoted_check_tls_files(&rm_config);
 
         char *rm_cluster_name = get_cluster_name();
         if (rm_cluster_name) {

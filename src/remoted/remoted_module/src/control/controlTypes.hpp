@@ -40,7 +40,9 @@ namespace remoted::control
         ProtocolError,
         ConnectRefused,
         Io,
-        QueueFull
+        QueueFull,
+        Stopping ///< The client is draining/shutting down. Distinct from Io so a caller can
+                 ///< recognise a clean-shutdown drain instead of a genuine transport failure.
     };
 
     struct HostInfo

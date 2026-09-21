@@ -13,7 +13,7 @@
 
 namespace
 {
-    constexpr std::size_t DEFAULT_MAX_BODY_SIZE {10U * 1024U * 1024U};
+    constexpr std::size_t DEFAULT_MAX_BODY_SIZE {5U * 1024U * 1024U};
 } // namespace
 
 namespace remoted::auth

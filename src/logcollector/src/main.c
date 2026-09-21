@@ -169,11 +169,13 @@ int main(int argc, char **argv)
     /* Start signal handler */
     StartSIG(ARGV0);
 
-    // Set max open files limit
-    struct rlimit rlimit = { nofile, nofile };
+    // Raise the soft file descriptor limit; the hard limit belongs to whoever started the agent
+    {
+        const long effective = w_raise_nofile_limit((long)nofile, "logcollector.rlimit_nofile");
 
-    if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
-        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
+        if (effective >= 0) {
+            nofile = (rlim_t)effective;
+        }
     }
 
     if (!run_foreground) {

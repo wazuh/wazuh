@@ -15,6 +15,7 @@
 #include "downloadMetrics.hpp"         // DownloadMetrics
 #include "endpoint.hpp"                // AuthenticatedHandler
 #include "http_server/IHttpServer.hpp" // HttpResponse, IByteSource
+#include "iAgentGroupSource.hpp"       // IAgentGroupSource
 
 #include <cstddef>
 #include <cstdint>
@@ -193,11 +194,16 @@ namespace remoted::endpoints::download
      * so it is called out as a limit of the mechanism rather than treated as a hole. Adding a
      * realpath() containment check is what would close it if that assumption ever weakens.
      *
-     * @note The manager does NOT check that the requesting agent belongs to what it asks for: per
-     * the protocol decision on #38022, `resource_id` is what the agent requests and the group
-     * lookup was removed. Any authenticated agent can therefore fetch any group's (or multigroup's)
-     * merged configuration. `/control` must report `config_hash` over the file this resolves to for
-     * the selector it hands the agent, or that agent re-downloads on every notify.
+     * @note This function is deliberately identity-free: it maps a resource id to a path and
+     * nothing else, which is what keeps the containment argument above about the id GRAMMARS and
+     * O_NOFOLLOW alone. Authorization happens ABOVE it, in makeHandler(): a config request is
+     * served only when `resource_id` equals the selector the agent's own groups produce, so by the
+     * time a path is resolved here the caller is entitled to it. Do not add an identity check to
+     * this layer, and do not remove the one above it.
+     *
+     * `/control` must report `config_hash` over the file this resolves to for the selector it hands
+     * the agent, or that agent re-downloads on every notify -- the same selector both sides derive
+     * through remoted::control::makeConfigToken(), which is why they cannot disagree.
      */
     LocateResult locateResource(const DownloadRequest& request, const ResourcePaths& paths);
 
@@ -323,8 +329,14 @@ namespace remoted::endpoints::download
      * @param metrics The remoted.download.* set (copied into the handler, cold path): admission
      * outcomes plus started-transfer count/bytes, all recorded before the streaming pump runs.
      * The default null object counts nothing.
+     *
+     * @param groups Resolves the selector the calling agent is entitled to. Required, with no
+     * default: a config download is authorized against it, so silently defaulting it would mean
+     * "serve anything to anyone". A null pointer, and an agent the source does not know, are both
+     * DENIED (403) -- there is no fallback to the id the request itself carries.
      */
-    remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths = {}, DownloadMetrics metrics = {});
+    remoted::endpoints::AuthenticatedHandler
+    makeHandler(ResourcePaths paths, DownloadMetrics metrics, std::shared_ptr<const IAgentGroupSource> groups);
 
 } // namespace remoted::endpoints::download
 
