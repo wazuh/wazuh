@@ -24,7 +24,7 @@ static std::string getVersion(const bool isMinor = false)
     std::string version;
 
     DWORD versionNumber {};
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
 
     if (IsWindows8OrGreater()
             && currentVersion.dword(isMinor ? "CurrentMinorVersionNumber" : "CurrentMajorVersionNumber", versionNumber))
@@ -55,7 +55,7 @@ static std::string getBuild()
 {
     std::string build;
 
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
     build = currentVersion.string("CurrentBuildNumber");
 
     return build;
@@ -95,7 +95,7 @@ static std::string getRelease(const std::string& build)
         {"18363", "1909"},
     };
     std::string release;
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
 
     if (IsWindows8OrGreater())
     {
@@ -121,18 +121,6 @@ static std::string getRelease(const std::string& build)
                 release = "sp" + Utils::trim(sp.substr(SERVICE_PACK_PREFIX.size()));
             }
         }
-        else
-        {
-            Utils::Registry currentVersion64{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
-
-            if (currentVersion64.string("CSDVersion", sp))
-            {
-                if (Utils::startsWith(sp, SERVICE_PACK_PREFIX))
-                {
-                    release = "sp" + Utils::trim(sp.substr(SERVICE_PACK_PREFIX.size()));
-                }
-            }
-        }
     }
 
     return release;
@@ -141,7 +129,7 @@ static std::string getRelease(const std::string& build)
 static std::string getDisplayVersion()
 {
     std::string display_version;
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
 
     if (!currentVersion.string("DisplayVersion", display_version))
     {
