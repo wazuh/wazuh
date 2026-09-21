@@ -65,6 +65,7 @@ All notable changes to this project will be documented in this file.
 - Fixed multiple checks with deprecated commands in Apple macOS 26.0 SCA file. ([#38669](https://github.com/wazuh/wazuh/pull/38669))
 - Fixed false-pass on the CIS Amazon Linux 2023 and Ubuntu 18.04 minimum password-days checks. ([#39047](https://github.com/wazuh/wazuh/pull/39047))
 - Fixed a `Permisive` typo failing the SELinux mode check on compliant hosts across 5 SCA policies. ([#39166](https://github.com/wazuh/wazuh/pull/39166))
+- Fixed the CIS Ubuntu 20.04 and Debian 10 "nologin is not listed in /etc/shells" check always reporting passed, by matching `nologin` instead of the never-occurring `nologins`. ([#39474](https://github.com/wazuh/wazuh/pull/39474))
 
 ### Other
 
