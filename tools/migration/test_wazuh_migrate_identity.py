@@ -388,6 +388,19 @@ class MigrationToolTest(unittest.TestCase):
         connection.close()
         self.assertEqual(1, self.check())
 
+    def test_check_reports_an_agent_the_bundle_never_carried(self):
+        self.assertEqual(0, self.export())
+        self.assertEqual(0, self.do_import())
+        connection = sqlite3.connect(os.path.join(self.target, "queue", "db", "global.db"))
+        connection.execute(
+            "INSERT INTO agent (id, name, ip, register_ip, date_add) VALUES"
+            " (9, 'some-host', '10.0.0.9', 'any', 1700000009)")
+        connection.commit()
+        connection.close()
+        self.assertEqual(1, self.check(),
+                         "an id the bundle never carried is the signature of an agent that"
+                         " re-enrolled against an empty registry")
+
     def test_check_reports_a_missing_group_folder(self):
         self.assertEqual(0, self.export())
         self.assertEqual(0, self.do_import())

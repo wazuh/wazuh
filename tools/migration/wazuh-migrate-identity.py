@@ -767,6 +767,21 @@ def command_check(args):
             for name in manifest.get("groups", []):
                 if name not in groups:
                     problems.append("group '%s' is not in the registry." % name)
+
+            # An agent the bundle never carried is either one enrolled on purpose since the
+            # migration, or -- the case worth catching -- one that reached the manager while the
+            # registry was still empty, was told its key was unknown, and enrolled again under a
+            # new id. That second case is silent everywhere else.
+            with open_ro(db_path) as connection:
+                extra = [row for row in connection.execute(
+                    "SELECT id, name FROM agent WHERE id > 0 ORDER BY id")
+                    if row[0] not in expected_ids]
+            if extra:
+                problems.append(
+                    "%d agent(s) in the registry were not in the bundle: %s. If they appeared"
+                    " during the migration, they are agents that re-enrolled against the empty"
+                    " registry and lost their original id."
+                    % (len(extra), ", ".join("%d (%s)" % row for row in extra)))
             if untyped:
                 problems.append("%d agent row(s) have an os_platform but no os_type." % untyped)
     else:

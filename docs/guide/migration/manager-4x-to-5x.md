@@ -120,29 +120,44 @@ Without the pair the manager does not start, and says so before any daemon runs:
 A pair that exists but is unreadable by the service user passes that check and stops
 `wazuh-manager-remoted` instead, with `Cannot start the HTTPS agent listener: ...`.
 
+### Install it out of the fleet's reach
+
+The installer starts the manager, and it has to: the registry is created by the manager itself, from
+a schema compiled into it, so there is no way to prepare one beforehand. That leaves a window in
+which a 5.0 manager is answering on the migrated address with an empty registry — and a **5.0 agent**
+that reaches it in that window is told its key is unknown. Its re-enrollment policy then does exactly
+what it should, which is the problem: it enrolls again and comes back with a **new id**, and a new
+name too, its hostname, if `<agent_name>` is not configured. The identity this whole procedure exists
+to preserve is gone for that agent, and nothing says so:
+
+```console
+agent:   WARNING: https_client: credential rejected (401); re-enrolling.
+manager: INFO: Agent key generated for agent 'agent-ubuntu24' (requested locally)
+```
+
+Close the window rather than racing it. Install with the agent listeners pointed away from the
+fleet, which the installation variables already support:
+
+```bash
+sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='127.0.0.1' \
+     WAZUH_REMOTE_LEGACY_ENABLED='no' \
+     dpkg -i wazuh-manager_*.deb
+```
+
+The manager comes up complete — it creates its databases, the API answers, and you can do every
+step below — while no agent can reach it on `1514`, `1515` or `1517`. In
+[Step 5](#5-start-the-manager-open-it-to-the-fleet-and-verify-the-registry) you set
+`<remote><https><bind_addr>` back to `0.0.0.0` and `<remote><legacy><enabled>` back to `yes`, and the
+fleet reconnects against a registry that already knows it.
+
+A 4.x agent is not exposed to any of this: it has no re-enrollment policy and simply retries. Stopping
+the agents works too, but on a fleet of any size the two variables are the cheaper guarantee.
+
 Once the installation finishes, stop the manager before touching any of its files:
 
 ```bash
 systemctl stop wazuh-manager
 ```
-
-> [!IMPORTANT]
-> The installer starts the manager, so between that and the `stop` above there is a window in which
-> a 5.0 manager is answering on the migrated address with an empty registry. A **5.0 agent** that
-> reaches it in that window is told its key is unknown, and its re-enrollment policy does exactly
-> what it should: it enrolls again, and comes back with a **new id** — and a new name too, its
-> hostname, if `<agent_name>` is not configured. The identity this whole procedure exists to
-> preserve is then gone for that agent, silently:
->
-> ```console
-> agent:   WARNING: https_client: credential rejected (401); re-enrolling.
-> manager: INFO: Agent key generated for agent 'agent-ubuntu24' (requested locally)
-> ```
->
-> Stop the agents, or keep `1514`, `1515` and `1517` closed to them, until [Step 5](#5-start-the-manager-and-verify-the-registry).
-> A 4.x agent is not exposed to this: it has no re-enrollment policy and simply retries.
-
-Do not connect any agent yet.
 
 ## 3. Restore the identity data
 
@@ -270,7 +285,7 @@ user, role, policy, rule and relationship you created yourself (ids from 100 up)
 the 4.x default policies, including those naming endpoints removed in 5.0 (`syscollector:read`,
 `active-response:command`, `rootcheck:*`, `ciscat:*`, ...), replaced by the 5.0 set.
 
-Verify after [Step 5](#5-start-the-manager-and-verify-the-registry) that your own users authenticate
+Verify after [Step 5](#5-start-the-manager-open-it-to-the-fleet-and-verify-the-registry) that your own users authenticate
 and their roles still apply. Minting enrollment tokens never depends on this: the
 `wazuh-manager-authd` command line does not go through the API.
 
@@ -308,7 +323,23 @@ Validate before starting:
 /var/wazuh-manager/bin/wazuh-manager-conf validate
 ```
 
-## 5. Start the manager and verify the registry
+## 5. Start the manager, open it to the fleet, and verify the registry
+
+If you installed with the listeners pointed away from the fleet, put them back now that the registry
+knows every agent:
+
+```xml
+<remote>
+  <https>
+    <bind_addr>0.0.0.0</bind_addr>
+    ...
+  </https>
+  <legacy>
+    <enabled>yes</enabled>
+    ...
+  </legacy>
+</remote>
+```
 
 ```bash
 systemctl start wazuh-manager
