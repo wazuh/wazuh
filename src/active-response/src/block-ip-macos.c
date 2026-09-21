@@ -90,6 +90,31 @@ int main(int argc, char **argv) {
     return result;
 }
 
+// pfctl and route write to the pipe wpopenv binds, and wpclose() closes the
+// read end before waiting, so the output has to be read first or the child is
+// killed by SIGPIPE. Keeps the first non-blank line, where both tools put the
+// reason a command failed.
+static int drain_and_close(wfd_t *wfd, char *first_line, size_t size) {
+    char buffer[OS_MAXSTR];
+
+    if (first_line && size) {
+        first_line[0] = '\0';
+    }
+
+    while (fgets(buffer, OS_MAXSTR, wfd->file_out) != NULL) {
+        if (first_line && size && first_line[0] == '\0' && buffer[strspn(buffer, " \t\r\n")] != '\0') {
+            strncpy(first_line, buffer, size - 1);
+            first_line[size - 1] = '\0';
+            char *newline = strchr(first_line, '\n');
+            if (newline) {
+                *newline = '\0';
+            }
+        }
+    }
+
+    return wpclose(wfd);
+}
+
 firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, const char *argv0) {
     (void)ip_version;  // pf handles both IPv4 and IPv6
     char log_msg[OS_MAXSTR];
@@ -117,10 +142,10 @@ firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, co
         char output_buf[OS_MAXSTR];
         bool enabled = false;
 
+        // Read to the end rather than breaking out: an unread pipe kills pfctl
         while (fgets(output_buf, OS_MAXSTR, wfd->file_out)) {
             if (strstr(output_buf, "Status: Enabled") != NULL) {
                 enabled = true;
-                break;
             }
         }
         wpclose(wfd);
@@ -142,19 +167,14 @@ firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, co
     char *exec_cmd_check[] = {pfctl_path, "-t", "wazuh_fwtable", "-T", "show", NULL};
     wfd = wpopenv(pfctl_path, exec_cmd_check, W_BIND_STDOUT | W_BIND_STDERR);
 
-    bool table_exists = false;
-    if (wfd) {
-        // Consume all output to prevent SIGPIPE
-        char buffer[OS_MAXSTR];
-        while (fgets(buffer, OS_MAXSTR, wfd->file_out) != NULL) {
-            // Just consume the output
-        }
-
-        int check_result = wpclose(wfd);
-        if (WIFEXITED(check_result) && WEXITSTATUS(check_result) == 0) {
-            table_exists = true;
-        }
+    if (!wfd) {
+        write_debug_file(argv0, "Unable to execute pfctl table check");
+        os_free(pfctl_path);
+        return FIREWALL_EXECUTION_FAILED;
     }
+
+    int check_result = drain_and_close(wfd, NULL, 0);
+    bool table_exists = WIFEXITED(check_result) && WEXITSTATUS(check_result) == 0;
 
     // The table is an administrator-owned precondition, as it is for npf in
     // block-ip-unix.c: decline instead of editing /etc/pf.conf.
@@ -177,23 +197,12 @@ firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, co
         return FIREWALL_EXECUTION_FAILED;
     }
 
-    // Consume output to prevent SIGPIPE and capture any error messages
-    char buffer[OS_MAXSTR];
-    char error_msg[OS_MAXSTR];
-    memset(error_msg, '\0', OS_MAXSTR);
-    while (fgets(buffer, OS_MAXSTR, wfd->file_out) != NULL) {
-        if (error_msg[0] == '\0') {
-            strncpy(error_msg, buffer, OS_MAXSTR - 1);
-        }
-    }
+    char error_msg[OS_SIZE_1024];
+    int wp_closefd = drain_and_close(wfd, error_msg, sizeof(error_msg));
 
-    int wp_closefd = wpclose(wfd);
     if (WIFEXITED(wp_closefd) && WEXITSTATUS(wp_closefd) != 0) {
         memset(log_msg, '\0', OS_MAXSTR);
         if (error_msg[0] != '\0') {
-            // Remove newline
-            char *newline = strchr(error_msg, '\n');
-            if (newline) *newline = '\0';
             snprintf(log_msg, OS_MAXSTR - 1, "pfctl table operation failed (exit %d): %s",
                     WEXITSTATUS(wp_closefd), error_msg);
         } else {
@@ -205,6 +214,16 @@ firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, co
         return FIREWALL_EXECUTION_FAILED;
     }
 
+    // "0/1 addresses deleted." means the address was never in the table, so pf
+    // is not the method that blocked it. Decline instead of reporting success,
+    // or the chain stops here and whichever method really blocked it is never
+    // asked to undo it.
+    if (action == DISABLE_COMMAND && strstr(error_msg, "0/1 addresses deleted") != NULL) {
+        log_firewall_action(argv0, LOG_LEVEL_INFO, "pf", "skip", "address not in wazuh_fwtable");
+        os_free(pfctl_path);
+        return FIREWALL_INVALID_STATE;
+    }
+
     // If adding, also kill existing connections from this IP
     if (action == ENABLE_COMMAND) {
         memset(log_msg, '\0', OS_MAXSTR);
@@ -214,7 +233,7 @@ firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, co
         char *exec_cmd3[] = {pfctl_path, "-k", (char *)srcip, NULL};
         wfd = wpopenv(pfctl_path, exec_cmd3, W_BIND_STDERR);
         if (wfd) {
-            wpclose(wfd);
+            drain_and_close(wfd, NULL, 0);
         }
     }
 
@@ -335,6 +354,7 @@ firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_vers
         }
 
         // Copy all lines except those containing the srcip
+        bool entry_found = false;
         memset(output_buf, '\0', OS_MAXSTR - 25);
         while (fgets(output_buf, OS_MAXSTR - 25, host_deny_fp)) {
             if (strstr(output_buf, srcip) == NULL) {
@@ -345,6 +365,8 @@ firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_vers
                     write_fail = true;
                     break;
                 }
+            } else {
+                entry_found = true;
             }
             memset(output_buf, '\0', OS_MAXSTR - 25);
         }
@@ -363,6 +385,15 @@ firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_vers
         }
 
         unlink(temp_hosts_deny_path);
+
+        // The address was never listed here, so hosts.deny is not the method
+        // that blocked it. Decline so the chain keeps looking, rather than
+        // reporting an unblock this method never performed.
+        if (!entry_found) {
+            log_firewall_action(argv0, LOG_LEVEL_INFO, "hostsdeny", "skip", "address not listed in hosts.deny");
+            release_ar_lock(&lock_ctx);
+            return FIREWALL_INVALID_STATE;
+        }
     }
 
     release_ar_lock(&lock_ctx);
@@ -396,26 +427,24 @@ firewall_result_t try_route_macos(const char *srcip, int action, int ip_version,
     const char *gateway = (ip_version == 6) ? "::1" : "127.0.0.1";
     wfd_t *wfd = NULL;
 
-    // Both streams are bound (not just stderr): route(8) reports the
-    // EEXIST/ESRCH failures try_route_macos checks for below via printf() to
-    // stdout, not stderr (confirmed against Apple's route.tproj/route.c) --
-    // matches try_pf_macos's own W_BIND_STDOUT | W_BIND_STDERR three lines
-    // up in this same file, for the same reason.
+    // Only stderr is bound: route(8) always writes a line to stdout, and only
+    // writes to stderr when the routing socket write failed, which is what
+    // makes an empty stderr usable as the success signal below.
     if (action == ENABLE_COMMAND) {
         if (ip_version == 6) {
             char *exec_cmd[] = {route_path, "-q", "add", "-inet6", (char *)srcip, (char *)gateway, "-blackhole", NULL};
-            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDOUT | W_BIND_STDERR);
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
         } else {
             char *exec_cmd[] = {route_path, "-q", "add", (char *)srcip, (char *)gateway, "-blackhole", NULL};
-            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDOUT | W_BIND_STDERR);
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
         }
     } else {
         if (ip_version == 6) {
             char *exec_cmd[] = {route_path, "-q", "delete", "-inet6", (char *)srcip, (char *)gateway, "-blackhole", NULL};
-            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDOUT | W_BIND_STDERR);
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
         } else {
             char *exec_cmd[] = {route_path, "-q", "delete", (char *)srcip, (char *)gateway, "-blackhole", NULL};
-            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDOUT | W_BIND_STDERR);
+            wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
         }
     }
 
@@ -426,44 +455,31 @@ firewall_result_t try_route_macos(const char *srcip, int action, int ip_version,
         return FIREWALL_EXECUTION_FAILED;
     }
 
-    // Drain stderr (bound via W_BIND_STDERR) before wpclose, same pattern
-    // try_pf_macos already uses -- an unread pipe can leave the child
-    // blocked on write(), and the first line is kept for diagnostics.
-    char buffer[OS_MAXSTR];
-    char error_msg[OS_MAXSTR];
-    memset(error_msg, '\0', OS_MAXSTR);
-    while (fgets(buffer, OS_MAXSTR, wfd->file_out) != NULL) {
-        if (error_msg[0] == '\0') {
-            strncpy(error_msg, buffer, OS_MAXSTR - 1);
-        }
-    }
+    char error_msg[OS_SIZE_1024];
+    int wp_closefd = drain_and_close(wfd, error_msg, sizeof(error_msg));
 
-    int wp_closefd = wpclose(wfd);
-    if (WIFEXITED(wp_closefd) && WEXITSTATUS(wp_closefd) == 0) {
+    // macOS route(8) exits 0 whatever happens: newroute() returns void and
+    // main() calls exit(0) unconditionally, so the wait status says nothing.
+    // What it does do is leave stderr empty on success and write the reason
+    // there on failure, so that is what decides the result.
+    if (error_msg[0] == '\0') {
+        if (WIFSIGNALED(wp_closefd)) {
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "route command terminated by signal %d", WTERMSIG(wp_closefd));
+            write_debug_file(argv0, log_msg);
+            return FIREWALL_EXECUTION_FAILED;
+        }
         return FIREWALL_SUCCESS;
     }
 
-    // route(8) exits non-zero when the blackhole route already exists (add)
-    // or is already gone (delete) -- treat both as a successful no-op, same
-    // as try_hostsdeny_macos already does for a duplicate hosts.deny entry.
-    // Confirmed against Apple's own route.tproj/route.c: ESRCH is mapped to
-    // "not in table" explicitly; EEXIST falls through to strerror(), which
-    // is "File exists" on macOS/BSD.
+    // The route is already there (add) or already gone (delete): the end state
+    // is the one that was asked for, so report success either way.
     if (strstr(error_msg, "File exists") != NULL || strstr(error_msg, "not in table") != NULL) {
         return FIREWALL_SUCCESS;
     }
 
     memset(log_msg, '\0', OS_MAXSTR);
-    if (error_msg[0] != '\0') {
-        char *newline = strchr(error_msg, '\n');
-        if (newline) *newline = '\0';
-        snprintf(log_msg, OS_MAXSTR - 1, "route command failed (exit %d): %s",
-                 WIFEXITED(wp_closefd) ? WEXITSTATUS(wp_closefd) : wp_closefd, error_msg);
-    } else if (WIFSIGNALED(wp_closefd)) {
-        snprintf(log_msg, OS_MAXSTR - 1, "route command terminated by signal %d", WTERMSIG(wp_closefd));
-    } else {
-        snprintf(log_msg, OS_MAXSTR - 1, "route command failed with status %d", wp_closefd);
-    }
+    snprintf(log_msg, OS_MAXSTR - 1, "route command failed: %s", error_msg);
     write_debug_file(argv0, log_msg);
     return FIREWALL_EXECUTION_FAILED;
 }

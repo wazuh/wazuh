@@ -331,16 +331,23 @@ void test_try_pf_macos_existing_table_check_output_is_drained(void **state) {
     will_return(__wrap_wpopenv, show_wfd);
     will_return(__wrap_wpclose, 0);
 
-    /* pfctl -T add, then pfctl -k */
+    /* pfctl -T add, then pfctl -k -- the kill's pipe carries the ALTQ warnings
+     * and has to be drained too, or pfctl dies before DIOCKILLSTATES */
     will_return(__wrap_wpopenv, make_wfd(""));
     will_return(__wrap_wpclose, 0);
-    will_return(__wrap_wpopenv, make_wfd(""));
+    wfd_t *kill_wfd = make_wfd("No ALTQ support in kernel\nALTQ related functions disabled\n");
+    will_return(__wrap_wpopenv, kill_wfd);
     will_return(__wrap_wpclose, 0);
 
     firewall_result_t result = try_pf_macos("192.0.2.66", ENABLE_COMMAND, 4, "block-ip");
 
     assert_int_equal(result, FIREWALL_SUCCESS);
     assert_true(feof(show_wfd->file_out));
+    assert_true(feof(kill_wfd->file_out));
+    // The last spawn on the block path is the connection kill
+    assert_int_equal(wpopenv_captured_argc(), 3);
+    assert_string_equal(wpopenv_captured_argv(1), "-k");
+    assert_string_equal(wpopenv_captured_argv(2), "192.0.2.66");
 }
 
 /* A signalled check answers nothing, so it must not read as "table present". */
@@ -357,8 +364,9 @@ void test_try_pf_macos_signalled_table_check_declines(void **state) {
     assert_int_equal(result, FIREWALL_INVALID_STATE);
 }
 
-/* A check that cannot be spawned still must not reach /etc/pf.conf. */
-void test_try_pf_macos_table_check_spawn_failure_declines(void **state) {
+/* A check that cannot be spawned is an execution failure, not a missing table,
+ * and still must not reach /etc/pf.conf. */
+void test_try_pf_macos_table_check_spawn_failure_is_execution_failed(void **state) {
     (void)state;
 
     expect_pf_enabled();
@@ -367,7 +375,7 @@ void test_try_pf_macos_table_check_spawn_failure_declines(void **state) {
 
     firewall_result_t result = try_pf_macos("192.0.2.66", ENABLE_COMMAND, 4, "block-ip");
 
-    assert_int_equal(result, FIREWALL_INVALID_STATE);
+    assert_int_equal(result, FIREWALL_EXECUTION_FAILED);
 }
 
 /* Same on the unblock path. */
@@ -399,6 +407,47 @@ void test_try_pf_macos_existing_table_deletes_ip(void **state) {
     firewall_result_t result = try_pf_macos("192.0.2.66", DISABLE_COMMAND, 4, "block-ip");
 
     assert_int_equal(result, FIREWALL_SUCCESS);
+    // The last spawn is the table operation: confirms delete, not add
+    assert_int_equal(wpopenv_captured_argc(), 6);
+    assert_string_equal(wpopenv_captured_argv(3), "-T");
+    assert_string_equal(wpopenv_captured_argv(4), "delete");
+    assert_string_equal(wpopenv_captured_argv(5), "192.0.2.66");
+}
+
+/* pfctl reports "0/1 addresses deleted." and still exits 0 when the address was
+ * never in the table. pf is then not the method that blocked it, so it must
+ * decline and let the chain reach the one that did. */
+void test_try_pf_macos_disable_address_not_in_table_declines(void **state) {
+    (void)state;
+
+    expect_pf_enabled();
+
+    will_return(__wrap_wpopenv, make_wfd("   198.51.100.1\n"));
+    will_return(__wrap_wpclose, 0);
+
+    will_return(__wrap_wpopenv, make_wfd("0/1 addresses deleted.\n"));
+    will_return(__wrap_wpclose, 0);
+
+    firewall_result_t result = try_pf_macos("192.0.2.66", DISABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_INVALID_STATE);
+}
+
+/* macOS route(8) exits 0 even when the routing socket write failed, so a zero
+ * status must not be read as success on its own. */
+void test_try_route_macos_zero_exit_with_stderr_is_failure(void **state) {
+    (void)state;
+
+    char *route_path = strdup("/sbin/route");
+    expect_string(__wrap_get_binary_path, command, "route");
+    will_return(__wrap_get_binary_path, route_path);
+    will_return(__wrap_get_binary_path, 0);
+    will_return(__wrap_wpopenv, make_wfd("route: writing to routing socket: Network is unreachable\n"));
+    will_return(__wrap_wpclose, 0);
+
+    firewall_result_t result = try_route_macos("2001:db8::1", ENABLE_COMMAND, 6, "block-ip");
+
+    assert_int_equal(result, FIREWALL_EXECUTION_FAILED);
 }
 
 // ============================================================================
@@ -467,9 +516,11 @@ int main(void) {
         cmocka_unit_test_teardown(test_try_pf_macos_missing_table_declines, teardown_wfds),
         cmocka_unit_test_teardown(test_try_pf_macos_existing_table_check_output_is_drained, teardown_wfds),
         cmocka_unit_test_teardown(test_try_pf_macos_signalled_table_check_declines, teardown_wfds),
-        cmocka_unit_test_teardown(test_try_pf_macos_table_check_spawn_failure_declines, teardown_wfds),
+        cmocka_unit_test_teardown(test_try_pf_macos_table_check_spawn_failure_is_execution_failed, teardown_wfds),
         cmocka_unit_test_teardown(test_try_pf_macos_missing_table_declines_on_disable, teardown_wfds),
         cmocka_unit_test_teardown(test_try_pf_macos_existing_table_deletes_ip, teardown_wfds),
+        cmocka_unit_test_teardown(test_try_pf_macos_disable_address_not_in_table_declines, teardown_wfds),
+        cmocka_unit_test_teardown(test_try_route_macos_zero_exit_with_stderr_is_failure, teardown_wfds),
         cmocka_unit_test(test_try_hostsdeny_macos_missing_file_is_not_available),
         cmocka_unit_test(test_block_ip_macos_main_stock_install_falls_back_to_route),
     };
