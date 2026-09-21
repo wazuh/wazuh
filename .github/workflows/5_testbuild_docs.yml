@@ -5,6 +5,7 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - "docs/**"
+      - "src/shared_modules/manager_config/schema/**"
       - ".github/workflows/5_testbuild_docs.yml"
 
 concurrency:

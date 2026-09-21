@@ -17,7 +17,7 @@ checksum is a *result to record*, not a failure — so the sender separates two 
 
 | Condition | Classification | Sender behavior | Invalidates the run? |
 |---|---|---|---|
-| Enrollment refused by authd | Setup error | Report authd's own answer verbatim, abort before sending load | **Yes**, immediately |
+| Enrollment refused (`POST /enroll` answered other than `200`, or authd refused on 1515) | Setup error | Report the manager's own answer verbatim — with what the status calls for — and abort before sending load | **Yes**, immediately |
 | Scenario validation error (unknown field, bad reference) | Setup error | Refuse to start, naming the field | **Yes**, before any traffic |
 | `401` on any request | Sender bug (signing/clock) | Abort with the canonical string and timestamp used, for diagnosis | **Yes**, immediately |
 | `400` from `/control` (any subtype) | Sender bug | Abort naming the subtype (`invalid_json`, `invalid_version`, `invalid_host_info`, …) | **Yes**, immediately |

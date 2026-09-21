@@ -87,10 +87,15 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->port = 0;
     cfg->queue_size = 131072;
     cfg->legacy_enabled = false;
+    cfg->legacy_ca_delivery = true;
     cfg->allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
     cfg->connection_overtake_time = 60;
     cfg->rids_closing_time = REMOTED_RIDS_CLOSING_TIME_DEFAULT;
     cfg->https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
+    /* Not 0: that is "no rate limit", a setting an operator can ask for explicitly. UNSET is what
+     * makes an <https> block that never mentions these fall back to the module's own defaults. */
+    cfg->https.enroll_rate_limit = REMOTED_HTTPS_RATE_LIMIT_UNSET;
+    cfg->https.cacerts_rate_limit = REMOTED_HTTPS_RATE_LIMIT_UNSET;
 
     // Initialize all internal options
     receive_chunk = (unsigned)getDefine_Int_default("remoted", "receive_chunk", 1024, 16384, 4096);
@@ -107,7 +112,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     pass_empty_keyfile = getDefine_Int_default("remoted", "pass_empty_keyfile", 0, 1, 1);
     ctrl_msg_queue_size = (size_t)getDefine_Int_default("remoted", "control_msg_queue_size", 4096, 0x1 << 20, 16384);
     keyupdate_interval = getDefine_Int_default("remoted", "keyupdate_interval", 1, 3600, 10);
-    nofile = getDefine_Int_default("remoted", "rlimit_nofile", 1024, 1048576, 458752);
+    nofile = getDefine_Int_default("remoted", "rlimit_nofile", 1024, 1048576, 65536);
     sender_pool = getDefine_Int_default("remoted", "sender_pool", 1, 64, 8);
     request_pool = getDefine_Int_default("remoted", "request_pool", 1, 4096, 1024);
     request_timeout = getDefine_Int_default("remoted", "request_timeout", 1, 600, 10);

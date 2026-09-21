@@ -1,0 +1,47 @@
+# Certificate inventory of the devcontainer, read by scripts/wazuh-certs-tool.sh
+# (same shape as the installation assistant's config.yml: nodes.indexer|manager|dashboard[]
+# with name, ip and dns). Keep comments on their own lines: the tool's sed/awk parser
+# does not strip trailing comments.
+#
+# Several names below are load-bearing. Do not rename them without updating the
+# consumers listed next to each one.
+nodes:
+  # Wazuh indexer nodes.
+  # "node-1" is pinned by the indexer package (plugins.security.nodes_dn expects
+  # CN=node-1,OU=Wazuh,O=Wazuh,L=California,C=US) and by e2e/wazuh-indexer/entrypoint.sh,
+  # which copies node-1.pem / node-1-key.pem by name.
+  indexer:
+    - name: node-1
+      ip: 127.0.0.1
+
+  # Wazuh manager nodes. Every entry yields <name>.pem / <name>-key.pem (indexer
+  # connector, mTLS client) and <name>-remoted.pem / <name>-remoted-key.pem (agent
+  # listener leaf followed by the CA, EKU serverAuth). The SAN of the listener leaf is
+  # ip + dns + the node name, so agents must reach the manager through one of them:
+  #   - wazuh-manager: DNS name the integration tests assert (SAN DNS:wazuh-manager)
+  #   - localhost / 127.0.0.1: local clients (curl, openssl s_client, benchmarks)
+  #   - host.docker.internal: how the containerised agents (e2e/agents) and the
+  #     dashboard reach the devcontainer host
+  # The first "- name:" of this section is the node e2e/wazuh_copy_certs.sh deploys
+  # into the manager (override with MANAGER_NODE_NAME).
+  #
+  # Real deployment example (the installation assistant reads the same file):
+  #   manager:
+  #     - name: manager-01
+  #       ip: 10.0.0.10
+  #       dns:
+  #         - siem.example.local
+  #         - manager-01.example.local
+  manager:
+    - name: wazuh-1
+      ip: 127.0.0.1
+      dns:
+        - wazuh-manager
+        - localhost
+        - host.docker.internal
+
+  # Wazuh dashboard nodes. "dashboard" is copied by name in
+  # e2e/wazuh-dashboard/entrypoint.sh (dashboard.pem / dashboard-key.pem).
+  dashboard:
+    - name: dashboard
+      ip: 127.0.0.1

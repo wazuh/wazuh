@@ -12,8 +12,11 @@
 #ifndef _REMOTED_HTTP_SERVER_INTERFACE_HPP
 #define _REMOTED_HTTP_SERVER_INTERFACE_HPP
 
+#include "caCertificateSource.hpp"
 #include "inFlightBudget.hpp"
+#include "tlsCertificateStatus.hpp"
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -257,15 +260,17 @@ namespace remoted::http
         /// agent and manager surfaces as 404. Public HTTPS listener only (the local admin UDS
         /// server is never prefixed). Note: the prefix consumes part of maxUrlSize.
         std::string globalPrefix {};
-        std::string certificatePath; ///< TLS certificate chain (PEM) path.
-        std::string privateKeyPath;  ///< TLS private key (PEM) path.
-        std::string caPath;          ///< CA bundle (PEM) used to verify client certificates.
-        std::string ciphers;         ///< TLS 1.3 ciphersuite override
+        std::string certificatePath;   ///< TLS certificate chain (PEM) path.
+        std::string privateKeyPath;    ///< TLS private key (PEM) path.
+        std::string caPath;            ///< CA bundle (PEM) used to verify client certificates.
+        std::string caCertificatePath; ///< CA that signs the listener certificate (PEM); served on GET /cacerts
+                                       ///< (remote.https.ca_certificate). Not the client-verification caPath.
+        std::string ciphers;           ///< TLS 1.3 ciphersuite override
         ClientVerificationMode verificationMode {ClientVerificationMode::None}; ///< Client-certificate strictness.
         DualStackMode dualStackMode {DualStackMode::Unset}; ///< IPV6_V6ONLY override (IPv6 bind only).
         std::size_t ioThreads {2};                          ///< RESTinio/asio I/O threads (accept + read/write).
         std::size_t workerThreads {4};                      ///< Handler worker-pool size (blocking work offload).
-        std::size_t maxBodySize {20U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
+        std::size_t maxBodySize {10U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
         std::size_t readTimeoutSec {10};               ///< Time to receive a full request on a connection (also covers
                                                        ///< the TLS handshake window).
         std::size_t writeTimeoutSec {10};              ///< Time allowed to write a response.
@@ -283,7 +288,11 @@ namespace remoted::http
         /// Max in-flight (unprocessed) request payload bytes before new requests get 503. 0 disables the limit.
         std::size_t maxInFlightBytes {256U * 1024U * 1024U};
         /// Max simultaneous TCP connections (bounds the read-phase peak: maxParallelConnections * maxBodySize).
-        std::size_t maxParallelConnections {512};
+        std::size_t maxParallelConnections {256};
+        /// How often the served certificate is re-evaluated (expiry, and whether caCertificatePath
+        /// signs it) after the start-time evaluation -- see IHttpServer::certificateStatus(). Not a
+        /// configuration option: buildHttpServerConfig() leaves the default, tests inject a short one.
+        std::chrono::seconds certificateStatusInterval {std::chrono::hours {24}};
     };
 
     /**
@@ -304,6 +313,17 @@ namespace remoted::http
         std::size_t budgetInFlightBytes {0};   ///< Bytes currently reserved by admitted requests.
         std::size_t budgetInFlightCount {0};   ///< Requests currently holding a reservation.
         std::uint64_t budgetRejectedTotal {0}; ///< Requests the budget has shed (cumulative).
+        /// Connections currently open on the listener, and the ceiling they are counted against
+        /// (`remoted.max_parallel_connections`). Distinct from budgetInFlightCount, which counts
+        /// REQUESTS holding a byte reservation: a connection is open from the accept until it
+        /// closes, which on a streamed response (POST /download) is the whole transfer.
+        ///
+        /// This is the only visibility into that ceiling. Reaching it does NOT produce an error:
+        /// the transport postpones the accept and the connection waits in the kernel's backlog,
+        /// so saturation shows up as latency, never as a counted rejection -- which is exactly
+        /// why the level has to be observable.
+        std::size_t connectionsOpen {0};
+        std::size_t connectionsMax {0};
     };
 
     /**
@@ -376,6 +396,42 @@ namespace remoted::http
          * Dump-cadence only -- implementations may take a lock.
          */
         virtual TransportDiagnostics diagnostics() const
+        {
+            return {};
+        }
+
+        /**
+         * @brief Latest evaluation of the served TLS certificate: days to expiry and whether
+         *        HttpServerConfig::caCertificatePath signs it (the CA `GET /cacerts` hands out).
+         *
+         * Expiry is evaluated once before the listener starts accepting and again every
+         * HttpServerConfig::certificateStatusInterval (that is what `evaluations` counts). The CA
+         * half is taken from the same CaCertificateSource `/cacerts` answers from, on every call,
+         * so it can never disagree with the endpoint: `caMatchesLeaf`, `caSubjects`, the chain
+         * fields and `caReadFailure` describe the file as of the last read -- or, while the file
+         * cannot be read, the last good read of it. The facade publishes it as the
+         * `remoted.server.tls.*` pulls and `/cacerts` refuses (503) to serve a CA that reads
+         * `caMatchesLeaf == false`. Callable from any thread; a default-constructed snapshot
+         * (nothing known, 0 evaluations) before start() and on implementations that never
+         * evaluate, like the test fakes.
+         */
+        virtual TlsCertificateSnapshot certificateStatus() const
+        {
+            return {};
+        }
+
+        /**
+         * @brief Current state of the CA file: the certificates to publish and whether they sign
+         *        the served leaf, taken from one read (see CaCertificateSource).
+         *
+         * What `GET /cacerts` answers with. Re-read on each call and re-validated whenever the
+         * file's content changes, so the PEM handed out and the verdict about it always describe
+         * the same bytes. A read that fails keeps the last good snapshot (with `lastReadFailure`
+         * set); a readable file with no certificate in it clears it. Callable from any thread; an
+         * empty snapshot before start() and on implementations that hold no certificate, like the
+         * test fakes.
+         */
+        virtual CaCertificateSnapshot caCertificateSnapshot() const
         {
             return {};
         }

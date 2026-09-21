@@ -41,6 +41,49 @@ message-handler worker pool, and the fd closer thread).
   therefore needs `wazuh-manager-modulesd` restarted as well as `wazuh-manager-remoted`, or upgrade
   requests will keep applying the previous value.
 
+### legacy.ca_delivery
+
+Send the manager's CA certificate to a pre-v5.0.0 agent during a remote upgrade, so the upgraded
+agent has a trust anchor for the HTTPS listener it is about to start using.
+
+A 5.0 manager is always a fresh install, so a 4.x fleet reaches 5.0 by remote upgrade. Once
+upgraded, those agents speak HTTPS on 1517 but hold no anchor on disk, and they cannot enrol again
+to obtain one — they already carry a `client.keys` identity, so they never see an enrollment token.
+With this enabled, remoted pushes `remote.https.ca_certificate` to the agent's `var/incoming/` as
+`root-ca.pem` over the same encrypted, integrity-protected channel it uses for the WPK, immediately
+before issuing the `upgrade` command. The agent's installer picks it up from there.
+
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+- **Note:** Disable when a corporate PKI or a configuration-management tool distributes the anchor
+  by its own means. With `no`, the upgrade push is byte-for-byte what it was before this option
+  existed — no file is read and no additional command is sent.
+- **Note:** The CA is only sent when the upgrade targets v5.0.0 or later. An agent being stepped up
+  to an intermediate 4.14.x release does not receive it: nothing on that version would read it.
+- **Read by remoted only.** Unlike `legacy.enabled` and `https.verification_mode` below, this value
+  is not cached by modulesd, so a change takes effect after restarting `wazuh-manager-remoted`
+  alone.
+- **Never fails an upgrade.** If the CA cannot be sent, the upgrade proceeds and the manager logs a
+  warning naming the CA step specifically. An agent off the air is worse than an agent without an
+  anchor.
+
+The manager refuses to send a CA that does not sign the certificate its own HTTPS listener serves,
+and logs an error instead — an agent that pinned such an anchor would fail every connection
+afterwards, which is worse than sending nothing. This is the same check `GET /cacerts` applies
+before handing the CA to a 5.x agent, so the two paths can never disagree.
+
+**Certificate requirements.** The manager cannot verify that its certificate covers the address a
+given agent dials: behind NAT, a load balancer, or in a cluster, it does not know that address. Two
+requirements are therefore the operator's to meet:
+
+- Every node's agent-facing certificate must be issued by the CA being distributed. Certificates
+  are not synchronized across cluster nodes, and the poller sends the CA configured on whichever
+  node holds the agent's session — so a worker distributes its own `remote.https.ca_certificate`.
+- That certificate must carry every address agents actually dial among its subjectAltName entries:
+  the cluster VIP, each node's own address, and any NAT address. remoted logs a warning at start-up
+  if the certificate carries no usable SAN at all — meaning no DNS or IP entry beyond loopback and
+  the host's own name — but it cannot detect a SAN list that is merely missing the right address.
+
 ### legacy.port
 
 Listening port for agent connections.
@@ -115,7 +158,7 @@ Time in seconds before allowing a new connection to overtake an existing agent c
 
 **XML Section:** `<remote><https>`
 
-Configuration for the RESTinio-based HTTPS listener. All options are optional; an absent `<https>` block (or an absent individual option) falls back to the module's built-in defaults, so the listener is usable without configuring anything here. There is no `enabled` toggle: the listener always attempts to start, and self-gates on the presence of a valid certificate/key.
+Configuration for the RESTinio-based HTTPS listener. All options are optional; an absent `<https>` block (or an absent individual option) falls back to the module's built-in defaults, so the listener is usable without configuring anything here. There is no `enabled` toggle: the listener always starts, and the manager fails closed without a readable certificate/key — it does not generate them, the operator provisions them (see [Certificate provisioning and fail-closed start](https-events-api.md#certificate-provisioning-and-fail-closed-start)).
 
 ### https.port
 
@@ -175,6 +218,12 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 Path to the TLS certificate chain (PEM) presented by the server.
 
 - **Default value:** `etc/certs/remoted.pem` (relative to the manager's chroot)
+- **Note:** the manager does not generate this file. Provision it — a leaf of the CA in
+  `ca_certificate`, issued by the installation assistant's `wazuh-certs-tool` — as
+  `wazuh-manager:wazuh-manager 640` before the first start. Missing: `wazuh-manager-control start`
+  refuses with `(1244): Invalid configuration at '/remote/https/certificate': file not found: …`.
+  Present but unreadable by the service user: `wazuh-manager-remoted` exits with
+  `Cannot start the HTTPS agent listener: …`.
 - **Note:** at startup the manager warns if this certificate has expired or expires within 30 days,
   so a silent outage for verifying agents can be prevented before it happens.
 
@@ -183,6 +232,9 @@ Path to the TLS certificate chain (PEM) presented by the server.
 Path to the TLS private key (PEM) matching `certificate`.
 
 - **Default value:** `etc/certs/remoted-key.pem` (relative to the manager's chroot)
+- **Note:** provisioned together with `certificate`, same ownership and the same fail-closed
+  behaviour when missing (`(1244) … '/remote/https/key': file not found`) or unreadable by the
+  service user.
 
 ### https.ca
 
@@ -191,6 +243,27 @@ Path to a CA bundle (PEM) used to verify client (agent) certificates.
 - **Default value:** `etc/certs/root-ca.pem` (relative to the manager's chroot)
 - **Note:** Only actually read when `verification_mode` is `certificate`; harmless
   if left at its default and `verification_mode` stays `none`. See the special case below.
+
+### https.ca_certificate
+
+Path to the CA certificate (PEM) that signs the listener certificate (`certificate`). It is the
+certificate the manager serves on `GET /cacerts` and the one enrollment tokens pin, so agents can
+verify the listener without an out-of-band CA copy.
+
+Only its **certificates** are ever published: the manager parses the file and re-serialises the
+X.509 blocks it found, so a PEM that also carries the CA's private key (a misprovisioned bundle)
+hands out the certificate and nothing else, on `GET /cacerts` as well as in a `--embed-ca` token.
+A file it cannot parse to the end is refused whole rather than served up to its first bad block.
+
+- **Default value:** `etc/certs/root-ca.pem` (relative to the manager's chroot; the installer
+  writes the option explicitly — the file itself is provisioned by the operator together with the
+  listener certificate it signs, the manager generates neither)
+- **Note:** this is **not** the client-verification CA (`ca`): `ca` verifies agent certificates,
+  `ca_certificate` is what agents use to verify the manager. An empty value is rejected at startup
+  (`(1244): Invalid configuration at '/remote/https/ca_certificate': does not satisfy 'minLength'`).
+  The file is not required to exist for the manager to start: when it is missing, `GET /cacerts`
+  answers 404. Replacing it needs no restart — the manager notices a change in the file's content
+  (not its timestamp or size) and revalidates it in the very request that reads it.
 
 ### https.verification_mode
 
@@ -240,10 +313,97 @@ protocol version.
 
 ### https.max_body_size
 
-Maximum accepted HTTP request body size.
+Maximum accepted HTTP request body size, enforced by the transport.
 
-- **Default value:** `20MB`
-- **Allowed values:** Size with optional unit suffix (`B`, `KB`, `MB`, `GB`); bare number defaults to bytes.
+- **Default value:** `10M` (10 MiB)
+- **Allowed values:** Positive byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`, case-insensitive). `K`/`M`/`G` are binary multiples; a bare number is bytes. Suffixes such as `MB` are rejected.
+- **Effect:** Raising the limit admits larger wire bodies and increases potential memory use per connection;
+  lowering it rejects larger requests at the transport. The authentication and shared-memory limits still apply.
+- **Note:** Keep it **above** [`remoted.auth_max_body_size`](#remotedauth_max_body_size) (5 MiB by
+  default). Breaching *this* cap is not a `413`: the parser fails on `Content-Length` and the
+  connection is closed with no response at all, which an agent cannot tell apart from a network
+  failure — so it never splits its batch and retries the same bytes indefinitely. The auth limit is
+  what produces the `413` the agent acts on. Setting the two equal makes the closed connection the
+  only outcome, because the `Content-Length` check always fires first.
+
+### Rate limits of the unauthenticated routes
+
+Two of the HTTPS routes cannot be put behind the bearer-token gateway, because their callers do not
+yet have the credential it verifies: `POST /enroll` (an enrolling agent has no `client.keys` entry
+yet) and `GET /cacerts` (a caller fetching the trust anchor does not have one yet by definition).
+For those two, these two options cap how fast the manager serves the route at all.
+
+**Neither is written into the shipped `wazuh-manager.conf`** — the defaults below apply without any
+`<https>` block, and an operator only adds a line to change one.
+
+What is being bounded is the **work behind the route**, not the transport. A `/enroll` request costs
+the manager a round trip to authd over its local socket and, on a cluster worker, a further round
+trip to the master; a caller pays one HTTP request for it. The
+[in-flight byte budget](#remotedmax_inflight_bytes) and
+[`remoted.max_parallel_connections`](#remotedmax_parallel_connections) bound the *memory* a request
+holds and shed with a `503`; these bound *how often* the route is served and refuse with a `429` and
+a `Retry-After`.
+
+> **The limit is a ceiling for the endpoint, not an allowance per agent.** One bucket per route,
+> shared by every caller: a single client asking fast enough can consume the whole route's budget,
+> and a fleet-wide burst is paced by the same number. Size these for the fleet — at
+> `enroll_rate_limit` `100`, a bootstrap of 10 000 agents needs at least ~100 seconds of `/enroll`
+> traffic. The agent retries with its own backoff ramp, so a paced rollout completes; it is slower,
+> not broken.
+>
+> **In a cluster the ceiling is per node.** Every manager runs its own limiter, so N nodes behind a
+> load balancer admit up to N times the configured rate between them, and an agent refused by one
+> node may be admitted by the next one it is balanced to. Size the value for what a single node
+> should serve, not for the cluster total.
+
+Each limit is a token bucket, and the configured rate is the only number: **the bucket depth is
+derived from it, at twice the rate, and is not configurable.** Real traffic does not arrive evenly
+spaced — a hundred agents coming back after an outage arrive in the same instant, not one every
+10 ms — so a bucket holding exactly one second's worth would refuse a perfectly acceptable load on
+its arrival pattern alone. Two seconds' worth absorbs that without raising the sustained ceiling.
+
+`remoted.<endpoint>.rate_limit.available` in
+[`GET /metrics`](metrics.md#rate-limits--remotedendpointrate_limit) is the live headroom (its maximum
+is that derived depth), `.burst` reports the depth in force, and `remoted.<endpoint>.rate_limited`
+counts what was refused.
+
+### https.enroll_rate_limit
+
+Sustained `POST /enroll` requests per second the manager serves, counted for the endpoint as a
+whole.
+
+- **Default value:** `100`
+- **Allowed values:** Integer from `0` to `100000`. `0` disables the limit.
+- **Note:** Short bursts of up to twice this value are absorbed before the rate paces them.
+- **Effect:** Requests over the limit are answered `429` with `Retry-After` **without reaching
+  authd**, so a peer with no usable credential can no longer turn `/enroll` into an amplifier onto
+  the cluster's internal socket.
+- **Note:** Higher than `/cacerts`'s default even though it is the more expensive route: every agent
+  must pass through it at least once (a bootstrap, or a mass re-enrollment after a credential
+  rotation).
+
+### https.cacerts_rate_limit
+
+Sustained `GET /cacerts` requests per second the manager serves, counted for the endpoint as a
+whole.
+
+- **Default value:** `50`
+- **Allowed values:** Integer from `0` to `100000`. `0` disables the limit.
+- **Note:** Short bursts of up to twice this value are absorbed before the rate paces them.
+- **Note:** The route is cheap — a file read plus a hash, with the parsed result cached while the
+  file's content is unchanged, and no downstream service behind it — but an agent that cannot fetch
+  the anchor cannot complete a handshake at all, so do not set this below the rate at which new
+  agents appear.
+
+**Example — raising the enrollment ceiling for a wide rollout:**
+
+```xml
+<remote>
+  <https>
+    <enroll_rate_limit>500</enroll_rate_limit>
+  </https>
+</remote>
+```
 
 ---
 
@@ -254,6 +414,16 @@ Maximum accepted HTTP request body size.
 **Internal Options prefix:** `remoted.*`
 
 Internal options provide advanced tuning for performance, threading, memory management, and monitoring.
+
+Three things to know before editing that file:
+
+- **It ships empty.** The installed template carries only comments, so every option below is
+  serving its compiled-in default. Tuning one means adding the `name=value` line yourself.
+- **An out-of-range or non-numeric value is fatal**, not clamped: the daemon refuses to start and
+  logs which option it rejected. Keep the documented range in view when editing.
+  Put comments on separate lines beginning with `#`; an inline comment becomes part of the value.
+- **The file is per node and is never synchronized.** Nothing in a cluster propagates it, so a
+  value set on one manager makes an agent's behavior depend on which node it lands on.
 
 ### remoted.debug
 
@@ -373,11 +543,17 @@ introducing a second one for the same concept.
 
 ### remoted.rlimit_nofile
 
-Maximum number of open file descriptors for the remoted process.
+Soft file descriptor limit remoted raises itself to at start.
 
-- **Default value:** `458752`
-- **Allowed values:** Positive integer
-- **Note:** The default already supports ~200K concurrent connections. Only increase above the default (up to the allowed maximum of `1048576`) if you observe file-descriptor exhaustion under very large agent counts — do not set below the default of `458752`.
+- **Default value:** `65536`
+- **Allowed values:** Integer from `1024` to `1048576`
+- **Note:** The daemon never raises its hard limit, which belongs to whatever starts the manager
+  (`LimitNOFILE=65536` in the service unit, the init script, or the container's `ulimits.nofile`),
+  and never lowers a soft limit that is already higher. A hard limit below this value is kept and
+  logged once as a warning; raise that limit first to go higher. HTTPS connections are bounded by
+  `remoted.max_parallel_connections` (default `512`), far below this value; only a large 4.x fleet
+  on the legacy TCP listener needs more. `GET /manager/configuration` reports the effective value.
+  See [File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits).
 
 ### remoted.send_chunk
 
@@ -689,8 +865,13 @@ Maximum in-flight (unprocessed) request payload bytes before the HTTPS server sh
 
 Maximum simultaneous HTTPS connections.
 
-- **Default value:** `512`
+- **Default value:** `256`
 - **Allowed values:** Integer from `1` to `65536`
+- **Note:** Reaching this limit **rejects nothing**: the transport postpones the accept and the
+  connection waits in the kernel's listen backlog, so saturation shows up as added latency rather
+  than as an error the agent can see. There is consequently no rejection counter for it — watch
+  [`remoted.server.connections.open`](metrics.md#public-transport-backpressure--remotedserverbudget)
+  against `.max` instead, which is the only visibility into how close the listener is running to it.
 - **Note:** Bounds the read-phase memory peak (~`max_parallel_connections` × `max_body_size`). Also
   the only bound on concurrent streamed responses (`POST /download`): chunked output rearms
   `remoted.http_write_timeout` per chunk and there is no per-stream limiter, so a fast reader holds
@@ -705,7 +886,13 @@ Maximum simultaneous HTTPS connections.
 
 Maximum requests parked awaiting a downstream service before replying with HTTP 503.
 
-- **Default value:** `256`
+- **Default value:** `128`
+- **Note:** Deliberately kept **below**
+  [`remoted.max_parallel_connections`](#remotedmax_parallel_connections). A forwarded request holds
+  a connection *and* a deferred slot, so whichever limit is lower is the one that binds. Keeping
+  this one lower means saturation is shed as an explicit, counted `503` the agent retries on,
+  instead of as invisible accept-queue latency. Raising it to or above the connection cap makes it
+  effectively unreachable.
 - **Allowed values:** Integer from `1` to `65536`
 - **Note:** No `Retry-After` header is sent; the agent runs its own retry/backoff on a 503. If you
   see warnings about this limit being reached, consider increasing it or investigating why the
@@ -830,6 +1017,10 @@ valid token is rejected as stale.
   usually means unsynchronized agent clocks — fix NTP before widening the window. Widening it also
   widens the replay window of a captured token (this profile has no replay store); rely on it only
   as far as the deployment's clock drift actually requires.
+- **Note:** The same window bounds every `wazuh-enroll+jwt` bearer of `POST /enroll` — the shared
+  enrollment password, an enrollment token, and the re-enrollment credential. The last one is
+  verified by `authd` on the master node, which reads this option and `remoted.jwt_clock_skew`
+  itself, so the two daemons never accept different windows.
 
 #### remoted.jwt_clock_skew
 
@@ -843,8 +1034,9 @@ between the two hosts is compensated for here.
 - **Allowed values:** Integer from `0` to `43200` (12h, the profile maximum; `0` means no tolerance
   at all)
 - **Note:** Shares the `remoted.auth.reject.clock_skew` counter with `remoted.jwt_max_age` (see
-  above). Also bounds the freshness window of `POST /enroll`. Widening it also widens the replay
-  window of a captured token (this profile has no replay store).
+  above). Also bounds the freshness window of every `POST /enroll` bearer, the re-enrollment
+  credential `authd` verifies on the master included (`authd` reads the same option). Widening it
+  also widens the replay window of a captured token (this profile has no replay store).
 
 #### remoted.auth_max_body_size
 
@@ -858,8 +1050,14 @@ see [HTTPS Agent API](https-events-api.md#content-encoding-zstd). Rejections aga
 are visible as `remoted.auth.reject.body_too_large` in
 [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject).
 
-- **Default value:** `10485760` (10 MiB)
+- **Default value:** `5242880` (5 MiB)
 - **Allowed values:** Integer from `1048576` (1 MiB) to `67108864` (64 MiB)
+- **Note:** This is the cap that answers a `413`, and the agent acts on it: it splits an oversized
+  `/stateless` batch and resends it smaller without dropping events, then ramps back up. Keep it
+  **below** [`https.max_body_size`](#httpsmax_body_size) so an oversized body reaches this check
+  instead of being cut at the transport with no response at all. The agent's own ceiling is
+  `<client><batch><size>` (1 MiB by default), which also bounds `/stateful` sessions, so the
+  default leaves 5x headroom — raise this one if that setting is raised.
 
 #### remoted.control_keepalive_throttle
 
@@ -968,13 +1166,22 @@ High-water mark for queued task-manager requests.
 
 #### remoted.enroll_password_refresh_interval
 
-Seconds between polls of `etc/authd.pass` for Password-mode `POST /enroll`.
+Seconds between fallback polls of the two `authd`-written secret files `POST /enroll` authenticates
+against: `etc/authd.pass` (the shared enrollment password, Password mode) and
+`etc/enrollment_tokens.json` (the enrollment token store, every mode). Both are also watched with
+`inotify`, which normally reacts first; this interval only bounds how long a missed notification can
+go unnoticed.
 
 - **Default value:** `10`
 - **Allowed values:** Integer from `1` to `3600`
 - **Note:** Until a change is picked up, Password-mode enrollment keeps failing with the old
   key; those rejections count as `remoted.auth.reject.enrollment_key_unavailable` in
-  [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject).
+  [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject). For the token store,
+  an unknown token id additionally forces one immediate re-read (at most one per second), so a
+  token minted on the master moments earlier is accepted on a worker without waiting for this poll
+  — provided the cluster sync has already delivered the file. Successful and failed loads of the
+  store are [`remoted.enroll.token_store.reloads.total` /
+  `reload_failures.total`](metrics.md#agent-enrollment--remotedenroll).
 
 #### remoted.authd_connect_timeout
 
@@ -1100,11 +1307,11 @@ Internal options (`/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`):
 ```conf
 remoted.control_msg_queue_size=32768
 remoted.keyupdate_interval=30
-remoted.rlimit_nofile=524288
 ```
 
-Only raise `rlimit_nofile` above its default (`458752`) if you observe file-descriptor exhaustion
-under very large fleets; do not set it lower than the default for a scale-up scenario.
+`rlimit_nofile` stays at its default (`65536`); a higher value only takes effect if the hard limit
+the manager is started with is raised as well (see
+[File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits)).
 
 ### High Throughput (>50K events/sec)
 
@@ -1245,7 +1452,7 @@ Require and validate agent client certificates, including a full IP-to-certifica
       <ca>etc/certs/root-ca.pem</ca>
       <verification_mode>certificate</verification_mode>
       <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
-      <max_body_size>20MB</max_body_size>
+      <max_body_size>20M</max_body_size>
     </https>
     <legacy>
       <port>1514</port>
@@ -1331,24 +1538,30 @@ The stateless metadata cache stores agent metadata extracted from keep-alive mes
 
 **Ephemeral/short-lived agents:**
 ```conf
-remoted.enrich_cache_expire_time=300  # 5 minutes (default)
+# 5 minutes (default)
+remoted.enrich_cache_expire_time=300
 ```
 
 **Stable agents with occasional restarts:**
 ```conf
-remoted.enrich_cache_expire_time=600  # 10 minutes
+# 10 minutes
+remoted.enrich_cache_expire_time=600
 ```
 
 **Long-running stable agents:**
 ```conf
-remoted.enrich_cache_expire_time=1800  # 30 minutes
+# 30 minutes
+remoted.enrich_cache_expire_time=1800
 ```
 
-The cleanup process runs every 60 seconds and removes entries that haven't received a keep-alive in the configured time period.
+The cleanup thread sleeps five seconds between passes. It removes expired entries once their
+pending events have drained; shutdown-marked entries are also removed after their queues drain.
 
 ### Hash Table Tuning
 
-Metadata cache bucket count (requires recompile of `src/remoted/agent_metadata_db.c`):
+Metadata cache bucket count. This is **not** an option: the value is a compile-time constant
+(`OSHash_setSize(agent_meta_map, 2048)` in `src/remoted/src/agent_metadata_db.c`), so changing it
+means rebuilding the manager.
 
 **<10K agents:**
 - Default: 2048 buckets

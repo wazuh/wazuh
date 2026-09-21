@@ -22,27 +22,48 @@
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
-#include "../wrappers/wazuh/shared/randombytes_wrappers.h"
+#include "../wrappers/externals/openssl/rand_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
-
-#define TEST_UNAME "Linux |ubuntu-focal |5.4.0-92-generic |#103-Ubuntu SMP Fri Nov 26 16:13:00 UTC 2021 " \
-                   "|x86_64 [Ubuntu|ubuntu: 20.04.2 LTS (Focal Fossa)] - Wazuh v4.3.4"
-
-/* The deterministic RNG above yields this password. */
-#define TEST_GENERATED_PASS "6e0d9a4188ac9de8fa695bd96e276090"
 
 /* The fake (non-NULL) FILE* handed back by the wfopen mock. */
 #define FAKE_FP ((FILE *)1)
 
-/* Drives the wrapped RNG so w_generate_random_pass() yields a deterministic value. */
-static void setup_deterministic_pass(void) {
-    will_return(__wrap_os_random, 146557);
-    will_return(__wrap_os_random, 314159);
-    will_return(__wrap_GetRandomNoise, strdup("Wazuh"));
-    will_return(__wrap_GetRandomNoise, strdup("The Open Source Security Platform"));
-    will_return(__wrap_time, 1655254875);
-    will_return_always(__wrap_getuname, TEST_UNAME);
+/* The generated password is CSPRNG output, so there is no literal to compare against: what the
+ * tests pin is its shape (AUTHD_PASS_HEX_CHARS lowercase hex) and that the value written to
+ * etc/authd.pass is the very value returned to the caller. */
+static int is_lower_hex_pass(const char *s) {
+    size_t i;
+
+    if (!s || strlen(s) != AUTHD_PASS_HEX_CHARS) {
+        return 0;
+    }
+    for (i = 0; i < AUTHD_PASS_HEX_CHARS; i++) {
+        if (!((s[i] >= '0' && s[i] <= '9') || (s[i] >= 'a' && s[i] <= 'f'))) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/* The password line handed to fprintf by the last generate+persist test, captured by
+ * check_persisted_pass_line() so the test can compare it with what the function returned. */
+static char persisted_pass[AUTHD_PASS_HEX_CHARS + 1];
+
+/* fprintf's formatted_msg check: "<64 lowercase hex>\n", captured into persisted_pass. */
+static int check_persisted_pass_line(const LargestIntegralType value,
+                                     const LargestIntegralType check_data) {
+    (void)check_data;
+    const char *line = (const char *)value;
+
+    assert_non_null(line);
+    assert_int_equal(strlen(line), AUTHD_PASS_HEX_CHARS + 1);
+    assert_int_equal(line[AUTHD_PASS_HEX_CHARS], '\n');
+
+    memcpy(persisted_pass, line, AUTHD_PASS_HEX_CHARS);
+    persisted_pass[AUTHD_PASS_HEX_CHARS] = '\0';
+    assert_true(is_lower_hex_pass(persisted_pass));
+    return 1;
 }
 
 /* Toggle file-mock mode around each authd.pass test. */
@@ -79,19 +100,39 @@ static void expect_pass_file_open_fail(void) {
 /* tests */
 
 static void test_w_generate_random_pass_success(void **state) {
-    char* result = NULL;
+    will_return(__wrap_RAND_bytes, 1); /* pass through to the real CSPRNG */
 
-    will_return(__wrap_os_random, 146557);
-    will_return(__wrap_os_random, 314159);
-    will_return(__wrap_GetRandomNoise, strdup("Wazuh"));
-    will_return(__wrap_GetRandomNoise, strdup("The Open Source Security Platform"));
-    will_return(__wrap_time, 1655254875);
-    will_return_always(__wrap_getuname, TEST_UNAME);
+    char *result = w_generate_random_pass();
 
-    result = w_generate_random_pass();
-
-    assert_string_equal(result, TEST_GENERATED_PASS);
+    assert_non_null(result);
+    assert_true(is_lower_hex_pass(result));
     os_free(result);
+}
+
+/* Two passwords in a row must differ: the value comes from the CSPRNG, not from a
+ * timestamp/hostname mix that repeats within the same second on the same host. */
+static void test_w_generate_random_pass_values_differ(void **state) {
+    will_return(__wrap_RAND_bytes, 1);
+    will_return(__wrap_RAND_bytes, 1);
+
+    char *first = w_generate_random_pass();
+    char *second = w_generate_random_pass();
+
+    assert_non_null(first);
+    assert_non_null(second);
+    assert_string_not_equal(first, second);
+    os_free(first);
+    os_free(second);
+}
+
+/* Fail closed: no weaker fallback generator when the CSPRNG fails. */
+static void test_w_generate_random_pass_csprng_failure(void **state) {
+    will_return(__wrap_RAND_bytes, 0); /* do not pass through... */
+    will_return(__wrap_RAND_bytes, 0); /* ...and report failure */
+    expect_string(__wrap__merror, formatted_msg,
+                  "Unable to generate an enrollment password: the CSPRNG (RAND_bytes) failed.");
+
+    assert_null(w_generate_random_pass());
 }
 
 static void test_w_authd_load_password_from_file(void **state) {
@@ -149,7 +190,7 @@ static void test_w_authd_load_password_generate_and_persist(void **state) {
 
     expect_pass_file_open_fail();   /* file does not exist */
 
-    setup_deterministic_pass();
+    will_return(__wrap_RAND_bytes, 1); /* pass through to the real CSPRNG */
 
     /* Open for writing the new password */
     expect_string(__wrap_wfopen, path, "etc/authd.pass");
@@ -157,18 +198,38 @@ static void test_w_authd_load_password_generate_and_persist(void **state) {
     will_return(__wrap_wfopen, FAKE_FP);
 
     expect_value(__wrap_fprintf, __stream, FAKE_FP);
-    expect_string(__wrap_fprintf, formatted_msg, TEST_GENERATED_PASS "\n");
-    will_return(__wrap_fprintf, 33);
+    expect_check(__wrap_fprintf, formatted_msg, check_persisted_pass_line, 0);
+    will_return(__wrap_fprintf, AUTHD_PASS_HEX_CHARS + 1);
 
     expect_value(__wrap_fclose, _File, FAKE_FP);
     will_return(__wrap_fclose, 0);
 
+    persisted_pass[0] = '\0';
+
     char *result = w_authd_load_password("etc/authd.pass", &generated);
 
     assert_non_null(result);
-    assert_string_equal(result, TEST_GENERATED_PASS);
+    assert_true(is_lower_hex_pass(result));
+    /* What was written is what the caller got: the file and the in-memory password cannot diverge. */
+    assert_string_equal(result, persisted_pass);
     assert_true(generated);
     os_free(result);
+}
+
+/* A CSPRNG failure must leave etc/authd.pass alone: no wfopen("w") is expected here, so any
+ * attempt to create the file fails the test before merror_exit() is even reached. */
+static void test_w_authd_load_password_csprng_failure_is_fatal(void **state) {
+    bool generated = false;
+
+    expect_pass_file_open_fail();   /* file does not exist */
+
+    will_return(__wrap_RAND_bytes, 0);
+    will_return(__wrap_RAND_bytes, 0);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Unable to generate an enrollment password: the CSPRNG (RAND_bytes) failed.");
+    expect_string(__wrap__merror_exit, formatted_msg, "Unable to generate random password. Exiting.");
+
+    expect_assert_failure(w_authd_load_password("etc/authd.pass", &generated));
 }
 
 static void test_w_authd_load_password_persist_failure_is_fatal(void **state) {
@@ -176,7 +237,7 @@ static void test_w_authd_load_password_persist_failure_is_fatal(void **state) {
 
     expect_pass_file_open_fail();   /* file does not exist */
 
-    setup_deterministic_pass();
+    will_return(__wrap_RAND_bytes, 1); /* pass through to the real CSPRNG */
 
     /* Open for writing fails */
     expect_string(__wrap_wfopen, path, "etc/authd.pass");
@@ -282,11 +343,14 @@ static void test_w_authd_read_password_too_long_returns_null(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_generate_random_pass_success),
+        cmocka_unit_test(test_w_generate_random_pass_values_differ),
+        cmocka_unit_test(test_w_generate_random_pass_csprng_failure),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_from_file, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_strips_crlf, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_too_long_is_fatal, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_empty_file_is_fatal, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_generate_and_persist, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_load_password_csprng_failure_is_fatal, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_persist_failure_is_fatal, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_short_line_is_fatal, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_spaces_only_is_fatal, test_setup, test_teardown),

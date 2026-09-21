@@ -26,6 +26,7 @@
 
 #include "auth/keystore.hpp"
 #include "auth/passwordKeySource.hpp"
+#include "auth/tokenKeySource.hpp"
 #include "common/requestOutcomeMetrics.hpp"
 #include "common/vdClient.hpp"
 #include "control/agentRegistry.hpp"
@@ -33,6 +34,7 @@
 #include "control/controlHandler.hpp"
 #include "control/hashCache.hpp"
 #include "control/metrics.hpp"
+#include "control/registryAgentGroupSource.hpp"
 #include "control/taskClient.hpp"
 #include "control/wazuhDBClient.hpp"
 #include "decoding/bodyDecoder.hpp"
@@ -42,10 +44,13 @@
 #include "downstream/downstreamConfig.hpp"
 #include "downstream/forwarderMetrics.hpp"
 #include "endpoints/authGateway.hpp"
+#include "endpoints/cacertsEndpoint.hpp"
 #include "endpoints/configEndpoint.hpp"
 #include "endpoints/controlEndpoint.hpp"
 #include "endpoints/downloadEndpoint.hpp"
 #include "endpoints/endpoint.hpp"
+#include "endpoints/rateLimitGate.hpp"
+#include "endpoints/reenrollSecretEndpoint.hpp"
 #include "endpoints/scanVdEndpoint.hpp"
 #include "endpoints/statefulEndpoint.hpp"
 #include "endpoints/statelessEndpoint.hpp"
@@ -84,7 +89,7 @@ constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 
 // Default cap on requests parked awaiting a downstream service (used when the caller leaves
 // remoted_module_config_t::max_deferred_requests <= 0).
-constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {256};
+constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {128};
 
 // Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status). RELATIVE on
 // purpose: remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
@@ -182,6 +187,38 @@ public:
         m_running = true;
     }
 
+    /**
+     * @brief Whether `remote.https.ca_certificate` signs the certificate the listener serves.
+     *
+     * Reads the SAME snapshot `GET /cacerts` consults, rather than re-deriving the answer: the
+     * certificate monitor already re-evaluates it on a timer, so a rotated CA is picked up here
+     * too, and the two consumers can never disagree about the same file.
+     *
+     * Exported to C (remoted_module_tls_ca_matches_leaf()) for remoted's legacy task poller, which
+     * must not hand a pre-v5.0.0 agent an anchor that cannot chain to this listener -- an agent
+     * that pins one fails every handshake afterwards, which is worse than having no anchor.
+     *
+     * @return 1 signs it, 0 explicitly does not, -1 unknown (listener down, never evaluated, or the
+     *         CA file was unreadable at the last tick). Callers must treat -1 as "proceed", the same
+     *         way the /cacerts route does: refusing on unknown turns one transient read failure into
+     *         a fleet-wide loss of the trust bootstrap.
+     */
+    int tlsCaMatchesLeaf()
+    {
+        std::lock_guard<std::mutex> lock {m_publicDiagMutex};
+        const auto server = m_publicDiagTarget.lock();
+        if (!server)
+        {
+            return -1;
+        }
+        const auto status = server->certificateStatus();
+        if (!status.caMatchesLeaf.has_value())
+        {
+            return -1;
+        }
+        return *status.caMatchesLeaf ? 1 : 0;
+    }
+
     void stop()
     {
         std::thread workerToJoin;
@@ -250,6 +287,11 @@ public:
             m_downstreamClient.reset();
             m_deferredLimiter.reset();
             m_authdClient.reset();
+            {
+                std::lock_guard<std::mutex> lock {m_rateLimitDiagMutex};
+                m_enrollRateLimiter.reset();
+                m_cacertsRateLimiter.reset();
+            }
 
             // Phase 4: NOW it's safe to fully tear down the transport (releases the I/O
             // runtime). Nothing can still be touching a responder: worker pool B was drained in
@@ -381,6 +423,50 @@ private:
             { responder->send(remoted::http::HttpResponse::json(200, R"({"status":"ok","module":"remoted"})")); },
             /*countAgainstBudget=*/false);
 
+        // /cacerts: the CA that signs this listener's certificate (remote.https.ca_certificate),
+        // published so an agent can bootstrap trust in the manager (RF-27). No auth (the caller has
+        // no key yet), no body, no gateway; budget-exempt like the probe above, because a trust
+        // bootstrap must not be shed under memory pressure. The transport hands over the CA file's
+        // current state -- the certificates it re-serialised and whether they sign the served leaf,
+        // from one read -- so the handler publishes a document we built (never the file's own
+        // bytes) and refuses with 503 a CA agents could not chain this listener to. Weak server
+        // pointer: the route must not keep the server alive, and after stop() resets m_httpServer
+        // the snapshot is empty, which answers 404.
+        //
+        // Budget-exempt does NOT mean unbounded: the route is wrapped in its own rate limit
+        // ('remote.https.cacerts_rate_limit'), a ceiling on how fast this endpoint is served at
+        // all. The two bounds answer different questions and are complementary, not alternatives:
+        // the byte budget is about the memory a request holds (and this route is exempt so a trust
+        // bootstrap is never shed under memory pressure), the rate limit is about how often the
+        // route may be served.
+        {
+            std::lock_guard<std::mutex> lock {m_rateLimitDiagMutex};
+            m_cacertsRateLimiter = std::make_shared<remoted::http::EndpointRateLimiter>(
+                remoted::endpoints::ratelimit::buildCacertsSettings(m_config));
+        }
+
+        m_httpServer->addRoute(
+            remoted::http::Method::Get,
+            "/cacerts",
+            remoted::endpoints::ratelimit::wrap(remoted::endpoints::cacerts::makeHandler(
+                                                    [weak = std::weak_ptr<remoted::http::IHttpServer>(
+                                                         m_httpServer)]() -> remoted::http::CaCertificateSnapshot
+                                                    {
+                                                        if (const auto server = weak.lock())
+                                                        {
+                                                            return server->caCertificateSnapshot();
+                                                        }
+                                                        return {};
+                                                    },
+                                                    m_cacertsMetrics,
+                                                    &m_cacertsHttpMetrics),
+                                                m_cacertsRateLimiter,
+                                                &remoted::endpoints::cacerts::rateLimitedResponse,
+                                                m_cacertsMetrics.rateLimited,
+                                                &m_cacertsHttpMetrics,
+                                                "GET /cacerts"),
+            /*countAgainstBudget=*/false);
+
         // /stateless: the gateway runs the full bearer-token validation and only calls this handler once
         // auth succeeds; makeHandler() then cross-checks the payload's claimed wazuh.agent.id against
         // the authenticated agent id (400 PayloadAgentMismatch on mismatch/malformed header), and on
@@ -398,14 +484,32 @@ private:
         // ResponseMode::Streamable because the transport fixes a response's output mode when the
         // request is dispatched -- a Buffered registration would make every download answer 500.
         //
-        // resource_id is the group (or WPK filename) the agent requests and the manager serves
-        // exactly that; there is no group lookup and no membership check (protocol decision on
-        // #38022). Containment therefore rests on the resource-id grammars plus O_NOFOLLOW.
-        m_authGateway->addAuthenticatedRoute(*m_httpServer,
-                                             remoted::http::Method::Post,
-                                             "/download",
-                                             remoted::endpoints::download::makeHandler({}, m_downloadMetrics),
-                                             remoted::http::ResponseMode::Streamable);
+        // Created here, ahead of the routes, because /download authorizes against it as well as
+        // /control filling it. Held in a local (not passed inline) so the registry-size pull metric
+        // can weak-point at it.
+        //
+        // Ownership is SHARED, not the ControlHandler's alone: the /download handler holds it too,
+        // through the RegistryAgentGroupSource captured into the route lambda that lives in the
+        // server's route table. The last reference therefore drops when stop() phase 4 releases
+        // m_httpServer -- NOT at phase 1b's m_controlHandler.reset() -- which is the quiesce point
+        // registerControlRegistryDiagnostics() documents for the pull metric.
+        auto agentRegistry = std::make_shared<remoted::control::AgentRegistry>();
+
+        // resource_id is what the agent requests, but it is no longer taken on trust: a config
+        // download is served only when it equals the selector this agent's own groups produce --
+        // the same string /control handed it as config_token -- and anything else is 403. The
+        // groups come from the registry /control already maintains, so there is no wazuh-db round
+        // trip on this path. An agent with no registry entry is DENIED, not served (#38683).
+        // WPK requests are NOT authorized here: their authority is the pending upgrade task, which
+        // /control does not carry. What contains those remains the resource-id grammars plus
+        // O_NOFOLLOW, and the packages are signature-verified by the agent against wpk_root.pem.
+        m_authGateway->addAuthenticatedRoute(
+            *m_httpServer,
+            remoted::http::Method::Post,
+            "/download",
+            remoted::endpoints::download::makeHandler(
+                {}, m_downloadMetrics, std::make_shared<remoted::control::RegistryAgentGroupSource>(agentRegistry)),
+            remoted::http::ResponseMode::Streamable);
 
         // /stateless takes the client's default response deadline (its target leaves the override
         // at 0), so that is what gets checked against the transport's request cap.
@@ -473,10 +577,6 @@ private:
         // carry over too -- desirable for observability.
         const auto controlConfig = remoted::control::buildControlConfig(m_config);
         auto vdClient = std::make_shared<remoted::common::VdClient>();
-        // Held in a local (not passed inline) so the registry-size pull metric can weak-point at
-        // it; the ControlHandler owns it, so the weak_ptr expires when stop() phase 1b resets
-        // the handler.
-        auto agentRegistry = std::make_shared<remoted::control::AgentRegistry>();
         m_controlHandler = std::make_unique<remoted::control::ControlHandler>(
             agentRegistry,
             std::make_shared<remoted::control::WazuhDBClient>(controlConfig.wdbSocketPath,
@@ -546,8 +646,10 @@ private:
         // whether it must additionally require the `wazuh-enroll+jwt` bearer; it has no notion of "mTLS
         // mode" at all, because a client certificate is never its concern -- the TLS listener
         // enforces (or doesn't) that entirely on its own, before any handler runs. PasswordKeySource
-        // (constructed only when required) is owned by m_enrollmentAuthenticator from here on -- its
-        // background watcher thread's lifetime is tied to the authenticator's.
+        // (constructed only when required) and TokenKeySource (constructed whenever enrollment is
+        // enabled at all: an enrollment-token bearer is honoured in every mode, Open included --
+        // see EnrollmentAuthenticator) are owned by m_enrollmentAuthenticator from here on -- their
+        // background watcher threads' lifetimes are tied to the authenticator's.
         const auto enrollConfig = remoted::enrollment::buildEnrollmentConfig(m_config);
 
         std::shared_ptr<remoted::auth::PasswordKeySource> enrollPasswordKeySource;
@@ -559,15 +661,31 @@ private:
                                                                    enrollConfig.isWorkerNode);
         }
 
+        // Same refresh interval as the password file: both are authd-written, cluster-synced secrets
+        // the same watcher discipline applies to, and one knob ('remoted.enroll_password_refresh_interval')
+        // is enough for the fallback poll of both.
+        std::shared_ptr<remoted::auth::TokenKeySource> enrollTokenKeySource;
+        if (enrollConfig.enrollmentEnabled)
+        {
+            enrollTokenKeySource =
+                std::make_shared<remoted::auth::TokenKeySource>(remoted::auth::TokenKeySource::kDefaultPath,
+                                                                enrollConfig.passwordRefreshIntervalSec,
+                                                                enrollConfig.isWorkerNode);
+        }
+
         m_enrollmentAuthenticator = std::make_unique<remoted::enrollment::EnrollmentAuthenticator>(
             remoted::enrollment::EnrollmentAuthConfig {
                 enrollConfig.usePassword, enrollConfig.timePolicy, enrollConfig.maxBodySize},
-            enrollPasswordKeySource);
+            enrollPasswordKeySource,
+            enrollTokenKeySource);
 
         // Reachability for GET /status on the admin server (see startAdminServer()). Null when
         // Password mode is disabled: the weak_ptr then stays permanently expired, which is exactly
         // the condition the handler uses to omit `enrollment_password` from its response.
         registerPasswordKeySourceDiagnostics(enrollPasswordKeySource);
+        // The token store's health as pull metrics (remoted.enroll.token_store.*) plus the same
+        // /status reachability; null when enrollment is disabled, omitted from /status then.
+        registerTokenKeySourceDiagnostics(enrollTokenKeySource);
 
         m_authdClient =
             std::make_shared<remoted::enrollment::AuthdClient>(remoted::enrollment::AuthdClient::kDefaultSocketPath,
@@ -579,14 +697,65 @@ private:
 
         registerAuthdQueueDiagnostics(m_authdClient);
 
-        m_httpServer->addRoute(remoted::http::Method::Post,
-                               "/enroll",
-                               remoted::enrollment::makeHandler(*m_enrollmentAuthenticator,
-                                                                *m_authdClient,
-                                                                enrollConfig,
-                                                                m_enrollmentMetrics,
-                                                                enrollBodyDecoder,
-                                                                m_enrollHttpMetrics));
+        // Rate limit in front of the handler ('remote.https.enroll_rate_limit'). This is the route
+        // with the largest gap between what a request costs the CALLER (one HTTP request, no
+        // credential required to reach the bridge in Open mode) and what it costs the MANAGER (an
+        // authd round trip over the local socket and, on a worker, a cluster round trip to the
+        // master). The AuthdClient queue already bounds the damage, but only once the work has been
+        // queued; this refuses the excess before the bridge is touched at all, which is what keeps
+        // an unauthenticated caller from turning /enroll into an amplifier onto the cluster's
+        // internal socket. The bucket is the endpoint's, so this ceiling is shared by the whole
+        // fleet -- see endpointRateLimiter.hpp on what that does and does not buy.
+        {
+            std::lock_guard<std::mutex> lock {m_rateLimitDiagMutex};
+            m_enrollRateLimiter = std::make_shared<remoted::http::EndpointRateLimiter>(
+                remoted::endpoints::ratelimit::buildEnrollSettings(m_config));
+        }
+
+        m_httpServer->addRoute(
+            remoted::http::Method::Post,
+            "/enroll",
+            remoted::endpoints::ratelimit::wrap(remoted::enrollment::makeHandler(*m_enrollmentAuthenticator,
+                                                                                 *m_authdClient,
+                                                                                 enrollConfig,
+                                                                                 m_enrollmentMetrics,
+                                                                                 enrollBodyDecoder,
+                                                                                 m_enrollHttpMetrics),
+                                                m_enrollRateLimiter,
+                                                &remoted::enrollment::rateLimitedResponse,
+                                                m_enrollmentMetrics.rateLimited,
+                                                &m_enrollHttpMetrics,
+                                                "POST /enroll"));
+
+        // /enroll/secret: an agent that already holds a client.keys identity asks for the
+        // re-enrollment secret its enrollment never gave it (a 4.x agent upgraded over WPK, an
+        // agent enrolled over 1515, a row rebuilt from client.keys). Authenticated -- unlike
+        // /enroll, the caller IS a known agent, and the secret is minted for the identity its
+        // bearer proves, never for a body field.
+        //
+        // REGISTERED HERE, below m_enrollRateLimiter's construction, and not up in the
+        // authenticated-route block: it shares /enroll's bucket, and a gate handed a null limiter
+        // is silently inert -- no log, no error -- so a registration a few lines earlier would
+        // ship the route unlimited with nothing to show for it. The bucket is shared rather than
+        // given an option of its own because the two routes cost the manager the same round trips
+        // and a fleet-wide 4.x->5.0 wave is exactly the burst that ceiling exists to absorb:
+        // unthrottled it would fill the identity journal (IDENTITY_JOURNAL_MAX_ENTRIES) and start
+        // refusing REAL enrollments with 9031. The refusal counters stay one per route, which is
+        // what keeps the two distinguishable under one ceiling.
+        m_authGateway->addAuthenticatedRoute(
+            *m_httpServer,
+            remoted::http::Method::Post,
+            "/enroll/secret",
+            remoted::endpoints::reenrollsecret::makeHandler(
+                *m_authdClient, m_reenrollSecretMetrics, m_enrollSecretHttpMetrics),
+            remoted::http::ResponseMode::Buffered,
+            remoted::endpoints::AuthenticatedRouteGate {m_enrollRateLimiter,
+                                                        &remoted::endpoints::reenrollsecret::rateLimitedResponse,
+                                                        m_reenrollSecretMetrics.rateLimited,
+                                                        &m_enrollSecretHttpMetrics,
+                                                        "POST /enroll/secret"});
+
+        registerRateLimitDiagnostics();
 
         // Same sanity check the other four endpoints get (see warnIfDownstreamBudgetExceedsRequestTimeout's
         // own comment) -- /enroll's downstream is AuthdClient, not the DeferredForwarder pair those
@@ -668,6 +837,73 @@ private:
             "requests");
     }
 
+    /**
+     * @brief Publishes both endpoint rate limiters as remoted.<endpoint>.rate_limit.* pulls.
+     *
+     * The REFUSALS are not here: those are the plain remoted.enroll.rate_limited /
+     * remoted.enroll.secret.rate_limited / remoted.cacerts.rate_limited counters the gates bump,
+     * which belong with the rest of each endpoint's outcomes -- and they stay one per ROUTE even
+     * though /enroll and /enroll/secret share one bucket, which is what keeps the two
+     * distinguishable under a single ceiling. What is here is the headroom, which only a pull can
+     * answer, and it is per BUCKET: the
+     * configured ceiling, and how much of this second's allowance is still unspent. `available`
+     * hovering near zero is the route running at its limit -- the reading that says whether a
+     * climbing `rate_limited` is a flood to investigate or simply a rate set too low for the fleet.
+     *
+     * Reading them never charges the bucket (EndpointRateLimiter::diagnostics() observes without
+     * consuming), so scraping cannot cost an agent its enrollment.
+     *
+     * Same wiring as registerAuthdQueueDiagnostics(): registered once, re-read per start, and
+     * quiescing to 0 once stop() drops the facade's handles.
+     */
+    void registerRateLimitDiagnostics()
+    {
+        if (m_rateLimitPullsRegistered)
+        {
+            return;
+        }
+        m_rateLimitPullsRegistered = true;
+
+        const auto snapshot = [this](bool enrollment)
+        {
+            std::lock_guard<std::mutex> lock {m_rateLimitDiagMutex};
+            const auto& limiter = enrollment ? m_enrollRateLimiter : m_cacertsRateLimiter;
+            return limiter ? limiter->diagnostics() : remoted::http::EndpointRateLimiter::Diagnostics {};
+        };
+
+        const auto registerFor = [this, snapshot](bool enrollment, const char* endpoint, const char* route)
+        {
+            const std::string prefix = std::string {"remoted."} + endpoint + ".rate_limit.";
+            const std::string routeName {route};
+
+            m_metricsManager->registerPullMetric(
+                prefix + "limit",
+                [snapshot, enrollment] { return static_cast<uint64_t>(snapshot(enrollment).limitPerSecond); },
+                routeName + " requests per second THIS NODE is willing to serve, for the routes named "
+                            "together (0 when the limit is disabled)",
+                "requests_per_second");
+            m_metricsManager->registerPullMetric(
+                prefix + "burst",
+                [snapshot, enrollment] { return static_cast<uint64_t>(snapshot(enrollment).burst); },
+                routeName + " requests servable back to back before the rate paces them",
+                "requests");
+            m_metricsManager->registerPullMetric(
+                prefix + "available",
+                [snapshot, enrollment] { return static_cast<uint64_t>(snapshot(enrollment).available); },
+                routeName + " allowance left unspent right now: near zero means the bucket is at its "
+                            "ceiling and further requests are being refused with 429",
+                "requests");
+        };
+
+        // One bucket, two routes: the remoted.enroll.rate_limit.* readings govern POST /enroll and
+        // POST /enroll/secret together, so the description names both. A bootstrap wave spending
+        // allowance /enroll would otherwise have had is the deliberate trade -- paced backpressure
+        // with a retry behind it, in exchange for making identity-journal exhaustion unprovokable
+        // from the secret route. An operator watching both throttle still has one number to raise.
+        registerFor(/*enrollment=*/true, "enroll", "POST /enroll and POST /enroll/secret");
+        registerFor(/*enrollment=*/false, "cacerts", "GET /cacerts");
+    }
+
     void registerKeystoreDiagnostics(const std::shared_ptr<remoted::auth::Keystore>& keystore)
     {
         {
@@ -740,15 +976,69 @@ private:
     }
 
     /**
+     * @brief Publish the enrollment token store replica's health (remoted.enroll.token_store.*) and
+     *        register its reachability for GET /status.
+     *
+     * Same wiring as registerAuthdQueueDiagnostics(): weak target repointed per start, pulls
+     * registered once, quiescing to 0 when the authenticator (which owns the source) is torn down.
+     * @p source is null whenever enrollment is administratively disabled -- the pulls then read 0
+     * and /status omits `enrollment_tokens`. Purely diagnostic: `tokens` answers "how many
+     * credential-bearing tokens does this node currently recognise", `reloads.total` /
+     * `reload_failures.total` whether the file authd writes (and the cluster syncs) is being picked
+     * up -- a rising failure count means a corrupt or hand-edited store, and the previous replica is
+     * what keeps serving.
+     */
+    void registerTokenKeySourceDiagnostics(const std::shared_ptr<remoted::auth::TokenKeySource>& source)
+    {
+        {
+            std::lock_guard<std::mutex> lock {m_tokenKeySourceDiagMutex};
+            m_tokenKeySourceDiagTarget = source;
+        }
+        if (m_tokenKeySourcePullsRegistered)
+        {
+            return;
+        }
+        m_tokenKeySourcePullsRegistered = true;
+
+        const auto snapshot = [this]
+        {
+            std::lock_guard<std::mutex> lock {m_tokenKeySourceDiagMutex};
+            const auto target = m_tokenKeySourceDiagTarget.lock();
+            return target ? target->diagnostics() : remoted::auth::TokenKeySource::Diagnostics {};
+        };
+
+        m_metricsManager->registerPullMetric(
+            "remoted.enroll.token_store.tokens",
+            [snapshot] { return static_cast<uint64_t>(snapshot().tokens); },
+            "Enrollment tokens with a credential currently replicated from etc/enrollment_tokens.json",
+            "tokens");
+        m_metricsManager->registerPullMetric(
+            "remoted.enroll.token_store.reloads.total",
+            [snapshot] { return snapshot().reloads; },
+            "Successful loads of the enrollment token store (the initial one included)",
+            "count");
+        m_metricsManager->registerPullMetric(
+            "remoted.enroll.token_store.reload_failures.total",
+            [snapshot] { return snapshot().reloadFailures; },
+            "Loads of the enrollment token store that kept the previous replica (malformed or torn file)",
+            "count");
+    }
+
+    /**
      * @brief Publish the agent registry's live size as a pull metric
      *        (remoted.control.registry.agents).
      *
      * Same wiring as the transport diagnostics: weak target repointed per start, registered
-     * once. The registry is OWNED by m_controlHandler (reset in stop() phase 1b), so the pull
-     * quiesces to 0 as soon as the control plane is torn down. size() sums the shards under
-     * shared locks -- dump-cadence only. Purely diagnostic: it answers "how many agents does
-     * this node currently track"; there is no knob behind it (the registry TTL and eviction
-     * cadence are compile-time constants -- see controlConfig.hpp).
+     * once. The registry is SHARED by m_controlHandler and the /download handler (which holds it
+     * through the RegistryAgentGroupSource captured into its route lambda), so the weak target
+     * survives stop() phase 1b and expires only when phase 4 releases m_httpServer along with its
+     * route table. Between those two phases this pull therefore still reports the live size rather
+     * than 0 -- unobservable through the documented channel, because the admin socket stopped
+     * accepting back in phase 1 and the final metrics dump runs after phase 4 with the target
+     * already dead. size() sums the shards under shared locks -- dump-cadence only. Purely
+     * diagnostic: it answers "how many agents does this node currently track"; there is no knob
+     * behind it (the registry TTL and eviction cadence are compile-time constants -- see
+     * controlConfig.hpp).
      */
     void registerControlRegistryDiagnostics(const std::shared_ptr<remoted::control::AgentRegistry>& registry)
     {
@@ -864,6 +1154,11 @@ private:
                         std::lock_guard<std::mutex> lock {m_passwordKeySourceDiagMutex};
                         passwordSource = m_passwordKeySourceDiagTarget.lock();
                     }
+                    std::shared_ptr<remoted::auth::TokenKeySource> tokenSource;
+                    {
+                        std::lock_guard<std::mutex> lock {m_tokenKeySourceDiagMutex};
+                        tokenSource = m_tokenKeySourceDiagTarget.lock();
+                    }
 
                     // enrollment_password is the ONLY gating component. With Password-mode disabled
                     // (passwordSource null), there is nothing to gate on, so `ready` is true
@@ -892,7 +1187,19 @@ private:
                     // readiness claim.
                     body << R"(,"keystore":{"readable":)" << (keystore->lastLoadOk() ? "true" : "false")
                          << R"(,"agents_loaded":)" << keystore->agentsLoaded() << R"(,"entries_skipped":)"
-                         << keystore->entriesSkipped() << "}}";
+                         << keystore->entriesSkipped() << "}";
+                    // enrollment_tokens is informational ONLY too -- never folded into overallReady: an
+                    // empty replica is the normal state of a manager that minted no token (and of a
+                    // worker awaiting the sync), not a readiness failure. Present whenever enrollment
+                    // is enabled (the source exists), omitted otherwise. Placed after keystore so the
+                    // `{"ready":...,"keystore":...}` prefix every existing consumer matches on is kept.
+                    if (tokenSource)
+                    {
+                        const auto diag = tokenSource->diagnostics();
+                        body << R"(,"enrollment_tokens":{"loaded":)" << diag.tokens << R"(,"last_reload_ok":)"
+                             << (diag.lastLoadOk ? "true" : "false") << "}";
+                    }
+                    body << "}";
 
                     responder->send(wazuh::uds_http::HttpResponse::json(200, body.str()));
                 },
@@ -1104,6 +1411,55 @@ private:
             [snapshot] { return snapshot().budgetRejectedTotal; },
             "Requests the byte budget refused to admit (503, before any route ran)",
             "requests");
+
+        // The connection ceiling is the one capacity limit with NO rejection counter, because
+        // reaching it rejects nothing: the transport postpones the accept and the connection waits
+        // in the kernel backlog. Saturation is therefore invisible as an error and shows up only as
+        // latency -- these two levels are the only way to see it coming, and the only basis on
+        // which 'remoted.max_parallel_connections' can be sized rather than guessed.
+        //
+        // Not the same as budget.inflight.requests: that counts requests holding a byte
+        // reservation, while a connection is held from accept to close -- for a streamed
+        // POST /download, the whole transfer, which is what makes downloads the usual reason this
+        // level climbs.
+        m_metricsManager->registerPullMetric(
+            "remoted.server.connections.open",
+            [snapshot] { return static_cast<uint64_t>(snapshot().connectionsOpen); },
+            "Connections currently open on the public HTTPS listener",
+            "connections");
+        m_metricsManager->registerPullMetric(
+            "remoted.server.connections.max",
+            [snapshot] { return static_cast<uint64_t>(snapshot().connectionsMax); },
+            "Connections the listener accepts at once ('remoted.max_parallel_connections'); over it "
+            "new connections wait in the backlog instead of being refused",
+            "connections");
+
+        // The served certificate's health, read from the same weak target. Expiry is the
+        // monitor's: evaluated by the transport at start and every certificateStatusInterval
+        // (24 h). The CA half comes from the same CaCertificateSource GET /cacerts answers from,
+        // re-read on every scrape, so it never lags the endpoint (issue #39078, H06). Double, not
+        // uint64: the day count is NEGATIVE once expired, the whole point of alerting on it. Both
+        // read 0 while the listener is down (the documented quiescent value), so a flat 0 on
+        // ca_matches_leaf with the listener up is the mismatch signal.
+        const auto certificateStatus = [this]() -> remoted::http::TlsCertificateSnapshot
+        {
+            std::lock_guard<std::mutex> lock {m_publicDiagMutex};
+            if (const auto server = m_publicDiagTarget.lock())
+            {
+                return server->certificateStatus();
+            }
+            return {};
+        };
+        m_metricsManager->registerPullMetricDouble(
+            remoted::endpoints::cacerts::METRIC_TLS_CERT_EXPIRY_DAYS,
+            [certificateStatus] { return static_cast<double>(certificateStatus().expiryDays.value_or(0)); },
+            "Days until the served TLS certificate expires (negative once expired; 0 while the listener is down)",
+            "days");
+        m_metricsManager->registerPullMetric(
+            remoted::endpoints::cacerts::METRIC_TLS_CA_MATCHES_LEAF,
+            [certificateStatus] { return static_cast<uint64_t>(certificateStatus().caMatchesLeaf == true ? 1 : 0); },
+            "1 when remote.https.ca_certificate signs the served certificate",
+            "flag");
         m_metricsManager->registerPullMetric(
             "remoted.forwarder.deferred.inflight",
             [limiter]
@@ -1312,6 +1668,16 @@ private:
     std::weak_ptr<remoted::enrollment::AuthdClient> m_authdDiagTarget;
     bool m_authdPullsRegistered {false};
 
+    /// The two endpoint rate limiters (POST /enroll, GET /cacerts). Rebuilt on every start and
+    /// dropped in stop()'s phase 3, like m_deferredLimiter: the routes that use them hold their own
+    /// shared_ptr copies until the transport goes away in phase 4, so dropping these only quiesces
+    /// the rate_limit.* pulls -- it never pulls the limiter out from under a request in flight.
+    /// Guarded because those pulls are served on the admin server's threads.
+    std::mutex m_rateLimitDiagMutex;
+    std::shared_ptr<remoted::http::EndpointRateLimiter> m_enrollRateLimiter;
+    std::shared_ptr<remoted::http::EndpointRateLimiter> m_cacertsRateLimiter;
+    bool m_rateLimitPullsRegistered {false};
+
     std::mutex m_keystoreDiagMutex;
     std::weak_ptr<remoted::auth::Keystore> m_keystoreDiagTarget;
     bool m_keystorePullsRegistered {false};
@@ -1320,6 +1686,11 @@ private:
     /// No pull metrics of its own -- just lets GET /status reach currentKey().has_value().
     std::mutex m_passwordKeySourceDiagMutex;
     std::weak_ptr<remoted::auth::PasswordKeySource> m_passwordKeySourceDiagTarget;
+    /// Same plumbing for the enrollment token store replica (see registerTokenKeySourceDiagnostics()):
+    /// the remoted.enroll.token_store.* pulls plus /status' `enrollment_tokens`.
+    std::mutex m_tokenKeySourceDiagMutex;
+    std::weak_ptr<remoted::auth::TokenKeySource> m_tokenKeySourceDiagTarget;
+    bool m_tokenKeySourcePullsRegistered {false};
 
     std::shared_ptr<remoted::auth::IAgentKeystore> m_keystore;      ///< Agent key lookup (client.keys).
     std::unique_ptr<remoted::endpoints::AuthGateway> m_authGateway; ///< Auth layer wired onto m_httpServer.
@@ -1338,9 +1709,14 @@ private:
 
     // /control lifecycle: the metric struct is a value member on the facade (stable address
     // across HTTP-server retries; ControlHandler holds a reference), caching counters that live
-    // in m_metricsManager. m_controlHandler owns the AgentRegistry, HashCache, WazuhDBClient and
-    // TaskClient it was constructed with; resetting it joins their threads in the right order
-    // (see ControlHandler::Impl's dtor).
+    // in m_metricsManager. m_controlHandler owns the HashCache, WazuhDBClient and TaskClient it
+    // was constructed with; resetting it joins their threads in the right order (see
+    // ControlHandler::Impl's dtor). The AgentRegistry is the exception: it is SHARED with the
+    // /download handler, which authorizes against it (see startHttpServer()), so the map itself
+    // outlives this reset and is released with m_httpServer in stop() phase 4. Nothing
+    // thread-bearing outlives the reset, though: the eviction thread is ControlHandler::Impl's
+    // own and is stopped and joined there before anything can touch the registry again, so what
+    // survives into phase 4 is passive data with no thread behind it.
     remoted::control::ControlMetrics m_controlMetrics {
         remoted::control::makeControlMetrics(*m_metricsManager)};       ///< /control counters.
     std::unique_ptr<remoted::control::ControlHandler> m_controlHandler; ///< Startup/notify/shutdown pipeline.
@@ -1353,10 +1729,16 @@ private:
 
     // /enroll lifecycle: bridges agent self-enrollment to authd's local socket. Metric struct on
     // the facade for the same reason as m_controlMetrics/m_scanVdMetrics. m_enrollmentAuthenticator
-    // owns the PasswordKeySource (Password mode only; null otherwise) constructed for it in
-    // startHttpServer() -- its background watcher thread's lifetime is tied to the authenticator's.
+    // owns the PasswordKeySource (Password mode only; null otherwise) and the TokenKeySource
+    // (whenever enrollment is enabled) constructed for it in startHttpServer() -- their background
+    // watcher threads' lifetimes are tied to the authenticator's.
     remoted::enrollment::EnrollmentMetrics m_enrollmentMetrics {
-        remoted::enrollment::makeEnrollmentMetrics(*m_metricsManager)};                      ///< /enroll counters.
+        remoted::enrollment::makeEnrollmentMetrics(*m_metricsManager)}; ///< /enroll counters.
+    /// POST /enroll/secret counters (remoted.enroll.secret.*). Its own family, on the facade for
+    /// the same reason as the one above: the handler holds a REFERENCE to it, so its address must
+    /// stay stable across HTTP-server restart retries.
+    remoted::enrollment::ReenrollSecretMetrics m_reenrollSecretMetrics {
+        remoted::enrollment::makeReenrollSecretMetrics(*m_metricsManager)};
     std::unique_ptr<remoted::enrollment::EnrollmentAuthenticator> m_enrollmentAuthenticator; ///< /enroll auth.
     /// shared_ptr, not unique_ptr, for the same reason as m_httpServer: the queue pulls hold a
     /// weak_ptr to it, so a dump that races the shutdown reset() sees a dead target and
@@ -1373,6 +1755,11 @@ private:
     // the handler at route registration, same restart-retry rationale.
     remoted::endpoints::download::DownloadMetrics m_downloadMetrics {
         remoted::endpoints::download::makeDownloadMetrics(*m_metricsManager)};
+
+    // GET /cacerts outcomes (remoted.cacerts.*, the WHY): copied into the handler at route
+    // registration, same rationale as m_downloadMetrics.
+    remoted::endpoints::cacerts::CacertsMetrics m_cacertsMetrics {
+        remoted::endpoints::cacerts::makeCacertsMetrics(*m_metricsManager)};
 
     // Per-endpoint HTTP outcome sets (remoted.http.<endpoint>.*). Value members for the same
     // reason as m_controlMetrics: the endpoints' handlers and forwarded targets hold RAW
@@ -1397,6 +1784,18 @@ private:
     // the same reason as the rest: one resolution against the never-reset manager.
     remoted::metrics::EndpointHttpMetrics m_enrollHttpMetrics {
         remoted::metrics::makeEndpointHttpMetrics(*m_metricsManager, "enroll", /*withLatency=*/true)};
+    // GET /cacerts (the WHAT: remoted.http.cacerts.responses.*): the one GET route, hence the
+    // explicit method label. Counted through a MeteredResponder like /enroll; referenced by
+    // pointer from the handler, so it is a value member like the four forwarded endpoints'. No
+    // latency: a file read has no tuning knob to size.
+    remoted::metrics::EndpointHttpMetrics m_cacertsHttpMetrics {
+        remoted::metrics::makeEndpointHttpMetrics(*m_metricsManager, "cacerts", /*withLatency=*/false, "GET")};
+    // POST /enroll/secret (the WHAT: remoted.http.enroll.secret.responses.*). The route label is
+    // explicit because the family's name segment cannot be the path verbatim. Referenced by raw
+    // pointer from the rate-limit gate (the 429 cell) AND copied into the handler's
+    // MeteredResponder, so it is a value member like the rest.
+    remoted::metrics::EndpointHttpMetrics m_enrollSecretHttpMetrics {remoted::metrics::makeEndpointHttpMetrics(
+        *m_metricsManager, "enroll.secret", /*withLatency=*/false, "POST", "/enroll/secret")};
 };
 
 #endif // _REMOTED_MODULE_FACADE_HPP

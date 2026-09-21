@@ -13,174 +13,89 @@ CONF_FILE="${INSTALLDIR}/etc/ossec.conf"
 TMP_ENROLLMENT="${INSTALLDIR}/tmp/enrollment-configuration"
 TMP_SERVER="${INSTALLDIR}/tmp/server-configuration"
 TMP_INSERT="${INSTALLDIR}/tmp/insert-output"
-WAZUH_REGISTRATION_PASSWORD_PATH="etc/authd.pass"
+# Where WAZUH_ENROLLMENT_TOKEN is left for the agent to finish the bootstrap with at its
+# first start. Root-only, unlike authd.pass: the agent reads it before dropping privileges,
+# so the wazuh user never needs it.
+WAZUH_ENROLLMENT_TOKEN_PATH="etc/enrollment_token"
 WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
 
 
 # Set default sed alias
 sed="sed -ri"
 
-# Defaults substituted for the components WAZUH_MANAGER_ENDPOINT leaves out. The
-# prefix mirrors the manager's own default global_prefix (#38491) and the port
-# DEFAULT_HTTPS_REMOTE_PORT (src/config/include/client-config.h).
-DEFAULT_MANAGER_PORT="1517"
-DEFAULT_MANAGER_ENDPOINT="/wazuh-manager/"
+# The ERR_ codes are refusals, which stop the run; INFO_NO_MANAGER is not, the agent simply
+# has no address, which is a supported way to install one that is configured or enrolled later.
+WET_INFO_NO_MANAGER="INFO_NO_MANAGER"
+WET_ERR_BAD_TOKEN="ERR_BAD_TOKEN"
+WET_ERR_NO_DECODER="ERR_NO_DECODER"
 
-mep_error() {
+# The sixteen names the token replaced. Still read, so an install carrying a 4.x-era command or
+# an untouched playbook is told what happened.
+REMOVED_VARS=(WAZUH_MANAGER WAZUH_MANAGER_IP WAZUH_MANAGER_PORT WAZUH_MANAGER_ENDPOINT \
+              WAZUH_REGISTRATION_PASSWORD WAZUH_PASSWORD \
+              WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
+              WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY \
+              WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PEM WAZUH_KEY \
+              WAZUH_REGISTRATION_CA WAZUH_CERTIFICATE)
 
-    echo "$(date '+%Y/%m/%d %H:%M:%S') Invalid WAZUH_MANAGER_ENDPOINT '${1}': ${2}" \
+# A deployment-variable refusal: a named code, in both sinks. The code is what a test greps for
+# and what an operator quotes, so it is part of the contract rather than decoration.
+deployment_refusal() {
+
+    echo "$(date '+%Y/%m/%d %H:%M:%S') Deployment variables refused [${1}]: ${2}" \
         >> "${INSTALLDIR}/logs/ossec.log"
-    echo "wazuh-agent: invalid WAZUH_MANAGER_ENDPOINT '${1}': ${2}" >&2
+    echo "wazuh-agent: deployment variables refused [${1}]: ${2}" >&2
 
 }
 
-# Validate WAZUH_MANAGER_ENDPOINT's value against the <endpoint> grammar (#38624):
-#
-#   [https://] host [:port] [/[prefix]]
-#
-# Only the host is mandatory; an omitted port or prefix takes its default at startup.
-# <endpoint> now takes this same language, so the value is written into the config
-# verbatim and this only decides whether to write it at all -- catching a typo during
-# install, with the reason in ossec.log, rather than leaving the agent to fail later.
-# MEP_HOST / MEP_PORT / MEP_ENDPOINT are still set, for callers that want the split.
-#
-# Kept in lockstep with WriteAgent()'s copy in inst-functions.sh and with
-# ParseManagerEndpoint() in src/win32/InstallerScripts.vbs; a change here belongs in
-# all three. Deliberately parameter-expansion only, no grep/sed/awk: this runs from
-# package post-install, before anything guarantees a usable PATH.
-parse_manager_endpoint() {
+# Same two sinks and the same named-code contract, for an outcome that is not a refusal: the
+# install is complete and correct, it just has nowhere to connect yet.
+deployment_notice() {
 
-    mep_raw="$1"
-    mep_rest="$mep_raw"
-    MEP_HOST=""
-    MEP_PORT="${DEFAULT_MANAGER_PORT}"
-    MEP_ENDPOINT="${DEFAULT_MANAGER_ENDPOINT}"
+    echo "$(date '+%Y/%m/%d %H:%M:%S') No manager configured [${1}]: ${2}" \
+        >> "${INSTALLDIR}/logs/ossec.log"
+    echo "wazuh-agent: no manager configured [${1}]: ${2}" >&2
 
-    if [ -z "${mep_raw}" ]; then
-        mep_error "${mep_raw}" "a manager address is required."
-        return 1
-    fi
+}
 
-    # Optional scheme. Only treated as one when no '/' precedes the "://", so a
-    # path that happens to contain "://" cannot be mistaken for a scheme.
-    case "${mep_rest}" in
-        *"://"*)
-            mep_scheme="${mep_rest%%://*}"
-            case "${mep_scheme}" in
-                */*) ;;
-                *)
-                    mep_rest="${mep_rest#*://}"
-                    case "${mep_scheme}" in
-                        [Hh][Tt][Tt][Pp][Ss]) ;;
-                        *)
-                            mep_error "${mep_raw}" "unsupported scheme '${mep_scheme}://'; only https is served."
-                            return 1
-                            ;;
-                    esac
-                    ;;
-            esac
-            ;;
-    esac
+# A deployment variable that no longer does anything: say so, and write nothing. Not a refusal of
+# the whole run. One obsolete variable left in a playbook should not stop an install and
+# never silent either.
+dead_variable() {
 
-    # Authority up to the first '/', the prefix after it. Whether that '/' was
-    # there at all is what separates "default prefix" from "opt-out".
-    case "${mep_rest}" in
-        */*)
-            mep_authority="${mep_rest%%/*}"
-            mep_path="${mep_rest#*/}"
-            mep_path_given="yes"
-            ;;
-        *)
-            mep_authority="${mep_rest}"
-            mep_path=""
-            mep_path_given="no"
-            ;;
-    esac
+    echo "$(date '+%Y/%m/%d %H:%M:%S') ${1} is not supported in 5.0 and was ignored: ${2}" \
+        >> "${INSTALLDIR}/logs/ossec.log"
+    echo "wazuh-agent: ${1} is not supported in 5.0 and was ignored: ${2}" >&2
 
-    # Host and optional port. A bracketed IPv6 literal ends at ']'; brackets exist
-    # only to keep its colons apart from the port's and are dropped here, because
-    # <address> wants the bare literal (OS_IsValidIP does not match a bracketed one,
-    # and ModuleConfig::baseUrl re-brackets it for the URL itself).
-    mep_port_given=""
-    case "${mep_authority}" in
-        "["*)
-            case "${mep_authority}" in
-                *"]"*) ;;
-                *)
-                    mep_error "${mep_raw}" "unterminated '[' in the address; a bracketed IPv6 literal needs a closing ']'."
-                    return 1
-                    ;;
-            esac
-            MEP_HOST="${mep_authority#[}"
-            MEP_HOST="${MEP_HOST%%]*}"
-            mep_after="${mep_authority#*]}"
-            case "${mep_after}" in
-                "") ;;
-                ":"*) mep_port_given="${mep_after#:}" ;;
-                *)
-                    mep_error "${mep_raw}" "unexpected '${mep_after}' after the bracketed address."
-                    return 1
-                    ;;
-            esac
-            # A zone id (%25<iface>, percent-encoded inside a URL) stays part of the
-            # host: the agent resolves it with if_nametoindex() at startup (#38624).
-            ;;
-        *:*:*)
-            mep_error "${mep_raw}" "an IPv6 address must be bracketed, e.g. [2001:db8::1]:${DEFAULT_MANAGER_PORT}."
-            return 1
-            ;;
-        *:*)
-            MEP_HOST="${mep_authority%:*}"
-            mep_port_given="${mep_authority##*:}"
-            ;;
-        *)
-            MEP_HOST="${mep_authority}"
-            ;;
-    esac
+}
 
-    if [ -z "${MEP_HOST}" ]; then
-        mep_error "${mep_raw}" "a manager address is required."
-        return 1
-    fi
+# Report every removed name that was still passed, and the pre-rename spelling of the one
+# variable that survived. Warn-and-ignore rather than silence.
+warn_removed_variables() {
 
-    if [ -n "${mep_port_given}" ]; then
-        case "${mep_port_given}" in
-            ''|*[!0-9]*)
-                mep_error "${mep_raw}" "port '${mep_port_given}' is not a number."
-                return 1
-                ;;
-        esac
-        if [ "${mep_port_given}" -lt 1 ] || [ "${mep_port_given}" -gt 65535 ]; then
-            mep_error "${mep_raw}" "port '${mep_port_given}' is outside 1-65535."
-            return 1
+    for wrv_name in "${REMOVED_VARS[@]}"; do
+        if [ -n "${!wrv_name}" ]; then
+            dead_variable "${wrv_name}" "registration is configured by WAZUH_ENROLLMENT_TOKEN alone; this variable no longer has any effect."
         fi
-        MEP_PORT="${mep_port_given}"
-    elif [ "${mep_authority}" != "${mep_authority%:}" ]; then
-        mep_error "${mep_raw}" "trailing ':' with no port."
-        return 1
+    done
+
+    # Renamed, not removed, and with no alias -- so an install still passing the old spelling
+    # would silently get no verification mode at all and fall through the resolution ladder.
+    if [ -n "${SSL_VERIFICATION}" ]; then
+        dead_variable "SSL_VERIFICATION" "renamed to WAZUH_SSL_VERIFICATION; the old name is not read."
     fi
 
-    if [ "${mep_path_given}" = "yes" ]; then
-        while :; do
-            case "${mep_path}" in
-                /*) mep_path="${mep_path#/}" ;;
-                *) break ;;
-            esac
-        done
-        while :; do
-            case "${mep_path}" in
-                */) mep_path="${mep_path%/}" ;;
-                *) break ;;
-            esac
-        done
-        if [ -z "${mep_path}" ]; then
-            MEP_ENDPOINT=""
-        else
-            MEP_ENDPOINT="/${mep_path}/"
-        fi
-    fi
+}
 
-    return 0
+# ossec.log has to exist before anything logs to it, or the first writer creates it root-owned
+# and 0644 instead of root:wazuh 0660.
+ensure_ossec_log() {
+
+    if [ ! -f "${INSTALLDIR}/logs/ossec.log" ]; then
+        touch -f "${INSTALLDIR}/logs/ossec.log"
+        chmod 660 "${INSTALLDIR}/logs/ossec.log"
+        chown root:wazuh "${INSTALLDIR}/logs/ossec.log"
+    fi
 
 }
 
@@ -233,8 +148,9 @@ delete_blank_lines() {
 # silently fails to match them.
 insert_into_agent_block() {
 
-    # $2 is the opening-tag pattern to insert right after, e.g. "ssl" for set_agent_ssl_ca()'s
-    # fresh-block fallback; defaults to <agent>/<client> for every other caller.
+    # $2 is the opening-tag pattern to insert right after, e.g. "ssl" for
+    # set_agent_verification_mode()'s fresh-block fallback; defaults to <agent>/<client> for
+    # every other caller.
     target_tag="${2:-agent|client}"
 
     awk -v payload_file="$1" -v target_tag="${target_tag}" '
@@ -271,16 +187,6 @@ insert_into_agent_block() {
     return "${inserted}"
 
 }
-
-# Escapes the three characters that are structurally significant in XML content --
-# '&', '<', '>' -- so a value written verbatim into ossec.conf (a CA path, in
-# particular) can never be mistaken for markup or break the file's well-formedness.
-# '&' must run first: escaping '<'/'>' introduces new literal '&' characters (as part
-# of "&lt;"/"&gt;") that must not themselves be re-escaped by a later pass.
-xml_escape() {
-    printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
-}
-
 # True when the option is really set, as opposed to appearing inside a comment.
 # Commented-out options are exactly how the shipped files used to show an example,
 # and editing one leaves the setting the caller asked for unwritten.
@@ -294,8 +200,8 @@ agent_option_is_set() {
     # Matches both <tag> and the self-closing <tag/> -- OS_XML parses the two as
     # equivalent (see test_simple_nodes3, src/unit_tests/os_xml, and xml_tag_present()'s
     # identical convention in pkg_installer.sh), so a self-closing, present-but-empty tag
-    # must count as "set" here too, or set_agent_ssl_ca() would insert a second, duplicate
-    # <certificate_authorities> right alongside it.
+    # must count as "set" here too, or set_agent_verification_mode() would insert a second,
+    # duplicate <verification_mode> right alongside it.
     # $2 is passed to awk as "subtag", not "sub" -- gawk reserves "sub" as its builtin
     # string-substitution function and refuses to bind a variable of that name at all
     # (a fatal error, not a warning; caught empirically, this was the first version).
@@ -328,8 +234,8 @@ agent_option_value() {
     # Strips comments and flattens newlines first, instead of matching one line ($0) at
     # a time -- mirrors strip_xml_comments() + tr -d '\n\r' in pkg_installer.sh's
     # xml_value(), so a value split across multiple lines is still seen (matching $0
-    # alone is blind to it, and set_agent_ssl_ca()'s system-mode guard depends on this
-    # returning the real value, not an empty string, to work at all).
+    # alone is blind to it, and set_agent_verification_mode()'s replace-in-place path depends
+    # on this returning the real value, not an empty string, to work at all).
     flattened="$(awk '
         in_comment {
             if ($0 ~ /-->/) { in_comment = 0 }
@@ -458,95 +364,10 @@ replace_agent_ssl_tag() {
 
 }
 
-# Route WAZUH_REGISTRATION_CA into <agent><ssl><certificate_authorities>.
-# The <enrollment><server_ca_path> tag set_auto_enrollment_tag_value below still
-# writes is parsed-but-ignored by the 5.x agent -- enrollment now reuses
-# <agent><ssl> instead of its own CA -- so without this an operator who supplies a
-# CA at install time still ends up with it silently unused.
-set_agent_ssl_ca() {
-
-    ca_path="$1"
-
-    if [ -z "${ca_path}" ]; then
-        return
-    fi
-
-    # verification_mode=system trusts the OS store, not a configured CA: the agent
-    # refuses to start with both set (validateTls() in moduleConfig.cpp), so writing
-    # a CA here would just trade a silently-unused CA for a daemon that won't boot.
-    if [ "$(agent_option_value verification_mode ssl)" = "system" ]; then
-        echo "$(date '+%Y/%m/%d %H:%M:%S') WAZUH_REGISTRATION_CA was supplied but <verification_mode> is 'system'; leaving it unset, since the agent refuses to start with both configured together." >> "${INSTALLDIR}/logs/ossec.log"
-        return
-    fi
-
-    # Same file-type/readability check as the WPK upgrade gate (pkg_installer.sh's
-    # SSL_CA check) -- without it, a path that's a directory (or missing/unreadable)
-    # installs cleanly here and the failure only surfaces later, at agent startup, via
-    # w_agent_validate_ssl_ca().
-    if [ ! -f "${ca_path}" ] || [ ! -r "${ca_path}" ]; then
-        echo "$(date '+%Y/%m/%d %H:%M:%S') WAZUH_REGISTRATION_CA ('${ca_path}') is missing, not a regular file, or unreadable; leaving <certificate_authorities> unset." >> "${INSTALLDIR}/logs/ossec.log"
-        return
-    fi
-
-    # '&', '<', '>' are structurally significant in XML content -- a raw CA path
-    # containing any of them (e.g. a literal '&') would leave ossec.conf malformed and
-    # unparseable, not just carry the wrong value. Every branch below writes this
-    # escaped form, never the raw path.
-    ca_path="$(xml_escape "${ca_path}")"
-
-    if agent_option_is_set "certificate_authorities" "ssl"; then
-        # No extra escaping needed here beyond the XML-escaping above:
-        # replace_agent_ssl_tag() builds the new line with plain string concatenation
-        # (match()+substr()), never sub()'s '&'/'\&' replacement-text convention, so a
-        # bare '&' (which XML-escaping itself introduces, as part of "&amp;"/"&lt;"/
-        # "&gt;") passes through inert -- see that function's own comment for why a
-        # sed-side pre-escape here would be actively wrong, not just redundant.
-        if ! replace_agent_ssl_tag "certificate_authorities" "${ca_path}"; then
-            echo "$(date '+%Y/%m/%d %H:%M:%S') Error updating certificate_authorities with variable ${ca_path}." >> "${INSTALLDIR}/logs/ossec.log"
-        fi
-        return
-    fi
-
-    if agent_option_is_set "ssl"; then
-        # <ssl> already exists (e.g. hand-configured) but without a CA yet: insert
-        # the tag right after the opening <ssl>, reusing insert_into_agent_block's own
-        # awk technique (parameterized by tag) instead of a second copy of it.
-        echo "      <certificate_authorities>${ca_path}</certificate_authorities>" > "${TMP_SERVER}"
-        if ! insert_into_agent_block "${TMP_SERVER}" "ssl"; then
-            # Deliberately a warning, not an install-aborting failure: unlike
-            # pkg_installer.sh's equivalent pin_ca() failure during an upgrade (which
-            # aborts, because there is a working prior version to protect), a fresh
-            # install has no working state yet to fall back to -- aborting here would
-            # just block the install outright over a recoverable edge case (a
-            # hand-edited <ssl> block in a shipped template, which is not expected).
-            # The agent still comes up under the resolved default (system); an operator
-            # who needs the CA can add <certificate_authorities> by hand afterward.
-            echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_REGISTRATION_CA into <ssl><certificate_authorities>: an existing <ssl> block was found but not in the expected format (opening tag not alone on its own line)." >> "${INSTALLDIR}/logs/ossec.log"
-        fi
-        rm -f "${TMP_SERVER}"
-        return
-    fi
-
-    {
-        echo "    <ssl>"
-        echo "      <certificate_authorities>${ca_path}</certificate_authorities>"
-        echo "    </ssl>"
-    } > "${TMP_SERVER}"
-    # "agent" only, never the default agent|client: a pure 4.x-shaped <client> block is
-    # read by Read_Legacy_Client_Address(), which never looks at <ssl> -- same reasoning
-    # as pin_ca()'s <client>-rejection in pkg_installer.sh/do_upgrade.ps1. Pinning here
-    # would report success while the CA stays inert.
-    if ! insert_into_agent_block "${TMP_SERVER}" "agent"; then
-        echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_REGISTRATION_CA into a fresh <ssl> block: no <agent> opening tag found to insert after." >> "${INSTALLDIR}/logs/ossec.log"
-    fi
-    rm -f "${TMP_SERVER}"
-
-}
-
-# Route SSL_VERIFICATION into <agent><ssl><verification_mode>. Must run before
-# set_agent_ssl_ca() (see the call site) so that function's own "verification_mode is
-# 'system'" conflict check sees whatever this one wrote, rather than reading a value
-# from before this ran.
+# Route WAZUH_SSL_VERIFICATION into <agent><ssl><verification_mode>. The only TLS variable left
+# once the token became the sole registration path: nothing writes <certificate_authorities> at
+# install time any more, since a token install gets its anchor from the bootstrap and a
+# token-less one is being configured by hand anyway.
 set_agent_verification_mode() {
 
     mode="$1"
@@ -562,7 +383,7 @@ set_agent_verification_mode() {
     case "${mode}" in
         full|certificate|system|none) ;;
         *)
-            echo "$(date '+%Y/%m/%d %H:%M:%S') Invalid SSL_VERIFICATION '${mode}': must be exactly one of full, certificate, system, none. Leaving <verification_mode> unset." >> "${INSTALLDIR}/logs/ossec.log"
+            echo "$(date '+%Y/%m/%d %H:%M:%S') Invalid WAZUH_SSL_VERIFICATION '${mode}': must be exactly one of full, certificate, system, none. Leaving <verification_mode> unset." >> "${INSTALLDIR}/logs/ossec.log"
             return
             ;;
     esac
@@ -570,8 +391,8 @@ set_agent_verification_mode() {
     if agent_option_is_set "verification_mode" "ssl"; then
         # replace_agent_ssl_tag(), not edit_value_tag(): the latter's substitution is a
         # blind whole-file sed with no <agent><ssl> scoping, and only recognizes the
-        # paired <tag>...</tag> form -- see set_agent_ssl_ca()'s identical call for the
-        # full reasoning (self-closing, multi-line, and same-named-tag-elsewhere).
+        # paired <tag>...</tag> form, so it would miss a self-closing or multi-line tag and
+        # would happily rewrite a same-named tag somewhere else in the file.
         if ! replace_agent_ssl_tag "verification_mode" "${mode}"; then
             echo "$(date '+%Y/%m/%d %H:%M:%S') Error updating verification_mode with variable ${mode}." >> "${INSTALLDIR}/logs/ossec.log"
         fi
@@ -581,7 +402,7 @@ set_agent_verification_mode() {
     if agent_option_is_set "ssl"; then
         echo "      <verification_mode>${mode}</verification_mode>" > "${TMP_SERVER}"
         if ! insert_into_agent_block "${TMP_SERVER}" "ssl"; then
-            echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin SSL_VERIFICATION into <ssl><verification_mode>: an existing <ssl> block was found but not in the expected format (opening tag not alone on its own line)." >> "${INSTALLDIR}/logs/ossec.log"
+            echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_SSL_VERIFICATION into <ssl><verification_mode>: an existing <ssl> block was found but not in the expected format (opening tag not alone on its own line)." >> "${INSTALLDIR}/logs/ossec.log"
         fi
         rm -f "${TMP_SERVER}"
         return
@@ -592,9 +413,11 @@ set_agent_verification_mode() {
         echo "      <verification_mode>${mode}</verification_mode>"
         echo "    </ssl>"
     } > "${TMP_SERVER}"
-    # "agent" only, never the default agent|client -- same reasoning as set_agent_ssl_ca().
+    # "agent" only, never the default agent|client: a 4.x <client> block is read by
+    # Read_Legacy_Client(), which never looks at <ssl>, so a block pinned there would
+    # report success while staying inert.
     if ! insert_into_agent_block "${TMP_SERVER}" "agent"; then
-        echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin SSL_VERIFICATION into a fresh <ssl> block: no <agent> opening tag found to insert after." >> "${INSTALLDIR}/logs/ossec.log"
+        echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_SSL_VERIFICATION into a fresh <ssl> block: no <agent> opening tag found to insert after." >> "${INSTALLDIR}/logs/ossec.log"
     fi
     rm -f "${TMP_SERVER}"
 
@@ -611,16 +434,121 @@ delete_auto_enrollment_tag() {
 
 }
 
+# Decode WAZUH_ENROLLMENT_TOKEN once, into TOKEN_ADR and TOKEN_HAS_KEY.
+#
+# Decoding is delegated to the agent's own --show-token rather than done in shell: the token is
+# base64url of a JSON object, and reusing w_etoken_decode() means a token accepted at install
+# time is exactly a token the bootstrap will accept at first start. It goes in on stdin, never
+# as an argument -- the credential would otherwise reach ps output and the shell history. What
+# comes back never contains the credential, only whether one is present.
+decode_enrollment_token() {
+
+    TOKEN_ADR=""
+    TOKEN_HAS_KEY="no"
+
+    det_description="$(printf '%s' "${WAZUH_ENROLLMENT_TOKEN}" | "${INSTALLDIR}/bin/wazuh-agentd" --show-token)"
+    det_status="$?"
+
+    # A rejected token and a decoder that never ran are different problems and send an operator
+    # to different places, so they are reported apart rather than both as a bad token. Only the
+    # decoder's own exit code says which: a missing binary or an unresolved shared library exits
+    # 127, well away from the status it uses for a token it read and refused. The reason for a
+    # refusal is already on stderr, so only the consequence is added here.
+    if [ "${det_status}" -eq 2 ]; then
+        deployment_refusal "${WET_ERR_BAD_TOKEN}" "WAZUH_ENROLLMENT_TOKEN was refused by the token decoder; no manager was configured from it and no token was stored."
+        return 1
+    elif [ "${det_status}" -ne 0 ]; then
+        deployment_refusal "${WET_ERR_NO_DECODER}" "could not run '${INSTALLDIR}/bin/wazuh-agentd --show-token' (exit ${det_status}); the enrollment token was left unread and no token was stored."
+        return 1
+    fi
+
+    TOKEN_ADR="$(printf '%s\n' "${det_description}" | sed -n 's/^adr: //p')"
+
+    case "$(printf '%s\n' "${det_description}" | sed -n 's/^credential: //p')" in
+        present) TOKEN_HAS_KEY="yes" ;;
+    esac
+
+    if [ -z "${TOKEN_ADR}" ]; then
+        deployment_refusal "${WET_ERR_BAD_TOKEN}" "WAZUH_ENROLLMENT_TOKEN carries no address; no token was stored."
+        return 1
+    fi
+
+}
+
+# Settle the deployment variables before anything is written. The enrollment token
+# is the only way to register, so there is very little left to conflict: what survives is the
+# absence case, and the one variable that can still defeat a token after the install.
+#
+# Runs ahead of every writer. A token that cannot be honoured must never end in an unverified
+# enrollment, and a refusal discovered halfway through would already have written a <manager>
+# block. Refusing here leaves the configuration the package shipped.
+#
+# Returns 1 only when a token was supplied and is unusable -- nothing at all is then written. A
+# missing token is reported and returns 0: registration does not happen, but the variables that
+# were never about registration (agent name, groups, timers, verification mode) still apply,
+# which is what a hand-configured install needs.
+#
+# Kept in lockstep with config() in src/win32/InstallerScripts.vbs; a change here belongs there.
+resolve_deployment_conflicts() {
+
+    TOKEN_PRESENT="no"
+
+    warn_removed_variables
+
+    if [ -z "${WAZUH_ENROLLMENT_TOKEN}" ]; then
+        deployment_notice "${WET_INFO_NO_MANAGER}" "WAZUH_ENROLLMENT_TOKEN was not supplied, so the agent does not know where to connect."
+        return 0
+    fi
+
+    decode_enrollment_token || return 1
+
+    TOKEN_PRESENT="yes"
+
+    return 0
+
+}
+
+# Leave the token where the agent picks it up: w_agent_token_bootstrap() reads
+# AGENT_ENROLLMENT_TOKEN_FILE once at the first start, before the privilege drop, fetches the
+# CA, checks it against the token's pin, writes the trust anchor and unlinks this file.
+#
+# Root-only, unlike authd.pass: the agent reads it while still root, so the wazuh user never
+# needs it and must not be able to substitute the token that chooses its certificate authority.
+store_enrollment_token() {
+
+    set_token_path="${INSTALLDIR}/${WAZUH_ENROLLMENT_TOKEN_PATH}"
+
+    # Created and locked down before the token is written into it, so the credential is never
+    # briefly readable -- a reinstall would otherwise keep whatever mode the old file had.
+    : > "${set_token_path}"
+    chmod 600 "${set_token_path}"
+    chown root:root "${set_token_path}"
+    printf '%s' "${WAZUH_ENROLLMENT_TOKEN}" > "${set_token_path}"
+
+    echo "$(date '+%Y/%m/%d %H:%M:%S') Enrollment token stored; the manager was set to '${TOKEN_ADR}' and the trust anchor will be bootstrapped at the first agent start." >> "${INSTALLDIR}/logs/ossec.log"
+
+}
+
 # Change address block of the wazuh configuration file
 add_adress_block() {
 
     # Remove both server and legacy manager configuration blocks
     ${sed} "/<manager>/,/\/manager>/d; /<server>/,/\/server>/d" "${CONF_FILE}"
 
+    # A 5.x file is <agent><manager>; a 4.x file preserved across an in-place upgrade is
+    # <client><server>, and the 5.x parser reads the address out of <client> only under <server>
+    # -- writing <manager> there leaves the agent with nothing it will read. Same rule as
+    # config() in src/win32/InstallerScripts.vbs, which picks the wrapper the same way.
+    if grep -q "<agent>" "${CONF_FILE}"; then
+        aab_wrapper="manager"
+    else
+        aab_wrapper="server"
+    fi
+
     {
-        echo "    <manager>"
+        echo "    <${aab_wrapper}>"
         echo "      <endpoint>${FINAL_ENDPOINT}</endpoint>"
-        echo "    </manager>"
+        echo "    </${aab_wrapper}>"
     } >> "${TMP_SERVER}"
 
     insert_into_agent_block "${TMP_SERVER}"
@@ -638,31 +566,12 @@ add_parameter () {
 
 }
 
+# Only the two aliases whose targets survived the collapse. Every other alias named a removed
+# variable, so it is reported by warn_removed_variables() rather than mapped onto anything.
 get_deprecated_vars () {
 
-    if [ -n "${WAZUH_MANAGER_IP}" ] && [ -z "${WAZUH_MANAGER}" ]; then
-        WAZUH_MANAGER=${WAZUH_MANAGER_IP}
-    fi
-    if [ -n "${WAZUH_AUTHD_SERVER}" ] && [ -z "${WAZUH_REGISTRATION_SERVER}" ]; then
-        WAZUH_REGISTRATION_SERVER=${WAZUH_AUTHD_SERVER}
-    fi
-    if [ -n "${WAZUH_AUTHD_PORT}" ] && [ -z "${WAZUH_REGISTRATION_PORT}" ]; then
-        WAZUH_REGISTRATION_PORT=${WAZUH_AUTHD_PORT}
-    fi
-    if [ -n "${WAZUH_PASSWORD}" ] && [ -z "${WAZUH_REGISTRATION_PASSWORD}" ]; then
-        WAZUH_REGISTRATION_PASSWORD=${WAZUH_PASSWORD}
-    fi
     if [ -n "${WAZUH_NOTIFY_TIME}" ] && [ -z "${WAZUH_KEEP_ALIVE_INTERVAL}" ]; then
         WAZUH_KEEP_ALIVE_INTERVAL=${WAZUH_NOTIFY_TIME}
-    fi
-    if [ -n "${WAZUH_CERTIFICATE}" ] && [ -z "${WAZUH_REGISTRATION_CA}" ]; then
-        WAZUH_REGISTRATION_CA=${WAZUH_CERTIFICATE}
-    fi
-    if [ -n "${WAZUH_PEM}" ] && [ -z "${WAZUH_REGISTRATION_CERTIFICATE}" ]; then
-        WAZUH_REGISTRATION_CERTIFICATE=${WAZUH_PEM}
-    fi
-    if [ -n "${WAZUH_KEY}" ] && [ -z "${WAZUH_REGISTRATION_KEY}" ]; then
-        WAZUH_REGISTRATION_KEY=${WAZUH_KEY}
     fi
     if [ -n "${WAZUH_GROUP}" ] && [ -z "${WAZUH_AGENT_GROUP}" ]; then
         WAZUH_AGENT_GROUP=${WAZUH_GROUP}
@@ -672,31 +581,23 @@ get_deprecated_vars () {
 
 set_vars () {
 
-    export WAZUH_MANAGER
-    export WAZUH_MANAGER_PORT
-    export WAZUH_MANAGER_ENDPOINT
-    export WAZUH_REGISTRATION_SERVER
-    export WAZUH_REGISTRATION_PORT
-    export WAZUH_REGISTRATION_PASSWORD
-    export WAZUH_KEEP_ALIVE_INTERVAL
-    export WAZUH_TIME_RECONNECT
-    export WAZUH_REGISTRATION_CA
-    export WAZUH_REGISTRATION_CERTIFICATE
-    export WAZUH_REGISTRATION_KEY
+    export WAZUH_ENROLLMENT_TOKEN
     export WAZUH_AGENT_NAME
     export WAZUH_AGENT_GROUP
+    export WAZUH_KEEP_ALIVE_INTERVAL
+    export WAZUH_TIME_RECONNECT
     export ENROLLMENT_DELAY
-    export SSL_VERIFICATION
-    # The following variables are yet supported but all of them are deprecated
-    export WAZUH_MANAGER_IP
+    export WAZUH_SSL_VERIFICATION
+    # Deprecated aliases of variables that survived
     export WAZUH_NOTIFY_TIME
-    export WAZUH_AUTHD_SERVER
-    export WAZUH_AUTHD_PORT
-    export WAZUH_PASSWORD
     export WAZUH_GROUP
-    export WAZUH_CERTIFICATE
-    export WAZUH_KEY
-    export WAZUH_PEM
+    # Removed. Exported only so a value still set in /tmp/wazuh_envs reaches
+    # warn_removed_variables() and gets reported, rather than being silently invisible here.
+    export SSL_VERIFICATION
+    # shellcheck disable=SC2163
+    for sv_name in "${REMOVED_VARS[@]}"; do
+        export "${sv_name}"
+    done
 
     if [ -r "${WAZUH_MACOS_AGENT_DEPLOYMENT_VARS}" ]; then
         . ${WAZUH_MACOS_AGENT_DEPLOYMENT_VARS}
@@ -707,13 +608,10 @@ set_vars () {
 
 unset_vars() {
 
-    vars=(WAZUH_MANAGER_IP WAZUH_MANAGER_PORT WAZUH_MANAGER_ENDPOINT WAZUH_NOTIFY_TIME \
-          WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
-          WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM \
-          WAZUH_MANAGER WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
-          WAZUH_REGISTRATION_PASSWORD WAZUH_KEEP_ALIVE_INTERVAL WAZUH_REGISTRATION_CA \
-          WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_GROUP \
-          ENROLLMENT_DELAY SSL_VERIFICATION)
+    vars=(WAZUH_ENROLLMENT_TOKEN WAZUH_AGENT_NAME WAZUH_AGENT_GROUP WAZUH_GROUP \
+          WAZUH_KEEP_ALIVE_INTERVAL WAZUH_NOTIFY_TIME WAZUH_TIME_RECONNECT \
+          ENROLLMENT_DELAY WAZUH_SSL_VERIFICATION SSL_VERIFICATION \
+          "${REMOVED_VARS[@]}")
 
     for var in "${vars[@]}"; do
         unset "${var}"
@@ -797,14 +695,8 @@ add_auto_enrollment () {
         # No block to reuse. Truncating also drops whatever a half-read one left.
         {
             echo "      <enabled>yes</enabled>"
-            echo "      <manager_address>MANAGER_IP</manager_address>"
-            echo "      <port>1515</port>"
             echo "      <agent_name>agent</agent_name>"
             echo "      <groups>Group1</groups>"
-            echo "      <server_ca_path>/path/to/server_ca</server_ca_path>"
-            echo "      <agent_certificate_path>/path/to/agent.cert</agent_certificate_path>"
-            echo "      <agent_key_path>/path/to/agent.key</agent_key_path>"
-            echo "      <authorization_pass_path>/path/to/authd.pass</authorization_pass_path>"
             echo "      <delay_after_enrollment>20</delay_after_enrollment>"
         } > "${TMP_ENROLLMENT}"
     fi
@@ -862,80 +754,39 @@ main () {
 
     get_deprecated_vars
 
-    # WAZUH_MANAGER_ENDPOINT carries the whole connection target (#38624) and takes
-    # priority over everything else when set. WAZUH_MANAGER and WAZUH_MANAGER_PORT are
-    # kept working: an <endpoint> is synthesized from them, so every existing 4.x-era
-    # install command and dashboard snippet keeps configuring an agent correctly.
-    #
-    # ${VAR+x} rather than -n on the endpoint, so an explicitly empty value is rejected
-    # instead of silently read as unset: "" used to be the prefix opt-out (#38614), and
-    # an operator still passing it deserves the error rather than a default.
-    # WAZUH_MANAGER_PORT only ever qualifies an address, so on its own there is nothing
-    # to attach it to and no <manager> block gets written at all. Say so instead of
-    # accepting the run and leaving the operator to discover the port was ignored.
-    if [ -z "${WAZUH_MANAGER_ENDPOINT+x}" ] && [ -z "${WAZUH_MANAGER}" ] && [ -n "${WAZUH_MANAGER_PORT}" ]; then
-        echo "WAZUH_MANAGER_PORT was set without WAZUH_MANAGER or WAZUH_MANAGER_ENDPOINT; it has no effect on its own." >&2
+    # Before anything that might log. Every refusal and every ignored-variable notice lands in
+    # ossec.log, and whichever of them fired first would otherwise create it root-owned and 0644
+    # instead of root:wazuh 0660.
+    ensure_ossec_log
+
+    # Settle every variable against every other one before the first writer runs, so a refusal
+    # returns before any of them and no token is stored -- that is what keeps a refused token
+    # from ending in an unverified enrollment. It is not a rollback: add_adress_block() further
+    # down deletes the existing <manager> block before inserting its replacement, so a file that
+    # insert cannot match is left without one whatever this gate decides.
+    if ! resolve_deployment_conflicts; then
+        unset_vars
+        return 1
     fi
 
-    if [ -n "${WAZUH_MANAGER_ENDPOINT+x}" ] || [ -n "${WAZUH_MANAGER}" ]; then
-        if [ ! -f "${INSTALLDIR}/logs/ossec.log" ]; then
-            touch -f "${INSTALLDIR}/logs/ossec.log"
-            chmod 660 "${INSTALLDIR}/logs/ossec.log"
-            chown root:wazuh "${INSTALLDIR}/logs/ossec.log"
-        fi
-
-        if [ -n "${WAZUH_MANAGER_ENDPOINT+x}" ]; then
-            # Written through as given: <endpoint> takes the same language this variable
-            # does, so parsing here only validates it and reports why a bad one was
-            # refused. A rejected value writes no <manager> block at all -- leaving the
-            # shipped placeholder makes the agent fail loudly at startup rather than
-            # silently connect somewhere the operator did not ask for.
-            if parse_manager_endpoint "${WAZUH_MANAGER_ENDPOINT}"; then
-                FINAL_ENDPOINT="${WAZUH_MANAGER_ENDPOINT}"
-                add_adress_block
-            fi
-        else
-            # Only one <manager> block is supported; if WAZUH_MANAGER carries several
-            # comma-separated addresses, the last one prevails (server rotation was
-            # removed, #37702 restrictions 2/3), matching the client parser.
-            ADDRESSES=( ${WAZUH_MANAGER//,/ } )
-            FINAL_ENDPOINT="${ADDRESSES[$(( ${#ADDRESSES[@]} - 1 ))]}"
-
-            # A bare IPv6 literal has to be bracketed once it shares a value with the
-            # port, or its trailing group reads as one.
-            case "${FINAL_ENDPOINT}" in
-                # Already bracketed values must be left alone, or "[2001:db8::1]" becomes
-                # "[[2001:db8::1]]" and the agent will not start. Matches the guard in
-                # InstallerScripts.vbs.
-                \[*) ;;
-                *:*:*) FINAL_ENDPOINT="[${FINAL_ENDPOINT}]" ;;
-            esac
-
-            # Omitting the port leaves it to the agent's own default, so nothing is
-            # appended -- the resulting value stays the shortest one that means this.
-            if [ -n "${WAZUH_MANAGER_PORT}" ]; then
-                FINAL_ENDPOINT="${FINAL_ENDPOINT}:${WAZUH_MANAGER_PORT}"
-            fi
-
-            add_adress_block
-        fi
+    # The token's address is the only thing that reaches <endpoint>, and it is written verbatim.
+    # No validation here: w_etoken_decode() checks 'adr' against the same grammar before
+    # --show-token will print it at all (ETOKEN_BAD_ADR), so a malformed address never gets past
+    # the decoder, and re-checking it in shell would be a second implementation of a rule the
+    # codec already owns.
+    if [ "${TOKEN_PRESENT}" = "yes" ]; then
+        FINAL_ENDPOINT="${TOKEN_ADR}"
+        add_adress_block
     fi
 
-    # Independent of enrollment: an operator may want to force a verification posture
-    # (e.g. SSL_VERIFICATION=none) without supplying any other WAZUH_REGISTRATION_*
-    # value. Runs before the enrollment block below so set_agent_ssl_ca()'s own
-    # "verification_mode is 'system'" conflict check sees this value already written.
-    set_agent_verification_mode "${SSL_VERIFICATION}"
+    # Honoured in both supported shapes: alongside a token, where it overrides the mode the
+    # bootstrapped anchor would have resolved to on its own, and alongside an endpoint, where
+    # it is the only TLS input there is.
+    set_agent_verification_mode "${WAZUH_SSL_VERIFICATION}"
 
-    if [ -n "${WAZUH_REGISTRATION_SERVER}" ] || [ -n "${WAZUH_REGISTRATION_PORT}" ] || [ -n "${WAZUH_REGISTRATION_CA}" ] || [ -n "${WAZUH_REGISTRATION_CERTIFICATE}" ] || [ -n "${WAZUH_REGISTRATION_KEY}" ] || [ -n "${WAZUH_AGENT_NAME}" ] || [ -n "${WAZUH_AGENT_GROUP}" ] || [ -n "${ENROLLMENT_DELAY}" ] || [ -n "${WAZUH_REGISTRATION_PASSWORD}" ]; then
+    # What is left of <enrollment>: the three settings that were never about registration.
+    if [ -n "${WAZUH_AGENT_NAME}" ] || [ -n "${WAZUH_AGENT_GROUP}" ] || [ -n "${ENROLLMENT_DELAY}" ]; then
         add_auto_enrollment
-        set_auto_enrollment_tag_value "manager_address" "${WAZUH_REGISTRATION_SERVER}"
-        set_auto_enrollment_tag_value "port" "${WAZUH_REGISTRATION_PORT}"
-        set_auto_enrollment_tag_value "server_ca_path" "${WAZUH_REGISTRATION_CA}"
-        set_agent_ssl_ca "${WAZUH_REGISTRATION_CA}"
-        set_auto_enrollment_tag_value "agent_certificate_path" "${WAZUH_REGISTRATION_CERTIFICATE}"
-        set_auto_enrollment_tag_value "agent_key_path" "${WAZUH_REGISTRATION_KEY}"
-        set_auto_enrollment_tag_value "authorization_pass_path" "${WAZUH_REGISTRATION_PASSWORD_PATH}"
         set_auto_enrollment_tag_value "agent_name" "${WAZUH_AGENT_NAME}"
         set_auto_enrollment_tag_value "groups" "${WAZUH_AGENT_GROUP}"
         set_auto_enrollment_tag_value "delay_after_enrollment" "${ENROLLMENT_DELAY}"
@@ -943,20 +794,21 @@ main () {
         concat_conf
     fi
 
-
-    if [ -n "${WAZUH_REGISTRATION_PASSWORD}" ]; then
-        echo "${WAZUH_REGISTRATION_PASSWORD}" > "${INSTALLDIR}/${WAZUH_REGISTRATION_PASSWORD_PATH}"
-        chmod 640 "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
-        chown root:wazuh "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
-    fi
-
     # Options to be modified in wazuh configuration file
     set_agent_option "notify_time" "${WAZUH_KEEP_ALIVE_INTERVAL}"
     edit_value_tag "time-reconnect" "${WAZUH_TIME_RECONNECT}"
+
+    if [ "${TOKEN_PRESENT}" = "yes" ]; then
+        store_enrollment_token
+    fi
 
     unset_vars
 
 }
 
-# Start script execution
-main "$@"
+# Guarded so this file can be sourced by the test suite without running the full
+# install flow; every packaged caller invokes it directly as its own process, where
+# BASH_SOURCE[0] == $0 either way.
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    main "$@"
+fi

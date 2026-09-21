@@ -117,6 +117,11 @@
               "default": true,
               "description": "Start the legacy listener."
             },
+            "ca_delivery": {
+              "type": "boolean",
+              "default": true,
+              "description": "Send the manager's CA certificate to a pre-v5.0.0 agent over the WPK transfer channel during a remote upgrade, so the upgraded agent has a trust anchor. Disable when a corporate PKI or a configuration-management tool distributes the anchor instead."
+            },
             "port": {
               "allOf": [
                 {
@@ -235,6 +240,16 @@
               "default": "",
               "description": "CA bundle used to verify agent certificates. Empty = client certificate verification disabled."
             },
+            "ca_certificate": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/path"
+                }
+              ],
+              "minLength": 1,
+              "default": "etc/certs/root-ca.pem",
+              "description": "CA certificate that signs the listener certificate; served on GET /cacerts and pinned by enrollment tokens. Not the client-verification CA ('ca')."
+            },
             "verification_mode": {
               "enum": [
                 "none",
@@ -254,6 +269,20 @@
             "dual_stack": {
               "type": "boolean",
               "description": "Accept IPv4 on an IPv6 bind address. Absent: module default."
+            },
+            "enroll_rate_limit": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000,
+              "default": 100,
+              "description": "Sustained requests per second this manager serves across POST /enroll and POST /enroll/secret together, counted for the two routes as a whole and not per agent. 0 disables the limit. Requests over it get 429 without reaching authd or, on /enroll/secret, without even being authenticated. Short bursts are absorbed: the pair may serve twice this value back to back before the rate paces it. One ceiling for both on purpose: they cost the manager the same authd round trip, so a fleet-wide bootstrap wave cannot exhaust the identity journal and start refusing real enrollments."
+            },
+            "cacerts_rate_limit": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000,
+              "default": 50,
+              "description": "Sustained GET /cacerts requests per second this manager serves, counted for the endpoint as a whole and not per agent. 0 disables the limit. Requests over it get 429. Short bursts are absorbed: the endpoint may serve twice this value back to back before the rate paces it."
             }
           }
         },
@@ -405,8 +434,7 @@
         },
         "legacy_enrollment": {
           "type": "boolean",
-          "default": true,
-          "description": "Accept enrollment through the legacy TLS port."
+          "description": "Accept enrollment through the legacy TLS port (1515), used only by 4.x agents. No default of its own: when absent it follows remote.legacy.enabled, so a configuration without the remote.legacy block has no legacy enrollment either. An explicit value always wins."
         },
         "agents": {
           "description": "Agent version policy of the enrollment service.",

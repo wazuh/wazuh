@@ -29,7 +29,10 @@ group commit, the scan lane) with nothing else in the path.
 
 Behaves like a fleet of real agents:
 
-1. enrolls against authd (TCP/1515) to obtain an id and a key;
+1. enrolls over remoted's `POST /enroll` with an enrollment token to obtain an id and a key — the
+   fleet's bootstrap, which needs no change to the manager's enrollment policy (`--bootstrap 1515`
+   uses authd's legacy TCP listener instead, for comparing the two; see
+   [16-enroll-https.md](16-enroll-https.md));
 2. `POST /control` `startup` over HTTPS/1517, authenticated with a `wazuh-agent+jwt` bearer token;
 3. `POST /control` `notify` every 10 s per agent — the manager's real hot path;
 4. `POST /stateful` sessions, relayed by remoted to the server;
@@ -58,8 +61,10 @@ one that stresses the manager's cross-lane paths (see [07](07-scenario-schema.md
 - **It does not retry on the agent's behalf.** Idempotent re-POST is the AGENT's retry contract, not
   a way to make a benchmark look better. The single exception is `503` + `Retry-After` for a feed
   still downloading (see FR-9), which is a start-up condition of the manager rather than load.
-- **It does not tune the manager.** Preparing the manager (enrollment without a password, indexer
-  reachable) belongs to the orchestration scripts, and every setting used is recorded with the run.
+- **It does not tune the manager.** Preparing the manager (remote enrollment reachable, a token
+  minted, indexer reachable) belongs to the orchestration scripts, and every setting used is
+  recorded with the run. It no longer WEAKENS the manager either: the default bootstrap runs against
+  the installed `<use_password>` policy.
 
 ## Relationship to the retired simulator
 

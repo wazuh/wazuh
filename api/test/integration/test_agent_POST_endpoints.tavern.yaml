@@ -631,3 +631,190 @@ stages:
       status_code: 400
       json:
         error: 1705
+
+---
+test_name: POST /agents/enrollment-tokens
+
+stages:
+
+    # POST /agents/enrollment-tokens
+  - name: Try to mint an enrollment token without body
+    request: &enrollment_token_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+
+    # POST /agents/enrollment-tokens
+  - name: Mint an enrollment token for one of the listener certificate's names
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "wazuh-master"
+        ttl: "2h"
+        max_uses: 2
+        description: "tavern"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          token: !anystr
+          id: !anystr
+          address: "wazuh-master"
+          expires: !anystr
+          pin_hex: !anystr
+      save:
+        json:
+          enrollment_token_id: data.id
+
+    # POST /agents/enrollment-tokens
+  - name: Mint a public token (no credential) with the defaults
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "wazuh-master"
+        no_credential: true
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          token: !anystr
+          id: !anystr
+          address: "wazuh-master"
+          expires: !anystr
+          pin_hex: !anystr
+
+    # POST /agents/enrollment-tokens
+  - name: Mint a token embedding the CA
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "wazuh-master"
+        embed_ca: true
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          token: !anystr
+          id: !anystr
+          address: "wazuh-master"
+          expires: !anystr
+
+    # POST /agents/enrollment-tokens
+  - name: Mint a token with a custom port and prefix
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "wazuh-master"
+        port: 1234
+        prefix: "/custom/"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          token: !anystr
+          id: !anystr
+          address: "wazuh-master:1234/custom"
+          expires: !anystr
+          pin_hex: !anystr
+
+    # POST /agents/enrollment-tokens
+  - name: Try to mint a token with a prefix longer than the schema allows
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "wazuh-master"
+        prefix: "/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+        detail: !re_search "is too long"
+
+    # POST /agents/enrollment-tokens
+  - name: Try to mint a token with an address longer than the schema allows
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+        detail: !re_search "is too long"
+
+    # POST /agents/enrollment-tokens
+  - name: Try to mint a token with a description longer than the schema allows
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "wazuh-master"
+        description: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+        detail: !re_search "is too long"
+
+    # POST /agents/enrollment-tokens
+  - name: Try to mint a token with max_uses above the schema's maximum
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "wazuh-master"
+        max_uses: 5000000000
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+    # POST /agents/enrollment-tokens
+  - name: Try to mint a token for a name the listener certificate does not carry
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "evil.example"
+    response:
+      status_code: 400
+      json:
+        error: 1768
+
+    # POST /agents/enrollment-tokens
+  - name: Try to mint a token with an invalid ttl
+    request:
+      verify: False
+      <<: *enrollment_token_request
+      json:
+        address: "wazuh-master"
+        ttl: "soon"
+    response:
+      status_code: 400
+
+    # DELETE /agents/enrollment-tokens/{token_id}
+  - name: Revoke the token minted above (cleanup)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens/{enrollment_token_id}"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0

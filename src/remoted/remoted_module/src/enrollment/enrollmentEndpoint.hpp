@@ -84,4 +84,17 @@ namespace remoted::enrollment
                                             std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder,
                                             remoted::metrics::EndpointHttpMetrics httpMetrics = {});
 
+    /**
+     * @brief The 429 body this route answers when the endpoint's rate limit refuses a request.
+     *
+     * Lives here, not in the gate that sends it (endpoints/rateLimitGate.hpp), so /enroll's error
+     * envelope stays defined in one place: the nested `{"error":{"code","message"}}` shape every
+     * other rejection of this route uses, with `code` 0 -- the same value the envelope carries
+     * whenever the refusal is remoted's own rather than an authd numeric code.
+     *
+     * `Retry-After` is the gate's to add: that one is the limiter's refill time, not an envelope
+     * decision.
+     */
+    remoted::http::HttpResponse rateLimitedResponse();
+
 } // namespace remoted::enrollment

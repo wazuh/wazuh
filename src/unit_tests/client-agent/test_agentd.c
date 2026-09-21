@@ -11,19 +11,46 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <unistd.h>
+#include <signal.h>
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/url_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "agentd.h"
 
+/* The <config_report> tests below run the real ClientConf(), which probes AGENT_ANCHOR_CA
+ * relative to this binary's working directory -- shared with test_client_conf_ssl_resolution,
+ * whose anchor tests create and remove a file there. Nothing here asserts on agt->ssl, so a
+ * stale anchor changes no outcome today; it is cleared anyway because that file arriving
+ * silently changes what ClientConf() resolves, and this binary runs first. */
+static int clear_stale_anchor(void **state) {
+    (void) state;
+
+    unlink(AGENT_ANCHOR_CA);
+    rmdir("etc/certs");
+
+    return 0;
+}
+
 #ifdef TEST_AGENT
 
 /* agentd.c calls w_https_client_start()/w_https_client_stop(), which would drag
  * https_client_bridge.o (and its hc_* module references) into this test binary.
- * test_agentd does not exercise the client, so stub the two entry points. */
-void __wrap_w_https_client_start(void) {}
+ * test_agentd does not exercise the client, so stub the two entry points.
+ * The stub reports success: AgentdStart() now merror_exit()s on a false
+ * return, which none of these tests expect. */
+bool __wrap_w_https_client_start(void) { return true; }
 void __wrap_w_https_client_stop(void) {}
+
+/* exit() is noreturn, so the wrapper must not return either: falling back into
+ * agentd_shutdown() after the call would land past an omitted epilogue. Same
+ * mock_assert() convention __wrap__merror_exit() already uses, so every test
+ * below calls it through expect_assert_failure(). */
+void __wrap_exit(int code) {
+    check_expected(code);
+    mock_assert(0, "exit called", __FILE__, __LINE__);
+}
 
 static int setup_group(void **state) {
     curl_response *response;
@@ -448,6 +475,30 @@ static void test_config_report_custom_interval_is_respected(void** state)
     assert_int_equal(agt->config_report.interval, 1800); // 30m, overriding the 3600s default.
 }
 
+/* agentd_shutdown */
+
+static void test_agentd_shutdown_sigterm_exits_zero(void **state) {
+    (void) state;
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "(1225): SIGNAL [(15)-(Terminated)] Received. Exit Cleaning...");
+    expect_value(__wrap_exit, code, 0);
+
+    expect_assert_failure(agentd_shutdown(SIGTERM));
+}
+
+/* The handler must not branch on the signal: every signal StartSIG2() routes to it
+ * is a requested stop. */
+static void test_agentd_shutdown_sigint_exits_zero(void **state) {
+    (void) state;
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "(1225): SIGNAL [(2)-(Interrupt)] Received. Exit Cleaning...");
+    expect_value(__wrap_exit, code, 0);
+
+    expect_assert_failure(agentd_shutdown(SIGINT));
+}
+
 #endif // TEST_AGENT
 
 int main(void) {
@@ -484,8 +535,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(
             test_config_report_custom_interval_is_respected, setup_client_conf, teardown_client_conf),
 
+        // agentd_shutdown
+        cmocka_unit_test(test_agentd_shutdown_sigterm_exits_zero),
+        cmocka_unit_test(test_agentd_shutdown_sigint_exits_zero),
+
 #endif // TEST_AGENT
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, clear_stale_anchor, NULL);
 }

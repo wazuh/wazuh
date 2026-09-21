@@ -166,8 +166,13 @@ You can ignore registry entries using `registry_ignore`.
 <syscheck>
   <registry_ignore>HKEY_LOCAL_MACHINE\Security\Policy\Secrets</registry_ignore>
   <registry_ignore type="sregex">\Enum$</registry_ignore>
+  <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\bam\State</registry_ignore>
 </syscheck>
 ```
+
+A plain entry is a case-insensitive prefix, so `…\Services\bam\State` also covers every key below
+it, and the subtree is skipped before it is opened. An `sregex` entry applies to every monitored
+registry entry, so `\Enum$` matches any key whose path ends in `\Enum`, wherever it is.
 
 Restart the agent:
 

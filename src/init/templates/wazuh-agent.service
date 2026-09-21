@@ -6,6 +6,7 @@ After=network.target network-online.target
 [Service]
 Type=forking
 TimeoutSec=45
+PIDFile=WAZUH_HOME_TMP/var/run/wazuh-agentd.pid
 
 ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control start
 ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control stop

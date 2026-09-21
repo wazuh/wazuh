@@ -125,8 +125,9 @@ namespace invsync::indexer
          */
         struct BulkRequestStats
         {
-            std::uint64_t requests {0}; ///< `_bulk` POSTs sent.
-            std::uint64_t bytes {0};    ///< NDJSON payload bytes those POSTs carried.
+            std::uint64_t requests {0};        ///< `_bulk` POSTs sent.
+            std::uint64_t bytes {0};           ///< NDJSON payload bytes those POSTs carried.
+            std::uint64_t conflictRetries {0}; ///< conflict waits spent; a cleared one fails no flush.
         };
 
         virtual BulkRequestStats takeBulkRequestStats()

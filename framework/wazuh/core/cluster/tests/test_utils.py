@@ -249,12 +249,12 @@ def test_get_cluster_items():
             "etc/": {
                 "permissions": 416,
                 "source": "master",
-                "files": ["client.keys", "authd.pass"],
+                "files": ["client.keys", "authd.pass", "enrollment_tokens.json"],
                 "recursive": False,
                 "restart": False,
                 "remove_subdirs_if_empty": False,
                 "extra_valid": False,
-                "description": "client keys file database and enrollment shared password",
+                "description": "client keys file database, enrollment shared password and enrollment tokens",
             },
             "etc/shared/": {
                 "permissions": 432,
