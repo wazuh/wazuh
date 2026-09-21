@@ -60,36 +60,87 @@ after it reloads `client.keys`, and that took **~100 s** on the reference manage
 and invalidates the run rather than being counted as load. Give big fleets a generous budget
 (`--enroll-settle 240s`).
 
-Each run creates `results_<label>/` with `bench.csv` (per-second cumulative counters + latency
-percentiles), `sender_summary.json` (metadata, totals, and the same counters broken down `by_fleet`
-and `by_lane`), `scenario.json` (the exact scenario, copied for reproducibility), `summary.json` (all
-of the above collated) and `monitor/` — the process samples plus each daemon's own statistics,
-including `stats-api-inventory-sync.csv` (the module's `GET /metrics`, one row per scrape) and
-`charts/`. The sender's formats are pinned by
-[`docu/09-metrics-and-output.md`](tool_simulator/docu/09-metrics-and-output.md).
+Each run creates `results_<label>/` with `bench.csv` (per-second cumulative counters + latency percentiles), `sender_summary.json` (metadata, totals, the same counters broken down `by_fleet` and `by_lane`, and the scenario's `expected` verdict), `scenario.json` (the exact scenario, copied for reproducibility), `samples/metrics.ndjson` (every daemon's `GET /metrics`, one JSON object per scrape), `summary.json` (what those inputs add up to), `monitor/` (process, disk and log samples) and `charts/`. The sender's formats are pinned by [`docu/09-metrics-and-output.md`](tool_simulator/docu/09-metrics-and-output.md).
 
-The same `monitor/` directory carries `stats-api-remoted-module.csv`, the remoted C++ module's
-`GET /metrics` over its admin socket (`queue/sockets/remote-admin-http.sock`): the `remoted.control.*`
-and `remoted.scanvd.*` counters plus the admin server's own transport gauges. The scan-vd family
-is what a saturation run is read on — an admission split, `scanvd_queue_full` and
-`scanvd_indexer_unavailable` against `scanvd_accepted` and `scanvd_vd_error`, says how many
-re-scans VD queued versus refused; the charts render it as
-`remoted_module_scanvd_funnel_<label>.png` (requests / accepted / queue_full /
-indexer_unavailable / vd_error / version_mismatch), and it counts the same admissions the sender's
-`scan_200`/`scan_503` do, so the two sides finally mean the same thing. Remoted's **C** statistics
-keep their own file (`stats-api-remoted.csv`, the legacy framed `getstats` socket); the two are
-disjoint. Both inventory sync and the admin server also report their route-class connection
-counts and in-flight byte budget, so a shed session can be attributed to the budget or to a class
-cap rather than guessed at.
+### `samples/metrics.ndjson` is the server-side artifact
 
-**One poller, one source of truth.** The monitor samples the manager's processes *and* polls each
-daemon's statistics, so it also owns the inventory-sync scrape. `scrape_metrics.sh` stays as a
-standalone tool and is only started automatically when the monitor cannot run (it needs `psutil`),
-so a missing Python package costs the process samples but never the server's own numbers.
+One file, one JSON object per scrape, every daemon in it (`src` says which). It is **lossless** in a checkable sense: the module's original `/metrics` response can be rebuilt from it, field for field, and the test suite asserts exactly that. Every metric is there under its own name — including the ones no chart is keyed on yet — with its `type`, `unit` and `description`, whether it was enabled, and the daemon's own clock.
 
-The server's counters are **cumulative for the module's lifetime**, not per run — `summary.json`
-carries a `server_metrics.delta` (last minus first scrape) which is what belongs to a given run.
-Percentiles are excluded from that delta on purpose: subtracting two p99 snapshots is meaningless.
+Per-metric descriptors (`type`, `unit`, `description`) go on the `meta` line rather than on all 400 scrapes. A manifest is a **revision, not a header**: a module may register a metric after the run has started (the transport diagnostics only exist once the server is up), and the collector re-emits the manifest whenever the descriptors change. A reader folds every manifest of the run, latest wins — `bench_samples.read_descriptors()` / `read_types()` — so a late metric keeps its type instead of arriving with readings and no description of them. `d` carries what the dump said about itself. `off` lists the metrics that reported `enabled: false` in that scrape — `wazuh_metrics` writes a *value* for a disabled metric too (whatever it last held), so without that list a stopped counter reads as a live one flatlining.
+
+```text
+{"kind":"run","r":"20260916T181538Z-35d5","started":"...Z","label":"<run label>"}
+{"kind":"meta","src":"inventory-sync","socket":"...","r":"...",
+ "types":{"sync.docs.indexed":"counter",...},"units":{...},"descriptions":{...}}
+{"ts":"...Z","t":12.0,"src":"inventory-sync","ok":true,"m":{"sync.docs.indexed":1234,...},
+ "h":{"vd.lane.time":{"count":9,"p50":...,"p99":...},...},
+ "d":{"name":"inventory_sync_server","timestamp":"...Z"},"r":"20260916T181538Z-35d5"}
+{"ts":"...Z","t":13.0,"src":"inventory-sync","ok":false,"err":"connection refused","r":"..."}
+```
+
+**Re-running a label appends to the same file.** `results_<label>/` is reused and the collectors append, so one samples file can hold several runs. Each run opens with a `run` marker and every line carries its `r`; the charts and `summary.json` both read the **last run only**, and `summary.json` records which (`server_metrics.<source>.run`). Reading the file whole instead — `jq` with no filter — spans runs, and a cumulative counter's delta then covers all of them. To scope a query by hand, filter on the last `r`:
+
+```bash
+RUN=$(jq -r 'select(.r).r' results_<label>/samples/metrics.ndjson | tail -1)
+jq -r --arg r "$RUN" 'select(.r==$r and .src=="inventory-sync" and .ok) | [.t, .m["vd.lane.depth"]] | @tsv' \
+    results_<label>/samples/metrics.ndjson
+```
+
+Two more rules matter when reading it. A metric the dump did not carry is **absent** from `m`, not zero — "this build does not register it", "this counter has not moved" and "this metric was turned off" are three different facts, and the format keeps all three apart (the third via `off`). A failed scrape carries **no metrics at all**, because zeros would read as a counter reset to anything computing a delta. Histograms live in `h`, so a percentile can never be mistaken for something you may subtract.
+
+Read through `bench_samples.observed()` rather than touching `m` and `h` directly: it returns both with whatever that scrape listed in `off` removed, which is what keeps a disabled metric's stale value — or a disabled histogram's stale distribution — out of a chart or a delta.
+
+Ad-hoc queries need nothing but `jq`:
+
+```bash
+# how the VD lane depth moved, as a time series (every run in the file)
+jq -r 'select(.src=="inventory-sync" and .ok) | [.t, .m["vd.lane.depth"]] | @tsv' \
+    results_<label>/samples/metrics.ndjson
+
+# every metric remoted_module published, whether or not it has a column
+jq -r 'select(.src=="remoted-module" and .ok) | .m | keys[]' \
+    results_<label>/samples/metrics.ndjson | sort -u
+```
+
+**Per-daemon CSV export is optional.** The collectors used to derive one per scrape, next to the samples file; nothing read it (the charts and the summary both prefer the samples file) and it held strictly less — 57 columns against 126 for inventory sync, because a fixed header can only carry what somebody aliased. Add `--export-csv` to export every daemon with samples after collection ends:
+
+```bash
+./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode uds --export-csv
+```
+
+Exports go to `results_<label>/stats-api-*.csv` and include only the latest run when a label is reused. This option requires `pandas` and works with `--no-charts`. If samples are unavailable, export is skipped; missing dependencies or export failures are reported without changing the sender's exit code. CSV export is disabled by default.
+
+You can also export an existing run separately:
+
+```bash
+python3 $WAZUH_DEV_SCRIPTS/bench_samples.py results_<label>              # every daemon
+python3 $WAZUH_DEV_SCRIPTS/bench_samples.py results_<label> --src remoted --out-dir /tmp
+```
+
+It writes the full projection, so the export has every metric rather than the aliased subset. The format and that projection are defined by `src/engine/tools/devContainer/scripts/bench_samples.py`.
+
+A run recorded before the samples file existed is **not chartable by this build**: the legacy CSV readers went with the CSVs. Re-run the scenario.
+
+The same `samples/metrics.ndjson` file carries the remoted C++ module's statistics under `src: "remoted-module"`, collected from `GET /metrics` over its admin socket (`queue/sockets/remote-admin-http.sock`): the `remoted.control.*` and `remoted.scanvd.*` counters plus the admin server's own transport gauges. The scan-vd family is what a saturation run is read on — an admission split, `scanvd_queue_full` and `scanvd_indexer_unavailable` against `scanvd_accepted` and `scanvd_vd_error`, says how many re-scans VD queued versus refused; the charts render it as `remoted_module_scanvd_funnel_<label>.png` (requests / accepted / queue_full / indexer_unavailable / vd_error / version_mismatch), and it counts the same admissions the sender's `scan_200`/`scan_503` do, so the two sides finally mean the same thing. Remoted's **C** statistics from the legacy framed `getstats` socket are recorded in the same file under `src: "remoted"`; the two sources are disjoint. Both inventory sync and the admin server also report their route-class connection counts and in-flight byte budget, so a shed session can be attributed to the budget or to a class cap rather than guessed at.
+
+**One poller, one format, one source of truth.** The monitor samples the manager's processes *and* polls each daemon's statistics, so it also owns the inventory-sync scrape, and every scrape lands in the same `samples/metrics.ndjson`. `scrape_metrics.sh` stays as a standalone tool, is only started automatically when the monitor cannot run (it needs `psutil`), and now writes that same format — so a missing Python package costs the process samples but never the server's own numbers, and never leaves the collator sniffing which producer had run.
+
+`summary.json` splits each daemon's metrics by **kind**, because what may be computed from a series depends on what it is — and the declared type is in the samples file, so nothing has to be guessed:
+
+| block | which metrics | what it reports |
+|---|---|---|
+| `counters` | declared `counter` | `first`, `last`, `delta`, `resets` |
+| `levels` | declared `gauge_int` / `pull` | `first`, `last`, `min`, `max` — **no delta** |
+| `text` | non-numeric readings | the value |
+| `histograms` | declared `histogram` | the last distribution |
+
+The server's counters are **cumulative for the module's lifetime**, not per run, so `delta` is what belongs to a given run. It is the sum of the rises, not `last - first`: a daemon that restarts mid-run makes its counters fall, and the work done after the restart still counts — `resets` says it happened rather than the run reporting a negative number.
+
+A level gets no delta at all. Five live sessions then two is not "-3 sessions"; it is a level that moved, and `min`/`max` are what describe it. Percentiles are likewise absent from any delta, which the samples file makes structural by keeping histograms in their own object.
+
+`delta`, `final` and `peak` remain as flat name-to-number views for tooling that indexes by metric name; `delta` holds **counters only**, which is the one place the word means something.
+
+`summary.json` carries what it computed and **names** its other inputs rather than copying them (`inputs` lists them, relative to the run directory). It used to embed `params.json` verbatim and six of `sender_summary.json`'s seven keys byte-identically while dropping the seventh — `expected`, the scenario's verdict, the only judgment in the set. The verdict is now in `summary.json` (condensed: `passed`, `checked`, `failed`, `first_failure`), with the full failure list still in `sender_summary.json`. `processes` covers every process the monitor sampled, not modulesd alone.
 
 ### The sender on its own
 
@@ -230,10 +281,10 @@ run exits. Pair it with `--keep-agents` so the documents survive after that too:
 |---|---|
 | `run_benchmark.sh` | Orchestrates one run end to end (monitor + sender + summary + charts) |
 | `prepare_manager.sh` | Makes remote enrollment reachable, mints the fleet's enrollment token and clears the two unauthenticated routes' rate limits (idempotent); `--open-1515` for the legacy bootstrap, `--keep-rate-limits` to benchmark the limiter |
-| `scrape_metrics.sh` | Standalone `GET /metrics` poller (long format). Only used as a fallback when the monitor cannot run |
+| `scrape_metrics.sh` | Wrapper around `bench_collect.py`, the collector the monitor also runs — same loop, same validation, same lines. Only started automatically when the monitor cannot run (it needs psutil) |
 | `cleanup_agents.sh` | Deletes only `bench-*` agents via the Wazuh API (never a real one) |
 | `indexer_control.sh` | Start/stop/health the local `wazuh-indexer` (e.g. an indexer-down scenario) |
-| `result_summary.py` | Collates a run's artifacts into `summary.json` (descriptive only, no pass/fail) |
+| `result_summary.py` | Collates a run's artifacts into `summary.json` — every daemon's metric deltas, every process's resource aggregates, the scenario's verdict (descriptive only, no pass/fail) |
 | `run_matrix.sh` | Runs the whole matrix the load report is built from |
 | `make_report_tables.py` | Turns the resulting `results_*/` into the report's tables |
 

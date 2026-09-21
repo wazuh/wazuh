@@ -36,6 +36,9 @@ import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import bench_samples  # noqa: E402  (sibling module, needs the path above)
+
 # ---------------------------------------------------------------------------
 # Styling
 # ---------------------------------------------------------------------------
@@ -98,41 +101,26 @@ def load_monitor(path: str) -> pd.DataFrame:
     return _keep_last_run(df)
 
 
-# Columns every daemon-stats CSV carries as text; everything else is coerced to numbers so a
-# failed scrape (empty cells) plots as a gap instead of poisoning the column's dtype.
-_STATS_TEXT_COLS = ("timestamp", "query_error", "raw_response_json")
+def load_stats(results_dir: str, src: str) -> pd.DataFrame | None:
+    """Load one daemon's statistics for a run, from its samples file.
 
-
-def _load_stats_csv(path: str, text_cols: tuple[str, ...] = _STATS_TEXT_COLS) -> pd.DataFrame:
-    """Load one of the per-daemon stats CSVs written by monitor.py."""
-    df = pd.read_csv(path)
-    if "elapsed_s" not in df.columns:
-        df["elapsed_s"] = range(len(df))
-    df = _keep_last_run(df)
-    for col in df.columns:
-        if col in text_cols:
-            continue
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-    return df
-
-
-def load_remoted_stats(path: str) -> pd.DataFrame:
-    """Load stats-api-remoted.csv (remoted's C statistics over the framed socket)."""
-    return _load_stats_csv(path, _STATS_TEXT_COLS + ("message", "data_name"))
-
-
-def load_invsync_stats(path: str) -> pd.DataFrame:
-    """Load stats-api-inventory-sync.csv (the module's GET /metrics scrape)."""
-    return _load_stats_csv(path)
-
-
-def load_remoted_module_stats(path: str) -> pd.DataFrame:
-    """Load stats-api-remoted-module.csv (the C++ module's GET /metrics scrape)."""
-    return _load_stats_csv(path)
-
-
-def load_analysisd_stats(path: str) -> pd.DataFrame:
-    return _load_stats_csv(path)
+    There is no CSV path any more. The collectors write one artifact, and a run recorded
+    before that is not chartable by this build -- deliberately: keeping the legacy reader
+    meant keeping the alias tables' old shape, a format sniffer and a second numeric
+    coercion, so that charts could be drawn from a strictly smaller subset of the data.
+    Re-run the scenario, or export an old directory with a build that still read it.
+    """
+    samples = bench_samples.samples_path(results_dir)
+    if not os.path.isfile(samples):
+        # Standalone monitor.py may place its default samples file under monitor/.
+        samples = bench_samples.samples_path(os.path.join(results_dir, "monitor"))
+    if not os.path.isfile(samples):
+        return None
+    df = bench_samples.project(samples, src)
+    # Already scoped to the last run by its run id. _keep_last_run must NOT be applied on
+    # top: it recovers a boundary from elapsed_s going backwards, and four sources
+    # interleave in this file, so that signal does not mean what it means in a CSV.
+    return df if len(df) else None
 
 
 def parse_result_arg(arg: str) -> tuple[str, str]:
@@ -652,25 +640,6 @@ def generate_charts(
         if not os.path.isfile(logs_path):
             logs_path = os.path.join(path, "logs.csv")
 
-        # Remoted API stats: prefer monitor/ subdir, fall back to root
-        remoted_stats_path = os.path.join(monitor_dir, "stats-api-remoted.csv")
-        if not os.path.isfile(remoted_stats_path):
-            remoted_stats_path = os.path.join(path, "stats-api-remoted.csv")
-
-        # Analysisd API stats: prefer monitor/ subdir, fall back to root
-        analysisd_stats_path = os.path.join(monitor_dir, "stats-api-analysisd.csv")
-        if not os.path.isfile(analysisd_stats_path):
-            analysisd_stats_path = os.path.join(path, "stats-api-analysisd.csv")
-
-        invsync_stats_path = os.path.join(path, "monitor", "stats-api-inventory-sync.csv")
-        if not os.path.isfile(invsync_stats_path):
-            invsync_stats_path = os.path.join(path, "stats-api-inventory-sync.csv")
-
-        # remoted_module stats: prefer monitor/ subdir, fall back to root
-        remoted_module_stats_path = os.path.join(monitor_dir, "stats-api-remoted-module.csv")
-        if not os.path.isfile(remoted_module_stats_path):
-            remoted_module_stats_path = os.path.join(path, "stats-api-remoted-module.csv")
-
         if os.path.isfile(bench_path):
             benches[label] = load_bench(bench_path)
         if os.path.isfile(disk_path):
@@ -680,26 +649,18 @@ def generate_charts(
                 logs[label] = pd.read_csv(logs_path)
             except Exception as exc:
                 print(f"  warning: could not load {logs_path}: {exc}")
-        if os.path.isfile(remoted_stats_path):
+
+        # Daemon statistics: one call per source, samples file preferred inside it.
+        for src_name, target in (("remoted", remoted_dfs), ("analysisd", analysisd_dfs),
+                                 ("inventory-sync", invsync_dfs),
+                                 ("remoted-module", remoted_module_dfs)):
             try:
-                remoted_dfs[label] = load_remoted_stats(remoted_stats_path)
+                df = load_stats(path, src_name)
             except Exception as exc:
-                print(f"  warning: could not load {remoted_stats_path}: {exc}")
-        if os.path.isfile(analysisd_stats_path):
-            try:
-                analysisd_dfs[label] = load_analysisd_stats(analysisd_stats_path)
-            except Exception as exc:
-                print(f"  warning: could not load {analysisd_stats_path}: {exc}")
-        if os.path.isfile(invsync_stats_path):
-            try:
-                invsync_dfs[label] = load_invsync_stats(invsync_stats_path)
-            except Exception as exc:
-                print(f"  warning: could not load {invsync_stats_path}: {exc}")
-        if os.path.isfile(remoted_module_stats_path):
-            try:
-                remoted_module_dfs[label] = load_remoted_module_stats(remoted_module_stats_path)
-            except Exception as exc:
-                print(f"  warning: could not load {remoted_module_stats_path}: {exc}")
+                print(f"  warning: could not load {src_name} stats from {path}: {exc}")
+                continue
+            if df is not None and len(df):
+                target[label] = df
 
         # Per-process CSVs: prefer monitor/ subdir, then root-level monitor.csv,
         # then auto-discover per-process CSVs in root.
