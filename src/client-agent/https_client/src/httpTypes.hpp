@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -233,5 +234,64 @@ struct HttpResponse
     /// latching onto a file it can never successfully dial again.
     bool caFileLoadFailed {false};
 };
+
+/// Name of a TransportStatus, for the printer below and for logs, on the same reasoning as
+/// outcomeName(): an ordinal does not carry the reason to the reader.
+inline const char* transportStatusName(TransportStatus status)
+{
+    switch (status)
+    {
+        case TransportStatus::Ok:
+            return "Ok";
+
+        case TransportStatus::Timeout:
+            return "Timeout";
+
+        case TransportStatus::ConnectFail:
+            return "ConnectFail";
+
+        case TransportStatus::TlsFail:
+            return "TlsFail";
+
+        case TransportStatus::Aborted:
+            return "Aborted";
+
+        case TransportStatus::OtherError:
+            return "OtherError";
+
+        default:
+            return "unknown";
+    }
+}
+
+/**
+ * @brief Renders an HttpResponse for gtest, found by argument-dependent lookup.
+ *
+ * Without it gtest has no way to print this type and falls back to dumping the object's raw
+ * bytes. That is worse than unreadable: sizeof(HttpResponse) spans the padding the compiler
+ * inserts after `status` to align `httpCode`, those bytes are never written by any constructor,
+ * and reading them is a genuine use of uninitialised memory -- which valgrind reports as an
+ * error, failing the RTR job.
+ *
+ * The dump is not confined to a failing assertion either. INSTANTIATE_TEST_SUITE_P records
+ * PrintToString(param) for every parameter while registering the suite, so a suite parameterised
+ * on HttpResponse trips this during InitGoogleMock(), before a single test runs and however many
+ * of them pass.
+ *
+ * The body is summarised by length rather than printed: it can be as large as the client's
+ * 8 KiB cap, and its bytes are never what the reader of a failure message is after.
+ */
+inline void PrintTo(const HttpResponse& response, std::ostream* os)
+{
+    *os << "HttpResponse{status=" << transportStatusName(response.status)
+        << ", httpCode=" << response.httpCode
+        << ", retryAfterSeconds=" << response.retryAfterSeconds
+        << ", caGeneration=" << response.caGeneration
+        << ", serverDateSeconds=" << static_cast<long long>(response.serverDateSeconds)
+        << ", localIp='" << response.localIp << "'"
+        << ", body=" << response.body.size() << " byte(s)"
+        << ", curlError='" << response.curlError << "'"
+        << ", tlsFailureKind=" << static_cast<int>(response.tlsFailure.kind) << "}";
+}
 
 #endif // _HC_HTTP_TYPES_HPP
