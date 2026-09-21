@@ -1337,6 +1337,40 @@ TEST(CurlPerformerTest, SystemModeDoesNotLatchTheFallbackWhenNoBudgetRemainsRega
     EXPECT_EQ(3, callCount); // A single attempt against the OS bundle -- not the fallback.
 }
 
+// m_noFallbackAnchorWarned gates the WARN only, never the outcome: a later call still makes its
+// own single attempt and returns the same failure. The WARN itself is not assertable here --
+// main.cpp leaves Log::GLOBAL_LOG_FUNCTION unset, so every LOGFN_* is a no-op in this binary.
+TEST(CurlPerformerTest, SystemModeStillDoesNotRetryOnLaterCallsWithoutAFallbackPathConfigured)
+{
+    auto config = makeConfig(HC_VERIFY_SYSTEM); // systemFallbackCaPath left empty.
+    // Set by hand, bypassing the Linux-only constructor auto-resolution: the branch under test
+    // carries no platform #ifdef.
+    config.caPath = "/etc/ssl/certs/ca-certificates.crt";
+
+    int callCount = 0;
+    CurlHandleFactory factory = [&]() -> std::unique_ptr<ICurlHandle>
+    {
+        auto handle = std::make_unique<NiceMock<MockCurlHandle>>();
+        allowOtherOptions(*handle);
+        ++callCount;
+        ON_CALL(*handle, perform()).WillByDefault(Return(TransportStatus::TlsFail));
+        ON_CALL(*handle, tlsFailureDetail()).WillByDefault(Return(chainTrustFailure()));
+        return handle;
+    };
+
+    CurlPerformer performer {config, factory};
+
+    const auto firstResponse = performer.perform(HttpRequestSpec {});
+    EXPECT_EQ(TransportStatus::TlsFail, firstResponse.status);
+    EXPECT_EQ(1, callCount);
+
+    // The call that finds the latch already set.
+    const auto secondResponse = performer.perform(HttpRequestSpec {});
+    EXPECT_EQ(TransportStatus::TlsFail, secondResponse.status);
+    EXPECT_EQ(TlsFailureKind::None, secondResponse.tlsFailure.kind);
+    EXPECT_EQ(2, callCount);
+}
+
 TEST(CurlPerformerTest, FileBodyStreamsInsteadOfPostFields)
 {
     const std::string path = ::testing::TempDir() + "hc_curl_performer_body.tmp";

@@ -284,11 +284,24 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
     // verify_mode=system's local-anchor fallback (#39123). Guarded tightly: only a genuine,
     // unclassified chain/CA-trust failure (isUnclassifiedChainFailure() -- never a hostname
     // mismatch or certificate-date problem, which #39062's classifier already told apart and
-    // a different anchor would not fix either way) under 'system', and only when a fallback
-    // path was actually handed over (empty -> today's behavior, unchanged).
-    if (!isUnclassifiedChainFailure(response) || m_config.verifyMode != HC_VERIFY_SYSTEM
-            || m_config.systemFallbackCaPath.empty())
+    // a different anchor would not fix either way) under 'system'.
+    if (!isUnclassifiedChainFailure(response) || m_config.verifyMode != HC_VERIFY_SYSTEM)
     {
+        return response;
+    }
+
+    // Nothing was handed over to fall back to, so the OS store is the only trust source there
+    // is. Named here because the transport failure a caller logs one level up cannot say that.
+    if (m_config.systemFallbackCaPath.empty())
+    {
+        if (!m_noFallbackAnchorWarned.exchange(true, std::memory_order_relaxed))
+        {
+            LOGFN_WARN(m_logFn,
+                       "verification_mode=system: the OS trust store did not verify the "
+                       "manager's certificate, and no local trust anchor is configured to fall "
+                       "back to. Add the manager's CA to the OS trust store.");
+        }
+
         return response;
     }
 

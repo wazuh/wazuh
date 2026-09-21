@@ -195,6 +195,10 @@ class CurlPerformer final : public IHttpPerformer
         /// through the exhausted-budget branch at once must not both observe "not yet warned"
         /// and both log at WARN.
         std::atomic<bool> m_budgetExhaustedWarned {false};
+
+        /// Warn-once latch: the four threads sharing this object retry continuously, so an
+        /// unconditional WARN would repeat for as long as the manager stays unverifiable.
+        std::atomic<bool> m_noFallbackAnchorWarned {false};
 };
 
 #endif // _HC_CURL_PERFORMER_HPP
