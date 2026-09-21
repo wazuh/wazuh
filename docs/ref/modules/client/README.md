@@ -233,7 +233,7 @@ sudo grep -E "cacerts|pin_mismatch|TLS verification|\(41[0-9]{2}\)" /var/ossec/l
 | `(4122)` | An explicit `none` on a host that holds a usable anchor | Remove `<verification_mode>none</verification_mode>` to verify against it |
 | `TLS verification failed connecting to …: the certificate does not include that name` | The address the agent dials is not in the certificate | The line lists the names the certificate does carry |
 | `TLS verification failed connecting to …: the certificate has expired` / `is not valid yet` | The manager's certificate is outside its validity window, or the clock is wrong | The line gives the date it checked against |
-| `TLS verification is DISABLED (verify_mode=none)` | The resolved mode is `none` | See the resolution table under [`verification_mode`](configuration.md#verification_mode) |
+| `TLS verification is DISABLED (verification_mode=none)` | The resolved mode is `none` | See the resolution table under [`verification_mode`](configuration.md#verification_mode) |
 
 > [!NOTE]
 > If nothing above matches, raise the agent's log level with `agent.debug=1` in `local_internal_options.conf` and restart it. Not every TLS failure is reported at normal level so a connection problem with nothing in the log is a reason to turn debug on rather than to rule TLS out.

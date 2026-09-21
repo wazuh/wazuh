@@ -118,7 +118,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
     if (verifyMode != HC_VERIFY_FULL && verifyMode != HC_VERIFY_CERT && verifyMode != HC_VERIFY_NONE
             && verifyMode != HC_VERIFY_SYSTEM)
     {
-        LOGFN_ERROR(logFn, "Config rejected: unknown verify_mode %d.", verifyMode);
+        LOGFN_ERROR(logFn, "Config rejected: unknown verification_mode %d.", verifyMode);
         return false;
     }
 
@@ -143,7 +143,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
             // The second is not an operator's choice, which is exactly why it is worth saying
             // out loud -- it is the only sign that an agent is talking to its manager
             // unverified.
-            LOGFN_WARN(logFn, "TLS verification is DISABLED (verify_mode=none).");
+            LOGFN_WARN(logFn, "TLS verification is DISABLED (verification_mode=none).");
         }
 
         return true;
@@ -157,7 +157,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
         if (!caPath.empty())
         {
             LOGFN_CRITICAL(logFn,
-                           "https_client config rejected: verify_mode=system must not set "
+                           "https_client config rejected: verification_mode=system must not set "
                            "certificate_authorities (got '%s').",
                            caPath.c_str());
             return false;
@@ -175,7 +175,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
         if (fsProbe.findSystemCaBundle().empty() && systemFallbackCaPath.empty())
         {
             LOGFN_CRITICAL(logFn,
-                           "https_client config rejected: verify_mode=system found no OS CA "
+                           "https_client config rejected: verification_mode=system found no OS CA "
                            "bundle in any known location, and no local fallback anchor is "
                            "present either.");
             return false;
@@ -190,7 +190,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
         if (!systemFallbackCaPath.empty() && !fsProbe.isReadableFile(systemFallbackCaPath))
         {
             LOGFN_CRITICAL(logFn,
-                           "https_client config rejected: verify_mode=system's local fallback "
+                           "https_client config rejected: verification_mode=system's local fallback "
                            "anchor is not a readable file ('%s').",
                            systemFallbackCaPath.c_str());
             return false;
@@ -206,7 +206,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
     if (caPath.empty() || !fsProbe.isReadableFile(caPath))
     {
         LOGFN_CRITICAL(logFn,
-                       "https_client config rejected: verify_mode requires a readable CA file "
+                       "https_client config rejected: verification_mode requires a readable CA file "
                        "(certificate_authorities='%s').",
                        caPath.c_str());
         return false;

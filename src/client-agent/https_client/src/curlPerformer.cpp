@@ -274,7 +274,7 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
     if (wasUsingFallback && isCaFileLoadFailure(response) && m_config.verifyMode == HC_VERIFY_SYSTEM)
     {
         LOGFN_CRITICAL(m_logFn,
-                       "https_client: verify_mode=system's local fallback anchor ('%s') could "
+                       "https_client: verification_mode=system's local fallback anchor ('%s') could "
                        "not be loaded (missing, unreadable, or not a certificate this agent can "
                        "parse). Refusing to continue unverified.",
                        m_config.systemFallbackCaPath.c_str());
@@ -350,7 +350,7 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
                 if (!m_budgetExhaustedWarned.exchange(true, std::memory_order_relaxed))
                 {
                     LOGFN_WARN(m_logFn,
-                               "verify_mode=system: the OS trust store did not verify the "
+                               "verification_mode=system: the OS trust store did not verify the "
                                "manager's certificate, and no time remains in this attempt's "
                                "budget to try the local fallback anchor ('%s'). Further "
                                "occurrences for the remainder of this run are logged at debug "
@@ -360,7 +360,7 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
                 else
                 {
                     LOGFN_DEBUG1(m_logFn,
-                                 "verify_mode=system: the OS trust store did not verify the "
+                                 "verification_mode=system: the OS trust store did not verify the "
                                  "manager's certificate, and no time remains in this attempt's "
                                  "budget to try the local fallback anchor ('%s').",
                                  m_config.systemFallbackCaPath.c_str());
@@ -376,7 +376,7 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
         // for every later call/thread too, but that latch is a side effect of this decision,
         // not the basis for it.
         LOGFN_WARN(m_logFn,
-                   "verify_mode=system: the OS trust store did not verify the manager's "
+                   "verification_mode=system: the OS trust store did not verify the manager's "
                    "certificate; falling back to the local trust anchor ('%s').",
                    m_config.systemFallbackCaPath.c_str());
         m_usingSystemFallbackAnchor.store(true, std::memory_order_relaxed);
@@ -391,7 +391,7 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
         if (isCaFileLoadFailure(response))
         {
             LOGFN_CRITICAL(m_logFn,
-                           "https_client: verify_mode=system's local fallback anchor ('%s') "
+                           "https_client: verification_mode=system's local fallback anchor ('%s') "
                            "could not be loaded (missing, unreadable, or not a certificate "
                            "this agent can parse). Refusing to continue unverified.",
                            m_config.systemFallbackCaPath.c_str());
@@ -422,7 +422,7 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
     if (noOsStoreToTry())
     {
         LOGFN_CRITICAL(m_logFn,
-                       "https_client: verify_mode=system found no OS trust store on this "
+                       "https_client: verification_mode=system found no OS trust store on this "
                        "system to verify the manager's certificate against, and the local "
                        "fallback anchor ('%s') does not verify it either. Refusing to "
                        "continue unverified.",
@@ -438,7 +438,7 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
         // earlier call logged its own WARN when it first discovered the OS store did not
         // verify -- so it is on record either way, just not always in this exact call.
         LOGFN_CRITICAL(m_logFn,
-                       "https_client: verify_mode=system's local fallback anchor ('%s') does "
+                       "https_client: verification_mode=system's local fallback anchor ('%s') does "
                        "not verify the manager's certificate either. Refusing to continue "
                        "unverified.",
                        m_config.systemFallbackCaPath.c_str());
