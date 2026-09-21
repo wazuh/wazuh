@@ -43,7 +43,8 @@ static int decode_package( Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_port( Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_process( Eventinfo *lf, cJSON * logJSON, int *socket);
-static int decode_dbsync( Eventinfo *lf, char *msg_type, cJSON * logJSON, int *socket);
+static int decode_dbsync( Eventinfo *lf, char *msg_type, cJSON * logJSON, int *socket,
+                          const char * agent_name, const char * agent_ip, const char * agent_version);
 
 static OSDecoderInfo *sysc_decoder = NULL;
 
@@ -394,6 +395,30 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
         return (0);
     }
 
+    /* remoted prepends "<name>\x01<ip>\x01<version>\x01" to the JSON payload for
+     * real-time deltas (see issue #39329). JSON payloads always start with '{', so
+     * its absence (e.g. locally-injected events) is unambiguous and left as "".
+     */
+    const char * agent_name = "";
+    const char * agent_ip = "";
+    const char * agent_version = "";
+
+    if (lf->log[0] != '{') {
+        char * sep1 = strchr(lf->log, '\x01');
+        char * sep2 = sep1 ? strchr(sep1 + 1, '\x01') : NULL;
+        char * sep3 = sep2 ? strchr(sep2 + 1, '\x01') : NULL;
+
+        if (sep1 && sep2 && sep3) {
+            *sep1 = '\0';
+            *sep2 = '\0';
+            *sep3 = '\0';
+            agent_name = lf->log;
+            agent_ip = sep1 + 1;
+            agent_version = sep2 + 1;
+            lf->log = sep3 + 1;
+        }
+    }
+
     // Parsing event.
 
     const char *jsonErrPtr;
@@ -463,7 +488,7 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
         }
     }
     else if (strncmp(msg_type, "dbsync_", 7) == 0) {
-        if (decode_dbsync(lf, msg_type, logJSON, socket) < 0) {
+        if (decode_dbsync(lf, msg_type, logJSON, socket, agent_name, agent_ip, agent_version) < 0) {
             mdebug1(UNABLE_TO_SEND_INFORMATION_TO_WDB);
             cJSON_Delete (logJSON);
             return (0);
@@ -2261,7 +2286,10 @@ void delta_map_values(const char * type, cJSON * data) {
 static int decode_dbsync(Eventinfo * lf,   /* Event information */
                          char *msg_type,   /* Message type */
                          cJSON *logJSON,   /* JSON object with the message */
-                         int *socket) {    /* Socket to communicate with the DB */
+                         int *socket,      /* Socket to communicate with the DB */
+                         const char * agent_name,    /* Agent name, for the Indexer publish */
+                         const char * agent_ip,      /* Agent IP, for the Indexer publish */
+                         const char * agent_version) { /* Agent version, for the Indexer publish */
 
     int ret_val = OS_INVALID;   /* Return value */
 
@@ -2283,6 +2311,13 @@ static int decode_dbsync(Eventinfo * lf,   /* Event information */
                     delta_map_values(type, data_object);                            /* Map field's values if applies */
                     char * operation = operation_object->valuestring;               /* Operation is the operation to be
                                                                                        performed in the table. */
+
+                    /* Passed through to wazuh-db only to publish to the Indexer (issue #39329);
+                     * the table upsert only binds fields it recognizes, so these are ignored there. */
+                    cJSON_AddStringToObject(data_object, "agent_name", agent_name);
+                    cJSON_AddStringToObject(data_object, "agent_ip", agent_ip);
+                    cJSON_AddStringToObject(data_object, "agent_version", agent_version);
+
                     char * data = cJSON_PrintUnformatted(data_object);              /* Data is the JSON object with the
                                                                                        values to be processed. */
                     if (NULL != data) {

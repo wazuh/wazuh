@@ -949,10 +949,34 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         _close_sock(&keys, sock_idle);
     }
 
+    /* For Syscollector deltas, carry the agent's name/IP/version alongside the raw
+     * message so wazuh-db can publish them to the Indexer without any lookup of its
+     * own (see issue #39329). Encoded as "<name>\x01<ip>\x01<version>\x01" right after
+     * the "d:syscollector:" header; \x01 can't appear in these values, and the JSON
+     * payload always starts with '{', so a missing/malformed marker is unambiguous.
+     */
+    char *analysisd_msg = tmp_msg;
+    bool free_analysisd_msg = false;
+
+    if (strncmp(tmp_msg, SYSCOLLECTOR_HEADER, SYSCOLLECTOR_HEADER_SIZE) == 0) {
+        const char * agent_version = (const char *) OSHash_Get_ex(agent_data_hash, agentid_str);
+        if (!agent_version) {
+            agent_version = "";
+        }
+
+        size_t enriched_size = SYSCOLLECTOR_HEADER_SIZE + strlen(agent_name) + strlen(agent_ip) +
+                                strlen(agent_version) + strlen(tmp_msg + SYSCOLLECTOR_HEADER_SIZE) + 4;
+        os_malloc(enriched_size, analysisd_msg);
+        snprintf(analysisd_msg, enriched_size, "%.*s%s\x01%s\x01%s\x01%s",
+                 SYSCOLLECTOR_HEADER_SIZE, tmp_msg, agent_name, agent_ip, agent_version,
+                 tmp_msg + SYSCOLLECTOR_HEADER_SIZE);
+        free_analysisd_msg = true;
+    }
+
     /* If we can't send the message, try to connect to the
      * socket again. If it not exit.
      */
-    if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
+    if (SendMSG(logr.m_queue, analysisd_msg, srcmsg, SECURE_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
         // Try to reconnect infinitely
@@ -960,7 +984,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
         minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
 
-        if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
+        if (SendMSG(logr.m_queue, analysisd_msg, srcmsg, SECURE_MQ) < 0) {
             // Something went wrong sending a message after an immediate reconnection...
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
         } else {
@@ -968,6 +992,10 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         }
     } else {
         rem_inc_recv_evt(agentid_str);
+    }
+
+    if (free_analysisd_msg) {
+        os_free(analysisd_msg);
     }
 
     if(router_forwarding_disabled == 1) {

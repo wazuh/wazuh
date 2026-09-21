@@ -6609,22 +6609,24 @@ bool process_dbsync_data(wdb_t * wdb, const struct kv * kv_value, const char * o
  * Only called after process_dbsync_data() has applied the change locally,
  * so the Indexer can never see a record before wazuh-db does (see issue #39329).
  *
- * Does NOT resolve agent name/ip/version from global.db here: wdb_parse_dbsync()
- * is invoked with the per-agent node's mutex already held (wdb_pool_get_or_create()),
- * and opening the "global" node from inside that scope can deadlock against any
- * caller that acquires the two nodes in the opposite order. Until that context is
- * threaded through some other way, those fields are left blank (tracked as follow-up).
+ * agent_name/agent_ip/agent_version come from remoted's keystore, carried through
+ * analysisd's dbsync command (wdb_parse_dbsync() extracts them from `data`) instead
+ * of being resolved here: wdb_parse_dbsync() runs with the per-agent node's mutex
+ * already held (wdb_pool_get_or_create()), and opening the "global" node from inside
+ * that scope can deadlock against any caller that acquires the two nodes in the
+ * opposite order.
  */
-void wdb_publish_confirmed_delta(wdb_t * wdb, const char * table_key, const char * operation, const char * data) {
+void wdb_publish_confirmed_delta(wdb_t * wdb, const char * table_key, const char * operation, const char * data,
+                                  const char * agent_name, const char * agent_ip, const char * agent_version) {
     if (!router_syscollector_deltas_handle) {
         return;
     }
 
     agent_ctx ctx = {
         .agent_id = wdb->id,
-        .agent_name = "",
-        .agent_ip = "",
-        .agent_version = "",
+        .agent_name = agent_name,
+        .agent_ip = agent_ip,
+        .agent_version = agent_version,
     };
 
     char * msg = NULL;
@@ -6676,7 +6678,26 @@ int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
         if (strncmp(head->current.key, table_key, OS_SIZE_256 - 1) == 0) {
             ret_val = process_dbsync_data(wdb, &head->current, operation, data) ? OS_SUCCESS : OS_INVALID;
             if (OS_SUCCESS == ret_val) {
-                wdb_publish_confirmed_delta(wdb, table_key, operation, data);
+                /* agent_name/agent_ip/agent_version were embedded into `data` by analysisd's
+                 * decode_dbsync() (see issue #39329); process_dbsync_data() above already
+                 * ignored them since the table upsert only binds fields it recognizes. */
+                cJSON * agent_fields = cJSON_ParseWithOpts(data, NULL, true);
+                const char * agent_name = "";
+                const char * agent_ip = "";
+                const char * agent_version = "";
+
+                if (NULL != agent_fields) {
+                    cJSON * j_name = cJSON_GetObjectItem(agent_fields, "agent_name");
+                    cJSON * j_ip = cJSON_GetObjectItem(agent_fields, "agent_ip");
+                    cJSON * j_version = cJSON_GetObjectItem(agent_fields, "agent_version");
+
+                    agent_name = cJSON_IsString(j_name) ? j_name->valuestring : "";
+                    agent_ip = cJSON_IsString(j_ip) ? j_ip->valuestring : "";
+                    agent_version = cJSON_IsString(j_version) ? j_version->valuestring : "";
+                }
+
+                wdb_publish_confirmed_delta(wdb, table_key, operation, data, agent_name, agent_ip, agent_version);
+                cJSON_Delete(agent_fields);
             }
             break;
         }
