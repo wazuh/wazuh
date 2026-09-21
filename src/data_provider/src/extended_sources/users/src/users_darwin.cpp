@@ -165,16 +165,19 @@ nlohmann::json UsersProvider::collectAccountPolicyData(const uid_t uid)
         accountData["password_max_days_between_changes"] = expiresEveryNDays;
 
         constexpr auto secondsPerDay = 86400;
-        // Largest day count whose derived epoch seconds still fit the int wire field; day 24856
-        // is 2038-01-20. Mirrors shadow_linux.cpp's MAX_EXPIRE_DAYS: the manager's parser rejects
-        // an out-of-range int and would drop the whole message.
-        constexpr int64_t maxExpireDays = std::numeric_limits<int32_t>::max() / secondsPerDay;
         constexpr int64_t noExpiration = -1;
-        const auto lastSetTime = accountData["password_last_set_time"].get<double>();
+        constexpr int64_t maxWireValue = std::numeric_limits<int32_t>::max();
+        const auto lastSetTimeSeconds = static_cast<int64_t>(accountData["password_last_set_time"].get<double>());
+        // Largest day count that still keeps lastSetTime + days*secondsPerDay within the int
+        // wire field for this account's actual last-set time (not a fixed day count: the same
+        // policy overflows sooner the more recently the password was last changed). Mirrors
+        // shadow_linux.cpp's MAX_EXPIRE_DAYS: the manager's parser rejects an out-of-range int
+        // and would drop the whole message.
+        const int64_t maxExpireDaysForAccount = (maxWireValue - lastSetTimeSeconds) / secondsPerDay;
 
-        accountData["password_expiration_date"] = (expiresEveryNDays > maxExpireDays)
+        accountData["password_expiration_date"] = (expiresEveryNDays > maxExpireDaysForAccount)
                                                   ? noExpiration
-                                                  : static_cast<int64_t>(lastSetTime) + expiresEveryNDays * secondsPerDay;
+                                                  : lastSetTimeSeconds + expiresEveryNDays * secondsPerDay;
     }
 
     return accountData;

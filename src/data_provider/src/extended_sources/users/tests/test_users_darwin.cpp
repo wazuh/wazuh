@@ -263,8 +263,10 @@ TEST(UsersProviderTest, CollectCapsExpirationDateAtInt32WireLimit)
     {
         names["testuser"] = false;
     });
-    // A day count large enough that lastSetTime + days*secondsPerDay would overflow the int
-    // wire field the manager expects; the derived expiration must be capped, not overflowed.
+    // 24855 days is within the day-count-only bound (INT32_MAX/secondsPerDay) a prior version
+    // of this guard used, but lastSetTime + 24855*secondsPerDay still overflows the int wire
+    // field given how recent this last-set time is: the guard must weigh the full sum, not the
+    // day count in isolation.
     EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
     .WillOnce([](const std::string&, nlohmann::json & policyData)
     {
@@ -274,7 +276,7 @@ TEST(UsersProviderTest, CollectCapsExpirationDateAtInt32WireLimit)
             {"failed_login_count", 0},
             {"failed_login_timestamp", 0},
             {"password_last_set_time", 1735576569.0},
-            {"expires_every_n_days", 999999999}
+            {"expires_every_n_days", 24855}
         };
     });
 
@@ -285,7 +287,7 @@ TEST(UsersProviderTest, CollectCapsExpirationDateAtInt32WireLimit)
     auto result = provider.collectWithConstraints({101});
 
     ASSERT_EQ(result.size(), static_cast<size_t>(1));
-    EXPECT_EQ(result[0]["password_max_days_between_changes"], 999999999);
+    EXPECT_EQ(result[0]["password_max_days_between_changes"], 24855);
     EXPECT_EQ(result[0]["password_expiration_date"], -1);
 }
 
