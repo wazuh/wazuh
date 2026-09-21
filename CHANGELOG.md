@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.10]
 
+### Agent
+
+#### Fixed
+
+- Added macOS support to the disable-account active response. ([#39463](https://github.com/wazuh/wazuh/pull/39463))
+
 ## [v4.14.9]
 
 ### Manager
