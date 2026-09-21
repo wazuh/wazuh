@@ -343,13 +343,14 @@ agent: ${CPPLIBDEPS}
 ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
 SELINUX_MODULE=selinux/wazuh.mod
 SELINUX_ENFORCEMENT=selinux/wazuh.te
+SELINUX_FILECONTEXT=selinux/wazuh.fc
 SELINUX_POLICY=selinux/wazuh.pp
 agent: selinux
 
 selinux: $(SELINUX_POLICY)
 
-$(SELINUX_POLICY): $(SELINUX_MODULE)
-	semodule_package -o $@ -m $?
+$(SELINUX_POLICY): $(SELINUX_MODULE) $(SELINUX_FILECONTEXT)
+	semodule_package -o $@ -m $(SELINUX_MODULE) -f $(SELINUX_FILECONTEXT)
 
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?

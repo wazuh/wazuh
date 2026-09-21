@@ -452,6 +452,7 @@ else
     if [ $(getenforce) != "Disabled" ]; then
       semodule -i %{_localstatedir}/var/selinux/wazuh.pp
       semodule -e wazuh
+      restorecon -R %{_localstatedir}/var/run
     fi
   fi
 fi
