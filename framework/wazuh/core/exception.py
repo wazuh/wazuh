@@ -333,6 +333,12 @@ class WazuhException(Exception):
         2031: {'message': 'Remoted admin connection error'},
         2032: {'message': 'Could not parse remoted admin response as JSON'},
 
+        2033: {'message': 'Could not connect to the wazuh-db unix socket'},
+        2034: {'message': 'Invalid wazuh-db HTTP response'},
+        2035: {'message': 'wazuh-db request timeout'},
+        2036: {'message': 'wazuh-db connection error'},
+        2037: {'message': 'Could not parse wazuh-db response as JSON'},
+
         # Indexer
         2200: {'message': 'Error connecting to the Indexer service'},
         2201: {'message': 'Error in authentication credentials for Indexer service'},

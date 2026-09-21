@@ -542,18 +542,29 @@ paths:
                   value: { error: "invalid_version", code: 409 }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
-        "500":
+        "503":
           description: |
-            wazuh-db failed while resolving the agent's groups. `startup` always answers this way;
-            `notify` only when there is no cached membership to fall back on (first contact since
-            the module started) -- with a cache, the stale membership is served instead.
+            A dependency this route needs is not answering, so the request cannot be served right
+            now -- but the condition clears by itself when that dependency returns, and the agent
+            retries it as back-pressure rather than as a server fault.
+
+            Today that dependency is `wazuh-manager-db`, consulted to resolve the agent's groups.
+            `startup` always answers this way when it is unavailable; `notify` only when there is
+            also no cached membership to fall back on (first contact since the module started) --
+            with a cache, the stale membership is served instead.
+
+            `remoted` itself is healthy in this state: it keeps accepting connections, and keeps
+            answering `GET /` and `POST /stateless`. Whether a sustained `503` should take the node
+            out of a load balancer's rotation is a rule for the operator to add; the manager does
+            not decide it.
+
+            The manager's log names the dependency and what to check.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
               examples:
-                databaseError:
-                  value: { error: "database_error", code: 500 }
-        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+                dependencyUnavailable:
+                  value: { error: "dependency_unavailable", dependency: "wazuh-db" }
 
   /stateful:
     post:

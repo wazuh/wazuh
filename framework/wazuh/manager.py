@@ -11,7 +11,8 @@ from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, manager_reload
 from wazuh.core.configuration import get_manager_conf
-from wazuh.core.engine_http import EngineHTTPClient, RemotedHTTPClient, VdHTTPClient
+from wazuh.core.engine_http import (EngineHTTPClient, RemotedHTTPClient, VdHTTPClient,
+                                    WazuhDBStatusHTTPClient)
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_wazuh_logs, \
     get_logs_summary, validate_manager_conf, WAZUH_LOG_FIELDS
@@ -98,6 +99,38 @@ def _modulesd_status(running: bool) -> dict:
     }
 
 
+def _wdb_status(running: bool) -> dict:
+    """Build the status entry for wazuh-db from its own GET /v1/status endpoint.
+
+    A PID check cannot answer this one: wazuh-manager-db can be running, accepting connections on
+    its socket, and still unable to query `global.db`. In that state `remoted`'s POST /control
+    answers `503` for every agent it serves while events keep flowing, and nothing else reports the
+    node as degraded (issue #39429). This is what makes that visible here.
+
+    Unlike remoted's admin plane, this socket is not optional: it is the same daemon answering, so
+    being unable to reach it while the process runs is a real unready state, not an unreachable
+    side channel. It is reported as such rather than falling back to plain liveness.
+    """
+    if not running:
+        return {'ready': False}
+
+    client = None
+    try:
+        client = WazuhDBStatusHTTPClient()
+        wdb = client.get_status()
+    except WazuhException as exc:
+        return {'ready': False, 'reason': f'status endpoint unreachable: {exc}'}
+    finally:
+        if client is not None:
+            client.close()
+
+    entry = {'ready': wdb.get('status') == 'ok'}
+    global_db = wdb.get('global')
+    if isinstance(global_db, dict):
+        entry['global'] = global_db
+    return entry
+
+
 def _remoted_status(running: bool) -> dict:
     """Build the status entry for remoted from its local admin GET /status endpoint.
 
@@ -167,6 +200,8 @@ def get_status() -> AffectedItemsWazuhResult:
             entry.update(_modulesd_status(running))
         elif daemon == 'wazuh-manager-remoted':
             entry.update(_remoted_status(running))
+        elif daemon == 'wazuh-manager-db':
+            entry.update(_wdb_status(running))
 
         node_ready = node_ready and bool(entry['ready'])
         node_status[daemon] = entry

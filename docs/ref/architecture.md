@@ -247,7 +247,7 @@ Below, `HTTP` is HTTP/1.1 over the socket, reachable with `curl --unix-socket`. 
 | `queue/sockets/control.sock`             | wm_control            | Framed   | Daemon restart and reload                                          |
 | `queue/sockets/wmodules.sock`            | modulesd              | Framed   | Per-module query and control, and the API's component=wmodules      |
 | `queue/sockets/wdb.sock`                 | wazuh-db              | Framed   | Legacy wdb query protocol                                          |
-| `queue/sockets/wdb-http.sock`            | wazuh-db              | HTTP     | Agent sync and summary REST API, used by clusterd and the API      |
+| `queue/sockets/wdb-http.sock`            | wazuh-db              | HTTP     | Agent sync and summary REST API, used by clusterd and the API; also `GET /v1/status`, the daemon's readiness answer |
 | `queue/sockets/task-http.sock`                | task_manager          | HTTP     | Agent and manager task creation, lookup, pending-task delivery, and agent upgrade requests |
 | `queue/sockets/cluster-internal.sock`    | clusterd              | Cluster  | Cluster and DAPI queries                                           |
 
