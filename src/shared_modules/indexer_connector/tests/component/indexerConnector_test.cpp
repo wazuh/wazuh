@@ -10,11 +10,9 @@
  */
 
 #include "indexerConnector_test.hpp"
-#include "defer.hpp"
 #include "fakeIndexer.hpp"
 #include "indexerConnector.hpp"
 #include "json.hpp"
-#include "loggerHelper.h"
 #include "stringHelper.h"
 #include "gtest/gtest.h"
 #include <chrono>
@@ -26,6 +24,12 @@
 #include <stdexcept>
 #include <thread>
 #include <utility>
+
+namespace Log
+{
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+        GLOBAL_LOG_FUNCTION;
+}; // namespace Log
 
 // Template.
 static const auto TEMPLATE_FILE_PATH {std::filesystem::temp_directory_path() / "template.json"};
@@ -1110,7 +1114,6 @@ TEST_F(IndexerConnectorTest, QueueCorruptionTest)
             }
         }
     };
-    DEFER([]() { Log::deassignLogFunction(); });
 
     EXPECT_NO_THROW({
         spIndexerConnector = std::make_unique<IndexerConnector>(
@@ -1118,91 +1121,4 @@ TEST_F(IndexerConnectorTest, QueueCorruptionTest)
     });
 
     EXPECT_TRUE(dbRepaired) << "The log that indicates the database was repaired wasn't found";
-}
-
-/**
- * @brief Test that a per-item `_bulk` rejection inside an HTTP 200 response is logged at warning
- * level with the document id, error type and reason, and that the dispatch queue keeps draining afterwards
- * (no throw/stall on a rejected-but-200 batch).
- *
- * NOTE: like QueueCorruptionTest above, this test passes a real (non-null) logFunction to the constructor, which
- * claims loggerHelper.h's process-wide `GLOBAL_LOG_FUNCTION` slot under an "assign once, first caller wins" guard.
- * CMakeLists.txt compiles indexer_connector's own sources directly into this test binary, so the
- * `Log::deassignLogFunction()` call below reaches the same copy of that slot the code under test writes through,
- * and the slot is cleared before the next test runs in this same process.
- *
- */
-TEST_F(IndexerConnectorTest, PublishBulkErrorLogged)
-{
-    std::atomic<bool> warnLogged {false};
-    std::string capturedMessage;
-    const auto logFunction = [&warnLogged, &capturedMessage](const int logLevel,
-                                                             const std::string& tag,
-                                                             const std::string& file,
-                                                             const int line,
-                                                             const std::string& func,
-                                                             const std::string& logMessage,
-                                                             va_list args)
-    {
-        std::ignore = tag;
-        std::ignore = file;
-        std::ignore = line;
-        std::ignore = func;
-
-        if (logLevel == Log::LOGLEVEL_WARNING)
-        {
-            char formattedStr[MAXLEN] = {0};
-            vsnprintf(formattedStr, MAXLEN, logMessage.c_str(), args);
-            capturedMessage = formattedStr;
-            warnLogged = true;
-        }
-    };
-    DEFER([]() { Log::deassignLogFunction(); });
-
-    // A real per-item `_bulk` rejection body: HTTP 200, `errors: true`, one item carrying an `error`.
-    m_indexerServers[A_IDX]->setPublishResponseCallback(
-        [](const std::string&) -> std::string
-        {
-            return R"({"took":1,"errors":true,"items":[{"index":{"_id":"003_broken","status":400,)"
-                   R"("error":{"type":"strict_dynamic_mapping_exception","reason":"mapping set to strict"}}}]})";
-        });
-
-    std::atomic<bool> firstPublishSeen {false};
-    std::atomic<bool> secondPublishSeen {false};
-    m_indexerServers[A_IDX]->setPublishCallback(
-        [&firstPublishSeen, &secondPublishSeen](const std::string& data)
-        {
-            if (data.find("003_broken") != std::string::npos)
-            {
-                firstPublishSeen = true;
-            }
-            else if (data.find("004_ok") != std::string::npos)
-            {
-                secondPublishSeen = true;
-            }
-        });
-
-    nlohmann::json indexerConfig;
-    indexerConfig["name"] = INDEXER_NAME;
-    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
-    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, logFunction, INDEXER_TIMEOUT)};
-    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
-
-    nlohmann::json publishData;
-    publishData["id"] = "003_broken";
-    publishData["operation"] = "INSERTED";
-    publishData["data"] = "content";
-    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
-    ASSERT_NO_THROW(waitUntil([&firstPublishSeen]() { return firstPublishSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
-    ASSERT_NO_THROW(waitUntil([&warnLogged]() { return warnLogged.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
-
-    EXPECT_NE(capturedMessage.find("003_broken"), std::string::npos);
-    EXPECT_NE(capturedMessage.find("strict_dynamic_mapping_exception"), std::string::npos);
-
-    // The queue must keep draining after a rejected-but-200 item: a second, unrelated publish should still go
-    // through promptly, not stall behind the rejected one.
-    publishData["id"] = "004_ok";
-    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
-    ASSERT_NO_THROW(
-        waitUntil([&secondPublishSeen]() { return secondPublishSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
 }

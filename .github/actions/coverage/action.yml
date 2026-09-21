@@ -92,7 +92,7 @@ runs:
           # Exclude generated headers, scanContext, and indexerConnector.cpp (only reachable here via the
           # component test binary's own direct compile of it; never previously visible to this gate, so its
           # pre-existing, unrelated-to-any-single-PR coverage gaps shouldn't start failing builds now)
-          arguments+="--exclude=*_generated.h --exclude=*/scanContext.hpp --exclude=*/indexerConnector.cpp "
+          arguments+="--exclude=*_generated.h --exclude=*/scanContext.hpp "
 
           echo "Executing: lcov $arguments"
           lcov $arguments
