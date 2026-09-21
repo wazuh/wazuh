@@ -322,7 +322,17 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
         return;
     }
 
-    if (fd = open(AGENT_ANCHOR_MARKER, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0640), fd < 0) {
+    /* O_NOFOLLOW deliberately has no Windows fallback (defs.h): stubbing it to 0 tree-wide would
+     * silently disable a security check everywhere it is used, so the flag is left out of this
+     * build instead. Nothing is lost by its absence here -- Windows has no privilege drop, and
+     * the installation directory's own ACL already keeps non-administrators out of certs\. */
+#ifdef WIN32
+    const int flags = O_WRONLY | O_CREAT | O_EXCL;
+#else
+    const int flags = O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW;
+#endif
+
+    if (fd = open(AGENT_ANCHOR_MARKER, flags, 0640), fd < 0) {
         /* EEXIST is the benign race of two starts at once, not a problem worth a line. */
         if (errno != EEXIST) {
             mdebug1("Token bootstrap: could not write '%s': %s (%d).", AGENT_ANCHOR_MARKER,
