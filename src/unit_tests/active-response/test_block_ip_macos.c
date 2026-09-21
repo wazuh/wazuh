@@ -150,6 +150,9 @@ void test_try_route_macos_enable_succeeds(void **state) {
     firewall_result_t result = try_route_macos("192.168.1.100", ENABLE_COMMAND, 4, "block-ip");
 
     assert_int_equal(result, FIREWALL_SUCCESS);
+    // Only stderr may be bound: an empty capture is the success signal, and
+    // binding stdout would put route's always-present line in it
+    assert_int_equal(wpopenv_captured_flags(), W_BIND_STDERR);
     // Confirms the exact command run, not just that *some* command succeeded
     // -- the mock ignores argv on its own, see wpopenv_captured_argv()'s doc.
     assert_int_equal(wpopenv_captured_argc(), 6);
@@ -425,12 +428,49 @@ void test_try_pf_macos_disable_address_not_in_table_declines(void **state) {
     will_return(__wrap_wpopenv, make_wfd("   198.51.100.1\n"));
     will_return(__wrap_wpclose, 0);
 
-    will_return(__wrap_wpopenv, make_wfd("0/1 addresses deleted.\n"));
+    /* Measured on macOS 26.5.1: pfctl puts its two ALTQ notices on stderr ahead
+     * of the stdout verdict, so the line that decides this is never the first */
+    will_return(__wrap_wpopenv, make_wfd("No ALTQ support in kernel\nALTQ related functions disabled\n0/1 addresses deleted.\n"));
     will_return(__wrap_wpclose, 0);
 
     firewall_result_t result = try_pf_macos("192.0.2.66", DISABLE_COMMAND, 4, "block-ip");
 
     assert_int_equal(result, FIREWALL_INVALID_STATE);
+}
+
+/* The symmetric case: the address was in the table, so pf did the unblock and
+ * the chain must stop here. Same ALTQ prefix, different verdict. */
+void test_try_pf_macos_disable_address_in_table_succeeds(void **state) {
+    (void)state;
+
+    expect_pf_enabled();
+
+    will_return(__wrap_wpopenv, make_wfd("   192.0.2.66\n"));
+    will_return(__wrap_wpclose, 0);
+
+    will_return(__wrap_wpopenv, make_wfd("No ALTQ support in kernel\nALTQ related functions disabled\n1/1 addresses deleted.\n"));
+    will_return(__wrap_wpclose, 0);
+
+    firewall_result_t result = try_pf_macos("192.0.2.66", DISABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_SUCCESS);
+}
+
+/* A non-zero status with nothing on stderr means the child never became
+ * route(8) -- a failed execvp() _exit(127)s silently. */
+void test_try_route_macos_spawn_never_exec_is_failure(void **state) {
+    (void)state;
+
+    char *route_path = strdup("/sbin/route");
+    expect_string(__wrap_get_binary_path, command, "route");
+    will_return(__wrap_get_binary_path, route_path);
+    will_return(__wrap_get_binary_path, 0);
+    will_return(__wrap_wpopenv, make_wfd(""));
+    will_return(__wrap_wpclose, 127 << 8);
+
+    firewall_result_t result = try_route_macos("192.0.2.66", ENABLE_COMMAND, 4, "block-ip");
+
+    assert_int_equal(result, FIREWALL_EXECUTION_FAILED);
 }
 
 /* macOS route(8) exits 0 even when the routing socket write failed, so a zero
@@ -520,6 +560,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_try_pf_macos_missing_table_declines_on_disable, teardown_wfds),
         cmocka_unit_test_teardown(test_try_pf_macos_existing_table_deletes_ip, teardown_wfds),
         cmocka_unit_test_teardown(test_try_pf_macos_disable_address_not_in_table_declines, teardown_wfds),
+        cmocka_unit_test_teardown(test_try_pf_macos_disable_address_in_table_succeeds, teardown_wfds),
+        cmocka_unit_test_teardown(test_try_route_macos_spawn_never_exec_is_failure, teardown_wfds),
         cmocka_unit_test_teardown(test_try_route_macos_zero_exit_with_stderr_is_failure, teardown_wfds),
         cmocka_unit_test(test_try_hostsdeny_macos_missing_file_is_not_available),
         cmocka_unit_test(test_block_ip_macos_main_stock_install_falls_back_to_route),

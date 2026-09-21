@@ -36,6 +36,12 @@ wfd_t *__wrap_wpopenl(__attribute__((unused)) const char * path, __attribute__((
 static char wpopenv_argv_capture[WPOPENV_ARGV_CAPTURE_MAX][WPOPENV_ARGV_CAPTURE_LEN];
 static int wpopenv_argv_capture_count = 0;
 
+static int wpopenv_captured_flags_value = 0;
+
+int wpopenv_captured_flags(void) {
+    return wpopenv_captured_flags_value;
+}
+
 int wpopenv_captured_argc(void) {
     return wpopenv_argv_capture_count;
 }
@@ -49,7 +55,8 @@ const char *wpopenv_captured_argv(int index) {
 
 wfd_t *__wrap_wpopenv(__attribute__((unused)) const char * path,
                       char * const * argv,
-                      __attribute__((unused)) int flags) {
+                      int flags) {
+    wpopenv_captured_flags_value = flags;
     wpopenv_argv_capture_count = 0;
     if (argv) {
         while (argv[wpopenv_argv_capture_count] != NULL && wpopenv_argv_capture_count < WPOPENV_ARGV_CAPTURE_MAX) {

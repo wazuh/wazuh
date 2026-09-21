@@ -90,26 +90,29 @@ int main(int argc, char **argv) {
     return result;
 }
 
-// pfctl and route write to the pipe wpopenv binds, and wpclose() closes the
-// read end before waiting, so the output has to be read first or the child is
-// killed by SIGPIPE. Keeps the first non-blank line, where both tools put the
-// reason a command failed.
-static int drain_and_close(wfd_t *wfd, char *first_line, size_t size) {
+// Reads the whole stream before wpclose(), which would otherwise SIGPIPE the
+// child, and joins it into one string: on a shared pipe stdout and stderr do
+// not arrive in a dependable order. pfctl's ALTQ notices are dropped as noise.
+static int drain_and_close(wfd_t *wfd, char *output, size_t size) {
     char buffer[OS_MAXSTR];
+    size_t used = 0;
 
-    if (first_line && size) {
-        first_line[0] = '\0';
+    if (output && size) {
+        output[0] = '\0';
     }
 
     while (fgets(buffer, OS_MAXSTR, wfd->file_out) != NULL) {
-        if (first_line && size && first_line[0] == '\0' && buffer[strspn(buffer, " \t\r\n")] != '\0') {
-            strncpy(first_line, buffer, size - 1);
-            first_line[size - 1] = '\0';
-            char *newline = strchr(first_line, '\n');
-            if (newline) {
-                *newline = '\0';
-            }
+        if (!output || used + 1 >= size || strstr(buffer, "ALTQ") != NULL) {
+            continue;
         }
+
+        buffer[strcspn(buffer, "\r\n")] = '\0';
+        if (buffer[strspn(buffer, " \t")] == '\0') {
+            continue;
+        }
+
+        int written = snprintf(output + used, size - used, "%s%s", used ? " " : "", buffer);
+        used = (written > 0 && (size_t)written < size - used) ? used + (size_t)written : size - 1;
     }
 
     return wpclose(wfd);
@@ -214,10 +217,8 @@ firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, co
         return FIREWALL_EXECUTION_FAILED;
     }
 
-    // "0/1 addresses deleted." means the address was never in the table, so pf
-    // is not the method that blocked it. Decline instead of reporting success,
-    // or the chain stops here and whichever method really blocked it is never
-    // asked to undo it.
+    // "0/1 addresses deleted." means pf never held it. Decline, or the chain
+    // stops here and the method that did hold it is never asked to undo it.
     if (action == DISABLE_COMMAND && strstr(error_msg, "0/1 addresses deleted") != NULL) {
         log_firewall_action(argv0, LOG_LEVEL_INFO, "pf", "skip", "address not in wazuh_fwtable");
         os_free(pfctl_path);
@@ -374,6 +375,15 @@ firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_vers
         fclose(host_deny_fp);
         fclose(temp_host_deny_fp);
 
+        // Not the method that blocked it. Decline before the move: the copy is
+        // identical, and replacing the file would change its inode and mode.
+        if (!write_fail && !entry_found) {
+            log_firewall_action(argv0, LOG_LEVEL_INFO, "hostsdeny", "skip", "address not listed in hosts.deny");
+            unlink(temp_hosts_deny_path);
+            release_ar_lock(&lock_ctx);
+            return FIREWALL_INVALID_STATE;
+        }
+
         // Replace original file with temp file
         if (write_fail || OS_MoveFile(temp_hosts_deny_path, DEFAULT_HOSTS_DENY_PATH) != 0) {
             memset(log_msg, '\0', OS_MAXSTR);
@@ -385,15 +395,6 @@ firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_vers
         }
 
         unlink(temp_hosts_deny_path);
-
-        // The address was never listed here, so hosts.deny is not the method
-        // that blocked it. Decline so the chain keeps looking, rather than
-        // reporting an unblock this method never performed.
-        if (!entry_found) {
-            log_firewall_action(argv0, LOG_LEVEL_INFO, "hostsdeny", "skip", "address not listed in hosts.deny");
-            release_ar_lock(&lock_ctx);
-            return FIREWALL_INVALID_STATE;
-        }
     }
 
     release_ar_lock(&lock_ctx);
@@ -427,9 +428,8 @@ firewall_result_t try_route_macos(const char *srcip, int action, int ip_version,
     const char *gateway = (ip_version == 6) ? "::1" : "127.0.0.1";
     wfd_t *wfd = NULL;
 
-    // Only stderr is bound: route(8) always writes a line to stdout, and only
-    // writes to stderr when the routing socket write failed, which is what
-    // makes an empty stderr usable as the success signal below.
+    // Only stderr is bound: route(8) always writes to stdout, but writes to
+    // stderr only when the routing socket write failed.
     if (action == ENABLE_COMMAND) {
         if (ip_version == 6) {
             char *exec_cmd[] = {route_path, "-q", "add", "-inet6", (char *)srcip, (char *)gateway, "-blackhole", NULL};
@@ -458,18 +458,22 @@ firewall_result_t try_route_macos(const char *srcip, int action, int ip_version,
     char error_msg[OS_SIZE_1024];
     int wp_closefd = drain_and_close(wfd, error_msg, sizeof(error_msg));
 
-    // macOS route(8) exits 0 whatever happens: newroute() returns void and
-    // main() calls exit(0) unconditionally, so the wait status says nothing.
-    // What it does do is leave stderr empty on success and write the reason
-    // there on failure, so that is what decides the result.
+    // route(8) exits 0 whatever happens, so the result comes from stderr:
+    // empty on success, the reason on failure.
     if (error_msg[0] == '\0') {
-        if (WIFSIGNALED(wp_closefd)) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "route command terminated by signal %d", WTERMSIG(wp_closefd));
-            write_debug_file(argv0, log_msg);
-            return FIREWALL_EXECUTION_FAILED;
+        // A non-zero status here means the child never became route.
+        if (WIFEXITED(wp_closefd) && WEXITSTATUS(wp_closefd) == 0) {
+            return FIREWALL_SUCCESS;
         }
-        return FIREWALL_SUCCESS;
+
+        memset(log_msg, '\0', OS_MAXSTR);
+        if (WIFSIGNALED(wp_closefd)) {
+            snprintf(log_msg, OS_MAXSTR - 1, "route command terminated by signal %d", WTERMSIG(wp_closefd));
+        } else {
+            snprintf(log_msg, OS_MAXSTR - 1, "route command did not run (status %d)", wp_closefd);
+        }
+        write_debug_file(argv0, log_msg);
+        return FIREWALL_EXECUTION_FAILED;
     }
 
     // The route is already there (add) or already gone (delete): the end state
