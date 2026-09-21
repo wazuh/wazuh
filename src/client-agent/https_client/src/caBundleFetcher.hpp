@@ -89,6 +89,14 @@ class CaBundleFetcher final
 
         /// When the next attempt may run. Unset while nothing is pending.
         std::optional<std::chrono::steady_clock::time_point> m_dueAt;
+
+        /// Consecutive failed attempts at m_attemptedTarget, and the target they belong to.
+        int m_attempts {0};
+        std::int64_t m_attemptedTarget {0};
+
+        /// The highest publication this agent has given up on. Anything at or below it is not
+        /// attempted again; a strictly higher one is.
+        std::int64_t m_abandoned {0};
 };
 
 #endif // _HC_CA_BUNDLE_FETCHER_HPP

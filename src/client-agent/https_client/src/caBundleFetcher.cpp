@@ -38,6 +38,16 @@ namespace
     /// Capping only delays the agent less than asked, so the worst case is an extra request
     /// against a rate limiter that is free to answer 429 again.
     constexpr std::chrono::milliseconds MAX_AGENT_DELAY {60000};
+
+    /// How many times one publication is attempted before the agent stops asking for it.
+    ///
+    /// Without a ceiling a refusal is retried on the ramp forever: at the 60 s cap with full
+    /// jitter that is roughly one request every thirty seconds, per agent, indefinitely -- and
+    /// Retry-After cannot slow it down past MAX_AGENT_DELAY, so the manager has no way to shed
+    /// the load either. Five attempts is enough to ride out a node that is briefly refusing or
+    /// rate-limiting, and short enough that a store the agent simply cannot write costs a
+    /// handful of requests rather than a permanent one.
+    constexpr int MAX_ADOPTION_ATTEMPTS {5};
 }
 
 CaBundleFetcher::CaBundleFetcher(const ModuleConfig& config,
@@ -84,7 +94,32 @@ void CaBundleFetcher::tick(Waiter& waiter)
     // the OS's and not the agent's to replace.
     if (m_config.verifyMode == HC_VERIFY_NONE || m_config.verifyMode == HC_VERIFY_SYSTEM)
     {
-        m_state.clearPending();
+        // The target is deliberately LEFT armed rather than cleared. Clearing it returns the
+        // state to "nothing pending", so the very next notify arms it again -- and arming is
+        // what logs. On a ten-second keepalive that is an INFO line every ten seconds, for the
+        // life of an agent that was never going to refresh. Leaving it armed makes observe()
+        // report "already pending" from then on, which says the same thing once.
+        m_dueAt.reset();
+        return;
+    }
+
+    // Refreshing a trust store the agent does not own is not this feature's business: an
+    // operator who points <certificate_authorities> at their own file manages that file, and a
+    // bundle written there would be both a surprise and, in the usual case of a root-owned path,
+    // an install that can never succeed -- retried forever at the fleet's expense.
+    if (!m_config.caRefreshAllowed)
+    {
+        m_dueAt.reset();
+        return;
+    }
+
+    // Given up on: the publication was attempted MAX_ADOPTION_ATTEMPTS times and never installed.
+    // Retrying it beyond that is not going to start working -- the usual cause is local and
+    // permanent, an unwritable store -- and a fleet doing it forever is a denial of service its
+    // own manager cannot shed, since the agent ignores Retry-After past MAX_AGENT_DELAY. A
+    // strictly higher publication clears this and is tried afresh.
+    if (m_abandoned != 0 && target <= m_abandoned)
+    {
         m_dueAt.reset();
         return;
     }
@@ -167,7 +202,10 @@ void CaBundleFetcher::performRefresh(std::int64_t target, Waiter& waiter)
 
     LOGFN_DEBUG2(m_logFn, "Fetching CA bundle publication %lld.", static_cast<long long>(target));
 
-    const HttpResponse response = client.fetch();
+    // The stop flag, so a shutdown aborts a fetch in flight instead of waiting out the request
+    // timeout (10 s by default). This runs on the control thread, which the agent's stop path
+    // joins before it can finish.
+    const HttpResponse response = client.fetch(waiter.stopFlag());
     const auto body = vet(response, target);
 
     if (body.has_value() && m_install(*body, target))
@@ -177,7 +215,32 @@ void CaBundleFetcher::performRefresh(std::int64_t target, Waiter& waiter)
         m_state.setLocal(target);
         m_dueAt.reset();
         m_backoff.reset();
+        m_attempts = 0;
         LOGFN_INFO(m_logFn, "Adopted CA bundle publication %lld.", static_cast<long long>(target));
+        return;
+    }
+
+    // A new target starts its own count; the ramp restarts with it.
+    if (target != m_attemptedTarget)
+    {
+        m_attemptedTarget = target;
+        m_attempts = 0;
+        m_backoff.reset();
+    }
+
+    if (++m_attempts >= MAX_ADOPTION_ATTEMPTS)
+    {
+        // Said once, at a level an operator will see, and then the agent stops asking. The
+        // common causes are local and permanent -- a trust store the agent cannot replace, a
+        // bundle it cannot parse -- and none of them is fixed by a fleet retrying every thirty
+        // seconds until someone notices. A higher publication is tried afresh.
+        LOGFN_WARN(m_logFn,
+                   "CA bundle publication %lld could not be adopted in %d attempts; giving up on "
+                   "it. The trust store is unchanged and the agent keeps using it; a later "
+                   "publication will be tried.",
+                   static_cast<long long>(target), MAX_ADOPTION_ATTEMPTS);
+        m_abandoned = target;
+        m_dueAt.reset();
         return;
     }
 
@@ -199,5 +262,4 @@ void CaBundleFetcher::performRefresh(std::int64_t target, Waiter& waiter)
     }
 
     m_dueAt = m_clock.steadyNow() + delay;
-    (void)waiter;
 }

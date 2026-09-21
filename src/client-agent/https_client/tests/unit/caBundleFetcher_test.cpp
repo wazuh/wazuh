@@ -70,6 +70,9 @@ namespace
         config.verifyMode = HC_VERIFY_FULL;
         config.caPath = "etc/certs/root-ca.pem";
         config.notifyIntervalS = 10;
+        // The default is fail-closed, so the ordinary fixture opts in; the agent that may not
+        // refresh has its own case below.
+        config.caRefreshAllowed = true;
         return config;
     }
 
@@ -263,8 +266,86 @@ TEST(CaBundleFetcher, NoRefreshWhenVerificationIsOffOrDelegatedToTheOs)
         f.runDueRefresh();
 
         EXPECT_TRUE(f.m_installs.calls.empty());
-        EXPECT_EQ(0, f.m_state.pending()); // Abandoned: retrying cannot help.
+
+        // Left armed, deliberately. Clearing it would return the state to "nothing pending", so
+        // the next notify would arm it again -- and arming is what ControlStream logs. On a ten
+        // second keepalive that was an INFO line every ten seconds for the life of an agent that
+        // was never going to refresh anything.
+        EXPECT_EQ(PUBLISHED, f.m_state.pending());
+        EXPECT_FALSE(f.m_state.observe(PUBLISHED)); // So the next notify says nothing.
     }
+}
+
+/* An operator's own <certificate_authorities> is not this feature's to rewrite. The usual such
+ * path is root-owned and outside etc/certs, so the agent could not replace it after the
+ * privilege drop even if it should -- and every attempt would be retried, by every agent, for
+ * as long as the manager kept advertising. */
+TEST(CaBundleFetcher, NoRefreshWhenTheTrustStoreIsNotTheAgentsOwn)
+{
+    Fixture f;
+    f.m_config.caRefreshAllowed = false;
+    EXPECT_CALL(f.m_performer, perform(_)).Times(0);
+
+    f.runDueRefresh();
+
+    EXPECT_TRUE(f.m_installs.calls.empty());
+    EXPECT_EQ(PUBLISHED, f.m_state.pending()); // Armed but never acted on, so it stays quiet.
+}
+
+/* The ceiling on a publication that will not install. Without it the ramp retries forever: at
+ * the 60 s cap that is about one request every thirty seconds per agent, which a fleet turns
+ * into a permanent load its manager cannot shed -- Retry-After is itself capped. */
+TEST(CaBundleFetcher, APublicationThatNeverInstallsIsEventuallyAbandoned)
+{
+    Fixture f;
+    f.m_installs.answer = false; // The consumer refuses every time, as an unwritable store does.
+    ON_CALL(f.m_performer, perform(_))
+    .WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
+
+    f.m_state.observe(PUBLISHED);
+
+    for (int attempt = 0; attempt < 32; attempt++)
+    {
+        f.m_clock.advance(std::chrono::seconds {3600});
+        f.m_fetcher.tick(f.m_waiter);
+    }
+
+    // Five attempts, then silence -- not one per tick for the rest of the agent's life.
+    EXPECT_EQ(5u, f.m_installs.calls.size());
+    // The store is untouched and the agent keeps using it.
+    EXPECT_EQ(HELD, f.m_state.local());
+}
+
+/* Giving up is per publication, not for good: the next one the manager publishes is a different
+ * bundle, and whatever made the last one unusable may not apply to it. */
+TEST(CaBundleFetcher, AHigherPublicationIsTriedAfterOneWasAbandoned)
+{
+    Fixture f;
+    f.m_installs.answer = false;
+    ON_CALL(f.m_performer, perform(_))
+    .WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
+
+    f.m_state.observe(PUBLISHED);
+
+    for (int attempt = 0; attempt < 32; attempt++)
+    {
+        f.m_clock.advance(std::chrono::seconds {3600});
+        f.m_fetcher.tick(f.m_waiter);
+    }
+
+    ASSERT_EQ(5u, f.m_installs.calls.size());
+
+    f.m_installs.answer = true;
+    ON_CALL(f.m_performer, perform(_))
+    .WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED + 1)));
+
+    f.m_state.observe(PUBLISHED + 1);
+    f.m_clock.advance(std::chrono::seconds {3600});
+    f.m_fetcher.tick(f.m_waiter);
+    f.m_clock.advance(std::chrono::seconds {3600});
+    f.m_fetcher.tick(f.m_waiter);
+
+    EXPECT_EQ(PUBLISHED + 1, f.m_state.local());
 }
 
 /* Retry-After is not merely parsed, it defers the next attempt. Nothing asserted this before:

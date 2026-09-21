@@ -25,7 +25,7 @@ CacertsClient::CacertsClient(const ModuleConfig& config, IHttpPerformer& perform
 {
 }
 
-HttpResponse CacertsClient::fetch()
+HttpResponse CacertsClient::fetch(const std::atomic<bool>* abortFlag)
 {
     if (!m_config.validateTransport(m_fsProbe, m_logFn, m_unverifiedByDesign))
     {
@@ -38,6 +38,7 @@ HttpResponse CacertsClient::fetch()
     spec.target = prefixedTarget(m_config.serverEndpoint, "/cacerts");
     spec.method = HttpMethod::Get;
     spec.timeoutMs = m_config.requestTimeoutMs;
+    spec.abortFlag = abortFlag;
 
     return m_performer.perform(spec);
 }

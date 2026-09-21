@@ -84,6 +84,12 @@ struct ModuleConfig
         uint32_t statefulTimeoutMs {90000};
         uint32_t backoffBaseMs {1000};
         uint32_t backoffCapMs {60000};
+
+        /// Whether a published CA bundle may replace the trust store this agent verifies
+        /// against. False when <certificate_authorities> names a file the agent did not install
+        /// and does not own -- an operator's own CA is theirs to manage, and writing to it would
+        /// be both a surprise and, for the usual root-owned path, an install that never succeeds.
+        bool caRefreshAllowed {false};
         uint32_t drainTimeoutMs {5000};
 
         // Per-stream retry budgets (total tries, not retries-after-the-first).

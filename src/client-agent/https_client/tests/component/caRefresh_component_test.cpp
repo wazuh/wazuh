@@ -111,6 +111,11 @@ namespace
         std::strncpy(config.agent_id, "001", sizeof(config.agent_id) - 1);
         config.verify_mode = HC_VERIFY_FULL; // Peer AND hostname, against the file below.
         std::strncpy(config.ca_path, caPath.c_str(), sizeof(config.ca_path) - 1);
+        // These fixtures verify against a temp file rather than the installed anchor, so the
+        // bridge's "is this the agent's own trust store" test would say no. What is under test
+        // here is the refresh itself, not that decision (caBundleFetcher_test covers it), so the
+        // permission is granted explicitly.
+        config.ca_refresh_allowed = true;
         config.request_timeout_ms = 5000;
         // A ramp of effectively zero: the ramp is unit-tested, and what this suite wants from
         // a retry is only that it happens and reaches the server again.

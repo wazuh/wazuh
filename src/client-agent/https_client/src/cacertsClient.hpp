@@ -12,6 +12,7 @@
 #ifndef _HC_CACERTS_CLIENT_HPP
 #define _HC_CACERTS_CLIENT_HPP
 
+#include <atomic>
 #include "httpTypes.hpp"
 #include "iHttpPerformer.hpp"
 #include "moduleConfig.hpp"
@@ -64,7 +65,9 @@ class CacertsClient
         ///         component's job, not this one's). status is TlsFail and
         ///         httpCode stays 0 when the transport config itself is
         ///         invalid (fail-closed policy) -- nothing was ever sent.
-        HttpResponse fetch();
+        /// @param abortFlag Optional cooperative abort, normally a Waiter's stop flag. Without
+        ///        one a shutdown waits out the request timeout before the thread can join.
+        HttpResponse fetch(const std::atomic<bool>* abortFlag = nullptr);
 
     private:
         ModuleConfig m_config;

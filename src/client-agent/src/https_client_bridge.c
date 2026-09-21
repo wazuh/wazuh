@@ -1092,6 +1092,34 @@ static void bridge_on_manager_config_hash(const char *config_hash, void *user_da
  * Compares before writing so an unchanged report (the module already dedupes,
  * this is defense in depth) doesn't pay for a metadata republish. */
 /**
+ * @brief Whether @p ca_path names the trust anchor this agent installed and owns.
+ *
+ * Compared by identity rather than by spelling: the resolved default is the literal
+ * AGENT_ANCHOR_CA, but an operator may write the same file as an absolute path, or reach it
+ * through a symlink, and answering "no" to those would quietly switch a perfectly ordinary agent
+ * off from CA rotation. Falls back to the string compare when either stat() fails -- on a fresh
+ * install the anchor does not exist yet, and then the spelling is all there is to go on.
+ */
+static bool bridge_ca_path_is_the_agent_anchor(const char *ca_path) {
+    struct stat configured;
+    struct stat anchor;
+
+    if (ca_path == NULL || ca_path[0] == '\0') {
+        return false;
+    }
+
+    if (strcmp(ca_path, AGENT_ANCHOR_CA) == 0) {
+        return true;
+    }
+
+    if (stat(ca_path, &configured) != 0 || stat(AGENT_ANCHOR_CA, &anchor) != 0) {
+        return false;
+    }
+
+    return configured.st_dev == anchor.st_dev && configured.st_ino == anchor.st_ino;
+}
+
+/**
  * @brief Installs a CA bundle the module fetched and vetted (#39321).
  *
  * The module established that the connection was verified against the CA the agent already
@@ -1950,6 +1978,23 @@ static bool bridge_build_config(hc_config_t *config)
      * out of band, or one written before #39321 -- which is what makes the agent re-anchor on
      * the first publication the manager advertises instead of never updating again. */
     config->ca_publication = w_ca_publication_read(config->ca_path);
+
+    /* A published bundle may replace the trust store only when that store is the anchor this
+     * agent installed and owns. w_agent_resolve_ssl_posture() injects AGENT_ANCHOR_CA as the
+     * default <certificate_authorities>, so the ordinary agent compares equal here and refreshes
+     * as intended.
+     *
+     * An operator who configured their own path does not. Writing a manager's bundle into a file
+     * they manage would be a surprise at best; in the usual case -- a root-owned path outside
+     * etc/certs, which the agent cannot replace after the privilege drop -- every attempt would
+     * fail, and the agent would keep asking for a publication it can never adopt. Declining up
+     * front costs that operator nothing they had: their CA is exactly what they put there. */
+    config->ca_refresh_allowed = bridge_ca_path_is_the_agent_anchor(config->ca_path);
+
+    if (!config->ca_refresh_allowed && config->ca_path[0] != '\0') {
+        minfo("https_client: '%s' is not the agent's own trust anchor, so a CA bundle published "
+              "by the manager will not replace it.", config->ca_path);
+    }
 
     /* Stateful sync sessions arrive on a separate STREAM socket so a whole
      * (multi-MB) session bypasses the 64 KB DGRAM event queue; the module

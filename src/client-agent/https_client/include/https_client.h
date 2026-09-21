@@ -165,6 +165,13 @@ typedef struct hc_config_t
     ///< agent.config_hash on every Notify;
     ///< a mismatch triggers /download.
 
+    bool ca_refresh_allowed;      ///< Whether a published CA bundle may replace the file named
+    ///< by ca_path. Set only when that file is the agent's own
+    ///< trust anchor: an operator who points
+    ///< <certificate_authorities> at their own CA manages it
+    ///< themselves, and the agent must neither surprise them by
+    ///< rewriting it nor retry an install it can never complete.
+
     int64_t ca_publication;       ///< Publication recorded with the installed CA bundle, or -1
     ///< when it carries none (a fresh install, a store placed
     ///< out of band, or one written before #39321). Compared
