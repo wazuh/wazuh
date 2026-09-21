@@ -449,7 +449,9 @@ the streaming pump runs; the per-chunk loop is deliberately uninstrumented.
 Outcomes of `GET /cacerts`, the unauthenticated route that hands agents the CA that signs the
 listener certificate ([`https.ca_certificate`](configuration.md#httpsca_certificate)). The WHY
 behind `remoted.http.cacerts.responses.*`; the evaluation that decides the `503` is the
-[`remoted.server.tls.*`](#tls-listener-certificate--remotedservertls) pair.
+[`remoted.server.tls.*`](#tls-listener-certificate--remotedservertls) pair. While a rotation is in
+flight, a rising `served` with zero `ca_mismatch`/`not_found` is the expected shape of a healthy
+overlap window — see the [CA Rotation Runbook](ca-rotation.md).
 
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|

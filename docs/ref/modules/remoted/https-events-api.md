@@ -155,6 +155,12 @@ Agents keep verifying throughout: they pin the CA, not the leaf.
 Agents that pinned the old CA stop verifying this manager until they receive the new anchor; how an
 agent is re-enrolled or updated with it is documented on the agent side.
 
+This one-shot replacement has a downtime window: agents lose trust the instant the old CA leaves
+`root-ca.pem`, before they have any way to learn the new one. For a bundle that carries **more than
+one** CA at once — old and new side by side while agents catch up, no downtime window — use
+`wazuh-manager-certs` instead; the ordered procedure is the
+[CA Rotation Runbook](ca-rotation.md).
+
 ## Authentication (JWT bearer)
 
 **Enrollment uses a separate credential; `GET /` and `GET /cacerts` need no bearer.** The other endpoints require the agent<->manager
