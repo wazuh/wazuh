@@ -218,6 +218,25 @@ TEST_F(StatefulEndpointE2ETest, AVDSessionWithTheScannerDisabledIndexesAndAnswer
     EXPECT_EQ(1, m_events->m_syncFlushes.load());
 }
 
+TEST_F(StatefulEndpointE2ETest, VdConfiguredEnabledFromConfigReachesTheScannerFactory)
+{
+    // Pins the chain a silent regression could otherwise revert while every other test stays
+    // green: inventory_sync_server_config_t::vd_configured_enabled -> the facade's Phase-A
+    // snapshot -> scannerFactory(vdConfiguredEnabled) -> VdScannerAdapter::m_configuredEnabled.
+    inventory_sync_server_stop();
+    LogRecorder::clear();
+
+    invsync::test::installFakeVdScanner(m_events);
+
+    const auto path = uniqueSocketPath("vdconfigured");
+    auto config = makeConfig(path);
+    config.vd_configured_enabled = true;
+    ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config));
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+
+    EXPECT_TRUE(m_events->m_vdConfiguredEnabled.load());
+}
+
 TEST_F(StatefulEndpointE2ETest, AVDSessionWhileTheFeedDownloadsIsRefusedWithRetryAfter)
 {
     // Same wiring, FAKE scanner reporting "feed not ready" (D17): rejected without processing.

@@ -77,7 +77,10 @@ namespace invsync::vd
             // validating) with a retryable 503, instead of routing a session that merely arrived
             // early through Skipped as if this node would never run a scanner.
             auto& scanner = VulnerabilityScannerFacade::instance();
-            return feedGateOpen(vdWillRunHere(scanner.hasStarted(), scanner.isEnabled(), m_configuredEnabled),
+            // Sequenced before isEnabled(): as sibling call arguments their evaluation order is
+            // unspecified, and only running the acquire load first orders the other one.
+            const bool started = scanner.hasStarted();
+            return feedGateOpen(vdWillRunHere(started, scanner.isEnabled(), m_configuredEnabled),
                                 scanner.startFailed(),
                                 scanner.isInitialized(),
                                 scanner.isFeedReady());
@@ -139,11 +142,12 @@ namespace invsync::vd
 
             if (!scanner.isInitialized())
             {
-                // Reached only for "never going to run here" (disabled, or a harness that never
-                // started it): the lane's feedReady() re-check, one level up, already deferred
-                // the enabled-but-starting case with a retryable 503 before calling scanAgent()
-                // at all. Skipped, not NotReady: this gate is what the QA suite, the operator
-                // WARN and vd.scans.skipped hang off.
+                // Reached for "never going to run here" (disabled, or a harness that never
+                // started it) and for a scanner whose start() failed outright: the lane's
+                // feedReady() re-check, one level up, already deferred the enabled-but-starting
+                // case with a retryable 503 before calling scanAgent() at all. Skipped, not
+                // NotReady: this gate is what the QA suite, the operator WARN and
+                // vd.scans.skipped hang off.
                 return AgentScanOutcome::Skipped;
             }
 

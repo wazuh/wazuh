@@ -114,6 +114,9 @@ namespace invsync::test
         bool m_scanGateClosed {false};
         std::condition_variable m_scanGateCv;
         std::atomic<int> m_scanEntered {0}; ///< Times scan() was entered (before gate/injection).
+        /// The vdConfiguredEnabled the scanner factory was called with -- lets a test observe the
+        /// config.vd_configured_enabled -> scannerFactory chain without a live facade.
+        std::atomic<bool> m_vdConfiguredEnabled {false};
 
         void recordDestruction(const char* what)
         {
@@ -505,8 +508,12 @@ namespace invsync::test
     /// Installs a FakeVdScanner (sharing @p events) as the module's scan lane seam.
     inline void installFakeVdScanner(const std::shared_ptr<ConnectorEvents>& events)
     {
-        invsync::test_hooks::setVdScannerFactoryForTests([events](bool) -> std::shared_ptr<invsync::vd::IVdScanner>
-                                                         { return std::make_shared<FakeVdScanner>(events); });
+        invsync::test_hooks::setVdScannerFactoryForTests(
+            [events](bool vdConfiguredEnabled) -> std::shared_ptr<invsync::vd::IVdScanner>
+            {
+                events->m_vdConfiguredEnabled.store(vdConfiguredEnabled);
+                return std::make_shared<FakeVdScanner>(events);
+            });
     }
 
     /**

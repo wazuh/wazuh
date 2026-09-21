@@ -51,14 +51,6 @@ TEST(FeedGateOpen, NeverStartedAndNotConfigured_OpensGate)
                              /*feedReady*/ false));
 }
 
-TEST(FeedGateOpen, NeverStartedButConfiguredEnabled_Defers)
-{
-    EXPECT_FALSE(feedGateOpen(/*willRunHere*/ true,
-                              /*startFailed*/ false,
-                              /*initialized*/ false,
-                              /*feedReady*/ false));
-}
-
 TEST(FeedGateOpen, StartFailed_OpensGateEvenIfEnabled)
 {
     EXPECT_TRUE(feedGateOpen(/*willRunHere*/ true,

@@ -1591,11 +1591,11 @@ components:
       properties:
         error:
           type: string
-          description: Machine-readable cause. The values below are the ones VD is known to produce.
+          description: |
+            Machine-readable cause. The values VD is known to produce: `scan_queue_full`,
+            `indexer_unavailable`, `feed_not_ready`, `scanner_not_ready`, `task_create_failed`,
+            `vd_not_initialized`, `vd_unreachable`, `vd_error`, `Server is shutting down`.
           example: scan_queue_full
-          examples: [scan_queue_full, indexer_unavailable, feed_not_ready, scanner_not_ready,
-                     task_create_failed, vd_not_initialized, vd_unreachable, vd_error,
-                     "Server is shutting down"]
 
     EnrollRequest:
       type: object
