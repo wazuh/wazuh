@@ -66,11 +66,9 @@ static int setup_config(void** state)
     test_mode = 1;
 
     // Dummy variables to simulate non-NULL handlers
-    static char syscollector_dummy = 1;
     static char rsync_dummy = 1;
     static char hash_dummy = 1;
 
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)&syscollector_dummy;
     router_rsync_handle = (ROUTER_PROVIDER_HANDLE)&rsync_dummy;
     agent_data_hash = (OSHash*)&hash_dummy;
 
@@ -84,7 +82,6 @@ static int teardown_config(void** state)
 {
     linked_queue_free(keys.opened_fp_queue);
     test_mode = 0;
-    router_syscollector_handle = NULL;
     router_rsync_handle = NULL;
     agent_data_hash = NULL;
     return 0;
@@ -126,7 +123,6 @@ static int teardown_remoted_configuration(void** state)
 {
     test_mode = 0;
     node_name = "";
-    router_syscollector_handle = NULL;
     router_rsync_handle = NULL;
 
     test_agent_info* data = (test_agent_info*)*state;
@@ -2505,40 +2501,15 @@ void test_router_message_forward_fim_dbsync_file(void** state) {
     router_message_forward(msg, agent_id, agent_ip, agent_name);
 }
 
-void test_router_message_forward_syscollector_no_handle(void** state) {
-    char msg[] = "d:syscollector: test delta";
-    router_syscollector_handle = NULL;
-    const char* agent_id = "001";
-    const char* agent_ip = "192.168.1.1";
-    const char* agent_name = "test-agent";
-
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "Router handle for 'syscollector' not available.");
-
-    router_message_forward(msg, agent_id, agent_ip, agent_name);
-}
-
-void test_router_message_forward_syscollector_with_handle(void** state) {
+void test_router_message_forward_syscollector_dropped(void** state) {
+    // wazuh-db publishes this delta itself after confirming the write (issue #39329);
+    // remoted must not forward it to the router or log anything about it. No
+    // expectations are set on __wrap_router_provider_send_fb_json/__wrap__mdebug2,
+    // so cmocka fails the test if either gets called.
     char msg[] = "d:syscollector: valid";
     const char* agent_id = "001";
     const char* agent_ip = "192.168.1.1";
     const char* agent_name = "test-agent";
-
-    // Mock OSHash_Get_ex call
-    expect_any(__wrap_OSHash_Get_ex, self);
-    expect_string(__wrap_OSHash_Get_ex, key, "001");
-    will_return(__wrap_OSHash_Get_ex, NULL);
-
-    // Mock router_provider_send_fb_json call
-    expect_any(__wrap_router_provider_send_fb_json, handle);
-    expect_string(__wrap_router_provider_send_fb_json, msg, " valid");  // after stripping header
-    expect_any(__wrap_router_provider_send_fb_json, agent_ctx);
-    expect_value(__wrap_router_provider_send_fb_json, schema_type, MT_SYS_DELTAS);
-
-    will_return(__wrap_router_provider_send_fb_json, 1);
-
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "Unable to forward message ' valid' for agent '001'.");
 
     router_message_forward(msg, agent_id, agent_ip, agent_name);
 }
@@ -2601,23 +2572,6 @@ void test_router_message_forward_unrecognized_header(void** state) {
     router_message_forward(msg, agent_id, agent_ip, agent_name);
 }
 
-void test_router_message_forward_too_large(void** state) {
-    char msg[OS_MAXSTR + 32];
-    memset(msg, 'A', sizeof(msg));
-    memcpy(msg, SYSCOLLECTOR_HEADER, SYSCOLLECTOR_HEADER_SIZE);
-    msg[sizeof(msg)-1] = '\0';
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)1;
-    const char* agent_id = "001";
-    const char* agent_ip = "192.168.1.1";
-    const char* agent_name = "test-agent";
-
-    // Should NOT call router_provider_send_fb_json
-    router_message_forward(msg, agent_id, agent_ip, agent_name);
-}
-
-
-
-
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -2630,12 +2584,10 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_fp_null, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_router_message_forward_fim_syscheck_header, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_router_message_forward_fim_dbsync_file, setup_config, teardown_config),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_syscollector_no_handle, setup_config, teardown_config),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_syscollector_with_handle, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_syscollector_dropped, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_router_message_forward_dbsync_no_handle, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_router_message_forward_dbsync_unrecognized_subheader, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_router_message_forward_unrecognized_header, setup_config, teardown_config),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_too_large, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_router_message_forward_dbsync_with_handle, setup_config, teardown_config),
         // Tests HandleSecureMessage
         cmocka_unit_test(test_HandleSecureMessage_invalid_family_address_af_unspec),

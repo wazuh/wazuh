@@ -166,6 +166,56 @@ int test_setup_hotfixes_valid_msg_modified(void **state)
     *state = lf;
     return 0;
 }
+
+/* remoted prepends "<name>\x01<ip>\x01<version>\x01" to real-time delta payloads (issue
+ * #39329); lf->full_log/lf->log are set the way OS_CleanMSG does in production (log
+ * pointing inside full_log's allocation), so a custom teardown must free full_log, not a
+ * possibly-reassigned log, the same way analysisd's own Free_Eventinfo does. */
+int test_setup_hotfixes_valid_msg_modified_with_marker(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    os_strdup("test-agent\x01""192.168.1.50\x01""v4.14.9\x01"
+        "{\"type\":\"dbsync_hotfixes\",\"operation\":\"MODIFIED\","
+        "\"data\":{\"scan_time\":\"2021/10/29 14:26:24\",\"hotfix\":\"KB123456\","
+        "\"checksum\":\"abcdef0123456789\"}}", lf->full_log);
+    lf->log = lf->full_log;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
+int test_setup_hotfixes_malformed_marker(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    /* Only two \x01 separators: the marker is incomplete, so DecodeSyscollector must not
+     * touch lf->log and let JSON parsing fail on it, instead of mis-parsing "test-agent..."
+     * as a table name/operation/data triple. */
+    os_strdup("test-agent\x01""192.168.1.50\x01"
+        "{\"type\":\"dbsync_hotfixes\",\"operation\":\"MODIFIED\","
+        "\"data\":{\"scan_time\":\"2021/10/29 14:26:24\",\"hotfix\":\"KB123456\","
+        "\"checksum\":\"abcdef0123456789\"}}", lf->full_log);
+    lf->log = lf->full_log;
+    os_strdup("(>syscollector", lf->location);
+
+    *state = lf;
+    return 0;
+}
+
+int test_cleanup_full_log(void **state)
+{
+    Eventinfo *lf = *state;
+    w_free_event_info(lf);
+    return 0;
+}
+
 int test_setup_packages_valid_msg_modified(void **state)
 {
     Eventinfo *lf;
@@ -2149,6 +2199,7 @@ void test_syscollector_dbsync_hotfixes_valid_msg_modified(void **state)
             "\"scan_time\":\"2021/10/29 14:26:24\","
             "\"hotfix\":\"KB123456\","
             "\"checksum\":\"abcdef0123456789\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2162,6 +2213,42 @@ void test_syscollector_dbsync_hotfixes_valid_msg_modified(void **state)
 
     assert_int_not_equal(ret, 0);
 }
+
+void test_syscollector_dbsync_hotfixes_valid_msg_modified_with_marker(void **state)
+{
+    Eventinfo *lf = *state;
+
+    const char *query = "agent 001 dbsync hotfixes MODIFIED "
+        "{"
+            "\"scan_time\":\"2021/10/29 14:26:24\","
+            "\"hotfix\":\"KB123456\","
+            "\"checksum\":\"abcdef0123456789\""
+            ",\"agent_name\":\"test-agent\",\"agent_ip\":\"192.168.1.50\",\"agent_version\":\"v4.14.9\""
+        "}";
+    const char *result = "ok ";
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
+void test_syscollector_dbsync_malformed_marker(void **state)
+{
+    Eventinfo *lf = *state;
+    expect_string(__wrap__mdebug1, formatted_msg, "Error parsing JSON event.");
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    int ret = DecodeSyscollector(lf, 0);
+
+    assert_int_equal(ret, 0);
+}
+
 void test_syscollector_dbsync_packages_valid_msg_modified(void **state)
 {
     Eventinfo *lf = *state;
@@ -2184,6 +2271,7 @@ void test_syscollector_dbsync_packages_valid_msg_modified(void **state)
             "\"location\":\"13\","
             "\"checksum\":\"17\","
             "\"item_id\":\"18\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2234,6 +2322,7 @@ void test_syscollector_dbsync_processes_valid_msg_modified(void **state)
             "\"tty\":\"44\","
             "\"processor\":\"45\","
             "\"checksum\":\"46\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2268,6 +2357,7 @@ void test_syscollector_dbsync_ports_valid_msg_modified(void **state)
             "\"process\":\"57\","
             "\"checksum\":\"58\","
             "\"item_id\":\"59\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2305,6 +2395,7 @@ void test_syscollector_dbsync_network_iface_valid_msg_modified(void **state)
             "\"rx_dropped\":\"72\","
             "\"checksum\":\"73\","
             "\"item_id\":\"74\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2332,6 +2423,7 @@ void test_syscollector_dbsync_network_protocol_valid_msg_modified(void **state)
             "\"metric\":\"78\","
             "\"checksum\":\"79\","
             "\"item_id\":\"80\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2359,6 +2451,7 @@ void test_syscollector_dbsync_network_address_invalid_msg_modified(void **state)
             "\"broadcast\":\"84\","
             "\"checksum\":\"85\","
             "\"item_id\":\"86\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2388,6 +2481,7 @@ void test_syscollector_dbsync_network_address_valid_msg_modified(void **state)
             "\"broadcast\":\"84\","
             "\"checksum\":\"85\","
             "\"item_id\":\"86\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2417,6 +2511,7 @@ void test_syscollector_dbsync_hardware_valid_msg_modified(void **state)
             "\"ram_free\":91,"
             "\"ram_usage\":92,"
             "\"checksum\":\"93\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2455,6 +2550,7 @@ void test_syscollector_dbsync_os_valid_msg_modified(void **state)
             "\"checksum\":\"107\","
             "\"os_display_version\":\"108\","
             "\"reference\":\"110\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2498,6 +2594,7 @@ void test_syscollector_dbsync_users_valid_msg_modified(void **state)
             "\"user_password_warning_days_before_expiration\":7,"
             "\"user_shell\":\"/usr/sbin/nologin\","
             "\"user_uid_signed\":1"
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2528,6 +2625,7 @@ void test_syscollector_dbsync_groups_valid_msg_modified(void **state)
             "\"group_users\":\"54358:Administrateur\","
             "\"group_uuid\":\"S-1-5-32-544\","
             "\"scan_time\":\"2025/06/11 14:59:57\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2573,6 +2671,7 @@ void test_syscollector_dbsync_browser_extensions_valid_msg_modified(void **state
             "\"package_installed\":\"1710489821000\","
             "\"file_hash_sha256\":\"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234\","
             "\"checksum\":\"606abaac7962daf9842c84f4a15f609575d86bff\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2629,6 +2728,7 @@ void test_syscollector_dbsync_services_valid_msg_modified(void **state)
             "\"service_target_address\":\"127.0.0.1:9090\","
             "\"checksum\":\"abc\","
             "\"item_id\":\"123456\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2653,6 +2753,7 @@ void test_syscollector_dbsync_hotfixes_valid_msg_inserted(void **state)
             "\"scan_time\":\"2021/10/29 14:26:24\","
             "\"hotfix\":\"KB123456\","
             "\"checksum\":\"abcdef0123456789\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2688,6 +2789,7 @@ void test_syscollector_dbsync_packages_valid_msg_inserted(void **state)
             "\"location\":\"13\","
             "\"checksum\":\"17\","
             "\"item_id\":\"18\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2738,6 +2840,7 @@ void test_syscollector_dbsync_processes_valid_msg_inserted(void **state)
             "\"tty\":\"44\","
             "\"processor\":\"45\","
             "\"checksum\":\"46\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2772,6 +2875,7 @@ void test_syscollector_dbsync_ports_valid_msg_inserted(void **state)
             "\"process\":\"57\","
             "\"checksum\":\"58\","
             "\"item_id\":\"59\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2809,6 +2913,7 @@ void test_syscollector_dbsync_network_iface_valid_msg_inserted(void **state)
             "\"rx_dropped\":\"72\","
             "\"checksum\":\"73\","
             "\"item_id\":\"74\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2836,6 +2941,7 @@ void test_syscollector_dbsync_network_protocol_valid_msg_inserted(void **state)
             "\"metric\":\"78\","
             "\"checksum\":\"79\","
             "\"item_id\":\"80\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2863,6 +2969,7 @@ void test_syscollector_dbsync_network_address_invalid_msg_inserted(void **state)
             "\"broadcast\":\"84\","
             "\"checksum\":\"85\","
             "\"item_id\":\"86\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2892,6 +2999,7 @@ void test_syscollector_dbsync_network_address_valid_msg_inserted(void **state)
             "\"broadcast\":\"84\","
             "\"checksum\":\"85\","
             "\"item_id\":\"86\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2921,6 +3029,7 @@ void test_syscollector_dbsync_hardware_valid_msg_inserted(void **state)
             "\"ram_free\":91,"
             "\"ram_usage\":92,"
             "\"checksum\":93"
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2959,6 +3068,7 @@ void test_syscollector_dbsync_os_valid_msg_inserted(void **state)
             "\"checksum\":\"107\","
             "\"os_display_version\":\"108\","
             "\"reference\":\"110\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -2998,6 +3108,7 @@ void test_syscollector_dbsync_os_valid_msg_with_number_pk(void **state)
             "\"checksum\":\"107\","
             "\"os_display_version\":\"108\","
             "\"reference\":\"110\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -3035,6 +3146,7 @@ void test_syscollector_dbsync_valid_msg_query_error(void **state)
         "{"
             "\"hotfix\":\"KB123456\","
             "\"checksum\":\"abcdef0123456789\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "fail";
     int sock = 1;
@@ -3077,6 +3189,7 @@ void test_syscollector_dbsync_os_valid_msg_no_result_payload(void **state)
             "\"checksum\":\"107\","
             "\"os_display_version\":\"108\","
             "\"reference\":\"110\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "";
     int sock = 1;
@@ -3133,6 +3246,7 @@ void test_syscollector_dbsync_users_valid_msg_inserted(void **state)
             "\"user_type\":\"local\","
             "\"user_uid_signed\":-1,"
             "\"user_uuid\":\"uuid\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -3163,6 +3277,7 @@ void test_syscollector_dbsync_groups_valid_msg_inserted(void **state)
             "\"group_users\":\"54358:Administrateur\","
             "\"group_uuid\":\"S-1-5-32-544\","
             "\"scan_time\":\"2025/06/11 14:59:57\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -3208,6 +3323,7 @@ void test_syscollector_dbsync_browser_extensions_valid_msg_inserted(void **state
             "\"package_installed\":\"1710489821000\","
             "\"file_hash_sha256\":\"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234\","
             "\"checksum\":\"606abaac7962daf9842c84f4a15f609575d86bff\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -3264,6 +3380,7 @@ void test_syscollector_dbsync_services_valid_msg_inserted(void **state)
             "\"service_target_address\":\"127.0.0.1:9090\","
             "\"checksum\":\"abc\","
             "\"item_id\":\"123456\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -3310,6 +3427,7 @@ void test_syscollector_dbsync_empty_string(void **state)
             "\"ram_free\":\"91\","
             "\"ram_usage\":\"92\","
             "\"checksum\":\"93\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -3356,6 +3474,7 @@ void test_syscollector_dbsync_insert_multiple_null_valid_msg(void ** state) {
             "\"scan_time\":\"2021/11/01 17:38:40\","
             "\"state\":null,"
             "\"tx_queue\":null"
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
     const char * result = "ok ";
 
@@ -3422,6 +3541,7 @@ void test_syscollector_dbsync_deleted_multiple_null_valid_msg(void ** state) {
             "\"local_port\":53462,"
             "\"protocol\":\"tcp\","
             "\"scan_time\":\"2021/11/01 17:40:48\""
+            ",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\""
         "}";
 
     const char * result = "ok ";
@@ -4505,6 +4625,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_null_agentid, test_setup_valid_msg_null_agentid, test_cleanup),
         /* MODIFIED delta tests*/
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg_modified, test_setup_hotfixes_valid_msg_modified, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg_modified_with_marker, test_setup_hotfixes_valid_msg_modified_with_marker, test_cleanup_full_log),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_malformed_marker, test_setup_hotfixes_malformed_marker, test_cleanup_full_log),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_packages_valid_msg_modified, test_setup_packages_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_processes_valid_msg_modified, test_setup_processes_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_ports_valid_msg_modified, test_setup_ports_valid_msg_modified, test_cleanup),

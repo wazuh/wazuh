@@ -37,6 +37,7 @@
 #define WDB_FIM_DELETED 4
 
 #define WDB_NETADDR_IPV4 0
+#define WDB_NETADDR_IPV6 1
 
 #define WDB_MULTI_GROUP_DELIM '-'
 

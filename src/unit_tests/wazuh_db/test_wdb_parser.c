@@ -11,6 +11,7 @@
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_agents_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_delta_event_wrappers.h"
+#include "../wrappers/wazuh/shared_modules/router_wrappers.h"
 
 
 #include "os_err.h"
@@ -21,6 +22,17 @@ typedef struct test_struct {
     wdb_t *wdb_global;
     char *output;
 } test_struct_t;
+
+// router_provider_send_fb_json has no shared wrapper .c; each test binary that wraps it
+// provides its own __wrap_ implementation (same pattern as test_secure.c).
+int __wrap_router_provider_send_fb_json(ROUTER_PROVIDER_HANDLE handle, const char* msg,
+                                        void* agent_ctx, int schema_type) {
+    check_expected_ptr(handle);
+    check_expected_ptr(msg);
+    check_expected_ptr(agent_ctx);
+    check_expected(schema_type);
+    return mock_type(int);
+}
 
 static int test_setup(void **state) {
     test_struct_t *init_data;
@@ -2148,6 +2160,88 @@ void test_wdb_parse_dbsync_insert_err(void ** state) {
     os_free(query);
 }
 
+/* Confirms the write-then-publish order the fix for issue #39329 relies on:
+ * the Indexer publish is only attempted after process_dbsync_data() (here,
+ * the wrapped wdb_upsert_dbsync()) succeeds, never on failure. */
+static int test_setup_publish(void ** state) {
+    router_syscollector_deltas_handle = (ROUTER_PROVIDER_HANDLE) 1;
+    return test_setup(state);
+}
+
+static int test_teardown_publish(void ** state) {
+    router_syscollector_deltas_handle = NULL;
+    return test_teardown(state);
+}
+
+void test_wdb_parse_dbsync_insert_ok_publishes(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    // agent_name must be present for wdb_parse_dbsync() to publish (see issue #39329):
+    // it's how a delta relayed by remoted (real agent context) is told apart from one
+    // wm_syscollector injects locally for the manager's own inventory (agent 000).
+    os_strdup("osinfo INSERTED {\"key\": \"value\",\"agent_name\":\"test-agent\",\"agent_ip\":\"192.168.1.50\",\"agent_version\":\"v4.14.9\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, true);
+
+    expect_any(__wrap_router_provider_send_fb_json, handle);
+    expect_any(__wrap_router_provider_send_fb_json, msg);
+    expect_any(__wrap_router_provider_send_fb_json, agent_ctx);
+    expect_value(__wrap_router_provider_send_fb_json, schema_type, MT_SYS_DELTAS);
+    will_return(__wrap_router_provider_send_fb_json, 0);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_insert_err_does_not_publish(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("osinfo INSERTED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, false);
+
+    // No expectations set on __wrap_router_provider_send_fb_json: cmocka fails
+    // this test if wdb_publish_confirmed_delta() gets called despite the failure.
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_insert_ok_empty_agent_name_does_not_publish(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    // agent_name present but "" is what analysisd's decode_dbsync() sends for deltas
+    // wm_syscollector injects locally for the manager's own inventory (agent 000, no
+    // remoted marker to fill it from). Must not be mistaken for real agent context.
+    os_strdup("osinfo INSERTED {\"key\": \"value\",\"agent_name\":\"\",\"agent_ip\":\"\",\"agent_version\":\"\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, true);
+
+    // No expectations set on __wrap_router_provider_send_fb_json: cmocka fails this
+    // test if wdb_publish_confirmed_delta() gets called for an empty agent name.
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
 void test_wdb_parse_dbsync_modified_ok(void ** state) {
     test_struct_t * data = (test_struct_t *) *state;
     char * query = NULL;
@@ -2210,8 +2304,8 @@ void test_wdb_parse_dbsync_deleted_err(void ** state) {
 
     const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "ok ");
-    assert_int_equal(ret, OS_SUCCESS);
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
 }
@@ -2380,8 +2474,8 @@ void test_wdb_parse_dbsync_groups_deleted_err(void ** state) {
 
     const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "ok ");
-    assert_int_equal(ret, OS_SUCCESS);
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
 }
@@ -2550,8 +2644,8 @@ void test_wdb_parse_dbsync_users_deleted_err(void ** state) {
 
     const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "ok ");
-    assert_int_equal(ret, OS_SUCCESS);
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
 }
@@ -2720,8 +2814,8 @@ void test_wdb_parse_dbsync_browser_extensions_deleted_err(void ** state) {
 
     const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "ok ");
-    assert_int_equal(ret, OS_SUCCESS);
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
 }
@@ -3276,8 +3370,8 @@ void test_wdb_parse_dbsync_services_deleted_err(void ** state) {
 
     const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "ok ");
-    assert_int_equal(ret, OS_SUCCESS);
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
 }
@@ -3401,6 +3495,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_delta_data_not_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_insert_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_insert_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_insert_ok_publishes, test_setup_publish, test_teardown_publish),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_insert_err_does_not_publish, test_setup_publish, test_teardown_publish),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_insert_ok_empty_agent_name_does_not_publish, test_setup_publish, test_teardown_publish),
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_modified_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_modified_err, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_deleted_ok, test_setup, test_teardown),

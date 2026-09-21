@@ -6591,8 +6591,7 @@ bool process_dbsync_data(wdb_t * wdb, const struct kv * kv_value, const char * o
         if (strcmp(operation, "INSERTED") == 0 || strcmp(operation, "MODIFIED") == 0) {
             ret_val = wdb_upsert_dbsync(wdb, kv_value, data);
         } else if (strcmp(operation, "DELETED") == 0) {
-            wdb_delete_dbsync(wdb, kv_value, data);
-            ret_val = true;
+            ret_val = wdb_delete_dbsync(wdb, kv_value, data);
         } else {
             mdebug1("Invalid operation type: %s", operation);
         }
@@ -6681,23 +6680,57 @@ int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
                 /* agent_name/agent_ip/agent_version were embedded into `data` by analysisd's
                  * decode_dbsync() (see issue #39329); process_dbsync_data() above already
                  * ignored them since the table upsert only binds fields it recognizes. */
-                cJSON * agent_fields = cJSON_ParseWithOpts(data, NULL, true);
+                cJSON * data_json = cJSON_ParseWithOpts(data, NULL, true);
                 const char * agent_name = "";
                 const char * agent_ip = "";
                 const char * agent_version = "";
+                char * corrected_data = NULL;
+                /* Only deltas relayed by remoted carry agent_name/agent_ip/agent_version (see
+                 * secure.c's marker); the manager's own inventory (agent 000) is injected
+                 * straight into analysisd's local queue by wm_syscollector, which already
+                 * publishes it to the Indexer itself with the right context
+                 * (wm_sys_send_diff_message() -> router_provider_send_fb_func_ptr(), "localhost"/
+                 * "000"/"127.0.0.1"). Publishing it again here, with these fields blank, would
+                 * race that direct publish and can overwrite it with an empty agent. */
+                bool has_agent_context = false;
 
-                if (NULL != agent_fields) {
-                    cJSON * j_name = cJSON_GetObjectItem(agent_fields, "agent_name");
-                    cJSON * j_ip = cJSON_GetObjectItem(agent_fields, "agent_ip");
-                    cJSON * j_version = cJSON_GetObjectItem(agent_fields, "agent_version");
+                if (NULL != data_json) {
+                    cJSON * j_name = cJSON_GetObjectItem(data_json, "agent_name");
+                    cJSON * j_ip = cJSON_GetObjectItem(data_json, "agent_ip");
+                    cJSON * j_version = cJSON_GetObjectItem(data_json, "agent_version");
 
-                    agent_name = cJSON_IsString(j_name) ? j_name->valuestring : "";
-                    agent_ip = cJSON_IsString(j_ip) ? j_ip->valuestring : "";
-                    agent_version = cJSON_IsString(j_version) ? j_version->valuestring : "";
+                    // analysisd's decode_dbsync() always adds this key, even for locally
+                    // injected deltas (agent 000) where it defaults to "" (no marker to read
+                    // it from) -- an empty string is still cJSON_IsString(), so presence alone
+                    // isn't enough; only a non-empty name means remoted actually relayed one.
+                    if (cJSON_IsString(j_name) && '\0' != j_name->valuestring[0]) {
+                        has_agent_context = true;
+                        agent_name = j_name->valuestring;
+                        agent_ip = cJSON_IsString(j_ip) ? j_ip->valuestring : "";
+                        agent_version = cJSON_IsString(j_version) ? j_version->valuestring : "";
+                    }
+
+                    /* network_address is the only table analysisd's delta_map_values() rewrites
+                     * before reaching here: it replaces the numeric `proto` with "ipv4"/"ipv6" for
+                     * the SQL upsert above, but dbsync_network_address.proto is a long in
+                     * syscollector_deltas.fbs. Restore the numeric value for the Indexer publish
+                     * only; the SQL write already used, and needed, the string form. */
+                    if (has_agent_context && strcmp(table_key, "network_address") == 0) {
+                        cJSON * j_proto = cJSON_GetObjectItem(data_json, "proto");
+                        if (cJSON_IsString(j_proto)) {
+                            cJSON_ReplaceItemInObject(data_json, "proto", cJSON_CreateNumber(
+                                strcmp(j_proto->valuestring, "ipv4") == 0 ? WDB_NETADDR_IPV4 : WDB_NETADDR_IPV6));
+                            corrected_data = cJSON_PrintUnformatted(data_json);
+                        }
+                    }
                 }
 
-                wdb_publish_confirmed_delta(wdb, table_key, operation, data, agent_name, agent_ip, agent_version);
-                cJSON_Delete(agent_fields);
+                if (has_agent_context) {
+                    wdb_publish_confirmed_delta(wdb, table_key, operation, corrected_data ? corrected_data : data,
+                                                 agent_name, agent_ip, agent_version);
+                }
+                os_free(corrected_data);
+                cJSON_Delete(data_json);
             }
             break;
         }

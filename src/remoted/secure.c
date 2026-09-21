@@ -952,7 +952,9 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     /* For Syscollector deltas, carry the agent's name/IP/version alongside the raw
      * message so wazuh-db can publish them to the Indexer without any lookup of its
      * own (see issue #39329). Encoded as "<name>\x01<ip>\x01<version>\x01" right after
-     * the "d:syscollector:" header; \x01 can't appear in these values, and the JSON
+     * the "d:syscollector:" header. agent_name/agent_ip never contain '\x01' (name comes
+     * from client.keys, ip is either that or a formatted socket address); agent_version
+     * is agent-reported and unvalidated, so it's explicitly checked below. The JSON
      * payload always starts with '{', so a missing/malformed marker is unambiguous.
      */
     char *analysisd_msg = tmp_msg;
@@ -960,7 +962,9 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
     if (strncmp(tmp_msg, SYSCOLLECTOR_HEADER, SYSCOLLECTOR_HEADER_SIZE) == 0) {
         const char * agent_version = (const char *) OSHash_Get_ex(agent_data_hash, agentid_str);
-        if (!agent_version) {
+        // The version is agent-reported (HC_STARTUP, unvalidated): a '\x01' in it would
+        // desync the separators below and corrupt every subsequent delta from this agent.
+        if (!agent_version || strchr(agent_version, '\x01')) {
             agent_version = "";
         }
 
