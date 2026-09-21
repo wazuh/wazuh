@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.10]
 
+### Agent
+
+#### Fixed
+
+- Fixed the `disable-account` active response rejecting macOS (`Darwin`) as an unsupported system, so it disables and re-enables the account via `pwpolicy` instead of failing silently on every macOS endpoint. ([#39190](https://github.com/wazuh/wazuh/issues/39190))
+
 ## [v4.14.9]
 
 ### Manager
