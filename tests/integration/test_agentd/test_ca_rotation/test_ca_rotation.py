@@ -63,8 +63,9 @@ from wazuh_testing.utils.callbacks import make_callback
 from wazuh_testing.utils.configuration import load_configuration_template
 
 from . import CONFIGS_PATH
-from .conftest import (UNKNOWN_PUBLICATION, certificate_count, render_publication, runtime_uid,
-                       store_bytes, store_owner, store_publication, wait_for, write_anchor)
+from .conftest import (UNKNOWN_PUBLICATION, certificate_count, render_publication,
+                       restart_agent_now, runtime_uid, store_bytes, store_owner,
+                       store_publication, wait_for, write_anchor)
 
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
@@ -230,7 +231,12 @@ def test_the_publication_the_agent_already_holds_is_never_fetched(
         - No GET /cacerts is ever sent.
         - The store is untouched, publication included.
     '''
+    # Seeded and then restarted, in that order. The agent reads this value once, when its
+    # transport module starts; writing it into a running agent's store would leave the agent
+    # still holding "unknown" -- and an agent that holds "unknown" fetches, which is the very
+    # thing this case says must not happen.
     write_anchor(manager.cacerts_pem, generation=FIRST)
+    restart_agent_now()
     before = store_bytes()
 
     manager.ca_generation = FIRST
@@ -259,7 +265,9 @@ def test_a_node_advertising_an_older_publication_is_ignored(
         - No GET /cacerts follows an advertisement below what the agent holds.
         - The store still records the higher publication.
     '''
+    # Seeded before the agent starts, for the reason given in the case above.
     write_anchor(manager.cacerts_pem, generation=SECOND)
+    restart_agent_now()
     before = store_bytes()
 
     manager.ca_generation = FIRST

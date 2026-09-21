@@ -183,6 +183,17 @@ def anchored_agent(manager):
     remove_file(MARKER_PATH)
 
 
+def restart_agent_now():
+    """Restart agentd and return once it is on its way up.
+
+    Needed because the agent reads the publication recorded in its trust store exactly once, when
+    the transport module is created at startup. A test that seeds a publication into the store
+    while the agent is already running is racing that read: the agent may pick the value up, or
+    may already hold "unknown" and fetch. Seeding and then restarting makes the order explicit.
+    """
+    control_service('restart', daemon=AGENT_DAEMON)
+
+
 @pytest.fixture()
 def restart_agentd():
     """Start agentd for one case and stop it afterwards, whatever the case did."""
