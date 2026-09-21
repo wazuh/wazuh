@@ -144,6 +144,7 @@ STATIC atomic_int_t _startup_completed = ATOMIC_INT_INITIALIZER(0);
 
 STATIC w_macos_log_procceses_t * macos_processes = NULL;
 volatile sig_atomic_t macos_log_shutdown = 0;
+STATIC logreader * macos_es_logreader = NULL;
 
 #endif
 
@@ -398,6 +399,30 @@ void LogCollectorStart()
             }
 #else
             minfo(LOGCOLLECTOR_ONLY_MACOS);
+#endif
+            os_free(current->file);
+            current->command = NULL;
+            os_free(current->fp);
+        }
+
+        else if (strcmp(current->logformat, MACOS_ES) == 0) {
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+            w_macos_es_create_env(current);
+            current->read = read_macos_es;
+            if (current->macos_es->wfd != NULL) {
+                if (atexit(w_macos_es_release_env)) {
+                    merror(ATEXIT_ERROR);
+                }
+                /* macos-es resources need to be globally reachable to be released */
+                macos_es_logreader = current;
+
+                for (int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
+                    mdebug1("Socket target for '%s' -> %s", MACOS_ES, current->target[tg_idx]);
+                    w_logcollector_state_add_target(MACOS_ES, current->target[tg_idx]);
+                }
+            }
+#else
+            minfo(LOGCOLLECTOR_ONLY_MACOS_ES);
 #endif
             os_free(current->file);
             current->command = NULL;
@@ -2097,6 +2122,13 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     else if (current->macos_log != NULL && current->macos_log->state != LOG_NOT_RUNNING) {
                         current->read(current, &r, 0);
                     }
+                    /* Read Endpoint Security (`eslogger`) events. Polled unconditionally — not
+                     * gated on liveness like ULS above — so the supervisor inside read_macos_es()
+                     * gets a chance to respawn a dead process every tick (R7/R14: unlike ULS's
+                     * `log stream`, a dead `eslogger` must not stay dead forever). */
+                    else if (current->macos_es != NULL) {
+                        current->read(current, &r, 0);
+                    }
 #endif
 #ifdef __linux__
                     /* Read the journald logs */
@@ -3000,6 +3032,13 @@ void w_macos_release_log_execution(void) {
     macos_log_shutdown = 1;
     w_macos_release_log_show();
     w_macos_release_log_stream();
+}
+
+void w_macos_es_release_env(void) {
+
+    if (macos_es_logreader != NULL) {
+        w_macos_es_release(macos_es_logreader);
+    }
 }
 
 #endif

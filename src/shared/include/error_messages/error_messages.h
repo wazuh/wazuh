@@ -146,6 +146,10 @@
 #define LOGCOLLECTOR_JOURNAL_LOG_FAIL_NEXT          "(1610): Failed to get the next entry, disabling journal log: %s."
 #define LOGCOLLECTOR_JOURNAL_LOG_FAIL_GET           "(1611): Failed to get the message from the journal"
 
+#define LOGCOLLECTOR_MACOS_ES_EXEC_ERROR            "(1612): Error while trying to execute `eslogger` as follows: %s."
+#define LOGCOLLECTOR_MACOS_ES_FP_TO_FD_ERROR        "(1613): The file descriptor couldn't be obtained from the file pointer of the eslogger pipe: %s (%d)."
+#define LOGCOLLECTOR_MACOS_ES_CHILD_EXITED          "(1614): macOS ES 'eslogger' process exited, pid: %d, exit value: %d."
+
 
 /* remoted */
 #define NO_REM_CONN     "(1750): No remote connection configured. Exiting."

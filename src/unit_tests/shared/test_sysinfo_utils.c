@@ -894,7 +894,6 @@ void test_w_get_os_codename_OK(void ** state) {
     os_free(ret);
 }
 
-
 int main(void) {
 
     const struct CMUnitTest tests[] = {
