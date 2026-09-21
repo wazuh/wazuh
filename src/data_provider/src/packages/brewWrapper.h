@@ -42,6 +42,9 @@ class BrewWrapper final : public IPackageWrapper
             const file_system::FileSystemWrapper fs;
             const file_io::FileIOUtils ioUtils;
 
+            // The keg directory is a direct measurement of what the formula installed.
+            m_size = static_cast<int64_t>(fs.directory_size(packagePath, PACKAGE_SIZE_MAX_ENTRIES, PACKAGE_SIZE_DEADLINE));
+
             // Try modern INSTALL_RECEIPT.json format first (Homebrew 2.0+)
             if (fs.is_regular_file(installReceiptPath))
             {

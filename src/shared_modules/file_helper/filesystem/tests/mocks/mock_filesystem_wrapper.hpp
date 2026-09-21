@@ -2,6 +2,8 @@
 
 #include <gmock/gmock.h>
 
+#include <chrono>
+
 #include <ifilesystem_wrapper.hpp>
 
 class MockFileSystemWrapper : public IFileSystemWrapper
@@ -20,6 +22,11 @@ class MockFileSystemWrapper : public IFileSystemWrapper
         MOCK_METHOD(std::vector<std::filesystem::path>,
                     list_directory,
                     (const std::filesystem::path& path),
+                    (const, override));
+        MOCK_METHOD(std::uintmax_t, file_size, (const std::filesystem::path& path), (const, override));
+        MOCK_METHOD(std::uintmax_t,
+                    directory_size,
+                    (const std::filesystem::path& path, std::uintmax_t maxEntries, std::chrono::milliseconds deadline),
                     (const, override));
         MOCK_METHOD(void, rename, (const std::filesystem::path& from, const std::filesystem::path& to), (const, override));
         MOCK_METHOD(bool, remove, (const std::filesystem::path& path), (const, override));

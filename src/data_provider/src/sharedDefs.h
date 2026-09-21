@@ -12,6 +12,8 @@
 #ifndef _SHARED_DEFS_H
 #define _SHARED_DEFS_H
 
+#include <chrono>
+#include <cstdint>
 #include <set>
 #include <string>
 
@@ -43,6 +45,11 @@ constexpr auto MAC_ADDRESS_COUNT_SEGMENTS
 {
     6ull
 };
+
+// Bounds for the recursive/measured package-size walks (bundle directories, Homebrew kegs,
+// MacPorts port images). A capped or timed-out walk reports 0 rather than a partial sum.
+constexpr std::uintmax_t PACKAGE_SIZE_MAX_ENTRIES { 200000 };
+constexpr std::chrono::milliseconds PACKAGE_SIZE_DEADLINE { 2000 };
 
 #define ROUNDUP(a) ((a) > 0 ? (1 + (((a)-1) | (sizeof(long) - 1))) : sizeof(long))
 

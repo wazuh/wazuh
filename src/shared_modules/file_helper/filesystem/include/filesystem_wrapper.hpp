@@ -48,6 +48,14 @@ namespace file_system
             /// @copydoc IFileSystemWrapper::list_directory
             std::vector<std::filesystem::path> list_directory(const std::filesystem::path& path) const override;
 
+            /// @copydoc IFileSystemWrapper::file_size
+            std::uintmax_t file_size(const std::filesystem::path& path) const override;
+
+            /// @copydoc IFileSystemWrapper::directory_size
+            std::uintmax_t directory_size(const std::filesystem::path& path,
+                                           std::uintmax_t maxEntries,
+                                           std::chrono::milliseconds deadline) const override;
+
             /// @copydoc IFileSystemWrapper::rename
             void rename(const std::filesystem::path& from, const std::filesystem::path& to) const override;
 

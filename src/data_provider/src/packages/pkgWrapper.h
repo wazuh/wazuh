@@ -28,6 +28,7 @@
 #include "sharedDefs.h"
 #include "plist/plist.h"
 #include <file_io_utils.hpp>
+#include <filesystem_wrapper.hpp>
 
 static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
 static const std::string PLIST_BINARY_START { "bplist00"            };
@@ -43,11 +44,28 @@ class PKGWrapper final : public IPackageWrapper
         static void setReceiptLivenessChecker(ReceiptLivenessFn fn)
         {
             s_receiptLivenessChecker() = std::move(fn);
+            s_usingDefaultReceiptChecker() = false;
         }
 
         static void resetReceiptLivenessChecker()
         {
             s_receiptLivenessChecker() = &PKGWrapper::defaultReceiptLivenessChecker;
+            s_usingDefaultReceiptChecker() = true;
+        }
+
+        /// @brief Overrides the entry cap and wall-clock deadline used to bound the
+        /// application-bundle directory walk that measures m_size. Exposed for tests; the
+        /// real defaults live in sharedDefs.h.
+        static void setSizeMeasurementLimits(std::uintmax_t maxEntries, std::chrono::milliseconds deadline)
+        {
+            s_maxSizeEntries() = maxEntries;
+            s_sizeDeadline() = deadline;
+        }
+
+        static void resetSizeMeasurementLimits()
+        {
+            s_maxSizeEntries() = PACKAGE_SIZE_MAX_ENTRIES;
+            s_sizeDeadline() = PACKAGE_SIZE_DEADLINE;
         }
 
         explicit PKGWrapper(const PackageContext& ctx)
@@ -204,6 +222,42 @@ class PKGWrapper final : public IPackageWrapper
             return false;
         }
 
+        /// @brief Recovers the bundle root from the Info.plist path getPkgData is given.
+        /// @param infoPlistPath e.g. "<filePath>/<package>.app/Contents/Info.plist".
+        /// @return The bundle directory, e.g. "<filePath>/<package>.app".
+        static std::string bundleRootFromInfoPlist(const std::string& infoPlistPath)
+        {
+            static const std::string suffix { "/" + APP_INFO_PATH };
+            std::string bundlePath { infoPlistPath };
+
+            if (Utils::endsWith(bundlePath, suffix))
+            {
+                bundlePath.resize(bundlePath.size() - suffix.size());
+            }
+
+            return bundlePath;
+        }
+
+        /// @brief Bounded recursive size of an application bundle. Returns 0 on any error,
+        /// missing path, or a cap/deadline hit, never a partial sum.
+        static int64_t measureBundleSize(const std::string& bundlePath)
+        {
+            static const file_system::FileSystemWrapper fs;
+            return static_cast<int64_t>(fs.directory_size(bundlePath, s_maxSizeEntries(), s_sizeDeadline()));
+        }
+
+        static std::uintmax_t& s_maxSizeEntries()
+        {
+            static std::uintmax_t value { PACKAGE_SIZE_MAX_ENTRIES };
+            return value;
+        }
+
+        static std::chrono::milliseconds& s_sizeDeadline()
+        {
+            static std::chrono::milliseconds value { PACKAGE_SIZE_DEADLINE };
+            return value;
+        }
+
         void getPkgData(const std::string& filePath)
         {
             const auto isBinaryFnc
@@ -296,7 +350,7 @@ class PKGWrapper final : public IPackageWrapper
                     m_architecture = UNKNOWN_VALUE;
                     m_multiarch = UNKNOWN_VALUE;
                     m_priority = UNKNOWN_VALUE;
-                    m_size = 0;
+                    m_size = measureBundleSize(bundleRootFromInfoPlist(filePath));
                     m_installTime = UNKNOWN_VALUE;
                     m_source = filePath.find(UTILITIES_FOLDER) != std::string::npos ? "utilities" : "applications";
                     m_location = filePath;
@@ -411,29 +465,66 @@ class PKGWrapper final : public IPackageWrapper
                 }
             }
 
-            const auto& checker = s_receiptLivenessChecker();
-
-            if (checker)
+            if (s_usingDefaultReceiptChecker())
             {
+                // Default path: a single lsbom pass yields both liveness and, since it reads
+                // the whole BOM, the receipt's installed size.
                 const std::string prefix { (m_installPrefix.empty() || m_installPrefix == ".") ? "/" : m_installPrefix };
+                const auto scanResult { scanReceiptBom(filePath, prefix, true) };
+                m_size = scanResult.size;
 
-                if (!checker(filePath, prefix))
+                if (!scanResult.alive)
                 {
                     m_name.clear();
                 }
             }
+            else
+            {
+                const auto& checker = s_receiptLivenessChecker();
+
+                if (checker)
+                {
+                    const std::string prefix { (m_installPrefix.empty() || m_installPrefix == ".") ? "/" : m_installPrefix };
+
+                    if (!checker(filePath, prefix))
+                    {
+                        m_name.clear();
+                    }
+                }
+            }
         }
 
-        static bool defaultReceiptLivenessChecker(const std::string& receiptPath,
-                                                  const std::string& installPrefix)
+        /// @brief Result of a single lsbom pass over a receipt's companion BOM.
+        struct ReceiptScanResult
         {
+            bool alive { false };
+            int64_t size { 0 };
+        };
+
+        /// @brief Spawns lsbom once against the receipt's companion BOM and reports liveness
+        /// (at least one listed file still exists under installPrefix) and, when computeSize
+        /// is requested, the summed size of every regular file it lists.
+        ///
+        /// When computeSize is false this reproduces the original cheap probe: at most
+        /// MAX_PROBES lines are read and the scan stops as soon as a live file is found. When
+        /// computeSize is true the whole BOM has to be read, since a size needs every entry,
+        /// but the liveness verdict stays identical to the cheap path: at most MAX_PROBES
+        /// failed lstat calls, and no further probing once a live file has been found. A size
+        /// measurement must not change which packages are reported.
+        static ReceiptScanResult scanReceiptBom(const std::string& receiptPath,
+                                                const std::string& installPrefix,
+                                                bool computeSize)
+        {
+            ReceiptScanResult result;
+
             // Locate companion BOM (<pkgid>.bom next to <pkgid>.plist).
             static const std::string PLIST_EXT { ".plist" };
             static const std::string BOM_EXT   { ".bom" };
 
             if (!Utils::endsWith(receiptPath, PLIST_EXT))
             {
-                return true;
+                result.alive = true;
+                return result;
             }
 
             std::string bomPath { receiptPath.substr(0, receiptPath.size() - PLIST_EXT.size()) };
@@ -443,7 +534,8 @@ class PKGWrapper final : public IPackageWrapper
 
             if (::stat(bomPath.c_str(), &st) != 0)
             {
-                return (errno != ENOENT && errno != ENOTDIR) ? true : false;
+                result.alive = (errno != ENOENT && errno != ENOTDIR);
+                return result;
             }
 
             std::string escaped;
@@ -461,24 +553,31 @@ class PKGWrapper final : public IPackageWrapper
                 }
             }
 
-            const std::string cmd { "/usr/bin/lsbom -s '" + escaped + "' 2>/dev/null" };
+            // "-s" lists pathnames only, which is enough for the liveness-only probe. A size
+            // needs the default (unflagged) listing, whose columns are, per lsbom(8),
+            // pathname / mode / owner-group / size[/ checksum]. This default-format assumption
+            // is UNVERIFIED against a real macOS host; an unparseable or short line (e.g. a
+            // directory, which has no size column) contributes 0, never a guessed value.
+            const std::string cmd { computeSize
+                                     ? "/usr/bin/lsbom '" + escaped + "' 2>/dev/null"
+                                     : "/usr/bin/lsbom -s '" + escaped + "' 2>/dev/null" };
 
             FILE* pipe { ::popen(cmd.c_str(), "r") };
 
             if (!pipe)
             {
-                return true;
+                result.alive = true;
+                return result;
             }
 
             constexpr int MAX_PROBES { 16 };
             int probes { 0 };
-            bool alive { false };
             char buffer[4096];
 
             const auto prefix = (installPrefix.empty() || installPrefix == ".") ? std::string{"/"} :
                                 installPrefix;
 
-            while (probes < MAX_PROBES && std::fgets(buffer, sizeof(buffer), pipe) != nullptr)
+            while ((computeSize || probes < MAX_PROBES) && std::fgets(buffer, sizeof(buffer), pipe) != nullptr)
             {
                 std::string line { buffer };
 
@@ -493,45 +592,113 @@ class PKGWrapper final : public IPackageWrapper
                     continue;
                 }
 
-                if (line.front() == '.')
+                std::string relativePath { line };
+                int64_t entrySize { 0 };
+
+                if (computeSize)
                 {
-                    line.erase(0, 1);
+                    std::istringstream columns { line };
+                    std::string pathField;
+                    std::string modeField;
+                    std::string ownerField;
+                    std::string sizeField;
+
+                    if (columns >> pathField >> modeField >> ownerField >> sizeField)
+                    {
+                        relativePath = pathField;
+
+                        try
+                        {
+                            entrySize = std::stoll(sizeField);
+                        }
+                        catch (const std::exception&)
+                        {
+                            entrySize = 0;
+                        }
+                    }
+                    else if (!pathField.empty())
+                    {
+                        // Directory or symlink entry: no size column, contributes 0.
+                        relativePath = pathField;
+                    }
                 }
 
-                std::string absolute { prefix };
-
-                if (!absolute.empty() && absolute.back() == '/' && !line.empty() && line.front() == '/')
+                if (relativePath.empty() || relativePath == ".")
                 {
-                    absolute.pop_back();
+                    continue;
                 }
 
-                absolute += line;
-
-                struct stat childSt {};
-
-                if (::lstat(absolute.c_str(), &childSt) == 0)
+                if (relativePath.front() == '.')
                 {
-                    alive = true;
+                    relativePath.erase(0, 1);
+                }
+
+                if (!result.alive && probes < MAX_PROBES)
+                {
+                    std::string absolute { prefix };
+
+                    if (!absolute.empty() && absolute.back() == '/' && !relativePath.empty() && relativePath.front() == '/')
+                    {
+                        absolute.pop_back();
+                    }
+
+                    absolute += relativePath;
+
+                    struct stat childSt {};
+
+                    if (::lstat(absolute.c_str(), &childSt) == 0)
+                    {
+                        result.alive = true;
+                    }
+                    else
+                    {
+                        ++probes;
+                    }
+                }
+
+                if (computeSize)
+                {
+                    result.size += entrySize;
+                }
+                else if (result.alive)
+                {
                     break;
                 }
-
-                ++probes;
             }
 
             const int pcStatus { ::pclose(pipe) };
 
-            if (pcStatus != 0 && !alive)
+            if (pcStatus != 0)
             {
-                return true;
+                // A failed lsbom leaves a partial sum behind; report no size rather than a
+                // number that is silently too small.
+                result.size = 0;
+
+                if (!result.alive)
+                {
+                    result.alive = true;
+                }
             }
 
-            return alive;
+            return result;
+        }
+
+        static bool defaultReceiptLivenessChecker(const std::string& receiptPath,
+                                                  const std::string& installPrefix)
+        {
+            return scanReceiptBom(receiptPath, installPrefix, false).alive;
         }
 
         static ReceiptLivenessFn& s_receiptLivenessChecker()
         {
             static ReceiptLivenessFn instance { &PKGWrapper::defaultReceiptLivenessChecker };
             return instance;
+        }
+
+        static bool& s_usingDefaultReceiptChecker()
+        {
+            static bool usingDefault { true };
+            return usingDefault;
         }
 
         std::stringstream binaryToXML(const std::string& filePath)

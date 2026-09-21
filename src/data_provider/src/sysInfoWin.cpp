@@ -424,6 +424,16 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                     location = UNKNOWN_VALUE;
                 }
 
+                // EstimatedSize is a REG_DWORD in KiB; convert to bytes to match the dpkg
+                // convention. Falls back to 0 when the key is absent.
+                int64_t size { 0 };
+                DWORD estimatedSizeKb { 0 };
+
+                if (packageReg.dword("EstimatedSize", estimatedSizeKb))
+                {
+                    size = static_cast<int64_t>(estimatedSizeKb) * 1024;
+                }
+
                 if (!name.empty())
                 {
                     if (access & KEY_WOW64_32KEY)
@@ -444,7 +454,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                     packageJson["version_"]     = version.empty() ? UNKNOWN_VALUE : std::move(version);
                     packageJson["category"]     = UNKNOWN_VALUE;
                     packageJson["priority"]     = UNKNOWN_VALUE;
-                    packageJson["size"]         = 0;
+                    packageJson["size"]         = size;
                     packageJson["vendor"]       = vendor.empty() ? UNKNOWN_VALUE : std::move(vendor);
                     packageJson["source"]       = UNKNOWN_VALUE;
                     packageJson["installed"]    = install_time.empty() ? UNKNOWN_VALUE : std::move(install_time);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <vector>
 
@@ -73,6 +75,24 @@ class IFileSystemWrapper
         /// @param path Path to the directory
         /// @return The vector containing the elements of the directory
         virtual std::vector<std::filesystem::path> list_directory(const std::filesystem::path& path) const = 0;
+
+        /// @brief Returns the size in bytes of a regular file.
+        /// @param path The file to measure.
+        /// @return The file size in bytes, or 0 if the path does not exist, is not a regular
+        /// file, or the size cannot be determined. Never throws.
+        virtual std::uintmax_t file_size(const std::filesystem::path& path) const = 0;
+
+        /// @brief Recursively sums the size of every regular file under a directory, bounded
+        /// so a pathological tree cannot stall the caller.
+        /// @param path Directory to walk.
+        /// @param maxEntries Maximum number of directory entries visited before giving up.
+        /// @param deadline Wall-clock budget for the whole walk.
+        /// @return The summed size in bytes, or 0 if the path is not a directory, the walk
+        /// hits the entry cap or the deadline, or any entry cannot be measured. Never a
+        /// partial sum, never throws.
+        virtual std::uintmax_t directory_size(const std::filesystem::path& path,
+                                               std::uintmax_t maxEntries,
+                                               std::chrono::milliseconds deadline) const = 0;
 
         /// @brief Renames a file or directory from the 'from' path to the 'to' path.
         /// @param from The current path of the file or directory.

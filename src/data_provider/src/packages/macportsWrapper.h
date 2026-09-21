@@ -15,6 +15,7 @@
 #include "ipackageWrapper.h"
 #include "sqliteWrapperTemp.h"
 #include "sharedDefs.h"
+#include <filesystem_wrapper.hpp>
 
 const std::map<std::string, int> columnIndexes
 {
@@ -162,6 +163,24 @@ class MacportsWrapper final : public IPackageWrapper
                     if (!archsStr.empty())
                     {
                         m_architecture = archsStr;
+                    }
+                }
+
+                // The "ports" table has no size column. The "location" column read above is
+                // the port's installed image, either a directory or a single file depending on
+                // the MacPorts version; measure whichever it is. If it is empty, missing, or
+                // points at something else, the size stays 0.
+                if (m_location != UNKNOWN_VALUE)
+                {
+                    const file_system::FileSystemWrapper fs;
+
+                    if (fs.is_directory(m_location))
+                    {
+                        m_size = static_cast<int64_t>(fs.directory_size(m_location, PACKAGE_SIZE_MAX_ENTRIES, PACKAGE_SIZE_DEADLINE));
+                    }
+                    else if (fs.is_regular_file(m_location))
+                    {
+                        m_size = static_cast<int64_t>(fs.file_size(m_location));
                     }
                 }
             }

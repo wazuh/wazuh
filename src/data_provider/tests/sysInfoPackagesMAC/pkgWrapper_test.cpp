@@ -12,6 +12,7 @@
 #include "pkgWrapper_test.h"
 #include "packages/packageMac.h"
 #include "packages/pkgWrapper.h"
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -57,6 +58,7 @@ void PKGWrapperTest::SetUp()
 void PKGWrapperTest::TearDown()
 {
     PKGWrapper::resetReceiptLivenessChecker();
+    PKGWrapper::resetSizeMeasurementLimits();
 
     // Remove any leftover files and the temp directory itself.
     if (!m_tempDir.empty())
@@ -93,7 +95,8 @@ TEST_F(PKGWrapperTest, LongVersion)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    // Bundle contains only Contents/Info.plist; the measured size is that file's size.
+    EXPECT_EQ(wrapper->size(), 10460);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -122,9 +125,29 @@ TEST_F(PKGWrapperTest, ShortVersion)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), 10493);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+}
+
+// A cap that the walk exceeds on its very first entry must report 0, never a
+// partial sum, even though the bundle itself has real content on disk.
+TEST_F(PKGWrapperTest, SizeReportsZeroWhenEntryCapIsHit)
+{
+    PKGWrapper::setSizeMeasurementLimits(0, std::chrono::milliseconds { 5000 });
+
+    std::string inputPath;
+    inputPath += currentWorkingDirectory();
+    inputPath += "/input_files";
+    std::string package { "PKGWrapperTest_ShortVersion.app" };
+
+    struct PackageContext ctx
+    {
+        inputPath, package, ""
+    };
+    std::shared_ptr<PKGWrapper> wrapper;
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+    EXPECT_EQ(wrapper->size(), 0);
 }
 
 TEST_F(PKGWrapperTest, NameDifferentExecutable)
@@ -151,7 +174,7 @@ TEST_F(PKGWrapperTest, NameDifferentExecutable)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), 10474);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -180,7 +203,7 @@ TEST_F(PKGWrapperTest, NameFirst)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), 10474);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -209,7 +232,7 @@ TEST_F(PKGWrapperTest, NoNameButExecutable)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), 10411);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -238,7 +261,7 @@ TEST_F(PKGWrapperTest, NoNameNoExecutable)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), 10356);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -267,7 +290,7 @@ TEST_F(PKGWrapperTest, NoVersion)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), 10337);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -296,7 +319,7 @@ TEST_F(PKGWrapperTest, NoGroups)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), 10371);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -325,7 +348,7 @@ TEST_F(PKGWrapperTest, NoDescription)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), 10387);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -354,7 +377,7 @@ TEST_F(PKGWrapperTest, NoVendor)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), 10453);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -386,7 +409,7 @@ TEST_F(PKGWrapperTest, SourceUtilitiesFolder)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Wazuh");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), 519);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
