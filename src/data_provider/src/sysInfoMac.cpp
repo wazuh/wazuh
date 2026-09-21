@@ -656,12 +656,17 @@ nlohmann::json SysInfo::getUsers() const
 
         userItem["user_password_hash_algorithm"] = user["password_hash_algorithm"];
         userItem["user_password_status"] = user["password_status"];
-        // macOS has no shadow file and no password aging policy unless an MDM imposes one, so
-        // there is no source for these. Reporting them as not collected keeps them apart from a
-        // policy that genuinely allows zero days.
-        userItem["user_password_expiration_date"] = NOT_COLLECTED_VALUE;
+        // macOS has no shadow file. The only aging policy it can hold is a pwpolicy/MDM-imposed
+        // change interval, which is where expiration_date and max_days_between_changes come from
+        // when present. macOS has no equivalent of a minimum password age or of a warning period
+        // before expiration, so those two stay not collected rather than a guessed zero.
+        userItem["user_password_expiration_date"] = user.contains("password_expiration_date")
+                                                    ? user["password_expiration_date"]
+                                                    : nlohmann::json(NOT_COLLECTED_VALUE);
         userItem["user_password_inactive_days"] = NOT_COLLECTED_VALUE;
-        userItem["user_password_max_days_between_changes"] = NOT_COLLECTED_VALUE;
+        userItem["user_password_max_days_between_changes"] = user.contains("password_max_days_between_changes")
+                                                             ? user["password_max_days_between_changes"]
+                                                             : nlohmann::json(NOT_COLLECTED_VALUE);
         userItem["user_password_min_days_between_changes"] = NOT_COLLECTED_VALUE;
         userItem["user_password_warning_days_before_expiration"] = NOT_COLLECTED_VALUE;
 

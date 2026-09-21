@@ -41,6 +41,11 @@ namespace od
     /// - "failed_login_count": Number of failed login attempts (int)
     /// - "failed_login_timestamp": Time of last failed login attempt (double)
     /// - "password_last_set_time": Time when the password was last changed (double)
+    /// - "expires_every_n_days": Password change interval set through pwpolicy, read from the
+    ///   nested policyCategoryPasswordChange/policyParameters entry (int). Only present when an
+    ///   MDM or pwpolicy has imposed such a policy; macOS has no equivalent of a minimum password
+    ///   age or of a warning period before expiration, so this is the only aging attribute there
+    ///   is to read.
     ///
     /// If the user does not have `accountPolicyData`, or the attribute is missing or malformed,
     /// the output JSON will still contain those fields with `null` values.

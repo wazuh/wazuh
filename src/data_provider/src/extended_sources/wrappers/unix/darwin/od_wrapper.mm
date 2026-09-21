@@ -14,6 +14,7 @@
 #include "json.hpp"
 
 #include <cstring>
+#include <string>
 
 namespace od
 {
@@ -251,6 +252,64 @@ namespace od
             assign_safe("failedLoginCount", "failed_login_count", true);
             assign_safe("failedLoginTimestamp", "failed_login_timestamp", false);
             assign_safe("passwordLastSetTime", "password_last_set_time", false);
+
+            // The aging policy, when pwpolicy has set one, is not a flat key: it lives inside
+            // policyCategoryPasswordChange, an array of policy entries each carrying its own
+            // policyParameters dict. policyAttributeExpiresEveryNDays is the only aging attribute
+            // macOS documents; there is no OpenDirectory equivalent of a minimum password age or
+            // of a warning period before expiration, so those stay unset here.
+            NSArray* passwordChangePolicies = dict[@"policyCategoryPasswordChange"];
+
+            if ([passwordChangePolicies isKindOfClass:[NSArray class]])
+            {
+                bool haveExpiresEveryNDays = false;
+                long long minExpiresEveryNDays = 0;
+
+                for (NSDictionary * entry in passwordChangePolicies)
+                {
+                    if (![entry isKindOfClass:[NSDictionary class]]) continue;
+
+                    NSDictionary* parameters = entry[@"policyParameters"];
+
+                    if (![parameters isKindOfClass:[NSDictionary class]]) continue;
+
+                    id expiresEveryNDays = parameters[@"policyAttributeExpiresEveryNDays"];
+                    long long days = 0;
+                    bool parsed = false;
+
+                    if ([expiresEveryNDays isKindOfClass:[NSNumber class]])
+                    {
+                        days = [(NSNumber*)expiresEveryNDays longLongValue];
+                        parsed = true;
+                    }
+                    else if ([expiresEveryNDays isKindOfClass:[NSString class]])
+                    {
+                        // Same string-vs-number ambiguity assign_safe already handles above.
+                        try
+                        {
+                            days = std::stoll(std::string([(NSString*)expiresEveryNDays UTF8String]));
+                            parsed = true;
+                        }
+                        catch (...)
+                        {
+                            // Not a parseable integer; this entry contributes nothing.
+                        }
+                    }
+
+                    // When an MDM profile and a local pwpolicy stack, the most restrictive
+                    // (soonest-expiring) interval wins.
+                    if (parsed && (!haveExpiresEveryNDays || days < minExpiresEveryNDays))
+                    {
+                        haveExpiresEveryNDays = true;
+                        minExpiresEveryNDays = days;
+                    }
+                }
+
+                if (haveExpiresEveryNDays)
+                {
+                    policyData["expires_every_n_days"] = minExpiresEveryNDays;
+                }
+            }
         }
     }
 
