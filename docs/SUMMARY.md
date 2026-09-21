@@ -168,6 +168,7 @@
   - [Cluster](ref/modules/cluster/README.md)
     - [Configuration](ref/modules/cluster/configuration.md)
     - [Load balancers](ref/modules/cluster/lb.md)
+      - [Troubleshooting](ref/modules/cluster/lb-troubleshooting.md)
   - [Indexer Connector](ref/modules/indexer_connector/README.md)
     - [Configuration](ref/modules/indexer_connector/configuration.md)
   - [Wazuh DB](ref/modules/wazuh_db/README.md)

@@ -203,9 +203,9 @@ URL path prefix every HTTPS endpoint is served under: with `/wazuh-manager/` con
 This is a **URL path**, unrelated to the installation directory `/var/wazuh-manager` despite the
 similar spelling: nothing on disk is looked up under it.
 
-- **Default value:** `/` (no prefix) when the tag is absent — an upgraded configuration keeps
-  serving today's unprefixed endpoints. Freshly generated configurations ship
-  `/wazuh-manager/`.
+- **Default value:** `/wazuh-manager/`. The schema materialises it into the effective
+  configuration, so an absent tag means the prefix is applied, not that it is skipped. Serving
+  unprefixed endpoints requires writing `/` explicitly.
 - **Allowed values:** `/` (explicit "no prefix"), or `/segment[/segment...]` with an optional
   trailing slash. Characters `A-Z a-z 0-9 . _ ~ -` and `/`; no empty (`//`) or `.`/`..`
   segments, no percent-encoding; at most 255 characters. Any other value is rejected as a

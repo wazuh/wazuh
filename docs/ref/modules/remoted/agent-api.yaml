@@ -51,9 +51,10 @@ servers:
       globalPrefix:
         default: "/wazuh-manager"
         description: >
-          Value of <remote><https><global_prefix> without its trailing slash. Freshly generated
-          configurations ship /wazuh-manager; an absent tag means no prefix (use an empty
-          string here). The signed request target includes this prefix.
+          Value of <remote><https><global_prefix> without its trailing slash. The default is
+          /wazuh-manager, materialised by the schema, so an absent tag means the prefix IS
+          applied. Serving unprefixed endpoints requires setting the tag to / explicitly.
+          The signed request target includes this prefix.
 
 tags:
   - name: Health
@@ -146,6 +147,15 @@ paths:
             different one, by checking that this response's `Wazuh-CA-Generation` header carries that
             same generation, and only then replaces its trust store with the response body in full
             (never merged with, or partially over, what it held).
+
+        NONE OF THAT WORKS BEHIND A TLS-TERMINATING LOAD BALANCER, and the bootstrap case is the
+        one it breaks. This route returns the CA that signs the MANAGER's listener certificate,
+        but under termination the agent's TLS peer is the balancer. When the balancer's
+        certificate comes from a different CA, nothing served here can verify the peer the agent
+        actually talks to -- not the bundle, and not the single token-pinned certificate either,
+        since the token pins this same CA. An agent that adopts it loses the connection it had.
+        Sign the balancer leaf with the same CA as the nodes, or distribute the anchor out of
+        band. See docs/ref/modules/cluster/lb.md.
       responses:
         "200":
           description: The CA certificate(s) the listener chains to, as a PEM file.
