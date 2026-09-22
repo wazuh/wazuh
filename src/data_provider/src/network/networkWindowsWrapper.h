@@ -358,42 +358,6 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
                    : AF_UNSPEC;
         }
 
-        PIP_ADDR_STRING findInterfaceMatch(const std::string& address) const
-        {
-            PIP_ADDR_STRING currentInterfaceAddr { nullptr };
-            PIP_ADAPTER_INFO currentAdapterInfo { m_adapterInfo };
-            bool foundMatch { false };
-
-            while (currentAdapterInfo && !foundMatch)
-            {
-                if (!(MIB_IF_TYPE_LOOPBACK == currentAdapterInfo->Type))
-                {
-                    if (currentAdapterInfo->Index == m_interfaceAddress->IfIndex)
-                    {
-                        // Found an interface match. Now we need an IPv4 match.
-                        currentInterfaceAddr = &(currentAdapterInfo->IpAddressList);
-
-                        while (currentInterfaceAddr)
-                        {
-                            if (strncmp(address.c_str(), currentInterfaceAddr->IpAddress.String, address.length()) == 0)
-                            {
-                                // IPv4 match found
-                                break;
-                            }
-
-                            currentInterfaceAddr = currentInterfaceAddr->Next;
-                        }
-
-                        foundMatch = true;
-                    }
-                }
-
-                currentAdapterInfo = currentAdapterInfo->Next;
-            }
-
-            return currentInterfaceAddr;
-        }
-
         Utils::NetworkWindowsHelper::NetworkFamilyTypes m_interfaceFamily;
         PIP_ADAPTER_ADDRESSES                           m_interfaceAddress;
         PIP_ADAPTER_UNICAST_ADDRESS                     m_currentUnicastAddress;

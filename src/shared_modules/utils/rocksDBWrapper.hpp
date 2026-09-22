@@ -456,30 +456,6 @@ namespace Utils
          *
          * This function triggers compaction for the entire key range in the RocksDB
          * database. Compaction helps to reduce the storage space used by the database
-         * and improve its performance by eliminating unnecessary data. This function
-         * is similar to compactDatabase() but, first enable the option of use the
-         * kBZip2Compression compression type.
-         *
-         * @note This function uses default compact range options.
-         *
-         * @see rocksdb::CompactRangeOptions
-         */
-        void compactDatabaseUsingBzip2()
-        {
-            if (const auto status = m_db->SetOptions({{"compression", "kBZip2Compression"}}); !status.ok())
-            {
-                throw std::runtime_error("Failed to set 'kBZip2Compression' option");
-            }
-
-            // Perform compaction for the entire key range
-            m_db->CompactRange(rocksdb::CompactRangeOptions(), nullptr, nullptr);
-        }
-
-        /**
-         * @brief Compacts the key range in the RocksDB database.
-         *
-         * This function triggers compaction for the entire key range in the RocksDB
-         * database. Compaction helps to reduce the storage space used by the database
          * and improve its performance by eliminating unnecessary data.
          *
          * @note This function uses default compact range options.
