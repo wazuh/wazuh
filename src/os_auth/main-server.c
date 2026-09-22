@@ -35,6 +35,10 @@
 #include "generate_cert.h"
 #include <sys/epoll.h>
 
+#ifdef WAZUH_UNIT_TESTING
+#define static
+#endif
+
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
 
