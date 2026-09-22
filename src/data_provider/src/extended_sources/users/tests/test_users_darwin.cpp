@@ -19,6 +19,7 @@ class MockUUIDWrapper : public IUUIDWrapper
 {
     public:
         MOCK_METHOD(void, uidToUUID, (uid_t uid, uuid_t& uuid), (override));
+        MOCK_METHOD(void, gidToUUID, (gid_t gid, uuid_t& uuid), (override));
         MOCK_METHOD(void, uuidToString, (const uuid_t& uuid, uuid_string_t& str), (override));
 };
 
