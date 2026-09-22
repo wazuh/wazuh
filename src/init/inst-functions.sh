@@ -759,6 +759,29 @@ StoreIndexerCredentials()
 }
 
 ##########
+# ProvisionApiPasswords()
+# Generates a password for every Server API default user that has none, and
+# prints the credentials: the installation output is how the operator, and
+# whatever installs the rest of the deployment, get the credential the
+# dashboard authenticates with. WAZUH_API_PASSWORD and WAZUH_WUI_PASSWORD
+# supply one instead of generating it. A failure is not fatal: the manager
+# generates the passwords at its first start and leaves them in the same
+# file, so all that is lost is the disclosure on screen.
+##########
+ProvisionApiPasswords()
+{
+    if [ "X${INSTYPE}" = "Xagent" ]; then
+        return 0
+    fi
+
+    if ! ${INSTALLDIR}/bin/rbac_control provision-passwords; then
+        echo "WARNING: could not provision the Server API credentials. The manager generates them at" >&2
+        echo "         its first start and leaves them in" >&2
+        echo "         ${INSTALLDIR}/api/configuration/security/wazuh-preseeded-passwords.yml." >&2
+    fi
+}
+
+##########
 # WriteRemote()
 # Writes the <remote> block. Every value can be customized at installation
 # time through the WAZUH_REMOTE_* variables; options with no built-in

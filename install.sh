@@ -1174,9 +1174,10 @@ main()
     # Install selected components.
     Install
 
-    # After Install: the keystore tool is part of what it puts in place.
+    # After Install: the keystore tool and the framework are part of what it puts in place.
     if [ "X${update_only}" = "X" ] && [ "X$INSTYPE" = "Xmanager" ]; then
         StoreIndexerCredentials
+        ProvisionApiPasswords
     fi
 
     # Post-install usage hints.

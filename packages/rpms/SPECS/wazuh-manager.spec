@@ -362,6 +362,17 @@ if [ "$1" -eq 1 ]; then
     echo "ERROR: could not store the indexer user password in the keystore." >&2
     exit 1
   fi
+
+  # Generate a password for every Server API default user that has none, and print the credentials: this
+  # output is how the operator, and whatever installs the rest of the deployment, get the credential the
+  # dashboard authenticates with. WAZUH_API_PASSWORD and WAZUH_WUI_PASSWORD supply one instead of
+  # generating it. A failure is not fatal: the manager generates the passwords at its first start and
+  # leaves them in the same file, so all that is lost is the disclosure on screen.
+  if ! %{_localstatedir}/bin/rbac_control provision-passwords; then
+    echo "WARNING: could not provision the Server API credentials. The manager generates them at" >&2
+    echo "         its first start and leaves them in" >&2
+    echo "         %{_localstatedir}/api/configuration/security/wazuh-preseeded-passwords.yml." >&2
+  fi
 fi
 
 if [[ -d /run/systemd/system ]]; then
