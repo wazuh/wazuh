@@ -47,8 +47,8 @@ namespace manager_config::detail
             {
                 return Error {pointer,
                               "file not found: " + resolved.string() +
-                                  " (the manager does not generate certificates; provision the file, e.g. with "
-                                  "wazuh-certs-tool)"};
+                                  " (issued by the credential resolver at service start, or provisioned "
+                                  "externally, e.g. with wazuh-certs-tool)"};
             }
             return std::nullopt;
         }

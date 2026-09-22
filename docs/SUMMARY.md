@@ -46,6 +46,7 @@
   - [Requirements](ref/getting-started/requirements.md)
   - [Packages](ref/getting-started/packages.md)
   - [Installation](ref/getting-started/installation.md)
+  - [Credentials](ref/getting-started/credentials.md)
 - [Configuration](ref/configuration/README.md)
   - [Manager Configuration](ref/configuration/manager/README.md)
     - [Manager Configuration Reference](ref/configuration/manager/reference.md)

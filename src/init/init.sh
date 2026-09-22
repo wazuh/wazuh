@@ -152,10 +152,12 @@ runInit()
 
         rm -f /etc/rc.d/init.d/${service}
 
-        if [ "X${update_only}" = "X" ]
-        then
-            systemctl enable "wazuh-"$type
-        fi
+        # Deliberately NOT `systemctl enable`. The unit is installed and left neither enabled nor
+        # started, matching what the DEB and RPM packages already do and what the documentation
+        # tells operators to run (`systemctl enable --now wazuh-manager`). The manager needs
+        # credentials it cannot always resolve at install time -- the indexer's password commonly
+        # arrives later -- and enabling without starting would only produce a failed unit at the
+        # next reboot, when nobody is watching.
 
         return 0;
     fi

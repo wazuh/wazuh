@@ -403,7 +403,6 @@ def _prepare_start(apid):
             self.code = code
 
     apid.check_database_integrity = MagicMock()
-    apid.get_users_with_default_password = MagicMock(return_value=[])
     apid.common = MagicMock()
     apid.common.mp_pools.get.return_value = {'thread_pool': MagicMock()}
     apid.pyDaemonModule = MagicMock()

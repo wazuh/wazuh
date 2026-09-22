@@ -265,6 +265,30 @@ testconfig()
         exit 1;
     fi
 
+    # Credentials, once the configuration is known good and while we are still root. The systemd
+    # unit runs the same ladder from ExecStartPre; this call is what covers a direct
+    # `wazuh-manager-control start`, and it is a no-op the second time because every step-0 test is
+    # already true by then.
+    #
+    # Unresolved credentials fail here rather than at the daemon's own -t: a missing indexer
+    # password is not a configuration error and has no JSON pointer to report, and the resolver has
+    # already named the key and where to set it.
+    if [ -x ${DIR}/bin/wazuh-manager-resolve-credentials ]; then
+        ${DIR}/bin/wazuh-manager-resolve-credentials --prestart -H ${DIR}
+        if [ $? != 0 ]; then
+            echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: unresolved credentials" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+            if [ $USE_JSON = true ]; then
+                echo -n '{"error":21,"message":"Unresolved credentials."}'
+            else
+                echo "Unresolved credentials. Exiting"
+            fi
+            rm -f ${DIR}/var/run/*.start
+            rm -f ${DIR}/var/run/.restart
+            unlock;
+            exit 1;
+        fi
+    fi
+
     # Then each daemon checks what is not configuration (files, sockets, keys).
     for i in ${SDAEMONS}; do
         ${DIR}/bin/${i} -t ${DEBUG_CLI};

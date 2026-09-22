@@ -660,6 +660,61 @@ def test_databasemanager_insert_default_resources(fresh_in_memory_db):
                == len(default_rules[next(iter(default_rules))])
 
 
+def test_generate_password_meets_the_policy(fresh_in_memory_db):
+    """Every generated password must satisfy the Server API policy on the first attempt.
+
+    The classes are placed by construction rather than by generate-and-retry, so this holds for
+    every draw rather than for most of them -- hence the repetition.
+    """
+    seen = set()
+    for _ in range(200):
+        password = fresh_in_memory_db.generate_password()
+        seen.add(password)
+
+        assert len(password) == fresh_in_memory_db._PASSWORD_LENGTH
+        assert any(c.islower() for c in password)
+        assert any(c.isupper() for c in password)
+        assert any(c.isdigit() for c in password)
+        assert any(c in fresh_in_memory_db._PASSWORD_SYMBOLS for c in password)
+        assert set(password) <= set(fresh_in_memory_db._PASSWORD_ALPHABET)
+
+    # Two installations must never end up with the same credential.
+    assert len(seen) == 200
+
+
+def test_databasemanager_insert_default_resources_uses_supplied_passwords(fresh_in_memory_db):
+    """A supplied password is what the user is seeded with; the rest are generated, never shipped."""
+    supplied = 'Suppli3d.Password'
+    fresh_in_memory_db.db_manager.insert_default_resources(in_memory_db_path, passwords={'wazuh': supplied})
+
+    with fresh_in_memory_db.AuthenticationManager(
+            fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as auth:
+        assert auth.check_user('wazuh', supplied)
+
+        # The shipped default this change removes: the password must no longer be the username,
+        # and `users.yaml` must no longer carry one at all.
+        assert not auth.check_user('wazuh-wui', 'wazuh-wui')
+
+    with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                           'default', 'users.yaml')) as f:
+        default_users = yaml.safe_load(f)['default_users']
+    assert all('password' not in payload for payload in default_users.values())
+
+
+def test_databasemanager_insert_default_resources_generates_when_absent(fresh_in_memory_db):
+    """With nothing supplied, each default user still gets a unique password rather than a default."""
+    with patch('wazuh.rbac.orm.generate_password', side_effect=['Gener4ted.One!', 'Gener4ted.Two!']) as gen_mock:
+        fresh_in_memory_db.db_manager.insert_default_resources(in_memory_db_path)
+
+    assert gen_mock.call_count == 2
+
+    with fresh_in_memory_db.AuthenticationManager(
+            fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as auth:
+        assert auth.check_user('wazuh', 'Gener4ted.One!')
+        assert auth.check_user('wazuh-wui', 'Gener4ted.Two!')
+        assert not auth.check_user('wazuh', 'wazuh')
+
+
 def test_databasemanager_get_table(fresh_in_memory_db):
     """Test `get_table` method for class `DatabaseManager`."""
     class EnhancedUser(fresh_in_memory_db.User):
@@ -740,7 +795,7 @@ def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move
         db_mock.assert_has_calls([
             call.connect(fresh_in_memory_db.DB_FILE),
             call.create_database(fresh_in_memory_db.DB_FILE),
-            call.insert_default_resources(fresh_in_memory_db.DB_FILE),
+            call.insert_default_resources(fresh_in_memory_db.DB_FILE, passwords=None),
             call.set_database_version(fresh_in_memory_db.DB_FILE, fresh_in_memory_db.CURRENT_ORM_VERSION),
             call.close_sessions()
         ], any_order=True)

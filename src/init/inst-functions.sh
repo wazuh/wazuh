@@ -184,11 +184,6 @@ CheckListenerCerts()
         return
     fi
 
-    CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}"
-    KEY="${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}"
-    case "${CERT}" in /*) ;; *) CERT="${INSTALLDIR}/${CERT}";; esac
-    case "${KEY}" in /*) ;; *) KEY="${INSTALLDIR}/${KEY}";; esac
-
     # Unified certificate directory: root-owned and sticky (drwxrwx--T), shared with the
     # root-owned indexer trust material (see SetIndexerCertsOwnership()).
     ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/certs
@@ -203,15 +198,10 @@ CheckListenerCerts()
         fi
     done
 
-    if [ ! -f "${CERT}" ] || [ ! -f "${KEY}" ]; then
-        echo "NOTICE: no TLS certificate for the HTTPS agent listener was found"
-        echo "        (${CERT}, ${KEY})."
-        echo "        wazuh-manager does not generate certificates. Provision root-ca.pem,"
-        echo "        remoted.pem and remoted-key.pem with the Wazuh installation assistant"
-        echo "        (wazuh-certs-tool) before starting the service; wazuh-manager-control"
-        echo "        refuses to start until they exist. See 'Deploy certificates' in the"
-        echo "        installation guide (docs/ref/getting-started/installation.md)."
-    fi
+    # No notice when the pair is absent. The credential resolver issues it at service start from
+    # whatever is in $WAZUH_CA_DIR, and when it cannot the service refuses to start and says so in
+    # the journal -- which is where someone looks. Warning here about a state that is resolved
+    # later is what trains operators to ignore installer output.
 }
 
 ##########
@@ -1623,6 +1613,20 @@ InstallServer()
     # Keystore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-keystore ${INSTALLDIR}/bin/wazuh-manager-keystore
+
+    # Credential resolution ladder. Installed inside the prefix rather than at a fixed system path
+    # so that parallel installs under different USER_DIR values do not collide, which also keeps it
+    # inside the tree .github/actions/check_files/manager_base.csv pins.
+    #
+    # The scripts are only INSTALLED here -- never run from install.sh. The DEB and RPM builds
+    # invoke install.sh at *package build* time and then ship the resulting tree wholesale
+    # (`cp -r $(INSTALLATION_DIR)/.` in debian/rules), so resolving credentials here would seed one
+    # rbac.db inside the package and every installation in the world would share it. The resolver
+    # runs from postinst/%post and from wazuh-manager-control start instead, both of which run on
+    # the target host.
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} init/credentials/resolve-credentials ${INSTALLDIR}/bin/wazuh-manager-resolve-credentials
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} init/credentials/mint-certs.sh ${INSTALLDIR}/bin/wazuh-manager-mint-certs
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} init/credentials/credentials-lib.sh ${INSTALLDIR}/lib/credentials-lib.sh
 }
 
 InstallAgent()
