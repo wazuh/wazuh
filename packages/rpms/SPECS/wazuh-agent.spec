@@ -646,7 +646,7 @@ if [ $1 = 0 ] || [ $DELETE_WAZUH_USER_AND_GROUP = 1 ]; then
     rm -rf %{_localstatedir}/ruleset/
     rm -rf %{_localstatedir}/tmp
     # Written at runtime, not shipped, so nothing else here removes it. It records that this
-    # install once committed a trust anchor, and the agent refuses to start (4124) when it is
+    # install once committed a trust anchor, and the agent refuses to start (4125) when it is
     # present with no anchor beside it -- which is what a reinstall enrolling by password would
     # otherwise inherit.
     rm -f %{_localstatedir}/etc/certs/.anchor-committed

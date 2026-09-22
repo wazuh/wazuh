@@ -231,6 +231,7 @@ sudo grep -E "cacerts|pin_mismatch|TLS verification|\(41[0-9]{2}\)" /var/ossec/l
 | `(4121)` | `system` on a host with no OS CA bundle | Use `full` against the trust anchor instead |
 | `(4123)` | The CA file is readable but holds no certificate the agent can parse | Replace the file; truncated copies are the usual cause |
 | `(4124)` | `system`, and the trust anchor is readable but holds no certificate the agent can parse | Replace the anchor, or enroll with a token to reinstall it; truncated copies are the usual cause |
+| `(4125)` | The trust anchor is gone, but this install has held one (`.anchor-committed` is still beside it) | Restore the anchor, or set `<verification_mode>` explicitly to say what was intended. Starting unverified is refused rather than done silently |
 | `(4122)` | An explicit `none` on a host that holds a usable anchor | Remove `<verification_mode>none</verification_mode>` to verify against it |
 | `TLS verification failed connecting to …: the certificate does not include that name` | The address the agent dials is not in the certificate | The line lists the names the certificate does carry |
 | `TLS verification failed connecting to …: the certificate has expired` / `is not valid yet` | The manager's certificate is outside its validity window, or the clock is wrong | The line gives the date it checked against |
