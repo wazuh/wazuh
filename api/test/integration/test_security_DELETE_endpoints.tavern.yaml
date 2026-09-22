@@ -822,6 +822,8 @@ stages:
 
   # DELETE /security/roles
   - name: Restore default configuration
+    max_retries: 5
+    delay_before: 1
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
@@ -837,6 +839,8 @@ test_name: CHECK /security/config
 stages:
 
   - name: Get security configuration to check if DELETE method worked correctly
+    max_retries: 5
+    delay_before: 1
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
@@ -857,6 +861,7 @@ test_name: CLEANER DELETE /security/{policies}
 stages:
 
   - name: Try to delete all policies
+    max_retries: 5
     delay_before: 10
     request:
       verify: False
@@ -876,6 +881,8 @@ stages:
 
   # DELETE /security/roles
   - name: Try to delete all roles
+    max_retries: 5
+    delay_before: 1
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles"
