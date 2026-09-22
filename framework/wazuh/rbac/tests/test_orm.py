@@ -732,11 +732,9 @@ def test_generate_default_password():
 
 
 def test_load_preseeded_passwords_absent(fresh_in_memory_db, tmp_path):
-    """Provisioning is mandatory: no file is an error naming the call that fixes it."""
+    """A node with nothing provisioned reads nothing, and the caller generates a password per user."""
     with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(tmp_path / "absent.json")):
-        with pytest.raises(fresh_in_memory_db.PreseededPasswordsError,
-                           match="no API credentials have been provisioned"):
-            fresh_in_memory_db._load_preseeded_passwords(["wazuh", "wazuh-wui"])
+        assert fresh_in_memory_db._load_preseeded_passwords(["wazuh", "wazuh-wui"]) == {}
 
 
 @pytest.mark.parametrize("content,reason", [
@@ -748,7 +746,6 @@ def test_load_preseeded_passwords_absent(fresh_in_memory_db, tmp_path):
      "sections this manager does not read"),
     ("manager: [{name: wazuh}]", "must hold a 'name' and a 'password'"),
     ("manager: [{name: wazuh-wu, password: 'Pr3seeded-Passw0rd!'}]", "is not a default user"),
-    ("manager: [{name: wazuh, password: 'Pr3seeded-Passw0rd!'}]", "provisions no password for"),
     ("manager: [{name: wazuh, password: short}, {name: wazuh-wui, password: 'An0ther-Pr3seed!'}]",
      "rbac_control set-password -u wazuh"),
     ("manager: [{name: wazuh, password: 123}, {name: wazuh-wui, password: 'An0ther-Pr3seed!'}]",
@@ -909,15 +906,61 @@ def test_load_preseeded_passwords_accepted_modes(fresh_in_memory_db, tmp_path, m
         }
 
 
-def test_consume_preseeded_passwords(fresh_in_memory_db, tmp_path):
-    """The file is removed once its passwords are stored, and a missing one is not an error."""
-    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
-    provisioning_file.write_text("manager: []\n")
+def test_load_preseeded_passwords_generates_what_is_missing(fresh_in_memory_db, tmp_path):
+    """A user the provisioning does not name gets a generated password, persisted to the same file.
 
-    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)):
-        fresh_in_memory_db._consume_preseeded_passwords()
-        assert not provisioning_file.exists()
-        fresh_in_memory_db._consume_preseeded_passwords()
+    The generated one is the only copy the operator ever sees, so it has to reach disk before the database
+    it seeds is created.
+    """
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+    provisioning_file.write_text(_provisioning_document(**{"wazuh": "Pr3seeded-Passw0rd!"}))
+    provisioning_file.chmod(0o640)
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()), \
+            patch("wazuh.rbac.orm.wazuh_gid", return_value=os.getgid()):
+        passwords = fresh_in_memory_db.load_preseeded_passwords()
+
+        assert passwords["wazuh"] == "Pr3seeded-Passw0rd!"
+        assert fresh_in_memory_db.USER_PASSWORD_POLICY.match(passwords["wazuh-wui"])
+        # Read back, so what was generated is what a later start would seed from
+        assert fresh_in_memory_db._load_preseeded_passwords(["wazuh", "wazuh-wui"]) == passwords
+
+
+def test_load_preseeded_passwords_generates_every_user(fresh_in_memory_db, tmp_path):
+    """A node with nothing provisioned is seeded with generated passwords, not refused."""
+    # Its own directory: the fixture provisions both users in `tmp_path` itself
+    unprovisioned = tmp_path / "unprovisioned"
+    unprovisioned.mkdir()
+    provisioning_file = unprovisioned / "wazuh-preseeded-passwords.yml"
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()), \
+            patch("wazuh.rbac.orm.wazuh_gid", return_value=os.getgid()):
+        passwords = fresh_in_memory_db.load_preseeded_passwords()
+
+    assert set(passwords) == {"wazuh", "wazuh-wui"}
+    assert passwords["wazuh"] != passwords["wazuh-wui"]
+    assert oct(provisioning_file.stat().st_mode)[-3:] == "640"
+
+
+def test_write_preseeded_passwords_replaces_the_file(fresh_in_memory_db, tmp_path):
+    """Writing leaves no temporary file behind and keeps the mode the API requires."""
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+    provisioning_file.write_text(_provisioning_document(**{"wazuh": "Pr3seeded-Passw0rd!"}))
+    provisioning_file.chmod(0o600)
+
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
+            patch("wazuh.rbac.orm.wazuh_gid", return_value=os.getgid()):
+        fresh_in_memory_db.write_preseeded_passwords({"wazuh": "Rewr1tten-Pass.",
+                                                      "wazuh-wui": "An0ther-Pass."})
+
+    assert yaml.safe_load(provisioning_file.read_text()) == {
+        'manager': [{'name': 'wazuh', 'password': 'Rewr1tten-Pass.'},
+                    {'name': 'wazuh-wui', 'password': 'An0ther-Pass.'}]
+    }
+    assert oct(provisioning_file.stat().st_mode)[-3:] == "640"
+    assert list(tmp_path.iterdir()) == [provisioning_file]
 
 
 def test_databasemanager_get_table(fresh_in_memory_db):

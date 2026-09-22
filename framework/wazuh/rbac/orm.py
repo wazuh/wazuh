@@ -11,6 +11,7 @@ import string
 from datetime import datetime
 from enum import IntEnum
 from stat import S_IRGRP, S_IROTH, S_ISREG, S_IWGRP, S_IWOTH
+from tempfile import mkstemp
 from time import time
 from typing import Union
 
@@ -141,15 +142,57 @@ def _assert_preseed_source_is_trusted(fileno: int):
                                       f"other than the Wazuh one")
 
 
+def write_preseeded_passwords(passwords: dict):
+    """Write the file the RBAC database is seeded from.
+
+    Shaped as the `manager:` block of the deployment's credentials file, and renamed over the target so a
+    reader never sees a half-written one. The owner is whoever writes it,
+    which is what `_assert_preseed_source_is_trusted` accepts: the installation writes it as root, and a
+    database created by the API writes it as the Wazuh user, after privileges have been dropped. Nobody
+    else can, because the directory is writable by root and the Wazuh group only.
+
+    Parameters
+    ----------
+    passwords : dict
+        Username to password mapping to write.
+
+    Raises
+    ------
+    OSError
+        When the file cannot be written.
+    """
+    document = {'manager': [{'name': name, 'password': password} for name, password in passwords.items()]}
+
+    tmp_path = None
+    try:
+        fd, tmp_path = mkstemp(dir=os.path.dirname(PRESEEDED_PASSWORDS_FILE))
+        try:
+            os.write(fd, yaml.safe_dump(document, default_flow_style=False, sort_keys=False).encode())
+            # Through the descriptor: the directory is group-writable, so the path could be swapped for
+            # somebody else's file between creating it and changing its mode.
+            os.fchown(fd, -1, wazuh_gid())
+            os.fchmod(fd, 0o640)
+        finally:
+            os.close(fd)
+        os.replace(tmp_path, PRESEEDED_PASSWORDS_FILE)
+    except Exception:
+        tmp_path and os.path.exists(tmp_path) and os.remove(tmp_path)
+        raise
+
+
 def _load_preseeded_passwords(known_usernames: list) -> dict:
     """Read the passwords the node was provisioned with.
 
-    Written by `bin/rbac_control set-password` before the first API start, carrying the `manager:` block
-    of the deployment's credentials file and nothing else:
+    Written by `bin/rbac_control` before the first API start, carrying the `manager:` block of the
+    deployment's credentials file and nothing else:
 
         manager:
           - name: wazuh
             password: "..."
+
+    A user the file does not name is not an error: the caller generates one. Anything else about the file
+    is, because a file that cannot be used as written means the installation provisioned something wrong,
+    and seeding around it would leave credentials nobody asked for.
 
     Parameters
     ----------
@@ -159,13 +202,13 @@ def _load_preseeded_passwords(known_usernames: list) -> dict:
     Raises
     ------
     PreseededPasswordsError
-        When the file is missing or unreadable, is not valid YAML, does not hold the expected structure,
-        names an unknown user, leaves one out, or carries a password the API would not accept.
+        When the file is unreadable, is not valid YAML, does not hold the expected structure, names an
+        unknown user, or carries a password the API would not accept.
 
     Returns
     -------
     dict
-        Username to password mapping, with an entry for every default user.
+        Username to password mapping, empty when the node is not provisioned.
     """
     set_every_user = ' and '.join(f"'{_SET_PASSWORD_CMD} -u {username}'" for username in known_usernames)
 
@@ -176,8 +219,7 @@ def _load_preseeded_passwords(known_usernames: list) -> dict:
         source = open(os.open(PRESEEDED_PASSWORDS_FILE, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK),
                       encoding='utf-8')
     except FileNotFoundError:
-        raise PreseededPasswordsError(f"no API credentials have been provisioned. Set them with "
-                                      f"{set_every_user}, then start the manager again") from None
+        return {}
     except OSError as exc:
         raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' cannot be opened: {exc}") from exc
 
@@ -235,17 +277,21 @@ def _load_preseeded_passwords(known_usernames: list) -> dict:
 
         preseeded[username] = password
 
-    missing = set(known_usernames) - set(preseeded)
-    if missing:
-        raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' provisions no password for "
-                                      f"{', '.join(sorted(missing))}. Set it with "
-                                      f"'{_SET_PASSWORD_CMD} -u {sorted(missing)[0]}'")
-
     return preseeded
 
 
 def load_preseeded_passwords() -> dict:
-    """Read and validate the passwords the node was provisioned with, for the default users it ships.
+    """Resolve the password of every default user, for a database that is about to be created.
+
+    What the node was provisioned with, plus a generated password for every user the provisioning does not
+    name, persisted to the same file so that the operator has a way of reading it. The installation
+    normally provisions both users, so generating here covers a database recreated by hand, and a
+    `factory-reset` on a node whose credentials file was already removed.
+
+    Raises
+    ------
+    PreseededPasswordsError
+        When a provisioning file is present but cannot be used as written.
 
     Returns
     -------
@@ -255,7 +301,27 @@ def load_preseeded_passwords() -> dict:
     with open(os.path.join(DEFAULT_RBAC_RESOURCES, "users.yaml")) as stream:
         default_users = yaml.safe_load(stream)
 
-    return _load_preseeded_passwords(list(default_users[next(iter(default_users))]))
+    known_usernames = list(default_users[next(iter(default_users))])
+    provisioned = _load_preseeded_passwords(known_usernames)
+    generated = [username for username in known_usernames if username not in provisioned]
+    passwords = {username: provisioned.get(username) or generate_default_password()
+                 for username in known_usernames}
+
+    if generated:
+        # Written before the database is created, and a failure raised as a seeding error rather than left
+        # to the migration handler: a generated password that reaches no file is one nobody can ever read,
+        # so the start has to stop instead of seeding it.
+        try:
+            write_preseeded_passwords(passwords)
+        except OSError as exc:
+            raise PreseededPasswordsError(f"the API credentials generated for {', '.join(generated)} could "
+                                          f"not be written to '{PRESEEDED_PASSWORDS_FILE}': {exc}. Nothing "
+                                          f"would be able to read them") from exc
+
+        logger.warning(f"Generated an API password for {', '.join(generated)}. Read it from "
+                       f"'{PRESEEDED_PASSWORDS_FILE}', store it elsewhere and remove that file")
+
+    return passwords
 
 
 def _set_permissions_and_ownership(database: str):
@@ -290,21 +356,6 @@ def _set_permissions_and_ownership(database: str):
         os.fchmod(fd, 0o640)
     finally:
         os.close(fd)
-
-
-def _consume_preseeded_passwords():
-    """Remove the provisioning file once its passwords are stored in the database.
-
-    It carries an administrator credential in plaintext and has no further use: the hashes in `rbac.db` are
-    what authenticates from here on. Removed only after a complete, successful seeding, so a failure leaves
-    the file in place to be corrected.
-    """
-    try:
-        os.remove(PRESEEDED_PASSWORDS_FILE)
-    except FileNotFoundError:
-        pass
-    except OSError as exc:
-        logger.warning(f"Could not remove '{PRESEEDED_PASSWORDS_FILE}' after using it: {exc}")
 
 
 _new_columns = {}
@@ -2807,7 +2858,7 @@ def check_database_integrity():
         else:
             logger.info("RBAC database not found. Initializing")
 
-            # Loaded before anything is created: a missing or unusable file must stop the installation
+            # Resolved before anything is created: an unusable provisioning file must stop the start
             # without leaving a half-seeded database behind.
             preseeded_passwords = load_preseeded_passwords()
 
@@ -2818,7 +2869,6 @@ def check_database_integrity():
             db_manager.set_database_version(DB_FILE, CURRENT_ORM_VERSION)
             db_manager.close_sessions()
             logger.info(f"Default users seeded from '{PRESEEDED_PASSWORDS_FILE}'")
-            _consume_preseeded_passwords()
             logger.info(f"{DB_FILE} database created successfully")
     except PreseededPasswordsError as e:
         # Nothing, rather than no database: the migration path also lands here, with the previous DB_FILE

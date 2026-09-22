@@ -154,14 +154,14 @@ def test_rbac_db_factory_reset_needs_provisioned_credentials(remove_mock, db_int
                                                              db_setup):
     """A reset refuses unless the provisioning file can actually be seeded from, before removing anything.
 
-    Seeding is the only way to get the default users back. A file that is absent, or present but
-    unusable, fails the same way, and both have to be caught here: past the removal there is no database
-    left to keep the node running, and every RBAC resource on it is gone.
+    Seeding is the only way to get the default users back, and it is resolved here rather than left to the
+    reset: past the removal there is no database left to keep the node running, and every RBAC resource on
+    it is gone with it.
     """
     _, _, core_security = db_setup
 
     with patch("wazuh.core.security.load_preseeded_passwords",
-               side_effect=core_security.PreseededPasswordsError("no API credentials have been provisioned")):
+               side_effect=core_security.PreseededPasswordsError("is not valid UTF-8 YAML")):
         with pytest.raises(core_security.WazuhError, match="5012"):
             core_security.rbac_db_factory_reset()
 

@@ -533,3 +533,26 @@ def test_start_logs_an_oserror_raised_by_uvicorn_startup(apid):
 
     assert exc_info.value is ssl_error
     apid.logger.error.assert_called_once_with(ssl_error)
+
+
+def test_warn_about_the_credentials_file(apid, tmp_path):
+    """The warning fires while the credentials the node was seeded from are still on disk.
+
+    They hold an API administrator password in plaintext, and the manager makes no other disclosure of a
+    generated one, so the file stays until the operator removes it.
+    """
+    credentials_file = tmp_path / 'wazuh-preseeded-passwords.yml'
+
+    apid.common = MagicMock()
+    apid.common.WAZUH_PATH = '/var/wazuh-manager'
+
+    with patch.object(apid, 'PRESEEDED_PASSWORDS_FILE', str(credentials_file), create=True):
+        apid.warn_about_the_credentials_file()
+        apid.logger.warning.assert_not_called()
+
+        credentials_file.write_text('manager: []\n')
+        apid.warn_about_the_credentials_file()
+
+    warning = apid.logger.warning.call_args[0][0]
+    assert str(credentials_file) in warning
+    assert 'rbac_control' in warning

@@ -110,6 +110,19 @@ def configure_ssl(params):
             raise exc from exc
 
 
+def warn_about_the_credentials_file():
+    """Log a warning while the credentials the node was seeded from are still on disk.
+
+    That file holds the password of an API administrator in plaintext, and it is the only place the manager
+    discloses a generated one, so it is kept until the operator has stored the credentials elsewhere.
+    """
+    if os.path.exists(PRESEEDED_PASSWORDS_FILE):
+        logger.warning(f"The API credentials of this node are still in plaintext in "
+                       f"'{PRESEEDED_PASSWORDS_FILE}'. Store them elsewhere and remove that file. Change "
+                       f"them with '{os.path.join(common.WAZUH_PATH, 'bin', 'rbac_control')} "
+                       f"change-password'")
+
+
 def _bind_listening_sockets(hosts, port: int, retries: int = BIND_MAX_RETRIES,
                             backoff: int = BIND_BACKOFF_BASE_SECONDS) -> list:
     """Bind one listening socket per configured host, retrying while the port is still in use.
@@ -457,7 +470,7 @@ if __name__ == '__main__':
     from connexion.options import SwaggerUIOptions
     from content_size_limit_asgi.errors import ContentSizeExceeded
     from wazuh.core import common, pyDaemonModule, utils
-    from wazuh.rbac.orm import check_database_integrity
+    from wazuh.rbac.orm import PRESEEDED_PASSWORDS_FILE, check_database_integrity
 
     from api import __path__ as api_path
     from api import error_handler
@@ -533,6 +546,8 @@ if __name__ == '__main__':
         # `wazuh-manager-control start` would otherwise report the failure without naming its cause.
         print(f'Error when trying to start the Wazuh API. {error}', file=sys.stderr)
         sys.exit(1)
+
+    warn_about_the_credentials_file()
 
     # Foreground/Daemon
     if not args.foreground:

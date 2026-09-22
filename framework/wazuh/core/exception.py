@@ -485,9 +485,9 @@ class WazuhException(Exception):
                },
         5011: {'message': 'Administrator users can only be modified by themselves',
                'remediation': 'Log in as administrator and try again'},
-        5012: {'message': 'The RBAC database cannot be seeded without provisioned credentials',
-               'remediation': "Set them with 'bin/rbac_control set-password -u <user>' for every default "
-                              'user, then try again'},
+        5012: {'message': 'The RBAC database cannot be seeded from the credentials provisioned on this node',
+               'remediation': "Correct 'api/configuration/security/wazuh-preseeded-passwords.yml', or remove "
+                              'it to have a password generated, then try again'},
 
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '

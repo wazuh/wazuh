@@ -173,8 +173,9 @@ async def restore_default_passwords(script_args):
         from wazuh.core.security import ensure_rbac_database
 
         # A node whose apid has never run (a worker: apid is master-only) has no 'rbac.db', and
-        # 'update_user' would fail against it. Seeded through the same path the first API start uses, so a
-        # pre-seed file left on that node still decides what the users it does not overwrite end up with.
+        # 'update_user' would fail against it. Seeded through the same path the first API start uses, so
+        # the users it does not overwrite end up on what that node was provisioned with, or on a generated
+        # password when it was provisioned with nothing.
         ensure_response = await cluster_utils.forward_function(ensure_rbac_database, request_type=request_type)
         if isinstance(ensure_response, Exception):
             print(f"\tCould not ensure the RBAC database exists: {ensure_response}")
@@ -250,41 +251,20 @@ def _read_provisioned_passwords(default_users: list) -> dict:
 
 
 def _write_provisioned_passwords(provisioned: dict):
-    """Write the file the API seeds from, shaped as the `manager:` block of the deployment's credentials.
-
-    Renamed over the target so a reader never sees a half-written file, with the ownership and mode the API
-    requires: readable by the Wazuh user, writable by nobody else.
+    """Write the file the API seeds from, reporting a failure the way an installer can chain on.
 
     Parameters
     ----------
     provisioned : dict
         Username to password mapping to write.
     """
-    import os
-    from shutil import chown
-    from tempfile import mkstemp
+    from wazuh.rbac.orm import PRESEEDED_PASSWORDS_FILE, write_preseeded_passwords
 
-    import yaml
-    from wazuh.core.common import wazuh_gid
-    from wazuh.rbac.orm import PRESEEDED_PASSWORDS_FILE
-
-    document = {'manager': [{'name': name, 'password': value} for name, value in provisioned.items()]}
-
-    # `mkstemp` inside the guard, not before it: an installer chains these calls on the exit status, and a
-    # missing directory or an unprivileged run has to fail the chain rather than report success.
-    tmp_path = None
     try:
-        fd, tmp_path = mkstemp(dir=path.dirname(PRESEEDED_PASSWORDS_FILE))
-        try:
-            os.write(fd, yaml.safe_dump(document, default_flow_style=False, sort_keys=False).encode())
-        finally:
-            os.close(fd)
-        chown(tmp_path, 'root', wazuh_gid())
-        os.chmod(tmp_path, 0o640)
-        os.replace(tmp_path, PRESEEDED_PASSWORDS_FILE)
+        write_preseeded_passwords(provisioned)
     except Exception as exc:
-        tmp_path and os.path.exists(tmp_path) and os.remove(tmp_path)
-        print(f"\tCould not write '{PRESEEDED_PASSWORDS_FILE}': {exc}. This command must run as root")
+        print(f"\tCould not write '{PRESEEDED_PASSWORDS_FILE}': {exc}. This command must run as root or as "
+              f"the Wazuh user")
         sys.exit(1)
 
 
@@ -400,8 +380,8 @@ async def preseed_default_password(script_args):
 
     missing = set(default_users) - set(provisioned)
     if missing:
-        print(f"\tStill missing: {', '.join(sorted(missing))}. The API refuses to start until every default "
-              f"user is set")
+        print(f"\tStill missing: {', '.join(sorted(missing))}. The API generates a password for it when it "
+              f"creates the database, and leaves it in the same file")
 
     if os.path.exists(DB_FILE):
         print(f"\t'{DB_FILE}' already exists, so this does not change the password in use. It applies only "
@@ -473,10 +453,10 @@ def get_script_arguments():
     provision_parser.set_defaults(func=provision_default_passwords)
     reset_parser = arg_subparsers.add_parser("factory-reset",
                                              help="Reset the RBAC database to its default state. This will "
-                                                  "completely wipe your custom RBAC information, and restore the "
-                                                  "passwords provisioned in 'wazuh-preseeded-passwords.yml', which "
-                                                  "'set-password' has to write again before every reset: the file "
-                                                  "is removed once the database is seeded from it.")
+                                                  "completely wipe your custom RBAC information. The default users "
+                                                  "come back on the passwords provisioned in "
+                                                  "'wazuh-preseeded-passwords.yml', and on a generated one for "
+                                                  "every user that file does not name.")
     reset_parser.add_argument("-f", "--force", action="store_true", dest="reset_force", default=False,
                               help="Do not ask for confirmation for the RBAC database factory reset.")
     reset_parser.set_defaults(func=reset_rbac_database)

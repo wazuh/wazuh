@@ -145,9 +145,9 @@ def ensure_rbac_database():
     Raises
     ------
     WazuhError(5012)
-        When the node has no credentials this manager can seed from. Wrapped rather than left to escape:
-        the DAPI keeps only a `WazuhException`, and anything else reaches the caller as error 1000, without
-        the reason or the call that fixes it.
+        When the node carries a provisioning file this manager cannot use. Wrapped rather than left to
+        escape: the DAPI keeps only a `WazuhException`, and anything else reaches the caller as error 1000,
+        without the reason or the call that fixes it.
     """
     if not os.path.exists(DB_FILE):
         try:
@@ -166,15 +166,15 @@ def rbac_db_factory_reset():
     `local_master` request, which a worker sends to the master, and the master refuses to decode a
     callable that is not marked.
 
-    Seeds through the same path a first start takes, so the credentials the node is provisioned with are
-    what it comes back on.
+    Seeds through the same path a first start takes, so the node comes back on the credentials it is
+    provisioned with, and on generated ones for whatever the provisioning does not cover. Resolved before
+    the database is removed, which also writes anything generated: past that point there is nothing to seed
+    from and every RBAC resource on the node is gone with it.
 
     Raises
     ------
     WazuhError(5012)
-        When the node is not provisioned with credentials this manager can seed from. Validated, not
-        merely looked for: a file that exists but cannot be used would pass the check and fail during
-        seeding, with the database already gone and every RBAC resource on the node lost with it.
+        When the node carries a provisioning file this manager cannot use as written.
     """
     try:
         load_preseeded_passwords()
