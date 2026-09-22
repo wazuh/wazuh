@@ -22,10 +22,8 @@ namespace file_system
 
         for (const auto& wildcard : wildcards)
         {
-            // Find the first wildcard.
             const auto pos = path.find_first_of(wildcard);
 
-            // If the wildcard is found and it is before the current wildcard, then update the wildcard position.
             if (pos != std::string::npos && (wildcardPos == std::string::npos || pos < wildcardPos))
             {
                 wildcardPos = pos;

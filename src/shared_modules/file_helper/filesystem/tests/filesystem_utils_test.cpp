@@ -264,6 +264,19 @@ TEST_F(FileSystemTest, FilesystemExpandWildcardWithQuestionMark2)
     EXPECT_EQ(m_output.size(), PATH_MATCH_SIZE);
 }
 
+TEST_F(FileSystemTest, FilesystemExpandNonDirectoryBaseDir)
+{
+    SetupFilesystemWrapperExpectations();
+
+    std::string pathToExpand {EXPANDED_PATH_6};
+    pathToExpand += std::filesystem::path::preferred_separator;
+    pathToExpand += "*";
+
+    m_fsUtils->expand_absolute_path(pathToExpand, m_output);
+
+    EXPECT_EQ(m_output, std::deque<std::string> {EXPANDED_PATH_6});
+}
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);

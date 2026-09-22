@@ -15,7 +15,7 @@
 #include <ifilesystem_wrapper.hpp>
 #include <filesystem_wrapper.hpp>
 
-#include "stdFileSystemHelper.hpp"
+#include <filesystem_utils.hpp>
 #include "json.hpp"
 #include "jsonIO.hpp"
 #include "sharedDefs.h"
@@ -131,7 +131,7 @@ class NPM final
                     std::deque<std::string> expandedPaths;
 
                     // Expand paths
-                    Utils::expandAbsolutePath(osRootFolder, expandedPaths);
+                    file_system::FileSystemUtils().expand_absolute_path(osRootFolder, expandedPaths);
                     // Explore expanded paths
                     exploreExpandedPaths(expandedPaths, callback);
                 }

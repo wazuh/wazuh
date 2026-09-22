@@ -17,7 +17,7 @@
 
 #include <file_io_utils.hpp>
 #include <ifile_io_utils.hpp>
-#include "stdFileSystemHelper.hpp"
+#include <filesystem_utils.hpp>
 #include "json.hpp"
 #include "sharedDefs.h"
 #include "stringHelper.h"
@@ -181,7 +181,7 @@ class PYPI final
                 try
                 {
                     // Expand paths
-                    Utils::expandAbsolutePath(osFolder, expandedPaths);
+                    file_system::FileSystemUtils().expand_absolute_path(osFolder, expandedPaths);
                     // Explore expanded paths
                     exploreExpandedPaths(expandedPaths, callback);
                 }
