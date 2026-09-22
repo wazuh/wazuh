@@ -95,7 +95,12 @@ nlohmann::json GroupsProvider::collect(const std::set<gid_t>& gids)
             }
             else
             {
+                // Group exists in OpenDirectory but not in the local group database.
+                // Initialize all fields with default values to ensure consistent JSON structure.
                 groupJson["groupname"] = groupName.first;
+                groupJson["gid"] = static_cast<gid_t>(-1);  // Special value indicating group not found locally
+                groupJson["gid_signed"] = -1;
+                groupJson["uuid"] = "";
             }
 
             groupJson["is_hidden"] = static_cast<int>(groupName.second);
