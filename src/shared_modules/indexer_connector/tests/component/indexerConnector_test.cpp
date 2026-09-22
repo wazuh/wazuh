@@ -762,8 +762,8 @@ TEST_F(IndexerConnectorTest, PublishDeletedByQuery)
 
 /**
  * @brief Test that deleting a shorter agent ID does not sweep a longer sibling agent ID's mirror
- * entries out via the raw prefix-scan `seek()`, which would otherwise make the sibling's own next routine sync
- * wrongly delete its real, still-present document from the index.
+ * entries out via the raw prefix-scan `seek()`, by checking the sibling's entry is still readable from the
+ * mirror afterwards - a later sync() that finds the index missing that document must reindex it.
  *
  */
 TEST_F(IndexerConnectorTest, PublishDeletedByQueryDoesNotCollideWithLongerAgentId)
@@ -802,26 +802,37 @@ TEST_F(IndexerConnectorTest, PublishDeletedByQueryDoesNotCollideWithLongerAgentI
     ASSERT_NO_THROW(indexerConnector.publish(deleteData.dump()));
     ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
 
-    // Agent "2502"'s routine resync: the index still genuinely has its document. If the mirror was wrongly
-    // wiped by the prefix collision above, diff() will (pre-fix) issue a wrongful delete for it.
+    // Agent "2502"'s routine resync, with the index reporting no document for it. The assertion is that
+    // diff() reindexes "2502_wheel", which it can only do by reading that key back out of the local mirror -
+    // so it holds exactly when the mirror survived agent "250"'s deletion. Asserting instead that no delete
+    // fires would prove nothing: a wrongly emptied mirror trips diff()'s empty-mirror guard, which suppresses
+    // every deletion on its own.
+    std::atomic<bool> searchRequested {false};
     m_indexerServers[A_IDX]->setSearchCallback(
-        [](const std::string&) -> std::string
-        { return R"({"_scroll_id":"abcdef","hits":{"total":{"value":1},"hits":[{"_id":"2502_wheel"}]}})"; });
-
-    std::atomic<bool> deleteRequested {false};
-    m_indexerServers[A_IDX]->setPublishCallback(
-        [&deleteRequested](const std::string& data)
+        [&searchRequested](const std::string&) -> std::string
         {
-            if (data.find("\"delete\"") != std::string::npos)
+            searchRequested = true;
+            return R"({"_scroll_id":"abcdef","hits":{"total":{"value":0},"hits":[]}})";
+        });
+
+    std::atomic<bool> reindexRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&reindexRequested](const std::string& data)
+        {
+            if (data.find(R"("index")") != std::string::npos && data.find(R"("_id":"2502_wheel")") != std::string::npos)
             {
-                deleteRequested = true;
+                reindexRequested = true;
             }
         });
 
     indexerConnector.sync("2502");
 
-    EXPECT_ANY_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
-    ASSERT_FALSE(deleteRequested) << "Agent 2502's real document was wrongly deleted after agent 250's deletion";
+    // EXPECT, not ASSERT: on a regression the timeout must not abort before the assertions below, which name
+    // the actual defect instead of reporting a bare wait timeout.
+    EXPECT_NO_THROW(
+        waitUntil([&reindexRequested]() { return reindexRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_TRUE(searchRequested) << "sync() never queried the index, so the assertion below proves nothing";
+    ASSERT_TRUE(reindexRequested) << "Agent 2502's mirror entry was swept away by agent 250's deletion";
 }
 
 /**
