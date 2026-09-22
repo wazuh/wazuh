@@ -8,14 +8,7 @@
 # Foundation.
 
 # Drives resolve-credentials.sh against a throwaway installation directory whose two tools are stubs that
-# record how they were called. What the cases pin down:
-#
-#   - the consumed password reaches the keystore through the standard input, never through an argument,
-#     because the process list is readable by every account on the host
-#   - a missing consumed credential leaves the node unconfigured: what resolved is still applied, the
-#     report names what did not, and the exit status stays 0 so the package does not end up half-installed
-#   - the same case in a container exits non-zero, where no operator is going to fix it
-#   - no password is ever printed
+# record how they were called. The check names say what each case pins down.
 #
 #   ./test_resolve_credentials.sh
 

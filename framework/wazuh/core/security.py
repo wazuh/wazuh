@@ -126,15 +126,10 @@ def sanitize_rbac_policy(policy):
 def ensure_rbac_database():
     """Create the RBAC database if it is missing, seeding it exactly as the first API start would.
 
-    Exists so that a caller forwarding over the cluster protocol reaches the same seeding path, pre-seed
-    file included, rather than leaving a node whose API has never run without a database. Exposed because
-    a request made on a worker without `--local` is decoded on the master, which refuses a callable that
-    is not marked.
-
-    Guarded on the file being absent rather than always running `check_database_integrity()`, which also
-    migrates the schema of an existing database and replaces it through `safe_move`. Changing a password
-    must not carry that: a database that exists but is unusable is recovered by the API start that owns
-    the migration, not here.
+    Exposed because a request made on a worker without `--local` is decoded on the master, which refuses a
+    callable that is not marked. Guarded on the file being absent rather than always running
+    `check_database_integrity()`, which would also migrate the schema of an existing database: changing a
+    password must not carry that.
 
     Returns
     -------
@@ -162,14 +157,9 @@ def ensure_rbac_database():
 def rbac_db_factory_reset():
     """Reset the RBAC database to default values.
 
-    Exposed for the same reason as `ensure_rbac_database`: `rbac_control factory-reset` forwards it as a
-    `local_master` request, which a worker sends to the master, and the master refuses to decode a
-    callable that is not marked.
-
-    Seeds through the same path a first start takes, so the node comes back on the credentials it is
-    provisioned with, and on generated ones for whatever the provisioning does not cover. Resolved before
-    the database is removed, which also writes anything generated: past that point there is nothing to seed
-    from and every RBAC resource on the node is gone with it.
+    Seeds through the same path a first start takes, resolved before the database is removed: past that
+    point there is nothing to seed from and every RBAC resource on the node is gone with it. Exposed for
+    the same reason as `ensure_rbac_database`.
 
     Raises
     ------
@@ -181,9 +171,8 @@ def rbac_db_factory_reset():
     except PreseededPasswordsError as exc:
         raise WazuhError(5012, extra_message=str(exc))
 
-    # Before the removal: a connection already pooled would stay on the inode this unlinks, and
-    # `revoke_tokens` below opens its session on that same pool, so it would write to a database nothing
-    # reads, or fail outright and report a reset that did happen as failed.
+    # Before the removal: a pooled connection would stay on the inode this unlinks, and `revoke_tokens`
+    # below opens its session on that same pool
     dispose_engine()
 
     try:

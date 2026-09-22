@@ -70,11 +70,8 @@ _GENERATED_PASSWORD_ALPHABET = string.ascii_letters + string.digits + GENERATED_
 
 
 def generate_default_password() -> str:
-    """Build a random password that satisfies the API password policy.
-
-    One character of each class the policy demands is drawn first and the rest of the length is filled from
-    the whole alphabet, so the result matches `USER_PASSWORD_POLICY` by construction instead of by drawing
-    until one happens to.
+    """Build a random password that satisfies the API password policy by construction, not by drawing until
+    one happens to.
 
     Returns
     -------
@@ -85,8 +82,8 @@ def generate_default_password() -> str:
     password += [secrets.choice(_GENERATED_PASSWORD_ALPHABET)
                  for _ in range(GENERATED_PASSWORD_LENGTH - len(password))]
 
-    # Without this each class always lands in the same position, which narrows what an attacker who knows
-    # how the password is built has to search.
+    # Otherwise each class always lands in the same position, which narrows the search for an attacker who
+    # knows how the password is built
     secrets.SystemRandom().shuffle(password)
 
     return ''.join(password)
@@ -145,13 +142,9 @@ def _assert_preseed_source_is_trusted(fileno: int):
 
 
 def write_preseeded_passwords(passwords: dict):
-    """Write the file the RBAC database is seeded from.
-
-    Shaped as the `manager:` block of the deployment's credentials file, and renamed over the target so a
-    reader never sees a half-written one. The owner is whoever writes it,
-    which is what `_assert_preseed_source_is_trusted` accepts: the installation writes it as root, and a
-    database created by the API writes it as the Wazuh user, after privileges have been dropped. Nobody
-    else can, because the directory is writable by root and the Wazuh group only.
+    """Write the file the RBAC database is seeded from, renamed over the target so no reader sees it half
+    written. The owner is left as whoever writes it, which `_assert_preseed_source_is_trusted` accepts for
+    root and for the Wazuh user.
 
     Parameters
     ----------
@@ -170,8 +163,7 @@ def write_preseeded_passwords(passwords: dict):
         fd, tmp_path = mkstemp(dir=os.path.dirname(PRESEEDED_PASSWORDS_FILE))
         try:
             os.write(fd, yaml.safe_dump(document, default_flow_style=False, sort_keys=False).encode())
-            # Through the descriptor: the directory is group-writable, so the path could be swapped for
-            # somebody else's file between creating it and changing its mode.
+            # Through the descriptor: the directory is group-writable, so the path could be swapped
             os.fchown(fd, -1, wazuh_gid())
             os.fchmod(fd, 0o640)
         finally:
@@ -183,18 +175,11 @@ def write_preseeded_passwords(passwords: dict):
 
 
 def _load_preseeded_passwords(known_usernames: list) -> dict:
-    """Read the passwords the node was provisioned with.
+    """Read the passwords the node was provisioned with, from the `manager:` block `bin/rbac_control` writes.
 
-    Written by `bin/rbac_control` before the first API start, carrying the `manager:` block of the
-    deployment's credentials file and nothing else:
-
-        manager:
-          - name: wazuh
-            password: "..."
-
-    A user the file does not name is not an error: the caller generates one. Anything else about the file
-    is, because a file that cannot be used as written means the installation provisioned something wrong,
-    and seeding around it would leave credentials nobody asked for.
+    A user the file does not name is not an error: the caller generates one. Anything else about it is, since
+    a file that cannot be used as written means the installation provisioned something wrong, and seeding
+    around it would leave credentials nobody asked for.
 
     Parameters
     ----------
@@ -285,10 +270,8 @@ def _load_preseeded_passwords(known_usernames: list) -> dict:
 def load_preseeded_passwords() -> dict:
     """Resolve the password of every default user, for a database that is about to be created.
 
-    What the node was provisioned with, plus a generated password for every user the provisioning does not
-    name, persisted to the same file so that the operator has a way of reading it. The installation
-    normally provisions both users, so generating here covers a database recreated by hand, and a
-    `factory-reset` on a node whose credentials file was already removed.
+    What the node was provisioned with, plus a generated password for every user it does not name, persisted
+    to the same file so the operator can read it back.
 
     Raises
     ------
@@ -310,9 +293,8 @@ def load_preseeded_passwords() -> dict:
                  for username in known_usernames}
 
     if generated:
-        # Written before the database is created, and a failure raised as a seeding error rather than left
-        # to the migration handler: a generated password that reaches no file is one nobody can ever read,
-        # so the start has to stop instead of seeding it.
+        # Written before the database is created: a generated password that reaches no file is one nobody
+        # can ever read, so the start stops rather than seeding it
         try:
             write_preseeded_passwords(passwords)
         except OSError as exc:

@@ -315,8 +315,8 @@ async def test_main(reset_mock, restore_mock, exit_mock):
 async def test_preseed_default_password(print_mock, tmp_path, db_setup):
     """Each execution provisions one user and keeps the ones already provisioned.
 
-    A password is set per execution, and the API refuses a file that does not name every default user, so
-    the file has to be merged rather than overwritten.
+    One user is set per call, so the file is merged rather than overwritten: an entry this call does not
+    name would otherwise be dropped and generated again when the database is created.
     """
     preseeded_file = tmp_path / "wazuh-preseeded-passwords.yml"
 

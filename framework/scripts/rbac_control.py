@@ -203,9 +203,8 @@ async def restore_default_passwords(script_args):
 def _read_provisioned_passwords(default_users: list) -> dict:
     """Read the passwords the node is already provisioned with.
 
-    Only the default users are kept: an entry naming anything else, left by another tool, would survive
-    every merge and would make the API refuse the file at every start, with no call to this script able to
-    correct it.
+    Only the default users are kept: an entry naming anything else would survive every merge and make the
+    API refuse the file at every start, with no call to this script able to correct it.
 
     Parameters
     ----------
@@ -250,13 +249,7 @@ def _read_provisioned_passwords(default_users: list) -> dict:
 
 
 def _write_provisioned_passwords(provisioned: dict):
-    """Write the file the API seeds from, reporting a failure the way an installer can chain on.
-
-    Parameters
-    ----------
-    provisioned : dict
-        Username to password mapping to write.
-    """
+    """Write the file the API seeds from, reporting a failure the way an installer can chain on."""
     from wazuh.rbac.orm import PRESEEDED_PASSWORDS_FILE, write_preseeded_passwords
 
     try:
@@ -268,14 +261,11 @@ def _write_provisioned_passwords(provisioned: dict):
 
 
 async def provision_default_passwords(script_args):
-    """Provision a password for every default user that has none, and disclose all of them.
+    """Provision a password for every default user that has none.
 
-    Run by the installation once the package is in place. A user whose environment variable is set takes
-    that password, the rest are generated, and a user already provisioned is left alone, so a second run
-    neither regenerates nor overwrites what an earlier `set-password` wrote.
-
-    Writes the same file `set-password` writes and touches no database, so it runs with every daemon
-    stopped, which is the window the installation has.
+    A user whose environment variable is set takes that password, the rest are generated, and one already
+    provisioned is left alone, so a second run neither regenerates nor overwrites. Touches no database, so
+    it runs with every daemon stopped, which is the window the installation has.
     """
     import os
 
@@ -334,9 +324,7 @@ async def provision_default_passwords(script_args):
 async def preseed_default_password(script_args):
     """Write the password of one default user to the file the API seeds the RBAC database from.
 
-    Writes a file instead of touching `rbac.db`, so it works with every daemon stopped, which is the only
-    window an installer has: between installing the package and the first manager start. It does not go
-    through the cluster protocol either, so it needs no node to be reachable.
+    Touches neither `rbac.db` nor the cluster protocol, so it needs no daemon running and no node reachable.
     """
     import os
 
@@ -352,9 +340,8 @@ async def preseed_default_password(script_args):
         print(f"\t'{script_args.user}' is not an RBAC default user. Default users: {', '.join(default_users)}")
         sys.exit(1)
 
-    # Only from the standard input: a password given as an argument is visible to every account on the
-    # host through the process list. Only the first line, since a trailing newline is expected from `echo`
-    # and the policy does not allow one.
+    # Only from the standard input, and only its first line: an argument is visible to every account on the
+    # host, and the policy does not allow the trailing newline `echo` adds
     password = sys.stdin.readline().rstrip('\n').rstrip('\r')
 
     if not USER_PASSWORD_MIN_LENGTH <= len(password) <= USER_PASSWORD_MAX_LENGTH \

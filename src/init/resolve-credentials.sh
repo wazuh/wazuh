@@ -11,25 +11,19 @@
 # The one place the manager resolves its credentials, so the Debian postinst, the RPM post scriptlet and
 # install.sh cannot drift apart.
 #
-# Two kinds of credential, and they fail differently:
-#
-#   Owned      The Server API accounts, `wazuh` and `wazuh-wui`. This node decides them, so they are
-#              generated unless INITIAL_WAZUH_PASSWORD or INITIAL_WAZUH_WUI_PASSWORD supplies one.
-#   Consumed   The indexer's own `wazuh-manager` account. Only the deployment knows it, so there is
-#              nothing to fall back to and INDEXER_PASSWORD has to carry it.
+# The Server API accounts are owned by this node, so they are generated unless INITIAL_WAZUH_PASSWORD or
+# INITIAL_WAZUH_WUI_PASSWORD supplies one. The indexer's `wazuh-manager` account is consumed: only the
+# deployment knows it, so INDEXER_PASSWORD has to carry it and there is nothing to fall back to.
 #
 # A missing consumed credential leaves the node unconfigured rather than half configured: what resolved is
-# applied, what did not is not written at all, the service is left alone, and the report names each account
-# and points at the documentation. A manager that starts and then fails every indexer call is harder to
-# diagnose than one that never started and said why.
-#
-# No password is ever printed. The generated ones are in the credentials file, which the report names.
+# applied, what did not is not written, the service is left alone, and the report names each account. No
+# password is ever printed; the generated ones are in the credentials file, which the report names.
 #
 # Usage: resolve-credentials.sh <installdir> [--container]
 #
 # Exit status: 0 on a package installation even when something is missing, because a maintainer script that
-# fails leaves the package half-installed over a state the operator can still fix. 1 with --container,
-# where no operator is going to fix anything and the image has to fail loudly.
+# fails leaves the package half-installed over a state the operator can still fix. 1 with --container, where
+# no operator is going to fix anything.
 
 DIR="$1"
 MODE="$2"

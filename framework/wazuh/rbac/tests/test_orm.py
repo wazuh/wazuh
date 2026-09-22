@@ -677,18 +677,21 @@ def test_databasemanager_insert_default_resources(fresh_in_memory_db):
 
 
 
-def _provisioning_document(**users) -> str:
-    """Build the file `set-password` writes: the `manager:` block of the credentials file."""
-    return yaml.safe_dump({'manager': [{'name': name, 'password': password}
-                                       for name, password in users.items()]}, sort_keys=False)
+def _provisioning_file(tmp_path, mode=0o600, **users):
+    """Write the file `set-password` writes, the `manager:` block of the credentials file, and return it."""
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+    provisioning_file.write_text(yaml.safe_dump({'manager': [{'name': name, 'password': password}
+                                                             for name, password in users.items()]},
+                                                sort_keys=False))
+    provisioning_file.chmod(mode)
+
+    return provisioning_file
 
 
 def test_databasemanager_insert_default_resources_provisioned(fresh_in_memory_db, tmp_path):
     """The provisioned password is what every default user is seeded with."""
-    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
-    provisioning_file.write_text(_provisioning_document(**{"wazuh": "Pr3seeded-Passw0rd!",
-                                                           "wazuh-wui": "An0ther-Pr3seed!"}))
-    provisioning_file.chmod(0o600)
+    provisioning_file = _provisioning_file(tmp_path, **{"wazuh": "Pr3seeded-Passw0rd!",
+                                              "wazuh-wui": "An0ther-Pr3seed!"})
 
     with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
             patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()), \
@@ -825,10 +828,8 @@ def test_load_preseeded_passwords_untrusted_owner(fresh_in_memory_db, tmp_path):
 
     It decides the administrator password of a fresh installation and lives in a group-writable directory.
     """
-    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
-    provisioning_file.write_text(_provisioning_document(**{"wazuh": "Pr3seeded-Passw0rd!",
-                                                           "wazuh-wui": "An0ther-Pr3seed!"}))
-    provisioning_file.chmod(0o600)
+    provisioning_file = _provisioning_file(tmp_path, **{"wazuh": "Pr3seeded-Passw0rd!",
+                                              "wazuh-wui": "An0ther-Pr3seed!"})
 
     with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
             patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid() + 1):
@@ -856,10 +857,8 @@ def test_load_preseeded_passwords_refuses_a_fifo(fresh_in_memory_db, tmp_path):
 
 def test_load_preseeded_passwords_untrusted_group(fresh_in_memory_db, tmp_path):
     """Group read is allowed for root's group and the Wazuh group, not for whichever group the file got."""
-    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
-    provisioning_file.write_text(_provisioning_document(**{"wazuh": "Pr3seeded-Passw0rd!",
-                                                           "wazuh-wui": "An0ther-Pr3seed!"}))
-    provisioning_file.chmod(0o640)
+    provisioning_file = _provisioning_file(tmp_path, 0o640, **{"wazuh": "Pr3seeded-Passw0rd!",
+                                                     "wazuh-wui": "An0ther-Pr3seed!"})
 
     with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
             patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()), \
@@ -896,10 +895,8 @@ def test_load_preseeded_passwords_untrusted_mode(fresh_in_memory_db, tmp_path, m
     Group read is the one bit that stays allowed: it is how apid reads a root-owned file once it has
     dropped privileges to the Wazuh user.
     """
-    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
-    provisioning_file.write_text(_provisioning_document(**{"wazuh": "Pr3seeded-Passw0rd!",
-                                                           "wazuh-wui": "An0ther-Pr3seed!"}))
-    provisioning_file.chmod(mode)
+    provisioning_file = _provisioning_file(tmp_path, mode, **{"wazuh": "Pr3seeded-Passw0rd!",
+                                                    "wazuh-wui": "An0ther-Pr3seed!"})
 
     with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
             patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()), \
@@ -911,10 +908,8 @@ def test_load_preseeded_passwords_untrusted_mode(fresh_in_memory_db, tmp_path, m
 @pytest.mark.parametrize("mode", [0o600, 0o640])
 def test_load_preseeded_passwords_accepted_modes(fresh_in_memory_db, tmp_path, mode):
     """The two modes the documentation gives an installer are accepted."""
-    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
-    provisioning_file.write_text(_provisioning_document(**{"wazuh": "Pr3seeded-Passw0rd!",
-                                                           "wazuh-wui": "An0ther-Pr3seed!"}))
-    provisioning_file.chmod(mode)
+    provisioning_file = _provisioning_file(tmp_path, mode, **{"wazuh": "Pr3seeded-Passw0rd!",
+                                                    "wazuh-wui": "An0ther-Pr3seed!"})
 
     with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
             patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()), \
@@ -930,9 +925,7 @@ def test_load_preseeded_passwords_generates_what_is_missing(fresh_in_memory_db, 
     The generated one is the only copy the operator ever sees, so it has to reach disk before the database
     it seeds is created.
     """
-    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
-    provisioning_file.write_text(_provisioning_document(**{"wazuh": "Pr3seeded-Passw0rd!"}))
-    provisioning_file.chmod(0o640)
+    provisioning_file = _provisioning_file(tmp_path, 0o640, **{"wazuh": "Pr3seeded-Passw0rd!"})
 
     with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
             patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()), \
@@ -964,9 +957,7 @@ def test_load_preseeded_passwords_generates_every_user(fresh_in_memory_db, tmp_p
 
 def test_write_preseeded_passwords_replaces_the_file(fresh_in_memory_db, tmp_path):
     """Writing leaves no temporary file behind and keeps the mode the API requires."""
-    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
-    provisioning_file.write_text(_provisioning_document(**{"wazuh": "Pr3seeded-Passw0rd!"}))
-    provisioning_file.chmod(0o600)
+    provisioning_file = _provisioning_file(tmp_path, **{"wazuh": "Pr3seeded-Passw0rd!"})
 
     with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(provisioning_file)), \
             patch("wazuh.rbac.orm.wazuh_gid", return_value=os.getgid()):
@@ -1108,9 +1099,7 @@ def test_check_database_integrity_invalid_preseed(fresh_in_memory_db, tmp_path):
     The file is left untouched so that it can be corrected, and no password is generated behind the back of
     whoever wrote it.
     """
-    preseed_file = tmp_path / "wazuh-preseeded-passwords.yml"
-    preseed_file.write_text(_provisioning_document(**{"wazuh": "too-short", "wazuh-wui": "An0ther-Pr3seed!"}))
-    preseed_file.chmod(0o600)
+    preseed_file = _provisioning_file(tmp_path, **{"wazuh": "too-short", "wazuh-wui": "An0ther-Pr3seed!"})
 
     db_mock = MagicMock()
     with patch("wazuh.rbac.orm.db_manager", new=db_mock), \
