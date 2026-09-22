@@ -3686,7 +3686,7 @@ checks:
       - cis: ["4.5.6"]
     condition: all
     rules:
-      - "not f:/etc/shells -> !r:^# && r:nologins"
+      - "not f:/etc/shells -> !r:^# && r:nologin"
 
   # 4.5.7 Ensure maximum number of same consecutive characters in a password is configured. (Automated)
   - id: 2656
