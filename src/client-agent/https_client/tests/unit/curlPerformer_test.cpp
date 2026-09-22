@@ -142,6 +142,49 @@ namespace
     }
 } // namespace
 
+/* An in-memory response is bounded at the transport, not merely judged once it has all arrived.
+ * Without the cap reaching the sink, a consumer that checks the finished body has already let the
+ * peer decide how much of this agent's memory to take, on a schedule the peer controls. */
+TEST(CurlPerformerTest, AnInMemoryResponseCarriesTheSpecsByteCapToTheSink)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+    const auto config = makeConfig(HC_VERIFY_NONE);
+
+    HttpRequestSpec spec;
+    spec.target = "/cacerts";
+    spec.maxResponseBytes = 8192;
+
+    EXPECT_CALL(*handle, captureResponseBody(NotNull(), 8192u));
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+    EXPECT_CALL(*handle, responseCode()).WillOnce(Return(200));
+
+    auto performer = makePerformer(config, std::move(mock));
+    const auto response = performer.perform(spec);
+    EXPECT_EQ(TransportStatus::Ok, response.status);
+}
+
+/* ...and a request that sets no cap is still unbounded, so this change is confined to the callers
+ * that ask for one. */
+TEST(CurlPerformerTest, AnInMemoryResponseWithoutACapStaysUnbounded)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+    const auto config = makeConfig(HC_VERIFY_NONE);
+
+    HttpRequestSpec spec;
+    spec.target = "/stateless";
+
+    EXPECT_CALL(*handle, captureResponseBody(NotNull(), 0u));
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+    EXPECT_CALL(*handle, responseCode()).WillOnce(Return(200));
+
+    auto performer = makePerformer(config, std::move(mock));
+    (void) performer.perform(spec);
+}
+
 TEST(CurlPerformerTest, MemoryBodyMapsToExactOptions)
 {
     auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
@@ -164,7 +207,7 @@ TEST(CurlPerformerTest, MemoryBodyMapsToExactOptions)
     EXPECT_CALL(*handle, appendHeader("protocol-version: 1"));
     EXPECT_CALL(*handle, appendHeader("Authorization: Wazuh 001:1:aa"));
     EXPECT_CALL(*handle, setOptionLong(CurlOption::TimeoutMs, 1234L));
-    EXPECT_CALL(*handle, captureResponseBody(NotNull()));
+    EXPECT_CALL(*handle, captureResponseBody(NotNull(), _));
     EXPECT_CALL(*handle,
                 captureResponseHeaders(
                     AllOf(Field(&HeaderCapture::retryAfter, NotNull()), Field(&HeaderCapture::serverDate, NotNull()))));
@@ -264,7 +307,7 @@ TEST(CurlPerformerTest, ResponseBodyAndRetryAfterFlowBack)
 
     std::string* bodyOut = nullptr;
     HeaderCapture captureOut {};
-    EXPECT_CALL(*handle, captureResponseBody(_)).WillOnce(DoAll(SaveArg<0>(&bodyOut), Return(true)));
+    EXPECT_CALL(*handle, captureResponseBody(_, _)).WillOnce(DoAll(SaveArg<0>(&bodyOut), Return(true)));
     EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(DoAll(SaveArg<0>(&captureOut), Return(true)));
     EXPECT_CALL(*handle, perform())
     .WillOnce(Invoke(
@@ -1445,7 +1488,7 @@ TEST(CurlPerformerTest, ResponseFilePathStreamsToTheFileNotMemory)
         sink = file;
         return true;
     }));
-    EXPECT_CALL(*handle, captureResponseBody(_)).Times(0);
+    EXPECT_CALL(*handle, captureResponseBody(_, _)).Times(0);
     EXPECT_CALL(*handle, perform())
     .WillOnce(Invoke(
                   [&]() -> TransportStatus
@@ -1567,7 +1610,7 @@ TEST(CurlPerformerTest, RejectedResponseCaptureAbortsBeforePerforming)
     auto* handle = mock.get();
     allowOtherOptions(*handle);
 
-    EXPECT_CALL(*handle, captureResponseBody(_)).WillOnce(Return(false));
+    EXPECT_CALL(*handle, captureResponseBody(_, _)).WillOnce(Return(false));
     EXPECT_CALL(*handle, perform()).Times(0);
 
     auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));

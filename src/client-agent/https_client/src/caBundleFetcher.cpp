@@ -187,8 +187,9 @@ std::optional<std::string> CaBundleFetcher::vet(const HttpResponse& response, st
 
     if (response.body.size() >= MAX_BUNDLE_BYTES)
     {
-        LOGFN_WARN(m_logFn, "CA bundle refresh for publication %lld returned a body at this "
-                   "client's %zu-byte cap; it was cut off in transit and is not being installed.",
+        LOGFN_WARN(m_logFn, "CA bundle refresh for publication %lld returned a body that reached "
+                   "this client's %zu-byte cap; the manager never publishes a bundle that large, "
+                   "so it is not being installed.",
                    static_cast<long long>(target), MAX_BUNDLE_BYTES);
         return std::nullopt;
     }

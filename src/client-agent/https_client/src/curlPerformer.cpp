@@ -509,7 +509,7 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
 
     if (spec.responseFilePath.empty())
     {
-        return handle.captureResponseBody(&response.body);
+        return handle.captureResponseBody(&response.body, spec.maxResponseBytes);
     }
 
     // Open the response target WITHOUT following a symlink and owner-only: if

@@ -39,6 +39,13 @@ HttpResponse CacertsClient::fetch(const std::atomic<bool>* abortFlag)
     spec.method = HttpMethod::Get;
     spec.timeoutMs = m_config.requestTimeoutMs;
     spec.abortFlag = abortFlag;
+    // Bounded at the transport, not just judged afterwards. The manager caps a publishable
+    // bundle at 6 certificates and 8191 serialised bytes, so nothing legitimate reaches this --
+    // but without it the whole body is buffered into this agent's address space before anything
+    // looks at its size, with a hostile or faulty manager choosing how much and when. A body
+    // that fills the cap exactly still arrives whole, so the consumer can say so precisely
+    // instead of reporting an opaque transport error.
+    spec.maxResponseBytes = HC_MAX_CACERTS_BODY;
 
     return m_performer.perform(spec);
 }

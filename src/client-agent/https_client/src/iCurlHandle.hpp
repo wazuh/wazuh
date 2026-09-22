@@ -108,7 +108,7 @@ class ICurlHandle
         ///         the caller must not proceed to perform() in that case, since
         ///         the requested behavior (e.g. capturing the response) would
         ///         silently not be in effect.
-        virtual bool captureResponseBody(std::string* output) = 0;
+        virtual bool captureResponseBody(std::string* output, uint64_t maxBytes) = 0;
         virtual bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) = 0;
 
         /// Installs the one HEADERFUNCTION/HEADERDATA pair libcurl allows per
