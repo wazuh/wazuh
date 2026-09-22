@@ -74,6 +74,28 @@ Options marked "not set" are only written to the configuration file when their v
 > [!IMPORTANT]
 > `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY` and `WAZUH_REMOTE_HTTPS_CA` must be paths relative to the installation directory, such as `etc/certs/remoted.crt`. `wazuh-manager-remoted` chroots to `/var/wazuh-manager` before opening them, so a host-absolute path like `/etc/pki/wazuh/server.crt` passes validation but is opened as `/var/wazuh-manager/etc/pki/wazuh/server.crt` at runtime. The manager fails closed on them: when a file is missing, `wazuh-manager-control start` refuses to start anything (`(1244): Invalid configuration at '/remote/https/certificate': file not found: …`), and when it exists but the `wazuh-manager` user cannot read it, `wazuh-manager-remoted` exits at startup (`Cannot start the HTTPS agent listener: …`). The files must exist and be readable by the `wazuh-manager` user before the manager is started; the installer does not create them, and only fixes the ownership of the default `etc/certs/remoted.pem`/`remoted-key.pem` pair.
 
+#### Credential variables
+
+Four more variables carry credentials rather than configuration options. They are read on a **fresh installation only**: an upgrade ignores them and keeps what the node already has.
+
+| Variable | What it sets | Required |
+|----------|--------------|----------|
+| `INDEXER_USER_PASSWORD` | Password of the indexer's `wazuh-manager` user, stored in the keystore | Yes |
+| `INDEXER_USER_NAME` | Indexer user the manager authenticates as | No, defaults to `wazuh-manager` |
+| `WAZUH_API_PASSWORD` | Password of the `wazuh` Server API user | No, generated when absent |
+| `WAZUH_WUI_PASSWORD` | Password of the `wazuh-wui` Server API user | No, generated when absent |
+
+A fresh installation that does not set `INDEXER_USER_PASSWORD` is refused before the package is unpacked. There is no default for it, and a manager that cannot reach the indexer would say so nowhere.
+
+Unlike the `WAZUH_REMOTE_*` variables above, do not place these after `sudo`: an argument is visible to every account on the host through the process list, and it also lands in the shell history. Export them first and preserve the environment with `sudo -E`:
+
+```bash
+read -rs INDEXER_USER_PASSWORD && export INDEXER_USER_PASSWORD
+sudo -E apt install wazuh-manager
+```
+
+The installation pipes each value into the tool that stores it through its standard input, so none of them reaches a command line either. See [The Server API passwords](#the-server-api-passwords) and [Configure indexer connection](#configure-indexer-connection).
+
 ### Configuration
 
 #### Deploy certificates
@@ -141,31 +163,53 @@ and `wazuh-manager-control start` stops at the configuration validator, before a
 
 A pair that exists but is not readable by the `wazuh-manager` user passes that validator (it runs as root) and stops `wazuh-manager-remoted` instead, which logs `Cannot start the HTTPS agent listener: the TLS private key 'etc/certs/remoted-key.pem' is missing or unreadable by the service user.` (or the certificate, or both) followed by the same provisioning hint, and exits; `wazuh-manager-authd` reports `SSL context setup failed (certificate '…', key '…')` for the same reason. Fix the ownership as above and start again.
 
-#### Provision the API passwords
+#### The Server API passwords
 
-The manager creates its two Server API users (`wazuh`, `wazuh-wui`) the first time the API starts, and takes their password from `api/configuration/security/wazuh-preseeded-passwords.yml`. That file is not written by hand: `bin/rbac_control set-password` writes it, with the ownership and mode the API requires, and it runs with every daemon stopped, which is the only window there is between installing the package and starting the manager.
+The manager ships no password for its two Server API users, `wazuh` and `wazuh-wui`. The installation generates one for each and prints them, once:
 
-Run it once per user, on **every** server node, master and workers alike, before starting `wazuh-manager` for the first time. The password is the deployment's, not the node's: the same pair goes to every node, the same way `root-ca.pem` is one file shared by all of them.
+```
+	wazuh: GENERATED
+	wazuh-wui: GENERATED
 
-The password is read from the first line of the standard input, never from an argument, so it does not reach the process list:
+Server API credentials of this node:
+
+	wazuh: pgL.PTR0aFZVqw8DiDkl
+	wazuh-wui: IBVv-51r.40-1JZLlnEq
+
+They are also in '/var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.yml', which only root and the Wazuh group can read. Store them elsewhere and remove that file.
+```
+
+This output is the only disclosure the manager makes. The password never reaches its log, nor the process list.
+
+To decide the password instead of having it generated, put it in the environment of the installation, in `WAZUH_API_PASSWORD` for `wazuh` and `WAZUH_WUI_PASSWORD` for `wazuh-wui`. Either one that is absent is generated:
 
 ```bash
-echo '<WAZUH_API_PASSWORD>'     | sudo /var/wazuh-manager/bin/rbac_control set-password -u wazuh
-echo '<WAZUH_WUI_API_PASSWORD>' | sudo /var/wazuh-manager/bin/rbac_control set-password -u wazuh-wui
+read -rs WAZUH_API_PASSWORD && export WAZUH_API_PASSWORD
+read -rs WAZUH_WUI_PASSWORD && export WAZUH_WUI_PASSWORD
+sudo -E apt install wazuh-manager
 ```
 
-The command refuses a password the API would reject (12 to 64 characters, with a lowercase letter, an uppercase letter, a digit and one of `. * + ? -`) and writes nothing in that case, so the file the API reads is never left in a state it rejects. Each run provisions one user and keeps the other, and it reports what is still missing:
+A supplied password has to satisfy the API policy, 12 to 64 characters with a lowercase letter, an uppercase letter, a digit and one of `. * + ? -`. One that does not stops the provisioning and names the variable it came from.
+
+**The password is the deployment's, not the node's.** In a cluster, give every node the same pair through those variables, the same way `root-ca.pem` is one file shared by all of them. A node that generates its own would serve a different password the day it is promoted to master, and the dashboard would start answering `401`.
+
+**The credentials file stays.** `api/configuration/security/wazuh-preseeded-passwords.yml` is written `0640`, readable by root and the Wazuh group, and the manager reads it only when it creates `rbac.db`. It is kept afterwards so the credentials can still be read, and `wazuh-manager-apid` logs a warning on every start while it is there:
 
 ```
-	wazuh: SET
-	Still missing: wazuh-wui. The API refuses to start until every default user is set
+WARNING: The API credentials of this node are still in plaintext in '/var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.yml'. Store them elsewhere and remove that file. Change them with '/var/wazuh-manager/bin/rbac_control change-password'
 ```
 
-The file is read once, when the manager creates `rbac.db`, and removed as soon as those passwords are stored: from then on the scrypt hashes in the database are what authenticates, and keeping an administrator credential in plaintext would serve no purpose. Running `set-password` on a node whose database already exists writes the file but changes nothing, and says so; `rbac_control change-password` is what changes a live credential.
+Remove it once the credentials are stored somewhere else. Nothing depends on it after `rbac.db` exists.
 
-A worker's copy is not consumed for as long as that node stays a worker: `wazuh-manager-apid` only runs on the master (see [Cluster configuration](#cluster-configuration)), so nothing seeds a database there until the node is promoted. That is by design, and it is what keeps a promotion from rotating the credential the dashboard holds.
+To pin a password on a node that is already installed but has never started, `bin/rbac_control set-password -u <user>` writes the same file. It reads the value from the first line of the standard input, never from an argument, and merges, so each call provisions one user and keeps the other:
 
-**Provisioning is not optional.** A node with no credentials provisioned, or with a file that cannot be used, creates no database and does not start: the API refuses, and with it the whole manager. See [The API passwords](#the-api-passwords) below.
+```bash
+echo '<password>' | sudo /var/wazuh-manager/bin/rbac_control set-password -u wazuh
+```
+
+A user the file does not name is generated when the database is created. Once `rbac.db` exists, neither this command nor the installation changes the password in use, and both say so: `rbac_control change-password` is what changes a live credential.
+
+A file that is present but cannot be used is an installation error, not something to seed around: a section the manager does not read, an entry naming a user that is not a default one, the same user twice, a password the policy rejects, or ownership and permissions that do not hold. The API then stops with error `2012`, leaves no database, and the log names the reason.
 
 #### Configure indexer connection
 
@@ -230,26 +274,26 @@ The manager creates two Server API users the first time the API starts, both lin
 | `wazuh`     | Operators and automation calling the Server API              |
 | `wazuh-wui` | The Wazuh dashboard, to reach the Server API on port 55000   |
 
-The package ships no password for either of them: the manager takes it from what was [provisioned](#provision-the-api-passwords) before that first start.
+The package ships no password for either of them. What each one ends up with is decided when the manager is installed, and again whenever it has to create `rbac.db`:
 
-- **Provisioned**: both users get the password `rbac_control set-password` wrote, the file is removed, and the manager comes up.
-- **Nothing provisioned, or a file that cannot be used** (wrong owner or permissions, malformed YAML, an unknown user, a missing user, a policy-violating password): no database is created and the API refuses to start, which stops the whole manager, since the seeding runs before the daemon forks and `wazuh-manager-control` reads its exit code. The error names the reason and the call that fixes it:
+- **Supplied**, through `WAZUH_API_PASSWORD` or `WAZUH_WUI_PASSWORD` at installation time, or written to the credentials file with `rbac_control set-password` before the first start.
+- **Generated** otherwise, per user, from the system CSPRNG, satisfying the password policy by construction.
 
-  ```
-  ERROR: Cannot seed the RBAC database: no API credentials have been provisioned. Set them with
-  '/var/wazuh-manager/bin/rbac_control set-password -u wazuh' and '/var/wazuh-manager/bin/rbac_control
-  set-password -u wazuh-wui', then start the manager again
-  ```
+Either way the value lands in `api/configuration/security/wazuh-preseeded-passwords.yml`, the installation prints it, and the manager seeds `rbac.db` from it the first time the API starts. See [The Server API passwords](#the-server-api-passwords).
 
-Losing `rbac.db` therefore means provisioning that node again before it can start. An upgrade keeps whatever password the installation already had, because the RBAC migration preserves the default users; a database that cannot be read at all is refused rather than migrated into one whose administrator password nobody knows.
+A credentials file that is present but cannot be used is the one case that stops the manager: wrong owner or permissions, malformed YAML, a section this manager does not read, an unknown user, the same user twice, or a password the policy rejects. No database is created and the API refuses to start, which stops the whole manager, since the seeding runs before the daemon forks and `wazuh-manager-control` reads its exit code. The log names the reason, and the file is left on disk to be corrected.
+
+Losing `rbac.db` is recoverable without provisioning anything: the next start seeds it again, from the credentials file if it is still there, and from freshly generated passwords if it is not. In the second case the new passwords have to be propagated to the dashboard, so keep the file, or a copy of what it held, for as long as the deployment depends on those credentials.
+
+An upgrade keeps whatever password the installation already had, because the RBAC migration preserves the default users; a database that cannot be read at all is refused rather than migrated into one whose administrator password nobody knows.
 
 #### Changing them
 
 A password must be 12 to 64 characters long and contain at least one uppercase letter, one lowercase letter, one digit and one symbol out of `. * + ? -`, the set both authentication realms of a deployment share; the API rejects anything else with error `5009` (length) or `5007` (character classes).
 
-Run the following on the **master node**: authentication is always resolved there, so that is the database the API reads. Every node keeps its own `api/configuration/security/rbac.db` and the cluster does not synchronize it. A worker provisioned with the same passwords as the rest of the deployment seeds them when it is promoted, so promotion does not rotate the credential the dashboard already uses. A worker that was never provisioned does not start at all once promoted.
+Run the following on the **master node**: authentication is always resolved there, so that is the database the API reads. Every node keeps its own `api/configuration/security/rbac.db` and the cluster does not synchronize it. A worker installed with the same `WAZUH_API_PASSWORD` and `WAZUH_WUI_PASSWORD` as the rest of the deployment seeds those when it is promoted, so promotion does not rotate the credential the dashboard already uses. A worker that was left to generate its own serves a different password the day it is promoted.
 
-If you changed a password by hand after installing (`change-password`, below) rather than relying on the pre-seed, that change only ever reaches the master's own database. Add `--local` to also align a worker's database directly. And repeat the change with `set-password` on every node that has not seeded yet, typically the workers: their file still names the previous password, and it is what a promotion, a lost database or a `factory-reset` will apply.
+A `change-password` only ever reaches the master's own database. Add `--local` to also align a worker's database directly. And update the credentials file with `set-password` on every node that has not seeded yet, typically the workers: their file still names the previous password, and that is what a promotion, a lost database or a `factory-reset` will apply.
 
 ```bash
 sudo /var/wazuh-manager/bin/rbac_control change-password
