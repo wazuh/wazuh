@@ -389,7 +389,8 @@ A token comes in three shapes, and every installation method below accepts any o
 | Method | How the agent is installed | How it registers |
 |---|---|---|
 | **One-line command** | The command the dashboard generates, which carries the token | During the package install |
-| **Package** | `dpkg`, `rpm`, `installer` or the MSI | Afterwards, with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent), when the install passed no token |
+| **Package (Linux/macOS)** | `dpkg`, `rpm` or `installer` | Afterwards, with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent), when the install passed no token |
+| **Package (Windows)** | The MSI | Afterwards, from the tray GUI's **Manage** menu (or [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent)), when the install passed no token |
 | **From sources** | `install.sh` | Afterwards, with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent) |
 
 The one-line command comes from the dashboard's *Deploy new agent* page. It sets the deployment variables, downloads the package and installs it. Copy it and run it on the endpoint. The agent name and the groups are optional, as they were before, and are only set when you fill them in.

@@ -154,9 +154,11 @@ Shows:
 
 ### Enrolling or re-pointing an agent
 
-`wazuh-agent-auth` registers an installed agent, registers it again, or points it at a manager whose certificate authority or address has changed. It ships on Linux, macOS and Windows, and is the path for every install that did not carry a token.
+An agent that installed without a token needs one of these afterwards to register, register again, or point at a manager whose certificate authority or address has changed.
 
-It is installed in the agent's `bin/` directory, which is not on `PATH` (`/Library/Ossec/bin/` on macOS), and runs as root:
+**On Windows**, the tray GUI (`win32ui.exe`, the tray icon) is the normal way to do this: **Manage → Enroll** asks for a token and registers or re-registers the agent, confirming first when it is already enrolled since that assigns a new id; **Manage → Update CA** refreshes the trust anchor and manager address on an already-enrolled agent. Both stop the agent service first if it's running — the underlying tool refuses otherwise — and offer to start it again once the operation finishes.
+
+Both actions drive `wazuh-agent-auth`, the same command-line tool used directly on Linux and macOS (and available on Windows too, for scripting). It is installed in the agent's `bin/` directory, which is not on `PATH` (`/Library/Ossec/bin/` on macOS), and runs as root:
 
 ```bash
 sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token                  # enroll
