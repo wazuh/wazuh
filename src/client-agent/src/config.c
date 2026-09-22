@@ -294,7 +294,7 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
         /* w_is_file() above (and w_agent_resolve_ssl_posture()'s own probe) only answers
          * "present and readable", not "usable" -- the same gap #38949 question 10 already
          * flagged for an operator's own <certificate_authorities>, and fixed below for it at
-         * the w_x509_load_pem() call. The fallback anchor (curlPerformer.cpp, #39123) is used
+         * the w_x509_load_all_pem() call. The fallback anchor (curlPerformer.cpp, #39123) is used
          * whenever it is present, regardless of whether an OS bundle also exists (an OS bundle
          * can be found yet simply not vouch for this manager's certificate, which is exactly
          * when the fallback engages) -- so a corrupt or truncated anchor is worth catching here
@@ -305,14 +305,21 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
         const bool anchor_present = w_is_file(AGENT_ANCHOR_CA) != 0;
 
         if (anchor_present) {
-            X509 *anchor = w_x509_load_pem(AGENT_ANCHOR_CA);
+            /* load_ALL_pem, not w_x509_load_pem(): since #39321 this anchor is a BUNDLE -- the
+             * agent adopts up to ca_bundle::kMaxCertificates from a manager publication, and
+             * during a rotation's overlap it legitimately holds two or more roots. The singular
+             * loader stops at the first block, so it would pronounce a rotated store "parses"
+             * on the strength of one certificate and leave the rest unchecked, which is the
+             * exact gap the <certificate_authorities> check below was changed to close. */
+            size_t anchor_count = 0;
+            X509 **anchor = w_x509_load_all_pem(AGENT_ANCHOR_CA, &anchor_count);
 
             if (anchor == NULL) {
                 merror(AG_SSL_ANCHOR_UNPARSEABLE, AGENT_ANCHOR_CA);
                 return false;
             }
 
-            X509_free(anchor);
+            w_x509_free_all(anchor, anchor_count);
         }
 
 #if !defined(WIN32) && !defined(__APPLE__)
