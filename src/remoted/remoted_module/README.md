@@ -33,7 +33,8 @@ remoted_module/
 │   │                               #   coherence evaluation and its daily monitor thread (the bundle
 │   │                               #   itself is shared_modules/ca_bundle's; re-exported from here);
 │   │                               #   caCertificateSource.hpp/.cpp = the CA file as ONE read:
-│   │                               #   certificates re-serialised + verdict, cached by content hash;
+│   │                               #   certificates re-serialised (parse cached by content hash) + the
+│   │                               #   verdicts, judged against the clock on every call;
 │   │                               #   fileRead.hpp/.cpp = bounded, injectable POSIX read + failure cause;
 │   │                               #   endpointRateLimiter.hpp/.cpp = token bucket per endpoint
 │   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below);
@@ -344,9 +345,13 @@ src/endpoints/
   and one hash per call, bounded by the injectable POSIX reader in `fileRead.hpp` (at most 1 MiB + 1
   byte, under the source's own mutex). The fourth parameter, `deliverCaRecordEvents`, drains and logs
   the CA record event mailbox once, right before the handler answers (empty is a no-op — see the
-  mailbox discussion below, issue #39319, C26); the parsed certificates, their reserialised PEM, the
-  leaf-match verdict and the publication verdict are cached by the SHA-256 of the bytes, so a
-  same-size, same-mtime replacement is still reparsed. `certificates == 0 || pem.empty()` ⇒
+  mailbox discussion below, issue #39319, C26); the parsed certificates and their reserialised PEM are
+  cached by the SHA-256 of the bytes, so a same-size, same-mtime replacement is still reparsed. The
+  leaf-match verdict, the chain verdict and the publication verdict are NOT cached: they have a date
+  term, so `snapshot()` judges them against the clock on every call from the parsed certificates, and a
+  CA that expires (or becomes valid) with the file untouched flips them on the next call, with one
+  `chain_lost_on_clock` / `chain_regained_on_clock` line through the mailbox (issue #39519).
+  `certificates == 0 || pem.empty()` ⇒
   `404 {"error":"not_found"}`; a read
   failure (missing, unreadable, a read error, or over the cap) leaves the last good snapshot being
   served and records the cause instead of clearing it — only a readable file with nothing in it
@@ -395,7 +400,10 @@ src/endpoints/
   `published_changed` (INFO, "N (was M)") · `changed_outside_tool` (WARN, the block was lost or the
   bytes changed by hand) · `guard_failed` (WARN, naming the guard and what it measured) ·
   `record_unwritable` (WARN, once per failure streak, independent of and never in place of the
-  bundle's own event) — posted to a bounded `CaRecordEventMailbox` the source only fills. Neither
+  bundle's own event) · `chain_lost_on_clock` / `chain_regained_on_clock` (WARN / INFO: the leaf
+  stopped or started chaining to an UNCHANGED bundle because a validity window closed or opened —
+  the clock's doing, not the file's, so the record is not touched; issue #39519) — posted to a
+  bounded `CaRecordEventMailbox` the source only fills. Neither
   `CaPublicationRecord` nor `caRecordEvents.hpp` logs anything (`describeRecordEvent()` is pure, so
   it links into the test binary without pulling the module's logger along); every consumer goes
   through `CaRecordEventMailbox::deliver()` instead of draining and logging as two separate steps
@@ -2320,11 +2328,12 @@ Response shape (`http_server/tlsInventory.cpp` renders it, keys in this order):
   its **only** trust store (path building, dates, `basicConstraints`/`keyUsage`, server purpose).
   They disagree on purpose for an expired CA, or one without `CA:TRUE`, that still signs the leaf:
   `signs_active_leaf: true`, `matches_active_leaf: false`, `chain_valid: false` plus `chain_error`
-  (present only when false). `matches_active_leaf` is judged when the bundle is parsed, like the `503`
-  it mirrors. `chain_valid` is `null` when there is nothing to validate against. It is judged against the clock on
-  every request — hit or miss of the content-hash cache, and against the last good bundle while the
-  file is unreadable — so a CA that expires with the file untouched flips it on the next request and
-  fires the monitor's WARN on its next tick; only the parse is cached, never the verdict.
+  (present only when false). `chain_valid` is `null` when there is nothing to validate against. All
+  three bundle-level verdicts — `matches_active_leaf`, `chain_valid` and `publication` /
+  `publication_vouched` — are judged against the clock on every request — hit or miss of the
+  content-hash cache, and against the last good bundle while the file is unreadable — so a CA that
+  expires with the file untouched flips them on the next request, with one `chain_lost_on_clock`
+  line from whichever caller noticed first; only the parse is cached, never a verdict (issue #39519).
 - **`last_read_failure`** (present only while the bundle cannot be read): the CA fields then describe
   the **last good read** — the certificates, hash and sizes of the file as it was — next to `cause`
   (the `describeReadFailure()` fragment, e.g. `"cannot be opened (No such file or directory)"`),

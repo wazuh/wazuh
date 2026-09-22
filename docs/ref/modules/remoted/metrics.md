@@ -106,7 +106,9 @@ The health of the certificate the HTTPS listener serves. Expiry is evaluated whe
 starts and once every 24 hours afterwards (each evaluation also re-logs its findings); the leaf is
 the certificate loaded when the listener started. `ca_matches_leaf`, on the other hand, is read
 from the same place `GET /cacerts` answers from, so the two can never disagree: replacing the CA
-file changes both in the next request, without waiting for the daily tick. Both read `0` while the
+file changes both in the next request, without waiting for the daily tick -- and so does the clock,
+because the chain is judged against the current time on every read rather than once per file
+content: a CA that expires with the file untouched reads `0` on the next scrape. Both read `0` while the
 listener is down — so `ca_matches_leaf` at `0` with the listener **up** is the mismatch signal, and
 `GET /cacerts` is answering `503` (see [CA distribution](#ca-distribution--remotedcacerts)).
 For anything beyond these two gauges — the dates, the `x509-sha256` identities, each certificate

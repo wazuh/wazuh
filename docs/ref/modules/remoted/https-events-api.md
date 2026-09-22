@@ -1737,11 +1737,14 @@ of the bundle was treated as an anchor without being self-signed. Neither outcom
 endpoint's response.
 
 **Cadence.** Each request reads the CA file and obtains the certificate bundle and coherence verdict
-from the same snapshot. Parsing and the chain validation are cached by a hash of those bytes; a changed
-file is re-evaluated even if its size and modification time stay the same. One consequence of the
-verdict depending on validity windows: a CA that **expires while the file is untouched** keeps the
-verdict it was last given until its bytes change or remoted restarts, so replace the certificate
-before its notAfter rather than relying on the manager to notice the moment it passes. A CA file that cannot be
+from the same snapshot. Parsing is cached by a hash of those bytes; a changed file is re-parsed even if
+its size and modification time stay the same. The verdicts are not cached: the chain validation, and
+with it the `503` decision and the published generation, are judged against the clock on every
+evaluation from the certificates already parsed. A CA that **expires while the file is untouched**
+therefore answers `503` from the next request on (and `ca_generation` drops to `0`), and a CA whose
+`notBefore` was still ahead of this node's clock is served, and published, from the request after its
+window opens. Either flip is logged once, by the request that notices it, not only on the next daily
+evaluation. A CA file that cannot be
 read keeps the last good bundle in service and logs the failure; only a file that was never readable
 answers `404`, and a file that reads but carries no certificate answers `404` at once. A replacement
 CA the loaded leaf does not chain to answers `503` on the next request. Separately, the certificate

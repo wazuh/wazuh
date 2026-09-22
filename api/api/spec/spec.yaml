@@ -1848,7 +1848,7 @@ components:
               description: "The publication `wazuh-manager-certs` stamped in the bundle's `##` block, the same value `ca_generation` advertises to agents: `null` when there is no servable bundle, `0` when a bundle is served but no guard vouches for it, else the vouched Unix timestamp"
             publication_vouched:
               type: boolean
-              description: "Whether every publication guard passed (block present, its hash matches the certificates, the leaf chains to a CA of the bundle, count and size within the agent limits)"
+              description: "Whether every publication guard passed (block present, its hash matches the certificates, the leaf chains to a CA of the bundle, count and size within the agent limits), judged at request time: a CA that expires with the file untouched reads false on the next request"
             content_sha256:
               type: string
               description: "Bare-hex SHA-256 over the DER encodings of every certificate, sorted and concatenated: the bundle's identity, independent of certificate order"
@@ -1870,6 +1870,7 @@ components:
                 Whether the listener certificate CHAINS to some CA of this bundle (a real validation:
                 validity dates and `CA:TRUE` checked, self-signed anchors only) — exactly what `GET /cacerts`
                 decides its `503 ca_mismatch` from, and the value of `remoted.server.tls.ca_matches_leaf`.
+                Judged at request time, so it follows the clock as well as the file.
                 `null` when there is nothing to check against.
             chain_valid:
               type: boolean

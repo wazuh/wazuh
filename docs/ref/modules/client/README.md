@@ -226,7 +226,7 @@ sudo grep -E "cacerts|pin_mismatch|TLS verification|\(41[0-9]{2}\)" /var/ossec/l
 |---|---|---|
 | `/cacerts adr_unreachable` | The address in the token answers nothing | Check routing, and that the manager is listening on 1517 |
 | `/cacerts not_found` | The manager answered, but has no CA to hand out | Nothing on the endpoint changes this. The manager has to be given its CA before any agent can bootstrap against it |
-| `/cacerts ca_mismatch` | The CA the manager hands out does not sign the certificate it serves | Nothing on the endpoint changes this. Retrying will keep failing until the manager's certificate and CA match |
+| `/cacerts ca_mismatch` | The certificate the manager serves does not chain to the CA it would hand out — a CA that expired, or whose validity window has not opened yet, counts as not chaining | Nothing on the endpoint changes this. Retrying will keep failing until the manager's certificate and CA match (a CA that is merely not yet valid heals on its own once its window opens) |
 | `pin_mismatch` | The CA the manager served is not the one the token pins | Wrong token, wrong manager, or the CA was rotated. Use a fresh token |
 | `(4118)` | The mode needs a CA, and neither `<certificate_authorities>` nor the trust anchor is present | Enroll with a token, or name a CA |
 | `(4120)` | `system` together with an explicit `<certificate_authorities>` | Drop one of the two: remove the CA to use the OS trust store, or keep it and set the mode to `full` |

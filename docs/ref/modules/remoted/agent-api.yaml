@@ -120,11 +120,13 @@ paths:
         bytes) answers `404` at once and stops serving the previous bundle -- this is how an
         operator halts a CA without restarting; restoring the file serves it again on the next
         request. Coherence with the served certificate is evaluated from the same read as the body,
-        on every request: when the CA on disk does **not** sign the certificate this very listener
-        is serving, the route answers `503 ca_mismatch` instead of handing out a CA that would make
-        every verifying agent fail its handshake against this manager (RF-27). The certificate
-        monitor (at start and every 24 h) only re-logs this same verdict; it does not decide the
-        response. The converse rotation -- a *different but valid* CA written over the file without
+        on every request, and against the clock of that request: when the certificate this very
+        listener is serving does **not** chain to the CA on disk -- validity windows included, so a
+        CA that expired with the file untouched is refused from the next request on, and one whose
+        `notBefore` was ahead of this node's clock is served once its window opens -- the route
+        answers `503 ca_mismatch` instead of handing out a CA that would make every verifying agent
+        fail its handshake against this manager (RF-27). The certificate monitor (at start and every
+        24 h) only re-logs this same verdict; it does not decide the response. The converse rotation -- a *different but valid* CA written over the file without
         restarting -- is served on the very next request; a new *leaf* certificate still needs a
         restart to load, so rotate CA and certificate together and restart remoted.
 
