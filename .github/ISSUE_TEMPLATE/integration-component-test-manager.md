@@ -101,3 +101,5 @@ gh workflow run 4_testintegration_remoted-tier-2.yml --repo=wazuh/wazuh --ref <V
 gh workflow run 4_testintegration_wazuh_db-tier-0-1.yml --repo=wazuh/wazuh --ref <VERSION>
 gh workflow run 4_testcomponent_vulnerability-scanner.yml --repo=wazuh/wazuh --ref <VERSION>
 -->
+
+DRI: @wazuh/devel-xdrsiem-server-div1
