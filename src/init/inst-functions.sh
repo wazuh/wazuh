@@ -704,6 +704,61 @@ ValidateRemoteVars()
 }
 
 ##########
+# ValidateIndexerVars()
+# The manager authenticates against the Wazuh indexer as the indexer's own
+# `wazuh-manager` user, whose password only whoever installed the indexer
+# knows. There is no default to fall back to, so a fresh installation that
+# is not given one is refused instead of ending up unable to reach the
+# indexer with nothing saying why. Called before the installation touches
+# the system, like ValidateRemoteVars().
+##########
+ValidateIndexerVars()
+{
+    if [ "X${INSTYPE}" = "Xagent" ]; then
+        return 0
+    fi
+
+    if [ -z "${INDEXER_USER_PASSWORD}" ]; then
+        echo "ERROR: INDEXER_USER_PASSWORD is not set." >&2
+        echo "       wazuh-manager authenticates against the Wazuh indexer as its 'wazuh-manager'" >&2
+        echo "       user. Put that user's password in the environment and install again:" >&2
+        echo "           read -rs INDEXER_USER_PASSWORD && export INDEXER_USER_PASSWORD" >&2
+        echo "           sudo -E ./install.sh" >&2
+        exit 1
+    fi
+}
+
+##########
+# StoreIndexerCredentials()
+# Stores the indexer credentials in the keystore, which is where the manager
+# reads them from. Through the standard input, never through the tool's -v
+# option: a password given on a command line is visible to every account on
+# the host through the process list. Manager only, and only on a fresh
+# installation: an upgrade keeps the keystore it already has.
+##########
+StoreIndexerCredentials()
+{
+    if [ "X${INSTYPE}" = "Xagent" ] || [ -z "${INDEXER_USER_PASSWORD}" ]; then
+        return 0
+    fi
+
+    KEYSTORE="${INSTALLDIR}/bin/wazuh-manager-keystore"
+    if [ ! -x "${KEYSTORE}" ]; then
+        echo "ERROR: ${KEYSTORE} is missing, the indexer credentials were not stored." >&2
+        exit 1
+    fi
+
+    printf '%s\n' "${INDEXER_USER_NAME:-wazuh-manager}" | ${KEYSTORE} -f indexer -k username > /dev/null || {
+        echo "ERROR: could not store the indexer user name in the keystore." >&2
+        exit 1
+    }
+    printf '%s\n' "${INDEXER_USER_PASSWORD}" | ${KEYSTORE} -f indexer -k password > /dev/null || {
+        echo "ERROR: could not store the indexer user password in the keystore." >&2
+        exit 1
+    }
+}
+
+##########
 # WriteRemote()
 # Writes the <remote> block. Every value can be customized at installation
 # time through the WAZUH_REMOTE_* variables; options with no built-in

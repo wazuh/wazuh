@@ -132,6 +132,19 @@ Refer to the 5.x migration guide for more information.
 EOF
 }
 
+# The manager reads the Wazuh indexer with the credentials of the indexer's own `wazuh-manager` user,
+# which only whoever installed the indexer knows. Refused here, before the package is installed, rather
+# than installing a manager that cannot reach the indexer and says so nowhere. Only on a fresh install:
+# an upgrade keeps the keystore it already has.
+if [ "$1" -eq 1 ] && [ -z "${INDEXER_USER_PASSWORD}" ]; then
+  echo "ERROR: INDEXER_USER_PASSWORD is not set." >&2
+  echo "       wazuh-manager authenticates against the Wazuh indexer as its 'wazuh-manager'" >&2
+  echo "       user. Put that user's password in the environment and install again:" >&2
+  echo "           read -rs INDEXER_USER_PASSWORD && export INDEXER_USER_PASSWORD" >&2
+  echo "           sudo -E yum install wazuh-manager" >&2
+  exit 1
+fi
+
 if [ "$1" -eq 2 ]; then
   # Check if this is an upgrade from versions prior to 5.x.
   if [ -f %{_sysconfdir}/ossec-init.conf ]; then
@@ -334,6 +347,21 @@ if [ "$1" -eq 1 ]; then
   touch %{_localstatedir}/logs/wazuh-manager.json
   chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/wazuh-manager.json
   chmod 0660 %{_localstatedir}/logs/wazuh-manager.json
+
+  # The manager reads the Wazuh indexer with the indexer's own `wazuh-manager` user. Through the
+  # standard input, never through the tool's -v option: a password given on a command line is visible to
+  # every account on the host through the process list. The pre-install scriptlet already refused a
+  # fresh install that did not set it.
+  if ! printf '%%s\n' "${INDEXER_USER_NAME:-wazuh-manager}" | \
+          %{_localstatedir}/bin/wazuh-manager-keystore -f indexer -k username > /dev/null; then
+    echo "ERROR: could not store the indexer user name in the keystore." >&2
+    exit 1
+  fi
+  if ! printf '%%s\n' "${INDEXER_USER_PASSWORD}" | \
+          %{_localstatedir}/bin/wazuh-manager-keystore -f indexer -k password > /dev/null; then
+    echo "ERROR: could not store the indexer user password in the keystore." >&2
+    exit 1
+  fi
 fi
 
 if [[ -d /run/systemd/system ]]; then

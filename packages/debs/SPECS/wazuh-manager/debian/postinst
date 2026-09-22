@@ -222,6 +222,23 @@ case "$1" in
     chown root:${GROUP} ${DIR}/etc/wazuh-manager-internal-options.conf > /dev/null 2>&1 || true
     chmod 640 ${DIR}/etc/wazuh-manager-internal-options.conf > /dev/null 2>&1 || true
 
+    # The manager reads the Wazuh indexer with the indexer's own `wazuh-manager` user. Through the
+    # standard input, never through the tool's -v option: a password given on a command line is visible
+    # to every account on the host through the process list. preinst refuses a fresh install without it,
+    # so only an upgrade reaches this with the variable unset, and an upgrade keeps its own keystore.
+    if [ -z "$2" ] && [ -n "${INDEXER_USER_PASSWORD}" ]; then
+        if ! printf '%s\n' "${INDEXER_USER_NAME:-wazuh-manager}" | \
+                ${DIR}/bin/wazuh-manager-keystore -f indexer -k username > /dev/null; then
+            echo "ERROR: could not store the indexer user name in the keystore." >&2
+            exit 1
+        fi
+        if ! printf '%s\n' "${INDEXER_USER_PASSWORD}" | \
+                ${DIR}/bin/wazuh-manager-keystore -f indexer -k password > /dev/null; then
+            echo "ERROR: could not store the indexer user password in the keystore." >&2
+            exit 1
+        fi
+    fi
+
     # Restore RBAC database
     if [ -f ${WAZUH_TMP_DIR}/rbac.db ]; then
         cp -fp ${WAZUH_TMP_DIR}/rbac.db ${DIR}/api/configuration/security/rbac.db

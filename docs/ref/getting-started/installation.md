@@ -169,12 +169,21 @@ A worker's copy is not consumed for as long as that node stays a worker: `wazuh-
 
 #### Configure indexer connection
 
-Configure the Wazuh server to connect to the Wazuh indexer using the secure keystore:
+The manager authenticates against the Wazuh indexer as the indexer's own `wazuh-manager` user. That password is the indexer deployment's, so the manager neither generates it nor ships a default for it: the installation takes it from the `INDEXER_USER_PASSWORD` variable and stores it in the keystore, and refuses to install a fresh manager without it.
 
 ```bash
-# Set indexer credentials (default: wazuh-manager/wazuh-manager)
-sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v wazuh-manager
-sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v wazuh-manager
+read -rs INDEXER_USER_PASSWORD && export INDEXER_USER_PASSWORD
+sudo -E apt install wazuh-manager
+```
+
+`read -rs` rather than an assignment on the command line: an argument is visible to every account on the host through the process list, and it would also land in the shell history. From the environment the installation pipes it into `wazuh-manager-keystore` through its standard input, so it reaches no command line either.
+
+`INDEXER_USER_NAME` overrides the user name, which defaults to `wazuh-manager`. An upgrade keeps the keystore it already has and does not read either variable.
+
+To change them later, on a manager that is already installed, write the keystore the same way. Do not use the tool's `-v` option, which puts the password on a command line every account on the host can read:
+
+```bash
+echo '<password>' | sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
 ```
 
 Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:

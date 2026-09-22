@@ -1152,6 +1152,7 @@ main()
     # an invalid WAZUH_REMOTE_* value must abort while the system is still untouched.
     if [ "X${update_only}" = "X" ] && [ "X$INSTYPE" = "Xmanager" ]; then
         ValidateRemoteVars
+        ValidateIndexerVars
     fi
 
     ValidateServiceRegistrationVars
@@ -1172,6 +1173,11 @@ main()
 
     # Install selected components.
     Install
+
+    # After Install: the keystore tool is part of what it puts in place.
+    if [ "X${update_only}" = "X" ] && [ "X$INSTYPE" = "Xmanager" ]; then
+        StoreIndexerCredentials
+    fi
 
     # Post-install usage hints.
     control_script="wazuh-control"
