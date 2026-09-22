@@ -488,7 +488,7 @@ nlohmann::json SysInfo::getGroups() const
         groupItem["group_name"] = (group.contains("groupname") && !group["groupname"].get<std::string>().empty()) ? group["groupname"] : UNKNOWN_VALUE;
         groupItem["group_description"] = (group.contains("comment") && !group["comment"].get<std::string>().empty()) ? group["comment"] : UNKNOWN_VALUE;
         groupItem["group_id_signed"] = group["gid_signed"];
-        groupItem["group_uuid"] = UNKNOWN_VALUE;
+        groupItem["group_uuid"] = (group.contains("uuid") && !group["uuid"].get<std::string>().empty()) ? group["uuid"] : UNKNOWN_VALUE;
         groupItem["group_is_hidden"] = group["is_hidden"];
 
         // Obtain the users for this specific GID

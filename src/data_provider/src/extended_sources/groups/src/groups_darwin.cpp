@@ -10,16 +10,20 @@
 #include "groups_darwin.hpp"
 #include "group_wrapper.hpp"
 #include "open_directory_utils_wrapper.hpp"
+#include "uuid_wrapper.hpp"
 
 GroupsProvider::GroupsProvider(std::shared_ptr<IGroupWrapperDarwin> groupWrapper,
+                               std::shared_ptr<IUUIDWrapper> uuidWrapper,
                                std::shared_ptr<IODUtilsWrapper> odWrapper)
     : m_groupWrapper(std::move(groupWrapper))
+    , m_uuidWrapper(std::move(uuidWrapper))
     , m_odWrapper(std::move(odWrapper))
 {
 }
 
 GroupsProvider::GroupsProvider()
     : m_groupWrapper(std::make_shared<GroupWrapperDarwin>())
+    , m_uuidWrapper(std::make_shared<UUIDWrapper>())
     , m_odWrapper(std::make_shared<ODUtilsWrapper>())
 {
 }
@@ -31,6 +35,16 @@ nlohmann::json GroupsProvider::genGroupJson(const group* group)
     groupJson["groupname"] = group->gr_name;
     groupJson["gid"] = group->gr_gid;
     groupJson["gid_signed"] = static_cast<int32_t>(group->gr_gid);
+
+    uuid_t uuid = {0};
+    uuid_string_t uuid_string = {0};
+
+    // From the docs: mbr_gid_to_uuid will always succeed and may return a
+    // synthesized UUID with the prefix FFFFEEEE-DDDD-CCCC-BBBB-AAAAxxxxxxxx,
+    // where 'xxxxxxxx' is a hex conversion of the GID.
+    m_uuidWrapper->gidToUUID(group->gr_gid, uuid);
+    m_uuidWrapper->uuidToString(uuid, uuid_string);
+    groupJson["uuid"] = uuid_string;
 
     return groupJson;
 }
