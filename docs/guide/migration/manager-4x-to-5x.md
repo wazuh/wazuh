@@ -50,9 +50,15 @@ indexer.
 
 Steps 1, 3 and 5 are what
 [`tools/migration/wazuh-migrate-identity.py`](https://github.com/wazuh/wazuh/blob/5.0.0/tools/migration/wazuh-migrate-identity.py)
-automates: it collects the same files into a checksummed bundle, restores them with the ownership
-below, and compares the result against what it carried. Read this section either way, since the
-decisions it describes are still yours, and run the tool with `--dry-run` first.
+automates. It reads the same data out of the 4.x files, and recreates it on the 5.0 manager through
+the manager's own API rather than by writing its files, so the manager validates every agent and
+group and writes `client.keys` and the registry itself. One difference from the manual procedure
+follows from that: the tool needs the 5.0 manager **running**, where the steps below need it
+stopped. Installing it out of the fleet's reach, as [Step 2](#2-install-the-50-manager) describes,
+gives you both at once — the API answers on loopback while no agent can reach the manager.
+
+Read this section either way: the decisions it describes are still yours, and the tool cannot carry
+what no endpoint accepts, which is listed in its README. Run it with `--dry-run` first.
 
 Stop the 4.x manager so the files are consistent, then copy everything below off the host. The
 paths are the 4.x ones; the table says where each item lands on 5.0.

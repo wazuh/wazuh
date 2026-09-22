@@ -8,25 +8,26 @@
 
 """Tests for wazuh-migrate-identity.py.
 
-Builds a 4.x and a 5.0 installation tree in a temporary directory and runs the tool against them.
-The target schema is the repository's own src/wazuh_db/schemas/schema_global.sql, so a schema change
-that the transform cannot follow fails here rather than on an operator's manager.
+`export` is exercised against a 4.x installation tree built in a temporary directory. `import` and
+`check` are exercised against a stub of the manager's API that implements the endpoints the tool
+uses and records what it was asked to do, so the assertions are about the calls the tool makes
+rather than about files it no longer writes.
 
     python3 tools/migration/test_wazuh_migrate_identity.py
 """
 
+import http.server
 import importlib.util
 import json
 import os
-import shutil
 import sqlite3
-import tarfile
+import ssl
+import subprocess
 import tempfile
+import threading
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
-TARGET_SCHEMA = os.path.join(REPO, "src", "wazuh_db", "schemas", "schema_global.sql")
 
 _spec = importlib.util.spec_from_file_location(
     "wazuh_migrate_identity", os.path.join(HERE, "wazuh-migrate-identity.py"))
@@ -34,175 +35,203 @@ tool = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(tool)
 
 
-# The 4.x agent table, as 4.14 defines it. Enough of the real shape to exercise the transform:
-# the columns 5.0 dropped, the ones it kept, and the os_platform it derives os_type from.
+# The 4.x agent table as 4.14 defines it, reduced to what the exporter reads.
 SOURCE_SCHEMA = """
-CREATE TABLE agent (
-    id INTEGER PRIMARY KEY,
-    name TEXT,
-    ip TEXT,
-    register_ip TEXT,
-    internal_key TEXT,
-    os_name TEXT,
-    os_version TEXT,
-    os_major TEXT,
-    os_minor TEXT,
-    os_codename TEXT,
-    os_build TEXT,
-    os_platform TEXT,
-    os_uname TEXT,
-    os_arch TEXT,
-    version TEXT,
-    config_sum TEXT,
-    merged_sum TEXT,
-    manager_host TEXT,
-    node_name TEXT DEFAULT 'unknown',
-    date_add INTEGER NOT NULL,
-    last_keepalive INTEGER,
-    'group' TEXT,
-    group_hash TEXT,
-    group_sync_status TEXT NOT NULL DEFAULT 'synced',
-    sync_status TEXT NOT NULL DEFAULT 'synced',
-    connection_status TEXT NOT NULL DEFAULT 'never_connected',
-    disconnection_time INTEGER DEFAULT 0,
-    group_config_status TEXT NOT NULL DEFAULT 'not synced',
-    status_code INTEGER DEFAULT 0
-);
-CREATE TABLE 'group' (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE
-);
-CREATE TABLE belongs (
-    id_agent INTEGER,
-    id_group INTEGER,
-    priority INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (id_agent, id_group)
-);
-CREATE TABLE labels (
-    id_agent INTEGER,
-    key TEXT,
-    value TEXT,
-    id_checksum TEXT,
-    PRIMARY KEY (id_agent, key)
-);
-CREATE TABLE metadata (
-    key TEXT PRIMARY KEY,
-    value TEXT
-);
+CREATE TABLE agent (id INTEGER PRIMARY KEY, name TEXT, ip TEXT, register_ip TEXT,
+                    internal_key TEXT, os_platform TEXT, date_add INTEGER NOT NULL,
+                    'group' TEXT, connection_status TEXT NOT NULL DEFAULT 'never_connected');
+CREATE TABLE 'group' (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE);
+CREATE TABLE belongs (id_agent INTEGER, id_group INTEGER, priority INTEGER NOT NULL DEFAULT 0,
+                      PRIMARY KEY (id_agent, id_group));
+CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT);
 INSERT INTO metadata (key, value) VALUES ('db_version', '7');
 """
 
 AGENTS = [
-    # id, name, os_platform, expected os_type, groups
-    (1, "web-ubuntu24", "ubuntu", "linux", ["linux-servers", "pci-scope"]),
-    (2, "win11-lab", "windows", "windows", ["default", "pci-scope"]),
-    (3, "db-al2023", "amzn", "linux", ["db-servers", "pci-scope"]),
-    (4, "mac-build", "darwin", "macos", ["default"]),
+    # id, name, groups in priority order
+    (1, "web-ubuntu24", ["linux-servers", "pci-scope"]),
+    (2, "win11-lab", ["default", "pci-scope"]),
+    (3, "db-al2023", ["db-servers", "pci-scope"]),
 ]
-
 GROUPS = ["default", "linux-servers", "db-servers", "pci-scope"]
+CUSTOM_GROUPS = [g for g in GROUPS if g != "default"]
 
 
 def build_source(root):
-    """A 4.x installation holding four agents in four groups."""
-    for relative in ("etc/shared/default", "etc/shared/linux-servers", "etc/shared/db-servers",
-                     "etc/shared/pci-scope", "queue/db", "api/configuration/security", "var/run"):
+    """A 4.x installation holding three agents in four groups."""
+    for relative in ["queue/db", "api/configuration/security", "var/run"] + \
+                    ["etc/shared/" + g for g in GROUPS]:
         os.makedirs(os.path.join(root, relative), exist_ok=True)
 
     with open(os.path.join(root, "VERSION.json"), "w") as handle:
         json.dump({"version": "4.14.7"}, handle)
-
     with open(os.path.join(root, "etc", "client.keys"), "w") as handle:
-        for agent_id, name, _, _, _ in AGENTS:
+        for agent_id, name, _ in AGENTS:
             handle.write("%03d %s any %064x\n" % (agent_id, name, agent_id))
-
+        handle.write("004 !removed-agent any %064x\n" % 4)  # 4.x marks a removed entry with !
     with open(os.path.join(root, "etc", "authd.pass"), "w") as handle:
         handle.write("MigrationLab2026\n")
 
     for group in GROUPS:
         with open(os.path.join(root, "etc", "shared", group, "agent.conf"), "w") as handle:
             handle.write("<agent_config><!-- %s --></agent_config>\n" % group)
-    # Regenerated by the manager; must never reach the target.
+    # Compiled by the manager; must never be carried.
     with open(os.path.join(root, "etc", "shared", "linux-servers", "merged.mg"), "w") as handle:
         handle.write("stale\n")
+    # Operator content the API cannot upload; has to be reported, not silently dropped.
+    with open(os.path.join(root, "etc", "shared", "pci-scope", "custom-list.txt"), "w") as handle:
+        handle.write("a:b\n")
 
     database = os.path.join(root, "queue", "db", "global.db")
-    connection = sqlite3.connect(database)
-    connection.executescript(SOURCE_SCHEMA)
-    connection.execute(
-        "INSERT INTO agent (id, name, ip, register_ip, date_add, os_platform, os_uname,"
-        " connection_status) VALUES (0, 'mgr4', '127.0.0.1', '127.0.0.1', 1, NULL, NULL,"
-        " 'never_connected')")
-    for agent_id, name, platform, _, groups in AGENTS:
-        connection.execute(
-            "INSERT INTO agent (id, name, ip, register_ip, internal_key, os_platform, os_uname,"
-            " os_codename, config_sum, manager_host, version, date_add, `group`,"
-            " connection_status) VALUES (?, ?, ?, 'any', ?, ?, 'uname', 'codename', 'sum',"
-            " 'mgr4', 'Wazuh v4.14.7', ?, ?, 'active')",
-            (agent_id, name, "10.0.0.%d" % agent_id, "%064x" % agent_id, platform,
-             1700000000 + agent_id, ",".join(groups)))
-    for group in GROUPS:
-        connection.execute("INSERT INTO `group` (name) VALUES (?)", (group,))
-    group_ids = {row[1]: row[0] for row in connection.execute("SELECT id, name FROM `group`")}
-    for agent_id, _, _, _, groups in AGENTS:
-        for priority, group in enumerate(groups):
+    with sqlite3.connect(database) as connection:
+        connection.executescript(SOURCE_SCHEMA)
+        connection.execute("INSERT INTO agent (id, name, ip, register_ip, date_add) VALUES"
+                           " (0, 'mgr4', '127.0.0.1', '127.0.0.1', 1)")
+        for group in GROUPS:
+            connection.execute("INSERT INTO `group` (name) VALUES (?)", (group,))
+        ids = {row[1]: row[0] for row in connection.execute("SELECT id, name FROM `group`")}
+        for agent_id, name, groups in AGENTS:
             connection.execute(
-                "INSERT INTO belongs (id_agent, id_group, priority) VALUES (?, ?, ?)",
-                (agent_id, group_ids[group], priority))
-    connection.execute("INSERT INTO labels (id_agent, key, value) VALUES (1, 'env', 'prod')")
-    connection.commit()
-    connection.close()
-
-    rbac = os.path.join(root, "api", "configuration", "security", "rbac.db")
-    connection = sqlite3.connect(rbac)
-    connection.executescript(
-        "CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, password TEXT);"
-        "INSERT INTO users VALUES (1, 'wazuh', 'hash1'), (100, 'soc-analyst', 'hash2');"
-        "CREATE TABLE policies (id INTEGER PRIMARY KEY, name TEXT);"
-        "INSERT INTO policies VALUES (1, 'agents_all_resourceless');"
-        "PRAGMA user_version = 1;")
-    connection.commit()
-    connection.close()
+                "INSERT INTO agent (id, name, ip, register_ip, date_add, `group`) VALUES"
+                " (?, ?, ?, 'any', ?, ?)",
+                (agent_id, name, "10.0.0.%d" % agent_id, 1700000000 + agent_id, ",".join(groups)))
+            for priority, group in enumerate(groups):
+                connection.execute("INSERT INTO belongs VALUES (?, ?, ?)",
+                                   (agent_id, ids[group], priority))
+    with sqlite3.connect(os.path.join(root, "api/configuration/security/rbac.db")) as connection:
+        connection.executescript(
+            "CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT);"
+            "INSERT INTO users VALUES (1, 'wazuh'), (100, 'soc-analyst');"
+            "PRAGMA user_version = 1;")
     return root
 
 
 def build_target(root):
-    """A 5.0 installation as the package leaves it: empty registry, its own default group."""
-    for relative in ("etc/shared/default", "queue/db", "api/configuration/security", "var/run"):
-        os.makedirs(os.path.join(root, relative), exist_ok=True)
-
+    """Enough of a 5.0 installation for the version check and the rbac.db placement."""
+    os.makedirs(os.path.join(root, "api/configuration/security"), exist_ok=True)
+    os.makedirs(os.path.join(root, "etc"), exist_ok=True)
     with open(os.path.join(root, "VERSION.json"), "w") as handle:
         json.dump({"version": "5.0.0"}, handle)
-    with open(os.path.join(root, "etc", "client.keys"), "w"):
-        pass
-    with open(os.path.join(root, "etc", "shared", "default", "agent.conf"), "w") as handle:
-        handle.write("<agent_config><!-- 5.0 default --></agent_config>\n")
-
-    database = os.path.join(root, "queue", "db", "global.db")
-    with open(TARGET_SCHEMA) as handle:
-        schema = handle.read()
-    connection = sqlite3.connect(database)
-    connection.executescript(schema)
-    connection.execute(
-        "INSERT INTO `group` (name) VALUES ('default')")
-    connection.execute(
-        "INSERT INTO agent (id, name, ip, register_ip, date_add) VALUES"
-        " (0, 'mgr5', '127.0.0.1', '127.0.0.1', 1)")
-    connection.commit()
-    connection.close()
     return root
+
+
+class FakeManager(http.server.BaseHTTPRequestHandler):
+    """The endpoints the tool uses, plus a record of every call."""
+
+    calls = []
+    agents = {}      # id -> {name, ip, key, groups}
+    groups = set()
+    configurations = {}
+    reject_agents = set()
+
+    @classmethod
+    def reset(cls):
+        cls.calls, cls.agents, cls.groups = [], {}, {"default"}
+        cls.configurations, cls.reject_agents = {}, set()
+
+    def log_message(self, *args):
+        pass
+
+    def _send(self, status, payload):
+        body = json.dumps(payload).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _body(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(length).decode() if length else ""
+        try:
+            return json.loads(raw) if raw else None
+        except ValueError:
+            return raw
+
+    def do_POST(self):
+        body = self._body()
+        FakeManager.calls.append(("POST", self.path, body))
+        if self.path.startswith("/security/user/authenticate"):
+            if not self.headers.get("Authorization", "").startswith("Basic "):
+                return self._send(401, {"title": "Unauthorized"})
+            return self._send(200, {"data": {"token": "stub-token"}, "error": 0})
+        if self.path == "/groups":
+            FakeManager.groups.add(body["group_id"])
+            return self._send(200, {"data": {}, "error": 0})
+        if self.path == "/agents/insert":
+            agent_id = int(body["id"])
+            if agent_id in FakeManager.reject_agents:
+                return self._send(400, {"data": {"failed_items": [
+                    {"error": {"message": "Agent ID already in use"}, "id": [body["id"]]}]},
+                    "error": 1})
+            FakeManager.agents[agent_id] = {"name": body["name"], "ip": body.get("ip"),
+                                            "key": body["key"], "groups": []}
+            return self._send(200, {"data": {"id": body["id"]}, "error": 0})
+        return self._send(404, {"title": "Not Found"})
+
+    def do_PUT(self):
+        body = self._body()
+        FakeManager.calls.append(("PUT", self.path, body))
+        if self.path.startswith("/groups/") and self.path.endswith("/configuration"):
+            # The real endpoint refuses anything but XML; a stub that accepts JSON would have
+            # let that through to an operator.
+            if self.headers.get("Content-Type") != "application/xml":
+                return self._send(415, {"title": "Unsupported Media Type",
+                                        "detail": "Invalid Content-type (%s), expected"
+                                                  " ['application/xml']"
+                                                  % self.headers.get("Content-Type")})
+            FakeManager.configurations[self.path.split("/")[2]] = body
+            return self._send(200, {"data": {}, "error": 0})
+        if "/group/" in self.path:
+            _, _, agent_id, _, group = self.path.split("/", 4)
+            if int(agent_id) not in FakeManager.agents:
+                return self._send(404, {"data": {"failed_items": [
+                    {"error": {"message": "Agent does not exist"}, "id": [agent_id]}]},
+                    "error": 1})
+            FakeManager.agents[int(agent_id)]["groups"].append(group)
+            return self._send(200, {"data": {}, "error": 0})
+        return self._send(404, {"title": "Not Found"})
+
+    def do_GET(self):
+        FakeManager.calls.append(("GET", self.path, None))
+        if self.path.startswith("/agents"):
+            items = [{"id": "000", "name": "manager", "group": []}] + [
+                {"id": "%03d" % i, "name": a["name"], "group": a["groups"]}
+                for i, a in sorted(FakeManager.agents.items())]
+            return self._send(200, {"data": {"affected_items": items,
+                                             "total_affected_items": len(items)}, "error": 0})
+        if self.path.startswith("/groups"):
+            items = [{"name": n} for n in sorted(FakeManager.groups)]
+            return self._send(200, {"data": {"affected_items": items,
+                                             "total_affected_items": len(items)}, "error": 0})
+        return self._send(404, {"title": "Not Found"})
 
 
 class MigrationToolTest(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        FakeManager.reset()
+        cls.server = http.server.HTTPServer(("127.0.0.1", 0), FakeManager)
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+        cls.api_url = "http://127.0.0.1:%d" % cls.server.server_port
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
     def setUp(self):
-        if not os.path.isfile(TARGET_SCHEMA):
-            self.skipTest("%s not found; run from a repository checkout." % TARGET_SCHEMA)
+        FakeManager.reset()
         self.workspace = tempfile.TemporaryDirectory()
         base = self.workspace.name
         self.source = build_source(os.path.join(base, "source"))
         self.target = build_target(os.path.join(base, "target"))
         self.bundle = os.path.join(base, "bundle")
+        self.password = os.path.join(base, "pw")
+        with open(self.password, "w") as handle:
+            handle.write("secret\n")
 
     def tearDown(self):
         self.workspace.cleanup()
@@ -213,224 +242,200 @@ class MigrationToolTest(unittest.TestCase):
         return tool.main(["export", self.bundle, "--source-dir", self.source] + list(extra))
 
     def do_import(self, *extra):
-        return tool.main(["import", self.bundle, "--target-dir", self.target] + list(extra))
+        return tool.main(["import", self.bundle, "--target-dir", self.target,
+                          "--api-url", self.api_url, "--api-password-file", self.password]
+                         + list(extra))
 
     def check(self, *extra):
-        return tool.main(["check", self.bundle, "--target-dir", self.target] + list(extra))
+        return tool.main(["check", self.bundle, "--target-dir", self.target,
+                          "--api-url", self.api_url, "--api-password-file", self.password]
+                         + list(extra))
 
-    def target_registry(self):
-        return tool.open_ro(os.path.join(self.target, "queue", "db", "global.db"))
+    def manifest(self):
+        with open(os.path.join(self.bundle, "manifest.json")) as handle:
+            return json.load(handle)
 
-    # -- the round trip
+    # -- export
 
-    def test_round_trip_preserves_identity(self):
-        self.assertEqual(0, self.export("--with-password"))
-        self.assertEqual(0, self.do_import("--with-password", "--with-rbac"))
-        self.assertEqual(0, self.check())
-
-        with self.target_registry() as connection:
-            rows = {row[0]: row for row in connection.execute(
-                "SELECT id, name, os_type, `group`, connection_status, date_add, version"
-                " FROM agent WHERE id > 0")}
-            self.assertEqual(len(AGENTS), len(rows))
-            for agent_id, name, _, os_type, groups in AGENTS:
-                row = rows[agent_id]
-                self.assertEqual(name, row[1], "agent %d kept its name" % agent_id)
-                self.assertEqual(os_type, row[2], "agent %d os_type" % agent_id)
-                self.assertEqual(",".join(groups), row[3])
-                self.assertEqual("disconnected", row[4],
-                                 "an imported agent is disconnected until it reconnects")
-                self.assertEqual(1700000000 + agent_id, row[5], "registration date carried")
-                self.assertEqual("Wazuh v4.14.7", row[6])
-
-            # Row 0 is the manager's own and belongs to the target, not the bundle.
-            self.assertEqual("mgr5", connection.execute(
-                "SELECT name FROM agent WHERE id = 0").fetchone()[0])
-
-            membership = {}
-            for agent_id, group in connection.execute(
-                    "SELECT b.id_agent, g.name FROM belongs b"
-                    " JOIN `group` g ON g.id = b.id_group ORDER BY b.priority"):
-                membership.setdefault(agent_id, []).append(group)
-            for agent_id, _, _, _, groups in AGENTS:
-                self.assertEqual(sorted(groups), sorted(membership[agent_id]),
-                                 "agent %d group membership" % agent_id)
-
-    def test_keys_and_groups_land_with_the_right_content(self):
+    def test_export_reads_identity_out_of_the_4x_files(self):
         self.assertEqual(0, self.export())
-        self.assertEqual(0, self.do_import())
+        manifest = self.manifest()
+        self.assertEqual(len(AGENTS), len(manifest["agents"]),
+                         "a removed client.keys entry is not an agent")
+        by_id = {a["id"]: a for a in manifest["agents"]}
+        for agent_id, name, groups in AGENTS:
+            self.assertEqual(name, by_id[agent_id]["name"])
+            self.assertEqual("%064x" % agent_id, by_id[agent_id]["key"])
+            self.assertEqual(groups, by_id[agent_id]["groups"], "priority order is preserved")
+        self.assertEqual(sorted(CUSTOM_GROUPS), sorted(g["name"] for g in manifest["groups"]),
+                         "default is the target's own group and is never recreated")
 
-        with open(os.path.join(self.target, "etc", "client.keys")) as handle:
-            keys = handle.read()
-        for agent_id, name, _, _, _ in AGENTS:
-            self.assertIn("%03d %s" % (agent_id, name), keys)
-
-        shared = os.path.join(self.target, "etc", "shared")
-        for group in GROUPS:
-            if group == "default":
-                continue
-            self.assertTrue(os.path.isdir(os.path.join(shared, group)), group)
-        self.assertFalse(
-            os.path.exists(os.path.join(shared, "linux-servers", "merged.mg")),
-            "merged.mg is regenerated by the manager and must not be carried")
-        with open(os.path.join(shared, "default", "agent.conf")) as handle:
-            self.assertIn("5.0 default", handle.read(),
-                          "the target's own default group must survive the import")
-
-    def test_password_and_rbac_are_opt_in(self):
-        self.assertEqual(0, self.export("--with-password"))
-        self.assertEqual(0, self.do_import())
-        self.assertFalse(os.path.exists(os.path.join(self.target, "etc", "authd.pass")))
-        rbac = os.path.join(self.target, "api", "configuration", "security", "rbac.db")
-        self.assertFalse(os.path.exists(rbac))
+    def test_export_carries_agent_conf_and_records_what_it_cannot(self):
+        self.assertEqual(0, self.export())
+        groups = {g["name"]: g for g in self.manifest()["groups"]}
+        self.assertIn("linux-servers", groups["linux-servers"]["agent_conf"])
+        self.assertEqual([], groups["linux-servers"]["extra_files"],
+                         "merged.mg is compiled by the manager and is not operator content")
+        self.assertEqual(["custom-list.txt"], groups["pci-scope"]["extra_files"],
+                         "a file the API cannot upload is recorded rather than dropped silently")
 
     def test_neither_secret_is_collected_by_default(self):
         self.assertEqual(0, self.export())
-        self.assertFalse(os.path.exists(os.path.join(self.bundle, "authd.pass")),
-                         "the enrollment password is not collected unless asked for")
-        self.assertFalse(os.path.exists(os.path.join(self.bundle, "rbac.db")),
-                         "API password hashes are not collected unless asked for")
-
-    def test_a_second_import_keeps_the_first_backup(self):
-        self.assertEqual(0, self.export())
-        self.assertEqual(0, self.do_import())
-        keys = os.path.join(self.target, "etc", "client.keys")
-        with open(keys + ".pre-migration") as handle:
-            first = handle.read()
-        self.assertEqual(0, self.do_import("--force"))
-        with open(keys + ".pre-migration") as handle:
-            self.assertEqual(first, handle.read(), "the first backup must not be overwritten")
-        extra = [name for name in os.listdir(os.path.dirname(keys))
-                 if name.startswith("client.keys.pre-migration.")]
-        self.assertEqual(1, len(extra), "the second import takes its own timestamped backup")
-
-    def test_rbac_import_stages_the_api_upgrade(self):
-        self.assertEqual(0, self.export("--with-rbac"))
-        self.assertEqual(0, self.do_import("--with-rbac"))
-        rbac = os.path.join(self.target, "api", "configuration", "security", "rbac.db")
-        with tool.open_ro(rbac) as connection:
-            self.assertEqual(0, connection.execute("PRAGMA user_version").fetchone()[0],
-                             "version 0 is what makes the API rebuild its 5.0 defaults")
-            self.assertEqual(
-                {"wazuh", "soc-analyst"},
-                {row[0] for row in connection.execute("SELECT username FROM users")})
-
-    def test_dry_run_changes_nothing(self):
-        self.assertEqual(0, self.export())
-        before = os.path.getmtime(os.path.join(self.target, "queue", "db", "global.db"))
-        self.assertEqual(0, self.do_import("--dry-run"))
-        with self.target_registry() as connection:
-            self.assertEqual(0, connection.execute(
-                "SELECT count(*) FROM agent WHERE id > 0").fetchone()[0])
-        self.assertEqual(before,
-                         os.path.getmtime(os.path.join(self.target, "queue", "db", "global.db")))
-        self.assertFalse(os.path.exists(os.path.join(self.target, "etc", "client.keys")) and
-                         os.path.getsize(os.path.join(self.target, "etc", "client.keys")) > 0)
-
-    # -- refusals
+        self.assertFalse(os.path.exists(os.path.join(self.bundle, "authd.pass")))
+        self.assertFalse(os.path.exists(os.path.join(self.bundle, "rbac.db")))
+        self.assertEqual([], self.manifest()["secrets"])
 
     def test_export_refuses_a_5x_source(self):
         self.assertEqual(2, tool.main(["export", self.bundle, "--source-dir", self.target]))
         self.assertFalse(os.path.exists(self.bundle))
 
     def test_export_refuses_an_unknown_source_schema(self):
-        database = os.path.join(self.source, "queue", "db", "global.db")
-        connection = sqlite3.connect(database)
-        connection.execute("UPDATE metadata SET value = '99' WHERE key = 'db_version'")
-        connection.commit()
-        connection.close()
+        with sqlite3.connect(os.path.join(self.source, "queue/db/global.db")) as connection:
+            connection.execute("UPDATE metadata SET value = '99' WHERE key = 'db_version'")
         self.assertEqual(2, self.export())
         self.assertFalse(os.path.exists(self.bundle), "no partial bundle is left behind")
 
     def test_export_refuses_a_running_manager(self):
-        with open(os.path.join(self.source, "var", "run", "wazuh-remoted.pid"), "w"):
+        with open(os.path.join(self.source, "var/run/wazuh-remoted.pid"), "w"):
             pass
         self.assertEqual(2, self.export())
 
-    def test_import_refuses_a_running_manager(self):
-        self.assertEqual(0, self.export())
-        with open(os.path.join(self.target, "var", "run",
-                               "wazuh-manager-remoted.pid"), "w"):
-            pass
-        self.assertEqual(2, self.do_import())
+    def test_export_dry_run_writes_nothing(self):
+        self.assertEqual(0, self.export("--dry-run"))
+        self.assertFalse(os.path.exists(self.bundle))
 
-    def test_import_refuses_a_worker(self):
-        self.assertEqual(0, self.export())
-        with open(os.path.join(self.target, "etc", "wazuh-manager.conf"), "w") as handle:
-            handle.write("<wazuh_config><cluster><node_type>worker</node_type>"
-                         "</cluster></wazuh_config>")
-        self.assertEqual(2, self.do_import())
+    # -- import
 
-    def test_import_refuses_a_populated_registry_without_writing(self):
+    def test_import_recreates_everything_through_the_api(self):
         self.assertEqual(0, self.export())
         self.assertEqual(0, self.do_import())
-        keys = os.path.join(self.target, "etc", "client.keys")
-        with open(keys, "a") as handle:
-            handle.write("005 later-agent any %064x\n" % 5)
-        with open(keys) as handle:
-            before = handle.read()
-        self.assertEqual(2, self.do_import())
-        with open(keys) as handle:
-            self.assertEqual(before, handle.read(),
-                             "a refused import must not have installed anything first")
 
-    def test_import_refuses_a_tampered_bundle(self):
-        self.assertEqual(0, self.export())
-        with open(os.path.join(self.bundle, "client.keys"), "a") as handle:
-            handle.write("006 rogue any %064x\n" % 6)
-        self.assertEqual(2, self.do_import())
+        self.assertEqual(set(GROUPS), FakeManager.groups,
+                         "default was already there; the rest were created")
+        for group in CUSTOM_GROUPS:
+            self.assertIn(group, FakeManager.configurations)
 
-    def test_import_refuses_a_bundle_escaping_the_group_tree(self):
+        self.assertEqual({a[0] for a in AGENTS}, set(FakeManager.agents))
+        for agent_id, name, groups in AGENTS:
+            recorded = FakeManager.agents[agent_id]
+            self.assertEqual(name, recorded["name"])
+            self.assertEqual("%064x" % agent_id, recorded["key"], "the 4.x key is reused as is")
+            self.assertEqual([g for g in groups if g != "default"], recorded["groups"],
+                             "default is not assigned: every agent lands in it anyway")
+
+    def test_import_writes_no_manager_files(self):
         self.assertEqual(0, self.export())
-        archive = os.path.join(self.bundle, "groups.tar.gz")
-        escape = os.path.join(self.workspace.name, "escape.conf")
-        with open(escape, "w") as handle:
-            handle.write("nope\n")
-        with tarfile.open(archive, "w:gz") as tar:
-            tar.add(escape, arcname="../../etc/escaped.conf")
-        manifest_path = os.path.join(self.bundle, "manifest.json")
-        with open(manifest_path) as handle:
+        before = sorted(os.listdir(os.path.join(self.target, "etc")))
+        self.assertEqual(0, self.do_import())
+        self.assertEqual(before, sorted(os.listdir(os.path.join(self.target, "etc"))),
+                         "the API owns client.keys and the registry, not this tool")
+
+    def test_import_dry_run_calls_nothing_that_writes(self):
+        self.assertEqual(0, self.export())
+        self.assertEqual(0, self.do_import("--dry-run"))
+        writes = [c for c in FakeManager.calls if c[0] in ("POST", "PUT")
+                  and "authenticate" not in c[1]]
+        self.assertEqual([], writes)
+
+    def test_import_refuses_a_populated_target(self):
+        self.assertEqual(0, self.export())
+        FakeManager.agents[42] = {"name": "someone-else", "ip": None, "key": "x", "groups": []}
+        self.assertEqual(2, self.do_import())
+        writes = [c for c in FakeManager.calls if c[0] == "POST" and c[1] == "/agents/insert"]
+        self.assertEqual([], writes, "a refused import inserts nothing")
+
+    def test_import_reports_an_agent_the_manager_refuses(self):
+        self.assertEqual(0, self.export())
+        FakeManager.reject_agents = {2}
+        self.assertEqual(1, self.do_import(), "a partial import is not a success")
+        self.assertEqual({1, 3}, set(FakeManager.agents), "the others still went in")
+
+    def test_import_refuses_a_bundle_from_another_version(self):
+        self.assertEqual(0, self.export())
+        path = os.path.join(self.bundle, "manifest.json")
+        with open(path) as handle:
             manifest = json.load(handle)
-        manifest["files"]["groups.tar.gz"] = tool.sha256_of(archive)
-        with open(manifest_path, "w") as handle:
+        manifest["bundle_version"] = 99
+        with open(path, "w") as handle:
             json.dump(manifest, handle)
         self.assertEqual(2, self.do_import())
-        self.assertFalse(os.path.exists(os.path.join(self.target, "etc", "escaped.conf")))
-        with self.target_registry() as connection:
-            self.assertEqual(0, connection.execute(
-                "SELECT count(*) FROM agent WHERE id > 0").fetchone()[0],
-                "a refused import must not have written the registry first")
-        self.assertEqual(0, os.path.getsize(os.path.join(self.target, "etc", "client.keys")),
-                         "a refused import must not have installed client.keys first")
+
+    def test_import_refuses_a_truncated_manifest(self):
+        self.assertEqual(0, self.export())
+        with open(os.path.join(self.bundle, "manifest.json"), "w") as handle:
+            handle.write('{"bundle_version": 2, "agents"')
+        self.assertEqual(2, self.do_import(), "a truncated manifest is a refusal, not a traceback")
+
+    def test_secrets_are_opt_in_at_both_ends(self):
+        self.assertEqual(0, self.export("--with-rbac"))
+        self.assertTrue(os.path.exists(os.path.join(self.bundle, "rbac.db")))
+        self.assertEqual(0, self.do_import())
+        self.assertFalse(os.path.exists(
+            os.path.join(self.target, "api/configuration/security/rbac.db")),
+            "exported is not imported: the import flag gates it too")
+
+    def test_rbac_import_stages_the_api_upgrade(self):
+        self.assertEqual(0, self.export("--with-rbac"))
+        self.assertEqual(0, self.do_import("--with-rbac"))
+        path = os.path.join(self.target, "api/configuration/security/rbac.db")
+        with tool.open_ro(path) as connection:
+            self.assertEqual(0, connection.execute("PRAGMA user_version").fetchone()[0],
+                             "version 0 is what makes the API rebuild its 5.0 defaults")
+
+    def test_a_second_import_keeps_the_first_backup(self):
+        path = os.path.join(self.target, "api/configuration/security/rbac.db")
+        with open(path, "w") as handle:
+            handle.write("the manager's own")  # something worth backing up on the first import
+        self.assertEqual(0, self.export("--with-rbac"))
+        self.assertEqual(0, self.do_import("--with-rbac"))
+        with open(path + ".pre-migration") as handle:
+            self.assertEqual("the manager's own", handle.read())
+        self.assertEqual(0, self.do_import("--with-rbac", "--force"))
+        with open(path + ".pre-migration") as handle:
+            self.assertEqual("the manager's own", handle.read(),
+                             "the first backup must not be overwritten")
+        extra = [n for n in os.listdir(os.path.dirname(path))
+                 if n.startswith("rbac.db.pre-migration.")]
+        self.assertEqual(1, len(extra), "the second import takes its own timestamped backup")
+
+    def test_the_password_never_comes_from_the_command_line(self):
+        completed = subprocess.run(
+            ["python3", os.path.join(HERE, "wazuh-migrate-identity.py"), "import", "--help"],
+            capture_output=True, text=True)
+        self.assertNotIn("--api-password ", completed.stdout,
+                         "ps is world-readable; only a file, the environment or a tty")
 
     # -- check
+
+    def test_check_passes_after_an_import(self):
+        self.assertEqual(0, self.export())
+        self.assertEqual(0, self.do_import())
+        self.assertEqual(0, self.check())
 
     def test_check_reports_a_missing_agent(self):
         self.assertEqual(0, self.export())
         self.assertEqual(0, self.do_import())
-        connection = sqlite3.connect(os.path.join(self.target, "queue", "db", "global.db"))
-        connection.execute("DELETE FROM agent WHERE id = 2")
-        connection.commit()
-        connection.close()
+        del FakeManager.agents[2]
         self.assertEqual(1, self.check())
 
     def test_check_reports_an_agent_the_bundle_never_carried(self):
         self.assertEqual(0, self.export())
         self.assertEqual(0, self.do_import())
-        connection = sqlite3.connect(os.path.join(self.target, "queue", "db", "global.db"))
-        connection.execute(
-            "INSERT INTO agent (id, name, ip, register_ip, date_add) VALUES"
-            " (9, 'some-host', '10.0.0.9', 'any', 1700000009)")
-        connection.commit()
-        connection.close()
+        FakeManager.agents[9] = {"name": "some-host", "ip": None, "key": "x", "groups": []}
         self.assertEqual(1, self.check(),
                          "an id the bundle never carried is the signature of an agent that"
                          " re-enrolled against an empty registry")
 
-    def test_check_reports_a_missing_group_folder(self):
+    def test_check_reports_a_missing_group(self):
         self.assertEqual(0, self.export())
         self.assertEqual(0, self.do_import())
-        shutil.rmtree(os.path.join(self.target, "etc", "shared", "pci-scope"))
+        FakeManager.groups.discard("pci-scope")
+        self.assertEqual(1, self.check())
+
+    def test_check_reports_a_membership_that_did_not_land(self):
+        self.assertEqual(0, self.export())
+        self.assertEqual(0, self.do_import())
+        FakeManager.agents[1]["groups"] = []
         self.assertEqual(1, self.check())
 
 
