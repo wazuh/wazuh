@@ -1,7 +1,7 @@
 # 13 — Plan: a per-container entry point in `container_baseline`'s C API
 
-Status: **implemented in `ed24a606ce`.** Prerequisite for the reconcile consumer
-([12 §12.11](12-blocking-decisions.md)). Written against `ba8c642007`.
+Status: **implemented in `befda19cd1`.** Prerequisite for the reconcile consumer
+([12 §12.11](12-blocking-decisions.md)). Written against `7aa998defa`.
 
 ## 13.0 Outcome
 

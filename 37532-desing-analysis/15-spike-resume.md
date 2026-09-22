@@ -4,7 +4,8 @@ A reading guide for `37532-5-0-0-container-integration`, written to answer two q
 making anyone read the other fourteen documents first: **what is actually built**, and **how does a
 file change inside a container become an alert**.
 
-- **Branch:** `37532-5-0-0-container-integration` @ `7e059dd5aa`, 56 commits ahead of `origin/5.0.0`
+- **Branch:** `37532-5-0-0-container-integration` @ `445a692c6d`, 57 commits ahead of `origin/5.0.0`
+  (`c57890a8ea`), rebased onto it on 2026-09-22
 - **Date:** 2026-09-08
 - **Scope:** Linux agent only. Everything here is `#if defined(__linux__) && defined(CLIENT)` or
   narrower, and the eBPF half additionally requires cgroup v2.
@@ -410,7 +411,7 @@ design, so using a transaction there wiped the rest of the container's state: me
 agent, modifying one file alerted `modified`, modifying the next alerted `added`, and 1 of 5 rows
 survived. Hence the non-transactional upsert
 ([C27](03-findings-correctness.md#c27--a-path-reconcile-deletes-the-rest-of-the-containers-rows),
-[D18](12-blocking-decisions.md#d18--how-does-a-path-reconcile-persist-a-row-without-authorising-a-sweep-resolved-2026-09-08--the-non-transactional-upsert-d3a8e394d9)).
+[D18](12-blocking-decisions.md#d18--how-does-a-path-reconcile-persist-a-row-without-authorising-a-sweep-resolved-2026-09-08--the-non-transactional-upsert-ccf47ab93c)).
 
 **Two more things that bite:**
 
