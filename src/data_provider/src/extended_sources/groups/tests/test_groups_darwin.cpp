@@ -81,11 +81,11 @@ TEST_F(GroupsProviderTest, CollectWithSpecificGid)
     EXPECT_CALL(*mockGroupWrapper, getgrgid(testGid))
     .WillOnce(Return(mockGroup));
 
-    EXPECT_CALL(*mockUUIDWrapper, gidToUUID(testGid, _)).WillOnce([](gid_t, uuid_t & uuid)
+    EXPECT_CALL(*mockUUIDWrapper, gidToUUID(testGid, _)).WillOnce([](gid_t, uuid_t& uuid)
     {
         std::fill(std::begin(uuid), std::end(uuid), 0xAB);
     });
-    EXPECT_CALL(*mockUUIDWrapper, uuidToString(_, _)).WillOnce([](const uuid_t&, uuid_string_t & str)
+    EXPECT_CALL(*mockUUIDWrapper, uuidToString(_, _)).WillOnce([](const uuid_t&, uuid_string_t& str)
     {
         strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
     });
@@ -126,11 +126,11 @@ TEST_F(GroupsProviderTest, CollectAllGroups)
     EXPECT_CALL(*mockGroupWrapper, getgrnam(::testing::StrEq("staff")))
     .WillOnce(Return(nullptr));
 
-    EXPECT_CALL(*mockUUIDWrapper, gidToUUID(501, _)).WillOnce([](gid_t, uuid_t & uuid)
+    EXPECT_CALL(*mockUUIDWrapper, gidToUUID(501, _)).WillOnce([](gid_t, uuid_t& uuid)
     {
         std::fill(std::begin(uuid), std::end(uuid), 0xAB);
     });
-    EXPECT_CALL(*mockUUIDWrapper, uuidToString(_, _)).WillOnce([](const uuid_t&, uuid_string_t & str)
+    EXPECT_CALL(*mockUUIDWrapper, uuidToString(_, _)).WillOnce([](const uuid_t&, uuid_string_t& str)
     {
         strcpy(str, "ffffeeee-dddd-cccc-bbbb-aaaa000001f5");
     });
