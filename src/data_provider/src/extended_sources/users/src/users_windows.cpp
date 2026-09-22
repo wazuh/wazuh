@@ -59,6 +59,7 @@ nlohmann::json UsersProvider::genUserJson(const User& user)
     r["uid_signed"] = static_cast<std::int32_t>(user.uid);
     r["gid_signed"] = static_cast<std::int32_t>(user.gid);
     r["description"] = user.description;
+    r["full_name"] = user.full_name;
     r["directory"] = user.directory;
     r["shell"] = m_usersHelper->getUserShell(user.sid);
     r["type"] = user.type;
