@@ -6,6 +6,7 @@ import io
 import json
 import os
 import sys
+from contextlib import contextmanager
 
 import yaml
 from unittest.mock import patch, MagicMock, AsyncMock, call
@@ -441,3 +442,105 @@ async def test_restore_default_passwords_refuses_before_applying(forward_mock, s
 
     forward_mock.assert_not_called()
     assert "does not satisfy the API password policy" in print_mock.call_args[0][0]
+
+
+@contextmanager
+def _provisioning(tmp_path, database=None, **variables):
+    """Provision into `tmp_path`, with exactly these password variables in the environment.
+
+    The variables not named are removed rather than left alone: one exported in the shell that runs the
+    suite would otherwise decide the result.
+    """
+    with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE",
+               new=str(tmp_path / "wazuh-preseeded-passwords.yml")), \
+            patch("wazuh.rbac.orm.DB_FILE", new=str(database or tmp_path / "absent.db")), \
+            patch("shutil.chown"), patch("wazuh.core.common.wazuh_gid", return_value=os.getgid()), \
+            patch("wazuh.rbac.orm.wazuh_uid", return_value=os.getuid()), \
+            patch("wazuh.rbac.orm.wazuh_gid", return_value=os.getgid()), \
+            patch.dict(os.environ, variables):
+        for name in set(rbac_control.PASSWORD_ENVIRONMENT_VARIABLES.values()) - set(variables):
+            os.environ.pop(name, None)
+        yield
+
+
+@pytest.mark.asyncio
+@patch("builtins.print")
+async def test_provision_default_passwords(print_mock, tmp_path, db_setup):
+    """Every default user without a password gets a generated one, and all of them are printed.
+
+    The installation output is the only disclosure: the manager never writes a password to its own log.
+    """
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+
+    with _provisioning(tmp_path):
+        await rbac_control.provision_default_passwords(Arguments())
+
+    provisioned = _provisioned(provisioning_file)
+    assert set(provisioned) == {"wazuh", "wazuh-wui"}
+    assert provisioned["wazuh"] != provisioned["wazuh-wui"]
+    assert oct(provisioning_file.stat().st_mode)[-3:] == "640"
+
+    printed = "\n".join(str(c.args[0]) for c in print_mock.call_args_list if c.args)
+    assert all(password in printed for password in provisioned.values())
+
+
+@pytest.mark.asyncio
+@patch("builtins.print")
+async def test_provision_default_passwords_takes_the_environment(print_mock, tmp_path, db_setup):
+    """A password supplied through the environment is provisioned instead of a generated one."""
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+
+    with _provisioning(tmp_path, WAZUH_WUI_PASSWORD="Env1r0nment-Pass."):
+        await rbac_control.provision_default_passwords(Arguments())
+
+    provisioned = _provisioned(provisioning_file)
+    assert provisioned["wazuh-wui"] == "Env1r0nment-Pass."
+    assert provisioned["wazuh"] != "Env1r0nment-Pass."
+
+
+@pytest.mark.asyncio
+@patch("builtins.print")
+async def test_provision_default_passwords_refuses_an_invalid_environment_password(print_mock, tmp_path,
+                                                                                   db_setup):
+    """A supplied password the API would reject stops the installation instead of being generated around."""
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+
+    with _provisioning(tmp_path, WAZUH_API_PASSWORD="short"):
+        with pytest.raises(SystemExit):
+            await rbac_control.provision_default_passwords(Arguments())
+
+    assert not provisioning_file.exists()
+    assert "does not satisfy the API password policy" in print_mock.call_args[0][0]
+
+
+@pytest.mark.asyncio
+@patch("builtins.print")
+async def test_provision_default_passwords_keeps_what_is_provisioned(print_mock, tmp_path, db_setup):
+    """A second run neither regenerates nor overwrites what an earlier `set-password` wrote."""
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+    provisioning_file.write_text(yaml.safe_dump({'manager': [{'name': 'wazuh',
+                                                              'password': 'Pr3seeded-Pass.'}]}))
+    provisioning_file.chmod(0o640)
+
+    with _provisioning(tmp_path, WAZUH_API_PASSWORD="Env1r0nment-Pass."):
+        await rbac_control.provision_default_passwords(Arguments())
+
+    provisioned = _provisioned(provisioning_file)
+    assert provisioned["wazuh"] == "Pr3seeded-Pass."
+    assert "wazuh-wui" in provisioned
+
+
+@pytest.mark.asyncio
+@patch("builtins.print")
+async def test_provision_default_passwords_does_nothing_once_the_database_exists(print_mock, tmp_path,
+                                                                                 db_setup):
+    """The password in use is in the database and this command cannot read it, so it must not claim to."""
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+    existing_db = tmp_path / "rbac.db"
+    existing_db.touch()
+
+    with _provisioning(tmp_path, database=existing_db):
+        await rbac_control.provision_default_passwords(Arguments())
+
+    assert not provisioning_file.exists()
+    assert "already exists" in print_mock.call_args[0][0]

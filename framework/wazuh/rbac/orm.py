@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import secrets
+import string
 from datetime import datetime
 from enum import IntEnum
 from stat import S_IRGRP, S_IROTH, S_ISREG, S_IWGRP, S_IWOTH
@@ -56,6 +57,37 @@ USER_PASSWORD_MIN_LENGTH = 12
 USER_PASSWORD_MAX_LENGTH = 64
 USER_POLICY_SYMBOLS = '.*+?-'
 USER_PASSWORD_POLICY = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[.*+?-]).{12,}\Z')
+
+# Above the policy minimum, and short enough to be copied by hand out of the installation output.
+GENERATED_PASSWORD_LENGTH = 20
+_GENERATED_PASSWORD_ALPHABET = string.ascii_letters + string.digits + USER_POLICY_SYMBOLS
+
+
+def generate_default_password() -> str:
+    """Build a random password that satisfies the API password policy.
+
+    One character of each class the policy demands is drawn first and the rest of the length is filled from
+    the whole alphabet, so the result matches `USER_PASSWORD_POLICY` by construction instead of by drawing
+    until one happens to.
+
+    Returns
+    -------
+    str
+        Password of `GENERATED_PASSWORD_LENGTH` characters, taken from the system CSPRNG.
+    """
+    password = [secrets.choice(string.ascii_lowercase),
+                secrets.choice(string.ascii_uppercase),
+                secrets.choice(string.digits),
+                secrets.choice(USER_POLICY_SYMBOLS)]
+    password += [secrets.choice(_GENERATED_PASSWORD_ALPHABET)
+                 for _ in range(GENERATED_PASSWORD_LENGTH - len(password))]
+
+    # Without this each class always lands in the same position, which narrows what an attacker who knows
+    # how the password is built has to search.
+    secrets.SystemRandom().shuffle(password)
+
+    return ''.join(password)
+
 
 def _unusable_password() -> str:
     """Build a password nobody knows, for a user no provisioning covers.

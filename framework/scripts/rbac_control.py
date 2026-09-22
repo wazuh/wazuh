@@ -15,6 +15,11 @@ except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     sys.exit(1)
 
+# How the installation supplies a password instead of having one generated. Through the environment and
+# never through an argument: the process list is readable by every account on the host, the environment of
+# a process is not. A default user missing from this mapping is always generated.
+PASSWORD_ENVIRONMENT_VARIABLES = {'wazuh': 'WAZUH_API_PASSWORD', 'wazuh-wui': 'WAZUH_WUI_PASSWORD'}
+
 
 def signal_handler(n_signal, frame):
     print("")
@@ -195,6 +200,163 @@ async def restore_default_passwords(script_args):
         sys.exit(1)
 
 
+def _read_provisioned_passwords(default_users: list) -> dict:
+    """Read the passwords the node is already provisioned with.
+
+    Only the default users are kept: an entry naming anything else, left by another tool, would survive
+    every merge and would make the API refuse the file at every start, with no call to this script able to
+    correct it.
+
+    Parameters
+    ----------
+    default_users : list
+        Names of the RBAC default users.
+
+    Returns
+    -------
+    dict
+        Username to password mapping, empty when nothing is provisioned yet.
+    """
+    import os
+
+    import yaml
+    from wazuh.rbac.orm import PRESEEDED_PASSWORDS_FILE, PreseededPasswordsError, \
+        _assert_preseed_source_is_trusted
+
+    if not os.path.exists(PRESEEDED_PASSWORDS_FILE):
+        return {}
+
+    provisioned = {}
+    try:
+        # Checked as the API checks it, and through the descriptor that gets read: a file this script
+        # merged would otherwise reach the API vouched for, whatever it was before.
+        with open(os.open(PRESEEDED_PASSWORDS_FILE, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK),
+                  encoding='utf-8') as f:
+            _assert_preseed_source_is_trusted(f.fileno())
+            document = yaml.safe_load(f) or {}
+        if not isinstance(document, dict):
+            raise ValueError('it does not hold a YAML mapping')
+        for entry in document.get('manager') or []:
+            if entry['name'] in default_users:
+                provisioned[entry['name']] = entry['password']
+    except (OSError, KeyError, TypeError, ValueError, yaml.YAMLError, PreseededPasswordsError) as exc:
+        # The parser's own message echoes the line it failed on, password included.
+        reason = exc if isinstance(exc, PreseededPasswordsError) else type(exc).__name__
+        print(f"\tCould not read '{PRESEEDED_PASSWORDS_FILE}': {reason}. Remove it and set every "
+              f"default user's password again")
+        sys.exit(1)
+
+    return provisioned
+
+
+def _write_provisioned_passwords(provisioned: dict):
+    """Write the file the API seeds from, shaped as the `manager:` block of the deployment's credentials.
+
+    Renamed over the target so a reader never sees a half-written file, with the ownership and mode the API
+    requires: readable by the Wazuh user, writable by nobody else.
+
+    Parameters
+    ----------
+    provisioned : dict
+        Username to password mapping to write.
+    """
+    import os
+    from shutil import chown
+    from tempfile import mkstemp
+
+    import yaml
+    from wazuh.core.common import wazuh_gid
+    from wazuh.rbac.orm import PRESEEDED_PASSWORDS_FILE
+
+    document = {'manager': [{'name': name, 'password': value} for name, value in provisioned.items()]}
+
+    # `mkstemp` inside the guard, not before it: an installer chains these calls on the exit status, and a
+    # missing directory or an unprivileged run has to fail the chain rather than report success.
+    tmp_path = None
+    try:
+        fd, tmp_path = mkstemp(dir=path.dirname(PRESEEDED_PASSWORDS_FILE))
+        try:
+            os.write(fd, yaml.safe_dump(document, default_flow_style=False, sort_keys=False).encode())
+        finally:
+            os.close(fd)
+        chown(tmp_path, 'root', wazuh_gid())
+        os.chmod(tmp_path, 0o640)
+        os.replace(tmp_path, PRESEEDED_PASSWORDS_FILE)
+    except Exception as exc:
+        tmp_path and os.path.exists(tmp_path) and os.remove(tmp_path)
+        print(f"\tCould not write '{PRESEEDED_PASSWORDS_FILE}': {exc}. This command must run as root")
+        sys.exit(1)
+
+
+async def provision_default_passwords(script_args):
+    """Provision a password for every default user that has none, and disclose all of them.
+
+    Run by the installation once the package is in place. A user whose environment variable is set takes
+    that password, the rest are generated, and a user already provisioned is left alone, so a second run
+    neither regenerates nor overwrites what an earlier `set-password` wrote.
+
+    Writes the same file `set-password` writes and touches no database, so it runs with every daemon
+    stopped, which is the window the installation has.
+    """
+    import os
+
+    import yaml
+    from wazuh.core.common import DEFAULT_RBAC_RESOURCES
+    from wazuh.rbac.orm import DB_FILE, PRESEEDED_PASSWORDS_FILE, USER_PASSWORD_MAX_LENGTH, \
+        USER_PASSWORD_MIN_LENGTH, USER_PASSWORD_POLICY, USER_POLICY_SYMBOLS, generate_default_password
+
+    with open(path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
+        default_users = list(yaml.safe_load(f)['default_users'])
+
+    # The password in use is in the database, and this script cannot read it. Provisioning here would write
+    # a file that never applies and report credentials that do not authenticate.
+    if os.path.exists(DB_FILE):
+        print(f"\t'{DB_FILE}' already exists: its users keep the password they were created with, and this "
+              f"command cannot read it. Use 'change-password' with the manager running to change it")
+        return
+
+    provisioned = _read_provisioned_passwords(default_users)
+    origin = {}
+
+    for username in default_users:
+        if username in provisioned:
+            origin[username] = 'ALREADY PROVISIONED'
+            continue
+
+        variable = PASSWORD_ENVIRONMENT_VARIABLES.get(username)
+        supplied = os.environ.get(variable) if variable else None
+
+        if supplied is None:
+            provisioned[username] = generate_default_password()
+            origin[username] = 'GENERATED'
+            continue
+
+        if not USER_PASSWORD_MIN_LENGTH <= len(supplied) <= USER_PASSWORD_MAX_LENGTH \
+                or not USER_PASSWORD_POLICY.match(supplied):
+            print(f"\tThe password of '{username}', taken from {variable}, does not satisfy the API "
+                  f"password policy: {USER_PASSWORD_MIN_LENGTH} to {USER_PASSWORD_MAX_LENGTH} characters, "
+                  f"with a lowercase letter, an uppercase letter, a digit and one of "
+                  f"'{USER_POLICY_SYMBOLS}'")
+            sys.exit(1)
+
+        provisioned[username] = supplied
+        origin[username] = f'TAKEN FROM {variable}'
+
+    _write_provisioned_passwords(provisioned)
+
+    for username in default_users:
+        print(f"\t{username}: {origin[username]}")
+
+    # The installation output is how the operator, and whatever installs the rest of the deployment, get
+    # the credential the dashboard authenticates with. It is the only place a password is printed: the
+    # manager never writes one to its own log.
+    print("\nServer API credentials of this node:\n")
+    for username in default_users:
+        print(f"\t{username}: {provisioned[username]}")
+    print(f"\nThey are also in '{PRESEEDED_PASSWORDS_FILE}', which only root and the Wazuh group can read. "
+          f"Store them elsewhere and remove that file.")
+
+
 async def preseed_default_password(script_args):
     """Write the password of one default user to the file the API seeds the RBAC database from.
 
@@ -203,14 +365,11 @@ async def preseed_default_password(script_args):
     through the cluster protocol either, so it needs no node to be reachable.
     """
     import os
-    from shutil import chown
-    from tempfile import mkstemp
 
     import yaml
-    from wazuh.core.common import DEFAULT_RBAC_RESOURCES, wazuh_gid
-    from wazuh.rbac.orm import DB_FILE, PRESEEDED_PASSWORDS_FILE, PreseededPasswordsError, \
-        USER_PASSWORD_MAX_LENGTH, USER_PASSWORD_MIN_LENGTH, USER_PASSWORD_POLICY, USER_POLICY_SYMBOLS, \
-        _assert_preseed_source_is_trusted
+    from wazuh.core.common import DEFAULT_RBAC_RESOURCES
+    from wazuh.rbac.orm import DB_FILE, USER_PASSWORD_MAX_LENGTH, USER_PASSWORD_MIN_LENGTH, \
+        USER_PASSWORD_POLICY, USER_POLICY_SYMBOLS
 
     with open(path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
         default_users = list(yaml.safe_load(f)['default_users'])
@@ -233,52 +392,9 @@ async def preseed_default_password(script_args):
 
     # Merged rather than overwritten: one user is set per execution, and the API refuses a file that does
     # not name every default user, so the entries already provisioned have to survive.
-    provisioned = {}
-    if os.path.exists(PRESEEDED_PASSWORDS_FILE):
-        try:
-            # Checked as the API checks it, and through the descriptor that gets read: a file this command
-            # merged would otherwise reach the API vouched for, whatever it was before.
-            with open(os.open(PRESEEDED_PASSWORDS_FILE, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK),
-                      encoding='utf-8') as f:
-                _assert_preseed_source_is_trusted(f.fileno())
-                document = yaml.safe_load(f) or {}
-            if not isinstance(document, dict):
-                raise ValueError('it does not hold a YAML mapping')
-            # Only the default users: an entry naming anything else would be kept and would make the API
-            # refuse the file at every start, with no call to this command able to correct it.
-            for entry in document.get('manager') or []:
-                if entry['name'] in default_users:
-                    provisioned[entry['name']] = entry['password']
-        except (OSError, KeyError, TypeError, ValueError, yaml.YAMLError, PreseededPasswordsError) as exc:
-            # The parser's own message echoes the line it failed on, password included.
-            reason = exc if isinstance(exc, PreseededPasswordsError) else type(exc).__name__
-            print(f"\tCould not read '{PRESEEDED_PASSWORDS_FILE}': {reason}. Remove it and set every "
-                  f"default user's password again")
-            sys.exit(1)
-
+    provisioned = _read_provisioned_passwords(default_users)
     provisioned[script_args.user] = password
-
-    # The `manager:` block of the deployment's credentials file, verbatim in shape
-    document = {'manager': [{'name': name, 'password': value} for name, value in provisioned.items()]}
-
-    # Renamed over the target so a reader never sees a half-written file, with the ownership and mode the
-    # API requires: readable by the Wazuh user, writable by nobody else.
-    # `mkstemp` inside the guard, not before it: an installer chains these calls on the exit status, and a
-    # missing directory or an unprivileged run has to fail the chain rather than report success.
-    tmp_path = None
-    try:
-        fd, tmp_path = mkstemp(dir=path.dirname(PRESEEDED_PASSWORDS_FILE))
-        try:
-            os.write(fd, yaml.safe_dump(document, default_flow_style=False, sort_keys=False).encode())
-        finally:
-            os.close(fd)
-        chown(tmp_path, 'root', wazuh_gid())
-        os.chmod(tmp_path, 0o640)
-        os.replace(tmp_path, PRESEEDED_PASSWORDS_FILE)
-    except Exception as exc:
-        tmp_path and os.path.exists(tmp_path) and os.remove(tmp_path)
-        print(f"\tCould not write '{PRESEEDED_PASSWORDS_FILE}': {exc}. This command must run as root")
-        sys.exit(1)
+    _write_provisioned_passwords(provisioned)
 
     print(f"\t{script_args.user}: SET")
 
@@ -346,6 +462,15 @@ def get_script_arguments():
     preseed_parser.add_argument("-u", "--user", action="store", dest="user", required=True,
                                 help="Default user whose password to provision.")
     preseed_parser.set_defaults(func=preseed_default_password)
+    provision_parser = arg_subparsers.add_parser("provision-passwords",
+                                                 help="Provision a password for every default API user "
+                                                      "that has none and print the credentials. Each one "
+                                                      "is generated unless its environment variable "
+                                                      "(WAZUH_API_PASSWORD, WAZUH_WUI_PASSWORD) supplies "
+                                                      "it. Run by the installation before the first "
+                                                      "manager start; it does nothing once the RBAC "
+                                                      "database exists.")
+    provision_parser.set_defaults(func=provision_default_passwords)
     reset_parser = arg_subparsers.add_parser("factory-reset",
                                              help="Reset the RBAC database to its default state. This will "
                                                   "completely wipe your custom RBAC information, and restore the "
