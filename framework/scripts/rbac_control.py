@@ -325,14 +325,10 @@ async def provision_default_passwords(script_args):
     for username in default_users:
         print(f"\t{username}: {origin[username]}")
 
-    # The installation output is how the operator, and whatever installs the rest of the deployment, get
-    # the credential the dashboard authenticates with. It is the only place a password is printed: the
-    # manager never writes one to its own log.
-    print("\nServer API credentials of this node:\n")
-    for username in default_users:
-        print(f"\t{username}: {provisioned[username]}")
-    print(f"\nThey are also in '{PRESEEDED_PASSWORDS_FILE}', which only root and the Wazuh group can read. "
-          f"Store them elsewhere and remove that file.")
+    # Never the value. An installation's output reaches the terminal scrollback, the package manager's log
+    # and, in CI, a build log, so the file is the only disclosure and this says where it is.
+    print(f"\n\tThe Server API credentials are in '{PRESEEDED_PASSWORDS_FILE}', which only root and the "
+          f"Wazuh group can read.\n\tStore them where the deployment keeps its secrets and remove that file.")
 
 
 async def preseed_default_password(script_args):

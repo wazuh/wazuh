@@ -132,19 +132,6 @@ Refer to the 5.x migration guide for more information.
 EOF
 }
 
-# The manager reads the Wazuh indexer with the credentials of the indexer's own `wazuh-manager` user,
-# which only whoever installed the indexer knows. Refused here, before the package is installed, rather
-# than installing a manager that cannot reach the indexer and says so nowhere. Only on a fresh install:
-# an upgrade keeps the keystore it already has.
-if [ "$1" -eq 1 ] && [ -z "${INDEXER_PASSWORD}" ]; then
-  echo "ERROR: INDEXER_PASSWORD is not set." >&2
-  echo "       wazuh-manager authenticates against the Wazuh indexer as its 'wazuh-manager'" >&2
-  echo "       user. Put that user's password in the environment and install again:" >&2
-  echo "           read -rs INDEXER_PASSWORD && export INDEXER_PASSWORD" >&2
-  echo "           sudo -E yum install wazuh-manager" >&2
-  exit 1
-fi
-
 if [ "$1" -eq 2 ]; then
   # Check if this is an upgrade from versions prior to 5.x.
   if [ -f %{_sysconfdir}/ossec-init.conf ]; then
@@ -348,31 +335,10 @@ if [ "$1" -eq 1 ]; then
   chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/wazuh-manager.json
   chmod 0660 %{_localstatedir}/logs/wazuh-manager.json
 
-  # The manager reads the Wazuh indexer with the indexer's own `wazuh-manager` user. Through the
-  # standard input, never through the tool's -v option: a password given on a command line is visible to
-  # every account on the host through the process list. The pre-install scriptlet already refused a
-  # fresh install that did not set it.
-  if ! printf '%%s\n' "${INDEXER_USERNAME:-wazuh-manager}" | \
-          %{_localstatedir}/bin/wazuh-manager-keystore -f indexer -k username > /dev/null; then
-    echo "ERROR: could not store the indexer user name in the keystore." >&2
-    exit 1
-  fi
-  if ! printf '%%s\n' "${INDEXER_PASSWORD}" | \
-          %{_localstatedir}/bin/wazuh-manager-keystore -f indexer -k password > /dev/null; then
-    echo "ERROR: could not store the indexer user password in the keystore." >&2
-    exit 1
-  fi
-
-  # Generate a password for every Server API default user that has none, and print the credentials: this
-  # output is how the operator, and whatever installs the rest of the deployment, get the credential the
-  # dashboard authenticates with. INITIAL_WAZUH_PASSWORD and INITIAL_WAZUH_WUI_PASSWORD supply one instead of
-  # generating it. A failure is not fatal: the manager generates the passwords at its first start and
-  # leaves them in the same file, so all that is lost is the disclosure on screen.
-  if ! %{_localstatedir}/bin/rbac_control provision-passwords; then
-    echo "WARNING: could not provision the Server API credentials. The manager generates them at" >&2
-    echo "         its first start and leaves them in" >&2
-    echo "         %{_localstatedir}/api/configuration/security/wazuh-preseeded-passwords.yml." >&2
-  fi
+  # One call, shared with the Debian postinst and install.sh, so the three cannot drift apart. It writes
+  # what it can resolve, leaves the node unconfigured rather than half configured when it cannot, and never
+  # prints a password.
+  sh %{_localstatedir}/packages_files/manager_installation_scripts/src/init/resolve-credentials.sh %{_localstatedir}
 fi
 
 if [[ -d /run/systemd/system ]]; then

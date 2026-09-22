@@ -481,9 +481,10 @@ def _provisioning(tmp_path, database=None, **variables):
 @pytest.mark.asyncio
 @patch("builtins.print")
 async def test_provision_default_passwords(print_mock, tmp_path, db_setup):
-    """Every default user without a password gets a generated one, and all of them are printed.
+    """Every default user without a password gets a generated one, and none of them is printed.
 
-    The installation output is the only disclosure: the manager never writes a password to its own log.
+    An installation's output reaches the terminal scrollback, the package manager's log and, in CI, a build
+    log, so the credentials file is the only disclosure and the output only says where it is.
     """
     provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
 
@@ -496,7 +497,8 @@ async def test_provision_default_passwords(print_mock, tmp_path, db_setup):
     assert oct(provisioning_file.stat().st_mode)[-3:] == "640"
 
     printed = "\n".join(str(c.args[0]) for c in print_mock.call_args_list if c.args)
-    assert all(password in printed for password in provisioned.values())
+    assert not any(password in printed for password in provisioned.values())
+    assert str(provisioning_file) in printed
 
 
 @pytest.mark.asyncio

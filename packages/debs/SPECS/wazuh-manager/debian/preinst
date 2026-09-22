@@ -53,19 +53,6 @@ EOF
 case "$1" in
     install|upgrade)
 
-        # The manager reads the Wazuh indexer with the credentials of the indexer's own `wazuh-manager`
-        # user, which only whoever installed the indexer knows. Refused here, before the package is
-        # unpacked, rather than installing a manager that cannot reach the indexer and says so nowhere.
-        # Only on a fresh install: an upgrade keeps the keystore it already has.
-        if [ "$1" = "install" ] && [ -z "$2" ] && [ -z "${INDEXER_PASSWORD}" ]; then
-            echo "ERROR: INDEXER_PASSWORD is not set." >&2
-            echo "       wazuh-manager authenticates against the Wazuh indexer as its 'wazuh-manager'" >&2
-            echo "       user. Put that user's password in the environment and install again:" >&2
-            echo "           read -rs INDEXER_PASSWORD && export INDEXER_PASSWORD" >&2
-            echo "           sudo -E apt install wazuh-manager" >&2
-            exit 1
-        fi
-
         # HARD BLOCK: Prevent upgrade from versions prior to 5.x.
         if [ "$1" = "upgrade" ] && [ -n "$2" ]; then
             # $2 contains the old version in upgrade scenarios

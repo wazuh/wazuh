@@ -1152,10 +1152,6 @@ main()
     # an invalid WAZUH_REMOTE_* value must abort while the system is still untouched.
     if [ "X${update_only}" = "X" ] && [ "X$INSTYPE" = "Xmanager" ]; then
         ValidateRemoteVars
-        # Not while a package is being built: the deb and rpm builds run this script to stage a file tree,
-        # not to configure a node. The credentials belong to the host the package is later installed on,
-        # and the maintainer scripts are what set them there.
-        [ -n "${WAZUH_PACKAGE_BUILD}" ] || ValidateIndexerVars
     fi
 
     ValidateServiceRegistrationVars
@@ -1181,8 +1177,7 @@ main()
     # package is being built, which would otherwise write a keystore entry and a credentials file into the
     # tree the package ships, giving every installation the same password.
     if [ "X${update_only}" = "X" ] && [ "X$INSTYPE" = "Xmanager" ] && [ -z "${WAZUH_PACKAGE_BUILD}" ]; then
-        StoreIndexerCredentials
-        ProvisionApiPasswords
+        sh "${SCRIPT_DIR}/src/init/resolve-credentials.sh" "${INSTALLDIR}"
     fi
 
     # Post-install usage hints.

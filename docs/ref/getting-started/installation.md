@@ -85,7 +85,16 @@ Four more variables carry credentials rather than configuration options. They ar
 | `INITIAL_WAZUH_PASSWORD` | Password of the `wazuh` Server API user | No, generated when absent |
 | `INITIAL_WAZUH_WUI_PASSWORD` | Password of the `wazuh-wui` Server API user | No, generated when absent |
 
-A fresh installation that does not set `INDEXER_PASSWORD` is refused before the package is unpacked. There is no default for it, and a manager that cannot reach the indexer would say so nowhere.
+`INDEXER_PASSWORD` is the one the manager cannot invent: the indexer deployment decides it, and there is no default to fall back to. An installation that does not set it still completes and exits `0`, but the node is left **unconfigured**: the Server API passwords it owns are written, the keystore entry it could not resolve is not, the service is left alone, and the report names what is missing:
+
+```
+  resolved   Server API passwords for wazuh and wazuh-wui, in /var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.yml
+  MISSING    indexer password for wazuh-manager, expected in INDEXER_PASSWORD
+  The service was not started. To finish:
+      https://documentation.wazuh.com/current/installation-guide/wazuh-server/
+```
+
+All or nothing: a node missing any credential it consumes stays unconfigured even when it resolved the rest. A manager that starts and then fails every indexer call is harder to diagnose than one that never started and said why. Set the variable and install again, or set it and re-run the resolution.
 
 Unlike the `WAZUH_REMOTE_*` variables above, do not place these after `sudo`: an argument is visible to every account on the host through the process list, and it also lands in the shell history. Export them first and preserve the environment with `sudo -E`:
 
@@ -228,7 +237,7 @@ A file that is present but cannot be used is an installation error, not somethin
 
 #### Configure indexer connection
 
-The manager authenticates against the Wazuh indexer as the indexer's own `wazuh-manager` user. That password is the indexer deployment's, so the manager neither generates it nor ships a default for it: the installation takes it from the `INDEXER_PASSWORD` variable and stores it in the keystore, and refuses to install a fresh manager without it.
+The manager authenticates against the Wazuh indexer as the indexer's own `wazuh-manager` user. That password is the indexer deployment's, so the manager neither generates it nor ships a default for it: the installation takes it from the `INDEXER_PASSWORD` variable and stores it in the keystore. Without it the installation completes and the node is left unconfigured, as described in [Credential variables](#credential-variables).
 
 ```bash
 read -rs INDEXER_PASSWORD && export INDEXER_PASSWORD
