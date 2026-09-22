@@ -2790,6 +2790,76 @@ TEST_F(JsonSettersTest, MergesCopiesMergedSubtree)
     ASSERT_EQ(destination, expected);
 }
 
+// --- A member name is one JSON Pointer token, and must be escaped as such ----------------------
+//
+// merge() recurses by building a pointer from the member name it descends into. Pasted in raw, a
+// name containing '/' stops being one token and becomes two, so the merge lands on a different node
+// than the member it came from; read as a C-string, a name is cut short at an embedded NUL for the
+// same reason. Either way a member name can retarget the write.
+//
+// Each case needs the hostile name TWICE, because the recursive branch only runs for a name the
+// destination already holds -- the first occurrence is merely AddMember'd.
+
+TEST_F(JsonSettersTest, MergeDoesNotLetASlashInAMemberNameRetargetThePointer)
+{
+    json::Json destination {R"({"wazuh":{"agent":{"id":"001"}}})"};
+    json::Json source {R"({"wazuh/agent":{},"wazuh/agent":{"id":"002"}})"};
+    // "wazuh/agent" is ONE member name: it must stay a literal sibling and must not reach
+    // /wazuh/agent, whose id has to survive untouched.
+    json::Json expected {R"({"wazuh":{"agent":{"id":"001"}},"wazuh/agent":{"id":"002"}})"};
+
+    ASSERT_NO_THROW(destination.merge(true, source));
+    ASSERT_EQ(destination, expected);
+}
+
+TEST_F(JsonSettersTest, MergeDoesNotLetATildeInAMemberNameRetargetThePointer)
+{
+    // '~' is the other RFC 6901 metacharacter: unescaped, "a~1b" would be read back as "a/b".
+    json::Json destination {R"({"a/b":{"keep":"yes"},"a~1b":{}})"};
+    json::Json source {R"({"a~1b":{},"a~1b":{"keep":"no"}})"};
+    json::Json expected {R"({"a/b":{"keep":"yes"},"a~1b":{"keep":"no"}})"};
+
+    ASSERT_NO_THROW(destination.merge(true, source));
+    ASSERT_EQ(destination, expected);
+}
+
+TEST_F(JsonSettersTest, MergeDoesNotTruncateAMemberNameAtAnEmbeddedNul)
+{
+    json::Json destination {R"({"wazuh":{"agent":{"id":"001"}}})"};
+    json::Json source {R"({"wazuh\u0000x":{},"wazuh\u0000x":{"agent":{"id":"002"}}})"};
+    // The other half of the defect: the pointer token used to be read from GetString() as a
+    // C-string, so "wazuh<NUL>x" was cut down to "wazuh" and the merge walked into the REAL wazuh
+    // object and overwrote its id. Taking the name by length keeps the 7-character name distinct
+    // from the 5-character one, so it stays a literal sibling.
+    json::Json expected {R"({"wazuh":{"agent":{"id":"001"}},"wazuh\u0000x":{"agent":{"id":"002"}}})"};
+
+    ASSERT_NO_THROW(destination.merge(true, source));
+    ASSERT_EQ(destination, expected);
+}
+
+TEST_F(JsonSettersTest, MergeKeepsADottedMemberNameWhole)
+{
+    // Guards against "fixing" this with a dot-path type: '.' is an ordinary character in a JSON
+    // member name and must not split the pointer into two tokens.
+    json::Json destination {R"({"a":{"b":{"keep":"yes"}},"a.b":{}})"};
+    json::Json source {R"({"a.b":{},"a.b":{"keep":"no"}})"};
+    json::Json expected {R"({"a":{"b":{"keep":"yes"}},"a.b":{"keep":"no"}})"};
+
+    ASSERT_NO_THROW(destination.merge(true, source));
+    ASSERT_EQ(destination, expected);
+}
+
+TEST_F(JsonSettersTest, MergeHandlesAnEmptyMemberName)
+{
+    // "" is a legal member name; per RFC 6901 its pointer token is empty, i.e. the pointer "/".
+    json::Json destination {R"({"":{"keep":"yes"}})"};
+    json::Json source {R"({"":{"added":"x"}})"};
+    json::Json expected {R"({"":{"keep":"yes","added":"x"}})"};
+
+    ASSERT_NO_THROW(destination.merge(true, source));
+    ASSERT_EQ(destination, expected);
+}
+
 TEST(JsonTest, eraseIfKeyInvalidPointer)
 {
     Json json {R"({

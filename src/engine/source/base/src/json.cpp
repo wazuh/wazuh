@@ -1216,7 +1216,17 @@ void Json::merge(const bool isRecursive, const rapidjson::Value& source, std::st
                             rapidjson::Value cpyValue {srcIt->value, m_document.GetAllocator()};
                             if (isRecursive && (srcIt->value.IsObject() || srcIt->value.IsArray()))
                             {
-                                std::string newPath {std::string(path) + "/" + srcIt->name.GetString()};
+                                const std::string_view rawName {srcIt->name.GetString(), srcIt->name.GetStringLength()};
+                                std::string newPath {path};
+                                if (rawName.find_first_of("~/") == std::string_view::npos)
+                                {
+                                    newPath += '/';
+                                    newPath.append(rawName);
+                                }
+                                else
+                                {
+                                    newPath += formatJsonPath(rawName, true);
+                                }
                                 merge(isRecursive, cpyValue, newPath);
                             }
                             else
