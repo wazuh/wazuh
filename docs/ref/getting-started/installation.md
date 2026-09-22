@@ -193,13 +193,28 @@ A supplied password has to satisfy the API policy, 12 to 64 characters with a lo
 
 **The password is the deployment's, not the node's.** In a cluster, give every node the same pair through those variables, the same way `root-ca.pem` is one file shared by all of them. A node that generates its own would serve a different password the day it is promoted to master, and the dashboard would start answering `401`.
 
-**The credentials file stays.** `api/configuration/security/wazuh-preseeded-passwords.yml` is written `0640`, readable by root and the Wazuh group, and the manager reads it only when it creates `rbac.db`. It is kept afterwards so the credentials can still be read, and `wazuh-manager-apid` logs a warning on every start while it is there:
+**The credentials file stays.** `api/configuration/security/wazuh-preseeded-passwords.yml` is written `0640`, readable by root and the Wazuh group, and the manager reads it only when it creates `rbac.db`. It is written whether the password was supplied or generated, because it is also how the value reaches the first API start: `rbac.db` is created then, not during the installation, and the installation's environment is gone by the time systemd starts the service. It is kept afterwards so a generated password can still be read, and `wazuh-manager-apid` logs a warning on every start while it is there:
 
 ```
 WARNING: The API credentials of this node are still in plaintext in '/var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.yml'. Store them elsewhere and remove that file. Change them with '/var/wazuh-manager/bin/rbac_control change-password'
 ```
 
-Remove it once the credentials are stored somewhere else. Nothing depends on it after `rbac.db` exists.
+**Removing it.** Nothing reads the file once `rbac.db` exists, so deleting it costs nothing and is the end of the installation:
+
+```bash
+sudo rm /var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.yml
+```
+
+Do that once the credentials are stored wherever the deployment keeps its secrets, and the warning stops. If you would rather not keep any copy of what the installation wrote, set your own password first and then delete the file. The manager has to be running for this, because it changes the live credential in `rbac.db` rather than the file:
+
+```bash
+sudo /var/wazuh-manager/bin/rbac_control change-password --user wazuh
+sudo rm /var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.yml
+```
+
+With `--user` and nothing else the command prompts for that one password without echoing it, so it reaches neither the process list nor the shell history.
+
+Changing `wazuh-wui` this way needs the dashboard configuration updated to match, or it starts answering `401`. See [Changing them](#changing-them).
 
 To pin a password on a node that is already installed but has never started, `bin/rbac_control set-password -u <user>` writes the same file. It reads the value from the first line of the standard input, never from an argument, and merges, so each call provisions one user and keeps the other:
 
