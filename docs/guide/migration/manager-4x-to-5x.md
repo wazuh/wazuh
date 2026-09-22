@@ -62,7 +62,7 @@ systemctl stop wazuh-manager
 mkdir -p /root/wazuh-4x-backup && cd /var/ossec
 cp etc/client.keys etc/authd.pass queue/db/global.db api/configuration/security/rbac.db /root/wazuh-4x-backup/
 cp etc/ossec.conf etc/local_internal_options.conf api/configuration/api.yaml /root/wazuh-4x-backup/
-tar -czf /root/wazuh-4x-backup/groups.tar.gz -C /var/ossec/etc --exclude='shared/default' --exclude='*/merged.mg' shared/*/
+(cd /var/ossec/etc && tar -czf /root/wazuh-4x-backup/groups.tar.gz --exclude='shared/default' --exclude='*/merged.mg' shared/*/)
 tar -czf /root/wazuh-4x-backup/ruleset.tar.gz -C /var/ossec/etc rules decoders lists
 ```
 
@@ -75,6 +75,11 @@ tar -czf /root/wazuh-4x-backup/ruleset.tar.gz -C /var/ossec/etc rules decoders l
 | `api/configuration/security/rbac.db` | API users, roles, policies | `/var/wazuh-manager/api/configuration/security/rbac.db` |
 | `etc/ossec.conf`, `etc/local_internal_options.conf`, `api/configuration/api.yaml` | Configuration to translate by hand | See [Step 4](#4-migrate-the-configuration) |
 | `etc/rules/`, `etc/decoders/`, `etc/lists/` | Your content, to translate by hand | See the ruleset guides |
+
+The subshell is not decoration: `shared/*/` is expanded by the shell, in the shell's own directory,
+so `-C` does not help it. Run from `/var/ossec` it expands against `/var/ossec/shared`, which does
+not exist, and tar writes an empty archive and exits `2`. Check the archive lists your groups before
+moving on to step 2, which uninstalls 4.x and takes the originals with it.
 
 The `default` group is excluded on purpose: the 5.0 package ships its own `default` folder and
 `shared/*/` would otherwise overwrite it with the 4.x files. If you customized

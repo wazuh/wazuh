@@ -322,6 +322,9 @@ def command_export(args):
         if name == "authd.pass" and not args.with_password:
             log("  skip     %-14s (--with-password not given)" % name)
             continue
+        if name == "rbac.db" and not args.with_rbac:
+            log("  skip     %-14s (--with-rbac not given)" % name)
+            continue
         destination = os.path.join(args.bundle, name)
         log("  export   %-14s <- %s" % (name, path))
         if not args.dry_run:
@@ -429,7 +432,9 @@ def backup_existing(path, dry_run):
         return None
     backup = "%s.pre-migration" % path
     if os.path.exists(backup):
-        return backup
+        # Never overwrite an earlier backup, and never skip one either: a second import would
+        # otherwise replace a live file with no copy of it anywhere.
+        backup = "%s.pre-migration.%s" % (path, time.strftime("%Y%m%d%H%M%S"))
     if not dry_run:
         shutil.copy2(path, backup)
     return backup
@@ -460,6 +465,30 @@ def install_file(bundle, name, target_dir, dry_run):
              % (owner, group, destination))
     else:
         os.chown(destination, uid, gid)
+
+
+def preflight_groups(bundle, target_dir):
+    """Validates the group archive before anything is written.
+
+    The extraction itself happens late, after the registry, so every reason to refuse it has to be
+    known up front: a refusal that arrives then would leave exactly the half-applied state the
+    checks exist to prevent.
+    """
+    archive = os.path.join(bundle, "groups.tar.gz")
+    if not os.path.isfile(archive):
+        return
+    if not os.path.isdir(os.path.join(target_dir, "etc", "shared")):
+        raise MigrationError("'%s/etc/shared' does not exist; is '%s' a 5.0 installation?"
+                             % (target_dir, target_dir))
+    with tarfile.open(archive, "r:gz") as tar:
+        for member in tar.getmembers():
+            # The archive is ours, but a bundle is a file an operator moves between hosts:
+            # refuse anything that would land outside the group tree.
+            if member.name.startswith("/") or ".." in member.name.split("/"):
+                raise MigrationError("refusing to extract '%s' from the bundle." % member.name)
+            if member.issym() or member.islnk():
+                raise MigrationError("refusing to extract the link '%s' from the bundle."
+                                     % member.name)
 
 
 def preflight_registry(bundle, target_dir, force):
@@ -591,24 +620,13 @@ def restore_groups(bundle, target_dir, manifest, dry_run):
         return []
 
     shared = os.path.join(target_dir, "etc", "shared")
-    if not os.path.isdir(shared):
-        raise MigrationError("'%s' does not exist; is '%s' a 5.0 installation?"
-                             % (shared, target_dir))
-
     names = manifest.get("groups", [])
     log("  install  %-14s -> %s (%s)" % ("groups", shared, ", ".join(names) or "none"))
     if dry_run:
         return names
 
+    # Every member was vetted by preflight_groups() before the first write.
     with tarfile.open(archive, "r:gz") as tar:
-        for member in tar.getmembers():
-            # The archive is ours, but a bundle is a file an operator moves between hosts:
-            # refuse anything that would land outside the group tree.
-            if member.name.startswith("/") or ".." in member.name.split("/"):
-                raise MigrationError("refusing to extract '%s' from the bundle." % member.name)
-            if member.issym() or member.islnk():
-                raise MigrationError("refusing to extract the link '%s' from the bundle."
-                                     % member.name)
         tar.extractall(shared)
 
     uid, gid = resolve_ownership("wazuh-manager", "wazuh-manager")
@@ -670,6 +688,7 @@ def command_import(args):
     # Everything that can refuse the import runs first, so a refusal never leaves the target
     # holding half a migration.
     columns = preflight_registry(args.bundle, target, args.force)
+    preflight_groups(args.bundle, target)
 
     install_file(args.bundle, "client.keys", target, args.dry_run)
 
@@ -835,8 +854,6 @@ def build_parser():
     export_parser.add_argument("bundle", help="directory to create the bundle in")
     export_parser.add_argument("--source-dir", default=DEFAULT_SOURCE_DIR,
                                help="4.x installation directory (default: %(default)s)")
-    export_parser.add_argument("--with-password", action="store_true",
-                               help="also export etc/authd.pass")
     export_parser.set_defaults(handler=command_export)
 
     import_parser = subparsers.add_parser(
@@ -844,10 +861,6 @@ def build_parser():
     import_parser.add_argument("bundle", help="bundle directory produced by export")
     import_parser.add_argument("--target-dir", default=DEFAULT_TARGET_DIR,
                                help="5.0 installation directory (default: %(default)s)")
-    import_parser.add_argument("--with-password", action="store_true",
-                               help="also restore etc/authd.pass, for 4.x agents that still enroll")
-    import_parser.add_argument("--with-rbac", action="store_true",
-                               help="also restore the API users, roles and policies")
     import_parser.set_defaults(handler=command_import)
 
     check_parser = subparsers.add_parser(
@@ -857,7 +870,13 @@ def build_parser():
                               help="5.0 installation directory (default: %(default)s)")
     check_parser.set_defaults(handler=command_check)
 
+    # Both secrets are opt-in at both ends: an operator who does not intend to migrate the API
+    # users should not end up moving every password hash to another host either.
     for subparser in (export_parser, import_parser):
+        subparser.add_argument("--with-password", action="store_true",
+                               help="include etc/authd.pass, the shared enrollment password")
+        subparser.add_argument("--with-rbac", action="store_true",
+                               help="include the API users, roles and policies (password hashes)")
         subparser.add_argument("--dry-run", action="store_true",
                                help="report what would happen and change nothing")
     for subparser in (export_parser, import_parser):
@@ -883,6 +902,13 @@ def main(argv=None):
             print("error: no space left on device.", file=sys.stderr)
             return 2
         raise
+    except (sqlite3.Error, ValueError) as error:
+        # A truncated manifest (json raises ValueError) or an unreadable database. Exit 2, not 1:
+        # 1 is reserved for 'check found problems', and this is a refusal.
+        print("error: %s. If this happened during an import the target may hold a partial"
+              " migration; restore the .pre-migration copies before retrying." % error,
+              file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

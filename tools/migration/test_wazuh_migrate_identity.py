@@ -284,8 +284,28 @@ class MigrationToolTest(unittest.TestCase):
         rbac = os.path.join(self.target, "api", "configuration", "security", "rbac.db")
         self.assertFalse(os.path.exists(rbac))
 
-    def test_rbac_import_stages_the_api_upgrade(self):
+    def test_neither_secret_is_collected_by_default(self):
         self.assertEqual(0, self.export())
+        self.assertFalse(os.path.exists(os.path.join(self.bundle, "authd.pass")),
+                         "the enrollment password is not collected unless asked for")
+        self.assertFalse(os.path.exists(os.path.join(self.bundle, "rbac.db")),
+                         "API password hashes are not collected unless asked for")
+
+    def test_a_second_import_keeps_the_first_backup(self):
+        self.assertEqual(0, self.export())
+        self.assertEqual(0, self.do_import())
+        keys = os.path.join(self.target, "etc", "client.keys")
+        with open(keys + ".pre-migration") as handle:
+            first = handle.read()
+        self.assertEqual(0, self.do_import("--force"))
+        with open(keys + ".pre-migration") as handle:
+            self.assertEqual(first, handle.read(), "the first backup must not be overwritten")
+        extra = [name for name in os.listdir(os.path.dirname(keys))
+                 if name.startswith("client.keys.pre-migration.")]
+        self.assertEqual(1, len(extra), "the second import takes its own timestamped backup")
+
+    def test_rbac_import_stages_the_api_upgrade(self):
+        self.assertEqual(0, self.export("--with-rbac"))
         self.assertEqual(0, self.do_import("--with-rbac"))
         rbac = os.path.join(self.target, "api", "configuration", "security", "rbac.db")
         with tool.open_ro(rbac) as connection:
@@ -376,6 +396,12 @@ class MigrationToolTest(unittest.TestCase):
             json.dump(manifest, handle)
         self.assertEqual(2, self.do_import())
         self.assertFalse(os.path.exists(os.path.join(self.target, "etc", "escaped.conf")))
+        with self.target_registry() as connection:
+            self.assertEqual(0, connection.execute(
+                "SELECT count(*) FROM agent WHERE id > 0").fetchone()[0],
+                "a refused import must not have written the registry first")
+        self.assertEqual(0, os.path.getsize(os.path.join(self.target, "etc", "client.keys")),
+                         "a refused import must not have installed client.keys first")
 
     # -- check
 

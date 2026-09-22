@@ -15,7 +15,8 @@ that guide covers it separately.
 
 Standard library only, so it runs on the 4.x host without installing anything. On a manager with no
 `sqlite3` package the bundled interpreter works too:
-`/var/wazuh-manager/framework/python/bin/python3`.
+`/var/ossec/framework/python/bin/python3` on the 4.x host, and
+`/var/wazuh-manager/framework/python/bin/python3` on the 5.0 one.
 
 ## Use
 
@@ -41,8 +42,8 @@ sudo ./wazuh-migrate-identity.py check /root/wazuh-4x-bundle
 | Agent keys | `etc/client.keys` | `etc/client.keys` | `wazuh-manager:wazuh-manager 0660`, the mode the installer ships. `wazuh-manager-authd` reopens this file for append after dropping privileges, so root ownership stops enrollment. |
 | Agent registry | `queue/db/global.db` | rows copied into the target's `queue/db/global.db` | The 4.x file cannot replace the target's: 5.0 stamps `PRAGMA user_version` and refuses anything else. |
 | Group folders | `etc/shared/<group>/` | same | `default` is excluded: 5.0 ships its own. `merged.mg` is regenerated. |
-| Enrollment password | `etc/authd.pass` | `etc/authd.pass` | `--with-password`. Optional by default: only 4.x agents use it. See the guide before deciding. |
-| API users, roles, policies | `api/configuration/security/rbac.db` | same | `--with-rbac`. |
+| Enrollment password | `etc/authd.pass` | `etc/authd.pass` | `--with-password`, on both `export` and `import`. Optional by default: only 4.x agents use it. See the guide before deciding. |
+| API users, roles, policies | `api/configuration/security/rbac.db` | same | `--with-rbac`, on both `export` and `import`. It carries every API password hash, so it is not collected unless you ask for it. |
 
 Not carried: agent labels and the `info` table, both removed in 5.0; the manager configuration; rules,
 decoders and CDB lists. The 4.x `ossec.conf`, `local_internal_options.conf` and `api.yaml` are copied
@@ -83,7 +84,8 @@ migration behind. `--force` overrides each one; none of them is a guess.
 - A bundle file does not match its manifest checksum, or the group archive contains a path outside
   the group tree.
 
-`import` keeps a `.pre-migration` copy of every file it overwrites.
+`import` keeps a `.pre-migration` copy of every file it overwrites, and never overwrites an
+earlier one: a second import writes `.pre-migration.<timestamp>` instead of skipping the backup.
 
 ## Exit codes
 
