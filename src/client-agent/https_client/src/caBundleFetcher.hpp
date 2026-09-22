@@ -95,8 +95,14 @@ class CaBundleFetcher final
         std::int64_t m_attemptedTarget {0};
 
         /// The highest publication this agent has given up on. Anything at or below it is not
-        /// attempted again; a strictly higher one is.
+        /// attempted again until the cooldown below lifts; a strictly higher one is, at once.
         std::int64_t m_abandoned {0};
+
+        /// When that happened. Abandonment is a cooldown rather than a permanent verdict --
+        /// see ABANDON_COOLDOWN -- because a rotation re-advertises one publication until the
+        /// next publish, so an abandonment that never lifted would silently end this agent's
+        /// ability to follow CA rotations at all.
+        std::optional<std::chrono::steady_clock::time_point> m_abandonedAt;
 };
 
 #endif // _HC_CA_BUNDLE_FETCHER_HPP

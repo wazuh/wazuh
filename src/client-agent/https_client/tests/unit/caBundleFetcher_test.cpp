@@ -97,6 +97,25 @@ namespace
         return response;
     }
 
+    /// A manager that was never reached: no HTTP status, nothing served. Distinct from a 4xx/5xx
+    /// because the ceiling on adoption attempts is about load the manager has to carry.
+    HttpResponse unreachable()
+    {
+        HttpResponse response;
+        response.status = TransportStatus::ConnectFail;
+        response.httpCode = 0;
+        return response;
+    }
+
+    /// A fetch cut short by the shutdown flag.
+    HttpResponse abortedFetch()
+    {
+        HttpResponse response;
+        response.status = TransportStatus::Aborted;
+        response.httpCode = 0;
+        return response;
+    }
+
     /// Records what reached the consumer and answers with whatever the test wants.
     struct Installs
     {
@@ -304,9 +323,11 @@ TEST(CaBundleFetcher, APublicationThatNeverInstallsIsEventuallyAbandoned)
 
     f.m_state.observe(PUBLISHED);
 
-    for (int attempt = 0; attempt < 32; attempt++)
+    // 20 x 2 min stays well inside ABANDON_COOLDOWN, so this measures the ceiling itself rather
+    // than the ceiling plus however many cooldowns the loop happened to step over.
+    for (int attempt = 0; attempt < 20; attempt++)
     {
-        f.m_clock.advance(std::chrono::seconds {3600});
+        f.m_clock.advance(std::chrono::minutes {2});
         f.m_fetcher.tick(f.m_waiter);
     }
 
@@ -314,6 +335,97 @@ TEST(CaBundleFetcher, APublicationThatNeverInstallsIsEventuallyAbandoned)
     EXPECT_EQ(5u, f.m_installs.calls.size());
     // The store is untouched and the agent keeps using it.
     EXPECT_EQ(HELD, f.m_state.local());
+}
+
+/* Giving up is a cooldown, not a verdict for the life of the process. A rotation advertises the
+ * SAME publication until the manager publishes another, so an abandonment that never lifted would
+ * be an agent that has quietly stopped following CA rotations -- it would lose the manager at the
+ * next one, having said so exactly once, when it gave up. */
+TEST(CaBundleFetcher, AnAbandonedPublicationIsTriedAgainOnceTheCooldownLifts)
+{
+    Fixture f;
+    f.m_installs.answer = false;
+    ON_CALL(f.m_performer, perform(_))
+    .WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
+
+    f.m_state.observe(PUBLISHED);
+
+    for (int attempt = 0; attempt < 20; attempt++)
+    {
+        f.m_clock.advance(std::chrono::minutes {2});
+        f.m_fetcher.tick(f.m_waiter);
+    }
+
+    ASSERT_EQ(5u, f.m_installs.calls.size());
+
+    // Whatever refused it stops being true -- an operator makes the store writable.
+    f.m_installs.answer = true;
+    f.m_clock.advance(std::chrono::hours {2});
+    f.m_fetcher.tick(f.m_waiter);   // Cooldown is up: schedules the wait again.
+    f.m_clock.advance(std::chrono::minutes {2});
+    f.m_fetcher.tick(f.m_waiter);   // ...and performs it.
+
+    EXPECT_EQ(6u, f.m_installs.calls.size());
+    EXPECT_EQ(PUBLISHED, f.m_state.local());
+}
+
+/* The ceiling is charged for answers, not for attempts. A manager that was never reached costs it
+ * nothing to refuse, so bounding those buys nothing -- and charging for them is what let a manager
+ * RESTART, which is exactly when a rotation gets published, spend the whole budget in under a
+ * minute: the ramp is full jitter over [0, base << n] from a 1 s base. The agent would then never
+ * adopt the new CA, because a rotation keeps advertising the publication it just gave up on. */
+TEST(CaBundleFetcher, AManagerThatWasNeverReachedDoesNotSpendTheBudget)
+{
+    Fixture f;
+    ON_CALL(f.m_performer, perform(_)).WillByDefault(Return(unreachable()));
+
+    f.m_state.observe(PUBLISHED);
+
+    // Far more than MAX_ADOPTION_ATTEMPTS, and inside one cooldown window either way.
+    for (int attempt = 0; attempt < 20; attempt++)
+    {
+        f.m_clock.advance(std::chrono::minutes {2});
+        f.m_fetcher.tick(f.m_waiter);
+    }
+
+    EXPECT_TRUE(f.m_installs.calls.empty());   // Nothing ever came back to install.
+
+    // The manager returns, still advertising the same publication, and the agent adopts it.
+    ON_CALL(f.m_performer, perform(_))
+    .WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
+    f.m_clock.advance(std::chrono::minutes {2});
+    f.m_fetcher.tick(f.m_waiter);
+
+    ASSERT_EQ(1u, f.m_installs.calls.size());
+    EXPECT_EQ(PUBLISHED, f.m_state.local());
+}
+
+/* A shutdown is not a refusal: the request was cut short on its way out, so nothing was learned
+ * about the publication and nothing is charged for it. */
+TEST(CaBundleFetcher, AFetchAbortedByShutdownDoesNotSpendTheBudget)
+{
+    Fixture f;
+    ON_CALL(f.m_performer, perform(_)).WillByDefault(Return(abortedFetch()));
+
+    f.m_state.observe(PUBLISHED);
+
+    for (int attempt = 0; attempt < 20; attempt++)
+    {
+        f.m_clock.advance(std::chrono::minutes {2});
+        f.m_fetcher.tick(f.m_waiter);
+    }
+
+    ON_CALL(f.m_performer, perform(_))
+    .WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
+    // Two ticks, not one: an abort clears the due time outright rather than re-arming it on the
+    // ramp, because a shutdown is not something to back off from. The next start re-jitters.
+    f.m_clock.advance(std::chrono::minutes {2});
+    f.m_fetcher.tick(f.m_waiter);   // Schedules the wait again.
+    f.m_clock.advance(std::chrono::minutes {2});
+    f.m_fetcher.tick(f.m_waiter);   // ...and performs it.
+
+    ASSERT_EQ(1u, f.m_installs.calls.size());
+    EXPECT_EQ(PUBLISHED, f.m_state.local());
 }
 
 /* Giving up is per publication, not for good: the next one the manager publishes is a different
@@ -327,9 +439,11 @@ TEST(CaBundleFetcher, AHigherPublicationIsTriedAfterOneWasAbandoned)
 
     f.m_state.observe(PUBLISHED);
 
-    for (int attempt = 0; attempt < 32; attempt++)
+    // 20 x 2 min stays well inside ABANDON_COOLDOWN, so this measures the ceiling itself rather
+    // than the ceiling plus however many cooldowns the loop happened to step over.
+    for (int attempt = 0; attempt < 20; attempt++)
     {
-        f.m_clock.advance(std::chrono::seconds {3600});
+        f.m_clock.advance(std::chrono::minutes {2});
         f.m_fetcher.tick(f.m_waiter);
     }
 

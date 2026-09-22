@@ -48,6 +48,22 @@ namespace
     /// rate-limiting, and short enough that a store the agent simply cannot write costs a
     /// handful of requests rather than a permanent one.
     constexpr int MAX_ADOPTION_ATTEMPTS {5};
+
+    /// How long a publication stays given up on before it is tried again.
+    ///
+    /// The ceiling above is a cooldown, not a verdict for the life of the process. Every reason
+    /// a publication is refused can stop being true without the agent restarting: the store is
+    /// made writable, the node behind the load balancer catches up, the rate limit clears. A
+    /// rotation keeps advertising the SAME publication until the manager publishes another, so
+    /// an abandonment that never lifts is an agent that has quietly stopped following CA
+    /// rotations altogether -- and it would say so once, at the moment it gave up, and never
+    /// again. It would then lose the manager at the next rotation, which is precisely the
+    /// outcome this feature exists to prevent.
+    ///
+    /// An hour, because it has to be long against the ramp rather than against a human: at the
+    /// 60 s backoff cap this bounds a fleet to MAX_ADOPTION_ATTEMPTS requests per agent per
+    /// hour, which is the load the ceiling was put there to cap in the first place.
+    constexpr std::chrono::hours ABANDON_COOLDOWN {1};
 }
 
 CaBundleFetcher::CaBundleFetcher(const ModuleConfig& config,
@@ -120,8 +136,21 @@ void CaBundleFetcher::tick(Waiter& waiter)
     // strictly higher publication clears this and is tried afresh.
     if (m_abandoned != 0 && target <= m_abandoned)
     {
-        m_dueAt.reset();
-        return;
+        if (!m_abandonedAt.has_value() || (m_clock.steadyNow() - *m_abandonedAt) < ABANDON_COOLDOWN)
+        {
+            m_dueAt.reset();
+            return;
+        }
+
+        // The cooldown is up. Cleared rather than merely retried once, so a publication that
+        // installs on the next attempt goes back to being ordinary.
+        LOGFN_INFO(m_logFn, "Trying CA bundle publication %lld again after giving up on it; "
+                   "whatever refused it may no longer apply.", static_cast<long long>(target));
+        m_abandoned = 0;
+        m_abandonedAt.reset();
+        m_attempts = 0;
+        m_attemptedTarget = 0;
+        m_backoff.reset();
     }
 
     const auto now = m_clock.steadyNow();
@@ -220,6 +249,15 @@ void CaBundleFetcher::performRefresh(std::int64_t target, Waiter& waiter)
         return;
     }
 
+    // A shutdown, not a refusal: the request was cut short on its way out, so nothing was
+    // learned about this publication and nothing is charged for it. The target stays armed and
+    // the ramp stays where it was, which is what the next start wants to find.
+    if (response.status == TransportStatus::Aborted)
+    {
+        m_dueAt.reset();
+        return;
+    }
+
     // A new target starts its own count; the ramp restarts with it.
     if (target != m_attemptedTarget)
     {
@@ -228,7 +266,21 @@ void CaBundleFetcher::performRefresh(std::int64_t target, Waiter& waiter)
         m_backoff.reset();
     }
 
-    if (++m_attempts >= MAX_ADOPTION_ATTEMPTS)
+    // Charged only for an attempt the manager actually ANSWERED. The ceiling exists to stop a
+    // fleet loading a manager that cannot help it, and a request that never arrived -- DNS,
+    // connect, TLS, timeout -- costs that manager nothing to refuse, so bounding it buys
+    // nothing and costs the one thing that matters here. Charging for them is what let a
+    // manager restart spend the entire budget: the ramp is full jitter over [0, base << n] with
+    // a 1 s base, so five attempts elapse in well under a minute -- and a restart is exactly
+    // when a rotation gets published. The agent would abandon that publication, and because a
+    // rotation re-advertises the same one until the next publish, never adopt the new CA at all.
+    //
+    // An answer the agent then refused still counts, whatever the answer was: a 429 or a 503
+    // cost the manager a served response, and a 200 whose body will not install is the local,
+    // permanent case the ceiling was written for.
+    const bool managerAnswered = (response.status == TransportStatus::Ok);
+
+    if (managerAnswered && ++m_attempts >= MAX_ADOPTION_ATTEMPTS)
     {
         // Said once, at a level an operator will see, and then the agent stops asking. The
         // common causes are local and permanent -- a trust store the agent cannot replace, a
@@ -240,6 +292,7 @@ void CaBundleFetcher::performRefresh(std::int64_t target, Waiter& waiter)
                    "publication will be tried.",
                    static_cast<long long>(target), MAX_ADOPTION_ATTEMPTS);
         m_abandoned = target;
+        m_abandonedAt = m_clock.steadyNow();
         m_dueAt.reset();
         return;
     }
