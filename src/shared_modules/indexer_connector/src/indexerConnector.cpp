@@ -1057,9 +1057,12 @@ IndexerConnector::IndexerConnector(
                 {
                     if (m_useSeekDelete)
                     {
-                        // Unlike DELETED_BY_QUERY/diff(), the id here is already the full composite key (every
-                        // element's deleteElement() builds it as agentId + "_" + itemId) - no separator needed
-                        // or wanted, since appending one would stop it from matching its own exact key.
+                        // The id here is already the full composite key (every element's deleteElement() builds
+                        // it as agentId + "_" + itemId) - no separator needed. seek() is still a plain
+                        // byte-prefix scan though, so a longer sibling key that starts with this id (e.g.
+                        // CVE-2023-100 when deleting CVE-2023-1) also matches and gets deleted alongside it.
+                        // TODO: this is not intended behavior and needs a fix (a guard breaking out of the
+                        // loop as soon as the iterated key stops being exactly id would close it).
                         for (const auto& [key, _] : m_db->seek(id))
                         {
                             logDebug2(IC_NAME, "Added document for deletion with id: %s.", key.c_str());
@@ -1395,7 +1398,9 @@ IndexerConnector::IndexerConnector(
                     if (m_useSeekDelete)
                     {
                         // Same as the index-enabled constructor's DELETED branch: id is already the full
-                        // composite key here, not a bare agent id - no separator appended.
+                        // composite key, no separator appended - and the same byte-prefix seek() collision
+                        // applies here too.
+                        // TODO: same as above, not intended behavior, needs the same fix.
                         for (const auto& [key, _] : m_db->seek(id))
                         {
                             m_db->delete_(key);
