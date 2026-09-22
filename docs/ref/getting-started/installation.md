@@ -308,7 +308,7 @@ A password must be 12 to 64 characters long and contain at least one uppercase l
 
 Run the following on the **master node**: authentication is always resolved there, so that is the database the API reads. Every node keeps its own `api/configuration/security/rbac.db` and the cluster does not synchronize it. A worker installed with the same `WAZUH_API_PASSWORD` and `WAZUH_WUI_PASSWORD` as the rest of the deployment seeds those when it is promoted, so promotion does not rotate the credential the dashboard already uses. A worker that was left to generate its own serves a different password the day it is promoted.
 
-A `change-password` only ever reaches the master's own database. Add `--local` to also align a worker's database directly. And update the credentials file with `set-password` on every node that has not seeded yet, typically the workers: their file still names the previous password, and that is what a promotion, a lost database or a `factory-reset` will apply.
+A `change-password` only ever reaches the master's own database. Aligning the rest of the cluster is a separate step, and which command it takes depends on the state of each node: see [Server API credentials across nodes](#server-api-credentials-across-nodes).
 
 ```bash
 sudo /var/wazuh-manager/bin/rbac_control change-password
@@ -446,6 +446,34 @@ sudo systemctl restart wazuh-manager
 ```bash
 sudo /var/wazuh-manager/bin/cluster_control -l
 ```
+
+##### Server API credentials across nodes
+
+The cluster does not synchronize `api/configuration/security/rbac.db`: `cluster.json` shares `etc/`, `etc/shared/` and `var/multigroups/`, and nothing else. Every node holds its own copy, so the Server API passwords are pushed to each one, never replicated.
+
+They still have to match. `wazuh-manager-apid` runs on the master only, so a worker's database is normally never created, but a worker promoted to master serves whatever its own node resolved. If that is not what the dashboard holds, it answers `401`, and `403` once `max_login_attempts` is reached.
+
+How to give a node the deployment's passwords depends on the state it is in:
+
+| State of the node | What to run |
+|-------------------|-------------|
+| Being installed | Export the same `WAZUH_API_PASSWORD` and `WAZUH_WUI_PASSWORD` as the rest of the deployment and install with `sudo -E`. Nothing else is needed. |
+| Installed, `rbac.db` does not exist yet (a worker, normally) | `rbac_control set-password -u <user>`, once per user, with the manager stopped or running |
+| `rbac.db` already exists (it has been master at some point) | `rbac_control change-password --user <user> --local` |
+
+```bash
+# A worker that has never seeded: write what it will use if it is ever promoted
+echo '<password>' | sudo /var/wazuh-manager/bin/rbac_control set-password -u wazuh
+echo '<password>' | sudo /var/wazuh-manager/bin/rbac_control set-password -u wazuh-wui
+
+# A node whose database already exists
+sudo /var/wazuh-manager/bin/rbac_control change-password --user wazuh --local
+```
+
+> [!IMPORTANT]
+> `--local` is not optional on a worker. Without it the call is routed as `local_master` and **executes on the master**, so it changes the master's database while reporting `UPDATED` on the node where it was typed. The worker is left untouched.
+
+Do not copy `rbac.db` between nodes. It carries the tokens and RBAC resources of the node that created it, not only the passwords.
 
 ### Configuration parameters
 
