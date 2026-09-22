@@ -51,6 +51,26 @@ typedef struct
 int metadata_provider_update(const agent_metadata_t* metadata);
 
 /**
+ * @brief Update only the VD feed offset field, leaving every other field untouched
+ *
+ * Thread-safe (same updating-flag protocol as metadata_provider_update()). Lets the agent
+ * publish a fresh feed offset the moment it is observed (e.g. from the IPC handler that
+ * receives it, independent of the next full metadata_provider_update() cycle) without
+ * clobbering the rest of the snapshot with blank fields.
+ *
+ * A no-op, returning -1, when no full metadata_provider_update() has ever
+ * succeeded yet (has_metadata is still false): there is no existing snapshot to patch a
+ * single field into without producing one with blank hostname/os fields, which other
+ * consumers (e.g. syscollector's own Start message) also read. In that case the offset is
+ * simply picked up whenever the first full update() runs, same as before this function
+ * existed.
+ *
+ * @param offset The feed offset to store
+ * @return 0 on success, -1 on error (no metadata snapshot yet, or provider unavailable)
+ */
+int metadata_provider_update_vd_feed_offset(uint64_t offset);
+
+/**
  * @brief Get a copy of the current metadata
  *
  * Thread-safe. Returns the most recently updated metadata.

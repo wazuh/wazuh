@@ -148,6 +148,42 @@ namespace
                 return 0;
             }
 
+            // Narrow counterpart to update(): touches only vd_feed_offset, so a caller that
+            // just observed a fresh offset (e.g. the IPC handler on the query thread) can
+            // publish it without waiting for -- or overwriting the rest of -- the next full
+            // populateAgentMetadata() cycle. Refuses (-1) before has_metadata is true: with no
+            // prior full snapshot, setting only this field would let a reader see hostname/os/*
+            // as blank, which syscollector's own Start message also depends on. In that case the
+            // offset is simply left for the first full update() to pick up, same as before this
+            // function existed.
+            int updateVdFeedOffset(uint64_t offset)
+            {
+                if (!m_shm)
+                {
+                    return -1;
+                }
+
+#ifndef _WIN32
+
+                if (m_read_only)
+                {
+                    return -1;
+                }
+
+#endif
+
+                if (!m_shm->has_metadata)
+                {
+                    return -1;
+                }
+
+                m_shm->updating.store(true, std::memory_order_release);
+                m_shm->base_metadata.vd_feed_offset = offset;
+                m_shm->updating.store(false, std::memory_order_release);
+
+                return 0;
+            }
+
             int get(agent_metadata_t* out_metadata) const
             {
                 if (!out_metadata || !m_shm)
@@ -384,6 +420,11 @@ namespace
 int metadata_provider_update(const agent_metadata_t* metadata)
 {
     return SharedMemoryProvider::instance().update(metadata);
+}
+
+int metadata_provider_update_vd_feed_offset(uint64_t offset)
+{
+    return SharedMemoryProvider::instance().updateVdFeedOffset(offset);
 }
 
 int metadata_provider_get(agent_metadata_t* out_metadata)

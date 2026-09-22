@@ -54,7 +54,18 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
             failureReason = "Manager rejected the session as too large (413); it must be split and resent.";
             break;
 
-        // SyncResult::CHECKSUM_ERROR is not returned by either synchronizeModule() or synchronizeMetadataOrGroups()
+        // Reached by synchronizeModule() itself, not just the dedicated Mode::CHECK integrity
+        // flow (requiresFullSync(), which never calls this function): a plain DELTA session also
+        // gets a 409 whenever the manager's tracked version (e.g. the VD feed offset) has moved
+        // past what this session carried -- most commonly a brand-new agent's first VD sync
+        // (feed_offset 0) racing the manager's already-loaded feed. Do NOT describe this as
+        // triggering a full resync -- that retry-budget mechanism belongs to requiresFullSync()
+        // alone and is not what happens here: this session is simply dropped, and the next
+        // periodic sync cycle retries with whatever offset the agent has by then (kept current by
+        // remoted's periodic /control notify, independent of this sync cycle).
+        case SyncResult::CHECKSUM_ERROR:
+            failureReason = "Manager reported a feed version mismatch (409) for this session; it will be retried on the next sync cycle.";
+            break;
 
         default:
             break;

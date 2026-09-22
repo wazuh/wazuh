@@ -22,15 +22,43 @@
  * normally-responsive process, but agentd must never hang indefinitely on it. */
 #define VD_OFFSET_RECV_TIMEOUT_S 5
 
+/* The very first Notify after agentd starts races modulesd's own startup: the connect below
+ * targets WM_LOCAL_SOCK, which agent-info (inside modulesd) does not open until modulesd's
+ * startup_gate releases it -- gated on the config_hash carried in that SAME first Notify
+ * response (startup_gate_check_manager_config_hash(), processed a few lines earlier in the
+ * same handleNotifyBody() call this ultimately comes from). So the one response that carries
+ * a real (non-zero) vd_feed_offset is, on every fresh agent, guaranteed to find nobody
+ * listening yet on a single attempt -- it used to be silently dropped, leaving
+ * syscollector's first VD sync to race an empty metadata_provider (409 version_mismatch,
+ * #39543). A short, bounded retry here is what actually closes that window. Bounded, not
+ * indefinite: at most VD_OFFSET_CONNECT_RETRIES attempts, VD_OFFSET_CONNECT_RETRY_DELAY_US
+ * apart, so a genuinely-down agent-info (not just "not started yet") still costs only a
+ * small, known, one-shot-comparable tax per notify -- the loop breaks on the first
+ * successful connect, so the steady-state case (modulesd already up, the overwhelming
+ * majority of calls over an agent's lifetime) pays nothing extra at all. */
+#define VD_OFFSET_CONNECT_RETRIES 10
+#define VD_OFFSET_CONNECT_RETRY_DELAY_US 300000 /* 300 ms; ~2.7s worst case across all retries */
+
 #ifndef WIN32
 static bool vd_offset_send_query(const char *query, char *response, size_t response_cap) {
     int sock = -1;
     ssize_t recv_len;
+    int attempt;
 
-    sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+    for (attempt = 0; attempt < VD_OFFSET_CONNECT_RETRIES; attempt++) {
+        sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+        if (sock >= 0) {
+            break;
+        }
+
+        if (attempt + 1 < VD_OFFSET_CONNECT_RETRIES) {
+            usleep(VD_OFFSET_CONNECT_RETRY_DELAY_US);
+        }
+    }
+
     if (sock < 0) {
-        mdebug1("vd_offset_client: could not connect to '%s': %s (%d).",
-                WM_LOCAL_SOCK, strerror(errno), errno);
+        mdebug1("vd_offset_client: could not connect to '%s' after %d attempt(s): %s (%d).",
+                WM_LOCAL_SOCK, VD_OFFSET_CONNECT_RETRIES, strerror(errno), errno);
         return false;
     }
 

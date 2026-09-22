@@ -5,7 +5,9 @@
 
 #include <dbsync.hpp>
 #include <mock_dbsync.hpp>
+#include <metadata_provider.h>
 
+#include <cstring>
 #include <memory>
 #include <string>
 
@@ -236,6 +238,51 @@ TEST_F(AgentInfoVdOffsetTest, ObserveOlderOffsetIsNoOp)
     EXPECT_TRUE(result.pending);       // reports the current (unrelated) pending state
     EXPECT_EQ(100u, result.pendingOffset);
     EXPECT_TRUE(m_queryModuleCalls.empty());
+}
+
+// #39543: observeVdFeedOffset() must publish the fresh offset straight to metadata_provider
+// (metadata_provider_update_vd_feed_offset()), not only to its own durable vd_feed_state table
+// -- real, unmocked metadata_provider, since this call bypasses DBSync entirely.
+TEST_F(AgentInfoVdOffsetTest, ObserveNewOffsetPublishesToMetadataProviderWhenSnapshotExists)
+{
+    metadata_provider_reset();
+    agent_metadata_t seeded{};
+    std::strncpy(seeded.agent_id, "001", sizeof(seeded.agent_id) - 1);
+    std::strncpy(seeded.hostname, "test_host", sizeof(seeded.hostname) - 1);
+    seeded.vd_feed_offset = 1;
+    ASSERT_EQ(metadata_provider_update(&seeded), 0);
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
+                                                  vdFirstSyncQueryFunc(false), m_mockDBSync);
+    expectNotFound(m_mockDBSync);
+
+    const auto result = m_agentInfo->observeVdFeedOffset(777);
+    EXPECT_TRUE(result.changed);
+
+    agent_metadata_t retrieved{};
+    ASSERT_EQ(metadata_provider_get(&retrieved), 0);
+    EXPECT_EQ(retrieved.vd_feed_offset, 777u);
+    EXPECT_STREQ(retrieved.agent_id, "001");   // untouched by the narrow update
+    EXPECT_STREQ(retrieved.hostname, "test_host");
+
+    metadata_provider_reset();
+}
+
+// Before any full metadata_provider_update() ever ran, the narrow publish is a no-op --
+// observeVdFeedOffset()'s own durable-table write (and its return value) are unaffected.
+TEST_F(AgentInfoVdOffsetTest, ObserveNewOffsetIsHarmlessWhenNoMetadataSnapshotYet)
+{
+    metadata_provider_reset();
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
+                                                  vdFirstSyncQueryFunc(false), m_mockDBSync);
+    expectNotFound(m_mockDBSync);
+
+    const auto result = m_agentInfo->observeVdFeedOffset(777);
+    EXPECT_TRUE(result.changed);
+
+    agent_metadata_t retrieved{};
+    EXPECT_EQ(metadata_provider_get(&retrieved), -1);   // still no snapshot at all
 }
 
 TEST_F(AgentInfoVdOffsetTest, ObserveEqualOffsetIsNoOp)

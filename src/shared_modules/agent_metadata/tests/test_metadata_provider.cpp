@@ -103,6 +103,36 @@ TEST_F(MetadataProviderTest, GetMetadataBeforeUpdate)
     EXPECT_EQ(metadata_provider_get(&retrieved), -1);
 }
 
+// #39543: metadata_provider_update_vd_feed_offset() must refuse (no-op) before any full
+// metadata_provider_update() ever succeeded -- setting only this field with no prior snapshot
+// would let a reader see every other field (hostname, os_*, ...) as blank.
+TEST_F(MetadataProviderTest, UpdateVdFeedOffsetNoOpBeforeAnyFullUpdate)
+{
+    EXPECT_EQ(metadata_provider_update_vd_feed_offset(12345), -1);
+
+    // Confirms it is a true no-op, not a partial write: still no snapshot at all.
+    agent_metadata_t retrieved{};
+    EXPECT_EQ(metadata_provider_get(&retrieved), -1);
+}
+
+// Once a full snapshot exists, the narrow update takes effect immediately and touches only
+// vd_feed_offset -- every other field from the prior full update() survives untouched.
+TEST_F(MetadataProviderTest, UpdateVdFeedOffsetAfterFullUpdateTouchesOnlyThatField)
+{
+    agent_metadata_t metadata = createSampleMetadata();
+    metadata.vd_feed_offset = 1;
+    ASSERT_EQ(metadata_provider_update(&metadata), 0);
+
+    EXPECT_EQ(metadata_provider_update_vd_feed_offset(987654), 0);
+
+    agent_metadata_t retrieved{};
+    ASSERT_EQ(metadata_provider_get(&retrieved), 0);
+    EXPECT_EQ(retrieved.vd_feed_offset, 987654u);
+    EXPECT_STREQ(retrieved.agent_id, "001");
+    EXPECT_STREQ(retrieved.hostname, "test_host");
+    EXPECT_STREQ(retrieved.os_name, "Ubuntu");
+}
+
 // Test metadata with groups
 TEST_F(MetadataProviderTest, UpdateMetadataWithGroups)
 {

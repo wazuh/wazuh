@@ -6220,3 +6220,133 @@ TEST_F(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLog
 
     Syscollector::instance().destroy();
 }
+
+// --- Generic-failure (e.g. 409 checksum/version mismatch) log-level decision (issue #39543) ----
+// A session rejection that isn't stopped/awaitingPrerequisite/managerNotReady/
+// localTransportUnavailable -- most commonly a 409 on synchronizeModule() (CHECKSUM_ERROR,
+// see determineSyncFailureReasonBasedOnSyncResult()) -- used to always log at WARNING, even on
+// the very first occurrence. A fresh agent's first VD sync racing the manager's already-loaded
+// feed hits exactly this path every time, which made a self-healing, one-cycle condition look
+// like a persistent failure. Same grace as the managerNotReady/localTransportUnavailable tests
+// above: INFO while within SYNC_MANAGER_NOT_READY_TOLERANCE, WARNING only once it persists.
+
+namespace
+{
+    // Regular sync isn't the subject of the VD-focused tests below; make it succeed trivially,
+    // mirroring expectVDSyncSucceeds() above.
+    void expectRegularSyncSucceeds(MockAgentSyncProtocol& mockSyncProtocol)
+    {
+        EXPECT_CALL(mockSyncProtocol, synchronizeModule(testing::_, testing::_))
+        .WillOnce(testing::Return(SyncModuleResult{true}));
+    }
+}
+
+/// Same shape as INIT_SYSCOLLECTOR_WITH_MOCKED_SYNC, but wires the VD protocol to `result` and
+/// lets the regular one succeed trivially -- for exercising the VD-sync branch of syncModule().
+#define INIT_SYSCOLLECTOR_WITH_MOCKED_VD_SYNC(spInfoWrapper, ...)                                                    \
+    auto logCapture = std::make_unique<LogCapture>();                                                               \
+    auto captureLogFunction = [logCapturePtr = logCapture.get()](modules_log_level_t level, const std::string & log) \
+    {                                                                                                                 \
+        logCapturePtr->capture(level, log);                                                                          \
+    };                                                                                                                \
+    Syscollector::instance().init(spInfoWrapper,                                                                     \
+                                  reportFunction,                                                                     \
+                                  persistFunction,                                                                    \
+                                  captureLogFunction,                                                                 \
+                                  SYSCOLLECTOR_DB_PATH,                                                               \
+                                  "",                                                                                 \
+                                  "",                                                                                 \
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false); \
+    Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400);                        \
+    auto mockSyncProtocol = std::make_unique<MockAgentSyncProtocol>();                                               \
+    expectRegularSyncSucceeds(*mockSyncProtocol);                                                                     \
+    Syscollector::instance().m_spSyncProtocol = std::move(mockSyncProtocol);                                         \
+    auto mockSyncProtocolVD = std::make_unique<MockAgentSyncProtocol>();                                             \
+    EXPECT_CALL(*mockSyncProtocolVD, synchronizeModule(testing::_, testing::_))                                      \
+    .WillOnce(testing::Return(__VA_ARGS__));                                                                         \
+    Syscollector::instance().m_spSyncProtocolVD = std::move(mockSyncProtocolVD)
+
+TEST_F(SyscollectorImpTest, SyncModule_GenericFailureWithinToleranceLogsDeferred)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    INIT_SYSCOLLECTOR_WITH_MOCKED_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason = "Manager reported a checksum/version mismatch (409).",
+                         .consecutiveFailures = 1u});
+
+    Syscollector::instance().syncModule(Mode::DELTA);
+
+    EXPECT_TRUE(logCapture->contains(LOG_INFO,
+                                     "Syscollector synchronization deferred: Manager reported a checksum/version "
+                                     "mismatch (409). Will retry next cycle."));
+    EXPECT_FALSE(logCapture->contains(LOG_WARNING, "Syscollector synchronization failed"));
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, SyncModule_GenericFailurePastToleranceLogsWarning)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    INIT_SYSCOLLECTOR_WITH_MOCKED_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason = "Manager reported a checksum/version mismatch (409).",
+                         .consecutiveFailures = streak});
+
+    Syscollector::instance().syncModule(Mode::DELTA);
+
+    EXPECT_TRUE(logCapture->contains(LOG_WARNING,
+                                     "Syscollector synchronization failed " + std::to_string(streak) +
+                                     " times in a row: Manager reported a checksum/version mismatch (409)."));
+
+    Syscollector::instance().destroy();
+}
+
+// The exact #39543 shape: a fresh agent's first VD sync, offset 0 racing the manager's
+// already-loaded feed -- one 409, consecutiveFailures == 1, logged at INFO, not WARNING.
+TEST_F(SyscollectorImpTest, SyncModule_VDGenericFailureWithinToleranceLogsDeferred)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    INIT_SYSCOLLECTOR_WITH_MOCKED_VD_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason =
+                             "Manager reported a feed version mismatch (409) for this session; it will be "
+                             "retried on the next sync cycle.",
+                         .consecutiveFailures = 1u});
+
+    Syscollector::instance().syncModule(Mode::DELTA);
+
+    EXPECT_TRUE(logCapture->contains(
+                    LOG_INFO,
+                    "Syscollector VD synchronization deferred: Manager reported a feed version mismatch (409) for "
+                    "this session; it will be retried on the next sync cycle. Will retry next cycle."));
+    EXPECT_FALSE(logCapture->contains(LOG_WARNING, "Syscollector VD synchronization failed"));
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, SyncModule_VDGenericFailurePastToleranceLogsWarning)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    INIT_SYSCOLLECTOR_WITH_MOCKED_VD_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason = "Manager reported a feed version mismatch (409) for this session.",
+                         .consecutiveFailures = streak});
+
+    Syscollector::instance().syncModule(Mode::DELTA);
+
+    EXPECT_TRUE(logCapture->contains(LOG_WARNING,
+                                     "Syscollector VD synchronization failed " + std::to_string(streak) +
+                                     " times in a row: Manager reported a feed version mismatch (409) for this session."));
+
+    Syscollector::instance().destroy();
+}
