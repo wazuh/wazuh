@@ -140,10 +140,10 @@ jobs:
       INSTALLATION_DIR: /var/wazuh-manager
       # The manager refuses a fresh installation that does not name the indexer user's password. There is
       # no indexer in this job, so the value only has to exist.
-      INDEXER_USER_PASSWORD: Integration-Indexer1!
+      INDEXER_PASSWORD: Integration-Indexer1!
       # The default API users have no shipped password. The installation takes this one for 'wazuh' and
       # generates one for 'wazuh-wui', and the suites authenticate with this same value.
-      WAZUH_API_PASSWORD: Integration-Tests1!
+      INITIAL_WAZUH_PASSWORD: Integration-Tests1!
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -168,7 +168,7 @@ jobs:
             echo "No manager package found in /tmp/packages"
             exit 1
           fi
-          # -E: the package scriptlets read INDEXER_USER_PASSWORD and WAZUH_API_PASSWORD from the
+          # -E: the package scriptlets read INDEXER_PASSWORD and INITIAL_WAZUH_PASSWORD from the
           # environment, and sudo resets it.
           sudo -E dpkg -i "${PACKAGE_PATH}" || sudo -E apt-get install -f -y
           if ! dpkg -l wazuh-manager | grep -q '^ii'; then
@@ -303,7 +303,7 @@ jobs:
           sudo tail -F "$INSTALLATION_DIR/logs/cluster.log" >> /tmp/wazuh-logs/cluster.log 2>/dev/null &
           cd tests/integration
           set +e
-          sudo WAZUH_PATH="$INSTALLATION_DIR" WAZUH_API_PASSWORD="$WAZUH_API_PASSWORD" \
+          sudo WAZUH_PATH="$INSTALLATION_DIR" INITIAL_WAZUH_PASSWORD="$INITIAL_WAZUH_PASSWORD" \
             GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" \
             python -m pytest ${PYTEST_EXTRA_ARGS} ${PYTEST_TIER_ARGS} ${PYTEST_TARGET} \
             --html=results.html --self-contained-html

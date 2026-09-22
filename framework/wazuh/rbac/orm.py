@@ -51,17 +51,22 @@ PRESEEDED_PASSWORDS_FILE = os.path.join(SECURITY_PATH, "wazuh-preseeded-password
 _SET_PASSWORD_CMD = os.path.join(WAZUH_PATH, "bin", "rbac_control") + " set-password"
 CURRENT_ORM_VERSION = 1
 
-# Minimum twelve characters, at least one uppercase letter, one lowercase letter, one number and one
-# symbol out of `. * + ? -`, the set both authentication realms of a deployment share.
+# PCI DSS v4.0 requirement 8.3.6 is the whole rule: twelve characters, holding both an alphabetic and a
+# numeric one. Nothing about case or symbols, which the requirement does not ask for and which only pushes
+# operators towards predictable substitutions. The maximum is ours, not the requirement's: it bounds what
+# the API stores and is what error 5009 reports.
 # `\Z` rather than `$`, which would also match before a trailing newline.
 USER_PASSWORD_MIN_LENGTH = 12
 USER_PASSWORD_MAX_LENGTH = 64
-USER_POLICY_SYMBOLS = '.*+?-'
-USER_PASSWORD_POLICY = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[.*+?-]).{12,}\Z')
+USER_PASSWORD_POLICY = re.compile(r'^(?=.*[A-Za-z])(?=.*\d).{12,}\Z')
 
-# Above the policy minimum, and short enough to be copied by hand out of the installation output.
-GENERATED_PASSWORD_LENGTH = 20
-_GENERATED_PASSWORD_ALPHABET = string.ascii_letters + string.digits + USER_POLICY_SYMBOLS
+# The rule a password must pass is the floor; what this manager generates is far above it. 32 characters
+# over a 73-character alphabet is about 198 bits. The alphabet leaves out the quote, backslash, backtick,
+# `$`, `!` and `#` that a password travels through a shell command line, a YAML document and a keystore
+# value without being escaped along the way.
+GENERATED_PASSWORD_LENGTH = 32
+GENERATED_PASSWORD_SYMBOLS = '.,_+:@%^=~-'
+_GENERATED_PASSWORD_ALPHABET = string.ascii_letters + string.digits + GENERATED_PASSWORD_SYMBOLS
 
 
 def generate_default_password() -> str:
@@ -76,10 +81,7 @@ def generate_default_password() -> str:
     str
         Password of `GENERATED_PASSWORD_LENGTH` characters, taken from the system CSPRNG.
     """
-    password = [secrets.choice(string.ascii_lowercase),
-                secrets.choice(string.ascii_uppercase),
-                secrets.choice(string.digits),
-                secrets.choice(USER_POLICY_SYMBOLS)]
+    password = [secrets.choice(string.ascii_letters), secrets.choice(string.digits)]
     password += [secrets.choice(_GENERATED_PASSWORD_ALPHABET)
                  for _ in range(GENERATED_PASSWORD_LENGTH - len(password))]
 

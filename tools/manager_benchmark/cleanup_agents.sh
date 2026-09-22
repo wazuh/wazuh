@@ -11,7 +11,7 @@ set -euo pipefail
 # Usage:
 #   ./cleanup_agents.sh                 # delete bench-* agents
 #   ./cleanup_agents.sh --all           # delete ALL agents except 000 (manager)
-# Environment: WAZUH_API_URL WAZUH_API_USER WAZUH_API_PASSWORD
+# Environment: WAZUH_API_URL WAZUH_API_USER INITIAL_WAZUH_PASSWORD
 # ---------------------------------------------------------------------------
 
 API_URL="${WAZUH_API_URL:-https://localhost:55000}"
@@ -19,7 +19,7 @@ API_USER="${WAZUH_API_USER:-wazuh}"
 PYTHON="${PYTHON:-python3}"
 # Whatever provisioned the node, which is the same variable the installation reads. There is no shipped
 # default to fall back to.
-API_PASS="${WAZUH_API_PASSWORD:?set it to the password this node was installed with}"
+API_PASS="${INITIAL_WAZUH_PASSWORD:?set it to the password this node was installed with}"
 REMOVE_ALL=false
 
 [[ "${1:-}" == "--all" ]] && REMOVE_ALL=true
@@ -29,7 +29,7 @@ TOKEN=$(curl -s -k -X POST "${API_URL}/security/user/authenticate" \
 
 if [[ -z "$TOKEN" ]]; then
     echo "Error: could not authenticate with the Wazuh API at ${API_URL} as '${API_USER}'." >&2
-    echo "Set WAZUH_API_PASSWORD with the password this installation was provisioned with." >&2
+    echo "Set INITIAL_WAZUH_PASSWORD with the password this installation was provisioned with." >&2
     exit 1
 fi
 

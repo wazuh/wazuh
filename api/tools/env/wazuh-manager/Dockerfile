@@ -3,7 +3,7 @@ FROM wazuh-base AS builder
 COPY preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 # install.sh refuses a manager that does not name the indexer user's password. This environment has
 # no indexer, so the value only has to exist; entrypoint.sh sets the API credentials it does use.
-RUN THREADS=$(nproc) INDEXER_USER_PASSWORD=Env1ronment-Indexer. /wazuh/install.sh
+RUN THREADS=$(nproc) INDEXER_PASSWORD=Env1ronment-Indexer. /wazuh/install.sh
 
 # Install pip libraries for development
 RUN /var/wazuh-manager/framework/python/bin/python3 -m pip install \

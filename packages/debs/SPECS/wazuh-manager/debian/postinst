@@ -226,13 +226,13 @@ case "$1" in
     # standard input, never through the tool's -v option: a password given on a command line is visible
     # to every account on the host through the process list. preinst refuses a fresh install without it,
     # so only an upgrade reaches this with the variable unset, and an upgrade keeps its own keystore.
-    if [ -z "$2" ] && [ -n "${INDEXER_USER_PASSWORD}" ]; then
-        if ! printf '%s\n' "${INDEXER_USER_NAME:-wazuh-manager}" | \
+    if [ -z "$2" ] && [ -n "${INDEXER_PASSWORD}" ]; then
+        if ! printf '%s\n' "${INDEXER_USERNAME:-wazuh-manager}" | \
                 ${DIR}/bin/wazuh-manager-keystore -f indexer -k username > /dev/null; then
             echo "ERROR: could not store the indexer user name in the keystore." >&2
             exit 1
         fi
-        if ! printf '%s\n' "${INDEXER_USER_PASSWORD}" | \
+        if ! printf '%s\n' "${INDEXER_PASSWORD}" | \
                 ${DIR}/bin/wazuh-manager-keystore -f indexer -k password > /dev/null; then
             echo "ERROR: could not store the indexer user password in the keystore." >&2
             exit 1
@@ -284,7 +284,7 @@ case "$1" in
 
     # Generate a password for every Server API default user that has none, and print the credentials:
     # this output is how the operator, and whatever installs the rest of the deployment, get the
-    # credential the dashboard authenticates with. WAZUH_API_PASSWORD and WAZUH_WUI_PASSWORD supply one
+    # credential the dashboard authenticates with. INITIAL_WAZUH_PASSWORD and INITIAL_WAZUH_WUI_PASSWORD supply one
     # instead of generating it. After the RBAC database restore above, so a reinstall that carried one
     # over is left alone. A failure is not fatal: the manager generates the passwords at its first start
     # and leaves them in the same file, so all that is lost is the disclosure on screen.

@@ -84,16 +84,16 @@ run_target() {
     echo "$?"
 }
 
-export TEST_INSTYPE TEST_INSTALLDIR INDEXER_USER_PASSWORD INDEXER_USER_NAME
+export TEST_INSTYPE TEST_INSTALLDIR INDEXER_PASSWORD INDEXER_USERNAME
 
 echo "== ValidateIndexerVars =="
-TEST_INSTYPE="manager" INDEXER_USER_PASSWORD="" INDEXER_USER_NAME=""
+TEST_INSTYPE="manager" INDEXER_PASSWORD="" INDEXER_USERNAME=""
 check "a manager with no indexer password is refused" "1" "$(run_target ValidateIndexerVars)"
 
 TEST_INSTYPE="agent"
 check "an agent has no indexer connection to configure" "0" "$(run_target ValidateIndexerVars)"
 
-TEST_INSTYPE="manager" INDEXER_USER_PASSWORD="Ind3xer-Pass."
+TEST_INSTYPE="manager" INDEXER_PASSWORD="Ind3xer-Pass."
 check "a manager with the password set is accepted" "0" "$(run_target ValidateIndexerVars)"
 
 echo "== StoreIndexerCredentials =="
@@ -108,12 +108,12 @@ check "no password reaches a command line" "0" \
 rm -rf "${TEST_INSTALLDIR}"
 
 TEST_INSTALLDIR="$(make_installdir)"
-INDEXER_USER_NAME="other-user"
+INDEXER_USERNAME="other-user"
 run_target StoreIndexerCredentials > /dev/null
-check "INDEXER_USER_NAME overrides the user name" "-f indexer -k username|other-user" \
+check "INDEXER_USERNAME overrides the user name" "-f indexer -k username|other-user" \
     "$(sed -n '1p' "${TEST_INSTALLDIR}/calls.log")"
 rm -rf "${TEST_INSTALLDIR}"
-INDEXER_USER_NAME=""
+INDEXER_USERNAME=""
 
 TEST_INSTALLDIR="$(mktemp -d)"
 mkdir -p "${TEST_INSTALLDIR}/bin"
@@ -130,13 +130,13 @@ echo "== A package build stages a tree, it does not configure a node =="
 # The deb and rpm builds run install.sh to lay the files down, with no indexer and no node to credential.
 # Refusing there broke the four package builds; provisioning there would ship one password in every package.
 TEST_INSTALLDIR="$(make_installdir)"
-INDEXER_USER_PASSWORD=""
+INDEXER_PASSWORD=""
 check "main() skips ValidateIndexerVars" "0" \
     "$(WAZUH_PACKAGE_BUILD=y run_target main_credentials_steps)"
 check "main() writes no keystore entry" "0" \
     "$(ls "${TEST_INSTALLDIR}"/calls.log 2>/dev/null | wc -l)"
 rm -rf "${TEST_INSTALLDIR}"
-INDEXER_USER_PASSWORD="Ind3xer-Pass."
+INDEXER_PASSWORD="Ind3xer-Pass."
 
 echo
 echo "${checks} checks, ${failures} failures"

@@ -718,11 +718,11 @@ ValidateIndexerVars()
         return 0
     fi
 
-    if [ -z "${INDEXER_USER_PASSWORD}" ]; then
-        echo "ERROR: INDEXER_USER_PASSWORD is not set." >&2
+    if [ -z "${INDEXER_PASSWORD}" ]; then
+        echo "ERROR: INDEXER_PASSWORD is not set." >&2
         echo "       wazuh-manager authenticates against the Wazuh indexer as its 'wazuh-manager'" >&2
         echo "       user. Put that user's password in the environment and install again:" >&2
-        echo "           read -rs INDEXER_USER_PASSWORD && export INDEXER_USER_PASSWORD" >&2
+        echo "           read -rs INDEXER_PASSWORD && export INDEXER_PASSWORD" >&2
         echo "           sudo -E ./install.sh" >&2
         exit 1
     fi
@@ -738,7 +738,7 @@ ValidateIndexerVars()
 ##########
 StoreIndexerCredentials()
 {
-    if [ "X${INSTYPE}" = "Xagent" ] || [ -z "${INDEXER_USER_PASSWORD}" ]; then
+    if [ "X${INSTYPE}" = "Xagent" ] || [ -z "${INDEXER_PASSWORD}" ]; then
         return 0
     fi
 
@@ -748,11 +748,11 @@ StoreIndexerCredentials()
         exit 1
     fi
 
-    printf '%s\n' "${INDEXER_USER_NAME:-wazuh-manager}" | ${KEYSTORE} -f indexer -k username > /dev/null || {
+    printf '%s\n' "${INDEXER_USERNAME:-wazuh-manager}" | ${KEYSTORE} -f indexer -k username > /dev/null || {
         echo "ERROR: could not store the indexer user name in the keystore." >&2
         exit 1
     }
-    printf '%s\n' "${INDEXER_USER_PASSWORD}" | ${KEYSTORE} -f indexer -k password > /dev/null || {
+    printf '%s\n' "${INDEXER_PASSWORD}" | ${KEYSTORE} -f indexer -k password > /dev/null || {
         echo "ERROR: could not store the indexer user password in the keystore." >&2
         exit 1
     }
@@ -763,7 +763,7 @@ StoreIndexerCredentials()
 # Generates a password for every Server API default user that has none, and
 # prints the credentials: the installation output is how the operator, and
 # whatever installs the rest of the deployment, get the credential the
-# dashboard authenticates with. WAZUH_API_PASSWORD and WAZUH_WUI_PASSWORD
+# dashboard authenticates with. INITIAL_WAZUH_PASSWORD and INITIAL_WAZUH_WUI_PASSWORD
 # supply one instead of generating it. A failure is not fatal: the manager
 # generates the passwords at its first start and leaves them in the same
 # file, so all that is lost is the disclosure on screen.

@@ -505,7 +505,7 @@ async def test_provision_default_passwords_takes_the_environment(print_mock, tmp
     """A password supplied through the environment is provisioned instead of a generated one."""
     provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
 
-    with _provisioning(tmp_path, WAZUH_WUI_PASSWORD="Env1r0nment-Pass."):
+    with _provisioning(tmp_path, INITIAL_WAZUH_WUI_PASSWORD="Env1r0nment-Pass."):
         await rbac_control.provision_default_passwords(Arguments())
 
     provisioned = _provisioned(provisioning_file)
@@ -520,7 +520,7 @@ async def test_provision_default_passwords_refuses_an_invalid_environment_passwo
     """A supplied password the API would reject stops the installation instead of being generated around."""
     provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
 
-    with _provisioning(tmp_path, WAZUH_API_PASSWORD="short"):
+    with _provisioning(tmp_path, INITIAL_WAZUH_PASSWORD="short"):
         with pytest.raises(SystemExit):
             await rbac_control.provision_default_passwords(Arguments())
 
@@ -537,7 +537,7 @@ async def test_provision_default_passwords_keeps_what_is_provisioned(print_mock,
                                                               'password': 'Pr3seeded-Pass.'}]}))
     provisioning_file.chmod(0o640)
 
-    with _provisioning(tmp_path, WAZUH_API_PASSWORD="Env1r0nment-Pass."):
+    with _provisioning(tmp_path, INITIAL_WAZUH_PASSWORD="Env1r0nment-Pass."):
         await rbac_control.provision_default_passwords(Arguments())
 
     provisioned = _provisioned(provisioning_file)

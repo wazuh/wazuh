@@ -26,7 +26,7 @@ RUN mkdir wazuh && curl -sL https://github.com/wazuh/wazuh/tarball/${WAZUH_BRANC
 COPY base/manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 # install.sh refuses a manager that does not name the indexer user's password. This environment has
 # no indexer, so the value only has to exist; entrypoint.sh sets the API credentials it does use.
-RUN INDEXER_USER_PASSWORD=Env1ronment-Indexer. /wazuh/install.sh
+RUN INDEXER_PASSWORD=Env1ronment-Indexer. /wazuh/install.sh
 # The manager does not generate TLS certificates: issue the indexer trust material and the HTTPS
 # agent listener pair with the devcontainer copy of the installation assistant tool (sources already
 # in /wazuh). The api_ssl volume shared by the cluster containers is populated from this image, so

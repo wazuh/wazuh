@@ -18,7 +18,7 @@ except Exception as e:
 # How the installation supplies a password instead of having one generated. Through the environment and
 # never through an argument: the process list is readable by every account on the host, the environment of
 # a process is not. A default user missing from this mapping is always generated.
-PASSWORD_ENVIRONMENT_VARIABLES = {'wazuh': 'WAZUH_API_PASSWORD', 'wazuh-wui': 'WAZUH_WUI_PASSWORD'}
+PASSWORD_ENVIRONMENT_VARIABLES = {'wazuh': 'INITIAL_WAZUH_PASSWORD', 'wazuh-wui': 'INITIAL_WAZUH_WUI_PASSWORD'}
 
 
 def signal_handler(n_signal, frame):
@@ -153,15 +153,14 @@ async def restore_default_passwords(script_args):
     # Checked here and not only by `update_user`, which rejects it after the fact: the interactive prompt
     # would accept a password it cannot apply, and a file naming several users would apply the ones read
     # before the offending entry.
-    from wazuh.rbac.orm import USER_PASSWORD_MAX_LENGTH, USER_PASSWORD_MIN_LENGTH, USER_PASSWORD_POLICY, \
-        USER_POLICY_SYMBOLS
+    from wazuh.rbac.orm import USER_PASSWORD_MAX_LENGTH, USER_PASSWORD_MIN_LENGTH, USER_PASSWORD_POLICY
 
     for username, new_password in new_passwords.items():
         if not USER_PASSWORD_MIN_LENGTH <= len(new_password) <= USER_PASSWORD_MAX_LENGTH \
                 or not USER_PASSWORD_POLICY.match(new_password):
             print(f"\tThe password of '{username}' does not satisfy the API password policy: "
-                  f"{USER_PASSWORD_MIN_LENGTH} to {USER_PASSWORD_MAX_LENGTH} characters, with a lowercase "
-                  f"letter, an uppercase letter, a digit and one of '{USER_POLICY_SYMBOLS}'")
+                  f"{USER_PASSWORD_MIN_LENGTH} to {USER_PASSWORD_MAX_LENGTH} characters, holding both a "
+                  f"letter and a digit")
             sys.exit(1)
 
     # `local_master` resolves to the master from anywhere, which is where the credential in use lives.
@@ -283,7 +282,7 @@ async def provision_default_passwords(script_args):
     import yaml
     from wazuh.core.common import DEFAULT_RBAC_RESOURCES
     from wazuh.rbac.orm import DB_FILE, PRESEEDED_PASSWORDS_FILE, USER_PASSWORD_MAX_LENGTH, \
-        USER_PASSWORD_MIN_LENGTH, USER_PASSWORD_POLICY, USER_POLICY_SYMBOLS, generate_default_password
+        USER_PASSWORD_MIN_LENGTH, USER_PASSWORD_POLICY, generate_default_password
 
     with open(path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
         default_users = list(yaml.safe_load(f)['default_users'])
@@ -315,8 +314,7 @@ async def provision_default_passwords(script_args):
                 or not USER_PASSWORD_POLICY.match(supplied):
             print(f"\tThe password of '{username}', taken from {variable}, does not satisfy the API "
                   f"password policy: {USER_PASSWORD_MIN_LENGTH} to {USER_PASSWORD_MAX_LENGTH} characters, "
-                  f"with a lowercase letter, an uppercase letter, a digit and one of "
-                  f"'{USER_POLICY_SYMBOLS}'")
+                  f"holding both a letter and a digit")
             sys.exit(1)
 
         provisioned[username] = supplied
@@ -349,7 +347,7 @@ async def preseed_default_password(script_args):
     import yaml
     from wazuh.core.common import DEFAULT_RBAC_RESOURCES
     from wazuh.rbac.orm import DB_FILE, USER_PASSWORD_MAX_LENGTH, USER_PASSWORD_MIN_LENGTH, \
-        USER_PASSWORD_POLICY, USER_POLICY_SYMBOLS
+        USER_PASSWORD_POLICY
 
     with open(path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
         default_users = list(yaml.safe_load(f)['default_users'])
@@ -366,8 +364,8 @@ async def preseed_default_password(script_args):
     if not USER_PASSWORD_MIN_LENGTH <= len(password) <= USER_PASSWORD_MAX_LENGTH \
             or not USER_PASSWORD_POLICY.match(password):
         print(f"\tThe password of '{script_args.user}' does not satisfy the API password policy: "
-              f"{USER_PASSWORD_MIN_LENGTH} to {USER_PASSWORD_MAX_LENGTH} characters, with a lowercase "
-              f"letter, an uppercase letter, a digit and one of '{USER_POLICY_SYMBOLS}'")
+              f"{USER_PASSWORD_MIN_LENGTH} to {USER_PASSWORD_MAX_LENGTH} characters, holding both a letter "
+              f"and a digit")
         sys.exit(1)
 
     # Merged rather than overwritten: one user is set per execution, and an entry this call does not name
@@ -450,7 +448,7 @@ def get_script_arguments():
                                                  help="Provision a password for every default API user "
                                                       "that has none and print the credentials. Each one "
                                                       "is generated unless its environment variable "
-                                                      "(WAZUH_API_PASSWORD, WAZUH_WUI_PASSWORD) supplies "
+                                                      "(INITIAL_WAZUH_PASSWORD, INITIAL_WAZUH_WUI_PASSWORD) supplies "
                                                       "it. Run by the installation before the first "
                                                       "manager start; it does nothing once the RBAC "
                                                       "database exists.")

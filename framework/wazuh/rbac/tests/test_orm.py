@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import re
+import string
 from importlib import reload
 from unittest.mock import patch, call, MagicMock
 
@@ -19,8 +20,8 @@ from sqlalchemy.sql import text
 from wazuh.core.utils import get_utc_now
 from wazuh.rbac.tests.utils import init_db
 from wazuh.rbac.orm import WAZUH_USER_ID, WAZUH_WUI_USER_ID, MAX_ID_RESERVED, User, \
-    GENERATED_PASSWORD_LENGTH, USER_PASSWORD_MAX_LENGTH, USER_PASSWORD_MIN_LENGTH, USER_PASSWORD_POLICY, \
-    generate_default_password
+    GENERATED_PASSWORD_LENGTH, GENERATED_PASSWORD_SYMBOLS, USER_PASSWORD_MAX_LENGTH, \
+    USER_PASSWORD_MIN_LENGTH, USER_PASSWORD_POLICY, generate_default_password
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
@@ -716,6 +717,20 @@ def test_databasemanager_insert_default_resources_unusable_password(fresh_in_mem
             assert not auth.check_user(username, "wazuh")
 
 
+@pytest.mark.parametrize("password,accepted", [
+    ("Wazuh1-Passw0rd", True),
+    ("wazuh1passw0rdx", True),          # no case rule: PCI 8.3.6 asks for neither
+    ("wazuh-passw0rd!", True),          # no symbol rule either, whatever it holds
+    ("012345678901234", False),         # no alphabetic character
+    ("WazuhWazuhWazuh", False),         # no numeric character
+    ("Wazuh1-Pass", False),             # eleven characters
+    ("Wazuh1-Passw0rd\n", False),       # anchored with \Z, so a trailing newline is not a match
+])
+def test_user_password_policy(password, accepted):
+    """The rule is PCI DSS v4.0 requirement 8.3.6 and nothing else: twelve characters, a letter, a digit."""
+    assert bool(USER_PASSWORD_POLICY.match(password)) is accepted
+
+
 def test_generate_default_password():
     """Every generated password satisfies the API password policy, and no two of them match.
 
@@ -723,12 +738,15 @@ def test_generate_default_password():
     has to hold for every draw and not for most of them.
     """
     generated = {generate_default_password() for _ in range(1000)}
+    allowed = set(string.ascii_letters + string.digits + GENERATED_PASSWORD_SYMBOLS)
 
     assert len(generated) == 1000
     for password in generated:
         assert len(password) == GENERATED_PASSWORD_LENGTH
         assert USER_PASSWORD_MIN_LENGTH <= len(password) <= USER_PASSWORD_MAX_LENGTH
         assert USER_PASSWORD_POLICY.match(password)
+        # A generated password travels through a shell command line, a YAML document and a keystore value
+        assert set(password) <= allowed
 
 
 def test_load_preseeded_passwords_absent(fresh_in_memory_db, tmp_path):

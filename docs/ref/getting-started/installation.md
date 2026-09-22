@@ -80,17 +80,17 @@ Four more variables carry credentials rather than configuration options. They ar
 
 | Variable | What it sets | Required |
 |----------|--------------|----------|
-| `INDEXER_USER_PASSWORD` | Password of the indexer's `wazuh-manager` user, stored in the keystore | Yes |
-| `INDEXER_USER_NAME` | Indexer user the manager authenticates as | No, defaults to `wazuh-manager` |
-| `WAZUH_API_PASSWORD` | Password of the `wazuh` Server API user | No, generated when absent |
-| `WAZUH_WUI_PASSWORD` | Password of the `wazuh-wui` Server API user | No, generated when absent |
+| `INDEXER_PASSWORD` | Password of the indexer's `wazuh-manager` user, stored in the keystore | Yes |
+| `INDEXER_USERNAME` | Indexer user the manager authenticates as | No, defaults to `wazuh-manager` |
+| `INITIAL_WAZUH_PASSWORD` | Password of the `wazuh` Server API user | No, generated when absent |
+| `INITIAL_WAZUH_WUI_PASSWORD` | Password of the `wazuh-wui` Server API user | No, generated when absent |
 
-A fresh installation that does not set `INDEXER_USER_PASSWORD` is refused before the package is unpacked. There is no default for it, and a manager that cannot reach the indexer would say so nowhere.
+A fresh installation that does not set `INDEXER_PASSWORD` is refused before the package is unpacked. There is no default for it, and a manager that cannot reach the indexer would say so nowhere.
 
 Unlike the `WAZUH_REMOTE_*` variables above, do not place these after `sudo`: an argument is visible to every account on the host through the process list, and it also lands in the shell history. Export them first and preserve the environment with `sudo -E`:
 
 ```bash
-read -rs INDEXER_USER_PASSWORD && export INDEXER_USER_PASSWORD
+read -rs INDEXER_PASSWORD && export INDEXER_PASSWORD
 sudo -E apt install wazuh-manager
 ```
 
@@ -181,15 +181,15 @@ They are also in '/var/wazuh-manager/api/configuration/security/wazuh-preseeded-
 
 This output is the only disclosure the manager makes. The password never reaches its log, nor the process list.
 
-To decide the password instead of having it generated, put it in the environment of the installation, in `WAZUH_API_PASSWORD` for `wazuh` and `WAZUH_WUI_PASSWORD` for `wazuh-wui`. Either one that is absent is generated:
+To decide the password instead of having it generated, put it in the environment of the installation, in `INITIAL_WAZUH_PASSWORD` for `wazuh` and `INITIAL_WAZUH_WUI_PASSWORD` for `wazuh-wui`. Either one that is absent is generated:
 
 ```bash
-read -rs WAZUH_API_PASSWORD && export WAZUH_API_PASSWORD
-read -rs WAZUH_WUI_PASSWORD && export WAZUH_WUI_PASSWORD
+read -rs INITIAL_WAZUH_PASSWORD && export INITIAL_WAZUH_PASSWORD
+read -rs INITIAL_WAZUH_WUI_PASSWORD && export INITIAL_WAZUH_WUI_PASSWORD
 sudo -E apt install wazuh-manager
 ```
 
-A supplied password has to satisfy the API policy, 12 to 64 characters with a lowercase letter, an uppercase letter, a digit and one of `. * + ? -`. One that does not stops the provisioning and names the variable it came from.
+A supplied password has to satisfy the API policy, 12 to 64 characters holding both a letter and a digit. One that does not stops the provisioning and names the variable it came from.
 
 **The password is the deployment's, not the node's.** In a cluster, give every node the same pair through those variables, the same way `root-ca.pem` is one file shared by all of them. A node that generates its own would serve a different password the day it is promoted to master, and the dashboard would start answering `401`.
 
@@ -228,16 +228,16 @@ A file that is present but cannot be used is an installation error, not somethin
 
 #### Configure indexer connection
 
-The manager authenticates against the Wazuh indexer as the indexer's own `wazuh-manager` user. That password is the indexer deployment's, so the manager neither generates it nor ships a default for it: the installation takes it from the `INDEXER_USER_PASSWORD` variable and stores it in the keystore, and refuses to install a fresh manager without it.
+The manager authenticates against the Wazuh indexer as the indexer's own `wazuh-manager` user. That password is the indexer deployment's, so the manager neither generates it nor ships a default for it: the installation takes it from the `INDEXER_PASSWORD` variable and stores it in the keystore, and refuses to install a fresh manager without it.
 
 ```bash
-read -rs INDEXER_USER_PASSWORD && export INDEXER_USER_PASSWORD
+read -rs INDEXER_PASSWORD && export INDEXER_PASSWORD
 sudo -E apt install wazuh-manager
 ```
 
 `read -rs` rather than an assignment on the command line: an argument is visible to every account on the host through the process list, and it would also land in the shell history. From the environment the installation pipes it into `wazuh-manager-keystore` through its standard input, so it reaches no command line either.
 
-`INDEXER_USER_NAME` overrides the user name, which defaults to `wazuh-manager`. An upgrade keeps the keystore it already has and does not read either variable.
+`INDEXER_USERNAME` overrides the user name, which defaults to `wazuh-manager`. An upgrade keeps the keystore it already has and does not read either variable.
 
 To change them later, on a manager that is already installed, write the keystore the same way. Do not use the tool's `-v` option, which puts the password on a command line every account on the host can read:
 
@@ -291,7 +291,7 @@ The manager creates two Server API users the first time the API starts, both lin
 
 The package ships no password for either of them. What each one ends up with is decided when the manager is installed, and again whenever it has to create `rbac.db`:
 
-- **Supplied**, through `WAZUH_API_PASSWORD` or `WAZUH_WUI_PASSWORD` at installation time, or written to the credentials file with `rbac_control set-password` before the first start.
+- **Supplied**, through `INITIAL_WAZUH_PASSWORD` or `INITIAL_WAZUH_WUI_PASSWORD` at installation time, or written to the credentials file with `rbac_control set-password` before the first start.
 - **Generated** otherwise, per user, from the system CSPRNG, satisfying the password policy by construction.
 
 Either way the value lands in `api/configuration/security/wazuh-preseeded-passwords.yml`, the installation prints it, and the manager seeds `rbac.db` from it the first time the API starts. See [The Server API passwords](#the-server-api-passwords).
@@ -304,9 +304,11 @@ An upgrade keeps whatever password the installation already had, because the RBA
 
 #### Changing them
 
-A password must be 12 to 64 characters long and contain at least one uppercase letter, one lowercase letter, one digit and one symbol out of `. * + ? -`, the set both authentication realms of a deployment share. Those five are what has to be present, not the only ones allowed: any other character may appear alongside them, and only a password whose symbols all fall outside the set is rejected. The API answers error `5009` for the length and `5007` for the character classes.
+A password must be 12 to 64 characters long and hold both an alphabetic and a numeric character. That is PCI DSS v4.0 requirement 8.3.6 and nothing else: no rule on case or on symbols, which the requirement does not ask for and which mostly pushes operators towards predictable substitutions. Any character may appear. The maximum is the API's own, not the requirement's. The API answers error `5009` for the length and `5007` for the character classes.
 
-Run the following on the **master node**: authentication is always resolved there, so that is the database the API reads. Every node keeps its own `api/configuration/security/rbac.db` and the cluster does not synchronize it. A worker installed with the same `WAZUH_API_PASSWORD` and `WAZUH_WUI_PASSWORD` as the rest of the deployment seeds those when it is promoted, so promotion does not rotate the credential the dashboard already uses. A worker that was left to generate its own serves a different password the day it is promoted.
+What the manager generates is far above that floor: 32 characters over `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, about 198 bits. That alphabet leaves out the quote, backslash, backtick, `$`, `!` and `#`, so a generated password survives a shell command line, a YAML document and a keystore value without being escaped on the way.
+
+Run the following on the **master node**: authentication is always resolved there, so that is the database the API reads. Every node keeps its own `api/configuration/security/rbac.db` and the cluster does not synchronize it. A worker installed with the same `INITIAL_WAZUH_PASSWORD` and `INITIAL_WAZUH_WUI_PASSWORD` as the rest of the deployment seeds those when it is promoted, so promotion does not rotate the credential the dashboard already uses. A worker that was left to generate its own serves a different password the day it is promoted.
 
 A `change-password` only ever reaches the master's own database. Aligning the rest of the cluster is a separate step, and which command it takes depends on the state of each node: see [Server API credentials across nodes](#server-api-credentials-across-nodes).
 
@@ -334,10 +336,10 @@ echo '{"wazuh": "<NEW_WAZUH_PASSWORD>", "wazuh-wui": "<NEW_WAZUH_WUI_PASSWORD>"}
     | sudo /var/wazuh-manager/bin/rbac_control change-password --passwords-file -
 ```
 
-The same change can be made through the API, which is the option for automation. `wazuh` has ID `1` and `wazuh-wui` has ID `2` (`GET /security/users`). Change `wazuh-wui` first: changing a user's password invalidates every token that user holds, so once `wazuh`'s own password changes the token obtained below stops working. `WAZUH_API_PASSWORD` is `wazuh`'s current password, the one the installation was provisioned with.
+The same change can be made through the API, which is the option for automation. `wazuh` has ID `1` and `wazuh-wui` has ID `2` (`GET /security/users`). Change `wazuh-wui` first: changing a user's password invalidates every token that user holds, so once `wazuh`'s own password changes the token obtained below stops working. `INITIAL_WAZUH_PASSWORD` is `wazuh`'s current password, the one the installation was provisioned with.
 
 ```bash
-TOKEN=$(curl -s -k -u wazuh:"$WAZUH_API_PASSWORD" -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+TOKEN=$(curl -s -k -u wazuh:"$INITIAL_WAZUH_PASSWORD" -X POST "https://localhost:55000/security/user/authenticate?raw=true")
 curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
     -d '{"password":"<NEW_WAZUH_WUI_PASSWORD>"}' "https://localhost:55000/security/users/2"
 curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
@@ -457,7 +459,7 @@ How to give a node the deployment's passwords depends on the state it is in:
 
 | State of the node | What to run |
 |-------------------|-------------|
-| Being installed | Export the same `WAZUH_API_PASSWORD` and `WAZUH_WUI_PASSWORD` as the rest of the deployment and install with `sudo -E`. Nothing else is needed. |
+| Being installed | Export the same `INITIAL_WAZUH_PASSWORD` and `INITIAL_WAZUH_WUI_PASSWORD` as the rest of the deployment and install with `sudo -E`. Nothing else is needed. |
 | Installed, `rbac.db` does not exist yet (a worker, normally) | `rbac_control set-password -u <user>`, once per user, with the manager stopped or running |
 | `rbac.db` already exists (it has been master at some point) | `rbac_control change-password --user <user> --local` |
 
