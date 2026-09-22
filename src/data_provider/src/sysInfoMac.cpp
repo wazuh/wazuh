@@ -504,7 +504,7 @@ nlohmann::json SysInfo::getGroups() const
         {
             auto gidStr = std::to_string(static_cast<gid_t>(group["gid"].get<int>()));
             collectedUsersGroups = allUsersGroups.contains(gidStr) ?
-                                  allUsersGroups[gidStr] : nlohmann::json::array();
+                                   allUsersGroups[gidStr] : nlohmann::json::array();
         }
 
         if (collectedUsersGroups.empty())
