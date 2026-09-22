@@ -2765,6 +2765,116 @@ TEST(CaCertificateSource, ANotYetValidStampedCaStartsBeingPublishedWithoutARepar
     EXPECT_EQ(source.parses(), 1U);
 }
 
+// ---------------------------------------------------------------------------
+// The clock, not the file, changing whether the leaf chains: said once through the mailbox, so the
+// next request carries it instead of the next tick.
+// ---------------------------------------------------------------------------
+
+TEST(CaCertificateSourceClockEvents, LosingAndRegainingTheChainOnTheClockAreEachSaidOnce)
+{
+    const auto caKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    const auto ca =
+        remoted::test::makeCertificate("Short CA", -3600, 3600, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto leaf = remoted::test::makeCertificate("manager", -60, 7200, leafKey.get(), caKey.get(), ca.get());
+
+    const auto plain = "/tmp/casource_clock_events_plain_" + std::to_string(::getpid()) + ".pem";
+    const auto path = "/tmp/casource_clock_events_" + std::to_string(::getpid()) + ".pem";
+    remoted::test::ScratchFileCleanup cleanup {{plain, path}};
+    remoted::test::writePemFile(plain, {ca.get()});
+    write(path, sealedDocument(readPemCertificates(plain), kPublication));
+
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    FakeClock clock;
+    const std::time_t start = *clock.now;
+    CaCertificateSource source {
+        path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, mailbox, clock};
+
+    ASSERT_EQ(source.snapshot().publication, kPublication);
+    {
+        const auto events = source.drainRecordEvents();
+        ASSERT_EQ(events.size(), 1U);
+        EXPECT_EQ(events[0].kind, RecordEvent::published_changed);
+    }
+    source.snapshot();
+    EXPECT_TRUE(source.drainRecordEvents().empty()); // same clock, same bytes: nothing to say
+
+    *clock.now = start + 7000;
+    ASSERT_EQ(source.snapshot().matchesLeaf, false);
+    {
+        const auto events = source.drainRecordEvents();
+        ASSERT_EQ(events.size(), 1U);
+        EXPECT_EQ(events[0].kind, RecordEvent::chain_lost_on_clock);
+        EXPECT_EQ(events[0].bundlePath, path);
+        EXPECT_EQ(events[0].previousPublication, kPublication);
+        EXPECT_EQ(events[0].publication, 0);
+        EXPECT_NE(events[0].reason.find("expired"), std::string::npos) << events[0].reason;
+
+        const auto line = remoted::http::describeRecordEvent(events[0]);
+        ASSERT_TRUE(line.has_value());
+        EXPECT_EQ(line->first, remoted::http::RecordEventLevel::warn);
+        EXPECT_NE(line->second.find(path), std::string::npos) << line->second;
+        EXPECT_NE(line->second.find("503"), std::string::npos) << line->second;
+        EXPECT_NE(line->second.find(std::to_string(kPublication)), std::string::npos) << line->second;
+    }
+    source.snapshot();
+    EXPECT_TRUE(source.drainRecordEvents().empty()); // still expired: said once, not once per read
+
+    *clock.now = start;
+    ASSERT_EQ(source.snapshot().matchesLeaf, true);
+    {
+        const auto events = source.drainRecordEvents();
+        ASSERT_EQ(events.size(), 1U);
+        EXPECT_EQ(events[0].kind, RecordEvent::chain_regained_on_clock);
+        EXPECT_EQ(events[0].previousPublication, 0);
+        EXPECT_EQ(events[0].publication, kPublication);
+
+        const auto line = remoted::http::describeRecordEvent(events[0]);
+        ASSERT_TRUE(line.has_value());
+        EXPECT_EQ(line->first, remoted::http::RecordEventLevel::info);
+        EXPECT_NE(line->second.find(std::to_string(kPublication)), std::string::npos) << line->second;
+    }
+    EXPECT_EQ(source.parses(), 1U);
+}
+
+TEST(CaCertificateSourceClockEvents, ARebuildLeavesTheAnnouncementToTheRecord)
+{
+    const auto caKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    const auto ca =
+        remoted::test::makeCertificate("Short CA", -3600, 3600, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto leaf = remoted::test::makeCertificate("manager", -60, 7200, leafKey.get(), caKey.get(), ca.get());
+
+    const auto plain = "/tmp/casource_clock_rebuild_plain_" + std::to_string(::getpid()) + ".pem";
+    const auto path = "/tmp/casource_clock_rebuild_" + std::to_string(::getpid()) + ".pem";
+    remoted::test::ScratchFileCleanup cleanup {{plain, path}};
+    remoted::test::writePemFile(plain, {ca.get()});
+    const auto certificates = readPemCertificates(plain);
+    write(path, sealedDocument(certificates, kPublication));
+
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    FakeClock clock;
+    const std::time_t start = *clock.now;
+    CaCertificateSource source {
+        path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, mailbox, clock};
+
+    ASSERT_EQ(source.snapshot().publication, kPublication);
+    ASSERT_EQ(source.drainRecordEvents().size(), 1U);
+
+    // The clock passes the CA's notAfter AND the master re-stamps the file before the next read:
+    // one read, one rebuild, and the record's own event is the only one -- the guard it names is
+    // the clock's doing, and nothing says it twice.
+    *clock.now = start + 7000;
+    replaceAtomically(path, sealedDocument(certificates, kNewerPublication));
+    ASSERT_EQ(source.snapshot().publication, 0);
+
+    const auto events = source.drainRecordEvents();
+    ASSERT_EQ(events.size(), 1U);
+    EXPECT_EQ(events[0].kind, RecordEvent::guard_failed);
+    EXPECT_EQ(events[0].guard, GuardFailure::no_ca_signs_leaf);
+    EXPECT_EQ(source.parses(), 2U);
+}
+
 TEST(ParsedBundle, SerialisationRoundTripsAndDropsEverythingElse)
 {
     auto pki = makePki("pem-roundtrip");

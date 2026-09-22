@@ -61,11 +61,14 @@
 namespace remoted::http
 {
     /**
-     * @brief What happened to the bundle's publication, from the record's point of view.
+     * @brief What happened to the bundle's publication, from the record's point of view -- and the
+     *        two things the clock alone can do to it.
      *
-     * Six values, and the four guards of ca_bundle::GuardFailure travel as DATA inside
-     * `guard_failed` rather than as four kinds of their own (C25): to an operator they are one
-     * question -- why is this bundle not published -- and to the log they are one line.
+     * The four guards of ca_bundle::GuardFailure travel as DATA inside `guard_failed` rather than
+     * as four kinds of their own (C25): to an operator they are one question -- why is this bundle
+     * not published -- and to the log they are one line. The two `*_on_clock` kinds are the
+     * verdict moving with no byte of the file changing (issue #39519): a validity window closed or
+     * opened, so whether the leaf chains -- the 503 and the vouch -- flipped between two reads.
      */
     enum class RecordEvent
     {
@@ -74,7 +77,9 @@ namespace remoted::http
         first_time_unpublished, ///< A servable bundle with no publication block, and no record of it before.
         changed_outside_tool,   ///< The bundle lost its block or its bytes changed without the tool.
         guard_failed,           ///< A block is there but a guard refused to vouch for it.
-        record_unwritable       ///< The record itself could not be persisted (or not durably so).
+        record_unwritable,      ///< The record itself could not be persisted (or not durably so).
+        chain_lost_on_clock,    ///< The leaf stopped chaining to the unchanged bundle: a window closed.
+        chain_regained_on_clock ///< The leaf chains to the unchanged bundle again: a window opened.
     };
 
     /**
@@ -91,7 +96,9 @@ namespace remoted::http
         std::string bundlePath;               ///< The CA bundle this is about (remote.https.ca_certificate).
         std::string recordPath;               ///< The publication record's own path; empty when there is none.
         std::int64_t previousPublication {0}; ///< What the record held before this event; 0 when it held nothing.
+                                              ///< For the `*_on_clock` kinds, the publication announced before.
         std::int64_t publication {0};         ///< The publication now in effect; 0 means "not published".
+        std::string reason; ///< `chain_lost_on_clock` only: OpenSSL's reason when the chain verdict has one.
         ca_bundle::GuardFailure guard {ca_bundle::GuardFailure::none}; ///< Which guard refused, for `guard_failed`.
         /// The value that guard measured, so the line names it: the certificate count for
         /// `too_many_certificates`, the serialised size for `too_many_bytes`, 0 for every other guard

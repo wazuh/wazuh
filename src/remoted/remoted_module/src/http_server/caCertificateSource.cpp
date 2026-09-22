@@ -165,7 +165,7 @@ namespace remoted::http
             // once the file is back are still a cache hit.
             ++m_consecutiveFailures;
             m_snapshot.lastReadFailure = ReadFailure {read.status, read.error, m_consecutiveFailures};
-            judgeLocked();
+            judgeLocked(/*announceFlips=*/true);
             return m_snapshot;
         }
 
@@ -175,7 +175,7 @@ namespace remoted::http
         if (hash == m_hash)
         {
             m_snapshot.lastReadFailure.reset();
-            judgeLocked();
+            judgeLocked(/*announceFlips=*/true);
             return m_snapshot;
         }
 
@@ -190,7 +190,7 @@ namespace remoted::http
         // travels with the snapshot even when buildLocked() refused everything else in it.
         m_snapshot.fileSha256 = hash;
         // Judged before the record looks at it: applyRecord() derives its event from the vouch.
-        judgeLocked();
+        judgeLocked(/*announceFlips=*/false);
         // Only the reads that CHANGED the file reach the record: a cache hit above returned long
         // ago, which is what keeps an event from being re-derived (and re-posted) for bytes that
         // were already accounted for. O(1) and I/O-free, so it costs the hot path nothing (C22).
@@ -363,8 +363,11 @@ namespace remoted::http
         return 0;
     }
 
-    void CaCertificateSource::judgeLocked()
+    void CaCertificateSource::judgeLocked(bool announceFlips)
     {
+        const auto chainedBefore = m_snapshot.matchesLeaf;
+        const auto publicationBefore = m_snapshot.publication;
+
         if (m_parsed.certificates.empty())
         {
             // Nothing servable: nothing to judge, and nothing is vouched for.
@@ -405,6 +408,22 @@ namespace remoted::http
         const auto chain = chainValidates(m_leaf.get(), m_parsed.certificates, at);
         m_snapshot.chainValid = chain.valid;
         m_snapshot.chainError = chain.error;
+
+        if (!announceFlips || !m_mailbox || !chainedBefore.has_value() || *chainedBefore == *m_snapshot.matchesLeaf)
+        {
+            return;
+        }
+
+        // Same bytes, other answer: only the clock moved it. Said once, here, so the next request
+        // carries it rather than the next tick; the record is not touched, it describes the file.
+        CaRecordEvent event;
+        event.kind = *m_snapshot.matchesLeaf ? RecordEvent::chain_regained_on_clock : RecordEvent::chain_lost_on_clock;
+        event.bundlePath = m_path;
+        event.recordPath = m_record ? m_record->path() : std::string {};
+        event.previousPublication = publicationBefore;
+        event.publication = m_snapshot.publication;
+        event.reason = m_snapshot.chainError;
+        m_mailbox->post(std::move(event));
     }
 
     std::uint64_t CaCertificateSource::parses() const

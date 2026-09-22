@@ -208,6 +208,34 @@ namespace remoted::http
 
             case RecordEvent::guard_failed: return std::make_pair(RecordEventLevel::warn, describeGuard(event));
 
+            case RecordEvent::chain_lost_on_clock:
+                // The file is the same and the answer is not: the operator's fix is a renewal, not
+                // a `stamp`, and the line says which two things changed for agents (the 503 and,
+                // for a published bundle, the generation).
+                return std::make_pair(
+                    RecordEventLevel::warn,
+                    "The CA bundle '" + event.bundlePath +
+                        "' no longer chains to the served leaf certificate, and the file did not change: a validity "
+                        "window closed" +
+                        (event.reason.empty() ? std::string {} : " (" + event.reason + ")") +
+                        ". GET /cacerts answers 503 ca_mismatch from now on" +
+                        (event.previousPublication != 0 ? ", and " + std::string {UNPUBLISHED_CONSEQUENCE} +
+                                                              " instead of " + std::to_string(event.previousPublication)
+                                                        : std::string {}) +
+                        "; renew the CA or the certificate.");
+
+            case RecordEvent::chain_regained_on_clock:
+                // The pre-staged CA of a rotation reaching its notBefore: INFO, and the generation
+                // agents are told from now on, so the operator can match it against the runbook.
+                return std::make_pair(RecordEventLevel::info,
+                                      "The CA bundle '" + event.bundlePath +
+                                          "' chains to the served leaf certificate again, and the file did not "
+                                          "change: a validity window opened. GET /cacerts serves it from now on" +
+                                          (event.publication != 0
+                                               ? ", published as generation " + std::to_string(event.publication)
+                                               : std::string {}) +
+                                          ".");
+
             case RecordEvent::record_unwritable:
                 // The RECORD's path, never the bundle's (they are different files and different
                 // fixes), and the errno. Serving and vouching are unaffected by design (C19): the

@@ -213,7 +213,8 @@ namespace remoted::http
          * `chainValid`/`chainError` and the vouch (`publication`/`vouchFailure`) are judged against
          * the clock on every call -- hit, miss or failed read -- from the parsed certificates of the
          * snapshot being returned. A CA that expires, or becomes valid, with the file untouched is
-         * therefore seen by the next caller, not by the next write to the file (issue #39519).
+         * therefore seen by the next caller, not by the next write to the file (issue #39519). When
+         * that flips whether the leaf chains, one event says so through the mailbox.
          */
         CaCertificateSnapshot snapshot();
 
@@ -298,9 +299,16 @@ namespace remoted::http
     private:
         /// Everything about @p parsed that has no date term; judgeLocked() owns the verdicts.
         CaCertificateSnapshot buildLocked(const ca_bundle::ParsedBundle& parsed) const;
-        /// matchesLeaf, chainValid/chainError and the vouch of m_snapshot, from m_leaf and m_parsed,
-        /// as of m_verdictClock (or now).
-        void judgeLocked();
+        /**
+         * @brief matchesLeaf, chainValid/chainError and the vouch of m_snapshot, from m_leaf and
+         *        m_parsed, as of m_verdictClock (or now).
+         *
+         * With @p announceFlips, a change of `matchesLeaf` posts one `chain_lost_on_clock` or
+         * `chain_regained_on_clock` event: the snapshot being judged is the one the last call
+         * returned, so only the clock can have moved it. False on the rebuild path, where the
+         * snapshot is new and applyRecord() is the one that speaks.
+         */
+        void judgeLocked(bool announceFlips);
 
         /**
          * @brief Derives the record event for @p built and updates what this source remembers.
