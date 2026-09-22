@@ -638,6 +638,90 @@ TEST_F(IndexerConnectorTest, PublishDeletedWithSpecialCharId)
 }
 
 /**
+ * @brief Test that a DELETED operation only removes its own exact document id, not a longer sibling id that merely
+ * starts with it - the raw prefix-scan `seek()` would otherwise sweep both out of the index and the local mirror.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeletedDoesNotCollideWithLongerItemId)
+{
+    const std::string deletedId {"000_openssl_CVE-2023-1"};
+    const std::string siblingId {"000_openssl_CVE-2023-100"};
+    const std::string unrelatedId {"000_zlib_CVE-2024-9"};
+
+    std::atomic<bool> callbackCalled {false};
+    std::mutex deleteRequestsMutex;
+    std::string deleteRequests;
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&callbackCalled, &deleteRequestsMutex, &deleteRequests](const std::string& data)
+        {
+            if (data.find(R"("delete")") != std::string::npos)
+            {
+                std::lock_guard<std::mutex> lock {deleteRequestsMutex};
+                deleteRequests.append(data);
+            }
+            callbackCalled = true;
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // Populate the local mirror. `unrelatedId` keeps the mirror non-empty after the deletion below, so the
+    // final diff() exercises the real comparison instead of short-circuiting on the empty-mirror guard.
+    for (const auto& id : {deletedId, siblingId, unrelatedId})
+    {
+        callbackCalled = false;
+        nlohmann::json publishData;
+        publishData["id"] = id;
+        publishData["operation"] = "INSERTED";
+        publishData["data"] = "content";
+        ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+        ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    }
+
+    callbackCalled = false;
+    nlohmann::json deleteData;
+    deleteData["id"] = deletedId;
+    deleteData["operation"] = "DELETED";
+    ASSERT_NO_THROW(indexerConnector.publish(deleteData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    {
+        std::lock_guard<std::mutex> lock {deleteRequestsMutex};
+        EXPECT_NE(deleteRequests.find(R"("_id":")" + deletedId + R"(")"), std::string::npos)
+            << "The requested document was not deleted from the index";
+        EXPECT_EQ(deleteRequests.find(R"("_id":")" + siblingId + R"(")"), std::string::npos)
+            << "The longer sibling document was also deleted from the index";
+    }
+
+    // The sibling must still be in the local mirror: a routine resync finding it in the index must not
+    // conclude it is stale and delete it.
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [&siblingId, &unrelatedId](const std::string&) -> std::string
+        {
+            return R"({"_scroll_id":"abcdef","hits":{"total":{"value":2},"hits":[{"_id":")" + siblingId +
+                   R"("},{"_id":")" + unrelatedId + R"("}]}})";
+        });
+
+    std::atomic<bool> deleteRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&deleteRequested](const std::string& data)
+        {
+            if (data.find(R"("delete")") != std::string::npos)
+            {
+                deleteRequested = true;
+            }
+        });
+
+    indexerConnector.sync("000");
+
+    EXPECT_ANY_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_FALSE(deleteRequested) << "The sibling document was wrongly removed from the local mirror";
+}
+
+/**
  * @brief Test the connection and posterior data publication into a server. The published data is checked against the
  * expected one. The publication contains a DELETED_BY_QUERY operation.
  *
