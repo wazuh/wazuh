@@ -40,6 +40,11 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 DEFAULT_CLIENT_KEYS = "/var/wazuh-manager/etc/client.keys"
 
 
+# A JSON string escape for U+0000, kept as a constant so the literal two-character sequence is
+# never mangled by an editor or a copy-paste into something that interprets it.
+ESCAPED_NUL = r"\u0000"  # two characters, not a NUL byte
+
+
 def default_body(agent_id: str) -> bytes:
     """One H line naming `agent_id` + one event. The H line MUST name the authenticated agent: the
     manager answers 400 (payload_agent_mismatch) to a batch that claims another id."""
@@ -280,6 +285,63 @@ def scenario_payload_agent_mismatch(agent_id, agent_key):
     return headers, body, target
 
 
+def scenario_duplicate_identity_member(agent_id, agent_key):
+    # The one case that must still answer 400. The H line names the real
+    # agent FIRST -- so the identity comparison itself is satisfied -- and repeats "wazuh" with a
+    # victim's id. A lookup here takes the first member, the engine's merge keeps the last, and the
+    # body is forwarded byte for byte in between: without the uniqueness check the event is ingested
+    # under the victim. Unlike the two pointer cases below, this repetition IS on the identity path,
+    # so the endpoint refuses it rather than leaving it to the engine.
+    target = prefixed("/stateless")
+    victim = str(int(agent_id) + 1)
+    body = (
+        'H {{"wazuh":{{"agent":{{"id":"{me}"}}}},"wazuh":{{"agent":{{"id":"{them}"}}}}}}'
+        "{LF}E 1:/var/log/syslog:hello from python"
+    ).format(me=agent_id, them=victim, LF=chr(10)).encode()
+    headers = auth_headers(agent_id, agent_key)
+    return headers, body, target
+
+
+def scenario_pointer_injection_slash_key(agent_id, agent_key):
+    # Expects 202, not 400, and that is the point. "wazuh/agent" is ONE literal member name that is
+    # not on the identity path, so /stateless validates the header as unambiguous and forwards it --
+    # deliberately, to keep the endpoint check proportional to the identity path.
+    #
+    # It used to be an injection: the engine built the JSON Pointer it recurses with by raw
+    # concatenation, so on the key's SECOND occurrence the pointer became "/wazuh/agent" and landed
+    # on the real agent object, overwriting the id that had just been validated. The engine now
+    # escapes the member name (base/src/json.cpp), so the key stays an inert literal sibling.
+    #
+    # A 400 here means the endpoint check was widened back; a 5xx means the engine rejected the
+    # batch. What this scenario cannot see is the ingested agent id -- the tool only reads the HTTP
+    # status. That property is asserted directly in base_utest
+    # (JsonSettersTest.MergeDoesNotLetASlashInAMemberNameRetargetThePointer).
+    target = prefixed("/stateless")
+    victim = str(int(agent_id) + 1)
+    body = (
+        'H {{"wazuh":{{"agent":{{"id":"{me}"}}}},"wazuh/agent":{{}},"wazuh/agent":{{"id":"{them}"}}}}'
+        "{LF}E 1:/var/log/syslog:hello from python"
+    ).format(me=agent_id, them=victim, LF=chr(10)).encode()
+    headers = auth_headers(agent_id, agent_key)
+    return headers, body, target
+
+
+def scenario_pointer_injection_nul_key(agent_id, agent_key):
+    # Same shape, via the other half of the old defect: the member name was read as a C-string when
+    # the pointer was built, so it truncated at the NUL to "wazuh" and the merge walked into the real
+    # wazuh object. The name is now taken by length, so it stays distinct. Sent as a JSON NUL escape,
+    # which is legal in a JSON string. Expects 202 for the same reason as the slash case above.
+    target = prefixed("/stateless")
+    victim = str(int(agent_id) + 1)
+    key = 'wazuh' + ESCAPED_NUL + 'x'
+    body = (
+        'H {{"wazuh":{{"agent":{{"id":"{me}"}}}},"{k}":{{}},"{k}":{{"agent":{{"id":"{them}"}}}}}}'
+        "{LF}E 1:/var/log/syslog:hello from python"
+    ).format(me=agent_id, them=victim, k=key, LF=chr(10)).encode()
+    headers = auth_headers(agent_id, agent_key)
+    return headers, body, target
+
+
 def scenario_transport_body_too_large(agent_id, agent_key):
     # The transport's own hard cap (10 MiB) rather than AuthConfig's (5 MiB,
     # see scenario_body_too_large): this one must never reach AuthMiddleware
@@ -357,6 +419,9 @@ SCENARIOS = [
     ("non_canonical_kid", 401, scenario_non_canonical_kid),
     ("ascii_key", 401, scenario_ascii_key),
     ("payload_agent_mismatch", 400, scenario_payload_agent_mismatch),
+    ("duplicate_identity_member", 400, scenario_duplicate_identity_member),
+    ("pointer_injection_slash_key", 202, scenario_pointer_injection_slash_key),
+    ("pointer_injection_nul_key", 202, scenario_pointer_injection_nul_key),
     ("body_too_large", 413, scenario_body_too_large),
     ("url_too_large", CONN_CLOSED, scenario_url_too_large),
     ("header_name_too_large", CONN_CLOSED, scenario_header_name_too_large),
