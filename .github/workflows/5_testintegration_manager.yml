@@ -138,8 +138,11 @@ jobs:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
       INSTALLATION_DIR: /var/wazuh-manager
-      # The default API users have no shipped password: the node is provisioned before its first start and
-      # the suites authenticate with this same value, which they read from the environment.
+      # The manager refuses a fresh installation that does not name the indexer user's password. There is
+      # no indexer in this job, so the value only has to exist.
+      INDEXER_USER_PASSWORD: Integration-Indexer1!
+      # The default API users have no shipped password. The installation takes this one for 'wazuh' and
+      # generates one for 'wazuh-wui', and the suites authenticate with this same value.
       WAZUH_API_PASSWORD: Integration-Tests1!
     steps:
       - name: Checkout repository
@@ -165,7 +168,9 @@ jobs:
             echo "No manager package found in /tmp/packages"
             exit 1
           fi
-          sudo dpkg -i "${PACKAGE_PATH}" || sudo apt-get install -f -y
+          # -E: the package scriptlets read INDEXER_USER_PASSWORD and WAZUH_API_PASSWORD from the
+          # environment, and sudo resets it.
+          sudo -E dpkg -i "${PACKAGE_PATH}" || sudo -E apt-get install -f -y
           if ! dpkg -l wazuh-manager | grep -q '^ii'; then
             echo "wazuh-manager package installation failed"
             exit 1
@@ -211,7 +216,7 @@ jobs:
           USER_ENABLE_AUTHD="y"
           USER_AUTO_START="n"
           EOF
-          sudo sh install.sh
+          sudo -E sh install.sh
           rm ./etc/preloaded-vars.conf
 
       # ── Common steps ──────────────────────────────────────────────────────
@@ -253,13 +258,6 @@ jobs:
           sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$INSTALLATION_DIR/etc/certs/remoted-key.pem"
           sudo chown root:wazuh-manager "$INSTALLATION_DIR/etc/certs"
           sudo chmod 1770 "$INSTALLATION_DIR/etc/certs"
-
-      - name: Provision the Server API credentials
-        run: |
-          # The manager refuses to start until its default API users have a password. Provisioned the same
-          # way an installation does it, one call per user, before the first start.
-          echo "$WAZUH_API_PASSWORD" | sudo "$INSTALLATION_DIR/bin/rbac_control" set-password -u wazuh
-          echo "$WAZUH_API_PASSWORD" | sudo "$INSTALLATION_DIR/bin/rbac_control" set-password -u wazuh-wui
 
       - name: Start wazuh-manager and verify
         run: |

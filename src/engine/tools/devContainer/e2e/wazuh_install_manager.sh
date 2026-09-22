@@ -170,8 +170,11 @@ fi
 
 # ---------------------------------------------------------------- 3. install.sh
 step "install"
+# install.sh refuses a manager that does not name the indexer user's password. The devcontainer has no
+# indexer, so the value only has to exist.
 declare -a ENVV=(USER_LANGUAGE=en USER_NO_STOP=y USER_INSTALL_TYPE=manager "USER_DIR=$DIR"
-                 USER_DELETE_DIR=y USER_ENABLE_AUTHD=y USER_AUTO_START=n)
+                 USER_DELETE_DIR=y USER_ENABLE_AUTHD=y USER_AUTO_START=n
+                 "INDEXER_USER_PASSWORD=${INDEXER_USER_PASSWORD:-DevCont4iner-Indexer.}")
 if [ "$MODE" = sandbox ]; then
   ENVV+=(USER_REGISTER_SERVICE=n USER_CLEANINSTALL=y)
   [ -z "$HTTPS_PORT" ] || ENVV+=("WAZUH_REMOTE_HTTPS_PORT=$HTTPS_PORT")
