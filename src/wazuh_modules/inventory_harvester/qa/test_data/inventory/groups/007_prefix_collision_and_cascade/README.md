@@ -13,3 +13,10 @@ that has no documents, so they are no-ops. They give the insert batch time to re
 before the deletion is processed, and the deletion time to complete before agent `2502` syncs.
 Without them agent `2502` syncs against an index that is still empty and the scenario never
 happens.
+
+The final result check itself now polls the index (bounded retries) instead of asserting once
+immediately, so a loaded runner that's merely slow to reflect the last write no longer risks a
+false pass against a not-yet-caught-up index - see `test_indexation.py`'s result-validation loop.
+That's a safety net on top of the padding above, not a replacement for it: the padding is what
+keeps the *operations* (insert, delete) landing in the right order before agent `2502` syncs at
+all.

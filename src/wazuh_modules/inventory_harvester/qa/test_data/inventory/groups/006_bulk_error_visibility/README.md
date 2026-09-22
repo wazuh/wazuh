@@ -9,6 +9,6 @@ carries `group_uuid` (agent `003`) is rejected by OpenSearch with a per-item
 `strict_dynamic_mapping_exception` inside an HTTP 200 `_bulk` response, while agents `001` and
 `002` are indexed normally.
 
-`result.json` therefore expects exactly agents `001` and `002`. The rejection itself is not
-logged by the indexer connector today; asserting on that log output is not possible at this
-level, only on index content.
+`result.json` therefore expects exactly agents `001` and `002`. The rejection itself is logged by
+the indexer connector (`logBulkItemErrors`); that log output is asserted separately at the
+component-test level, not here — this fixture only checks the resulting index content.

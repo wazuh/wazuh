@@ -338,19 +338,40 @@ def test_data_indexation(opensearch, test_folder):
 
         for idx_def in expected:
             index = idx_def["index_name"]
-            resp = requests.get(f"http://{GLOBAL_URL}/{index}/_search")
-            assert resp.status_code == 200, f"Search failed: {resp.text}"
+            expected_data = idx_def["data"]
 
-            hits = resp.json()["hits"]
+            # Poll instead of asserting once immediately: on a loaded runner the index may not have
+            # caught up with the test tool's last write yet, and a single premature check could pass
+            # vacuously against a still-empty or still-stale index instead of actually proving the
+            # scenario. Same bounded-retry style already used elsewhere in this file.
+            retries = 10
+            hits = {"hits": [], "total": {"value": -1}}
+            resp = None
+            for retry in range(retries):
+                resp = requests.get(f"http://{GLOBAL_URL}/{index}/_search")
+                assert resp.status_code == 200, f"Search failed: {resp.text}"
+
+                hits = resp.json()["hits"]
+                if hits["total"]["value"] == len(expected_data) and all(
+                    any(doc == hit["_source"] for hit in hits["hits"]) for doc in expected_data
+                ):
+                    break
+
+                if retry < retries - 1:
+                    LOGGER.warning(
+                        f"Index '{index}' does not match expected results yet (attempt {retry+1}/{retries}). Retrying..."
+                    )
+                    time.sleep(0.5 * (retry + 1))
+
             LOGGER.debug(f"Fetched documents: {hits['hits']}")
-            LOGGER.debug(f"Expected documents: {idx_def['data']}")
-            assert hits["total"]["value"] == len(idx_def["data"]), (
-                f"Mismatch in '{index}': expected {len(idx_def['data'])}, got {hits['total']['value']}"
+            LOGGER.debug(f"Expected documents: {expected_data}")
+            assert hits["total"]["value"] == len(expected_data), (
+                f"Mismatch in '{index}': expected {len(expected_data)}, got {hits['total']['value']}"
             )
 
-            for doc in idx_def["data"]:
+            for doc in expected_data:
                 if not any(doc == hit["_source"] for hit in hits["hits"]):
-                    LOGGER.debug(f"Fetched document: {idx_def['data']}")
+                    LOGGER.debug(f"Fetched document: {expected_data}")
                     LOGGER.debug(f"Expected document: {doc}")
                     pytest.fail(
                         f"Missing document in '{index}': {json.dumps(doc, indent=2)}"
