@@ -488,12 +488,14 @@ nlohmann::json SysInfo::getGroups() const
         const bool hasGid { group.contains("gid") };
 
         // A group resolvable only via OpenDirectory (see GroupsProvider::collect()) carries no
-        // real GID, so group_id/group_id_signed fall back to unknown here instead of a shared
-        // placeholder number that would make distinct unresolved groups look identical.
-        groupItem["group_id"] = hasGid ? group["gid"] : UNKNOWN_VALUE;
+        // real GID. group_id/group_id_signed are BIGINT columns downstream (dbsync's
+        // bindJsonData), which unconditionally std::stoll()s a non-empty string value with no
+        // catch; UNKNOWN_VALUE (" ") would crash that bind. null is the safe "no value" for a
+        // numeric column, and also keeps distinct unresolved groups from sharing a fake id.
+        groupItem["group_id"] = hasGid ? group["gid"] : nullptr;
         groupItem["group_name"] = (group.contains("groupname") && !group["groupname"].get<std::string>().empty()) ? group["groupname"] : UNKNOWN_VALUE;
         groupItem["group_description"] = (group.contains("comment") && !group["comment"].get<std::string>().empty()) ? group["comment"] : UNKNOWN_VALUE;
-        groupItem["group_id_signed"] = group.contains("gid_signed") ? group["gid_signed"] : UNKNOWN_VALUE;
+        groupItem["group_id_signed"] = hasGid ? group["gid_signed"] : nullptr;
         groupItem["group_uuid"] = (group.contains("uuid") && !group["uuid"].get<std::string>().empty()) ? group["uuid"] : UNKNOWN_VALUE;
         groupItem["group_is_hidden"] = group["is_hidden"];
 
