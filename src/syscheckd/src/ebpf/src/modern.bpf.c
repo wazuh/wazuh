@@ -455,24 +455,46 @@ int kprobe__vfs_open(struct pt_regs *ctx)
     return 0;
 }
 
-SEC("kprobe/security_inode_setattr")
-int kprobe__security_inode_setattr(struct pt_regs *ctx)
+/*
+ * Intercepts security_inode_setattr calls to detect metadata changes
+ * (chmod / chown / utimes).
+ *
+ * Two variants are shipped, both attached to the same kprobe. They share
+ * the common body below and differ only in which argument register holds
+ * the dentry:
+ *
+ *   kprobe__security_inode_setattr_arg1 -> dentry is the FIRST argument
+ *   kprobe__security_inode_setattr_arg2 -> dentry is the SECOND argument
+ *
+ * Argument layout for security_inode_setattr:
+ *   mainline < 6.0 :  (struct dentry *dentry, struct iattr *attr)
+ *                     -> dentry @ PARM1
+ *   mainline >= 6.0:  (struct {user_namespace,mnt_idmap} *, struct dentry *,
+ *                      struct iattr *)                        -> dentry @ PARM2
+ *
+ * The boundary cannot be derived from LINUX_KERNEL_VERSION alone: vendor
+ * kernels such as RHEL/Rocky Linux 9 backported the idmapped-mounts rework
+ * into 5.14, so their security_inode_setattr already takes the idmap as
+ * its first argument while the version number still reads < 6.0. The
+ * user-space loader (ebpf_whodata.cpp) therefore inspects the running
+ * kernel's BTF to decide which variant to autoload, falling back to the
+ * version heuristic only when BTF is unavailable. See select_programs().
+ */
+static __always_inline int setattr_common(struct pt_regs* ctx, int dentry_arg)
 {
     /*
-     * Conditional ctx field reads must go through PT_REGS_PARM*_CORE
-     * (which expands to BPF_CORE_READ -> bpf_probe_read_kernel) so the
-     * compiler doesn't emit a "modified ctx pointer dereference"
-     * pattern that the strict verifier on recent kernels rejects.
-     *
-     * Argument layout for security_inode_setattr:
-     *   pre-6.0 :  (struct dentry *dentry, struct iattr *attr)               -> dentry @ PARM1
-     *   6.0+    :  (struct {user_namespace,mnt_idmap} *, struct dentry *,...) -> dentry @ PARM2
+     * dentry_arg is a compile-time constant per variant, so each program
+     * contains a single conditional ctx read. It must go through
+     * PT_REGS_PARM*_CORE (which expands to BPF_CORE_READ ->
+     * bpf_probe_read_kernel) so the compiler doesn't emit a "modified ctx
+     * pointer dereference" pattern that the strict verifier on recent
+     * kernels rejects.
      */
     struct dentry *dentry;
-    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 0, 0)) {
-        dentry = (struct dentry *)PT_REGS_PARM1_CORE(ctx);
+    if (dentry_arg == 1) {
+        dentry = (struct dentry*)PT_REGS_PARM1_CORE(ctx);
     } else {
-        dentry = (struct dentry *)PT_REGS_PARM2_CORE(ctx);
+        dentry = (struct dentry*)PT_REGS_PARM2_CORE(ctx);
     }
     if (!dentry)
         return 0;
@@ -527,6 +549,18 @@ int kprobe__security_inode_setattr(struct pt_regs *ctx)
     submit_event((const char *)full_path, inode, dev);
 
     return 0;
+}
+
+SEC("kprobe/security_inode_setattr")
+int kprobe__security_inode_setattr_arg1(struct pt_regs *ctx)
+{
+    return setattr_common(ctx, 1);
+}
+
+SEC("kprobe/security_inode_setattr")
+int kprobe__security_inode_setattr_arg2(struct pt_regs *ctx)
+{
+    return setattr_common(ctx, 2);
 }
 
 /*
