@@ -8,15 +8,15 @@ Ordered by "what would block a release" first, then "what makes it viable at 100
 > [12](12-blocking-decisions.md) carries the decisions that reshaped several items. Four things are
 > worth flagging here, because the tables below either state them wrongly or do not mention them:
 >
-> - **Item 21 is done** (`fc6e088b1a`). It also turned out to need far more than "the #37203-2 event
+> - **Item 21 is done** (`187f049a49`). It also turned out to need far more than "the #37203-2 event
 >   contract": a staging buffer, cgroup→container attribution, a routing policy, a release gate, and
 >   a per-container entry point in `container_baseline`'s API that did not exist.
 > - **Two P0 items came out of the 2026-09-07 end-to-end run, and both are now fixed** —
 >   [C23](03-findings-correctness.md) (the re-read raced the write it was triggered by, so a
 >   modification could go unreported entirely) by [D16](12-blocking-decisions.md)'s staged-path
->   settle, `60182a3a17`; and [C24](03-findings-correctness.md) (a configured path absent from an
+>   settle, `122d4d5ab6`; and [C24](03-findings-correctness.md) (a configured path absent from an
 >   image disabled that container's delete detection permanently) by
->   [D17](12-blocking-decisions.md)'s separation of the status facts, `1cab48878c`. That commit also
+>   [D17](12-blocking-decisions.md)'s separation of the status facts, `e56d57b41b`. That commit also
 >   makes an in-container `rm` reportable, by acting on `RT_EV_FILE_UNLINK` instead of staging it as
 >   a re-read that can only find nothing. **Both have now run on a real node** (2026-09-08,
 >   [12 §12.15](12-blocking-decisions.md#1215-the-integrated-agent-on-a-real-node-2026-09-08)).
@@ -25,28 +25,28 @@ Ordered by "what would block a release" first, then "what makes it viable at 100
 >   were persisted but never alerted on** — `fim_persist_baseline_row()` built only the stateful
 >   document, so a change inside a container reached `wazuh-states-fim-files` and produced no FIM
 >   alert. That was the largest remaining *functional* gap, since an alert is what a user sees, and
->   it is **now closed** (`888c29a4a6`, [14](14-spike-integration-plan.md) WP2).
+>   it is **now closed** (`3d55895056`, [14](14-spike-integration-plan.md) WP2).
 >   And `rt_file.bpf.o` was never installed, so a packaged agent could not load the engine at all;
->   the install rule is fixed (`1bdfb0990e`) but the object is **still never built** by the packaging
+>   the install rule is fixed (`bd2721021b`) but the object is **still never built** by the packaging
 >   pipeline, which needs a decision on where it comes from
 >   ([14 §14.6](14-spike-integration-plan.md)). That one blocks shipping the event path at all, so it
 >   belongs in P0 rather than in the tables' tail.
 > - **Three P0 items came out of the 2026-09-08 run of the *integrated agent*, and none is in the
 >   tables.** [C25](03-findings-correctness.md) — `<container_instances>` was never dispatched, so
 >   the module could not start and neither consumer could reach container metadata; the whole
->   feature was unreachable from a real agent (fixed, `a98549d807`).
+>   feature was unreachable from a real agent (fixed, `83896683e7`).
 >   [C26](03-findings-correctness.md) — a change to an already-known container file raised no alert,
 >   because `MODIFIED` arrived unwrapped and the callback discarded it; only first sightings got
->   through (fixed, `f39967c55c`). [C27](03-findings-correctness.md) — a path reconcile deleted the
+>   through (fixed, `9b068abb04`). [C27](03-findings-correctness.md) — a path reconcile deleted the
 >   rest of its container's rows, because closing a scoped transaction sweeps untouched rows whether
 >   or not delete detection was asked for. Measured at the alert level on 2026-09-08, only the
 >   *first* modification per container was ever reported as a modification; every later one arrived
->   as `added` (fixed, `d3a8e394d9`, [D18](12-blocking-decisions.md#d18--how-does-a-path-reconcile-persist-a-row-without-authorising-a-sweep-resolved-2026-09-08--the-non-transactional-upsert-d3a8e394d9)).
+>   as `added` (fixed, `ccf47ab93c`, [D18](12-blocking-decisions.md#d18--how-does-a-path-reconcile-persist-a-row-without-authorising-a-sweep-resolved-2026-09-08--the-non-transactional-upsert-ccf47ab93c)).
 > - **A fourth came out of the follow-up run.**
 >   [C28](03-findings-correctness.md#c28--with-no-containers-list-reads-as-connector-unavailable) —
 >   `list` omitted the `containers` key when there were none, and the client reads a missing key as
 >   an unreachable connector, so on a host with no containers the stale-row sweep never ran and both
->   consumers logged a fault that was not occurring (fixed, `7e059dd5aa`).
+>   consumers logged a fault that was not occurring (fixed, `976c7459c0`).
 > - **[C16](03-findings-correctness.md#c16--dockers-deferred-reconcile-is-dropped-not-deferred) is a
 >   live defect, not just an item-20 blocker, and belongs in P0.** Measured 2026-09-08: a container
 >   removed with `docker rm -f` stayed in `list` for two minutes — past the 60 s removal grace —
@@ -61,7 +61,7 @@ Ordered by "what would block a release" first, then "what makes it viable at 100
 >   would remove that discovery path entirely, and the path itself depends on runtime behaviour this
 >   design does not control, so it is not a reason to treat item 20 as satisfied
 >   ([12 §12.16](12-blocking-decisions.md#1216-the-lifecycle-question-answered-by-measurement-2026-09-08)).
-> - **Per-dimension container row limits are done** (`2ea083add8`,
+> - **Per-dimension container row limits are done** (`ce04396e50`,
 >   [14](14-spike-integration-plan.md) WP4), on a corrected premise: container rows already traverse
 >   `checkDocumentLimit()` here, so the "nowhere for the enforcement to land" reason this was
 >   deferred on was wrong.
@@ -108,7 +108,7 @@ This is the group that closes the gap with #37532's actual intent.
 | # | Change | Effort |
 | --- | --- | --- |
 | 20 | **Baseline once per container lifetime, not every interval.** Add a `ContainerRegistry` tracking baseline status; on each cycle baseline only *new* containers. Interim trigger: poll `list` every 30–60 s (one cheap IPC call) and diff ids. Preferred: add a `watch` op to `container_instances` streaming its already-computed `ReconcileDelta` (`reconciler.hpp:12-17`) as NDJSON. | M–L |
-| 21 | ~~**Implement the handoff algorithm**~~ — **DONE** (`fc6e088b1a`). Subscribe-first, scan, reconcile-by-re-read, as [06 §6.3](06-proposed-architecture.md#63-the-baselineebpf-handoff) sketched and [06 §6.10](06-proposed-architecture.md#610-corrections--the-sketch-versus-the-implemented-contract) corrects. Overflow does escalate to "re-baseline this container", and re-baselining being idempotent is exactly what makes every Suspect edge collapse to that. | L |
+| 21 | ~~**Implement the handoff algorithm**~~ — **DONE** (`187f049a49`). Subscribe-first, scan, reconcile-by-re-read, as [06 §6.3](06-proposed-architecture.md#63-the-baselineebpf-handoff) sketched and [06 §6.10](06-proposed-architecture.md#610-corrections--the-sketch-versus-the-implemented-contract) corrects. Overflow does escalate to "re-baseline this container", and re-baselining being idempotent is exactly what makes every Suspect edge collapse to that. | L |
 | 22 | **Tier the data classes** and add the `image_digest` cache for image-derived classes (packages, users, groups, OS, services). ~85% reduction now, ~100% at steady state. Invalidate on container restart or writable-layer mtime. | M |
 | 23 | **Re-baseline triggers**: eBPF drop signal, container restart, reload-widened scope, long-interval reconciliation. Reuse the existing first-sync guard so a reload neither re-alerts nor drops the seed. | M |
 | 24 | **Add the `ContainerHandle` seam** — hold `O_PATH` fds on `/proc/<pid>/root` and `/proc/<pid>/ns/net` for the scan's duration (fixes the mid-scan PID-death race), expose `netScope`/`pidScope`/`uidMap`, and traverse with `openat` rather than string concatenation. Prefer the lowest PID; fall back to the next candidate on failure. | M |

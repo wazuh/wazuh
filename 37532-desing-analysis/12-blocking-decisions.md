@@ -1,6 +1,6 @@
 # 12 — What to continue with, and the decisions that block the roadmap
 
-- **Branch:** `37532-5-0-0-container-integration` (`f39967c55c`), 54 commits ahead of `origin/5.0.0` (`077a85b3f7`, 2026-09-02), and the remote branch is at the same commit — last updated 2026-09-08
+- **Branch:** `37532-5-0-0-container-integration`, 57 commits ahead of `origin/5.0.0`. At review time it was at `9b068abb04` on top of `077a85b3f7` (2026-09-02) with the remote matching; it has since been rebased onto `origin/5.0.0` (`c57890a8ea`) on 2026-09-22, so every commit SHA in these documents is the post-rebase one and the remote still holds the pre-rebase history — last updated 2026-09-22
 - **Date:** 2026-09-04
 - **Purpose:** answer "which changes do we continue with", and register every decision that has to
   be made by a person before the next phase of [08](08-roadmap.md) can start.
@@ -25,7 +25,7 @@ spike tip    = 0080d7d294  (2026-08-05, idle since)
 ```
 
 Every one of this branch's first 13 commits is a rebased mirror of a spike commit
-(`8369745959`…`187c69f635` ↔ `51dffa1f02`…`66301af90d`). The cut point is `66301af90d`. **Fourteen
+(`a34eb079a6`…`afe22cf466` ↔ `51dffa1f02`…`66301af90d`). The cut point is `66301af90d`. **Fourteen
 commits of the spike's feature work were never integrated**, and they are not incidental:
 
 | Spike commit | What it does | Collides with |
@@ -63,10 +63,10 @@ branch uses**:
 
 Two direct consequences for work already done and work already planned:
 
-1. **The C15 fix (`943a50935f`) was independently reached by that spike.** Its
+1. **The C15 fix (`f414ea6226`) was independently reached by that spike.** Its
    `cbaseline_reconciler_run()` is documented as *"Returns … −1 when the pass was skipped because the
    Container Instances module was unreachable (never a partial delete)"* — the same rule, in the
-   replacement API. So the syscollector half of `943a50935f` is redundant against `5a9021e285`; the
+   replacement API. So the syscollector half of `f414ea6226` is redundant against `5a9021e285`; the
    `listContainers(bool*)` / `ListContainers()` / FIM-consumer halves are not, because that spike
    does not touch the FIM sweep gate. Nothing to undo, but the overlap should be known before anyone
    re-litigates it in review.
@@ -389,7 +389,7 @@ prior := prior_row(id, container_id, idx, content_hash, version)
 | Who computes the delta | syscollector's DBSync | `container_baseline` itself |
 | Container rows in syscollector's DB | **yes** — same tables as host rows, so item 18's `distinctOpt(true)` queries and any other DB reader see them | **no** — bypasses the DB entirely |
 | Schema alignment | same tables, same normalizer, same ECS path as host rows | its own comment: *"draft JSON shape … pending #37203-4's schema"*, *"not yet aligned with `Syscollector::ecsData()`"* |
-| Module unreachable | needed the C15 fix (`943a50935f`) bolted on | built in from the start — `ContainerListing::available`, with the false-empty reasoning written into the header |
+| Module unreachable | needed the C15 fix (`f414ea6226`) bolted on | built in from the start — `ContainerListing::available`, with the false-empty reasoning written into the header |
 | Failed dimension | container-granular `partial` + `options.ignore` | **per-dimension**, unrepresentable-by-construction — strictly more precise |
 | First scan after restart | `isFirstSync` → `notifyOverride=false`, plus `g_everSawContainers` | `m_first_pass` suppresses all deletes for one pass |
 | Container exited while agent was down | detected on the first post-restart scan — which is exactly when the live list is least trustworthy (C15) | detected on the **second** pass; the reload guard defers it by one interval |
@@ -450,10 +450,10 @@ Two things must be settled whichever model wins, because both models have the de
 
 ### The divergence, measured
 
-From the cut point `66301af90d` / `187c69f635`:
+From the cut point `66301af90d` / `afe22cf466`:
 
 ```
-ours   (187c69f635 → HEAD)          106 files changed
+ours   (afe22cf466 → HEAD)          106 files changed
 theirs (66301af90d → spike tip)      88 files changed
 both                                 16 files      ← the entire conflict surface
 ```
@@ -483,8 +483,8 @@ what transfers is three seams and a set of test cases, not 1,600 lines.
 **Option 2 — move this branch's 8 fixes onto the spike.**
 Superficially attractive (91 commits vs 23) but it re-incurs the expensive part: the spike sits on a
 2026-07-02 base and would still need the rebase onto a current 5.0.0 that **this branch has already
-paid for**, including the `container_instances` CMake and include repairs (`7c90011b5c`,
-`257c71a89c`, `d3335e571b`) that rebase cost. Not recommended.
+paid for**, including the `container_instances` CMake and include repairs (`d04f897545`,
+`1f01c7e3ca`, `7c0ef519a2`) that rebase cost. Not recommended.
 
 **Option 3 — re-derive, integrate nothing.**
 Only defensible for Track S, and only if D1 chooses Model A. It is not defensible for Track E (the
@@ -531,7 +531,7 @@ is valid against the current base after all.
 | # | Seam | Model B's version | What it becomes here |
 | --- | --- | --- | --- |
 | S1 | Per-dimension failure | `CollectStatus{Ok,Failed}` on `CollectorResult`; failed dimension's prior rows dropped from the diff input | Extend `ContainerStatus` from container-granular `partial` to a per-table failure set, and drive `options.ignore` per table from it. Today a `setns` failure in one dimension can still delete that dimension's rows for a container whose other dimensions scanned fine |
-| S2 | Availability | `ContainerListing{available, identities}` | Mostly landed as C15 (`943a50935f`). What remains is formalising the seam so the flag travels with the identity list rather than in a separate out-parameter |
+| S2 | Availability | `ContainerListing{available, identities}` | Mostly landed as C15 (`f414ea6226`). What remains is formalising the seam so the flag travels with the identity list rather than in a separate out-parameter |
 | S3 | Targeted scope | `ReconcileScope{single_container_id}` | `cbaseline_run_*_for(container_id)`. Cheap here because the transactions are **already** per-container and scoped — this is a call-site change, not new machinery. This is the seam [11 §11.8](11-ebpf-provider-import-plan.md#118-subscribe-first-scan-reconcile-by-re-read--against-the-real-contract)'s Reconciling state needs |
 
 **Also taken:** the test *cases* from `container_inventory_reconciler_test.cpp` (230 lines),
@@ -575,15 +575,15 @@ may already be answered there.
 
 | Step | Work | Commit | State |
 | --- | --- | --- | --- |
-| 1 | C19 + C20 — container scope out of the row checksum | `9554439005` | **done** |
-| 2 | A1 — the provider lands, nothing consumes it | `dcfacdb43c` | **done** |
-| 3 | A2 items 4, 5, 3, 6 — link teardown, cgroup v1, log seam, ABI guard | `1f6ecea90f` | **done** (item 5's BPF half deferred, see below) |
-| 4 | A2 item 9 — the ABI pin and rt_open's contracts | `57deeb1e5f` | **done** |
-| 5 | VM loss proof ([11 §11.10 test 5](11-ebpf-provider-import-plan.md#vm-only-wazuh_manager)) | `843b1efb76` + [§12.9](#129-d4-answered--the-loss-proof-measured) | **done** — D4 answered, and the teardown fix is now proven on a real kernel |
-| 6a | A2 item 2 — per-cgroup drop attribution | `c590808019` | **done**, D14 → counter map. Also settled [11 open question 2](11-ebpf-provider-import-plan.md#1111-open-questions-and-what-i-could-not-verify) |
-| 6b | A2 item 1 — in-kernel cgroup filtering | `d560d22b37` | **done**. 300 delivered from the allowlisted cgroup, 0 from the excluded one, 0 counted as drops. Note it makes item 20's create trigger a hard prerequisite for A3: an unlisted cgroup becomes invisible, not merely unattributed |
+| 1 | C19 + C20 — container scope out of the row checksum | `a231076f7f` | **done** |
+| 2 | A1 — the provider lands, nothing consumes it | `e0615768ed` | **done** |
+| 3 | A2 items 4, 5, 3, 6 — link teardown, cgroup v1, log seam, ABI guard | `9683fbbb7f` | **done** (item 5's BPF half deferred, see below) |
+| 4 | A2 item 9 — the ABI pin and rt_open's contracts | `eade929f57` | **done** |
+| 5 | VM loss proof ([11 §11.10 test 5](11-ebpf-provider-import-plan.md#vm-only-wazuh_manager)) | `1a87dba137` + [§12.9](#129-d4-answered--the-loss-proof-measured) | **done** — D4 answered, and the teardown fix is now proven on a real kernel |
+| 6a | A2 item 2 — per-cgroup drop attribution | `9e884232c5` | **done**, D14 → counter map. Also settled [11 open question 2](11-ebpf-provider-import-plan.md#1111-open-questions-and-what-i-could-not-verify) |
+| 6b | A2 item 1 — in-kernel cgroup filtering | `619ecb670c` | **done**. 300 delivered from the allowlisted cgroup, 0 from the excluded one, 0 counted as drops. Note it makes item 20's create trigger a hard prerequisite for A3: an unlisted cgroup becomes invisible, not merely unattributed |
 | 7 | Correct [06](06-proposed-architecture.md) against the contradiction tables | — | **done** — [06 §6.10](06-proposed-architecture.md#610-corrections--the-sketch-versus-the-implemented-contract). Grew in the doing: two rows of [11](11-ebpf-provider-import-plan.md)'s table were no longer true (the provider gained cgroup filtering and per-cgroup drops), and two new corrections came from C21/C22 |
-| 8 | Port order steps 4–9 (the spike's unintegrated tail) | `69303187cd`, `4b365c11d6`, `4e096f9537` | **done, and mostly by deciding not to** — see [§12.13](#1213-the-port-order-finished-2026-09-07) |
+| 8 | Port order steps 4–9 (the spike's unintegrated tail) | `0de54d92fc`, `f689f33094`, `998fd0ce5a` | **done, and mostly by deciding not to** — see [§12.13](#1213-the-port-order-finished-2026-09-07) |
 
 **Step 1.** `getRowChecksum()` in `syscollectorImp.cpp`, plus the same exclusion in
 `container_baseline_fim.cpp`. Verified rather than assumed: the pinned upstream expectations
@@ -640,7 +640,7 @@ it.
 
 ## 12.8 What the five spike documents settled
 
-Landed on the branch by `c5bc0a1d76` (`spike-37533/`). Doc 11 cited two of them as sources it could
+Landed on the branch by `45ad1696c8` (`spike-37533/`). Doc 11 cited two of them as sources it could
 not read; here is what they actually contain, including one place doc 11 overstated its evidence.
 
 ### A new blocking dependency — D13
@@ -807,7 +807,7 @@ That is a versioned-ABI decision and it should be made deliberately:
   at all, but needs a new engine entry point (`rt_take_drops(handle, cgroup_id)` or a bulk drain),
   and the consumer must decide when to poll it.
 
-**Decided: the counter map**, implemented in `c590808019` as `rt_drain_drops()`. The event contract is
+**Decided: the counter map**, implemented in `9e884232c5` as `rt_drain_drops()`. The event contract is
 untouched, so no ABI bump. The in-band global counter and `RT_F_DROPS_BEFORE` stay exactly as they
 were — they remain the "something was lost" signal; the map answers "by whom".
 
@@ -830,7 +830,7 @@ Two things worth carrying forward from building it:
    they are not paths and will compose into nonsense.
 2. **Teardown verified a second way.** After every run, `bpftool link list` reported **0** links,
    including after a harness left over from an aborted run was killed. Consistent with
-   `843b1efb76`'s fd census.
+   `1a87dba137`'s fd census.
 
 ---
 
@@ -923,7 +923,7 @@ than the defect the roadmap treats it as.
    loss with no in-band signal at all, so the consumer must fold its own overflow into the same
    Suspect escalation as a kernel-side drop. Easy to forget, and silent when forgotten.
 2. **Some "shared" state actively wants to be per-process.** The discovery latches
-   (`g_everSawContainers`, and `g_warmupWindowClosed` / `g_containersStable` from `c5bc0a1d76`) are
+   (`g_everSawContainers`, and `g_warmupWindowClosed` / `g_containersStable` from `45ad1696c8`) are
    statics in a shared library, so each process gets its own — which is correct, not accidental:
    each process independently has to wait out the connector on *its* own startup. The lifecycle
    cursor **must** be per-consumer for the same reason
@@ -936,16 +936,16 @@ package DBs and account files), so the overlap sharing would have exploited is s
 
 ---
 
-## 12.11 A3 (closed in `fc6e088b1a`), and D15
+## 12.11 A3 (closed in `187f049a49`), and D15
 
 ### What was built
 
 | Commit | Piece | Verified |
 |---|---|---|
-| `7a45ead0bf` | `container_event_staging.hpp` — the drain/consumer handoff | 14 tests, mutation-checked |
-| `0c631dd87c` | `cgroup_container_map.hpp` — `cgroup_id` → `container_id` | 21 tests, mutation-checked |
-| `dbd4db569b` | `container_event_router.hpp` — the routing policy | 15 tests, mutation-checked |
-| `f3c4eb4900` | rename ⇒ re-walk ([C21](03-findings-correctness.md)) | 19 tests, mutation-checked |
+| `969c227f75` | `container_event_staging.hpp` — the drain/consumer handoff | 14 tests, mutation-checked |
+| `6c5baec190` | `cgroup_container_map.hpp` — `cgroup_id` → `container_id` | 21 tests, mutation-checked |
+| `9d61c58e27` | `container_event_router.hpp` — the routing policy | 15 tests, mutation-checked |
+| `324779c2e6` | rename ⇒ re-walk ([C21](03-findings-correctness.md)) | 19 tests, mutation-checked |
 
 All four are header-only and I/O-free by design, so every one of them is reachable from a unit test
 without a kernel, a BPF object or root. The router's `HostCgroupDropStormNeverEscalatesGlobally` is
@@ -962,7 +962,7 @@ They also turned up two defects, both now handled or recorded:
 [C22](03-findings-correctness.md) (an `ATTR` event on the rootfs carries a host-side path under the
 container's cgroup — needs the inference ban below).
 
-### D15 — May the consumer infer a deletion from a path it cannot find? **RESOLVED: no. Enforced in `ba8c642007`.**
+### D15 — May the consumer infer a deletion from a path it cannot find? **RESOLVED: no. Enforced in `7aa998defa`.**
 
 This is the one decision left before the reconcile consumer can be written, and C22 makes it sharp.
 
@@ -992,7 +992,7 @@ retrofitting an inference ban onto code that already deletes is how C15 happened
 
 #### How it is enforced
 
-`container_reconcile_plan.hpp` (`ba8c642007`) turns a staged `Batch` into a `ReconcileRequest`
+`container_reconcile_plan.hpp` (`7aa998defa`) turns a staged `Batch` into a `ReconcileRequest`
 carrying `may_detect_deletions`, and no path batch ever sets it. The rule therefore lives in the type
 the consumer acts on rather than in a comment asking it to behave.
 
@@ -1020,7 +1020,7 @@ Two details are load-bearing:
 `NoPathBatchMayEverAuthoriseDeletion` pins the rule across every shape of path batch, including the
 C22 host-form and mount-relative paths, rather than one chosen example.
 
-### What A3 needed after D15 — all done in `fc6e088b1a` / `ed24a606ce`
+### What A3 needed after D15 — all done in `187f049a49` / `befda19cd1`
 
 - The `rt_poll` drain thread and the resolver thread (`listContainers` → `install`, `takeUnresolved` →
   `resolveByCgroupId`). Structure is settled; the resolver must gate `install()` on the client's
@@ -1062,7 +1062,7 @@ decides *what* to hand the database, and nothing about `libfimdb` itself.
 | Containers created *after* startup | a container started 8 minutes into the run was resolved by the resolver thread and re-walked, with nothing seeding it |
 | Attribution with two identical images | two alpines with distinguishable `/etc/profile`; a write to one produced `MODIFIED` for that one only, with its own size |
 | [C21](03-findings-correctness.md) rename ⇒ re-walk | `mv /etc/issue /etc/issue.moved` → re-walk → `CREATE /etc/issue.moved` **and `DELETE /etc/issue`** — the deletion no event reports |
-| [D15](#1211-a3-closed-in-fc6e088b1a-and-d15) | every path reconcile closed "WITHOUT delete detection"; `rm /etc/e2e-new.conf` produced 0 rows and deleted nothing |
+| [D15](#1211-a3-closed-in-187f049a49-and-d15) | every path reconcile closed "WITHOUT delete detection"; `rm /etc/e2e-new.conf` produced 0 rows and deleted nothing |
 | [C22](03-findings-correctness.md) filtering | the prefix filter discarded exactly the host-form paths — `ATTR /var/lib/containerd/…/snapshots/126/work/work/#1988178` (×4 per write) and `OPEN /proc/10/task/10/attr/apparmor/exec` from `runc:[2:INIT]` |
 | Connector unreachable | a rename escalation with the connector down logged "connector unavailable while re-walking … its rows are kept", deleted nothing, and resumed on its own once the connector was back |
 
@@ -1073,7 +1073,7 @@ Two defects, both of which only a running system could show:
 the pre-write row — and [C24](03-findings-correctness.md) — one configured path that an image lacks
 suppresses that container's delete detection permanently.
 
-### D16 — How does a path reconcile see the *post*-write state? **RESOLVED 2026-09-07 — settle in the staging buffer (`60182a3a17`)**
+### D16 — How does a path reconcile see the *post*-write state? **RESOLVED 2026-09-07 — settle in the staging buffer (`122d4d5ab6`)**
 
 > **Decided:** the fourth option below (§12.14) — hold a staged path until the pid that triggered it
 > has exited or a bounded 500 ms delay elapses, then read once. Chosen over the trailing re-read on
@@ -1097,7 +1097,7 @@ event, so the settle has to come from the consumer. Three shapes:
 | **Re-read until stable**: repeat until two consecutive reads agree | unbounded for an actively-written file | an append-heavy log file never stabilises |
 | **Ask the provider for a close-write event** | a change in #37396's contract, and a new event class | `RT_EV_FILE_OPEN`'s "write intent" is knowable at open; "the write finished" needs `fsnotify`-style close tracking, which is a real cost in the hot path |
 
-### D17 — What does "the scan was incomplete" authorise? **RESOLVED 2026-09-07 — the narrow fix plus the unlink half (`1cab48878c`)**
+### D17 — What does "the scan was incomplete" authorise? **RESOLVED 2026-09-07 — the narrow fix plus the unlink half (`e56d57b41b`)**
 
 > **Decided:** report the reasons separately and act on `RT_EV_FILE_UNLINK`; seam S1's per-table
 > `partial` was the third option and was **not** taken, because the narrow fix answers C24 at the
@@ -1153,10 +1153,10 @@ Two of the six produced code; the other four produced the finding that they shou
 | Step | Commit | What actually applied |
 | --- | --- | --- |
 | 4 — `583f9a52d1` (the `extern "C"` include-ordering trap) | — | **Moot.** Every hunk is inside `container_live_fim.cpp` or its CMake entry, and that file arrived in `2541026edb`, which the port order does not port. The trap it documents is real and will bite when the live path lands (A4); it is recorded here rather than ported as dead code. |
-| 5 — `415e7a2204` (container field in `fim_file_data`) | `69303187cd` | **Ported, schema half only.** `fim_file_data` carries `container_id`/`container_json`, `FileItem` round-trips them, `createJSON()` stops writing a hardcoded `""`. Its *other* half — rewriting the container baseline's sync from `fim_db_transaction_sync_row_json()` to the typed `fim_db_transaction_sync_row()` — was deliberately dropped: the scanner already emits dbsync column format, so the typed path means parse → struct → re-serialise through `FileItem::createJSON()`, whose column list becomes a second place every future column must be added or be silently dropped. A3 also replaced `sync_container(rows)` with per-row streaming, so the diff no longer applies as written. |
+| 5 — `415e7a2204` (container field in `fim_file_data`) | `0de54d92fc` | **Ported, schema half only.** `fim_file_data` carries `container_id`/`container_json`, `FileItem` round-trips them, `createJSON()` stops writing a hardcoded `""`. Its *other* half — rewriting the container baseline's sync from `fim_db_transaction_sync_row_json()` to the typed `fim_db_transaction_sync_row()` — was deliberately dropped: the scanner already emits dbsync column format, so the typed path means parse → struct → re-serialise through `FileItem::createJSON()`, whose column list becomes a second place every future column must be added or be silently dropped. A3 also replaced `sync_container(rows)` with per-row streaming, so the diff no longer applies as written. |
 | 6 — `c4357e6481` (`changed_fields` for the live FIM path) | — | **Moot, with one deliberate skip.** The body is `container_live_fim.cpp`. Its CMake hunk is self-cancelling in the spike's own history (step 4, two hours later, removes exactly what it adds). Its one live piece — moving `send_syscheck_msg`/`persist_syscheck_msg` inside an `extern "C"` block — is **not** taken: this branch's `syscheck.h` has no such block at all, nothing here includes it from C++, and the deliberate alternative (the bridge shims in `container_baseline_fim_bridge.h`) is already in place. A4 should bring it when it needs it. |
-| 7 — `4b4bd3c1bb` (syscollector interval + documented limits) | `4b365c11d6`, `4e096f9537` | **Ported, cadence half only.** `<container_baseline_interval>` decouples the container pass from the host `<interval>`; one loop, two deadlines. See below for the three parts left out. |
-| 8 — `5a9021e285` seams S1–S3 | partly already done | **S3 is done** (`ed24a606ce`'s per-container FIM entry point is exactly `ReconcileScope{single_container_id}` for the FIM half; the Syscollector half has no consumer yet). **S1 is not being taken.** D17 is now resolved without it (`1cab48878c`): the reasons behind `partial` are separated at the layer that produces them, and `cb_container_status_sink_t` became a struct-taking callback, which is where a per-table breakdown would go if a consumer ever needed one. S1 would be a second contract change for a consumer that does not exist yet — see [14 WP3](14-spike-integration-plan.md). **S2** (fold `reachable` into the identity list) is unblocked but cosmetic; the property it protects is already enforced and tested (`ListContainers.UnreachableConnectorReportsFailureNotAnEmptyNode`). |
+| 7 — `4b4bd3c1bb` (syscollector interval + documented limits) | `f689f33094`, `998fd0ce5a` | **Ported, cadence half only.** `<container_baseline_interval>` decouples the container pass from the host `<interval>`; one loop, two deadlines. See below for the three parts left out. |
+| 8 — `5a9021e285` seams S1–S3 | partly already done | **S3 is done** (`befda19cd1`'s per-container FIM entry point is exactly `ReconcileScope{single_container_id}` for the FIM half; the Syscollector half has no consumer yet). **S1 is not being taken.** D17 is now resolved without it (`e56d57b41b`): the reasons behind `partial` are separated at the layer that produces them, and `cb_container_status_sink_t` became a struct-taking callback, which is where a per-table breakdown would go if a consumer ever needed one. S1 would be a second contract change for a consumer that does not exist yet — see [14 WP3](14-spike-integration-plan.md). **S2** (fold `reachable` into the identity list) is unblocked but cosmetic; the property it protects is already enforced and tested (`ListContainers.UnreachableConnectorReportsFailureNotAnEmptyNode`). |
 | 9 — `6022673065`, `adf6ae0a74`, `92a3f4d3be`, `0080d7d294` | — | **All four moot**, checked hunk by hunk. `6022673065`'s only non-live-FIM hunk is *temporary debug instrumentation* its own comment says to delete. `92a3f4d3be` is a missing brace plus a sink for the Model B reconciler this branch does not import. `adf6ae0a74`'s scanner hunk (the quiescence poll) is **already here, in a stronger form** — ours also handles the connector going away mid-check. `0080d7d294`'s one applicable line (`process.pid` as a number, not a string) is already the assertion in our `baseline_rows_test.cpp`. |
 
 The five spike design documents §12.7 asks to copy across are **already on this branch** at `spike-37533/`,
@@ -1176,7 +1176,7 @@ byte-identical to the spike branch's copies. That line of §12.7 was wrong.
   `row_cap_hit`, which suppresses delete detection — so what still blocks the limits is where
   per-dimension enforcement lives, not what a cap means. See [14 WP4](14-spike-integration-plan.md).
 
-### The config parser's tests, and what running them changed (`4e096f9537`)
+### The config parser's tests, and what running them changed (`998fd0ce5a`)
 
 Step 7 first landed two cmocka cases that could not be run — cmocka was not installed. It is now,
 and running them showed **both were wrong**: they drove `Test_WModule()`, whose `<agent_config>`
@@ -1228,13 +1228,13 @@ belong here because they change decisions recorded above.
 **A libfimdb claim that would have been a critical defect in A3, disproved.** The spike's
 `container_live_fim.cpp` states that `fim_db_transaction_deleted_rows()` is "required to actually
 flush/commit the synced rows — without this call … only persisted 1-2 of several hundred synced
-rows". [D15](#1211-a3-closed-in-fc6e088b1a-and-d15) makes a path reconcile close with
+rows". [D15](#1211-a3-closed-in-187f049a49-and-d15) makes a path reconcile close with
 `fim_db_transaction_close()` and never call `deleted_rows`, so if that were true every path reconcile
 would be persisting almost nothing — and the [end-to-end run](#1212-the-end-to-end-run-2026-09-07-and-the-two-decisions-it-forces)
 could not have shown it, because the harness replaced `libfimdb` with an in-memory store.
 
 Measured against the real `libfimdb`, and now pinned by `src/syscheckd/src/ebpf/tests/txn/`
-(`7117b9fb08`): 500 rows in, 500 callbacks out, none lost — and unchanged at 5,000 rows against
+(`ce231b2c6c`): 500 rows in, 500 callbacks out, none lost — and unchanged at 5,000 rows against
 `libdbsync` directly, and even when the transaction is never closed at all. dbsync dispatches result
 callbacks through `Utils::ReadNode`, whose `Dispatcher` defaults to `SyncDispatcher`
 (`pipelineNodesImp.h:25`), i.e. inline on the calling thread; there is nothing for a flush to flush.
@@ -1246,7 +1246,7 @@ untouched rows, and another container's rows survive it.
 [C23](03-findings-correctness.md)'s race — but its test-plan finding #3b measured that the writing
 PID is usually *already dead* by the time the event is processed, which is why its create/modify
 tests passed. That suggests a cheaper shape than the three in
-[§12.12](#d16--how-does-a-path-reconcile-see-the-post-write-state-resolved-2026-09-07--settle-in-the-staging-buffer-60182a3a17): **settle the path in the
+[§12.12](#d16--how-does-a-path-reconcile-see-the-post-write-state-resolved-2026-09-07--settle-in-the-staging-buffer-122d4d5ab6): **settle the path in the
 staging buffer** — hold it until the triggering PID exits or a bounded delay elapses, then read once.
 One stat+hash instead of two, and no new per-path state, because the dedup map is already keyed by
 path.
@@ -1268,28 +1268,28 @@ cutting back two more. [14 §14.7](14-spike-integration-plan.md) plans that rout
 
 ### What the review's own plan has since produced (2026-09-07)
 
-- **WP2 is done, `888c29a4a6`.** The one gap on this branch that no finding had named: container FIM
+- **WP2 is done, `3d55895056`.** The one gap on this branch that no finding had named: container FIM
   rows were persisted and never alerted on. It needed no decision, and the three questions it *did*
   raise are settled in [14 WP2](14-spike-integration-plan.md) — a container path resolves against
   container-tagged `<directories>` entries only (not `fim_configuration_directory()`, which a longer
   untagged host entry would win), the initial whole-node baseline does not alert, and `mode` is
   `"scheduled"` for a walk and `"whodata"` for an event-driven reconcile.
-- **WP1 and WP3 are done too**, on the D16 and D17 decisions recorded above: `60182a3a17` settles a
-  staged path before re-reading it, and `1cab48878c` separates the status facts and acts on
+- **WP1 and WP3 are done too**, on the D16 and D17 decisions recorded above: `122d4d5ab6` settles a
+  staged path before re-reading it, and `e56d57b41b` separates the status facts and acts on
   `RT_EV_FILE_UNLINK`. **Both have since run on the integrated agent**
   ([§12.15](#1215-the-integrated-agent-on-a-real-node-2026-09-08)), so that gate on
   [WP5](14-spike-integration-plan.md) is met. [C27](03-findings-correctness.md) blocked it next, and
-  that is now cleared too — fixed in `d3a8e394d9` under
-  [D18](#d18--how-does-a-path-reconcile-persist-a-row-without-authorising-a-sweep-resolved-2026-09-08--the-non-transactional-upsert-d3a8e394d9),
+  that is now cleared too — fixed in `ccf47ab93c` under
+  [D18](#d18--how-does-a-path-reconcile-persist-a-row-without-authorising-a-sweep-resolved-2026-09-08--the-non-transactional-upsert-ccf47ab93c),
   leaving WP5 gated on [D9](#123-blocking-decisions) alone.
-- **A new decision, and it is the one that stops this shipping.** `1bdfb0990e` fixed the *install*
+- **A new decision, and it is the one that stops this shipping.** `bd2721021b` fixed the *install*
   of `rt_file.bpf.o`; chasing WP6 showed the packaging pipeline never **builds** it either, because
   `libbpf-bootstrap` is fetched precompiled and so the vendored `vmlinux.h` that `rt_file.bpf.o`'s
   compile branch needs is absent. Someone has to choose where the object comes from — the deps
   tarball, as `modern.bpf.o` does, or a committed `ebpf_provider/prebuilt/rt_file.bpf.o`, a path the
   CMake already honours. Until then the container event path silently does not run on a package.
-  `c0e5f162bb` makes it not silent: a `mwarn`, raised only where the operator configured container
-  directories. **Decided 2026-09-07: the committed prebuilt**, and `da90a18c5b` makes that lookup
+  `ef7de98f3d` makes it not silent: a `mwarn`, raised only where the operator configured container
+  directories. **Decided 2026-09-07: the committed prebuilt**, and `94d697c39d` makes that lookup
   per-architecture — it was arch-blind, and an x86 object on an arm64 host installs and then fails
   to load, which is indistinguishable from having no eBPF. No object is committed yet: a shippable
   one needs the portable vendored `vmlinux.h` rather than a host-generated header, and a load test
@@ -1329,7 +1329,7 @@ limits testable without a real handshake.
 | WP1's subscribe-first ordering | `started; staging container file events until the baseline walk commits` precedes `baseline walk committed; the reconcile consumer is now live` |
 | D17 / [C24](03-findings-correctness.md) | `1 of 2 configured directories are absent from container '…' image; delete detection proceeds over the 1 that resolved` — with `/absent-root` configured alongside `/data` |
 | WP2's alert | a new file inside a container produced `"type":"added"` on the queue with the container block attached |
-| WP4's separate budget, and the `4b365c11d6` bug fix | container limits `{"packages":2,"processes":3}` arrived over the wire; 32 container package rows collected, `Post-scan promotion [container]: … Successfully promoted 2 records` on the independent 60 s cadence, host counts untouched |
+| WP4's separate budget, and the `f689f33094` bug fix | container limits `{"packages":2,"processes":3}` arrived over the wire; 32 container package rows collected, `Post-scan promotion [container]: … Successfully promoted 2 records` on the independent 60 s cadence, host counts untouched |
 | Container inventory events | 77 stateless syscollector events carrying `container.id`, `container.image.digest`, `container.name`, `container.network`, `container.runtime` |
 
 ### What broke
@@ -1339,14 +1339,14 @@ Three defects, in the order they blocked the run:
 - **[C25](03-findings-correctness.md#c25--the-container_instances-block-is-never-dispatched-so-the-module-cannot-start)**
   — `Read_ContainerInstances()` had no caller, so `<container_instances>` was accepted and ignored,
   the module never started, and `queue/sockets/container_instances` was never bound. Nothing in the
-  feature could reach a real agent. Fixed, `a98549d807`; every row in the table above depends on it.
+  feature could reach a real agent. Fixed, `83896683e7`; every row in the table above depends on it.
 - **[C26](03-findings-correctness.md#c26--a-change-to-an-already-known-container-file-raises-no-alert)**
   — `MODIFIED` arrived unwrapped, so `container_txn_callback` returned on every modification and a
   change to a known container file raised no alert at all. Six files changed → six rows updated in
-  `file_entry` → zero callbacks. Fixed, `f39967c55c`.
+  `file_entry` → zero callbacks. Fixed, `9b068abb04`.
 - **[C27](03-findings-correctness.md#c27--a-path-reconcile-deletes-the-rest-of-the-containers-rows)**
   — `fim_db_transaction_close()` deletes the rows the transaction did not refresh, which is the
-  opposite of what D15's implementation note claims. Fixed, `d3a8e394d9`, after §12.16 measured what
+  opposite of what D15's implementation note claims. Fixed, `ccf47ab93c`, after §12.16 measured what
   it did to the alerts; D18 below records the choice.
 
 ### A known gap, now measured rather than predicted
@@ -1363,7 +1363,7 @@ One new observation for [D6](#123-blocking-decisions): `container_instances` log
 cgroup. With `cgroup filter off` the drain sees host file activity too, so on a busy node this is a
 `WARNING` per host event.
 
-### D18 — How does a path reconcile persist a row without authorising a sweep? **RESOLVED 2026-09-08 — the non-transactional upsert (`d3a8e394d9`)**
+### D18 — How does a path reconcile persist a row without authorising a sweep? **RESOLVED 2026-09-08 — the non-transactional upsert (`ccf47ab93c`)**
 
 [C27](03-findings-correctness.md#c27--a-path-reconcile-deletes-the-rest-of-the-containers-rows) is
 not a bug in D15's *rule* — no path batch may infer a deletion, and that still holds — it is a bug
@@ -1381,7 +1381,7 @@ writes:
 
 **Decided: the first.** It is the only one whose cost is proportional to what changed, and the
 unlink half already proved the non-transactional container-scoped path works. Landed as
-`fim_db_container_file_sync()` in `d3a8e394d9`; `onStatus()` returns early on the reconcile path too,
+`fim_db_container_file_sync()` in `ccf47ab93c`; `onStatus()` returns early on the reconcile path too,
 because opening a transaction for a container that produced no rows — so its stored rows could age
 out — is meaningless for a reconcile and was a second route to the same sweep.
 
@@ -1484,12 +1484,12 @@ Looking for the wrong defect found two real ones, both of which needed a running
   actual cost.** §12.15 had it as a row-count fact (6 → 1). Measured at the alert level it is worse:
   only the *first* modification per container is reported as a modification, every later one arrives
   as `added` with no `changed_fields`, and no `deleted` alert is raised for the rows that vanish.
-  Fixed in `d3a8e394d9`; D18 records the choice; C27 carries both before-and-after tables.
+  Fixed in `ccf47ab93c`; D18 records the choice; C27 carries both before-and-after tables.
 - **[C28](03-findings-correctness.md#c28--with-no-containers-list-reads-as-connector-unavailable)** —
   `list` omitted the `containers` key when the list was empty, and the client reads a missing key as
   "connector unreachable". A healthy host with no containers was therefore indistinguishable from a
   dead connector, so the stale-row sweep never ran there and both consumers logged a fault that was
-  not occurring. Fixed, `7e059dd5aa`, with the negative control kept: a socket that is present but
+  not occurring. Fixed, `976c7459c0`, with the negative control kept: a socket that is present but
   answers nothing still suppresses the sweep, because only the meaning of "empty list" changed.
 - **[C16](03-findings-correctness.md#c16--dockers-deferred-reconcile-is-dropped-not-deferred) is
   worse than "masked by the rescan".** Chasing C28's test found that a container removed with

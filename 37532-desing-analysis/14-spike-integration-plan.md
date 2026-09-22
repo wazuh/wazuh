@@ -6,12 +6,12 @@ What `spike/37533-37534-fim-syscollector-ebpf-integration` has that
 
 - **Spike branch:** `spike/37533-37534-fim-syscollector-ebpf-integration` at `0080d7d294`
   (worktree `~/wazuh/source/37534-spike`), last touched 2026-08-05, based on a 2026-07-02 5.0.0.
-- **This branch:** `37532-5-0-0-container-integration` at `f39967c55c`, 54 commits ahead of
-  `origin/5.0.0`, and the remote branch is at the same commit.
+- **This branch:** `37532-5-0-0-container-integration`, 57 commits ahead of `origin/5.0.0`.
+  At review time it was at `9b068abb04` and the remote matched; it has since been rebased onto `origin/5.0.0` (`c57890a8ea`) on 2026-09-22, so every commit SHA in these documents is the post-rebase one and the remote still holds the pre-rebase history.
 - **Review date:** 2026-09-07. **WP1, WP2, WP3 applied and WP6 unblocked, 2026-09-07** (§14.6);
   **WP4 applied and WP1–WP3 validated on the integrated agent, 2026-09-08**
   ([12 §12.15](12-blocking-decisions.md#1215-the-integrated-agent-on-a-real-node-2026-09-08)).
-  **D18 resolved and C27 fixed, 2026-09-08** (`d3a8e394d9`), which clears WP5's remaining gate;
+  **D18 resolved and C27 fixed, 2026-09-08** (`ccf47ab93c`), which clears WP5's remaining gate;
   WP5 and WP6 remain, WP5 now gated only on [D9](12-blocking-decisions.md).
 
 > This is the review [12 §12.6](12-blocking-decisions.md#126-d2-in-depth--which-way-integration-runs)
@@ -35,15 +35,15 @@ read, because reading them wrong would send the plan the wrong way. Both are in 
 
 | # | Spike element | Where | This branch | Verdict |
 | --- | --- | --- | --- | --- |
-| 1 | **`rt_file.bpf.o` install rule** | `src/init/inst-functions.sh` | absent — `CB_RT_BPF_OBJECT_PATH` pointed at a file nothing installed | **Ported, `1bdfb0990e`** |
-| 2 | **`extern "C"` on `OS_MD5_SHA1_SHA256_File`** | `md5_sha1_sha256_op.h` | absent | **Ported, `fdcca35d0c`** |
-| 3 | **Live container FIM path** (event ⇒ single-row upsert/delete, `changed_fields` alert, lazy catch-up walk) | `container_live_fim.cpp`, 836 lines | absent; A3 reconciles by re-walking instead | **One piece taken, `888c29a4a6`** (the stateless alert, WP2); rest rejected — §14.5 |
+| 1 | **`rt_file.bpf.o` install rule** | `src/init/inst-functions.sh` | absent — `CB_RT_BPF_OBJECT_PATH` pointed at a file nothing installed | **Ported, `bd2721021b`** |
+| 2 | **`extern "C"` on `OS_MD5_SHA1_SHA256_File`** | `md5_sha1_sha256_op.h` | absent | **Ported, `66012c6514`** |
+| 3 | **Live container FIM path** (event ⇒ single-row upsert/delete, `changed_fields` alert, lazy catch-up walk) | `container_live_fim.cpp`, 836 lines | absent; A3 reconciles by re-walking instead | **One piece taken, `3d55895056`** (the stateless alert, WP2); rest rejected — §14.5 |
 | 4 | **`fim_db_container_file_delete()` + `DB::removeFile(path, containerId)`** | `db/src/file.cpp`, `db.h` | absent | **Port with [D17](12-blocking-decisions.md)** (WP3) |
 | 5 | **A4 — host FIM whodata cut over to `rt_engine`** | `ebpf_whodata.cpp` rewritten; `modern*.bpf.c` deleted | not done, deliberately (ADR-001, [D9](12-blocking-decisions.md)) | **Plan separately** (WP5); do not take as written — §14.5 |
 | 6 | **Per-dimension container row limits** + manager→agent delivery | `module_limits.{h,c}`, `remoted/{config,manager}.c`, `client-agent/{agcom,start_agent}.c`, `test_module_limits.c` | absent | **Transport portable now, enforcement is not** — §14.3, WP4 |
 | 7 | **Model B — durable SQLite prior-state reconciler** | `container_baseline_impl/…/reconcile/*` (~1,300 lines + tests) | not imported | **Reject** — [D1 = Option 3](12-blocking-decisions.md#125-d1-in-depth--the-two-inventory-state-models) |
-| 8 | **`<container_baseline_interval>`** | `wmodules-syscollector.c`, `syscollectorImp.cpp` | ported `4b365c11d6` | Done |
-| 9 | **`container_id`/`container_json` in `fim_file_data`** | `syscheck-config.h`, `dbFileItem.*`, `file.c` | ported `69303187cd` | Done |
+| 8 | **`<container_baseline_interval>`** | `wmodules-syscollector.c`, `syscollectorImp.cpp` | ported `f689f33094` | Done |
+| 9 | **`container_id`/`container_json` in `fim_file_data`** | `syscheck-config.h`, `dbFileItem.*`, `file.c` | ported `0de54d92fc` | Done |
 | 10 | **`ebpf_provider` tree** | 9 files as imported from `9113442eb4` | same import, plus in-kernel filtering, per-cgroup drops, link teardown, ABI guard and 4 kernel tests (+1,936 lines) | **We are ahead** — nothing to take |
 | 11 | **`container_instances` changes** | *none* — only its `CMakeLists.txt` | — | **The spike answers neither [D6](12-blocking-decisions.md) nor [D7](12-blocking-decisions.md)** |
 | 12 | **The five design documents** | `spike-37533/` | byte-identical copies already here | Done |
@@ -67,7 +67,7 @@ could not have shown it (the harness replaced `libfimdb` with an in-memory store
 `sync_row`).
 
 It is not true. Measured against the **real `libfimdb`**, now pinned by
-`src/syscheckd/src/ebpf/tests/txn/` (`7117b9fb08`):
+`src/syscheckd/src/ebpf/tests/txn/` (`ce231b2c6c`):
 
 | Property | Measured |
 | --- | --- |
@@ -130,7 +130,7 @@ LIMIT 1`) is the query shape [item 18](08-roadmap.md) exists to remove.
 
 The spike's test plan records finding #2 — FIM's one-shot baseline racing the Docker connector's
 warm-up, so whichever containers were not yet known were never baselined — as **"not fixed in code
-this pass"**. `c5bc0a1d76` fixes it here (`kListRetryAttempts` × `kListRetryDelay`, latched once per
+this pass"**. `45ad1696c8` fixes it here (`kListRetryAttempts` × `kListRetryDelay`, latched once per
 process).
 
 ## 14.4 What it does not settle
@@ -165,7 +165,7 @@ It does not fix a writer that outlives the delay, which no consumer-side option 
 2. **The container scope is back inside the row checksum.** Both checksum sites in
    `container_live_fim.cpp` feed `container_id` and `container_json` into
    `fim_compute_row_checksum()` — which is [C19/C20](03-findings-correctness.md), fixed here in
-   `9554439005`. Any port of that file has to drop those two lines.
+   `a231076f7f`. Any port of that file has to drop those two lines.
 3. **It deletes on a failed `lstat`, which is what [D15](12-blocking-decisions.md) forbids** —
    "Confirmed live pid, missing file: genuine delete." The liveness check is
    `access("/proc/<pid>", F_OK)` and the delete decision is an `lstat` of
@@ -186,27 +186,27 @@ It does not fix a writer that outlives the delay, which no consumer-side option 
    investigation is closed"), on the per-event path.
 7. **Its `inst-functions.sh` fix is incomplete for packaging.** It updates the install rule and
    nothing else; the rpm spec's `find-debuginfo.sh` dance, the deb lintian override and the four
-   `check_files` manifests all still name only `modern.bpf.o`. `1bdfb0990e` covers the first three.
+   `check_files` manifests all still name only `modern.bpf.o`. `bd2721021b` covers the first three.
 
 ## 14.6 Integrated today
 
 | Commit | What | Verified |
 | --- | --- | --- |
-| `1bdfb0990e` | `rt_file.bpf.o` installed alongside `modern.bpf.o`; rpm spec + lintian override | `bash -n`; the CI manifests still need a real package build |
-| `fdcca35d0c` | `OS_MD5_SHA1_SHA256_File` declared with C linkage | clean full `make -j` of the agent target |
-| `7117b9fb08` | 4-case scoped-transaction contract test against real `libfimdb` | `make check` 4/4; 2 mutations, each killing 2 cases |
-| `888c29a4a6` | **WP2** — the container FIM stateless alert | `make check` 27/27; 5 mutations, each killing the cases naming what it breaks |
-| `c0e5f162bb` | the missing engine is a warning, and only when container directories are configured | clean full build; both standalone suites still pass |
-| `60182a3a17` | **WP1** — D16's settle in the staging buffer | 35 assertions, 5 clean consecutive runs; 6 mutations, all killed |
-| `1cab48878c` | **WP3** — D17's separated status facts and the unlink path | 39 + 17 assertions; 6 + 3 mutations, all killed |
-| `da90a18c5b` | **WP6's prerequisite** — the prebuilt object path is per-architecture | configure names the exact path it looks for |
+| `bd2721021b` | `rt_file.bpf.o` installed alongside `modern.bpf.o`; rpm spec + lintian override | `bash -n`; the CI manifests still need a real package build |
+| `66012c6514` | `OS_MD5_SHA1_SHA256_File` declared with C linkage | clean full `make -j` of the agent target |
+| `ce231b2c6c` | 4-case scoped-transaction contract test against real `libfimdb` | `make check` 4/4; 2 mutations, each killing 2 cases |
+| `3d55895056` | **WP2** — the container FIM stateless alert | `make check` 27/27; 5 mutations, each killing the cases naming what it breaks |
+| `ef7de98f3d` | the missing engine is a warning, and only when container directories are configured | clean full build; both standalone suites still pass |
+| `122d4d5ab6` | **WP1** — D16's settle in the staging buffer | 35 assertions, 5 clean consecutive runs; 6 mutations, all killed |
+| `e56d57b41b` | **WP3** — D17's separated status facts and the unlink path | 39 + 17 assertions; 6 + 3 mutations, all killed |
+| `94d697c39d` | **WP6's prerequisite** — the prebuilt object path is per-architecture | configure names the exact path it looks for |
 
-`1bdfb0990e` is the one that mattered: `CB_RT_BPF_OBJECT_PATH` is `"lib/rt_file.bpf.o"` relative to
+`bd2721021b` is the one that mattered: `CB_RT_BPF_OBJECT_PATH` is `"lib/rt_file.bpf.o"` relative to
 the install directory and **nothing installed it**, so on a real agent `rt_open()` could never find
 its object and the whole container event path would take its silent "no engine" degradation. The
 end-to-end run could not show this because the harness passes an explicit path into the build tree.
 
-### `1bdfb0990e` only fixed half of it: the object has no supply
+### `bd2721021b` only fixed half of it: the object has no supply
 
 Chasing WP6 turned up the other half. `libbpf-bootstrap` is fetched as a **precompiled** external
 resource (`src/Makefile`'s `external-precompiled` list), so `modern.bpf.o` arrives prebuilt —
@@ -229,7 +229,7 @@ Two supply routes, and picking one is a **decision** (see §14.7 WP6):
 | Add `rt_file.bpf.o` to the deps tarball, exactly as `modern.bpf.o` is | a deps revision (`RESOURCES_URL`/`DEPS_VERSION`) and a per-architecture build of it, owned by whoever owns that pipeline |
 | Commit `src/shared_modules/ebpf_provider/prebuilt/rt_file.bpf.o` — a path the CMake **already** honours as its first branch | a binary in the repo, and one object per architecture to keep current |
 
-`c0e5f162bb` does not fix the supply; it makes the failure diagnosable, which is the part that let
+`ef7de98f3d` does not fix the supply; it makes the failure diagnosable, which is the part that let
 the first half survive. The drain now starts only once a `<directories>` entry is tagged
 `container`, so the "no engine" message can be a `mwarn` that fires exactly when the operator asked
 for container FIM and is not getting it. Its old wording was wrong as well — it promised a fallback
@@ -247,14 +247,14 @@ narrow fix plus the unlink half, and the object supply = a committed per-archite
 
 | | State |
 | --- | --- |
-| **WP1** | **Done**, `60182a3a17` |
-| **WP2** | **Done**, `888c29a4a6` |
-| **WP3** | **Done**, `1cab48878c` |
-| **WP4** | **Done**, `2ea083add8` — see below for why the "nowhere to land" premise was wrong |
+| **WP1** | **Done**, `122d4d5ab6` |
+| **WP2** | **Done**, `3d55895056` |
+| **WP3** | **Done**, `e56d57b41b` |
+| **WP4** | **Done**, `ce04396e50` — see below for why the "nowhere to land" premise was wrong |
 | **WP5** | Open, and deliberately not started. Both of its earlier gates are cleared — WP1–WP3 proved out on a real node, and C27/D18 is fixed — so it is now gated only on D9 |
-| **WP6** | Unblocked and half-done, `da90a18c5b`. What remains is producing the object and the CSV rows, together |
+| **WP6** | Unblocked and half-done, `94d697c39d`. What remains is producing the object and the CSV rows, together |
 
-### WP1 — D16: settle the post-write read — **DONE, `60182a3a17`**
+### WP1 — D16: settle the post-write read — **DONE, `122d4d5ab6`**
 
 **D16 decided: settle in the staging buffer.** A staged path is held until the pid that triggered it
 has exited or a bounded delay (`DrainConfig::settle_delay_ms`, 500 ms) has elapsed, then read once.
@@ -294,7 +294,7 @@ had to observe the path being served *while writes were still arriving*.
 *Still worth doing:* the deferred-write probe from the end-to-end run, as a harness regression test —
 an 8-second-deferred write must now produce a `MODIFIED`. Only a real node can show that.
 
-### WP2 — the stateless alert for container FIM rows — **DONE, `888c29a4a6`**
+### WP2 — the stateless alert for container FIM rows — **DONE, `3d55895056`**
 
 The gap: this branch persisted container FIM rows and never alerted on them.
 `fim_persist_baseline_row()` ended at `validate_and_persist_fim_event()`, which builds only the
@@ -335,7 +335,7 @@ attribute suppression (2), the mode selection (1).
 change on a real node. The unit test pins the alert's shape; only the harness can pin that one is
 actually emitted per reconcile.
 
-### WP3 — D17, including the unlink half — **DONE, `1cab48878c`**
+### WP3 — D17, including the unlink half — **DONE, `e56d57b41b`**
 
 **D17 decided: the narrow fix plus the unlink half** (seam S1's per-table `partial` was the third
 option and was not taken — see "Not planned" below).
@@ -395,7 +395,7 @@ the test binary exercising the code it was first linked against. Both are fixed.
 path and nothing else, and a container whose image lacks one configured root must still report
 deletions under the roots it has. Both are already scripted in the harness.
 
-### WP4 — per-dimension container row limits — **DONE, `2ea083add8`**
+### WP4 — per-dimension container row limits — **DONE, `ce04396e50`**
 
 > **The gate this was held on did not exist.** The reason recorded here was that the enforcement
 > "terminates in `BuildContainerDocumentLimits()` → `cb_document_limits_t` → `cbaseline_reconciler_*`,
@@ -416,7 +416,7 @@ What landed:
   to `0` = unlimited) through remoted's handshake JSON, `getDefine_Int_default` on the manager side,
   the agent's parse, and a `syscollector_containers` branch in `agcom`. Additive and optional on both
   sides, so an older manager cannot fail the handshake.
-- **A bug of ours, fixed.** `4b365c11d6`'s independent `<container_baseline_interval>` pass skipped
+- **A bug of ours, fixed.** `f689f33094`'s independent `<container_baseline_interval>` pass skipped
   `scan()`'s sync bookkeeping, so container rows stayed `sync=0` and could be re-emitted as duplicate
   CREATEs. `runContainerBaselinePass()` now does the same `updateSyncFlagInDB` / `promoteItemsAfterScan`
   / `deleteFailedItemsFromDB` sequence, in `scan()`'s order.
@@ -432,7 +432,7 @@ container budget on the independent cadence, with host counts untouched.
 FIM's own cap is still the literal `CONTAINER_BASELINE_MAX_FILES_PER_PATH` in the bridge; wiring it
 to a config knob was not part of this package.
 
-### WP5 — A4, on our terms *(gate: [D9](12-blocking-decisions.md) + [D18](12-blocking-decisions.md#d18--how-does-a-path-reconcile-persist-a-row-without-authorising-a-sweep-resolved-2026-09-08--the-non-transactional-upsert-d3a8e394d9); size L)*
+### WP5 — A4, on our terms *(gate: [D9](12-blocking-decisions.md) + [D18](12-blocking-decisions.md#d18--how-does-a-path-reconcile-persist-a-row-without-authorising-a-sweep-resolved-2026-09-08--the-non-transactional-upsert-ccf47ab93c); size L)*
 
 **Still not started, but for a different reason than before.** The original gate — "WP1–WP3 proven
 on a real node" — is **met**: all three ran on the integrated agent on 2026-09-08
@@ -443,7 +443,7 @@ the container path's write behaviour was not yet correct, and collapsing the two
 consumer that is still losing state would have made the next failure ambiguous between the collapse
 and D18's fix.
 
-**That gate is now cleared too**: C27 is fixed in `d3a8e394d9` and D18 is decided. What remains is
+**That gate is now cleared too**: C27 is fixed in `ccf47ab93c` and D18 is decided. What remains is
 [D9](12-blocking-decisions.md) alone, which is a decision, not a defect. Note the measurement WP5
 inherits from [12 §12.16](12-blocking-decisions.md#1216-the-lifecycle-question-answered-by-measurement-2026-09-08):
 `RT_CGROUP_MODE_ALL` is load-bearing until item 20 lands, because post-startup container discovery
@@ -467,7 +467,7 @@ is not acceptable here, because it deletes the host-whodata tests ADR-001 exists
 4. Retire `modern*.bpf.c`, the `libbpf_external` rule and the `modern.bpf.o` install/packaging
    entries as the *last* step, not the first.
 
-### WP6 — supply `rt_file.bpf.o`, then the packaging manifests *(decided: a committed per-architecture prebuilt; half-done, `da90a18c5b`)*
+### WP6 — supply `rt_file.bpf.o`, then the packaging manifests *(decided: a committed per-architecture prebuilt; half-done, `94d697c39d`)*
 
 Two findings changed this package's shape, both from reading rather than building.
 
@@ -482,12 +482,12 @@ when it is `0` (`if (expected_size_bytes and …)`), while still asserting owner
 permissions — which is everything the install rule actually controls. So a row can land with
 `size_bytes=0` and be tightened from a real build later, rather than waiting for one.
 
-**3. But the object has no supply at all** — see [§14.6](#1bdfb0990e-only-fixed-half-of-it-the-object-has-no-supply).
+**3. But the object has no supply at all** — see [§14.6](#bd2721021b-only-fixed-half-of-it-the-object-has-no-supply).
 That is the real blocker, and it comes first: adding CSV rows for a file the packaging pipeline never
 produces fails CI just as surely as omitting them.
 
 **Decided: a committed per-architecture prebuilt**, `shared_modules/ebpf_provider/prebuilt/<arch>/`,
-which is the branch the CMake already tries first. `da90a18c5b` makes that path per-architecture —
+which is the branch the CMake already tries first. `94d697c39d` makes that path per-architecture —
 it was arch-blind, and an x86 object copied onto an arm64 host is compiled with the wrong
 `-D__TARGET_ARCH_` and the wrong `vmlinux.h`, so its CO-RE relocations and `pt_regs` offsets are
 wrong: installed, then unloadable, and indistinguishable from "this host has no eBPF" — see

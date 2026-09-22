@@ -8,7 +8,7 @@ container lifetime, not every interval* — and specifically for its recorded bl
 [23](08-roadmap.md#p2--architecture-make-it-a-baseline) (re-baseline triggers) depend on this and are
 scoped here too.
 
-- **Branch:** `37532-5-0-0-container-integration` @ `d8e4cd5704`
+- **Branch:** `37532-5-0-0-container-integration` @ `03bca26e9a`
 - **Read-only analysis:** no code was changed to produce this document
 - **Date:** 2026-09-03
 
@@ -62,7 +62,7 @@ scoped here too.
 > false-delete hole — the one defect here that never needed the journal. Its converse is now
 > [C28](03-findings-correctness.md#c28--with-no-containers-list-reads-as-connector-unavailable): the
 > server never sent an empty `containers` array, so "no containers" was indistinguishable from "no
-> connector" and the sweep never ran on a container-free host (fixed, `7e059dd5aa`).
+> connector" and the sweep never ran on a container-free host (fixed, `976c7459c0`).
 >
 > **And §10.3's "one real hole" is bigger than stated.** The Docker `m_reconcilePending` bug is
 > described here as upstream staleness that today's rescan equally masks. Measured 2026-09-08: it
@@ -856,7 +856,7 @@ needs the DBSync test double that item is blocked on):
 6. **FIM's thread ownership.** Phase 3 deliberately excludes FIM. Whether FIM's delta poll belongs on
    its own thread, on the realtime thread, or in a shared `BaselineService` thread serving both
    consumers is item 14's call and interacts with item 21's ordering. I have not tried to pre-empt it.
-7. **Not compiled or run.** Everything here is static reading of `d8e4cd5704`. No build or test was
+7. **Not compiled or run.** Everything here is static reading of `03bca26e9a`. No build or test was
    executed for this document; the signatures in §10.7 are designs, not verified-compiling code.
 
 ## 10.14 Contradictions with the existing design docs

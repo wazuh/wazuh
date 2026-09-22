@@ -11,8 +11,10 @@ Design review of the `wazuh_module` **`container_baseline`** as implemented on b
 > ### Status, 2026-09-08
 >
 > **The review below is a snapshot of the branch as reviewed; it is no longer the current state.**
-> Work since then is on `37532-5-0-0-container-integration`, **56 commits ahead of `origin/5.0.0`
-> (`7e059dd5aa`).** The remote branch is two behind, at `f39967c55c`.
+> Work since then is on `37532-5-0-0-container-integration`, **57 commits ahead of `origin/5.0.0`
+> (`445a692c6d`).** The branch was rebased onto `origin/5.0.0` (`c57890a8ea`) on 2026-09-22, so every commit SHA in these documents is the post-rebase one and the remote still holds the pre-rebase history: `origin/37532-5-0-0-container-integration`
+> is still at the pre-rebase `f39967c55c` and is now unrelated history, so publishing it needs a
+> force push.
 >
 > - [09](09-implementation-status.md) is the **authoritative status**: what is built, what is
 >   deferred and why, and what is validated.
@@ -42,7 +44,7 @@ Design review of the `wazuh_module` **`container_baseline`** as implemented on b
 > - **[D16](12-blocking-decisions.md), [D17](12-blocking-decisions.md) and WP2 hold**, including
 >   [C24](03-findings-correctness.md)'s absent-root case with a deliberately missing `<directories>`
 >   entry, and a container file change raising a FIM alert with `changed_fields`.
-> - **WP4 is done** (`2ea083add8`) and its deferral premise was wrong: container rows already
+> - **WP4 is done** (`ce04396e50`) and its deferral premise was wrong: container rows already
 >   traverse `checkDocumentLimit()` here, so the enforcement had somewhere to land. 32 container
 >   package rows against a container budget of 2 → 2 promoted, host counts untouched.
 >
@@ -59,20 +61,20 @@ Design review of the `wazuh_module` **`container_baseline`** as implemented on b
 > - **[C25](03-findings-correctness.md)** — `<container_instances>` was never dispatched, so the
 >   module could not start and the socket both consumers read metadata from was never bound. The
 >   feature was unreachable from a real agent no matter what `ossec.conf` said. Fixed,
->   `a98549d807`; everything above depends on it.
+>   `83896683e7`; everything above depends on it.
 > - **[C26](03-findings-correctness.md)** — `MODIFIED` arrived unwrapped, so the container callback
 >   discarded every modification: six files changed, six rows updated in `file_entry`, **zero**
->   alerts. Invisible from the database, which is why it survived review. Fixed, `f39967c55c`.
+>   alerts. Invisible from the database, which is why it survived review. Fixed, `9b068abb04`.
 > - **[C27](03-findings-correctness.md)** — closing a scoped transaction deletes the rows it did not
 >   refresh, so a path reconcile wiped the rest of its container's state. This is the opposite of
 >   what [D15](12-blocking-decisions.md)'s implementation note claims. Measured at the alert level:
 >   modifying one file reported `modified`, modifying the next reported **`added`**, and 1 of 5 rows
->   survived. Fixed, `d3a8e394d9`, under
->   [D18](12-blocking-decisions.md#d18--how-does-a-path-reconcile-persist-a-row-without-authorising-a-sweep-resolved-2026-09-08--the-non-transactional-upsert-d3a8e394d9).
+>   survived. Fixed, `ccf47ab93c`, under
+>   [D18](12-blocking-decisions.md#d18--how-does-a-path-reconcile-persist-a-row-without-authorising-a-sweep-resolved-2026-09-08--the-non-transactional-upsert-ccf47ab93c).
 > - **[C28](03-findings-correctness.md#c28--with-no-containers-list-reads-as-connector-unavailable)**
 >   — with no containers on the host, `list` omitted the `containers` key and the client reads that as
 >   an unreachable connector. The stale-row sweep therefore never ran there, and both consumers logged
->   a fault that is not occurring. Fixed, `7e059dd5aa`, with D5's suppression intact for a connector
+>   a fault that is not occurring. Fixed, `976c7459c0`, with D5's suppression intact for a connector
 >   that genuinely does not answer.
 >
 > And one existing finding got worse on measurement:
@@ -138,7 +140,7 @@ finish — were never asked, and several were answered wrongly by default.
 ### The five things that matter most
 
 > **Which of these five still stand, as of 2026-09-08.** #1 and #2 are closed: the handoff exists
-> (`fc6e088b1a`), and a container started after syscheckd's startup is picked up by the resolver
+> (`187f049a49`), and a container started after syscheckd's startup is picked up by the resolver
 > thread and baselined without anything seeding it — both measured on a real node. #3's four
 > multipliers are removed (see [09](09-implementation-status.md)'s Done table, items 11, 12, 13, 22
 > and 16). #4 and #5 are process findings about the spike and are unchanged by any commit. Read

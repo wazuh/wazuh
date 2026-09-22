@@ -6,53 +6,53 @@ Tracks which [roadmap](08-roadmap.md) items are implemented on branch
 - Commits (oldest first):
 
   *Review pass on the inherited spike code*
-  - `7c90011b5c` — build guard for the missing `ci_impl/tests` directory
-  - `9d6e3eb725` — P0 correctness + P1 scaling change set
-  - `70cca0ccec` — `container_baseline` enable/disable config option
-  - `d8054738d6` — image-derived row reuse across replicas + mid-scan liveness
-  - `257184741c` — shared `ContainerScoped` row base
-  - `6a08712dbe` — orchestrator lifecycle/ordering tests + discovery seam
-  - `d8e4cd5704` — addressable-PID selection
-  - `943a50935f` — no row deletion when the container connector is unreachable (C15)
+  - `d04f897545` — build guard for the missing `ci_impl/tests` directory
+  - `b76a3bd80b` — P0 correctness + P1 scaling change set
+  - `d5b67dcb5d` — `container_baseline` enable/disable config option
+  - `d9a7ff99e4` — image-derived row reuse across replicas + mid-scan liveness
+  - `93c670cb00` — shared `ContainerScoped` row base
+  - `4dbd8798fa` — orchestrator lifecycle/ordering tests + discovery seam
+  - `03bca26e9a` — addressable-PID selection
+  - `f414ea6226` — no row deletion when the container connector is unreachable (C15)
 
   *After [12](12-blocking-decisions.md)'s decisions — D1 → hybrid, D2 → port the spike tail forward*
-  - `9554439005` — container scope out of the row checksum (C19, C20)
-  - `dcfacdb43c` — **`ebpf_provider` imported** from `9113442eb4` (Track E A1)
-  - `1f6ecea90f` — provider: link teardown, ABI guard, log seam, cgroup-v1 detection (A2 items 4, 6, 3, 5)
-  - `57deeb1e5f` — provider: the 12,416-byte ABI pin and `rt_open`'s contracts (A2 item 9)
-  - `c5bc0a1d76` — wait out a warming connector, once per process; plus the five `spike-37533/` documents
-  - `843b1efb76` — provider: teardown proven on a real kernel (VM)
-  - `c590808019` — provider: **per-cgroup drop attribution** (A2 item 2, D14 → counter map)
-  - `b5ac4089e8` — stop tracking the standalone build's artifacts
-  - `d560d22b37` — provider: **in-kernel cgroup filtering** (A2 item 1)
-  - `7a45ead0bf` — syscheckd: the drain↔consumer staging buffer (D5's first increment)
-  - `0c631dd87c` — syscheckd: **`cgroup_id` → `container_id` attribution** (A3)
-  - `dbd4db569b` — syscheckd: **the routing policy** joining the map to the staging buffer (A3)
-  - `f3c4eb4900` — syscheckd: a rename re-walks its container ([03 C21](03-findings-correctness.md))
-  - `ba8c642007` — syscheckd: **D15 enforced** — a path reconcile may never authorise deletion
-  - `ed24a606ce` — container_baseline: **per-container FIM entry point** + the path guard ([13](13-container-baseline-api-plan.md))
-  - `fc6e088b1a` — syscheckd: **A3 closed** — the drain, resolver and reconcile consumer, wired into `main.c`
-  - `41ab9e27d3` — container_instances_client: correct what `LookupResult::json` holds
+  - `a231076f7f` — container scope out of the row checksum (C19, C20)
+  - `e0615768ed` — **`ebpf_provider` imported** from `9113442eb4` (Track E A1)
+  - `9683fbbb7f` — provider: link teardown, ABI guard, log seam, cgroup-v1 detection (A2 items 4, 6, 3, 5)
+  - `eade929f57` — provider: the 12,416-byte ABI pin and `rt_open`'s contracts (A2 item 9)
+  - `45ad1696c8` — wait out a warming connector, once per process; plus the five `spike-37533/` documents
+  - `1a87dba137` — provider: teardown proven on a real kernel (VM)
+  - `9e884232c5` — provider: **per-cgroup drop attribution** (A2 item 2, D14 → counter map)
+  - `62e4aa7a02` — stop tracking the standalone build's artifacts
+  - `619ecb670c` — provider: **in-kernel cgroup filtering** (A2 item 1)
+  - `969c227f75` — syscheckd: the drain↔consumer staging buffer (D5's first increment)
+  - `6c5baec190` — syscheckd: **`cgroup_id` → `container_id` attribution** (A3)
+  - `9d61c58e27` — syscheckd: **the routing policy** joining the map to the staging buffer (A3)
+  - `324779c2e6` — syscheckd: a rename re-walks its container ([03 C21](03-findings-correctness.md))
+  - `7aa998defa` — syscheckd: **D15 enforced** — a path reconcile may never authorise deletion
+  - `befda19cd1` — container_baseline: **per-container FIM entry point** + the path guard ([13](13-container-baseline-api-plan.md))
+  - `187f049a49` — syscheckd: **A3 closed** — the drain, resolver and reconcile consumer, wired into `main.c`
+  - `633b0f5717` — container_instances_client: correct what `LookupResult::json` holds
 
   *After the 2026-09-07 end-to-end run and the whole-tree review of the spike branch ([14](14-spike-integration-plan.md))*
-  - `69303187cd` — `fim_file_data` carries the container scope (port order step 5)
-  - `4b365c11d6` — `<container_baseline_interval>`: the container pass gets its own cadence
-  - `4e096f9537` — its config-parser cases, rewritten once cmocka could run them
-  - `1bdfb0990e` — **`rt_file.bpf.o` is installed** — without it a packaged agent could never load the engine
-  - `fdcca35d0c` — `OS_MD5_SHA1_SHA256_File` declared with C linkage
-  - `7117b9fb08` — **the scoped `file_entry` transaction contract, pinned against real `libfimdb`**
-  - `888c29a4a6` — **container FIM changes now raise an alert**, not just a stateful row ([14](14-spike-integration-plan.md) WP2)
-  - `c0e5f162bb` — a missing eBPF engine is a *warning*, and only where container directories are configured
-  - `60182a3a17` — **[D16](12-blocking-decisions.md) resolved** — a staged path settles before it is re-read ([C23](03-findings-correctness.md))
-  - `1cab48878c` — **[D17](12-blocking-decisions.md) resolved** — the status facts are separated ([C24](03-findings-correctness.md)) and `RT_EV_FILE_UNLINK` deletes exactly its own path
-  - `da90a18c5b` — the prebuilt `rt_file.bpf.o` lookup is per-architecture
-  - `2ea083add8` — **container inventory gets its own document budget** ([14](14-spike-integration-plan.md) WP4)
+  - `0de54d92fc` — `fim_file_data` carries the container scope (port order step 5)
+  - `f689f33094` — `<container_baseline_interval>`: the container pass gets its own cadence
+  - `998fd0ce5a` — its config-parser cases, rewritten once cmocka could run them
+  - `bd2721021b` — **`rt_file.bpf.o` is installed** — without it a packaged agent could never load the engine
+  - `66012c6514` — `OS_MD5_SHA1_SHA256_File` declared with C linkage
+  - `ce231b2c6c` — **the scoped `file_entry` transaction contract, pinned against real `libfimdb`**
+  - `3d55895056` — **container FIM changes now raise an alert**, not just a stateful row ([14](14-spike-integration-plan.md) WP2)
+  - `ef7de98f3d` — a missing eBPF engine is a *warning*, and only where container directories are configured
+  - `122d4d5ab6` — **[D16](12-blocking-decisions.md) resolved** — a staged path settles before it is re-read ([C23](03-findings-correctness.md))
+  - `e56d57b41b` — **[D17](12-blocking-decisions.md) resolved** — the status facts are separated ([C24](03-findings-correctness.md)) and `RT_EV_FILE_UNLINK` deletes exactly its own path
+  - `94d697c39d` — the prebuilt `rt_file.bpf.o` lookup is per-architecture
+  - `ce04396e50` — **container inventory gets its own document budget** ([14](14-spike-integration-plan.md) WP4)
 
   *After the 2026-09-08 run of the integrated agent ([12 §12.15](12-blocking-decisions.md#1215-the-integrated-agent-on-a-real-node-2026-09-08))*
-  - `a98549d807` — **`<container_instances>` is dispatched** — the module could not start at all before ([C25](03-findings-correctness.md))
-  - `f39967c55c` — **a changed container file reports MODIFIED** — every modification was dropped ([C26](03-findings-correctness.md)), plus the two transaction cases that pin it and [C27](03-findings-correctness.md)
-  - `7e059dd5aa` — **`list` always carries a `containers` array**, so "no containers" stops reading as "no connector" ([C28](03-findings-correctness.md#c28--with-no-containers-list-reads-as-connector-unavailable))
-  - `d3a8e394d9` — **a path reconcile no longer deletes the container's other rows** ([C27](03-findings-correctness.md), [D18](12-blocking-decisions.md#d18--how-does-a-path-reconcile-persist-a-row-without-authorising-a-sweep-resolved-2026-09-08--the-non-transactional-upsert-d3a8e394d9)) — a non-transactional per-row upsert, plus case 7 pinning it
+  - `83896683e7` — **`<container_instances>` is dispatched** — the module could not start at all before ([C25](03-findings-correctness.md))
+  - `9b068abb04` — **a changed container file reports MODIFIED** — every modification was dropped ([C26](03-findings-correctness.md)), plus the two transaction cases that pin it and [C27](03-findings-correctness.md)
+  - `976c7459c0` — **`list` always carries a `containers` array**, so "no containers" stops reading as "no connector" ([C28](03-findings-correctness.md#c28--with-no-containers-list-reads-as-connector-unavailable))
+  - `ccf47ab93c` — **a path reconcile no longer deletes the container's other rows** ([C27](03-findings-correctness.md), [D18](12-blocking-decisions.md#d18--how-does-a-path-reconcile-persist-a-row-without-authorising-a-sweep-resolved-2026-09-08--the-non-transactional-upsert-ccf47ab93c)) — a non-transactional per-row upsert, plus case 7 pinning it
 
 - Verified in WSL: `make build TARGET=agent` clean; **164 module unit tests, 163 pass / 1 skipped**
   (needs a running container), up from 112 with 2 failing; **14 staging-buffer tests** pass; the
@@ -65,8 +65,9 @@ Tracks which [roadmap](08-roadmap.md) items are implemented on branch
   delivers exactly the allowlisted cgroup's events. Details in
   [12 §12.9](12-blocking-decisions.md#129-d4-answered--the-loss-proof-measured) and the four
   `test/rt_engine_*_test.c` programs.
-- **On the remote** — `origin/37532-5-0-0-container-integration` is at `f39967c55c`. `d3a8e394d9`
-  and `7e059dd5aa` are committed locally and **not pushed**
+- **On the remote** — `origin/37532-5-0-0-container-integration` is still at the **pre-rebase**
+  `f39967c55c`. Nothing since has been pushed, and the branch has since been rebased onto `origin/5.0.0` (`c57890a8ea`) on 2026-09-22, so every commit SHA in these documents is the post-rebase one and the remote still holds the pre-rebase history,
+  so the two histories no longer share commits: publishing needs `--force-with-lease`
 
 ## Planning documents
 
@@ -137,13 +138,13 @@ it stabilises.
 
 | §11.9 | Item | State |
 | --- | --- | --- |
-| — | Import the engine (A1) | Done, `dcfacdb43c`. From `9113442eb4`, hand-ported: 9 files, 1 changed line in `src/CMakeLists.txt` |
-| **1** | In-kernel cgroup filtering | Done, `d560d22b37`. Allowlist map + `rt_allow_cgroup`/`rt_deny_cgroup`/`rt_set_cgroup_mode`; `RT_CGROUP_MODE_ALL` is the zero value so host whodata is unaffected. Verified: 300 delivered from the allowlisted cgroup, 0 from the excluded one, 0 from the rest of the node |
-| **2** | Per-cgroup drop accounting | Done, `c590808019`. `rt_drain_drops()` over a keyed map; **D14 decided as the counter map**, so the event contract is untouched. Verified with two cgroups at 3,651 and 3,678 drops |
-| **3** | A logging seam | Done, `1f6ecea90f`. `rt_filter.log`; eight `fprintf(stderr)` sites routed through it, so an eBPF load failure can finally reach `ossec.log` |
-| **4** | Destroy the `bpf_link`s in `rt_close` | Done, `1f6ecea90f`; **proven on a real kernel** in `843b1efb76`. Pre-fix leaked 7 descriptors per open/close cycle and double-attached on re-open |
-| **5** | Set `RT_F_CGROUP_V1` | **Split.** The reliable half is done (`1f6ecea90f`): the engine detects the host's cgroup version at `rt_open` and exposes `rt_host_cgroup_v1()`, since it is a host constant rather than a per-event property. The per-event flag still needs a BPF config map — see [12 §12.7](12-blocking-decisions.md#127-the-decided-plan-d1--option-3-d2--option-1). **Consumers must use the accessor, not `ev->flags`** |
-| **6** | ABI guard | Done, `1f6ecea90f`. Per-event `abi_major` *and* record-size check (a MINOR-older object emits a shorter record, so reading the tail would run off its end), plus `rt_abi_major()`/`rt_abi_minor()` |
+| — | Import the engine (A1) | Done, `e0615768ed`. From `9113442eb4`, hand-ported: 9 files, 1 changed line in `src/CMakeLists.txt` |
+| **1** | In-kernel cgroup filtering | Done, `619ecb670c`. Allowlist map + `rt_allow_cgroup`/`rt_deny_cgroup`/`rt_set_cgroup_mode`; `RT_CGROUP_MODE_ALL` is the zero value so host whodata is unaffected. Verified: 300 delivered from the allowlisted cgroup, 0 from the excluded one, 0 from the rest of the node |
+| **2** | Per-cgroup drop accounting | Done, `9e884232c5`. `rt_drain_drops()` over a keyed map; **D14 decided as the counter map**, so the event contract is untouched. Verified with two cgroups at 3,651 and 3,678 drops |
+| **3** | A logging seam | Done, `9683fbbb7f`. `rt_filter.log`; eight `fprintf(stderr)` sites routed through it, so an eBPF load failure can finally reach `ossec.log` |
+| **4** | Destroy the `bpf_link`s in `rt_close` | Done, `9683fbbb7f`; **proven on a real kernel** in `1a87dba137`. Pre-fix leaked 7 descriptors per open/close cycle and double-attached on re-open |
+| **5** | Set `RT_F_CGROUP_V1` | **Split.** The reliable half is done (`9683fbbb7f`): the engine detects the host's cgroup version at `rt_open` and exposes `rt_host_cgroup_v1()`, since it is a host constant rather than a per-event property. The per-event flag still needs a BPF config map — see [12 §12.7](12-blocking-decisions.md#127-the-decided-plan-d1--option-3-d2--option-1). **Consumers must use the accessor, not `ev->flags`** |
+| **6** | ABI guard | Done, `9683fbbb7f`. Per-event `abi_major` *and* record-size check (a MINOR-older object emits a shorter record, so reading the tail would run off its end), plus `rt_abi_major()`/`rt_abi_minor()` |
 | 7 | Occupancy metric (`ring__avail_data_size`) | Not done. Lower value now that [12 §12.9](12-blocking-decisions.md#129-d4-answered--the-loss-proof-measured) measured where loss actually starts |
 | **8** | Kernel-portable rename | Not done — [11 open question 3](11-ebpf-provider-import-plan.md#1111-open-questions-and-what-i-could-not-verify) deliberately did not guess a version boundary. Still a silent-detection-gap risk on one kernel family |
 | **9** | A unit-test seam | Partly. Four test programs exist: contract/ABI (WSL-runnable), teardown, drop attribution and filtering (kernel + root). The fake-libbpf suite that would cover `rt_open`'s failure branches and the per-event ABI rejection is still missing |
@@ -177,7 +178,7 @@ not the walk: "FIM baselines on `main()`" turns out to be
 [11 §11.8.1](11-ebpf-provider-import-plan.md#1181-ordering)'s deliberate design (an *unchanged call
 site*) rather than the defect [08](08-roadmap.md) treats it as.
 
-Implemented so far — `container_event_staging.hpp` (`7a45ead0bf`), the point where the two threads
+Implemented so far — `container_event_staging.hpp` (`969c227f75`), the point where the two threads
 meet:
 
 | Property | Pinned by |
@@ -185,12 +186,12 @@ meet:
 | Nothing reaches the consumer before `release()` | 2 tests; **both fail** if the gate is removed. This is the 502-of-504 row loss |
 | De-duplication bounds memory: 5,000 events on one path → 1 entry, 4,999 dedups | 1 test. The reason this is a map and not the in-tree `fim::BoundedQueue`, which is a FIFO with no dedup |
 | **Suspect supersedes staged paths** — exceeding a budget escalates to a re-walk rather than dropping | 2 tests; **fails** if mutated into a silent discard. This is what stops the buffer being a second silent loss channel |
-| An attributed drop escalates only its own container | 1 test — the whole-node re-baseline that `c590808019`'s per-cgroup map exists to avoid |
+| An attributed drop escalates only its own container | 1 test — the whole-node re-baseline that `9e884232c5`'s per-cgroup map exists to avoid |
 | Unattributed loss escalates every container, and is served **once**, not forever | 2 tests — a repeat would put the consumer in a re-baseline loop |
 | 8,000 paths across 4 producer threads are served exactly once each | 1 test |
 
-Then `cgroup_container_map.hpp` (`0c631dd87c`) and `container_event_router.hpp` (`dbd4db569b`,
-`f3c4eb4900`), which turn a cgroup into a container and decide what happens to each event:
+Then `cgroup_container_map.hpp` (`6c5baec190`) and `container_event_router.hpp` (`9d61c58e27`,
+`324779c2e6`), which turn a cgroup into a container and decide what happens to each event:
 
 | Property | Pinned by |
 | --- | --- |
@@ -216,7 +217,7 @@ container's cgroup. That made "may the consumer infer a deletion from a path it 
 question that had to be answered before the consumer was written rather than after, because
 retrofitting an inference ban onto code that already deletes is exactly how C15 happened.
 
-D15 is answered **no**, and `container_reconcile_plan.hpp` (`ba8c642007`) enforces it in the type the
+D15 is answered **no**, and `container_reconcile_plan.hpp` (`7aa998defa`) enforces it in the type the
 consumer acts on rather than in a comment asking it to behave: a `Batch` becomes a `ReconcileRequest`
 carrying `may_detect_deletions`, and no path batch ever sets it. Only a walk may delete, because only
 a walk sees whole directories and can tell absence from unreadability. An empty path batch is a no-op
@@ -225,7 +226,7 @@ whatever I cannot find", and that mutation fails four tests. The accepted cost, 
 hidden: a file deleted inside a container goes unreported until the next walk of that container.
 
 The per-container `container_baseline` entry point the consumer needs is **built**
-(`ed24a606ce`, [13](13-container-baseline-api-plan.md)). It came out smaller than expected — **one**
+(`befda19cd1`, [13](13-container-baseline-api-plan.md)). It came out smaller than expected — **one**
 new export rather than two, because the walker is already path-rooted and a non-directory
 `internal_path` emits exactly one row, so re-reading one file is the existing walk with different
 arguments; and the orchestration seam (`RunFimDbsyncBaselineFrom`) already took an injectable
@@ -240,7 +241,7 @@ something else) and a rejection forces `partial`, so a dropped path suppresses d
 instead of passing unnoticed. The entry point also returns a tri-state rather than a count, so a
 connector blip cannot read as "this container has no files any more".
 
-**A3 is closed** (`fc6e088b1a`). The ordering in `main.c` is now:
+**A3 is closed** (`187f049a49`). The ordering in `main.c` is now:
 
 ```c
 fim_initialize();
@@ -274,9 +275,9 @@ container, where they do not exist.
 
 Steps 4–9 of the decided port order are worked through; the outcome is in
 [12 §12.13](12-blocking-decisions.md#1213-the-port-order-finished-2026-09-07). Three commits came out
-of it — `69303187cd` (`fim_file_data` carries the container scope, 3 new tests, mutation-checked),
-`4b365c11d6` (`<container_baseline_interval>`: the container inventory pass gets a cadence of its own,
-one loop and two deadlines, 1 new test) and `4e096f9537` (its config-parser cases, rewritten once
+of it — `0de54d92fc` (`fim_file_data` carries the container scope, 3 new tests, mutation-checked),
+`f689f33094` (`<container_baseline_interval>`: the container inventory pass gets a cadence of its own,
+one loop and two deadlines, 1 new test) and `998fd0ce5a` (its config-parser cases, rewritten once
 cmocka was available and they could actually be run) — and four steps turned out to be moot, because their content
 lives entirely in `container_live_fim.cpp` and the Model B reconciler, neither of which this branch
 imports, or was already here in a stronger form.
@@ -312,7 +313,7 @@ everything deciding *what* to hand the database and nothing about `libfimdb` its
 spike branch turned that from a gap into a risk worth measuring, because that branch asserts
 `fim_db_transaction_deleted_rows()` is required to flush a transaction — and
 [D15](12-blocking-decisions.md) makes a path reconcile close without it, so if true, every path
-reconcile would have persisted almost nothing. `src/syscheckd/src/ebpf/tests/txn/` (`7117b9fb08`) now
+reconcile would have persisted almost nothing. `src/syscheckd/src/ebpf/tests/txn/` (`ce231b2c6c`) now
 pins the four assumptions the consumers actually rest on, against the real database: closing without
 `deleted_rows` loses no row callback (500 of 500), `container_id` is genuinely part of the primary
 key, a scoped sweep deletes only its own scope's untouched rows (495 of 500), and another container's
@@ -345,7 +346,7 @@ What that closes, in this document's terms:
 - **The engine attaches, and picks the LSM variant.** `4 program(s) attached, ABI 1.1`.
 - **D16, D17 and WP2 hold on the integrated agent**, including [C24](03-findings-correctness.md)'s
   absent-root case with a deliberately missing `<directories>` entry.
-- **WP4 works and `4b365c11d6`'s bug is fixed**: container limits arrive over the wire, the
+- **WP4 works and `f689f33094`'s bug is fixed**: container limits arrive over the wire, the
   container budget is spent independently of the host's, and the independent
   `<container_baseline_interval>` pass now promotes its rows to `sync=1`.
 - **`libfimdb` in the live path is now exercised**, which is what turned up
@@ -357,9 +358,9 @@ What it did **not** close:
 - [C27](03-findings-correctness.md) was left open here and is now **closed** by the second run of
   2026-09-08 ([12 §12.16](12-blocking-decisions.md#1216-the-lifecycle-question-answered-by-measurement-2026-09-08)),
   which measured what it cost at the alert level — only the first modification per container was
-  reported as a modification — and fixed it in `d3a8e394d9`.
+  reported as a modification — and fixed it in `ccf47ab93c`.
 - [C28](03-findings-correctness.md#c28--with-no-containers-list-reads-as-connector-unavailable) is
-  new and **also closed** (`7e059dd5aa`): with no containers on the host, `list` omitted the
+  new and **also closed** (`976c7459c0`): with no containers on the host, `list` omitted the
   `containers` key and the client read that as an unreachable connector, so the stale-row sweep never
   ran. The fix keeps D5's rule — a socket that answers nothing still suppresses the sweep.
 - [C16](03-findings-correctness.md#c16--dockers-deferred-reconcile-is-dropped-not-deferred) turned
@@ -399,23 +400,23 @@ Two consequences for planning, in opposite directions:
 [14](14-spike-integration-plan.md) reviews `spike/37533-37534-fim-syscollector-ebpf-integration`'s
 whole tree against this branch, not just the commits
 [12 §12.13](12-blocking-decisions.md#1213-the-port-order-finished-2026-09-07)'s port order named.
-Five commits came out of it (`1bdfb0990e`, `fdcca35d0c`, `7117b9fb08`, `888c29a4a6`,
-`c0e5f162bb`), and two status facts change:
+Five commits came out of it (`bd2721021b`, `66012c6514`, `ce231b2c6c`, `3d55895056`,
+`ef7de98f3d`), and two status facts change:
 
 - **`rt_file.bpf.o` was never installed, and still has no supply.** `CB_RT_BPF_OBJECT_PATH` is
   `"lib/rt_file.bpf.o"` relative to the install directory, and `inst-functions.sh` only installed
   `modern.bpf.o`. On any packaged agent `rt_open()` could not find its object, so the entire
   container event path would have taken its silent "no engine" degradation — the one path A3 is
   designed to take *without* complaining, so nothing would have reported it. The install rule, rpm
-  spec and lintian override are fixed (`1bdfb0990e`), but the object is **never built** in the
+  spec and lintian override are fixed (`bd2721021b`), but the object is **never built** in the
   packaging pipeline either: `libbpf-bootstrap` is fetched precompiled, so `modern.bpf.o` arrives
   prebuilt and the vendored `vmlinux.h` is absent, and `rt_file.bpf.o`'s last CMake branch needs
   clang + libbpf headers + a working `bpftool`, which a package-build container has none of. Until
   it is supplied (deps tarball, or the `prebuilt/` path the CMake already honours) the feature does
-  not run on a package. `c0e5f162bb` makes that failure a **warning** rather than a debug line, and
+  not run on a package. `ef7de98f3d` makes that failure a **warning** rather than a debug line, and
   only where a `<directories>` entry is tagged `container` — being invisible is how the install half
   survived unnoticed. See [14 §14.6](14-spike-integration-plan.md).
-- **Container FIM rows were persisted and never alerted on — fixed, `888c29a4a6`.**
+- **Container FIM rows were persisted and never alerted on — fixed, `3d55895056`.**
   `fim_persist_baseline_row()` ended at `validate_and_persist_fim_event()`, which builds only the
   stateful document, so a file changing inside a container updated `wazuh-states-fim-files` and
   produced no FIM alert and no `changed_fields`. This was a gap in *this* branch that no finding had
@@ -439,7 +440,7 @@ window, which is [D15](12-blocking-decisions.md) at single-row granularity.
 | 15 | Bounded concurrency over containers | **Deprioritised, and now ruled out for the live path** — the spike's 502-of-504 row loss above is what concurrent scoped transactions for one container actually cost. **Deprioritised on the evidence** for the walk too. Its value fell sharply once the `/proc` storm, the 1+N IPC pattern and the image rescans were removed: the remaining cost is dominated by FIM file hashing, which is I/O-bound and deliberately rate-limited by `check_max_fps`, so parallelising past a throttle buys little. It would also add real thread-safety surface (a shared image cache, and the row-contiguity contract the consumers stream on). Worth revisiting only if a node-level benchmark shows collection wall-clock is actually the bottleneck |
 | 17 | Container context stored once | Replacing the per-row `container_json` blob with a dimension row is a schema change for #37203-3/-4 |
 | 20 | Baseline once per lifetime + create trigger | The largest remaining win, and the one that makes this a *baseline*. **Now planned in [10](10-container-instances-delta-plan.md)**; still needs the `container_instances` change that plan specifies |
-| 21 | Baseline↔eBPF handoff | **In progress.** The provider is imported and all four gaps it depended on are closed and kernel-verified (in-kernel filtering `d560d22b37`, per-cgroup loss attribution `c590808019`, link teardown `1f6ecea90f`, ABI guard). What remains is the *consumer* — A3 in [11 §11.7](11-ebpf-provider-import-plan.md#117-phased-plan) — which is gated on **[D5](12-blocking-decisions.md#blocking-the-next-phase)** (thread ownership) and, because allowlist filtering makes an unknown cgroup invisible rather than merely unattributed, on item 20's create trigger |
+| 21 | Baseline↔eBPF handoff | **In progress.** The provider is imported and all four gaps it depended on are closed and kernel-verified (in-kernel filtering `619ecb670c`, per-cgroup loss attribution `9e884232c5`, link teardown `9683fbbb7f`, ABI guard). What remains is the *consumer* — A3 in [11 §11.7](11-ebpf-provider-import-plan.md#117-phased-plan) — which is gated on **[D5](12-blocking-decisions.md#blocking-the-next-phase)** (thread ownership) and, because allowlist filtering makes an unknown cgroup invisible rather than merely unattributed, on item 20's create trigger |
 | 22 | Cache across runs, not just within one | The fingerprint makes it safe; it needs somewhere to live other than the per-run context, i.e. the `BaselineService` object item 29 wants. **Note the dependency runs the other way from what [08](08-roadmap.md) says** — see [10 §risk 2](10-container-instances-delta-plan.md): `ImageContentCache`'s saving is within-cycle reuse across replicas, so once item 20 makes a cycle scan only the delta the saving evaporates. 22 must land with or before 20 |
 | 23 | Re-baseline triggers | Depends on 20/21 |
 | 24 | `O_PATH` fd pinning + `openat` traversal | Selection and liveness detection are done. Pinning would let a scan *survive* a mid-scan exit, but its value is now questionable: if the container has genuinely gone, completing the scan reports state for something that no longer exists, and if only that PID died, selection already recovers |
@@ -447,17 +448,17 @@ window, which is [D15](12-blocking-decisions.md) at single-row granularity.
 | 27 | Collapse the `Build*` families | Deliberately not done — see the refactor commit: twelve field-descriptor tables would trade greppable assignments for indirection without removing the per-class knowledge |
 | 28 | Reuse `LinuxPortWrapper` / `NetworkLinuxInterface` / `getDpkgInfo` / `UsersProvider` | Each needs a build-graph or injection change in `data_provider` |
 | 29 | Remove `g_everSawContainers` | Correct as written; belongs with the `BaselineService` refactor |
-| 30 | Consumer-side tests | The orchestrator is covered, and the *scoped-transaction contract* is pinned against the real `libfimdb` (`7117b9fb08`, extended in `f39967c55c` with the `MODIFIED` payload shape and what `close()` does to untouched rows, and in `d3a8e394d9` with the non-transactional upsert that replaces it). What is still untested is the consumers' own transaction *handling* — the `BaselineDriver` state machine and its error branches, which is where [C26](03-findings-correctness.md) and [C27](03-findings-correctness.md) both lived. Neither would have been caught by a test that reads `fim.db` back: C27's damage sat in an uncommitted transaction (see [12 §12.16](12-blocking-decisions.md#1216-the-lifecycle-question-answered-by-measurement-2026-09-08)) |
-| — | ~~Stateless alerts for container FIM~~ | **Done, `888c29a4a6`** ([14](14-spike-integration-plan.md) WP2). Both questions it had to settle are answered there: a container path resolves against container-tagged `<directories>` entries only, and the whole-node baseline does not alert |
-| — | `rt_file.bpf.o` is not yet supplied | **Newly identified**, [14 §14.6](14-spike-integration-plan.md). Route decided (a committed per-architecture prebuilt) and the lookup path is in place (`da90a18c5b`); what remains is fetching the portable vendored `vmlinux.h`, compiling, and **load-testing on a real kernel** before a binary is committed. Until then the container event path does not run on a package |
-| — | ~~Per-dimension container row limits~~ | **Done, `2ea083add8`** ([14](14-spike-integration-plan.md) WP4), and the premise it was deferred on was wrong: container rows already traverse `checkDocumentLimit()` on this branch, so the enforcement had somewhere to land. The spike needed its Model B reconciler because *its* path bypassed dbsync. Validated on the node: 32 container package rows collected against a container budget of 2, 2 promoted, host counts untouched |
+| 30 | Consumer-side tests | The orchestrator is covered, and the *scoped-transaction contract* is pinned against the real `libfimdb` (`ce231b2c6c`, extended in `9b068abb04` with the `MODIFIED` payload shape and what `close()` does to untouched rows, and in `ccf47ab93c` with the non-transactional upsert that replaces it). What is still untested is the consumers' own transaction *handling* — the `BaselineDriver` state machine and its error branches, which is where [C26](03-findings-correctness.md) and [C27](03-findings-correctness.md) both lived. Neither would have been caught by a test that reads `fim.db` back: C27's damage sat in an uncommitted transaction (see [12 §12.16](12-blocking-decisions.md#1216-the-lifecycle-question-answered-by-measurement-2026-09-08)) |
+| — | ~~Stateless alerts for container FIM~~ | **Done, `3d55895056`** ([14](14-spike-integration-plan.md) WP2). Both questions it had to settle are answered there: a container path resolves against container-tagged `<directories>` entries only, and the whole-node baseline does not alert |
+| — | `rt_file.bpf.o` is not yet supplied | **Newly identified**, [14 §14.6](14-spike-integration-plan.md). Route decided (a committed per-architecture prebuilt) and the lookup path is in place (`94d697c39d`); what remains is fetching the portable vendored `vmlinux.h`, compiling, and **load-testing on a real kernel** before a binary is committed. Until then the container event path does not run on a package |
+| — | ~~Per-dimension container row limits~~ | **Done, `ce04396e50`** ([14](14-spike-integration-plan.md) WP4), and the premise it was deferred on was wrong: container rows already traverse `checkDocumentLimit()` on this branch, so the enforcement had somewhere to land. The spike needed its Model B reconciler because *its* path bypassed dbsync. Validated on the node: 32 container package rows collected against a container budget of 2, 2 promoted, host counts untouched |
 | 31 | Module boundaries and naming | `container_baseline` is still a library that looks like a wmodule, and the FIM driver still lives under `src/ebpf/` |
 | 33 | Remove `IsOverlayWhiteout` / `OsBaselineRow::family` | Kept and documented instead: the whiteout helper is the one piece an M1 lower-layer fallback would need |
 | 39–40 | Node-level benchmark and hash-vs-oracle validation | Require a real multi-container node; cannot be done in WSL |
 
 ## Environment notes found while verifying
 
-1. **`TEST=yes` cannot configure on this branch** without commit `7c90011b5c` —
+1. **`TEST=yes` cannot configure on this branch** without commit `d04f897545` —
    `container_instances/CMakeLists.txt` referenced a `ci_impl/tests` directory lost in the rebase,
    and `add_subdirectory()` on a missing path is a hard CMake error that broke the whole agent
    build, not just that module's tests.

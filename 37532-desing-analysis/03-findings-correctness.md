@@ -428,7 +428,7 @@ Note how close this sits to the *correct* reasoning already in the code: the com
 `syscollectorImp.cpp:2338` carefully distinguishes "stopped" from "gone" — and never considers
 "we could not ask".
 
-**Fixed** in `943a50935f`: an explicit reachability signal is threaded through
+**Fixed** in `f414ea6226`: an explicit reachability signal is threaded through
 `listContainers(bool*)` → `DiscoverContainers` → `ListContainers`/`cbaseline_list_containers`,
 which now return **-1** rather than 0 when the connector could not be reached; both consumers
 skip the sweep and log it. Retries now continue only while the connector has not answered at
@@ -741,7 +741,7 @@ With the socket bound, Docker enrichment reaches rows on both sides: `container.
 `container.image.digest`, `container.image.name`, `container.name`, `container.network`,
 `container.runtime`.
 
-**Fixed** in `a98549d807`: a dispatch branch guarded `#if defined(__linux__) && defined(CLIENT)`,
+**Fixed** in `83896683e7`: a dispatch branch guarded `#if defined(__linux__) && defined(CLIENT)`,
 shaped like the `agent-info` branch above it, passing `d1` (the `wmodules` list) the way
 `Read_AGENT_INFO` does.
 
@@ -782,7 +782,7 @@ Host FIM was unaffected in the same run, which is what localised it: `dbFileItem
 `"type":"modified","changed_fields":["file.size","file.mtime","file.hash.md5","file.hash.sha1","file.hash.sha256"]`
 while the container file produced nothing.
 
-**Fixed** in `f39967c55c`. The same change on the same node now yields, for the container file:
+**Fixed** in `9b068abb04`. The same change on the same node now yields, for the container file:
 
 ```json
 "type":"modified","changed_fields":["file.size","file.mtime","file.hash.md5","file.hash.sha1","file.hash.sha256"]
@@ -796,7 +796,7 @@ written as an assertion.
 
 ## C27 — A path reconcile deletes the rest of the container's rows
 
-**Severity: high. Fixed, `d3a8e394d9`.** `container_baseline_fim.cpp:203`
+**Severity: high. Fixed, `ccf47ab93c`.** `container_baseline_fim.cpp:203`
 (`ScopedContainerTxn::finish`), `shared_modules/dbsync/src/dbsync_implementation.cpp:162`
 
 `finish(false)` closed the scoped transaction with `fim_db_transaction_close()`, on the stated
@@ -904,7 +904,7 @@ assertion case 6 deliberately fails.
 
 ## C28 — With no containers, `list` reads as "connector unavailable"
 
-**Severity: medium. Fixed, `7e059dd5aa`.**
+**Severity: medium. Fixed, `976c7459c0`.**
 `wazuh_modules/container_instances/ci_impl/src/ipc/wire_protocol.hpp:221`,
 `shared_modules/container_instances_client/include/container_instances_client.hpp:119`
 
