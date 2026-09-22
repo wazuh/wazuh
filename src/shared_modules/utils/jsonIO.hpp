@@ -16,7 +16,7 @@
 #include <fstream>
 
 /**
- * Class to read and write json files
+ * Class to read json files
  */
 template<typename T>
 class JsonIO
@@ -39,28 +39,6 @@ public:
         T json;
         file >> json;
         return json;
-    }
-
-    /**
-     * Write a json file
-     * @param filePath Path to the json file
-     * @param json Json object
-     */
-    static void writeJson(const std::filesystem::path& filePath, const T& json)
-    {
-        std::ofstream file(filePath);
-
-        if (!file.is_open())
-        {
-            throw std::runtime_error("Could not open file");
-        }
-
-        file << json;
-
-        if (!file.good())
-        {
-            throw std::runtime_error("Could not write file");
-        }
     }
 };
 
