@@ -220,11 +220,30 @@ int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, 
         goto end;
     }
 
-    if (fclose(fp) != 0) {
-        /* A write error can surface only here, when the stream is flushed; installing a store
-         * whose tail never reached the disk would be installing a truncated bundle. */
-        fp = NULL;
+    /* fflush() only empties the stream into the kernel; the sync is what puts it on the disk.
+     * Without it fclose() returns happily with the bytes still in the page cache, and on a
+     * delayed-allocation filesystem -- ext4's default -- a crash or power loss after the rename
+     * below can expose a zero-length or partly-allocated trust store. That is precisely the torn
+     * file this install is shaped to make impossible ("either the old bundle with its
+     * publication or the new bundle with its own"), and the agent could not recover from it on
+     * its own: it would be unable to verify the manager, and so unable to reach /cacerts to
+     * repair itself. Same pattern, and the same reasoning, as w_shred_file()'s own flush. */
+    if (fflush(fp) != 0
+#ifdef WIN32
+            || _commit(_fileno(fp)) != 0
+#else
+            || fsync(fileno(fp)) != 0
+#endif
+       ) {
         merror("CA bundle: could not flush the trust store to '%s': %s (%d).", temp_path,
+               strerror(errno), errno);
+        goto end;
+    }
+
+    if (fclose(fp) != 0) {
+        /* A write error can still surface here even after a successful flush. */
+        fp = NULL;
+        merror("CA bundle: could not close the trust store at '%s': %s (%d).", temp_path,
                strerror(errno), errno);
         goto end;
     }
@@ -273,6 +292,40 @@ int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, 
         goto end;
     }
 
+#endif
+
+#ifndef WIN32
+    /* The rename is only as durable as the directory entry that records it. The file's own bytes
+     * are synced above, but without this a crash immediately after can come back with the old
+     * name still in place -- the publication recorded in the store would then disagree with the
+     * one the agent believes it adopted. Best effort by design: the store IS installed at this
+     * point, so a directory that cannot be synced is worth a line, not a rollback that would
+     * undo a correct install. */
+    {
+        char dir[OS_FLSIZE + 1];
+        const char *sep = strrchr(path, '/');
+        int dir_fd;
+
+        if (sep == NULL) {
+            snprintf(dir, sizeof(dir), ".");
+        } else if (sep == path) {
+            snprintf(dir, sizeof(dir), "/");
+        } else {
+            snprintf(dir, sizeof(dir), "%.*s", (int) (sep - path), path);
+        }
+
+        if (dir_fd = open(dir, O_RDONLY | O_DIRECTORY | O_CLOEXEC), dir_fd < 0) {
+            mdebug1("CA bundle: could not open '%s' to flush the rename: %s (%d).", dir,
+                    strerror(errno), errno);
+        } else {
+            if (fsync(dir_fd) != 0) {
+                mdebug1("CA bundle: could not flush the rename into '%s': %s (%d).", dir,
+                        strerror(errno), errno);
+            }
+
+            close(dir_fd);
+        }
+    }
 #endif
 
     minfo("CA bundle: trust store replaced at publication %lld (%zu certificate(s)).",
