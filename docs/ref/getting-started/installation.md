@@ -304,7 +304,7 @@ An upgrade keeps whatever password the installation already had, because the RBA
 
 #### Changing them
 
-A password must be 12 to 64 characters long and contain at least one uppercase letter, one lowercase letter, one digit and one symbol out of `. * + ? -`, the set both authentication realms of a deployment share; the API rejects anything else with error `5009` (length) or `5007` (character classes).
+A password must be 12 to 64 characters long and contain at least one uppercase letter, one lowercase letter, one digit and one symbol out of `. * + ? -`, the set both authentication realms of a deployment share. Those five are what has to be present, not the only ones allowed: any other character may appear alongside them, and only a password whose symbols all fall outside the set is rejected. The API answers error `5009` for the length and `5007` for the character classes.
 
 Run the following on the **master node**: authentication is always resolved there, so that is the database the API reads. Every node keeps its own `api/configuration/security/rbac.db` and the cluster does not synchronize it. A worker installed with the same `WAZUH_API_PASSWORD` and `WAZUH_WUI_PASSWORD` as the rest of the deployment seeds those when it is promoted, so promotion does not rotate the credential the dashboard already uses. A worker that was left to generate its own serves a different password the day it is promoted.
 

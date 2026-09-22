@@ -17,7 +17,8 @@ from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
 from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
 from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
-from wazuh.rbac.orm import USER_PASSWORD_POLICY as _user_password
+from wazuh.rbac.orm import USER_PASSWORD_MAX_LENGTH, USER_PASSWORD_MIN_LENGTH, \
+    USER_PASSWORD_POLICY as _user_password
 
 @dapi_allower()
 def get_user_me(token: dict) -> AffectedItemsWazuhResult:
@@ -171,7 +172,7 @@ def create_user(username: str = None, password: str = None) -> AffectedItemsWazu
     AffectedItemsWazuhResult
         Status message.
     """
-    if len(password) > 64 or len(password) < 12:
+    if not USER_PASSWORD_MIN_LENGTH <= len(password) <= USER_PASSWORD_MAX_LENGTH:
         raise WazuhError(5009)
     elif not _user_password.match(password):
         raise WazuhError(5007)
@@ -221,7 +222,7 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
     if password is None:
         raise WazuhError(4001)
     if password is not None:
-        if len(password) > 64 or len(password) < 12:
+        if not USER_PASSWORD_MIN_LENGTH <= len(password) <= USER_PASSWORD_MAX_LENGTH:
             raise WazuhError(5009)
         elif not _user_password.match(password):
             raise WazuhError(5007)
