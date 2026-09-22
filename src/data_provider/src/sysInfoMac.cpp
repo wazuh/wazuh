@@ -489,13 +489,18 @@ nlohmann::json SysInfo::getGroups() const
 
         // A group resolvable only via OpenDirectory (see GroupsProvider::collect()) carries no
         // real GID. group_id/group_id_signed are BIGINT columns downstream (dbsync's
-        // bindJsonData), which unconditionally std::stoll()s a non-empty string value with no
-        // catch; UNKNOWN_VALUE (" ") would crash that bind. null is the safe "no value" for a
-        // numeric column, and also keeps distinct unresolved groups from sharing a fake id.
-        groupItem["group_id"] = hasGid ? group["gid"] : nullptr;
+        // bindJsonData): a JSON null there still binds the literal integer 0, colliding with the
+        // real gid-0 group ("wheel"). Omitting the keys entirely is the only representation that
+        // reaches a genuine SQL NULL (buildInsertDataSqlQuery skips columns absent from the
+        // source JSON), so the fields are only set here when a real GID is known.
+        if (hasGid)
+        {
+            groupItem["group_id"] = group["gid"];
+            groupItem["group_id_signed"] = group["gid_signed"];
+        }
+
         groupItem["group_name"] = (group.contains("groupname") && !group["groupname"].get<std::string>().empty()) ? group["groupname"] : UNKNOWN_VALUE;
         groupItem["group_description"] = (group.contains("comment") && !group["comment"].get<std::string>().empty()) ? group["comment"] : UNKNOWN_VALUE;
-        groupItem["group_id_signed"] = hasGid ? group["gid_signed"] : nullptr;
         groupItem["group_uuid"] = (group.contains("uuid") && !group["uuid"].get<std::string>().empty()) ? group["uuid"] : UNKNOWN_VALUE;
         groupItem["group_is_hidden"] = group["is_hidden"];
 
