@@ -53,6 +53,29 @@ namespace
     {
         return makeMetadataCollector(callbacks.on_collect_stateless_host, callbacks.user_data);
     }
+
+    /// Hands a vetted CA bundle to the consumer, which parses it and owns the write. Called
+    /// straight from the control thread rather than through the dispatcher, like
+    /// check_and_record_task: the answer decides whether the module updates its own notion of
+    /// the installed publication, so it cannot be deferred.
+    CaBundleFetcher::InstallFn makeCaBundleInstaller(const hc_callbacks_t& callbacks)
+    {
+        auto* const callback = callbacks.on_ca_bundle;
+        auto* const userData = callbacks.user_data;
+
+        return [callback, userData](const std::string & pem, std::int64_t generation) -> bool
+        {
+            // No bridge wired (a test harness, say): refuse rather than report an install that
+            // never happened, which would leave the module believing a publication it does not
+            // hold and stop it retrying.
+            if (callback == nullptr)
+            {
+                return false;
+            }
+
+            return callback(pem.c_str(), pem.size(), generation, userData);
+        };
+    }
 } // namespace
 
 HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbacks_t& callbacks)
@@ -63,6 +86,7 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     , m_performer(m_config, defaultCurlHandleFactory(), m_fsProbe)
     , m_dispatcher(callbacks)
     , m_configHash(m_config.configChecksum)
+    , m_caPublication(m_config.caPublication)
     , m_taskStore(callbacks.check_and_record_task, callbacks.user_data)
     , m_vdOffsetStore(callbacks.vd_offset_observe, callbacks.vd_offset_clear_pending, callbacks.user_data)
     , m_collectors(callbacks)
@@ -93,12 +117,21 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
                 m_dispatcher,
                 m_spoolFactory,
                 m_configHash,
+                m_caPublication,
                 m_cluster,
                 m_authGate,
                 m_compressionGate,
                 m_taskStore,
                 m_vdOffsetStore,
                 makeHostCollector(callbacks))
+    , m_caFetcher(m_config,
+                  m_performer,
+                  m_fsProbe,
+                  m_clock,
+                  m_random,
+                  m_caPublication,
+                  makeCaBundleInstaller(callbacks),
+                  HTTPS_CLIENT_LOGTAG)
     , m_reporter(
           m_config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors)
 {
@@ -291,6 +324,10 @@ void HttpsClientFacade::controlLoop()
         {
             m_gate.open();
         }
+
+        // After the step, so a publication this very Notify advertised is already pending. Cheap
+        // when nothing is: a load of one atomic and a return.
+        m_caFetcher.tick(m_controlWaiter);
 
         const auto interval = m_control.consumeFastFollowup() ? FAST_FOLLOWUP_INTERVAL : controlInterval();
 

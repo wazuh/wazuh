@@ -165,6 +165,21 @@ typedef struct hc_config_t
     ///< agent.config_hash on every Notify;
     ///< a mismatch triggers /download.
 
+    bool ca_refresh_allowed;      ///< Whether a published CA bundle may replace the file named
+    ///< by ca_path. Set only when that file is the agent's own
+    ///< trust anchor: an operator who points
+    ///< <certificate_authorities> at their own CA manages it
+    ///< themselves, and the agent must neither surprise them by
+    ///< rewriting it nor retry an install it can never complete.
+
+    int64_t ca_publication;       ///< Publication recorded with the installed CA bundle, or -1
+    ///< when it carries none (a fresh install, a store placed
+    ///< out of band, or one written before #39321). Compared
+    ///< against the manager-reported ca_generation on every
+    ///< Notify; a higher one triggers a verified /cacerts
+    ///< refresh. The seed only: the module tracks it from
+    ///< here on, since it changes when a bundle is adopted.
+
     uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
     uint32_t stateful_timeout_ms; ///< Large transfers (/stateful, /download);
     ///< 0 -> 90000.
@@ -324,6 +339,24 @@ typedef struct hc_callbacks_t
     /// unrelated to the configuration download, which the manager addresses on its
     /// own with the opaque agent.config_token.
     void (*on_agent_groups)(const char* groups_csv, void* user_data);
+
+    /// Install @p pem as the agent's trust store, recording @p generation with it, or refuse.
+    ///
+    /// The module has already established everything it can about the body: the connection was
+    /// verified against the CA the agent currently trusts, the response was a 200, it was not
+    /// truncated, and the node's Wazuh-CA-Generation matched the publication being adopted. What
+    /// it cannot judge is the PEM itself -- parsing X.509 lives on the C side (the module links
+    /// no libwazuh by design) -- so the consumer validates the bytes and owns the write.
+    ///
+    /// Wholesale: the bundle replaces the trust store rather than merging into it, which is how
+    /// an operator retires a CA. The write must be atomic, since a torn store is one the agent
+    /// cannot verify anything against.
+    ///
+    /// @return true when the store now holds @p pem at @p generation. False on any refusal --
+    ///         a body that is not certificates, a write that failed -- and the module then
+    ///         leaves its own notion of the installed publication alone, so the next
+    ///         advertisement retries rather than believing something that never landed.
+    bool (*on_ca_bundle)(const char* pem, size_t pem_len, int64_t generation, void* user_data);
     /// The HTTP outcome for a /stateful session. Unlike every other outcome in this
     /// header, `result` here is the RAW HTTP status code the manager answered with
     /// (200, 400, 403, 409, 413, 500, 503...), not an hc_result_t - the /stateful

@@ -247,6 +247,27 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
      * surfaces the moment verification is actually turned on, as (4118), which is the point
      * at which it starts to matter. */
     if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE) {
+        /* ...unless this install has verified before. Since #39321 the agent owns its anchor so
+         * it can replace it on a CA rotation, and anything that can replace a file can delete
+         * one -- at which point w_agent_resolve_ssl_posture() sees no anchor, no configured CA
+         * and no explicit mode, and resolves to 'none' exactly as it would on a stock install
+         * that never had an anchor. Losing one file would then quietly turn manager verification
+         * off, which is the one way this agent can stop verifying without anyone saying so.
+         *
+         * The marker distinguishes the two, because it is root-owned in a sticky directory and
+         * the runtime user cannot remove it. Only an inferred 'none' is refused: an operator who
+         * writes <verification_mode>none</verification_mode> has said what they want, and 4122
+         * already warns them about the anchor they are ignoring.
+         *
+         * This is not a defence against that user REPLACING the anchor with a CA of its own --
+         * nothing here could be, once the agent adopts rotations unaided. It closes the cheaper
+         * attack and the commoner accident: ending up with no verification at all. */
+        if (!cfg->ssl.verification_mode_explicit && w_is_file(AGENT_ANCHOR_CA) == 0
+                && w_is_file(AGENT_ANCHOR_MARKER) != 0) {
+            merror(AG_SSL_ANCHOR_VANISHED, AGENT_ANCHOR_CA, AGENT_ANCHOR_MARKER);
+            return false;
+        }
+
         return true;
     }
 
@@ -273,7 +294,7 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
         /* w_is_file() above (and w_agent_resolve_ssl_posture()'s own probe) only answers
          * "present and readable", not "usable" -- the same gap #38949 question 10 already
          * flagged for an operator's own <certificate_authorities>, and fixed below for it at
-         * the w_x509_load_pem() call. The fallback anchor (curlPerformer.cpp, #39123) is used
+         * the w_x509_load_all_pem() call. The fallback anchor (curlPerformer.cpp, #39123) is used
          * whenever it is present, regardless of whether an OS bundle also exists (an OS bundle
          * can be found yet simply not vouch for this manager's certificate, which is exactly
          * when the fallback engages) -- so a corrupt or truncated anchor is worth catching here
@@ -284,14 +305,21 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
         const bool anchor_present = w_is_file(AGENT_ANCHOR_CA) != 0;
 
         if (anchor_present) {
-            X509 *anchor = w_x509_load_pem(AGENT_ANCHOR_CA);
+            /* load_ALL_pem, not w_x509_load_pem(): since #39321 this anchor is a BUNDLE -- the
+             * agent adopts up to ca_bundle::kMaxCertificates from a manager publication, and
+             * during a rotation's overlap it legitimately holds two or more roots. The singular
+             * loader stops at the first block, so it would pronounce a rotated store "parses"
+             * on the strength of one certificate and leave the rest unchecked, which is the
+             * exact gap the <certificate_authorities> check below was changed to close. */
+            size_t anchor_count = 0;
+            X509 **anchor = w_x509_load_all_pem(AGENT_ANCHOR_CA, &anchor_count);
 
             if (anchor == NULL) {
                 merror(AG_SSL_ANCHOR_UNPARSEABLE, AGENT_ANCHOR_CA);
                 return false;
             }
 
-            X509_free(anchor);
+            w_x509_free_all(anchor, anchor_count);
         }
 
 #if !defined(WIN32) && !defined(__APPLE__)
@@ -324,18 +352,32 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
      * startup. An operator's own <certificate_authorities> gets the same check, since a file
      * nothing can parse is no more usable for them.
      *
-     * The first certificate is enough: PEM_read_bio_X509() scans past comments and
-     * non-certificate blocks, so a bundle, or a combined key-and-certificate file, still
-     * answers here -- this asks whether there is a certificate at all, not whether every
-     * block in the file is one. */
-    X509 *parsed = w_x509_load_pem(ca);
+     * Every certificate, not just the first: a CA rotation hands this file more than one
+     * anchor, and w_x509_load_pem() stops at the first block -- so a bundle whose second
+     * certificate is truncated used to start, and then failed at a handshake against
+     * whichever anchor the manager had rotated to. w_x509_load_all_pem() reads the file to
+     * its end and yields nothing when any block fails to decode, which is the check this
+     * was always meant to be (issue #39321).
+     *
+     * Text before the first -----BEGIN CERTIFICATE----- is still fine: the reader skips it,
+     * so the publication block the agent records alongside its anchor (RFC 7468 section 2)
+     * parses here exactly as a bare bundle does. */
+    size_t ca_count = 0;
+    X509 **parsed = w_x509_load_all_pem(ca, &ca_count);
 
     if (parsed == NULL) {
         merror(AG_SSL_CA_UNPARSEABLE, ca);
         return false;
     }
 
-    X509_free(parsed);
+    /* Only worth a line when there is more than one: a single anchor is the ordinary case and
+     * saying so on every start is noise, while two or more means a rotation is in flight and
+     * an operator reading the log wants to know the agent picked both up. */
+    if (ca_count > 1) {
+        minfo(AG_SSL_CA_BUNDLE_LOADED, ca, ca_count);
+    }
+
+    w_x509_free_all(parsed, ca_count);
 
     return true;
 }

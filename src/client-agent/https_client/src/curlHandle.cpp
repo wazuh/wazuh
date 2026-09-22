@@ -122,14 +122,32 @@ namespace
         return index;
     }
 
+    // In-memory response sink with an optional byte cap, the counterpart of FileSink
+    // below; lives on the CurlHandle for the duration of the transfer.
+    struct BodySink
+    {
+        std::string* body {nullptr};
+        uint64_t max {0}; // 0 = unlimited.
+    };
+
     size_t writeTrampoline(char* data, size_t size, size_t nmemb, void* userData)
     {
-        auto* output = static_cast<std::string*>(userData);
+        auto* sink = static_cast<BodySink*>(userData);
         const size_t total = size * nmemb;
+
+        // Enforce the cap here rather than after the fact: a consumer that only checks the
+        // finished body has already let a hostile or faulty manager decide how much of this
+        // agent's memory to take, on a schedule the manager controls. A short count aborts the
+        // transfer, exactly as it does for the file sink. (body->size() <= max always, so the
+        // subtraction cannot underflow.)
+        if (sink->max != 0 && total > sink->max - sink->body->size())
+        {
+            return 0;
+        }
 
         try
         {
-            output->append(data, total);
+            sink->body->append(data, total);
         }
         catch (...)
         {
@@ -174,9 +192,20 @@ namespace
         constexpr size_t retryAfterPrefixLength = 12; // "Retry-After:"
         constexpr size_t datePrefixLength = 5;        // "Date:"
 
+        constexpr size_t caGenerationPrefixLength = 20; // "Wazuh-CA-Generation:"
+
         if (total > retryAfterPrefixLength && strncasecmp(data, "Retry-After:", retryAfterPrefixLength) == 0)
         {
             *capture->retryAfter = std::strtol(data + retryAfterPrefixLength, nullptr, 10);
+        }
+        else if (capture->caGeneration != nullptr && total > caGenerationPrefixLength &&
+                 strncasecmp(data, "Wazuh-CA-Generation:", caGenerationPrefixLength) == 0)
+        {
+            // strtoll stops at the first non-digit, so the header's trailing CRLF needs no
+            // trimming. A value that is not a positive integer stays 0 and is refused by the
+            // caller exactly as an absent header is -- there is no reading of a malformed
+            // publication that is safer than declining to adopt.
+            *capture->caGeneration = std::strtoll(data + caGenerationPrefixLength, nullptr, 10);
         }
         else if (total > datePrefixLength && strncasecmp(data, "Date:", datePrefixLength) == 0)
         {
@@ -386,10 +415,11 @@ namespace
                 m_headers = curl_slist_append(m_headers, header.c_str());
             }
 
-            bool captureResponseBody(std::string* output) override
+            bool captureResponseBody(std::string* output, uint64_t maxBytes) override
             {
+                m_bodySink = BodySink {output, maxBytes};
                 return curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeTrampoline) == CURLE_OK &&
-                       curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, output) == CURLE_OK;
+                       curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_bodySink) == CURLE_OK;
             }
 
             bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) override
@@ -629,6 +659,7 @@ namespace
             CURL* m_handle {nullptr};
             curl_slist* m_headers {nullptr};
             FileSink m_fileSink {};
+            BodySink m_bodySink {};
             HeaderCapture m_headerCapture {};
             std::string m_lastError {}; ///< Last perform()'s reason, empty when it succeeded.
             bool m_wantsPartialChain {false}; ///< Set by trustSelfSignedRoot(); consumed by

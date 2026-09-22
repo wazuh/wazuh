@@ -351,6 +351,91 @@ probe_server_verified() {
     fi
 }
 
+# The most certificates a delivery may carry. Mirrors ca_bundle::kMaxCertificates -- the most
+# the manager will ever vouch for in a published bundle -- so a file holding more is not one of
+# ours whatever else it is, and the bound also caps how many openssl invocations the per-
+# certificate loop below can be made to run.
+CA_MAX_CERTIFICATES=6
+
+# Split a PEM file into one file per certificate, named "<prefix>.N" (1-based, in file order),
+# and echo how many were written.
+#
+# Only the encapsulation boundaries and what lies between them are copied. Everything outside a
+# BEGIN/END pair is dropped here rather than carried into the installed anchor -- which matters
+# for more than tidiness: w_ca_publication_read() (src/client-agent/src/ca_publication.c) reads
+# exactly that region of this file for a "## generation:" line and takes it as the publication
+# this agent has already adopted. A delivery carrying a forged one would pin the agent at that
+# generation and silently stop it ever adopting another CA bundle. Installing only the
+# certificates removes the possibility instead of testing for it.
+#
+# Per RFC 7468 2, text before the first boundary is legal in a PEM file and openssl x509 ignores
+# it, so a delivery with a preamble is still accepted -- the preamble simply does not survive.
+split_pem_certificates() {
+    awk -v prefix="$2" '
+        /^-----BEGIN CERTIFICATE-----/ { inside = 1; count++; out = prefix "." count }
+        inside { print > out }
+        /^-----END CERTIFICATE-----/ { if (inside) { close(out); inside = 0 } }
+        END { print count + 0 }
+    ' "$1" 2>/dev/null
+}
+
+# Decide whether one certificate file is an installable trust anchor.
+#
+# Sets CA_CERT_REJECT (empty when the certificate is structurally fine), CA_CERT_WINDOW (empty
+# unless it is outside its validity period) and CA_CERT_CURRENT (1 when it is usable right now).
+# The split between the two failure kinds is what lets a bundle keep an aged-out root beside its
+# live replacement; see the caller.
+validate_ca_certificate() {
+    CA_CERT_REJECT=""
+    CA_CERT_WINDOW=""
+    CA_CERT_CURRENT=0
+
+    if ! openssl x509 -in "$1" -noout > /dev/null 2>&1; then
+        CA_CERT_REJECT="does not parse as a PEM certificate"
+        return
+    fi
+
+    if ! openssl x509 -in "$1" -noout -text 2>/dev/null | grep -A1 "X509v3 Basic Constraints" | grep -q "CA:TRUE"; then
+        CA_CERT_REJECT="is not a CA certificate (no X509v3 Basic Constraints CA:TRUE)"
+        return
+    fi
+
+    CA_NOT_BEFORE=$(openssl x509 -in "$1" -noout -startdate 2>/dev/null | cut -d= -f2-)
+    CA_NOT_AFTER=$(openssl x509 -in "$1" -noout -enddate 2>/dev/null | cut -d= -f2-)
+    NOW_EPOCH=$(date +%s)
+    # openssl's notBefore/notAfter come out as "Mon D HH:MM:SS YYYY TZ" (e.g.
+    # "Sep 10 19:55:53 2026 GMT"). GNU date -d parses that directly; BSD date
+    # (macOS) has no -d and needs strptime-style -j -f instead, or every valid
+    # CA is silently rejected here as having an "unparsable validity period".
+    #
+    # TZ=UTC on these two calls specifically: BSD date -j converts the parsed
+    # struct tm via mktime(), which always interprets it in the process's own
+    # local timezone regardless of what %Z matched in the input string --
+    # openssl's output is unconditionally GMT, so without forcing TZ=UTC here,
+    # a host west of UTC would compute an epoch shifted later than the real
+    # notBefore/notAfter (east of UTC, shifted earlier), silently rejecting a
+    # genuinely-valid, freshly-issued CA as "not yet valid".
+    if [[ "$OS" == "Darwin" ]]; then
+        CA_NOT_BEFORE_EPOCH=$(TZ=UTC date -j -f "%b %e %T %Y %Z" "${CA_NOT_BEFORE}" +%s 2>/dev/null)
+        CA_NOT_AFTER_EPOCH=$(TZ=UTC date -j -f "%b %e %T %Y %Z" "${CA_NOT_AFTER}" +%s 2>/dev/null)
+    else
+        CA_NOT_BEFORE_EPOCH=$(date -d "${CA_NOT_BEFORE}" +%s 2>/dev/null)
+        CA_NOT_AFTER_EPOCH=$(date -d "${CA_NOT_AFTER}" +%s 2>/dev/null)
+    fi
+
+    if [ -z "${CA_NOT_BEFORE_EPOCH}" ] || [ -z "${CA_NOT_AFTER_EPOCH}" ]; then
+        # A date this script cannot read is a structural problem, not an aged-out anchor: there
+        # is no window to be outside of, so it is rejected outright rather than skipped.
+        CA_CERT_REJECT="has an unparsable validity period"
+    elif [ "${NOW_EPOCH}" -lt "${CA_NOT_BEFORE_EPOCH}" ]; then
+        CA_CERT_WINDOW="is not yet valid (notBefore ${CA_NOT_BEFORE})"
+    elif [ "${NOW_EPOCH}" -gt "${CA_NOT_AFTER_EPOCH}" ]; then
+        CA_CERT_WINDOW="has expired (notAfter ${CA_NOT_AFTER})"
+    else
+        CA_CERT_CURRENT=1
+    fi
+}
+
 # Default drop-in location for the manager's CA (mirrored on Windows in
 # do_upgrade.ps1): an operator can place it here ahead of an upgrade without having
 # to hand-edit ossec.conf, and it also doubles as the on-disk anchor path for a CA
@@ -414,17 +499,24 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
         CA_REJECT_REASON="could not be read"
     fi
 
-    # A missing openssl is an environment problem, not evidence the delivered file
+    # A missing tool is an environment problem, not evidence the delivered file
     # itself is bad -- every openssl invocation below would fail not-found (exit
-    # 127) exactly like a real parse failure looks, silently destroying a possibly-
-    # valid delivery via the unconditional cleanup further down instead of leaving
-    # it for a retry once openssl is available. Reported and handled distinctly so
-    # an operator isn't misled into troubleshooting the certificate instead of the
-    # missing tool, and so the incoming file isn't deleted for a reason that has
-    # nothing to do with its own content.
-    if [ -z "${CA_REJECT_REASON}" ] && ! command -v openssl > /dev/null 2>&1; then
-        CA_REJECT_REASON="cannot be validated: openssl was not found on this host"
-        CA_TOOL_MISSING=1
+    # 127) exactly like a real parse failure looks, and a missing awk would leave
+    # split_pem_certificates() echoing nothing, which reads here as "no certificate
+    # in the file" -- either way silently destroying a possibly-valid delivery via
+    # the unconditional cleanup further down instead of leaving it for a retry once
+    # the tool is available. Reported and handled distinctly so an operator isn't
+    # misled into troubleshooting the certificate instead of the missing tool, and
+    # so the incoming file isn't deleted for a reason that has nothing to do with
+    # its own content.
+    if [ -z "${CA_REJECT_REASON}" ]; then
+        for CA_TOOL in openssl awk; do
+            if ! command -v "${CA_TOOL}" > /dev/null 2>&1; then
+                CA_REJECT_REASON="cannot be validated: ${CA_TOOL} was not found on this host"
+                CA_TOOL_MISSING=1
+                break
+            fi
+        done
     fi
 
     # Cheap bound before invoking openssl at all: empty or implausibly large for
@@ -436,47 +528,91 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
 
         if [ "${CA_BYTES}" -eq 0 ] || [ "${CA_BYTES}" -gt 65536 ]; then
             CA_REJECT_REASON="is empty or larger than the 64 KiB a CA certificate should ever need"
-        elif [ "$(grep -c -- "-----BEGIN CERTIFICATE-----" "${CA_SNAPSHOT}" 2>/dev/null)" -gt 1 ]; then
-            # openssl x509 parses only the first certificate in a multi-cert PEM file
-            # and silently ignores the rest -- a manager delivery is expected to be
-            # exactly one self-signed root, never a bundle/chain, so reject this
-            # shape explicitly rather than silently act on only part of the file.
-            CA_REJECT_REASON="contains more than one certificate (expected exactly one self-signed root)"
-        elif ! openssl x509 -in "${CA_SNAPSHOT}" -noout > /dev/null 2>&1; then
-            CA_REJECT_REASON="does not parse as a PEM certificate"
-        elif ! openssl x509 -in "${CA_SNAPSHOT}" -noout -text 2>/dev/null | grep -A1 "X509v3 Basic Constraints" | grep -q "CA:TRUE"; then
-            CA_REJECT_REASON="is not a CA certificate (no X509v3 Basic Constraints CA:TRUE)"
         else
-            CA_NOT_BEFORE=$(openssl x509 -in "${CA_SNAPSHOT}" -noout -startdate 2>/dev/null | cut -d= -f2-)
-            CA_NOT_AFTER=$(openssl x509 -in "${CA_SNAPSHOT}" -noout -enddate 2>/dev/null | cut -d= -f2-)
-            NOW_EPOCH=$(date +%s)
-            # openssl's notBefore/notAfter come out as "Mon D HH:MM:SS YYYY TZ" (e.g.
-            # "Sep 10 19:55:53 2026 GMT"). GNU date -d parses that directly; BSD date
-            # (macOS) has no -d and needs strptime-style -j -f instead, or every valid
-            # CA is silently rejected here as having an "unparsable validity period".
+            # A trust store is legitimately a BUNDLE since #39321: the agent adopts up to
+            # ca_bundle::kMaxCertificates from a manager publication, and during a rotation
+            # overlap two or more roots are trusted at once. So every certificate is validated
+            # here, rather than the file being refused for holding more than one -- openssl x509
+            # reads only the first certificate of a multi-cert PEM and ignores the rest, which is
+            # why acting on the file as a whole was never an option and the split comes first.
             #
-            # TZ=UTC on these two calls specifically: BSD date -j converts the parsed
-            # struct tm via mktime(), which always interprets it in the process's own
-            # local timezone regardless of what %Z matched in the input string --
-            # openssl's output is unconditionally GMT, so without forcing TZ=UTC here,
-            # a host west of UTC would compute an epoch shifted later than the real
-            # notBefore/notAfter (east of UTC, shifted earlier), silently rejecting a
-            # genuinely-valid, freshly-issued CA as "not yet valid".
-            if [[ "$OS" == "Darwin" ]]; then
-                CA_NOT_BEFORE_EPOCH=$(TZ=UTC date -j -f "%b %e %T %Y %Z" "${CA_NOT_BEFORE}" +%s 2>/dev/null)
-                CA_NOT_AFTER_EPOCH=$(TZ=UTC date -j -f "%b %e %T %Y %Z" "${CA_NOT_AFTER}" +%s 2>/dev/null)
-            else
-                CA_NOT_BEFORE_EPOCH=$(date -d "${CA_NOT_BEFORE}" +%s 2>/dev/null)
-                CA_NOT_AFTER_EPOCH=$(date -d "${CA_NOT_AFTER}" +%s 2>/dev/null)
+            # Every reject below is worded so that a ONE-certificate delivery -- which is what
+            # the manager actually sends, and what every install has received until now -- gets
+            # exactly the message it got before this file could hold a bundle. The
+            # "certificate N of M" phrasing appears only for a real bundle.
+            CA_CERT_COUNT=$(split_pem_certificates "${CA_SNAPSHOT}" "${CA_SNAPSHOT}.cert")
+            CA_CERT_COUNT=${CA_CERT_COUNT:-0}
+            CA_CURRENT_COUNT=0
+            CA_WINDOW_FIRST=""
+
+            if [ "${CA_CERT_COUNT}" -eq 0 ]; then
+                # No encapsulation boundary at all. Same verdict, and the same words, as the
+                # single openssl parse that used to stand here.
+                CA_REJECT_REASON="does not parse as a PEM certificate"
+            elif [ "${CA_CERT_COUNT}" -gt "${CA_MAX_CERTIFICATES}" ]; then
+                CA_REJECT_REASON="contains ${CA_CERT_COUNT} certificates (at most ${CA_MAX_CERTIFICATES}, the most the manager will ever publish in one bundle)"
             fi
 
-            if [ -z "${CA_NOT_BEFORE_EPOCH}" ] || [ -z "${CA_NOT_AFTER_EPOCH}" ]; then
-                CA_REJECT_REASON="has an unparsable validity period"
-            elif [ "${NOW_EPOCH}" -lt "${CA_NOT_BEFORE_EPOCH}" ]; then
-                CA_REJECT_REASON="is not yet valid (notBefore ${CA_NOT_BEFORE})"
-            elif [ "${NOW_EPOCH}" -gt "${CA_NOT_AFTER_EPOCH}" ]; then
-                CA_REJECT_REASON="has expired (notAfter ${CA_NOT_AFTER})"
+            CA_CERT_INDEX=1
+            while [ -z "${CA_REJECT_REASON}" ] && [ "${CA_CERT_INDEX}" -le "${CA_CERT_COUNT}" ]; do
+                validate_ca_certificate "${CA_SNAPSHOT}.cert.${CA_CERT_INDEX}"
+
+                if [ -n "${CA_CERT_REJECT}" ]; then
+                    if [ "${CA_CERT_COUNT}" -eq 1 ]; then
+                        CA_REJECT_REASON="${CA_CERT_REJECT}"
+                    else
+                        CA_REJECT_REASON="contains a certificate (${CA_CERT_INDEX} of ${CA_CERT_COUNT}) that ${CA_CERT_REJECT}"
+                    fi
+                elif [ "${CA_CERT_CURRENT}" = "1" ]; then
+                    CA_CURRENT_COUNT=$((CA_CURRENT_COUNT + 1))
+                else
+                    # Kept, not rejected, and kept only in a bundle: a rotation's overlap is
+                    # exactly where an aged-out root sits beside the live replacement that
+                    # supersedes it, and OpenSSL simply fails to build a chain through an anchor
+                    # outside its window. Dropping the whole delivery over one stale certificate
+                    # would leave this agent with NO anchor, which is the single outcome CA
+                    # delivery exists to prevent.
+                    if [ -z "${CA_WINDOW_FIRST}" ]; then
+                        CA_WINDOW_FIRST="${CA_CERT_WINDOW}"
+                    fi
+
+                    # Worded to stay true whatever the verdict turns out to be: the delivery is
+                    # still refused below if NO certificate is current, and a line promising an
+                    # install would contradict the refusal that follows it.
+                    if [ "${CA_CERT_COUNT}" -gt 1 ]; then
+                        echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE}: certificate ${CA_CERT_INDEX} of ${CA_CERT_COUNT} ${CA_CERT_WINDOW}, so it cannot verify anything; that alone is not a reason to refuse the delivery." >> ./logs/upgrade.log
+                    fi
+                fi
+
+                CA_CERT_INDEX=$((CA_CERT_INDEX + 1))
+            done
+
+            if [ -z "${CA_REJECT_REASON}" ] && [ "${CA_CURRENT_COUNT}" -eq 0 ]; then
+                if [ "${CA_CERT_COUNT}" -eq 1 ]; then
+                    CA_REJECT_REASON="${CA_WINDOW_FIRST}"
+                else
+                    CA_REJECT_REASON="holds ${CA_CERT_COUNT} certificates and not one of them is inside its validity period"
+                fi
             fi
+
+            # Install the certificates that were validated, not the file they arrived in --
+            # see split_pem_certificates(). Concatenating the pieces in delivery order
+            # reproduces a manager delivery byte for byte, since that is one certificate with
+            # nothing around it (remotedModuleFacade.hpp, tlsCaLeafSignerPem()).
+            if [ -z "${CA_REJECT_REASON}" ]; then
+                : > "${CA_SNAPSHOT}.rebuilt"
+                CA_CERT_INDEX=1
+                while [ "${CA_CERT_INDEX}" -le "${CA_CERT_COUNT}" ]; do
+                    cat "${CA_SNAPSHOT}.cert.${CA_CERT_INDEX}" >> "${CA_SNAPSHOT}.rebuilt" 2>/dev/null
+                    CA_CERT_INDEX=$((CA_CERT_INDEX + 1))
+                done
+
+                if ! mv -f "${CA_SNAPSHOT}.rebuilt" "${CA_SNAPSHOT}" 2>/dev/null; then
+                    CA_REJECT_REASON="could not be read"
+                fi
+            fi
+
+            rm -f "${CA_SNAPSHOT}".cert.* "${CA_SNAPSHOT}.rebuilt" 2>/dev/null
         fi
     fi
 
@@ -806,10 +942,18 @@ if [ "${CA_VALIDATED}" = "1" ]; then
         chown root:wazuh "${DEFAULT_CA_FILE}" 2>/dev/null
         chmod 640 "${DEFAULT_CA_FILE}" 2>/dev/null
 
+        # Only a real bundle says how many certificates it carried: a one-certificate
+        # delivery is what the manager sends and what every install has logged until
+        # now, so that line stays exactly as it was and stays greppable.
+        CA_COUNT_SUFFIX=""
+        if [ "${CA_CERT_COUNT:-1}" -gt 1 ]; then
+            CA_COUNT_SUFFIX=" (${CA_CERT_COUNT} certificates)"
+        fi
+
         # A present, readable anchor here is picked up automatically at agent startup
         # and resolves an unset <verification_mode> to 'full' against it -- so this
         # alone is sufficient to activate verification; no <ssl> edit is needed.
-        echo "$(date +"%Y/%m/%d %H:%M:%S") - ${CA_INSTALL_VERB} CA at ${DEFAULT_CA_FILE}. ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> ./logs/upgrade.log
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - ${CA_INSTALL_VERB} CA at ${DEFAULT_CA_FILE}${CA_COUNT_SUFFIX}. ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> ./logs/upgrade.log
     else
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Could not install the delivered CA at ${DEFAULT_CA_FILE} (write failure); leaving any existing anchor untouched and continuing the upgrade." >> ./logs/upgrade.log
         rm -f "${CA_TMP}" 2>/dev/null

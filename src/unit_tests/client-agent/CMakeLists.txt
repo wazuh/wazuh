@@ -96,9 +96,17 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
 list(APPEND client-agent_names "test_startup_gate")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_SHA256_File ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND client-agent_names "test_ca_publication")
+# Real temporary files, so no filesystem wrappers -- but the install path logs, and the
+# unwrapped logger reads ossec.conf and dies without one.
+# rename() is the exception: it is the instant the trust store is committed, and wrapping it is
+# what makes crash atomicity assertable rather than merely argued. The wrapper delegates to
+# __real_rename() unless a test asks it to fail, so the install still runs for real.
+list(APPEND client-agent_flags "-Wl,--wrap,rename ${DEBUG_OP_WRAPPERS}")
+
 list(APPEND client-agent_names "test_agent_ssl_ca")
 list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,os_find_ca_bundle \
-                                -Wl,--wrap,w_x509_load_pem -Wl,--wrap,X509_free ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,w_x509_load_all_pem -Wl,--wrap,w_x509_free_all ${DEBUG_OP_WRAPPERS}")
 
 # getAgentConfig() reads the agt globals and builds cJSON, nothing else: no wrappers.
 list(APPEND client-agent_names "test_agent_config")
@@ -150,6 +158,7 @@ list(APPEND client-agent_names "test_token_bootstrap")
 list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll \
                                 -Wl,--wrap,hc_spki_pinned_certificate -Wl,--wrap,OS_IsValidIP \
                                 -Wl,--wrap,chown -Wl,--wrap,chmod -Wl,--wrap,fchown \
+                                -Wl,--wrap,fchmod \
                                 -Wl,--wrap,OS_MoveFile \
                                 ${DEBUG_OP_WRAPPERS}")
 

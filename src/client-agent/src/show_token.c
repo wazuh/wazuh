@@ -48,7 +48,13 @@
  */
 int w_agent_show_token(FILE *in, FILE *out, FILE *err, const char *progname)
 {
-    char text[W_ETOKEN_MAX_FILE_BYTES + 1] = {'\0'};
+    /* Heap, not stack: since #39321 this bound is sized for an embedded-CA token (see
+     * W_ETOKEN_MAX_FILE_BYTES) and 96 KB is far too much to put on a frame. */
+    char *text;
+    w_etoken_t token;
+    w_etoken_error_t error;
+    char *description = NULL;
+    size_t length;
 
     /* A terminal will never produce a token, so blocking on it reads as a hang. */
     if (isatty(fileno(in))) {
@@ -57,18 +63,18 @@ int w_agent_show_token(FILE *in, FILE *out, FILE *err, const char *progname)
         return 1;
     }
 
-    size_t length = fread(text, 1, sizeof(text) - 1, in);
-    w_etoken_t token;
-    w_etoken_error_t error;
-    char *description = NULL;
+    os_calloc(W_ETOKEN_MAX_FILE_BYTES + 1, sizeof(char), text);
+    length = fread(text, 1, W_ETOKEN_MAX_FILE_BYTES, in);
 
     if (ferror(in)) {
         fprintf(err, "%s: could not read the enrollment token.\n", progname);
+        os_free(text);
         return 1;
     }
 
-    if (length == sizeof(text) - 1) {
+    if (length == W_ETOKEN_MAX_FILE_BYTES) {
         fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", progname, W_ETOKEN_MAX_FILE_BYTES);
+        os_free(text);
         return 1;
     }
 
@@ -79,7 +85,10 @@ int w_agent_show_token(FILE *in, FILE *out, FILE *err, const char *progname)
         text[--length] = '\0';
     }
 
-    if ((error = w_etoken_decode(text, &token)) != ETOKEN_OK) {
+    error = w_etoken_decode(text, &token);
+    os_free(text);
+
+    if (error != ETOKEN_OK) {
         fprintf(err, "%s: invalid enrollment token: %s.\n", progname, w_etoken_strerror(error));
         return ETOKEN_SHOW_REJECTED;
     }

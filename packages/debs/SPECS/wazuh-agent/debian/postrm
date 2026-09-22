@@ -56,6 +56,11 @@ case "$1" in
             rm -rf ${DIR}/logs
             rm -rf ${DIR}/queue
             rm -rf ${DIR}/etc/shared
+            # Written at runtime, not shipped, so nothing else here removes it. It records that
+            # this install once committed a trust anchor, and the agent refuses to start (4125)
+            # when it is present with no anchor beside it -- which is exactly what a reinstall
+            # that enrolls by password would leave behind if this survived the removal.
+            rm -f ${DIR}/etc/certs/.anchor-committed
         fi
 
         # Delete audisp wazuh plugin if exists

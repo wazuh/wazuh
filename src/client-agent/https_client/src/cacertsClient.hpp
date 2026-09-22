@@ -12,6 +12,7 @@
 #ifndef _HC_CACERTS_CLIENT_HPP
 #define _HC_CACERTS_CLIENT_HPP
 
+#include <atomic>
 #include "httpTypes.hpp"
 #include "iHttpPerformer.hpp"
 #include "moduleConfig.hpp"
@@ -23,12 +24,18 @@
 /**
  * @brief One GET /cacerts attempt.
  *
- * This is the unverified-fetch leg of the enrollment-token bootstrap design
- * (fetch /cacerts unverified -> SHA-256 the SPKI -> pin-compare against the
- * token -> reconnect verified -> /enroll): fetching and pin-comparing are
- * deliberately separate responsibilities -- this class only performs the GET
- * and hands the raw response back (a separate component owns SHA-256/pin-
- * compare) -- it does not decide whether the body is trusted.
+ * Serves two callers whose trust posture is opposite, and keeps the difference in the config it
+ * is handed rather than deriving it here:
+ *
+ *  - The enrollment-token bootstrap, UNVERIFIED by definition -- there is no trust anchor yet to
+ *    verify against, so the body is pin-compared before anything is trusted.
+ *  - The publication refresh (#39321), VERIFIED against the anchor the agent already holds. The
+ *    contract requires it: "never with verification disabled, and never via a bootstrap-style
+ *    unverified fetch".
+ *
+ * Either way, fetching and judging the body are deliberately separate responsibilities: this
+ * class performs the GET and hands the raw response back, and does not decide whether the body
+ * is trusted.
  *
  * As thin as EnrollClient: one request, no retry loop, no shared
  * CompressionGate/AuthGate -- the C caller owns backoff/retry one layer up,
@@ -41,29 +48,33 @@
 class CacertsClient
 {
     public:
-        /// @param config Only the transport half is read (host, port, TLS
-        ///        material, timeout); the caller is responsible for having
-        ///        already forced verifyMode to HC_VERIFY_NONE before
-        ///        constructing this -- GET /cacerts is unverified BY
-        ///        DEFINITION (there is no trust anchor yet to verify
-        ///        against), so this class does not re-derive that decision,
-        ///        it trusts the config it was handed (same division of
-        ///        responsibility as EnrollClient trusting its config's TLS
-        ///        matrix as-is).
-        CacertsClient(const ModuleConfig& config, IHttpPerformer& performer, const IFsProbe& fsProbe, LogFn logFn);
+        /// @param config Only the transport half is read (host, port, TLS material, timeout).
+        ///        The caller owns the TLS decision and has already put it here -- this class
+        ///        does not re-derive it, the same division of responsibility as EnrollClient
+        ///        trusting its config's TLS matrix as-is.
+        /// @param unverifiedByDesign Whether an absent verification is the point of this call
+        ///        rather than a misconfiguration. Only changes how validateTransport() reports
+        ///        it: the bootstrap's unverified leg is expected and logged as such, while a
+        ///        refresh that somehow arrived here with verification off is the warning it
+        ///        should be. Pass false for anything but the bootstrap.
+        CacertsClient(const ModuleConfig& config, IHttpPerformer& performer, const IFsProbe& fsProbe, LogFn logFn,
+                      bool unverifiedByDesign);
 
         /// @return The raw HTTP response for the caller to interpret
         ///         (validating/pin-comparing the body is a separate
         ///         component's job, not this one's). status is TlsFail and
         ///         httpCode stays 0 when the transport config itself is
         ///         invalid (fail-closed policy) -- nothing was ever sent.
-        HttpResponse fetch();
+        /// @param abortFlag Optional cooperative abort, normally a Waiter's stop flag. Without
+        ///        one a shutdown waits out the request timeout before the thread can join.
+        HttpResponse fetch(const std::atomic<bool>* abortFlag = nullptr);
 
     private:
         ModuleConfig m_config;
         IHttpPerformer& m_performer;
         const IFsProbe& m_fsProbe;
         LogFn m_logFn;
+        bool m_unverifiedByDesign;
 };
 
 #endif // _HC_CACERTS_CLIENT_HPP

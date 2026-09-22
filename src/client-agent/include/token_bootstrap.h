@@ -37,15 +37,20 @@
 /* Largest enrollment token this agent will read, wherever it comes from. Shared so the
  * installer's --show-token and the first-boot bootstrap agree: when --show-token accepted more
  * than the bootstrap could read, a token between the two sizes passed the install and then
- * failed at the first start, with nothing at install time to warn about it. A token carrying a
- * pin is a couple of hundred bytes and one embedding a CA a few KB, so this is a sanity bound
- * rather than a tight one.
+ * failed at the first start, with nothing at install time to warn about it.
  *
- * Note this is NOT the manager CLI's ceiling: os_auth/src/token_cli.c caps at 16384, so a token
- * between the two sizes is described happily by wazuh-manager-authd --show-token and then
- * refused by every agent-side reader. Worth reconciling; until then, the agent's is the one that
- * decides whether a token can actually be used. */
-#define W_ETOKEN_MAX_FILE_BYTES 8192
+ * A token carrying a pin is a couple of hundred bytes; one embedding a CA is bounded by what
+ * authd is willing to mint, which is ETOKEN_CA_MAX_BYTES (64 KiB) of PEM. That PEM is escaped
+ * into JSON, where every newline costs two bytes, and the whole object is then base64url'd at
+ * 4/3 -- so authd's own ceiling lands near 88 KB and this has to clear it. At 8192 it did not:
+ * a six-certificate bundle, which is the largest #39321 lets a manager publish, mints cleanly
+ * at roughly 9 KB and was then refused at the agent's first boot.
+ *
+ * Note this is NOT the manager CLI's ceiling: os_auth/src/token_cli.c caps at 16384. Since
+ * #39321 that mismatch runs the safe way round -- anything --show-token will describe, an agent
+ * can read -- where before it ran the other way and produced exactly the failure above. Still
+ * worth reconciling. */
+#define W_ETOKEN_MAX_FILE_BYTES 98304
 
 /**
  * @brief Which step of the token enrollment failed. Each value maps to one named merror() the
@@ -71,14 +76,16 @@ typedef struct {
      *  w_agent_token_bootstrap() reads and unlinks a file; an operator's token file is neither
      *  the core's to read nor its to delete. */
     const char *token_text;
-    /** The runtime user the agent will drop to. The ONLY file handed to it is the
-     *  re-enrollment secret, which the daemon has to rewrite on every rotation after that drop;
-     *  the anchor and client.keys stay root-owned. -1 means "leave ownership alone", which is
-     *  what a tool running long after the install passes: there is no drop to prepare for. */
+    /** The runtime user the agent will drop to. Two files are handed to it: the re-enrollment
+     *  secret, which the daemon rewrites on every rotation after that drop, and since #39321 the
+     *  trust anchor, which the daemon replaces when the manager publishes a new CA bundle --
+     *  under the sticky etc/certs only the file's owner may rename over it. client.keys stays
+     *  root-owned. -1 means "leave ownership alone", which is what a tool running long after the
+     *  install passes: there is no drop to prepare for. */
     int uid;
-    /** Group for the anchor and client.keys, both of which are left owned by root and shared
-     *  with this group -- the runtime user reads them and can replace neither.
-     *  -1 leaves ownership alone. */
+    /** Group for the anchor and client.keys. client.keys is left owned by root and shared with
+     *  this group -- the runtime user reads it and cannot replace it; the anchor is owned by
+     *  `uid` and shared with this group. -1 leaves ownership alone. */
     int gid;
     /** Snapshot whatever anchor and client.keys are already on disk, and put them back if the
      *  commit fails. agentd's first boot has nothing to snapshot and passes false; a re-enrollment
@@ -207,13 +214,16 @@ typedef enum {
  * Each latch independently blocks a re-run, so this is not the way to re-enroll or to move an
  * agent -- w_agent_token_enroll() is, and wazuh-agent-auth is what drives it.
  *
- * @param uid Unused; kept for signature symmetry with AgentdStart()'s uid/gid pair. Neither
- *        file this writes is chowned to the runtime user. Ignored on Windows, which has no
- *        privilege drop; local_start() passes 0.
+ * @param uid The uid AgentdStart() is about to drop privileges to. The committed anchor is
+ *        chowned to it so the agent can replace the anchor itself when the manager publishes a
+ *        new CA bundle (#39321) -- under the sticky etc/certs only the file's owner may rename
+ *        over it. client.keys is deliberately NOT chowned to it. Ignored on Windows, which has
+ *        no privilege drop; local_start() passes 0.
  * @param gid The gid AgentdStart() is about to drop privileges to, so the committed anchor and
- *        client.keys end up root-owned and group-owned by it -- readable after the drop, and
- *        replaceable by nothing that runs as that user. Ignored on Windows for the same reason,
- *        which passes 0 too.
+ *        client.keys end up group-owned by it and readable after the drop. client.keys stays
+ *        root-owned and replaceable by nothing that runs as that user; the anchor is owned by
+ *        @p uid, for the reason given above. Ignored on Windows for the same reason, which
+ *        passes 0 too.
  * @return See w_token_bootstrap_result_t.
  */
 w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid);

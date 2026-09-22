@@ -24,9 +24,13 @@
 STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, size_t buf_size,
                                                  const char **filename);
 STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid);
+STATIC void w_token_bootstrap_mark_anchor_committed(int gid);
 #ifndef WIN32
+STATIC int w_token_bootstrap_open_parent_nofollow(const char *path, char *dir, size_t dir_size,
+                                                  const char **filename);
 STATIC int w_token_bootstrap_open_and_chown(const char *path, uid_t owner, gid_t group);
 STATIC int w_token_bootstrap_open_and_chown_keys(int gid);
+STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid);
 #endif
 STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure);
 
@@ -44,8 +48,14 @@ char *w_agent_token_read_file(const char *path) {
         return NULL;
     }
 
-    char buf[W_ETOKEN_MAX_FILE_BYTES];
-    char *read_ok = fgets(buf, sizeof(buf), fp);
+    /* Heap, not stack: since #39321 this bound is sized for an embedded-CA token (see its own
+     * comment) and 96 KB is far too much to put on a frame. Capacity is the bound itself, as it
+     * was when this was an array of that size, so the longest line fgets() will return whole is
+     * still W_ETOKEN_MAX_FILE_BYTES - 1 characters. */
+    char *buf;
+    os_calloc(W_ETOKEN_MAX_FILE_BYTES, sizeof(char), buf);
+
+    char *read_ok = fgets(buf, W_ETOKEN_MAX_FILE_BYTES, fp);
 
     /* fgets() stops at a newline, at end of file, or because the buffer filled, and reports all
      * three the same way. Only the last is a problem: the token arrives quietly cut short and is
@@ -57,6 +67,7 @@ char *w_agent_token_read_file(const char *path) {
     fclose(fp);
 
     if (!read_ok || truncated) {
+        os_free(buf);
         return NULL;
     }
 
@@ -67,11 +78,13 @@ char *w_agent_token_read_file(const char *path) {
     }
 
     if (len == 0) {
+        os_free(buf);
         return NULL;
     }
 
     char *token;
     os_strdup(buf, token);
+    os_free(buf);
     return token;
 }
 
@@ -114,13 +127,26 @@ STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, siz
  *        never the agent's (see its own doc comment in defs.h): a stock agent install has no
  *        such directory yet, and TempFile()'s mkstemp() needs it to already exist.
  *
- *        Left 0750 root:@p gid. mkdir_ex() creates it 0770 owned by whoever is running, which
+ *        Left 01770 root:@p gid. mkdir_ex() creates it 0770 owned by whoever is running, which
  *        here is root -- and a root:root directory cannot be searched by the unprivileged user
  *        after the privilege drop, so the anchor inside becomes unopenable however permissive
  *        its own mode is, and the agent refuses to start on the next boot over a CA file that
- *        is sitting right there. Group-read rather than group-write for the same reason the
- *        anchor itself is not writable by the runtime user: nothing that runs as that user has
- *        any business replacing the certificate authority it verifies its manager against.
+ *        is sitting right there.
+ *
+ *        This was 0750 until #39321, on the reasoning that nothing running as the runtime user
+ *        has any business replacing the CA it verifies its manager against. That is no longer
+ *        true of the agent itself: a CA rotation is published by the manager and adopted by the
+ *        agent, which is unprivileged by the time it adopts anything, so it must be able to
+ *        replace this file. Group write is what rename(2) needs -- it never consults the target
+ *        file's own mode, only the directory's -- and it is the same permission that already
+ *        lets the runtime user replace a root-owned etc/client.keys, the more sensitive of the
+ *        two files by some distance.
+ *
+ *        The sticky bit is what keeps the grant no wider than that. It restricts unlink and
+ *        rename-over to the owner of the file, so the agent can replace the anchor it owns and
+ *        still cannot touch anything root-owned in the same directory. Plain 0770 would hand it
+ *        the whole directory. The manager's own etc/certs is 01770 for the same reason
+ *        (inst-functions.sh, SetIndexerCertsOwnership).
  *
  *        Windows has neither half of that reasoning: no privilege drop for the ownership to
  *        survive, and no uid/gid to express it with. The directory is left with what it
@@ -149,7 +175,18 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
                strerror(errno), errno);
     }
 
-    if (chmod(dir, 0750) == -1) {
+    /* 01770, not 0750: the agent replaces this anchor at runtime when the manager publishes a new
+     * CA bundle (#39321), and it is the unprivileged `wazuh` user by then. rename(2) never
+     * consults the target file's own mode -- replacing a file is an operation on the directory
+     * entry -- so group write here is the whole permission that refresh needs, exactly as it is
+     * what already lets the runtime user replace a root-owned etc/client.keys.
+     *
+     * The sticky bit is what keeps that from being a wider grant than intended: it restricts
+     * unlink and rename-over to the owner of the file, so the agent can replace its own anchor
+     * and still cannot touch anything root-owned that shares this directory -- the marker this
+     * bootstrap writes beside the anchor among them. Same shape the manager already uses for its
+     * own etc/certs (inst-functions.sh, SetIndexerCertsOwnership). */
+    if (chmod(dir, 01770) == -1) {
         merror("Could not set permissions on '%s': %s (%d).", dir,
                strerror(errno), errno);
     }
@@ -159,10 +196,37 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
 #ifndef WIN32
 
 /**
+ * @brief Opens the directory holding @p path, refusing to follow a symlink standing in its place.
+ *
+ * w_openat_nofollow_vetted() protects the FINAL component only -- it opens its basedir with a
+ * plain open(O_DIRECTORY) (file_op.c) -- which is exactly right for INSTALLDIR/etc, whose parent
+ * is 0750 root:wazuh and therefore not somewhere the runtime user can rename anything. It is NOT
+ * enough for INSTALLDIR/etc/certs: etc is group-writable by that user, so it can replace `certs`
+ * itself with a symlink and redirect anything this process then resolves through that path. The
+ * anchor's own directory has to be opened with O_NOFOLLOW for the same reason its contents are.
+ *
+ * @param path      File whose parent directory is wanted.
+ * @param dir       Buffer receiving that directory's path.
+ * @param dir_size  Size of @p dir.
+ * @param filename  Receives @p path's last component, pointing into @p dir's source; may be NULL.
+ * @return A directory descriptor the caller must close, or -1 (errno set; ELOOP or ENOTDIR when
+ *         a symlink was found where the directory should be).
+ */
+STATIC int w_token_bootstrap_open_parent_nofollow(const char *path, char *dir, size_t dir_size,
+                                                  const char **filename) {
+    if (w_token_bootstrap_split_dir_filename(path, dir, dir_size, filename) != 0) {
+        return -1;
+    }
+
+    return open(dir, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+}
+
+/**
  * @brief chown()s @p path to @p owner:@p group without following a symlink planted in its parent
  *        directory. Both files this is used for live in INSTALLDIR/etc, which is 0770 root:wazuh
- *        -- unlike AGENT_ANCHOR_CA's own directory (0750 root:gid), the runtime user can create
- *        entries there. So it can replace the target with a symlink to an arbitrary root-owned
+ *        -- the runtime user can create entries there, and since #39321 the same is true of
+ *        AGENT_ANCHOR_CA's own directory (01770 root:gid), so the reasoning below covers both.
+ *        That user can replace the target with a symlink to an arbitrary root-owned
  *        file (e.g. /etc/shadow) and have this root-privileged call chown() the link's target
  *        instead, handing its own group -- or, where @p owner is that user, itself outright --
  *        access to whatever that target is. The open and vetting (O_NOFOLLOW, regular-file and
@@ -265,6 +329,161 @@ const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status) {
             return "unknown error";
     }
 }
+
+/**
+ * @brief Records that this install has committed a trust anchor, by creating AGENT_ANCHOR_MARKER
+ *        if it is not already there.
+ *
+ * Root-owned 0640 in a sticky etc/certs, so the runtime user cannot remove it even though it
+ * owns the anchor beside it. Only existence matters, so the file is left empty and an existing
+ * one is never rewritten.
+ *
+ * Best effort: a marker that could not be written costs the deletion guard in
+ * w_agent_validate_ssl_ca(), not the bootstrap, so a failure is logged and swallowed. Called
+ * both after a fresh commit and from the latch, so an install that predates #39321 -- or one
+ * whose marker write failed once -- picks one up on a later boot.
+ */
+STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
+    int fd;
+
+    if (IsFile(AGENT_ANCHOR_MARKER) == 0) {
+        return;
+    }
+
+    /* O_NOFOLLOW deliberately has no Windows fallback (defs.h): stubbing it to 0 tree-wide would
+     * silently disable a security check everywhere it is used, so the flag is left out of this
+     * build instead. Nothing is lost by its absence here -- Windows has no privilege drop, and
+     * the installation directory's own ACL already keeps non-administrators out of certs\. */
+#ifdef WIN32
+    fd = open(AGENT_ANCHOR_MARKER, O_WRONLY | O_CREAT | O_EXCL, 0640);
+#else
+    char dir[OS_FLSIZE + 1];
+    const char *filename;
+    int dirfd;
+    int saved_errno;
+
+    /* Opened relative to a directory descriptor that cannot be a symlink, for the reason
+     * w_token_bootstrap_open_parent_nofollow() gives: O_EXCL|O_NOFOLLOW stops this root-owned
+     * create landing on an existing file or a link, but on its own it would still let the
+     * runtime user choose the DIRECTORY it lands in by swapping `certs`. */
+    if (dirfd = w_token_bootstrap_open_parent_nofollow(AGENT_ANCHOR_MARKER, dir, sizeof(dir),
+                                                       &filename), dirfd < 0) {
+        mdebug1("Token bootstrap: could not open '%s' to write the anchor marker: %s (%d).", dir,
+                strerror(errno), errno);
+        return;
+    }
+
+    fd = openat(dirfd, filename, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0640);
+    saved_errno = errno;
+    close(dirfd);
+    errno = saved_errno;
+#endif
+
+    if (fd < 0) {
+        /* EEXIST is the benign race of two starts at once, not a problem worth a line. */
+        if (errno != EEXIST) {
+            mdebug1("Token bootstrap: could not write '%s': %s (%d).", AGENT_ANCHOR_MARKER,
+                    strerror(errno), errno);
+        }
+
+        return;
+    }
+
+#ifndef WIN32
+    if (fchown(fd, 0, gid) != 0) {
+        mdebug1("Token bootstrap: could not set ownership of '%s': %s (%d).", AGENT_ANCHOR_MARKER,
+                strerror(errno), errno);
+    }
+#else
+    /* No second user to hand it to: the installation directory's own ACL already keeps
+     * non-administrators out of certs\\, which is the whole protection the marker needs. */
+    (void)gid;
+#endif
+
+    close(fd);
+}
+
+#ifndef WIN32
+
+/**
+ * @brief Brings an anchor committed before #39321 up to the permissions the runtime refresh
+ *        needs: etc/certs 01770 root:@p gid and the anchor itself @p uid:@p gid.
+ *
+ * An agent that bootstrapped under the old scheme has a 0750 directory and a root-owned anchor,
+ * and would silently never be able to adopt a published CA bundle -- the refresh would fail at
+ * mkstemp() on every attempt, which reads as a manager problem rather than a local one. Runs on
+ * every boot that trips the anchor latch, while still root, so an upgrade fixes itself.
+ *
+ * The mode is left alone; only ownership and the directory bits move. Idempotent, and quiet
+ * about a chown that fails in a namespaced container without CAP_CHOWN -- the agent still works,
+ * it just cannot refresh, and the refresh path logs that for itself when it tries.
+ */
+STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid) {
+    char dir[OS_FLSIZE + 1];
+    const char *filename;
+    struct stat statbuf;
+    int dirfd;
+    int fd;
+
+    /* Every operation below goes through a descriptor, never a path. This runs as root, on every
+     * boot, over a directory the runtime user can write -- and chown(2)/chmod(2) follow symlinks.
+     * Resolved by path, `wazuh` could unlink the anchor it owns (the sticky bit permits removing
+     * your own file), leave a symlink to /etc/shadow in its place, and have this hand itself the
+     * target; or replace `certs` with a symlink to /etc and have the directory calls retarget
+     * that. Opening each object once, with O_NOFOLLOW, and acting on the descriptor closes both:
+     * a descriptor cannot be re-pointed after the fact, so there is no window between the check
+     * and the change. */
+    if (dirfd = w_token_bootstrap_open_parent_nofollow(AGENT_ANCHOR_CA, dir, sizeof(dir), &filename),
+            dirfd < 0) {
+        mdebug1("Token bootstrap: could not open '%s' to repair it: %s (%d).", dir,
+                strerror(errno), errno);
+        return;
+    }
+
+    if (fchown(dirfd, 0, (gid_t) gid) != 0) {
+        mdebug1("Token bootstrap: could not repair ownership of '%s': %s (%d).", dir,
+                strerror(errno), errno);
+    }
+
+    if (fchmod(dirfd, 01770) != 0) {
+        mdebug1("Token bootstrap: could not repair permissions on '%s': %s (%d).", dir,
+                strerror(errno), errno);
+    }
+
+    /* Not w_token_bootstrap_open_and_chown(): it opens its basedir by path, which is the half of
+     * this attack the directory descriptor above exists to remove. Opened relative to that
+     * descriptor instead, and vetted the same way it vets -- O_NOFOLLOW rules out a symlink,
+     * S_ISREG the devices and FIFOs it does not, and a link count of one a hard link to a file
+     * this agent has no business owning. */
+    if (fd = openat(dirfd, filename, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK), fd < 0) {
+        mdebug1("Token bootstrap: could not open '%s' to repair its ownership: %s (%d).",
+                AGENT_ANCHOR_CA, strerror(errno), errno);
+        close(dirfd);
+        return;
+    }
+
+    if (fstat(fd, &statbuf) != 0) {
+        mdebug1("Token bootstrap: could not stat '%s' to repair its ownership: %s (%d).",
+                AGENT_ANCHOR_CA, strerror(errno), errno);
+    } else if (!S_ISREG(statbuf.st_mode) || statbuf.st_nlink != 1) {
+        /* Loud, unlike the failures around it: the anchor being something other than a plain,
+         * singly-linked file is not an environment quirk, it is someone having put something
+         * else there. */
+        mwarn("Token bootstrap: '%s' is not a regular file with a single link; refusing to change "
+              "its ownership.", AGENT_ANCHOR_CA);
+    } else if (fchown(fd, (uid_t) uid, (gid_t) gid) != 0) {
+        mdebug1("Token bootstrap: could not repair ownership of '%s': %s (%d).", AGENT_ANCHOR_CA,
+                strerror(errno), errno);
+    }
+
+    close(fd);
+    close(dirfd);
+
+    /* Last, so the marker only appears once the directory can actually hold it root-owned. */
+    w_token_bootstrap_mark_anchor_committed(gid);
+}
+
+#endif /* !WIN32 */
 
 /**
  * @brief Whether the anchor already on disk is byte-for-byte what this token would install.
@@ -715,7 +934,12 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * them would leave the anchor on disk with the wrong group. */
     if (opts->anchor_only) {
 #ifndef WIN32
-        if (opts->gid != -1 && chown(anchor_file.name, 0, opts->gid) != 0) {
+        /* uid, not root: under the sticky etc/certs only the file's owner may rename over it,
+         * so an anchor this path installs root-owned is one the runtime refresh (#39321) could
+         * never replace. chown() reads -1 as "leave this one alone", which is exactly what the
+         * opts contract already means by it. */
+        if ((opts->uid != -1 || opts->gid != -1) &&
+                chown(anchor_file.name, opts->uid, opts->gid) != 0) {
             merror("Could not change ownership of '%s': %s (%d).",
                    anchor_file.name, strerror(errno), errno);
         }
@@ -732,6 +956,11 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 
         os_free(anchor_file.name);
         w_etoken_free(&token);
+
+        /* Only now: the marker says an anchor has been committed, so it must not appear before
+         * one has. */
+        w_token_bootstrap_mark_anchor_committed(opts->gid);
+
         minfo("The manager's CA is now the agent's trust anchor.");
 
         return W_TOKEN_ENROLL_OK;
@@ -910,16 +1139,22 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 
     w_enroll_request_destroy(&built_request);
 
-    /* Written while still root; without fixing the group, the unprivileged `wazuh` user can't
+    /* Written while still root; without fixing the ownership, the unprivileged `wazuh` user can't
      * read it after AgentdStart()'s privilege drop, breaking the first restart. Fixed up on the
      * temp file, before the rename below: a crash between them would leave AGENT_ANCHOR_CA on
-     * disk with the wrong group, and IsFile(AGENT_ANCHOR_CA) == 0 unconditionally latches the
+     * disk with the wrong owner, and IsFile(AGENT_ANCHOR_CA) == 0 unconditionally latches the
      * bootstrap off on every later boot, so it must land before the rename, never after.
+     *
+     * uid:gid rather than root:gid since #39321. The mode stays 0640; what changes is who owns
+     * it, and it changes because etc/certs is sticky (see w_token_bootstrap_ensure_parent_dir):
+     * under the sticky bit only the file's owner may rename over it, so a root-owned anchor is
+     * one the agent could never refresh. client.keys keeps root:gid deliberately -- the runtime
+     * user has no business owning the credential, and nothing needs to replace it here.
      *
      * Skipped on Windows for the same reason as the mode above: one service account throughout,
      * nothing to hand the file over to. */
 #ifndef WIN32
-    if (chown(anchor_file.name, 0, opts->gid) != 0) {
+    if (chown(anchor_file.name, opts->uid, opts->gid) != 0) {
         merror("Could not change ownership of '%s': %s (%d).", anchor_file.name,
                strerror(errno), errno);
     }
@@ -938,6 +1173,10 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     }
 
     os_free(anchor_file.name);
+
+    /* Only now: the marker says an anchor has been committed, so it must not appear before one
+     * has. */
+    w_token_bootstrap_mark_anchor_committed(opts->gid);
 
     /* enrollment.c's TempFile()+OS_MoveFile() replace only chmod()s client.keys to a fixed 0640
      * on the temp file, never its group, so it inherits this root process's group instead of
@@ -1025,6 +1264,14 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
         if (FileSize(KEYS_FILE) > 0) {
             w_token_bootstrap_chown_keys_file(gid, true);
         }
+
+#ifndef WIN32
+        /* Same idea for the anchor itself: an agent that bootstrapped before #39321 holds a
+         * root-owned anchor under a 0750 directory and could never adopt a published CA bundle.
+         * Repaired here rather than at the write below, because an existing install never
+         * reaches the write again. */
+        w_token_bootstrap_repair_anchor_ownership(uid, gid);
+#endif
 
         unlink(AGENT_ENROLLMENT_TOKEN_FILE);
         return W_TOKEN_BOOTSTRAP_DONE;

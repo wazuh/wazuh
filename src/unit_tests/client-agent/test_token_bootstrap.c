@@ -129,6 +129,16 @@ static gid_t g_secret_chown_gid = (gid_t) -1;
 static uid_t g_keys_chown_uid = (uid_t) -1;
 static gid_t g_keys_chown_gid = (gid_t) -1;
 
+/* Which entry point the repair actually used. The values above are recorded from BOTH the
+ * path-based and the descriptor-based wrappers, so that a regression back to chown(path, ...) /
+ * chmod(path, ...) still lands in them and the value assertions keep passing -- which is exactly
+ * why they cannot also prove the hardening is in place. These do: the repair runs as root over a
+ * directory the runtime user can write, so resolving the anchor or its directory by path is the
+ * symlink-follow this hardening exists to remove. */
+static bool g_anchor_chown_via_fd = false;
+static bool g_dir_chown_via_fd = false;
+static bool g_dir_chmod_via_fd = false;
+
 /* The anchor's chown() target is the TempFile()-created temporary file
  * ("etc/certs/root-ca.pem.XXXXXX", a random mkstemp() suffix appended to the destination name --
  * see file_op.c), not the final AGENT_ANCHOR_CA path itself: the chown happens before the
@@ -150,9 +160,24 @@ static bool is_anchor_path(const char *path) {
 }
 
 /* The anchor's parent directory (etc/certs), chowned separately from the anchor file itself --
- * see w_token_bootstrap_ensure_parent_dir() in token_bootstrap.c. */
+ * see w_token_bootstrap_ensure_parent_dir() in token_bootstrap.c.
+ *
+ * Matched relative OR absolute: the path-based wrappers see the relative name the code passes,
+ * but w_token_bootstrap_repair_anchor_ownership() now acts on a directory DESCRIPTOR, and the
+ * fd-based wrappers below recover its name through /proc/self/fd, which always answers with an
+ * absolute path. A plain strcmp() against "etc/certs" would silently never match there, and the
+ * repair's assertions would pass on an unset sentinel instead of on what it did. */
 static bool is_anchor_dir_path(const char *path) {
-    return path && strcmp(path, "etc/certs") == 0;
+    static const char suffix[] = "/etc/certs";
+    size_t path_len = path ? strlen(path) : 0;
+
+    if (!path) {
+        return false;
+    }
+
+    return strcmp(path, "etc/certs") == 0 ||
+           (path_len >= sizeof(suffix) - 1 &&
+            strcmp(path + path_len - (sizeof(suffix) - 1), suffix) == 0);
 }
 
 /* The re-enrollment secret. Prefix-matched on the basename for the same reason as the anchor:
@@ -205,7 +230,7 @@ int __wrap_chown(const char *path, uid_t owner, gid_t group) {
 
 /* client.keys is chowned via w_token_bootstrap_chown_keys_file() (token_bootstrap.c), which
  * opens it with O_NOFOLLOW and fchown()s the descriptor instead of calling chown() on the path
- * -- a symlink planted in etc/ (0770 root:wazuh, unlike the anchor's own 0750 root:gid
+ * -- a symlink planted in etc/ (0770 root:wazuh, like the anchor's own 01770 root:gid
  * directory) must not make a root-privileged chown() follow it to an arbitrary target. The fd
  * is resolved back to a path via /proc/self/fd to keep matching this suite's existing
  * by-path convention. */
@@ -237,6 +262,14 @@ int __wrap_fchown(int fd, uid_t owner, gid_t group) {
         if (is_secret_file_path(path)) {
             g_secret_chown_uid = owner;
             g_secret_chown_gid = group;
+        } else if (is_anchor_path(path)) {
+            g_anchor_chown_uid = owner;
+            g_anchor_chown_gid = group;
+            g_anchor_chown_via_fd = true;
+        } else if (is_anchor_dir_path(path)) {
+            g_dir_chown_uid = owner;
+            g_dir_chown_gid = group;
+            g_dir_chown_via_fd = true;
         } else if (is_keys_file_path(path)) {
             if (g_keys_fchown_should_fail) {
                 errno = EACCES;
@@ -266,6 +299,32 @@ int __wrap_chmod(const char *path, mode_t mode) {
         g_anchor_chmod_mode = mode;
     } else if (is_secret_path(path)) {
         g_secret_chmod_mode = mode;
+    }
+
+    return 0;
+}
+
+/* The descriptor-based half of the pair above, for the same reason __wrap_fchown() exists:
+ * w_token_bootstrap_repair_anchor_ownership() sets the sticky group-writable mode on a directory
+ * descriptor it opened with O_NOFOLLOW, never on the path. Wrapped rather than left real so an
+ * unprivileged run behaves like a privileged one, exactly as __wrap_chmod() does. */
+int __wrap_fchmod(int fd, mode_t mode) {
+    char link[64];
+    char path[PATH_MAX];
+    ssize_t len;
+
+    snprintf(link, sizeof(link), "/proc/self/fd/%d", fd);
+    len = readlink(link, path, sizeof(path) - 1);
+
+    if (len > 0) {
+        path[len] = '\0';
+
+        if (is_anchor_dir_path(path)) {
+            g_dir_chmod_mode = mode;
+            g_dir_chmod_via_fd = true;
+        } else if (is_anchor_path(path)) {
+            g_anchor_chmod_mode = mode;
+        }
     }
 
     return 0;
@@ -322,6 +381,10 @@ static void remove_staged_siblings(const char *dir, const char *prefix) {
 static void remove_test_paths(void) {
     unlink("etc/enrollment_token");
     unlink("etc/certs/root-ca.pem");
+    /* Must be cleared with the anchor: w_token_bootstrap_mark_anchor_committed() is a no-op when
+     * one already exists, so a marker left behind by an earlier test would make every later
+     * assertion about it pass without anything having written one. */
+    unlink("etc/certs/.anchor-committed");
     unlink("etc/client.keys");
     unlink("etc/other-file");
     unlink(AGENT_REENROLL_SECRET);
@@ -365,6 +428,9 @@ static int setup_test(void **state) {
     g_anchor_chmod_mode = (mode_t) -1;
     g_secret_chmod_mode = (mode_t) -1;
     g_anchor_chown_recorded_before_move = false;
+    g_anchor_chown_via_fd = false;
+    g_dir_chown_via_fd = false;
+    g_dir_chmod_via_fd = false;
 
     return 0;
 }
@@ -616,6 +682,48 @@ static void test_anchor_latch_keys_chown_failure_is_quiet(void **state) {
     assert_int_equal(g_keys_chown_gid, (gid_t) -1);
 }
 
+/* An agent that bootstrapped before #39321 holds a root-owned anchor under a 0750 directory, so
+ * it could never adopt a published CA bundle: the refresh runs unprivileged and would fail at
+ * mkstemp() every time, which reads as a manager problem rather than a local one. The latch --
+ * the only branch an already-bootstrapped agent reaches -- repairs it on the next boot, while
+ * still root, so an upgrade fixes itself with no operator action. */
+static void test_anchor_latch_repairs_pre_39321_ownership(void **state) {
+    (void) state;
+    write_file("etc/certs/root-ca.pem", "EXISTING-ANCHOR");
+    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_token_file(true, true, NULL);
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+
+    /* The latch still holds: repairing permissions is not an excuse to re-fetch anything. */
+    assert_int_equal(g_fetch_call_count, 0);
+    assert_int_equal(g_enroll_call_count, 0);
+
+    /* The anchor moves to the runtime user, because the sticky bit below lets only the owner
+     * rename over it. */
+    assert_int_equal(g_anchor_chown_uid, getuid());
+    assert_int_equal(g_anchor_chown_gid, getgid());
+
+    /* The directory stays root-owned and gains group write plus the sticky bit. */
+    assert_int_equal(g_dir_chown_uid, 0);
+    assert_int_equal(g_dir_chown_gid, getgid());
+    assert_int_equal(g_dir_chmod_mode, 01770);
+
+    /* ... and all three landed on a descriptor, not on a path. This runs as root over a
+     * directory the runtime user can write, so by-path resolution would let that user unlink the
+     * anchor it owns, leave a symlink to (say) /etc/shadow behind, and have root hand it the
+     * target -- or swap `certs` itself and redirect the directory calls. The assertions above
+     * cannot catch a regression to chown()/chmod() on the path, because the path wrappers record
+     * into the very same variables; these are what fail if the hardening is undone. */
+    assert_true(g_anchor_chown_via_fd);
+    assert_true(g_dir_chown_via_fd);
+    assert_true(g_dir_chmod_via_fd);
+
+    /* The marker is minted here too: an install from before #39321 has an anchor but no marker,
+     * and without one the deletion guard could never fire for it. */
+    assert_int_equal(IsFile("etc/certs/.anchor-committed"), 0);
+}
+
 /* Regression test: client.keys can exist as an empty 0-byte placeholder (the package's own
  * conffile default) that no prior test here modeled -- every existing test either unlinked
  * the file or wrote a real, non-empty entry. */
@@ -846,6 +954,10 @@ static void test_full_happy_path_via_pin(void **state) {
     /* The one-shot token is discarded on success. */
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
 
+    /* And the marker is laid down beside the anchor, so a later boot can tell "this agent has
+     * never held an anchor" from "this agent has lost the one it had". */
+    assert_int_equal(IsFile("etc/certs/.anchor-committed"), 0);
+
     assert_int_equal(g_enroll_config.verify_mode, HC_VERIFY_FULL);
     assert_true(strlen(g_enroll_config.ca_path) > 0);
     assert_string_equal(g_enroll_request.password, "");
@@ -856,10 +968,10 @@ static void test_full_happy_path_via_pin(void **state) {
      * would fail authentication in the field while passing a length check here. */
     assert_int_equal((int) strspn(g_enroll_request.enroll_key_hex, "0123456789abcdef"), 64);
 
-    /* The anchor is handed to root and only shares its group, so the user the agent drops to
-     * can read the certificate authority it verifies against without being able to replace
-     * it. */
-    assert_int_equal(g_anchor_chown_uid, 0);
+    /* The anchor is handed to the runtime user, not to root: under the sticky etc/certs only the
+     * owner may rename over a file, so a root-owned anchor is one the agent could never replace
+     * when the manager publishes a new CA bundle (#39321). The mode below is still 0640. */
+    assert_int_equal(g_anchor_chown_uid, getuid());
     assert_int_equal(g_anchor_chown_gid, getgid());
 
     /* Regression guard: the anchor's chown() must land before OS_MoveFile() renames the temp
@@ -867,11 +979,14 @@ static void test_full_happy_path_via_pin(void **state) {
      * AGENT_ANCHOR_CA permanently latching the bootstrap off. */
     assert_true(g_anchor_chown_recorded_before_move);
 
-    /* Both the anchor and its parent directory get their mode fixed up while still root. */
+    /* Both the anchor and its parent directory get their mode fixed up while still root. The
+     * directory is 01770, not 0750: group write is what rename(2) needs to replace the anchor
+     * (it never consults the target file's own mode), and the sticky bit keeps that from
+     * reaching anything root-owned that shares the directory. */
     assert_int_equal(g_anchor_chmod_mode, 0640);
-    assert_int_equal(g_dir_chmod_mode, 0750);
+    assert_int_equal(g_dir_chmod_mode, 01770);
 
-    /* The parent directory is handed to root:gid, same reasoning as the anchor itself. */
+    /* The parent directory itself stays root-owned: only its group gains write. */
     assert_int_equal(g_dir_chown_uid, 0);
     assert_int_equal(g_dir_chown_gid, getgid());
 
@@ -972,6 +1087,45 @@ static void test_credential_less_token_enrolls_without_error(void **state) {
     assert_string_equal(g_enroll_request.password, "");
     assert_int_equal((int) strlen(g_enroll_request.enroll_kid), 0);
     assert_int_equal((int) strlen(g_enroll_request.enroll_key_hex), 0);
+}
+
+/* The bound has to clear what authd is willing to mint, not what a pin-only token happens to
+ * need. A six-certificate bundle -- the largest #39321 lets a manager publish -- embeds to
+ * roughly 9 KB of token, so at the old 8192 it minted cleanly and was then refused at the
+ * agent's first boot, with nothing at install time having warned about it. */
+static void test_embedded_ca_token_larger_than_the_old_cap_is_read(void **state) {
+    (void) state;
+
+    /* ~12 KB of body: past the old 8192 once base64url'd, far inside the new bound. */
+    char big_ca[12288];
+    memset(big_ca, 'A', sizeof(big_ca) - 1);
+    big_ca[sizeof(big_ca) - 1] = '\0';
+
+    write_token_file(false, true, big_ca);
+    /* The guard this test exists for: the encoded token really is past the old limit. */
+    assert_true(FileSize("etc/enrollment_token") > 8192);
+
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_enroll_call_count, 1);
+
+    /* The whole embedded bundle reached disk, not a truncated prefix of it. */
+    assert_int_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_equal(FileSize("etc/certs/root-ca.pem"), (long) strlen(big_ca));
 }
 
 static void test_full_happy_path_via_ca_pem(void **state) {
@@ -1347,6 +1501,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_client_keys_hard_link_is_not_chowned, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_keys_chown_failure_is_logged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_anchor_latch_keys_chown_failure_is_quiet, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_anchor_latch_repairs_pre_39321_ownership, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_empty_placeholder_keys_file_is_not_already_enrolled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_malformed_token_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_adr_unreachable_logs_named_error_and_writes_nothing, setup_test, teardown_test),
@@ -1370,6 +1525,7 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_a_token_that_fills_the_buffer_exactly_is_read_whole, setup_test,
                                         teardown_test),
+        cmocka_unit_test_setup_teardown(test_embedded_ca_token_larger_than_the_old_cap_is_read, setup_test, teardown_test),
     };
 
     return cmocka_run_group_tests(tests, group_setup, NULL);
