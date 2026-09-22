@@ -22,6 +22,7 @@
 #include <filesystem>
 #include <fstream>
 #include <grp.h>
+#include <map>
 #include <mutex>
 #include <pwd.h>
 #include <unistd.h>
@@ -288,62 +289,160 @@ static inline void sanitizeLogText(std::string& value) noexcept
 }
 
 /**
- * @brief Log every per-item rejection inside a `_bulk` response body that still returned HTTP 200 overall.
+ * @brief Log the per-item rejections inside a `_bulk` response body that still returned HTTP 200 overall.
  *        OpenSearch reports these inside `errors`/`items[]` rather than as a transport-level error, so
  * `extractErrorInfo` (which only understands the top-level `{"error": {...}}` shape) doesn't see them.
+ *        Rejections are aggregated by error type and reason and reported as one entry per distinct pair,
+ * since a single bulk can carry up to ELEMENTS_PER_BULK of them.
+ *
+ * @param responseJson Parsed response body.
+ * @param indexName Name of the index the bulk was sent to.
  */
-static inline void logBulkItemErrors(const std::string& indexName, const std::string& responseBody) noexcept
+static inline void logBulkItemErrors(const nlohmann::json& responseJson, const std::string& indexName)
 {
-    try
+    if (!responseJson.value("errors", false) || !responseJson.contains("items"))
     {
-        const auto responseJson = nlohmann::json::parse(responseBody);
-        if (!responseJson.value("errors", false) || !responseJson.contains("items"))
-        {
-            return;
-        }
+        return;
+    }
 
-        for (const auto& item : responseJson.at("items"))
+    // Keyed by (type, reason), holding the number of items rejected with it and the first id seen for it.
+    std::map<std::pair<std::string, std::string>, std::pair<std::size_t, std::string>> rejections;
+
+    for (const auto& item : responseJson.at("items"))
+    {
+        for (const auto& entry : item.items())
         {
-            for (const auto& entry : item.items())
+            const auto& itemData = entry.value();
+            if (itemData.contains("error"))
             {
-                const auto& itemData = entry.value();
-                if (itemData.contains("error"))
+                std::string id, type, reason;
+                if (itemData.contains("_id"))
                 {
-                    std::string id, type, reason;
-                    if (itemData.contains("_id"))
-                    {
-                        id = itemData.at("_id").get_ref<const std::string&>();
-                    }
+                    id = itemData.at("_id").get_ref<const std::string&>();
+                }
 
-                    const auto& error = itemData.at("error");
-                    if (error.contains("type"))
-                    {
-                        type = error.at("type").get_ref<const std::string&>();
-                    }
-                    if (error.contains("reason"))
-                    {
-                        reason = error.at("reason").get_ref<const std::string&>();
-                    }
+                const auto& error = itemData.at("error");
+                if (error.contains("type"))
+                {
+                    type = error.at("type").get_ref<const std::string&>();
+                }
+                if (error.contains("reason"))
+                {
+                    reason = error.at("reason").get_ref<const std::string&>();
+                }
 
-                    // The document id is partly agent-controlled and the reason echoes the indexer's own error
-                    // text, so strip control characters to keep either from forging log lines.
-                    sanitizeLogText(id);
-                    sanitizeLogText(type);
-                    sanitizeLogText(reason);
+                // The document id is partly agent-controlled and the reason echoes the indexer's own error
+                // text, so strip control characters to keep either from forging log lines.
+                sanitizeLogText(id);
+                sanitizeLogText(type);
+                sanitizeLogText(reason);
 
-                    logWarn(IC_NAME,
-                            "Document '%s' rejected by index '%s' - type: '%s', reason: '%s'",
-                            id.c_str(),
-                            indexName.c_str(),
-                            type.c_str(),
-                            reason.c_str());
+                auto& rejection = rejections[std::make_pair(type, reason)];
+                if (rejection.first++ == 0)
+                {
+                    rejection.second = id;
                 }
             }
         }
     }
+
+    for (const auto& [error, rejection] : rejections)
+    {
+        logWarn(IC_NAME,
+                "%zu document(s) rejected by index '%s' - type: '%s', reason: '%s', sample id: '%s'",
+                rejection.first,
+                indexName.c_str(),
+                error.first.c_str(),
+                error.second.c_str(),
+                rejection.second.c_str());
+    }
+}
+
+/**
+ * @brief Log the failures reported inside a `_delete_by_query` response body that returned HTTP 200 overall.
+ *        That shape carries no `errors` flag, so a partially failed delete is otherwise indistinguishable
+ * from a fully successful one.
+ *
+ * @param responseJson Parsed response body.
+ * @param indexName Name of the index the query was sent to.
+ */
+static inline void logDeleteByQueryIssues(const nlohmann::json& responseJson, const std::string& indexName)
+{
+    if (!responseJson.contains("failures"))
+    {
+        // Not a delete by query response.
+        return;
+    }
+
+    const auto versionConflicts = responseJson.value("version_conflicts", 0);
+    const auto& failures = responseJson.at("failures");
+
+    if (versionConflicts == 0 && failures.empty())
+    {
+        return;
+    }
+
+    std::string sampleId, sampleReason;
+    if (!failures.empty())
+    {
+        const auto& failure = failures.at(0);
+        sampleId = failure.value("id", "");
+        if (failure.contains("cause"))
+        {
+            // Document-level failure.
+            sampleReason = failure.at("cause").value("reason", "");
+        }
+        else if (failure.contains("reason") && failure.at("reason").is_object())
+        {
+            // Search-phase failure: no document id, the cause sits under "reason" instead.
+            sampleReason = failure.at("reason").value("reason", "");
+        }
+
+        // Same exposure as the bulk path: the id is partly agent-controlled and the reason echoes the
+        // indexer's own error text.
+        sanitizeLogText(sampleId);
+        sanitizeLogText(sampleReason);
+    }
+
+    logWarn(IC_NAME,
+            "Delete by query on index '%s' completed with issues - version_conflicts: %d, failures: %zu, sample id: "
+            "'%s', sample reason: '%s'",
+            indexName.c_str(),
+            versionConflicts,
+            failures.size(),
+            sampleId.c_str(),
+            sampleReason.c_str());
+}
+
+/**
+ * @brief Report the issues carried by a response body that returned HTTP 200 overall, for both the `_bulk`
+ *        and the `_delete_by_query` shapes.
+ *
+ * @param indexName Name of the index the request was sent to.
+ * @param responseBody Raw response body.
+ */
+static inline void logResponseIssues(const std::string& indexName, const std::string& responseBody) noexcept
+{
+    // Skip the parse for the common, fully successful `_bulk` case: that body can reach several MB at full
+    // bulk size and holds nothing worth reporting. A `_delete_by_query` response never carries "errors":true
+    // regardless of its outcome, so it is told apart by its "failures" key instead - those bodies are small
+    // either way.
+    const auto hasBulkErrors = responseBody.find(R"("errors":true)") != std::string::npos;
+    const auto looksLikeDeleteByQuery = responseBody.find(R"("failures")") != std::string::npos;
+    if (!hasBulkErrors && !looksLikeDeleteByQuery)
+    {
+        return;
+    }
+
+    try
+    {
+        const auto responseJson = nlohmann::json::parse(responseBody);
+        logBulkItemErrors(responseJson, indexName);
+        logDeleteByQueryIssues(responseJson, indexName);
+    }
     catch (const std::exception&)
     {
-        logError(IC_NAME, "Failed to parse bulk response body JSON.");
+        logError(IC_NAME, "Failed to parse response body JSON.");
     }
 }
 
@@ -483,7 +582,7 @@ void IndexerConnector::sendBulkReactive(const std::vector<std::pair<std::string,
         const auto onSuccess = [this](const std::string& response)
         {
             logDebug2(IC_NAME, "Response: %s", response.c_str());
-            logBulkItemErrors(m_indexName, response);
+            logResponseIssues(m_indexName, response);
         };
 
         const auto onError = [this, &actions, &url, &secureCommunication, depth](
@@ -1151,7 +1250,7 @@ IndexerConnector::IndexerConnector(
                 const auto onSuccess = [this, bulkSize](const std::string& response)
                 {
                     logDebug2(IC_NAME, "Response: %s", response.c_str());
-                    logBulkItemErrors(m_indexName, response);
+                    logResponseIssues(m_indexName, response);
 
                     // If the request was successful and the current bulk size is less than ELEMENTS_PER_BULK, increase
                     // the bulk size if the success count is SUCCESS_COUNT_TO_INCREASE_BULK_SIZE

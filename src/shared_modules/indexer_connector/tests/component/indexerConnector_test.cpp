@@ -72,6 +72,23 @@ namespace
     }
 
     /**
+     * @brief Counts the captured log entries of the given level whose formatted message contains the given substring.
+     *
+     * @param logLevel Log level to look for.
+     * @param substring Substring to look for in the formatted message.
+     * @return Number of matching entries.
+     */
+    std::size_t countCapturedLogs(const int logLevel, const std::string& substring)
+    {
+        std::lock_guard<std::mutex> lock {CAPTURED_LOGS_MUTEX};
+        return static_cast<std::size_t>(
+            std::count_if(CAPTURED_LOGS.begin(),
+                          CAPTURED_LOGS.end(),
+                          [logLevel, &substring](const auto& entry)
+                          { return entry.first == logLevel && entry.second.find(substring) != std::string::npos; }));
+    }
+
+    /**
      * @brief Log function shared by every log-capturing test in this file.
      *
      * `Log::assignLogFunction` installs the first callable it is given and never replaces it, process-wide. Passing
@@ -829,8 +846,7 @@ TEST_F(IndexerConnectorTest, PublishDeletedByQueryDoesNotCollideWithLongerAgentI
 
     // EXPECT, not ASSERT: on a regression the timeout must not abort before the assertions below, which name
     // the actual defect instead of reporting a bare wait timeout.
-    EXPECT_NO_THROW(
-        waitUntil([&reindexRequested]() { return reindexRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    EXPECT_NO_THROW(waitUntil([&reindexRequested]() { return reindexRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
     ASSERT_TRUE(searchRequested) << "sync() never queried the index, so the assertion below proves nothing";
     ASSERT_TRUE(reindexRequested) << "Agent 2502's mirror entry was swept away by agent 250's deletion";
 }
@@ -1323,8 +1339,8 @@ TEST_F(IndexerConnectorTest, PublishBulkErrorLogged)
 
     // Matched as one whole formatted entry, so id, type and reason are pinned as coming from the same rejection.
     const std::string expectedWarning {
-        "Document '003_broken' rejected by index '" + std::string {INDEXER_NAME} +
-        "' - type: 'strict_dynamic_mapping_exception', reason: 'mapping set to strict'"};
+        "1 document(s) rejected by index '" + std::string {INDEXER_NAME} +
+        "' - type: 'strict_dynamic_mapping_exception', reason: 'mapping set to strict', sample id: '003_broken'"};
     ASSERT_NO_THROW(waitUntil([&expectedWarning]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning); },
                               MAX_INDEXER_PUBLISH_TIME_MS));
 
@@ -1387,8 +1403,276 @@ TEST_F(IndexerConnectorTest, PublishBulkErrorLogSanitizesControlCharacters)
 
     // Each newline must have become a space, keeping the whole rejection on a single formatted entry.
     const std::string expectedWarning {
-        "Document '003_bad wazuh-modulesd: forged id' rejected by index '" + std::string {INDEXER_NAME} +
-        "' - type: 'mapper_parsing_exception', reason: 'bad value wazuh-modulesd: forged reason'"};
+        "1 document(s) rejected by index '" + std::string {INDEXER_NAME} +
+        "' - type: 'mapper_parsing_exception', reason: 'bad value wazuh-modulesd: forged reason', sample id: '003_bad "
+        "wazuh-modulesd: forged id'"};
     EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning))
         << "The rejection was not logged as a single sanitized entry";
+}
+
+/**
+ * @brief Test that a `_delete_by_query` response reporting failures inside an HTTP 200 body is logged. That shape
+ * carries no `errors` flag, so the bulk-specific handling alone never reports it.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeleteByQueryFailuresLogged)
+{
+    clearCapturedLogs();
+
+    m_indexerServers[A_IDX]->setDeleteByQueryResponseCallback(
+        [](const std::string&) -> std::string
+        {
+            return R"({"took":12,"deleted":1,"version_conflicts":0,"failures":[)"
+                   R"({"index":"indexer_connector_test","id":"250_admins",)"
+                   R"("cause":{"type":"version_conflict_engine_exception","reason":"document already updated"}}]})";
+        });
+
+    std::atomic<bool> deleteRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&deleteRequested](const std::string& data)
+        {
+            if (data.find("agent.id") != std::string::npos)
+            {
+                deleteRequested = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "250";
+    publishData["operation"] = "DELETED_BY_QUERY";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    const std::string expectedWarning {"Delete by query on index '" + std::string {INDEXER_NAME} +
+                                       "' completed with issues - version_conflicts: 0, failures: 1, sample id: "
+                                       "'250_admins', sample reason: 'document already updated'"};
+    ASSERT_NO_THROW(waitUntil([&expectedWarning]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning); },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
+/**
+ * @brief Test that a `_delete_by_query` response is still inspected even though it carries no `"errors":true`
+ * anywhere, which is what the fully successful bulk fast path keys on. Guards against gating both response shapes
+ * behind that single substring probe.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeleteByQueryIssuesLoggedWithoutBulkErrorsFlag)
+{
+    clearCapturedLogs();
+
+    const std::string responseBody {R"({"took":7,"deleted":0,"version_conflicts":3,"failures":[]})"};
+    ASSERT_EQ(responseBody.find(R"("errors":true)"), std::string::npos)
+        << "The response body must not carry the bulk errors flag for this test to exercise the intended path";
+
+    m_indexerServers[A_IDX]->setDeleteByQueryResponseCallback([responseBody](const std::string&) -> std::string
+                                                              { return responseBody; });
+
+    std::atomic<bool> deleteRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&deleteRequested](const std::string& data)
+        {
+            if (data.find("agent.id") != std::string::npos)
+            {
+                deleteRequested = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "251";
+    publishData["operation"] = "DELETED_BY_QUERY";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    const std::string expectedWarning {
+        "Delete by query on index '" + std::string {INDEXER_NAME} +
+        "' completed with issues - version_conflicts: 3, failures: 0, sample id: '', sample reason: ''"};
+    ASSERT_NO_THROW(waitUntil([&expectedWarning]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning); },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
+/**
+ * @brief Test that a successful `_bulk` response body is never parsed, by returning a body that is too malformed to
+ * parse: no parse failure is reported for it, while the same malformed body carrying the errors flag does report one.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishSuccessfulBulkResponseIsNotParsed)
+{
+    clearCapturedLogs();
+
+    // Both bodies are unparseable JSON; only the second one carries the flag that opens the parse path.
+    const std::string filler(64 * 1024, 'x');
+    m_indexerServers[A_IDX]->setPublishResponseCallback(
+        [filler](const std::string& data) -> std::string
+        {
+            if (data.find("006_parsed") != std::string::npos)
+            {
+                return R"({"took":1,"errors":true,"items":[)" + filler;
+            }
+            return R"({"took":1,"errors":false,"items":[)" + filler;
+        });
+
+    std::atomic<bool> successSeen {false};
+    std::atomic<bool> errorSeen {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&successSeen, &errorSeen](const std::string& data)
+        {
+            if (data.find("005_ignored") != std::string::npos)
+            {
+                successSeen = true;
+            }
+            if (data.find("006_parsed") != std::string::npos)
+            {
+                errorSeen = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "005_ignored";
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&successSeen]() { return successSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    publishData["id"] = "006_parsed";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&errorSeen]() { return errorSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    // The second body reaching the parse is what proves the first one was skipped rather than parsed silently.
+    ASSERT_NO_THROW(waitUntil([]()
+                              { return hasCapturedLog(Log::LOGLEVEL_ERROR, "Failed to parse response body JSON"); },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
+    EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_ERROR, "Failed to parse response body JSON"), 1U)
+        << "The successful bulk response was parsed instead of being skipped";
+}
+
+/**
+ * @brief Test that the per-item rejections of a `_bulk` response are aggregated into one entry per distinct error
+ * type and reason, instead of one entry per rejected document.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishBulkErrorsAggregatedByTypeAndReason)
+{
+    clearCapturedLogs();
+
+    m_indexerServers[A_IDX]->setPublishResponseCallback(
+        [](const std::string&) -> std::string
+        {
+            return R"({"took":1,"errors":true,"items":[)"
+                   R"({"index":{"_id":"007_a","status":400,"error":{"type":"mapper_parsing_exception",)"
+                   R"("reason":"bad value"}}},)"
+                   R"({"index":{"_id":"007_b","status":400,"error":{"type":"mapper_parsing_exception",)"
+                   R"("reason":"bad value"}}},)"
+                   R"({"index":{"_id":"007_c","status":400,"error":{"type":"mapper_parsing_exception",)"
+                   R"("reason":"bad value"}}},)"
+                   R"({"index":{"_id":"007_d","status":400,"error":{"type":"strict_dynamic_mapping_exception",)"
+                   R"("reason":"mapping set to strict"}}}]})";
+        });
+
+    std::atomic<bool> publishSeen {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&publishSeen](const std::string& data)
+        {
+            if (data.find("007_a") != std::string::npos)
+            {
+                publishSeen = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "007_a";
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&publishSeen]() { return publishSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    const std::string expectedGrouped {"3 document(s) rejected by index '" + std::string {INDEXER_NAME} +
+                                       "' - type: 'mapper_parsing_exception', reason: 'bad value', sample id: '007_a'"};
+    ASSERT_NO_THROW(waitUntil([&expectedGrouped]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, expectedGrouped); },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
+
+    const std::string expectedSingle {
+        "1 document(s) rejected by index '" + std::string {INDEXER_NAME} +
+        "' - type: 'strict_dynamic_mapping_exception', reason: 'mapping set to strict', sample id: '007_d'"};
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_WARNING, expectedSingle));
+
+    // Two distinct (type, reason) pairs, so two entries - not one per rejected document.
+    EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_WARNING, "rejected by index"), 2U);
+    EXPECT_FALSE(hasCapturedLog(Log::LOGLEVEL_WARNING, "007_b")) << "A rejection was logged per document";
+    EXPECT_FALSE(hasCapturedLog(Log::LOGLEVEL_WARNING, "007_c")) << "A rejection was logged per document";
+}
+
+/**
+ * @brief Test that a search-phase `_delete_by_query` failure, which carries no document id and holds its cause under
+ * `reason` instead of `cause`, is still reported with its text rather than as an empty sample.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeleteByQuerySearchPhaseFailureLogged)
+{
+    clearCapturedLogs();
+
+    m_indexerServers[A_IDX]->setDeleteByQueryResponseCallback(
+        [](const std::string&) -> std::string
+        {
+            return R"({"took":3,"deleted":0,"version_conflicts":0,"failures":[)"
+                   R"({"shard":0,"index":"indexer_connector_test","node":"node-1",)"
+                   R"("reason":{"type":"search_phase_execution_exception","reason":"all shards failed"}}]})";
+        });
+
+    std::atomic<bool> deleteRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&deleteRequested](const std::string& data)
+        {
+            if (data.find("agent.id") != std::string::npos)
+            {
+                deleteRequested = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "252";
+    publishData["operation"] = "DELETED_BY_QUERY";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    const std::string expectedWarning {
+        "Delete by query on index '" + std::string {INDEXER_NAME} +
+        "' completed with issues - version_conflicts: 0, failures: 1, sample id: '', sample reason: 'all shards "
+        "failed'"};
+    ASSERT_NO_THROW(waitUntil([&expectedWarning]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning); },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
 }
