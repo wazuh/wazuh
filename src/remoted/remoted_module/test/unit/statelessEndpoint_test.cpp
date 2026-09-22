@@ -223,6 +223,157 @@ TEST(ValidatePayloadIdentity, OversizedHeaderLineIsRejectedWithoutParsing)
     EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
 }
 
+// --- Repeated identity members -----------------------------------------------------------------
+//
+// A lookup here takes the FIRST member of a duplicated name, the engine's merge keeps the LAST, and
+// the body travels between them byte for byte. Each rejection below is a header whose FIRST
+// identity is the authenticated agent's own -- so the pre-fix check accepted it -- while a repeated
+// step of /wazuh/agent/id carries another agent's.
+//
+// The acceptance cases pin the SCOPE: repetitions off the identity path are allowed through,
+// because they cannot move the identity once the engine escapes member names when building the
+// pointer it recurses with. That half is tested in the engine (base_utest, Merge* cases).
+
+TEST(ValidatePayloadIdentity, RepeatedWazuhMemberIsRejected)
+{
+    const auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1"}},"wazuh":{"agent":{"id":"2"}}})"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, RepeatedAgentMemberIsRejected)
+{
+    // One level down. A check that only inspected the root object would accept this.
+    const auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1"},"agent":{"id":"2"}}})"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, RepeatedAgentIdIsRejected)
+{
+    const auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1","id":"2"}}})"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, RepeatedAgentIdWithIdenticalValuesIsRejected)
+{
+    // Both copies agree, so nothing is spoofed -- but the document is still ambiguous about a key
+    // this endpoint's decision depends on. The rule is "exactly once", which is checkable; "once,
+    // or more if they happen to agree" is not.
+    const auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1","id":"1"}}})"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, EscapedDuplicateIdentityMemberIsRejected)
+{
+    // "\u0077azuh" decodes to "wazuh": after parsing there are two members of that name. The
+    // repetition is only visible once names are compared DECODED -- comparing the raw source bytes
+    // would miss it and leave the flaw reachable behind an escape.
+    const auto fixture =
+        makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1\"}},\"\\u0077azuh\":{\"agent\":{\"id\":\"2\"}}}"
+                    "\nE some event\n",
+                    "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, EscapedIdentityMemberNameIsAccepted)
+{
+    // The same escaping without a repetition names one agent perfectly legally.
+    const auto fixture = makeAuthReq("H {\"\\u0077azuh\":{\"agent\":{\"id\":\"1\"}}}"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
+}
+
+TEST(ValidatePayloadIdentity, MemberNameWithEmbeddedNulIsNotConfusedWithAnIdentityKey)
+{
+    // "wazuh\u0000x" is a 7-character name, distinct from the 5-character "wazuh". Comparing by length
+    // keeps them apart; a C-string comparison would stop at the NUL, see two "wazuh" members and
+    // reject a conforming header.
+    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1\"}},\"wazuh\\u0000x\":1}"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
+}
+
+TEST(ValidatePayloadIdentity, NonObjectIdentityContainerIsRejected)
+{
+    // Each step of the path must be an object before it can be searched for the next one.
+    const auto scalarWazuh = makeAuthReq(R"(H {"wazuh":"nope"})"
+                                         "\nE some event\n",
+                                         "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*scalarWazuh.req), AuthError::PayloadAgentMismatch);
+
+    const auto arrayAgent = makeAuthReq(R"(H {"wazuh":{"agent":[{"id":"1"}]}})"
+                                        "\nE some event\n",
+                                        "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*arrayAgent.req), AuthError::PayloadAgentMismatch);
+
+    const auto arrayRoot = makeAuthReq(R"(H [{"wazuh":{"agent":{"id":"1"}}}])"
+                                       "\nE some event\n",
+                                       "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*arrayRoot.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, KeyContainingASlashIsAcceptedAndLeftToTheEngine)
+{
+    // "wazuh/agent" is ONE literal member name, not a path. It used to be an injection vector,
+    // because the engine pasted member names into a JSON Pointer unescaped and this one resolved
+    // onto the real /wazuh/agent. That is fixed where the pointer is built (base/src/json.cpp), so
+    // this endpoint has no reason to reject it: the identity it validates is unambiguous, and the
+    // stray member is inert. Flipping this to a rejection means the split of responsibility moved.
+    const auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1"}},"wazuh/agent":{},"wazuh/agent":{"id":"2"}})"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
+}
+
+TEST(ValidatePayloadIdentity, RepeatedMemberOutsideTheIdentityPathIsAccepted)
+{
+    // "cluster" is repeated, the identity path is not. Nothing here validates wazuh.cluster.*
+    // against an authoritative source, so a repetition there cannot move the identity and is not
+    // this check's business -- keeping it out is what keeps the check proportional to the path.
+    const auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1"},"cluster":{"name":"a"},"cluster":{"name":"b"}}})"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
+}
+
+TEST(ValidatePayloadIdentity, DeeplyNestedMetadataOffTheIdentityPathIsAccepted)
+{
+    // ~3000 nested arrays hung off a member that is not on the identity path, under the 8 KiB
+    // kMaxHeaderLineJsonSize cap. The identity lookup visits three objects and never descends this,
+    // so depth costs nothing; the parse survives it because of kParseIterativeFlag.
+    constexpr int kDepth = 3000;
+    const std::string body = "H {\"wazuh\":{\"agent\":{\"id\":\"7\"}},\"x\":" + std::string(kDepth, '[') +
+                             std::string(kDepth, ']') + "}\nE some event\n";
+    ASSERT_LT(body.size(), 8U * 1024U);
+
+    const auto fixture = makeAuthReq(body, "7");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
+}
+
+TEST(ValidatePayloadIdentity, FullConformingHeaderWithUniqueNamesSucceeds)
+{
+    // The complete documented H line. The same key NAME in DIFFERENT objects ("name" under agent,
+    // host.os and cluster) is legal and must not read as a repetition: the rule is per-object, and
+    // only on the identity path.
+    const auto fixture =
+        makeAuthReq(R"(H {"wazuh":{"agent":{"id":"001","name":"web-server-01","version":"v5.0.0",)"
+                    R"("groups":["web","production"],"host":{"architecture":"x86_64","hostname":"web-server-01",)"
+                    R"("os":{"name":"Ubuntu","version":"22.04","platform":"ubuntu","type":"linux"}}},)"
+                    R"("cluster":{"name":"production","node":"master-node"}}})"
+                    "\nE 1:/var/log/syslog:hello\n",
+                    "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
+}
+
 TEST(RapidJsonIterativeParse, SurvivesPathologicalNestingWithoutCrashing)
 {
     // ~500 KB of unterminated nested arrays -- deliberately larger than statelessEndpoint's 8 KiB
@@ -326,6 +477,33 @@ TEST(StatelessMakeHandler, ValidationFailureShortCircuitsBeforeForward)
     EXPECT_EQ(response.status, 400);
     EXPECT_EQ(response.body, R"({"error":"Invalid event batch","code":400})");
     EXPECT_FALSE(client->called()); // forward() must never run once validation fails
+}
+
+TEST(StatelessMakeHandler, RepeatedIdentityShortCircuitsBeforeForward)
+{
+    // End to end through the handler: a header whose FIRST /wazuh/agent/id is the authenticated
+    // agent's own -- so it passed the identity comparison before the fix -- must now be refused
+    // with the same neutral 400 as any other mismatch, and must never reach the forwarder. This is
+    // the assertion that matters for the vulnerability: not the status code, but that the ambiguous
+    // batch never crosses into the engine.
+    auto client = std::make_shared<FakeDownstreamClient>();
+    auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+    DeferredForwarder forwarder {client, limiter, 1};
+
+    auto handler = stateless::makeHandler(forwarder, "queue/sockets/engine-ingest-http.sock");
+    auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1001"}},"wazuh":{"agent":{"id":"1002"}}})"
+                               "\nE some event\n",
+                               "1001");
+    auto responder = std::make_shared<CapturingResponder>();
+    auto fut = responder->future();
+
+    handler(fixture.req, responder);
+
+    ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+    const auto response = fut.get();
+    EXPECT_EQ(response.status, 400);
+    EXPECT_EQ(response.body, R"({"error":"Invalid event batch","code":400})");
+    EXPECT_FALSE(client->called());
 }
 
 TEST(StatelessMakeHandler, ValidationSuccessForwardsAndPostProcesses)
