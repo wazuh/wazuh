@@ -322,7 +322,7 @@ static inline void logBulkItemErrors(const std::string& indexName, const std::st
             }
         }
     }
-    catch (const nlohmann::json::exception&)
+    catch (const std::exception&)
     {
         logError(IC_NAME, "Failed to parse bulk response body JSON.");
     }
