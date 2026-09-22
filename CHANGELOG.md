@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Added macOS support to the disable-account active response. ([#39463](https://github.com/wazuh/wazuh/pull/39463))
-- Fixed the Windows agent reporting the operating system it had before an in-place feature update, by reading the OS version values from the 64-bit registry view instead of the WOW6432Node mirror. ([#39547](https://github.com/wazuh/wazuh/pull/39547))
+- Fixed the Windows agent reporting the operating system it had before an in-place feature update. ([#39547](https://github.com/wazuh/wazuh/pull/39547))
 
 ## [v4.14.9]
 
