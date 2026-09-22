@@ -492,7 +492,7 @@ def test_a_refresh_is_never_issued_when_verification_is_disabled(
     # the refresh, and the only one of the two that could still be wrong if the module ever read
     # the posture from somewhere else.
     expect_log('TLS verification stays disabled, as configured, and the anchor is not used.')
-    expect_log('TLS verification is DISABLED (verify_mode=none).')
+    expect_log('TLS verification is DISABLED (verification_mode=none).')
 
     manager.ca_generation = FIRST
 
