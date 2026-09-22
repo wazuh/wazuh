@@ -13,23 +13,99 @@
 #include "fakeIndexer.hpp"
 #include "indexerConnector.hpp"
 #include "json.hpp"
+#include "loggerHelper.h"
 #include "stringHelper.h"
 #include "gtest/gtest.h"
+#include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <cstdarg>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <stdexcept>
+#include <string>
 #include <thread>
+#include <tuple>
 #include <utility>
+#include <vector>
 
 namespace Log
 {
     std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
 }; // namespace Log
+
+namespace
+{
+    std::mutex CAPTURED_LOGS_MUTEX;
+    std::vector<std::pair<int, std::string>> CAPTURED_LOGS;
+
+    /**
+     * @brief Drops every log entry captured so far.
+     */
+    void clearCapturedLogs()
+    {
+        std::lock_guard<std::mutex> lock {CAPTURED_LOGS_MUTEX};
+        CAPTURED_LOGS.clear();
+    }
+
+    /**
+     * @brief Checks whether a log entry of the given level whose formatted message contains the given substring was
+     * captured.
+     *
+     * @param logLevel Log level to look for.
+     * @param substring Substring to look for in the formatted message.
+     * @return true if a matching entry was captured, false otherwise.
+     */
+    bool hasCapturedLog(const int logLevel, const std::string& substring)
+    {
+        std::lock_guard<std::mutex> lock {CAPTURED_LOGS_MUTEX};
+        return std::any_of(CAPTURED_LOGS.begin(),
+                           CAPTURED_LOGS.end(),
+                           [logLevel, &substring](const auto& entry)
+                           { return entry.first == logLevel && entry.second.find(substring) != std::string::npos; });
+    }
+
+    /**
+     * @brief Log function shared by every log-capturing test in this file.
+     *
+     * `Log::assignLogFunction` installs the first callable it is given and never replaces it, process-wide. Passing
+     * this same function to every IndexerConnector construction keeps that behavior irrelevant: whichever test runs
+     * first installs it, and each test only clears the buffer before its own scenario.
+     *
+     * @param logLevel Log level of the message.
+     * @param tag Tag of the message.
+     * @param file Source file the message was logged from.
+     * @param line Source line the message was logged from.
+     * @param func Function the message was logged from.
+     * @param logMessage Message format string.
+     * @param args Format arguments.
+     */
+    void sharedTestLogFunction(const int logLevel,
+                               const char* tag,
+                               const char* file,
+                               const int line,
+                               const char* func,
+                               const char* logMessage,
+                               va_list args)
+    {
+        std::ignore = tag;
+        std::ignore = file;
+        std::ignore = line;
+        std::ignore = func;
+
+        char formattedStr[MAXLEN] = {0};
+        vsnprintf(formattedStr, MAXLEN, logMessage, args);
+
+        std::lock_guard<std::mutex> lock {CAPTURED_LOGS_MUTEX};
+        CAPTURED_LOGS.emplace_back(logLevel, formattedStr);
+    }
+} // namespace
 
 // Template.
 static const auto TEMPLATE_FILE_PATH {std::filesystem::temp_directory_path() / "template.json"};
@@ -111,6 +187,8 @@ void IndexerConnectorTest::TearDown()
     // Remove generated data.
     std::filesystem::remove(TEMPLATE_FILE_PATH);
     std::filesystem::remove_all(QUEUE_FOLDER);
+
+    clearCapturedLogs();
 
     // Delete fake indexers.
     for (auto& server : m_indexerServers)
@@ -1091,34 +1169,74 @@ TEST_F(IndexerConnectorTest, QueueCorruptionTest)
     }
     EXPECT_TRUE(corrupted);
 
-    bool dbRepaired {false};
-    auto customLogFunction = [&dbRepaired](const int logLevel,
-                                           const std::string& tag,
-                                           const std::string& file,
-                                           const int line,
-                                           const std::string& func,
-                                           const std::string& logMessage,
-                                           va_list args)
-    {
-        std::ignore = tag;
-        std::ignore = file;
-        std::ignore = line;
-        std::ignore = func;
-        std::ignore = args;
-
-        if (logLevel == 2) // Warning messages
-        {
-            if (logMessage.compare("Database '%s' was repaired because it was corrupt.") == 0)
-            {
-                dbRepaired = true;
-            }
-        }
-    };
+    clearCapturedLogs();
 
     EXPECT_NO_THROW({
         spIndexerConnector = std::make_unique<IndexerConnector>(
-            indexerConfig, TEMPLATE_FILE_PATH, "", true, customLogFunction, INDEXER_TIMEOUT);
+            indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT);
     });
 
-    EXPECT_TRUE(dbRepaired) << "The log that indicates the database was repaired wasn't found";
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_WARNING, "was repaired because it was corrupt"))
+        << "The log that indicates the database was repaired wasn't found";
+}
+
+/**
+ * @brief Test that a per-item `_bulk` rejection inside an HTTP 200 response is logged at warning level with the
+ * document id, error type and reason, and that the dispatch queue keeps draining afterwards (no throw/stall on a
+ * rejected-but-200 batch).
+ */
+TEST_F(IndexerConnectorTest, PublishBulkErrorLogged)
+{
+    clearCapturedLogs();
+
+    // A real per-item `_bulk` rejection body: HTTP 200, `errors: true`, one item carrying an `error`.
+    m_indexerServers[A_IDX]->setPublishResponseCallback(
+        [](const std::string&) -> std::string
+        {
+            return R"({"took":1,"errors":true,"items":[{"index":{"_id":"003_broken","status":400,)"
+                   R"("error":{"type":"strict_dynamic_mapping_exception","reason":"mapping set to strict"}}}]})";
+        });
+
+    std::atomic<bool> firstPublishSeen {false};
+    std::atomic<bool> secondPublishSeen {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&firstPublishSeen, &secondPublishSeen](const std::string& data)
+        {
+            if (data.find("003_broken") != std::string::npos)
+            {
+                firstPublishSeen = true;
+            }
+            if (data.find("004_ok") != std::string::npos)
+            {
+                secondPublishSeen = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "003_broken";
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&firstPublishSeen]() { return firstPublishSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    // Matched as one whole formatted entry, so id, type and reason are pinned as coming from the same rejection.
+    const std::string expectedWarning {
+        "Document '003_broken' rejected by index '" + std::string {INDEXER_NAME} +
+        "' - type: 'strict_dynamic_mapping_exception', reason: 'mapping set to strict'"};
+    ASSERT_NO_THROW(waitUntil([&expectedWarning]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning); },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
+
+    // The queue must keep draining after a rejected-but-200 item: a second, unrelated publish should still go
+    // through promptly, not stall behind the rejected one.
+    publishData["id"] = "004_ok";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(
+        waitUntil([&secondPublishSeen]() { return secondPublishSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
 }
