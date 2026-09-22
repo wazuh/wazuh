@@ -363,6 +363,16 @@ _engine = create_engine(f"sqlite:///{DB_FILE}", pool_size=10, echo=False)
 _Base = declarative_base()
 
 
+def dispose_engine():
+    """Drop the pooled connections every manager's session is opened on.
+
+    The pool keeps a connection to the file it first opened, by inode. Anything that replaces `rbac.db`
+    leaves that connection on the unlinked one, where SQLite answers a write with `attempt to write a
+    readonly database`, so the file has to be replaced with an empty pool.
+    """
+    _engine.dispose()
+
+
 # Security error codes for each RBAC resource's manager
 class SecurityError(IntEnum):
     """Security errors enumeration."""

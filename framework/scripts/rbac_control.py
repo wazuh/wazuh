@@ -370,8 +370,8 @@ async def preseed_default_password(script_args):
               f"letter, an uppercase letter, a digit and one of '{USER_POLICY_SYMBOLS}'")
         sys.exit(1)
 
-    # Merged rather than overwritten: one user is set per execution, and the API refuses a file that does
-    # not name every default user, so the entries already provisioned have to survive.
+    # Merged rather than overwritten: one user is set per execution, and an entry this call does not name
+    # would otherwise be dropped and generated again when the database is created.
     provisioned = _read_provisioned_passwords(default_users)
     provisioned[script_args.user] = password
     _write_provisioned_passwords(provisioned)

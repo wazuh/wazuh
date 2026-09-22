@@ -137,7 +137,8 @@ def test_rbac_db_factory_reset(remove_mock, db_integrity_mock, revoke_mock, db_s
     """Check that the RBAC database factory reset is correct."""
     _, _, core_security = db_setup
 
-    with patch("wazuh.core.security.load_preseeded_passwords"):
+    with patch("wazuh.core.security.load_preseeded_passwords"), \
+            patch("wazuh.core.security.dispose_engine"):
         assert core_security.rbac_db_factory_reset() == {'reset': True}
 
     assert remove_mock.call_args[0][0].endswith("rbac.db")
@@ -149,9 +150,30 @@ def test_rbac_db_factory_reset(remove_mock, db_integrity_mock, revoke_mock, db_s
 
 @patch("wazuh.core.security.revoke_tokens")
 @patch("wazuh.core.security.check_database_integrity")
+def test_rbac_db_factory_reset_drops_the_connection_pool(db_integrity_mock, revoke_mock, db_setup):
+    """The pooled connections are dropped before the database file is unlinked.
+
+    They are kept by inode, so one left over stays on the removed file, where SQLite answers a write with
+    `attempt to write a readonly database`. `revoke_tokens` opens its session on that same pool, so the
+    order decides between a reset that works and one that replaces the database and then reports failure.
+    """
+    _, _, core_security = db_setup
+    calls = []
+
+    with patch("wazuh.core.security.load_preseeded_passwords"), \
+            patch("wazuh.core.security.dispose_engine", side_effect=lambda: calls.append('dispose')), \
+            patch("wazuh.core.security.os.remove", side_effect=lambda _: calls.append('remove')):
+        assert core_security.rbac_db_factory_reset() == {'reset': True}
+
+    assert calls == ['dispose', 'remove']
+
+
+@patch("wazuh.core.security.dispose_engine")
+@patch("wazuh.core.security.revoke_tokens")
+@patch("wazuh.core.security.check_database_integrity")
 @patch("wazuh.core.security.os.remove")
 def test_rbac_db_factory_reset_needs_provisioned_credentials(remove_mock, db_integrity_mock, revoke_mock,
-                                                             db_setup):
+                                                             dispose_mock, db_setup):
     """A reset refuses unless the provisioning file can actually be seeded from, before removing anything.
 
     Seeding is the only way to get the default users back, and it is resolved here rather than left to the
