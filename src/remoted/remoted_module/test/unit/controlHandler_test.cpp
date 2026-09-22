@@ -418,8 +418,11 @@ TEST(ControlHandlerTest, StartupReturns500OnWdbProtocolError)
     h.handler->handleStartup(1, data, [&](const HttpResponse& r) { w.complete(r); });
     ASSERT_TRUE(w.wait(3000ms));
 
-    EXPECT_EQ(w.value.status, 500);
-    EXPECT_NE(w.value.body.find("database_error"), std::string::npos);
+    // 503, not 500: remoted is fine, a dependency is not answering, and the condition clears on
+    // its own. That is the class the agent already retries with back-pressure.
+    EXPECT_EQ(w.value.status, 503);
+    EXPECT_NE(w.value.body.find("dependency_unavailable"), std::string::npos);
+    EXPECT_NE(w.value.body.find("wazuh-db"), std::string::npos) << "the body must name WHICH dependency";
 }
 
 // =============================================================================
@@ -875,8 +878,9 @@ TEST(ControlHandlerTest, NotifyWithNoCachedGroupsReturns500OnWdbError)
     h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
     ASSERT_TRUE(w.wait(3000ms));
 
-    EXPECT_EQ(w.value.status, 500);
-    EXPECT_NE(w.value.body.find("database_error"), std::string::npos);
+    EXPECT_EQ(w.value.status, 503);
+    EXPECT_NE(w.value.body.find("dependency_unavailable"), std::string::npos);
+    EXPECT_NE(w.value.body.find("wazuh-db"), std::string::npos) << "the body must name WHICH dependency";
     EXPECT_FALSE(h.registry->get(1));
 }
 

@@ -172,6 +172,7 @@
   - [Indexer Connector](ref/modules/indexer_connector/README.md)
     - [Configuration](ref/modules/indexer_connector/configuration.md)
   - [Wazuh DB](ref/modules/wazuh_db/README.md)
+    - [API Reference](ref/modules/wazuh_db/api-reference.md)
     - [Configuration](ref/modules/wazuh_db/configuration.md)
   - [Authd](ref/modules/authd/README.md)
     - [Architecture](ref/modules/authd/architecture.md)

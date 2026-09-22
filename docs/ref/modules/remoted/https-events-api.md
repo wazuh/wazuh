@@ -1005,7 +1005,7 @@ Control-specific conditions:
 | Malformed agent version (startup only)     | `400` | `invalid_version`      |
 | Agent version higher than allowed (startup only) | `409` | `invalid_version` |
 | Invalid host info format (notify only)     | `400` | `invalid_host_info`    |
-| wazuh-db error during startup (get groups) | `500` | `database_error`       |
+| wazuh-db unavailable (get groups)          | `503` | `dependency_unavailable` |
 
 The two version rejections deliberately carry different statuses even though they share an `error`
 message. A **malformed** version is a bad request: resending the same bytes can never succeed, so the

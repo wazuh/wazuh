@@ -19,6 +19,17 @@ The daemon runs four threads:
 
 An HTTP API endpoint (`queue/sockets/wdb-http.sock`) is also exposed for internal components that prefer a REST interface (cluster, server API).
 
+The routes it serves, their bodies and their failure modes are in
+[the API reference](api-reference.md). One of them is worth knowing from here:
+**`GET /v1/status`** reports whether this daemon can actually serve queries, which is not the same
+question as whether the process is up — it can be running and accepting connections on this socket
+while unable to query `global.db`.
+
+```console
+$ curl -s --unix-socket /var/wazuh-manager/queue/sockets/wdb-http.sock http://localhost/v1/status
+{"status":"ok","module":"wazuh-db","global":{"available":true}}
+```
+
 ## Socket protocol
 
 Socket: `/var/wazuh-manager/queue/sockets/wdb.sock` (Unix stream)

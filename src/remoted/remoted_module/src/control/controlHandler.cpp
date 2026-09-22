@@ -194,19 +194,31 @@ namespace remoted::control
                 {
                     if (err != SocketError::None)
                     {
-                        // Throttle wdb errors during startup to avoid flooding on outages
+                        // Throttle wdb errors during startup to avoid flooding on outages. The
+                        // message names wazuh-db explicitly: this is the one line that tells an
+                        // operator WHY startup is being refused, and "database_error" on the wire
+                        // does not say which database or whose fault it is.
                         if (const auto throttle = wdbErrorThrottle().record())
                         {
                             LOGFN_ERROR(logFn(),
-                                        "Failed to get agent groups from wdb for startup: %llu "
-                                        "failure(s) in the last %d s.",
+                                        "Cannot serve /control startup: wazuh-manager-db is not answering, so "
+                                        "this agent's groups cannot be read (%llu failure(s) in the last %d s). "
+                                        "Agents are being told to retry; check that wazuh-manager-db is running.",
                                         throttle.total,
                                         remoted::common::LogThrottle::kDefaultWindowSeconds);
                         }
 
+                        // 503, not 500. remoted itself is fine -- it is a dependency that is not
+                        // answering, and the condition clears by itself when that dependency comes
+                        // back. 500 says "this request cannot be made to work", which sends the
+                        // agent down the generic ServerError path; 503 is the back-pressure class
+                        // it already knows how to retry with Retry-After (outcomeClassifier.cpp).
+                        //
+                        // This does NOT take the node out of rotation by itself, deliberately: a
+                        // balancer rule that sheds a node on sustained 503 is the operator's to add.
                         HttpResponse response;
-                        response.status = 500;
-                        response.body = R"({"error":"database_error"})";
+                        response.status = 503;
+                        response.body = R"({"error":"dependency_unavailable","dependency":"wazuh-db"})";
                         callback(response);
                         return;
                     }
@@ -316,15 +328,20 @@ namespace remoted::control
                         if (const auto throttle = notifyUncachedWdbErrorThrottle().record())
                         {
                             LOGFN_ERROR(logFn(),
-                                        "Failed to get agent groups from wdb for notify: %llu failure(s) in the "
-                                        "last %d s.",
+                                        "Cannot serve /control notify: wazuh-manager-db is not answering and this "
+                                        "agent has no cached group membership to fall back on (%llu failure(s) in "
+                                        "the last %d s). Agents are being told to retry; check that "
+                                        "wazuh-manager-db is running.",
                                         throttle.total,
                                         remoted::common::LogThrottle::kDefaultWindowSeconds);
                         }
 
+                        // 503 for the same reason as the startup path above: a dependency is
+                        // unavailable and the condition clears on its own, which is the agent's
+                        // back-pressure class rather than a server fault.
                         HttpResponse response;
-                        response.status = 500;
-                        response.body = R"({"error":"database_error"})";
+                        response.status = 503;
+                        response.body = R"({"error":"dependency_unavailable","dependency":"wazuh-db"})";
                         callback(response);
                         return;
                     }
