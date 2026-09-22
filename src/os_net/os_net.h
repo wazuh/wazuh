@@ -178,6 +178,17 @@ void resolve_hostname(char **hostname, int attempts);
  * */
 const char *get_ip_from_resolved_hostname(const char *resolved_hostname);
 
+#if defined(__APPLE__)
+/**
+ * @brief Resolve a hostname once and pin the answer, so later OS_GetHost()
+ * calls for the same name never reach getaddrinfo(). Only useful before
+ * daemonizing: getaddrinfo() is not fork-safe on macOS.
+ * @param host Hostname to resolve now
+ * @param attempts Number of attempts of the call to the function OS_GetHost
+ * */
+void OS_PrefetchHost(const char *host, unsigned int attempts);
+#endif
+
 /**
  * @brief Connect to an UNIX socket setting the sending and response timeout
  * @param socket_path Location of the UNIX socket to connect

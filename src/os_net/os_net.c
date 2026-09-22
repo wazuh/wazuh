@@ -556,6 +556,23 @@ int OS_SendUnix(int socket, const char *msg, int size)
 }
 #endif
 
+#if defined(__APPLE__)
+/* getaddrinfo() is not safe to call in a forked child that never exec()s
+ * on macOS: its NAT64-synthesis path calls into Network.framework and
+ * os_log, which carry undefined state across fork() and SIGSEGV
+ * (wazuh/wazuh-agent#886). Daemons therefore pin every configured name
+ * while still in the parent, via OS_PrefetchHost(), and the child's
+ * lookups are answered from this table without touching getaddrinfo().
+ * Entries are only ever added by OS_PrefetchHost(), so processes that
+ * never prefetch resolve exactly as before. */
+#define OS_HOST_CACHE_SIZE 16
+static struct {
+    char name[OS_SIZE_512];
+    char ip[IPSIZE + 1];
+} os_host_cache[OS_HOST_CACHE_SIZE];
+static unsigned int os_host_cache_len;
+#endif
+
 /*
  * Retrieve the IP of a host
  */
@@ -569,6 +586,16 @@ char *OS_GetHost(const char *host, unsigned int attempts)
     if (host == NULL) {
         return (NULL);
     }
+
+#if defined(__APPLE__)
+    for (i = 0; i < os_host_cache_len; i++) {
+        if (strcmp(os_host_cache[i].name, host) == 0) {
+            os_strdup(os_host_cache[i].ip, ip);
+            return ip;
+        }
+    }
+    i = 0;
+#endif
 
     while (i <= attempts) {
         if (status = getaddrinfo(host, NULL, NULL, &addr), status) {
@@ -596,6 +623,48 @@ char *OS_GetHost(const char *host, unsigned int attempts)
 
     return NULL;
 }
+
+#if defined(__APPLE__)
+/*
+ * Resolve a hostname once and pin the answer in os_host_cache, so later
+ * OS_GetHost() calls for the same name never reach getaddrinfo(). Meant
+ * to be called before daemonizing: the table is inherited across fork(),
+ * so the child resolves the name without the fork-unsafe resolver path.
+ * Literal addresses and already "hostname/ip"-formed strings need no
+ * lookup; failed resolutions are not pinned, keeping today's retry
+ * behaviour for a name DNS could not answer at startup.
+ */
+void OS_PrefetchHost(const char *host, unsigned int attempts)
+{
+    char *resolved = NULL;
+    unsigned int i;
+
+    if (host == NULL || os_host_cache_len >= OS_HOST_CACHE_SIZE) {
+        return;
+    }
+
+    if (OS_IsValidIP(host, NULL) == 1 || strchr(host, '/') != NULL) {
+        return;
+    }
+
+    for (i = 0; i < os_host_cache_len; i++) {
+        if (strcmp(os_host_cache[i].name, host) == 0) {
+            return;
+        }
+    }
+
+    if ((resolved = OS_GetHost(host, attempts)) == NULL) {
+        return;
+    }
+
+    snprintf(os_host_cache[os_host_cache_len].name,
+             sizeof(os_host_cache[os_host_cache_len].name), "%s", host);
+    snprintf(os_host_cache[os_host_cache_len].ip,
+             sizeof(os_host_cache[os_host_cache_len].ip), "%s", resolved);
+    os_host_cache_len++;
+    os_free(resolved);
+}
+#endif
 
 int OS_CloseSocket(int socket)
 {
