@@ -216,6 +216,28 @@ int test_cleanup_full_log(void **state)
     return 0;
 }
 
+/* The agent controls `data`, so it can plant its own agent_name/agent_ip/agent_version
+ * before decode_dbsync() adds the authentic ones from the marker; cJSON keeps duplicate
+ * keys and a naive lookup would return whichever one comes first. */
+int test_setup_hotfixes_valid_msg_modified_with_marker_spoofed_agent_ctx(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    os_strdup("test-agent\x01""192.168.1.50\x01""v4.14.9\x01"
+        "{\"type\":\"dbsync_hotfixes\",\"operation\":\"MODIFIED\","
+        "\"data\":{\"scan_time\":\"2021/10/29 14:26:24\",\"agent_name\":\"spoofed-host\","
+        "\"hotfix\":\"KB123456\",\"agent_ip\":\"6.6.6.6\","
+        "\"checksum\":\"abcdef0123456789\",\"agent_version\":\"evil\"}}", lf->full_log);
+    lf->log = lf->full_log;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
 int test_setup_packages_valid_msg_modified(void **state)
 {
     Eventinfo *lf;
@@ -2218,6 +2240,32 @@ void test_syscollector_dbsync_hotfixes_valid_msg_modified_with_marker(void **sta
 {
     Eventinfo *lf = *state;
 
+    const char *query = "agent 001 dbsync hotfixes MODIFIED "
+        "{"
+            "\"scan_time\":\"2021/10/29 14:26:24\","
+            "\"hotfix\":\"KB123456\","
+            "\"checksum\":\"abcdef0123456789\""
+            ",\"agent_name\":\"test-agent\",\"agent_ip\":\"192.168.1.50\",\"agent_version\":\"v4.14.9\""
+        "}";
+    const char *result = "ok ";
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
+void test_syscollector_dbsync_hotfixes_valid_msg_modified_with_marker_spoofed_agent_ctx(void **state)
+{
+    Eventinfo *lf = *state;
+
+    /* Identical to the legitimate query: the spoofed agent_name/agent_ip/agent_version
+     * planted in `data` must be dropped, not merged in or allowed to win the lookup. */
     const char *query = "agent 001 dbsync hotfixes MODIFIED "
         "{"
             "\"scan_time\":\"2021/10/29 14:26:24\","
@@ -4626,6 +4674,7 @@ int main()
         /* MODIFIED delta tests*/
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg_modified, test_setup_hotfixes_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg_modified_with_marker, test_setup_hotfixes_valid_msg_modified_with_marker, test_cleanup_full_log),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg_modified_with_marker_spoofed_agent_ctx, test_setup_hotfixes_valid_msg_modified_with_marker_spoofed_agent_ctx, test_cleanup_full_log),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_malformed_marker, test_setup_hotfixes_malformed_marker, test_cleanup_full_log),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_packages_valid_msg_modified, test_setup_packages_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_processes_valid_msg_modified, test_setup_processes_valid_msg_modified, test_cleanup),

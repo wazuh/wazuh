@@ -2313,10 +2313,19 @@ static int decode_dbsync(Eventinfo * lf,   /* Event information */
                                                                                        performed in the table. */
 
                     /* Passed through to wazuh-db only to publish to the Indexer (issue #39329);
-                     * the table upsert only binds fields it recognizes, so these are ignored there. */
-                    cJSON_AddStringToObject(data_object, "agent_name", agent_name);
-                    cJSON_AddStringToObject(data_object, "agent_ip", agent_ip);
-                    cJSON_AddStringToObject(data_object, "agent_version", agent_version);
+                     * the table upsert only binds fields it recognizes, so these are ignored there.
+                     * The payload is agent-controlled and cJSON keeps duplicate keys while
+                     * cJSON_GetObjectItem() returns the first (case-insensitive) match, so any
+                     * copy the agent sent must be dropped or it would win on the read side. */
+                    static const char * const agent_ctx_keys[] = {"agent_name", "agent_ip", "agent_version"};
+                    const char * const agent_ctx_values[] = {agent_name, agent_ip, agent_version};
+
+                    for (size_t i = 0; i < sizeof(agent_ctx_keys) / sizeof(*agent_ctx_keys); i++) {
+                        while (NULL != cJSON_GetObjectItem(data_object, agent_ctx_keys[i])) {
+                            cJSON_DeleteItemFromObject(data_object, agent_ctx_keys[i]);
+                        }
+                        cJSON_AddStringToObject(data_object, agent_ctx_keys[i], agent_ctx_values[i]);
+                    }
 
                     char * data = cJSON_PrintUnformatted(data_object);              /* Data is the JSON object with the
                                                                                        values to be processed. */
