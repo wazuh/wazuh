@@ -1,6 +1,6 @@
 - name: Check None - Who-data
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -15,8 +15,8 @@
     checks_hash: []
 
 - name: Check All - Who-data
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -44,8 +44,8 @@
       - 'sha256'
 
 - name: Check All but check_mtime - Who-data
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -73,8 +73,8 @@
       - 'sha256'
 
 - name: Check All but check_size - Who-data
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -102,8 +102,8 @@
       - 'sha256'
 
 - name: Check All but check_sha256sum - Who-data
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -131,8 +131,8 @@
       - 'md5'
 
 - name: Check All but check_md5sum - Who-data
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -160,8 +160,8 @@
       - 'sha256'
 
 - name: Check All but check_sha1sum - Who-data
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -189,8 +189,8 @@
       - 'sha256'
 
 - name: Check None - Scheduled
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 3
@@ -205,8 +205,8 @@
     checks_hash: []
 
 - name: Check All - Scheduled
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 3
@@ -234,8 +234,8 @@
       - 'sha256'
 
 - name: Check All but check_mtime - Scheduled
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 3
@@ -263,8 +263,8 @@
       - 'sha256'
 
 - name: Check All but check_size - Scheduled
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 3
@@ -292,8 +292,8 @@
       - 'sha256'
 
 - name: Check All but check_sha256sum - Scheduled
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 3
@@ -321,8 +321,8 @@
       - 'md5'
 
 - name: Check All but check_md5sum - Scheduled
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 3
@@ -350,8 +350,8 @@
       - 'sha256'
 
 - name: Check All but check_sha1sum - Scheduled
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 3
@@ -379,8 +379,8 @@
       - 'sha256'
 
 - name: Check None - Real-Time
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200
@@ -395,8 +395,8 @@
     checks_hash: []
 
 - name: Check All - Real-Time
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200
@@ -424,8 +424,8 @@
       - 'sha256'
 
 - name: Check All but check_mtime - Real-Time
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200
@@ -453,8 +453,8 @@
       - 'sha256'
 
 - name: Check All but check_size - Real-Time
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200
@@ -482,8 +482,8 @@
       - 'sha256'
 
 - name: Check All but check_sha256sum - Real-Time
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200
@@ -511,8 +511,8 @@
       - 'md5'
 
 - name: Check All but check_md5sum - Real-Time
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200
@@ -540,8 +540,8 @@
       - 'sha256'
 
 - name: Check All but check_sha1sum - Real-Time
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200
