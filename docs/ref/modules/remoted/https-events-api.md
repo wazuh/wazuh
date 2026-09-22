@@ -363,7 +363,8 @@ Everything below the `401` rows keeps a numeric `code` equal to the HTTP status.
 | Body exceeds the auth body limit (5 MiB) -- or, for `Content-Encoding: zstd`, the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large`              |
 | `Content-Encoding` present but not (case-insensitively) `zstd`                                                                                                                          | `415` | `Unsupported Content-Encoding`              |
 | `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame                                                                                                                | `400` | `Malformed compressed body`                 |
-| Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, or doesn't match the authenticated `agent-id`                                                                        | `400` | `Invalid event batch`                       |
+| H line repeats `wazuh`, `wazuh.agent` or `wazuh.agent.id` (names compared after JSON unescaping)                                                                                        | `400` | `Invalid event batch`                       |
+| Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, `wazuh` or `wazuh.agent` not an object, or doesn't match the authenticated `agent-id`                                 | `400` | `Invalid event batch`                       |
 | Downstream rejected the batch (bad H/E)                                                                                                                                                 | `400` | `Invalid event batch`                       |
 | Out of capacity, or downstream unreachable/errored                                                                                                                                      | `503` | `Service unavailable`                       |
 | Endpoint handler raised an unexpected error                                                                                                                                             | `500` | `Internal server error`                     |
@@ -371,6 +372,20 @@ Everything below the `401` rows keeps a numeric `code` equal to the HTTP status.
 The payload-identity check runs **before** the batch is forwarded: a mismatch never reaches the
 engine at all, and (by design) shares the same `400 Invalid event batch` message as a batch the
 engine itself rejects, so a client cannot distinguish the two causes.
+
+A header that repeats a step of the identity path is refused outright rather than resolved. JSON
+permits repetition, but the manager forwards the batch downstream byte for byte and the engine
+re-reads those same bytes under different rules — it keeps the *last* of a repeated name where this
+check takes the *first*. Whichever member was validated would therefore not be the one ingested, so
+the ambiguous header is rejected instead. The comparison is done on the unescaped names, so
+`"wazuh"` and `"\u0077azuh"` count as the same member.
+
+The rule covers `wazuh`, `wazuh.agent` and `wazuh.agent.id` only. A repetition elsewhere in the
+header cannot move the identity, because the engine escapes member names when it builds the JSON
+Pointer it merges through: a member literally named `wazuh/agent` stays a literal sibling instead of
+resolving onto the real one. Such a field may reach the ingested event; it is inert there and the
+index template rejects it. A conforming agent is unaffected either way — the protocol has always
+specified one occurrence of each field (see [Event protocol](event-protocol.md#rules)).
 
 Requests larger than the 10 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
 closed) before authentication runs, so they never receive a clean `413`.

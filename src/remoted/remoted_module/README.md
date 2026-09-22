@@ -441,11 +441,33 @@ src/endpoints/
   its own `target`/`postProcess` (and, once there are several, its own `endpoints/<name>/` folder).
   `stateless::validatePayloadIdentity(req)` is a pure, pre-forward check: it parses the body's `H
   <json>` line with RapidJSON (`rapidjson::Document::Parse(data, length)` — non-in-situ, since the
-  payload is a `string_view` into a shared, non-NUL-terminated buffer — plus `rapidjson::Pointer` for
-  `/wazuh/agent/id`) and compares it, as a number, against the authenticated `agentId` (also parsed
-  as a number, so `"001"` and `"1"` match). Anything that isn't a clean match — missing/malformed
-  header, non-numeric on either side, or a real mismatch — collapses to `AuthError::PayloadAgentMismatch`;
-  there is no partial-validation path an agent could use to skip the check.
+  payload is a `string_view` into a shared, non-NUL-terminated buffer), then resolves
+  `/wazuh/agent/id` with `agentIdFromHeader()`, walking `wazuh` → `agent` → `id`. Each step must
+  exist **exactly once** and the two containers must be objects; the id is then compared as a
+  number against the authenticated `agentId` (so `"001"` and `"1"` match). Member names are
+  compared **decoded and by length** — `"\u0077azuh"` *is* `wazuh`, while a name with an embedded NUL is
+  a different, longer name. Anything unclean — a repeated step, a missing/malformed header, a
+  non-object container, non-numeric on either side, or a real mismatch — collapses to
+  `AuthError::PayloadAgentMismatch`.
+
+  **Why "exactly once" and not just "present".** JSON permits repeated member
+  names, and the two parsers this payload meets disagree about which repetition counts: a lookup
+  here takes the **first**, the engine's merge keeps the **last**, and this module forwards the body
+  byte for byte in between. A header repeating `wazuh`, `agent` or `id` would therefore authorise
+  one agent and ingest another. Refusing the repetition is what keeps "validated" and "ingested"
+  the same identity.
+
+  **Why the check stops at the identity path.** A repetition elsewhere in the header cannot move the
+  identity, so paying to scan the whole document on every request would buy nothing. That holds
+  because of a matching fix on the other side: the engine escapes the member name when it builds the
+  JSON Pointer its merge recurses with (`src/engine/source/base/src/json.cpp`, via
+  `Json::formatJsonPath(name, skipDot=true)`). Before that fix a member literally called
+  `wazuh/agent` was pasted into the pointer raw, so it stopped being one token and landed on the
+  *real* `/wazuh/agent`, overwriting the id that had just been validated — from a key that is not on
+  the identity path at all. Now such a member stays an inert literal sibling. It may survive into
+  the ingested event; that is harmless, and it is rejected at index time by the template. **The two
+  halves are load-bearing together**: narrowing this check without the engine's escaping reopens the
+  bypass, which is exactly how it was found.
   `stateless::makeHandler(forwarder, socketPath)` wires `validatePayloadIdentity` in front of
   `forwarder.forward(...)`: on failure it answers via `errorResponseFor()` and never forwards; this is
   the single `AuthenticatedHandler` the facade registers for `/stateless`.
