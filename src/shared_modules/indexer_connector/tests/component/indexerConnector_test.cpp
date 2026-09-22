@@ -1240,3 +1240,60 @@ TEST_F(IndexerConnectorTest, PublishBulkErrorLogged)
     ASSERT_NO_THROW(
         waitUntil([&secondPublishSeen]() { return secondPublishSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
 }
+
+/**
+ * @brief Test that control characters in the agent-controlled document id and in the indexer-supplied error reason
+ * are stripped before they reach the log, so a crafted value cannot forge extra log lines.
+ */
+TEST_F(IndexerConnectorTest, PublishBulkErrorLogSanitizesControlCharacters)
+{
+    clearCapturedLogs();
+
+    // `_id` and `error.reason` both carry an embedded newline followed by a forged log line.
+    m_indexerServers[A_IDX]->setPublishResponseCallback(
+        [](const std::string&) -> std::string
+        {
+            return R"({"took":1,"errors":true,"items":[{"index":{"_id":"003_bad\nwazuh-modulesd: forged id",)"
+                   R"("status":400,"error":{"type":"mapper_parsing_exception",)"
+                   R"("reason":"bad value\nwazuh-modulesd: forged reason"}}}]})";
+        });
+
+    std::atomic<bool> publishSeen {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&publishSeen](const std::string& data)
+        {
+            if (data.find("003_bad") != std::string::npos)
+            {
+                publishSeen = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "003_bad";
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&publishSeen]() { return publishSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, "rejected by index"); },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
+
+    EXPECT_FALSE(hasCapturedLog(Log::LOGLEVEL_WARNING, "003_bad\nwazuh-modulesd"))
+        << "The newline injected in the document id reached the log unescaped";
+    EXPECT_FALSE(hasCapturedLog(Log::LOGLEVEL_WARNING, "bad value\nwazuh-modulesd"))
+        << "The newline injected in the error reason reached the log unescaped";
+
+    // Each newline must have become a space, keeping the whole rejection on a single formatted entry.
+    const std::string expectedWarning {
+        "Document '003_bad wazuh-modulesd: forged id' rejected by index '" + std::string {INDEXER_NAME} +
+        "' - type: 'mapper_parsing_exception', reason: 'bad value wazuh-modulesd: forged reason'"};
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning))
+        << "The rejection was not logged as a single sanitized entry";
+}

@@ -16,6 +16,8 @@
 #include "reflectiveJson.hpp"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
+#include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -275,6 +277,17 @@ static inline void extractErrorInfo(const std::string& errorBody, std::string& t
 }
 
 /**
+ * @brief Replace every control character in place with a space.
+ *
+ * @param value Text to sanitize.
+ */
+static inline void sanitizeLogText(std::string& value) noexcept
+{
+    std::replace_if(
+        value.begin(), value.end(), [](unsigned char character) { return std::iscntrl(character) != 0; }, ' ');
+}
+
+/**
  * @brief Log every per-item rejection inside a `_bulk` response body that still returned HTTP 200 overall.
  *        OpenSearch reports these inside `errors`/`items[]` rather than as a transport-level error, so
  * `extractErrorInfo` (which only understands the top-level `{"error": {...}}` shape) doesn't see them.
@@ -311,6 +324,12 @@ static inline void logBulkItemErrors(const std::string& indexName, const std::st
                     {
                         reason = error.at("reason").get_ref<const std::string&>();
                     }
+
+                    // The document id is partly agent-controlled and the reason echoes the indexer's own error
+                    // text, so strip control characters to keep either from forging log lines.
+                    sanitizeLogText(id);
+                    sanitizeLogText(type);
+                    sanitizeLogText(reason);
 
                     logWarn(IC_NAME,
                             "Document '%s' rejected by index '%s' - type: '%s', reason: '%s'",
