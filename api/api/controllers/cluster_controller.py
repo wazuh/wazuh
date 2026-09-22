@@ -407,12 +407,15 @@ async def get_remoted_tls_node(node_id: str, pretty: bool = False,
     f_kwargs = {'node_id': node_id}
 
     nodes = raise_if_exc(await get_system_nodes())
+    # Without remoted: it is what this endpoint reports on, and the default basic_services would have
+    # check_wazuh_status() answer 1017 for the one state the contract above promises to describe.
     dapi = DistributedAPI(f=manager.get_remoted_tls,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
+                          basic_services=('wazuh-manager-modulesd', 'wazuh-manager-analysisd', 'wazuh-manager-db'),
                           rbac_permissions=request.context['token_info']['rbac_policies'],
                           nodes=nodes)
     data = raise_if_exc(await dapi.distribute_function())
