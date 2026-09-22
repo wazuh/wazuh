@@ -26,6 +26,7 @@ class IOsPrimitivesMac
 
         virtual int sysctl(int* name, u_int namelen, void* oldp, size_t* oldlenp, void* newp, size_t newlen) const = 0;
         virtual int sysctlbyname(const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen) const = 0;
+        virtual int proc_listallpids(void* buffer, int buffersize) const = 0;
 
         virtual kern_return_t host_statistics64(host_t hostPriv, host_flavor_t flavor, host_info64_t hostInfo64Out, mach_msg_type_number_t* hostInfo64OutCnt) const = 0;
         virtual mach_port_t mach_host_self() const = 0;

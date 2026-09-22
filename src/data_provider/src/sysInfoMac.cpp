@@ -28,6 +28,7 @@
 #include "hardware/factoryHardwareFamilyCreator.h"
 #include "hardware/hardwareWrapperImplMac.h"
 #include "osPrimitivesImplMac.h"
+#include "processesWrapperImplMac.h"
 #include "sqliteWrapperTemp.h"
 #include "packages/modernPackageDataRetriever.hpp"
 #include "groups_darwin.hpp"
@@ -310,47 +311,49 @@ nlohmann::json SysInfo::getOsInfo() const
 
 static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<socket_fdinfo>>& processSocket)
 {
-    int32_t maxProcess { 0 };
-    auto maxProcessLen { sizeof(maxProcess) };
+    std::vector<pid_t> pids;
 
-    if (!sysctlbyname("kern.maxproc", &maxProcess, &maxProcessLen, nullptr, 0))
+    try
     {
-        auto pids { std::make_unique<pid_t[]>(maxProcess) };
-        const auto processesCount { proc_listallpids(pids.get(), maxProcess) };
+        pids = listAllPids(OsPrimitivesMac{});
+    }
+    catch (const std::system_error&)
+    {
+        // Preserve the previous behavior: silently skip port collection if
+        // kern.maxproc can't be read, rather than propagating the error.
+        return;
+    }
 
-        for (auto i = 0 ; i < processesCount ; ++i)
+    for (const auto pid : pids)
+    {
+        proc_bsdinfo processInformation {};
+
+        if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &processInformation, PROC_PIDTBSDINFO_SIZE) != -1)
         {
-            const auto pid { pids[i] };
+            const std::string processName { resolveProcessName(pid, processInformation.pbi_name) };
+            const ProcessInfo processData { pid, processName };
 
-            proc_bsdinfo processInformation {};
+            const auto processFDBufferSize { proc_pidinfo(pid, PROC_PIDLISTFDS, 0, 0, 0) };
 
-            if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &processInformation, PROC_PIDTBSDINFO_SIZE) != -1)
+            if (processFDBufferSize != -1)
             {
-                const std::string processName { resolveProcessName(pid, processInformation.pbi_name) };
-                const ProcessInfo processData { pid, processName };
+                auto processFDInformationBuffer { std::make_unique<char[]>(processFDBufferSize) };
 
-                const auto processFDBufferSize { proc_pidinfo(pid, PROC_PIDLISTFDS, 0, 0, 0) };
-
-                if (processFDBufferSize != -1)
+                if (proc_pidinfo(pid, PROC_PIDLISTFDS, 0, processFDInformationBuffer.get(), processFDBufferSize) != -1)
                 {
-                    auto processFDInformationBuffer { std::make_unique<char[]>(processFDBufferSize) };
+                    auto processFDInformation { reinterpret_cast<proc_fdinfo*>(processFDInformationBuffer.get())};
 
-                    if (proc_pidinfo(pid, PROC_PIDLISTFDS, 0, processFDInformationBuffer.get(), processFDBufferSize) != -1)
+                    for (auto j = 0ul; j < processFDBufferSize / PROC_PIDLISTFD_SIZE; ++j )
                     {
-                        auto processFDInformation { reinterpret_cast<proc_fdinfo*>(processFDInformationBuffer.get())};
-
-                        for (auto j = 0ul; j < processFDBufferSize / PROC_PIDLISTFD_SIZE; ++j )
+                        if (PROX_FDTYPE_SOCKET == processFDInformation[j].proc_fdtype)
                         {
-                            if (PROX_FDTYPE_SOCKET == processFDInformation[j].proc_fdtype)
-                            {
-                                socket_fdinfo socketInfo {};
+                            socket_fdinfo socketInfo {};
 
-                                if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, &socketInfo, PROC_PIDFDSOCKETINFO_SIZE))
+                            if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, &socketInfo, PROC_PIDFDSOCKETINFO_SIZE))
+                            {
+                                if (std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo.psi.soi_kind) != s_validFDSock.end())
                                 {
-                                    if (std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo.psi.soi_kind) != s_validFDSock.end())
-                                    {
-                                        processSocket[processData].push_back(socketInfo);
-                                    }
+                                    processSocket[processData].push_back(socketInfo);
                                 }
                             }
                         }
@@ -387,27 +390,11 @@ nlohmann::json SysInfo::getPorts() const
 
 void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
 {
-    int32_t maxProc{};
-    size_t len { sizeof(maxProc) };
-    const auto ret { sysctlbyname("kern.maxproc", &maxProc, &len, NULL, 0) };
+    const auto pids { listAllPids(OsPrimitivesMac{}) };
 
-    if (ret)
-    {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading kernel max processes."
-        };
-    }
-
-    const auto spPids         { std::make_unique<pid_t[]>(maxProc) };
-    const auto processesCount { proc_listallpids(spPids.get(), maxProc) };
-
-    for (int index = 0; index < processesCount; ++index)
+    for (const auto pid : pids)
     {
         ProcessTaskInfo taskInfo{};
-        const auto pid { spPids.get()[index] };
         const auto sizeTask
         {
             proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &taskInfo, PROC_PIDTASKALLINFO_SIZE)

@@ -12,6 +12,7 @@
 #ifndef _OSPRIMITIVES_IMPL_MAC_H
 #define _OSPRIMITIVES_IMPL_MAC_H
 
+#include <libproc.h>
 #include "osPrimitivesInterfaceMac.h"
 
 class OsPrimitivesMac : public IOsPrimitivesMac
@@ -30,6 +31,11 @@ class OsPrimitivesMac : public IOsPrimitivesMac
         int sysctlbyname(const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen) const
         {
             return ::sysctlbyname(name, oldp, oldlenp, newp, newlen);
+        }
+
+        int proc_listallpids(void* buffer, int buffersize) const
+        {
+            return ::proc_listallpids(buffer, buffersize);
         }
 
         kern_return_t host_statistics64(host_t hostPriv, host_flavor_t flavor, host_info64_t hostInfo64Out, mach_msg_type_number_t* hostInfo64OutCnt) const
