@@ -145,12 +145,12 @@ TEST_F(GroupsProviderTest, CollectAllGroups)
 
     EXPECT_EQ(result[1]["groupname"], "staff");
     EXPECT_EQ(result[1]["is_hidden"], 1);
-    EXPECT_EQ(result[1]["gid"], static_cast<gid_t>(-1));
-    EXPECT_EQ(result[1]["gid_signed"], -1);
     EXPECT_EQ(result[1]["uuid"], "");
-    // A group resolvable only via OpenDirectory still carries a numeric "gid", so callers
-    // that unconditionally do group["gid"].get<int>() (e.g. SysInfo::getGroups()) don't throw.
-    EXPECT_NO_THROW(result[1]["gid"].get<int>());
+    // A group resolvable only via OpenDirectory has no real GID, so it must be left out
+    // entirely rather than filled with a placeholder number: a shared sentinel here would
+    // make two distinct unresolved groups collide on group_id downstream.
+    EXPECT_FALSE(result[1].contains("gid"));
+    EXPECT_FALSE(result[1].contains("gid_signed"));
 
     delete adminGroup;
 }

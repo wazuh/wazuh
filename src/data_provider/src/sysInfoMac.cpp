@@ -472,7 +472,10 @@ nlohmann::json SysInfo::getGroups() const
 
     for (auto& group : collectedGroups)
     {
-        allGids.insert(static_cast<gid_t>(group["gid"].get<int>()));
+        if (group.contains("gid"))
+        {
+            allGids.insert(static_cast<gid_t>(group["gid"].get<int>()));
+        }
     }
 
     // Single call to getUserNamesByGid with all GIDs
@@ -482,19 +485,27 @@ nlohmann::json SysInfo::getGroups() const
     for (auto& group : collectedGroups)
     {
         nlohmann::json groupItem {};
-        gid_t currentGid = static_cast<gid_t>(group["gid"].get<int>());
+        const bool hasGid { group.contains("gid") };
 
-        groupItem["group_id"] = group["gid"];
+        // A group resolvable only via OpenDirectory (see GroupsProvider::collect()) carries no
+        // real GID, so group_id/group_id_signed fall back to unknown here instead of a shared
+        // placeholder number that would make distinct unresolved groups look identical.
+        groupItem["group_id"] = hasGid ? group["gid"] : UNKNOWN_VALUE;
         groupItem["group_name"] = (group.contains("groupname") && !group["groupname"].get<std::string>().empty()) ? group["groupname"] : UNKNOWN_VALUE;
         groupItem["group_description"] = (group.contains("comment") && !group["comment"].get<std::string>().empty()) ? group["comment"] : UNKNOWN_VALUE;
-        groupItem["group_id_signed"] = group["gid_signed"];
+        groupItem["group_id_signed"] = group.contains("gid_signed") ? group["gid_signed"] : UNKNOWN_VALUE;
         groupItem["group_uuid"] = (group.contains("uuid") && !group["uuid"].get<std::string>().empty()) ? group["uuid"] : UNKNOWN_VALUE;
         groupItem["group_is_hidden"] = group["is_hidden"];
 
-        // Obtain the users for this specific GID
-        auto gidStr = std::to_string(currentGid);
-        nlohmann::json collectedUsersGroups = allUsersGroups.contains(gidStr) ?
-                                              allUsersGroups[gidStr] : nlohmann::json::array();
+        // Obtain the users for this specific GID, when one is known
+        nlohmann::json collectedUsersGroups = nlohmann::json::array();
+
+        if (hasGid)
+        {
+            auto gidStr = std::to_string(static_cast<gid_t>(group["gid"].get<int>()));
+            collectedUsersGroups = allUsersGroups.contains(gidStr) ?
+                                  allUsersGroups[gidStr] : nlohmann::json::array();
+        }
 
         if (collectedUsersGroups.empty())
         {
