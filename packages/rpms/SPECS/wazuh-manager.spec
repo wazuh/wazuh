@@ -74,7 +74,7 @@ echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
-./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
+WAZUH_PACKAGE_BUILD="y" ./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
 # Create directories
 mkdir -p ${RPM_BUILD_ROOT}%{_initrddir}

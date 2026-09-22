@@ -10,7 +10,8 @@
 # Drives ValidateIndexerVars() and StoreIndexerCredentials() from inst-functions.sh against a
 # throwaway INSTALLDIR whose keystore tool is a stub that records how it was called. What matters
 # is that the password reaches the keystore through the standard input and never through an
-# argument: the process list is readable by every account on the host.
+# argument: the process list is readable by every account on the host. The last case covers the
+# other side of it, that none of this runs while a package is being built.
 #
 #   ./test_indexer_credentials.sh
 
@@ -69,6 +70,15 @@ run_target() {
         INSTYPE="${TEST_INSTYPE}"
         [ -n "${TEST_INSTALLDIR}" ] && INSTALLDIR="${TEST_INSTALLDIR}"
 
+        # The two guarded blocks of install.sh's main(), in the same shape
+        main_credentials_steps() {
+            [ -n "${WAZUH_PACKAGE_BUILD}" ] || ValidateIndexerVars
+            if [ -z "${WAZUH_PACKAGE_BUILD}" ]; then
+                StoreIndexerCredentials
+                ProvisionApiPasswords
+            fi
+        }
+
         "${function_name}" > /dev/null 2>&1
     )
     echo "$?"
@@ -115,6 +125,18 @@ rm -rf "${TEST_INSTALLDIR}"
 TEST_INSTALLDIR="$(mktemp -d)"
 check "a missing keystore tool stops the installation" "1" "$(run_target StoreIndexerCredentials)"
 rm -rf "${TEST_INSTALLDIR}"
+
+echo "== A package build stages a tree, it does not configure a node =="
+# The deb and rpm builds run install.sh to lay the files down, with no indexer and no node to credential.
+# Refusing there broke the four package builds; provisioning there would ship one password in every package.
+TEST_INSTALLDIR="$(make_installdir)"
+INDEXER_USER_PASSWORD=""
+check "main() skips ValidateIndexerVars" "0" \
+    "$(WAZUH_PACKAGE_BUILD=y run_target main_credentials_steps)"
+check "main() writes no keystore entry" "0" \
+    "$(ls "${TEST_INSTALLDIR}"/calls.log 2>/dev/null | wc -l)"
+rm -rf "${TEST_INSTALLDIR}"
+INDEXER_USER_PASSWORD="Ind3xer-Pass."
 
 echo
 echo "${checks} checks, ${failures} failures"

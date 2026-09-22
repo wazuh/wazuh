@@ -51,6 +51,7 @@ override_dh_install:
 	USER_ENABLE_EMAIL="n" \
 	USER_ENABLE_AUTHD="y" \
 	USER_AUTO_START="n" \
+	WAZUH_PACKAGE_BUILD="y" \
 	./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
 	# Copying init.d script
