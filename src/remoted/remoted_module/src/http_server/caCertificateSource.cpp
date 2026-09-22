@@ -136,28 +136,11 @@ namespace remoted::http
             snapshot.subjects += subjectOfCertificate(certificate.get());
         }
 
-        // The one vouch there is (D15): every caller -- the endpoint, the log lines, the notify
-        // descriptor -- reads this verdict instead of re-deciding it, so they cannot disagree about
-        // what generation this file is, and the guards run once per read that changed the bytes.
-        // What is measured is what would be handed out: the PEM we serialised, not the file.
-        const auto vouch = ca_bundle::vouch(parsed, m_leaf.get(), snapshot.pem.size());
-        snapshot.publication = vouch.publication;
-        snapshot.vouchFailure = vouch.failure;
         snapshot.block = parsed.block;
         snapshot.serializedBytes = snapshot.pem.size();
 
-        // With no leaf to check against (a server that has not started) the answer is "unknown",
-        // not "mismatch": leafChainsToAnyCa() would say false, and false is what refuses to serve.
-        if (m_leaf)
-        {
-            // A real chain validation since C33, with OpenSSL's default flags: a certificate that
-            // merely signs the leaf is not one an agent can build a chain to, and this verdict is
-            // what the 503 and the announced generation are decided from.
-            snapshot.matchesLeaf = leafChainsToAnyCa(m_leaf.get(), parsed.certificates);
-
-            // The chain verdict is deliberately NOT computed here: it has a date term, so
-            // snapshotLocked() asks validateChainLocked() for it on every call, cache hit or not.
-        }
+        // No verdict is decided here: matchesLeaf, the vouch and the chain verdict all have a date
+        // term, so judgeLocked() decides them on every call, cache hit or not.
 
         // A serialisation failure leaves nothing to publish: refuse rather than fall back to the
         // bytes we read, which is the whole point of this class.
@@ -182,7 +165,7 @@ namespace remoted::http
             // once the file is back are still a cache hit.
             ++m_consecutiveFailures;
             m_snapshot.lastReadFailure = ReadFailure {read.status, read.error, m_consecutiveFailures};
-            validateChainLocked();
+            judgeLocked();
             return m_snapshot;
         }
 
@@ -192,30 +175,28 @@ namespace remoted::http
         if (hash == m_hash)
         {
             m_snapshot.lastReadFailure.reset();
-            validateChainLocked();
+            judgeLocked();
             return m_snapshot;
         }
 
         // Rebuilt from these bytes, whatever they hold: a readable file with no certificate in it is
         // the operator's way of saying "stop serving", and it clears the snapshot at once. The parsed
-        // certificates stay behind the snapshot so the chain verdict can be re-judged from them on
-        // every call without touching the PEM again.
+        // bundle stays behind the snapshot so the verdicts can be re-judged from it on every call
+        // without touching the PEM again.
         auto parsed = ca_bundle::parseBundle(contents);
         m_snapshot = buildLocked(parsed);
-        m_certificates = m_snapshot.pem.empty() ? std::vector<X509Ptr> {} : std::move(parsed.certificates);
+        m_parsed = m_snapshot.pem.empty() ? ca_bundle::ParsedBundle {} : std::move(parsed);
         // Set after the rebuild and from the same hash the cache is keyed on, so the file's identity
         // travels with the snapshot even when buildLocked() refused everything else in it.
         m_snapshot.fileSha256 = hash;
+        // Judged before the record looks at it: applyRecord() derives its event from the vouch.
+        judgeLocked();
         // Only the reads that CHANGED the file reach the record: a cache hit above returned long
         // ago, which is what keeps an event from being re-derived (and re-posted) for bytes that
         // were already accounted for. O(1) and I/O-free, so it costs the hot path nothing (C22).
         applyRecord(hash, m_snapshot);
         m_hash = std::move(hash);
         ++m_parses;
-
-        // The one date-dependent verdict, judged now for whatever is being returned: the bundle just
-        // parsed, the cached one, or the last good one behind a failed read.
-        validateChainLocked();
         return m_snapshot;
     }
 
@@ -382,22 +363,46 @@ namespace remoted::http
         return 0;
     }
 
-    void CaCertificateSource::validateChainLocked()
+    void CaCertificateSource::judgeLocked()
     {
-        if (!m_leaf || m_certificates.empty())
+        if (m_parsed.certificates.empty())
         {
-            // Nothing to validate against (no leaf yet, or no bundle): unknown, never "invalid".
+            // Nothing servable: nothing to judge, and nothing is vouched for.
+            m_snapshot.matchesLeaf.reset();
+            m_snapshot.chainValid.reset();
+            m_snapshot.chainError.clear();
+            m_snapshot.publication = 0;
+            m_snapshot.vouchFailure = ca_bundle::GuardFailure::no_certificates;
+            return;
+        }
+
+        const auto at = m_verdictClock ? std::optional<std::time_t> {m_verdictClock()} : std::nullopt;
+
+        // The one vouch there is (D15): every caller -- the endpoint, the log lines, the notify
+        // descriptor -- reads this verdict instead of re-deciding it. What is measured is what would
+        // be handed out: the PEM we serialised, not the file.
+        const auto vouch = ca_bundle::vouch(m_parsed, m_leaf.get(), m_snapshot.serializedBytes, at);
+        m_snapshot.publication = vouch.publication;
+        m_snapshot.vouchFailure = vouch.failure;
+
+        if (!m_leaf)
+        {
+            // With no leaf to check against (a server that has not started) the answer is "unknown",
+            // not "mismatch": leafChainsToAnyCa() would say false, and false is what refuses to serve.
+            m_snapshot.matchesLeaf.reset();
             m_snapshot.chainValid.reset();
             m_snapshot.chainError.clear();
             return;
         }
 
+        // A real chain validation since C33, with OpenSSL's default flags: a certificate that merely
+        // signs the leaf is not one an agent can build a chain to, and this verdict is what the 503
+        // and the announced generation are decided from.
+        m_snapshot.matchesLeaf = leafChainsToAnyCa(m_leaf.get(), m_parsed.certificates, at);
+
         // Does the leaf VALIDATE with this bundle as its trust store (chain, dates, CA constraints,
         // server purpose)? Information for the logs and GET /tls, never for the 503 -- see chainValidates().
-        const auto chain =
-            chainValidates(m_leaf.get(),
-                           m_certificates,
-                           m_verdictClock ? std::optional<std::time_t> {m_verdictClock()} : std::nullopt);
+        const auto chain = chainValidates(m_leaf.get(), m_parsed.certificates, at);
         m_snapshot.chainValid = chain.valid;
         m_snapshot.chainError = chain.error;
     }

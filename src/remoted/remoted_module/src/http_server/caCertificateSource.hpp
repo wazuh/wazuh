@@ -25,10 +25,13 @@
  *
  * Here one read produces everything: the certificates parsed out of it, a PEM **this process
  * serialised** from those objects (so nothing that is not a certificate can leave), and whether any
- * of them signs the leaf the listener is serving. The result is cached under the SHA-256 of the
+ * of them signs the leaf the listener is serving. The parse is cached under the SHA-256 of the
  * bytes, not their size or mtime -- a same-size, same-timestamp replacement is exactly the case that
  * has to be caught -- so the common path is one read and one hash, and a changed file is revalidated
- * in the request that notices it.
+ * in the request that notices it. What the cache does NOT hold is any verdict with a date term
+ * (does the leaf chain to the bundle, does the chain validate, is the bundle vouched for): those
+ * are judged again on every call from the parsed certificates, because a CA expires or becomes
+ * valid with no byte of the file changing (issue #39519).
  *
  * A read that fails does not erase what was being served (issue #39318). A permission change after
  * an upgrade, a file moved away or an I/O error is a window, not a decision, and the agents that
@@ -97,8 +100,9 @@ namespace remoted::http
     {
         std::string pem; ///< Certificates only, re-serialised here. Empty when there is nothing to serve.
         std::optional<bool> matchesLeaf; ///< Whether the served leaf CHAINS to some certificate of the bundle
-                                         ///< (ca_bundle::leafChainsToAnyCa(), C33 -- not a bare signature check);
-                                         ///< nullopt when none was read.
+                                         ///< (ca_bundle::leafChainsToAnyCa(), C33 -- not a bare signature check),
+                                         ///< judged against the clock on every snapshot(); nullopt when none
+                                         ///< was read.
         std::optional<bool> chainValid;  ///< Whether the leaf validates with the bundle as its trust store (chain,
                                          ///< dates, constraints); nullopt when there is nothing to validate against.
         std::string chainError;          ///< OpenSSL's reason when chainValid is false; empty otherwise.
@@ -113,7 +117,8 @@ namespace remoted::http
 
         /// The generation this bundle may be announced under (RF-2): the publication its block
         /// carries once every guard passed, 0 when any of them refused -- and 0 is what an agent
-        /// reads as "this manager has no published bundle".
+        /// reads as "this manager has no published bundle". Judged on every snapshot(): the chain
+        /// guard has a date term.
         std::int64_t publication {0};
         /// Which guard refused to vouch for the bundle, or `none`. Defaults to `no_certificates`
         /// rather than `none`: a snapshot buildLocked() never got to vouch for (nothing to serve,
@@ -157,7 +162,8 @@ namespace remoted::http
             std::optional<std::int64_t> generation;
         };
 
-        /// The instant the chain verdict is evaluated at. Empty means OpenSSL's own clock (production).
+        /// The instant the verdicts with a date term (matchesLeaf, chainValid, the vouch) are judged
+        /// at. Empty means OpenSSL's own clock (production).
         using VerdictClock = std::function<std::time_t()>;
 
         /// Largest CA file served. A bundle is a few KB; past this the file is refused as TooLarge,
@@ -185,7 +191,7 @@ namespace remoted::http
          *              record existed: it remembers nothing and emits nothing.
          * @param mailbox Where the events go until a caller with a logger drains them. Null also
          *              means no events (the two are injected together in production).
-         * @param verdictClock What the chain verdict is evaluated against; empty for the current time.
+         * @param verdictClock What the date-dependent verdicts are judged against; empty for the current time.
          */
         CaCertificateSource(std::string path,
                             const X509* leaf,
@@ -203,9 +209,11 @@ namespace remoted::http
          * set; when it succeeds, `lastReadFailure` is cleared, and identical bytes are still a cache
          * hit even across a failure in between.
          *
-         * The chain verdict (`chainValid`/`chainError`) is the one thing the cache does not hold: it has
-         * a date term, so it is re-evaluated against the clock on every call -- hit, miss or failed
-         * read -- for the certificates of the snapshot being returned.
+         * The cache holds the parse, never a verdict with a date term: `matchesLeaf`,
+         * `chainValid`/`chainError` and the vouch (`publication`/`vouchFailure`) are judged against
+         * the clock on every call -- hit, miss or failed read -- from the parsed certificates of the
+         * snapshot being returned. A CA that expires, or becomes valid, with the file untouched is
+         * therefore seen by the next caller, not by the next write to the file (issue #39519).
          */
         CaCertificateSnapshot snapshot();
 
@@ -288,10 +296,11 @@ namespace remoted::http
         void flushPendingRecord();
 
     private:
-        /// Everything about @p certificates except the chain verdict, which validateChainLocked() owns.
+        /// Everything about @p parsed that has no date term; judgeLocked() owns the verdicts.
         CaCertificateSnapshot buildLocked(const ca_bundle::ParsedBundle& parsed) const;
-        /// chainValid/chainError of m_snapshot from m_leaf and m_certificates, as of m_clock (or now).
-        void validateChainLocked();
+        /// matchesLeaf, chainValid/chainError and the vouch of m_snapshot, from m_leaf and m_parsed,
+        /// as of m_verdictClock (or now).
+        void judgeLocked();
 
         /**
          * @brief Derives the record event for @p built and updates what this source remembers.
@@ -315,12 +324,13 @@ namespace remoted::http
         X509Ptr m_leaf; ///< Our own reference to the served leaf; null when the caller passed none.
         const FileReader m_reader;
         const Clock m_clock;
-        const VerdictClock m_verdictClock; ///< Empty in production: validateChainLocked() uses OpenSSL's clock.
+        const VerdictClock m_verdictClock; ///< Empty in production: judgeLocked() uses OpenSSL's clock.
 
         mutable std::mutex m_mutex;
         std::string m_hash; ///< SHA-256 of the bytes behind m_snapshot; empty before the first good read.
         CaCertificateSnapshot m_snapshot;
-        std::vector<X509Ptr> m_certificates; ///< The parsed certificates behind m_snapshot, kept for the verdict.
+        ca_bundle::ParsedBundle m_parsed; ///< The parsed bundle behind m_snapshot, kept so the verdicts are
+                                          ///< re-judged without re-parsing. Empty when nothing is servable.
         std::uint64_t m_parses {0};
         std::uint64_t m_consecutiveFailures {0};                       ///< Reset by every successful read.
         std::chrono::steady_clock::time_point m_lastDescriptorRead {}; ///< When descriptor() last revalidated.
