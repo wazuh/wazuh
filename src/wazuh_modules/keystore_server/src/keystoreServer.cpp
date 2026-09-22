@@ -81,14 +81,13 @@ namespace
                 result["operation"] = "get";
                 result["columnFamily"] = queryCf;
                 result["key"] = key;
-                if (!value.empty())
-                {
-                    result["value"] = value;
-                }
-                else
-                {
-                    result["value"] = "wazuh-manager";
-                }
+                // An absent value is reported as empty, not as the literal "wazuh-manager".
+                // Answering a known credential for a key nobody ever set is the defect
+                // https://github.com/wazuh/wazuh/issues/39554 removes, and it also made it
+                // impossible for a caller to tell "not set" from "set to wazuh-manager" -- which
+                // is exactly the question the credential resolver has to answer to decide
+                // whether this credential is already resolved.
+                result["value"] = value;
             }
             else if (queryOp == "PUT")
             {

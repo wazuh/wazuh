@@ -49,6 +49,7 @@ public:
         , m_key {paramValueOf(argc, argv, "-k")}
         , m_value {paramValueOf(argc, argv, "-v", std::make_pair(false, ""))}
         , m_valuePath {paramValueOf(argc, argv, "-vp", std::make_pair(false, ""))}
+        , m_get {hasSwitch(argc, argv, "-g")}
     {
     }
 
@@ -90,6 +91,15 @@ public:
     }
 
     /**
+     * @brief Whether the value is to be read back rather than written.
+     * @return True when -g was given.
+     */
+    bool isGet() const
+    {
+        return m_get;
+    }
+
+    /**
      * @brief Shows the help to the user.
      */
     static void showHelp()
@@ -102,16 +112,31 @@ public:
                   << "\t-v VALUE\t\tSpecifies the value associated with the key. Only use one value option at the time.\n"
                   << "\t-vp VALUE_PATH\t\tPath to a file containing the value to read (single line). Only use one value option at the time.\n"
                   << "\tNOTE: if both value parameters are empty, stdin will be read.\n"
+                  << "\t-g \t\t\tPrint the value of the key instead of writing one, and exit non-zero when it is not set.\n"
                   << "\nExample:"
                   << "\n\t./wazuh-manager-keystore -f indexer -k username -v wazuh-manager\n"
                   << "\n\t./wazuh-manager-keystore -f indexer -k password -vp /path/to/file.txt\n"
                   << "\n\t./wazuh-manager-keystore -f indexer -k password < /path/to/file.txt\n"
                   << "\n\techo 'pass' | ./wazuh-manager-keystore -f indexer -k password\n"
                   << "\n\tcat /path/to/file.txt | ./wazuh-manager-keystore -f indexer -k password\n"
+                  << "\n\t./wazuh-manager-keystore -f indexer -k password -g\n"
                   << std::endl;
     }
 
 private:
+    static bool hasSwitch(int argc, char* argv[], const std::string& switchValue)
+    {
+        for (auto i = 1; i < argc; ++i)
+        {
+            if (std::string {argv[i]} == switchValue)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     static std::string paramValueOf(int argc,
                                     char* argv[],
                                     const std::string& switchValue,
@@ -151,6 +176,7 @@ private:
     const std::string m_key;
     const std::string m_value;
     const std::string m_valuePath;
+    const bool m_get;
 };
 
 #endif // _CMD_ARGS_PARSER_HPP_

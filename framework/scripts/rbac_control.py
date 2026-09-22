@@ -165,6 +165,55 @@ async def restore_default_passwords(script_args):
         sys.exit(1)
 
 
+async def seed_rbac_database(script_args):
+    """Create the RBAC database, seeding the default users with the supplied passwords.
+
+    Invoked by the credential resolver from the package's postinst and from the service's pre-start
+    step, so it must behave the way both of those need:
+
+    * An already-seeded database is left exactly as it is, and the supplied passwords are ignored
+      however they are set. Reseeding would change the credentials of a working deployment during
+      what the operator asked to be an installation.
+    * It exits 0 in both cases, because a maintainer script that aborts leaves the package
+      half-configured.
+
+    Passwords arrive as a JSON object on the standard input. They are never accepted on the command
+    line, where they would be world-readable in `ps`.
+    """
+    import json
+
+    from wazuh.rbac.orm import DB_FILE, check_database_integrity
+    from wazuh.security import validate_password
+
+    if path.exists(DB_FILE):
+        print(f"\t{DB_FILE} already exists; leaving it untouched")
+        sys.exit(0)
+
+    passwords = {}
+    if script_args.passwords_file:
+        try:
+            passwords = json.loads(read_source(script_args.passwords_file))
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"\tCould not read the passwords file: {exc}")
+            sys.exit(1)
+
+        if not isinstance(passwords, dict):
+            print("\tThe passwords file must hold a JSON object mapping default usernames to passwords")
+            sys.exit(1)
+
+        # insert_default_resources() writes through the ORM layer, which enforces nothing, so the
+        # policy is applied here instead. The value is never printed, only the username it belongs to.
+        for username, password in passwords.items():
+            try:
+                validate_password(password)
+            except WazuhError as exc:
+                print(f"\tThe password supplied for '{username}' was rejected: {exc.message}")
+                sys.exit(1)
+
+    check_database_integrity(passwords=passwords)
+    print(f"\t{DB_FILE} created")
+
+
 async def reset_rbac_database(script_args):
     """Attempt to fully wipe the RBAC database to restore factory values. Input confirmation is required."""
     if not script_args.reset_force and input("This action will completely wipe your RBAC configuration and restart it "
@@ -199,10 +248,20 @@ def get_script_arguments():
                                              "from this file, or from the standard input if it is '-', and change "
                                              "all of them in a single execution.")
     change_password_parser.set_defaults(func=restore_default_passwords)
+
+    seed_parser = arg_subparsers.add_parser("seed",
+                                            help="Create the RBAC database, seeding the default users with the "
+                                                 "supplied passwords. An existing database is left untouched. A "
+                                                 "default user with no password supplied gets a generated one.")
+    seed_parser.add_argument("--passwords-file", action="store", dest="passwords_file", default=None,
+                             help="Read a JSON object mapping default usernames to their passwords from this file, "
+                                  "or from the standard input if it is '-'.")
+    seed_parser.set_defaults(func=seed_rbac_database)
+
     reset_parser = arg_subparsers.add_parser("factory-reset",
                                              help="Reset the RBAC database to its default state. This will completely"
-                                                  " wipe your custom RBAC information, and restore the default users'"
-                                                  " shipped passwords.")
+                                                  " wipe your custom RBAC information, and give each default user a"
+                                                  " newly generated password.")
     reset_parser.add_argument("-f", "--force", action="store_true", dest="reset_force", default=False,
                               help="Do not ask for confirmation for the RBAC database factory reset.")
     reset_parser.set_defaults(func=reset_rbac_database)

@@ -89,6 +89,24 @@ case "$1" in
     ;;
 
     purge)
+        # Take the manager's own keys out of the shared credentials file before ${DIR} goes, since
+        # the library that knows the file format lives inside it. Only WAZUH_MANAGER_* keys, and
+        # only inside the managed block: the other components' keys and anything the operator wrote
+        # are not ours to remove, even when they carry the same name.
+        if [ -f ${DIR}/lib/credentials-lib.sh ]; then
+            . ${DIR}/lib/credentials-lib.sh
+            cred_purge_prefix WAZUH_MANAGER_ > /dev/null 2>&1 || true
+
+            # The last component out removes what is left. A file still carrying any WAZUH_ key is
+            # a file a sibling is still using, so this errs towards leaving it: a leftover
+            # root-only file is harmless, breaking an installed indexer or dashboard is not.
+            if [ -f "${CRED_FILE}" ] && ! grep -q '^[[:space:]]*WAZUH_[A-Z_]*=' "${CRED_FILE}" 2>/dev/null; then
+                rm -f "${CRED_FILE}" "${CRED_LOCK}" > /dev/null 2>&1
+                rm -rf "${CRED_DIR}/ca" > /dev/null 2>&1
+                rmdir "${CRED_DIR}" > /dev/null 2>&1 || true
+            fi
+        fi
+
         if getent passwd wazuh-manager > /dev/null 2>&1 ; then
             deluser wazuh-manager  > /dev/null 2>&1
         fi

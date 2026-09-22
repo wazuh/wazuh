@@ -96,8 +96,8 @@ Without a usable pair the manager **fails closed**, in three layers, from the ou
    checks that `remote.https.certificate`/`key` (and authd's `ssl_manager_cert`/`ssl_manager_key`)
    exist and refuses to start with, on the console and in `logs/wazuh-manager.log`:
    `(1244): Invalid configuration at '/remote/https/certificate': file not found:
-   /var/wazuh-manager/etc/certs/remoted.pem (the manager does not generate certificates; provision
-   the file, e.g. with wazuh-certs-tool).`
+   /var/wazuh-manager/etc/certs/remoted.pem (issued by the credential resolver at service start, or
+   provisioned externally, e.g. with wazuh-certs-tool).`
 2. **`wazuh-manager-remoted`**, after entering its chroot and dropping privileges and right before
    starting this module, probes both paths with `access(R_OK)` and exits with exactly one of
    `Cannot start the HTTPS agent listener: the TLS certificate '<c>' and private key '<k>' are missing
